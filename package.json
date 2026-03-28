@@ -11,34 +11,3 @@
     "cors": "^2.8.5"
   }
 }
-```
-
----
-
-## 📋 PASSO 6 — Adicionar variáveis no Railway
-
-No Railway, aba **Variables**, adicione:
-
-| Nome | Onde pegar |
-|------|-----------|
-| `SUPABASE_URL` | Supabase → Settings → API → Project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase → Settings → API → service_role key |
-
----
-
-## 📋 PASSO 7 — Comando para o Trae integrar o frontend
-
-Cole isso no chat do Trae:
-
-> No `index.html`, adicione autenticação via API REST. Ao carregar a página, verifique se existe um token JWT salvo no `localStorage`. Se não existir, exiba um modal de login com campos de email e senha que faz POST para `/api/login`. Após login bem-sucedido, salve o token e o nível de acesso do usuário. Oculte os itens do menu que o usuário não tem permissão de acessar baseado no campo `nivel_acesso` retornado pela API. Admin vê tudo, operador vê apenas Produção, vendedor vê apenas Comercial.
-
----
-
-## ✅ Resumo do fluxo completo
-```
-Usuário acessa o site
-    → Tela de login (Supabase Auth)
-    → Token JWT gerado
-    → Menu filtrado por nível de acesso
-    → Dados carregados via API REST
-    → Atualizações em tempo real via Supabase Realtime
