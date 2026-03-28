@@ -86,6 +86,32 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
 .nav-item.active .ico{opacity:1;}
 .nav-item .badge-n{margin-left:auto;background:var(--red);color:#fff;border-radius:99px;padding:1px 6px;font-size:.58rem;font-weight:700;}
 
+/* Submenu styles */
+.nav-submenu {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+.nav-submenu.open {
+  max-height: 500px;
+}
+.nav-submenu .nav-item {
+  padding-left: 34px;
+  margin-left: 8px;
+  margin-right: 8px;
+}
+.nav-item .chevron {
+  margin-left: auto;
+  font-size: 0.5rem;
+  transition: transform 0.3s;
+  opacity: 0.5;
+}
+.nav-item.open .chevron {
+  transform: rotate(90deg);
+}
+
 /* ===== CONTENT ===== */
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
 .page{display:none;flex:1;overflow:hidden;flex-direction:column;}
@@ -8146,6 +8172,17 @@ function go(id){
   closeMobMenu();
 }
 
+function toggleSubmenu(el) {
+  const isOpening = !el.classList.contains('open');
+  if (isOpening) {
+    el.classList.add('open');
+    el.nextElementSibling.classList.add('open');
+  } else {
+    el.classList.remove('open');
+    el.nextElementSibling.classList.remove('open');
+  }
+}
+
 
 // ===================== OPERADORES DATA =====================
 let OPERADORES = [
@@ -8827,9 +8864,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="nav-item" onclick="go('vendedores')"><span class="ico">🤝</span>Vendedores</div>
   <div class="nav-item" onclick="go('nfe')"><span class="ico">🧾</span>Notas Fiscais</div>
   <div class="sidebar-section">Operações</div>
-  <div class="nav-item" onclick="go('estoque')"><span class="ico">📦</span>Estoque Chapas</div>
-  <div class="nav-item" onclick="go('facas1')"><span class="ico">🔧</span>Estoque de Facas</div>
-  <div class="nav-item" onclick="go('cliches')"><span class="ico">🖼</span>Estoque Clichês</div>
+  <div class="nav-item" onclick="toggleSubmenu(this)">
+    <span class="ico">📦</span>Estoques
+    <span class="chevron">▶</span>
+  </div>
+  <div class="nav-submenu" id="submenu-estoques">
+    <div class="nav-item" onclick="go('estoque')"><span class="ico">📦</span>Estoque Chapas</div>
+    <div class="nav-item" onclick="go('facas1')"><span class="ico">🔧</span>Estoque de Facas</div>
+    <div class="nav-item" onclick="go('cliches')"><span class="ico">🖼</span>Estoque Clichês</div>
+  </div>
   <div class="sidebar-section">Negócios</div>
   <div class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
   <div class="nav-item" onclick="go('contaspagar')"><span class="ico">📤</span>Contas a Pagar</div>
