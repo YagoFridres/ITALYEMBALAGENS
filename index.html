@@ -10590,11 +10590,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startRealtimePatch);
   else startRealtimePatch();
 function toggleNavGroup(id){ 
-   const el=document.getElementById(id); 
-   const arrow=document.getElementById('arrow-'+id); 
-   if(!el)return; 
-   el.classList.toggle('fechado'); 
-   if(arrow) arrow.style.transform=el.classList.contains('fechado')?'rotate(-90deg)':'rotate(0deg)'; 
+   var el = document.getElementById(id); 
+   var arrow = document.getElementById('arrow-' + id); 
+   if(!el) return; 
+   var fechado = el.classList.contains('fechado'); 
+   if(fechado){ 
+     el.classList.remove('fechado'); 
+     if(arrow) arrow.style.transform = 'rotate(0deg)'; 
+   } else { 
+     el.classList.add('fechado'); 
+     if(arrow) arrow.style.transform = 'rotate(-90deg)'; 
+   } 
  } 
 })();
 </script>
