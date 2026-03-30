@@ -5812,23 +5812,40 @@ function setupRealtimeSync(){
 }
 
 
-function autoSaveNow(silent){
-  try{
-    const dados = buildDataSnapshot();
-    localStorage.setItem(LS_KEY, JSON.stringify(dados));
-    _lastSyncTs = Number(dados.ts||Date.now());
-    broadcastDataSnapshot('autosave');
-    if(!silent) showSaveIndicator('✓ salvo','var(--green)');
-  } catch(e){
-    console.warn('Erro ao salvar localmente:', e);
-    showSaveIndicator('⚠ erro save','var(--red)');
-  }
+async function autoSaveNow(silent){ 
+  try{ 
+    const dados = buildDataSnapshot(); 
+    localStorage.setItem(LS_KEY, JSON.stringify(dados)); 
+  }catch(e){} 
+  if(!_sbConectado){ if(!silent) showSaveIndicator('⚠ local','var(--orange)'); return; } 
+  try{ 
+    if(OFs.length) await sbUpsert('ordens_fabricacao', OFs.map(o=>({id:o.id||undefined,numero_of:o.of,sequencia:o.seq,cliente_id:o.cliId||null,vendedor_id:o.vendId||null,quantidade:o.qtd||0,dia_programado:o.dia||null,data_entrega:o.ent||null,fluxo_codigo:o.fluxo||null,maq:JSON.stringify(o.maq||[]),status:o.status||'Em aberto',urgente:!!o.urg,chapa_codigo:o.chp||null,quantidade_chapa:o.qchp||0,valor_total:o.val||0,valor_unit:o.vunit||0,pagto:o.pagto||null,observacoes:o.obs||null,imgs:JSON.stringify(o.imgs||[]),emp_id:o.empId||null,prod_desc:o.prodDesc||null,estoque_baixado:!!o._estoqueBaixado,estoque_baixado_na_criacao:!!o._estoqueJaBaixadoCriacao}))); 
+
+    if(CLIENTES.length) await sbUpsert('clientes', CLIENTES.map(c=>({id:c.id||undefined,nome:c.nome,razao_social:c.rs||null,documento:c.cnpj||null,telefone:c.tel||null,email:c.email||null,cidade:c.cidade||null,uf:c.uf||null,endereco:c.end||null,ramo:c.ramo||null,pagto:c.pagto||null,rep:c.rep||null,ie:c.ie||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
+
+    if(ESTOQUE.length) await sbUpsert('chapas_estoque', ESTOQUE.map(e=>({id:e.id||undefined,forn:e.forn||null,nom:e.nom||null,tam:e.tam||null,comp:e.comp||0,larg:e.larg||0,nome:e.nome||'',qual:e.qual||null,cnpj:e.cnpj||null,nf:e.nf||null,qtd:e.qtd||0,val:e.val||0,min:e.min||0,vincada:!!e.vincada,vincos:e.vincos||null,emp_id:e.empId||null}))); 
+
+    if(FACAS_1.length) await sbUpsert('facas_estoque', FACAS_1.map(f=>({id:f.id||undefined,codigo:f.id,nome:f.nome||'',medidas:f.medidas||null,maquinas:f.maquinas||[],valor_unitario:f.valor||0,obs:f.obs||null,clientes:f.clientes||[],foto_url:f.foto||null,emp_id:f.empId||null}))); 
+
+    if(CLICHES.length) await sbUpsert('cliches_estoque', CLICHES.map(c=>({id:c.id||undefined,codigo:c.id,nome:c.nome||'',medidas:c.medidas||null,maquinas:c.maquinas||[],valor_unitario:c.valor||0,obs:c.obs||null,clientes:c.clientes||[],foto_url:c.foto||null,emp_id:c.empId||null}))); 
+
+    if(CONTAS_PAGAR.length) await sbUpsert('contas_pagar', CONTAS_PAGAR.map(c=>({id:c.id||undefined,descricao:c.descricao||'',categoria:c.categoria||'Outro',valor:c.valor||0,vencimento:c.venc||null,data_pagamento:c.pgto||null,status:c.status||'Pendente',numero_nf:c.nf||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
+
+    if(CONTAS_RECEBER.length) await sbUpsert('contas_receber', CONTAS_RECEBER.map(c=>({id:c.id||undefined,descricao:c.descricao||'',categoria:c.categoria||'Outro',valor:c.valor||0,vencimento:c.venc||null,data_recebimento:c.receb||null,status:c.status||'Pendente',numero_nf:c.nf||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
+
+    if(ORCAMENTOS.length) await sbUpsert('orcamentos', ORCAMENTOS.map(o=>({id:o.id||undefined,numero_orcamento:o.id||String(Date.now()),cliente_id:o.cliId||null,vendedor_id:o.vendId||null,titulo:o.prod||null,quantidade:o.qtd||0,subtotal:o.vtot||0,total:o.vtot||0,status:o.status||'Em aberto',observacoes:o.obs||null,comprimento_mm:o.comp||null,largura_mm:o.larg||null,altura_mm:o.alt||null,emp_id:o.empId||null,data_orcamento:o.data||null}))); 
+
+    if(!silent) showSaveIndicator('✓ salvo','var(--green)'); 
+  }catch(e){ 
+    console.warn('Erro Supabase save:', e.message); 
+    showSaveIndicator('⚠ erro sync','var(--red)'); 
+  } 
 }
 
-function autoSaveTrigger(label){
-  showSaveIndicator('Salvando...','var(--yellow)');
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(autoSaveNow, 400);
+function autoSaveTrigger(label){ 
+  showSaveIndicator('Salvando...','var(--yellow)'); 
+  clearTimeout(autoSaveTimer); 
+  autoSaveTimer = setTimeout(()=>autoSaveNow(false), 600); 
 }
 
 function autoSaveLoad(){
@@ -5867,11 +5884,11 @@ async function _tentarCarregarServidor(){
   } catch(e){ /* servidor indisponível — usa localStorage */ }
 }
 
-function autoSaveClear(){
-  if(confirm('Limpar TODOS os dados salvos e reiniciar com dados padrão?\n\nATENÇÃO: Esta ação não pode ser desfeita!')){
-    localStorage.removeItem(LS_KEY);
-    location.reload();
-  }
+function autoSaveClear(){ 
+  if(confirm('Limpar dados locais e recarregar do Supabase?\nOs dados no servidor NÃO serão apagados.')){ 
+    localStorage.removeItem(LS_KEY); 
+    location.reload(); 
+  } 
 }
 
 // Polling: atualiza dados a cada 30s — SÓ roda se o usuário estiver logado
