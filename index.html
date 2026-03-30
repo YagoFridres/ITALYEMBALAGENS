@@ -5525,6 +5525,14 @@ async function sbGet(tabela){
    }catch(e){ return { ok:false, error:e.message }; } 
  } 
   
+ // ==== API stubs (compat) ====
+ function api(){ return Promise.resolve({ok:false}); }
+ function apiUnavailable(){ return true; }
+ function usarFallbackLocal(){ }
+ function salvarViaApiOuLocal(n,fnApi,fnLocal){ if(fnLocal) fnLocal(); return Promise.resolve({ok:true,local:true}); }
+ async function syncFromServerSilent(){ }
+ async function _tentarCarregarServidor(){ }
+ 
  function showSaveIndicator(txt, color){ 
    const el = document.getElementById('save-indicator'); 
    if(el){ el.textContent=txt; el.style.color=color; el.style.opacity='1'; 
@@ -5736,40 +5744,7 @@ function broadcastDataSnapshot(reason){
   }catch(e){}
 }
 
-async function syncFromServerSilent(){
-  if(_syncBusy) return;
-  _syncBusy = true;
-  try{
-    const ping = await api('GET', '/ofs');
-    if(!ping.ok){ _apiConectado = false; return; }
-    _apiConectado = true;
-    const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops, nfs, inc] = await Promise.all([
-      api('GET','/ofs'), api('GET','/clientes'), api('GET','/estoque'), api('GET','/apontamentos'),
-      api('GET','/compras'), api('GET','/orcamentos'), api('GET','/fornecedores'), api('GET','/vendedores'),
-      api('GET','/operadores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
-    ]);
-    let mudou = false;
-    if(ofs.ok && ofs.data){ OFs = ofs.data.map(normalizeOF); mudou = true; }
-    if(clis.ok && clis.data){ CLIENTES = clis.data.map(normalizeCli); mudou = true; }
-    if(est.ok && est.data){ ESTOQUE = est.data.map(normalizeEst); mudou = true; }
-    if(aps.ok && aps.data){ APONTAMENTOS = aps.data.map(normalizeAp); mudou = true; }
-    if(cmp.ok && cmp.data){ COMPRAS = cmp.data.map(normalizeCmp); mudou = true; }
-    if(orcs.ok && orcs.data){ ORCAMENTOS = orcs.data.map(normalizeOrc); mudou = true; }
-    if(forn.ok && forn.data){ FORNECEDORES = forn.data.map(normalizeForn); mudou = true; }
-    if(vends.ok && vends.data){ VENDEDORES = vends.data.map(normalizeVend); mudou = true; }
-    if(ops.ok && ops.data){ OPERADORES = ops.data.map(normalizeOp); mudou = true; }
-    if(nfs.ok && nfs.data){ NOTAS_FISCAIS = nfs.data; mudou = true; }
-    if(inc.ok && inc.data){ INCONFORMIDADES = inc.data.map(normalizeInc); mudou = true; }
-    if(mudou){
-      autoSaveNow(true);
-      renderActivePageSync();
-      try{ updateBadges(); }catch(e){}
-    }
-  }catch(e){
-  }finally{
-    _syncBusy = false;
-  }
-}
+async function syncFromServerSilent(){ }
 
 function setupRealtimeSync(){
   try{
@@ -5874,15 +5849,7 @@ function autoSaveLoad(){
   _tentarCarregarServidor();
 }
 
-async function _tentarCarregarServidor(){
-  try {
-    const ping = await api('GET', '/ofs');
-    if(!ping.ok) return;
-    _apiConectado = true;
-    await syncFromServerSilent();
-    showSaveIndicator('✓ servidor','var(--green)');
-  } catch(e){ /* servidor indisponível — usa localStorage */ }
-}
+async function _tentarCarregarServidor(){ }
 
 function autoSaveClear(){ 
   if(confirm('Limpar dados locais e recarregar do Supabase?\nOs dados no servidor NÃO serão apagados.')){ 
