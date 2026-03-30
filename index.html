@@ -5597,8 +5597,6 @@ function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def;
 // Isso garante que os dados persistam entre recarregamentos de página,
 // sem necessidade do servidor Node.js.
 
-const LS_KEY = 'pcpro_v5_data';
-
 const SYNC_CHANNEL_NAME = 'pcpro_sync_v2';
 let _syncBC = null;
 let _syncInterval = null;
