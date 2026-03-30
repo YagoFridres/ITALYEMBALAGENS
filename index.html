@@ -5556,54 +5556,55 @@ function normalizeInc(r){ return {id:r.id,data:r.data||'',opId:r.op_id||r.opId||
 function normalizeOrc(r){ return {id:r.id,data:r.data_orcamento||r.data||'',cliId:r.cliente_id||r.cliId||'',vendId:r.vendedor_id||r.vendId||'',prod:r.prod||r.titulo||'',qtd:r.qtd||r.quantidade||0,vunit:r.vunit||0,vtot:r.vtot||r.total||0,status:r.status||'Em aberto',obs:r.observacoes||r.obs||'',comp:r.comp||r.comprimento_mm||0,larg:r.larg||r.largura_mm||0,alt:r.alt||r.altura_mm||0,empId:r.emp_id||r.empId||''}; } 
 
 // Carrega TODOS os dados do servidor ao iniciar
-async function autoSaveLoad(){
-  showSaveIndicator('Conectando...','var(--yellow)');
+async function autoSaveLoad(){ 
+  showSaveIndicator('Conectando...','var(--yellow)'); 
+  try{ 
+    const raw = localStorage.getItem(LS_KEY); 
+    if(raw){ const d=JSON.parse(raw); applyDataSnapshot(d,{force:true,silent:true}); } 
+  }catch(e){} 
+  try{ 
+    const [r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,r13,r14,r15,r16] = await Promise.all([ 
+      sbGet('ordens_fabricacao'), sbGet('clientes'), sbGet('vendedores'), 
+      sbGet('orcamentos'), sbGet('chapas_estoque'), sbGet('apontamentos_producao'), 
+      sbGet('maquinas'), sbGet('operadores'), sbGet('compras'), sbGet('fornecedores'), 
+      sbGet('inconformidades'), sbGet('facas_estoque'), sbGet('cliches_estoque'), 
+      sbGet('contas_pagar'), sbGet('contas_receber'), sbGet('fluxos') 
+    ]); 
+    if(r1.ok  && r1.data?.length)  OFs            = r1.data.map(normalizeOF); 
+    if(r2.ok  && r2.data?.length)  CLIENTES       = r2.data.map(normalizeCli); 
+    if(r3.ok  && r3.data?.length)  VENDEDORES     = r3.data.map(normalizeVend); 
+    if(r4.ok  && r4.data?.length)  ORCAMENTOS     = r4.data.map(normalizeOrc); 
+    if(r5.ok  && r5.data?.length)  ESTOQUE        = r5.data.map(normalizeEst); 
+    if(r6.ok  && r6.data?.length)  APONTAMENTOS   = r6.data.map(normalizeAp); 
+    if(r7.ok  && r7.data?.length)  MAQUINAS       = r7.data.map(normalizeMaq); 
+    if(r8.ok  && r8.data?.length)  OPERADORES     = r8.data.map(normalizeOp); 
+    if(r9.ok  && r9.data?.length)  COMPRAS        = r9.data.map(normalizeCmp); 
+    if(r10.ok && r10.data?.length) FORNECEDORES   = r10.data.map(normalizeForn); 
+    if(r11.ok && r11.data?.length) INCONFORMIDADES= r11.data.map(normalizeInc); 
+    if(r12.ok && r12.data?.length) FACAS_1        = r12.data; 
+    if(r13.ok && r13.data?.length) CLICHES        = r13.data; 
+    if(r14.ok && r14.data?.length) CONTAS_PAGAR   = r14.data; 
+    if(r15.ok && r15.data?.length) CONTAS_RECEBER = r15.data; 
+    if(r16.ok && r16.data?.length) FLUXOS         = r16.data; 
+    _sbConectado = true; 
+    showSaveIndicator('✓ online','var(--green)'); 
+    toast('✓ Dados carregados do Supabase','var(--teal)'); 
+  }catch(e){ 
+    console.warn('Supabase erro:', e.message); 
+    showSaveIndicator('⚠ offline','var(--orange)'); 
+    toast('⚠ Usando dados locais','var(--orange)'); 
+  } 
+  if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today(); 
+  try{ renderPCP(); }catch(e){} 
+  try{ updateBadges(); }catch(e){} 
+  try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){} 
+  setupRealtimeSync(); 
+} 
 
-  // Testa conectividade primeiro com um ping simples
-  const pingOk = await api('GET', '/ofs');
-  if(!pingOk.ok){
-    _apiConectado = false;
-    showSaveIndicator('⚠ sem servidor','var(--red)');
-    const msg = 'Servidor não encontrado em ' + API_BASE + '\n\nVerifique:\n• O servidor Node.js está rodando? (node server.js)\n• A porta 3000 está liberada no firewall?';
-    console.warn(msg);
-    toast('⚠ Sem conexão com o servidor. Dados não serão salvos.','var(--red)');
-    // Sistema funciona em modo somente-leitura com dados em memória
-    try{ renderPCP(); }catch(e){}
-    try{ updateBadges(); }catch(e){}
-    return;
-  }
-
-  _apiConectado = true;
-  try {
-    const [ofs, clis, vends, orcs, est, aps, maq, ops, cmp, forn, nfs, inc] = await Promise.all([
-      api('GET','/ofs'), api('GET','/clientes'), api('GET','/vendedores'),
-      api('GET','/orcamentos'), api('GET','/estoque'), api('GET','/apontamentos'),
-      api('GET','/maquinas'), api('GET','/operadores'), api('GET','/compras'),
-      api('GET','/fornecedores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
-    ]);
-    if(ofs.ok && ofs.data)    OFs          = ofs.data.map(normalizeOF);
-    if(clis.ok && clis.data)  CLIENTES     = clis.data.map(normalizeCli);
-    if(vends.ok && vends.data)VENDEDORES   = vends.data.map(normalizeVend);
-    if(orcs.ok && orcs.data)  ORCAMENTOS   = orcs.data.map(normalizeOrc);
-    if(est.ok && est.data)    ESTOQUE      = est.data.map(normalizeEst);
-    if(aps.ok && aps.data)    APONTAMENTOS = aps.data.map(normalizeAp);
-    if(maq.ok && maq.data)    MAQUINAS     = maq.data.map(normalizeMaq);
-    if(ops.ok && ops.data)    OPERADORES   = ops.data.map(normalizeOp);
-    if(cmp.ok && cmp.data)    COMPRAS      = cmp.data.map(normalizeCmp);
-    if(forn.ok && forn.data)  FORNECEDORES = forn.data.map(normalizeForn);
-    if(nfs.ok && nfs.data)    NOTAS_FISCAIS= nfs.data;
-    if(inc.ok && inc.data)    INCONFORMIDADES = inc.data.map(normalizeInc);
-    if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
-    showSaveIndicator('✓ conectado','var(--green)');
-    toast('✓ Dados carregados do servidor','var(--teal)');
-    try{ renderPCP(); }catch(e){}
-    try{ updateBadges(); }catch(e){}
-    try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
-  } catch(e){
-    console.warn('Falha ao carregar dados:', e);
-    showSaveIndicator('⚠ erro','var(--red)');
-    toast('⚠ Erro ao carregar dados: ' + e.message,'var(--orange)');
-  }
+function setupRealtimeSync(){ 
+  ['ordens_fabricacao','clientes','chapas_estoque','contas_pagar','contas_receber','orcamentos'].forEach(t=>{ 
+    _sb.channel('rt:'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{ autoSaveLoad(); }).subscribe(); 
+  }); 
 }
 
 // Normalização: converte snake_case do banco para camelCase do sistema
