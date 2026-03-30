@@ -5339,54 +5339,74 @@ var USERS = [
 ]; 
 var CURRENT_USER = null;
 
-function applyPermissions(perfil){
-  const allNav = document.querySelectorAll('.nav-item');
-  
-  if(perfil === 'admin'){
-    allNav.forEach(n=>n.style.display='');
-    document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
-    return;
-  }
-  
-  // Allowed pages per profile
-  const allowed = {
-    producao:     ['pcp','lancamento','tablets','apontamento','maquinas','fluxos','artefinal'],
-    pcp:          ['pcp','lancamento','tablets','apontamento','maquinas','fluxos'],
-    artefinal:    ['pcp','lancamento','clientes','vendedores','nfe','orcamentos','tablets','apontamento','artefinal'],
-    qualidade:    ['operadores','qualidade','apontamento'],
-    estoque_user: ['estoque','facas1','cliches','compras','fornecedores','clientes'],
-    riscador:     ['tablets','apontamento','pcp','estoque'],
-  };
-  const allowedPages = allowed[perfil] || [];
-  
-  allNav.forEach(n=>{
-    const onclick = n.getAttribute('onclick')||'';
-    const match = onclick.match(/go\('([^']+)'\)/);
-    const page = match ? match[1] : '';
-    if(allowedPages.includes(page)){
-      n.style.display='';
-    } else {
-      n.style.display='none';
-    }
-  });
-  document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='none');
-  
-  // Show relevant section labels
-  if(allowedPages.length > 0){
-    allNav.forEach(n=>{
-      if(n.style.display!=='none'){
-        let sib=n.previousElementSibling;
-        while(sib){
-          if(sib.classList&&sib.classList.contains('sidebar-section')){sib.style.display='';break;}
-          sib=sib.previousElementSibling;
-        }
-      }
-    });
-  }
-  
-  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true;
-  if(allowedPages.length > 0) _goBase(allowedPages[0]);
-}
+function applyPermissions(perfil){ 
+  const allNav = document.querySelectorAll('.nav-item'); 
+
+  if(perfil === 'admin'){ 
+    allNav.forEach(n=>n.style.display=''); 
+    document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display=''); 
+    document.querySelectorAll('.nav-subgroup').forEach(g=>g.classList.remove('fechado')); 
+    document.querySelectorAll('.nav-group-header').forEach(h=>h.style.display=''); 
+    return; 
+  } 
+
+  const allowed = { 
+    producao:     ['pcp','lancamento','tablets','apontamento','maquinas','fluxos','artefinal'], 
+    pcp:          ['pcp','lancamento','tablets','apontamento','maquinas','fluxos'], 
+    artefinal:    ['pcp','lancamento','clientes','vendedores','nfe','orcamentos','tablets','apontamento','artefinal'], 
+    qualidade:    ['operadores','qualidade','apontamento'], 
+    estoque_user: ['estoque','facas1','cliches','compras','fornecedores','clientes'], 
+    riscador:     ['tablets','apontamento','pcp','estoque'], 
+  }; 
+
+  const allowedPages = allowed[perfil] || []; 
+
+  // Esconde tudo primeiro 
+  allNav.forEach(n=>n.style.display='none'); 
+  document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='none'); 
+  document.querySelectorAll('.nav-subgroup').forEach(g=>{ 
+    g.classList.add('fechado'); 
+    g.style.display='none'; 
+  }); 
+  document.querySelectorAll('.nav-group-header').forEach(h=>h.style.display='none'); 
+
+  // Mostra só o permitido 
+  allNav.forEach(n=>{ 
+    const onclick = n.getAttribute('onclick')||''; 
+    const match = onclick.match(/go\('([^']+)'\)/); 
+    const page = match ? match[1] : null; 
+    if(page && allowedPages.includes(page)){ 
+      n.style.display=''; 
+      // Mostra o grupo pai se for subitem 
+      let pai = n.parentElement; 
+      if(pai && pai.classList.contains('nav-subgroup')){ 
+        pai.classList.remove('fechado'); 
+        pai.style.display=''; 
+        // Mostra o header do grupo 
+        const headerId = 'nav-header-' + pai.id.replace('grupo-',''); 
+        const header = document.getElementById(headerId); 
+        if(header) header.style.display=''; 
+      } 
+      // Mostra a sidebar-section acima 
+      let sib = n.previousElementSibling; 
+      while(sib){ 
+        if(sib.classList && sib.classList.contains('nav-group-header')){ 
+          sib.style.display=''; 
+          sib = sib.previousElementSibling; 
+          continue; 
+        } 
+        if(sib.classList && sib.classList.contains('sidebar-section')){ 
+          sib.style.display=''; 
+          break; 
+        } 
+        sib = sib.previousElementSibling; 
+      } 
+    } 
+  }); 
+
+  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true; 
+  if(allowedPages.length > 0) _goBase(allowedPages[0]); 
+} 
 
 
 
