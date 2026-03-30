@@ -550,7 +550,8 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 .nav-group-header{justify-content:flex-start;cursor:pointer;user-select:none;} 
 .nav-arrow{margin-left:auto;font-size:.72rem;transition:transform .2s;display:inline-block;} 
 .nav-subgroup{overflow:hidden;max-height:300px;transition:max-height .25s ease;} 
-.nav-subgroup.fechado{max-height:0!important;} 
+.nav-subgroup{display:block;overflow:hidden;max-height:500px;transition:max-height .3s ease;} 
+.nav-subgroup.fechado{max-height:0!important;overflow:hidden!important;display:block!important;} 
 .nav-subitem{padding-left:32px!important;font-size:.74rem;} 
 
 </style>
@@ -12328,5 +12329,29 @@ else init();
 console.log('[CLI AC] Autocomplete de clientes carregado — 176 clientes ✓');
 })();
 </script>
+
+<script> 
+ document.addEventListener('DOMContentLoaded', function(){ 
+   document.querySelectorAll('.nav-subgroup').forEach(function(el){ 
+     el.classList.remove('fechado'); 
+   }); 
+   document.querySelectorAll('.nav-group-header').forEach(function(btn){ 
+     btn.style.cursor = 'pointer'; 
+     btn.addEventListener('click', function(){ 
+       var id = this.id.replace('nav-header-','grupo-'); 
+       var el = document.getElementById(id); 
+       var arrow = document.getElementById('arrow-' + id); 
+       if(!el) return; 
+       if(el.classList.contains('fechado')){ 
+         el.classList.remove('fechado'); 
+         if(arrow) arrow.style.transform='rotate(0deg)'; 
+       } else { 
+         el.classList.add('fechado'); 
+         if(arrow) arrow.style.transform='rotate(-90deg)'; 
+       } 
+     }); 
+   }); 
+ }); 
+ </script> 
 
 </body></html>
