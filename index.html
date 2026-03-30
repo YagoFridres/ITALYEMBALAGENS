@@ -554,6 +554,12 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 .nav-subgroup.fechado{max-height:0!important;overflow:hidden!important;display:block!important;} 
 .nav-subitem{padding-left:32px!important;font-size:.74rem;} 
 
+.nav-group-header{cursor:pointer;user-select:none;display:flex;align-items:center;gap:10px;} 
+.nav-arrow{margin-left:auto;font-size:.72rem;display:inline-block;transition:transform .25s;} 
+.nav-subgroup{overflow:hidden;max-height:300px;transition:max-height .3s ease;} 
+.nav-subgroup.fechado{max-height:0!important;} 
+.nav-subitem{padding-left:32px!important;font-size:.74rem;} 
+
 </style>
 </head>
 <body data-device="desktop">
@@ -1085,8 +1091,8 @@ function _goBase(id){
   document.querySelectorAll('.nav-item').forEach(n=>{
     if(n.getAttribute('onclick')===`go('${id}')`) n.classList.add('active');
   });
-  if(['estoque','facas1','cliches'].includes(id)){const g=document.getElementById('grupo-estoques');if(g)g.classList.remove('fechado');} 
-  if(['clientes','fornecedores','vendedores','operadores'].includes(id)){const g=document.getElementById('grupo-cadastros');if(g)g.classList.remove('fechado');} 
+  if(['estoque','facas1','cliches'].includes(id)){var g=document.getElementById('grupo-estoques');if(g)g.classList.remove('fechado');} 
+  if(['clientes','fornecedores','vendedores','operadores'].includes(id)){var g=document.getElementById('grupo-cadastros');if(g)g.classList.remove('fechado');} 
   updateBadges();
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
   if(id==='pcp')renderPCP();
@@ -5322,15 +5328,14 @@ function initGlobalAutocomplete(){
 
 // ===================== LOGIN =====================
 var USERS = [
-  {login:'MANO',       senha:'123456789',perfil:'admin',      nome:'MANO'},
-  {login:'SIDI',       senha:'123456789',perfil:'admin',      nome:'SIDI'},
-  {login:'NOTAS FISCAIS',senha:'123456789',perfil:'admin',    nome:'NOTAS FISCAIS'},
-  {login:'PRODUÇÃO',   senha:'123456789',perfil:'producao',   nome:'PRODUÇÃO'},
-  {login:'PCP',        senha:'123456789',perfil:'pcp',        nome:'PCP'},
-  {login:'ARTE FINAL', senha:'123456789',perfil:'artefinal',  nome:'ARTE FINAL'},
-  {login:'CONTROLE DE QUALIDADE',senha:'123456789',perfil:'qualidade',nome:'CONTROLE DE QUALIDADE'},
-  {login:'ESTOQUE',    senha:'123456789',perfil:'estoque_user',nome:'ESTOQUE'},
-  {login:'RISCADOR 01',senha:'123456789',perfil:'riscador',   nome:'Riscador 01'},
+  {login:'MANO',     senha:'mano2025',    perfil:'admin',       nome:'MANO'},
+  {login:'SIDÃO',    senha:'sidao2025',   perfil:'admin',       nome:'SIDÃO'},
+  {login:'ESTOQUE',  senha:'estoque2025', perfil:'estoque_user',nome:'ESTOQUE'},
+  {login:'PRODUÇÃO', senha:'prod2025',    perfil:'producao',    nome:'PRODUÇÃO'},
+  {login:'PCP',      senha:'123456789',   perfil:'pcp',         nome:'PCP'},
+  {login:'ARTE FINAL',senha:'123456789', perfil:'artefinal',   nome:'ARTE FINAL'},
+  {login:'CONTROLE DE QUALIDADE',senha:'123456789',perfil:'qualidade',nome:'QUALIDADE'},
+  {login:'RISCADOR 01',senha:'123456789',perfil:'riscador',    nome:'Riscador 01'},
 ];
 var CURRENT_USER = null;
 
@@ -5345,11 +5350,11 @@ function applyPermissions(perfil){
   
   // Allowed pages per profile
   const allowed = {
-    producao:     ['tablets','apontamento','pcp'],
-    pcp:          ['tablets','apontamento','pcp'],
+    producao:     ['pcp','lancamento','tablets','apontamento','maquinas','fluxos','artefinal'],
+    pcp:          ['pcp','lancamento','tablets','apontamento','maquinas','fluxos'],
     artefinal:    ['pcp','lancamento','clientes','vendedores','nfe','orcamentos','tablets','apontamento','artefinal'],
-    qualidade:    ['operadores','qualidade'],
-    estoque_user: ['estoque','compras','fornecedores'],
+    qualidade:    ['operadores','qualidade','apontamento'],
+    estoque_user: ['estoque','facas1','cliches','compras','fornecedores','clientes'],
     riscador:     ['tablets','apontamento','pcp','estoque'],
   };
   const allowedPages = allowed[perfil] || [];
@@ -8601,14 +8606,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- User grid -->
     <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:10px;">Selecionar usuário</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px;">
-      <button onclick="selecionarUsuario('MANO')"                   class="user-sel-btn" id="ubtn-MANO">👑 MANO</button>
-      <button onclick="selecionarUsuario('SIDI')"                   class="user-sel-btn" id="ubtn-SIDI">👑 SIDI</button>
-      <button onclick="selecionarUsuario('NOTAS FISCAIS')"          class="user-sel-btn" id="ubtn-NOTAS FISCAIS">🧾 NOTAS FISCAIS</button>
-      <button onclick="selecionarUsuario('ARTE FINAL')"             class="user-sel-btn" id="ubtn-ARTE FINAL">🎨 ARTE FINAL</button>
-      <button onclick="selecionarUsuario('PCP')"                    class="user-sel-btn" id="ubtn-PCP">📋 PCP</button>
-      <button onclick="selecionarUsuario('PRODUÇÃO')"               class="user-sel-btn" id="ubtn-PRODUÇÃO">🏭 PRODUÇÃO</button>
-      <button onclick="selecionarUsuario('CONTROLE DE QUALIDADE')"  class="user-sel-btn" id="ubtn-CONTROLE DE QUALIDADE">✅ QUALIDADE</button>
-      <button onclick="selecionarUsuario('ESTOQUE')"                class="user-sel-btn" id="ubtn-ESTOQUE">📦 ESTOQUE</button>
+      <button onclick="selecionarUsuario('MANO')"     class="user-sel-btn" id="ubtn-MANO">👑 MANO</button> 
+      <button onclick="selecionarUsuario('SIDÃO')"    class="user-sel-btn" id="ubtn-SIDÃO">👑 SIDÃO</button> 
+      <button onclick="selecionarUsuario('ESTOQUE')"  class="user-sel-btn" id="ubtn-ESTOQUE">📦 ESTOQUE</button> 
+      <button onclick="selecionarUsuario('PRODUÇÃO')" class="user-sel-btn" id="ubtn-PRODUÇÃO">🏭 PRODUÇÃO</button> 
+      <button onclick="selecionarUsuario('PCP')"      class="user-sel-btn" id="ubtn-PCP">📋 PCP</button> 
+      <button onclick="selecionarUsuario('ARTE FINAL')" class="user-sel-btn" id="ubtn-ARTE FINAL">🎨 ARTE FINAL</button> 
+      <button onclick="selecionarUsuario('CONTROLE DE QUALIDADE')" class="user-sel-btn" id="ubtn-CONTROLE DE QUALIDADE">✅ QUALIDADE</button> 
+      <button onclick="selecionarUsuario('RISCADOR 01')" class="user-sel-btn" id="ubtn-RISCADOR 01">⚙ RISCADOR</button> 
     </div>
     <div id="login-sel-label" style="font-size:.72rem;color:var(--accent);min-height:18px;font-family:var(--mono);margin-bottom:10px;font-weight:600;"></div>
 
@@ -8679,7 +8684,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="nav-item" onclick="go('apontamento')"><span class="ico">⏱</span>Tempo de Produção</div>
   <div class="nav-item" onclick="go('artefinal')"><span class="ico">🎨</span>Arte Final</div>
   <div class="sidebar-section">Cadastros</div> 
-  <div class="nav-item nav-group-header" onclick="toggleNavGroup('grupo-cadastros')" id="nav-header-cadastros"> 
+  <div class="nav-item nav-group-header" id="nav-header-cadastros" onclick="toggleNavGroup('grupo-cadastros')"> 
     <span class="ico">🗂</span>Cadastros<span class="nav-arrow" id="arrow-grupo-cadastros">▾</span> 
   </div> 
   <div class="nav-subgroup" id="grupo-cadastros"> 
@@ -8689,7 +8694,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-item nav-subitem" onclick="go('operadores')"><span class="ico">👷</span>Operadores</div> 
   </div> 
   <div class="sidebar-section">Operações</div> 
-  <div class="nav-item nav-group-header" onclick="toggleNavGroup('grupo-estoques')" id="nav-header-estoques"> 
+  <div class="nav-item nav-group-header" id="nav-header-estoques" onclick="toggleNavGroup('grupo-estoques')"> 
     <span class="ico">🗃</span>Estoques<span class="nav-arrow" id="arrow-grupo-estoques">▾</span> 
   </div> 
   <div class="nav-subgroup" id="grupo-estoques"> 
@@ -10591,16 +10596,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startRealtimePatch);
   else startRealtimePatch();
 function toggleNavGroup(id){ 
-   var el = document.getElementById(id); 
-   var arrow = document.getElementById('arrow-' + id); 
-   if(!el) return; 
-   var fechado = el.classList.contains('fechado'); 
-   if(fechado){ 
+   var el=document.getElementById(id); 
+   var arrow=document.getElementById('arrow-'+id); 
+   if(!el)return; 
+   if(el.classList.contains('fechado')){ 
      el.classList.remove('fechado'); 
-     if(arrow) arrow.style.transform = 'rotate(0deg)'; 
-   } else { 
+     if(arrow)arrow.style.transform='rotate(0deg)'; 
+   }else{ 
      el.classList.add('fechado'); 
-     if(arrow) arrow.style.transform = 'rotate(-90deg)'; 
+     if(arrow)arrow.style.transform='rotate(-90deg)'; 
    } 
  } 
 })();
