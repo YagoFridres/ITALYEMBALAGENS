@@ -8,10 +8,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient( 
+   'https://ubygjqxkflfachtologdw.supabase.co', 
+   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVieWdqcXhrZmxmYWNodGxvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mzc1MDMsImV4cCI6MjA5MDMxMzUwM30.hMwfWjTyVCYTirwvUeStnx41LipTNizAxdimH2mjtfI' 
+ ); 
 
 // Rota principal
 app.get('/', (req, res) => {
