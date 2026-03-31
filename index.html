@@ -861,7 +861,7 @@ let VENDEDORES = [
   {id:'V03',nome:'RONI MEIA VENDA',tel:'',email:'',reg:'',meta:0,comissaoPct:0.5},
 ];
 
-let VISITAS = [];        // { id, cliId, vendId, dataPrevista, status, resultado, obs } 
+let VISITAS = [];    // { id, cliId, vendId, data, status, resultado, obs } 
 let VISITAS_SEQ = 1; 
 
 let DESPERDICIO = [];   // registros de desperdício 
@@ -1153,7 +1153,7 @@ function _goBase(id){
   if(id==='tablets')renderTablets();
   if(id==='apontamento')renderApontamentos();
   if(id==='vendedores')renderVendedores();
-  if(id==='vendedores')renderRoteiro();
+  if(id==='vendedores') setTimeout(renderRoteiroPorCidade, 100);
   if(id==='nfe')renderNFe();
   if(id==='fornecedores')renderFornecedores();
   if(id==='dashboard')renderDashboard();
@@ -2977,6 +2977,7 @@ function renderVendedores(){
       </div>
     </div>`;
   }).join('');
+  renderRoteiroPorCidade();
 }
 var _vendEditId = null;
 function abrirModalVendedor(){
@@ -3022,287 +3023,250 @@ function salvarVendedor(){
 
 // ===== BLOCO 2 — ROTEIRO DE VISITAS =====
 
-function renderRoteiro() { 
-  const selVend   = document.getElementById('vis-fil-vend'); 
-  const selCidade = document.getElementById('vis-fil-cidade'); 
-
-  if (selVend && selVend.options.length <= 1) { 
-    VENDEDORES.forEach(v => { 
-      const o = document.createElement('option'); 
-      o.value = v.id; o.textContent = v.nome; 
-      selVend.appendChild(o); 
-    }); 
-  } 
-
-  const cidades = [...new Set(CLIENTES.map(c => c.cidade).filter(Boolean))].sort(); 
-  if (selCidade && selCidade.options.length <= 1) { 
-    cidades.forEach(c => { 
-      const o = document.createElement('option'); 
-      o.value = c; o.textContent = c; 
-      selCidade.appendChild(o); 
-    }); 
-  } 
-
-  const filVend   = (selVend   || {}).value || ''; 
-  const filCidade = (selCidade || {}).value || ''; 
+function renderRoteiroPorCidade() { 
+  // Popular filtros de cidade e vendedor 
+  const filCidade = (document.getElementById('vis-fil-cidade') || {}).value || ''; 
+  const filVend   = (document.getElementById('vis-fil-vend') || {}).value || ''; 
   const filStatus = (document.getElementById('vis-fil-status') || {}).value || ''; 
-
+  // Filtra clientes 
   let clientes = [...CLIENTES]; 
-  if (filVend)   clientes = clientes.filter(c => c.rep && c.rep.includes( 
+  if(filCidade) clientes = clientes.filter(c => c.cidade === filCidade); 
+  if(filVend)   clientes = clientes.filter(c => c.rep && c.rep.includes( 
     (VENDEDORES.find(v => v.id === filVend) || {}).nome || '')); 
-  if (filCidade) clientes = clientes.filter(c => c.cidade === filCidade); 
-
+  // Agrupa por cidade 
   const grupos = {}; 
   clientes.forEach(c => { 
-    const cidade = c.cidade || 'SEM CIDADE'; 
-    if (!grupos[cidade]) grupos[cidade] = []; 
+    const cidade = (c.cidade || 'SEM CIDADE').toUpperCase(); 
+    if(!grupos[cidade]) grupos[cidade] = []; 
     grupos[cidade].push(c); 
   }); 
-
+  // Resumo 
   const totalClientes = clientes.length; 
   const totalVisitadas = VISITAS.filter(v => 
-    v.status === 'realizada' && 
-    clientes.some(c => c.id === v.cliId)).length; 
+    v.status === 'realizada' && clientes.some(c => c.id === v.cliId)).length; 
   const totalPendentes = VISITAS.filter(v => 
-    v.status === 'pendente' && 
-    clientes.some(c => c.id === v.cliId)).length; 
-
-  const resumoEl = document.getElementById('vis-resumo'); 
-  if (resumoEl) { 
-    resumoEl.innerHTML = ` 
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px; 
-        padding:10px 14px;font-size:.78rem"> 
-        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">CLIENTES</div> 
-        <div style="font-weight:800;font-size:1.1rem;color:var(--accent)">${totalClientes}</div> 
-      </div> 
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px; 
-        padding:10px 14px;font-size:.78rem"> 
-        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">CIDADES</div> 
-        <div style="font-weight:800;font-size:1.1rem;color:var(--text)">${Object.keys(grupos).length}</div> 
-      </div> 
-      <div style="background:var(--green-soft);border:1px solid var(--green);border-radius:8px; 
-        padding:10px 14px;font-size:.78rem"> 
-        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">VISITADAS</div> 
-        <div style="font-weight:800;font-size:1.1rem;color:var(--green)">${totalVisitadas}</div> 
-      </div> 
-      <div style="background:var(--yellow-soft, #ffd60018);border:1px solid var(--yellow);border-radius:8px; 
-        padding:10px 14px;font-size:.78rem"> 
-        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">PENDENTES</div> 
-        <div style="font-weight:800;font-size:1.1rem;color:var(--yellow)">${totalPendentes}</div> 
-      </div>`; 
+    v.status === 'pendente' && clientes.some(c => c.id === v.cliId)).length; 
+  // Separa cidades únicas para o select de filtro 
+  const cidadesUnicas = [...new Set(CLIENTES.map(c => (c.cidade||'').toUpperCase()).filter(Boolean))].sort(); 
+  // Monta HTML 
+  let html = ` 
+  <div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px"> 
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"> 
+  <span style="font-weight:800;color:var(--accent);font-size:.9rem">📍 ROTEIRO DE VISITAS POR CIDADE</span> 
+  <select id="vis-fil-cidade" onchange="renderRoteiroPorCidade()" 
+  style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem"> 
+  <option value="">Todas as cidades</option> 
+  ${cidadesUnicas.map(c => `<option value="${c}" ${filCidade===c?'selected':''}>${c}</option>`).join('')} 
+  </select> 
+  <select id="vis-fil-vend" onchange="renderRoteiroPorCidade()" 
+  style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem"> 
+  <option value="">Todos os vendedores</option> 
+  ${VENDEDORES.map(v => `<option value="${v.id}" ${filVend===v.id?'selected':''}>${v.nome}</option>`).join('')} 
+  </select> 
+  <select id="vis-fil-status" onchange="renderRoteiroPorCidade()" 
+  style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem"> 
+  <option value="">Todos</option> 
+  <option value="pendente" ${filStatus==='pendente'?'selected':''}>Pendentes</option> 
+  <option value="realizada" ${filStatus==='realizada'?'selected':''}>Visitados</option> 
+  </select> 
+  <div style="flex:1"></div> 
+  <button class="btn btn-ghost btn-sm" onclick="gerarRoteiroAuto()">⚡ Gerar Roteiro</button> 
+  <button class="btn btn-ghost btn-sm" onclick="imprimirRoteiroVisitas()">🖨 Imprimir</button> 
+  </div> 
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"> 
+  <div class="sbox" style="padding:12px 16px;min-width:120px;text-align:center"> 
+  <div style="font-size:.65rem;color:var(--text3);margin-bottom:2px">CLIENTES</div> 
+  <div style="font-size:1.4rem;font-weight:800;color:var(--accent)">${totalClientes}</div> 
+  </div> 
+  <div class="sbox" style="padding:12px 16px;min-width:120px;text-align:center"> 
+  <div style="font-size:.65rem;color:var(--text3);margin-bottom:2px">CIDADES</div> 
+  <div style="font-size:1.4rem;font-weight:800">${Object.keys(grupos).length}</div> 
+  </div> 
+  <div class="sbox" style="padding:12px 16px;min-width:120px;text-align:center;background:var(--green-soft)"> 
+  <div style="font-size:.65rem;color:var(--text3);margin-bottom:2px">VISITADOS</div> 
+  <div style="font-size:1.4rem;font-weight:800;color:var(--green)">${totalVisitadas}</div> 
+  </div> 
+  <div class="sbox" style="padding:12px 16px;min-width:120px;text-align:center;background:var(--yellow-soft)"> 
+  <div style="font-size:.65rem;color:var(--text3);margin-bottom:2px">PENDENTES</div> 
+  <div style="font-size:1.4rem;font-weight:800;color:var(--yellow)">${totalPendentes}</div> 
+  </div> 
+  </div> 
+  <div id="vis-cidades-container"> 
+  ${Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cidade, clis]) => { 
+  const visitasGrupo = VISITAS.filter(v => clis.some(c => c.id === v.cliId)); 
+  const realizadas   = visitasGrupo.filter(v => v.status === 'realizada').length; 
+  const rows = clis.map(cli => { 
+  const visita = [...VISITAS].filter(v => v.cliId === cli.id) 
+  .sort((a,b) => b.id - a.id)[0]; 
+  const status = visita ? visita.status : 'sem visita'; 
+  if(filStatus && status !== filStatus) return ''; 
+  const corStatus = status === 'realizada' ? 'var(--green)' 
+  : status === 'pendente' ? 'var(--yellow)' : 'var(--text3)'; 
+  return \`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap; 
+  padding:10px 14px;border-bottom:1px solid var(--border); 
+  transition:background .15s;" onmouseover="this.style.background='var(--s2)'" 
+  onmouseout="this.style.background=''"> 
+  <div style="flex:1;min-width:160px"> 
+  <span style="color:\${corStatus};font-size:.75rem">●</span> 
+  <span style="font-weight:700;font-size:.84rem;margin-left:5px">\${cli.nome}</span> 
+  \${cli.rs && cli.rs !== cli.nome ? \`<div style="font-size:.7rem;color:var(--text3);margin-left:16px">\${cli.rs}</div>\` : ''} 
+  </div> 
+  <div style="font-size:.75rem;color:var(--text2);min-width:140px"> 
+  📞 \${cli.tel || cli.cel || '—'} 
+  </div> 
+  <div style="font-size:.72rem;color:var(--text3);min-width:100px"> 
+  \${cli.end || '—'} 
+  </div> 
+  <div style="font-size:.72rem;color:var(--text3);min-width:120px"> 
+  🤝 \${cli.rep || '—'} 
+  </div> 
+  <div style="font-size:.7rem;color:\${corStatus};font-family:var(--mono);min-width:80px;text-transform:uppercase"> 
+  \${status} 
+  </div> 
+  <div style="display:flex;gap:5px"> 
+  \${status !== 'realizada' ? \`<button class="btn btn-green btn-sm" onclick="marcarVisita('\${cli.id}', true)">✓ Visitado</button>\` : \`<button class="btn btn-ghost btn-sm" onclick="marcarVisita('\${cli.id}', false)">↩ Desfazer</button>\`} 
+  </div> 
+  </div>\`; 
+  }).join(''); 
+  if(!rows.trim() && filStatus) return ''; 
+  return \`<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden"> 
+  <div style="background:var(--s2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)"> 
+  <span>📍</span> 
+  <span style="font-weight:800;font-size:.88rem;color:var(--accent)">\${cidade}</span> 
+  <span style="font-size:.7rem;color:var(--text3);font-family:var(--mono);background:var(--accent-soft);border-radius:20px;padding:1px 8px">\${clis.length} cliente(s)</span> 
+  <span style="font-size:.72rem;color:var(--green);margin-left:auto">\${realizadas} visitado(s)</span> 
+  </div> 
+  \${rows} 
+  </div>\`; 
+  }).join('')} 
+  </div> 
+  </div>`; 
+  // Injeta ou atualiza a seção 
+  let secao = document.getElementById('secao-visitas'); 
+  if(!secao){ 
+    secao = document.createElement('div'); 
+    secao.id = 'secao-visitas'; 
+    const pb = document.querySelector('#page-vendedores .page-body'); 
+    if(pb) pb.appendChild(secao); 
   } 
-
-  const container = document.getElementById('vis-cidades-lista'); 
-  if (!container) return; 
-
-  if (Object.keys(grupos).length === 0) { 
-    container.innerHTML = '<div style="color:var(--text3);padding:20px">Nenhum cliente encontrado.</div>'; 
-    return; 
-  } 
-
-  container.innerHTML = Object.entries(grupos) 
-    .sort(([a],[b]) => a.localeCompare(b)) 
-    .map(([cidade, clisGrupo]) => { 
-      const visitasGrupo = VISITAS.filter(v => clisGrupo.some(c => c.id === v.cliId)); 
-      const realizadas   = visitasGrupo.filter(v => v.status === 'realizada').length; 
-
-      const rows = clisGrupo.map(cli => { 
-        const visita = VISITAS.filter(v => v.cliId === cli.id) 
-                         .sort((a,b) => b.id.localeCompare(a.id))[0]; 
-        const status = visita ? visita.status : 'sem visita'; 
-        const corStatus = { 
-          'realizada':'var(--green)', 'pendente':'var(--yellow)', 'sem visita':'var(--text3)' 
-        }; 
-        const dot = `<span style="color:${corStatus[status]||'var(--text3)'};font-size:.8rem">●</span>`; 
-
-        if (filStatus && status !== filStatus) return ''; 
-
-        return `<div style=" 
-          display:flex;align-items:center;gap:12px;flex-wrap:wrap; 
-          padding:10px 14px;border-bottom:1px solid var(--border); 
-          transition:background .15s" 
-          onmouseover="this.style.background='var(--s2)'" 
-          onmouseout="this.style.background=''"> 
-          <div style="flex:1;min-width:180px"> 
-            ${dot} 
-            <span style="font-weight:700;font-size:.85rem;margin-left:6px">${cli.nome}</span> 
-            ${cli.rs && cli.rs !== cli.nome 
-              ? `<div style="font-size:.7rem;color:var(--text2);margin-left:22px;margin-top:1px">${cli.rs}</div>` 
-              : ''} 
-          </div> 
-          <div style="font-size:.75rem;color:var(--text2);min-width:140px"> 
-            📞 ${cli.tel || cli.cel || '—'} 
-          </div> 
-          <div style="font-size:.75rem;color:var(--text3);min-width:120px"> 
-            🤝 ${cli.rep || '—'} 
-          </div> 
-          <div style="font-size:.72rem;color:${corStatus[status]}; 
-            font-family:var(--mono);min-width:80px;text-transform:uppercase"> 
-            ${status} 
-          </div> 
-          <div style="display:flex;gap:5px"> 
-            ${status !== 'realizada' ? ` 
-              <button class="btn btn-green btn-sm" 
-                onclick="marcarVisitaRealizada('${cli.id}')"> 
-                ✓ Marcar Visitado 
-              </button>` : ` 
-              <button class="btn btn-ghost btn-sm" 
-                onclick="desfazerVisita('${cli.id}')"> 
-                ↩ Desfazer 
-              </button>`} 
-            <button class="btn btn-ghost btn-sm" 
-              onclick="abrirHistCli && abrirHistCli('${cli.id}')"> 
-              📋 Histórico 
-            </button> 
-          </div> 
-        </div>`; 
-      }).join(''); 
-
-      if (!rows.trim()) return ''; 
-
-      return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden"> 
-        <div style=" 
-          background:var(--s2);padding:10px 14px; 
-          display:flex;align-items:center;gap:10px; 
-          border-bottom:1px solid var(--border)"> 
-          <span style="font-size:.9rem">📍</span> 
-          <span style="font-weight:800;font-size:.88rem;color:var(--accent)">${cidade}</span> 
-          <span style="font-size:.72rem;color:var(--text3);font-family:var(--mono); 
-            background:var(--accent)22;border:1px solid var(--accent)33; 
-            border-radius:20px;padding:1px 8px"> 
-            ${clisGrupo.length} cliente(s) 
-          </span> 
-          <span style="font-size:.72rem;color:var(--green);margin-left:auto"> 
-            ${realizadas} visitado(s) 
-          </span> 
-        </div> 
-        ${rows} 
-      </div>`; 
-    }).join(''); 
+  secao.innerHTML = html; 
 } 
 
-function marcarVisitaRealizada(cliId) { 
+function marcarVisita(cliId, realizada){ 
   const existe = VISITAS.find(v => v.cliId === cliId && v.status === 'pendente'); 
-  if (existe) { 
-    existe.status = 'realizada'; 
-    existe.dataRealizada = today(); 
+  if(realizada){ 
+    if(existe){ 
+      existe.status = 'realizada'; 
+      existe.dataRealizada = today(); 
+    } else { 
+      VISITAS.push({ 
+        id: VISITAS_SEQ++, 
+        cliId, 
+        vendId: (CURRENT_USER||{}).id || '', 
+        data: today(), 
+        dataRealizada: today(), 
+        status: 'realizada', 
+        resultado: '', 
+        obs: '' 
+      }); 
+    } 
   } else { 
-    VISITAS.push({ 
-      id: 'VIS' + String(VISITAS_SEQ++).padStart(4,'0'), 
-      cliId, 
-      vendId: (USUARIO_LOGADO || {}).id || '', 
-      dataPrevista: today(), 
-      dataRealizada: today(), 
-      status: 'realizada', 
-      resultado: '', 
-      obs: '', 
-    }); 
+    // Desfaz: remove a última visita deste cliente 
+    const idx = [...VISITAS].reverse().findIndex(v => v.cliId === cliId); 
+    if(idx !== -1) VISITAS.splice(VISITAS.length - 1 - idx, 1); 
   } 
   autoSaveTrigger(); 
-  renderRoteiro(); 
-  toast('✅ Visita marcada como realizada!', 'var(--green)'); 
+  renderRoteiroPorCidade(); 
+  toast(realizada ? '✅ Visita marcada!' : '↩ Visita desfeita'); 
 } 
 
-function desfazerVisita(cliId) { 
-  const idx = VISITAS.findLastIndex ? VISITAS.findLastIndex(v => v.cliId === cliId) 
-    : [...VISITAS].reverse().findIndex(v => v.cliId === cliId); 
-  if (idx === -1) return; 
-  const realIdx = VISITAS.findLastIndex 
-    ? idx 
-    : VISITAS.length - 1 - [...VISITAS].reverse().findIndex(v => v.cliId === cliId); 
-  if (realIdx >= 0) VISITAS.splice(realIdx, 1); 
-  autoSaveTrigger(); 
-  renderRoteiro(); 
-  toast('↩ Visita desfeita', 'var(--yellow)'); 
-} 
-
-function gerarRoteiroAutomatico() { 
+function gerarRoteiroAuto(){ 
   const semVisita = CLIENTES.filter(c => 
-    !VISITAS.some(v => v.cliId === c.id && v.status !== 'cancelada') 
-  ); 
-  if (!semVisita.length) { toast('Todos os clientes já têm visita agendada', 'var(--yellow)'); return; } 
-  if (!confirm(`Gerar roteiro para ${semVisita.length} cliente(s) sem visita?`)) return; 
+    !VISITAS.some(v => v.cliId === c.id)); 
+  if(!semVisita.length){ toast('Todos clientes já têm visita registrada', 'var(--yellow)'); return; } 
+  if(!confirm(`Gerar roteiro para ${semVisita.length} cliente(s) sem visita?`)) return; 
   semVisita.forEach(c => { 
     VISITAS.push({ 
-      id: 'VIS' + String(VISITAS_SEQ++).padStart(4,'0'), 
+      id: VISITAS_SEQ++, 
       cliId: c.id, 
-      vendId: (USUARIO_LOGADO || {}).id || '', 
-      dataPrevista: today(), 
-      dataRealizada: null, 
+      vendId: '', 
+      data: today(), 
       status: 'pendente', 
-      resultado: '', 
-      obs: 'Gerado automaticamente', 
+      obs: 'Gerado automaticamente' 
     }); 
   }); 
   autoSaveTrigger(); 
-  renderRoteiro(); 
-  toast(`⚡ ${semVisita.length} visitas geradas!`, 'var(--green)'); 
+  renderRoteiroPorCidade(); 
+  toast(`⚡ ${semVisita.length} visitas agendadas!`, 'var(--green)'); 
 } 
 
-function imprimirRoteiro() { 
-  const filCidade = (document.getElementById('vis-fil-cidade') || {}).value || ''; 
-  const titulo = filCidade ? `ROTEIRO — ${filCidade}` : 'ROTEIRO COMPLETO DE VISITAS'; 
-
+function imprimirRoteiroVisitas(){ 
+  const filCidade = (document.getElementById('vis-fil-cidade')||{}).value || ''; 
+  let clientes = [...CLIENTES]; 
+  if(filCidade) clientes = clientes.filter(c => (c.cidade||'').toUpperCase() === filCidade); 
   const grupos = {}; 
-  CLIENTES.forEach(c => { 
-    if (filCidade && c.cidade !== filCidade) return; 
-    const cidade = c.cidade || 'SEM CIDADE'; 
-    if (!grupos[cidade]) grupos[cidade] = []; 
-    const visita = VISITAS.filter(v => v.cliId === c.id) 
-                     .sort((a,b) => b.id.localeCompare(a.id))[0]; 
-    grupos[cidade].push({ ...c, statusVisita: visita ? visita.status : 'sem visita' }); 
+  clientes.forEach(c => { 
+    const cidade = (c.cidade || 'SEM CIDADE').toUpperCase(); 
+    if(!grupos[cidade]) grupos[cidade] = []; 
+    const vis = [...VISITAS].filter(v => v.cliId === c.id).sort((a,b)=>b.id-a.id)[0]; 
+    grupos[cidade].push({...c, statusVisita: vis ? vis.status : 'sem visita'}); 
   }); 
-
-  const corpo = Object.entries(grupos).sort(([a],[b]) => a.localeCompare(b)).map(([cidade, clis]) => ` 
-    <h3 style="margin:18px 0 6px;color:#1e40af;font-size:11pt;border-bottom:2px solid #1e40af;padding-bottom:3px"> 
-      📍 ${cidade} — ${clis.length} cliente(s) 
-    </h3> 
-    <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:8px"> 
-      <thead> 
-        <tr style="background:#f1f5f9"> 
-          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Cliente</th> 
-          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Telefone</th> 
-          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Representante</th> 
-          <th style="padding:5px 8px;border:1px solid #ddd;text-align:center">Status</th> 
-          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Obs / Resultado</th> 
-        </tr> 
-      </thead> 
-      <tbody> 
-        ${clis.map((c,i) => ` 
-          <tr style="background:${i%2?'#f9f9f9':'#fff'}"> 
-            <td style="padding:5px 8px;border:1px solid #ddd;font-weight:700">${c.nome}</td> 
-            <td style="padding:5px 8px;border:1px solid #ddd">${c.tel || c.cel || '—'}</td> 
-            <td style="padding:5px 8px;border:1px solid #ddd">${c.rep || '—'}</td> 
-            <td style="padding:5px 8px;border:1px solid #ddd;text-align:center"> 
-              <span style="background:${c.statusVisita==='realizada'?'#dcfce7':c.statusVisita==='pendente'?'#fef9c3':'#f1f5f9'}; 
-                color:${c.statusVisita==='realizada'?'#15803d':c.statusVisita==='pendente'?'#854d0e':'#64748b'}; 
-                border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700;text-transform:uppercase"> 
-                ${c.statusVisita} 
-              </span> 
-            </td> 
-            <td style="padding:5px 8px;border:1px solid #ddd"></td> 
-          </tr>`).join('')} 
-      </tbody> 
-    </table>`).join(''); 
-
-  const win = window.open('','_blank','width=900,height=700'); 
+  const corpo = Object.entries(grupos).sort(([a],[b])=>a.localeCompare(b)).map(([cidade, clis]) => ` 
+  <h3 style="margin:18px 0 6px;color:#1e40af;font-size:11pt;border-bottom:2px solid #1e40af;padding-bottom:3px"> 
+  📍 ${cidade} — ${clis.length} cliente(s) 
+  </h3> 
+  <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:8px"> 
+  <thead><tr style="background:#f1f5f9"> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Cliente</th> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Telefone</th> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Endereço</th> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Rep.</th> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:center">Status</th> 
+  <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Observação</th> 
+  </tr></thead> 
+  <tbody> 
+  ${clis.map((c,i) => `<tr style="background:${i%2?'#f9f9f9':'#fff'}"> 
+  <td style="padding:5px 8px;border:1px solid #ddd;font-weight:700">${c.nome}</td> 
+  <td style="padding:5px 8px;border:1px solid #ddd">${c.tel||c.cel||'—'}</td> 
+  <td style="padding:5px 8px;border:1px solid #ddd">${c.end||'—'}</td> 
+  <td style="padding:5px 8px;border:1px solid #ddd">${c.rep||'—'}</td> 
+  <td style="padding:5px 8px;border:1px solid #ddd;text-align:center"> 
+  <span style="background:${c.statusVisita==='realizada'?'#dcfce7':c.statusVisita==='pendente'?'#fef9c3':'#f1f5f9'}; 
+  color:${c.statusVisita==='realizada'?'#15803d':c.statusVisita==='pendente'?'#854d0e':'#64748b'}; 
+  border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700"> 
+  ${c.statusVisita.toUpperCase()} 
+  </span> 
+  </td> 
+  <td style="padding:5px 8px;border:1px solid #ddd"></td> 
+  </tr>`).join('')} 
+  </tbody> 
+  </table>`).join(''); 
+  const win = window.open('','_blank','width=1000,height=750'); 
   win.document.write(`<!DOCTYPE html><html><head> 
-    <title>${titulo}</title> 
-    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
-    h1{font-size:14pt;color:#0f172a;margin-bottom:4px} 
-    .meta{font-size:8pt;color:#64748b;margin-bottom:16px} 
-    @media print{.no-print{display:none}}</style> 
+  <title>Roteiro de Visitas${filCidade?' — '+filCidade:''}</title> 
+  <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
+  h1{font-size:14pt;color:#0f172a;margin-bottom:4px} 
+  .meta{font-size:8pt;color:#64748b;margin-bottom:16px} 
+  @media print{.no-print{display:none}}</style> 
   </head><body> 
-    <h1>${titulo}</h1> 
-    <div class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</div> 
-    ${corpo} 
-    <div class="no-print" style="margin-top:20px"> 
-      <button onclick="window.print()" style="padding:8px 20px;background:#1e40af;color:#fff; 
-        border:none;border-radius:6px;cursor:pointer;font-size:10pt">🖨 Imprimir</button> 
-    </div> 
+  <h1>ROTEIRO DE VISITAS${filCidade?' — '+filCidade:''}</h1> 
+  <div class="meta">Gerado: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</div> 
+  ${corpo} 
+  <div class="no-print" style="margin-top:20px"> 
+  <button onclick="window.print()" 
+  style="padding:8px 20px;background:#1e40af;color:#fff;border:none;border-radius:6px;cursor:pointer"> 
+  🖨 Imprimir 
+  </button> 
+  </div> 
   </body></html>`); 
   win.document.close(); 
 } 
+
+function renderRoteiro(){ return renderRoteiroPorCidade(); }
+function marcarVisitaRealizada(cliId){ return marcarVisita(cliId, true); }
+function desfazerVisita(cliId){ return marcarVisita(cliId, false); }
+function gerarRoteiroAutomatico(){ return gerarRoteiroAuto(); }
+function imprimirRoteiro(){ return imprimirRoteiroVisitas(); }
 // ===================== NOTAS FISCAIS =====================
 // ===================== FORNECEDORES =====================
 function renderFornecedores(){
@@ -5739,84 +5703,70 @@ function initGlobalAutocomplete(){
 
 // ===================== LOGIN =====================
 var USERS = [
-  {login:'MANO',     senha:'123456789', perfil:'admin',       nome:'MANO'}, 
-  {login:'SIDÃO',    senha:'123456789', perfil:'admin',       nome:'SIDÃO'}, 
-  {login:'ESTOQUE',  senha:'123456789', perfil:'estoque_user',nome:'ESTOQUE'}, 
-  {login:'PRODUÇÃO', senha:'123456789', perfil:'producao',    nome:'PRODUÇÃO'}, 
-  {login:'PCP',      senha:'123456789', perfil:'pcp',         nome:'PCP'}, 
-  {login:'ARTE FINAL',senha:'123456789',perfil:'artefinal',   nome:'ARTE FINAL'}, 
-  {login:'CONTROLE DE QUALIDADE',senha:'123456789',perfil:'qualidade',nome:'QUALIDADE'}, 
-  {login:'RISCADOR 01',senha:'123456789',perfil:'riscador',   nome:'Riscador 01'}, 
+  // Administradores — acesso total
+  { login:'MANO',  senha:'987654321', perfil:'admin', nome:'MANO'  },
+  { login:'SIDÃO', senha:'987654321', perfil:'admin', nome:'SIDÃO' },
+  { login:'SIDAO', senha:'987654321', perfil:'admin', nome:'SIDÃO' }, // alias sem acento
+  // Produção — somente módulos de produção
+  { login:'PRODUCAO', senha:'producao123', perfil:'producao', nome:'PRODUÇÃO' },
+  { login:'PRODUÇÃO', senha:'producao123', perfil:'producao', nome:'PRODUÇÃO' },
+  // Estoque — somente módulo de estoque
+  { login:'ESTOQUE', senha:'estoque123', perfil:'estoque_user', nome:'ESTOQUE' },
+  // Outros perfis existentes — mantidos para retrocompatibilidade
+  { login:'NOTAS FISCAIS',          senha:'987654321', perfil:'admin',      nome:'NOTAS FISCAIS' },
+  { login:'PCP',                    senha:'123456789', perfil:'pcp',        nome:'PCP' },
+  { login:'ARTE FINAL',             senha:'123456789', perfil:'artefinal',  nome:'ARTE FINAL' },
+  { login:'CONTROLE DE QUALIDADE',  senha:'123456789', perfil:'qualidade',  nome:'CQ' },
+  { login:'RISCADOR 01',            senha:'123456789', perfil:'riscador',   nome:'Riscador 01' },
 ]; 
 var CURRENT_USER = null;
 
 function applyPermissions(perfil){ 
   const allNav = document.querySelectorAll('.nav-item'); 
-
-  if(perfil === 'admin'){ 
-    allNav.forEach(n=>n.style.display=''); 
-    document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display=''); 
-    document.querySelectorAll('.nav-subgroup').forEach(g=>g.classList.remove('fechado')); 
-    document.querySelectorAll('.nav-group-header').forEach(h=>h.style.display=''); 
-    return; 
-  } 
-
-  const allowed = { 
-    producao:     ['pcp','lancamento','tablets','apontamento','maquinas','fluxos','artefinal'], 
-    pcp:          ['pcp','lancamento','tablets','apontamento','maquinas','fluxos'], 
-    artefinal:    ['pcp','lancamento','clientes','vendedores','nfe','orcamentos','tablets','apontamento','artefinal'], 
-    qualidade:    ['operadores','qualidade','apontamento'], 
-    estoque_user: ['estoque','facas1','cliches','compras','fornecedores','clientes'], 
-    riscador:     ['tablets','apontamento','pcp','estoque'], 
-  }; 
-
-  const allowedPages = allowed[perfil] || []; 
-
-  // Esconde tudo primeiro 
-  allNav.forEach(n=>n.style.display='none'); 
-  document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='none'); 
-  document.querySelectorAll('.nav-subgroup').forEach(g=>{ 
-    g.classList.add('fechado'); 
-    g.style.display='none'; 
-  }); 
-  document.querySelectorAll('.nav-group-header').forEach(h=>h.style.display='none'); 
-
-  // Mostra só o permitido 
-  allNav.forEach(n=>{ 
-    const onclick = n.getAttribute('onclick')||''; 
-    const match = onclick.match(/go\('([^']+)'\)/); 
-    const page = match ? match[1] : null; 
-    if(page && allowedPages.includes(page)){ 
-      n.style.display=''; 
-      // Mostra o grupo pai se for subitem 
-      let pai = n.parentElement; 
-      if(pai && pai.classList.contains('nav-subgroup')){ 
-        pai.classList.remove('fechado'); 
-        pai.style.display=''; 
-        // Mostra o header do grupo 
-        const headerId = 'nav-header-' + pai.id.replace('grupo-',''); 
-        const header = document.getElementById(headerId); 
-        if(header) header.style.display=''; 
-      } 
-      // Mostra a sidebar-section acima 
-      let sib = n.previousElementSibling; 
-      while(sib){ 
-        if(sib.classList && sib.classList.contains('nav-group-header')){ 
-          sib.style.display=''; 
-          sib = sib.previousElementSibling; 
-          continue; 
-        } 
-        if(sib.classList && sib.classList.contains('sidebar-section')){ 
-          sib.style.display=''; 
-          break; 
-        } 
-        sib = sib.previousElementSibling; 
-      } 
-    } 
-  }); 
-
-  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true; 
-  if(allowedPages.length > 0) _goBase(allowedPages[0]); 
+  if(perfil === 'admin'){
+    allNav.forEach(n => n.style.display = '');
+    document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = '');
+    return;
+  }
+  // Mapeamento de permissões por perfil
+  const allowed = {
+    // PRODUÇÃO: apenas módulos de produção
+    producao: ['pcp', 'lancamento', 'apontamento', 'tablets', 'dashboard'],
+    // PCP: similar à produção
+    pcp: ['pcp', 'lancamento', 'apontamento', 'tablets', 'fluxos', 'maquinas'],
+    // ESTOQUE: apenas módulos de estoque
+    estoque_user: ['estoque', 'facas1', 'cliches', 'compras', 'fornecedores', 'dashboard'],
+    // ARTE FINAL
+    artefinal: ['pcp', 'lancamento', 'clientes', 'vendedores', 'nfe',
+    'orcamentos', 'tablets', 'apontamento', 'artefinal'],
+    // QUALIDADE
+    qualidade: ['operadores', 'qualidade', 'apontamento'],
+    // RISCADOR
+    riscador: ['tablets', 'apontamento', 'pcp', 'estoque'],
+  };
+  const allowedPages = allowed[perfil] || [];
+  allNav.forEach(n => {
+    const onclick = n.getAttribute('onclick') || '';
+    const match = onclick.match(/go\('([^']+)'\)/);
+    const page = match ? match[1] : '';
+    n.style.display = allowedPages.includes(page) ? '' : 'none';
+  });
+  document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = 'none');
+  // Reexibe labels das seções visíveis
+  allNav.forEach(n => {
+    if(n.style.display !== 'none'){
+      let sib = n.previousElementSibling;
+      while(sib){
+        if(sib.classList && sib.classList.contains('sidebar-section')){
+          sib.style.display = '';
+          break;
+        }
+        sib = sib.previousElementSibling;
+      }
+    }
+  });
+  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true;
+  if(allowedPages.length > 0) _goBase(allowedPages[0]);
 } 
 
 
@@ -9469,6 +9419,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         onfocus="this.style.borderColor='var(--accent)'" 
         onblur="this.style.borderColor='var(--border)'"> 
     </div> 
+    <div style="margin:-4px 0 14px"> 
+      <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-family:var(--mono)">Acesso rápido</div> 
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"> 
+        <button class="user-sel-btn" id="ubtn-MANO" onclick="selecionarUsuario('MANO')">👑 MANO</button> 
+        <button class="user-sel-btn" id="ubtn-SIDÃO" onclick="selecionarUsuario('SIDÃO')">👑 SIDÃO</button> 
+      </div> 
+      <div id="login-sel-label" style="margin-top:8px;font-size:.68rem;color:var(--text2)"></div> 
+    </div> 
     <div style="margin-bottom:18px"> 
       <label style="font-size:.7rem;font-weight:700;color:var(--text2); 
         text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px"> 
@@ -10323,47 +10281,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="page-body">
     <div class="vend-grid" id="vend-grid"></div>
-
-    <!-- ===== SUB-SEÇÃO: ROTEIRO DE VISITAS ===== --> 
-    <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px"> 
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"> 
-        <span style="font-size:.85rem;font-weight:800;color:var(--accent)"> 
-          📍 ROTEIRO DE VISITAS POR CIDADE 
-        </span> 
-        <select id="vis-fil-vend" onchange="renderRoteiro()" 
-          style="background:var(--s2);border:1px solid var(--border); 
-            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
-            font-family:var(--font)"> 
-          <option value="">Todos os vendedores</option> 
-        </select> 
-        <select id="vis-fil-cidade" onchange="renderRoteiro()" 
-          style="background:var(--s2);border:1px solid var(--border); 
-            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
-            font-family:var(--font)"> 
-          <option value="">Todas as cidades</option> 
-        </select> 
-        <select id="vis-fil-status" onchange="renderRoteiro()" 
-          style="background:var(--s2);border:1px solid var(--border); 
-            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
-            font-family:var(--font)"> 
-          <option value="">Todos</option> 
-          <option value="pendente">Pendentes</option> 
-          <option value="realizada">Realizadas</option> 
-        </select> 
-        <div style="flex:1"></div> 
-        <button class="btn btn-accent btn-sm" onclick="imprimirRoteiro()">🖨 Imprimir Roteiro</button> 
-        <button class="btn btn-green btn-sm" onclick="gerarRoteiroAutomatico()"> 
-          ⚡ Gerar Roteiro Automático 
-        </button> 
-      </div> 
-
-      <!-- Resumo rápido --> 
-      <div id="vis-resumo" style=" 
-        display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div> 
-
-      <!-- Lista agrupada por cidade --> 
-      <div id="vis-cidades-lista"></div> 
-    </div> 
+    <div id="secao-visitas"></div>
   </div>
 </div>
 
