@@ -22,12 +22,35 @@ function loadDotEnv() {
   } catch (e) {}
 }
 
-loadDotEnv();
+function loadEnv() {
+  try {
+    require('dotenv').config();
+  } catch (e) {}
+  loadDotEnv();
+}
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+loadEnv();
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Erro: variáveis do Supabase ausentes.');
+  console.error('Esperado no ambiente (TRAE/deploy):');
+  console.error('- SUPABASE_URL');
+  console.error('- SUPABASE_KEY ou SUPABASE_SERVICE_ROLE_KEY');
+  console.error('Status detectado:');
+  console.error('SUPABASE_URL:', !!supabaseUrl);
+  console.error('SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+  console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
+  console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(cors());
