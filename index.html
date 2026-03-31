@@ -864,9 +864,11 @@ let VENDEDORES = [
 let VISITAS = [];    // { id, cliId, vendId, data, status, resultado, obs } 
 let VISITAS_SEQ = 1; 
 
-let DESPERDICIO = [];   // registros de desperdício 
+let DESPERDICIO = []; 
 let DESP_SEQ = 1; 
-const META_DESPERDICIO_PCT = 5;
+// { id, ofNum, maqId, operador, data, turno, qtdUtil, qtdDesp, 
+//   qtdProd, tipoProd, causa, obs, pct, efic } 
+const META_DESP_PCT = 5.0; // % máximo aceitável 
 
 let OFs = [
   {seq:1, of:'Nº 001',cliId:'C01',vendId:'V01',qtd:5000, dia:'2025-06-01',ent:'2025-06-10',fluxo:'F2',maq:['CVR','IMP05','ACAB'], status:'Em produção',urg:true, chp:'CH001',qchp:5000,val:3800,obs:'Urgente',imgs:[],empId:'E1'},
@@ -1147,7 +1149,6 @@ function _goBase(id){
   if(id==='lancamento')renderLancamento();
   if(id==='clientes')renderClientes();
   if(id==='estoque')renderEstoque();
-  if(id==='estoque')renderDesperdicio();
   if(id==='fluxos')renderFluxos();
   if(id==='maquinas')renderMaquinasConf();
   if(id==='tablets')renderTablets();
@@ -6667,297 +6668,332 @@ function renderAlertasEstoque(){
 }
 
 // Override renderEstoque to also show alerts
-function renderEstoque(){_renderEstoqueBase();renderAlertasEstoque();gerarNotificacoes();renderNotificacoes();if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();}
+function renderEstoque(){
+  _renderEstoqueBase();
+  renderAlertasEstoque();
+  gerarNotificacoes();
+  renderNotificacoes();
+  if(window.RISCADOR_ESTOQUE_MODE) _renderEstoque_riscador();
+  renderDesperdicio();
+}
 
 function _despNowKey(d){ return d ? new Date(d+'T00:00:00').getTime() : 0; }
 
 function renderDesperdicio(){
-  const selMaq = document.getElementById('desp-fil-maq');
-  if(selMaq && selMaq.options.length <= 1){
-    (MAQUINAS||[]).forEach(m=>{
-      const o=document.createElement('option');
-      o.value = m.id || m.codigo || '';
-      o.textContent = (m.ico?m.ico+' ':'') + (m.col||m.nome||m.id||'');
-      selMaq.appendChild(o);
-    });
-  }
+  const filMaq    = (document.getElementById('desp-fil-maq')||{}).value || ''; 
+  const filPeriodo= (document.getElementById('desp-fil-periodo')||{}).value || 'mes'; 
+  const hoje      = today(); 
+  const mesAtual  = hoje.slice(0,7); 
+  const semanaAgo = new Date(new Date() - 7*864e5).toISOString().split('T')[0]; 
 
-  const filMaq = (document.getElementById('desp-fil-maq')||{}).value||'';
-  const filTurno = (document.getElementById('desp-fil-turno')||{}).value||'';
-  const filPeriodo = (document.getElementById('desp-fil-periodo')||{}).value||'mes';
-
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  let de = null;
-  if(filPeriodo==='dia'){ de = new Date(hoje); }
-  else if(filPeriodo==='semana'){ de = new Date(hoje); de.setDate(de.getDate()-7); }
-  else if(filPeriodo==='mes'){ de = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
-  else de = null;
-
-  let lista = (DESPERDICIO||[]).slice();
-  if(filMaq) lista = lista.filter(r => (r.maqId||'') === filMaq);
-  if(filTurno) lista = lista.filter(r => (r.turno||'') === filTurno);
-  if(de){
-    const deTs = de.getTime();
-    lista = lista.filter(r => _despNowKey(r.data) >= deTs);
-  }
-  lista.sort((a,b)=>(_despNowKey(b.data) - _despNowKey(a.data)) || String(b.id||'').localeCompare(String(a.id||'')));
-
-  lista.forEach(d=>{
-    const util = Number(d.qtdUtilizadaKg)||0;
-    const perd = Number(d.qtdDesperdicadaKg)||0;
-    d.pctDesperdicio = util>0 ? (perd/util)*100 : 0;
-    d.eficiencia = util>0 ? (100-d.pctDesperdicio) : 0;
+  let lista = [...(DESPERDICIO||[])]; 
+  lista = lista.map(d=>{
+    const util = Number(d.qtdUtil||d.qtdUtilizadaKg||0);
+    const desp = Number(d.qtdDesp||d.qtdDesperdicadaKg||0);
+    const pct = util > 0 ? (desp / util) * 100 : 0;
+    const efic = 100 - pct;
+    return {
+      ...d,
+      qtdUtil: util,
+      qtdDesp: desp,
+      qtdProd: Number(d.qtdProd||d.qtdProduzida||0),
+      tipoProd: d.tipoProd||d.tipoProduto||'',
+      causa: d.causa||d.causaDesperdicio||'',
+      pct: Number.isFinite(d.pct) ? d.pct : (Math.round(pct * 100) / 100),
+      efic: Number.isFinite(d.efic) ? d.efic : (Math.round(efic * 100) / 100),
+    };
   });
 
-  const totalUtil = lista.reduce((s,d) => s + (Number(d.qtdUtilizadaKg)||0), 0); 
-  const totalDesp = lista.reduce((s,d) => s + (Number(d.qtdDesperdicadaKg)||0), 0); 
-  const pctMedio = totalUtil > 0 ? (totalDesp / totalUtil) * 100 : 0; 
+  if(filMaq)   lista = lista.filter(d => d.maqId === filMaq); 
+  if(filPeriodo === 'dia')    lista = lista.filter(d => d.data === hoje); 
+  if(filPeriodo === 'semana') lista = lista.filter(d => d.data >= semanaAgo); 
+  if(filPeriodo === 'mes')    lista = lista.filter(d => String(d.data||'').startsWith(mesAtual)); 
+
+  const totalUtil = lista.reduce((s,d) => s + (d.qtdUtil||0), 0); 
+  const totalDesp = lista.reduce((s,d) => s + (d.qtdDesp||0), 0); 
+  const pctMedio  = totalUtil > 0 ? (totalDesp / totalUtil) * 100 : 0; 
   const eficMedia = 100 - pctMedio; 
-  const corPct = pctMedio > META_DESPERDICIO_PCT ? 'var(--red)' : pctMedio > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+  const corPct = pctMedio > META_DESP_PCT ? 'var(--red)' 
+    : pctMedio > META_DESP_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
 
-  const kpiEl = document.getElementById('desp-kpis'); 
-  if (kpiEl) { 
-    kpiEl.innerHTML = ` 
-      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
-        <div class="card-lbl">Total Utilizado</div> 
-        <div class="card-val cv-a">${totalUtil.toFixed(1)} kg</div> 
-        <div class="card-sub">${lista.length} registro(s)</div> 
-      </div></div> 
-      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
-        <div class="card-lbl">Total Desperdiçado</div> 
-        <div class="card-val" style="color:${corPct}">${totalDesp.toFixed(1)} kg</div> 
-      </div></div> 
-      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
-        <div class="card-lbl">% Desperdício Médio</div> 
-        <div class="card-val" style="color:${corPct}">${pctMedio.toFixed(2)}%</div> 
-        <div class="card-sub">Meta: ≤ ${META_DESPERDICIO_PCT}%</div> 
-      </div></div> 
-      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
-        <div class="card-lbl">Índice de Eficiência</div> 
-        <div class="card-val" style="color:${eficMedia >= (100 - META_DESPERDICIO_PCT) ? 'var(--green)' : 'var(--red)'}"> 
-          ${eficMedia.toFixed(2)}% 
+  const html = ` 
+    <div style="border-top:1px solid var(--border);margin-top:24px;padding-top:20px"> 
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px"> 
+        <span style="font-weight:800;color:var(--accent);font-size:.9rem">♻ CONTROLE DE DESPERDÍCIO DE PAPELÃO</span> 
+        <select id="desp-fil-maq" onchange="renderDesperdicio()" 
+          style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem"> 
+          <option value="">Todas as máquinas</option> 
+          ${(MAQUINAS||[]).map(m => `<option value="${m.id}" ${filMaq===m.id?'selected':''}>${m.col}</option>`).join('')} 
+        </select> 
+        <select id="desp-fil-periodo" onchange="renderDesperdicio()" 
+          style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem"> 
+          <option value="dia">Hoje</option> 
+          <option value="semana">Última semana</option> 
+          <option value="mes" ${filPeriodo==='mes'?'selected':''}>Mês atual</option> 
+          <option value="todos" ${filPeriodo==='todos'?'selected':''}>Todo o período</option> 
+        </select> 
+        <div style="flex:1"></div> 
+        <button class="btn btn-accent btn-sm" onclick="abrirModalDesperdicio()">＋ Registrar</button> 
+        <button class="btn btn-ghost btn-sm" onclick="imprimirRelDesperdicio()">🖨 Relatório</button> 
+      </div> 
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px"> 
+        <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+          <div class="card-lbl">Total Utilizado</div> 
+          <div class="card-val cv-a">${totalUtil.toFixed(1)} kg</div> 
+          <div class="card-sub">${lista.length} registro(s)</div> 
+        </div></div> 
+        <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+          <div class="card-lbl">Total Desperdiçado</div> 
+          <div class="card-val" style="color:${corPct}">${totalDesp.toFixed(1)} kg</div> 
+        </div></div> 
+        <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+          <div class="card-lbl">% Desperdício</div> 
+          <div class="card-val" style="color:${corPct}">${pctMedio.toFixed(2)}%</div> 
+          <div class="card-sub">Meta ≤ ${META_DESP_PCT}%</div> 
+        </div></div> 
+        <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+          <div class="card-lbl">Eficiência</div> 
+          <div class="card-val" style="color:${eficMedia>=(100-META_DESP_PCT)?'var(--green)':'var(--red)'}"> 
+            ${eficMedia.toFixed(2)}% 
+          </div> 
+        </div></div> 
+      </div> 
+
+      ${lista.length > 0 ? ` 
+      <div class="sbox" style="margin-bottom:14px"> 
+        <div class="sbox-h">📊 Por Máquina</div> 
+        <div class="sbox-b"> 
+          ${(() => { 
+            const grupMaq = {}; 
+            lista.forEach(d => { 
+              if(!grupMaq[d.maqId]) grupMaq[d.maqId] = {util:0, desp:0}; 
+              grupMaq[d.maqId].util += d.qtdUtil||0; 
+              grupMaq[d.maqId].desp += d.qtdDesp||0; 
+            }); 
+            return Object.entries(grupMaq).map(([maqId, v]) => { 
+              const maq = (MAQUINAS||[]).find(m => m.id === maqId) || {col: maqId}; 
+              const pct = v.util > 0 ? (v.desp / v.util) * 100 : 0; 
+              const cor = pct > META_DESP_PCT ? 'var(--red)' : pct > META_DESP_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+              return `<div style="margin-bottom:10px"> 
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px"> 
+                  <span style="font-size:.78rem;font-weight:700;color:var(--accent)">${maq.col}</span> 
+                  <span style="font-size:.75rem;color:${cor};font-family:var(--mono);font-weight:700">${pct.toFixed(2)}%</span> 
+                </div> 
+                <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"> 
+                  <div style="height:100%;width:${Math.min(100,(pct/META_DESP_PCT)*100)}%;background:${cor};border-radius:3px;transition:width .4s"></div> 
+                </div> 
+                <div style="font-size:.68rem;color:var(--text3);margin-top:2px"> 
+                  Util: ${v.util.toFixed(1)}kg · Desp: ${v.desp.toFixed(1)}kg 
+                </div> 
+              </div>`; 
+            }).join(''); 
+          })()} 
         </div> 
-      </div></div>`; 
+      </div>` : ''} 
+
+      <div class="sbox"> 
+        <div class="sbox-h">📋 Registros de Desperdício</div> 
+        <div class="sbox-b" style="overflow-x:auto"> 
+          ${lista.length === 0 
+            ? `<div style="color:var(--text3);text-align:center;padding:20px"> 
+                Nenhum registro. <button class="btn btn-accent btn-sm" style="margin-left:8px" 
+                  onclick="abrirModalDesperdicio()">＋ Registrar</button> 
+               </div>` 
+            : `<table style="width:100%;border-collapse:collapse;font-size:.76rem"> 
+                <thead><tr style="background:var(--s2)"> 
+                  <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Data</th> 
+                  <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">OF</th> 
+                  <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Máquina</th> 
+                  <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Operador</th> 
+                  <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Util. (kg)</th> 
+                  <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Desp. (kg)</th> 
+                  <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">%</th> 
+                  <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Efic.</th> 
+                  <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Causa</th> 
+                </tr></thead> 
+                <tbody> 
+                  ${lista.map(d => { 
+                    const maq = (MAQUINAS||[]).find(m => m.id === d.maqId) || {col: d.maqId||'—'}; 
+                    const cor = (d.pct||0) > META_DESP_PCT ? 'var(--red)' 
+                      : (d.pct||0) > META_DESP_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+                    return `<tr> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);font-family:var(--mono)">${d.data}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--accent)">${d.ofNum||'—'}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${maq.col}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${d.operador||'—'}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${(d.qtdUtil||0).toFixed(3)}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;color:var(--red);font-family:var(--mono)">${(d.qtdDesp||0).toFixed(3)}</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;color:${cor};font-weight:700;font-family:var(--mono)">${(d.pct||0).toFixed(2)}%</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;color:${(d.efic||0)>=(100-META_DESP_PCT)?'var(--green)':'var(--red)'};font-family:var(--mono)">${(d.efic||0).toFixed(2)}%</td> 
+                      <td style="padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2);font-size:.7rem">${d.causa||'—'}</td> 
+                    </tr>`; 
+                  }).join('')} 
+                </tbody> 
+              </table>`} 
+        </div> 
+      </div> 
+    </div>`; 
+
+  let secao = document.getElementById('secao-desperdicio'); 
+  if(!secao){ 
+    secao = document.createElement('div'); 
+    secao.id = 'secao-desperdicio'; 
+    const pb = document.querySelector('#page-estoque .page-body'); 
+    if(pb) pb.appendChild(secao); 
   } 
+  secao.innerHTML = html; 
+}
 
-  const porMaqEl = document.getElementById('desp-por-maquina'); 
-  if (porMaqEl && lista.length > 0) { 
-    const grupMaq = {}; 
-    lista.forEach(d => { 
-      if (!grupMaq[d.maqId]) grupMaq[d.maqId] = { util:0, perd:0 }; 
-      grupMaq[d.maqId].util += d.qtdUtilizadaKg; 
-      grupMaq[d.maqId].perd += d.qtdDesperdicadaKg; 
-    }); 
-    porMaqEl.innerHTML = `<div class="sbox"><div class="sbox-h">📊 Por Máquina</div><div class="sbox-b"> 
-      ${Object.entries(grupMaq).map(([maqId, v]) => { 
-        const maq = MAQUINAS.find(m => (m.id||m.codigo) === maqId) || {col: maqId}; 
-        const pct = v.util > 0 ? (v.perd / v.util) * 100 : 0; 
-        const cor = pct > META_DESPERDICIO_PCT ? 'var(--red)' : pct > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
-        const largBarra = Math.min(100, pct / META_DESPERDICIO_PCT * 100); 
-        return `<div style="margin-bottom:10px"> 
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px"> 
-            <span style="font-size:.78rem;font-weight:700;color:var(--accent)">${maq.col}</span> 
-            <span style="font-size:.75rem;color:${cor};font-family:var(--mono);font-weight:700">${pct.toFixed(2)}%</span> 
-          </div> 
-          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"> 
-            <div style="height:100%;width:${largBarra}%;background:${cor};border-radius:4px;transition:width .4s"></div> 
-          </div> 
-          <div style="font-size:.68rem;color:var(--text3);margin-top:2px;font-family:var(--mono)"> 
-            Util: ${v.util.toFixed(1)}kg · Desp: ${v.perd.toFixed(1)}kg 
-          </div> 
-        </div>`; 
-      }).join('')} 
-    </div></div>`; 
-  } else if (porMaqEl) { 
-    porMaqEl.innerHTML = ''; 
+function abrirModalDesperdicio(){ 
+  const maqSel = document.getElementById('desp-maq'); 
+  if(maqSel){ 
+    maqSel.innerHTML = '<option value="">Selecionar...</option>' + 
+      (MAQUINAS||[]).map(m => `<option value="${m.id}">${m.col}</option>`).join(''); 
   } 
+  const ofList = document.getElementById('desp-of-list'); 
+  if(ofList){ 
+    ofList.innerHTML = (OFs||[]).slice(-50).reverse() 
+      .map(o => `<option value="${o.of}">${o.of} — ${(getCli(o.cliId)||{nome:'?'}).nome}</option>`) 
+      .join(''); 
+  } 
+  const dataEl = document.getElementById('desp-data'); 
+  if(dataEl) dataEl.value = today(); 
+  ['desp-util','desp-desp','desp-prod','desp-causa','desp-obs'].forEach(id => { 
+    const el = document.getElementById(id); 
+    if(el) el.value = ''; 
+  }); 
+  const prev = document.getElementById('desp-pct-preview'); 
+  if(prev) prev.style.display = 'none'; 
+  abrir('modal-desperdicio'); 
+} 
+ 
+function calcDesperdicioPreview(){ 
+  const util = parseFloat((document.getElementById('desp-util')||{}).value) || 0; 
+  const desp = parseFloat((document.getElementById('desp-desp')||{}).value) || 0; 
+  const prev = document.getElementById('desp-pct-preview'); 
+  if(!prev) return; 
+  if(util <= 0){ prev.style.display='none'; return; } 
+  const pct  = (desp / util) * 100; 
+  const efic = 100 - pct; 
+  const cor  = pct > META_DESP_PCT ? 'var(--red)' : pct > META_DESP_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+  prev.style.display = ''; 
+  prev.innerHTML = `% Desperdício: <span style="color:${cor};font-weight:800">${pct.toFixed(2)}%</span> 
+    &nbsp;|&nbsp; Eficiência: <span style="color:${efic>=(100-META_DESP_PCT)?'var(--green)':'var(--red)'};font-weight:800">${efic.toFixed(2)}%</span> 
+    &nbsp;|&nbsp; Meta: ≤ ${META_DESP_PCT}%`; 
+} 
 
-  const tbody = document.getElementById('desp-tbody'); 
-  if (!tbody) return; 
-  tbody.innerHTML = lista.length === 0 
-    ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text3)"> 
-        Nenhum registro no período. <button class="btn btn-accent btn-sm" style="margin-left:10px" 
-          onclick="abrirModalDesperdicio()">＋ Registrar</button> 
-       </td></tr>` 
-    : lista.map(d => { 
-        const maq = MAQUINAS.find(m => (m.id||m.codigo) === d.maqId) || {col: d.maqId}; 
-        const corPctLinha = d.pctDesperdicio > META_DESPERDICIO_PCT ? 'var(--red)' : 
-                             d.pctDesperdicio > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
-        return `<tr> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            font-family:var(--mono)">${d.data}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            color:var(--accent);font-family:var(--mono)">${d.ofNum || '—'}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${maq.col}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${d.operador || '—'}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            text-align:right;font-family:var(--mono)">${d.qtdUtilizadaKg.toFixed(3)}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            text-align:right;font-family:var(--mono);color:var(--red)">${d.qtdDesperdicadaKg.toFixed(3)}</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            text-align:right;font-family:var(--mono);color:${corPctLinha};font-weight:700"> 
-            ${d.pctDesperdicio.toFixed(2)}%</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            text-align:right;font-family:var(--mono); 
-            color:${d.eficiencia >= (100-META_DESPERDICIO_PCT)?'var(--green)':'var(--red)'}"> 
-            ${d.eficiencia.toFixed(2)}%</td> 
-          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
-            color:var(--text2);font-size:.72rem">${d.causaDesperdicio || '—'}</td> 
-        </tr>`; 
-      }).join(''); 
-}
+function calcDesperdicioModal(){ return calcDesperdicioPreview(); }
+ 
+function salvarDesperdicio(){ 
+  const util  = parseFloat((document.getElementById('desp-util')||{}).value) || 0; 
+  const desp  = parseFloat((document.getElementById('desp-desp')||{}).value) || 0; 
+  const maqId = (document.getElementById('desp-maq')||{}).value || ''; 
+  const data  = (document.getElementById('desp-data')||{}).value || ''; 
+  if(!data)   { toast('Informe a data','var(--red)'); return; } 
+  if(!maqId)  { toast('Selecione a máquina','var(--red)'); return; } 
+  if(util<=0) { toast('Informe a quantidade utilizada','var(--red)'); return; } 
+  if(desp>util){ toast('Desperdício não pode ser maior que utilizado','var(--red)'); return; } 
+ 
+  const pct  = util > 0 ? (desp / util) * 100 : 0; 
+  const efic = 100 - pct; 
+  DESPERDICIO.unshift({ 
+    id:        DESP_SEQ++, 
+    ofNum:     (document.getElementById('desp-of')||{}).value || '', 
+    maqId, 
+    operador:  (document.getElementById('desp-operador')||{}).value || '', 
+    data, 
+    turno:     (document.getElementById('desp-turno')||{}).value || 'manha', 
+    qtdUtil:   util, 
+    qtdDesp:   desp, 
+    qtdProd:   parseFloat((document.getElementById('desp-prod')||{}).value) || 0, 
+    tipoProd:  (document.getElementById('desp-tipo-prod')||{}).value || '', 
+    causa:     (document.getElementById('desp-causa')||{}).value || '', 
+    obs:       (document.getElementById('desp-obs')||{}).value || '', 
+    pct:       Math.round(pct * 100) / 100, 
+    efic:      Math.round(efic * 100) / 100 
+  }); 
+ 
+  fechar('modal-desperdicio'); 
+  autoSaveTrigger(); 
+  renderDesperdicio(); 
+  if(pct > META_DESP_PCT){ 
+    toast(`⚠ Desperdício alto: ${pct.toFixed(1)}% (meta: ≤${META_DESP_PCT}%)`, 'var(--red)'); 
+  } else { 
+    toast('✅ Desperdício registrado!', 'var(--green)'); 
+  } 
+} 
 
-function abrirModalDesperdicio(){
-  const dt = document.getElementById('desp-data');
-  if(dt) dt.value = today();
-  const turno = document.getElementById('desp-turno');
-  if(turno && !turno.value) turno.value = 'manha';
-
-  const sel = document.getElementById('desp-maq');
-  if(sel){
-    sel.innerHTML = (MAQUINAS||[]).map(m=>{
-      const id = m.id || m.codigo || '';
-      const nome = (m.ico?m.ico+' ':'') + (m.col||m.nome||m.id||'');
-      return `<option value="${id}">${nome}</option>`;
-    }).join('');
-  }
-
-  const dl = document.getElementById('desp-of-list');
-  if(dl){
-    const ofs = (OFs||[]).map(o=>o.of).filter(Boolean);
-    dl.innerHTML = ofs.map(v=>`<option value="${v}"></option>`).join('');
-  }
-
-  ['desp-of','desp-operador','desp-tipo-prod','desp-util','desp-perd','desp-prod','desp-causa','desp-obs'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(!el) return;
-    if(id==='desp-util' || id==='desp-perd') el.value = '';
-    else if(id==='desp-prod') el.value = 0;
-    else el.value = '';
-  });
-
-  const prev = document.getElementById('desp-pct-preview');
-  if(prev){ prev.style.display='none'; prev.textContent=''; }
-  abrir('modal-desperdicio');
-}
-
-function calcDesperdicioModal(){
-  const util = parseFloat((document.getElementById('desp-util')||{}).value||'0')||0;
-  const perd = parseFloat((document.getElementById('desp-perd')||{}).value||'0')||0;
-  const prev = document.getElementById('desp-pct-preview');
-  if(!prev) return;
-  if(util<=0 && perd<=0){ prev.style.display='none'; prev.textContent=''; return; }
-  const pct = util>0 ? (perd/util*100) : 0;
-  const eff = util>0 ? (100-pct) : 0;
-  prev.style.display='block';
-  prev.innerHTML = `Utilizado: <b>${util.toFixed(3)} kg</b> · Desperdiçado: <b style="color:var(--red)">${perd.toFixed(3)} kg</b> · %: <b style="color:var(--yellow)">${pct.toFixed(2)}%</b> · Eficiência: <b style="color:var(--green)">${eff.toFixed(2)}%</b>`;
-}
-
-function salvarDesperdicio(){
-  const data = (document.getElementById('desp-data')||{}).value||'';
-  const turno = (document.getElementById('desp-turno')||{}).value||'manha';
-  const ofNum = (document.getElementById('desp-of')||{}).value||'';
-  const maqId = (document.getElementById('desp-maq')||{}).value||'';
-  const operador = ((document.getElementById('desp-operador')||{}).value||'').trim();
-  const tipoProduto = ((document.getElementById('desp-tipo-prod')||{}).value||'').trim();
-  const qtdUtilizadaKg = parseFloat((document.getElementById('desp-util')||{}).value||'0')||0;
-  const qtdDesperdicadaKg = parseFloat((document.getElementById('desp-perd')||{}).value||'0')||0;
-  const qtdProduzida = parseInt((document.getElementById('desp-prod')||{}).value||'0',10)||0;
-  const causaDesperdicio = ((document.getElementById('desp-causa')||{}).value||'').trim();
-  const obs = ((document.getElementById('desp-obs')||{}).value||'').trim();
-
-  if(!data){ toast('Informe a data','var(--red)'); return; }
-  if(!maqId){ toast('Informe a máquina','var(--red)'); return; }
-  if(qtdUtilizadaKg<=0){ toast('Informe a quantidade utilizada (kg)','var(--red)'); return; }
-  if(qtdDesperdicadaKg<0){ toast('Quantidade desperdiçada inválida','var(--red)'); return; }
-
-  DESPERDICIO.push({
-    id: 'DESP' + String(DESP_SEQ++).padStart(4,'0'),
-    ofNum,
-    maqId,
-    operador,
-    data,
-    turno,
-    qtdUtilizadaKg,
-    qtdDesperdicadaKg,
-    qtdProduzida,
-    tipoProduto,
-    causaDesperdicio,
-    obs
-  });
-
-  fechar('modal-desperdicio');
-  autoSaveTrigger();
-  renderDesperdicio();
-  toast('✓ Desperdício registrado','var(--green)');
-}
-
-function imprimirRelatorioDesperdicio() { 
-  const periodo = (document.getElementById('desp-fil-periodo')||{}).value || 'mes'; 
-  const labels  = {dia:'Hoje',semana:'Última Semana',mes:'Mês Atual',todos:'Todo o Período'}; 
-  const titulo  = `RELATÓRIO DE DESPERDÍCIO DE PAPELÃO — ${labels[periodo]||''}`; 
-
-  const totalUtil = DESPERDICIO.reduce((s,d) => s + (Number(d.qtdUtilizadaKg)||0), 0); 
-  const totalDesp = DESPERDICIO.reduce((s,d) => s + (Number(d.qtdDesperdicadaKg)||0), 0); 
+function imprimirRelDesperdicio(){ 
+  const filPeriodo= (document.getElementById('desp-fil-periodo')||{}).value || 'mes'; 
+  const hoje      = today(); 
+  const mesAtual  = hoje.slice(0,7); 
+  const semanaAgo = new Date(new Date() - 7*864e5).toISOString().split('T')[0]; 
+  let lista = [...(DESPERDICIO||[])]; 
+  if(filPeriodo === 'dia')    lista = lista.filter(d => d.data === hoje); 
+  if(filPeriodo === 'semana') lista = lista.filter(d => d.data >= semanaAgo); 
+  if(filPeriodo === 'mes')    lista = lista.filter(d => String(d.data||'').startsWith(mesAtual)); 
+  const totalUtil = lista.reduce((s,d) => s + (Number(d.qtdUtil||d.qtdUtilizadaKg||0)), 0); 
+  const totalDesp = lista.reduce((s,d) => s + (Number(d.qtdDesp||d.qtdDesperdicadaKg||0)), 0); 
   const pct = totalUtil > 0 ? (totalDesp / totalUtil) * 100 : 0; 
 
-  const win = window.open('','_blank','width=900,height=700'); 
+  const win = window.open('','_blank','width=1000,height=750'); 
   win.document.write(`<!DOCTYPE html><html><head> 
-    <title>${titulo}</title> 
-    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
-    table{width:100%;border-collapse:collapse} 
-    th,td{padding:5px 8px;border:1px solid #ddd;text-align:left} 
-    th{background:#f1f5f9;font-weight:700} 
-    .kpi{display:inline-block;background:#f8fafc;border:1px solid #e2e8f0; 
-      border-radius:8px;padding:8px 14px;margin:4px;text-align:center} 
-    @media print{.no-print{display:none}}</style> 
+  <title>RELATÓRIO DE DESPERDÍCIO</title> 
+  <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
+  table{width:100%;border-collapse:collapse} 
+  th,td{padding:5px 8px;border:1px solid #ddd;text-align:left} 
+  th{background:#f1f5f9;font-weight:700} 
+  .kpi{display:inline-block;background:#f8fafc;border:1px solid #e2e8f0; 
+    border-radius:8px;padding:8px 14px;margin:4px;text-align:center} 
+  @media print{.no-print{display:none}}</style> 
   </head><body> 
-    <h2>${titulo}</h2> 
-    <p style="color:#64748b;font-size:8pt">Gerado: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</p> 
-    <div style="margin:12px 0"> 
-      <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Utilizado</div> 
-        <div style="font-size:14pt;font-weight:800">${totalUtil.toFixed(1)} kg</div></div> 
-      <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Desperdiçado</div> 
-        <div style="font-size:14pt;font-weight:800;color:#dc2626">${totalDesp.toFixed(1)} kg</div></div> 
-      <div class="kpi"><div style="font-size:8pt;color:#64748b">% Desperdício</div> 
-        <div style="font-size:14pt;font-weight:800;color:${pct>5?'#dc2626':'#16a34a'}">${pct.toFixed(2)}%</div></div> 
-      <div class="kpi"><div style="font-size:8pt;color:#64748b">Eficiência</div> 
-        <div style="font-size:14pt;font-weight:800;color:${pct<=5?'#16a34a':'#dc2626'}">${(100-pct).toFixed(2)}%</div></div> 
-    </div> 
-    <table> 
-      <thead><tr> 
-        <th>Data</th><th>OF</th><th>Máquina</th><th>Operador</th> 
-        <th>Utilizado (kg)</th><th>Desperdiçado (kg)</th> 
-        <th>% Desp.</th><th>Eficiência</th><th>Causa</th> 
-      </tr></thead> 
-      <tbody> 
-        ${DESPERDICIO.map(d => { 
-          const util = Number(d.qtdUtilizadaKg)||0;
-          const perd = Number(d.qtdDesperdicadaKg)||0;
-          const pctDesperdicio = util>0 ? (perd/util)*100 : 0;
-          const eficiencia = util>0 ? (100-pctDesperdicio) : 0;
-          const maq = MAQUINAS.find(m => (m.id||m.codigo) === d.maqId) || {col:d.maqId}; 
-          return `<tr> 
-            <td>${d.data}</td><td>${d.ofNum||'—'}</td><td>${maq.col}</td> 
-            <td>${d.operador||'—'}</td> 
-            <td style="text-align:right">${util.toFixed(3)}</td> 
-            <td style="text-align:right;color:#dc2626">${perd.toFixed(3)}</td> 
-            <td style="text-align:right;font-weight:700;color:${pctDesperdicio>5?'#dc2626':'#16a34a'}"> 
-              ${pctDesperdicio.toFixed(2)}%</td> 
-            <td style="text-align:right">${eficiencia.toFixed(2)}%</td> 
-            <td>${d.causaDesperdicio||'—'}</td> 
-          </tr>`; 
-        }).join('')} 
-      </tbody> 
-    </table> 
-    <div class="no-print" style="margin-top:20px"> 
-      <button onclick="window.print()" 
-        style="padding:8px 20px;background:#1e40af;color:#fff;border:none; 
-          border-radius:6px;cursor:pointer">🖨 Imprimir</button> 
-    </div> 
+  <h2>RELATÓRIO DE DESPERDÍCIO DE PAPELÃO</h2> 
+  <p style="color:#64748b;font-size:8pt">Gerado: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</p> 
+  <div style="margin:12px 0"> 
+    <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Utilizado</div> 
+      <div style="font-size:14pt;font-weight:800">${totalUtil.toFixed(1)} kg</div></div> 
+    <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Desperdiçado</div> 
+      <div style="font-size:14pt;font-weight:800;color:#dc2626">${totalDesp.toFixed(1)} kg</div></div> 
+    <div class="kpi"><div style="font-size:8pt;color:#64748b">% Desperdício</div> 
+      <div style="font-size:14pt;font-weight:800;color:${pct>META_DESP_PCT?'#dc2626':'#16a34a'}">${pct.toFixed(2)}%</div></div> 
+    <div class="kpi"><div style="font-size:8pt;color:#64748b">Eficiência</div> 
+      <div style="font-size:14pt;font-weight:800;color:${pct<=META_DESP_PCT?'#16a34a':'#dc2626'}">${(100-pct).toFixed(2)}%</div></div> 
+  </div> 
+  <table> 
+    <thead><tr> 
+      <th>Data</th><th>OF</th><th>Máquina</th><th>Operador</th> 
+      <th>Util. (kg)</th><th>Desp. (kg)</th> 
+      <th>%</th><th>Efic.</th><th>Causa</th> 
+    </tr></thead> 
+    <tbody> 
+      ${lista.map(d => { 
+        const util = Number(d.qtdUtil||d.qtdUtilizadaKg||0);
+        const desp = Number(d.qtdDesp||d.qtdDesperdicadaKg||0);
+        const pctd = util>0 ? (desp/util)*100 : 0;
+        const efic = 100-pctd;
+        const maq = (MAQUINAS||[]).find(m => m.id === d.maqId) || {col:d.maqId}; 
+        const causa = d.causa||d.causaDesperdicio||'—';
+        return `<tr> 
+          <td>${d.data||'—'}</td><td>${d.ofNum||'—'}</td><td>${maq.col||'—'}</td> 
+          <td>${d.operador||'—'}</td> 
+          <td style="text-align:right">${util.toFixed(3)}</td> 
+          <td style="text-align:right;color:#dc2626">${desp.toFixed(3)}</td> 
+          <td style="text-align:right;font-weight:700;color:${pctd>META_DESP_PCT?'#dc2626':'#16a34a'}">${pctd.toFixed(2)}%</td> 
+          <td style="text-align:right">${efic.toFixed(2)}%</td> 
+          <td>${causa}</td> 
+        </tr>`; 
+      }).join('')} 
+    </tbody> 
+  </table> 
+  <div class="no-print" style="margin-top:20px"> 
+    <button onclick="window.print()" style="padding:8px 20px;background:#1e40af;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimir</button> 
+  </div> 
   </body></html>`); 
   win.document.close(); 
 } 
+
+function imprimirRelatorioDesperdicio(){ return imprimirRelDesperdicio(); }
 
 // ===================== CONTAS A PAGAR / RECEBER =====================
 var CONTAS_PAGAR = [];
@@ -9705,71 +9741,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="sbox-b" id="est-hist" style="max-height:260px;overflow-y:auto;"></div>
     </div>
 
-    <!-- ===== SUB-SEÇÃO: DESPERDÍCIO DE PAPELÃO ===== --> 
-    <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px" 
-      id="desp-section"> 
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"> 
-        <span style="font-size:.85rem;font-weight:800;color:var(--accent)"> 
-          ♻ CONTROLE DE DESPERDÍCIO DE PAPELÃO 
-        </span> 
-        <select id="desp-fil-maq" onchange="renderDesperdicio()" 
-          style="background:var(--s2);border:1px solid var(--border);color:var(--text); 
-            border-radius:8px;padding:5px 10px;font-size:.76rem;font-family:var(--font)"> 
-          <option value="">Todas as máquinas</option> 
-        </select> 
-        <select id="desp-fil-turno" onchange="renderDesperdicio()" 
-          style="background:var(--s2);border:1px solid var(--border);color:var(--text); 
-            border-radius:8px;padding:5px 10px;font-size:.76rem;font-family:var(--font)"> 
-          <option value="">Todos os turnos</option> 
-          <option value="manha">Manhã</option> 
-          <option value="tarde">Tarde</option> 
-          <option value="noite">Noite</option> 
-        </select> 
-        <select id="desp-fil-periodo" onchange="renderDesperdicio()" 
-          style="background:var(--s2);border:1px solid var(--border);color:var(--text); 
-            border-radius:8px;padding:5px 10px;font-size:.76rem;font-family:var(--font)"> 
-          <option value="dia">Hoje</option> 
-          <option value="semana">Última semana</option> 
-          <option value="mes" selected>Mês atual</option> 
-          <option value="todos">Tudo</option> 
-        </select> 
-        <div style="flex:1"></div> 
-        <button class="btn btn-accent" onclick="abrirModalDesperdicio()"> 
-          ＋ Registrar Desperdício 
-        </button> 
-        <button class="btn btn-ghost btn-sm" onclick="imprimirRelatorioDesperdicio()"> 
-          🖨 Relatório 
-        </button> 
-      </div> 
-
-      <div id="desp-kpis" style="display:grid; 
-        grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); 
-        gap:10px;margin-bottom:16px"></div> 
-
-      <div id="desp-por-maquina" style="margin-bottom:16px"></div> 
-
-      <div class="sbox"> 
-        <div class="sbox-h">📋 Registros de Desperdício</div> 
-        <div class="sbox-b" style="overflow-x:auto"> 
-          <table style="width:100%;border-collapse:collapse;font-size:.78rem" id="desp-table"> 
-            <thead> 
-              <tr style="background:var(--s2)"> 
-                <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Data</th> 
-                <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">OF</th> 
-                <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Máquina</th> 
-                <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Operador</th> 
-                <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Utilizado (kg)</th> 
-                <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Desperdiçado (kg)</th> 
-                <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">% Desperdício</th> 
-                <th style="padding:7px 10px;text-align:right;border-bottom:1px solid var(--border)">Eficiência</th> 
-                <th style="padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)">Causa</th> 
-              </tr> 
-            </thead> 
-            <tbody id="desp-tbody"></tbody> 
-          </table> 
-        </div> 
-      </div> 
-    </div> 
+    <div id="secao-desperdicio"></div>
   </div>
 </div>
 
@@ -9798,10 +9770,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <input id="desp-tipo-prod" placeholder="Ex: Caixa TP, Embalagem BC..."></div> 
     <div class="mf"><label>QTD UTILIZADA (kg) *</label> 
       <input id="desp-util" type="number" step="0.001" min="0" 
-        placeholder="0.000" oninput="calcDesperdicioModal()"></div> 
+        placeholder="0.000" oninput="calcDesperdicioPreview()"></div> 
     <div class="mf"><label>QTD DESPERDIÇADA (kg) *</label> 
-      <input id="desp-perd" type="number" step="0.001" min="0" 
-        placeholder="0.000" oninput="calcDesperdicioModal()"></div> 
+      <input id="desp-desp" type="number" step="0.001" min="0" 
+        placeholder="0.000" oninput="calcDesperdicioPreview()"></div> 
     <div class="mf"><label>QTD PRODUZIDA (un)</label> 
       <input id="desp-prod" type="number" min="0" placeholder="0"></div> 
     <div class="mf fgf" id="desp-pct-preview" 
