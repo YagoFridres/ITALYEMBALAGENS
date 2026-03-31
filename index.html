@@ -934,6 +934,47 @@ let ESTOQUE = [
    {id:'CE060',forn:'ADAMI',nom:'AB21',tam:'1660X2620',comp:1660,larg:2620,nome:'SIMPLES',qual:'OESTEPACK',cnpj:'',nf:'838617',qtd:520,val:10.48,min:200,vincada:false,vincos:'',empId:''}, 
  ]; 
 
+// ===== BLOCO 1 — LOGIN & PERMISSÕES =====
+let USUARIOS = [ 
+  { id:'U01', nome:'MANO',    usuario:'MANO',    senha:'987654321', perfil:'admin',    ativo:true }, 
+  { id:'U02', nome:'SIDÃO',   usuario:'SIDAO',   senha:'987654321', perfil:'admin',    ativo:true }, 
+  { id:'U03', nome:'PRODUÇÃO',usuario:'PRODUCAO',senha:'123456',    perfil:'producao', ativo:true }, 
+  { id:'U04', nome:'ESTOQUE', usuario:'ESTOQUE', senha:'123456',    perfil:'estoque',  ativo:true }, 
+]; 
+
+let USUARIO_LOGADO = null; 
+
+const PERFIL_PERMISSOES = { 
+  admin: { 
+    modulos: ['pcp','lancamento','estoque','clientes','vendedores','apontamento', 
+              'tablets','relatorios','dashboard','qualidade','orcamentos','compras', 
+              'logistica','nfe','artefinal','fornecedores','sistema','operadores', 
+              'facas1','cliches','contaspagar','contasreceber','maquinas','fluxos', 
+              'desperdicio','visitas','usuarios'], 
+    podeEditar: true, 
+    podeCriar: true, 
+    podeExcluir: true, 
+  }, 
+  producao: { 
+    modulos: ['pcp','lancamento','apontamento','tablets','dashboard'], 
+    podeEditar: true, 
+    podeCriar: false, 
+    podeExcluir: false, 
+  }, 
+  estoque: { 
+    modulos: ['estoque','dashboard','compras','desperdicio'], 
+    podeEditar: true, 
+    podeCriar: true, 
+    podeExcluir: false, 
+  }, 
+  vendas: { 
+    modulos: ['clientes','vendedores','visitas','orcamentos','dashboard'], 
+    podeEditar: true, 
+    podeCriar: true, 
+    podeExcluir: false, 
+  }, 
+}; 
+
 let HIST_EST = [
   {tipo:'entrada',chp:'CH001',qtd:20000,of:'—',data:'2025-05-20',obs:'Inicial'},
   {tipo:'saida',  chp:'CH001',qtd:2000, of:'Nº 001',data:'2025-06-01',obs:'Baixa automática'},
@@ -4399,7 +4440,84 @@ function renderSistema(){
       <span style="flex:1;font-family:var(--mono)">${f}</span>
       <button onclick="sisPagRemove(${i})" style="background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:.68rem">✕</button>
     </div>`).join('') || '<div style="padding:14px;color:var(--text3);text-align:center">Nenhuma forma cadastrada</div>';
+  renderUsuarios();
 }
+
+function renderUsuarios() { 
+  // Só admin vê isso 
+  const box = document.getElementById('sis-usuarios-box'); 
+  if (box) box.style.display = temPermissao('usuarios') ? '' : 'none'; 
+
+  const tbody = document.getElementById('usuarios-tbody'); 
+  if (!tbody) return; 
+  const corPerfil = { 
+    admin:'var(--accent)', producao:'var(--green)', 
+    estoque:'var(--yellow)', vendas:'var(--purple)' 
+  }; 
+  tbody.innerHTML = USUARIOS.map(u => ` 
+    <tr> 
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border)">${u.nome}</td> 
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border); 
+        font-family:var(--mono);color:var(--accent)">${u.usuario}</td> 
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border)"> 
+        <span style="background:${corPerfil[u.perfil]||'var(--text3)'}22; 
+          color:${corPerfil[u.perfil]||'var(--text3)'}; 
+          border:1px solid ${corPerfil[u.perfil]||'var(--text3)'}44; 
+          border-radius:20px;padding:2px 10px;font-size:.7rem;font-weight:700"> 
+          ${u.perfil.toUpperCase()} 
+        </span> 
+      </td> 
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border)"> 
+        <span style="color:${u.ativo?'var(--green)':'var(--red)'}"> 
+          ${u.ativo ? '● Ativo' : '○ Inativo'} 
+        </span> 
+      </td> 
+      <td style="padding:8px 12px;border-bottom:1px solid var(--border);text-align:center"> 
+        <button class="btn btn-ghost btn-sm" 
+          onclick="toggleUsuarioAtivo('${u.id}')"> 
+          ${u.ativo ? 'Desativar' : 'Ativar'} 
+        </button> 
+        <button class="btn btn-ghost btn-sm" style="margin-left:4px" 
+          onclick="alterarSenhaUsuario('${u.id}')">🔑 Senha</button> 
+      </td> 
+    </tr> 
+  `).join(''); 
+} 
+
+function toggleUsuarioAtivo(id) { 
+  const u = USUARIOS.find(x => x.id === id); 
+  if (!u) return; 
+  if (u.id === USUARIO_LOGADO?.id) { 
+    toast('Você não pode desativar sua própria conta', 'var(--red)'); return; 
+  } 
+  u.ativo = !u.ativo; 
+  renderUsuarios(); 
+  autoSaveTrigger(); 
+  toast(u.ativo ? '✅ Usuário ativado' : '🔒 Usuário desativado'); 
+} 
+
+function alterarSenhaUsuario(id) { 
+  const u = USUARIOS.find(x => x.id === id); 
+  if (!u) return; 
+  const nova = prompt(`Nova senha para ${u.nome}:`); 
+  if (!nova || nova.length < 4) { toast('Senha muito curta', 'var(--red)'); return; } 
+  u.senha = nova; 
+  autoSaveTrigger(); 
+  toast('🔑 Senha alterada!', 'var(--green)'); 
+} 
+
+function abrirModalNovoUsuario() { 
+  const nome    = prompt('Nome completo:');      if (!nome) return; 
+  const usuario = prompt('Login (sem espaços):'); if (!usuario) return; 
+  const senha   = prompt('Senha:');              if (!senha || senha.length < 4) { toast('Senha muito curta','var(--red)'); return; } 
+  const perfis  = Object.keys(PERFIL_PERMISSOES).join(' / '); 
+  const perfil  = prompt(`Perfil (${perfis}):`); if (!perfil || !PERFIL_PERMISSOES[perfil]) { toast('Perfil inválido','var(--red)'); return; } 
+  const idu = 'U' + String(USUARIOS.length + 1).padStart(2,'0'); 
+  USUARIOS.push({ id: idu, nome, usuario: usuario.toUpperCase(), senha, perfil, ativo: true }); 
+  renderUsuarios(); 
+  autoSaveTrigger(); 
+  toast('✅ Usuário criado!', 'var(--green)'); 
+} 
 
 function sisPagAdd(){
   const inp=document.getElementById('sis-pag-nova');
@@ -5514,6 +5632,92 @@ function trocarUsuario(){
   document.querySelectorAll('.nav-item').forEach(n=>n.style.display='');
   document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
 }
+
+// ===== BLOCO 1 — LOGIN & PERMISSÕES =====
+
+function loginSubmit() { 
+  const user  = (document.getElementById('login-user').value || '').trim().toUpperCase(); 
+  const senha = (document.getElementById('login-pass').value || '').trim(); 
+  const encontrado = USUARIOS.find(u => 
+    u.usuario.toUpperCase() === user && u.senha === senha && u.ativo 
+  ); 
+  if (!encontrado) { 
+    const err = document.getElementById('login-err'); 
+    err.style.display = 'block'; 
+    document.getElementById('login-pass').value = ''; 
+    document.getElementById('login-pass').focus(); 
+    setTimeout(() => err.style.display = 'none', 3500); 
+    return; 
+  } 
+  USUARIO_LOGADO = encontrado; 
+  CURRENT_USER = { login: encontrado.usuario, senha: encontrado.senha, perfil: encontrado.perfil, nome: encontrado.nome, id: encontrado.id }; 
+  document.getElementById('login-screen').style.display = 'none'; 
+  document.getElementById('login-err').style.display = 'none'; 
+
+  document.getElementById('usuario-nome-badge').textContent = encontrado.nome; 
+  document.getElementById('usuario-perfil-badge').textContent = encontrado.perfil; 
+
+  aplicarPermissoesMenu(); 
+
+  const moduloPadrao = { admin:'dashboard', producao:'pcp', estoque:'estoque', vendas:'clientes' }; 
+  go(moduloPadrao[encontrado.perfil] || 'dashboard'); 
+
+  toast('✅ Bem-vindo, ' + encontrado.nome + '!', 'var(--green)'); 
+} 
+
+function logoutUsuario() { 
+  if (!confirm('Deseja sair do sistema?')) return; 
+  USUARIO_LOGADO = null; 
+  CURRENT_USER = null; 
+  document.getElementById('login-screen').style.display = 'flex'; 
+  document.getElementById('login-user').value = ''; 
+  document.getElementById('login-pass').value = ''; 
+  document.getElementById('login-user').focus(); 
+} 
+
+function temPermissao(modulo, acao = 'ler') { 
+  if (!USUARIO_LOGADO) return false; 
+  const perms = PERFIL_PERMISSOES[USUARIO_LOGADO.perfil]; 
+  if (!perms) return false; 
+  if (!perms.modulos.includes(modulo)) return false; 
+  if (acao === 'editar'  && !perms.podeEditar)  return false; 
+  if (acao === 'criar'   && !perms.podeCriar)   return false; 
+  if (acao === 'excluir' && !perms.podeExcluir) return false; 
+  return true; 
+} 
+
+function aplicarPermissoesMenu() { 
+  if (!USUARIO_LOGADO) return; 
+  const perms = PERFIL_PERMISSOES[USUARIO_LOGADO.perfil]; 
+  document.querySelectorAll('.nav-item[data-modulo]').forEach(item => { 
+    const mod = item.getAttribute('data-modulo'); 
+    item.style.display = perms.modulos.includes(mod) ? '' : 'none'; 
+  }); 
+} 
+
+const _goOriginal = typeof go === 'function' ? go : _goBase; 
+go = function(id) { 
+  if (!USUARIO_LOGADO) { 
+    document.getElementById('login-screen').style.display = 'flex'; 
+    return; 
+  } 
+  if (!temPermissao(id)) { 
+    toast('🔒 Sem permissão para acessar este módulo', 'var(--red)'); 
+    return; 
+  } 
+  _goOriginal(id); 
+}; 
+
+document.addEventListener('DOMContentLoaded', function() { 
+  document.querySelectorAll('.nav-item[onclick]').forEach(el => { 
+    const match = el.getAttribute('onclick').match(/go\(['"](\w+)['"]\)/); 
+    if (match) el.setAttribute('data-modulo', match[1]); 
+  }); 
+  setTimeout(() => { 
+    const u = document.getElementById('login-user'); 
+    if (u) u.focus(); 
+  }, 200); 
+}); 
 
 // ===================== API CLIENT — BANCO CENTRAL =====================
 // Todos os dados vão para o servidor Node.js/SQLite, não para localStorage.
@@ -8611,49 +8815,85 @@ logAction = async function(acao, detalhe){
 console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </script>
 
-<div id="login-screen" style="position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:9999;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 36px;width:min(500px,94vw);box-shadow:var(--shadow-lg);">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">
-      <div style="width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem;font-family:var(--mono);">IE</div>
-      <div>
-        <div style="font-weight:800;font-size:1.1rem;color:var(--text);letter-spacing:-.3px;">Italy Embalagens</div>
-        <div style="font-size:.72rem;color:var(--text3);">PCP Pro — São Miguel do Oeste</div>
-      </div>
-      <div onclick="toggleTheme()" style="margin-left:auto;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.82rem;display:flex;align-items:center;gap:5px;color:var(--text2);">
-        <span id="theme-icon">🌙</span><span id="theme-label" style="font-size:.7rem;">Escuro</span>
-      </div>
-    </div>
+<div id="login-screen" style=" 
+  position:fixed;inset:0;z-index:9999; 
+  background:var(--bg); 
+  display:flex;align-items:center;justify-content:center; 
+  font-family:var(--font)"> 
+  <div style=" 
+    background:var(--surface);border:1px solid var(--border); 
+    border-radius:16px;padding:36px;width:min(400px,92vw); 
+    box-shadow:0 24px 80px #0008"> 
 
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-      <span id="login-device-pill" class="dev-pill">💻 PC</span>
-      <button class="dev-link-btn" onclick="trocarDispositivo()">Alterar dispositivo</button>
-    </div>
+    <!-- Logo --> 
+    <div style="text-align:center;margin-bottom:28px"> 
+      <div style=" 
+        width:56px;height:56px;background:var(--accent); 
+        border-radius:14px;margin:0 auto 12px; 
+        display:flex;align-items:center;justify-content:center; 
+        font-weight:900;font-size:20px;color:#fff; 
+        font-family:var(--mono)">ERP</div> 
+      <div style="font-size:1.15rem;font-weight:800;color:var(--text)">Italy Embalagens</div> 
+      <div style="font-size:.72rem;color:var(--text3);margin-top:3px;font-family:var(--mono)"> 
+        SISTEMA ERP / PCP 
+      </div> 
+    </div> 
 
-    <!-- User grid -->
-    <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:10px;">Selecionar usuário</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px;">
-      <button onclick="selecionarUsuario('MANO')"     class="user-sel-btn" id="ubtn-MANO">👑 MANO</button> 
-      <button onclick="selecionarUsuario('SIDÃO')"    class="user-sel-btn" id="ubtn-SIDÃO">👑 SIDÃO</button> 
-      <button onclick="selecionarUsuario('ESTOQUE')"  class="user-sel-btn" id="ubtn-ESTOQUE">📦 ESTOQUE</button> 
-      <button onclick="selecionarUsuario('PRODUÇÃO')" class="user-sel-btn" id="ubtn-PRODUÇÃO">🏭 PRODUÇÃO</button> 
-      <button onclick="selecionarUsuario('PCP')"      class="user-sel-btn" id="ubtn-PCP">📋 PCP</button> 
-      <button onclick="selecionarUsuario('ARTE FINAL')" class="user-sel-btn" id="ubtn-ARTE FINAL">🎨 ARTE FINAL</button> 
-      <button onclick="selecionarUsuario('CONTROLE DE QUALIDADE')" class="user-sel-btn" id="ubtn-CONTROLE DE QUALIDADE">✅ QUALIDADE</button> 
-      <button onclick="selecionarUsuario('RISCADOR 01')" class="user-sel-btn" id="ubtn-RISCADOR 01">⚙ RISCADOR</button> 
-    </div>
-    <div id="login-sel-label" style="font-size:.72rem;color:var(--accent);min-height:18px;font-family:var(--mono);margin-bottom:10px;font-weight:600;"></div>
+    <!-- Erro --> 
+    <div id="login-err" style=" 
+      display:none;background:#ff3d3d18;border:1px solid var(--red); 
+      color:var(--red);border-radius:8px;padding:9px 13px; 
+      font-size:.78rem;margin-bottom:14px"> 
+      ⚠ Usuário ou senha incorretos. 
+    </div> 
 
-    <!-- Password -->
-    <div style="margin-bottom:16px;">
-      <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:6px;">Senha</div>
-      <input id="login-pass" type="password" placeholder="••••••••" style="width:100%;background:var(--s2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:.9rem;" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <input type="hidden" id="login-user">
-    <div id="login-err" style="color:var(--red);font-size:.75rem;margin-bottom:10px;min-height:18px;font-weight:600;"></div>
-    <button onclick="doLogin()" style="width:100%;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:var(--font);letter-spacing:.3px;transition:.15s;">Entrar →</button>
-    <div style="font-size:.62rem;color:var(--text3);margin-top:14px;text-align:center;">Italy Embalagens · Cartoeste · Oestepack · PCP Pro v13</div>
-  </div>
+    <!-- Campos --> 
+    <div style="margin-bottom:12px"> 
+      <label style="font-size:.7rem;font-weight:700;color:var(--text2); 
+        text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px"> 
+        Usuário 
+      </label> 
+      <input id="login-user" type="text" 
+        placeholder="Digite seu usuário" 
+        autocomplete="username" 
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" 
+        style="width:100%;background:var(--s2);border:1px solid var(--border); 
+          color:var(--text);border-radius:8px;padding:9px 12px;font-size:.9rem; 
+          font-family:var(--font);outline:none; 
+          transition:border-color .2s" 
+        onfocus="this.style.borderColor='var(--accent)'" 
+        onblur="this.style.borderColor='var(--border)'"> 
+    </div> 
+    <div style="margin-bottom:18px"> 
+      <label style="font-size:.7rem;font-weight:700;color:var(--text2); 
+        text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px"> 
+        Senha 
+      </label> 
+      <input id="login-pass" type="password" 
+        placeholder="••••••••" 
+        autocomplete="current-password" 
+        onkeydown="if(event.key==='Enter')loginSubmit()" 
+        style="width:100%;background:var(--s2);border:1px solid var(--border); 
+          color:var(--text);border-radius:8px;padding:9px 12px;font-size:.9rem; 
+          font-family:var(--font);outline:none;transition:border-color .2s" 
+        onfocus="this.style.borderColor='var(--accent)'" 
+        onblur="this.style.borderColor='var(--border)'"> 
+    </div> 
+    <button onclick="loginSubmit()" style=" 
+      width:100%;background:var(--accent);color:#fff;border:none; 
+      border-radius:10px;padding:11px;font-size:.9rem;font-weight:700; 
+      font-family:var(--font);cursor:pointer; 
+      transition:opacity .2s" 
+      onmouseover="this.style.opacity='.88'" 
+      onmouseout="this.style.opacity='1'"> 
+      Entrar → 
+    </button> 
+
+    <p style="text-align:center;font-size:.65rem;color:var(--text3); 
+      margin-top:18px;font-family:var(--mono)"> 
+      v2.0 · Italy Embalagens ERP 
+    </p> 
+  </div> 
 </div>
 
 <div class="topbar">
@@ -8671,6 +8911,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span class="tbadge tb-yellow" id="bdg-ug">0 URGENTES</span>
     <span class="tbadge tb-green" id="bdg-ok">0 CONCLUÍDOS</span>
   </div>
+  <div id="usuario-badge" style=" 
+    display:flex;align-items:center;gap:8px; 
+    background:var(--s2);border:1px solid var(--border); 
+    border-radius:8px;padding:5px 10px;font-size:.75rem"> 
+    <span id="usuario-nome-badge" style="color:var(--text);font-weight:700"></span> 
+    <span id="usuario-perfil-badge" style=" 
+      color:var(--accent);font-family:var(--mono);font-size:.65rem; 
+      text-transform:uppercase"></span> 
+    <button onclick="logoutUsuario()" title="Sair" style=" 
+      background:none;border:none;color:var(--text3);cursor:pointer; 
+      font-size:.85rem;padding:0 2px" 
+      onmouseover="this.style.color='var(--red)'" 
+      onmouseout="this.style.color='var(--text3)'">⏻</button> 
+  </div> 
   <div style="position:relative;cursor:pointer;" onclick="toggleNotifPanel()">
     <span style="font-size:1rem;">🔔</span>
     <span id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);">0</span>
@@ -9493,6 +9747,27 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </div>
       </div>
     </div>
+    <div class="sbox" id="sis-usuarios-box"> 
+      <div class="sbox-h">👥 Gestão de Usuários</div> 
+      <div class="sbox-b"> 
+        <div style="overflow-x:auto"> 
+          <table style="width:100%;border-collapse:collapse;font-size:.8rem"> 
+            <thead> 
+              <tr style="background:var(--s2)"> 
+                <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Nome</th> 
+                <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Usuário</th> 
+                <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Perfil</th> 
+                <th style="padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)">Status</th> 
+                <th style="padding:8px 12px;border-bottom:1px solid var(--border)">Ações</th> 
+              </tr> 
+            </thead> 
+            <tbody id="usuarios-tbody"></tbody> 
+          </table> 
+        </div> 
+        <button class="btn btn-accent" style="margin-top:12px" 
+          onclick="abrirModalNovoUsuario()">＋ Novo Usuário</button> 
+      </div> 
+    </div> 
     <!-- Formas de Pagamento -->
     <div class="sbox" style="margin-top:14px">
       <div class="sbox-h">💳 Formas de Pagamento</div>
