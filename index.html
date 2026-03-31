@@ -861,6 +861,9 @@ let VENDEDORES = [
   {id:'V03',nome:'RONI MEIA VENDA',tel:'',email:'',reg:'',meta:0,comissaoPct:0.5},
 ];
 
+let VISITAS = [];        // { id, cliId, vendId, dataPrevista, status, resultado, obs } 
+let VISITAS_SEQ = 1; 
+
 let OFs = [
   {seq:1, of:'Nº 001',cliId:'C01',vendId:'V01',qtd:5000, dia:'2025-06-01',ent:'2025-06-10',fluxo:'F2',maq:['CVR','IMP05','ACAB'], status:'Em produção',urg:true, chp:'CH001',qchp:5000,val:3800,obs:'Urgente',imgs:[],empId:'E1'},
   {seq:2, of:'Nº 002',cliId:'C02',vendId:'V02',qtd:3000, dia:'2025-06-02',ent:'2025-06-08',fluxo:'F1',maq:['IMP01','RISC01','ACAB'],status:'Atrasado',  urg:true, chp:'CH002',qchp:3000,val:2100,obs:'',imgs:[],empId:'E2'},
@@ -1145,6 +1148,7 @@ function _goBase(id){
   if(id==='tablets')renderTablets();
   if(id==='apontamento')renderApontamentos();
   if(id==='vendedores')renderVendedores();
+  if(id==='vendedores')renderRoteiro();
   if(id==='nfe')renderNFe();
   if(id==='fornecedores')renderFornecedores();
   if(id==='dashboard')renderDashboard();
@@ -3010,6 +3014,290 @@ function salvarVendedor(){
   VENDEDORES.push({id:'V'+String(VENDEDORES.length+1).padStart(2,'0'),nome,tel:document.getElementById('vd-tel').value,email:document.getElementById('vd-email').value,reg:document.getElementById('vd-reg').value,meta:parseFloat(document.getElementById('vd-meta').value)||0,comissaoPct});
   fechar('modal-vend');renderVendedores();autoSaveTrigger();toast('✓ Vendedor cadastrado!');
 }
+
+// ===== BLOCO 2 — ROTEIRO DE VISITAS =====
+
+function renderRoteiro() { 
+  const selVend   = document.getElementById('vis-fil-vend'); 
+  const selCidade = document.getElementById('vis-fil-cidade'); 
+
+  if (selVend && selVend.options.length <= 1) { 
+    VENDEDORES.forEach(v => { 
+      const o = document.createElement('option'); 
+      o.value = v.id; o.textContent = v.nome; 
+      selVend.appendChild(o); 
+    }); 
+  } 
+
+  const cidades = [...new Set(CLIENTES.map(c => c.cidade).filter(Boolean))].sort(); 
+  if (selCidade && selCidade.options.length <= 1) { 
+    cidades.forEach(c => { 
+      const o = document.createElement('option'); 
+      o.value = c; o.textContent = c; 
+      selCidade.appendChild(o); 
+    }); 
+  } 
+
+  const filVend   = (selVend   || {}).value || ''; 
+  const filCidade = (selCidade || {}).value || ''; 
+  const filStatus = (document.getElementById('vis-fil-status') || {}).value || ''; 
+
+  let clientes = [...CLIENTES]; 
+  if (filVend)   clientes = clientes.filter(c => c.rep && c.rep.includes( 
+    (VENDEDORES.find(v => v.id === filVend) || {}).nome || '')); 
+  if (filCidade) clientes = clientes.filter(c => c.cidade === filCidade); 
+
+  const grupos = {}; 
+  clientes.forEach(c => { 
+    const cidade = c.cidade || 'SEM CIDADE'; 
+    if (!grupos[cidade]) grupos[cidade] = []; 
+    grupos[cidade].push(c); 
+  }); 
+
+  const totalClientes = clientes.length; 
+  const totalVisitadas = VISITAS.filter(v => 
+    v.status === 'realizada' && 
+    clientes.some(c => c.id === v.cliId)).length; 
+  const totalPendentes = VISITAS.filter(v => 
+    v.status === 'pendente' && 
+    clientes.some(c => c.id === v.cliId)).length; 
+
+  const resumoEl = document.getElementById('vis-resumo'); 
+  if (resumoEl) { 
+    resumoEl.innerHTML = ` 
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px; 
+        padding:10px 14px;font-size:.78rem"> 
+        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">CLIENTES</div> 
+        <div style="font-weight:800;font-size:1.1rem;color:var(--accent)">${totalClientes}</div> 
+      </div> 
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:8px; 
+        padding:10px 14px;font-size:.78rem"> 
+        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">CIDADES</div> 
+        <div style="font-weight:800;font-size:1.1rem;color:var(--text)">${Object.keys(grupos).length}</div> 
+      </div> 
+      <div style="background:var(--green-soft);border:1px solid var(--green);border-radius:8px; 
+        padding:10px 14px;font-size:.78rem"> 
+        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">VISITADAS</div> 
+        <div style="font-weight:800;font-size:1.1rem;color:var(--green)">${totalVisitadas}</div> 
+      </div> 
+      <div style="background:var(--yellow-soft, #ffd60018);border:1px solid var(--yellow);border-radius:8px; 
+        padding:10px 14px;font-size:.78rem"> 
+        <div style="color:var(--text3);font-size:.65rem;margin-bottom:2px">PENDENTES</div> 
+        <div style="font-weight:800;font-size:1.1rem;color:var(--yellow)">${totalPendentes}</div> 
+      </div>`; 
+  } 
+
+  const container = document.getElementById('vis-cidades-lista'); 
+  if (!container) return; 
+
+  if (Object.keys(grupos).length === 0) { 
+    container.innerHTML = '<div style="color:var(--text3);padding:20px">Nenhum cliente encontrado.</div>'; 
+    return; 
+  } 
+
+  container.innerHTML = Object.entries(grupos) 
+    .sort(([a],[b]) => a.localeCompare(b)) 
+    .map(([cidade, clisGrupo]) => { 
+      const visitasGrupo = VISITAS.filter(v => clisGrupo.some(c => c.id === v.cliId)); 
+      const realizadas   = visitasGrupo.filter(v => v.status === 'realizada').length; 
+
+      const rows = clisGrupo.map(cli => { 
+        const visita = VISITAS.filter(v => v.cliId === cli.id) 
+                         .sort((a,b) => b.id.localeCompare(a.id))[0]; 
+        const status = visita ? visita.status : 'sem visita'; 
+        const corStatus = { 
+          'realizada':'var(--green)', 'pendente':'var(--yellow)', 'sem visita':'var(--text3)' 
+        }; 
+        const dot = `<span style="color:${corStatus[status]||'var(--text3)'};font-size:.8rem">●</span>`; 
+
+        if (filStatus && status !== filStatus) return ''; 
+
+        return `<div style=" 
+          display:flex;align-items:center;gap:12px;flex-wrap:wrap; 
+          padding:10px 14px;border-bottom:1px solid var(--border); 
+          transition:background .15s" 
+          onmouseover="this.style.background='var(--s2)'" 
+          onmouseout="this.style.background=''"> 
+          <div style="flex:1;min-width:180px"> 
+            ${dot} 
+            <span style="font-weight:700;font-size:.85rem;margin-left:6px">${cli.nome}</span> 
+            ${cli.rs && cli.rs !== cli.nome 
+              ? `<div style="font-size:.7rem;color:var(--text2);margin-left:22px;margin-top:1px">${cli.rs}</div>` 
+              : ''} 
+          </div> 
+          <div style="font-size:.75rem;color:var(--text2);min-width:140px"> 
+            📞 ${cli.tel || cli.cel || '—'} 
+          </div> 
+          <div style="font-size:.75rem;color:var(--text3);min-width:120px"> 
+            🤝 ${cli.rep || '—'} 
+          </div> 
+          <div style="font-size:.72rem;color:${corStatus[status]}; 
+            font-family:var(--mono);min-width:80px;text-transform:uppercase"> 
+            ${status} 
+          </div> 
+          <div style="display:flex;gap:5px"> 
+            ${status !== 'realizada' ? ` 
+              <button class="btn btn-green btn-sm" 
+                onclick="marcarVisitaRealizada('${cli.id}')"> 
+                ✓ Marcar Visitado 
+              </button>` : ` 
+              <button class="btn btn-ghost btn-sm" 
+                onclick="desfazerVisita('${cli.id}')"> 
+                ↩ Desfazer 
+              </button>`} 
+            <button class="btn btn-ghost btn-sm" 
+              onclick="abrirHistCli && abrirHistCli('${cli.id}')"> 
+              📋 Histórico 
+            </button> 
+          </div> 
+        </div>`; 
+      }).join(''); 
+
+      if (!rows.trim()) return ''; 
+
+      return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden"> 
+        <div style=" 
+          background:var(--s2);padding:10px 14px; 
+          display:flex;align-items:center;gap:10px; 
+          border-bottom:1px solid var(--border)"> 
+          <span style="font-size:.9rem">📍</span> 
+          <span style="font-weight:800;font-size:.88rem;color:var(--accent)">${cidade}</span> 
+          <span style="font-size:.72rem;color:var(--text3);font-family:var(--mono); 
+            background:var(--accent)22;border:1px solid var(--accent)33; 
+            border-radius:20px;padding:1px 8px"> 
+            ${clisGrupo.length} cliente(s) 
+          </span> 
+          <span style="font-size:.72rem;color:var(--green);margin-left:auto"> 
+            ${realizadas} visitado(s) 
+          </span> 
+        </div> 
+        ${rows} 
+      </div>`; 
+    }).join(''); 
+} 
+
+function marcarVisitaRealizada(cliId) { 
+  const existe = VISITAS.find(v => v.cliId === cliId && v.status === 'pendente'); 
+  if (existe) { 
+    existe.status = 'realizada'; 
+    existe.dataRealizada = today(); 
+  } else { 
+    VISITAS.push({ 
+      id: 'VIS' + String(VISITAS_SEQ++).padStart(4,'0'), 
+      cliId, 
+      vendId: (USUARIO_LOGADO || {}).id || '', 
+      dataPrevista: today(), 
+      dataRealizada: today(), 
+      status: 'realizada', 
+      resultado: '', 
+      obs: '', 
+    }); 
+  } 
+  autoSaveTrigger(); 
+  renderRoteiro(); 
+  toast('✅ Visita marcada como realizada!', 'var(--green)'); 
+} 
+
+function desfazerVisita(cliId) { 
+  const idx = VISITAS.findLastIndex ? VISITAS.findLastIndex(v => v.cliId === cliId) 
+    : [...VISITAS].reverse().findIndex(v => v.cliId === cliId); 
+  if (idx === -1) return; 
+  const realIdx = VISITAS.findLastIndex 
+    ? idx 
+    : VISITAS.length - 1 - [...VISITAS].reverse().findIndex(v => v.cliId === cliId); 
+  if (realIdx >= 0) VISITAS.splice(realIdx, 1); 
+  autoSaveTrigger(); 
+  renderRoteiro(); 
+  toast('↩ Visita desfeita', 'var(--yellow)'); 
+} 
+
+function gerarRoteiroAutomatico() { 
+  const semVisita = CLIENTES.filter(c => 
+    !VISITAS.some(v => v.cliId === c.id && v.status !== 'cancelada') 
+  ); 
+  if (!semVisita.length) { toast('Todos os clientes já têm visita agendada', 'var(--yellow)'); return; } 
+  if (!confirm(`Gerar roteiro para ${semVisita.length} cliente(s) sem visita?`)) return; 
+  semVisita.forEach(c => { 
+    VISITAS.push({ 
+      id: 'VIS' + String(VISITAS_SEQ++).padStart(4,'0'), 
+      cliId: c.id, 
+      vendId: (USUARIO_LOGADO || {}).id || '', 
+      dataPrevista: today(), 
+      dataRealizada: null, 
+      status: 'pendente', 
+      resultado: '', 
+      obs: 'Gerado automaticamente', 
+    }); 
+  }); 
+  autoSaveTrigger(); 
+  renderRoteiro(); 
+  toast(`⚡ ${semVisita.length} visitas geradas!`, 'var(--green)'); 
+} 
+
+function imprimirRoteiro() { 
+  const filCidade = (document.getElementById('vis-fil-cidade') || {}).value || ''; 
+  const titulo = filCidade ? `ROTEIRO — ${filCidade}` : 'ROTEIRO COMPLETO DE VISITAS'; 
+
+  const grupos = {}; 
+  CLIENTES.forEach(c => { 
+    if (filCidade && c.cidade !== filCidade) return; 
+    const cidade = c.cidade || 'SEM CIDADE'; 
+    if (!grupos[cidade]) grupos[cidade] = []; 
+    const visita = VISITAS.filter(v => v.cliId === c.id) 
+                     .sort((a,b) => b.id.localeCompare(a.id))[0]; 
+    grupos[cidade].push({ ...c, statusVisita: visita ? visita.status : 'sem visita' }); 
+  }); 
+
+  const corpo = Object.entries(grupos).sort(([a],[b]) => a.localeCompare(b)).map(([cidade, clis]) => ` 
+    <h3 style="margin:18px 0 6px;color:#1e40af;font-size:11pt;border-bottom:2px solid #1e40af;padding-bottom:3px"> 
+      📍 ${cidade} — ${clis.length} cliente(s) 
+    </h3> 
+    <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:8px"> 
+      <thead> 
+        <tr style="background:#f1f5f9"> 
+          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Cliente</th> 
+          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Telefone</th> 
+          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Representante</th> 
+          <th style="padding:5px 8px;border:1px solid #ddd;text-align:center">Status</th> 
+          <th style="padding:5px 8px;border:1px solid #ddd;text-align:left">Obs / Resultado</th> 
+        </tr> 
+      </thead> 
+      <tbody> 
+        ${clis.map((c,i) => ` 
+          <tr style="background:${i%2?'#f9f9f9':'#fff'}"> 
+            <td style="padding:5px 8px;border:1px solid #ddd;font-weight:700">${c.nome}</td> 
+            <td style="padding:5px 8px;border:1px solid #ddd">${c.tel || c.cel || '—'}</td> 
+            <td style="padding:5px 8px;border:1px solid #ddd">${c.rep || '—'}</td> 
+            <td style="padding:5px 8px;border:1px solid #ddd;text-align:center"> 
+              <span style="background:${c.statusVisita==='realizada'?'#dcfce7':c.statusVisita==='pendente'?'#fef9c3':'#f1f5f9'}; 
+                color:${c.statusVisita==='realizada'?'#15803d':c.statusVisita==='pendente'?'#854d0e':'#64748b'}; 
+                border-radius:4px;padding:2px 8px;font-size:8pt;font-weight:700;text-transform:uppercase"> 
+                ${c.statusVisita} 
+              </span> 
+            </td> 
+            <td style="padding:5px 8px;border:1px solid #ddd"></td> 
+          </tr>`).join('')} 
+      </tbody> 
+    </table>`).join(''); 
+
+  const win = window.open('','_blank','width=900,height=700'); 
+  win.document.write(`<!DOCTYPE html><html><head> 
+    <title>${titulo}</title> 
+    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
+    h1{font-size:14pt;color:#0f172a;margin-bottom:4px} 
+    .meta{font-size:8pt;color:#64748b;margin-bottom:16px} 
+    @media print{.no-print{display:none}}</style> 
+  </head><body> 
+    <h1>${titulo}</h1> 
+    <div class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</div> 
+    ${corpo} 
+    <div class="no-print" style="margin-top:20px"> 
+      <button onclick="window.print()" style="padding:8px 20px;background:#1e40af;color:#fff; 
+        border:none;border-radius:6px;cursor:pointer;font-size:10pt">🖨 Imprimir</button> 
+    </div> 
+  </body></html>`); 
+  win.document.close(); 
+} 
 // ===================== NOTAS FISCAIS =====================
 // ===================== FORNECEDORES =====================
 function renderFornecedores(){
@@ -5874,7 +6162,8 @@ function buildDataSnapshot(){
     TAB_STATE,
     CMP_SEQ, ORC_SEQ, OP_SEQ, IC_SEQ, FORN_SEQ, NF_SEQ,
     FACAS_1, FACAS_2, CLICHES,
-    CONTAS_PAGAR, CONTAS_RECEBER
+    CONTAS_PAGAR, CONTAS_RECEBER,
+    VISITAS, VISITAS_SEQ
   };
 }
 
@@ -5922,6 +6211,7 @@ function applyDataSnapshot(d, opts){
   if(d.NOTAS_FISCAIS)NOTAS_FISCAIS = d.NOTAS_FISCAIS;
   if(d.FLUXOS)       FLUXOS        = d.FLUXOS;
   if(d.VENDEDORES)   VENDEDORES    = d.VENDEDORES;
+  if(d.VISITAS)      VISITAS       = d.VISITAS;
   if(d.OPERADORES)   OPERADORES    = d.OPERADORES;
   if(d.INCONFORMIDADES) INCONFORMIDADES = d.INCONFORMIDADES;
   if(d.ORCAMENTOS)   ORCAMENTOS    = d.ORCAMENTOS;
@@ -5942,6 +6232,7 @@ function applyDataSnapshot(d, opts){
   if(d.IC_SEQ)   IC_SEQ   = d.IC_SEQ;
   if(d.FORN_SEQ) FORN_SEQ = d.FORN_SEQ;
   if(d.NF_SEQ)   NF_SEQ   = d.NF_SEQ;
+  if(d.VISITAS_SEQ) VISITAS_SEQ = d.VISITAS_SEQ;
   _lastSyncTs = ts || Date.now();
 
   if(!opts.silent){
@@ -9602,7 +9893,50 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="ptoolbar">
     <button class="btn btn-accent" onclick="abrirModalVendedor()">＋ Novo Vendedor</button>
   </div>
-  <div class="page-body"><div class="vend-grid" id="vend-grid"></div></div>
+  <div class="page-body">
+    <div class="vend-grid" id="vend-grid"></div>
+
+    <!-- ===== SUB-SEÇÃO: ROTEIRO DE VISITAS ===== --> 
+    <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px"> 
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px"> 
+        <span style="font-size:.85rem;font-weight:800;color:var(--accent)"> 
+          📍 ROTEIRO DE VISITAS POR CIDADE 
+        </span> 
+        <select id="vis-fil-vend" onchange="renderRoteiro()" 
+          style="background:var(--s2);border:1px solid var(--border); 
+            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
+            font-family:var(--font)"> 
+          <option value="">Todos os vendedores</option> 
+        </select> 
+        <select id="vis-fil-cidade" onchange="renderRoteiro()" 
+          style="background:var(--s2);border:1px solid var(--border); 
+            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
+            font-family:var(--font)"> 
+          <option value="">Todas as cidades</option> 
+        </select> 
+        <select id="vis-fil-status" onchange="renderRoteiro()" 
+          style="background:var(--s2);border:1px solid var(--border); 
+            color:var(--text);border-radius:8px;padding:5px 10px;font-size:.76rem; 
+            font-family:var(--font)"> 
+          <option value="">Todos</option> 
+          <option value="pendente">Pendentes</option> 
+          <option value="realizada">Realizadas</option> 
+        </select> 
+        <div style="flex:1"></div> 
+        <button class="btn btn-accent btn-sm" onclick="imprimirRoteiro()">🖨 Imprimir Roteiro</button> 
+        <button class="btn btn-green btn-sm" onclick="gerarRoteiroAutomatico()"> 
+          ⚡ Gerar Roteiro Automático 
+        </button> 
+      </div> 
+
+      <!-- Resumo rápido --> 
+      <div id="vis-resumo" style=" 
+        display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div> 
+
+      <!-- Lista agrupada por cidade --> 
+      <div id="vis-cidades-lista"></div> 
+    </div> 
+  </div>
 </div>
 
 <!-- ========== 10. NOTAS FISCAIS ========== -->
