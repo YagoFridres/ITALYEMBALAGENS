@@ -31,8 +31,18 @@ function loadEnv() {
 
 loadEnv();
 
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE;
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_KEY) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY;
+}
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+const supabaseKeySource = process.env.SUPABASE_SERVICE_ROLE_KEY
+  ? 'SUPABASE_SERVICE_ROLE_KEY'
+  : (process.env.SUPABASE_KEY ? 'SUPABASE_KEY' : null);
 
 let supabase = null;
 let _supabaseEnvOk = true;
@@ -72,6 +82,8 @@ app.get('/api/health', (req, res) => {
       url: !!supabaseUrl,
       hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       hasKey: !!process.env.SUPABASE_KEY,
+      keySource: supabaseKeySource,
+      missing: _supabaseMissing,
     },
   });
 });
