@@ -32,25 +32,28 @@ function loadEnv() {
 loadEnv();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
+let supabase = null;
+let _supabaseEnvOk = true;
+const _supabaseMissing = [];
+
+if (!supabaseUrl) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_URL'); }
+if (!supabaseKey) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_KEY'); }
+
+if (!_supabaseEnvOk) {
   console.error('Erro: variáveis do Supabase ausentes.');
   console.error('Esperado no ambiente (TRAE/deploy):');
   console.error('- SUPABASE_URL');
-  console.error('- SUPABASE_KEY ou SUPABASE_SERVICE_ROLE_KEY');
+  console.error('- SUPABASE_SERVICE_ROLE_KEY (recomendado) ou SUPABASE_KEY');
+  console.error('Faltando:', _supabaseMissing.join(', '));
   console.error('Status detectado:');
   console.error('SUPABASE_URL:', !!supabaseUrl);
   console.error('SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
   console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
-  console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
-  process.exit(1);
+} else {
+  supabase = createClient(supabaseUrl, supabaseKey);
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 const app = express();
 app.use(cors());
@@ -59,6 +62,18 @@ app.use(express.static(path.join(__dirname)));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    supabase: {
+      configured: !!supabase,
+      url: !!supabaseUrl,
+      hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasKey: !!process.env.SUPABASE_KEY,
+    },
+  });
 });
 
 function ok(res, data) {
@@ -70,6 +85,7 @@ function bad(res, error) {
 }
 
 async function selectAll(table, orderBy) {
+  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   let q = supabase.from(table).select('*');
   if (orderBy) q = q.order(orderBy, { ascending: false });
   const { data, error } = await q;
@@ -78,18 +94,21 @@ async function selectAll(table, orderBy) {
 }
 
 async function insertOne(table, row) {
+  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   const { data, error } = await supabase.from(table).insert([row]).select('*').limit(1);
   if (error) throw error;
   return (data && data[0]) || null;
 }
 
 async function updateOne(table, id, row) {
+  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   const { data, error } = await supabase.from(table).update(row).eq('id', id).select('*').limit(1);
   if (error) throw error;
   return (data && data[0]) || null;
 }
 
 async function deleteOne(table, id) {
+  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
 }

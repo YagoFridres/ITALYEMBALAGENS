@@ -3102,42 +3102,42 @@ function renderRoteiroPorCidade() {
   if(filStatus && status !== filStatus) return ''; 
   const corStatus = status === 'realizada' ? 'var(--green)' 
   : status === 'pendente' ? 'var(--yellow)' : 'var(--text3)'; 
-  return \`<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap; 
+  return `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap; 
   padding:10px 14px;border-bottom:1px solid var(--border); 
   transition:background .15s;" onmouseover="this.style.background='var(--s2)'" 
   onmouseout="this.style.background=''"> 
   <div style="flex:1;min-width:160px"> 
-  <span style="color:\${corStatus};font-size:.75rem">●</span> 
-  <span style="font-weight:700;font-size:.84rem;margin-left:5px">\${cli.nome}</span> 
-  \${cli.rs && cli.rs !== cli.nome ? \`<div style="font-size:.7rem;color:var(--text3);margin-left:16px">\${cli.rs}</div>\` : ''} 
+  <span style="color:${corStatus};font-size:.75rem">●</span> 
+  <span style="font-weight:700;font-size:.84rem;margin-left:5px">${cli.nome}</span> 
+  ${cli.rs && cli.rs !== cli.nome ? `<div style="font-size:.7rem;color:var(--text3);margin-left:16px">${cli.rs}</div>` : ''} 
   </div> 
   <div style="font-size:.75rem;color:var(--text2);min-width:140px"> 
-  📞 \${cli.tel || cli.cel || '—'} 
+  📞 ${cli.tel || cli.cel || '—'} 
   </div> 
   <div style="font-size:.72rem;color:var(--text3);min-width:100px"> 
-  \${cli.end || '—'} 
+  ${cli.end || '—'} 
   </div> 
   <div style="font-size:.72rem;color:var(--text3);min-width:120px"> 
-  🤝 \${cli.rep || '—'} 
+  🤝 ${cli.rep || '—'} 
   </div> 
-  <div style="font-size:.7rem;color:\${corStatus};font-family:var(--mono);min-width:80px;text-transform:uppercase"> 
-  \${status} 
+  <div style="font-size:.7rem;color:${corStatus};font-family:var(--mono);min-width:80px;text-transform:uppercase"> 
+  ${status} 
   </div> 
   <div style="display:flex;gap:5px"> 
-  \${status !== 'realizada' ? \`<button class="btn btn-green btn-sm" onclick="marcarVisita('\${cli.id}', true)">✓ Visitado</button>\` : \`<button class="btn btn-ghost btn-sm" onclick="marcarVisita('\${cli.id}', false)">↩ Desfazer</button>\`} 
+  ${status !== 'realizada' ? `<button class="btn btn-green btn-sm" onclick="marcarVisita('${cli.id}', true)">✓ Visitado</button>` : `<button class="btn btn-ghost btn-sm" onclick="marcarVisita('${cli.id}', false)">↩ Desfazer</button>`} 
   </div> 
-  </div>\`; 
+  </div>`; 
   }).join(''); 
   if(!rows.trim() && filStatus) return ''; 
-  return \`<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden"> 
+  return `<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden"> 
   <div style="background:var(--s2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)"> 
   <span>📍</span> 
-  <span style="font-weight:800;font-size:.88rem;color:var(--accent)">\${cidade}</span> 
-  <span style="font-size:.7rem;color:var(--text3);font-family:var(--mono);background:var(--accent-soft);border-radius:20px;padding:1px 8px">\${clis.length} cliente(s)</span> 
-  <span style="font-size:.72rem;color:var(--green);margin-left:auto">\${realizadas} visitado(s)</span> 
+  <span style="font-weight:800;font-size:.88rem;color:var(--accent)">${cidade}</span> 
+  <span style="font-size:.7rem;color:var(--text3);font-family:var(--mono);background:var(--accent-soft);border-radius:20px;padding:1px 8px">${clis.length} cliente(s)</span> 
+  <span style="font-size:.72rem;color:var(--green);margin-left:auto">${realizadas} visitado(s)</span> 
   </div> 
-  \${rows} 
-  </div>\`; 
+  ${rows} 
+  </div>`; 
   }).join('')} 
   </div> 
   </div>`; 
