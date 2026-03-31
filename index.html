@@ -5722,73 +5722,63 @@ function normalizeLogin(v){
 }
 
 function applyPermissions(perfil){ 
-  const allNav = document.querySelectorAll('.nav-item'); 
-  const sections = document.querySelectorAll('.sidebar-section');
-  const subgroups = document.querySelectorAll('.nav-subgroup');
-  if(perfil === 'admin'){
-    allNav.forEach(n => n.style.display = '');
-    sections.forEach(s => s.style.display = '');
-    subgroups.forEach(g => { g.style.display=''; g.classList.remove('fechado'); });
-    ['grupo-cadastros','grupo-estoques'].forEach(function(id){
-      var g = document.getElementById(id);
-      if(g){ g.style.display=''; g.classList.remove('fechado'); }
-      var h = document.getElementById('nav-header-' + id.replace('grupo-',''));
-      if(h) h.style.display = '';
-      var a = document.getElementById('arrow-' + id);
-      if(a) a.style.transform = 'rotate(0deg)';
-    });
-    ['clientes','vendedores','fornecedores','operadores','estoque','facas1','cliches'].forEach(function(page){
-      document.querySelectorAll('.nav-item[onclick]').forEach(function(n){
-        var oc = n.getAttribute('onclick') || '';
-        if(oc.indexOf("go('"+page+"')") !== -1 || oc.indexOf('go("'+page+'")') !== -1){
-          n.style.display = '';
-          var p = n.parentElement;
-          if(p && p.classList && p.classList.contains('nav-subgroup')){
-            p.style.display = '';
-            p.classList.remove('fechado');
-            var hid = 'nav-header-' + p.id.replace('grupo-','');
-            var hh = document.getElementById(hid);
-            if(hh) hh.style.display = '';
-          }
-        }
-      });
-    });
-    return;
-  }
-  // Mapeamento de permissões por perfil
-  const allowed = {
-    producao: ['pcp', 'lancamento', 'apontamento', 'tablets'],
-    estoque: ['estoque', 'facas1', 'cliches'],
-    estoque_user: ['estoque', 'facas1', 'cliches'],
-  };
-  const allowedPages = allowed[perfil] || [];
-  allNav.forEach(n => {
-    const onclick = n.getAttribute('onclick') || '';
-    const match = onclick.match(/go\('([^']+)'\)/);
-    const page = match ? match[1] : '';
-    n.style.display = allowedPages.includes(page) ? '' : 'none';
-  });
+  // ADMIN: mostra TUDO, sem exceção 
+  if(perfil === 'admin'){ 
+    document.querySelectorAll('.nav-item').forEach(n => { 
+      n.style.display = ''; 
+      n.style.visibility = ''; 
+      n.style.opacity = ''; 
+      n.removeAttribute('hidden'); 
+    }); 
+    document.querySelectorAll('.sidebar-section').forEach(s => { 
+      s.style.display = ''; 
+      s.style.visibility = ''; 
+      s.removeAttribute('hidden'); 
+    }); 
+    // Garante que o layout principal está visível 
+    document.querySelectorAll('.layout, .content, .page').forEach(el => { 
+      el.style.display = ''; 
+    }); 
+    return; // Para aqui — admin vê tudo 
+  } 
 
-  subgroups.forEach(g=>{
-    const anyVisible = Array.from(g.querySelectorAll('.nav-item')).some(x => x.style.display !== 'none');
-    g.style.display = anyVisible ? '' : 'none';
-    if(anyVisible) g.classList.remove('fechado');
-    const header = document.getElementById('nav-header-' + g.id.replace('grupo-',''));
-    if(header) header.style.display = anyVisible ? '' : 'none';
-  });
+  // Outros perfis 
+  const allowed = { 
+    producao:     ['pcp', 'lancamento', 'apontamento', 'tablets', 'dashboard'], 
+    pcp:          ['pcp', 'lancamento', 'apontamento', 'tablets', 'fluxos', 'maquinas'], 
+    estoque_user: ['estoque', 'facas1', 'cliches', 'compras', 'fornecedores', 'dashboard'], 
+    artefinal:    ['pcp', 'lancamento', 'clientes', 'vendedores', 'nfe', 
+                   'orcamentos', 'tablets', 'apontamento', 'artefinal'], 
+    qualidade:    ['operadores', 'qualidade', 'apontamento'], 
+    riscador:     ['tablets', 'apontamento', 'pcp', 'estoque'], 
+  }; 
 
-  sections.forEach(s => s.style.display = 'none');
-  sections.forEach(s=>{
-    let el = s.nextElementSibling;
-    let has = false;
-    while(el && !(el.classList && el.classList.contains('sidebar-section'))){
-      if(el.classList && el.classList.contains('nav-item') && el.style.display !== 'none'){ has = true; break; }
-      el = el.nextElementSibling;
-    }
-    if(has) s.style.display = '';
-  });
+  const allowedPages = allowed[perfil] || []; 
 
-  if(allowedPages.length > 0) _goBase(allowedPages[0]);
+  document.querySelectorAll('.nav-item').forEach(n => { 
+    const onclick = n.getAttribute('onclick') || ''; 
+    const match = onclick.match(/go\('([^']+)'\)/); 
+    const page = match ? match[1] : ''; 
+    n.style.display = allowedPages.includes(page) ? '' : 'none'; 
+  }); 
+
+  document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = 'none'); 
+
+  document.querySelectorAll('.nav-item').forEach(n => { 
+    if(n.style.display !== 'none'){ 
+      let sib = n.previousElementSibling; 
+      while(sib){ 
+        if(sib.classList && sib.classList.contains('sidebar-section')){ 
+          sib.style.display = ''; 
+          break; 
+        } 
+        sib = sib.previousElementSibling; 
+      } 
+    } 
+  }); 
+
+  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true; 
+  if(allowedPages.length > 0) _goBase(allowedPages[0]); 
 } 
 
 
@@ -5862,20 +5852,30 @@ function selecionarUsuario(login){
   document.getElementById('login-pass').focus();
 }
 
-function trocarUsuario(){
-  if(!confirm('Sair da conta atual e voltar para o login?'))return;
-  CURRENT_USER=null;
-  const ls=document.getElementById('login-screen');
-  if(ls){ls.style.display='flex';document.getElementById('login-user').value='';document.getElementById('login-pass').value='';document.getElementById('login-err').textContent='';
-  document.querySelectorAll('.user-sel-btn').forEach(b=>b.classList.remove('selected'));
-  const lbl=document.getElementById('login-sel-label');if(lbl)lbl.textContent='';
-  }
-  const logo=document.querySelector('.logo');if(logo)logo.innerHTML='PCP<span>//</span>PRO';
-  aplicarDispositivo((function(){try{return localStorage.getItem('erp_device')||'desktop';}catch(e){return 'desktop';}})());
-  closeMobMenu();
-  document.querySelectorAll('.nav-item').forEach(n=>n.style.display='');
-  document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
-}
+function trocarUsuario(){ 
+  if(!confirm('Sair da conta atual e voltar para o login?')) return; 
+  CURRENT_USER = null; 
+  // Restaura visibilidade de TUDO antes de mostrar o login 
+  document.querySelectorAll('.nav-item').forEach(n => { 
+    n.style.display = ''; 
+    n.style.visibility = ''; 
+  }); 
+  document.querySelectorAll('.sidebar-section').forEach(s => { 
+    s.style.display = ''; 
+  }); 
+  const ls = document.getElementById('login-screen'); 
+  if(ls){ 
+    ls.style.display = 'flex'; 
+    document.getElementById('login-user').value = ''; 
+    document.getElementById('login-pass').value = ''; 
+    const err = document.getElementById('login-err'); 
+    if(err) err.textContent = ''; 
+    document.querySelectorAll('.user-sel-btn').forEach(b => b.classList.remove('selected')); 
+    const lbl = document.getElementById('login-sel-label'); 
+    if(lbl) lbl.textContent = ''; 
+  } 
+  closeMobMenu(); 
+} 
 
 // ===== BLOCO 1 — LOGIN & PERMISSÕES =====
 
