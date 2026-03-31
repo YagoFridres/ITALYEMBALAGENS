@@ -6019,11 +6019,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // API_BASE: aponta sempre para o servidor Node.js na porta 3000.
 // Se o index.html for aberto pelo servidor (http://IP:3000), usa a mesma origem.
 // Se aberto como arquivo local (file://), usa localhost:3000.
+const API_BASE = (location.protocol === 'file:' ? 'http://localhost:3000' : location.origin);
 const SUPABASE_URL = 'https://ubygjqxkflfachtologdw.supabase.co'; 
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVieWdqcXhrZmxmYWNodGxvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mzc1MDMsImV4cCI6MjA5MDMxMzUwM30.hMwfWjTyVCYTirwvUeStnx41LipTNizAxdimH2mjtfI'; 
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); 
 var autoSaveTimer = null; 
 var _sbConectado  = false; 
+var _apiConectado = false;
 const LS_KEY = 'pcpro_v5_data'; 
   
 async function sbGet(tabela){ 
@@ -6042,13 +6044,39 @@ async function sbGet(tabela){
    }catch(e){ return { ok:false, error:e.message }; } 
  } 
   
- // ==== API stubs (compat) ====
- function api(){ return Promise.resolve({ok:false}); }
- function apiUnavailable(){ return true; }
- function usarFallbackLocal(){ }
- function salvarViaApiOuLocal(n,fnApi,fnLocal){ if(fnLocal) fnLocal(); return Promise.resolve({ok:true,local:true}); }
- async function syncFromServerSilent(){ }
- async function _tentarCarregarServidor(){ }
+async function api(method, path, body){
+  try{
+    const base = String(API_BASE||'').replace(/\/$/,'');
+    const url = base + '/api' + path;
+    const opt = { method, headers: { 'Content-Type':'application/json' } };
+    if(body !== undefined) opt.body = JSON.stringify(body);
+    const resp = await fetch(url, opt);
+    const json = await resp.json().catch(()=>null);
+    if(!resp.ok){
+      return { ok:false, error:(json && (json.error||json.erro)) || resp.statusText, status:resp.status, data:json&&json.data };
+    }
+    if(json && typeof json.ok === 'boolean') return json;
+    return { ok:true, data: json };
+  }catch(e){
+    return { ok:false, error:e.message };
+  }
+}
+
+function apiUnavailable(res){ return !res || res.ok === false; }
+function usarFallbackLocal(){ }
+async function salvarViaApiOuLocal(n, fnApi, fnLocal){
+  try{
+    const r = await (fnApi ? fnApi() : null);
+    if(r && r.ok) return r;
+    if(fnLocal){ fnLocal(); return { ok:true, local:true, error:r && r.error }; }
+    return r || { ok:false };
+  }catch(e){
+    if(fnLocal){ fnLocal(); return { ok:true, local:true, error:e.message }; }
+    return { ok:false, error:e.message };
+  }
+}
+async function syncFromServerSilent(){ }
+async function _tentarCarregarServidor(){ }
  
  function showSaveIndicator(txt, color){ 
    const el = document.getElementById('save-indicator'); 
@@ -6131,20 +6159,6 @@ function setupRealtimeSync(){
     _sb.channel('rt:'+t).on('postgres_changes',{event:'*',schema:'public',table:t},()=>{ autoSaveLoad(); }).subscribe(); 
   }); 
 }
-
-// Normalização: converte snake_case do banco para camelCase do sistema
-function normalizeOF(r){ return {id:r.id,seq:r.seq,of:r.of_num,cliId:r.cli_id,vendId:r.vend_id,qtd:r.qtd,dia:r.dia,ent:r.ent,fluxo:r.fluxo,maq:tryParse(r.maq,[]),status:r.status,urg:!!r.urg,chp:r.chp,qchp:r.qchp,val:r.val,obs:r.obs,imgs:tryParse(r.imgs,[]),empId:r.emp_id||r.empId||''}; }
-function normalizeCli(r){ return {id:r.id,nome:r.nome,ramo:r.ramo,cnpj:r.cnpj,email:r.email,fone:r.fone,cidade:r.cidade,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeVend(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,comissao:r.comissao}; }
-function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.vend_id,tipo:r.tipo,prod:r.prod,comp:r.comp,larg:r.larg,alt:r.alt,area:r.area,onda:r.onda,gram:r.gram,margem:r.margem,frete:r.frete,comissao:r.comissao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeEst(r){ return {id:r.id,nome:r.nome,categoria:r.categoria,unidade:r.unidade,qtd:r.qtd,minimo:r.minimo,custo:r.custo,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
-function normalizeMaq(r){ return {id:r.id,col:r.col,ico:r.ico||'⚙',ativo:r.ativo!==0}; }
-function normalizeOp(r){ return {id:r.id,nome:r.nome,funcao:r.funcao,ativo:r.ativo!==0,mat:r.mat,maqPrincipal:r.maq_principal,setor:r.setor,admissao:r.admissao,obs:r.obs,status:r.ativo?'Ativo':'Inativo'}; }
-function normalizeCmp(r){ return {id:r.id,data:r.data,fornId:r.forn_id,item:r.item,qtd:r.qtd,valor:r.valor,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeForn(r){ return {id:r.id,nome:r.nome,cnpj:r.cnpj,contato:r.contato,fone:r.fone,email:r.email,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
-function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
 // ===================== PERSISTÊNCIA LOCAL (localStorage) =====================
 // Salva TODOS os dados no localStorage toda vez que autoSaveTrigger é chamado.
