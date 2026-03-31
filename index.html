@@ -5729,6 +5729,30 @@ function applyPermissions(perfil){
     allNav.forEach(n => n.style.display = '');
     sections.forEach(s => s.style.display = '');
     subgroups.forEach(g => { g.style.display=''; g.classList.remove('fechado'); });
+    ['grupo-cadastros','grupo-estoques'].forEach(function(id){
+      var g = document.getElementById(id);
+      if(g){ g.style.display=''; g.classList.remove('fechado'); }
+      var h = document.getElementById('nav-header-' + id.replace('grupo-',''));
+      if(h) h.style.display = '';
+      var a = document.getElementById('arrow-' + id);
+      if(a) a.style.transform = 'rotate(0deg)';
+    });
+    ['clientes','vendedores','fornecedores','operadores','estoque','facas1','cliches'].forEach(function(page){
+      document.querySelectorAll('.nav-item[onclick]').forEach(function(n){
+        var oc = n.getAttribute('onclick') || '';
+        if(oc.indexOf("go('"+page+"')") !== -1 || oc.indexOf('go("'+page+'")') !== -1){
+          n.style.display = '';
+          var p = n.parentElement;
+          if(p && p.classList && p.classList.contains('nav-subgroup')){
+            p.style.display = '';
+            p.classList.remove('fechado');
+            var hid = 'nav-header-' + p.id.replace('grupo-','');
+            var hh = document.getElementById(hid);
+            if(hh) hh.style.display = '';
+          }
+        }
+      });
+    });
     return;
   }
   // Mapeamento de permissões por perfil
