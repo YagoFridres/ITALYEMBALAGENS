@@ -866,6 +866,7 @@ let VISITAS_SEQ = 1;
 
 let DESPERDICIO = [];   // registros de desperdício 
 let DESP_SEQ = 1; 
+const META_DESPERDICIO_PCT = 5;
 
 let OFs = [
   {seq:1, of:'Nº 001',cliId:'C01',vendId:'V01',qtd:5000, dia:'2025-06-01',ent:'2025-06-10',fluxo:'F2',maq:['CVR','IMP05','ACAB'], status:'Em produção',urg:true, chp:'CH001',qchp:5000,val:3800,obs:'Urgente',imgs:[],empId:'E1'},
@@ -6168,7 +6169,8 @@ function buildDataSnapshot(){
     FACAS_1, FACAS_2, CLICHES,
     CONTAS_PAGAR, CONTAS_RECEBER,
     VISITAS, VISITAS_SEQ,
-    DESPERDICIO, DESP_SEQ
+    DESPERDICIO, DESP_SEQ,
+    USUARIOS
   };
 }
 
@@ -6218,6 +6220,7 @@ function applyDataSnapshot(d, opts){
   if(d.VENDEDORES)   VENDEDORES    = d.VENDEDORES;
   if(d.VISITAS)      VISITAS       = d.VISITAS;
   if(d.DESPERDICIO)  DESPERDICIO   = d.DESPERDICIO;
+  if(d.USUARIOS)     USUARIOS      = d.USUARIOS;
   if(d.OPERADORES)   OPERADORES    = d.OPERADORES;
   if(d.INCONFORMIDADES) INCONFORMIDADES = d.INCONFORMIDADES;
   if(d.ORCAMENTOS)   ORCAMENTOS    = d.ORCAMENTOS;
@@ -6735,95 +6738,109 @@ function renderDesperdicio(){
   }
   lista.sort((a,b)=>(_despNowKey(b.data) - _despNowKey(a.data)) || String(b.id||'').localeCompare(String(a.id||'')));
 
-  const totalUtil = lista.reduce((s,r)=>s+(Number(r.qtdUtilizadaKg)||0),0);
-  const totalPerd = lista.reduce((s,r)=>s+(Number(r.qtdDesperdicadaKg)||0),0);
-  const pct = totalUtil>0 ? (totalPerd/totalUtil*100) : 0;
-  const eff = totalUtil>0 ? (100-pct) : 0;
-
-  const kpis = document.getElementById('desp-kpis');
-  if(kpis){
-    kpis.innerHTML = `
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-        <div style="font-size:.62rem;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px">Registros</div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--accent);font-family:var(--mono)">${lista.length}</div>
-      </div>
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px 14px">
-        <div style="font-size:.62rem;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px">Utilizado (kg)</div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--text);font-family:var(--mono)">${totalUtil.toFixed(3)}</div>
-      </div>
-      <div style="background:var(--s2);border:1px solid var(--red);border-radius:10px;padding:12px 14px">
-        <div style="font-size:.62rem;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px">Desperdício (kg)</div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--red);font-family:var(--mono)">${totalPerd.toFixed(3)}</div>
-      </div>
-      <div style="background:var(--s2);border:1px solid var(--yellow);border-radius:10px;padding:12px 14px">
-        <div style="font-size:.62rem;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px">% Desperdício</div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--yellow);font-family:var(--mono)">${pct.toFixed(2)}%</div>
-      </div>
-      <div style="background:var(--s2);border:1px solid var(--green);border-radius:10px;padding:12px 14px">
-        <div style="font-size:.62rem;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px">Eficiência</div>
-        <div style="font-size:1.1rem;font-weight:800;color:var(--green);font-family:var(--mono)">${eff.toFixed(2)}%</div>
-      </div>`;
-  }
-
-  const byMaq = {};
-  lista.forEach(r=>{
-    const k = r.maqId || '—';
-    if(!byMaq[k]) byMaq[k] = {util:0, perd:0, n:0};
-    byMaq[k].util += Number(r.qtdUtilizadaKg)||0;
-    byMaq[k].perd += Number(r.qtdDesperdicadaKg)||0;
-    byMaq[k].n += 1;
+  lista.forEach(d=>{
+    const util = Number(d.qtdUtilizadaKg)||0;
+    const perd = Number(d.qtdDesperdicadaKg)||0;
+    d.pctDesperdicio = util>0 ? (perd/util)*100 : 0;
+    d.eficiencia = util>0 ? (100-d.pctDesperdicio) : 0;
   });
-  const porMaqEl = document.getElementById('desp-por-maquina');
-  if(porMaqEl){
-    const rows = Object.entries(byMaq).sort((a,b)=>{
-      const pa = a[1].util>0 ? a[1].perd/a[1].util : 0;
-      const pb = b[1].util>0 ? b[1].perd/b[1].util : 0;
-      return pb-pa;
-    }).map(([maq,agg])=>{
-      const p = agg.util>0 ? (agg.perd/agg.util*100) : 0;
-      const label = (MAQUINAS||[]).find(m=>(m.id||m.codigo)===maq);
-      const nome = label ? ((label.ico?label.ico+' ':'') + (label.col||label.nome||maq)) : maq;
-      return `
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--s2);margin-bottom:8px">
-          <div style="min-width:140px;font-weight:800;color:var(--text);font-size:.8rem">${nome}</div>
-          <div style="flex:1;height:10px;background:var(--border);border-radius:999px;overflow:hidden">
-            <div style="height:10px;width:${Math.min(100,p).toFixed(2)}%;background:${p>=8?'var(--red)':p>=4?'var(--yellow)':'var(--green)'}"></div>
-          </div>
-          <div style="min-width:90px;text-align:right;font-family:var(--mono);color:${p>=8?'var(--red)':p>=4?'var(--yellow)':'var(--green)'};font-weight:800">${p.toFixed(2)}%</div>
-          <div style="min-width:70px;text-align:right;font-family:var(--mono);color:var(--text2)">${agg.n} reg</div>
-        </div>`;
-    }).join('');
-    porMaqEl.innerHTML = rows || '';
-  }
 
-  const tbody = document.getElementById('desp-tbody');
-  if(!tbody) return;
-  if(!lista.length){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Nenhum registro no período.</td></tr>`;
-    return;
-  }
+  const totalUtil = lista.reduce((s,d) => s + (Number(d.qtdUtilizadaKg)||0), 0); 
+  const totalDesp = lista.reduce((s,d) => s + (Number(d.qtdDesperdicadaKg)||0), 0); 
+  const pctMedio = totalUtil > 0 ? (totalDesp / totalUtil) * 100 : 0; 
+  const eficMedia = 100 - pctMedio; 
+  const corPct = pctMedio > META_DESPERDICIO_PCT ? 'var(--red)' : pctMedio > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
 
-  const tdS='padding:7px 10px;border-bottom:1px solid var(--border);';
-  tbody.innerHTML = lista.map(r=>{
-    const util = Number(r.qtdUtilizadaKg)||0;
-    const perd = Number(r.qtdDesperdicadaKg)||0;
-    const p = util>0 ? (perd/util*100) : 0;
-    const e = util>0 ? (100-p) : 0;
-    const maq = (MAQUINAS||[]).find(m=>(m.id||m.codigo)===(r.maqId||''));
-    const maqLbl = maq ? (maq.col||maq.nome||maq.id||r.maqId) : (r.maqId||'—');
-    const cor = p>=8?'var(--red)':p>=4?'var(--yellow)':'var(--green)';
-    return `<tr>
-      <td style="${tdS}font-family:var(--mono)">${r.data||'—'}</td>
-      <td style="${tdS}font-family:var(--mono);color:var(--accent)">${r.ofNum||'—'}</td>
-      <td style="${tdS}">${maqLbl}</td>
-      <td style="${tdS}">${r.operador||'—'}</td>
-      <td style="${tdS}text-align:right;font-family:var(--mono)">${util.toFixed(3)}</td>
-      <td style="${tdS}text-align:right;font-family:var(--mono);color:var(--red);font-weight:700">${perd.toFixed(3)}</td>
-      <td style="${tdS}text-align:right;font-family:var(--mono);color:${cor};font-weight:800">${p.toFixed(2)}%</td>
-      <td style="${tdS}text-align:right;font-family:var(--mono);color:var(--text2)">${e.toFixed(2)}%</td>
-      <td style="${tdS}color:var(--text2)">${r.causaDesperdicio||'—'}</td>
-    </tr>`;
-  }).join('');
+  const kpiEl = document.getElementById('desp-kpis'); 
+  if (kpiEl) { 
+    kpiEl.innerHTML = ` 
+      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+        <div class="card-lbl">Total Utilizado</div> 
+        <div class="card-val cv-a">${totalUtil.toFixed(1)} kg</div> 
+        <div class="card-sub">${lista.length} registro(s)</div> 
+      </div></div> 
+      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+        <div class="card-lbl">Total Desperdiçado</div> 
+        <div class="card-val" style="color:${corPct}">${totalDesp.toFixed(1)} kg</div> 
+      </div></div> 
+      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+        <div class="card-lbl">% Desperdício Médio</div> 
+        <div class="card-val" style="color:${corPct}">${pctMedio.toFixed(2)}%</div> 
+        <div class="card-sub">Meta: ≤ ${META_DESPERDICIO_PCT}%</div> 
+      </div></div> 
+      <div class="sbox"><div class="sbox-b" style="text-align:center"> 
+        <div class="card-lbl">Índice de Eficiência</div> 
+        <div class="card-val" style="color:${eficMedia >= (100 - META_DESPERDICIO_PCT) ? 'var(--green)' : 'var(--red)'}"> 
+          ${eficMedia.toFixed(2)}% 
+        </div> 
+      </div></div>`; 
+  } 
+
+  const porMaqEl = document.getElementById('desp-por-maquina'); 
+  if (porMaqEl && lista.length > 0) { 
+    const grupMaq = {}; 
+    lista.forEach(d => { 
+      if (!grupMaq[d.maqId]) grupMaq[d.maqId] = { util:0, perd:0 }; 
+      grupMaq[d.maqId].util += d.qtdUtilizadaKg; 
+      grupMaq[d.maqId].perd += d.qtdDesperdicadaKg; 
+    }); 
+    porMaqEl.innerHTML = `<div class="sbox"><div class="sbox-h">📊 Por Máquina</div><div class="sbox-b"> 
+      ${Object.entries(grupMaq).map(([maqId, v]) => { 
+        const maq = MAQUINAS.find(m => (m.id||m.codigo) === maqId) || {col: maqId}; 
+        const pct = v.util > 0 ? (v.perd / v.util) * 100 : 0; 
+        const cor = pct > META_DESPERDICIO_PCT ? 'var(--red)' : pct > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+        const largBarra = Math.min(100, pct / META_DESPERDICIO_PCT * 100); 
+        return `<div style="margin-bottom:10px"> 
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px"> 
+            <span style="font-size:.78rem;font-weight:700;color:var(--accent)">${maq.col}</span> 
+            <span style="font-size:.75rem;color:${cor};font-family:var(--mono);font-weight:700">${pct.toFixed(2)}%</span> 
+          </div> 
+          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden"> 
+            <div style="height:100%;width:${largBarra}%;background:${cor};border-radius:4px;transition:width .4s"></div> 
+          </div> 
+          <div style="font-size:.68rem;color:var(--text3);margin-top:2px;font-family:var(--mono)"> 
+            Util: ${v.util.toFixed(1)}kg · Desp: ${v.perd.toFixed(1)}kg 
+          </div> 
+        </div>`; 
+      }).join('')} 
+    </div></div>`; 
+  } else if (porMaqEl) { 
+    porMaqEl.innerHTML = ''; 
+  } 
+
+  const tbody = document.getElementById('desp-tbody'); 
+  if (!tbody) return; 
+  tbody.innerHTML = lista.length === 0 
+    ? `<tr><td colspan="9" style="padding:20px;text-align:center;color:var(--text3)"> 
+        Nenhum registro no período. <button class="btn btn-accent btn-sm" style="margin-left:10px" 
+          onclick="abrirModalDesperdicio()">＋ Registrar</button> 
+       </td></tr>` 
+    : lista.map(d => { 
+        const maq = MAQUINAS.find(m => (m.id||m.codigo) === d.maqId) || {col: d.maqId}; 
+        const corPctLinha = d.pctDesperdicio > META_DESPERDICIO_PCT ? 'var(--red)' : 
+                             d.pctDesperdicio > META_DESPERDICIO_PCT/2 ? 'var(--yellow)' : 'var(--green)'; 
+        return `<tr> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            font-family:var(--mono)">${d.data}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            color:var(--accent);font-family:var(--mono)">${d.ofNum || '—'}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${maq.col}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border)">${d.operador || '—'}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            text-align:right;font-family:var(--mono)">${d.qtdUtilizadaKg.toFixed(3)}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            text-align:right;font-family:var(--mono);color:var(--red)">${d.qtdDesperdicadaKg.toFixed(3)}</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            text-align:right;font-family:var(--mono);color:${corPctLinha};font-weight:700"> 
+            ${d.pctDesperdicio.toFixed(2)}%</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            text-align:right;font-family:var(--mono); 
+            color:${d.eficiencia >= (100-META_DESPERDICIO_PCT)?'var(--green)':'var(--red)'}"> 
+            ${d.eficiencia.toFixed(2)}%</td> 
+          <td style="padding:7px 10px;border-bottom:1px solid var(--border); 
+            color:var(--text2);font-size:.72rem">${d.causaDesperdicio || '—'}</td> 
+        </tr>`; 
+      }).join(''); 
 }
 
 function abrirModalDesperdicio(){
@@ -6911,82 +6928,72 @@ function salvarDesperdicio(){
   toast('✓ Desperdício registrado','var(--green)');
 }
 
-function imprimirRelatorioDesperdicio(){
-  const filMaq = (document.getElementById('desp-fil-maq')||{}).value||'';
-  const filTurno = (document.getElementById('desp-fil-turno')||{}).value||'';
-  const filPeriodo = (document.getElementById('desp-fil-periodo')||{}).value||'mes';
+function imprimirRelatorioDesperdicio() { 
+  const periodo = (document.getElementById('desp-fil-periodo')||{}).value || 'mes'; 
+  const labels  = {dia:'Hoje',semana:'Última Semana',mes:'Mês Atual',todos:'Todo o Período'}; 
+  const titulo  = `RELATÓRIO DE DESPERDÍCIO DE PAPELÃO — ${labels[periodo]||''}`; 
 
-  const hoje = new Date(); hoje.setHours(0,0,0,0);
-  let de = null;
-  if(filPeriodo==='dia'){ de = new Date(hoje); }
-  else if(filPeriodo==='semana'){ de = new Date(hoje); de.setDate(de.getDate()-7); }
-  else if(filPeriodo==='mes'){ de = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+  const totalUtil = DESPERDICIO.reduce((s,d) => s + (Number(d.qtdUtilizadaKg)||0), 0); 
+  const totalDesp = DESPERDICIO.reduce((s,d) => s + (Number(d.qtdDesperdicadaKg)||0), 0); 
+  const pct = totalUtil > 0 ? (totalDesp / totalUtil) * 100 : 0; 
 
-  let lista = (DESPERDICIO||[]).slice();
-  if(filMaq) lista = lista.filter(r => (r.maqId||'') === filMaq);
-  if(filTurno) lista = lista.filter(r => (r.turno||'') === filTurno);
-  if(de){
-    const deTs = de.getTime();
-    lista = lista.filter(r => _despNowKey(r.data) >= deTs);
-  }
-  lista.sort((a,b)=>(_despNowKey(a.data) - _despNowKey(b.data)) || String(a.id||'').localeCompare(String(b.id||'')));
-
-  const totalUtil = lista.reduce((s,r)=>s+(Number(r.qtdUtilizadaKg)||0),0);
-  const totalPerd = lista.reduce((s,r)=>s+(Number(r.qtdDesperdicadaKg)||0),0);
-  const pct = totalUtil>0 ? (totalPerd/totalUtil*100) : 0;
-
-  const titulo = 'RELATÓRIO DE DESPERDÍCIO DE PAPELÃO';
-  const win = window.open('','_blank','width=980,height=720');
-  win.document.write(`<!DOCTYPE html><html><head>
-    <title>${titulo}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:20px;font-size:10pt}
-      h1{font-size:14pt;color:#0f172a;margin:0 0 6px}
-      .meta{font-size:9pt;color:#64748b;margin-bottom:14px}
-      table{width:100%;border-collapse:collapse}
-      th,td{border:1px solid #ddd;padding:6px 8px}
-      th{background:#f1f5f9;text-align:left}
-      td.r{text-align:right;font-family:Consolas,monospace}
-      @media print{.no-print{display:none}}
-    </style>
-  </head><body>
-    <h1>${titulo}</h1>
-    <div class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')} · Registros: ${lista.length} · Utilizado: ${totalUtil.toFixed(3)} kg · Desperdício: ${totalPerd.toFixed(3)} kg · %: ${pct.toFixed(2)}%</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Data</th><th>Turno</th><th>OF</th><th>Máquina</th><th>Operador</th>
-          <th class="r">Utilizado (kg)</th><th class="r">Desperdiçado (kg)</th><th class="r">% Desp.</th><th>Causa</th><th>Obs</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${lista.map(r=>{
-          const util = Number(r.qtdUtilizadaKg)||0;
-          const perd = Number(r.qtdDesperdicadaKg)||0;
-          const p = util>0 ? (perd/util*100) : 0;
-          const maq = (MAQUINAS||[]).find(m=>(m.id||m.codigo)===(r.maqId||''));
-          const maqLbl = maq ? (maq.col||maq.nome||maq.id||r.maqId) : (r.maqId||'—');
-          return `<tr>
-            <td>${r.data||''}</td>
-            <td>${r.turno||''}</td>
-            <td>${r.ofNum||''}</td>
-            <td>${maqLbl}</td>
-            <td>${r.operador||''}</td>
-            <td class="r">${util.toFixed(3)}</td>
-            <td class="r">${perd.toFixed(3)}</td>
-            <td class="r">${p.toFixed(2)}%</td>
-            <td>${r.causaDesperdicio||''}</td>
-            <td>${r.obs||''}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    <div class="no-print" style="margin-top:18px">
-      <button onclick="window.print()" style="padding:8px 18px;background:#1e40af;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimir</button>
-    </div>
-  </body></html>`);
-  win.document.close();
-}
+  const win = window.open('','_blank','width=900,height=700'); 
+  win.document.write(`<!DOCTYPE html><html><head> 
+    <title>${titulo}</title> 
+    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:9pt} 
+    table{width:100%;border-collapse:collapse} 
+    th,td{padding:5px 8px;border:1px solid #ddd;text-align:left} 
+    th{background:#f1f5f9;font-weight:700} 
+    .kpi{display:inline-block;background:#f8fafc;border:1px solid #e2e8f0; 
+      border-radius:8px;padding:8px 14px;margin:4px;text-align:center} 
+    @media print{.no-print{display:none}}</style> 
+  </head><body> 
+    <h2>${titulo}</h2> 
+    <p style="color:#64748b;font-size:8pt">Gerado: ${new Date().toLocaleString('pt-BR')} · Italy Embalagens</p> 
+    <div style="margin:12px 0"> 
+      <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Utilizado</div> 
+        <div style="font-size:14pt;font-weight:800">${totalUtil.toFixed(1)} kg</div></div> 
+      <div class="kpi"><div style="font-size:8pt;color:#64748b">Total Desperdiçado</div> 
+        <div style="font-size:14pt;font-weight:800;color:#dc2626">${totalDesp.toFixed(1)} kg</div></div> 
+      <div class="kpi"><div style="font-size:8pt;color:#64748b">% Desperdício</div> 
+        <div style="font-size:14pt;font-weight:800;color:${pct>5?'#dc2626':'#16a34a'}">${pct.toFixed(2)}%</div></div> 
+      <div class="kpi"><div style="font-size:8pt;color:#64748b">Eficiência</div> 
+        <div style="font-size:14pt;font-weight:800;color:${pct<=5?'#16a34a':'#dc2626'}">${(100-pct).toFixed(2)}%</div></div> 
+    </div> 
+    <table> 
+      <thead><tr> 
+        <th>Data</th><th>OF</th><th>Máquina</th><th>Operador</th> 
+        <th>Utilizado (kg)</th><th>Desperdiçado (kg)</th> 
+        <th>% Desp.</th><th>Eficiência</th><th>Causa</th> 
+      </tr></thead> 
+      <tbody> 
+        ${DESPERDICIO.map(d => { 
+          const util = Number(d.qtdUtilizadaKg)||0;
+          const perd = Number(d.qtdDesperdicadaKg)||0;
+          const pctDesperdicio = util>0 ? (perd/util)*100 : 0;
+          const eficiencia = util>0 ? (100-pctDesperdicio) : 0;
+          const maq = MAQUINAS.find(m => (m.id||m.codigo) === d.maqId) || {col:d.maqId}; 
+          return `<tr> 
+            <td>${d.data}</td><td>${d.ofNum||'—'}</td><td>${maq.col}</td> 
+            <td>${d.operador||'—'}</td> 
+            <td style="text-align:right">${util.toFixed(3)}</td> 
+            <td style="text-align:right;color:#dc2626">${perd.toFixed(3)}</td> 
+            <td style="text-align:right;font-weight:700;color:${pctDesperdicio>5?'#dc2626':'#16a34a'}"> 
+              ${pctDesperdicio.toFixed(2)}%</td> 
+            <td style="text-align:right">${eficiencia.toFixed(2)}%</td> 
+            <td>${d.causaDesperdicio||'—'}</td> 
+          </tr>`; 
+        }).join('')} 
+      </tbody> 
+    </table> 
+    <div class="no-print" style="margin-top:20px"> 
+      <button onclick="window.print()" 
+        style="padding:8px 20px;background:#1e40af;color:#fff;border:none; 
+          border-radius:6px;cursor:pointer">🖨 Imprimir</button> 
+    </div> 
+  </body></html>`); 
+  win.document.close(); 
+} 
 
 // ===================== CONTAS A PAGAR / RECEBER =====================
 var CONTAS_PAGAR = [];
