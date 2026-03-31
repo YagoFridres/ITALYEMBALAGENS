@@ -965,13 +965,13 @@ const PERFIL_PERMISSOES = {
     podeExcluir: true, 
   }, 
   producao: { 
-    modulos: ['pcp','lancamento','apontamento','tablets','dashboard'], 
+    modulos: ['pcp','lancamento','apontamento','tablets'], 
     podeEditar: true, 
     podeCriar: false, 
     podeExcluir: false, 
   }, 
   estoque: { 
-    modulos: ['estoque','dashboard','compras','desperdicio'], 
+    modulos: ['estoque','facas1','cliches'], 
     podeEditar: true, 
     podeCriar: true, 
     podeExcluir: false, 
@@ -5704,46 +5704,38 @@ function initGlobalAutocomplete(){
 
 // ===================== LOGIN =====================
 var USERS = [
-  // Administradores — acesso total
-  { login:'MANO',  senha:'987654321', perfil:'admin', nome:'MANO'  },
-  { login:'SIDÃO', senha:'987654321', perfil:'admin', nome:'SIDÃO' },
-  { login:'SIDAO', senha:'987654321', perfil:'admin', nome:'SIDÃO' }, // alias sem acento
-  // Produção — somente módulos de produção
-  { login:'PRODUCAO', senha:'producao123', perfil:'producao', nome:'PRODUÇÃO' },
-  { login:'PRODUÇÃO', senha:'producao123', perfil:'producao', nome:'PRODUÇÃO' },
-  // Estoque — somente módulo de estoque
-  { login:'ESTOQUE', senha:'estoque123', perfil:'estoque_user', nome:'ESTOQUE' },
-  // Outros perfis existentes — mantidos para retrocompatibilidade
-  { login:'NOTAS FISCAIS',          senha:'987654321', perfil:'admin',      nome:'NOTAS FISCAIS' },
-  { login:'PCP',                    senha:'123456789', perfil:'pcp',        nome:'PCP' },
-  { login:'ARTE FINAL',             senha:'123456789', perfil:'artefinal',  nome:'ARTE FINAL' },
-  { login:'CONTROLE DE QUALIDADE',  senha:'123456789', perfil:'qualidade',  nome:'CQ' },
-  { login:'RISCADOR 01',            senha:'123456789', perfil:'riscador',   nome:'Riscador 01' },
+  { login:'MANO',    senha:'987654321', perfil:'admin',    nome:'MANO' },
+  { login:'SIDÃO',   senha:'987654321', perfil:'admin',    nome:'SIDÃO' },
+  { login:'SIDAO',   senha:'987654321', perfil:'admin',    nome:'SIDÃO' },
+  { login:'PRODUÇÃO',senha:'123456',    perfil:'producao', nome:'PRODUÇÃO' },
+  { login:'PRODUCAO',senha:'123456',    perfil:'producao', nome:'PRODUÇÃO' },
+  { login:'ESTOQUE', senha:'123456',    perfil:'estoque',  nome:'ESTOQUE' },
 ]; 
 var CURRENT_USER = null;
 
+function normalizeLogin(v){
+  return String(v||'')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+
 function applyPermissions(perfil){ 
   const allNav = document.querySelectorAll('.nav-item'); 
+  const sections = document.querySelectorAll('.sidebar-section');
+  const subgroups = document.querySelectorAll('.nav-subgroup');
   if(perfil === 'admin'){
     allNav.forEach(n => n.style.display = '');
-    document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = '');
+    sections.forEach(s => s.style.display = '');
+    subgroups.forEach(g => { g.style.display=''; g.classList.remove('fechado'); });
     return;
   }
   // Mapeamento de permissões por perfil
   const allowed = {
-    // PRODUÇÃO: apenas módulos de produção
-    producao: ['pcp', 'lancamento', 'apontamento', 'tablets', 'dashboard'],
-    // PCP: similar à produção
-    pcp: ['pcp', 'lancamento', 'apontamento', 'tablets', 'fluxos', 'maquinas'],
-    // ESTOQUE: apenas módulos de estoque
-    estoque_user: ['estoque', 'facas1', 'cliches', 'compras', 'fornecedores', 'dashboard'],
-    // ARTE FINAL
-    artefinal: ['pcp', 'lancamento', 'clientes', 'vendedores', 'nfe',
-    'orcamentos', 'tablets', 'apontamento', 'artefinal'],
-    // QUALIDADE
-    qualidade: ['operadores', 'qualidade', 'apontamento'],
-    // RISCADOR
-    riscador: ['tablets', 'apontamento', 'pcp', 'estoque'],
+    producao: ['pcp', 'lancamento', 'apontamento', 'tablets'],
+    estoque: ['estoque', 'facas1', 'cliches'],
+    estoque_user: ['estoque', 'facas1', 'cliches'],
   };
   const allowedPages = allowed[perfil] || [];
   allNav.forEach(n => {
@@ -5752,21 +5744,26 @@ function applyPermissions(perfil){
     const page = match ? match[1] : '';
     n.style.display = allowedPages.includes(page) ? '' : 'none';
   });
-  document.querySelectorAll('.sidebar-section').forEach(s => s.style.display = 'none');
-  // Reexibe labels das seções visíveis
-  allNav.forEach(n => {
-    if(n.style.display !== 'none'){
-      let sib = n.previousElementSibling;
-      while(sib){
-        if(sib.classList && sib.classList.contains('sidebar-section')){
-          sib.style.display = '';
-          break;
-        }
-        sib = sib.previousElementSibling;
-      }
-    }
+
+  subgroups.forEach(g=>{
+    const anyVisible = Array.from(g.querySelectorAll('.nav-item')).some(x => x.style.display !== 'none');
+    g.style.display = anyVisible ? '' : 'none';
+    if(anyVisible) g.classList.remove('fechado');
+    const header = document.getElementById('nav-header-' + g.id.replace('grupo-',''));
+    if(header) header.style.display = anyVisible ? '' : 'none';
   });
-  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true;
+
+  sections.forEach(s => s.style.display = 'none');
+  sections.forEach(s=>{
+    let el = s.nextElementSibling;
+    let has = false;
+    while(el && !(el.classList && el.classList.contains('sidebar-section'))){
+      if(el.classList && el.classList.contains('nav-item') && el.style.display !== 'none'){ has = true; break; }
+      el = el.nextElementSibling;
+    }
+    if(has) s.style.display = '';
+  });
+
   if(allowedPages.length > 0) _goBase(allowedPages[0]);
 } 
 
@@ -5829,34 +5826,13 @@ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded'
 else initDevice();
 
 function doLogin(){
-  const u=document.getElementById('login-user').value.trim().toUpperCase();
-  const p=document.getElementById('login-pass').value;
-  const found=USERS.find(x=>x.login===u&&x.senha===p);
-  if(found){
-    CURRENT_USER=found;
-    document.getElementById('login-screen').style.display='none';
-    // Update topbar user
-    const uname=document.getElementById('topbar-user-name');
-    const uico=document.getElementById('topbar-user-ico');
-    const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
-    if(uname) uname.textContent=found.nome;
-    if(uico)  uico.textContent=icons[found.perfil]||'👤';
-    applyPermissions(found.perfil);
-    gerarNotificacoes();
-    renderNotificacoes();
-    autoSaveLoad();
-    logAction('Login realizado','—');
-    toast('Bem-vindo, '+found.nome+' ✓');
-  } else {
-    document.getElementById('login-err').textContent='Login ou senha incorretos. Tente novamente.';
-    setTimeout(()=>{const e=document.getElementById('login-err');if(e)e.textContent='';},3000);
-  }
+  loginSubmit();
 }
 
 function selecionarUsuario(login){
   document.getElementById('login-user').value=login;
   document.querySelectorAll('.user-sel-btn').forEach(b=>b.classList.remove('selected'));
-  const btn=document.getElementById('ubtn-'+login);if(btn)btn.classList.add('selected');
+  const btn=document.getElementById('ubtn-'+normalizeLogin(login));if(btn)btn.classList.add('selected');
   const lbl=document.getElementById('login-sel-label');
   if(lbl)lbl.textContent='Usuário selecionado: '+login;
   document.getElementById('login-pass').focus();
@@ -5880,10 +5856,10 @@ function trocarUsuario(){
 // ===== BLOCO 1 — LOGIN & PERMISSÕES =====
 
 function loginSubmit() { 
-  const user  = (document.getElementById('login-user').value || '').trim().toUpperCase(); 
+  const user  = normalizeLogin(document.getElementById('login-user').value || ''); 
   const senha = (document.getElementById('login-pass').value || '').trim(); 
   const encontrado = USUARIOS.find(u => 
-    u.usuario.toUpperCase() === user && u.senha === senha && u.ativo 
+    normalizeLogin(u.usuario) === user && u.senha === senha && u.ativo 
   ); 
   if (!encontrado) { 
     const err = document.getElementById('login-err'); 
@@ -5901,7 +5877,7 @@ function loginSubmit() {
   document.getElementById('usuario-nome-badge').textContent = encontrado.nome; 
   document.getElementById('usuario-perfil-badge').textContent = encontrado.perfil; 
 
-  aplicarPermissoesMenu(); 
+  applyPermissions(encontrado.perfil); 
 
   const moduloPadrao = { admin:'dashboard', producao:'pcp', estoque:'estoque', vendas:'clientes' }; 
   go(moduloPadrao[encontrado.perfil] || 'dashboard'); 
@@ -5931,16 +5907,14 @@ function temPermissao(modulo, acao = 'ler') {
 } 
 
 function aplicarPermissoesMenu() { 
-  if (!USUARIO_LOGADO) return; 
-  const perms = PERFIL_PERMISSOES[USUARIO_LOGADO.perfil]; 
-  document.querySelectorAll('.nav-item[data-modulo]').forEach(item => { 
-    const mod = item.getAttribute('data-modulo'); 
-    item.style.display = perms.modulos.includes(mod) ? '' : 'none'; 
-  }); 
+  if (!USUARIO_LOGADO) return;
+  applyPermissions(USUARIO_LOGADO.perfil);
 } 
 
 const _goOriginal = typeof go === 'function' ? go : _goBase; 
 go = function(id) { 
+  const alias = { chapas:'estoque', facas:'facas1', cliches:'cliches' };
+  id = alias[id] || id;
   if (!USUARIO_LOGADO) { 
     document.getElementById('login-screen').style.display = 'flex'; 
     return; 
@@ -9250,7 +9224,7 @@ function gerarNotificacoes() {
 // Block access until login
 document.addEventListener('keydown',function(e){
   if(!CURRENT_USER&&document.getElementById('login-screen')&&document.getElementById('login-screen').style.display!=='none'){
-    if(e.key==='Enter'&&(document.activeElement.id==='login-user'||document.activeElement.id==='login-pass'))doLogin();
+    if(e.key==='Enter'&&(document.activeElement.id==='login-user'||document.activeElement.id==='login-pass'))loginSubmit();
   }
 });
 
@@ -9459,7 +9433,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-family:var(--mono)">Acesso rápido</div> 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"> 
         <button class="user-sel-btn" id="ubtn-MANO" onclick="selecionarUsuario('MANO')">👑 MANO</button> 
-        <button class="user-sel-btn" id="ubtn-SIDÃO" onclick="selecionarUsuario('SIDÃO')">👑 SIDÃO</button> 
+        <button class="user-sel-btn" id="ubtn-SIDAO" onclick="selecionarUsuario('SIDÃO')">👑 SIDÃO</button> 
+        <button class="user-sel-btn" id="ubtn-PRODUCAO" onclick="selecionarUsuario('PRODUÇÃO')">🏭 PRODUÇÃO</button> 
+        <button class="user-sel-btn" id="ubtn-ESTOQUE" onclick="selecionarUsuario('ESTOQUE')">📦 ESTOQUE</button> 
       </div> 
       <div id="login-sel-label" style="margin-top:8px;font-size:.68rem;color:var(--text2)"></div> 
     </div> 
