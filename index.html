@@ -5882,10 +5882,8 @@ function trocarUsuario(){
 function loginSubmit() { 
   const user  = normalizeLogin(document.getElementById('login-user').value || ''); 
   const senha = (document.getElementById('login-pass').value || '').trim(); 
-  const encontrado = USUARIOS.find(u => 
-    normalizeLogin(u.usuario) === user && u.senha === senha && u.ativo 
-  ); 
-  if (!encontrado) { 
+
+  if(user !== 'ITALY' || senha !== '123456789'){ 
     const err = document.getElementById('login-err'); 
     err.style.display = 'block'; 
     document.getElementById('login-pass').value = ''; 
@@ -5893,24 +5891,28 @@ function loginSubmit() {
     setTimeout(() => err.style.display = 'none', 3500); 
     return; 
   } 
-  USUARIO_LOGADO = encontrado; 
-  CURRENT_USER = { login: encontrado.usuario, senha: encontrado.senha, perfil: encontrado.perfil, nome: encontrado.nome, id: encontrado.id }; 
+
+  sessionStorage.setItem('italy_auth', '1'); 
+  USUARIO_LOGADO = { id:'ITALY', nome:'ITALY', usuario:'ITALY', perfil:'admin', ativo:true }; 
+  CURRENT_USER = { login:'ITALY', perfil:'admin', nome:'ITALY', id:'ITALY' }; 
+
   document.getElementById('login-screen').style.display = 'none'; 
   document.getElementById('login-err').style.display = 'none'; 
 
-  document.getElementById('usuario-nome-badge').textContent = encontrado.nome; 
-  document.getElementById('usuario-perfil-badge').textContent = encontrado.perfil; 
+  const nb = document.getElementById('usuario-nome-badge'); 
+  const pb = document.getElementById('usuario-perfil-badge'); 
+  if(nb) nb.textContent = 'ITALY'; 
+  if(pb) pb.textContent = 'admin'; 
 
-  applyPermissions(encontrado.perfil); 
-
-  const moduloPadrao = { admin:'dashboard', producao:'pcp', estoque:'estoque', vendas:'clientes' }; 
-  go(moduloPadrao[encontrado.perfil] || 'dashboard'); 
-
-  toast('✅ Bem-vindo, ' + encontrado.nome + '!', 'var(--green)'); 
+  applyPermissions('admin'); 
+  autoSaveLoad().catch(()=>null); 
+  go('dashboard'); 
 } 
 
 function logoutUsuario() { 
   if (!confirm('Deseja sair do sistema?')) return; 
+  sessionStorage.removeItem('italy_auth');
+  localStorage.removeItem('italy_auth');
   USUARIO_LOGADO = null; 
   CURRENT_USER = null; 
   document.getElementById('login-screen').style.display = 'flex'; 
@@ -5920,14 +5922,7 @@ function logoutUsuario() {
 } 
 
 function temPermissao(modulo, acao = 'ler') { 
-  if (!USUARIO_LOGADO) return false; 
-  const perms = PERFIL_PERMISSOES[USUARIO_LOGADO.perfil]; 
-  if (!perms) return false; 
-  if (!perms.modulos.includes(modulo)) return false; 
-  if (acao === 'editar'  && !perms.podeEditar)  return false; 
-  if (acao === 'criar'   && !perms.podeCriar)   return false; 
-  if (acao === 'excluir' && !perms.podeExcluir) return false; 
-  return true; 
+  return sessionStorage.getItem('italy_auth') === '1' && !!modulo; 
 } 
 
 function aplicarPermissoesMenu() { 
@@ -5943,10 +5938,6 @@ go = function(id) {
     document.getElementById('login-screen').style.display = 'flex'; 
     return; 
   } 
-  if (!temPermissao(id)) { 
-    toast('🔒 Sem permissão para acessar este módulo', 'var(--red)'); 
-    return; 
-  } 
   _goOriginal(id); 
 }; 
 
@@ -5959,6 +5950,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const u = document.getElementById('login-user'); 
     if (u) u.focus(); 
   }, 200); 
+
+  if(sessionStorage.getItem('italy_auth') === '1'){
+    USUARIO_LOGADO = { id:'ITALY', nome:'ITALY', usuario:'ITALY', perfil:'admin', ativo:true };
+    CURRENT_USER = { login:'ITALY', perfil:'admin', nome:'ITALY', id:'ITALY' };
+    const ls = document.getElementById('login-screen');
+    if(ls) ls.style.display = 'none';
+    const nb = document.getElementById('usuario-nome-badge');
+    const pb = document.getElementById('usuario-perfil-badge');
+    if(nb) nb.textContent = 'ITALY';
+    if(pb) pb.textContent = 'admin';
+    applyPermissions('admin');
+    autoSaveLoad().catch(()=>null);
+    setTimeout(()=>go('dashboard'), 0);
+  } else {
+    const u = document.getElementById('login-user');
+    if(u && !u.value) u.value = 'italy';
+  }
 }); 
 
 // ===================== API CLIENT — BANCO CENTRAL =====================
@@ -5969,29 +5977,119 @@ document.addEventListener('DOMContentLoaded', function() {
 // Se o index.html for aberto pelo servidor (http://IP:3000), usa a mesma origem.
 // Se aberto como arquivo local (file://), usa localhost:3000.
 const API_BASE = (location.protocol === 'file:' ? 'http://localhost:3000' : location.origin);
-const SUPABASE_URL = 'https://ubygjqxkflfachtologdw.supabase.co'; 
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVieWdqcXhrZmxmYWNodGxvZ2R3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ3Mzc1MDMsImV4cCI6MjA5MDMxMzUwM30.hMwfWjTyVCYTirwvUeStnx41LipTNizAxdimH2mjtfI'; 
-const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); 
+const SUPABASE_URL = 'https://SEU_PROJETO.supabase.co';
+const SUPABASE_ANON_KEY = 'SUA_CHAVE_PUBLICA';
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 var autoSaveTimer = null; 
 var _sbConectado  = false; 
 var _apiConectado = false;
 const LS_KEY = 'pcpro_v5_data'; 
   
-async function sbGet(tabela){ 
-   try{ 
-     const { data, error } = await _sb.from(tabela).select('*'); 
-     if(error) throw error; 
-     return { ok:true, data }; 
-   }catch(e){ return { ok:false, error:e.message }; } 
- } 
-  
- async function sbUpsert(tabela, rows){ 
-   try{ 
-     const { error } = await _sb.from(tabela).upsert(rows, {onConflict:'id'}); 
-     if(error) throw error; 
-     return { ok:true }; 
-   }catch(e){ return { ok:false, error:e.message }; } 
- } 
+function _nowIso(){ return new Date().toISOString(); }
+function _hasSupabaseCfg(){
+  return SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_URL.includes('SEU_PROJETO') && !SUPABASE_ANON_KEY.includes('SUA_CHAVE');
+}
+
+async function supabaseSave(tabela, id, objeto){
+  const { error } = await supabaseClient.from(tabela).upsert({ id: String(id), dados: objeto, updated_at: _nowIso() });
+  if(error) throw error;
+}
+
+async function supabaseDelete(tabela, id){
+  const { error } = await supabaseClient.from(tabela).delete().eq('id', String(id));
+  if(error) throw error;
+}
+
+async function supabaseLoad(tabela){
+  const { data, error } = await supabaseClient.from(tabela).select('*');
+  if(error) throw error;
+  return (data || []).map(r => r.dados);
+}
+
+async function supabaseConfigGet(chave){
+  const { data, error } = await supabaseClient.from('erp_config').select('*').eq('chave', String(chave)).limit(1);
+  if(error) throw error;
+  return (data && data[0]) ? data[0].valor : null;
+}
+
+async function supabaseConfigSet(chave, valor){
+  const { error } = await supabaseClient.from('erp_config').upsert({ chave: String(chave), valor, updated_at: _nowIso() });
+  if(error) throw error;
+}
+
+function _rowId(obj){
+  if(!obj) return String(Date.now());
+  if(obj.id !== undefined && obj.id !== null && obj.id !== '') return String(obj.id);
+  if(obj.seq !== undefined && obj.seq !== null) return String(obj.seq);
+  if(obj.of !== undefined && obj.of !== null) return String(obj.of);
+  return String(Date.now());
+}
+
+const SB_MAP = [
+  { table:'erp_ofs',           get:()=>OFs,          set:(v)=>{OFs=v||[];} },
+  { table:'erp_clientes',      get:()=>CLIENTES,     set:(v)=>{CLIENTES=v||[];} },
+  { table:'erp_fornecedores',  get:()=>FORNECEDORES, set:(v)=>{FORNECEDORES=v||[];} },
+  { table:'erp_compras',       get:()=>COMPRAS,      set:(v)=>{COMPRAS=v||[];} },
+  { table:'erp_orcamentos',    get:()=>ORCAMENTOS,   set:(v)=>{ORCAMENTOS=v||[];} },
+  { table:'erp_notas_fiscais', get:()=>NOTAS_FISCAIS,set:(v)=>{NOTAS_FISCAIS=v||[];} },
+  { table:'erp_chapas',        get:()=>ESTOQUE,      set:(v)=>{ESTOQUE=v||[];} },
+  { table:'erp_entregas',      get:()=>ENTREGAS,     set:(v)=>{ENTREGAS=v||[];} },
+  { table:'erp_motoristas',    get:()=>MOTORISTAS,   set:(v)=>{MOTORISTAS=v||[];} },
+  { table:'erp_vendedores',    get:()=>VENDEDORES,   set:(v)=>{VENDEDORES=v||[];} },
+  { table:'erp_operadores',    get:()=>OPERADORES,   set:(v)=>{OPERADORES=v||[];} },
+  { table:'erp_apontamentos',  get:()=>APONTAMENTOS, set:(v)=>{APONTAMENTOS=v||[];} },
+  { table:'erp_fluxos',        get:()=>FLUXOS,       set:(v)=>{FLUXOS=v||[];} },
+  { table:'erp_empresas',      get:()=>EMPRESAS,     set:(v)=>{ try{ EMPRESAS.length=0; (v||[]).forEach(x=>EMPRESAS.push(x)); }catch(e){} } },
+];
+
+async function supabaseBootstrap(){
+  if(!_hasSupabaseCfg()) throw new Error('Configure SUPABASE_URL e SUPABASE_ANON_KEY');
+  for(const m of SB_MAP){
+    const { data, error } = await supabaseClient.from(m.table).select('id').limit(1);
+    if(error) throw error;
+    if((data||[]).length === 0){
+      const seed = (m.get()||[]).map(obj => ({ id:_rowId(obj), dados: obj, updated_at:_nowIso() }));
+      if(seed.length){
+        const { error: e2 } = await supabaseClient.from(m.table).upsert(seed);
+        if(e2) throw e2;
+      }
+    }
+    const loaded = await supabaseLoad(m.table);
+    m.set(loaded);
+  }
+
+  const seqKeys = ['CMP_SEQ','ORC_SEQ','OP_SEQ','IC_SEQ','FORN_SEQ','NF_SEQ','VISITAS_SEQ','DESP_SEQ'];
+  for(const k of seqKeys){
+    const v = await supabaseConfigGet(k).catch(()=>null);
+    if(v === null || v === undefined){
+      try{ await supabaseConfigSet(k, window[k]); }catch(e){}
+    }else{
+      window[k] = v;
+    }
+  }
+  _sbConectado = true;
+}
+
+let _supabaseSyncTimer = null;
+function supabaseSyncAll(){
+  if(!_hasSupabaseCfg()) return Promise.resolve();
+  return (async ()=>{
+    for(const m of SB_MAP){
+      const rows = (m.get()||[]).map(obj => ({ id:_rowId(obj), dados: obj, updated_at:_nowIso() }));
+      if(rows.length){
+        const { error } = await supabaseClient.from(m.table).upsert(rows);
+        if(error) throw error;
+      }
+    }
+    const seqKeys = ['CMP_SEQ','ORC_SEQ','OP_SEQ','IC_SEQ','FORN_SEQ','NF_SEQ','VISITAS_SEQ','DESP_SEQ'];
+    await Promise.all(seqKeys.map(k => supabaseConfigSet(k, window[k]).catch(()=>null)));
+  })();
+}
+
+function supabaseSyncTrigger(){
+  clearTimeout(_supabaseSyncTimer);
+  _supabaseSyncTimer = setTimeout(()=>{ supabaseSyncAll().catch(()=>null); }, 800);
+}
   
 async function api(method, path, body){
   try{
@@ -6280,29 +6378,15 @@ async function autoSaveNow(silent){
     const dados = buildDataSnapshot(); 
     localStorage.setItem(LS_KEY, JSON.stringify(dados)); 
   }catch(e){} 
-  if(!_sbConectado){ if(!silent) showSaveIndicator('⚠ local','var(--orange)'); return; } 
-  try{ 
-    if(OFs.length) await sbUpsert('ordens_fabricacao', OFs.map(o=>({id:o.id||undefined,numero_of:o.of,sequencia:o.seq,cliente_id:o.cliId||null,vendedor_id:o.vendId||null,quantidade:o.qtd||0,dia_programado:o.dia||null,data_entrega:o.ent||null,fluxo_codigo:o.fluxo||null,maq:JSON.stringify(o.maq||[]),status:o.status||'Em aberto',urgente:!!o.urg,chapa_codigo:o.chp||null,quantidade_chapa:o.qchp||0,valor_total:o.val||0,valor_unit:o.vunit||0,pagto:o.pagto||null,observacoes:o.obs||null,imgs:JSON.stringify(o.imgs||[]),emp_id:o.empId||null,prod_desc:o.prodDesc||null,estoque_baixado:!!o._estoqueBaixado,estoque_baixado_na_criacao:!!o._estoqueJaBaixadoCriacao}))); 
 
-    if(CLIENTES.length) await sbUpsert('clientes', CLIENTES.map(c=>({id:c.id||undefined,nome:c.nome,razao_social:c.rs||null,documento:c.cnpj||null,telefone:c.tel||null,email:c.email||null,cidade:c.cidade||null,uf:c.uf||null,endereco:c.end||null,ramo:c.ramo||null,pagto:c.pagto||null,rep:c.rep||null,ie:c.ie||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
+  if(_hasSupabaseCfg()){
+    _sbConectado = true;
+    supabaseSyncTrigger();
+    if(!silent) showSaveIndicator('✓ salvo','var(--green)');
+    return;
+  }
 
-    if(ESTOQUE.length) await sbUpsert('chapas_estoque', ESTOQUE.map(e=>({id:e.id||undefined,forn:e.forn||null,nom:e.nom||null,tam:e.tam||null,comp:e.comp||0,larg:e.larg||0,nome:e.nome||'',qual:e.qual||null,cnpj:e.cnpj||null,nf:e.nf||null,qtd:e.qtd||0,val:e.val||0,min:e.min||0,vincada:!!e.vincada,vincos:e.vincos||null,emp_id:e.empId||null}))); 
-
-    if(FACAS_1.length) await sbUpsert('facas_estoque', FACAS_1.map(f=>({id:f.id||undefined,codigo:f.id,nome:f.nome||'',medidas:f.medidas||null,maquinas:f.maquinas||[],valor_unitario:f.valor||0,obs:f.obs||null,clientes:f.clientes||[],foto_url:f.foto||null,emp_id:f.empId||null}))); 
-
-    if(CLICHES.length) await sbUpsert('cliches_estoque', CLICHES.map(c=>({id:c.id||undefined,codigo:c.id,nome:c.nome||'',medidas:c.medidas||null,maquinas:c.maquinas||[],valor_unitario:c.valor||0,obs:c.obs||null,clientes:c.clientes||[],foto_url:c.foto||null,emp_id:c.empId||null}))); 
-
-    if(CONTAS_PAGAR.length) await sbUpsert('contas_pagar', CONTAS_PAGAR.map(c=>({id:c.id||undefined,descricao:c.descricao||'',categoria:c.categoria||'Outro',valor:c.valor||0,vencimento:c.venc||null,data_pagamento:c.pgto||null,status:c.status||'Pendente',numero_nf:c.nf||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
-
-    if(CONTAS_RECEBER.length) await sbUpsert('contas_receber', CONTAS_RECEBER.map(c=>({id:c.id||undefined,descricao:c.descricao||'',categoria:c.categoria||'Outro',valor:c.valor||0,vencimento:c.venc||null,data_recebimento:c.receb||null,status:c.status||'Pendente',numero_nf:c.nf||null,observacoes:c.obs||null,emp_id:c.empId||null}))); 
-
-    if(ORCAMENTOS.length) await sbUpsert('orcamentos', ORCAMENTOS.map(o=>({id:o.id||undefined,numero_orcamento:o.id||String(Date.now()),cliente_id:o.cliId||null,vendedor_id:o.vendId||null,titulo:o.prod||null,quantidade:o.qtd||0,subtotal:o.vtot||0,total:o.vtot||0,status:o.status||'Em aberto',observacoes:o.obs||null,comprimento_mm:o.comp||null,largura_mm:o.larg||null,altura_mm:o.alt||null,emp_id:o.empId||null,data_orcamento:o.data||null}))); 
-
-    if(!silent) showSaveIndicator('✓ salvo','var(--green)'); 
-  }catch(e){ 
-    console.warn('Erro Supabase save:', e.message); 
-    showSaveIndicator('⚠ erro sync','var(--red)'); 
-  } 
+  if(!silent) showSaveIndicator('⚠ local','var(--orange)');
 }
 
 function autoSaveTrigger(label){ 
@@ -6311,29 +6395,31 @@ function autoSaveTrigger(label){
   autoSaveTimer = setTimeout(()=>autoSaveNow(false), 600); 
 }
 
-function autoSaveLoad(){
+async function autoSaveLoad(){
+  showSaveIndicator('Carregando...','var(--yellow)');
+  if(_hasSupabaseCfg()){
+    try{
+      await supabaseBootstrap();
+      showSaveIndicator('✓ online','var(--green)');
+    }catch(e){
+      showSaveIndicator('⚠ offline','var(--orange)');
+    }
+  }else{
+    showSaveIndicator('⚠ sem Supabase','var(--orange)');
+  }
+
   try {
     const raw = localStorage.getItem(LS_KEY);
     if(raw){
       const d = JSON.parse(raw);
       applyDataSnapshot(d, {force:true, silent:true});
-      const ago = Math.round((Date.now()-(d.ts||Date.now()))/1000);
-      showSaveIndicator('✓ dados carregados','var(--green)');
-      toast(`✓ Dados restaurados (${ago}s atrás)`,'var(--teal)');
-    } else {
-      showSaveIndicator('✓ pronto','var(--green)');
-      toast('✓ Sistema iniciado com dados padrão','var(--text2)');
     }
-  } catch(e){
-    console.warn('Erro ao carregar localStorage:', e);
-    showSaveIndicator('⚠ erro load','var(--red)');
-  }
+  } catch(e){}
+
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
   try{ renderPCP(); }catch(e){}
   try{ updateBadges(); }catch(e){}
   try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
-
-  setupRealtimeSync();
   _tentarCarregarServidor();
 }
 
@@ -9454,12 +9540,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         onblur="this.style.borderColor='var(--border)'"> 
     </div> 
     <div style="margin:-4px 0 14px"> 
-      <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-family:var(--mono)">Acesso rápido</div> 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"> 
-        <button class="user-sel-btn" id="ubtn-MANO" onclick="selecionarUsuario('MANO')">👑 MANO</button> 
-        <button class="user-sel-btn" id="ubtn-SIDAO" onclick="selecionarUsuario('SIDÃO')">👑 SIDÃO</button> 
-        <button class="user-sel-btn" id="ubtn-PRODUCAO" onclick="selecionarUsuario('PRODUÇÃO')">🏭 PRODUÇÃO</button> 
-        <button class="user-sel-btn" id="ubtn-ESTOQUE" onclick="selecionarUsuario('ESTOQUE')">📦 ESTOQUE</button> 
+      <div style="font-size:.65rem;color:var(--text3);margin-bottom:8px;font-family:var(--mono)">Acesso</div> 
+      <div style="display:grid;grid-template-columns:1fr;gap:10px"> 
+        <button class="user-sel-btn" id="ubtn-ITALY" onclick="selecionarUsuario('italy')">👑 ITALY</button> 
       </div> 
       <div id="login-sel-label" style="margin-top:8px;font-size:.68rem;color:var(--text2)"></div> 
     </div> 
