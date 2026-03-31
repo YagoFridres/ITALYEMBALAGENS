@@ -73,13 +73,13 @@ let _supabaseEnvOk = true;
 const _supabaseMissing = [];
 
 if (!supabaseUrl) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_URL'); }
-if (!supabaseKey) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_KEY'); }
+if (!supabaseKey) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_KEY ou SUPABASE_ANON_KEY'); }
 
 if (!_supabaseEnvOk) {
   console.error('Erro: variáveis do Supabase ausentes.');
   console.error('Esperado no ambiente (TRAE/deploy):');
   console.error('- SUPABASE_URL');
-  console.error('- SUPABASE_SERVICE_ROLE_KEY (recomendado) ou SUPABASE_KEY');
+  console.error('- SUPABASE_SERVICE_ROLE_KEY (recomendado) ou SUPABASE_KEY ou SUPABASE_ANON_KEY');
   console.error('- (fallback) SUPABASE_ANON_KEY');
   console.error('Faltando:', _supabaseMissing.join(', '));
   console.error('Status detectado:');
@@ -88,6 +88,7 @@ if (!_supabaseEnvOk) {
   console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
   console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
   console.error('index.html fallback:', !!frontSb);
+  process.exit(1);
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
   console.log('✅ Supabase conectado:', supabaseUrl);
@@ -95,8 +96,9 @@ if (!_supabaseEnvOk) {
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '4mb' }));
-app.use(express.static(path.join(__dirname)));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
@@ -122,8 +124,13 @@ function ok(res, data) {
   res.json({ ok: true, data });
 }
 
+function err(res, e) {
+  console.error(e);
+  res.json({ ok: false, error: String(e) });
+}
+
 function bad(res, error) {
-  res.json({ ok: false, error: String(error || 'Erro') });
+  err(res, error);
 }
 
 async function selectAll(table, orderBy) {
@@ -184,30 +191,78 @@ app.delete('/api/ofs/:id', async (req, res) => {
   try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
 });
 
+// ══════════════════════════════════════════════════════════════
+// CLIENTES
+// ══════════════════════════════════════════════════════════════
 app.get('/api/clientes', async (req, res) => {
-  try { ok(res, await selectAll('clientes', 'created_at')); } catch (e) { bad(res, e.message); }
-});
-app.post('/api/clientes', async (req, res) => {
-  try { ok(res, await insertOne('clientes', clientesIn(req.body || {}))); } catch (e) { bad(res, e.message); }
-});
-app.put('/api/clientes/:id', async (req, res) => {
-  try { ok(res, await updateOne('clientes', req.params.id, clientesIn(req.body || {}))); } catch (e) { bad(res, e.message); }
-});
-app.delete('/api/clientes/:id', async (req, res) => {
-  try { await deleteOne('clientes', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('clientes').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
 
+app.post('/api/clientes', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('clientes').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/clientes/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('clientes')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/clientes/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('clientes').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// VENDEDORES
+// ══════════════════════════════════════════════════════════════
 app.get('/api/vendedores', async (req, res) => {
-  try { ok(res, await selectAll('vendedores', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('vendedores').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/vendedores', async (req, res) => {
-  try { ok(res, await insertOne('vendedores', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('vendedores').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
+
 app.put('/api/vendedores/:id', async (req, res) => {
-  try { ok(res, await updateOne('vendedores', req.params.id, req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('vendedores')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
+
 app.delete('/api/vendedores/:id', async (req, res) => {
-  try { await deleteOne('vendedores', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+  try {
+    const { error } = await supabase.from('vendedores').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
 });
 
 app.get('/api/orcamentos', async (req, res) => {
@@ -223,76 +278,305 @@ app.delete('/api/orcamentos/:id', async (req, res) => {
   try { await deleteOne('orcamentos', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
 });
 
+// ══════════════════════════════════════════════════════════════
+// APONTAMENTOS
+// ══════════════════════════════════════════════════════════════
 app.get('/api/apontamentos', async (req, res) => {
-  try { ok(res, await selectAll('apontamentos', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('apontamentos')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/apontamentos', async (req, res) => {
-  try { ok(res, await insertOne('apontamentos', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('apontamentos').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
+app.put('/api/apontamentos/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('apontamentos')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// OPERADORES
+// ══════════════════════════════════════════════════════════════
 app.get('/api/operadores', async (req, res) => {
-  try { ok(res, await selectAll('operadores', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('operadores').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/operadores', async (req, res) => {
-  try { ok(res, await insertOne('operadores', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('operadores').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
+app.put('/api/operadores/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('operadores')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/operadores/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('operadores').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// MÁQUINAS
+// ══════════════════════════════════════════════════════════════
 app.get('/api/maquinas', async (req, res) => {
-  try { ok(res, await selectAll('maquinas', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('maquinas').select('*');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/maquinas', async (req, res) => {
-  try { ok(res, await insertOne('maquinas', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('maquinas').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
+app.put('/api/maquinas/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('maquinas')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// COMPRAS
+// ══════════════════════════════════════════════════════════════
 app.get('/api/compras', async (req, res) => {
-  try { ok(res, await selectAll('compras', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('compras')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/compras', async (req, res) => {
-  try { ok(res, await insertOne('compras', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('compras').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
+app.put('/api/compras/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('compras')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/compras/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('compras').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// FORNECEDORES
+// ══════════════════════════════════════════════════════════════
 app.get('/api/fornecedores', async (req, res) => {
-  try { ok(res, await selectAll('fornecedores', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('fornecedores').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/fornecedores', async (req, res) => {
-  try { ok(res, await insertOne('fornecedores', fornecedoresIn(req.body || {}))); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('fornecedores').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
+app.put('/api/fornecedores/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('fornecedores')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/fornecedores/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('fornecedores').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// INCONFORMIDADES
+// ══════════════════════════════════════════════════════════════
 app.get('/api/inconformidades', async (req, res) => {
-  try { ok(res, await selectAll('inconformidades', 'created_at')); } catch (e) { bad(res, e.message); }
-});
-app.post('/api/inconformidades', async (req, res) => {
-  try { ok(res, await insertOne('inconformidades', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('inconformidades')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
 
-app.get('/api/notas_fiscais', async (req, res) => {
-  try { ok(res, await selectAll('notas_fiscais', 'created_at')); } catch (e) { bad(res, e.message); }
+app.post('/api/inconformidades', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('inconformidades').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
+
+app.put('/api/inconformidades/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('inconformidades')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/inconformidades/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('inconformidades').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// NOTAS FISCAIS
+// ══════════════════════════════════════════════════════════════
+app.get('/api/notas_fiscais', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('notas_fiscais')
+      .select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
 app.post('/api/notas_fiscais', async (req, res) => {
-  try { ok(res, await insertOne('notas_fiscais', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const payload = { ...req.body };
+    if(Array.isArray(payload.itens)) payload.itens = JSON.stringify(payload.itens);
+    const { data, error } = await supabase.from('notas_fiscais').insert([payload]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/notas_fiscais/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    if(Array.isArray(payload.itens)) payload.itens = JSON.stringify(payload.itens);
+    const { data, error } = await supabase.from('notas_fiscais')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/notas_fiscais/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('notas_fiscais').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
 });
 
 app.get('/api/estoque', async (req, res) => {
-  try { ok(res, await selectAll('estoque', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('estoque').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('estoque').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/estoque/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('estoque')
+      .update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/estoque/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('estoque').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
 });
 
 app.get('/api/hist_estoque', async (req, res) => {
-  try { ok(res, await selectAll('hist_estoque', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const { data, error } = await supabase.from('hist_estoque')
+      .select('*').order('created_at', { ascending: false }).limit(500);
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
 });
+
 app.post('/api/hist_estoque', async (req, res) => {
   try {
-    const p = req.body || {};
-    const row = {
-      tipo: p.tipo || '',
-      chp: p.item_id || p.chp || '',
-      qtd: Number(p.qtd || 0),
-      of_num: p.of_num || '',
-      data: p.data || new Date().toISOString().slice(0, 10),
-      obs: p.motivo || p.obs || '',
-      emp_id: p.emp_id || '',
-    };
-    ok(res, await insertOne('hist_estoque', row));
-  } catch (e) { bad(res, e.message); }
+    const { data, error } = await supabase.from('hist_estoque').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
 });
 
 app.post('/api/log', async (req, res) => {
