@@ -38,11 +38,35 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_KEY) 
   process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY;
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+function extractFrontSupabaseConfig() {
+  try {
+    const htmlPath = path.join(__dirname, 'index.html');
+    if (!fs.existsSync(htmlPath)) return null;
+    const raw = fs.readFileSync(htmlPath, 'utf8');
+    const urlMatch = raw.match(/\bconst\s+SUPABASE_URL\s*=\s*(['"`])([^'"`]+)\1/);
+    const keyMatch = raw.match(/\bconst\s+SUPABASE_KEY\s*=\s*(['"`])([^'"`]+)\1/);
+    const url = urlMatch ? String(urlMatch[2] || '').trim() : '';
+    const key = keyMatch ? String(keyMatch[2] || '').trim() : '';
+    if (!url || !key) return null;
+    if (url.includes('SEU_PROJETO') || key.includes('SUA_CHAVE')) return null;
+    return { url, key };
+  } catch (e) {
+    return null;
+  }
+}
+
+const frontSb = extractFrontSupabaseConfig();
+const supabaseUrl = process.env.SUPABASE_URL || (frontSb ? frontSb.url : null);
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  (frontSb ? frontSb.key : null);
 const supabaseKeySource = process.env.SUPABASE_SERVICE_ROLE_KEY
   ? 'SUPABASE_SERVICE_ROLE_KEY'
-  : (process.env.SUPABASE_KEY ? 'SUPABASE_KEY' : null);
+  : (process.env.SUPABASE_KEY
+    ? 'SUPABASE_KEY'
+    : (process.env.SUPABASE_ANON_KEY ? 'SUPABASE_ANON_KEY' : (frontSb ? 'index.html:SUPABASE_KEY' : null)));
 
 let supabase = null;
 let _supabaseEnvOk = true;
@@ -56,13 +80,17 @@ if (!_supabaseEnvOk) {
   console.error('Esperado no ambiente (TRAE/deploy):');
   console.error('- SUPABASE_URL');
   console.error('- SUPABASE_SERVICE_ROLE_KEY (recomendado) ou SUPABASE_KEY');
+  console.error('- (fallback) SUPABASE_ANON_KEY');
   console.error('Faltando:', _supabaseMissing.join(', '));
   console.error('Status detectado:');
   console.error('SUPABASE_URL:', !!supabaseUrl);
   console.error('SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY);
   console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
+  console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
+  console.error('index.html fallback:', !!frontSb);
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('✅ Supabase conectado:', supabaseUrl);
 }
 
 const app = express();
@@ -82,6 +110,8 @@ app.get('/api/health', (req, res) => {
       url: !!supabaseUrl,
       hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
       hasKey: !!process.env.SUPABASE_KEY,
+      hasAnonKey: !!process.env.SUPABASE_ANON_KEY,
+      hasIndexHtmlFallback: !!frontSb,
       keySource: supabaseKeySource,
       missing: _supabaseMissing,
     },
