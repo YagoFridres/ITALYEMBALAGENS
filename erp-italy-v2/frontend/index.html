@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Italy Embalagens — ERP V2</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="login" class="login">
+        <div class="login-card">
+          <div class="login-title">Italy Embalagens</div>
+          <div class="login-sub">ERP / PCP V2</div>
+          <div class="login-form">
+            <label class="lbl" for="login-email">E-mail</label>
+            <input id="login-email" class="in" type="email" autocomplete="username" placeholder="seu@email.com" />
+            <label class="lbl" for="login-pass">Senha</label>
+            <input id="login-pass" class="in" type="password" autocomplete="current-password" placeholder="••••••••" />
+            <button id="login-btn" class="btn btn-primary" type="button">Entrar</button>
+            <div id="login-err" class="err" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="shell" class="shell" style="display:none">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-title">ITALY</div>
+            <div class="brand-sub">ERP V2</div>
+          </div>
+
+          <nav id="nav" class="nav"></nav>
+
+          <div class="sidebar-footer">
+            <div class="user-badge" id="user-badge">—</div>
+            <button id="logout-btn" class="btn btn-ghost" type="button">Sair</button>
+          </div>
+        </aside>
+
+        <main class="main">
+          <header class="topbar">
+            <div class="topbar-left">
+              <button id="mob-menu-btn" class="btn btn-ghost" type="button">☰</button>
+              <div id="route-title" class="route-title">Dashboard</div>
+            </div>
+            <div class="topbar-right">
+              <div id="sync-pill" class="pill">Offline</div>
+            </div>
+          </header>
+          <section id="view" class="view"></section>
+        </main>
+      </div>
+    </div>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
