@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Rebuild — Dashboard</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="navbar">
+        <div class="brand">Project Rebuild</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div id="rt" class="badge">Realtime</div>
+          <button id="logout" class="button button-danger" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="font-weight:1000;">Items</div>
+            <div class="badge" id="count">0</div>
+            <div style="flex:1;"></div>
+            <button id="add" class="button" type="button">Add New Item</button>
+          </div>
+          <div style="height:12px;"></div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Description</th>
+                  <th>Status</th>
+                  <th>Created At</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-weight:1000;">Session</div>
+          <div style="margin-top:10px;color:rgba(230,237,247,.72);font-weight:900;">Token status</div>
+          <div style="margin-top:10px;font-family:var(--mono);font-size:.82rem;color:rgba(230,237,247,.86);word-break:break-all;" id="token-preview"></div>
+          <div style="height:12px;"></div>
+          <div id="dash-err" class="inline-error" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-head">
+          <div class="modal-title" id="modal-title">Add Item</div>
+          <button class="close" id="modal-close" type="button">✕</button>
+        </div>
+        <div id="modal-err" class="inline-error" style="display:none;"></div>
+        <div class="form">
+          <div class="label">Title</div>
+          <input id="f-title" class="input" type="text" />
+          <div class="label">Description</div>
+          <textarea id="f-desc" class="input" rows="3"></textarea>
+          <div class="label">Status</div>
+          <select id="f-status" class="input">
+            <option value="active">active</option>
+            <option value="inactive">inactive</option>
+          </select>
+          <button id="save" class="button" type="button">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function qs(id){ return document.getElementById(id); }
+
+      function getToken(){
+        try { return localStorage.getItem('token'); } catch(e){ return null; }
+      }
+
+      function authHeaders(){
+        const t = getToken();
+        return { Authorization: 'Bearer ' + (t || ''), 'Content-Type': 'application/json' };
+      }
+
+      function redirectIfNoToken(){
+        const t = getToken();
+        if(!t) window.location.href = '/index.html';
+      }
+
+      function showDashErr(msg){
+        const el = qs('dash-err');
+        if(!msg){ el.style.display='none'; el.textContent=''; return; }
+        el.textContent = String(msg);
+        el.style.display = 'block';
+      }
+
+      function showModalErr(msg){
+        const el = qs('modal-err');
+        if(!msg){ el.style.display='none'; el.textContent=''; return; }
+        el.textContent = String(msg);
+        el.style.display = 'block';
+      }
+
+      function openModal(mode, item){
+        showModalErr('');
+        qs('modal').classList.add('open');
+        qs('modal-title').textContent = mode === 'edit' ? 'Edit Item' : 'Add Item';
+        qs('f-title').value = item ? (item.title || '') : '';
+        qs('f-desc').value = item ? (item.description || '') : '';
+        qs('f-status').value = item ? (item.status || 'active') : 'active';
+        qs('save').dataset.mode = mode;
+        qs('save').dataset.id = item ? item.id : '';
+      }
+
+      function closeModal(){
+        qs('modal').classList.remove('open');
+      }
+
+      async function apiGet(path){
+        const resp = await fetch(path, { headers: authHeaders() });
+        const json = await resp.json().catch(()=>null);
+        if(!resp.ok) throw new Error((json && (json.error||json.message)) || resp.statusText);
+        return json;
+      }
+
+      async function apiSend(method, path, body){
+        const resp = await fetch(path, { method, headers: authHeaders(), body: JSON.stringify(body || {}) });
+        const json = await resp.json().catch(()=>null);
+        if(!resp.ok) throw new Error((json && (json.error||json.message)) || resp.statusText);
+        return json;
+      }
+
+      function formatTs(v){
+        try { return new Date(v).toLocaleString(); } catch(e){ return String(v||''); }
+      }
+
+      function renderRows(items){
+        const tb = qs('tbody');
+        tb.innerHTML = '';
+        qs('count').textContent = String(items.length);
+        items.forEach((it)=>{
+          const tr = document.createElement('tr');
+          const td1 = document.createElement('td'); td1.textContent = it.title || '';
+          const td2 = document.createElement('td'); td2.textContent = it.description || '';
+          const td3 = document.createElement('td'); td3.textContent = it.status || '';
+          const td4 = document.createElement('td'); td4.textContent = formatTs(it.created_at);
+          const td5 = document.createElement('td'); td5.style.textAlign = 'right';
+          const wrap = document.createElement('div'); wrap.className = 'row-actions';
+          const b1 = document.createElement('button'); b1.className = 'link-btn'; b1.textContent = 'Edit';
+          b1.addEventListener('click', ()=>openModal('edit', it));
+          const b2 = document.createElement('button'); b2.className = 'link-btn'; b2.textContent = 'Delete';
+          b2.addEventListener('click', async ()=>{
+            if(!confirm('Delete this item?')) return;
+            try {
+              await apiSend('DELETE', '/api/items/' + it.id);
+              await loadItems();
+            } catch(e){ showDashErr(e.message || String(e)); }
+          });
+          wrap.appendChild(b1); wrap.appendChild(b2); td5.appendChild(wrap);
+          tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
+          tb.appendChild(tr);
+        });
+      }
+
+      async function loadItems(){
+        try {
+          showDashErr('');
+          const json = await apiGet('/api/items');
+          renderRows(json.data || []);
+        } catch(e){
+          showDashErr(e.message || String(e));
+          if(String(e.message||'').toLowerCase().includes('unauthorized')){
+            try { localStorage.removeItem('token'); } catch(_){}
+            window.location.href = '/index.html';
+          }
+        }
+      }
+
+      async function loadSupabaseConfig(){
+        const resp = await fetch('/api/config');
+        const json = await resp.json().catch(()=>null);
+        if(!resp.ok || !json || !json.ok) throw new Error('Failed to load Supabase config');
+        return json.data;
+      }
+
+      async function setupRealtime(){
+        try {
+          const cfg = await loadSupabaseConfig();
+          const sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+          const token = getToken();
+          const { data: userData, error: userErr } = await sb.auth.getUser(token);
+          if(userErr) throw userErr;
+          if(!userData || !userData.user) throw new Error('Unauthorized');
+
+          qs('rt').classList.add('ok');
+          qs('rt').textContent = 'Realtime ON';
+
+          const ch = sb.channel('rt:items')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, async () => {
+              await loadItems();
+            })
+            .subscribe((status) => {
+              if(status === 'SUBSCRIBED'){
+                qs('rt').classList.add('ok');
+                qs('rt').textContent = 'Realtime ON';
+              }
+            });
+
+          window.addEventListener('beforeunload', () => {
+            try { sb.removeChannel(ch); } catch(e){}
+          });
+        } catch(e){
+          qs('rt').classList.add('bad');
+          qs('rt').textContent = 'Realtime OFF';
+        }
+      }
+
+      async function doLogout(){
+        try {
+          await fetch('/api/auth/logout', { method:'POST', headers: authHeaders() });
+        } catch(e){}
+        try { localStorage.removeItem('token'); } catch(e){}
+        window.location.href = '/index.html';
+      }
+
+      redirectIfNoToken();
+      qs('token-preview').textContent = (getToken() || '').slice(0, 40) + '…';
+      qs('logout').addEventListener('click', doLogout);
+      qs('add').addEventListener('click', ()=>openModal('add', null));
+      qs('modal-close').addEventListener('click', closeModal);
+      qs('modal').addEventListener('click', (e)=>{ if(e.target === qs('modal')) closeModal(); });
+      qs('save').addEventListener('click', async ()=>{
+        try {
+          showModalErr('');
+          const mode = qs('save').dataset.mode || 'add';
+          const id = qs('save').dataset.id || '';
+          const title = (qs('f-title').value || '').trim();
+          const description = (qs('f-desc').value || '').trim();
+          const status = qs('f-status').value || 'active';
+          if(!title) { showModalErr('Title is required'); return; }
+          if(mode === 'edit'){
+            await apiSend('PUT', '/api/items/' + id, { title, description, status });
+          } else {
+            await apiSend('POST', '/api/items', { title, description, status });
+          }
+          closeModal();
+          await loadItems();
+        } catch(e){
+          showModalErr(e.message || String(e));
+        }
+      });
+
+      loadItems().then(()=>setupRealtime()).catch(()=>null);
+    </script>
+  </body>
+</html>

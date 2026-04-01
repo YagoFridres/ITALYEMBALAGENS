@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Rebuild — Login</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card" style="max-width:520px;margin:40px auto;">
+        <div style="font-weight:1000;font-size:1.1rem;letter-spacing:.6px;">Project Rebuild</div>
+        <div style="color:rgba(230,237,247,.72);font-weight:900;margin-top:6px;">Supabase Auth + Realtime + CRUD</div>
+
+        <div class="tabs" style="margin-top:16px;">
+          <button id="tab-login" class="tab active" type="button">Login</button>
+          <button id="tab-register" class="tab" type="button">Register</button>
+        </div>
+
+        <div id="err" class="inline-error" style="display:none;"></div>
+
+        <div id="login-form" class="form">
+          <div class="label">Email</div>
+          <input id="login-email" class="input" type="email" autocomplete="username" />
+          <div class="label">Password</div>
+          <input id="login-pass" class="input" type="password" autocomplete="current-password" />
+          <button id="login-btn" class="button" type="button">Login</button>
+        </div>
+
+        <div id="register-form" class="form" style="display:none;">
+          <div class="label">Email</div>
+          <input id="reg-email" class="input" type="email" autocomplete="username" />
+          <div class="label">Password</div>
+          <input id="reg-pass" class="input" type="password" autocomplete="new-password" />
+          <div class="label">Confirm Password</div>
+          <input id="reg-pass2" class="input" type="password" autocomplete="new-password" />
+          <button id="reg-btn" class="button" type="button">Create Account</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function qs(id) { return document.getElementById(id); }
+
+      function showErr(msg) {
+        const el = qs('err');
+        if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+        el.textContent = String(msg);
+        el.style.display = 'block';
+      }
+
+      function setTab(which) {
+        const loginTab = qs('tab-login');
+        const regTab = qs('tab-register');
+        const loginForm = qs('login-form');
+        const regForm = qs('register-form');
+        showErr('');
+        if (which === 'register') {
+          loginTab.classList.remove('active');
+          regTab.classList.add('active');
+          loginForm.style.display = 'none';
+          regForm.style.display = '';
+        } else {
+          regTab.classList.remove('active');
+          loginTab.classList.add('active');
+          regForm.style.display = 'none';
+          loginForm.style.display = '';
+        }
+      }
+
+      async function api(path, body) {
+        try {
+          const resp = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {}),
+          });
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) throw new Error((json && (json.error || json.message)) || resp.statusText);
+          return json;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      async function doLogin() {
+        try {
+          showErr('');
+          const email = (qs('login-email').value || '').trim();
+          const password = (qs('login-pass').value || '').trim();
+          if (!email || !password) { showErr('Email and password are required'); return; }
+          const data = await api('/api/auth/login', { email, password });
+          if (!data || !data.session || !data.session.access_token) throw new Error('Missing session token');
+          localStorage.setItem('token', data.session.access_token);
+          window.location.href = '/dashboard.html';
+        } catch (e) {
+          showErr(e.message || String(e));
+        }
+      }
+
+      async function doRegister() {
+        try {
+          showErr('');
+          const email = (qs('reg-email').value || '').trim();
+          const password = (qs('reg-pass').value || '').trim();
+          const password2 = (qs('reg-pass2').value || '').trim();
+          if (!email || !password) { showErr('Email and password are required'); return; }
+          if (password !== password2) { showErr('Passwords do not match'); return; }
+          const data = await api('/api/auth/register', { email, password });
+          if (!data || !data.session || !data.session.access_token) {
+            showErr('Registered. Check your email for confirmation if required, then login.');
+            return;
+          }
+          localStorage.setItem('token', data.session.access_token);
+          window.location.href = '/dashboard.html';
+        } catch (e) {
+          showErr(e.message || String(e));
+        }
+      }
+
+      qs('tab-login').addEventListener('click', () => setTab('login'));
+      qs('tab-register').addEventListener('click', () => setTab('register'));
+      qs('login-btn').addEventListener('click', doLogin);
+      qs('reg-btn').addEventListener('click', doRegister);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        const isReg = qs('register-form').style.display !== 'none';
+        if (isReg) doRegister();
+        else doLogin();
+      });
+
+      try {
+        const token = localStorage.getItem('token');
+        if (token) window.location.href = '/dashboard.html';
+      } catch (e) {}
+    </script>
+  </body>
+</html>
