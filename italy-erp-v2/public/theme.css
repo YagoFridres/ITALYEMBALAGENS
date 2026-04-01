@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+:root,[data-theme="dark"]{
+  --bg:#0f1117;--surface:#17191f;--s2:#1e2028;--s3:#252830;--s4:#2c2f3a;
+  --border:#2a2d38;--b2:#343748;
+  --accent:#2563eb;--accent2:#1d4ed8;--accent-soft:#2563eb20;
+  --green:#16a34a;--green-soft:#16a34a20;
+  --yellow:#ca8a04;--yellow-soft:#ca8a0420;
+  --red:#dc2626;--red-soft:#dc262620;
+  --orange:#ea580c;--orange-soft:#ea580c20;
+  --purple:#7c3aed;--pink:#db2777;--teal:#0d9488;
+  --text:#f1f5f9;--text2:#94a3b8;--text3:#475569;
+  --font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace;
+  --shadow:0 1px 3px #0008,0 2px 8px #0005;
+  --shadow-lg:0 4px 24px #0009;
+  --card-hover:#1e2028;
+  --sidebar-w:220px;
+}
+
+[data-theme="light"]{
+  --bg:#f1f5f9;--surface:#ffffff;--s2:#f8fafc;--s3:#f1f5f9;--s4:#e2e8f0;
+  --border:#e2e8f0;--b2:#cbd5e1;
+  --accent:#2563eb;--accent2:#1d4ed8;--accent-soft:#2563eb15;
+  --green:#16a34a;--green-soft:#16a34a15;
+  --yellow:#ca8a04;--yellow-soft:#fef9c3;
+  --red:#dc2626;--red-soft:#fef2f2;
+  --orange:#ea580c;--orange-soft:#fff7ed;
+  --purple:#7c3aed;--pink:#db2777;--teal:#0d9488;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --shadow:0 1px 3px #0001,0 2px 8px #0001;
+  --shadow-lg:0 4px 24px #0002;
+  --card-hover:#f8fafc;
+}

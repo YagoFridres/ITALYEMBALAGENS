@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Italy Embalagens — PCP Pro ERP v2</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body data-device="desktop">
+    <div class="topbar">
+      <button id="mob-menu-btn">☰</button>
+      <div class="logo">
+        <div class="logo-icon"></div>
+        Italy <span>PCP Pro</span>
+      </div>
+      <div class="topbar-badges">
+        <div class="tbadge tb-green">Realtime</div>
+        <div class="clock" id="clock">--:--:--</div>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Alternar tema"></button>
+      <button class="btn btn-ghost btn-sm" id="btn-logout" type="button">Sair</button>
+    </div>
+
+    <div id="mob-sidebar-overlay"></div>
+
+    <div class="layout">
+      <div id="sidebar-host"></div>
+      <div class="content">
+        <div class="page-header">
+          <div style="display:flex;flex-direction:column;">
+            <div class="page-title" id="page-title">—</div>
+            <div class="page-sub" id="page-sub"></div>
+          </div>
+        </div>
+        <div class="page-body">
+          <div id="page-root"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      async function getConfig() {
+        const r = await fetch('/api/config');
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || 'config_failed');
+        return j.data;
+      }
+      const cfg = await getConfig();
+      const sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      const btn = document.getElementById('btn-logout');
+      btn.addEventListener('click', async () => {
+        await sb.auth.signOut();
+        location.href = '/';
+      });
+    </script>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

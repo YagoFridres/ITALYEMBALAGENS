@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <title>Italy Embalagens — Login</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <div class="topbar">
+      <button id="mob-menu-btn">☰</button>
+      <div class="logo">
+        <div class="logo-icon"></div>
+        Italy <span>ERP v2</span>
+      </div>
+      <div class="topbar-badges">
+        <div class="clock" id="clock">--:--:--</div>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Alternar tema"></button>
+    </div>
+
+    <div class="page-body" style="display:flex;align-items:center;justify-content:center;">
+      <div class="sbox" style="width:min(440px,100%);">
+        <div class="sbox-h" style="justify-content:space-between;">
+          <div>Login</div>
+          <div class="page-sub">Supabase Auth</div>
+        </div>
+        <div class="sbox-b">
+          <div class="fg">
+            <div class="mf fgf">
+              <label>Email</label>
+              <input id="email" type="email" autocomplete="username" placeholder="seu@email.com" />
+            </div>
+            <div class="mf fgf">
+              <label>Senha</label>
+              <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+            <button class="btn btn-ghost" id="btn-demo" type="button">Tema</button>
+            <button class="btn btn-accent" id="btn-login" type="button">Entrar</button>
+          </div>
+          <div style="margin-top:10px;color:var(--text3);font-size:.72rem;line-height:1.35;">
+            Use um usuário do Supabase Auth (email/senha).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      async function getConfig() {
+        const r = await fetch('/api/config');
+        const j = await r.json();
+        if (!j.ok) throw new Error(j.error || 'config_failed');
+        return j.data;
+      }
+
+      function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+      }
+
+      const theme = localStorage.getItem('theme') || 'dark';
+      setTheme(theme);
+
+      const themeBtn = document.getElementById('theme-toggle');
+      const demoBtn = document.getElementById('btn-demo');
+      const toggle = () => {
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        setTheme(cur === 'dark' ? 'light' : 'dark');
+      };
+      themeBtn.addEventListener('click', toggle);
+      demoBtn.addEventListener('click', toggle);
+
+      const clock = document.getElementById('clock');
+      setInterval(() => {
+        const d = new Date();
+        const pad = (x) => String(x).padStart(2, '0');
+        clock.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }, 500);
+
+      const cfg = await getConfig();
+      const sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+      const { data } = await sb.auth.getSession();
+      if (data?.session) location.href = '/app.html';
+
+      const btnLogin = document.getElementById('btn-login');
+      btnLogin.addEventListener('click', async () => {
+        btnLogin.disabled = true;
+        try {
+          const email = document.getElementById('email').value.trim();
+          const password = document.getElementById('password').value;
+          const { error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) throw new Error(error.message);
+          location.href = '/app.html';
+        } catch (e) {
+          alert(e.message || 'Falha no login');
+        } finally {
+          btnLogin.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
