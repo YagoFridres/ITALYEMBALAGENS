@@ -5935,6 +5935,74 @@ async function carregarChapas(){
   return r;
 }
 
+async function migrarClientesParaSupabase(){
+  if(!Array.isArray(CLIENTES_FALLBACK) || !CLIENTES_FALLBACK.length){
+    toast('Nenhum cliente para migrar','var(--yellow)');
+    return;
+  }
+  if(!confirm(`Migrar ${CLIENTES_FALLBACK.length} clientes para o Supabase?\n\nIsso irá criar registros via /api/clientes.`)) return;
+
+  let okCount = 0;
+  let failCount = 0;
+  const erros = [];
+
+  showSaveIndicator('⏳ migrando...','var(--yellow)');
+  for(let i=0;i<CLIENTES_FALLBACK.length;i++){
+    const c = CLIENTES_FALLBACK[i];
+    const payload = {
+      id: c.id,
+      nome: c.nome,
+      rs: c.rs || '',
+      cnpj: c.cnpj || '',
+      ie: c.ie || '',
+      tel: c.tel || '',
+      email: c.email || '',
+      cidade: c.cidade || '',
+      uf: c.uf || '',
+      end: c.end || '',
+      ramo: c.ramo || '',
+      pagto: c.pagto || '',
+      rep: c.rep || '',
+      obs: c.obs || '',
+      empId: c.empId || ''
+    };
+
+    try{
+      const r = await fetch(API_BASE + '/api/clientes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const ct = r.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await r.json() : { ok:false, error: await r.text() };
+      if(data && data.ok){
+        okCount++;
+      } else {
+        failCount++;
+        if(erros.length < 10) erros.push((payload.id||'?') + ': ' + (data && data.error ? data.error : 'erro'));
+      }
+    } catch(e){
+      failCount++;
+      if(erros.length < 10) erros.push((payload.id||'?') + ': ' + (e.message || e));
+    }
+
+    if((i+1)%25===0){
+      showSaveIndicator(`⏳ migrando ${i+1}/${CLIENTES_FALLBACK.length}`,'var(--yellow)');
+    }
+  }
+
+  if(failCount===0){
+    showSaveIndicator('✓ migração ok','var(--green)');
+    toast(`✓ Migração concluída: ${okCount} clientes`,'var(--green)');
+  } else {
+    showSaveIndicator('⚠ migração parcial','var(--orange)');
+    toast(`⚠ Migração: ${okCount} ok, ${failCount} falharam (veja console)`,'var(--orange)');
+    console.warn('Erros de migração (até 10):', erros);
+  }
+
+  try{ await carregarClientes(); renderClientes(); }catch(e){}
+}
+
 // ===================== PERSISTÊNCIA LOCAL (localStorage) =====================
 // Salva TODOS os dados no localStorage toda vez que autoSaveTrigger é chamado.
 // Isso garante que os dados persistam entre recarregamentos de página,
@@ -9916,6 +9984,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <button class="btn btn-accent" onclick="exportarDadosCompletos()">💾 Exportar Backup Completo (JSON)</button>
             <button class="btn btn-ghost" onclick="exportarRelCSV()">📊 Exportar Relatório atual como CSV</button>
             <button class="btn btn-ghost" onclick="autoSaveNow()">🔄 Forçar Salvamento Local</button>
+            <button class="btn btn-purple" onclick="migrarClientesParaSupabase()">⬆ Migrar Clientes</button>
           </div>
           <div style="margin-top:14px;padding:10px;background:var(--s2);border-radius:6px;font-size:.72rem;color:var(--text2)">
             <b>LocalStorage:</b> Os dados também são salvos automaticamente no seu navegador a cada 60s.<br>
