@@ -275,6 +275,17 @@ app.delete('/api/vendedores/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+// ══════════════════════════════════════════════════════════════
+// EMPRESAS
+// ══════════════════════════════════════════════════════════════
+app.get('/api/empresas', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('empresas').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/orcamentos', async (req, res) => {
   try { ok(res, await selectAll('orcamentos', 'created_at')); } catch (e) { bad(res, e.message); }
 });

@@ -1836,7 +1836,10 @@ function salvarOF(){
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
   // Auto-learn new payment form
   if(pagto) adicionarFormaPagamento(pagto);
-  const empId=(document.getElementById('f-emp')||{}).value||EMP_FILTRO||'';
+  const empSel=(document.getElementById('f-emp')||null);
+  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
+  const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
+  const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itens.map(it=>it.img||null);
@@ -5233,7 +5236,7 @@ document.addEventListener('DOMContentLoaded', function(){
       const licoEl=document.querySelector('.logo-icon');
       if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
-    Promise.all([carregarMaquinas(),carregarOperadores(),carregarClientes(),carregarOFs(),carregarApontamentos(),carregarChapas(),carregarFacas(),carregarCliches()])
+    Promise.all([carregarEmpresas?.()||Promise.resolve(),carregarMaquinas(),carregarOperadores(),carregarClientes(),carregarOFs(),carregarApontamentos(),carregarChapas(),carregarFacas(),carregarCliches()])
       .then(()=>{try{updateBadges();}catch(e){} try{renderPCP();}catch(e){} try{renderApontamentos();}catch(e){} try{renderOperadores();}catch(e){} })
       .catch(()=>{});
   } catch(e) {
@@ -5930,8 +5933,22 @@ function normalizeForn(r){ return {id:r.id,nome:r.nome,cnpj:r.cnpj,contato:r.con
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
+let EMPRESAS_DB = [];
+async function carregarEmpresas(){
+  try{
+    const r = await api('GET','/empresas');
+    if(r && r.ok && Array.isArray(r.data)) EMPRESAS_DB = r.data;
+    return r;
+  }catch(e){ return { ok:false, error:String(e) }; }
+}
+function empresaUuidBy(codeOrName){
+  if(!codeOrName) return null;
+  const e = (EMPRESAS_DB||[]).find(x => x.codigo===codeOrName || x.nome===codeOrName || x.id===codeOrName);
+  return e ? e.id : null;
+}
+
 const OF_ALLOWED_FIELDS = new Set([
-  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
+  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -8997,7 +9014,10 @@ salvarOF = async function(){
   const ofNum=document.getElementById('f-of').value;
   const vendId=document.getElementById('f-vend').value;
   const vendNome=(getV(vendId)||{}).nome||'';
-  const empId=(document.getElementById('f-emp')||{}).value||EMP_FILTRO||'';
+  const empSel=(document.getElementById('f-emp')||null);
+  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
+  const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
+  const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
   const descMain=((document.getElementById('f-prod-desc')||{}).value||'').trim() || (itens[0]&&itens[0].desc?itens[0].desc:'');
   const payload=filtrarPayloadOF({
@@ -9007,7 +9027,9 @@ salvarOF = async function(){
     cliente_id: cliId,
     cli_id: cliId,
     vendedor: vendNome || null,
-    emp_id: empId || null,
+    empresa_id: empUuid || null,
+    empresa_id: empUuid || null,
+    emp_id: empCode || null,
     qtd: qtdTotal,
     quantidade: qtdTotal,
     itens: itens,
@@ -9094,6 +9116,7 @@ converterOrcParaOF = async function(id){
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const ofNum=nextOFNum();
   const empId=orc.empId||EMP_FILTRO||'';
+  const empUuid=empresaUuidBy(empId)||null;
   const vendNome=(getV(orc.vendId)||{}).nome||'';
   const payload=filtrarPayloadOF({
     seq: ms+1,
@@ -9102,6 +9125,7 @@ converterOrcParaOF = async function(id){
     cliente_id: orc.cliId || null,
     cli_id: orc.cliId || null,
     vendedor: vendNome || null,
+    empresa_id: empUuid || null,
     emp_id: empId || null,
     qtd: orc.qtd,
     quantidade: orc.qtd,
@@ -11735,6 +11759,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   }
   function buildOfPayload(shape, ofObj){
     const vendNome = (typeof getV === 'function' && ofObj.vendId) ? ((getV(ofObj.vendId)||{}).nome||'') : '';
+    const empUuid = empresaUuidBy(ofObj.empId)||null;
     const common = {
       seq: ofObj.seq || 0,
       numero: ofObj.of,
@@ -11742,6 +11767,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       cliente_id: ofObj.cliId || null,
       cli_id: ofObj.cliId || null,
       vendedor: vendNome || null,
+      empresa_id: empUuid || null,
       emp_id: ofObj.empId || null,
       status: ofObj.status || 'Em aberto',
       data_entrega: ofObj.ent || null,
