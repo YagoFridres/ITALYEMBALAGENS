@@ -676,7 +676,20 @@ function empSelect(selId, required, currentVal){
 }
 
 // ===================== DADOS =====================
-let MAQUINAS = [];
+const MAQUINAS_FALLBACK = [
+  {id:'RISC01',col:'RISCADOR 01',   ico:'⚙',phora:3000,setup:15},
+  {id:'RISC02',col:'RISCADOR 02',   ico:'⚙',phora:2800,setup:15},
+  {id:'IMP01', col:'IMP 01',        ico:'🖨',phora:2000,setup:30},
+  {id:'IMP02', col:'IMP 02',        ico:'🖨',phora:2500,setup:30},
+  {id:'IMP03', col:'IMP 03',        ico:'🖨',phora:1800,setup:45},
+  {id:'IMP04', col:'IMP 04',        ico:'🖨',phora:2200,setup:30},
+  {id:'IMP05', col:'IMP 05',        ico:'🖨',phora:3000,setup:20},
+  {id:'CVR',   col:'CORTE VINCO ROTATIVA',ico:'✂',phora:4000,setup:60},
+  {id:'CORTEP',col:'CORTE PLANA',   ico:'✂',phora:1500,setup:45},
+  {id:'COLA',  col:'COLADEIRA',     ico:'🔧',phora:5000,setup:20},
+  {id:'ACAB',  col:'ACABAMENTO',    ico:'📦',phora:3000,setup:15},
+];
+let MAQUINAS = MAQUINAS_FALLBACK.slice();
 
 let FLUXOS = [
   {id:'F1',nome:'Fluxo A — Impressão Simples', etapas:['IMP01','RISC01','ACAB']},
@@ -688,8 +701,7 @@ let FLUXOS = [
 
 const RAMOS = ['Agro','E-commerce','Farmácia','Indústria','Lanchonete','Mercado','Pizzaria','Outro'];
 
-let CLIENTES = [];
-[
+const CLIENTES_FALLBACK = [
   {id:'C001',nome:'MOVEIS RUIZ',rs:'RUIZ INDUSTRIA E COMERCIO DE MOVEIS LTDA',cnpj:'24.287.808/0001-60',tel:'(49) 3197-1717',email:'simone@drdmoveis.com.br',cidade:'SAO JOSE DO CEDRO',uf:'SC',end:'',ramo:'MOVELEIRO',pagto:'28 42 56 DD',rep:'RONI (MEIA VENDA)',ie:'257894705',obs:'',empId:''},
   {id:'C002',nome:'HIGIX INDUSTRIA, COMERCIO, IMPORTACAO E',rs:'ELISVANDIA MATOS DONINI LTDA',cnpj:'13.547.970/0001-53',tel:'(49) 3648-0897',email:'faturamento@higix.com.br',cidade:'CAIBI',uf:'SC',end:'',ramo:'IMPORTADORA',pagto:'28 42 56 DD',rep:'RONI (VENDA CHEIA)',ie:'256386641',obs:'',empId:''},
   {id:'C003',nome:'FORNOS PINHAL',rs:'PINHAL INDUSTRIA DE FORNOS LTDA',cnpj:'06.149.382/0001-04',tel:'',email:'',cidade:'PINHALZINHO',uf:'SC',end:'',ramo:'FORNOS',pagto:'28 DD',rep:'RONI (VENDA CHEIA)',ie:'254733875',obs:'',empId:''},
@@ -867,6 +879,7 @@ let CLIENTES = [];
   {id:'C204',nome:'ESPIRITO SANTO',rs:'INDUSTRIA ESPIRITO SANTO LTDA',cnpj:'00.303.788/0001-05',tel:'(49) 3365-3505',email:'nfe@espiritosanto.ind.br',cidade:'MODELO',uf:'SC',end:'',ramo:'ARTIGOS FUNERÁRIOS',pagto:'21 42 DD',rep:'RONI (VENDA CHEIA)',ie:'252972236',obs:'',empId:''},
   {id:'C207',nome:'FLORESTAL OESTE',rs:'WANDERLEI PAULO MALDANER & CIA LTDA',cnpj:'03.437.640/0001-51',tel:'(49) 991538686',email:'cleimaldaner06@gmail.com',cidade:'SAO JOSE DO CEDRO',uf:'SC',end:'',ramo:'INDUSTRIA',pagto:'CHEQUE 30 DD',rep:'ELEOMAR',ie:'253944090',obs:'',empId:''}
 ];
+let CLIENTES = CLIENTES_FALLBACK.slice();
 
 let VENDEDORES = [
   {id:'V01',nome:'ELEOMAR',tel:'',email:'',reg:'',meta:0,comissaoPct:null},
@@ -4520,7 +4533,7 @@ function importarDados(){
   reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS_1','FACAS_2','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
+      const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
       const found=keys.filter(k=>data[k]!==undefined);
       const prev=document.getElementById('sis-import-preview');
       if(prev) prev.innerHTML=`<div style="background:var(--s2);border-radius:6px;padding:10px;margin-top:6px">
@@ -4538,8 +4551,9 @@ function confirmarImport(){
   if(!window._importData){toast('Nenhum dado para importar','var(--yellow)');return;}
   if(!confirm('ATENÇÃO: Isso irá substituir TODOS os dados atuais. Tem certeza?'))return;
   const data=window._importData;
-  const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS_1','FACAS_2','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
+  const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
   keys.forEach(k=>{if(data[k]!==undefined){try{window[k]=data[k];}catch(e){}}});
+  if(data.FACAS!==undefined) FACAS = data.FACAS;
   localStorage.setItem('pcpro_data',JSON.stringify(data));
   localStorage.setItem('pcpro_ts',Date.now());
   window._importData=null;
@@ -5197,7 +5211,7 @@ document.addEventListener('DOMContentLoaded', function(){
       const licoEl=document.querySelector('.logo-icon');
       if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
-    Promise.all([carregarMaquinas(),carregarOperadores(),carregarClientes(),carregarOFs(),carregarApontamentos()])
+    Promise.all([carregarMaquinas(),carregarOperadores(),carregarClientes(),carregarOFs(),carregarApontamentos(),carregarChapas(),carregarFacas(),carregarCliches()])
       .then(()=>{try{updateBadges();}catch(e){} try{renderPCP();}catch(e){} try{renderApontamentos();}catch(e){} try{renderOperadores();}catch(e){} })
       .catch(()=>{});
   } catch(e) {
@@ -5762,12 +5776,12 @@ async function autoSaveLoad(){
       api('GET','/fornecedores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
     if(ofs.ok && ofs.data)    OFs          = ofs.data.map(normalizeOF);
-    if(clis.ok && clis.data)  CLIENTES     = clis.data.map(normalizeCli);
+    if(clis.ok && clis.data && clis.data.length)  CLIENTES     = clis.data.map(normalizeCli);
     if(vends.ok && vends.data)VENDEDORES   = vends.data.map(normalizeVend);
     if(orcs.ok && orcs.data)  ORCAMENTOS   = orcs.data.map(normalizeOrc);
     if(est.ok && est.data)    ESTOQUE      = est.data.map(normalizeEst);
     if(aps.ok && aps.data)    APONTAMENTOS = aps.data.map(normalizeAp);
-    if(maq.ok && maq.data)    MAQUINAS     = maq.data.map(normalizeMaq);
+    if(maq.ok && maq.data && maq.data.length)    MAQUINAS     = maq.data.map(normalizeMaq);
     if(ops.ok && ops.data)    OPERADORES   = ops.data.map(normalizeOp);
     if(cmp.ok && cmp.data)    COMPRAS      = cmp.data.map(normalizeCmp);
     if(forn.ok && forn.data)  FORNECEDORES = forn.data.map(normalizeForn);
@@ -5788,12 +5802,65 @@ async function autoSaveLoad(){
 
 // Normalização: converte snake_case do banco para camelCase do sistema
 function normalizeOF(r){ return {id:r.id,seq:r.seq,of:r.of_num,cliId:r.cli_id,vendId:r.vend_id,qtd:r.qtd,dia:r.dia,ent:r.ent,fluxo:r.fluxo,maq:tryParse(r.maq,[]),status:r.status,urg:!!r.urg,chp:r.chp,qchp:r.qchp,val:r.val,obs:r.obs,imgs:tryParse(r.imgs,[]),empId:r.emp_id||r.empId||''}; }
-function normalizeCli(r){ return {id:r.id,nome:r.nome,ramo:r.ramo,cnpj:r.cnpj,email:r.email,fone:r.fone,cidade:r.cidade,obs:r.obs,empId:r.emp_id||r.empId||''}; }
+function normalizeCli(r){
+  return {
+    id:r.id,
+    nome:r.nome,
+    rs:r.rs||r.razao_social||r.razaoSocial||'',
+    cnpj:r.cnpj||'',
+    ie:r.ie||'',
+    tel:r.tel||r.telefone||r.fone||'',
+    email:r.email||'',
+    cidade:r.cidade||'',
+    uf:r.uf||'',
+    end:r.end||r.endereco||'',
+    ramo:r.ramo||'',
+    pagto:r.pagto||r.pagamento||'',
+    rep:r.rep||r.representante||'',
+    obs:r.obs||'',
+    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
+  };
+}
 function normalizeVend(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,comissao:r.comissao}; }
 function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.vend_id,tipo:r.tipo,prod:r.prod,comp:r.comp,larg:r.larg,alt:r.alt,area:r.area,onda:r.onda,gram:r.gram,margem:r.margem,frete:r.frete,comissao:r.comissao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
-function normalizeEst(r){ return {id:r.id,nome:r.nome,categoria:r.categoria,unidade:r.unidade,qtd:r.qtd,minimo:r.minimo,custo:r.custo,obs:r.obs,empId:r.emp_id||r.empId||''}; }
+function normalizeEst(r){
+  return {
+    id:r.id,
+    forn:r.forn||r.fornecedor||'',
+    nom:r.nom||r.codigo||r.cod||'',
+    tam:r.tam||r.tamanho||'',
+    comp:r.comp!=null?r.comp:r.comprimento,
+    larg:r.larg!=null?r.larg:r.largura,
+    nome:r.nome||r.descricao||'',
+    qual:r.qual||r.qualidade||'',
+    cnpj:r.cnpj||'',
+    nf:r.nf||'',
+    qtd:r.qtd!=null?r.qtd:r.quantidade,
+    val:r.val!=null?r.val:r.valor_unitario!=null?r.valor_unitario:r.custo_unitario,
+    min:r.min!=null?r.min:r.quantidade_minima,
+    vincada:!!(r.vincada||r.vincada===true),
+    vincos:r.vincos||'',
+    obs:r.obs||'',
+    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
+  };
+}
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
-function normalizeMaq(r){ return {id:r.id,col:r.col,ico:r.ico||'⚙',ativo:r.ativo!==0}; }
+function normalizeMaq(r){
+  const ativo = r.ativo===undefined ? true : !!r.ativo;
+  const phora = r.phora ?? r.por_hora ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
+  const setup = r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
+  return {
+    id:r.id,
+    col:r.col||r.nome||r.name||'',
+    ico:r.ico||r.icon||'⚙',
+    phora:Number(phora)||0,
+    setup:Number(setup)||0,
+    passagem:r.passagem!=null?Number(r.passagem)||0:0,
+    setor:r.setor||'',
+    desc:r.desc||r.descricao||'',
+    ativo
+  };
+}
 function normalizeOp(r){ return {id:r.id,nome:r.nome,funcao:r.funcao,ativo:r.ativo!==0,mat:r.mat,maqPrincipal:r.maq_principal,setor:r.setor,admissao:r.admissao,obs:r.obs,status:r.ativo?'Ativo':'Inativo'}; }
 function normalizeCmp(r){ return {id:r.id,data:r.data,fornId:r.forn_id,item:r.item,qtd:r.qtd,valor:r.valor,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
 function normalizeForn(r){ return {id:r.id,nome:r.nome,cnpj:r.cnpj,contato:r.contato,fone:r.fone,email:r.email,obs:r.obs,empId:r.emp_id||r.empId||''}; }
@@ -5812,7 +5879,7 @@ async function carregarOFs(){
 }
 async function carregarClientes(){
   const r = await api('GET','/clientes');
-  if(r && r.ok && r.data) CLIENTES = r.data.map(normalizeCli);
+  if(r && r.ok && r.data && r.data.length) CLIENTES = r.data.map(normalizeCli);
   return r;
 }
 async function carregarOperadores(){
@@ -5822,7 +5889,49 @@ async function carregarOperadores(){
 }
 async function carregarMaquinas(){
   const r = await api('GET','/maquinas');
-  if(r && r.ok && r.data) MAQUINAS = r.data.map(normalizeMaq);
+  if(r && r.ok && r.data && r.data.length) MAQUINAS = r.data.map(normalizeMaq);
+  return r;
+}
+
+function normalizeFaca(r){
+  return {
+    id:r.id,
+    nome:r.nome||'',
+    medidas:r.medidas||'',
+    maquinas:tryParse(r.maquinas, r.maquinas||[]),
+    valor:r.valor!=null?r.valor:r.valor_unitario,
+    obs:r.obs||'',
+    clientes:tryParse(r.clientes, r.clientes||[]),
+    foto:r.foto||r.imagem||null,
+    empId:r.emp_id||r.empId||''
+  };
+}
+function normalizeCliche(r){
+  return {
+    id:r.id,
+    nome:r.nome||'',
+    medidas:r.medidas||'',
+    maquinas:tryParse(r.maquinas, r.maquinas||[]),
+    valor:r.valor!=null?r.valor:r.valor_unitario,
+    obs:r.obs||'',
+    clientes:tryParse(r.clientes, r.clientes||[]),
+    foto:r.foto||r.imagem||null,
+    empId:r.emp_id||r.empId||''
+  };
+}
+async function carregarFacas(){
+  const r = await api('GET','/facas_estoque');
+  if(r && r.ok && r.data && r.data.length) FACAS = r.data.map(normalizeFaca);
+  return r;
+}
+async function carregarCliches(){
+  const r = await api('GET','/cliches_estoque');
+  if(r && r.ok && r.data && r.data.length) CLICHES = r.data.map(normalizeCliche);
+  return r;
+}
+async function carregarChapas(){
+  const r = await api('GET','/chapas_estoque');
+  if(r && r.ok && r.data && r.data.length) ESTOQUE = r.data.map(normalizeEst);
   return r;
 }
 
@@ -5848,7 +5957,7 @@ function buildDataSnapshot(){
     FORMAS_PAGAMENTO, MAQUINAS, RISC_VINCULOS,
     TAB_STATE,
     CMP_SEQ, ORC_SEQ, OP_SEQ, IC_SEQ, FORN_SEQ, NF_SEQ,
-    FACAS_1, FACAS_2, CLICHES,
+    FACAS, CLICHES,
     CONTAS_PAGAR, CONTAS_RECEBER,
     DESPERDICIO_CHAPAS, AGENDA_VENDEDORES, AGENDA_SEQ
   };
@@ -5910,8 +6019,7 @@ function applyDataSnapshot(d, opts){
   if(d.CMP_SEQ)  CMP_SEQ  = d.CMP_SEQ;
   if(d.ORC_SEQ)  ORC_SEQ  = d.ORC_SEQ;
   if(d.OP_SEQ)   OP_SEQ   = d.OP_SEQ;
-  if(d.FACAS_1)  FACAS_1  = d.FACAS_1;
-  if(d.FACAS_2)  FACAS_2  = d.FACAS_2;
+  if(d.FACAS)    FACAS    = d.FACAS;
   if(d.CLICHES)  CLICHES  = d.CLICHES;
   if(d.CONTAS_PAGAR)   CONTAS_PAGAR   = d.CONTAS_PAGAR;
   if(d.CONTAS_RECEBER) CONTAS_RECEBER = d.CONTAS_RECEBER;
@@ -6776,7 +6884,7 @@ function registrarRecebimento(id){
 }
 
 // ===================== ESTOQUE FACAS =====================
-var FACAS_1 = [];
+let FACAS = [];
 var CLICHES = [];
 function _idFaca(arr){ return 'F'+String(arr.length+1).padStart(3,'0'); }
 function _idCliche(){ return 'CL'+String(CLICHES.length+1).padStart(3,'0'); }
@@ -6786,7 +6894,7 @@ function _populateMaquinasSelect(selId){
   const sel=document.getElementById(selId);if(!sel)return;
   const cur=sel.value;
   sel.innerHTML='<option value="">Selecionar máquina...</option>';
-  MAQUINAS.forEach(m=>{ const o=document.createElement('option');o.value=m.nome||m.id;o.textContent=m.nome||m.id;sel.appendChild(o); });
+  MAQUINAS.forEach(m=>{ const o=document.createElement('option');o.value=m.col||m.nome||m.id;o.textContent=m.col||m.nome||m.id;sel.appendChild(o); });
   sel.value=cur||'';
 }
 function _populateClientesSelect(selId){
@@ -6843,7 +6951,7 @@ function _getChips(containerId){
 function renderFacas1(){
   const body=document.getElementById('facas1-body');
   const busca=((document.getElementById('facas1-busca')||{}).value||'').toLowerCase();
-  let lista=FACAS_1;
+  let lista=FACAS;
   if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
   if(!body)return;
   if(!lista.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
@@ -6866,7 +6974,7 @@ function renderFacas1(){
   }).join('');
 }
 function abrirModalFaca1(id){
-  const f=id?FACAS_1.find(x=>x.id===id):null;
+  const f=id?FACAS.find(x=>x.id===id):null;
   document.getElementById('fa1-nome').value=f?f.nome||'':'';
   document.getElementById('fa1-medidas').value=f?f.medidas||'':'';
   document.getElementById('fa1-valor').value=f?f.valor||'':'';
@@ -6900,9 +7008,9 @@ function abrirModalFaca1(id){
 }
 function editarFaca1(id){abrirModalFaca1(id);}
 function excluirFaca1(id){
-  const f=FACAS_1.find(x=>x.id===id);if(!f)return;
+  const f=FACAS.find(x=>x.id===id);if(!f)return;
   if(!confirm(`Excluir faca "${f.nome}"?\nEsta ação não pode ser desfeita.`))return;
-  FACAS_1=FACAS_1.filter(x=>x.id!==id);
+  FACAS=FACAS.filter(x=>x.id!==id);
   autoSaveTrigger();renderFacas1();toast('🗑 Faca excluída','var(--orange)');
 }
 function _readFoto1(cb){
@@ -6913,12 +7021,12 @@ function _readFoto1(cb){
 function salvarFaca1(){
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome da faca','var(--red)');return;}
   _readFoto1(foto=>{
-    FACAS_1.push({id:_idFaca(FACAS_1),nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null});
+    FACAS.push({id:_idFaca(FACAS),nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null});
     fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca cadastrada!');
   });
 }
 function salvarEdicaoFaca1(id){
-  const f=FACAS_1.find(x=>x.id===id);if(!f)return;
+  const f=FACAS.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
   _readFoto1(foto=>{
     f.nome=nome;f.medidas=document.getElementById('fa1-medidas').value;
