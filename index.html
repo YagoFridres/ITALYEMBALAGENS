@@ -676,19 +676,7 @@ function empSelect(selId, required, currentVal){
 }
 
 // ===================== DADOS =====================
-const MAQUINAS = [
-  {id:'RISC01',col:'RISCADOR 01',   ico:'⚙',phora:3000,setup:15},
-  {id:'RISC02',col:'RISCADOR 02',   ico:'⚙',phora:2800,setup:15},
-  {id:'IMP01', col:'IMP 01',        ico:'🖨',phora:2000,setup:30},
-  {id:'IMP02', col:'IMP 02',        ico:'🖨',phora:2500,setup:30},
-  {id:'IMP03', col:'IMP 03',        ico:'🖨',phora:1800,setup:45},
-  {id:'IMP04', col:'IMP 04',        ico:'🖨',phora:2200,setup:30},
-  {id:'IMP05', col:'IMP 05',        ico:'🖨',phora:3000,setup:20},
-  {id:'CVR',   col:'CORTE VINCO ROTATIVA',ico:'✂',phora:4000,setup:60},
-  {id:'CORTEP',col:'CORTE PLANA',   ico:'✂',phora:1500,setup:45},
-  {id:'COLA',  col:'COLADEIRA',     ico:'🔧',phora:5000,setup:20},
-  {id:'ACAB',  col:'ACABAMENTO',    ico:'📦',phora:3000,setup:15},
-];
+let MAQUINAS = [];
 
 let FLUXOS = [
   {id:'F1',nome:'Fluxo A — Impressão Simples', etapas:['IMP01','RISC01','ACAB']},
@@ -700,7 +688,8 @@ let FLUXOS = [
 
 const RAMOS = ['Agro','E-commerce','Farmácia','Indústria','Lanchonete','Mercado','Pizzaria','Outro'];
 
-let CLIENTES = [
+let CLIENTES = [];
+[
   {id:'C001',nome:'MOVEIS RUIZ',rs:'RUIZ INDUSTRIA E COMERCIO DE MOVEIS LTDA',cnpj:'24.287.808/0001-60',tel:'(49) 3197-1717',email:'simone@drdmoveis.com.br',cidade:'SAO JOSE DO CEDRO',uf:'SC',end:'',ramo:'MOVELEIRO',pagto:'28 42 56 DD',rep:'RONI (MEIA VENDA)',ie:'257894705',obs:'',empId:''},
   {id:'C002',nome:'HIGIX INDUSTRIA, COMERCIO, IMPORTACAO E',rs:'ELISVANDIA MATOS DONINI LTDA',cnpj:'13.547.970/0001-53',tel:'(49) 3648-0897',email:'faturamento@higix.com.br',cidade:'CAIBI',uf:'SC',end:'',ramo:'IMPORTADORA',pagto:'28 42 56 DD',rep:'RONI (VENDA CHEIA)',ie:'256386641',obs:'',empId:''},
   {id:'C003',nome:'FORNOS PINHAL',rs:'PINHAL INDUSTRIA DE FORNOS LTDA',cnpj:'06.149.382/0001-04',tel:'',email:'',cidade:'PINHALZINHO',uf:'SC',end:'',ramo:'FORNOS',pagto:'28 DD',rep:'RONI (VENDA CHEIA)',ie:'254733875',obs:'',empId:''},
@@ -885,15 +874,7 @@ let VENDEDORES = [
   {id:'V03',nome:'RONI MEIA VENDA',tel:'',email:'',reg:'',meta:0,comissaoPct:0.5},
 ];
 
-let OFs = [
-  {seq:1, of:'Nº 001',cliId:'C01',vendId:'V01',qtd:5000, dia:'2025-06-01',ent:'2025-06-10',fluxo:'F2',maq:['CVR','IMP05','ACAB'], status:'Em produção',urg:true, chp:'CH001',qchp:5000,val:3800,obs:'Urgente',imgs:[],empId:'E1'},
-  {seq:2, of:'Nº 002',cliId:'C02',vendId:'V02',qtd:3000, dia:'2025-06-02',ent:'2025-06-08',fluxo:'F1',maq:['IMP01','RISC01','ACAB'],status:'Atrasado',  urg:true, chp:'CH002',qchp:3000,val:2100,obs:'',imgs:[],empId:'E2'},
-  {seq:3, of:'Nº 003',cliId:'C03',vendId:'V01',qtd:1200, dia:'2025-06-03',ent:'2025-06-18',fluxo:'F3',maq:['RISC02','COLA','ACAB'],status:'Em aberto', urg:false,chp:'CH001',qchp:1200,val:900, obs:'Display PDV',imgs:[],empId:'E1'},
-  {seq:4, of:'Nº 004',cliId:'C04',vendId:'V02',qtd:10000,dia:'2025-06-04',ent:'2025-06-30',fluxo:'F1',maq:['IMP01','RISC01','ACAB'],status:'Em aberto',urg:false,chp:'CH002',qchp:10000,val:7200,obs:'',imgs:[],empId:'E3'},
-  {seq:5, of:'Nº 005',cliId:'C05',vendId:'V03',qtd:800,  dia:'2025-06-04',ent:'2025-06-20',fluxo:'F3',maq:['RISC02','COLA','ACAB'],status:'Em aberto',urg:false,chp:'',qchp:0,val:560,obs:'',imgs:[],empId:'E2'},
-  {seq:6, of:'Nº 006',cliId:'C01',vendId:'V01',qtd:4000, dia:'2025-06-05',ent:'2025-06-25',fluxo:'F2',maq:['CVR','IMP05','ACAB'], status:'Concluído',urg:false,chp:'CH001',qchp:4000,val:3000,obs:'',imgs:[],empId:'E1'},
-  {seq:7, of:'Nº 007',cliId:'C02',vendId:'V03',qtd:6000, dia:'2025-06-06',ent:'2025-07-05',fluxo:'F4',maq:['CORTEP','IMP01','RISC01','COLA','ACAB'],status:'Em aberto',urg:false,chp:'CH003',qchp:6000,val:4500,obs:'',imgs:[],empId:'E2'},
-];
+let OFs = [];
 
 let ESTOQUE = [
   {id:'CE001',forn:'FAPOLPA',nom:'FCM03',tam:'2170X1350',comp:2170,larg:1350,nome:'ESTOQUE SIMPLES',qual:'OESTEPACK',cnpj:'',nf:'115858',qtd:480,val:6.04,min:200,vincada:false,vincos:'',empId:''},
@@ -1079,12 +1060,7 @@ let HIST_EST = [
   {tipo:'saida',  chp:'CH002',qtd:800,  of:'Nº 002',data:'2025-06-02',obs:'Baixa automática'},
 ];
 
-let APONTAMENTOS = [
-  {id:'AP001',maqId:'CVR',   ofNum:'Nº 001',operador:'João',  tempReal:55,obs:'',data:'2025-06-01'},
-  {id:'AP002',maqId:'IMP05', ofNum:'Nº 001',operador:'Maria', tempReal:52,obs:'',data:'2025-06-01'},
-  {id:'AP003',maqId:'IMP01', ofNum:'Nº 002',operador:'Pedro', tempReal:90,obs:'Setup demorado',data:'2025-06-02'},
-  {id:'AP004',maqId:'RISC01',ofNum:'Nº 002',operador:'João',  tempReal:45,obs:'',data:'2025-06-02'},
-];
+let APONTAMENTOS = [];
 
 let FORNECEDORES = [
   {id:'F01',nome:'Papel Sul',tipo:'Papelão',cnpj:'00.000.000/0001-00',tel:'(48)99100-0001',email:'vendas@papelsul.com.br',cidade:'Chapecó',uf:'SC',end:'Av. Brasil, 500',contato:'João Silva',obs:'Fornecedor principal de TP e BC',empId:'E1'},
@@ -1939,30 +1915,51 @@ function abrirModalCliente(id){
   abrir('modal-cli');
 }
 function editarCliente(id){abrirModalCliente(id);}
-function salvarEdicaoCliente(id){
+async function salvarEdicaoCliente(id){
   const c=CLIENTES.find(x=>x.id===id);if(!c)return;
   const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
   const ramoSel=document.getElementById('cl-ramo').value;
   const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
   const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
-  c.nome=nome;c.rs=document.getElementById('cl-rs').value;c.cnpj=document.getElementById('cl-cnpj').value;
-  c.tel=document.getElementById('cl-tel').value;c.email=document.getElementById('cl-email').value;
-  c.cidade=document.getElementById('cl-cidade').value;c.uf=document.getElementById('cl-uf').value;
-  c.end=document.getElementById('cl-end').value;c.ramo=ramo;c.obs=document.getElementById('cl-obs').value;
-  c.empId=(document.getElementById('cl-emp')||{}).value||'';
+  const payload={
+    id:c.id,
+    nome,
+    rs:document.getElementById('cl-rs').value,
+    cnpj:document.getElementById('cl-cnpj').value,
+    tel:document.getElementById('cl-tel').value,
+    email:document.getElementById('cl-email').value,
+    cidade:document.getElementById('cl-cidade').value,
+    uf:document.getElementById('cl-uf').value,
+    end:document.getElementById('cl-end').value,
+    ramo,
+    obs:document.getElementById('cl-obs').value,
+    empId:(document.getElementById('cl-emp')||{}).value||''
+  };
+  const r = await salvarViaApiOuLocal('cliente',
+    ()=>api('PUT','/clientes/'+encodeURIComponent(c.id), payload),
+    ()=>{ Object.assign(c,payload); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao atualizar cliente','var(--red)');return;}
+  Object.assign(c,payload);
   fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente atualizado!');
 }
-function salvarCliente(){
+async function salvarCliente(){
   const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
   const ramoSel=document.getElementById('cl-ramo').value;
   const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
   const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
   const empId=(document.getElementById('cl-emp')||{}).value||EMP_FILTRO||'';
-  CLIENTES.push({id:'C'+String(CLIENTES.length+1).padStart(2,'0'),nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId});
+  const novo={id:'C'+String(CLIENTES.length+1).padStart(2,'0'),nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId};
+  const r = await salvarViaApiOuLocal('cliente',
+    ()=>api('POST','/clientes', novo),
+    ()=>{ CLIENTES.push(novo); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao cadastrar cliente','var(--red)');return;}
+  if(!CLIENTES.find(x=>x.id===novo.id)) CLIENTES.push(novo);
   fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente cadastrado!');
   logAction('Novo cliente cadastrado', nome);
 }
-function excluirCliente(id){
+async function excluirCliente(id){
   const c=CLIENTES.find(x=>x.id===id);if(!c)return;
   const ofs=OFs.filter(o=>o.cliId===id);
   if(ofs.length>0){
@@ -1970,6 +1967,11 @@ function excluirCliente(id){
   } else {
     if(!confirm(`Excluir cliente "${c.nome}"?\n\nEsta ação não pode ser desfeita.`))return;
   }
+  const r = await salvarViaApiOuLocal('cliente',
+    ()=>api('DELETE','/clientes/'+encodeURIComponent(id)),
+    ()=>({ok:true, local:true})
+  );
+  if(!r || !r.ok){toast('Erro ao excluir cliente','var(--red)');return;}
   CLIENTES=CLIENTES.filter(x=>x.id!==id);
   autoSaveTrigger();renderClientes();toast('🗑 Cliente excluído','var(--orange)');
 }
@@ -5195,7 +5197,9 @@ document.addEventListener('DOMContentLoaded', function(){
       const licoEl=document.querySelector('.logo-icon');
       if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
-    // Dados carregados via API após login (ver doLogin)
+    Promise.all([carregarMaquinas(),carregarOperadores(),carregarClientes(),carregarOFs(),carregarApontamentos()])
+      .then(()=>{try{updateBadges();}catch(e){} try{renderPCP();}catch(e){} try{renderApontamentos();}catch(e){} try{renderOperadores();}catch(e){} })
+      .catch(()=>{});
   } catch(e) {
     console.error('DOMContentLoaded error:', e);
   }
@@ -5796,6 +5800,32 @@ function normalizeForn(r){ return {id:r.id,nome:r.nome,cnpj:r.cnpj,contato:r.con
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
+async function carregarApontamentos(){
+  const r = await api('GET','/apontamentos');
+  if(r && r.ok && r.data) APONTAMENTOS = r.data.map(normalizeAp);
+  return r;
+}
+async function carregarOFs(){
+  const r = await api('GET','/ofs');
+  if(r && r.ok && r.data) OFs = r.data.map(normalizeOF);
+  return r;
+}
+async function carregarClientes(){
+  const r = await api('GET','/clientes');
+  if(r && r.ok && r.data) CLIENTES = r.data.map(normalizeCli);
+  return r;
+}
+async function carregarOperadores(){
+  const r = await api('GET','/operadores');
+  if(r && r.ok && r.data) OPERADORES = r.data.map(normalizeOp);
+  return r;
+}
+async function carregarMaquinas(){
+  const r = await api('GET','/maquinas');
+  if(r && r.ok && r.data) MAQUINAS = r.data.map(normalizeMaq);
+  return r;
+}
+
 // ===================== PERSISTÊNCIA LOCAL (localStorage) =====================
 // Salva TODOS os dados no localStorage toda vez que autoSaveTrigger é chamado.
 // Isso garante que os dados persistam entre recarregamentos de página,
@@ -6110,8 +6140,22 @@ function abrirModalMaquina(mi){
   abrir('modal-maquina');
 }
 function editarMaquina(mi){abrirModalMaquina(mi);}
-function toggleMaquina(mi){MAQUINAS[mi].ativo=(MAQUINAS[mi].ativo===false)?true:false;renderMaquinasConf();autoSaveTrigger();}
-function salvarMaquina(){
+async function toggleMaquina(mi){
+  const m = MAQUINAS[mi];
+  if(!m) return;
+  const novo = (m.ativo===false)?true:false;
+  const payload = {...m, ativo: novo};
+  const r = await salvarViaApiOuLocal('maquina',
+    ()=>api('PUT','/maquinas/'+encodeURIComponent(m.id), payload),
+    ()=>{ m.ativo = novo; return {ok:true, local:true}; }
+  );
+  if(r && r.ok){
+    m.ativo = novo;
+    renderMaquinasConf();
+    autoSaveTrigger();
+  }
+}
+async function salvarMaquina(){
   const mi=document.getElementById('maq-edit-idx').value;
   const col=document.getElementById('maq-e-col').value.trim();
   if(!col){toast('Informe o nome da máquina','var(--red)');return;}
@@ -6124,9 +6168,35 @@ function salvarMaquina(){
     desc:document.getElementById('maq-e-desc').value,
     ativo:true
   };
-  if(mi!==''){Object.assign(MAQUINAS[parseInt(mi)],dados);}
-  else{dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');MAQUINAS.push(dados);}
-  fechar('modal-maquina');renderMaquinasConf();autoSaveTrigger();toast('✓ Máquina salva!');
+  try{
+    if(mi!==''){
+      const idx = parseInt(mi);
+      const m = MAQUINAS[idx];
+      if(!m){toast('Máquina não encontrada','var(--red)');return;}
+      const payload = {...m, ...dados, id: m.id};
+      const r = await salvarViaApiOuLocal('maquina',
+        ()=>api('PUT','/maquinas/'+encodeURIComponent(m.id), payload),
+        ()=>{ Object.assign(m, dados); return {ok:true, local:true}; }
+      );
+      if(!r || !r.ok){toast('Erro ao salvar máquina','var(--red)');return;}
+      Object.assign(m, dados);
+    } else {
+      dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
+      const payload = {...dados};
+      const r = await salvarViaApiOuLocal('maquina',
+        ()=>api('POST','/maquinas', payload),
+        ()=>{ MAQUINAS.push(payload); return {ok:true, local:true}; }
+      );
+      if(!r || !r.ok){toast('Erro ao criar máquina','var(--red)');return;}
+      if(!MAQUINAS.find(x=>x.id===payload.id)) MAQUINAS.push(payload);
+    }
+    fechar('modal-maquina');
+    renderMaquinasConf();
+    autoSaveTrigger();
+    toast('✓ Máquina salva!');
+  }catch(e){
+    toast('Erro ao salvar: '+(e.message||e),'var(--red)');
+  }
 }
 
 // ===================== DADOS NOVOS =====================
@@ -8214,14 +8284,8 @@ function go(id){
 
 
 // ===================== OPERADORES DATA =====================
-let OPERADORES = [
-  {id:'OP01',nome:'João Silva',    mat:'OP-001',maqId:'IMP01',setor:'Impressão', admissao:'2022-03-10',status:'Ativo', obs:''},
-  {id:'OP02',nome:'Maria Souza',   mat:'OP-002',maqId:'IMP05',setor:'Impressão', admissao:'2021-07-15',status:'Ativo', obs:''},
-  {id:'OP03',nome:'Pedro Alves',   mat:'OP-003',maqId:'CVR',  setor:'Corte',     admissao:'2023-01-20',status:'Ativo', obs:''},
-  {id:'OP04',nome:'Carlos Lima',   mat:'OP-004',maqId:'RISC01',setor:'Riscado',  admissao:'2020-11-05',status:'Ativo', obs:''},
-  {id:'OP05',nome:'Ana Ferreira',  mat:'OP-005',maqId:'ACAB', setor:'Acabamento',admissao:'2023-06-01',status:'Ativo', obs:''},
-];
-let OP_SEQ = 6;
+let OPERADORES = [];
+let OP_SEQ = 1;
 
 let INCONFORMIDADES = [
   {id:'IC001',data:'2025-06-01',opId:'OP01',maqId:'IMP01',ofNum:'Nº 001',tipo:'Impressão falhada', qtdProd:5000,qtdPerd:120,desc:'Tinta inconsistente na segunda cor',motivo:'Regulagem do rolo de tinta',obs:''},
