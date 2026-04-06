@@ -1637,7 +1637,7 @@ function salvarAlteracaoOF(ofNum){
 }
 
 // ===================== MODAL OF =====================
-function abrirModalOF(){
+async function abrirModalOF(){
   ofImgsTemp=[];
   ofItensTemp=[];
   document.getElementById('f-of').value=nextOFNum();
@@ -1655,6 +1655,7 @@ function abrirModalOF(){
   VENDEDORES.forEach(v=>vsel.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
   const fsel=document.getElementById('f-fl');fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
   FLUXOS.forEach(f=>fsel.innerHTML+=`<option value="${f.id}">${f.nome}</option>`);
+  try{ await carregarChapas(); }catch(e){}
   ofAtualizaChapas();
   document.getElementById('f-qchp').value='';
   renderMaqChks([]);
@@ -5863,7 +5864,7 @@ function normalizeCli(r){
   };
 }
 function normalizeVend(r){ return {id:r.id,nome:r.nome,fone:r.fone,email:r.email,comissao:r.comissao}; }
-function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.vend_id,tipo:r.tipo,prod:r.prod,comp:r.comp,larg:r.larg,alt:r.alt,area:r.area,onda:r.onda,gram:r.gram,margem:r.margem,frete:r.frete,comissao:r.comissao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
+function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.vendedor_id||'',vendedor:r.vendedor||'',tipo:r.tipo,prod:r.prod,comp:r.comp,larg:r.larg,alt:r.alt,area:r.area,onda:r.onda,gram:r.gram,margem:r.margem,frete:r.frete,comissao:r.comissao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
 function normalizeEst(r){
   return {
     id:r.id,
@@ -9024,10 +9025,12 @@ salvarOrc = async function(){
   if(!cliId||!prod){toast('Informe cliente e produto','var(--red)');return;}
   const qtd=parseInt(document.getElementById('oc-qtd').value)||0;
   const vunit=parseFloat(document.getElementById('oc-vunit').value)||0;
-  const payload={data:document.getElementById('oc-data').value,cli_id:cliId,vend_id:document.getElementById('oc-vend').value,tipo:document.getElementById('oc-tipo').value,prod,comp:document.getElementById('oc-comp').value,larg:document.getElementById('oc-larg').value,alt:document.getElementById('oc-alt').value,area:document.getElementById('oc-area').value,onda:document.getElementById('oc-onda').value,gram:document.getElementById('oc-gram').value,margem:document.getElementById('oc-margem').value,frete:document.getElementById('oc-frete').value,comissao:document.getElementById('oc-comissao').value,qtd,vunit,vtot:qtd*vunit,status:document.getElementById('oc-st').value,obs:document.getElementById('oc-obs').value};
+  const _vid=document.getElementById('oc-vend').value; const _vnm=(getV(_vid)||{}).nome||null;
+  const payload={data:document.getElementById('oc-data').value,cli_id:cliId,vendedor:_vnm,tipo:document.getElementById('oc-tipo').value,prod,comp:document.getElementById('oc-comp').value,larg:document.getElementById('oc-larg').value,alt:document.getElementById('oc-alt').value,area:document.getElementById('oc-area').value,onda:document.getElementById('oc-onda').value,gram:document.getElementById('oc-gram').value,margem:document.getElementById('oc-margem').value,frete:document.getElementById('oc-frete').value,comissao:document.getElementById('oc-comissao').value,qtd,vunit,vtot:qtd*vunit,status:document.getElementById('oc-st').value,obs:document.getElementById('oc-obs').value};
   const r=await salvarViaApiOuLocal('orçamento', ()=>api('POST','/orcamentos',payload), _salvarOrc_orig);
   if(r.ok && !r.local){
-    ORCAMENTOS.push({...payload,id:r.data.id,cliId:payload.cli_id,vendId:payload.vend_id});
+    const _vendId = (VENDEDORES.find(x=>x.nome===payload.vendedor)||{}).id||'';
+    ORCAMENTOS.push({...payload,id:r.data.id,cliId:payload.cli_id,vendId:_vendId});
     ORC_SEQ++;
     fechar('modal-orc');renderOrcamentos();toast('✓ Orçamento salvo!');gerarNotificacoes();renderNotificacoes();
   } else if(!r.ok){ toast('Erro: '+(r.error||''),'var(--red)'); }
@@ -9035,7 +9038,8 @@ salvarOrc = async function(){
 
 setOrcStatus = async function(id,st){
   const o=ORCAMENTOS.find(x=>x.id===id);if(!o)return;
-  const r=await api('PUT','/orcamentos/'+id,{...o,cli_id:o.cliId,vend_id:o.vendId,status:st});
+  const _vnm=(getV(o.vendId)||{}).nome||null;
+  const r=await api('PUT','/orcamentos/'+id,{...o,cli_id:o.cliId,vendedor:_vnm,status:st});
   if(r.ok){o.status=st;renderOrcamentos();toast('→ '+st);gerarNotificacoes();renderNotificacoes();}
 };
 
@@ -9075,7 +9079,8 @@ converterOrcParaOF = async function(id){
   const r=await api('POST','/ofs',payload);
   if(r.ok){
     OFs.push({...payload,id:r.data.id,of:ofNum,cliId:orc.cliId,vendId:orc.vendId});
-    await api('PUT','/orcamentos/'+id,{...orc,cli_id:orc.cliId,vend_id:orc.vendId,status:'Convertido'});
+    const _vnm=(getV(orc.vendId)||{}).nome||null;
+    await api('PUT','/orcamentos/'+id,{...orc,cli_id:orc.cliId,vendedor:_vnm,status:'Convertido'});
     orc.status='Convertido';
     renderOrcamentos();renderPCP();toast('✅ '+ofNum+' criado a partir de '+orc.id,'var(--green)');updateBadges();
   }
