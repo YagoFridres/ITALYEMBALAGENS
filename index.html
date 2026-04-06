@@ -5901,6 +5901,17 @@ function normalizeForn(r){ return {id:r.id,nome:r.nome,cnpj:r.cnpj,contato:r.con
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
+const OF_ALLOWED_FIELDS = new Set([
+  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cliId','cliNome','obs2','vendId','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
+]);
+function filtrarPayloadOF(payload){
+  const out = {};
+  Object.keys(payload||{}).forEach(k=>{
+    if(OF_ALLOWED_FIELDS.has(k) && payload[k] !== undefined) out[k] = payload[k];
+  });
+  return out;
+}
+
 async function carregarApontamentos(){
   const r = await api('GET','/apontamentos');
   if(r && r.ok && r.data) APONTAMENTOS = r.data.map(normalizeAp);
@@ -8928,7 +8939,41 @@ salvarOF = async function(){
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  const payload={seq:ms+1,of_num:document.getElementById('f-of').value,cli_id:cliId,vend_id:document.getElementById('f-vend').value,qtd:qtdTotal,itens:JSON.stringify(itens),dia:document.getElementById('f-dia').value,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[]};
+  const ofNum=document.getElementById('f-of').value;
+  const vendId=document.getElementById('f-vend').value;
+  const empId=(document.getElementById('f-emp')||{}).value||EMP_FILTRO||'';
+  const pagto=(document.getElementById('f-pagto')||{}).value||'';
+  const payload=filtrarPayloadOF({
+    seq: ms+1,
+    numero: ofNum,
+    of_num: ofNum,
+    cliente_id: cliId,
+    cli_id: cliId,
+    vendedor_id: vendId || null,
+    vendId: vendId || null,
+    empresa_id: empId || null,
+    emp_id: empId || null,
+    qtd: qtdTotal,
+    quantidade: qtdTotal,
+    itens: itens,
+    dia: document.getElementById('f-dia').value,
+    data_producao: document.getElementById('f-dia').value,
+    ent: document.getElementById('f-ent').value,
+    data_entrega: document.getElementById('f-ent').value,
+    fluxo: document.getElementById('f-fl').value,
+    maq: getMaqSel(),
+    status: document.getElementById('f-st').value,
+    urg: document.getElementById('f-urg').value==='1',
+    urgente: document.getElementById('f-urg').value==='1',
+    chp: chpId,
+    qtd_chapas: qchp,
+    total: valTotal,
+    cond_pagamento: pagto,
+    pagto: pagto,
+    obs: document.getElementById('f-obs').value,
+    descricao: document.getElementById('f-obs').value,
+    imgs: firstImg?[firstImg]:[]
+  });
 
   showSaveIndicator('Salvando...','var(--yellow)');
   const r = await salvarViaApiOuLocal('OF', async ()=>{
@@ -8940,9 +8985,9 @@ salvarOF = async function(){
   }, _salvarOF_orig);
 
   if(r.ok && !r.local){
-    OFs.push({...payload,id:r.data.id,of:payload.of_num,cliId:payload.cli_id,vendId:payload.vend_id,maq:payload.maq,imgs:payload.imgs,urg:!!payload.urg,itens});
+    OFs.push({...payload,id:r.data.id,of:payload.of_num||payload.numero,cliId:payload.cli_id||payload.cliente_id,vendId:payload.vendId||payload.vendedor_id,maq:payload.maq,imgs:payload.imgs,urg:!!(payload.urg||payload.urgente),itens});
     fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
-    logAction('Nova OF criada',payload.of_num);
+    logAction('Nova OF criada',payload.of_num||payload.numero);
   } else if(!r.ok){
     toast('Erro ao salvar OF: '+(r.error||''),'var(--red)');
   }
@@ -8990,7 +9035,35 @@ converterOrcParaOF = async function(id){
   const orc=ORCAMENTOS.find(x=>x.id===id);if(!orc)return;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const ofNum=nextOFNum();
-  const payload={seq:ms+1,of_num:ofNum,cli_id:orc.cliId,vend_id:orc.vendId,qtd:orc.qtd,dia:today(),ent:'',fluxo:'',maq:[],status:'Em aberto',urg:false,chp:'',qchp:0,val:orc.vtot,obs:'Convertido de '+orc.id+' — '+orc.prod,imgs:[]};
+  const empId=orc.empId||EMP_FILTRO||'';
+  const payload=filtrarPayloadOF({
+    seq: ms+1,
+    numero: ofNum,
+    of_num: ofNum,
+    cliente_id: orc.cliId || null,
+    cli_id: orc.cliId || null,
+    vendedor_id: orc.vendId || null,
+    vendId: orc.vendId || null,
+    empresa_id: empId || null,
+    emp_id: empId || null,
+    qtd: orc.qtd,
+    quantidade: orc.qtd,
+    dia: today(),
+    data_producao: today(),
+    ent: '',
+    data_entrega: '',
+    fluxo: '',
+    maq: [],
+    status: 'Em aberto',
+    urg: false,
+    urgente: false,
+    chp: '',
+    qtd_chapas: 0,
+    total: orc.vtot,
+    obs: 'Convertido de '+orc.id+' — '+orc.prod,
+    descricao: 'Convertido de '+orc.id+' — '+orc.prod,
+    imgs: []
+  });
   const r=await api('POST','/ofs',payload);
   if(r.ok){
     OFs.push({...payload,id:r.data.id,of:ofNum,cliId:orc.cliId,vendId:orc.vendId});
@@ -11603,42 +11676,38 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     return window.__OF_SHAPE;
   }
   function buildOfPayload(shape, ofObj){
-    const base = {
+    const common = {
+      seq: ofObj.seq || 0,
       numero: ofObj.of,
+      of_num: ofObj.of,
       cliente_id: ofObj.cliId || null,
+      cli_id: ofObj.cliId || null,
       vendedor_id: ofObj.vendId || null,
+      vendId: ofObj.vendId || null,
       empresa_id: ofObj.empId || null,
-      maquina_id: Array.isArray(ofObj.maq) && ofObj.maq.length ? ofObj.maq[0] : null,
-      fluxo_id: ofObj.fluxo || null,
+      emp_id: ofObj.empId || null,
       status: ofObj.status || 'Em aberto',
       data_entrega: ofObj.ent || null,
+      ent: ofObj.ent || null,
       data_producao: ofObj.dia || null,
+      dia: ofObj.dia || null,
       urgente: !!ofObj.urg,
+      urg: !!ofObj.urg,
       quantidade: Number(ofObj.qtd || 0),
+      qtd: Number(ofObj.qtd || 0),
       descricao: ofObj.obs || null,
       obs: ofObj.obs || null,
-      itens: Array.isArray(ofObj.itens) ? ofObj.itens : []
-    };
-    if(shape === 'v2') return base;
-    return {
-      seq: ofObj.seq || 0,
-      of_num: ofObj.of,
-      cli_id: ofObj.cliId || null,
-      vend_id: ofObj.vendId || null,
-      qtd: Number(ofObj.qtd || 0),
-      dia: ofObj.dia || null,
-      ent: ofObj.ent || null,
-      fluxo: ofObj.fluxo || null,
+      itens: Array.isArray(ofObj.itens) ? ofObj.itens : [],
       maq: Array.isArray(ofObj.maq) ? ofObj.maq : [],
-      status: ofObj.status || 'Em aberto',
-      urg: !!ofObj.urg,
+      fluxo: ofObj.fluxo || null,
       chp: ofObj.chp || '',
-      qchp: Number(ofObj.qchp || 0),
-      val: Number(ofObj.val || 0),
-      obs: ofObj.obs || '',
-      imgs: Array.isArray(ofObj.imgs) ? ofObj.imgs : [],
-      emp_id: ofObj.empId || null
+      qtd_chapas: Number(ofObj.qchp || 0),
+      total: Number(ofObj.val || 0),
+      cond_pagamento: ofObj.pagto || null,
+      pagto: ofObj.pagto || null,
+      imgs: Array.isArray(ofObj.imgs) ? ofObj.imgs : []
     };
+    return filtrarPayloadOF(common);
   }
 
   window.salvarOF = async function(){
@@ -11671,6 +11740,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           val: (parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),
           obs: p.obs || it.desc || '',
           imgs: it.img?[it.img]:[],
+          pagto: p.pagto || '',
           empId: p.empId
         };
         const payload = buildOfPayload(shape, localOf);
