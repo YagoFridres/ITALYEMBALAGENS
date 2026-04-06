@@ -5804,16 +5804,22 @@ async function autoSaveLoad(){
 function normalizeOF(r){
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
-  const vendId = r.vend_id ?? r.vendedor_id ?? r.vendedorId ?? r.vendId ?? '';
-  const dia = r.dia ?? r.data_producao ?? r.dataProducao ?? r.data ?? '';
-  const ent = r.ent ?? r.data_entrega ?? r.dataEntrega ?? '';
-  const urg = r.urg ?? r.urgente ?? r.urgent ?? false;
-  const qtd = r.qtd ?? r.quantidade ?? 0;
+  const vendNome = r.vendedor ?? r.vendedor_nome ?? r.vendedorNome ?? '';
+  let vendId = r.vendedor_id ?? r.vendedorId ?? r.vendId ?? '';
+  if(vendNome && (!vendId || vendId.length>12)){
+    const found = (VENDEDORES||[]).find(x=>(x.nome||'')===vendNome);
+    if(found) vendId = found.id;
+  }
+  const dia = r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '';
+  const ent = r.data_entrega ?? r.ent ?? r.dataEntrega ?? '';
+  const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
+  const qtd = r.quantidade ?? r.qtd ?? 0;
   const maqArr = Array.isArray(r.maq)
     ? r.maq
     : (r.maquina_id ? [r.maquina_id] : (r.maquinaId ? [r.maquinaId] : tryParse(r.maq, [])));
   const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
-  const obs = r.obs ?? r.observacoes ?? r.descricao ?? '';
+  const prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
+  const obs = r.obs ?? r.obs2 ?? '';
   const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
   return {
     id:r.id,
@@ -5832,6 +5838,7 @@ function normalizeOF(r){
     qchp:r.qchp ?? 0,
     val:r.val ?? 0,
     obs,
+    prodDesc,
     imgs,
     empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? ''
   };
@@ -5902,7 +5909,7 @@ function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,d
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
 const OF_ALLOWED_FIELDS = new Set([
-  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','vend_id','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
+  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -8941,16 +8948,17 @@ salvarOF = async function(){
   const firstImg=itemImgs.find(img=>img!==null);
   const ofNum=document.getElementById('f-of').value;
   const vendId=document.getElementById('f-vend').value;
+  const vendNome=(getV(vendId)||{}).nome||'';
   const empId=(document.getElementById('f-emp')||{}).value||EMP_FILTRO||'';
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
+  const descMain=((document.getElementById('f-prod-desc')||{}).value||'').trim() || (itens[0]&&itens[0].desc?itens[0].desc:'');
   const payload=filtrarPayloadOF({
     seq: ms+1,
     numero: ofNum,
     of_num: ofNum,
     cliente_id: cliId,
     cli_id: cliId,
-    vendedor_id: vendId || null,
-    vend_id: vendId || null,
+    vendedor: vendNome || null,
     empresa_id: empId || null,
     emp_id: empId || null,
     qtd: qtdTotal,
@@ -8971,7 +8979,7 @@ salvarOF = async function(){
     cond_pagamento: pagto,
     pagto: pagto,
     obs: document.getElementById('f-obs').value,
-    descricao: document.getElementById('f-obs').value,
+    descricao: descMain,
     imgs: firstImg?[firstImg]:[]
   });
 
@@ -8985,7 +8993,7 @@ salvarOF = async function(){
   }, _salvarOF_orig);
 
   if(r.ok && !r.local){
-    OFs.push({...payload,id:r.data.id,of:payload.of_num||payload.numero,cliId:payload.cli_id||payload.cliente_id,vendId:payload.vend_id||payload.vendedor_id,maq:payload.maq,imgs:payload.imgs,urg:!!(payload.urg||payload.urgente),itens});
+    OFs.push({...payload,id:r.data.id,of:payload.of_num||payload.numero,cliId:payload.cli_id||payload.cliente_id,vendId:vendId,maq:payload.maq,imgs:payload.imgs,urg:!!(payload.urg||payload.urgente),itens,prodDesc:descMain,obs:payload.obs});
     fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
     logAction('Nova OF criada',payload.of_num||payload.numero);
   } else if(!r.ok){
@@ -9036,14 +9044,14 @@ converterOrcParaOF = async function(id){
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const ofNum=nextOFNum();
   const empId=orc.empId||EMP_FILTRO||'';
+  const vendNome=(getV(orc.vendId)||{}).nome||'';
   const payload=filtrarPayloadOF({
     seq: ms+1,
     numero: ofNum,
     of_num: ofNum,
     cliente_id: orc.cliId || null,
     cli_id: orc.cliId || null,
-    vendedor_id: orc.vendId || null,
-    vend_id: orc.vendId || null,
+    vendedor: vendNome || null,
     empresa_id: empId || null,
     emp_id: empId || null,
     qtd: orc.qtd,
@@ -11676,14 +11684,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     return window.__OF_SHAPE;
   }
   function buildOfPayload(shape, ofObj){
+    const vendNome = (typeof getV === 'function' && ofObj.vendId) ? ((getV(ofObj.vendId)||{}).nome||'') : '';
     const common = {
       seq: ofObj.seq || 0,
       numero: ofObj.of,
       of_num: ofObj.of,
       cliente_id: ofObj.cliId || null,
       cli_id: ofObj.cliId || null,
-      vendedor_id: ofObj.vendId || null,
-      vend_id: ofObj.vendId || null,
+      vendedor: vendNome || null,
       empresa_id: ofObj.empId || null,
       emp_id: ofObj.empId || null,
       status: ofObj.status || 'Em aberto',
@@ -11695,7 +11703,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       urg: !!ofObj.urg,
       quantidade: Number(ofObj.qtd || 0),
       qtd: Number(ofObj.qtd || 0),
-      descricao: ofObj.obs || null,
+      descricao: (ofObj.prodDesc || '') || (ofObj.obs || null),
       obs: ofObj.obs || null,
       itens: Array.isArray(ofObj.itens) ? ofObj.itens : [],
       maq: Array.isArray(ofObj.maq) ? ofObj.maq : [],
@@ -11738,7 +11746,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           chp: idx===0 ? p.chpId : '',
           qchp: idx===0 ? p.qchp : 0,
           val: (parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),
-          obs: p.obs || it.desc || '',
+          prodDesc: (p.prodDesc||'') || (it.desc||''),
+          obs: p.obs || '',
           imgs: it.img?[it.img]:[],
           pagto: p.pagto || '',
           empId: p.empId
@@ -11788,7 +11797,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         maq: [...(p.maq||[])],
         status: p.status,
         urg: p.urg,
-        obs: p.obs,
+        prodDesc: p.prodDesc || o.prodDesc || '',
+        obs: p.obs || '',
         empId: p.empId||o.empId||'',
         itens: p.itens,
         imgs: firstImgAlt?[firstImgAlt]:[]
