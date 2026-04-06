@@ -1172,11 +1172,14 @@ function fmtTsTime(iso){
     return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
   }catch(e){ return '—'; }
 }
-// Rótulo padronizado para selects de chapa: Fornecedor | Nomenclatura | NxLmm | saldo: X un
 const chapaLabel = c => {
-  const dim=c.comp&&c.larg?` ${c.comp}×${c.larg}mm`:c.tam?` ${c.tam}`:'';
-  const vinc=c.vincada?` 🔧`:'';
-  return `${c.forn} | ${c.nom||c.nome}${dim}${vinc} — saldo: ${(c.qtd||0).toLocaleString()} un`;
+  const tipo = (c.tipo_papel ?? c.tipoPapel ?? c.nom ?? c.qual ?? '').toString().trim().toUpperCase();
+  const larg = c.largura_mm ?? c.largura ?? c.larg ?? 0;
+  const comp = c.comprimento_mm ?? c.comprimento ?? c.comp ?? 0;
+  const qtd = c.quantidade_atual ?? c.quantidadeAtual ?? c.qtd ?? c.quantidade ?? 0;
+  const dim = (larg && comp) ? `${larg}x${comp} mm` : (c.tam || '');
+  const head = [tipo || 'CHAPA', dim].filter(Boolean).join(' | ');
+  return `${head} — saldo: ${Number(qtd||0).toLocaleString()} un`;
 };
 function nextOFNum(){ const ns=OFs.map(o=>parseInt(o.of.replace('Nº ',''))).filter(n=>!isNaN(n)); return 'Nº '+String(ns.length?Math.max(...ns)+1:1).padStart(3,'0'); }
 function toast(msg,cor='var(--green)'){const t=document.getElementById('toast');t.textContent=msg;t.style.borderColor=cor;t.style.color=cor;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
@@ -1682,7 +1685,8 @@ function ofAtualizaChapas(){
   // Popula select de chapas filtrado pela empresa selecionada na OF
   const empId=(document.getElementById('f-emp')||{}).value||'';
   const chsel=document.getElementById('f-chp');if(!chsel)return;
-  const chapas=empId?ESTOQUE.filter(c=>(c.empId||'')===empId):ESTOQUE;
+  const hasEmp = Array.isArray(ESTOQUE) && ESTOQUE.some(c=>!!(c && c.empId));
+  const chapas = (empId && hasEmp) ? ESTOQUE.filter(c=>(c.empId||'')===empId) : ESTOQUE;
   chsel.innerHTML='<option value="">Sem vínculo</option>';
   chapas.forEach(c=>chsel.innerHTML+=`<option value="${c.id}">${chapaLabel(c)}</option>`);
 }
@@ -6017,15 +6021,15 @@ function normalizeEst(r){
   return {
     id:r.id,
     forn:r.forn||r.fornecedor||'',
-    nom:r.nom||r.codigo||r.cod||'',
+    nom:r.nom||r.codigo||r.cod||r.tipo_papel||r.tipoPapel||'',
     tam:r.tam||r.tamanho||'',
-    comp:r.comp!=null?r.comp:r.comprimento,
-    larg:r.larg!=null?r.larg:r.largura,
+    comp:r.comp!=null?r.comp:(r.comprimento_mm!=null?r.comprimento_mm:r.comprimento),
+    larg:r.larg!=null?r.larg:(r.largura_mm!=null?r.largura_mm:r.largura),
     nome:r.nome||r.descricao||'',
-    qual:r.qual||r.qualidade||'',
+    qual:r.qual||r.qualidade||r.tipo_papel||r.tipoPapel||'',
     cnpj:r.cnpj||'',
     nf:r.nf||'',
-    qtd:r.qtd!=null?r.qtd:r.quantidade,
+    qtd:r.qtd!=null?r.qtd:(r.quantidade_atual!=null?r.quantidade_atual:r.quantidade),
     val:r.val!=null?r.val:r.valor_unitario!=null?r.valor_unitario:r.custo_unitario,
     min:r.min!=null?r.min:r.quantidade_minima,
     vincada:!!(r.vincada||r.vincada===true),
@@ -6979,6 +6983,7 @@ async function handleImportChapasFile(file){
     let failCount = 0;
     const fails = [];
 
+    toast(`⏳ Importando 0/${rows.length}...`,'var(--orange)');
     showSaveIndicator(`⏳ importando 0/${rows.length}`,'var(--yellow)');
     for(let i=0;i<rows.length;i++){
       const r = rows[i];
@@ -7003,8 +7008,9 @@ async function handleImportChapasFile(file){
         failCount++;
         if(fails.length < 10) fails.push({ linha: i+2, nome, erro: resp && resp.error ? resp.error : 'erro' });
       }
-      if((i+1)%10===0 || i===rows.length-1){
+      if((i+1)%25===0 || i===rows.length-1){
         showSaveIndicator(`⏳ importando ${i+1}/${rows.length}`,'var(--yellow)');
+        toast(`⏳ Importando ${i+1}/${rows.length}... (${okCount} ok, ${failCount} falhas)`,'var(--orange)');
       }
     }
 
@@ -9887,7 +9893,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
-    <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📑 Importar Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar Excel</button>
     <button class="btn btn-accent" onclick="abrirModalChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
