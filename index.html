@@ -5801,7 +5801,41 @@ async function autoSaveLoad(){
 }
 
 // Normalização: converte snake_case do banco para camelCase do sistema
-function normalizeOF(r){ return {id:r.id,seq:r.seq,of:r.of_num,cliId:r.cli_id,vendId:r.vend_id,qtd:r.qtd,dia:r.dia,ent:r.ent,fluxo:r.fluxo,maq:tryParse(r.maq,[]),status:r.status,urg:!!r.urg,chp:r.chp,qchp:r.qchp,val:r.val,obs:r.obs,imgs:tryParse(r.imgs,[]),empId:r.emp_id||r.empId||''}; }
+function normalizeOF(r){
+  const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
+  const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
+  const vendId = r.vend_id ?? r.vendedor_id ?? r.vendedorId ?? r.vendId ?? '';
+  const dia = r.dia ?? r.data_producao ?? r.dataProducao ?? r.data ?? '';
+  const ent = r.ent ?? r.data_entrega ?? r.dataEntrega ?? '';
+  const urg = r.urg ?? r.urgente ?? r.urgent ?? false;
+  const qtd = r.qtd ?? r.quantidade ?? 0;
+  const maqArr = Array.isArray(r.maq)
+    ? r.maq
+    : (r.maquina_id ? [r.maquina_id] : (r.maquinaId ? [r.maquinaId] : tryParse(r.maq, [])));
+  const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
+  const obs = r.obs ?? r.observacoes ?? r.descricao ?? '';
+  const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
+  return {
+    id:r.id,
+    seq:r.seq ?? r.prioridade ?? 0,
+    of,
+    cliId,
+    vendId,
+    qtd,
+    dia,
+    ent,
+    fluxo,
+    maq:maqArr,
+    status:r.status ?? 'Em aberto',
+    urg:!!urg,
+    chp:r.chp ?? '',
+    qchp:r.qchp ?? 0,
+    val:r.val ?? 0,
+    obs,
+    imgs,
+    empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? ''
+  };
+}
 function normalizeCli(r){
   return {
     id:r.id,
@@ -11552,55 +11586,107 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     };
   }
 
-  window.salvarOF = function(){
+  async function inferOfShape(){
+    try{
+      if(window.__OF_SHAPE) return window.__OF_SHAPE;
+      if(window._apiConectado && typeof api === 'function'){
+        const r = await api('GET','/ofs');
+        const row = r && r.ok && Array.isArray(r.data) && r.data[0] ? r.data[0] : null;
+        if(row){
+          const hasNumero = Object.prototype.hasOwnProperty.call(row,'numero') || Object.prototype.hasOwnProperty.call(row,'cliente_id') || Object.prototype.hasOwnProperty.call(row,'data_producao');
+          window.__OF_SHAPE = hasNumero ? 'v2' : 'legacy';
+          return window.__OF_SHAPE;
+        }
+      }
+    }catch(e){}
+    window.__OF_SHAPE = 'legacy';
+    return window.__OF_SHAPE;
+  }
+  function buildOfPayload(shape, ofObj){
+    const base = {
+      numero: ofObj.of,
+      cliente_id: ofObj.cliId || null,
+      vendedor_id: ofObj.vendId || null,
+      empresa_id: ofObj.empId || null,
+      maquina_id: Array.isArray(ofObj.maq) && ofObj.maq.length ? ofObj.maq[0] : null,
+      fluxo_id: ofObj.fluxo || null,
+      status: ofObj.status || 'Em aberto',
+      data_entrega: ofObj.ent || null,
+      data_producao: ofObj.dia || null,
+      urgente: !!ofObj.urg,
+      quantidade: Number(ofObj.qtd || 0),
+      descricao: ofObj.obs || null,
+      obs: ofObj.obs || null,
+      itens: Array.isArray(ofObj.itens) ? ofObj.itens : []
+    };
+    if(shape === 'v2') return base;
+    return {
+      seq: ofObj.seq || 0,
+      of_num: ofObj.of,
+      cli_id: ofObj.cliId || null,
+      vend_id: ofObj.vendId || null,
+      qtd: Number(ofObj.qtd || 0),
+      dia: ofObj.dia || null,
+      ent: ofObj.ent || null,
+      fluxo: ofObj.fluxo || null,
+      maq: Array.isArray(ofObj.maq) ? ofObj.maq : [],
+      status: ofObj.status || 'Em aberto',
+      urg: !!ofObj.urg,
+      chp: ofObj.chp || '',
+      qchp: Number(ofObj.qchp || 0),
+      val: Number(ofObj.val || 0),
+      obs: ofObj.obs || '',
+      imgs: Array.isArray(ofObj.imgs) ? ofObj.imgs : [],
+      emp_id: ofObj.empId || null
+    };
+  }
+
+  window.salvarOF = async function(){
     const p=collectModalOfPayload();
     if(!p) return;
     const multi=p.itens.length>1;
     const seqStart=(OFs.length?Math.max(...OFs.map(o=>o.seq||0)):0)+1;
     const startNum=Math.max(parseFirstNumber(p.ofSeed), maxOfNumeric()+1);
     const seedAdjusted=buildOfLike(p.ofSeed, startNum-parseFirstNumber(p.ofSeed));
-    if(p.chpId && p.qchp>0){
-      const ch=getCh(p.chpId);
-      if(ch){
-        ch.qtd-=p.qchp;
-        HIST_EST.unshift({tipo:'saida',chp:p.chpId,qtd:p.qchp,of:seedAdjusted,data:today(),obs:'Baixa automática — criação OF'});
+    try{
+      const shape = await inferOfShape();
+      for(let idx=0; idx<p.itens.length; idx++){
+        const it = p.itens[idx];
+        const ofNum = multi ? buildOfLike(seedAdjusted, idx) : p.ofSeed;
+        const localOf = {
+          seq: seqStart+idx,
+          of: ofNum,
+          cliId: p.cliId,
+          vendId: p.vendId,
+          qtd: parseFloat(it.qtd)||0,
+          itens: [{...it}],
+          dia: p.dia,
+          ent: p.ent,
+          fluxo: p.fluxo,
+          maq: [...(p.maq||[])],
+          status: p.status,
+          urg: p.urg,
+          chp: idx===0 ? p.chpId : '',
+          qchp: idx===0 ? p.qchp : 0,
+          val: (parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),
+          obs: p.obs || it.desc || '',
+          imgs: it.img?[it.img]:[],
+          empId: p.empId
+        };
+        const payload = buildOfPayload(shape, localOf);
+        const r = await api('POST','/ofs', payload);
+        if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
       }
+      await carregarOFs();
+      fechar('modal-of');
+      autoSaveTrigger();
+      renderPCP();
+      updateBadges();
+      toast(multi ? ('✓ Pedido dividido em '+p.itens.length+' OFs separadas!') : '✓ OF cadastrada!','var(--green)');
+      logAction('Nova OF criada', multi ? (seedAdjusted+' · '+p.itens.length+' itens') : p.ofSeed);
+    }catch(e){
+      toast('Erro ao salvar OF: '+(e.message||e),'var(--red)');
     }
-    p.itens.forEach((it,idx)=>{
-      const ofNum = multi ? buildOfLike(seedAdjusted, idx) : p.ofSeed;
-      if(OFs.some(o=>o.of===ofNum)){ toast('OF '+ofNum+' já existe','var(--red)'); throw new Error('of duplicada'); }
-      OFs.push({
-        seq:seqStart+idx,
-        of:ofNum,
-        cliId:p.cliId,
-        vendId:p.vendId,
-        qtd:parseFloat(it.qtd)||0,
-        itens:[{...it}],
-        dia:p.dia,
-        ent:p.ent,
-        fluxo:p.fluxo,
-        maq:[...(p.maq||[])],
-        status:p.status,
-        urg:p.urg,
-        chp: idx===0 ? p.chpId : '',
-        qchp: idx===0 ? p.qchp : 0,
-        val:(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),
-        vunit:parseFloat(it.vunit)||0,
-        pagto:p.pagto,
-        obs:p.obs || it.desc || '',
-        prodDesc:p.prodDesc||'',
-        imgs:it.img?[it.img]:[],
-        empId:p.empId,
-        _estoqueJaBaixadoCriacao: idx===0 && !!(p.chpId&&p.qchp>0),
-        pedidoGrupo: seedAdjusted,
-        pedidoItemIndex: idx+1,
-        pedidoTotalItens: p.itens.length,
-        pedidoItemDesc: it.desc || ''
-      });
-    });
-    fechar('modal-of'); autoSaveTrigger(); renderPCP(); updateBadges();
-    toast(multi ? ('✓ Pedido dividido em '+p.itens.length+' OFs separadas!') : '✓ OF cadastrada!','var(--green)');
-    logAction('Nova OF criada', multi ? (seedAdjusted+' · '+p.itens.length+' itens') : p.ofSeed);
   };
 
   function propagateOfNumber(oldNum,newNum){
@@ -11611,36 +11697,47 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     if(window.AF && AF.ofNum===oldNum) AF.ofNum=newNum;
   }
 
-  window.salvarAlteracaoOF = function(ofNum){
+  window.salvarAlteracaoOF = async function(ofNum){
     const o=OFs.find(x=>x.of===ofNum); if(!o) return;
     const p=collectModalOfPayload(); if(!p) return;
     const novoOf=(byId('f-of').value||'').trim()||ofNum;
     if(novoOf!==ofNum && OFs.some(x=>x.of===novoOf && x!==o)){ toast('Já existe uma OF com esse número','var(--red)'); return; }
-    o.of=novoOf;
-    o.prodDesc=p.prodDesc||o.prodDesc||'';
-    o.cliId=p.cliId;
-    o.vendId=p.vendId;
-    o.itens=p.itens;
-    o.qtd=p.qtdTotal;
-    o.val=p.valTotal;
-    o.vunit=p.itens.length===1?(parseFloat(p.itens[0].vunit)||0):0;
-    o.dia=p.dia;
-    o.ent=p.ent;
-    o.fluxo=p.fluxo;
-    o.maq=[...(p.maq||[])];
-    o.status=p.status;
-    o.urg=p.urg;
-    o.pagto=p.pagto;
-    o.obs=p.obs;
-    o.empId=p.empId||o.empId||'';
-    o.chp=p.chpId||'';
-    o.qchp=p.qchp||0;
-    const itemImgsAlt=p.itens.map(it=>it.img||null);
-    const firstImgAlt=itemImgsAlt.find(img=>img!==null);
-    o.imgs=firstImgAlt?[firstImgAlt]:[];
-    propagateOfNumber(ofNum,novoOf);
-    fechar('modal-of'); autoSaveTrigger(); renderPCP(); updateBadges();
-    toast('✏ OF alterada com sucesso','var(--purple)');
+    try{
+      const shape = await inferOfShape();
+      const itemImgsAlt=p.itens.map(it=>it.img||null);
+      const firstImgAlt=itemImgsAlt.find(img=>img!==null);
+      const upd = {
+        ...o,
+        of: novoOf,
+        cliId: p.cliId,
+        vendId: p.vendId,
+        qtd: p.qtdTotal,
+        dia: p.dia,
+        ent: p.ent,
+        fluxo: p.fluxo,
+        maq: [...(p.maq||[])],
+        status: p.status,
+        urg: p.urg,
+        obs: p.obs,
+        empId: p.empId||o.empId||'',
+        itens: p.itens,
+        imgs: firstImgAlt?[firstImgAlt]:[]
+      };
+      const payload = buildOfPayload(shape, upd);
+      const id = o.id;
+      if(!id){ throw new Error('OF sem id (uuid). Recarregue a lista e tente novamente.'); }
+      const r = await api('PUT','/ofs/'+encodeURIComponent(id), payload);
+      if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao atualizar OF');
+      await carregarOFs();
+      propagateOfNumber(ofNum,novoOf);
+      fechar('modal-of');
+      autoSaveTrigger();
+      renderPCP();
+      updateBadges();
+      toast('✏ OF alterada com sucesso','var(--purple)');
+    }catch(e){
+      toast('Erro ao atualizar OF: '+(e.message||e),'var(--red)');
+    }
   };
 
   window.openTabletOrderDetail = function(ofNum){
