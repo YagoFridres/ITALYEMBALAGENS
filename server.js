@@ -185,7 +185,24 @@ function clientesIn(p) {
 
 function fornecedoresIn(p) {
   const tel = p.tel !== undefined ? p.tel : p.fone;
-  return { ...p, tel };
+  const end = p.end !== undefined ? p.end : p.endereco;
+  const out = { ...p };
+  if (tel !== undefined) out.tel = tel;
+  if (end !== undefined) out.end = end;
+  delete out.fone;
+  delete out.endereco;
+  return out;
+}
+
+function vendedoresIn(p) {
+  const tel = p.tel !== undefined ? p.tel : p.fone;
+  const reg = p.reg !== undefined ? p.reg : p.registro;
+  const out = { ...p };
+  if (tel !== undefined) out.tel = tel;
+  if (reg !== undefined) out.reg = reg;
+  delete out.fone;
+  delete out.registro;
+  return out;
 }
 
 app.get('/api/ofs', async (req, res) => {
@@ -251,7 +268,7 @@ app.get('/api/vendedores', async (req, res) => {
 
 app.post('/api/vendedores', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('vendedores').insert([req.body]).select();
+    const { data, error } = await supabase.from('vendedores').insert([vendedoresIn(req.body || {})]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
@@ -259,7 +276,7 @@ app.post('/api/vendedores', async (req, res) => {
 
 app.put('/api/vendedores/:id', async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
+    const payload = vendedoresIn({ ...(req.body || {}) }); delete payload.id;
     const { data, error } = await supabase.from('vendedores')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
@@ -293,7 +310,11 @@ app.post('/api/orcamentos', async (req, res) => {
   try { ok(res, await insertOne('orcamentos', req.body || {})); } catch (e) { bad(res, e.message); }
 });
 app.put('/api/orcamentos/:id', async (req, res) => {
-  try { ok(res, await updateOne('orcamentos', req.params.id, req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    ok(res, await updateOne('orcamentos', req.params.id, payload));
+  } catch (e) { bad(res, e.message); }
 });
 app.delete('/api/orcamentos/:id', async (req, res) => {
   try { await deleteOne('orcamentos', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
@@ -395,6 +416,54 @@ app.put('/api/maquinas/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.delete('/api/maquinas/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('maquinas').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// FLUXOS
+// ══════════════════════════════════════════════════════════════
+app.get('/api/fluxos', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('fluxos').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/fluxos', async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
+    const { data, error } = await supabase.from('fluxos').insert([payload]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/fluxos/:id', async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
+    const { data, error } = await supabase.from('fluxos').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/fluxos/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('fluxos').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // COMPRAS
 // ══════════════════════════════════════════════════════════════
@@ -446,7 +515,7 @@ app.get('/api/fornecedores', async (req, res) => {
 
 app.post('/api/fornecedores', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('fornecedores').insert([req.body]).select();
+    const { data, error } = await supabase.from('fornecedores').insert([fornecedoresIn(req.body || {})]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
@@ -454,7 +523,7 @@ app.post('/api/fornecedores', async (req, res) => {
 
 app.put('/api/fornecedores/:id', async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
+    const payload = fornecedoresIn({ ...(req.body || {}) }); delete payload.id;
     const { data, error } = await supabase.from('fornecedores')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
