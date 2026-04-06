@@ -5902,7 +5902,7 @@ function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,d
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
 const OF_ALLOWED_FIELDS = new Set([
-  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cliId','cliNome','obs2','vendId','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
+  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','vend_id','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -8950,7 +8950,7 @@ salvarOF = async function(){
     cliente_id: cliId,
     cli_id: cliId,
     vendedor_id: vendId || null,
-    vendId: vendId || null,
+    vend_id: vendId || null,
     empresa_id: empId || null,
     emp_id: empId || null,
     qtd: qtdTotal,
@@ -8985,7 +8985,7 @@ salvarOF = async function(){
   }, _salvarOF_orig);
 
   if(r.ok && !r.local){
-    OFs.push({...payload,id:r.data.id,of:payload.of_num||payload.numero,cliId:payload.cli_id||payload.cliente_id,vendId:payload.vendId||payload.vendedor_id,maq:payload.maq,imgs:payload.imgs,urg:!!(payload.urg||payload.urgente),itens});
+    OFs.push({...payload,id:r.data.id,of:payload.of_num||payload.numero,cliId:payload.cli_id||payload.cliente_id,vendId:payload.vend_id||payload.vendedor_id,maq:payload.maq,imgs:payload.imgs,urg:!!(payload.urg||payload.urgente),itens});
     fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
     logAction('Nova OF criada',payload.of_num||payload.numero);
   } else if(!r.ok){
@@ -9043,7 +9043,7 @@ converterOrcParaOF = async function(id){
     cliente_id: orc.cliId || null,
     cli_id: orc.cliId || null,
     vendedor_id: orc.vendId || null,
-    vendId: orc.vendId || null,
+    vend_id: orc.vendId || null,
     empresa_id: empId || null,
     emp_id: empId || null,
     qtd: orc.qtd,
@@ -11683,7 +11683,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       cliente_id: ofObj.cliId || null,
       cli_id: ofObj.cliId || null,
       vendedor_id: ofObj.vendId || null,
-      vendId: ofObj.vendId || null,
+      vend_id: ofObj.vendId || null,
       empresa_id: ofObj.empId || null,
       emp_id: ofObj.empId || null,
       status: ofObj.status || 'Em aberto',
