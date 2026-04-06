@@ -562,6 +562,105 @@ app.delete('/api/estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+// ══════════════════════════════════════════════════════════════
+// FACAS ESTOQUE
+// ══════════════════════════════════════════════════════════════
+app.get('/api/facas_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('facas_estoque').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+app.post('/api/facas_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('facas_estoque').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.put('/api/facas_estoque/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.delete('/api/facas_estoque/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('facas_estoque').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// CLICHÊS ESTOQUE
+// ══════════════════════════════════════════════════════════════
+app.get('/api/cliches_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('cliches_estoque').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+app.post('/api/cliches_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('cliches_estoque').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.put('/api/cliches_estoque/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('cliches_estoque').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.delete('/api/cliches_estoque/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('cliches_estoque').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// CHAPAS ESTOQUE
+// ══════════════════════════════════════════════════════════════
+app.get('/api/chapas_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chapas_estoque').select('*').order('nome');
+    if (error) throw error;
+    ok(res, data);
+  } catch (e) { err(res, e); }
+});
+app.post('/api/chapas_estoque', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chapas_estoque').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.put('/api/chapas_estoque/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+app.delete('/api/chapas_estoque/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('chapas_estoque').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/hist_estoque', async (req, res) => {
   try {
     const { data, error } = await supabase.from('hist_estoque')
