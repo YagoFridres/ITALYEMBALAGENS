@@ -163,9 +163,14 @@ async function deleteOne(table, id) {
 }
 
 function ofIn(p) {
-  const maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
-  const imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
-  const out = { ...p, maq, imgs };
+  const out = { ...p };
+  const has = (k) => Object.prototype.hasOwnProperty.call(p || {}, k);
+  if (has('maq')) {
+    out.maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
+  }
+  if (has('imgs')) {
+    out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
+  }
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;

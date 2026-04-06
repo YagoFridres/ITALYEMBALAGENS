@@ -1371,12 +1371,47 @@ function renderPCP(){
 
 function selecionarOF(num){ofSel=ofSel===num?null:num;renderPCP();}
 function moverOF(num,dir){const o=OFs.find(x=>x.of===num);if(!o)return;const a=OFs.find(x=>x.seq===o.seq+dir);if(!a)return;a.seq-=dir;o.seq+=dir;renderPCP();toast(`${num} → pos ${o.seq}`);}
-function moverPos(num,dest){
+async function moverPos(num,dest){
   const o=OFs.find(x=>x.of===num);if(!o)return;
   dest=Math.max(1,Math.min(OFs.length,dest));
   const orig=o.seq;if(dest===orig)return;
-  OFs.forEach(x=>{if(x.of===num)return;if(dest<orig){if(x.seq>=dest&&x.seq<orig)x.seq++;}else{if(x.seq>orig&&x.seq<=dest)x.seq--;}});
-  o.seq=dest;renderPCP();toast(`${num} → posição ${dest}`,dest===1?'var(--red)':'var(--green)');
+
+  const changes = [];
+  OFs.forEach(x=>{
+    let newSeq = x.seq;
+    if(x.of===num) newSeq = dest;
+    else if(dest<orig){
+      if(x.seq>=dest && x.seq<orig) newSeq = x.seq + 1;
+    } else {
+      if(x.seq>orig && x.seq<=dest) newSeq = x.seq - 1;
+    }
+    if(newSeq !== x.seq) changes.push({ id:x.id, of:x.of, seq:newSeq });
+  });
+
+  const missingId = changes.find(c=>!c.id);
+  if(missingId){
+    toast('Não foi possível salvar a ordem (OF sem id do banco).','var(--red)');
+    return;
+  }
+
+  showSaveIndicator('Salvando ordem...','var(--yellow)');
+  for(const c of changes){
+    const r = await api('PUT','/ofs/'+encodeURIComponent(c.id), { seq: c.seq });
+    if(!r || !r.ok){
+      showSaveIndicator('⚠ erro ao salvar','var(--red)');
+      toast('Erro ao salvar ordem: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
+      try{ await carregarOFs(); renderPCP(); }catch(e){}
+      return;
+    }
+  }
+
+  changes.forEach(c=>{
+    const it = OFs.find(x=>x.of===c.of);
+    if(it) it.seq = c.seq;
+  });
+  renderPCP();
+  showSaveIndicator('✓ ordem salva','var(--green)');
+  toast(`${num} → posição ${dest}`,dest===1?'var(--red)':'var(--green)');
 }
 function atravessarSel(){if(!ofSel){toast('Selecione uma OF','var(--yellow)');return;}abrirAtv(ofSel);}
 function abrirAtv(num){atvAlvo=num;document.getElementById('atv-lbl').textContent=num;document.getElementById('atv-pos').value=1;abrir('modal-atv');}
@@ -2007,6 +2042,32 @@ function estOrdenar(campo){
 
 // ===================== ESTOQUE =====================
 function _renderEstoqueBase(){
+  const tb=document.querySelector('#page-estoque .ptoolbar');
+  if(tb){
+    let btn=document.getElementById('btn-import-excel');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.id='btn-import-excel';
+      btn.className='btn btn-ghost btn-sm';
+      btn.textContent='📥 Importar Excel';
+      btn.onclick=triggerImportChapas;
+      const ref=tb.querySelector('[onclick*="abrirModalChapa"]');
+      if(ref) tb.insertBefore(btn, ref);
+      else tb.appendChild(btn);
+    } else {
+      btn.style.display='';
+    }
+    let inp=document.getElementById('est-import-file');
+    if(!inp){
+      inp=document.createElement('input');
+      inp.id='est-import-file';
+      inp.type='file';
+      inp.accept='.xlsx,.csv';
+      inp.style.display='none';
+      inp.onchange=function(){ handleImportChapasFile(this.files[0]); this.value=''; };
+      tb.appendChild(inp);
+    }
+  }
   // ---- TABELA PRINCIPAL ----
   const busca=(document.getElementById('est-busca')||{}).value||'';
   const filForn=(document.getElementById('est-fil-forn')||{}).value||'';
