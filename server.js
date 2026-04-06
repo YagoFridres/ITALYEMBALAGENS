@@ -165,7 +165,17 @@ async function deleteOne(table, id) {
 function ofIn(p) {
   const maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
   const imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
-  return { ...p, maq, imgs };
+  const out = { ...p, maq, imgs };
+  const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  if (out.empresa_id && !isUuid(out.empresa_id)) {
+    if (!out.emp_id) out.emp_id = out.empresa_id;
+    delete out.empresa_id;
+  }
+  if (out.cliente_id && !isUuid(out.cliente_id)) {
+    if (!out.cli_id) out.cli_id = out.cliente_id;
+    delete out.cliente_id;
+  }
+  return out;
 }
 
 function clientesIn(p) {
@@ -633,31 +643,63 @@ app.delete('/api/cliches_estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/chapas_estoque', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('chapas_estoque').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    let lastErr = null;
+    for (const t of tables) {
+      const { data, error } = await supabase.from(t).select('*').order('nome');
+      if (!error) return ok(res, data);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 app.post('/api/chapas_estoque', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('chapas_estoque').insert([req.body]).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    let lastErr = null;
+    for (const t of tables) {
+      const { data, error } = await supabase.from(t).insert([req.body]).select();
+      if (!error) return ok(res, data[0]);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 app.put('/api/chapas_estoque/:id', async (req, res) => {
   try {
     const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    let lastErr = null;
+    for (const t of tables) {
+      const { data, error } = await supabase.from(t).update(payload).eq('id', req.params.id).select();
+      if (!error) return ok(res, data[0]);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 app.delete('/api/chapas_estoque/:id', async (req, res) => {
   try {
-    const { error } = await supabase.from('chapas_estoque').delete().eq('id', req.params.id);
-    if (error) throw error;
-    res.json({ ok: true });
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    let lastErr = null;
+    for (const t of tables) {
+      const { error } = await supabase.from(t).delete().eq('id', req.params.id);
+      if (!error) return res.json({ ok: true });
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 

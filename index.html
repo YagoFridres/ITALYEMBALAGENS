@@ -2213,28 +2213,27 @@ function abrirEditarChapa(id){
   abrir('modal-chp');
 }
 
-function atualizarChapa(id){
+async function atualizarChapa(id){
   const c=getCh(id); if(!c) return;
-  c.forn=document.getElementById('ch-forn').value.trim();
-  c.nom=document.getElementById('ch-nom').value.trim();
+  const oldQtd = c.qtd;
   const nome=document.getElementById('ch-nome').value.trim();
   if(!nome){toast('Informe o NOME da chapa','var(--red)');return;}
-  c.nome=nome;
-  c.cnpj=document.getElementById('ch-cnpj').value;
-  c.nf=document.getElementById('ch-nf').value;
   const novaQtd=parseInt(document.getElementById('ch-qtd').value)||0;
-  if(novaQtd!==c.qtd){
-    HIST_EST.unshift({tipo:'ajuste',chp:id,qtd:Math.abs(novaQtd-c.qtd),of:'—',data:today(),obs:'Edição de cadastro'});
-    c.qtd=novaQtd;
-  }
-  c.val=parseFloat(document.getElementById('ch-val').value)||0;
-  c.min=parseInt(document.getElementById('ch-min').value)||100;
-  c.comp=parseFloat(document.getElementById('ch-comp').value)||0;
-  c.larg=parseFloat(document.getElementById('ch-larg').value)||0;
+  const comp=parseFloat(document.getElementById('ch-comp').value)||0;
+  const larg=parseFloat(document.getElementById('ch-larg').value)||0;
   const vincada=document.getElementById('ch-vincada').value==='1';
-  c.vincada=vincada; c.vincos=vincada?(document.getElementById('ch-vincos').value||''):'';
-  c.tam=(document.getElementById('ch-tam').value)||(c.comp&&c.larg?`${c.comp}x${c.larg}mm`:'');
-  c.empId=(document.getElementById('ch-emp')||{}).value||c.empId||'';
+  const vincos=vincada?(document.getElementById('ch-vincos').value||''):'';
+  const tam=(document.getElementById('ch-tam').value)||(comp&&larg?`${comp}x${larg}mm`:'');
+  const empId=(document.getElementById('ch-emp')||{}).value||c.empId||'';
+  const payload={id,cod:c.cod,forn:document.getElementById('ch-forn').value.trim(),nom:document.getElementById('ch-nom').value.trim(),tam,nome,cnpj:document.getElementById('ch-cnpj').value,nf:document.getElementById('ch-nf').value,qtd:novaQtd,val:parseFloat(document.getElementById('ch-val').value)||0,min:parseInt(document.getElementById('ch-min').value)||100,comp,larg,vincada,vincos,empId,emp_id:empId};
+  const r=await salvarViaApiOuLocal('chapa',
+    ()=>api('PUT','/chapas_estoque/'+encodeURIComponent(id), payload),
+    ()=>{ Object.assign(c,payload); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao atualizar chapa','var(--red)');return;}
+  if(!r.local){ try{ await carregarChapas(); }catch(e){} }
+  const cc=getCh(id); if(cc) Object.assign(cc,payload);
+  if(novaQtd!==oldQtd){HIST_EST.unshift({tipo:'ajuste',chp:id,qtd:Math.abs(novaQtd-oldQtd),of:'—',data:today(),obs:'Edição de cadastro'});}
   // Reset button back
   const btn=document.querySelector('#modal-chp .modal-footer .btn-accent');
   if(btn){btn.textContent='Salvar';btn.onclick=salvarChapa;}
@@ -2243,9 +2242,14 @@ function atualizarChapa(id){
   fechar('modal-chp'); autoSaveTrigger(); renderEstoque(); toast('✓ Chapa atualizada!');
 }
 
-function excluirChapa(id){
+async function excluirChapa(id){
   const c=getCh(id); if(!c) return;
   if(!confirm(`Excluir chapa "${c.nome}" (${c.qtd.toLocaleString()} un em estoque)?\n\nEsta ação não pode ser desfeita.`)) return;
+  const r=await salvarViaApiOuLocal('chapa',
+    ()=>api('DELETE','/chapas_estoque/'+encodeURIComponent(id)),
+    ()=>({ok:true, local:true})
+  );
+  if(!r || !r.ok){toast('Erro ao excluir chapa','var(--red)');return;}
   ESTOQUE=ESTOQUE.filter(x=>x.id!==id);
   autoSaveTrigger(); renderEstoque(); toast('🗑 Chapa excluída','var(--orange)');
 }
@@ -2282,7 +2286,7 @@ function abrirModalChapa(){
   if(h2) h2.textContent='📦 Cadastrar Chapa';
   abrir('modal-chp');
 }
-function salvarChapa(){
+async function salvarChapa(){
   const forn=document.getElementById('ch-forn').value.trim();
   const nom=document.getElementById('ch-nom').value.trim();
   const nome=document.getElementById('ch-nome').value.trim();
@@ -2296,7 +2300,24 @@ function salvarChapa(){
   const tam=(document.getElementById('ch-tam').value)||(comp&&larg?`${comp}x${larg}mm`:'');
   const empId=(document.getElementById('ch-emp')||{}).value||EMP_FILTRO||'';
   const id='CH'+String(ESTOQUE.length+1).padStart(3,'0');
-  ESTOQUE.push({id,forn,nom,tam,nome,cnpj:document.getElementById('ch-cnpj').value,nf:document.getElementById('ch-nf').value,qtd,val:parseFloat(document.getElementById('ch-val').value)||0,min:parseInt(document.getElementById('ch-min').value)||100,comp,larg,vincada,vincos,empId});
+  const row={id,forn,nom,tam,nome,cnpj:document.getElementById('ch-cnpj').value,nf:document.getElementById('ch-nf').value,qtd,val:parseFloat(document.getElementById('ch-val').value)||0,min:parseInt(document.getElementById('ch-min').value)||100,comp,larg,vincada,vincos,empId,emp_id:empId};
+  const r=await salvarViaApiOuLocal('chapa',
+    async ()=>{
+      let resp = await api('POST','/chapas_estoque', row);
+      if(!resp.ok && String(resp.error||'').toLowerCase().includes('uuid')){
+        const clone={...row}; delete clone.id;
+        resp = await api('POST','/chapas_estoque', clone);
+      }
+      return resp;
+    },
+    ()=>{ ESTOQUE.push(row); return {ok:true, local:true, data:row}; }
+  );
+  if(!r || !r.ok){toast('Erro ao cadastrar chapa','var(--red)');return;}
+  if(!r.local){
+    try{ await carregarChapas(); }catch(e){}
+  } else {
+    if(!ESTOQUE.find(x=>x.id===row.id)) ESTOQUE.push(row);
+  }
   if(qtd>0)HIST_EST.unshift({tipo:'entrada',chp:id,qtd,of:'—',data:today(),obs:'Cadastro inicial'});
   fechar('modal-chp');autoSaveTrigger();renderEstoque();toast('✓ Chapa cadastrada!');
 }
@@ -5910,7 +5931,7 @@ function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,d
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 
 const OF_ALLOWED_FIELDS = new Set([
-  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
+  'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -7128,9 +7149,14 @@ function abrirModalFaca1(id){
   abrir('modal-faca1');
 }
 function editarFaca1(id){abrirModalFaca1(id);}
-function excluirFaca1(id){
+async function excluirFaca1(id){
   const f=FACAS.find(x=>x.id===id);if(!f)return;
   if(!confirm(`Excluir faca "${f.nome}"?\nEsta ação não pode ser desfeita.`))return;
+  const r=await salvarViaApiOuLocal('faca',
+    ()=>api('DELETE','/facas_estoque/'+encodeURIComponent(id)),
+    ()=>({ok:true, local:true})
+  );
+  if(!r || !r.ok){toast('Erro ao excluir faca','var(--red)');return;}
   FACAS=FACAS.filter(x=>x.id!==id);
   autoSaveTrigger();renderFacas1();toast('🗑 Faca excluída','var(--orange)');
 }
@@ -7139,23 +7165,31 @@ function _readFoto1(cb){
   if(!inp||!inp.files||!inp.files[0]){cb(window._fa1EditFoto||null);return;}
   const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(inp.files[0]);
 }
-function salvarFaca1(){
+async function salvarFaca1(){
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome da faca','var(--red)');return;}
-  _readFoto1(foto=>{
-    FACAS.push({id:_idFaca(FACAS),nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null});
-    fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca cadastrada!');
-  });
+  const foto = await new Promise((resolve)=>_readFoto1(resolve));
+  const row={id:_idFaca(FACAS),nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null};
+  const r=await salvarViaApiOuLocal('faca',
+    ()=>api('POST','/facas_estoque', row),
+    ()=>{ FACAS.push(row); return {ok:true, local:true, data:row}; }
+  );
+  if(!r || !r.ok){toast('Erro ao cadastrar faca','var(--red)');return;}
+  if(!r.local){ try{ await carregarFacas(); }catch(e){} }
+  fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca cadastrada!');
 }
-function salvarEdicaoFaca1(id){
+async function salvarEdicaoFaca1(id){
   const f=FACAS.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  _readFoto1(foto=>{
-    f.nome=nome;f.medidas=document.getElementById('fa1-medidas').value;
-    f.maquinas=_getChips('fa1-maquinas-chips');f.valor=parseFloat(document.getElementById('fa1-valor').value)||0;
-    f.obs=document.getElementById('fa1-obs').value;f.clientes=_getChips('fa1-clientes-chips');
-    if(foto)f.foto=foto;
-    fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca atualizada!');
-  });
+  const foto = await new Promise((resolve)=>_readFoto1(resolve));
+  const payload={...f,nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips')};
+  if(foto)payload.foto=foto;
+  const r=await salvarViaApiOuLocal('faca',
+    ()=>api('PUT','/facas_estoque/'+encodeURIComponent(id), payload),
+    ()=>{ Object.assign(f,payload); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao atualizar faca','var(--red)');return;}
+  if(!r.local){ try{ await carregarFacas(); }catch(e){} }
+  fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca atualizada!');
 }
 
 // ── CLICHÊS ──
@@ -7217,9 +7251,14 @@ function abrirModalCliche(id){
   abrir('modal-cliche');
 }
 function editarCliche(id){abrirModalCliche(id);}
-function excluirCliche(id){
+async function excluirCliche(id){
   const f=CLICHES.find(x=>x.id===id);if(!f)return;
   if(!confirm(`Excluir clichê "${f.nome}"?\nEsta ação não pode ser desfeita.`))return;
+  const r=await salvarViaApiOuLocal('cliche',
+    ()=>api('DELETE','/cliches_estoque/'+encodeURIComponent(id)),
+    ()=>({ok:true, local:true})
+  );
+  if(!r || !r.ok){toast('Erro ao excluir clichê','var(--red)');return;}
   CLICHES=CLICHES.filter(x=>x.id!==id);
   autoSaveTrigger();renderCliches();toast('🗑 Clichê excluído','var(--orange)');
 }
@@ -7228,23 +7267,31 @@ function _readFotoCl(cb){
   if(!inp||!inp.files||!inp.files[0]){cb(window._cl2EditFoto||null);return;}
   const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(inp.files[0]);
 }
-function salvarCliche(){
+async function salvarCliche(){
   const nome=(document.getElementById('cl2-nome').value||'').trim();if(!nome){toast('Informe o nome do clichê','var(--red)');return;}
-  _readFotoCl(foto=>{
-    CLICHES.push({id:_idCliche(),nome,medidas:document.getElementById('cl2-medidas').value,maquinas:_getChips('cl2-maquinas-chips'),valor:parseFloat(document.getElementById('cl2-valor').value)||0,obs:document.getElementById('cl2-obs').value,clientes:_getChips('cl2-clientes-chips'),foto:foto||null});
-    fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê cadastrado!');
-  });
+  const foto = await new Promise((resolve)=>_readFotoCl(resolve));
+  const row={id:_idCliche(),nome,medidas:document.getElementById('cl2-medidas').value,maquinas:_getChips('cl2-maquinas-chips'),valor:parseFloat(document.getElementById('cl2-valor').value)||0,obs:document.getElementById('cl2-obs').value,clientes:_getChips('cl2-clientes-chips'),foto:foto||null};
+  const r=await salvarViaApiOuLocal('cliche',
+    ()=>api('POST','/cliches_estoque', row),
+    ()=>{ CLICHES.push(row); return {ok:true, local:true, data:row}; }
+  );
+  if(!r || !r.ok){toast('Erro ao cadastrar clichê','var(--red)');return;}
+  if(!r.local){ try{ await carregarCliches(); }catch(e){} }
+  fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê cadastrado!');
 }
-function salvarEdicaoCliche(id){
+async function salvarEdicaoCliche(id){
   const f=CLICHES.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('cl2-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  _readFotoCl(foto=>{
-    f.nome=nome;f.medidas=document.getElementById('cl2-medidas').value;
-    f.maquinas=_getChips('cl2-maquinas-chips');f.valor=parseFloat(document.getElementById('cl2-valor').value)||0;
-    f.obs=document.getElementById('cl2-obs').value;f.clientes=_getChips('cl2-clientes-chips');
-    if(foto)f.foto=foto;
-    fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê atualizado!');
-  });
+  const foto = await new Promise((resolve)=>_readFotoCl(resolve));
+  const payload={...f,nome,medidas:document.getElementById('cl2-medidas').value,maquinas:_getChips('cl2-maquinas-chips'),valor:parseFloat(document.getElementById('cl2-valor').value)||0,obs:document.getElementById('cl2-obs').value,clientes:_getChips('cl2-clientes-chips')};
+  if(foto)payload.foto=foto;
+  const r=await salvarViaApiOuLocal('cliche',
+    ()=>api('PUT','/cliches_estoque/'+encodeURIComponent(id), payload),
+    ()=>{ Object.assign(f,payload); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao atualizar clichê','var(--red)');return;}
+  if(!r.local){ try{ await carregarCliches(); }catch(e){} }
+  fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê atualizado!');
 }
 
 // ===================== ORÇAMENTOS =====================
@@ -8960,7 +9007,6 @@ salvarOF = async function(){
     cliente_id: cliId,
     cli_id: cliId,
     vendedor: vendNome || null,
-    empresa_id: empId || null,
     emp_id: empId || null,
     qtd: qtdTotal,
     quantidade: qtdTotal,
@@ -9056,7 +9102,6 @@ converterOrcParaOF = async function(id){
     cliente_id: orc.cliId || null,
     cli_id: orc.cliId || null,
     vendedor: vendNome || null,
-    empresa_id: empId || null,
     emp_id: empId || null,
     qtd: orc.qtd,
     quantidade: orc.qtd,
@@ -11697,7 +11742,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       cliente_id: ofObj.cliId || null,
       cli_id: ofObj.cliId || null,
       vendedor: vendNome || null,
-      empresa_id: ofObj.empId || null,
       emp_id: ofObj.empId || null,
       status: ofObj.status || 'Em aberto',
       data_entrega: ofObj.ent || null,
