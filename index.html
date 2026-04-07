@@ -1495,11 +1495,21 @@ function ofFluxoLinha(o){
   return parts.join(` <span style="color:var(--text3)">→</span> `);
 }
 
-function renderOFsPorMaquina(){
-  const wrap=document.getElementById('ofmaq-body');if(!wrap)return;
-  const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
-  const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
-  const filtroData=window.OFMAQ_DATA_FILTRO||'todas';
+let filtroOFsMaquina='todas';
+function setFiltroOFsMaquina(f){
+  filtroOFsMaquina=f;
+  document.querySelectorAll('.btn-filtro-maquina').forEach(b=>b.classList.remove('ativo'));
+  const el=document.getElementById('filtro-maq-'+f); if(el) el.classList.add('ativo');
+  renderOFsPorMaquina();
+}
+
+async function renderOFsPorMaquina(){
+  const wrap=document.getElementById('ofs-por-maquina-container')||document.getElementById('ofmaq-body');if(!wrap)return;
+  wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
+  let data = await api('GET','/ofs');
+  let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
+  let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada');
+  const filtroData=filtroOFsMaquina||'todas';
 
   const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
     const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
@@ -1551,17 +1561,26 @@ function renderOFsPorMaquina(){
         <div>${stTag(o.status||'')}</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ofmaqVerImagem('${o.id||''}')" style="font-size:.7rem">🖼 Ver Imagem</button>
-          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();ofmaqDarBaixa('${o.id||''}')" style="font-size:.7rem">✅ Dar Baixa</button>`:''}
+          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();darBaixaOFId('${o.id||''}','${escAttr(o.of||o.numero||'')}','${escAttr(ofFluxoGetMaquinaAtual(o)||'')}')" style="font-size:.7rem">✅ Dar Baixa</button>`:''}
         </div>
       </div>
     </div>`;
   };
 
-  const groups = maqOrdenadas.map(m=>{
-    const alvo=String(m.col||m.id||'').trim();
-    const fila=(OFs||[]).filter(o=>String(ofFluxoGetMaquinaAtual(o)||'').trim()===alvo).filter(filt).sort((a,b)=>(a.seq||0)-(b.seq||0));
-    return { m, fila };
+  const grupos={};
+  (OFsBase||[]).filter(filt).forEach(o=>{
+    const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem máquina definida';
+    if(!grupos[m]) grupos[m]=[];
+    grupos[m].push(o);
   });
+  const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem máquina definida'].filter(m=>grupos[m]);
+  if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
+  const html = maquinasOrdenadas.map(m=>{
+    const fila = grupos[m] || [];
+    const cards = fila.map(o=>card(o)).join('');
+    return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
+  }).join('');
+  wrap.innerHTML = html;
 
   const html=groups.map(({m,fila})=>{
     return `<div class="sbox" style="margin-bottom:12px">
@@ -1598,7 +1617,7 @@ async function ofmaqDarBaixa(id){
   if(!confirm(msg)) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   showSaveIndicator('Salvando baixa...','var(--yellow)');
-  const r=await api('POST','/ofs/'+encodeURIComponent(o.id)+'/baixar_maquina',{usuario});
+  const r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',{usuario});
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
@@ -1607,15 +1626,25 @@ async function ofmaqDarBaixa(id){
   const upd=r.data||r;
   const it=(OFs||[]).find(x=>x.id===o.id);
   if(it){
-    if(upd.status!=null) it.status=upd.status;
-    if(upd.maquina_atual_index!=null) it.maquina_atual_index=Number(upd.maquina_atual_index)||0;
-    if(upd.data_conclusao!=null) it.data_conclusao=upd.data_conclusao;
-    if(upd.fluxo_maquinas!=null) it.fluxo_maquinas=upd.fluxo_maquinas;
+    if(r.concluida===true) it.status='Concluída';
+    it.maquina_atual_index = Number(it.maquina_atual_index||0)+1;
   }
   showSaveIndicator('✓ baixa salva','var(--green)');
-  toast(proxima?`✅ ${o.of||o.numero||''}: ${atual} → ${proxima}`:`✅ ${o.of||o.numero||''} concluída`,'var(--green)');
+  toast(r.concluida?`✅ ${o.of||o.numero||''} concluída`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima_maquina||proxima||'—'}`,'var(--green)');
   try{ await carregarOFs(); }catch(e){}
   renderOFsPorMaquina();
+}
+
+async function darBaixaOFId(id, numero, maquinaAtual){
+  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
+  if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
+  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
+  if(r && r.ok){
+    mostrarToast(r.concluida ? 'OF #'+(numero||id)+' CONCLUÍDA!' : ('Baixa registrada! Próxima: '+(r.proxima_maquina||'—')), 'success');
+    renderOFsPorMaquina();
+  } else {
+    mostrarToast('Erro: '+(r && r.error ? r.error : 'falha'), 'error');
+  }
 }
 
 function selecionarOF(num){ofSel=ofSel===num?null:num;renderPCP();}
@@ -1957,7 +1986,11 @@ function salvarAlteracaoOF(ofNum){
 }
 
 // ===================== MODAL OF =====================
-async function abrirModalOF(){
+async function abrirModalOF(id){
+  if(id){
+    const o=(OFs||[]).find(x=>x.id===id);
+    if(o){ window.ofSel = o.of || o.numero || ''; alterarOFSel(); return; }
+  }
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   ofImgsTemp=[];
   ofItensTemp=[];
@@ -11419,7 +11452,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
   </div>
-  <div class="page-body" id="ofmaq-body"></div>
+  <div class="page-body">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button id="filtro-maq-hoje" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('hoje')">📅 Hoje</button>
+      <button id="filtro-maq-semana" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('semana')">📆 Esta Semana</button>
+      <button id="filtro-maq-todas" class="btn-filtro-maquina btn btn-ghost btn-sm ativo" onclick="setFiltroOFsMaquina('todas')">📋 Todas</button>
+    </div>
+    <div id="ofs-por-maquina-container"></div>
+  </div>
 </div>
 
 <div id="page-usuarios" class="page">

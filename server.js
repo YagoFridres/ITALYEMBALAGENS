@@ -666,7 +666,25 @@ app.delete('/api/ofs/:id', async (req, res) => {
   try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
 });
 
-app.post('/api/ofs/:id/baixar_maquina', async (req, res) => {
+app.get('/api/ofs', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('ofs').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return res.json(data || []);
+  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
+});
+
+app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const payload = ofIn(req.body || {});
+    const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
+    if (error) throw error;
+    return res.json(data);
+  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
+});
+
+app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return bad(res, 'id obrigatório');
@@ -725,7 +743,7 @@ app.post('/api/ofs/:id/baixar_maquina', async (req, res) => {
       }]);
     } catch (e) {}
 
-    ok(res, upd.data);
+    res.json({ ok: true, concluida, proxima_maquina: proxima || null });
   } catch (e) { err(res, e); }
 });
 
