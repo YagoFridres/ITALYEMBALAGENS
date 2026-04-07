@@ -7245,6 +7245,35 @@ async function handleImportChapasFile(file){
   }
 }
 
+function abrirModalResetChapas(){
+  const ta=document.getElementById('rst-chp-json');
+  if(ta) ta.value='';
+  abrir('modal-reset-chapas');
+}
+
+async function executarResetChapas(){
+  const ta=document.getElementById('rst-chp-json');
+  const raw=(ta?ta.value:'').trim();
+  if(!raw){toast('Cole o JSON com os registros','var(--red)');return;}
+  let items=null;
+  try{ items=JSON.parse(raw); }catch(e){ toast('JSON inválido','var(--red)'); return; }
+  if(!Array.isArray(items) || items.length===0){ toast('Lista vazia','var(--red)'); return; }
+  if(!confirm(`ATENÇÃO: isso vai APAGAR TODO o estoque atual e inserir ${items.length} registros.\n\nDeseja continuar?`)) return;
+
+  showSaveIndicator('⏳ resetando estoque...','var(--yellow)');
+  const r=await api('POST','/chapas_estoque/reset',{ items });
+  if(!r || !r.ok){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao resetar: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
+    return;
+  }
+  fechar('modal-reset-chapas');
+  try{ await carregarChapas(); }catch(e){}
+  try{ renderEstoque(); }catch(e){}
+  showSaveIndicator('✓ estoque atualizado','var(--green)');
+  toast(`✓ Estoque resetado: ${r.data && r.data.inserted ? r.data.inserted : items.length} registros`, 'var(--green)');
+}
+
 // ===================== CONTAS A PAGAR / RECEBER =====================
 var CONTAS_PAGAR = [];
 var CONTAS_RECEBER = [];
@@ -10224,6 +10253,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
     <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar Excel</button>
+    <button class="btn btn-red btn-sm" onclick="abrirModalResetChapas()">🧹 Resetar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
@@ -11849,6 +11879,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple" onclick="cmpEnviarEmail()">✉ Email (Outlook)</button>
     <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 PDF</button>
     <button class="btn btn-accent" onclick="salvarCompra()">Salvar</button>
+  </div>
+</div></div>
+
+<!-- Modal Reset Chapas -->
+<div class="modal-overlay" id="modal-reset-chapas">
+<div class="modal" style="width:min(900px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-reset-chapas')">✕</button>
+  <h2>🧹 Resetar Estoque de Chapas</h2>
+  <div style="font-size:.78rem;color:var(--text2);margin-bottom:10px">
+    Cole abaixo um JSON (array) com os registros. Essa ação apaga todo o estoque atual e insere do zero.
+  </div>
+  <textarea id="rst-chp-json" style="width:100%;min-height:320px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px;font-family:var(--mono);font-size:.72rem"></textarea>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-reset-chapas')">Cancelar</button>
+    <button class="btn btn-red" onclick="executarResetChapas()">Apagar tudo e inserir</button>
   </div>
 </div></div>
 

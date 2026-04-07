@@ -853,6 +853,92 @@ app.delete('/api/chapas_estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.post('/api/chapas_estoque/reset', async (req, res) => {
+  try {
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    let lastErr = null;
+
+    const resolveTable = async () => {
+      for (const t of tables) {
+        const { error } = await supabase.from(t).select('id').limit(1);
+        if (!error) return t;
+        lastErr = error;
+        const msg = String(error.message || error);
+        if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+        throw error;
+      }
+      throw lastErr;
+    };
+
+    const t = await resolveTable();
+    const items = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+    if (!Array.isArray(items) || items.length === 0) return bad(res, 'items vazio');
+
+    const parseTam = (v) => {
+      const s = String(v || '').trim().toUpperCase().replaceAll('MM', '').replaceAll(' ', '');
+      const parts = s.split(/X|×/).filter(Boolean);
+      const a = Number(parts[0] || 0);
+      const b = Number(parts[1] || 0);
+      const largura_mm = Number.isFinite(a) ? a : 0;
+      const comprimento_mm = Number.isFinite(b) ? b : 0;
+      return { largura_mm, comprimento_mm };
+    };
+
+    const toNum = (v, fallback = 0) => {
+      if (v == null || v === '') return fallback;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
+      const n = Number(String(v).trim().replace(/\./g, '').replace(',', '.'));
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    const clean = items.map((it) => {
+      const fornecedor = it.fornecedor ?? it.forn ?? it.FORNECEDOR ?? '';
+      const nomenclatura = it.nomenclatura ?? it.tipo_papel ?? it.NOMENCLATURA ?? '';
+      const tamanho = it.tamanho ?? it.TAMANHO ?? '';
+      const nome = it.nome ?? it.NOME ?? '';
+      const quantidade = toNum(it.quantidade ?? it.quantidade_atual ?? it.QUANTIDADE ?? 0, 0);
+      const valor_unitario = toNum(it.valor_unitario ?? it.valorUnitario ?? it['R$'] ?? it.VALOR ?? 0, 0);
+      const { largura_mm, comprimento_mm } = parseTam(tamanho);
+      return {
+        forn: String(fornecedor || '').trim(),
+        tipo_papel: String(nomenclatura || '').trim(),
+        nome: String(nome || '').trim() || String(nomenclatura || '').trim(),
+        largura_mm: largura_mm || null,
+        comprimento_mm: comprimento_mm || null,
+        quantidade_atual: Math.trunc(quantidade) || 0,
+        valor_unitario: Number(valor_unitario) || 0,
+      };
+    }).filter((x) => x.tipo_papel && x.largura_mm && x.comprimento_mm);
+
+    const delFilter = '00000000-0000-0000-0000-000000000000';
+    const { error: delErr } = await supabase.from(t).delete().neq('id', delFilter);
+    if (delErr) throw delErr;
+
+    const chunkSize = 500;
+    let inserted = 0;
+    for (let i = 0; i < clean.length; i += chunkSize) {
+      const chunk = clean.slice(i, i + chunkSize);
+      let { error } = await supabase.from(t).insert(chunk);
+      if (error) {
+        const msg = String(error.message || error);
+        if (msg.includes('column') || msg.includes('Could not find')) {
+          const c2 = chunk.map((r) => {
+            const out = { ...r };
+            delete out.forn;
+            delete out.valor_unitario;
+            return out;
+          });
+          ({ error } = await supabase.from(t).insert(c2));
+        }
+      }
+      if (error) throw error;
+      inserted += chunk.length;
+    }
+
+    ok(res, { deleted: true, inserted });
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/hist_estoque', async (req, res) => {
   try {
     const { data, error } = await supabase.from('hist_estoque')
