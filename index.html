@@ -9851,8 +9851,8 @@ function rmTabsHtml(){
   const tabBtn = (id, lbl) => `<button class="btn btn-ghost btn-sm" onclick="rmSetTab('${id}')" style="${RM_TAB===id?'border-color:var(--accent);color:var(--accent);':''}">${lbl}</button>`;
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
     ${tabBtn('resumo','📊 Resumo')}
-    ${tabBtn('producao','🏭 Produção')}
-    ${tabBtn('aparras','✂ Aparras')}
+    ${tabBtn('producao','📋 Produção')}
+    ${tabBtn('aparras','📦 Aparras')}
   </div>`;
 }
 
@@ -9885,7 +9885,7 @@ async function rmSalvarManual(){
     desperdicio: parseFloat((document.getElementById('rm-man-desp')||{}).value)||null
   };
   showSaveIndicator('Salvando lançamento...','var(--yellow)');
-  const r=await api('POST','/relatorios/producao',[row]);
+  const r=await api('POST','/relatorio/producao/manual',row);
   if(!r||!r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao salvar lançamento','var(--red)');
@@ -10032,10 +10032,70 @@ async function rmLoadAparras(mesRef){
   return data;
 }
 
+var RM_PROD_UI={q:'',maq:'',vend:'',cli:'',page:1,pageSize:50};
+var RM_APAR_UI={q:'',cli:'',tipo:'',page:1,pageSize:50};
+function rmProdFilterChange(){
+  RM_PROD_UI.q=String((document.getElementById('rmf-q')||{}).value||'');
+  RM_PROD_UI.maq=String((document.getElementById('rmf-maq')||{}).value||'');
+  RM_PROD_UI.vend=String((document.getElementById('rmf-vend')||{}).value||'');
+  RM_PROD_UI.cli=String((document.getElementById('rmf-cli')||{}).value||'');
+  RM_PROD_UI.page=1;
+  rmRenderProducaoFromCache();
+}
+function rmProdPage(delta){
+  RM_PROD_UI.page=Math.max(1,(RM_PROD_UI.page||1)+delta);
+  rmRenderProducaoFromCache();
+}
+function rmRenderProducaoFromCache(){
+  if(RM_TAB!=='producao') return;
+  const mesRef=rmMesRef();
+  const cont=document.getElementById('rm-content');
+  if(!cont) return;
+  const rows=RM_CACHE_PROD[mesRef]||[];
+  cont.innerHTML = rmTabsHtml() + rmRenderTabelaProducao(rows);
+}
+function rmAparFilterChange(){
+  RM_APAR_UI.q=String((document.getElementById('rma-q')||{}).value||'');
+  RM_APAR_UI.cli=String((document.getElementById('rma-cli')||{}).value||'');
+  RM_APAR_UI.tipo=String((document.getElementById('rma-tipo')||{}).value||'');
+  RM_APAR_UI.page=1;
+  rmRenderAparrasFromCache();
+}
+function rmAparPage(delta){
+  RM_APAR_UI.page=Math.max(1,(RM_APAR_UI.page||1)+delta);
+  rmRenderAparrasFromCache();
+}
+function rmRenderAparrasFromCache(){
+  if(RM_TAB!=='aparras') return;
+  const mesRef=rmMesRef();
+  const cont=document.getElementById('rm-content');
+  if(!cont) return;
+  const rows=RM_CACHE_APAR[mesRef]||[];
+  cont.innerHTML = rmTabsHtml() + rmRenderTabelaAparras(rows);
+}
+
 function rmRenderTabelaProducao(rows){
   const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
   const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
-  const body=(rows||[]).map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+  const q=RM_PROD_UI.q.trim().toLowerCase();
+  const maq=RM_PROD_UI.maq.trim().toLowerCase();
+  const vend=RM_PROD_UI.vend.trim().toLowerCase();
+  const cli=RM_PROD_UI.cli.trim().toLowerCase();
+  const filtered=(rows||[]).filter(r=>{
+    const t=[r.data,r.maquina,r.vendedor,r.cliente,r.tipo_papel,r.empresa].join(' ').toLowerCase();
+    if(q && !t.includes(q)) return false;
+    if(maq && !String(r.maquina||'').toLowerCase().includes(maq)) return false;
+    if(vend && !String(r.vendedor||'').toLowerCase().includes(vend)) return false;
+    if(cli && !String(r.cliente||'').toLowerCase().includes(cli)) return false;
+    return true;
+  });
+  const pageSize=RM_PROD_UI.pageSize||50;
+  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize));
+  RM_PROD_UI.page=Math.min(RM_PROD_UI.page||1,pageCount);
+  const start=(RM_PROD_UI.page-1)*pageSize;
+  const view=filtered.slice(start,start+pageSize);
+
+  const body=view.map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
     <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
     <td style="${tdS}">${r.maquina||''}</td>
     <td style="${tdS}">${r.vendedor||''}</td>
@@ -10052,7 +10112,19 @@ function rmRenderTabelaProducao(rows){
     <td style="${tdS}">${r.empresa||''}</td>
     <td style="${tdS}">${r.desperdicio!=null?r.desperdicio:''}</td>
   </tr>`).join('');
-  return `<div class="sbox"><div class="sbox-h">🏭 Produção (${(rows||[]).length})</div><div class="sbox-b" style="padding:0">
+  return `<div class="sbox"><div class="sbox-h" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <span>📋 Produção (${filtered.length})</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">Página ${RM_PROD_UI.page}/${pageCount}</span>
+    </div><div class="sbox-b">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input id="rmf-q" placeholder="🔍 busca" value="${escH(RM_PROD_UI.q)}" oninput="rmProdFilterChange()" style="width:180px">
+      <input id="rmf-maq" placeholder="Máquina" value="${escH(RM_PROD_UI.maq)}" oninput="rmProdFilterChange()" style="width:120px">
+      <input id="rmf-vend" placeholder="Vendedor" value="${escH(RM_PROD_UI.vend)}" oninput="rmProdFilterChange()" style="width:140px">
+      <input id="rmf-cli" placeholder="Cliente" value="${escH(RM_PROD_UI.cli)}" oninput="rmProdFilterChange()" style="width:160px">
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="rmProdPage(-1)">◀</button>
+      <button class="btn btn-ghost btn-sm" onclick="rmProdPage(1)">▶</button>
+    </div>
     <div style="max-height:560px;overflow:auto">
       <table style="width:100%;border-collapse:collapse;min-width:1400px">
         <thead><tr>
@@ -10070,7 +10142,23 @@ function rmRenderTabelaProducao(rows){
 function rmRenderTabelaAparras(rows){
   const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
   const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
-  const body=(rows||[]).map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+  const q=RM_APAR_UI.q.trim().toLowerCase();
+  const cli=RM_APAR_UI.cli.trim().toLowerCase();
+  const tipo=RM_APAR_UI.tipo.trim().toLowerCase();
+  const filtered=(rows||[]).filter(r=>{
+    const t=[r.data,r.cliente,r.tipo_papel].join(' ').toLowerCase();
+    if(q && !t.includes(q)) return false;
+    if(cli && !String(r.cliente||'').toLowerCase().includes(cli)) return false;
+    if(tipo && !String(r.tipo_papel||'').toLowerCase().includes(tipo)) return false;
+    return true;
+  });
+  const pageSize=RM_APAR_UI.pageSize||50;
+  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize));
+  RM_APAR_UI.page=Math.min(RM_APAR_UI.page||1,pageCount);
+  const start=(RM_APAR_UI.page-1)*pageSize;
+  const view=filtered.slice(start,start+pageSize);
+
+  const body=view.map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
     <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
     <td style="${tdS}">${r.cliente||''}</td>
     <td style="${tdS}">${r.tipo_papel||''}</td>
@@ -10081,7 +10169,18 @@ function rmRenderTabelaAparras(rows){
     <td style="${tdS}">${r.quantidade!=null?r.quantidade:''}</td>
     <td style="${tdS}">${r.valor_final!=null?r.valor_final:''}</td>
   </tr>`).join('');
-  return `<div class="sbox"><div class="sbox-h">✂ Aparras (${(rows||[]).length})</div><div class="sbox-b" style="padding:0">
+  return `<div class="sbox"><div class="sbox-h" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <span>📦 Aparras (${filtered.length})</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">Página ${RM_APAR_UI.page}/${pageCount}</span>
+    </div><div class="sbox-b">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input id="rma-q" placeholder="🔍 busca" value="${escH(RM_APAR_UI.q)}" oninput="rmAparFilterChange()" style="width:180px">
+      <input id="rma-cli" placeholder="Cliente" value="${escH(RM_APAR_UI.cli)}" oninput="rmAparFilterChange()" style="width:180px">
+      <input id="rma-tipo" placeholder="Tipo" value="${escH(RM_APAR_UI.tipo)}" oninput="rmAparFilterChange()" style="width:140px">
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost btn-sm" onclick="rmAparPage(-1)">◀</button>
+      <button class="btn btn-ghost btn-sm" onclick="rmAparPage(1)">▶</button>
+    </div>
     <div style="max-height:560px;overflow:auto">
       <table style="width:100%;border-collapse:collapse;min-width:1100px">
         <thead><tr>

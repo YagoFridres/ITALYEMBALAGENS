@@ -1244,6 +1244,16 @@ app.post('/api/relatorios/lancar_of', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.post('/api/relatorio/producao/manual', async (req, res) => {
+  try {
+    const row = { ...(req.body || {}) };
+    if (!row.mes_referencia) return bad(res, 'mes_referencia obrigatório');
+    const { data, error } = await supabase.from('relatorio_producao').insert([row]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/relatorio/producao', async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
