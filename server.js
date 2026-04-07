@@ -899,16 +899,6 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
     console.log('chapas_estoque/reset items:', Array.isArray(items) ? items.length : 'not_array');
     if (!Array.isArray(items) || items.length === 0) return bad(res, 'items vazio');
 
-    const parseTam = (v) => {
-      const s = String(v || '').trim().toUpperCase().replaceAll('MM', '').replaceAll(' ', '');
-      const parts = s.split(/X|×/).filter(Boolean);
-      const a = Number(parts[0] || 0);
-      const b = Number(parts[1] || 0);
-      const largura_mm = Number.isFinite(a) ? a : 0;
-      const comprimento_mm = Number.isFinite(b) ? b : 0;
-      return { largura_mm, comprimento_mm };
-    };
-
     const toNum = (v, fallback = 0) => {
       if (v == null || v === '') return fallback;
       if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
@@ -937,12 +927,6 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       tamanho: await hasCol('tamanho'),
       nome: await hasCol('nome'),
       descricao: await hasCol('descricao'),
-      largura_mm: await hasCol('largura_mm'),
-      comprimento_mm: await hasCol('comprimento_mm'),
-      larg: await hasCol('larg'),
-      comp: await hasCol('comp'),
-      largura: await hasCol('largura'),
-      altura: await hasCol('altura'),
       quantidade: await hasCol('quantidade'),
       quantidade_atual: await hasCol('quantidade_atual'),
       qtd: await hasCol('qtd'),
@@ -963,7 +947,6 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       const nome = it.nome ?? it.NOME ?? '';
       const quantidade = toNum(it.quantidade ?? it.quantidade_atual ?? it.QUANTIDADE ?? 0, 0);
       const valor_unitario = toNum(it.valor_unitario ?? it.valorUnitario ?? it['R$'] ?? it.VALOR ?? 0, 0);
-      const { largura_mm, comprimento_mm } = parseTam(tamanho);
       const qInt = Math.trunc(quantidade) || 0;
       const vUnit = Number(valor_unitario) || 0;
       const vTot = qInt * vUnit;
@@ -976,42 +959,31 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       const tamRaw = String(tamanho || '').trim();
 
       if (cols.forn) out.forn = forn;
-      if (cols.fornecedor) out.fornecedor = forn;
+      else if (cols.fornecedor) out.fornecedor = forn;
 
       if (cols.tipo_papel) out.tipo_papel = code;
-      if (cols.modelo) out.modelo = code;
-      if (cols.nom) out.nom = code;
-      if (cols.codigo) out.codigo = code;
+      else if (cols.modelo) out.modelo = code;
+      else if (cols.nom) out.nom = code;
+      else if (cols.codigo) out.codigo = code;
 
-      if (cols.tam) out.tam = tamRaw;
       if (cols.tamanho) out.tamanho = tamRaw;
+      else if (cols.tam) out.tam = tamRaw;
 
       if (cols.nome) out.nome = desc;
-      if (cols.descricao) out.descricao = desc;
-
-      if (cols.largura_mm) out.largura_mm = largura_mm || null;
-      if (cols.comprimento_mm) out.comprimento_mm = comprimento_mm || null;
-      if (cols.larg) out.larg = largura_mm || null;
-      if (cols.comp) out.comp = comprimento_mm || null;
-      if (cols.largura) out.largura = largura_mm || null;
-      if (cols.altura) out.altura = comprimento_mm || null;
+      else if (cols.descricao) out.descricao = desc;
 
       if (cols.quantidade) out.quantidade = qInt;
-      if (cols.quantidade_atual) out.quantidade_atual = qInt;
-      if (cols.qtd) out.qtd = qInt;
-      if (cols.saldo) out.saldo = qInt;
+      else if (cols.quantidade_atual) out.quantidade_atual = qInt;
+      else if (cols.qtd) out.qtd = qInt;
+      else if (cols.saldo) out.saldo = qInt;
 
       if (cols.valor_unitario) out.valor_unitario = vUnit;
-      if (cols.custo_unitario) out.custo_unitario = vUnit;
-      if (cols.val) out.val = vUnit;
-
-      if (cols.valor_total) out.valor_total = vTot;
-      if (cols.total) out.total = vTot;
-      if (cols.vtot) out.vtot = vTot;
+      else if (cols.custo_unitario) out.custo_unitario = vUnit;
+      else if (cols.val) out.val = vUnit;
 
       return {
-        _key: `${code.trim().toUpperCase()}|${largura_mm}X${comprimento_mm}`,
-        _valid: !!(code && tamRaw && largura_mm && comprimento_mm),
+        _key: `${code.trim().toUpperCase()}|${tamRaw.replace(/\s+/g,'').toUpperCase()}`,
+        _valid: !!(code && tamRaw),
         _q: qInt,
         _vunit: vUnit,
         _vtot: vTot,
@@ -1023,7 +995,13 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
     normalized.forEach((x) => {
       map.set(x._key, x);
     });
-    const clean = Array.from(map.values()).map((x) => x.out);
+    const clean = Array.from(map.values()).map((x) => {
+      const out = { ...x.out };
+      delete out.valor_total;
+      delete out.total;
+      delete out.vtot;
+      return out;
+    });
     const invalid = requested - normalized.length;
     const duplicates = normalized.length - clean.length;
 
