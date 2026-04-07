@@ -206,6 +206,16 @@ function ofIn(p) {
   if (has('imgs')) {
     out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
   }
+  if (has('fluxo_maquinas')) {
+    if (Array.isArray(p.fluxo_maquinas)) out.fluxo_maquinas = p.fluxo_maquinas;
+    else if (typeof p.fluxo_maquinas === 'string') {
+      try { out.fluxo_maquinas = JSON.parse(p.fluxo_maquinas); } catch (e) { out.fluxo_maquinas = []; }
+    } else out.fluxo_maquinas = [];
+  }
+  if (has('maquina_atual_index')) {
+    const idx = Number(p.maquina_atual_index);
+    out.maquina_atual_index = Number.isFinite(idx) ? idx : 0;
+  }
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;
@@ -282,6 +292,69 @@ app.put('/api/ofs/:id', async (req, res) => {
 });
 app.delete('/api/ofs/:id', async (req, res) => {
   try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+});
+
+app.post('/api/ofs/:id/baixar_maquina', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 'id obrigatório');
+
+    const { data: rows, error: e1 } = await supabase.from('ofs').select('*').eq('id', id).limit(1);
+    if (e1) throw e1;
+    const of = rows && rows[0] ? rows[0] : null;
+    if (!of) return bad(res, 'OF não encontrada');
+
+    const tryParse = (v, fallback) => {
+      try { return JSON.parse(v); } catch (e) { return fallback; }
+    };
+
+    let fluxo = [];
+    if (Array.isArray(of.fluxo_maquinas)) fluxo = of.fluxo_maquinas;
+    else if (typeof of.fluxo_maquinas === 'string') fluxo = tryParse(of.fluxo_maquinas, []);
+
+    if (!Array.isArray(fluxo) || fluxo.length === 0) {
+      const maq = Array.isArray(of.maq) ? of.maq : (typeof of.maq === 'string' ? tryParse(of.maq, []) : []);
+      fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
+    }
+
+    const idx0 = Number(of.maquina_atual_index != null ? of.maquina_atual_index : 0);
+    const idx = Number.isFinite(idx0) && idx0 >= 0 ? idx0 : 0;
+    const atual = fluxo[idx] != null ? String(fluxo[idx]) : '';
+    const nextIdx = idx + 1;
+    const proxima = nextIdx < fluxo.length ? String(fluxo[nextIdx]) : '';
+    const concluida = fluxo.length === 0 || nextIdx >= fluxo.length;
+
+    const nowIso = new Date().toISOString();
+    let payload = { maquina_atual_index: nextIdx };
+    if (concluida) payload = { ...payload, status: 'Concluído', data_conclusao: nowIso };
+
+    let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
+    if (upd.error) {
+      const msg = String(upd.error.message || upd.error);
+      if (msg.includes('column') || msg.includes('Could not find')) {
+        const fallbackPayload = concluida ? { status: 'Concluído' } : {};
+        upd = await supabase.from('ofs').update(fallbackPayload).eq('id', id).select('*').single();
+      }
+    }
+    if (upd.error) throw upd.error;
+
+    const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
+    const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
+    const msg = concluida
+      ? `OF #${numero} baixada na máquina ${atual || '—'}, concluída`
+      : `OF #${numero} baixada na máquina ${atual || '—'}, seguindo para ${proxima || '—'}`;
+
+    try {
+      await supabase.from('historico_acoes').insert([{
+        data_hora: nowIso,
+        tipo_acao: 'baixa_of',
+        descricao: msg,
+        usuario,
+      }]);
+    } catch (e) {}
+
+    ok(res, upd.data);
+  } catch (e) { err(res, e); }
 });
 
 // ══════════════════════════════════════════════════════════════
