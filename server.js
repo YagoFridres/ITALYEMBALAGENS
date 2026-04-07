@@ -107,11 +107,7 @@ function setNoCache(res) {
 }
 
 app.use((req, res, next) => {
-  if (req.method === 'GET' && !req.path.startsWith('/api')) {
-    if (req.path === '/' || req.path.endsWith('.html') || req.path.endsWith('.js') || req.path.endsWith('.css')) {
-      setNoCache(res);
-    }
-  }
+  if (req.method === 'GET' && !req.path.startsWith('/api')) setNoCache(res);
   next();
 });
 
@@ -903,7 +899,7 @@ app.get('/api/chapas_estoque/search', async (req, res) => {
     for (const t of tables) {
       for (const col of colsCandidates) {
         try {
-          const { data, error } = await supabase.from(t).select('*').ilike(col, q + '%').limit(50);
+          const { data, error } = await supabase.from(t).select('*').ilike(col, `%${q}%`).limit(50);
           if (error) {
             const msg = String(error.message || error);
             if (msg.includes('column') || msg.includes('Could not find')) continue;
@@ -921,12 +917,12 @@ app.get('/api/chapas_estoque/search', async (req, res) => {
               id: r.id || null,
               fornecedor: r.fornecedor ?? r.forn ?? '',
               nomenclatura: tp || '',
+              tamanho: tamStr || '',
+              quantidade: r.quantidade ?? r.quantidade_atual ?? r.qtd ?? r.saldo ?? 0,
+              valor_unitario: r.valor_unitario ?? r.custo_unitario ?? r.val ?? 0,
+              nome: r.nome ?? r.descricao ?? '',
               largura_mm: l,
               comprimento_mm: c,
-              tamanho: tamStr || '',
-              nome: r.nome ?? r.descricao ?? '',
-              quantidade_atual: r.quantidade_atual ?? r.quantidade ?? r.qtd ?? r.saldo ?? 0,
-              valor_unitario: r.valor_unitario ?? r.custo_unitario ?? r.val ?? 0,
             });
           });
         } catch (_) { continue; }
@@ -1147,6 +1143,36 @@ app.post('/api/relatorios/aparras', async (req, res) => {
       inserted += part.length;
     }
     ok(res, { inserted });
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/relatorio/producao', async (req, res) => {
+  try {
+    const mes = String(req.query.mes || '').trim();
+    if (!mes) return bad(res, 'mes obrigatório');
+    const { data, error } = await supabase.from('relatorio_producao').select('*').eq('mes_referencia', mes).order('data');
+    if (error) throw error;
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/relatorio/aparras', async (req, res) => {
+  try {
+    const mes = String(req.query.mes || '').trim();
+    if (!mes) return bad(res, 'mes obrigatório');
+    const { data, error } = await supabase.from('relatorio_aparras').select('*').eq('mes_referencia', mes).order('data');
+    if (error) throw error;
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/relatorio/dashboard', async (req, res) => {
+  try {
+    const mes = String(req.query.mes || '').trim();
+    if (!mes) return bad(res, 'mes obrigatório');
+    const { data, error } = await supabase.from('relatorio_dashboard').select('*').eq('mes_referencia', mes).limit(1);
+    if (error) throw error;
+    ok(res, (data && data[0]) ? data[0] : null);
   } catch (e) { err(res, e); }
 });
 

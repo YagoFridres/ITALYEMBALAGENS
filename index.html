@@ -1291,7 +1291,7 @@ function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros',
-    estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques', compras:'ng-estoques',
+    estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises',
   };
   const gId=map[pageId];
@@ -1312,6 +1312,7 @@ function _goBase(id){
   updateBadges();
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
   if(id==='pcp')renderPCP();
+  if(id==='ofmaq')renderOFsPorMaquina();
   if(id==='lancamento')renderLancamento();
   if(id==='clientes')renderClientes();
   if(id==='estoque')renderEstoque();
@@ -1427,6 +1428,58 @@ function renderPCP(){
       </div></td>
     </tr>`;
   }).join('');
+}
+
+function renderOFsPorMaquina(){
+  const wrap=document.getElementById('ofmaq-body');if(!wrap)return;
+  const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
+  const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
+
+  const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
+    const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
+    const nb=parseInt(String(b.id||'').replace(/\D+/g,''))||999;
+    return na-nb;
+  });
+
+  const filt=(o)=>{
+    if(st && (o.status||'')!==st) return false;
+    if(!busca) return true;
+    const cli=(getCli(o.cliId)||{}).nome||'';
+    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'';
+    const txt=[o.of,o.prodDesc,o.prod,o.status,cli,vend].join(' ').toLowerCase();
+    return txt.includes(busca);
+  };
+
+  const card=(o)=>{
+    const cli=getCli(o.cliId)||{nome:'—'};
+    return `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
+      <div style="font-family:var(--mono);font-weight:900;color:var(--accent);min-width:86px">${o.of||'—'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cli.nome}</div>
+        <div style="color:var(--text2);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.prodDesc||o.prod||''}</div>
+      </div>
+      <div style="text-align:right;font-family:var(--mono);font-size:.72rem;color:var(--text2)">
+        <div>${(Number(o.qtd)||0).toLocaleString()} un</div>
+        <div>${stTag(o.status||'')}</div>
+      </div>
+    </div>`;
+  };
+
+  const groups = maqOrdenadas.map(m=>{
+    const fila=(OFs||[]).filter(o=>(o.maq||[]).includes(m.id)).filter(filt).sort((a,b)=>(a.seq||0)-(b.seq||0));
+    return { m, fila };
+  });
+
+  const html=groups.map(({m,fila})=>{
+    return `<div class="sbox" style="margin-bottom:12px">
+      <div class="sbox-h">🏭 ${m.col} <span style="color:var(--text3);font-size:.7rem">(${fila.length})</span></div>
+      <div class="sbox-b" style="display:flex;flex-direction:column;gap:8px">
+        ${fila.length?fila.map(card).join(''):`<div style="color:var(--text3);padding:10px">Nenhuma OF</div>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML=html;
 }
 
 function selecionarOF(num){ofSel=ofSel===num?null:num;renderPCP();}
@@ -1813,7 +1866,12 @@ function ofCliChange(){
   if(fpagto&&!fpagto.value&&c.pagto) fpagto.value=c.pagto;
 }
 function renderMaqChks(sel){
-  document.getElementById('maq-chks').innerHTML=MAQUINAS.map(m=>`
+  const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
+    const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
+    const nb=parseInt(String(b.id||'').replace(/\D+/g,''))||999;
+    return na-nb;
+  });
+  document.getElementById('maq-chks').innerHTML=maqOrdenadas.map(m=>`
     <label style="display:flex;align-items:center;gap:5px;cursor:pointer;background:var(--s2);border:1px solid ${sel.includes(m.id)?'var(--accent)':'var(--border)'};border-radius:4px;padding:3px 8px;font-size:.68rem;font-family:var(--mono);">
       <input type="checkbox" id="mc-${m.id}" value="${m.id}" ${sel.includes(m.id)?'checked':''} style="width:auto;padding:0;"> ${m.col}
     </label>`).join('');
@@ -7064,18 +7122,36 @@ async function cmpNomChange(){
   if(!r||!r.ok)return;
   const arr=r.data||[];CMP_NOM_OPTS=arr;
   dl.innerHTML=arr.map(x=>{const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';const lbl=`${x.nomenclatura} | ${dim} — ${x.fornecedor||'—'} — saldo: ${x.quantidade_atual||0} — R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;return `<option value="${x.nomenclatura} ${dim}">${lbl}</option>`;}).join('');
-  if(arr.length===1)cmpNomPick(arr[0]);else{const exact=arr.find(x=>val.toUpperCase()===x.nomenclatura.toUpperCase());if(exact)cmpNomPick(exact);}
+  if(arr.length===1){cmpNomPick(arr[0]);return;}
+  const exact=arr.find(x=>val.toUpperCase()===String(x.nomenclatura||'').toUpperCase());
+  if(exact){cmpNomPick(exact);return;}
+  if(info){
+    info.innerHTML=arr.length
+      ? `<div style="color:var(--text2);margin-bottom:6px">Encontrado ${arr.length} itens. Selecione:</div>`+
+        `<div style="display:flex;flex-direction:column;gap:6px">`+
+        arr.map((x,i)=>{const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';return `<button class="btn btn-ghost btn-sm" style="justify-content:flex-start" onclick="cmpNomPickByIndex(${i})">${x.nomenclatura} | ${dim} — ${x.fornecedor||'—'} — saldo: ${(x.quantidade||x.quantidade_atual||0).toLocaleString()} — R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</button>`;}).join('')+
+        `</div>`
+      : '';
+  }
 }
+function cmpNomPickByIndex(i){const x=(CMP_NOM_OPTS||[])[i];if(x)cmpNomPick(x);}
 function cmpNomPick(x){
   const fornSel=document.getElementById('cp-forn');const fornMan=document.getElementById('cp-forn-manual');const info=document.getElementById('cp-nom-info');
   if(fornSel)fornSel.value='';if(fornMan)fornMan.value=x.fornecedor||'';
-  const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';if(info)info.textContent=`Fornecedor: ${x.fornecedor||'—'} · Tamanho: ${dim} · Valor unit.: R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · Saldo: ${(x.quantidade_atual||0).toLocaleString()}`;
+  const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';
+  const qtd=Number(x.quantidade!=null?x.quantidade:x.quantidade_atual)||0;
+  if(info)info.textContent=`Fornecedor: ${x.fornecedor||'—'} · Tamanho: ${dim} · Valor unit.: R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · Saldo: ${qtd.toLocaleString()}`;
   const v=document.getElementById('cp-valor');if(v)v.value=Number(x.valor_unitario||0);
+  const t=document.getElementById('cp-tam');if(t)t.value=dim.replace(' mm','');
+  const s=document.getElementById('cp-saldo');if(s)s.value=qtd;
 }
 
 function dispensarAlertaChapa(id){
   _alertasOK.add(id);
   renderAlertasEstoque();
+  const c=getCh(id)||{};
+  const desc=`OK alerta estoque: ${c.nome||''} ${c.forn||''} ${c.nom||''} ${c.tam||''}`.trim().slice(0,300);
+  api('POST','/historico_acoes',{tipo_acao:'alerta_estoque_ok',descricao:desc,usuario:'sistema'});
 }
 
 function renderAlertasEstoque(){
@@ -9578,112 +9654,250 @@ function renderRelatorio() {
   }
 }
 
-var REL_MENSAL_DATA = [];
-var REL_MENSAL_META = null;
+var RM_TAB = 'resumo';
+var RM_CACHE_PROD = {};
+var RM_CACHE_APAR = {};
+
 function renderRelatorioMensal(){
-  const now=new Date();
   const mesEl=document.getElementById('rm-mes');
   const anoEl=document.getElementById('rm-ano');
-  const pesoEl=document.getElementById('rm-peso');
-  if(mesEl) mesEl.value=String(now.getMonth()+1);
-  if(anoEl) anoEl.value=String(now.getFullYear());
-  if(pesoEl && !pesoEl.value) pesoEl.value='0.50';
+  if(mesEl && !mesEl.value) mesEl.value='3';
+  if(anoEl && !anoEl.value) anoEl.value='2026';
+  RM_TAB='resumo';
+  carregarRelatorioMensal();
+}
+
+function rmMesRef(){
+  const mes=parseInt((document.getElementById('rm-mes')||{}).value)||3;
+  const ano=parseInt((document.getElementById('rm-ano')||{}).value)||2026;
+  return `${ano}-${String(mes).padStart(2,'0')}`;
+}
+
+function rmTabsHtml(){
+  const tabBtn = (id, lbl) => `<button class="btn btn-ghost btn-sm" onclick="rmSetTab('${id}')" style="${RM_TAB===id?'border-color:var(--accent);color:var(--accent);':''}">${lbl}</button>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    ${tabBtn('resumo','📊 Resumo')}
+    ${tabBtn('producao','🏭 Produção')}
+    ${tabBtn('aparras','✂ Aparras')}
+  </div>`;
+}
+
+function rmSetTab(tab){
+  RM_TAB=tab;
   carregarRelatorioMensal();
 }
 
 async function carregarRelatorioMensal(){
-  const mes=parseInt((document.getElementById('rm-mes')||{}).value)||1;
-  const ano=parseInt((document.getElementById('rm-ano')||{}).value)||new Date().getFullYear();
-  const peso=parseFloat((document.getElementById('rm-peso')||{}).value)||0;
-  const from=`${ano}-${String(mes).padStart(2,'0')}-01`;
-  const lastDay=new Date(ano, mes, 0).getDate();
-  const to=`${ano}-${String(mes).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const mesRef=rmMesRef();
   const cont=document.getElementById('rm-content');
-  if(cont) cont.innerHTML='<div style="color:var(--text2);font-size:.82rem">Carregando...</div>';
+  if(!cont) return;
 
-  const r=await api('GET', `/ofs?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
-  if(!r || !r.ok){
-    if(cont) cont.innerHTML='<div style="color:var(--red);font-weight:700">Erro ao carregar relatório</div>';
-    toast('Erro ao carregar relatório','var(--red)');
+  const fixos = {
+    '2026-03': {
+      cards: {
+        faturamento_bruto: 1184937.61,
+        lucro_bruto: 561966.44,
+        lucro_liquido: 560412.50,
+        custo_papel: 616398.36,
+        total_desperdicio: 6572.81,
+        aparras: 1553.94,
+        tonelagem_total_kg: 91593.26,
+        despesas: 0.00
+      },
+      tonelagem_por_maquina: [
+        { maq:'Máquina 1', kg:18215.37, vendas:310966.80 },
+        { maq:'Máquina 2', kg:23275.26, vendas:271349.90 },
+        { maq:'Máquina 3', kg:21784.14, vendas:279161.54 },
+        { maq:'Máquina 4', kg:15786.63, vendas:161694.44 },
+        { maq:'Máquina 5', kg:2517.18,  vendas:50204.63 },
+        { maq:'Máquina 6', kg:10014.68, vendas:111560.30 }
+      ],
+      vendas_por_vendedor: [
+        { vend:'Vendedor 1', vendas:522415.93 },
+        { vend:'Vendedor 1/2', vendas:81991.31 },
+        { vend:'Vendedor 2', vendas:580530.37 }
+      ],
+      vendas_por_empresa: [
+        { emp:'CARTOESTE', vendas:689467.86 },
+        { emp:'ITALY', vendas:376623.92 },
+        { emp:'OESTEPACK', vendas:118845.83 }
+      ],
+      tonelagem_por_tipo: [
+        { tipo:'CHAB21', kg:3431 },
+        { tipo:'CHADC21', kg:16484 },
+        { tipo:'CHAB24', kg:1225 },
+        { tipo:'FCM07', kg:13685 },
+        { tipo:'FCM03', kg:13167 },
+        { tipo:'KKB50', kg:5582 },
+        { tipo:'3200 KA B', kg:12662 },
+        { tipo:'7150 KA BC', kg:8588 },
+        { tipo:'CHAC110R', kg:5282 },
+        { tipo:'CHAC215R', kg:2651 },
+        { tipo:'5450 KR C', kg:3333 },
+        { tipo:'7150KABC', kg:1552 },
+        { tipo:'CHADC14R', kg:1047 },
+        { tipo:'7500 KA BC', kg:849 },
+        { tipo:'KKKK80', kg:415 },
+        { tipo:'5650 KK C', kg:687 },
+        { tipo:'5550 KK C', kg:541 },
+        { tipo:'BKKK60', kg:246 },
+        { tipo:'4190 WR B', kg:167 }
+      ]
+    }
+  };
+
+  const base = fixos[mesRef] || null;
+  const fmtMoney = (v) => 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmtKg = (v) => Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' kg';
+
+  const cardsHtml = base ? `
+    <div class="g3" style="margin-bottom:12px">
+      <div class="card"><div class="card-lbl">Faturamento Bruto</div><div class="card-val">${fmtMoney(base.cards.faturamento_bruto)}</div></div>
+      <div class="card"><div class="card-lbl">Lucro Bruto</div><div class="card-val">${fmtMoney(base.cards.lucro_bruto)}</div></div>
+      <div class="card"><div class="card-lbl">Lucro Líquido Final</div><div class="card-val">${fmtMoney(base.cards.lucro_liquido)}</div></div>
+      <div class="card"><div class="card-lbl">Custo de Papel</div><div class="card-val">${fmtMoney(base.cards.custo_papel)}</div></div>
+      <div class="card"><div class="card-lbl">Total Desperdício</div><div class="card-val">${fmtMoney(base.cards.total_desperdicio)}</div></div>
+      <div class="card"><div class="card-lbl">Aparras</div><div class="card-val">${fmtMoney(base.cards.aparras)}</div></div>
+      <div class="card"><div class="card-lbl">Tonelagem Total</div><div class="card-val">${fmtKg(base.cards.tonelagem_total_kg)}</div></div>
+      <div class="card"><div class="card-lbl">Despesas</div><div class="card-val">${fmtMoney(base.cards.despesas)}</div></div>
+    </div>` : `<div style="color:var(--text3);padding:12px;border:1px dashed var(--border);border-radius:10px;margin-bottom:12px">Sem dados fixos para ${mesRef}. Use os endpoints /api/relatorio/* para carregar dados.</div>`;
+
+  if(RM_TAB==='resumo'){
+    const maxKgM = base ? Math.max(...base.tonelagem_por_maquina.map(x=>x.kg)) : 1;
+    const maxVend = base ? Math.max(...base.vendas_por_vendedor.map(x=>x.vendas)) : 1;
+    const maxTipo = base ? Math.max(...base.tonelagem_por_tipo.map(x=>x.kg)) : 1;
+    cont.innerHTML = rmTabsHtml() + cardsHtml + (base ? `
+      <div class="g2">
+        <div class="sbox"><div class="sbox-h">📦 Tonelagem por Máquina</div><div class="sbox-b">
+          ${base.tonelagem_por_maquina.map(x=>barH(`${x.maq} — ${fmtKg(x.kg)} | ${fmtMoney(x.vendas)}`, x.kg, maxKgM, 'var(--accent)')).join('')}
+        </div></div>
+        <div class="sbox"><div class="sbox-h">🧑‍💼 Vendas por Vendedor</div><div class="sbox-b">
+          ${base.vendas_por_vendedor.map(x=>barH(`${x.vend} — ${fmtMoney(x.vendas)}`, x.vendas, maxVend, 'var(--green)')).join('')}
+        </div></div>
+        <div class="sbox"><div class="sbox-h">🏢 Vendas por Empresa</div><div class="sbox-b">
+          ${base.vendas_por_empresa.map(x=>barH(`${x.emp} — ${fmtMoney(x.vendas)}`, x.vendas, Math.max(...base.vendas_por_empresa.map(y=>y.vendas)), 'var(--yellow)')).join('')}
+        </div></div>
+        <div class="sbox"><div class="sbox-h">📄 Tonelagem por Tipo de Papel</div><div class="sbox-b">
+          ${base.tonelagem_por_tipo.map(x=>barH(`${x.tipo} — ${Number(x.kg||0).toLocaleString('pt-BR')} kg`, x.kg, maxTipo, 'var(--purple)')).join('')}
+        </div></div>
+      </div>` : '');
     return;
   }
 
-  const ofs=(r.data||[]).map(normalizeOF);
-  const totalOFs=ofs.length;
-  const clientesAtendidos=new Set(ofs.map(o=>o.cliId).filter(Boolean)).size;
-  const totalQtd=ofs.reduce((s,o)=>s+(Number(o.qtd)||0),0);
-  const toneladas=(totalQtd*peso)/1000;
+  if(RM_TAB==='producao'){
+    cont.innerHTML = rmTabsHtml() + `<div style="color:var(--text2);padding:10px">Carregando produção...</div>`;
+    const data = await rmLoadProducao(mesRef);
+    cont.innerHTML = rmTabsHtml() + rmRenderTabelaProducao(data);
+    return;
+  }
 
-  REL_MENSAL_DATA=ofs;
-  REL_MENSAL_META={mes,ano,peso,from,to,totalOFs,clientesAtendidos,totalQtd,toneladas};
+  if(RM_TAB==='aparras'){
+    cont.innerHTML = rmTabsHtml() + `<div style="color:var(--text2);padding:10px">Carregando aparras...</div>`;
+    const data = await rmLoadAparras(mesRef);
+    cont.innerHTML = rmTabsHtml() + rmRenderTabelaAparras(data);
+    return;
+  }
+}
 
-  const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.72rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;';
-  const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;';
+async function rmLoadProducao(mesRef){
+  if(RM_CACHE_PROD[mesRef]) return RM_CACHE_PROD[mesRef];
+  const r=await api('GET','/relatorio/producao?mes='+encodeURIComponent(mesRef));
+  const data=(r && r.ok && Array.isArray(r.data))?r.data:[];
+  RM_CACHE_PROD[mesRef]=data;
+  return data;
+}
 
-  const rows=ofs.sort((a,b)=>(a.seq||0)-(b.seq||0)).map((o,i)=>{
-    const c=getCli(o.cliId)||{nome:'—'};
-    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'—';
-    const dia=fmtDataBR(o.dia||o.data_producao||o.dataProducao||'');
-    const ent=fmtDataBR(o.ent||o.data_entrega||o.dataEntrega||'');
-    return `<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
-      <td style="${tdS};font-family:var(--mono);font-weight:800;color:var(--accent)">${o.of||o.numero||'—'}</td>
-      <td style="${tdS}">${c.nome}</td>
-      <td style="${tdS}">${vend}</td>
-      <td style="${tdS};font-family:var(--mono)">${dia}</td>
-      <td style="${tdS};font-family:var(--mono)">${ent}</td>
-      <td style="${tdS};font-family:var(--mono)">${(Number(o.qtd)||0).toLocaleString()}</td>
-      <td style="${tdS}">${o.status||'—'}</td>
-    </tr>`;
-  }).join('');
+async function rmLoadAparras(mesRef){
+  if(RM_CACHE_APAR[mesRef]) return RM_CACHE_APAR[mesRef];
+  const r=await api('GET','/relatorio/aparras?mes='+encodeURIComponent(mesRef));
+  const data=(r && r.ok && Array.isArray(r.data))?r.data:[];
+  RM_CACHE_APAR[mesRef]=data;
+  return data;
+}
 
-  const html=`
-    <div class="g2">
-      <div class="sbox"><div class="sbox-h">📌 Resumo</div><div class="sbox-b">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
-          <div class="card" style="border-left:3px solid var(--accent)"><div class="card-lbl">Total de OFs</div><div class="card-val">${totalOFs}</div></div>
-          <div class="card" style="border-left:3px solid var(--green)"><div class="card-lbl">Clientes atendidos</div><div class="card-val">${clientesAtendidos}</div></div>
-          <div class="card" style="border-left:3px solid var(--yellow)"><div class="card-lbl">Total unidades</div><div class="card-val">${totalQtd.toLocaleString()}</div></div>
-          <div class="card" style="border-left:3px solid var(--purple)"><div class="card-lbl">Toneladas</div><div class="card-val">${toneladas.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="card-sub">${peso.toLocaleString('pt-BR',{minimumFractionDigits:2})} kg/un</div></div>
-        </div>
-        <div style="margin-top:10px;color:var(--text3);font-size:.72rem;font-family:var(--mono)">Período: ${fmtDataBR(from)} a ${fmtDataBR(to)}</div>
-      </div></div>
-      <div class="sbox"><div class="sbox-h">📋 OFs do Período</div><div class="sbox-b" style="padding:0">
-        <div style="max-height:520px;overflow:auto">
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr>
-              <th style="${thS}">OF</th>
-              <th style="${thS}">Cliente</th>
-              <th style="${thS}">Vendedor</th>
-              <th style="${thS}">Data</th>
-              <th style="${thS}">Entrega</th>
-              <th style="${thS}">Qtd</th>
-              <th style="${thS}">Status</th>
-            </tr></thead>
-            <tbody>${rows||`<tr><td colspan="7" style="${tdS};color:var(--text3)">Nenhuma OF no período</td></tr>`}</tbody>
-          </table>
-        </div>
-      </div></div>
-    </div>`;
+function rmRenderTabelaProducao(rows){
+  const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  const body=(rows||[]).map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+    <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
+    <td style="${tdS}">${r.maquina||''}</td>
+    <td style="${tdS}">${r.vendedor||''}</td>
+    <td style="${tdS}">${r.cliente||''}</td>
+    <td style="${tdS}">${r.tipo_papel||''}</td>
+    <td style="${tdS}">${r.gramatura!=null?r.gramatura:''}</td>
+    <td style="${tdS}">${r.comprimento_mm!=null?r.comprimento_mm:''}</td>
+    <td style="${tdS}">${r.largura_mm!=null?r.largura_mm:''}</td>
+    <td style="${tdS}">${r.tamanho_m2!=null?r.tamanho_m2:''}</td>
+    <td style="${tdS}">${r.custo!=null?r.custo:''}</td>
+    <td style="${tdS}">${r.quantidade!=null?r.quantidade:''}</td>
+    <td style="${tdS}">${r.transporte!=null?r.transporte:''}</td>
+    <td style="${tdS}">${r.valor_venda!=null?r.valor_venda:''}</td>
+    <td style="${tdS}">${r.empresa||''}</td>
+    <td style="${tdS}">${r.desperdicio!=null?r.desperdicio:''}</td>
+  </tr>`).join('');
+  return `<div class="sbox"><div class="sbox-h">🏭 Produção (${(rows||[]).length})</div><div class="sbox-b" style="padding:0">
+    <div style="max-height:560px;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1400px">
+        <thead><tr>
+          <th style="${thS}">Data</th><th style="${thS}">Máquina</th><th style="${thS}">Vendedor</th><th style="${thS}">Cliente</th>
+          <th style="${thS}">Tipo</th><th style="${thS}">Gramatura</th><th style="${thS}">Comp</th><th style="${thS}">Larg</th>
+          <th style="${thS}">m²</th><th style="${thS}">Custo</th><th style="${thS}">Qtd</th><th style="${thS}">Transp</th>
+          <th style="${thS}">Venda</th><th style="${thS}">Empresa</th><th style="${thS}">Desperdício</th>
+        </tr></thead>
+        <tbody>${body||`<tr><td colspan="15" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
+      </table>
+    </div>
+  </div></div>`;
+}
 
-  if(cont) cont.innerHTML=html;
+function rmRenderTabelaAparras(rows){
+  const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  const body=(rows||[]).map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+    <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
+    <td style="${tdS}">${r.cliente||''}</td>
+    <td style="${tdS}">${r.tipo_papel||''}</td>
+    <td style="${tdS}">${r.comprimento_mm!=null?r.comprimento_mm:''}</td>
+    <td style="${tdS}">${r.largura_mm!=null?r.largura_mm:''}</td>
+    <td style="${tdS}">${r.valor_custo!=null?r.valor_custo:''}</td>
+    <td style="${tdS}">${r.custo!=null?r.custo:''}</td>
+    <td style="${tdS}">${r.quantidade!=null?r.quantidade:''}</td>
+    <td style="${tdS}">${r.valor_final!=null?r.valor_final:''}</td>
+  </tr>`).join('');
+  return `<div class="sbox"><div class="sbox-h">✂ Aparras (${(rows||[]).length})</div><div class="sbox-b" style="padding:0">
+    <div style="max-height:560px;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1100px">
+        <thead><tr>
+          <th style="${thS}">Data</th><th style="${thS}">Cliente</th><th style="${thS}">Tipo</th><th style="${thS}">Comp</th><th style="${thS}">Larg</th>
+          <th style="${thS}">Valor Custo</th><th style="${thS}">Custo</th><th style="${thS}">Qtd</th><th style="${thS}">Valor Final</th>
+        </tr></thead>
+        <tbody>${body||`<tr><td colspan="9" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
+      </table>
+    </div>
+  </div></div>`;
 }
 
 function exportarRelMensalCSV(){
-  if(!REL_MENSAL_DATA || !REL_MENSAL_DATA.length){toast('Sem dados para exportar','var(--orange)');return;}
-  const header=['of','cliente','vendedor','data','entrega','qtd','status'];
+  const mesRef=rmMesRef();
+  const prod=RM_CACHE_PROD[mesRef]||[];
+  const apar=RM_CACHE_APAR[mesRef]||[];
+  const rows = RM_TAB==='aparras' ? apar : prod;
+  if(!rows.length){toast('Sem dados para exportar (carregue Produção/Aparras primeiro)','var(--orange)');return;}
+  const header = RM_TAB==='aparras'
+    ? ['data','cliente','tipo_papel','comprimento_mm','largura_mm','valor_custo','custo','quantidade','valor_final']
+    : ['data','maquina','vendedor','cliente','tipo_papel','gramatura','comprimento_mm','largura_mm','tamanho_m2','custo','quantidade','transporte','valor_venda','empresa','desperdicio'];
   const lines=[header.join(';')];
-  REL_MENSAL_DATA.forEach(o=>{
-    const c=getCli(o.cliId)||{nome:'—'};
-    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'—';
-    const dia=fmtDataBR(o.dia||o.data_producao||o.dataProducao||'');
-    const ent=fmtDataBR(o.ent||o.data_entrega||o.dataEntrega||'');
-    const row=[o.of||o.numero||'', c.nome||'', vend||'', dia||'', ent||'', String(Number(o.qtd)||0), o.status||''];
-    lines.push(row.map(v=>String(v).replaceAll(';',',')).join(';'));
+  rows.forEach(r=>{
+    const row = header.map(k=>{
+      const v=r[k];
+      if(k==='data') return fmtDataBR(v||'');
+      return v==null?'':String(v).replaceAll(';',',');
+    });
+    lines.push(row.join(';'));
   });
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
-  const meta=REL_MENSAL_META||{};
-  const name=`relatorio_mensal_${meta.ano||''}_${String(meta.mes||'').padStart(2,'0')}.csv`;
+  const name=`relatorio_${RM_TAB}_${mesRef}.csv`;
   a.href=URL.createObjectURL(blob);
   a.download=name;
   document.body.appendChild(a);a.click();a.remove();
@@ -10145,6 +10359,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="sidebar-section">Produção</div>
   <div class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
+  <div class="nav-item" onclick="go('ofmaq')"><span class="ico">🏭</span>OFs por Máquina</div>
   <div class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
   <div class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
   <div class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
@@ -10248,6 +10463,22 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </table>
     </div>
   </div>
+</div>
+
+<!-- ========== 1B. OFs POR MÁQUINA ========== -->
+<div id="page-ofmaq" class="page">
+  <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
+    <span style="font-size:.78rem;color:var(--text2)">🏭 OFs agrupadas por máquina</span>
+    <input id="ofmaq-busca" placeholder="🔍 OF, cliente, produto..." oninput="renderOFsPorMaquina()" style="width:190px;">
+    <select id="ofmaq-status" onchange="renderOFsPorMaquina()">
+      <option value="">Todos status</option>
+      <option>Em aberto</option><option>Em produção</option>
+      <option>Concluído</option><option>Atrasado</option><option>Cancelado</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
+  </div>
+  <div class="page-body" id="ofmaq-body"></div>
 </div>
 
 <!-- ========== 2. LANÇAMENTO ========== -->
@@ -11884,6 +12115,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>PREVISÃO CHEGADA</label><input id="cp-prev" type="date"></div>
     <div class="mf"><label>STATUS</label><select id="cp-st"><option>Solicitada</option><option>Comprada</option><option>Recebida parcialmente</option><option>Recebida</option><option>Cancelada</option></select></div>
     <div class="mf"><label>NOMENCLATURA</label><input id="cp-nom" list="cp-nom-list" oninput="cmpNomChange()" placeholder="Ex: FCM03, AB21..."><datalist id="cp-nom-list"></datalist><div id="cp-nom-info" style="font-size:.72rem;color:var(--text2);margin-top:4px"></div></div>
+    <div class="mf"><label>TAMANHO (mm)</label><input id="cp-tam" readonly style="background:var(--s2);border:1px solid var(--border);color:var(--text2)"></div>
+    <div class="mf"><label>SALDO ESTOQUE</label><input id="cp-saldo" readonly style="background:var(--s2);border:1px solid var(--border);color:var(--text2)"></div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="cp-obs" rows="1"></textarea></div>
   </div>
 
