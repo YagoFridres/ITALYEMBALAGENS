@@ -887,8 +887,47 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
     const toNum = (v, fallback = 0) => {
       if (v == null || v === '') return fallback;
       if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
-      const n = Number(String(v).trim().replace(/\./g, '').replace(',', '.'));
+      const s0 = String(v).trim().replace(/R\$/gi, '').replace(/\s+/g, '');
+      const s = s0.includes(',') ? s0.replace(/\./g, '').replace(',', '.') : s0;
+      const n = Number(s);
       return Number.isFinite(n) ? n : fallback;
+    };
+
+    const hasCol = async (col) => {
+      const { error } = await supabase.from(t).select(col).limit(1);
+      if (!error) return true;
+      const msg = String(error.message || error);
+      if (msg.includes('column') || msg.includes('Could not find')) return false;
+      throw error;
+    };
+
+    const cols = {
+      forn: await hasCol('forn'),
+      fornecedor: await hasCol('fornecedor'),
+      tipo_papel: await hasCol('tipo_papel'),
+      modelo: await hasCol('modelo'),
+      nom: await hasCol('nom'),
+      codigo: await hasCol('codigo'),
+      tam: await hasCol('tam'),
+      tamanho: await hasCol('tamanho'),
+      nome: await hasCol('nome'),
+      descricao: await hasCol('descricao'),
+      largura_mm: await hasCol('largura_mm'),
+      comprimento_mm: await hasCol('comprimento_mm'),
+      larg: await hasCol('larg'),
+      comp: await hasCol('comp'),
+      largura: await hasCol('largura'),
+      altura: await hasCol('altura'),
+      quantidade: await hasCol('quantidade'),
+      quantidade_atual: await hasCol('quantidade_atual'),
+      qtd: await hasCol('qtd'),
+      saldo: await hasCol('saldo'),
+      valor_unitario: await hasCol('valor_unitario'),
+      custo_unitario: await hasCol('custo_unitario'),
+      val: await hasCol('val'),
+      valor_total: await hasCol('valor_total'),
+      total: await hasCol('total'),
+      vtot: await hasCol('vtot')
     };
 
     const requested = items.length;
@@ -900,28 +939,66 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       const quantidade = toNum(it.quantidade ?? it.quantidade_atual ?? it.QUANTIDADE ?? 0, 0);
       const valor_unitario = toNum(it.valor_unitario ?? it.valorUnitario ?? it['R$'] ?? it.VALOR ?? 0, 0);
       const { largura_mm, comprimento_mm } = parseTam(tamanho);
-      return {
-        forn: String(fornecedor || '').trim(),
-        tipo_papel: String(nomenclatura || '').trim(),
-        nome: String(nome || '').trim() || String(nomenclatura || '').trim(),
-        largura_mm: largura_mm || null,
-        comprimento_mm: comprimento_mm || null,
-        quantidade_atual: Math.trunc(quantidade) || 0,
-        valor_unitario: Number(valor_unitario) || 0,
-        _tamanho_raw: String(tamanho || '').trim(),
-      };
-    }).filter((x) => x.tipo_papel && x.largura_mm && x.comprimento_mm);
+      const qInt = Math.trunc(quantidade) || 0;
+      const vUnit = Number(valor_unitario) || 0;
+      const vTot = qInt * vUnit;
 
-    const keyOf = (x) => `${String(x.tipo_papel).trim().toUpperCase()}|${x.largura_mm}X${x.comprimento_mm}`;
+      const out = {};
+
+      const forn = String(fornecedor || '').trim();
+      const code = String(nomenclatura || '').trim();
+      const desc = (String(nome || '').trim() || code);
+      const tamRaw = String(tamanho || '').trim();
+
+      if (cols.forn) out.forn = forn;
+      if (cols.fornecedor) out.fornecedor = forn;
+
+      if (cols.tipo_papel) out.tipo_papel = code;
+      if (cols.modelo) out.modelo = code;
+      if (cols.nom) out.nom = code;
+      if (cols.codigo) out.codigo = code;
+
+      if (cols.tam) out.tam = tamRaw;
+      if (cols.tamanho) out.tamanho = tamRaw;
+
+      if (cols.nome) out.nome = desc;
+      if (cols.descricao) out.descricao = desc;
+
+      if (cols.largura_mm) out.largura_mm = largura_mm || null;
+      if (cols.comprimento_mm) out.comprimento_mm = comprimento_mm || null;
+      if (cols.larg) out.larg = largura_mm || null;
+      if (cols.comp) out.comp = comprimento_mm || null;
+      if (cols.largura) out.largura = largura_mm || null;
+      if (cols.altura) out.altura = comprimento_mm || null;
+
+      if (cols.quantidade) out.quantidade = qInt;
+      if (cols.quantidade_atual) out.quantidade_atual = qInt;
+      if (cols.qtd) out.qtd = qInt;
+      if (cols.saldo) out.saldo = qInt;
+
+      if (cols.valor_unitario) out.valor_unitario = vUnit;
+      if (cols.custo_unitario) out.custo_unitario = vUnit;
+      if (cols.val) out.val = vUnit;
+
+      if (cols.valor_total) out.valor_total = vTot;
+      if (cols.total) out.total = vTot;
+      if (cols.vtot) out.vtot = vTot;
+
+      return {
+        _key: `${code.trim().toUpperCase()}|${largura_mm}X${comprimento_mm}`,
+        _valid: !!(code && tamRaw && largura_mm && comprimento_mm),
+        _q: qInt,
+        _vunit: vUnit,
+        _vtot: vTot,
+        out
+      };
+    }).filter((x) => x._valid);
+
     const map = new Map();
     normalized.forEach((x) => {
-      map.set(keyOf(x), x);
+      map.set(x._key, x);
     });
-    const clean = Array.from(map.values()).map((x) => {
-      const out = { ...x };
-      delete out._tamanho_raw;
-      return out;
-    });
+    const clean = Array.from(map.values()).map((x) => x.out);
     const invalid = requested - normalized.length;
     const duplicates = normalized.length - clean.length;
 
@@ -933,24 +1010,13 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
     let inserted = 0;
     for (let i = 0; i < clean.length; i += chunkSize) {
       const chunk = clean.slice(i, i + chunkSize);
-      let { error } = await supabase.from(t).insert(chunk);
-      if (error) {
-        const msg = String(error.message || error);
-        if (msg.includes('column') || msg.includes('Could not find')) {
-          const c2 = chunk.map((r) => {
-            const out = { ...r };
-            delete out.forn;
-            delete out.valor_unitario;
-            return out;
-          });
-          ({ error } = await supabase.from(t).insert(c2));
-        }
-      }
+      const { error } = await supabase.from(t).insert(chunk);
       if (error) throw error;
       inserted += chunk.length;
     }
 
-    ok(res, { deleted: true, table: t, requested, valid: normalized.length, invalid, duplicates, inserted });
+    const saved_fields = [...new Set(clean.flatMap((r) => Object.keys(r)))].sort();
+    ok(res, { deleted: true, table: t, requested, valid: normalized.length, invalid, duplicates, inserted, saved_fields });
   } catch (e) { err(res, e); }
 });
 
