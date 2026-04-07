@@ -788,12 +788,25 @@ app.post('/api/chapas_estoque', async (req, res) => {
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
-      const { data, error } = await supabase.from(t).insert([req.body]).select();
+      const input = req.body || {};
+      const tryInsert = async (payload) => supabase.from(t).insert([payload]).select();
+
+      let { data, error } = await tryInsert(input);
       if (!error) return ok(res, data[0]);
       lastErr = error;
+
       const msg = String(error.message || error);
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
-      throw error;
+      if (msg.includes('column') || msg.includes('Could not find')) {
+        const payload = { ...input };
+        delete payload.forn;
+        delete payload.valor_unitario;
+        delete payload.valorUnitario;
+        ({ data, error } = await tryInsert(payload));
+        if (!error) return ok(res, data[0]);
+        lastErr = error;
+      }
+      throw lastErr;
     }
     throw lastErr;
   } catch (e) { err(res, e); }
@@ -804,12 +817,22 @@ app.put('/api/chapas_estoque/:id', async (req, res) => {
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
-      const { data, error } = await supabase.from(t).update(payload).eq('id', req.params.id).select();
+      const tryUpdate = async (p) => supabase.from(t).update(p).eq('id', req.params.id).select();
+      let { data, error } = await tryUpdate(payload);
       if (!error) return ok(res, data[0]);
       lastErr = error;
       const msg = String(error.message || error);
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
-      throw error;
+      if (msg.includes('column') || msg.includes('Could not find')) {
+        const p = { ...payload };
+        delete p.forn;
+        delete p.valor_unitario;
+        delete p.valorUnitario;
+        ({ data, error } = await tryUpdate(p));
+        if (!error) return ok(res, data[0]);
+        lastErr = error;
+      }
+      throw lastErr;
     }
     throw lastErr;
   } catch (e) { err(res, e); }

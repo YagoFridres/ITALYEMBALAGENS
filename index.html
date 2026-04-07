@@ -575,10 +575,38 @@ body[data-device="mobile"] .g2,body[data-device="mobile"] .g3{grid-template-colu
 body[data-device="mobile"] .topbar-badges,body[data-device="mobile"] .clock,body[data-device="mobile"] #user-action-badge{display:none!important;}
 body[data-device="mobile"] .page-body{padding:12px;}
 body[data-device="mobile"] .ptoolbar{flex-wrap:wrap;gap:6px;}
-body[data-device="mobile"] table th:nth-child(n+5),body[data-device="mobile"] table td:nth-child(n+5){display:none;}
-body[data-device="mobile"] .modal{border-radius:16px 16px 0 0;margin-top:auto;max-height:92vh;}
-body[data-device="mobile"] .modal-overlay{align-items:flex-end;}
+body[data-device="mobile"] table th:nth-child(n+5),body[data-device="mobile"] table td:nth-child(n+5){display:table-cell;}
+body[data-device="mobile"] .modal{border-radius:0;margin:0;width:100vw;min-height:100vh;max-height:100vh;}
+body[data-device="mobile"] .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
 body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
+
+@media(max-width:768px){
+  body{font-size:14px;}
+  #mob-menu-btn{display:flex!important;}
+  .sidebar{position:fixed;left:-248px;top:52px;bottom:0;z-index:900;width:240px;transition:left .22s;box-shadow:var(--shadow-lg);}
+  .sidebar.mob-open{left:0;}
+  .layout{overflow:visible;}
+  .topbar{padding:0 12px;gap:8px;}
+  .topbar-badges,.clock,#user-action-badge{display:none!important;}
+  .page-body{padding:12px;}
+  .ptoolbar{flex-wrap:wrap;gap:8px;}
+  .btn,.btn-icon{min-height:42px;padding:10px 14px;font-size:.9rem;}
+  .btn-sm{min-height:38px;padding:9px 12px;font-size:.84rem;}
+  input,select,textarea{min-height:42px;font-size:.95rem;}
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.pcp-table{min-width:780px;}
+  .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
+  .modal{width:100vw;min-height:100vh;max-height:100vh;border-radius:0;margin:0;padding:18px;}
+  .modal-footer{position:sticky;bottom:0;background:var(--surface);padding-top:10px;margin-top:14px;}
+}
+
+@media(min-width:769px) and (max-width:1024px){
+  .sidebar{width:70px;overflow:hidden;}
+  .sidebar-brand-name,.sidebar-brand-sub,.sidebar-section,.nav-item span:not(.ico),.badge-n{display:none!important;}
+  .sidebar-brand{padding:12px 8px 10px;text-align:center;}
+  .nav-item{justify-content:center;padding:12px 0;}
+  .clock,.topbar-badges{display:none;}
+}
 
 @media(max-width:860px){
   .dev-cards{grid-template-columns:1fr;}
@@ -2090,32 +2118,6 @@ function estOrdenar(campo){
 
 // ===================== ESTOQUE =====================
 function _renderEstoqueBase(){
-  const tb=document.querySelector('#page-estoque .ptoolbar');
-  if(tb){
-    let btn=document.getElementById('btn-import-excel');
-    if(!btn){
-      btn=document.createElement('button');
-      btn.id='btn-import-excel';
-      btn.className='btn btn-ghost btn-sm';
-      btn.textContent='📥 Importar Excel';
-      btn.onclick=triggerImportChapas;
-      const ref=tb.querySelector('[onclick*="abrirModalChapa"]');
-      if(ref) tb.insertBefore(btn, ref);
-      else tb.appendChild(btn);
-    } else {
-      btn.style.display='';
-    }
-    let inp=document.getElementById('est-import-file');
-    if(!inp){
-      inp=document.createElement('input');
-      inp.id='est-import-file';
-      inp.type='file';
-      inp.accept='.xlsx,.csv';
-      inp.style.display='none';
-      inp.onchange=function(){ handleImportChapasFile(this.files[0]); this.value=''; };
-      tb.appendChild(inp);
-    }
-  }
   // ---- TABELA PRINCIPAL ----
   const busca=(document.getElementById('est-busca')||{}).value||'';
   const filForn=(document.getElementById('est-fil-forn')||{}).value||'';
@@ -5866,7 +5868,9 @@ function trocarDispositivo(){
   if(ls) ls.style.display='none';
 }
 function toggleMobMenu(){
-  if(document.body.getAttribute('data-device')!=='mobile') return;
+  const isMobileAttr = document.body.getAttribute('data-device')==='mobile';
+  const isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:768px)').matches;
+  if(!isMobileAttr && !isNarrow) return;
   const sb=document.querySelector('.sidebar');
   const ov=document.getElementById('mob-sidebar-overlay');
   if(sb) sb.classList.toggle('mob-open');
@@ -7093,25 +7097,41 @@ async function handleImportChapasFile(file){
     else fr.readAsArrayBuffer(file);
   });
 
-  const normalizeHeader = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^\w_]/g,'');
+  const normalizeHeader = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  let headerMap = {};
   const toNum = (v) => {
     if(v==null) return null;
-    const s = String(v).trim().replace(/\./g,'').replace(',', '.');
+    if(typeof v === 'number') return Number.isFinite(v) ? v : null;
+    const s = String(v).trim()
+      .replace(/R\$/gi,'')
+      .replace(/\s+/g,'')
+      .replace(/\./g,'')
+      .replace(',', '.');
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
   };
   const pick = (row, keys) => {
     for(const k of keys){
-      if(row[k] != null && String(row[k]).trim() !== '') return row[k];
+      const kk = headerMap[k] || k;
+      if(row[kk] != null && String(row[kk]).trim() !== '') return row[kk];
     }
     return null;
+  };
+  const parseTam = (v) => {
+    const s = String(v||'').trim().toUpperCase().replaceAll('MM','').replaceAll(' ','');
+    if(!s) return { comprimento_mm:null, largura_mm:null };
+    const parts = s.split(/X|×/).filter(Boolean);
+    const a = toNum(parts[0]);
+    const b = toNum(parts[1]);
+    return { comprimento_mm:a, largura_mm:b };
   };
 
   try{
     showSaveIndicator('⏳ lendo arquivo...','var(--yellow)');
     const raw = await readFile();
     const wb = isCsv ? XLSX.read(raw, { type:'string' }) : XLSX.read(raw, { type:'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    const targetSheetName = (wb.SheetNames||[]).find(n=>normalizeHeader(n)==='CONTROLE ESTOQUE') || (wb.SheetNames||[])[0];
+    const ws = wb.Sheets[targetSheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
     if(!rows.length){
       showSaveIndicator('⚠ arquivo vazio','var(--orange)');
@@ -7119,16 +7139,15 @@ async function handleImportChapasFile(file){
       return;
     }
 
-    const headerMap = {};
+    headerMap = {};
     Object.keys(rows[0]||{}).forEach(h=>{ headerMap[normalizeHeader(h)] = h; });
-    const k = (normalized) => headerMap[normalized] || normalized;
-
     const keys = {
-      nome: [k('nome'), k('descricao'), k('chapa'), k('produto')],
-      tipo_papel: [k('tipo_papel'), k('tipo'), k('modelo'), k('papel')],
-      comprimento_mm: [k('comprimento_mm'), k('comprimento'), k('altura_mm'), k('altura'), k('comp_mm'), k('comp')],
-      largura_mm: [k('largura_mm'), k('largura'), k('lar_mm'), k('lar'), k('larg_mm'), k('larg')],
-      quantidade_atual: [k('quantidade_atual'), k('quantidade'), k('saldo'), k('estoque'), k('qtd'), k('qtd_atual')]
+      tipo_papel: ['NOMENCLATURA'],
+      tamanho: ['TAMANHO'],
+      nome: ['NOME'],
+      quantidade_atual: ['QUANTIDADE','QTD'],
+      valor_unitario: ['R$','R$ (UN)','VALOR','VALOR_UNITARIO'],
+      forn: ['FORNECEDOR','FORN']
     };
 
     let okCount = 0;
@@ -7139,19 +7158,22 @@ async function handleImportChapasFile(file){
     showSaveIndicator(`⏳ importando 0/${rows.length}`,'var(--yellow)');
     for(let i=0;i<rows.length;i++){
       const r = rows[i];
+      const tipo_papel = String(pick(r, keys.tipo_papel) || '').trim();
       const nome = String(pick(r, keys.nome) || '').trim();
-      if(!nome) continue;
-      const tipo_papel = String(pick(r, keys.tipo_papel) || '').trim() || null;
-      const comprimento_mm = toNum(pick(r, keys.comprimento_mm));
-      const largura_mm = toNum(pick(r, keys.largura_mm));
+      if(!nome && !tipo_papel) continue;
+      const { comprimento_mm, largura_mm } = parseTam(pick(r, keys.tamanho));
       const quantidade_atual = toNum(pick(r, keys.quantidade_atual)) ?? 0;
+      const valor_unitario = toNum(pick(r, keys.valor_unitario));
+      const forn = String(pick(r, keys.forn) || '').trim();
 
       const payload = {
-        nome,
-        tipo_papel,
+        nome: nome || tipo_papel,
+        tipo_papel: tipo_papel || null,
         comprimento_mm,
         largura_mm,
-        quantidade_atual
+        quantidade_atual,
+        valor_unitario,
+        forn
       };
 
       const resp = await api('POST','/chapas_estoque', payload);
@@ -8643,6 +8665,7 @@ function renderCompras(){
         ${['Solicitada','Comprada','Recebida parcialmente','Recebida','Cancelada'].map(s=>`<button class="btn btn-ghost btn-sm" onclick="setCmpStatus('${c.id}','${s}')" style="font-size:.62rem;${c.status===s?'border-color:'+cor+';color:'+cor+';':''}">${stIco[s]} ${s}</button>`).join('')}
         ${(c.status==='Recebida'||c.status==='Recebida parcialmente')?`<button class="btn btn-green btn-sm" onclick="cmpDarEntrada('${c.id}')">📦 Dar Entrada no Estoque</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="editarCompra('${c.id}')" style="font-size:.62rem;color:var(--accent)">✏ Editar</button>
+        <button class="btn btn-ghost btn-sm" onclick="excluirCompra('${c.id}')" style="font-size:.62rem;color:var(--red)">🗑 Excluir</button>
         <button class="btn btn-ghost btn-sm" onclick="imprimirCompraId('${c.id}')" style="font-size:.62rem">🖨 Imprimir</button>
       </div>
     </div>`;
@@ -10007,6 +10030,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
   <div class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
+  <div class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
 
   <!-- GRUPO: MÁQUINAS -->
   <div class="nav-group" id="ng-maquinas">
@@ -10040,7 +10064,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
       <div class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
       <div class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
-      <div class="nav-item" onclick="go('compras');closeNavGroupsExcept('ng-estoques')"><span class="ico">🛒</span>Compras MP</div>
     </div>
   </div>
 
