@@ -6082,72 +6082,45 @@ function hasPerm(keyOrList){
   return perms.includes(String(keyOrList||''));
 }
 
-function aplicarPermissoes(permissoes){
-  const perms = Array.isArray(permissoes) ? permissoes : [];
-  const ehAdmin = perms.includes('tudo') || (CURRENT_USER && CURRENT_USER.perfil === 'admin');
-  const allNav = document.querySelectorAll('.nav-item');
-  const allSec = document.querySelectorAll('.sidebar-section');
-  const allGroups = document.querySelectorAll('.nav-group');
-  const allHdr = document.querySelectorAll('.nav-group-header');
+function aplicarPermissoes(permissoes, perfil) {
+  const ehAdmin = perfil === 'admin' || (Array.isArray(permissoes) && permissoes.includes('tudo'));
 
-  if(ehAdmin){
-    allNav.forEach(n=>n.style.display='');
-    allSec.forEach(s=>s.style.display='');
-    allGroups.forEach(g=>g.style.display='');
-    allHdr.forEach(h=>h.style.display='');
+  document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
+
+  if (ehAdmin) {
     document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = '');
-  } else {
-    allNav.forEach(n=>n.style.display='none');
-    allSec.forEach(s=>s.style.display='none');
-    allGroups.forEach(g=>g.style.display='none');
-    allHdr.forEach(h=>h.style.display='none');
-    document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
-
-    const allowedPages = [];
-    if(perms.includes('pcp_completo') || perms.includes('ver_pedidos')) allowedPages.push('pcp');
-    if(perms.includes('ofs_por_maquina')) allowedPages.push('ofmaq');
-    if(perms.includes('lancar_pedidos')) allowedPages.push('lancamento');
-    if(perms.includes('estoque_chapas')) allowedPages.push('estoque');
-    if(perms.includes('relatorio_mensal') || perms.includes('relatorio_admin')) allowedPages.push('relmensal');
-    if(perms.includes('tudo')) allowedPages.push('usuarios');
-
-    allNav.forEach(n=>{
-      const onclick = n.getAttribute('onclick')||'';
-      const m = onclick.match(/go\('([^']+)'\)/);
-      const page = m ? m[1] : '';
-      if(page && allowedPages.includes(page)) n.style.display='';
-    });
-
-    if(perms.some(p=>['chat_geral','chat_vendas','chat_pcp','chat_estoque','chat_pedidos'].includes(p))){
-      const el=document.getElementById('menu-chat'); if(el) el.style.display='';
-    }
-    if(perms.includes('notificacoes')){
-      const el=document.getElementById('menu-notificacoes'); if(el) el.style.display='';
-    }
-    if(perms.includes('tudo')){
-      const el=document.getElementById('menu-usuarios'); if(el) el.style.display='';
-    }
-
-    if(allowedPages.length){
-      allNav.forEach(n=>{
-        if(n.style.display!=='none'){
-          let sib=n.previousElementSibling;
-          while(sib){
-            if(sib.classList&&sib.classList.contains('sidebar-section')){sib.style.display='';break;}
-            sib=sib.previousElementSibling;
-          }
-        }
-      });
-      allowedPages.forEach(p=>openNavGroupForPage(p));
-    }
+    return;
   }
 
-  const btnNova = document.getElementById('btn-nova-of');
-  if(btnNova) btnNova.style.display = (ehAdmin || perms.includes('lancar_pedidos')) ? '' : 'none';
-  const btnAlt = document.getElementById('btn-alterar-of');
-  if(btnAlt) btnAlt.style.display = (ehAdmin || perms.includes('editar_pedidos')) ? '' : 'none';
-  const btnConcl = document.getElementById('btn-baixa-of');
-  if(btnConcl) btnConcl.style.display = (ehAdmin || perms.includes('dar_baixa_of')) ? '' : 'none';
+  const mapa = {
+    'chat_geral':       'menu-chat',
+    'chat_vendas':      'menu-chat',
+    'chat_pcp':         'menu-chat',
+    'chat_estoque':     'menu-chat',
+    'chat_pedidos':     'menu-chat',
+    'lancar_pedidos':   'menu-pedidos',
+    'ver_pedidos':      'menu-pedidos',
+    'editar_pedidos':   'menu-pedidos',
+    'pcp_completo':     'menu-pcp',
+    'ofs_por_maquina':  'menu-ofs-maquina',
+    'dar_baixa_of':     'menu-ofs-maquina',
+    'estoque_chapas':   'menu-estoque',
+    'editar_estoque':   'menu-estoque',
+    'solicitar_compra': 'menu-estoque',
+    'recebimento':      'menu-estoque',
+    'relatorio_mensal': 'menu-relatorio',
+    'relatorio_admin':  'menu-relatorio',
+    'financeiro':       'menu-financeiro',
+    'notificacoes':     'menu-notificacoes'
+  };
+
+  (Array.isArray(permissoes) ? permissoes : []).forEach(perm => {
+    const menuId = mapa[perm];
+    if (menuId) {
+      const el = document.getElementById(menuId);
+      if (el) el.style.display = '';
+    }
+  });
 }
 
 
@@ -6255,7 +6228,7 @@ function iniciarSistema(user){
   const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
   if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
   if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
-  aplicarPermissoes(CURRENT_USER?CURRENT_USER.permissoes:[]);
+  aplicarPermissoes(CURRENT_USER?CURRENT_USER.permissoes:[], CURRENT_USER?CURRENT_USER.perfil:'');
   try{ autoSaveLoad(); }catch(e){}
   try{ startNotificacoesDB(); }catch(e){}
 }
@@ -6270,13 +6243,15 @@ async function doLogin(){
     return;
   }
   const r = await api('POST','/auth/login',{email,senha});
-  if(!r || !r.ok){
-    if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Login inválido.';
+  const token = r && (r.token || (r.data && r.data.token)) ? String(r.token || r.data.token) : '';
+  const user = r && (r.usuario || (r.data && r.data.usuario)) ? (r.usuario || r.data.usuario) : null;
+  if(!r || (!token || !user)){
+    if(errEl) errEl.textContent=(r && (r.error||r.message))?String(r.error||r.message):'Login inválido.';
     setTimeout(()=>{const e=document.getElementById('login-err');if(e)e.textContent='';},3000);
     return;
   }
-  AUTH_TOKEN = String((r.data||{}).token||'');
-  CURRENT_USER = (r.data||{}).usuario || null;
+  AUTH_TOKEN = token;
+  CURRENT_USER = user;
   authSave(AUTH_TOKEN, CURRENT_USER);
   iniciarSistema(CURRENT_USER);
   try{ logAction('Login realizado','—'); }catch(e){}
@@ -6309,14 +6284,32 @@ function trocarUsuario(){
   document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  const sess = authRestore();
-  if(sess && sess.token && sess.user){
-    AUTH_TOKEN = sess.token;
-    CURRENT_USER = sess.user;
-    iniciarSistema(CURRENT_USER);
+window.addEventListener('DOMContentLoaded', async () => {
+  const token = localStorage.getItem('auth_token');
+  const userStr = localStorage.getItem('auth_user');
+
+  if (token && userStr) {
+    try {
+      CURRENT_USER = JSON.parse(userStr);
+      AUTH_TOKEN = token;
+      const resp = await fetch(API_BASE + '/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (resp.ok) {
+        try{
+          const u = await resp.json();
+          if(u && u.id) CURRENT_USER = u;
+          localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
+        }catch(e){}
+        aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
+        iniciarSistema(CURRENT_USER);
+        return;
+      }
+    } catch(e) {}
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_user');
   }
-  else { mostrarTelaLogin(); }
+  mostrarTelaLogin();
 });
 
 // ===================== API CLIENT — BANCO CENTRAL =====================
@@ -6344,30 +6337,26 @@ var DESPERDICIO_CHAPAS = [];
 var AGENDA_VENDEDORES = [];
 var AGENDA_SEQ = 1;
 
-async function api(method, path, body){
-  try {
-    const headers = {'Content-Type':'application/json'};
-    if(AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
-    const opts = { method, headers };
-    if(body) opts.body = JSON.stringify(body);
-    const r = await fetch(API_BASE + '/api' + path, opts);
-    // Verifica se a resposta é realmente JSON antes de parsear
-    const ct = r.headers.get('content-type') || '';
-    if(!ct.includes('application/json')){
-      const txt = await r.text();
-      console.warn('API retornou não-JSON:', method, path, txt.substring(0,120));
-      return { ok: false, error: 'Resposta inválida do servidor (esperado JSON, recebeu HTML). Verifique se o servidor Node.js está rodando em ' + API_BASE };
+function api(method, url, body) {
+  const token = localStorage.getItem('auth_token');
+  const opts = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
     }
-    const j = await r.json();
-    if(j && typeof j === 'object') j.status = r.status;
+  };
+  if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
+  return fetch(API_BASE + '/api' + url, opts).then(async (r) => {
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      const txt = await r.text();
+      return { ok: false, error: 'Resposta inválida do servidor', status: r.status, text: txt };
+    }
+    const j = await r.json().catch(() => null);
+    if (j && typeof j === 'object') j.status = r.status;
     return j;
-  } catch(e) {
-    // Só loga uma vez por tipo de rota para não poluir o console
-    if(_apiConectado) console.warn('API indisponível:', method, path, e.message);
-    _apiConectado = false;
-    return { ok: false, error: e.message };
-  }
-
+  });
 }
 
 function apiUnavailable(res){
@@ -11117,7 +11106,8 @@ async function chatUploadFile(file){
     const fd = new FormData();
     fd.append('file', file);
     const headers = {};
-    if(AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
+    const token = localStorage.getItem('auth_token');
+    if(token) headers['Authorization'] = 'Bearer ' + token;
     const r = await fetch(API_BASE + '/api/chat/upload', { method:'POST', headers, body: fd });
     const j = await r.json().catch(()=>null);
     if(!r.ok || !j || !j.ok){toast('Erro upload: '+((j&&j.error)?j.error:'falha'),'var(--red)');return null;}

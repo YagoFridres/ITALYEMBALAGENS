@@ -222,61 +222,79 @@ function avatarColorFromText(s) {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const email = String(req.body?.email || '').trim().toLowerCase();
-    const senha = String(req.body?.senha || '').trim();
-    if (!email || !senha) return res.status(400).json({ ok: false, error: 'Email e senha são obrigatórios' });
+    const { email, senha } = req.body || {};
+    if (!email || !senha) return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
-    const { data, error } = await supabase
+    const em = String(email || '').trim().toLowerCase();
+    const se = String(senha || '').trim();
+
+    const { data: usuarios, error: errBusca } = await supabase
       .from('usuarios')
-      .select('id,nome,email,senha_hash,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor')
-      .eq('email', email)
+      .select('*')
+      .eq('email', em)
       .eq('ativo', true)
       .limit(1);
-    if (error) {
-      const msg = String(error.message || error);
-      if (msg.includes("Could not find the table") && msg.includes("usuarios")) {
-        return res.status(500).json({
-          ok: false,
-          error: "Tabela public.usuarios não existe no Supabase. Execute os SQLs de criação (pgcrypto + usuarios + chat_* + historico_acoes + notificacoes).",
-        });
-      }
-      throw error;
+
+    if (errBusca || !usuarios || usuarios.length === 0) {
+      return res.status(401).json({ error: 'Usuário não encontrado ou inativo' });
     }
-    const u = data && data[0] ? data[0] : null;
-    if (!u) return res.status(401).json({ ok: false, error: 'Usuário não encontrado' });
 
-    let okPass = false;
-    const hash = String(u.senha_hash || '');
-    const rpc = await supabase.rpc('verificar_senha', { senha_input: senha, hash });
-    if (!rpc.error) okPass = !!rpc.data;
-    else okPass = await bcrypt.compare(senha, hash);
-    if (!okPass) return res.status(401).json({ ok: false, error: 'Senha incorreta' });
+    const usuarioDb = usuarios[0];
 
-    const permissoes = Array.isArray(u.permissoes) ? u.permissoes : (() => { try { return JSON.parse(u.permissoes || '[]'); } catch { return []; } })();
-    const usuario = {
-      id: u.id,
-      nome: u.nome,
-      email: u.email,
-      perfil: u.perfil || 'custom',
-      permissoes,
-      canais_chat: Array.isArray(u.canais_chat) ? u.canais_chat : (() => { try { return JSON.parse(u.canais_chat || '[]'); } catch { return []; } })(),
-      avatar_iniciais: u.avatar_iniciais || initialsFromName(u.nome),
-      avatar_cor: u.avatar_cor || avatarColorFromText(u.email),
-    };
+    const { data: senhaOk, error: errSenha } = await supabase
+      .rpc('verificar_senha', { senha_input: se, hash: usuarioDb.senha_hash });
 
-    const token = jwt.sign(usuario, JWT_SECRET, { expiresIn: '8h' });
+    if (errSenha || !senhaOk) return res.status(401).json({ error: 'Senha incorreta' });
 
-    try { await supabase.from('usuarios').update({ ultimo_acesso: new Date().toISOString() }).eq('id', u.id); } catch (e) {}
+    const token = jwt.sign(
+      {
+        id: usuarioDb.id,
+        nome: usuarioDb.nome,
+        email: usuarioDb.email,
+        perfil: usuarioDb.perfil,
+        permissoes: usuarioDb.permissoes,
+      },
+      process.env.JWT_SECRET || 'italy_secret_2026',
+      { expiresIn: '8h' }
+    );
 
-    return res.json({ ok: true, data: { token, usuario } });
-  } catch (e) {
-    return err(res, e);
+    await supabase
+      .from('usuarios')
+      .update({ ultimo_acesso: new Date().toISOString() })
+      .eq('id', usuarioDb.id);
+
+    res.json({
+      token,
+      usuario: {
+        id: usuarioDb.id,
+        nome: usuarioDb.nome,
+        email: usuarioDb.email,
+        perfil: usuarioDb.perfil,
+        permissoes: usuarioDb.permissoes,
+        canais_chat: usuarioDb.canais_chat,
+        avatar_iniciais: usuarioDb.avatar_iniciais,
+        avatar_cor: usuarioDb.avatar_cor,
+      },
+    });
+  } catch (err) {
+    console.error('Erro no login:', err);
+    res.status(500).json({ error: 'Erro interno no login' });
   }
 });
 
-app.get('/api/auth/me', async (req, res) => {
-  const u = req.usuario || null;
-  return ok(res, u);
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  try {
+    const { data: usuario, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,permissoes,canais_chat,avatar_iniciais,avatar_cor')
+      .eq('id', req.usuario.id)
+      .single();
+    if (error) return res.status(500).json({ error: 'Erro ao buscar usuário' });
+    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+    res.json(usuario);
+  } catch (e) {
+    res.status(500).json({ error: 'Erro ao buscar usuário' });
+  }
 });
 
 app.get('/api/usuarios', requireAdmin, async (req, res) => {
