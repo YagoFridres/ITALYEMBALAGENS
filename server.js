@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const crypto = require('crypto');
 
 function loadDotEnv() {
   try {
@@ -113,6 +117,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 
 app.get('/', (req, res) => {
   setNoCache(res);
@@ -133,6 +138,35 @@ app.get('/api/health', (req, res) => {
       missing: _supabaseMissing,
     },
   });
+});
+
+const JWT_SECRET = process.env.JWT_SECRET || 'italy_secret_2026';
+
+function authMiddleware(req, res, next) {
+  const raw = String(req.headers.authorization || '');
+  const token = raw.startsWith('Bearer ') ? raw.slice('Bearer '.length).trim() : '';
+  if (!token) return res.status(401).json({ ok: false, error: 'Não autorizado' });
+  try {
+    req.usuario = jwt.verify(token, JWT_SECRET);
+    return next();
+  } catch (e) {
+    return res.status(401).json({ ok: false, error: 'Token inválido' });
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const u = req.usuario || null;
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  if (u?.perfil === 'admin' || perms.includes('tudo')) return next();
+  return res.status(403).json({ ok: false, error: 'Sem permissão' });
+}
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api')) return next();
+  if (req.method === 'OPTIONS') return next();
+  if (req.path === '/api/health') return next();
+  if (req.path === '/api/auth/login') return next();
+  return authMiddleware(req, res, next);
 });
 
 function ok(res, data) {
@@ -167,6 +201,311 @@ function err(res, e) {
 function bad(res, error) {
   err(res, error);
 }
+
+function initialsFromName(nome) {
+  const parts = String(nome || '').trim().split(/\s+/g).filter(Boolean);
+  if (!parts.length) return '??';
+  const a = parts[0] ? parts[0][0] : '';
+  const b = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] || '');
+  return (String(a || '') + String(b || '')).toUpperCase().slice(0, 2) || '??';
+}
+
+function avatarColorFromText(s) {
+  const str = String(s || '').trim().toLowerCase();
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h) + str.charCodeAt(i);
+  const hue = Math.abs(h) % 360;
+  const sat = 68;
+  const lig = 48;
+  return `hsl(${hue} ${sat}% ${lig}%)`;
+}
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const senha = String(req.body?.senha || '').trim();
+    if (!email || !senha) return res.status(400).json({ ok: false, error: 'Email e senha são obrigatórios' });
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,senha_hash,perfil,permissoes,ativo,avatar_iniciais,avatar_cor')
+      .eq('email', email)
+      .limit(1);
+    if (error) throw error;
+    const u = data && data[0] ? data[0] : null;
+    if (!u || u.ativo === false) return res.status(401).json({ ok: false, error: 'Login inválido' });
+
+    const okPass = await bcrypt.compare(senha, String(u.senha_hash || ''));
+    if (!okPass) return res.status(401).json({ ok: false, error: 'Login inválido' });
+
+    const permissoes = Array.isArray(u.permissoes) ? u.permissoes : (() => { try { return JSON.parse(u.permissoes || '[]'); } catch { return []; } })();
+    const usuario = {
+      id: u.id,
+      nome: u.nome,
+      email: u.email,
+      perfil: u.perfil || 'custom',
+      permissoes,
+      avatar_iniciais: u.avatar_iniciais || initialsFromName(u.nome),
+      avatar_cor: u.avatar_cor || avatarColorFromText(u.email),
+    };
+
+    const token = jwt.sign(usuario, JWT_SECRET, { expiresIn: '30d' });
+
+    try { await supabase.from('usuarios').update({ ultimo_acesso: new Date().toISOString() }).eq('id', u.id); } catch (e) {}
+
+    return res.json({ ok: true, data: { token, usuario } });
+  } catch (e) {
+    return err(res, e);
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  const u = req.usuario || null;
+  return ok(res, u);
+});
+
+app.get('/api/usuarios', requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,criado_em,ultimo_acesso')
+      .order('nome', { ascending: true });
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/usuarios', requireAdmin, async (req, res) => {
+  try {
+    const nome = String(req.body?.nome || '').trim();
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const senha = String(req.body?.senha || '').trim();
+    const perfil = String(req.body?.perfil || 'custom').trim();
+    const ativo = req.body?.ativo !== undefined ? !!req.body.ativo : true;
+    const avatar_cor = String(req.body?.avatar_cor || '').trim();
+    const permissoes = Array.isArray(req.body?.permissoes) ? req.body.permissoes : [];
+    const canais_chat = Array.isArray(req.body?.canais_chat) ? req.body.canais_chat : undefined;
+
+    if (!nome || !email || !senha) return res.status(400).json({ ok: false, error: 'nome, email e senha são obrigatórios' });
+    const senha_hash = await bcrypt.hash(senha, 10);
+
+    const row = {
+      nome,
+      email,
+      senha_hash,
+      perfil: perfil === 'admin' ? 'admin' : 'custom',
+      permissoes: perfil === 'admin' ? ['tudo'] : permissoes,
+      canais_chat: canais_chat !== undefined ? canais_chat : undefined,
+      ativo,
+      avatar_iniciais: String(req.body?.avatar_iniciais || '').trim() || initialsFromName(nome),
+      avatar_cor: avatar_cor || avatarColorFromText(email),
+    };
+
+    const { data, error } = await supabase.from('usuarios').insert([row]).select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,criado_em,ultimo_acesso').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/usuarios/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const payload = { ...req.body };
+    delete payload.id;
+    delete payload.senha;
+    delete payload.senha_hash;
+
+    if (payload.email != null) payload.email = String(payload.email || '').trim().toLowerCase();
+    if (payload.nome != null) payload.nome = String(payload.nome || '').trim();
+    if (payload.perfil === 'admin') payload.permissoes = ['tudo'];
+    if (payload.perfil && payload.perfil !== 'admin') payload.perfil = 'custom';
+    if (payload.ativo != null) payload.ativo = !!payload.ativo;
+    if (payload.permissoes != null && !Array.isArray(payload.permissoes)) payload.permissoes = [];
+    if (payload.canais_chat != null && !Array.isArray(payload.canais_chat)) payload.canais_chat = [];
+
+    const { data, error } = await supabase
+      .from('usuarios')
+      .update(payload)
+      .eq('id', id)
+      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,criado_em,ultimo_acesso')
+      .single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/usuarios/:id/senha', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const senha = String(req.body?.senha || '').trim();
+    if (!id || !senha) return res.status(400).json({ ok: false, error: 'id e senha obrigatórios' });
+    const senha_hash = await bcrypt.hash(senha, 10);
+    const { error } = await supabase.from('usuarios').update({ senha_hash }).eq('id', id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { error } = await supabase.from('usuarios').delete().eq('id', id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
+const chatUploadDir = path.join(__dirname, 'uploads', 'chat');
+try { fs.mkdirSync(chatUploadDir, { recursive: true }); } catch (e) {}
+
+const chatStorage = multer.diskStorage({
+  destination: function (req, file, cb) { cb(null, chatUploadDir); },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 12);
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2));
+    cb(null, id + ext);
+  },
+});
+
+const chatUpload = multer({
+  storage: chatStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.xlsx', '.docx', '.txt']);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    return cb(null, true);
+  },
+});
+
+function chatPermForCanal(nome) {
+  const n = String(nome || '').trim().toLowerCase();
+  if (n === 'geral') return 'chat_geral';
+  if (n === 'vendas') return 'chat_vendas';
+  if (n === 'pcp') return 'chat_pcp';
+  if (n === 'estoque') return 'chat_estoque';
+  if (n === 'pedidos') return 'chat_pedidos';
+  return null;
+}
+
+function canAccessChatCanal(req, canalNome) {
+  const u = req.usuario || null;
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  if (u?.perfil === 'admin' || perms.includes('tudo')) return true;
+  const key = chatPermForCanal(canalNome);
+  if (!key) return false;
+  return perms.includes(key);
+}
+
+app.get('/api/chat/canais', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chat_canais').select('*').order('nome', { ascending: true });
+    if (error) throw error;
+    const canais = (data || []).filter((c) => canAccessChatCanal(req, c.nome));
+    return ok(res, canais);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/chat/mensagens', async (req, res) => {
+  try {
+    const canalId = String(req.query?.canal_id || '').trim();
+    const after = String(req.query?.after || '').trim();
+    if (!canalId) return res.status(400).json({ ok: false, error: 'canal_id obrigatório' });
+
+    const canalResp = await supabase.from('chat_canais').select('id,nome').eq('id', canalId).single();
+    if (canalResp.error) throw canalResp.error;
+    if (!canAccessChatCanal(req, canalResp.data?.nome || '')) return res.status(403).json({ ok: false, error: 'Sem permissão' });
+
+    let q = supabase
+      .from('chat_mensagens')
+      .select('*')
+      .eq('canal_id', canalId)
+      .order('criado_em', { ascending: true })
+      .limit(200);
+
+    if (after) {
+      const afterRow = await supabase.from('chat_mensagens').select('id,criado_em').eq('id', after).single();
+      if (!afterRow.error && afterRow.data?.criado_em) q = q.gt('criado_em', afterRow.data.criado_em);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/chat/mensagens', async (req, res) => {
+  try {
+    const canal_id = String(req.body?.canal_id || '').trim();
+    const tipo = String(req.body?.tipo || 'texto').trim();
+    const conteudo = String(req.body?.conteudo || '').trim();
+    const arquivo_url = req.body?.arquivo_url != null ? String(req.body.arquivo_url) : null;
+    const arquivo_tipo = req.body?.arquivo_tipo != null ? String(req.body.arquivo_tipo) : null;
+    if (!canal_id) return res.status(400).json({ ok: false, error: 'canal_id obrigatório' });
+    if (tipo === 'texto' && !conteudo) return res.status(400).json({ ok: false, error: 'conteudo obrigatório' });
+
+    const canalResp = await supabase.from('chat_canais').select('id,nome').eq('id', canal_id).single();
+    if (canalResp.error) throw canalResp.error;
+    if (!canAccessChatCanal(req, canalResp.data?.nome || '')) return res.status(403).json({ ok: false, error: 'Sem permissão' });
+
+    const u = req.usuario || {};
+    const row = {
+      canal_id,
+      usuario_id: u.id || null,
+      usuario_nome: u.nome || u.email || '—',
+      usuario_iniciais: u.avatar_iniciais || initialsFromName(u.nome),
+      usuario_cor: u.avatar_cor || avatarColorFromText(u.email || u.nome),
+      tipo,
+      conteudo: conteudo || null,
+      arquivo_url,
+      arquivo_tipo,
+      lida_por: [u.id].filter(Boolean),
+      criado_em: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase.from('chat_mensagens').insert([row]).select('*').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/chat/upload', chatUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const isImg = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext);
+    const url = '/uploads/chat/' + path.basename(f.filename);
+    const tipo = isImg ? 'imagem' : 'arquivo';
+    return ok(res, { url, tipo, arquivo_tipo: ext || f.mimetype || '' , nome: f.originalname || path.basename(f.filename), tamanho: f.size || 0 });
+  } catch (e) { return err(res, e); }
+});
+
+app.patch('/api/chat/mensagens/:id/lida', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const u = req.usuario || {};
+    const userId = String(u.id || '').trim();
+    if (!userId) return res.status(400).json({ ok: false, error: 'usuario inválido' });
+
+    const { data: msg, error: e1 } = await supabase.from('chat_mensagens').select('id,canal_id,lida_por').eq('id', id).single();
+    if (e1) throw e1;
+
+    const canalResp = await supabase.from('chat_canais').select('id,nome').eq('id', msg.canal_id).single();
+    if (canalResp.error) throw canalResp.error;
+    if (!canAccessChatCanal(req, canalResp.data?.nome || '')) return res.status(403).json({ ok: false, error: 'Sem permissão' });
+
+    const lida_por = Array.isArray(msg.lida_por) ? msg.lida_por : (() => { try { return JSON.parse(msg.lida_por || '[]'); } catch { return []; } })();
+    if (!lida_por.includes(userId)) lida_por.push(userId);
+    const upd = await supabase.from('chat_mensagens').update({ lida_por }).eq('id', id).select('*').single();
+    if (upd.error) throw upd.error;
+    return ok(res, upd.data);
+  } catch (e) { return err(res, e); }
+});
 
 async function selectAll(table, orderBy) {
   if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
@@ -1408,6 +1747,14 @@ app.post('/api/hist_estoque', async (req, res) => {
 
 app.post('/api/log', async (req, res) => {
   ok(res, true);
+});
+
+app.use((e, req, res, next) => {
+  if (!e) return next();
+  const msg = String(e.message || e);
+  if (e instanceof multer.MulterError) return res.status(400).json({ ok: false, error: msg });
+  if (msg.includes('Tipo de arquivo não permitido')) return res.status(400).json({ ok: false, error: msg });
+  return res.status(500).json({ ok: false, error: msg });
 });
 
 const PORT = process.env.PORT || 3000;

@@ -1290,7 +1290,7 @@ function closeNavGroupsExcept(id){
 function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
-    clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros',
+    clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises',
   };
@@ -1325,6 +1325,7 @@ function _goBase(id){
   if(id==='relmensal')renderRelatorioMensal();
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
+  if(id==='usuarios')carregarUsuarios();
   if(id==='sistema')renderSistema();
   if(id==='facas1')renderFacas1();
   if(id==='cliches')renderCliches();
@@ -1514,7 +1515,7 @@ function renderOFsPorMaquina(){
         <div>${stTag(o.status||'')}</div>
         <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ofmaqVerImagem('${o.id||''}')" style="font-size:.7rem">🖼 Ver Imagem</button>
-          <button class="btn btn-green btn-sm" onclick="event.stopPropagation();ofmaqDarBaixa('${o.id||''}')" style="font-size:.7rem">✅ Dar Baixa</button>
+          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();ofmaqDarBaixa('${o.id||''}')" style="font-size:.7rem">✅ Dar Baixa</button>`:''}
         </div>
       </div>
     </div>`;
@@ -1550,6 +1551,7 @@ function ofmaqVerImagem(id){
   zoomImg(img);
 }
 async function ofmaqDarBaixa(id){
+  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
   const o=(OFs||[]).find(x=>x.id===id);
   if(!o){toast('OF não encontrada','var(--red)');return;}
   const f=ofFluxoGetNames(o);
@@ -1665,6 +1667,7 @@ async function darBaixaOF(o){
   try{ renderPCP(); }catch(e){}
 }
 function marcarProntoSel(){
+  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF primeiro','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
   if(!o)return;
@@ -1819,6 +1822,7 @@ function cancelarOFSel(){
 }
 
 function alterarOFSel(){
+  if(!hasPerm('editar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para editar pedidos','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF para alterar','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
   if(!o)return;
@@ -1918,6 +1922,7 @@ function salvarAlteracaoOF(ofNum){
 
 // ===================== MODAL OF =====================
 async function abrirModalOF(){
+  if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   ofImgsTemp=[];
   ofItensTemp=[];
   document.getElementById('f-of').value=nextOFNum();
@@ -6067,60 +6072,82 @@ function initGlobalAutocomplete(){
 }
 
 // ===================== LOGIN =====================
-var USERS = [
-  {login:'ITALY', senha:'italy2026', perfil:'admin', nome:'ITALY'},
-];
 var CURRENT_USER = null;
+var AUTH_TOKEN = null;
 
-function applyPermissions(perfil){
+function hasPerm(keyOrList){
+  const perms = Array.isArray(CURRENT_USER && CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
+  if(perms.includes('tudo')) return true;
+  if(Array.isArray(keyOrList)) return keyOrList.some(k=>perms.includes(k));
+  return perms.includes(String(keyOrList||''));
+}
+
+function aplicarPermissoes(permissoes){
+  const perms = Array.isArray(permissoes) ? permissoes : [];
+  const ehAdmin = perms.includes('tudo') || (CURRENT_USER && CURRENT_USER.perfil === 'admin');
   const allNav = document.querySelectorAll('.nav-item');
-  
-  if(perfil === 'admin'){
+  const allSec = document.querySelectorAll('.sidebar-section');
+  const allGroups = document.querySelectorAll('.nav-group');
+  const allHdr = document.querySelectorAll('.nav-group-header');
+
+  if(ehAdmin){
     allNav.forEach(n=>n.style.display='');
-    document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
-    document.querySelectorAll('.nav-group').forEach(g=>g.style.display='');
-    document.querySelectorAll('.nav-group-header').forEach(h=>h.style.display='');
-    return;
-  }
-  
-  // Allowed pages per profile
-  const allowed = {
-    producao:     ['tablets','apontamento','pcp'],
-    pcp:          ['tablets','apontamento','pcp'],
-    artefinal:    ['pcp','lancamento','clientes','vendedores','nfe','orcamentos','tablets','apontamento','artefinal'],
-    qualidade:    ['operadores','qualidade'],
-    estoque_user: ['estoque','compras','fornecedores'],
-    riscador:     ['tablets','apontamento','pcp','estoque'],
-  };
-  const allowedPages = allowed[perfil] || [];
-  
-  allNav.forEach(n=>{
-    const onclick = n.getAttribute('onclick')||'';
-    const match = onclick.match(/go\('([^']+)'\)/);
-    const page = match ? match[1] : '';
-    if(allowedPages.includes(page)){
-      n.style.display='';
-    } else {
-      n.style.display='none';
-    }
-  });
-  document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='none');
-  
-  // Show relevant section labels
-  if(allowedPages.length > 0){
+    allSec.forEach(s=>s.style.display='');
+    allGroups.forEach(g=>g.style.display='');
+    allHdr.forEach(h=>h.style.display='');
+    document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = '');
+  } else {
+    allNav.forEach(n=>n.style.display='none');
+    allSec.forEach(s=>s.style.display='none');
+    allGroups.forEach(g=>g.style.display='none');
+    allHdr.forEach(h=>h.style.display='none');
+    document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
+
+    const allowedPages = [];
+    if(perms.includes('pcp_completo') || perms.includes('ver_pedidos')) allowedPages.push('pcp');
+    if(perms.includes('ofs_por_maquina')) allowedPages.push('ofmaq');
+    if(perms.includes('lancar_pedidos')) allowedPages.push('lancamento');
+    if(perms.includes('estoque_chapas')) allowedPages.push('estoque');
+    if(perms.includes('relatorio_mensal') || perms.includes('relatorio_admin')) allowedPages.push('relmensal');
+    if(perms.includes('tudo')) allowedPages.push('usuarios');
+
     allNav.forEach(n=>{
-      if(n.style.display!=='none'){
-        let sib=n.previousElementSibling;
-        while(sib){
-          if(sib.classList&&sib.classList.contains('sidebar-section')){sib.style.display='';break;}
-          sib=sib.previousElementSibling;
-        }
-      }
+      const onclick = n.getAttribute('onclick')||'';
+      const m = onclick.match(/go\('([^']+)'\)/);
+      const page = m ? m[1] : '';
+      if(page && allowedPages.includes(page)) n.style.display='';
     });
+
+    if(perms.some(p=>['chat_geral','chat_vendas','chat_pcp','chat_estoque','chat_pedidos'].includes(p))){
+      const el=document.getElementById('menu-chat'); if(el) el.style.display='';
+    }
+    if(perms.includes('notificacoes')){
+      const el=document.getElementById('menu-notificacoes'); if(el) el.style.display='';
+    }
+    if(perms.includes('tudo')){
+      const el=document.getElementById('menu-usuarios'); if(el) el.style.display='';
+    }
+
+    if(allowedPages.length){
+      allNav.forEach(n=>{
+        if(n.style.display!=='none'){
+          let sib=n.previousElementSibling;
+          while(sib){
+            if(sib.classList&&sib.classList.contains('sidebar-section')){sib.style.display='';break;}
+            sib=sib.previousElementSibling;
+          }
+        }
+      });
+      allowedPages.forEach(p=>openNavGroupForPage(p));
+    }
   }
-  
-  if(perfil === 'riscador') window.RISCADOR_ESTOQUE_MODE = true;
-  if(allowedPages.length > 0) _goBase(allowedPages[0]);
+
+  const btnNova = document.getElementById('btn-nova-of');
+  if(btnNova) btnNova.style.display = (ehAdmin || perms.includes('lancar_pedidos')) ? '' : 'none';
+  const btnAlt = document.getElementById('btn-alterar-of');
+  if(btnAlt) btnAlt.style.display = (ehAdmin || perms.includes('editar_pedidos')) ? '' : 'none';
+  const btnConcl = document.getElementById('btn-baixa-of');
+  if(btnConcl) btnConcl.style.display = (ehAdmin || perms.includes('dar_baixa_of')) ? '' : 'none';
 }
 
 
@@ -6186,11 +6213,11 @@ else initDevice();
 var AUTH_TOKEN_KEY='auth_token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
-function authSave(user){
+function authSave(token, user){
   try{
     const exp=Date.now()+1000*60*60*24*30;
-    localStorage.setItem(AUTH_TOKEN_KEY, 'local');
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify({login:user.login,nome:user.nome,perfil:user.perfil}));
+    localStorage.setItem(AUTH_TOKEN_KEY, String(token||''));
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user||null));
     localStorage.setItem(AUTH_EXP_KEY, String(exp));
   }catch(e){}
 }
@@ -6208,10 +6235,7 @@ function authRestore(){
     const exp=parseInt(localStorage.getItem(AUTH_EXP_KEY)||'0',10);
     if(!token || !user) return null;
     if(!exp || exp<Date.now()) return null;
-    const u=JSON.parse(user);
-    const found=USERS.find(x=>x.login===u.login);
-    if(!found) return null;
-    return found;
+    return { token:String(token||''), user: JSON.parse(user) };
   }catch(e){ return null; }
 }
 function mostrarTelaLogin(){
@@ -6220,6 +6244,10 @@ function mostrarTelaLogin(){
 }
 function iniciarSistema(user){
   if(user) CURRENT_USER=user;
+  if(typeof user === 'object' && user && user.token && user.user){
+    AUTH_TOKEN = String(user.token||'');
+    CURRENT_USER = user.user;
+  }
   const ls=document.getElementById('login-screen');
   if(ls) ls.style.display='none';
   const uname=document.getElementById('topbar-user-name');
@@ -6227,24 +6255,32 @@ function iniciarSistema(user){
   const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
   if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
   if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
-  applyPermissions(CURRENT_USER?CURRENT_USER.perfil:'admin');
+  aplicarPermissoes(CURRENT_USER?CURRENT_USER.permissoes:[]);
   try{ autoSaveLoad(); }catch(e){}
   try{ startNotificacoesDB(); }catch(e){}
 }
 
-function doLogin(){
-  const u=document.getElementById('login-user').value.trim().toUpperCase();
-  const p=document.getElementById('login-pass').value;
-  const found=USERS.find(x=>x.login.toUpperCase()===u&&x.senha===p);
-  if(found){
-    authSave(found);
-    iniciarSistema(found);
-    logAction('Login realizado','—');
-    toast('Bem-vindo, '+found.nome+' ✓');
-  } else {
-    document.getElementById('login-err').textContent='Login ou senha incorretos. Tente novamente.';
-    setTimeout(()=>{const e=document.getElementById('login-err');if(e)e.textContent='';},3000);
+async function doLogin(){
+  const email=String((document.getElementById('login-user')||{}).value||'').trim().toLowerCase();
+  const senha=String((document.getElementById('login-pass')||{}).value||'').trim();
+  const errEl=document.getElementById('login-err');
+  if(errEl) errEl.textContent='';
+  if(!email || !senha){
+    if(errEl) errEl.textContent='Informe email e senha.';
+    return;
   }
+  const r = await api('POST','/auth/login',{email,senha});
+  if(!r || !r.ok){
+    if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Login inválido.';
+    setTimeout(()=>{const e=document.getElementById('login-err');if(e)e.textContent='';},3000);
+    return;
+  }
+  AUTH_TOKEN = String((r.data||{}).token||'');
+  CURRENT_USER = (r.data||{}).usuario || null;
+  authSave(AUTH_TOKEN, CURRENT_USER);
+  iniciarSistema(CURRENT_USER);
+  try{ logAction('Login realizado','—'); }catch(e){}
+  toast('Bem-vindo, '+(CURRENT_USER?CURRENT_USER.nome:'')+' ✓');
 }
 
 function selecionarUsuario(login){
@@ -6259,6 +6295,7 @@ function selecionarUsuario(login){
 function trocarUsuario(){
   if(!confirm('Sair da conta atual e voltar para o login?'))return;
   CURRENT_USER=null;
+  AUTH_TOKEN=null;
   authClear();
   const ls=document.getElementById('login-screen');
   if(ls){ls.style.display='flex';document.getElementById('login-user').value='';document.getElementById('login-pass').value='';document.getElementById('login-err').textContent='';
@@ -6272,10 +6309,13 @@ function trocarUsuario(){
   document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
 }
 
-(function(){try{const u=authRestore();if(u)CURRENT_USER=u;}catch(e){}})();
 window.addEventListener('DOMContentLoaded', () => {
-  const u = CURRENT_USER || authRestore();
-  if(u){ iniciarSistema(u); }
+  const sess = authRestore();
+  if(sess && sess.token && sess.user){
+    AUTH_TOKEN = sess.token;
+    CURRENT_USER = sess.user;
+    iniciarSistema(CURRENT_USER);
+  }
   else { mostrarTelaLogin(); }
 });
 
@@ -6306,7 +6346,9 @@ var AGENDA_SEQ = 1;
 
 async function api(method, path, body){
   try {
-    const opts = { method, headers: {'Content-Type':'application/json'} };
+    const headers = {'Content-Type':'application/json'};
+    if(AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
+    const opts = { method, headers };
     if(body) opts.body = JSON.stringify(body);
     const r = await fetch(API_BASE + '/api' + path, opts);
     // Verifica se a resposta é realmente JSON antes de parsear
@@ -6316,7 +6358,9 @@ async function api(method, path, body){
       console.warn('API retornou não-JSON:', method, path, txt.substring(0,120));
       return { ok: false, error: 'Resposta inválida do servidor (esperado JSON, recebeu HTML). Verifique se o servidor Node.js está rodando em ' + API_BASE };
     }
-    return await r.json();
+    const j = await r.json();
+    if(j && typeof j === 'object') j.status = r.status;
+    return j;
   } catch(e) {
     // Só loga uma vez por tipo de rota para não poluir o console
     if(_apiConectado) console.warn('API indisponível:', method, path, e.message);
@@ -6370,6 +6414,11 @@ async function autoSaveLoad(){
   // Testa conectividade primeiro com um ping simples
   const pingOk = await api('GET', '/ofs');
   if(!pingOk.ok){
+    if(pingOk && (pingOk.status===401 || pingOk.status===403)){
+      toast('Sessão expirada. Faça login novamente.','var(--yellow)');
+      trocarUsuario();
+      return;
+    }
     _apiConectado = false;
     showSaveIndicator('⚠ sem servidor','var(--red)');
     const msg = 'Servidor não encontrado em ' + API_BASE + '\n\nVerifique:\n• O servidor Node.js está rodando? (node server.js)\n• A porta 3000 está liberada no firewall?';
@@ -7304,6 +7353,7 @@ async function syncNotificacoesDB(){
 }
 function startNotificacoesDB(){
   if(NOTIF_POLL_TIMER) return;
+  if(!hasPerm('notificacoes') && !hasPerm('tudo')) return;
   syncNotificacoesDB();
   NOTIF_POLL_TIMER=setInterval(syncNotificacoesDB,10000);
 }
@@ -7341,6 +7391,7 @@ function dispensarTodasNotifs(){
 
 
 function toggleNotifPanel(){
+  if(!hasPerm('notificacoes') && !hasPerm('tudo')){toast('Sem permissão para notificações','var(--red)');return;}
   const p=document.getElementById('notif-panel');
   if(p){
     if(p.style.display==='none'){syncNotificacoesDB();}
@@ -10669,6 +10720,439 @@ logAction = async function(acao, detalhe){
   api('POST','/log',{usuario:CURRENT_USER?CURRENT_USER.nome:'sistema',acao,detalhe:detalhe||''});
 };
 
+var USUARIOS = [];
+async function carregarUsuarios(){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const r = await api('GET','/usuarios');
+  if(!r || !r.ok){toast('Erro ao carregar usuários: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  USUARIOS = Array.isArray(r.data) ? r.data : [];
+  renderUsuarios();
+}
+function usrPerfilLabel(u){
+  const p = String(u?.perfil||'custom');
+  if(p==='admin') return {txt:'Admin', color:'var(--accent)'};
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  const is = (k)=>perms.includes(k);
+  const isV = is('lancar_pedidos') && is('chat_vendas');
+  const isE = is('estoque_chapas') && is('chat_estoque');
+  const isP = is('pcp_completo') && is('chat_pcp');
+  if(isV) return {txt:'Vendedor', color:'var(--teal)'};
+  if(isE) return {txt:'Estoque', color:'var(--orange)'};
+  if(isP) return {txt:'PCP', color:'var(--purple)'};
+  return {txt:'Custom', color:'var(--text2)'};
+}
+function renderUsuarios(){
+  const tbody = document.getElementById('usr-tbody'); if(!tbody) return;
+  const busca = String((document.getElementById('usr-busca')||{}).value||'').trim().toLowerCase();
+  const st = String((document.getElementById('usr-status')||{}).value||'').trim();
+  let rows = Array.isArray(USUARIOS) ? [...USUARIOS] : [];
+  if(st==='ativos') rows = rows.filter(u=>u.ativo!==false);
+  if(st==='inativos') rows = rows.filter(u=>u.ativo===false);
+  if(busca) rows = rows.filter(u=>[u.nome,u.email,u.perfil].join(' ').toLowerCase().includes(busca));
+  const fmt = (iso)=>{
+    if(!iso) return '—';
+    const d = new Date(String(iso));
+    if(String(d)==='Invalid Date') return '—';
+    return d.toLocaleString('pt-BR');
+  };
+  tbody.innerHTML = rows.length ? rows.map(u=>{
+    const ini = (u.avatar_iniciais||'??').toUpperCase();
+    const cor = u.avatar_cor || 'var(--accent)';
+    const badge = usrPerfilLabel(u);
+    return `<tr>
+      <td class="tc"><div style="width:38px;height:38px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);margin:0 auto;">${escH(ini)}</div></td>
+      <td style="font-weight:800">${escH(u.nome||'—')}</td>
+      <td style="color:var(--text2);font-family:var(--mono);font-size:.78rem">${escH(u.email||'—')}</td>
+      <td class="tc"><span class="tag" style="border-color:${badge.color};color:${badge.color};background:rgba(0,0,0,.02)">${badge.txt}</span></td>
+      <td class="tc">${u.ativo===false?'<span class="tag t-or">Inativo</span>':'<span class="tag t-gr">Ativo</span>'}</td>
+      <td class="tc" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escH(fmt(u.ultimo_acesso))}</td>
+      <td class="tc">
+        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalUsuarioEditar('${u.id}')" title="Editar">✏️ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalSenhaUsuario('${u.id}')" title="Alterar senha">🔑 Senha</button>
+          <button class="btn btn-ghost btn-sm" onclick="usrToggleAtivo('${u.id}')" title="Ativar/Desativar">${u.ativo===false?'🟢 Ativar':'🔴 Desativar'}</button>
+          <button class="btn btn-ghost btn-sm" onclick="usrExcluir('${u.id}')" title="Excluir" style="color:var(--red)">🗑️ Excluir</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:26px;color:var(--text3)">Nenhum usuário</td></tr>`;
+}
+
+function usrModalGetPerms(){
+  return [...document.querySelectorAll('#modal-usr .usr-perm:checked')].map(x=>x.value);
+}
+function usrModalSetPerms(perms){
+  const set = new Set(Array.isArray(perms)?perms:[]);
+  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.checked=set.has(cb.value);});
+}
+function usrAtalho(tipo){
+  tipo = String(tipo||'custom');
+  const map = {
+    vendedor: ["chat_geral","chat_vendas","chat_pedidos","lancar_pedidos","ver_pedidos"],
+    estoque: ["chat_geral","chat_estoque","estoque_chapas","editar_estoque","solicitar_compra","recebimento"],
+    pcp: ["chat_geral","chat_pcp","pcp_completo","ofs_por_maquina","dar_baixa_of","relatorio_mensal"],
+    admin: ["tudo"],
+    custom: []
+  };
+  const perms = map[tipo] || [];
+  usrModalSetPerms(perms);
+  const isAdmin = perms.includes('tudo');
+  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.disabled=isAdmin;});
+}
+
+function abrirModalUsuarioNovo(){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  document.getElementById('usr-modal-title').textContent='👤 Novo Usuário';
+  document.getElementById('usr-id').value='';
+  document.getElementById('usr-nome').value='';
+  document.getElementById('usr-email').value='';
+  document.getElementById('usr-ativo').value='1';
+  document.getElementById('usr-cor').value='#4A90D9';
+  document.getElementById('usr-senha').value='';
+  document.getElementById('usr-senha2').value='';
+  document.getElementById('usr-pass-wrap').style.display='';
+  document.getElementById('usr-err').textContent='';
+  usrAtalho('custom');
+  abrir('modal-usr');
+}
+
+function abrirModalUsuarioEditar(id){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u = (USUARIOS||[]).find(x=>x.id===id);
+  if(!u){toast('Usuário não encontrado','var(--red)');return;}
+  document.getElementById('usr-modal-title').textContent='✏ Editar Usuário';
+  document.getElementById('usr-id').value=u.id||'';
+  document.getElementById('usr-nome').value=u.nome||'';
+  document.getElementById('usr-email').value=u.email||'';
+  document.getElementById('usr-ativo').value=(u.ativo===false)?'0':'1';
+  document.getElementById('usr-cor').value=u.avatar_cor||'#4A90D9';
+  document.getElementById('usr-pass-wrap').style.display='none';
+  document.getElementById('usr-err').textContent='';
+  usrModalSetPerms(Array.isArray(u.permissoes)?u.permissoes:[]);
+  const isAdmin = (u.perfil==='admin') || (Array.isArray(u.permissoes)&&u.permissoes.includes('tudo'));
+  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.disabled=isAdmin;});
+  abrir('modal-usr');
+}
+
+async function salvarUsuarioModal(){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const errEl=document.getElementById('usr-err'); if(errEl) errEl.textContent='';
+  const id = String((document.getElementById('usr-id')||{}).value||'').trim();
+  const nome = String((document.getElementById('usr-nome')||{}).value||'').trim();
+  const email = String((document.getElementById('usr-email')||{}).value||'').trim().toLowerCase();
+  const ativo = (String((document.getElementById('usr-ativo')||{}).value||'1')==='1');
+  const avatar_cor = String((document.getElementById('usr-cor')||{}).value||'').trim();
+  const permissoes = usrModalGetPerms();
+  const perfil = permissoes.includes('tudo') ? 'admin' : 'custom';
+
+  if(!nome || !email){
+    if(errEl) errEl.textContent='Informe nome e email.';
+    return;
+  }
+
+  if(!id){
+    const senha = String((document.getElementById('usr-senha')||{}).value||'').trim();
+    const senha2 = String((document.getElementById('usr-senha2')||{}).value||'').trim();
+    if(!senha || senha !== senha2){
+      if(errEl) errEl.textContent='Senhas não conferem.';
+      return;
+    }
+    const r = await api('POST','/usuarios',{nome,email,senha,perfil,permissoes,ativo,avatar_cor});
+    if(!r || !r.ok){
+      if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+      return;
+    }
+  } else {
+    const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{nome,email,perfil,permissoes,ativo,avatar_cor});
+    if(!r || !r.ok){
+      if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+      return;
+    }
+  }
+  fechar('modal-usr');
+  await carregarUsuarios();
+  toast('✓ Usuário salvo','var(--green)');
+}
+
+function abrirModalSenhaUsuario(id){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  document.getElementById('usr-senha-id').value=id||'';
+  document.getElementById('usr-nova-senha').value='';
+  document.getElementById('usr-nova-senha2').value='';
+  document.getElementById('usr-senha-err').textContent='';
+  abrir('modal-usr-senha');
+}
+
+async function salvarSenhaUsuario(){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const errEl=document.getElementById('usr-senha-err'); if(errEl) errEl.textContent='';
+  const id=String((document.getElementById('usr-senha-id')||{}).value||'').trim();
+  const s1=String((document.getElementById('usr-nova-senha')||{}).value||'').trim();
+  const s2=String((document.getElementById('usr-nova-senha2')||{}).value||'').trim();
+  if(!id || !s1 || s1!==s2){
+    if(errEl) errEl.textContent='Senhas não conferem.';
+    return;
+  }
+  const r=await api('PUT','/usuarios/'+encodeURIComponent(id)+'/senha',{senha:s1});
+  if(!r || !r.ok){
+    if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+    return;
+  }
+  fechar('modal-usr-senha');
+  toast('✓ Senha atualizada','var(--green)');
+}
+
+async function usrToggleAtivo(id){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u=(USUARIOS||[]).find(x=>x.id===id); if(!u) return;
+  const ativo = !(u.ativo===false);
+  const novo = !ativo;
+  const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{ativo:novo});
+  if(!r || !r.ok){toast('Erro: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  u.ativo = novo;
+  renderUsuarios();
+  toast(novo?'🟢 Ativado':'🔴 Desativado', novo?'var(--green)':'var(--orange)');
+}
+
+async function usrExcluir(id){
+  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u=(USUARIOS||[]).find(x=>x.id===id); if(!u) return;
+  if(!confirm(`Tem certeza que deseja excluir o usuário ${u.nome}?\nEsta ação não pode ser desfeita.`)) return;
+  const r = await api('DELETE','/usuarios/'+encodeURIComponent(id));
+  if(!r || !r.ok){toast('Erro: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  USUARIOS = (USUARIOS||[]).filter(x=>x.id!==id);
+  renderUsuarios();
+  toast('🗑️ Usuário excluído','var(--orange)');
+}
+
+var CHAT_STATE = { aberto:false, canais:[], canalId:null, canalNome:'', msgs:[], lastId:'', poll:null, unread:{} };
+
+function toggleChatPanel(){
+  if(!CURRENT_USER){toast('Faça login','var(--yellow)');return;}
+  if(!hasPerm(['chat_geral','chat_vendas','chat_pcp','chat_estoque','chat_pedidos','tudo'])){
+    toast('Sem permissão para chat','var(--red)');
+    return;
+  }
+  const p=document.getElementById('chat-panel');
+  if(!p) return;
+  const show = (p.style.display==='none' || !p.style.display);
+  p.style.display = show ? 'block' : 'none';
+  CHAT_STATE.aberto = show;
+  if(show){
+    carregarChatCanais();
+    chatStartPoll();
+  } else {
+    chatStopPoll();
+  }
+}
+
+async function carregarChatCanais(){
+  const r = await api('GET','/chat/canais');
+  if(!r || !r.ok) return;
+  CHAT_STATE.canais = Array.isArray(r.data) ? r.data : [];
+  if(!CHAT_STATE.canalId && CHAT_STATE.canais.length){
+    chatSelecionarCanal(CHAT_STATE.canais[0].id);
+  }
+  renderChatCanais();
+  chatAtualizarBadges();
+}
+
+function renderChatCanais(){
+  const wrap=document.getElementById('chat-canais'); if(!wrap) return;
+  const unread=CHAT_STATE.unread||{};
+  wrap.innerHTML = (CHAT_STATE.canais||[]).map(c=>{
+    const ativo = c.id===CHAT_STATE.canalId;
+    const n = Number(unread[c.id]||0);
+    return `<div onclick="chatSelecionarCanal('${c.id}')" style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid ${ativo?'var(--accent)':'var(--border)'};border-radius:10px;background:${ativo?'var(--accent-soft)':'var(--surface)'};cursor:pointer;">
+      <div style="font-weight:900;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(c.nome||'—')}</div>
+      ${n>0?`<span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 7px;font-size:.65rem;font-family:var(--mono);font-weight:900">${n}</span>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function chatSelecionarCanal(id){
+  CHAT_STATE.canalId = id;
+  CHAT_STATE.lastId = '';
+  CHAT_STATE.msgs = [];
+  const c = (CHAT_STATE.canais||[]).find(x=>x.id===id);
+  CHAT_STATE.canalNome = c ? (c.nome||'') : '';
+  const t=document.getElementById('chat-canal-titulo'); if(t) t.textContent = CHAT_STATE.canalNome || '—';
+  document.getElementById('chat-msgs').innerHTML = '';
+  await chatCarregarMensagens(true);
+  renderChatCanais();
+}
+
+function chatStartPoll(){
+  if(CHAT_STATE.poll) return;
+  CHAT_STATE.poll = setInterval(async ()=>{
+    if(!CHAT_STATE.aberto) return;
+    await chatCarregarMensagens(false);
+    await chatAtualizarBadges();
+  }, 3000);
+}
+function chatStopPoll(){
+  if(CHAT_STATE.poll){ clearInterval(CHAT_STATE.poll); CHAT_STATE.poll=null; }
+}
+
+async function chatCarregarMensagens(full){
+  const canalId = CHAT_STATE.canalId;
+  if(!canalId) return;
+  const after = (!full && CHAT_STATE.lastId) ? ('&after='+encodeURIComponent(CHAT_STATE.lastId)) : '';
+  const r = await api('GET','/chat/mensagens?canal_id='+encodeURIComponent(canalId)+after);
+  if(!r || !r.ok) return;
+  const arr = Array.isArray(r.data) ? r.data : [];
+  if(full){
+    CHAT_STATE.msgs = arr;
+  } else {
+    const existing = new Set((CHAT_STATE.msgs||[]).map(m=>m.id));
+    arr.forEach(m=>{ if(!existing.has(m.id)) CHAT_STATE.msgs.push(m); });
+  }
+  const last = CHAT_STATE.msgs.length ? CHAT_STATE.msgs[CHAT_STATE.msgs.length-1] : null;
+  CHAT_STATE.lastId = last ? (last.id||'') : CHAT_STATE.lastId;
+  chatRenderMensagens();
+  chatMarcarVisiveisComoLidas();
+}
+
+function chatFmtHora(iso){
+  if(!iso) return '';
+  const d=new Date(String(iso));
+  if(String(d)==='Invalid Date') return '';
+  return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function chatRenderMensagens(){
+  const wrap=document.getElementById('chat-msgs'); if(!wrap) return;
+  const me = String((CURRENT_USER||{}).id||'');
+  const msgs = CHAT_STATE.msgs||[];
+  wrap.innerHTML = msgs.map(m=>{
+    const isMe = me && String(m.usuario_id||'')===me;
+    const ini = (m.usuario_iniciais||'??').toUpperCase();
+    const cor = m.usuario_cor || 'var(--accent)';
+    const hora = chatFmtHora(m.criado_em);
+    const nome = escH(m.usuario_nome||'—');
+    let body = '';
+    if(m.tipo==='imagem' && m.arquivo_url){
+      body = `<img src="${escH(m.arquivo_url)}" style="max-width:260px;border-radius:10px;display:block;">`;
+    } else if(m.tipo!=='texto' && m.arquivo_url){
+      const nm = escH(m.conteudo || m.arquivo_url.split('/').slice(-1)[0] || 'arquivo');
+      body = `<div style="display:flex;align-items:center;gap:8px">
+        <div style="font-size:1.2rem">📄</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div>
+          <div style="font-size:.68rem;color:var(--text3);font-family:var(--mono)">${escH(String(m.arquivo_tipo||''))}</div>
+        </div>
+        <a class="btn btn-ghost btn-sm" href="${escH(m.arquivo_url)}" download style="text-decoration:none">⬇</a>
+      </div>`;
+    } else {
+      body = `<div style="white-space:pre-wrap;word-break:break-word">${escH(m.conteudo||'')}</div>`;
+    }
+    return `<div style="display:flex;gap:8px;justify-content:${isMe?'flex-end':'flex-start'};margin:8px 0;">
+      ${isMe?'':`<div style="width:32px;height:32px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);flex:0 0 auto;">${escH(ini)}</div>`}
+      <div style="max-width:min(520px,78%);background:${isMe?'var(--accent-soft)':'var(--surface)'};border:1px solid ${isMe?'var(--accent)':'var(--border)'};border-radius:14px;padding:10px 12px;">
+        <div style="display:flex;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+          <div style="font-weight:900;font-size:.72rem;color:${isMe?'var(--accent)':'var(--text2)'}">${isMe?'Você':nome}</div>
+          <div style="font-size:.66rem;color:var(--text3);font-family:var(--mono)">${escH(hora)}</div>
+        </div>
+        ${body}
+      </div>
+      ${isMe?`<div style="width:32px;height:32px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);flex:0 0 auto;">${escH(ini)}</div>`:''}
+    </div>`;
+  }).join('');
+  try{ wrap.scrollTop = wrap.scrollHeight; }catch(e){}
+}
+
+async function chatMarcarVisiveisComoLidas(){
+  const me = String((CURRENT_USER||{}).id||'');
+  if(!me) return;
+  const canalId = CHAT_STATE.canalId;
+  if(!canalId) return;
+  const msgs = (CHAT_STATE.msgs||[]).slice(-50);
+  const pend = msgs.filter(m=>Array.isArray(m.lida_por)?!m.lida_por.includes(me):true);
+  for(const m of pend){
+    try{
+      const r = await api('PATCH','/chat/mensagens/'+encodeURIComponent(m.id)+'/lida',{});
+      if(r && r.ok && r.data){
+        const idx = CHAT_STATE.msgs.findIndex(x=>x.id===m.id);
+        if(idx>=0) CHAT_STATE.msgs[idx] = r.data;
+      }
+    }catch(e){}
+  }
+}
+
+async function chatEnviarTexto(){
+  const inp=document.getElementById('chat-texto'); if(!inp) return;
+  const txt=String(inp.value||'').trim();
+  if(!txt) return;
+  const canal_id = CHAT_STATE.canalId;
+  if(!canal_id){toast('Selecione um canal','var(--yellow)');return;}
+  inp.value='';
+  const r=await api('POST','/chat/mensagens',{canal_id,tipo:'texto',conteudo:txt});
+  if(!r || !r.ok){toast('Erro ao enviar: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  CHAT_STATE.msgs.push(r.data);
+  CHAT_STATE.lastId = r.data.id || CHAT_STATE.lastId;
+  chatRenderMensagens();
+  chatAtualizarBadges();
+}
+
+async function chatFileSelecionado(ev){
+  const file = ev && ev.target && ev.target.files ? ev.target.files[0] : null;
+  ev.target.value='';
+  if(!file) return;
+  const canal_id = CHAT_STATE.canalId;
+  if(!canal_id){toast('Selecione um canal','var(--yellow)');return;}
+  const up = await chatUploadFile(file);
+  if(!up) return;
+  const tipo = up.tipo === 'imagem' ? 'imagem' : 'arquivo';
+  const nome = up.nome || file.name || '';
+  const r = await api('POST','/chat/mensagens',{canal_id,tipo,conteudo:nome,arquivo_url:up.url,arquivo_tipo:up.arquivo_tipo});
+  if(!r || !r.ok){toast('Erro ao enviar: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  CHAT_STATE.msgs.push(r.data);
+  CHAT_STATE.lastId = r.data.id || CHAT_STATE.lastId;
+  chatRenderMensagens();
+  chatAtualizarBadges();
+}
+
+async function chatUploadFile(file){
+  try{
+    const fd = new FormData();
+    fd.append('file', file);
+    const headers = {};
+    if(AUTH_TOKEN) headers['Authorization'] = 'Bearer ' + AUTH_TOKEN;
+    const r = await fetch(API_BASE + '/api/chat/upload', { method:'POST', headers, body: fd });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || !j || !j.ok){toast('Erro upload: '+((j&&j.error)?j.error:'falha'),'var(--red)');return null;}
+    return j.data;
+  }catch(e){
+    toast('Erro upload: '+e.message,'var(--red)');
+    return null;
+  }
+}
+
+async function chatAtualizarBadges(){
+  const canais = CHAT_STATE.canais || [];
+  const me = String((CURRENT_USER||{}).id||'');
+  if(!me || !canais.length) return;
+  const unread = {};
+  for(const c of canais){
+    const r = await api('GET','/chat/mensagens?canal_id='+encodeURIComponent(c.id));
+    if(!r || !r.ok) continue;
+    const msgs = Array.isArray(r.data)?r.data:[];
+    const n = msgs.filter(m=>{
+      const l = Array.isArray(m.lida_por)?m.lida_por:[];
+      return !l.includes(me);
+    }).length;
+    unread[c.id] = n;
+  }
+  CHAT_STATE.unread = unread;
+  renderChatCanais();
+  const total = Object.values(unread).reduce((s,n)=>s+(Number(n)||0),0);
+  const b = document.getElementById('chat-badge');
+  if(b){
+    if(total>0){ b.style.display='flex'; b.textContent=String(total>99?99:total); }
+    else { b.style.display='none'; }
+  }
+}
+
 console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </script>
 
@@ -10693,8 +11177,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
     <!-- Login -->
     <div style="margin-bottom:14px;">
-      <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:6px;">Usuário</div>
-      <input id="login-user" type="text" placeholder="Usuário" style="width:100%;background:var(--s2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:.9rem;text-transform:uppercase;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+      <div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:6px;">Email</div>
+      <input id="login-user" type="email" placeholder="email@italy.com" style="width:100%;background:var(--s2);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:11px 14px;font-size:.9rem;" onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
     </div>
     <div id="login-sel-label" style="display:none"></div>
 
@@ -10724,13 +11208,40 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span class="tbadge tb-yellow" id="bdg-ug">0 URGENTES</span>
     <span class="tbadge tb-green" id="bdg-ok">0 CONCLUÍDOS</span>
   </div>
-  <div style="position:relative;cursor:pointer;" onclick="toggleNotifPanel()">
+  <div id="menu-chat" style="position:relative;cursor:pointer;" onclick="toggleChatPanel()">
+    <span style="font-size:1rem;">💬</span>
+    <span id="chat-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;min-width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);padding:0 3px;">0</span>
+  </div>
+  <div id="menu-notificacoes" style="position:relative;cursor:pointer;" onclick="toggleNotifPanel()">
     <span style="font-size:1rem;">🔔</span>
     <span id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);">0</span>
   </div>
   <div id="notif-panel" style="display:none;position:fixed;top:56px;right:10px;width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:800;max-height:420px;overflow-y:auto;box-shadow:var(--shadow-lg);">
     <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:.8rem;display:flex;align-items:center;gap:8px;">🔔 Notificações <button onclick="dispensarTodasNotifs();event.stopPropagation();" style="margin-left:auto;background:none;border:none;color:var(--accent);cursor:pointer;font-size:.72rem;font-weight:700;">Limpar</button><button onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;">✕</button></div>
     <div id="notif-list" style="padding:8px;"></div>
+  </div>
+  <div id="chat-panel" style="display:none;position:fixed;top:56px;right:10px;width:min(740px,calc(100vw - 20px));height:min(560px,calc(100vh - 80px));background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:850;box-shadow:var(--shadow-lg);overflow:hidden;">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:.82rem;">
+      <span>💬 Chat Italy</span>
+      <div style="flex:1"></div>
+      <button onclick="toggleChatPanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;">✕</button>
+    </div>
+    <div style="display:flex;height:calc(100% - 42px);">
+      <div style="width:190px;border-right:1px solid var(--border);background:var(--s2);display:flex;flex-direction:column;">
+        <div style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:.7rem;color:var(--text2);font-family:var(--mono);">CANAIS</div>
+        <div id="chat-canais" style="padding:8px;display:flex;flex-direction:column;gap:6px;overflow:auto;"></div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+        <div id="chat-canal-titulo" style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+        <div id="chat-msgs" style="flex:1;overflow:auto;padding:12px;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,0));"></div>
+        <div style="border-top:1px solid var(--border);padding:10px;display:flex;gap:8px;align-items:flex-end;">
+          <input id="chat-texto" type="text" placeholder="Digite uma mensagem..." style="flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:.82rem;" onkeydown="if(event.key==='Enter')chatEnviarTexto()">
+          <input id="chat-file" type="file" style="display:none" onchange="chatFileSelecionado(event)">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('chat-file').click()" title="Anexar arquivo">📎</button>
+          <button class="btn btn-accent btn-sm" onclick="chatEnviarTexto()">Enviar</button>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="clock" id="clock">--:--:--</div>
   <!-- Theme toggle -->
@@ -10756,9 +11267,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sidebar-brand-sub">Italy Embalagens · Cartoeste · Oestepack</div>
   </div>
   <div class="sidebar-section">Produção</div>
-  <div class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
-  <div class="nav-item" onclick="go('ofmaq')"><span class="ico">🏭</span>OFs por Máquina</div>
-  <div class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
+  <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
+  <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq')"><span class="ico">🏭</span>OFs por Máquina</div>
+  <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
   <div class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
   <div class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
 
@@ -10782,6 +11293,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="nav-item" onclick="go('clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👥</span>Clientes</div>
       <div class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
       <div class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
+      <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
     </div>
   </div>
 
@@ -10791,7 +11303,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span class="ng-ico">📦</span>Estoques<span class="ng-arr">▶</span>
     </div>
     <div class="nav-group-items">
-      <div class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
+      <div id="menu-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
       <div class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
       <div class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
     </div>
@@ -10805,7 +11317,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
-      <div class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
+      <div id="menu-relatorio" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
     </div>
   </div>
@@ -10838,11 +11350,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="pcp-dia-resumo" style="font-size:.72rem;color:var(--text2);font-family:var(--mono);"></div>
     <button class="btn btn-red btn-sm" onclick="atravessarSel()">⬆ Atravessar</button>
     <button class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
-    <button class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
-    <button class="btn btn-green btn-sm" onclick="marcarProntoSel()" title="Marca a OF selecionada como Concluído">✅ Pedido Pronto</button>
+    <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
+    <button id="btn-baixa-of" class="btn btn-green btn-sm" onclick="marcarProntoSel()" title="Marca a OF selecionada como Concluído">✅ Pedido Pronto</button>
     <button class="btn btn-ghost btn-sm" onclick="imprimirProgramacao('dia')" title="Imprimir programação do dia">🖨 Imprimir Dia</button>
     <button class="btn btn-ghost btn-sm" onclick="imprimirProgramacao('semana')" title="Imprimir programação da semana">🖨 Imprimir Semana</button>
-    <button class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
+    <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
   </div>
   <div class="page-body" style="padding:0;">
     <div class="table-wrap" style="height:100%;">
@@ -10882,6 +11394,40 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
   </div>
   <div class="page-body" id="ofmaq-body"></div>
+</div>
+
+<div id="page-usuarios" class="page">
+  <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
+    <span style="font-size:.78rem;color:var(--text2)">👤 Gerenciamento de usuários</span>
+    <input id="usr-busca" placeholder="🔍 Nome, email..." oninput="renderUsuarios()" style="width:220px;">
+    <select id="usr-status" onchange="renderUsuarios()" style="width:150px;">
+      <option value="">Todos</option>
+      <option value="ativos">Ativos</option>
+      <option value="inativos">Inativos</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="carregarUsuarios()">↻ Atualizar</button>
+    <button class="btn btn-accent btn-sm" onclick="abrirModalUsuarioNovo()">＋ Novo Usuário</button>
+  </div>
+  <div class="page-body" style="padding:14px;">
+    <div class="sbox">
+      <div class="sbox-h">Usuários</div>
+      <div class="sbox-b" style="padding:0;">
+        <table class="pcp-table" style="min-width:860px;">
+          <thead><tr>
+            <th style="width:64px">Avatar</th>
+            <th>Nome</th>
+            <th>Email</th>
+            <th style="width:140px">Perfil</th>
+            <th style="width:120px">Status</th>
+            <th style="width:160px">Último acesso</th>
+            <th style="width:220px">Ações</th>
+          </tr></thead>
+          <tbody id="usr-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ========== 2. LANÇAMENTO ========== -->
@@ -12014,6 +12560,105 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-usr">
+<div class="modal" style="width:min(980px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-usr')">✕</button>
+  <h2 id="usr-modal-title">👤 Novo Usuário</h2>
+  <input type="hidden" id="usr-id">
+  <div class="fg">
+    <div class="mf fgf"><label>NOME COMPLETO *</label><input id="usr-nome"></div>
+    <div class="mf"><label>EMAIL (LOGIN) *</label><input id="usr-email" type="email" autocomplete="off"></div>
+    <div class="mf"><label>ATIVO</label><select id="usr-ativo"><option value="1">Sim</option><option value="0">Não</option></select></div>
+    <div class="mf"><label>COR DO AVATAR</label><input id="usr-cor" type="color" value="#4A90D9" style="height:40px;padding:6px;border-radius:10px"></div>
+    <div class="mf fgf" id="usr-pass-wrap">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label>SENHA INICIAL *</label>
+          <input id="usr-senha" type="password" autocomplete="new-password">
+        </div>
+        <div>
+          <label>CONFIRMAR SENHA *</label>
+          <input id="usr-senha2" type="password" autocomplete="new-password">
+        </div>
+      </div>
+    </div>
+
+    <div class="mf fgf">
+      <label>ATALHO DE PERFIL</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="usrAtalho('vendedor')">Vendedor</button>
+        <button class="btn btn-ghost btn-sm" onclick="usrAtalho('estoque')">Estoque</button>
+        <button class="btn btn-ghost btn-sm" onclick="usrAtalho('pcp')">PCP</button>
+        <button class="btn btn-ghost btn-sm" onclick="usrAtalho('admin')">Admin</button>
+        <button class="btn btn-ghost btn-sm" onclick="usrAtalho('custom')">Personalizado</button>
+      </div>
+    </div>
+
+    <div class="fgrp">PERMISSÕES DE ACESSO</div>
+    <div class="mf fgf" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">💬 CHAT</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_geral"> Canal Geral</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_vendas"> Canal Vendas</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_pcp"> Canal PCP</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_estoque"> Canal Estoque</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_pedidos"> Canal Pedidos</label>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">📋 PEDIDOS / OFs</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="lancar_pedidos"> Lançar pedidos</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="ver_pedidos"> Ver pedidos</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="editar_pedidos"> Editar pedidos</label>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">🏭 PCP</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="pcp_completo"> PCP completo</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="ofs_por_maquina"> OFs por máquina</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="dar_baixa_of"> Dar baixa em OFs</label>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">📦 ESTOQUE</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="estoque_chapas"> Ver estoque chapas</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="editar_estoque"> Editar estoque</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="solicitar_compra"> Solicitar compra</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="recebimento"> Recebimento</label>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">📊 RELATÓRIOS</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="relatorio_mensal"> Relatório mensal</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="relatorio_admin"> Relatório administrativo</label>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
+        <div style="font-weight:900;margin-bottom:8px">💰 OUTROS</div>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="financeiro"> Financeiro</label>
+        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="notificacoes"> Notificações</label>
+      </div>
+    </div>
+
+    <div id="usr-err" style="color:var(--red);font-size:.75rem;min-height:18px;font-weight:700;"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-usr')">Cancelar</button>
+    <button class="btn btn-accent" onclick="salvarUsuarioModal()">Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-usr-senha">
+<div class="modal" style="width:min(520px,96vw)">
+  <button class="close-btn" onclick="fechar('modal-usr-senha')">✕</button>
+  <h2>🔑 Alterar Senha</h2>
+  <input type="hidden" id="usr-senha-id">
+  <div class="fg">
+    <div class="mf fgf"><label>NOVA SENHA *</label><input id="usr-nova-senha" type="password" autocomplete="new-password"></div>
+    <div class="mf fgf"><label>CONFIRMAR NOVA SENHA *</label><input id="usr-nova-senha2" type="password" autocomplete="new-password"></div>
+    <div id="usr-senha-err" style="color:var(--red);font-size:.75rem;min-height:18px;font-weight:700;"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-usr-senha')">Cancelar</button>
+    <button class="btn btn-accent" onclick="salvarSenhaUsuario()">Salvar</button>
   </div>
 </div></div>
 
