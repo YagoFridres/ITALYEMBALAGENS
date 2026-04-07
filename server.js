@@ -873,6 +873,51 @@ app.delete('/api/chapas_estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/chapas_estoque/search', async (req, res) => {
+  try {
+    const q = String(req.query.nomenclatura || '').trim();
+    if (!q) return ok(res, []);
+    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    const colsCandidates = ['tipo_papel', 'modelo', 'nom', 'codigo'];
+    const results = [];
+    const keys = new Set();
+    for (const t of tables) {
+      for (const col of colsCandidates) {
+        try {
+          const { data, error } = await supabase.from(t).select('*').ilike(col, q + '%').limit(50);
+          if (error) {
+            const msg = String(error.message || error);
+            if (msg.includes('column') || msg.includes('Could not find')) continue;
+            throw error;
+          }
+          (data || []).forEach((r) => {
+            const tp = r.tipo_papel ?? r.modelo ?? r.nom ?? r.codigo ?? '';
+            const l = r.largura_mm ?? r.largura ?? r.larg ?? null;
+            const c = r.comprimento_mm ?? r.comprimento ?? r.comp ?? null;
+            const tamStr = r.tamanho ?? r.tam ?? (l && c ? `${l}X${c}` : '');
+            const k = [tp, tamStr, r.forn ?? r.fornecedor ?? ''].join('|');
+            if (keys.has(k)) return;
+            keys.add(k);
+            results.push({
+              id: r.id || null,
+              fornecedor: r.fornecedor ?? r.forn ?? '',
+              nomenclatura: tp || '',
+              largura_mm: l,
+              comprimento_mm: c,
+              tamanho: tamStr || '',
+              nome: r.nome ?? r.descricao ?? '',
+              quantidade_atual: r.quantidade_atual ?? r.quantidade ?? r.qtd ?? r.saldo ?? 0,
+              valor_unitario: r.valor_unitario ?? r.custo_unitario ?? r.val ?? 0,
+            });
+          });
+        } catch (_) { continue; }
+      }
+      if (results.length > 0) break;
+    }
+    ok(res, results);
+  } catch (e) { err(res, e); }
+});
+
 app.post('/api/chapas_estoque/reset', async (req, res) => {
   try {
     console.log('chapas_estoque/reset body type:', Array.isArray(req.body) ? 'array' : typeof req.body);
@@ -1020,6 +1065,69 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
 
     const saved_fields = [...new Set(clean.flatMap((r) => Object.keys(r)))].sort();
     ok(res, { deleted: true, table: t, requested, valid: normalized.length, invalid, duplicates, inserted, saved_fields });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/historico_acoes', async (req, res) => {
+  try {
+    const row = {
+      data_hora: new Date().toISOString(),
+      tipo_acao: req.body?.tipo_acao || '',
+      descricao: req.body?.descricao || '',
+      usuario: req.body?.usuario || 'sistema',
+    };
+    const tables = ['historico_acoes'];
+    let lastErr = null;
+    for (const t of tables) {
+      const { data, error } = await supabase.from(t).insert([row]).select();
+      if (!error) return ok(res, data[0]);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      throw error;
+    }
+    throw lastErr;
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/relatorios/dashboard', async (req, res) => {
+  try {
+    const row = { ...(req.body || {}) };
+    const { data, error } = await supabase.from('relatorio_dashboard').insert([row]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/relatorios/producao', async (req, res) => {
+  try {
+    const arr = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+    if (!Array.isArray(arr) || arr.length === 0) return bad(res, 'vazio');
+    const chunk = 1000;
+    let inserted = 0;
+    for (let i = 0; i < arr.length; i += chunk) {
+      const part = arr.slice(i, i + chunk);
+      const { error } = await supabase.from('relatorio_producao').insert(part);
+      if (error) throw error;
+      inserted += part.length;
+    }
+    ok(res, { inserted });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/relatorios/aparras', async (req, res) => {
+  try {
+    const arr = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+    if (!Array.isArray(arr) || arr.length === 0) return bad(res, 'vazio');
+    const chunk = 1000;
+    let inserted = 0;
+    for (let i = 0; i < arr.length; i += chunk) {
+      const part = arr.slice(i, i + chunk);
+      const { error } = await supabase.from('relatorio_aparras').insert(part);
+      if (error) throw error;
+      inserted += part.length;
+    }
+    ok(res, { inserted });
   } catch (e) { err(res, e); }
 });
 

@@ -7002,6 +7002,17 @@ function renderNotificacoes(){
     }
   });
 }
+
+function dispensarNotif(idx){
+  const n=NOTIFICACOES[idx];
+  NOTIFICACOES.splice(idx,1);
+  renderNotificacoes();
+  if(n){
+    const tipo=(n.tipo||'info');
+    const desc=(n.msg||'').toString().slice(0,300);
+    api('POST','/historico_acoes',{tipo_acao:tipo==='success'?'ok_notificacao':tipo,descricao:desc,usuario:(CURRENT_USER?CURRENT_USER.nome:'sistema')});
+  }
+}
 function dispensarNotif(idx){
   const el=document.getElementById('ni-'+idx);
   if(el){
@@ -7045,8 +7056,30 @@ function solicitarCompraChapa(id){
       const nomeProd=document.getElementById('cp-prod')||document.getElementById('comp-item');
       if(nomeProd)nomeProd.value=`${c.nome} — ${c.forn} ${c.nom} ${c.tam||''} (Saldo atual: ${c.qtd} un)`;
       toast(`🛒 Abrindo compras para: ${c.nome}`,'var(--accent)');
+      const nom=document.getElementById('cp-nom');if(nom)nom.value=(c.nom||c.tipo_papel||'')+' '+(c.tam||'');
+      const info=document.getElementById('cp-nom-info');if(info)info.textContent=`Fornecedor: ${c.forn||'—'} · Tamanho: ${c.tam||((c.larg||c.largura||c.largura_mm)||'')+'x'+((c.comp||c.comprimento||c.comprimento_mm)||'')} · Valor unit.: R$ ${(c.val||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · Saldo: ${(c.qtd||0).toLocaleString()}`;
     },300);
   },400);
+}
+
+var CMP_NOM_OPTS=[];
+async function cmpNomChange(){
+  const inp=document.getElementById('cp-nom');if(!inp)return;
+  const val=String(inp.value||'').trim();
+  const dl=document.getElementById('cp-nom-list');if(!dl)return;
+  const info=document.getElementById('cp-nom-info');
+  if(val.length<2){dl.innerHTML='';if(info)info.textContent='';return;}
+  const r=await api('GET','/chapas_estoque/search?nomenclatura='+encodeURIComponent(val));
+  if(!r||!r.ok)return;
+  const arr=r.data||[];CMP_NOM_OPTS=arr;
+  dl.innerHTML=arr.map(x=>{const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';const lbl=`${x.nomenclatura} | ${dim} — ${x.fornecedor||'—'} — saldo: ${x.quantidade_atual||0} — R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;return `<option value="${x.nomenclatura} ${dim}">${lbl}</option>`;}).join('');
+  if(arr.length===1)cmpNomPick(arr[0]);else{const exact=arr.find(x=>val.toUpperCase()===x.nomenclatura.toUpperCase());if(exact)cmpNomPick(exact);}
+}
+function cmpNomPick(x){
+  const fornSel=document.getElementById('cp-forn');const fornMan=document.getElementById('cp-forn-manual');const info=document.getElementById('cp-nom-info');
+  if(fornSel)fornSel.value='';if(fornMan)fornMan.value=x.fornecedor||'';
+  const dim=(x.largura_mm&&x.comprimento_mm)?`${x.largura_mm}x${x.comprimento_mm} mm`:x.tamanho||'';if(info)info.textContent=`Fornecedor: ${x.fornecedor||'—'} · Tamanho: ${dim} · Valor unit.: R$ ${(x.valor_unitario||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · Saldo: ${(x.quantidade_atual||0).toLocaleString()}`;
+  const v=document.getElementById('cp-valor');if(v)v.value=Number(x.valor_unitario||0);
 }
 
 function dispensarAlertaChapa(id){
@@ -11859,6 +11892,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>CNPJ FORNECEDOR</label><input id="cp-cnpj"></div>
     <div class="mf"><label>PREVISÃO CHEGADA</label><input id="cp-prev" type="date"></div>
     <div class="mf"><label>STATUS</label><select id="cp-st"><option>Solicitada</option><option>Comprada</option><option>Recebida parcialmente</option><option>Recebida</option><option>Cancelada</option></select></div>
+    <div class="mf"><label>NOMENCLATURA</label><input id="cp-nom" list="cp-nom-list" oninput="cmpNomChange()" placeholder="Ex: FCM03, AB21..."><datalist id="cp-nom-list"></datalist><div id="cp-nom-info" style="font-size:.72rem;color:var(--text2);margin-top:4px"></div></div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="cp-obs" rows="1"></textarea></div>
   </div>
 
