@@ -891,7 +891,8 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       return Number.isFinite(n) ? n : fallback;
     };
 
-    const clean = items.map((it) => {
+    const requested = items.length;
+    const normalized = items.map((it) => {
       const fornecedor = it.fornecedor ?? it.forn ?? it.FORNECEDOR ?? '';
       const nomenclatura = it.nomenclatura ?? it.tipo_papel ?? it.NOMENCLATURA ?? '';
       const tamanho = it.tamanho ?? it.TAMANHO ?? '';
@@ -907,8 +908,22 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
         comprimento_mm: comprimento_mm || null,
         quantidade_atual: Math.trunc(quantidade) || 0,
         valor_unitario: Number(valor_unitario) || 0,
+        _tamanho_raw: String(tamanho || '').trim(),
       };
     }).filter((x) => x.tipo_papel && x.largura_mm && x.comprimento_mm);
+
+    const keyOf = (x) => `${String(x.tipo_papel).trim().toUpperCase()}|${x.largura_mm}X${x.comprimento_mm}`;
+    const map = new Map();
+    normalized.forEach((x) => {
+      map.set(keyOf(x), x);
+    });
+    const clean = Array.from(map.values()).map((x) => {
+      const out = { ...x };
+      delete out._tamanho_raw;
+      return out;
+    });
+    const invalid = requested - normalized.length;
+    const duplicates = normalized.length - clean.length;
 
     const delFilter = '00000000-0000-0000-0000-000000000000';
     const { error: delErr } = await supabase.from(t).delete().neq('id', delFilter);
@@ -935,7 +950,7 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
       inserted += chunk.length;
     }
 
-    ok(res, { deleted: true, inserted });
+    ok(res, { deleted: true, table: t, requested, valid: normalized.length, invalid, duplicates, inserted });
   } catch (e) { err(res, e); }
 });
 

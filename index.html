@@ -7253,6 +7253,8 @@ function abrirModalResetChapas(){
 
 async function executarResetChapas(){
   const ta=document.getElementById('rst-chp-json');
+  const out=document.getElementById('rst-chp-out');
+  if(out) out.innerHTML='';
   const raw=(ta?ta.value:'').trim();
   if(!raw){toast('Cole o JSON com os registros','var(--red)');return;}
   let items=null;
@@ -7265,8 +7267,29 @@ async function executarResetChapas(){
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao resetar: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
+    if(out) out.innerHTML=`<div style="color:var(--red);font-weight:800">Erro:</div><div style="color:var(--text2);font-family:var(--mono);font-size:.72rem;white-space:pre-wrap">${escH(r && r.error ? r.error : 'falha')}</div>`;
     return;
   }
+
+  let totalApi = null;
+  try{
+    const g = await api('GET','/chapas_estoque');
+    if(g && g.ok && Array.isArray(g.data)) totalApi = g.data.length;
+  }catch(e){}
+
+  if(out){
+    const d=r.data||{};
+    out.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:12px">
+        <div class="card"><div class="card-lbl">Enviados</div><div class="card-val">${(d.requested||items.length).toLocaleString()}</div></div>
+        <div class="card"><div class="card-lbl">Válidos</div><div class="card-val">${(d.valid||0).toLocaleString()}</div></div>
+        <div class="card"><div class="card-lbl">Inválidos</div><div class="card-val cv-o">${(d.invalid||0).toLocaleString()}</div></div>
+        <div class="card"><div class="card-lbl">Duplicados</div><div class="card-val cv-o">${(d.duplicates||0).toLocaleString()}</div></div>
+        <div class="card"><div class="card-lbl">Inseridos</div><div class="card-val cv-g">${(d.inserted||0).toLocaleString()}</div></div>
+        <div class="card"><div class="card-lbl">Total na API</div><div class="card-val">${(totalApi!=null?totalApi:'—')}</div></div>
+      </div>`;
+  }
+
   fechar('modal-reset-chapas');
   try{ await carregarChapas(); }catch(e){}
   try{ renderEstoque(); }catch(e){}
@@ -11891,6 +11914,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     Cole abaixo um JSON (array) com os registros. Essa ação apaga todo o estoque atual e insere do zero.
   </div>
   <textarea id="rst-chp-json" style="width:100%;min-height:320px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px;font-family:var(--mono);font-size:.72rem"></textarea>
+  <div id="rst-chp-out"></div>
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-reset-chapas')">Cancelar</button>
     <button class="btn btn-red" onclick="executarResetChapas()">Apagar tudo e inserir</button>
