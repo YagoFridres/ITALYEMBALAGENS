@@ -185,7 +185,14 @@ function ofIn(p) {
 
 function clientesIn(p) {
   const tel = p.tel !== undefined ? p.tel : p.fone;
-  return { ...p, tel };
+  const out = { ...p };
+  if (tel !== undefined) out.tel = tel;
+  if (out.vend_id !== undefined && out.vendedor_id === undefined) out.vendedor_id = out.vend_id;
+  if (out.vendedorId !== undefined && out.vendedor_id === undefined) out.vendedor_id = out.vendedorId;
+  delete out.fone;
+  delete out.vend_id;
+  delete out.vendedorId;
+  return out;
 }
 
 function fornecedoresIn(p) {
@@ -211,7 +218,26 @@ function vendedoresIn(p) {
 }
 
 app.get('/api/ofs', async (req, res) => {
-  try { ok(res, await selectAll('ofs', 'seq')); } catch (e) { bad(res, e.message); }
+  try {
+    const from = req.query.from ? String(req.query.from) : '';
+    const to = req.query.to ? String(req.query.to) : '';
+    if (from || to) {
+      const fields = ['data_producao', 'dia', 'created_at'];
+      let lastError = null;
+      for (const field of fields) {
+        let q = supabase.from('ofs').select('*').order('seq', { ascending: true });
+        if (from) q = q.gte(field, from);
+        if (to) q = q.lte(field, to);
+        const { data, error } = await q;
+        if (!error) return ok(res, data || []);
+        lastError = error;
+        const msg = String(error.message || error);
+        if (!msg.includes('column')) break;
+      }
+      throw lastError;
+    }
+    ok(res, await selectAll('ofs', 'seq'));
+  } catch (e) { bad(res, e.message); }
 });
 app.post('/api/ofs', async (req, res) => {
   try { ok(res, await insertOne('ofs', ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
@@ -236,7 +262,16 @@ app.get('/api/clientes', async (req, res) => {
 
 app.post('/api/clientes', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('clientes').insert([req.body]).select();
+    const payload = clientesIn(req.body || {});
+    let { data, error } = await supabase.from('clientes').insert([payload]).select();
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
+        delete payload.vendedor_id;
+        delete payload.vendedor;
+        ({ data, error } = await supabase.from('clientes').insert([payload]).select());
+      }
+    }
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
@@ -244,9 +279,16 @@ app.post('/api/clientes', async (req, res) => {
 
 app.put('/api/clientes/:id', async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('clientes')
-      .update(payload).eq('id', req.params.id).select();
+    const payload = clientesIn({ ...(req.body || {}) }); delete payload.id;
+    let { data, error } = await supabase.from('clientes').update(payload).eq('id', req.params.id).select();
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
+        delete payload.vendedor_id;
+        delete payload.vendedor;
+        ({ data, error } = await supabase.from('clientes').update(payload).eq('id', req.params.id).select());
+      }
+    }
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }

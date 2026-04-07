@@ -1125,9 +1125,7 @@ function pcpDiaLabel(dateStr){
   try{
     const d=new Date(dateStr+'T12:00:00');
     if(isNaN(d.getTime())) return dateStr;
-    const dias=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    return `${dias[d.getDay()]}, ${String(d.getDate()).padStart(2,'0')} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   }catch(e){ return dateStr; }
 }
 
@@ -1140,6 +1138,18 @@ const getCliByName = txt => CLIENTES.find(c=>(c.nome||'').toLowerCase()===(txt||
 const getV   = id => VENDEDORES.find(v=>v.id===id);
 const getMot = id => MOTORISTAS.find(m=>m.id===id);
 const fmtR   = v => 'R$ '+parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+function fmtDataBR(dateStr){
+  if(!dateStr) return '—';
+  try{
+    const s=String(dateStr);
+    const base=s.includes('T')?s.split('T')[0]:s;
+    const m=base.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m) return `${m[3]}/${m[2]}/${m[1]}`;
+    const d=new Date(s);
+    if(!isNaN(d.getTime())) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    return base;
+  }catch(e){ return String(dateStr); }
+}
 const today  = () => new Date().toISOString().split('T')[0];
 const nowIso = () => new Date().toISOString();
 const fmtMin = m => { const h=Math.floor(m/60),mn=Math.round(m%60); return h>0?`${h}h${mn.toString().padStart(2,'0')}m`:`${mn}min`; };
@@ -1182,7 +1192,24 @@ const chapaLabel = c => {
   return `${head} — saldo: ${Number(qtd||0).toLocaleString()} un`;
 };
 function nextOFNum(){ const ns=OFs.map(o=>parseInt(o.of.replace('Nº ',''))).filter(n=>!isNaN(n)); return 'Nº '+String(ns.length?Math.max(...ns)+1:1).padStart(3,'0'); }
-function toast(msg,cor='var(--green)'){const t=document.getElementById('toast');t.textContent=msg;t.style.borderColor=cor;t.style.color=cor;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+var _toastTimer = null;
+function toast(msg,cor='var(--green)'){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.style.borderColor=cor;
+  t.style.color=cor;
+  t.classList.add('show');
+  t.style.cursor='pointer';
+  t.title='Clique para fechar';
+  t.onclick=function(){
+    t.classList.remove('show');
+    if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
+  };
+  if(_toastTimer){ clearTimeout(_toastTimer); _toastTimer=null; }
+  if(String(cor||'').includes('var(--red)')) return;
+  _toastTimer=setTimeout(()=>{ t.classList.remove('show'); },3000);
+}
 function fechar(id){document.getElementById(id).classList.remove('open');}
 function abrir(id){document.getElementById(id).classList.add('open');}
 function zoomImg(src){document.getElementById('zoom-img').src=src;abrir('modal-img');}
@@ -1233,7 +1260,7 @@ function openNavGroupForPage(pageId){
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros',
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques', compras:'ng-estoques',
-    dashboard:'ng-analises', relatorios:'ng-analises', sistema:'ng-analises',
+    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises',
   };
   const gId=map[pageId];
   if(gId){
@@ -1262,6 +1289,7 @@ function _goBase(id){
   if(id==='fornecedores')renderFornecedores();
   if(id==='dashboard')renderDashboard();
   if(id==='relatorios')renderRelatorio();
+  if(id==='relmensal')renderRelatorioMensal();
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
   if(id==='sistema')renderSistema();
@@ -1334,7 +1362,7 @@ function renderPCP(){
     const cli=getCli(o.cliId)||{nome:'—'};
     const vend=getV(o.vendId)||{nome:'—'};
     const rc=[o.urg?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
-    const mCells=MAQUINAS.map(m=>`<td class="tc"><span class="mq ${(o.maq||[]).includes(m.id)?'mq-on':'mq-off'}">${(o.maq||[]).includes(m.id)?'✓':'·'}</span></td>`).join('');
+    const mCells=MAQUINAS.map(m=>`<td class="tc" onclick="event.stopPropagation();abrirTablet('${m.id}')" title="Ver fila da máquina"><span class="mq ${(o.maq||[]).includes(m.id)?'mq-on':'mq-off'}">${(o.maq||[]).includes(m.id)?'✓':'·'}</span></td>`).join('');
     const hasImg=o.imgs&&o.imgs.length>0;
     // Build imgs from item images too
     const allImgs=[...(o.imgs||[]),...((o.itens||[]).map(it=>it.img).filter(Boolean))];
@@ -1346,8 +1374,8 @@ function renderPCP(){
     const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':o.status==='Concluído'?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&o.status!=='Concluído'?'background:rgba(220,38,38,.05);':'';
     return `<tr class="${rc}" style="${rowBg}" onclick="selecionarOF('${o.of}')">
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
-      <td class="tc" style="${o.dia===PCP_DIA_ATUAL?'color:var(--accent);font-weight:700':''}">${o.dia||'—'}</td>
-      <td class="tc ${prazoC(o.ent)}">${o.ent||'—'}</td>
+      <td class="tc" style="${o.dia===PCP_DIA_ATUAL?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
+      <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
       <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}</td>
       <td class="tc">${imgC}</td>
       <td>${cli.nome} ${empBadge(o.empId)}</td>
@@ -1733,6 +1761,15 @@ function ofCliChange(){
   if(!cliId){el.style.display='none'; if(cliSearch&&document.activeElement!==cliSearch) cliSearch.value=''; return;}
   const c=getCli(cliId);
   if(!c){el.style.display='none';return;}
+  const vsel=document.getElementById('f-vend');
+  if(vsel && !vsel.value){
+    const vid = c.vendId || c.vendedor_id || '';
+    if(vid) vsel.value = vid;
+    else if(c.vendedor){
+      const found = (VENDEDORES||[]).find(v=>(v.nome||'')===c.vendedor);
+      if(found) vsel.value = found.id;
+    }
+  }
   if(cliSearch && document.activeElement!==cliSearch) cliSearch.value=c.nome||'';
   el.style.display='block';
   el.innerHTML='📍 '+[c.cidade,c.uf].filter(Boolean).join('/')
@@ -1963,6 +2000,11 @@ function abrirModalCliente(id){
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
   const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?c.empId||'':'';
+  const vsel=document.getElementById('cl-vend');
+  if(vsel){
+    vsel.innerHTML='<option value="">—</option>'+VENDEDORES.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
+    vsel.value=c?(c.vendId||''):'';
+  }
   const cust=document.getElementById('cl-ramo-custom');if(cust)cust.style.display='none';
   const h2=document.querySelector('#modal-cli h2');
   if(h2)h2.textContent=c?'✏ Editar Cliente':'👤 Cadastrar Cliente';
@@ -1977,6 +2019,8 @@ async function salvarEdicaoCliente(id){
   const ramoSel=document.getElementById('cl-ramo').value;
   const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
   const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
+  const vendId=(document.getElementById('cl-vend')||{}).value||'';
+  const vendNome=(getV(vendId)||{}).nome||'';
   const payload={
     id:c.id,
     nome,
@@ -1989,6 +2033,8 @@ async function salvarEdicaoCliente(id){
     end:document.getElementById('cl-end').value,
     ramo,
     obs:document.getElementById('cl-obs').value,
+    vendedor_id: vendId || null,
+    vendedor: vendNome || null,
     empId:(document.getElementById('cl-emp')||{}).value||''
   };
   const r = await salvarViaApiOuLocal('cliente',
@@ -1996,7 +2042,7 @@ async function salvarEdicaoCliente(id){
     ()=>{ Object.assign(c,payload); return {ok:true, local:true}; }
   );
   if(!r || !r.ok){toast('Erro ao atualizar cliente','var(--red)');return;}
-  Object.assign(c,payload);
+  Object.assign(c,payload,{vendId, vendedor:vendNome});
   fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente atualizado!');
 }
 async function salvarCliente(){
@@ -2005,7 +2051,9 @@ async function salvarCliente(){
   const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
   const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
   const empId=(document.getElementById('cl-emp')||{}).value||EMP_FILTRO||'';
-  const novo={id:'C'+String(CLIENTES.length+1).padStart(2,'0'),nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId};
+  const vendId=(document.getElementById('cl-vend')||{}).value||'';
+  const vendNome=(getV(vendId)||{}).nome||'';
+  const novo={id:'C'+String(CLIENTES.length+1).padStart(2,'0'),nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId,vendedor_id:vendId||null,vendedor:vendNome||null,vendId,vendedor:vendNome};
   const r = await salvarViaApiOuLocal('cliente',
     ()=>api('POST','/clientes', novo),
     ()=>{ CLIENTES.push(novo); return {ok:true, local:true}; }
@@ -2190,7 +2238,7 @@ function _renderEstoqueBase(){
       <span style="font-weight:700;color:${cor};font-family:var(--mono)">${(h.tipo||'').toUpperCase()}</span>
       <span style="color:${cor};font-weight:700;font-family:var(--mono)">${sinal}${Number(h.qtd||0).toLocaleString()}</span>
       <span style="color:var(--text2)">${ch?ch.nome:(h.chp||'—')}<span style="display:block;font-size:.68rem;color:var(--text3)">${[h.of&&h.of!=='—'?h.of:'', h.obs||''].filter(Boolean).join(' · ')}</span></span>
-      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${h.data||''}</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(h.data||'')}</span>
       <button class="btn-icon btn-sm" onclick="editarMovEstoque(${idx})" title="Editar" style="color:var(--accent)">✏</button>
       <button class="btn-icon btn-sm" onclick="apagarMovEstoque(${idx})" title="Apagar" style="color:var(--red)">🗑</button>
     </div>`;
@@ -2508,7 +2556,7 @@ function fecharTablet(){
 function renderTabletBody(){
   const maqId=tabMaq;
   const fila=OFs.filter(o=>(o.maq||[]).includes(maqId)&&o.status!=='Concluído').sort((a,b)=>a.seq-b.seq);
-  const atual=fila[0]; const prox=fila.slice(1,5);
+  const atual=fila[0];
   const st=TAB_STATE[maqId]||{status:'aguardando',acumSecs:0,fase:'setup'};
   const histMaq=APONTAMENTOS.filter(a=>a.maqId===maqId).slice(-6).reverse();
   const iaStats=getIAStats(maqId);
@@ -2557,7 +2605,7 @@ function renderTabletBody(){
         <div class="tv-of">${atual.of}</div>
         <div class="tv-cli">${cli.nome}</div>
         <div class="tv-qtd">${(atual.qtd||0).toLocaleString()} un</div>
-        <div class="${prazoC(atual.ent)}" style="font-size:.82rem;margin-top:4px">📅 Entrega: ${atual.ent||'—'}</div>
+        <div class="${prazoC(atual.ent)}" style="font-size:.82rem;margin-top:4px">📅 Entrega: ${fmtDataBR(atual.ent||'')}</div>
         ${atual.obs?`<div style="font-size:.78rem;color:var(--text2);margin-top:6px;background:var(--s2);border-radius:6px;padding:8px">📝 ${atual.obs}</div>`:''}
         <div style="font-size:.7rem;color:var(--text3);margin-top:6px">Estimativa: <b style="color:var(--accent)">${fmtMin(estMin)}</b> · ${APONTAMENTOS.filter(a=>a.maqId===maqId).length} histórico(s)</div>
         ${setupFinSecs>0?`<div style="font-size:.72rem;background:var(--yellow-soft);border:1px solid var(--yellow);border-radius:4px;padding:4px 8px;margin-top:6px;color:var(--yellow)">⚙ Setup: ${secsToFmt(Math.round(setupFinSecs))} · Produção em andamento</div>`:''}
@@ -2582,18 +2630,23 @@ function renderTabletBody(){
       </div>`;
   }
 
-  const filaHTML=prox.length?prox.map((o,i)=>{
+  const filaHTML=fila.length?fila.map((o,i)=>{
     const c=getCli(o.cliId)||{nome:'—'};
+    const isFirst=i===0, isLast=i===fila.length-1;
     return `<div class="fila-item">
-      <div class="fila-n">${i+2}</div>
+      <div class="fila-n">${i+1}</div>
       <div style="flex:1">
         <div class="fila-of">${o.of}${o.urg?' 🔴':''} ${empBadge(o.empId)}</div>
         <div class="fila-cli">${c.nome}</div>
       </div>
-      <div class="fila-q">${(o.qtd||0).toLocaleString()} un<br><span class="${prazoC(o.ent)}" style="font-size:.62rem">${o.ent||'—'}</span></div>
+      <div class="fila-q">${(o.qtd||0).toLocaleString()} un<br><span class="${prazoC(o.ent)}" style="font-size:.62rem">${fmtDataBR(o.ent||'')}</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center">
+        <button onclick="event.stopPropagation();filaMaqMover('${maqId}','${o.id}',-1)" title="Subir na fila" style="background:var(--s2);border:1px solid var(--border);color:${isFirst?'var(--text3)':'var(--text)'};border-radius:5px;padding:2px 7px;cursor:${isFirst?'not-allowed':'pointer'};font-size:.72rem;font-family:var(--mono)" ${isFirst?'disabled':''}>↑</button>
+        <button onclick="event.stopPropagation();filaMaqMover('${maqId}','${o.id}',1)" title="Descer na fila" style="background:var(--s2);border:1px solid var(--border);color:${isLast?'var(--text3)':'var(--text)'};border-radius:5px;padding:2px 7px;cursor:${isLast?'not-allowed':'pointer'};font-size:.72rem;font-family:var(--mono)" ${isLast?'disabled':''}>↓</button>
+      </div>
       <button onclick="tabPassarParaAmanha('${maqId}','${o.of}')" title="Passar para próximo dia" style="background:var(--yellow-soft);border:1px solid var(--yellow);color:var(--yellow);border-radius:5px;padding:3px 8px;cursor:pointer;font-size:.68rem;font-family:var(--mono)">📅</button>
     </div>`;
-  }).join(''):'<div style="color:var(--text3);font-size:.78rem">Sem próximos pedidos</div>';
+  }).join(''):'<div style="color:var(--text3);font-size:.78rem">Sem pedidos na fila</div>';
 
   const histHTML=histMaq.length?histMaq.map(a=>{
     const totalFmt=a.tempTotalSecs?secsToFmt(a.tempTotalSecs):fmtMin(a.tempReal||0);
@@ -2601,7 +2654,7 @@ function renderTabletBody(){
     return `<div class="hist-item" style="padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <b style="color:var(--accent);font-family:var(--mono)">${a.ofNum}</b>
-        <span style="color:var(--text2);font-size:.7rem">${a.fimData||a.data}</span>
+        <span style="color:var(--text2);font-size:.7rem">${fmtDataBR(a.fimData||a.data||'')}</span>
         ${setupFmt?`<span style="background:var(--yellow-soft);color:var(--yellow);border-radius:3px;padding:1px 5px;font-size:.65rem;font-family:var(--mono)">⚙${setupFmt}</span>`:''}
         <b style="color:var(--green);font-family:var(--mono)">${totalFmt}</b>
         ${a.qtdProd?`<span style="color:var(--text2);font-size:.68rem">${a.qtdProd.toLocaleString()} prod</span>`:''}
@@ -2703,7 +2756,7 @@ function renderTabletBody(){
   document.getElementById('tv-body').innerHTML=`
     ${atualHTML}
     ${operadoresPanel}
-    <div class="tv-fila"><h3>📋 Próximos Pedidos</h3>${filaHTML}</div>
+    <div class="tv-fila"><h3>📋 Fila da Máquina</h3>${filaHTML}</div>
     <div class="tv-hist"><h3>📜 Histórico desta Máquina</h3>${histHTML}</div>
     ${iaPanel}`;
 
@@ -2718,6 +2771,25 @@ function renderTabletBody(){
       el.textContent='⏱ '+secsToFmt(Math.round(st2.acumSecs));
     },1000);
   }
+}
+
+async function filaMaqMover(maqId, ofId, dir){
+  const fila=(OFs||[]).filter(o=>(o.maq||[]).includes(maqId)&&o.status!=='Concluído').sort((a,b)=>a.seq-b.seq);
+  const i=fila.findIndex(o=>o.id===ofId);
+  const j=i+dir;
+  if(i<0 || j<0 || j>=fila.length) return;
+  const a=fila[i], b=fila[j];
+  if(!a || !b || !a.id || !b.id) return;
+  const seqA=a.seq, seqB=b.seq;
+  showSaveIndicator('Salvando fila...','var(--yellow)');
+  const r1=await api('PUT','/ofs/'+encodeURIComponent(a.id), { seq: seqB });
+  if(!r1 || !r1.ok){showSaveIndicator('⚠ erro','var(--red)');toast('Erro ao salvar fila','var(--red)');return;}
+  const r2=await api('PUT','/ofs/'+encodeURIComponent(b.id), { seq: seqA });
+  if(!r2 || !r2.ok){showSaveIndicator('⚠ erro','var(--red)');toast('Erro ao salvar fila','var(--red)');return;}
+  try{ await carregarOFs(); }catch(e){}
+  try{ renderPCP(); }catch(e){}
+  try{ renderTabletBody(); }catch(e){}
+  showSaveIndicator('✓ fila salva','var(--green)');
 }
 
 function tabApontar(acao, maqId, ofNum){
@@ -4439,7 +4511,7 @@ function _renderDashboardBase(){
     if(o.status==='Atrasado')html+='<span class="tag t-at">ATRASADO</span>';
     html+='<b style="color:var(--accent);font-family:var(--mono)">'+o.of+'</b>';
     html+='<span>'+c.nome+'</span>';
-    html+='<span style="color:var(--text3);font-size:.7rem">Entrega: '+(o.ent||'—')+'</span>';
+    html+='<span style="color:var(--text3);font-size:.7rem">Entrega: '+fmtDataBR(o.ent||'')+'</span>';
     html+='</div>';
   });
   html+='</div></div>';
@@ -6065,6 +6137,8 @@ function normalizeCli(r){
     pagto:r.pagto||r.pagamento||'',
     rep:r.rep||r.representante||'',
     obs:r.obs||'',
+    vendId:r.vendedor_id||r.vend_id||r.vendedorId||r.vendId||'',
+    vendedor:r.vendedor||r.vendedor_nome||r.vendedorNome||'',
     empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
   };
 }
@@ -6906,6 +6980,23 @@ function renderNotificacoes(){
   if(!NOTIFICACOES.length){list.innerHTML='<div style="color:var(--text3);padding:10px;font-size:.78rem;text-align:center">✅ Nenhuma notificação</div>';return;}
   const corMap={error:'notif-red',warn:'notif-yellow',info:'notif-blue',success:'notif-green'};
   list.innerHTML=NOTIFICACOES.map((n,idx)=>`<div class="notif-item ${corMap[n.tipo]||''}" id="ni-${idx}"><span class="notif-icon">${n.ico||'🔔'}</span><span class="notif-msg">${n.msg}</span><span class="notif-time">${n.time||''}</span><button class="notif-ok-btn" onclick="dispensarNotif(${idx})">OK</button></div>`).join('');
+
+  if(!window._notifAutoTimers) window._notifAutoTimers = {};
+  const keyOf = (n)=>[n.tipo||'',n.ico||'',n.msg||''].join('|');
+  NOTIFICACOES.forEach((n)=>{
+    if((n && n.tipo)==='success'){
+      const k=keyOf(n);
+      if(window._notifAutoTimers[k]) return;
+      window._notifAutoTimers[k]=setTimeout(()=>{
+        try{
+          const idx=(NOTIFICACOES||[]).findIndex(x=>keyOf(x)===k);
+          if(idx>=0) dispensarNotif(idx);
+        }catch(e){}
+        try{ clearTimeout(window._notifAutoTimers[k]); }catch(e){}
+        delete window._notifAutoTimers[k];
+      },3000);
+    }
+  });
 }
 function dispensarNotif(idx){
   const el=document.getElementById('ni-'+idx);
@@ -8216,7 +8307,7 @@ function renderOrcamentos(){
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
         <span class="orc-num">${orc.id}</span>
         <span class="tag ${stMap[orc.status]||''}">${orc.status}</span>
-        <span style="font-size:.75rem;color:var(--text2)">${orc.data}</span>
+        <span style="font-size:.75rem;color:var(--text2)">${fmtDataBR(orc.data||'')}</span>
         <span style="font-weight:700">${cli.nome}</span>
         <span style="color:var(--text2);font-size:.75rem">${v.nome}</span>
         ${empBadge(orc.empId)}
@@ -8538,10 +8629,10 @@ function renderCompras(){
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
         <span style="font-family:var(--mono);font-weight:800;color:var(--accent)">${c.id}</span>
         <span style="font-weight:700;color:${cor}">${ico} ${c.status}</span>
-        <span style="color:var(--text2);font-size:.75rem">📅 ${c.data}</span>
+        <span style="color:var(--text2);font-size:.75rem">📅 ${fmtDataBR(c.data||'')}</span>
         <span style="font-weight:700;font-size:.85rem">🏭 ${c.forn}</span>
         ${empBadge(c.empId)}
-        ${c.prev?`<span style="color:var(--text2);font-size:.72rem">Prev: ${c.prev}</span>`:''}
+        ${c.prev?`<span style="color:var(--text2);font-size:.72rem">Prev: ${fmtDataBR(c.prev||'')}</span>`:''}
         <span style="color:var(--green);font-weight:800;font-family:var(--mono);margin-left:auto">${fmtR(c.vtot||0)}</span>
       </div>
       ${itensHtml}
@@ -9347,6 +9438,117 @@ function renderRelatorio() {
   }
 }
 
+var REL_MENSAL_DATA = [];
+var REL_MENSAL_META = null;
+function renderRelatorioMensal(){
+  const now=new Date();
+  const mesEl=document.getElementById('rm-mes');
+  const anoEl=document.getElementById('rm-ano');
+  const pesoEl=document.getElementById('rm-peso');
+  if(mesEl) mesEl.value=String(now.getMonth()+1);
+  if(anoEl) anoEl.value=String(now.getFullYear());
+  if(pesoEl && !pesoEl.value) pesoEl.value='0.50';
+  carregarRelatorioMensal();
+}
+
+async function carregarRelatorioMensal(){
+  const mes=parseInt((document.getElementById('rm-mes')||{}).value)||1;
+  const ano=parseInt((document.getElementById('rm-ano')||{}).value)||new Date().getFullYear();
+  const peso=parseFloat((document.getElementById('rm-peso')||{}).value)||0;
+  const from=`${ano}-${String(mes).padStart(2,'0')}-01`;
+  const lastDay=new Date(ano, mes, 0).getDate();
+  const to=`${ano}-${String(mes).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const cont=document.getElementById('rm-content');
+  if(cont) cont.innerHTML='<div style="color:var(--text2);font-size:.82rem">Carregando...</div>';
+
+  const r=await api('GET', `/ofs?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  if(!r || !r.ok){
+    if(cont) cont.innerHTML='<div style="color:var(--red);font-weight:700">Erro ao carregar relatório</div>';
+    toast('Erro ao carregar relatório','var(--red)');
+    return;
+  }
+
+  const ofs=(r.data||[]).map(normalizeOF);
+  const totalOFs=ofs.length;
+  const clientesAtendidos=new Set(ofs.map(o=>o.cliId).filter(Boolean)).size;
+  const totalQtd=ofs.reduce((s,o)=>s+(Number(o.qtd)||0),0);
+  const toneladas=(totalQtd*peso)/1000;
+
+  REL_MENSAL_DATA=ofs;
+  REL_MENSAL_META={mes,ano,peso,from,to,totalOFs,clientesAtendidos,totalQtd,toneladas};
+
+  const thS='padding:7px 10px;border:1px solid var(--border);background:var(--s2);font-size:.72rem;font-weight:800;text-align:left;font-family:var(--mono);text-transform:uppercase;';
+  const tdS='padding:7px 10px;border:1px solid var(--s3);font-size:.78rem;';
+
+  const rows=ofs.sort((a,b)=>(a.seq||0)-(b.seq||0)).map((o,i)=>{
+    const c=getCli(o.cliId)||{nome:'—'};
+    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'—';
+    const dia=fmtDataBR(o.dia||o.data_producao||o.dataProducao||'');
+    const ent=fmtDataBR(o.ent||o.data_entrega||o.dataEntrega||'');
+    return `<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+      <td style="${tdS};font-family:var(--mono);font-weight:800;color:var(--accent)">${o.of||o.numero||'—'}</td>
+      <td style="${tdS}">${c.nome}</td>
+      <td style="${tdS}">${vend}</td>
+      <td style="${tdS};font-family:var(--mono)">${dia}</td>
+      <td style="${tdS};font-family:var(--mono)">${ent}</td>
+      <td style="${tdS};font-family:var(--mono)">${(Number(o.qtd)||0).toLocaleString()}</td>
+      <td style="${tdS}">${o.status||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`
+    <div class="g2">
+      <div class="sbox"><div class="sbox-h">📌 Resumo</div><div class="sbox-b">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+          <div class="card" style="border-left:3px solid var(--accent)"><div class="card-lbl">Total de OFs</div><div class="card-val">${totalOFs}</div></div>
+          <div class="card" style="border-left:3px solid var(--green)"><div class="card-lbl">Clientes atendidos</div><div class="card-val">${clientesAtendidos}</div></div>
+          <div class="card" style="border-left:3px solid var(--yellow)"><div class="card-lbl">Total unidades</div><div class="card-val">${totalQtd.toLocaleString()}</div></div>
+          <div class="card" style="border-left:3px solid var(--purple)"><div class="card-lbl">Toneladas</div><div class="card-val">${toneladas.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="card-sub">${peso.toLocaleString('pt-BR',{minimumFractionDigits:2})} kg/un</div></div>
+        </div>
+        <div style="margin-top:10px;color:var(--text3);font-size:.72rem;font-family:var(--mono)">Período: ${fmtDataBR(from)} a ${fmtDataBR(to)}</div>
+      </div></div>
+      <div class="sbox"><div class="sbox-h">📋 OFs do Período</div><div class="sbox-b" style="padding:0">
+        <div style="max-height:520px;overflow:auto">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="${thS}">OF</th>
+              <th style="${thS}">Cliente</th>
+              <th style="${thS}">Vendedor</th>
+              <th style="${thS}">Data</th>
+              <th style="${thS}">Entrega</th>
+              <th style="${thS}">Qtd</th>
+              <th style="${thS}">Status</th>
+            </tr></thead>
+            <tbody>${rows||`<tr><td colspan="7" style="${tdS};color:var(--text3)">Nenhuma OF no período</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div></div>
+    </div>`;
+
+  if(cont) cont.innerHTML=html;
+}
+
+function exportarRelMensalCSV(){
+  if(!REL_MENSAL_DATA || !REL_MENSAL_DATA.length){toast('Sem dados para exportar','var(--orange)');return;}
+  const header=['of','cliente','vendedor','data','entrega','qtd','status'];
+  const lines=[header.join(';')];
+  REL_MENSAL_DATA.forEach(o=>{
+    const c=getCli(o.cliId)||{nome:'—'};
+    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'—';
+    const dia=fmtDataBR(o.dia||o.data_producao||o.dataProducao||'');
+    const ent=fmtDataBR(o.ent||o.data_entrega||o.dataEntrega||'');
+    const row=[o.of||o.numero||'', c.nome||'', vend||'', dia||'', ent||'', String(Number(o.qtd)||0), o.status||''];
+    lines.push(row.map(v=>String(v).replaceAll(';',',')).join(';'));
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  const meta=REL_MENSAL_META||{};
+  const name=`relatorio_mensal_${meta.ano||''}_${String(meta.mes||'').padStart(2,'0')}.csv`;
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+}
+
 // intercept rel-tipo change to handle 'operadores'
 document.addEventListener('change', function(e){
   if (e.target && e.target.id==='rel-tipo' && e.target.value==='operadores') {
@@ -9500,10 +9702,12 @@ salvarCliente = async function(){
   const ramoSel=document.getElementById('cl-ramo').value;
   const ramoCustom=document.getElementById('cl-ramo-custom').value.trim();
   const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
-  const payload={nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,fone:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value};
+  const vendId=(document.getElementById('cl-vend')||{}).value||'';
+  const vendNome=(getV(vendId)||{}).nome||'';
+  const payload={nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,fone:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,vendedor_id:vendId||null,vendedor:vendNome||null};
   const r=await salvarViaApiOuLocal('cliente', ()=>api('POST','/clientes',payload), _salvarCli_orig);
   if(r.ok && !r.local){
-    CLIENTES.push({...payload,id:r.data.id,tel:payload.fone});
+    CLIENTES.push({...payload,id:r.data.id,tel:payload.fone,vendId, vendedor:vendNome});
     fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente cadastrado!');
     logAction('Novo cliente',nome);
   } else if(!r.ok){ toast('Erro: '+(r.error||''),'var(--red)'); }
@@ -9848,6 +10052,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
+      <div class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
     </div>
   </div>
@@ -10652,6 +10857,23 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="page-body" id="rel-content"></div>
 </div>
 
+<!-- ========== 13B. RELATÓRIO MENSAL ========== -->
+<div id="page-relmensal" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <span style="font-size:.78rem;color:var(--text2)">📅 Relatório Mensal de OFs</span>
+    <select id="rm-mes" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.78rem">
+      <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option><option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+      <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option><option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+    </select>
+    <input id="rm-ano" type="number" min="2020" max="2100" style="width:92px" placeholder="Ano">
+    <input id="rm-peso" type="number" step="0.01" min="0" style="width:160px" placeholder="Peso médio (kg/un)">
+    <button class="btn btn-accent btn-sm" onclick="carregarRelatorioMensal()">Gerar</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="exportarRelMensalCSV()">📊 Exportar CSV</button>
+  </div>
+  <div class="page-body" id="rm-content"></div>
+</div>
+
 <!-- ========== 14. DASHBOARD ========== -->
 
 <!-- ========== SISTEMA / BACKUP ========== -->
@@ -11028,6 +11250,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>RAZÃO SOCIAL</label><input id="cl-rs"></div>
     <div class="mf"><label>CNPJ / CPF</label><input id="cl-cnpj"></div>
     <div class="mf"><label>EMPRESA *</label><select id="cl-emp"><option value="">Selecionar empresa...</option></select></div>
+    <div class="mf"><label>VENDEDOR RESPONSÁVEL</label><select id="cl-vend"><option value="">—</option></select></div>
     <div class="mf"><label>TELEFONE</label><input id="cl-tel"></div>
     <div class="mf"><label>E-MAIL</label><input id="cl-email"></div>
     <div class="mf"><label>CIDADE</label><input id="cl-cidade"></div>
