@@ -2315,104 +2315,39 @@ function _renderEstoqueBase(){
     'BRAGAGNOLO':'var(--orange)'
   };
   const fornColor=(f)=>fornColors[String(f||'').toUpperCase()]||'var(--teal)';
-  const grouped=document.getElementById('est-grouped');
-  if(grouped){
-    const byForn={};
-    lista.forEach(c=>{
-      const f=String(c.forn||'—').trim()||'—';
-      const nom=String(c.nom||'—').trim()||'—';
-      const nome=String(c.nome||'—').trim()||'—';
-      if(!byForn[f]) byForn[f]={};
-      if(!byForn[f][nom]) byForn[f][nom]={};
-      if(!byForn[f][nom][nome]) byForn[f][nom][nome]=[];
-      byForn[f][nom][nome].push(c);
-    });
-
-    const fornList=Object.keys(byForn).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    grouped.innerHTML = fornList.map(f=>{
-      const cF=fornColor(f);
-      const noms=byForn[f];
-      const nomList=Object.keys(noms).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-      const nomHtml = nomList.map(nom=>{
-        const names=noms[nom];
-        const nameList=Object.keys(names).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-        const allItems=nameList.flatMap(nm=>names[nm]);
-        const totQtd=allItems.reduce((s,x)=>s+(Number(x.qtd)||0),0);
-        const totVal=allItems.reduce((s,x)=>s+(Number(x.qtd)||0)*(Number(x.val)||0),0);
-        const body=nameList.map(nm=>{
-          const items=[...names[nm]].sort((a,b)=>String(a.tam||'').localeCompare(String(b.tam||''),'pt-BR'));
-          const lines=items.map(it=>{
-            const dim=it.tam||((it.larg||it.largura||it.largura_mm||'')+'X'+(it.comp||it.comprimento||it.comprimento_mm||''));
-            const qtd=Number(it.qtd)||0;
-            const v=Number(it.val)||0;
-            const tot=qtd*v;
-            return `<div style="display:grid;grid-template-columns:1fr 90px 110px 120px;gap:10px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:var(--s2);margin-top:6px">
-              <div style="font-family:var(--mono);color:var(--text2)">${dim}</div>
-              <div style="text-align:right;font-family:var(--mono);font-weight:800">${qtd.toLocaleString()}</div>
-              <div style="text-align:right;font-family:var(--mono)">${fmtR(v)}</div>
-              <div style="text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(tot)}</div>
-            </div>`;
-          }).join('');
-          return `<div style="padding:10px 0">
-            <div style="font-weight:900;color:var(--text);font-size:.82rem">• ${escH(nm)}</div>
-            ${lines}
-          </div>`;
-        }).join('');
-        return `<details open style="border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-top:10px;padding:8px 10px">
-          <summary style="cursor:pointer;display:flex;gap:10px;align-items:center;list-style:none;font-family:var(--mono);font-weight:900">
-            <span style="color:var(--accent)">[${escH(nom)}]</span>
-            <span style="color:var(--text3);font-size:.72rem">${totQtd.toLocaleString()} un</span>
-            <span style="margin-left:auto;color:var(--green)">${fmtR(totVal)}</span>
-          </summary>
-          <div style="margin-top:10px">
-            <div style="display:grid;grid-template-columns:1fr 90px 110px 120px;gap:10px;color:var(--text3);font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);padding:0 10px">
-              <div>Tamanho</div><div style="text-align:right">Qtd</div><div style="text-align:right">Valor Unit.</div><div style="text-align:right">Valor Total</div>
-            </div>
-            ${body}
-          </div>
-        </details>`;
-      }).join('');
-
-      return `<div class="sbox" style="margin-bottom:14px;border-left:4px solid ${cF}">
-        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between">
-          <span style="color:${cF};font-weight:900">── ${escH(f)} ──</span>
-          <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">${Object.values(noms).reduce((s,g)=>s+Object.values(g).reduce((s2,arr)=>s2+Object.values(arr).reduce((s3,it)=>s3+it.length,0),0),0)} itens</span>
-        </div>
-        <div class="sbox-b">${nomHtml}</div>
-      </div>`;
-    }).join('');
-  }
-
   // ---- TABELA ----
   const thS='padding:8px 10px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);background:var(--s2);color:var(--text2);white-space:nowrap;';
   const tdS='padding:6px 10px;border:1px solid var(--border);font-size:.78rem;vertical-align:middle;';
   const trS=(i)=>i%2===0?'background:var(--surface)':'background:var(--s2)';
 
   const rows=lista.length===0
-    ?`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma chapa cadastrada — clique em ＋ Nova Chapa para começar</td></tr>`
+    ?`<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma chapa cadastrada — clique em ＋ Nova Chapa para começar</td></tr>`
     :lista.map((c,i)=>{
-      const total=c.qtd*(c.val||0);
-      const statusCor=c.qtd===0?'var(--red)':c.qtd<=c.min?'var(--yellow)':'var(--green)';
-      const dim=c.comp&&c.larg?`${c.comp}×${c.larg}mm`:c.tam||'—';
+      const min = (c.min!=null?Number(c.min):200) || 200;
+      const qtd = Number(c.qtd)||0;
+      const vunit = Number(c.val)||0;
+      const total = (c.valor_total!=null ? Number(c.valor_total) : (qtd*vunit));
+      const statusCor=qtd===0?'var(--red)':qtd<min?'var(--orange)':'var(--green)';
+      const dim=c.tam||((c.larg||c.largura||c.largura_mm||'')+'X'+(c.comp||c.comprimento||c.comprimento_mm||''));
       return `<tr style="${trS(i)}" id="est-row-${c.id}">
-        <td style="${tdS};font-weight:700;color:var(--text)">${c.nome}</td>
-        <td style="${tdS};color:var(--accent);font-family:var(--mono)">${c.nom||'—'}</td>
-        <td style="${tdS};color:var(--text2)">${c.forn}</td>
-        <td style="${tdS};font-size:.72rem;color:var(--purple)">${c.qual||'—'}</td>
-        <td style="${tdS};font-family:var(--mono);text-align:center">${dim}</td>
-        <td style="${tdS};font-family:var(--mono);text-align:right">${fmtR(c.val||0)}</td>
+        <td style="${tdS};font-weight:700;color:var(--text)">${escH(c.nome||'')}</td>
+        <td style="${tdS};color:var(--accent);font-family:var(--mono);font-weight:900;cursor:pointer" onclick="copyToClipboard('${escH(c.nom||'')}');toast('Copiado','var(--accent)')">${escH(c.nom||'—')}</td>
+        <td style="${tdS};color:var(--accent);cursor:pointer" onclick="copyToClipboard('${escH(c.forn||'')}');toast('Copiado','var(--accent)')">${escH(c.forn||'—')}</td>
+        <td style="${tdS};font-size:.72rem;color:var(--purple);font-family:var(--mono)">${escH(c.cnpj||'—')}</td>
+        <td style="${tdS};font-family:var(--mono);text-align:center">${escH(dim||'—')}</td>
+        <td style="${tdS};font-family:var(--mono)">${escH(c.nf||'')}</td>
+        <td style="${tdS};font-family:var(--mono);text-align:right">${fmtR(vunit)}</td>
         <td style="${tdS};font-family:var(--mono);text-align:right">
-          <span style="color:${statusCor};font-weight:700">${c.qtd.toLocaleString()}</span>
-          ${c.qtd<=c.min?`<span style="font-size:.62rem;color:var(--red);display:block">⚠ Mín:${c.min}</span>`:''}
+          <span style="color:${statusCor};font-weight:900">${qtd.toLocaleString()}</span>
+          ${qtd<min?`<span style="font-size:.62rem;color:var(--orange);display:block;font-weight:900">▲ Baixo (mín ${min})</span>`:''}
         </td>
-        <td style="${tdS};font-family:var(--mono);text-align:right;color:var(--green);font-weight:700">${fmtR(total)}</td>
-        <td style="${tdS};font-family:var(--mono);color:var(--purple);font-size:.72rem">${c.vincada?`🔧 ${c.vincos||'Sim'}`:'—'}</td>
-        <td style="${tdS};text-align:center">${empBadge(c.empId)}</td>
+        <td style="${tdS};font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(total)}</td>
+        <td style="${tdS};font-family:var(--mono);color:var(--text3);font-size:.72rem">—</td>
         <td style="${tdS};text-align:center;white-space:nowrap">
           <div style="display:flex;gap:4px;justify-content:center">
+            <button class="btn-icon btn-sm" onclick="abrirBaixaManual('${c.id}')" title="Baixar" style="color:var(--orange)">-</button>
+            <button class="btn-icon btn-sm" onclick="abrirEntradaRapida('${c.id}')" title="Entrada" style="color:var(--green)">+</button>
             <button class="btn-icon btn-sm" onclick="abrirEditarChapa('${c.id}')" title="Editar">✏</button>
-            <button class="btn-icon btn-sm" onclick="abrirEntradaRapida('${c.id}')" title="Entrada de estoque" style="color:var(--green)">+</button>
-            <button class="btn-icon btn-sm" onclick="abrirBaixaManual('${c.id}')" title="Baixa de estoque" style="color:var(--orange)">▼</button>
             <button class="btn-icon btn-sm" onclick="excluirChapa('${c.id}')" title="Excluir" style="color:var(--red)">🗑</button>
           </div>
         </td>
@@ -2427,14 +2362,14 @@ function _renderEstoqueBase(){
   if(footEl){
     const totalQtd=lista.reduce((s,c)=>s+c.qtd,0);
     const totalValUnit=lista.length>0?lista.reduce((s,c)=>s+(c.val||0),0)/lista.length:0;
-    const totalValTotal=lista.reduce((s,c)=>s+c.qtd*(c.val||0),0);
+    const totalValTotal=lista.reduce((s,c)=>s+(Number(c.valor_total)!=null?Number(c.valor_total):c.qtd*(c.val||0)),0);
     const tdFS='padding:8px 10px;border:1px solid var(--border);font-size:.75rem;font-weight:700;background:var(--s3);';
     footEl.innerHTML=`<tr>
-      <td style="${tdFS}color:var(--text2)" colspan="5">TOTAIS (${lista.length} item${lista.length!==1?'s':''})</td>
+      <td style="${tdFS}color:var(--text2)" colspan="6">TOTAIS (${lista.length} item${lista.length!==1?'s':''})</td>
       <td style="${tdFS}text-align:right;color:var(--text2)">${fmtR(totalValUnit)} <span style="font-size:.62rem;color:var(--text3)">média</span></td>
       <td style="${tdFS}text-align:right;color:var(--text)">${totalQtd.toLocaleString()} un</td>
       <td style="${tdFS}text-align:right;color:var(--green)">${fmtR(totalValTotal)}</td>
-      <td style="${tdFS}" colspan="3"></td>
+      <td style="${tdFS}" colspan="2"></td>
     </tr>`;
   }
 
@@ -6413,18 +6348,19 @@ function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.ve
 function normalizeEst(r){
   return {
     id:r.id,
-    forn:r.forn||r.fornecedor||'',
-    nom:r.nom||r.codigo||r.cod||r.tipo_papel||r.tipoPapel||'',
+    forn:r.forn||r.fornecedor||r.fornecedor_nome||r.fornecedorName||'',
+    nom:r.nomenclatura||r.nom||r.codigo||r.cod||r.tipo_papel||r.tipoPapel||'',
     tam:r.tam||r.tamanho||'',
     comp:r.comp!=null?r.comp:(r.comprimento_mm!=null?r.comprimento_mm:r.comprimento),
     larg:r.larg!=null?r.larg:(r.largura_mm!=null?r.largura_mm:r.largura),
     nome:r.nome||r.descricao||'',
     qual:r.qual||r.qualidade||r.tipo_papel||r.tipoPapel||'',
-    cnpj:r.cnpj||'',
+    cnpj:r.qual_cnpj||r.cnpj||'',
     nf:r.nf||'',
-    qtd:r.qtd!=null?r.qtd:(r.quantidade_atual!=null?r.quantidade_atual:r.quantidade),
+    qtd:r.quantidade!=null?r.quantidade:(r.qtd!=null?r.qtd:(r.quantidade_atual!=null?r.quantidade_atual:r.saldo)),
     val:r.val!=null?r.val:r.valor_unitario!=null?r.valor_unitario:r.custo_unitario,
-    min:r.min!=null?r.min:r.quantidade_minima,
+    min:r.estoque_minimo!=null?r.estoque_minimo:(r.min!=null?r.min:r.quantidade_minima),
+    valor_total:r.valor_total!=null?r.valor_total:(r.total!=null?r.total:r.vtot),
     vincada:!!(r.vincada||r.vincada===true),
     vincos:r.vincos||'',
     obs:r.obs||'',
@@ -10862,22 +10798,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
-      <div id="est-grouped"></div>
-      <div id="est-table-wrap" style="overflow-x:auto;display:none">
+      <div id="est-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
           <thead>
             <tr style="background:var(--s2)">
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;cursor:pointer" onclick="estOrdenar('nome')">NOMENCLATURA ↕</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOM.</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;cursor:pointer" onclick="estOrdenar('forn')">FORNECEDOR ↕</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;cursor:pointer;text-align:right" onclick="estOrdenar('val')">VALOR UNIT. ↕</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;cursor:pointer;text-align:right" onclick="estOrdenar('qtd')">QUANTIDADE ↕</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">VALOR TOTAL</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap;text-align:center">EMPRESA</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO (MM)</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">N° NF</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QUANTIDADE</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL R$</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VÍNCULOS</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
             </tr>
           </thead>
           <tbody id="est-table-body"></tbody>

@@ -808,7 +808,16 @@ app.get('/api/chapas_estoque', async (req, res) => {
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
-      const { data, error } = await supabase.from(t).select('*').order('nome');
+      let { data, error } = await supabase.from(t).select('*')
+        .order('fornecedor', { ascending: true })
+        .order('nomenclatura', { ascending: true })
+        .order('tamanho', { ascending: true });
+      if (error) {
+        const msg = String(error.message || error);
+        if (msg.includes('column') || msg.includes('Could not find')) {
+          ({ data, error } = await supabase.from(t).select('*').order('nome'));
+        }
+      }
       if (!error) return ok(res, data);
       lastErr = error;
       const msg = String(error.message || error);
@@ -824,9 +833,20 @@ app.post('/api/chapas_estoque', async (req, res) => {
     let lastErr = null;
     for (const t of tables) {
       const input = req.body || {};
+      const canonical = {
+        fornecedor: input.fornecedor ?? input.forn ?? '',
+        nomenclatura: input.nomenclatura ?? input.nom ?? input.codigo ?? input.cod ?? input.tipo_papel ?? '',
+        tamanho: input.tamanho ?? input.tam ?? '',
+        nome: input.nome ?? input.descricao ?? '',
+        qual_cnpj: input.qual_cnpj ?? input.cnpj ?? '',
+        nf: input.nf ?? '',
+        quantidade: input.quantidade ?? input.qtd ?? input.quantidade_atual ?? 0,
+        valor_unitario: input.valor_unitario ?? input.val ?? input.custo_unitario ?? 0,
+        estoque_minimo: input.estoque_minimo ?? input.min ?? 200
+      };
       const tryInsert = async (payload) => supabase.from(t).insert([payload]).select();
 
-      let { data, error } = await tryInsert(input);
+      let { data, error } = await tryInsert(canonical);
       if (!error) return ok(res, data[0]);
       lastErr = error;
 
@@ -834,9 +854,9 @@ app.post('/api/chapas_estoque', async (req, res) => {
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
       if (msg.includes('column') || msg.includes('Could not find')) {
         const payload = { ...input };
-        delete payload.forn;
-        delete payload.valor_unitario;
-        delete payload.valorUnitario;
+        delete payload.valor_total;
+        delete payload.total;
+        delete payload.vtot;
         ({ data, error } = await tryInsert(payload));
         if (!error) return ok(res, data[0]);
         lastErr = error;
@@ -848,7 +868,19 @@ app.post('/api/chapas_estoque', async (req, res) => {
 });
 app.put('/api/chapas_estoque/:id', async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
+    const input = { ...req.body }; delete input.id;
+    const payload = {
+      fornecedor: input.fornecedor ?? input.forn,
+      nomenclatura: input.nomenclatura ?? input.nom ?? input.codigo ?? input.cod ?? input.tipo_papel,
+      tamanho: input.tamanho ?? input.tam,
+      nome: input.nome ?? input.descricao,
+      qual_cnpj: input.qual_cnpj ?? input.cnpj,
+      nf: input.nf,
+      quantidade: input.quantidade ?? input.qtd ?? input.quantidade_atual,
+      valor_unitario: input.valor_unitario ?? input.val ?? input.custo_unitario,
+      estoque_minimo: input.estoque_minimo ?? input.min
+    };
+    Object.keys(payload).forEach(k=>payload[k]===undefined && delete payload[k]);
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
@@ -859,10 +891,10 @@ app.put('/api/chapas_estoque/:id', async (req, res) => {
       const msg = String(error.message || error);
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
       if (msg.includes('column') || msg.includes('Could not find')) {
-        const p = { ...payload };
-        delete p.forn;
-        delete p.valor_unitario;
-        delete p.valorUnitario;
+        const p = { ...input };
+        delete p.valor_total;
+        delete p.total;
+        delete p.vtot;
         ({ data, error } = await tryUpdate(p));
         if (!error) return ok(res, data[0]);
         lastErr = error;
@@ -893,7 +925,7 @@ app.get('/api/chapas_estoque/search', async (req, res) => {
     const q = String(req.query.nomenclatura || '').trim();
     if (!q) return ok(res, []);
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
-    const colsCandidates = ['tipo_papel', 'modelo', 'nom', 'codigo'];
+    const colsCandidates = ['nomenclatura', 'tipo_papel', 'modelo', 'nom', 'codigo'];
     const results = [];
     const keys = new Set();
     for (const t of tables) {
@@ -906,7 +938,7 @@ app.get('/api/chapas_estoque/search', async (req, res) => {
             throw error;
           }
           (data || []).forEach((r) => {
-            const tp = r.tipo_papel ?? r.modelo ?? r.nom ?? r.codigo ?? '';
+            const tp = r.nomenclatura ?? r.tipo_papel ?? r.modelo ?? r.nom ?? r.codigo ?? '';
             const l = r.largura_mm ?? r.largura ?? r.larg ?? null;
             const c = r.comprimento_mm ?? r.comprimento ?? r.comp ?? null;
             const tamStr = r.tamanho ?? r.tam ?? (l && c ? `${l}X${c}` : '');
