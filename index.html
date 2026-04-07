@@ -1205,7 +1205,6 @@ const getCli = id => CLIENTES.find(c=>c.id===id);
 const getCliByName = txt => CLIENTES.find(c=>(c.nome||'').toLowerCase()===(txt||'').toLowerCase());
 const getV   = id => VENDEDORES.find(v=>v.id===id);
 const getMot = id => MOTORISTAS.find(m=>m.id===id);
-const fmtR   = v => 'R$ '+parseFloat(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
 function fmtDataBR(dateStr){
   if(!dateStr) return '—';
   try{
