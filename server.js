@@ -1105,6 +1105,50 @@ app.post('/api/historico_acoes', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/notificacoes', async (req, res) => {
+  try {
+    const lida = req.query.lida;
+    let q = supabase.from('notificacoes').select('*').order('data_hora', { ascending: false }).limit(200);
+    if (lida === 'false' || lida === undefined) q = q.eq('lida', false);
+    if (lida === 'true') q = q.eq('lida', true);
+    const { data, error } = await q;
+    if (error) throw error;
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/notificacoes', async (req, res) => {
+  try {
+    const row = {
+      mensagem: req.body?.mensagem || '',
+      tipo: req.body?.tipo || 'info',
+      lida: !!req.body?.lida,
+      data_hora: req.body?.data_hora || new Date().toISOString(),
+      criado_por: req.body?.criado_por || 'sistema',
+    };
+    const { data, error } = await supabase.from('notificacoes').insert([row]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.patch('/api/notificacoes/:id', async (req, res) => {
+  try {
+    const payload = { ...req.body };
+    const { data, error } = await supabase.from('notificacoes').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/notificacoes/clear', async (req, res) => {
+  try {
+    const { error } = await supabase.from('notificacoes').update({ lida: true }).eq('lida', false);
+    if (error) throw error;
+    ok(res, true);
+  } catch (e) { err(res, e); }
+});
+
 app.post('/api/relatorios/dashboard', async (req, res) => {
   try {
     const row = { ...(req.body || {}) };
@@ -1143,6 +1187,60 @@ app.post('/api/relatorios/aparras', async (req, res) => {
       inserted += part.length;
     }
     ok(res, { inserted });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/relatorios/lancar_of', async (req, res) => {
+  try {
+    const ofId = req.body?.of_id ? String(req.body.of_id) : '';
+    const ofNum = req.body?.of_num ? String(req.body.of_num) : '';
+    let of = req.body?.of || null;
+
+    if (!of && ofId) {
+      const { data, error } = await supabase.from('ofs').select('*').eq('id', ofId).limit(1);
+      if (error) throw error;
+      of = data && data[0] ? data[0] : null;
+    }
+
+    if (!of && ofNum) {
+      const { data, error } = await supabase.from('ofs').select('*').or(`of.eq.${ofNum},numero.eq.${ofNum}`).limit(1);
+      if (error) throw error;
+      of = data && data[0] ? data[0] : null;
+    }
+
+    if (!of) return bad(res, 'OF não encontrada');
+
+    const getDate = (v) => {
+      if (!v) return '';
+      const s = String(v);
+      return s.includes('T') ? s.split('T')[0] : s;
+    };
+    const dt = getDate(of.data_conclusao || of.data_conclusao_em || of.data_entrega || of.ent || of.dia || of.data_producao || of.created_at || new Date().toISOString());
+    const mesRef = dt ? dt.slice(0, 7) : '';
+
+    const maq = Array.isArray(of.maq) ? of.maq : (typeof of.maq === 'string' ? (()=>{try{return JSON.parse(of.maq);}catch(e){return [];}})() : []);
+    const maqId = maq[0] || of.maquina || of.maquina_id || '';
+
+    const row = {
+      mes_referencia: mesRef,
+      data: dt || null,
+      maquina: String(maqId || ''),
+      vendedor: String(of.vendedor || of.vend || of.vend_id || ''),
+      cliente: String(of.cliente || of.cli || of.cli_id || ''),
+      tipo_papel: String(of.tipo_papel || of.chp || of.nomenclatura || ''),
+      gramatura: of.gramatura != null ? of.gramatura : null,
+      comprimento_mm: of.comprimento_mm ?? of.comp ?? null,
+      largura_mm: of.largura_mm ?? of.larg ?? null,
+      tamanho_m2: of.tamanho_m2 ?? null,
+      quantidade: of.quantidade ?? of.qtd ?? null,
+      valor_venda: of.valor_venda ?? of.venda ?? null,
+      empresa: String(of.empresa || of.emp || of.emp_id || ''),
+      desperdicio: of.desperdicio ?? null,
+    };
+
+    const { data, error } = await supabase.from('relatorio_producao').insert([row]).select();
+    if (error) throw error;
+    ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
 

@@ -1434,6 +1434,7 @@ function renderOFsPorMaquina(){
   const wrap=document.getElementById('ofmaq-body');if(!wrap)return;
   const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
   const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
+  const filtroData=window.OFMAQ_DATA_FILTRO||'todas';
 
   const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
     const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
@@ -1441,8 +1442,25 @@ function renderOFsPorMaquina(){
     return na-nb;
   });
 
+  const entOK=(o)=>{
+    if(filtroData==='todas') return true;
+    const ent=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
+    if(!ent) return false;
+    const hoje=today();
+    if(filtroData==='hoje') return ent===hoje;
+    if(filtroData==='semana'){
+      const d0=new Date(hoje+'T12:00:00');
+      const domingo=new Date(d0); domingo.setDate(d0.getDate() + (7 - d0.getDay())%7);
+      const de=hoje;
+      const ate=domingo.toISOString().split('T')[0];
+      return ent>=de && ent<=ate;
+    }
+    return true;
+  };
+
   const filt=(o)=>{
     if(st && (o.status||'')!==st) return false;
+    if(!entOK(o)) return false;
     if(!busca) return true;
     const cli=(getCli(o.cliId)||{}).nome||'';
     const vend=(getV(o.vendId)||{}).nome||o.vendedor||'';
@@ -1452,15 +1470,22 @@ function renderOFsPorMaquina(){
 
   const card=(o)=>{
     const cli=getCli(o.cliId)||{nome:'—'};
+    const img = o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
+    const ent=String(o.ent||o.data_entrega||'');
     return `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
       <div style="font-family:var(--mono);font-weight:900;color:var(--accent);min-width:86px">${o.of||'—'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cli.nome}</div>
         <div style="color:var(--text2);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.prodDesc||o.prod||''}</div>
+        <div style="color:var(--text3);font-size:.7rem;font-family:var(--mono);margin-top:2px">Entrega: ${fmtDataBR(ent)}</div>
       </div>
-      <div style="text-align:right;font-family:var(--mono);font-size:.72rem;color:var(--text2)">
+      <div style="text-align:right;font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:160px">
         <div>${(Number(o.qtd)||0).toLocaleString()} un</div>
         <div>${stTag(o.status||'')}</div>
+        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ofmaqVerImagem('${o.id||''}')" style="font-size:.7rem">🖼 Ver Imagem</button>
+          <button class="btn btn-green btn-sm" onclick="event.stopPropagation();ofmaqDarBaixa('${o.id||''}')" style="font-size:.7rem">✅ Dar Baixa</button>
+        </div>
       </div>
     </div>`;
   };
@@ -1480,6 +1505,25 @@ function renderOFsPorMaquina(){
   }).join('');
 
   wrap.innerHTML=html;
+}
+
+function ofmaqSetFiltroData(m){
+  window.OFMAQ_DATA_FILTRO=m;
+  renderOFsPorMaquina();
+}
+function ofmaqVerImagem(id){
+  const o=(OFs||[]).find(x=>x.id===id);
+  if(!o){toast('OF não encontrada','var(--red)');return;}
+  const img=o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
+  if(!img){toast('Sem imagem cadastrada','var(--yellow)');return;}
+  zoomImg(img);
+}
+async function ofmaqDarBaixa(id){
+  const o=(OFs||[]).find(x=>x.id===id);
+  if(!o){toast('OF não encontrada','var(--red)');return;}
+  if(!confirm(`Confirmar baixa da OF #${o.of||o.numero||''}?`)) return;
+  await darBaixaOF(o);
+  renderOFsPorMaquina();
 }
 
 function selecionarOF(num){ofSel=ofSel===num?null:num;renderPCP();}
@@ -1533,6 +1577,39 @@ function togUrg(num){const o=OFs.find(x=>x.of===num);if(o){o.urg=!o.urg;renderPC
 function nextStatus(num){const s=['Em aberto','Em produção','Concluído'];const o=OFs.find(x=>x.of===num);if(!o)return;o.status=s[(s.indexOf(o.status)+1)%s.length];renderPCP();autoSaveTrigger();toast('→ '+o.status);}
 
 // ===================== PCP — PEDIDO PRONTO =====================
+async function darBaixaOF(o){
+  if(!o) return;
+  const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+  if(!o.id){
+    o.status='Concluído';
+    o.data_conclusao=new Date().toISOString();
+    try{ api('POST','/historico_acoes',{tipo_acao:'baixa_of',descricao:`Baixa OF ${o.of||o.numero||''}`,usuario}); }catch(e){}
+    toast('OF concluída (sem id do banco)','var(--yellow)');
+    return;
+  }
+  showSaveIndicator('Salvando baixa...','var(--yellow)');
+  const nowIso=new Date().toISOString();
+  let r=await api('PUT','/ofs/'+encodeURIComponent(o.id),{status:'Concluído',data_conclusao:nowIso});
+  if(!r || !r.ok){
+    const msg=(r && (r.error||''))?String(r.error):'';
+    if(msg.includes('column')||msg.includes('Could not find')){
+      r=await api('PUT','/ofs/'+encodeURIComponent(o.id),{status:'Concluído'});
+    }
+  }
+  if(!r || !r.ok){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
+    return;
+  }
+  o.status='Concluído';
+  o.data_conclusao=nowIso;
+  try{ await api('POST','/relatorios/lancar_of',{of_id:o.id}); }catch(e){}
+  try{ await api('POST','/historico_acoes',{tipo_acao:'baixa_of',descricao:`Baixa OF ${o.of||o.numero||''}`,usuario}); }catch(e){}
+  showSaveIndicator('✓ baixa salva','var(--green)');
+  toast(`✅ ${o.of||o.numero||''} concluída`,'var(--green)');
+  try{ await carregarOFs(); }catch(e){}
+  try{ renderPCP(); }catch(e){}
+}
 function marcarProntoSel(){
   if(!ofSel){toast('Selecione uma OF primeiro','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
@@ -1540,15 +1617,7 @@ function marcarProntoSel(){
   if(o.status==='Cancelado'){toast('OF cancelada não pode ser marcada como pronta','var(--red)');return;}
   if(o.status==='Concluído'){toast('OF já está concluída','var(--yellow)');return;}
   if(!confirm(`Marcar ${o.of} como ✅ Concluído?\n\nCliente: ${(getCli(o.cliId)||{nome:'?'}).nome}\nQuantidade: ${(o.qtd||0).toLocaleString()} un`)) return;
-  o.status='Concluído';
-  // Baixa de estoque automática se ainda não foi feita
-  if(o.chp&&o.qchp>0&&!o._estoqueBaixado&&!o._estoqueJaBaixadoCriacao){
-    baixarEstoqueOF(o, o.qtd);
-  }
-  renderPCP();updateBadges();autoSaveTrigger();
-  gerarNotificacoes();renderNotificacoes();
-  toast(`✅ ${o.of} marcada como Concluído!`,'var(--green)');
-  logAction('OF marcada como pronta', o.of);
+  darBaixaOF(o);
 }
 
 // ===================== PCP — IMPRIMIR PROGRAMAÇÃO =====================
@@ -2237,6 +2306,82 @@ function _renderEstoqueBase(){
     <div class="card"><div class="card-lbl">● Sem Estoque</div><div class="card-val cv-r">${semEst}</div></div>
     ${empresaCards}
     ${fornecedorCards}`;
+
+  const fornColors={
+    'FAPOLPA':'var(--accent)',
+    'ADAMI':'var(--green)',
+    'KLABIN':'var(--yellow)',
+    'TROMBINI':'var(--purple)',
+    'BRAGAGNOLO':'var(--orange)'
+  };
+  const fornColor=(f)=>fornColors[String(f||'').toUpperCase()]||'var(--teal)';
+  const grouped=document.getElementById('est-grouped');
+  if(grouped){
+    const byForn={};
+    lista.forEach(c=>{
+      const f=String(c.forn||'—').trim()||'—';
+      const nom=String(c.nom||'—').trim()||'—';
+      const nome=String(c.nome||'—').trim()||'—';
+      if(!byForn[f]) byForn[f]={};
+      if(!byForn[f][nom]) byForn[f][nom]={};
+      if(!byForn[f][nom][nome]) byForn[f][nom][nome]=[];
+      byForn[f][nom][nome].push(c);
+    });
+
+    const fornList=Object.keys(byForn).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    grouped.innerHTML = fornList.map(f=>{
+      const cF=fornColor(f);
+      const noms=byForn[f];
+      const nomList=Object.keys(noms).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+      const nomHtml = nomList.map(nom=>{
+        const names=noms[nom];
+        const nameList=Object.keys(names).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        const allItems=nameList.flatMap(nm=>names[nm]);
+        const totQtd=allItems.reduce((s,x)=>s+(Number(x.qtd)||0),0);
+        const totVal=allItems.reduce((s,x)=>s+(Number(x.qtd)||0)*(Number(x.val)||0),0);
+        const body=nameList.map(nm=>{
+          const items=[...names[nm]].sort((a,b)=>String(a.tam||'').localeCompare(String(b.tam||''),'pt-BR'));
+          const lines=items.map(it=>{
+            const dim=it.tam||((it.larg||it.largura||it.largura_mm||'')+'X'+(it.comp||it.comprimento||it.comprimento_mm||''));
+            const qtd=Number(it.qtd)||0;
+            const v=Number(it.val)||0;
+            const tot=qtd*v;
+            return `<div style="display:grid;grid-template-columns:1fr 90px 110px 120px;gap:10px;align-items:center;padding:6px 10px;border:1px solid var(--border);border-radius:10px;background:var(--s2);margin-top:6px">
+              <div style="font-family:var(--mono);color:var(--text2)">${dim}</div>
+              <div style="text-align:right;font-family:var(--mono);font-weight:800">${qtd.toLocaleString()}</div>
+              <div style="text-align:right;font-family:var(--mono)">${fmtR(v)}</div>
+              <div style="text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(tot)}</div>
+            </div>`;
+          }).join('');
+          return `<div style="padding:10px 0">
+            <div style="font-weight:900;color:var(--text);font-size:.82rem">• ${escH(nm)}</div>
+            ${lines}
+          </div>`;
+        }).join('');
+        return `<details open style="border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-top:10px;padding:8px 10px">
+          <summary style="cursor:pointer;display:flex;gap:10px;align-items:center;list-style:none;font-family:var(--mono);font-weight:900">
+            <span style="color:var(--accent)">[${escH(nom)}]</span>
+            <span style="color:var(--text3);font-size:.72rem">${totQtd.toLocaleString()} un</span>
+            <span style="margin-left:auto;color:var(--green)">${fmtR(totVal)}</span>
+          </summary>
+          <div style="margin-top:10px">
+            <div style="display:grid;grid-template-columns:1fr 90px 110px 120px;gap:10px;color:var(--text3);font-size:.65rem;font-weight:900;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);padding:0 10px">
+              <div>Tamanho</div><div style="text-align:right">Qtd</div><div style="text-align:right">Valor Unit.</div><div style="text-align:right">Valor Total</div>
+            </div>
+            ${body}
+          </div>
+        </details>`;
+      }).join('');
+
+      return `<div class="sbox" style="margin-bottom:14px;border-left:4px solid ${cF}">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between">
+          <span style="color:${cF};font-weight:900">── ${escH(f)} ──</span>
+          <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">${Object.values(noms).reduce((s,g)=>s+Object.values(g).reduce((s2,arr)=>s2+Object.values(arr).reduce((s3,it)=>s3+it.length,0),0),0)} itens</span>
+        </div>
+        <div class="sbox-b">${nomHtml}</div>
+      </div>`;
+    }).join('');
+  }
 
   // ---- TABELA ----
   const thS='padding:8px 10px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);background:var(--s2);color:var(--text2);white-space:nowrap;';
@@ -5960,23 +6105,62 @@ function initDevice(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initDevice);
 else initDevice();
 
+var AUTH_TOKEN_KEY='auth_token';
+var AUTH_USER_KEY='auth_user';
+var AUTH_EXP_KEY='auth_exp';
+function authSave(user){
+  try{
+    const exp=Date.now()+1000*60*60*24*30;
+    localStorage.setItem(AUTH_TOKEN_KEY, 'local');
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify({login:user.login,nome:user.nome,perfil:user.perfil}));
+    localStorage.setItem(AUTH_EXP_KEY, String(exp));
+  }catch(e){}
+}
+function authClear(){
+  try{
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(AUTH_EXP_KEY);
+  }catch(e){}
+}
+function authRestore(){
+  try{
+    const token=localStorage.getItem(AUTH_TOKEN_KEY);
+    const user=localStorage.getItem(AUTH_USER_KEY);
+    const exp=parseInt(localStorage.getItem(AUTH_EXP_KEY)||'0',10);
+    if(!token || !user) return null;
+    if(!exp || exp<Date.now()) return null;
+    const u=JSON.parse(user);
+    const found=USERS.find(x=>x.login===u.login);
+    if(!found) return null;
+    return found;
+  }catch(e){ return null; }
+}
+function mostrarTelaLogin(){
+  const ls=document.getElementById('login-screen');
+  if(ls) ls.style.display='flex';
+}
+function iniciarSistema(user){
+  if(user) CURRENT_USER=user;
+  const ls=document.getElementById('login-screen');
+  if(ls) ls.style.display='none';
+  const uname=document.getElementById('topbar-user-name');
+  const uico=document.getElementById('topbar-user-ico');
+  const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
+  if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
+  if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
+  applyPermissions(CURRENT_USER?CURRENT_USER.perfil:'admin');
+  try{ autoSaveLoad(); }catch(e){}
+  try{ startNotificacoesDB(); }catch(e){}
+}
+
 function doLogin(){
   const u=document.getElementById('login-user').value.trim().toUpperCase();
   const p=document.getElementById('login-pass').value;
   const found=USERS.find(x=>x.login.toUpperCase()===u&&x.senha===p);
   if(found){
-    CURRENT_USER=found;
-    document.getElementById('login-screen').style.display='none';
-    // Update topbar user
-    const uname=document.getElementById('topbar-user-name');
-    const uico=document.getElementById('topbar-user-ico');
-    const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
-    if(uname) uname.textContent=found.nome;
-    if(uico)  uico.textContent=icons[found.perfil]||'👤';
-    applyPermissions(found.perfil);
-    gerarNotificacoes();
-    renderNotificacoes();
-    autoSaveLoad();
+    authSave(found);
+    iniciarSistema(found);
     logAction('Login realizado','—');
     toast('Bem-vindo, '+found.nome+' ✓');
   } else {
@@ -5997,6 +6181,7 @@ function selecionarUsuario(login){
 function trocarUsuario(){
   if(!confirm('Sair da conta atual e voltar para o login?'))return;
   CURRENT_USER=null;
+  authClear();
   const ls=document.getElementById('login-screen');
   if(ls){ls.style.display='flex';document.getElementById('login-user').value='';document.getElementById('login-pass').value='';document.getElementById('login-err').textContent='';
   document.querySelectorAll('.user-sel-btn').forEach(b=>b.classList.remove('selected'));
@@ -6008,6 +6193,13 @@ function trocarUsuario(){
   document.querySelectorAll('.nav-item').forEach(n=>n.style.display='');
   document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
 }
+
+(function(){try{const u=authRestore();if(u)CURRENT_USER=u;}catch(e){}})();
+window.addEventListener('DOMContentLoaded', () => {
+  const u = CURRENT_USER || authRestore();
+  if(u){ iniciarSistema(u); }
+  else { mostrarTelaLogin(); }
+});
 
 // ===================== API CLIENT — BANCO CENTRAL =====================
 // Todos os dados vão para o servidor Node.js/SQLite, não para localStorage.
@@ -6579,7 +6771,7 @@ function applyDataSnapshot(d, opts){
   if(!opts.silent){
     try{ renderActivePageSync(); }catch(e){}
     try{ updateBadges(); }catch(e){}
-    try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
+    try{ renderNotificacoes(); }catch(e){}
   }
   return true;
 }
@@ -6588,6 +6780,7 @@ function renderActivePageSync(){
   const ap=document.querySelector('.page.active');
   if(!ap || !ap.id) { try{ renderPCP(); }catch(e){} return; }
   const pid=ap.id.replace('page-','');
+  if(pid==='relmensal') return;
   try{ _goBase(pid); }catch(e){ try{ renderPCP(); }catch(e2){} }
 }
 
@@ -7008,32 +7201,23 @@ const CIDADES_BR = {
 
 const FABRICA_COORD = latLngToSvg(-26.73, -53.52);
 
-// ===================== NOTIFICAÇÕES =====================
-function _gerarNotificacoesBase(){
-  NOTIFICACOES = [];
-  const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  // Estoque baixo
-  ESTOQUE.forEach(c=>{
-    if(c.qtd===0) NOTIFICACOES.push({tipo:'error',ico:'🚫',msg:`Estoque ZERADO: ${c.nome}`,time:now});
-    else if(c.qtd<100) NOTIFICACOES.push({tipo:'error',ico:'🔴',msg:`Estoque crítico: ${c.nome} — ${c.qtd} un`,time:now});
-    else if(c.qtd<200) NOTIFICACOES.push({tipo:'warn',ico:'🟡',msg:`Estoque baixo: ${c.nome} — ${c.qtd} un`,time:now});
-  });
-  // Pedidos urgentes
-  OFs.filter(o=>o.urg&&o.status!=='Concluído').forEach(o=>{NOTIFICACOES.push({tipo:'error',ico:'🔴',msg:`Pedido URGENTE: ${o.of} — ${(getCli(o.cliId)||{nome:'?'}).nome}`,time:now});});
-  // Atrasados
-  OFs.filter(o=>o.status==='Atrasado').forEach(o=>{NOTIFICACOES.push({tipo:'error',ico:'⏰',msg:`Pedido ATRASADO: ${o.of}`,time:now});});
-  // Amostras pendentes
-  const nfPend=NOTAS_FISCAIS.filter(n=>n.status==='Pendente'||n.status==='Digitando').length;
-  if(nfPend>0) NOTIFICACOES.push({tipo:'warn',ico:'🧾',msg:`${nfPend} NF(s) pendente(s) de transmissão`,time:now});
-  // Entregas hoje
-  const hoje=today();
-  const entHoje=ENTREGAS.filter(e=>e.data===hoje&&e.status==='Agendado').length;
-  if(entHoje>0) NOTIFICACOES.push({tipo:'info',ico:'🚚',msg:`${entHoje} entrega(s) agendada(s) para hoje`,time:now});
-  // Orçamentos aprovados não convertidos
-  const orcAp=ORCAMENTOS.filter(o=>o.status==='Aprovado').length;
-  if(orcAp>0) NOTIFICACOES.push({tipo:'info',ico:'💰',msg:`${orcAp} orçamento(s) aprovado(s) aguardando conversão`,time:now});
-  // Compras recebidas
-  COMPRAS.filter(c=>c.status==='Recebida').forEach(c=>{NOTIFICACOES.push({tipo:'success',ico:'📦',msg:`Compra recebida: ${c.nome}`,time:now});});
+// ===================== NOTIFICAÇÕES (SUPABASE) =====================
+var NOTIF_POLL_TIMER=null;
+async function syncNotificacoesDB(){
+  const r=await api('GET','/notificacoes?lida=false');
+  if(!r||!r.ok||!Array.isArray(r.data)) return;
+  NOTIFICACOES = r.data.map(n=>({
+    id:n.id,
+    tipo:n.tipo||'info',
+    msg:n.mensagem||'',
+    time: n.data_hora ? new Date(n.data_hora).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : ''
+  }));
+  renderNotificacoes();
+}
+function startNotificacoesDB(){
+  if(NOTIF_POLL_TIMER) return;
+  syncNotificacoesDB();
+  NOTIF_POLL_TIMER=setInterval(syncNotificacoesDB,10000);
 }
 
 function renderNotificacoes(){
@@ -7045,24 +7229,8 @@ function renderNotificacoes(){
   else{badge.style.display='none';}
   if(!NOTIFICACOES.length){list.innerHTML='<div style="color:var(--text3);padding:10px;font-size:.78rem;text-align:center">✅ Nenhuma notificação</div>';return;}
   const corMap={error:'notif-red',warn:'notif-yellow',info:'notif-blue',success:'notif-green'};
-  list.innerHTML=NOTIFICACOES.map((n,idx)=>`<div class="notif-item ${corMap[n.tipo]||''}" id="ni-${idx}"><span class="notif-icon">${n.ico||'🔔'}</span><span class="notif-msg">${n.msg}</span><span class="notif-time">${n.time||''}</span><button class="notif-ok-btn" onclick="dispensarNotif(${idx})">OK</button></div>`).join('');
-
-  if(!window._notifAutoTimers) window._notifAutoTimers = {};
-  const keyOf = (n)=>[n.tipo||'',n.ico||'',n.msg||''].join('|');
-  NOTIFICACOES.forEach((n)=>{
-    if((n && n.tipo)==='success'){
-      const k=keyOf(n);
-      if(window._notifAutoTimers[k]) return;
-      window._notifAutoTimers[k]=setTimeout(()=>{
-        try{
-          const idx=(NOTIFICACOES||[]).findIndex(x=>keyOf(x)===k);
-          if(idx>=0) dispensarNotif(idx);
-        }catch(e){}
-        try{ clearTimeout(window._notifAutoTimers[k]); }catch(e){}
-        delete window._notifAutoTimers[k];
-      },3000);
-    }
-  });
+  const icoMap={error:'🔴',warn:'🟡',info:'🔔',success:'✅'};
+  list.innerHTML=NOTIFICACOES.map((n,idx)=>`<div class="notif-item ${corMap[n.tipo]||''}" id="ni-${idx}"><span class="notif-icon">${icoMap[n.tipo]||'🔔'}</span><span class="notif-msg">${escH(n.msg||'')}</span><span class="notif-time">${n.time||''}</span><button class="notif-ok-btn" onclick="dispensarNotif(${idx})">OK</button></div>`).join('');
 }
 
 function dispensarNotif(idx){
@@ -7073,10 +7241,12 @@ function dispensarNotif(idx){
     const tipo=(n.tipo||'info');
     const desc=(n.msg||'').toString().slice(0,300);
     const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+    if(n.id) api('PATCH','/notificacoes/'+encodeURIComponent(n.id),{lida:true});
     api('POST','/historico_acoes',{tipo_acao:tipo==='success'?'ok_notificacao':tipo,descricao:desc,usuario});
   }
 }
 function dispensarTodasNotifs(){
+  api('POST','/notificacoes/clear',{});
   NOTIFICACOES=[];
   renderNotificacoes();
 }
@@ -7084,7 +7254,10 @@ function dispensarTodasNotifs(){
 
 function toggleNotifPanel(){
   const p=document.getElementById('notif-panel');
-  if(p){gerarNotificacoes();renderNotificacoes();p.style.display=p.style.display==='none'?'block':'none';}
+  if(p){
+    if(p.style.display==='none'){syncNotificacoesDB();}
+    p.style.display=p.style.display==='none'?'block':'none';
+  }
 }
 
 // ===================== ESTOQUE ALERTAS =====================
@@ -9657,6 +9830,7 @@ function renderRelatorio() {
 var RM_TAB = 'resumo';
 var RM_CACHE_PROD = {};
 var RM_CACHE_APAR = {};
+var RM_IS_LOADING = false;
 
 function renderRelatorioMensal(){
   const mesEl=document.getElementById('rm-mes');
@@ -9687,7 +9861,47 @@ function rmSetTab(tab){
   carregarRelatorioMensal();
 }
 
+function rmAbrirManual(){
+  const mesRef=rmMesRef();
+  const m=document.getElementById('rm-man-mes');if(m)m.value=mesRef;
+  const d=document.getElementById('rm-man-data');if(d&&!d.value)d.value=mesRef+'-01';
+  abrir('modal-rm-manual');
+}
+async function rmSalvarManual(){
+  const mes=String((document.getElementById('rm-man-mes')||{}).value||'').trim()||rmMesRef();
+  const row={
+    mes_referencia: mes,
+    data: (document.getElementById('rm-man-data')||{}).value || (mes+'-01'),
+    maquina: (document.getElementById('rm-man-maq')||{}).value || '',
+    vendedor: (document.getElementById('rm-man-vend')||{}).value || '',
+    cliente: (document.getElementById('rm-man-cli')||{}).value || '',
+    tipo_papel: (document.getElementById('rm-man-tipo')||{}).value || '',
+    gramatura: parseFloat((document.getElementById('rm-man-gram')||{}).value)||null,
+    comprimento_mm: parseFloat((document.getElementById('rm-man-comp')||{}).value)||null,
+    largura_mm: parseFloat((document.getElementById('rm-man-larg')||{}).value)||null,
+    quantidade: parseFloat((document.getElementById('rm-man-qtd')||{}).value)||null,
+    valor_venda: parseFloat((document.getElementById('rm-man-venda')||{}).value)||null,
+    empresa: (document.getElementById('rm-man-emp')||{}).value || '',
+    desperdicio: parseFloat((document.getElementById('rm-man-desp')||{}).value)||null
+  };
+  showSaveIndicator('Salvando lançamento...','var(--yellow)');
+  const r=await api('POST','/relatorios/producao',[row]);
+  if(!r||!r.ok){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao salvar lançamento','var(--red)');
+    return;
+  }
+  fechar('modal-rm-manual');
+  RM_CACHE_PROD[mes]=null;
+  showSaveIndicator('✓ salvo','var(--green)');
+  toast('✓ Lançamento salvo','var(--green)');
+  carregarRelatorioMensal();
+}
+
 async function carregarRelatorioMensal(){
+  if(RM_IS_LOADING) return;
+  RM_IS_LOADING = true;
+  try{
   const mesRef=rmMesRef();
   const cont=document.getElementById('rm-content');
   if(!cont) return;
@@ -9796,6 +10010,9 @@ async function carregarRelatorioMensal(){
     const data = await rmLoadAparras(mesRef);
     cont.innerHTML = rmTabsHtml() + rmRenderTabelaAparras(data);
     return;
+  }
+  } finally {
+    RM_IS_LOADING = false;
   }
 }
 
@@ -9956,13 +10173,7 @@ document.addEventListener('change', function(e){
 
 // ===================== EXTEND NOTIFICAÇÕES com operadores =====================
 function gerarNotificacoes() {
-  _gerarNotificacoesBase();
-  const now = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  OPERADORES.forEach(op=>{
-    const cor=corOperador(op.id);
-    if(cor==='vermelho') NOTIFICACOES.push({tipo:'error',ico:'🔴',msg:`Operador VERMELHO: ${op.nome} — ${inconfMes(op.id)} inconformidades este mês`,time:now});
-    else if(cor==='amarelo') NOTIFICACOES.push({tipo:'warn',ico:'🟡',msg:`Operador em atenção: ${op.nome} — 2 inconformidades`,time:now});
-  });
+  syncNotificacoesDB();
 }
 
 // ===================== INIT OVERRIDE =====================
@@ -10475,6 +10686,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option>Em aberto</option><option>Em produção</option>
       <option>Concluído</option><option>Atrasado</option><option>Cancelado</option>
     </select>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('hoje')">Hoje</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('semana')">Esta Semana</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('todas')">Todas</button>
+    </div>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
   </div>
@@ -10547,7 +10763,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
-      <div style="overflow-x:auto">
+      <div id="est-grouped"></div>
+      <div id="est-table-wrap" style="overflow-x:auto;display:none">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
           <thead>
             <tr style="background:var(--s2)">
@@ -11242,6 +11459,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent btn-sm" onclick="carregarRelatorioMensal()">Gerar</button>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="exportarRelMensalCSV()">📊 Exportar CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="rmAbrirManual()">＋ Lançamento Manual</button>
   </div>
   <div class="page-body" id="rm-content"></div>
 </div>
@@ -12176,6 +12394,32 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-reset-chapas')">Cancelar</button>
     <button class="btn btn-red" onclick="executarResetChapas()">Apagar tudo e inserir</button>
+  </div>
+</div></div>
+
+<!-- Modal Lançamento Manual (Relatório Mensal) -->
+<div class="modal-overlay" id="modal-rm-manual">
+<div class="modal" style="width:min(760px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-rm-manual')">✕</button>
+  <h2>＋ Lançamento Manual (Produção)</h2>
+  <div class="fg">
+    <div class="mf"><label>MÊS/ANO</label><input id="rm-man-mes" placeholder="2026-03"></div>
+    <div class="mf"><label>MÁQUINA</label><input id="rm-man-maq" placeholder="Máquina 1"></div>
+    <div class="mf"><label>VENDEDOR</label><input id="rm-man-vend" placeholder="Vendedor 1"></div>
+    <div class="mf"><label>CLIENTE</label><input id="rm-man-cli" placeholder="Cliente"></div>
+    <div class="mf"><label>TIPO DE PAPEL</label><input id="rm-man-tipo" placeholder="FCM03"></div>
+    <div class="mf"><label>GRAMATURA</label><input id="rm-man-gram" type="number" step="0.01"></div>
+    <div class="mf"><label>COMPRIMENTO (mm)</label><input id="rm-man-comp" type="number" step="1"></div>
+    <div class="mf"><label>LARGURA (mm)</label><input id="rm-man-larg" type="number" step="1"></div>
+    <div class="mf"><label>QUANTIDADE</label><input id="rm-man-qtd" type="number" step="1"></div>
+    <div class="mf"><label>VALOR DE VENDA</label><input id="rm-man-venda" type="number" step="0.01"></div>
+    <div class="mf"><label>EMPRESA</label><input id="rm-man-emp" placeholder="ITALY"></div>
+    <div class="mf"><label>DESPERDÍCIO</label><input id="rm-man-desp" type="number" step="0.01"></div>
+    <div class="mf"><label>DATA</label><input id="rm-man-data" type="date"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-rm-manual')">Cancelar</button>
+    <button class="btn btn-accent" onclick="rmSalvarManual()">Salvar</button>
   </div>
 </div></div>
 
