@@ -125,8 +125,28 @@ function ok(res, data) {
 }
 
 function err(res, e) {
-  console.error(e);
-  res.json({ ok: false, error: String(e) });
+  const isPlainObject = (v) => v && typeof v === 'object' && (v.constructor === Object || Object.getPrototypeOf(v) === null);
+  let errorText = '';
+  let meta = null;
+
+  try {
+    if (typeof e === 'string') errorText = e;
+    else if (e instanceof Error) errorText = e.message || String(e);
+    else if (e && typeof e === 'object' && typeof e.message === 'string') errorText = e.message;
+    else errorText = String(e);
+  } catch (_) {
+    errorText = 'Erro desconhecido';
+  }
+
+  try {
+    if (e instanceof Error) meta = { name: e.name, message: e.message, stack: e.stack };
+    else if (isPlainObject(e)) meta = e;
+    else if (e && typeof e === 'object') meta = { ...e };
+  } catch (_) {}
+
+  console.error('API error:', errorText);
+  if (meta) console.error('API error meta:', meta);
+  res.json({ ok: false, error: errorText, meta });
 }
 
 function bad(res, error) {
@@ -855,6 +875,10 @@ app.delete('/api/chapas_estoque/:id', async (req, res) => {
 
 app.post('/api/chapas_estoque/reset', async (req, res) => {
   try {
+    console.log('chapas_estoque/reset body type:', Array.isArray(req.body) ? 'array' : typeof req.body);
+    if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+      console.log('chapas_estoque/reset body keys:', Object.keys(req.body).slice(0, 20));
+    }
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
 
@@ -872,6 +896,7 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
 
     const t = await resolveTable();
     const items = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+    console.log('chapas_estoque/reset items:', Array.isArray(items) ? items.length : 'not_array');
     if (!Array.isArray(items) || items.length === 0) return bad(res, 'items vazio');
 
     const parseTam = (v) => {
