@@ -7152,23 +7152,48 @@ async function handleImportChapasFile(file){
 
     let okCount = 0;
     let failCount = 0;
+    let updCount = 0;
+    let insCount = 0;
     const fails = [];
 
     toast(`⏳ Importando 0/${rows.length}...`,'var(--orange)');
     showSaveIndicator(`⏳ importando 0/${rows.length}`,'var(--yellow)');
+
+    const keyNorm = (tp, comp, larg) => `${String(tp||'').trim().toUpperCase()}|${Number(comp)||0}X${Number(larg)||0}`;
+    const existingMap = new Map();
+    (ESTOQUE||[]).forEach(c=>{
+      const tp = (c.tipo_papel ?? c.nom ?? c.qual ?? '').toString().trim().toUpperCase();
+      let comp = c.comprimento_mm ?? c.comp ?? 0;
+      let larg = c.largura_mm ?? c.larg ?? 0;
+      if((!comp || !larg) && c.tam){
+        const t = parseTam(c.tam);
+        comp = comp || t.comprimento_mm || 0;
+        larg = larg || t.largura_mm || 0;
+      }
+      const k = keyNorm(tp, comp, larg);
+      if(tp && comp && larg && c.id && !existingMap.has(k)) existingMap.set(k, c);
+    });
+
     for(let i=0;i<rows.length;i++){
       const r = rows[i];
-      const tipo_papel = String(pick(r, keys.tipo_papel) || '').trim();
-      const nome = String(pick(r, keys.nome) || '').trim();
-      if(!nome && !tipo_papel) continue;
-      const { comprimento_mm, largura_mm } = parseTam(pick(r, keys.tamanho));
-      const quantidade_atual = toNum(pick(r, keys.quantidade_atual)) ?? 0;
-      const valor_unitario = toNum(pick(r, keys.valor_unitario));
       const forn = String(pick(r, keys.forn) || '').trim();
+      if(/^[A-Za-z]$/.test(forn)) continue;
+      const tipo_papel = String(pick(r, keys.tipo_papel) || '').trim();
+      const tamStr = String(pick(r, keys.tamanho) || '').trim();
+      if(!tipo_papel || !tamStr) continue;
 
-      const payload = {
+      const nome = String(pick(r, keys.nome) || '').trim();
+      const { comprimento_mm, largura_mm } = parseTam(tamStr);
+      if(!comprimento_mm || !largura_mm) continue;
+
+      const quantidade_atual = Math.trunc(toNum(pick(r, keys.quantidade_atual)) ?? 0);
+      const valor_unitario = toNum(pick(r, keys.valor_unitario)) ?? 0;
+      const uniqKey = keyNorm(tipo_papel, comprimento_mm, largura_mm);
+      const existing = existingMap.get(uniqKey);
+
+      const payloadInsert = {
         nome: nome || tipo_papel,
-        tipo_papel: tipo_papel || null,
+        tipo_papel,
         comprimento_mm,
         largura_mm,
         quantidade_atual,
@@ -7176,24 +7201,40 @@ async function handleImportChapasFile(file){
         forn
       };
 
-      const resp = await api('POST','/chapas_estoque', payload);
+      let resp = null;
+      if(existing && existing.id){
+        resp = await api('PUT','/chapas_estoque/'+encodeURIComponent(existing.id), { quantidade_atual, valor_unitario });
+        if(resp && resp.ok){
+          updCount++;
+          existing.qtd = quantidade_atual;
+          existing.val = valor_unitario;
+        }
+      } else {
+        resp = await api('POST','/chapas_estoque', payloadInsert);
+        if(resp && resp.ok){
+          insCount++;
+          const created = { ...payloadInsert, id: resp.data && resp.data.id ? resp.data.id : null };
+          if(created.id) existingMap.set(uniqKey, created);
+        }
+      }
+
       if(resp && resp.ok) okCount++;
       else {
         failCount++;
-        if(fails.length < 10) fails.push({ linha: i+2, nome, erro: resp && resp.error ? resp.error : 'erro' });
+        if(fails.length < 10) fails.push({ linha: i+2, nome: (nome||tipo_papel), erro: resp && resp.error ? resp.error : 'erro' });
       }
       if((i+1)%25===0 || i===rows.length-1){
         showSaveIndicator(`⏳ importando ${i+1}/${rows.length}`,'var(--yellow)');
-        toast(`⏳ Importando ${i+1}/${rows.length}... (${okCount} ok, ${failCount} falhas)`,'var(--orange)');
+        toast(`⏳ ${i+1}/${rows.length}... (${updCount} atualizadas, ${insCount} novas, ${failCount} falhas)`,'var(--orange)');
       }
     }
 
     if(failCount===0){
       showSaveIndicator('✓ importação concluída','var(--green)');
-      toast(`✓ Importação concluída: ${okCount} linhas`,'var(--green)');
+      toast(`✓ Importação: ${updCount} atualizadas, ${insCount} novas`,'var(--green)');
     } else {
       showSaveIndicator('⚠ importação parcial','var(--orange)');
-      toast(`⚠ Importação: ${okCount} ok, ${failCount} falharam (console)`,'var(--orange)');
+      toast(`⚠ Importação: ${updCount} atualizadas, ${insCount} novas, ${failCount} falhas (console)`,'var(--orange)');
       console.warn('Falhas importação (até 10):', fails);
     }
 
