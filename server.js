@@ -228,15 +228,29 @@ app.post('/api/auth/login', async (req, res) => {
 
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,senha_hash,perfil,permissoes,ativo,avatar_iniciais,avatar_cor')
+      .select('id,nome,email,senha_hash,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor')
       .eq('email', email)
+      .eq('ativo', true)
       .limit(1);
-    if (error) throw error;
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes("Could not find the table") && msg.includes("usuarios")) {
+        return res.status(500).json({
+          ok: false,
+          error: "Tabela public.usuarios não existe no Supabase. Execute os SQLs de criação (pgcrypto + usuarios + chat_* + historico_acoes + notificacoes).",
+        });
+      }
+      throw error;
+    }
     const u = data && data[0] ? data[0] : null;
-    if (!u || u.ativo === false) return res.status(401).json({ ok: false, error: 'Login inválido' });
+    if (!u) return res.status(401).json({ ok: false, error: 'Usuário não encontrado' });
 
-    const okPass = await bcrypt.compare(senha, String(u.senha_hash || ''));
-    if (!okPass) return res.status(401).json({ ok: false, error: 'Login inválido' });
+    let okPass = false;
+    const hash = String(u.senha_hash || '');
+    const rpc = await supabase.rpc('verificar_senha', { senha_input: senha, hash });
+    if (!rpc.error) okPass = !!rpc.data;
+    else okPass = await bcrypt.compare(senha, hash);
+    if (!okPass) return res.status(401).json({ ok: false, error: 'Senha incorreta' });
 
     const permissoes = Array.isArray(u.permissoes) ? u.permissoes : (() => { try { return JSON.parse(u.permissoes || '[]'); } catch { return []; } })();
     const usuario = {
@@ -245,11 +259,12 @@ app.post('/api/auth/login', async (req, res) => {
       email: u.email,
       perfil: u.perfil || 'custom',
       permissoes,
+      canais_chat: Array.isArray(u.canais_chat) ? u.canais_chat : (() => { try { return JSON.parse(u.canais_chat || '[]'); } catch { return []; } })(),
       avatar_iniciais: u.avatar_iniciais || initialsFromName(u.nome),
       avatar_cor: u.avatar_cor || avatarColorFromText(u.email),
     };
 
-    const token = jwt.sign(usuario, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign(usuario, JWT_SECRET, { expiresIn: '8h' });
 
     try { await supabase.from('usuarios').update({ ultimo_acesso: new Date().toISOString() }).eq('id', u.id); } catch (e) {}
 
