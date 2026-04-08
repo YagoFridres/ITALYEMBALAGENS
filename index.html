@@ -9217,7 +9217,7 @@ function calcRecalc(){
   var C=parseFloat(document.getElementById('calc-comp').value)||0;
   var L=parseFloat(document.getElementById('calc-larg').value)||0;
   var A=parseFloat(document.getElementById('calc-alt').value)||0;
-  var onda=document.getElementById('calc-onda').value;
+  var onda=(document.getElementById('calc-onda')||{}).value||'B';
   var vb=parseFloat(document.getElementById('calc-vb').value)||2.47;
   var vc=parseFloat(document.getElementById('calc-vc').value)||3.29;
   var vbc=parseFloat(document.getElementById('calc-vbc').value)||4.46;
@@ -9255,15 +9255,11 @@ function calcRecalc(){
     return;
   }
 
-  var ondaLabels=['B','C','BC'];
-  var ondaVals=[vb,vc,vbc];
-  var rowLabels=['1 (menor)','2 (média)','3 (maior)'];
+  var rowLabels=['1','2','3'];
+  var rowTitles=['Comp. 1','Comp. 2 (média)','Comp. 3 (maior)'];
   var rows='';
   var rowColors=['var(--s2)','var(--surface)','var(--s3)'];
 
-  // Para cada compensação (menor/média/maior), mostrar linha para cada onda (B, C, BC)
-  var ondaColors = {B:'var(--accent)', C:'var(--yellow)', BC:'var(--purple)'};
-  var ondaSeparatorColors = {'B':'#1d4ed840','C':'#a16207' +'40','BC':'#6d28d940'};
   var allResults = [];
 
   compensacoes.forEach(function(opt,i){
@@ -9273,34 +9269,25 @@ function calcRecalc(){
     var td='padding:5px 8px;border:1px solid var(--s3);white-space:nowrap;';
     var rowOutline=isBest?';outline:2px solid var(--green)':'';
 
-    // For this compensation option, show B, C, BC rows
-    ondaLabels.forEach(function(od, oi){
-      var preco=calcPreco(opt.area,od,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
-      var vUnit=preco.liquida/qtd;
-      var odColor=ondaColors[od]||'var(--text)';
-      var isFirstOda=oi===0;
-      // Only show comp label on first onda row
-      var compLabel=isFirstOda?'Comp. '+rowLabels[i]:'';
-      var rowBg=oi===0?bg:(oi===1?'rgba(202,138,4,0.06)':'rgba(109,40,217,0.06)');
-      rows+='<tr style="background:'+rowBg+rowOutline+(oi===0?';border-top:1px solid var(--border)':'')+ '">';
-      rows+='<td style="'+td+bold+'color:var(--accent);font-family:var(--mono)'+(isFirstOda?'':';color:var(--text3);font-size:.68rem')+'">'+compLabel+'</td>';
-      rows+='<td colspan="2" style="'+td+'font-size:.65rem;color:var(--text2)'+(isFirstOda?'':';color:transparent')+'">'+C+' x '+L+' x '+A+' mm</td>';
-      rows+='<td style="'+td+'text-align:center;font-weight:800;color:'+odColor+'">'+od+'</td>';
-      rows+='<td style="'+td+(isFirstOda?bold:'')+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.largura+'</td>';
-      rows+='<td style="'+td+(isFirstOda?bold:'')+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.comprimento+'</td>';
-      rows+='<td style="'+td+'text-align:center;font-family:var(--mono)">--</td>';
-      rows+='<td style="'+td+bold+'text-align:right;font-family:var(--mono);color:var(--teal)">'+opt.area.toFixed(6)+'</td>';
-      rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--yellow)">'+fmtR(preco.bruto)+'</td>';
-      rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(preco.liquida)+'</td>';
-      rows+='<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
-      rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(vUnit)+'</td>';
-      var compIdx=i;var ondaVal=od;
-      rows+='<td style="'+td+'text-align:center">'
-        +'<button onclick="calcUsarOpcao('+i+',&quot;'+od+'&quot;)" style="font-size:.62rem;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:var(--mono)">+Orc</button>'
-        +'</td>';
-      rows+='</tr>';
-      allResults.push({compLabel:rowLabels[i],compIdx:i,onda:od,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
-    });
+    var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
+    var vUnit=preco.comFrete/qtd;
+    var compTitle=rowTitles[i]||('Comp. '+rowLabels[i]);
+    rows+='<tr style="background:'+bg+rowOutline+';border-top:1px solid var(--border)">';
+    rows+='<td style="'+td+bold+'color:var(--accent);font-family:var(--mono)">'+compTitle+'</td>';
+    rows+='<td colspan="2" style="'+td+'font-size:.65rem;color:var(--text2)">'+C+' x '+L+' x '+A+' mm</td>';
+    rows+='<td style="'+td+bold+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.largura+'</td>';
+    rows+='<td style="'+td+bold+'text-align:center;font-family:var(--mono);color:var(--teal)">'+opt.comprimento+'</td>';
+    rows+='<td style="'+td+'text-align:center;font-family:var(--mono)">--</td>';
+    rows+='<td style="'+td+bold+'text-align:right;font-family:var(--mono);color:var(--teal)">'+opt.area.toFixed(6)+'</td>';
+    rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--yellow)">'+fmtR(preco.bruto)+'</td>';
+    rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(preco.liquida)+'</td>';
+    rows+='<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
+    rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(vUnit)+'</td>';
+    rows+='<td style="'+td+'text-align:center">'
+      +'<button onclick="calcUsarOpcao('+i+',&quot;'+onda+'&quot;)" style="font-size:.62rem;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:var(--mono)">+Orc</button>'
+      +'</td>';
+    rows+='</tr>';
+    allResults.push({compLabel:rowLabels[i],compTitle:compTitle,compIdx:i,onda:onda,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
   });
   tbody.innerHTML=rows;
 
@@ -9308,7 +9295,7 @@ function calcRecalc(){
     allResults:allResults,
     compensacoes:compensacoes.map(function(opt,i){
     var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
-    return {label:rowLabels[i],largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.liquida/qtd};
+    return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.comFrete/qtd,onda:onda};
   })};
 }
 
@@ -9355,7 +9342,6 @@ function calcUsarNoOrcamento(){
 function calcImprimir(){
   if(!calcLastResult){toast('Calcule primeiro','var(--yellow)');return;}
 
-  // Get client name
   var calcCliEl=document.getElementById('calc-cli');
   var cliNome='';
   if(calcCliEl&&calcCliEl.selectedIndex>0){
@@ -9365,77 +9351,52 @@ function calcImprimir(){
   var tipo=calcLastResult.tipo||'';
   var C=calcLastResult.comp, L=calcLastResult.larg, A=calcLastResult.alt;
   var qtd=calcLastResult.qtd;
-  var vb=parseFloat((document.getElementById('calc-vb')||{}).value)||2.47;
-  var vc=parseFloat((document.getElementById('calc-vc')||{}).value)||3.29;
-  var vbc=parseFloat((document.getElementById('calc-vbc')||{}).value)||4.46;
-  var freteTot=parseFloat((document.getElementById('calc-frete-display')||{}).textContent.replace(/[^0-9,.]/g,'').replace(',','.'))||0;
   var empNome=typeof getEmp==='function'?((getEmp||function(){return{};})('IT')||{nome:'Italy Embalagens'}).nome:'Italy Embalagens';
 
-  // Build rows: for each compensation, 3 onda rows
   var results=calcLastResult.allResults||[];
   var rowsHtml='';
-  var rowColors=['#f0f9ff','#fff','#f5f3ff'];
-  var ondaColors={B:'#2563eb',C:'#b45309',BC:'#6d28d9'};
-  var prevComp='';
   results.forEach(function(r){
-    var isNewComp=r.compLabel!==prevComp;
-    prevComp=r.compLabel;
-    rowsHtml+='<tr style="background:'+(r.compIdx===1?'#ecfdf5':rowColors[r.compIdx]||'#fff')+(isNewComp?';border-top:2px solid #ccc':'')+'">';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;font-weight:'+(r.compIdx===1?'700':'400')+'">'+( isNewComp?'Comp. '+r.compLabel:'')+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;font-size:11px;color:#555">'+C+' x '+L+' x '+A+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;font-weight:800;color:'+(ondaColors[r.onda]||'#111')+'">'+r.onda+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace">'+r.largura+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace">'+r.comprimento+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-family:monospace">'+r.area.toFixed(6)+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+fmtR(r.bruto)+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;color:#16a34a;font-weight:'+(r.compIdx===1?'700':'400')+'">'+fmtR(r.liquida)+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;text-align:right">'+fmtR(r.comFrete)+'</td>';
-    rowsHtml+='<td style="padding:6px 8px;border:1px solid #ddd;text-align:right;color:#2563eb;font-weight:'+(r.compIdx===1?'700':'400')+'">'+fmtR(r.vunit)+'/un</td>';
-    rowsHtml+='</tr>';
+    var vlLiq=(r.liquida||0)/qtd;
+    var vlFre=(r.comFrete||0)/qtd;
+    rowsHtml += '<tr>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd;font-weight:700">'+(r.compTitle||('Comp. '+r.compLabel))+'</td>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd">'+C+' × '+L+' × '+A+'</td>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right">'+qtd.toLocaleString('pt-BR')+'</td>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace">'+Number(r.area||0).toFixed(6)+'</td>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace">'+fmtR(vlLiq)+'</td>'
+      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace;font-weight:800">'+fmtR(vlFre)+'</td>'
+      +'</tr>';
   });
 
   var logoSrc=typeof LOGO_ITALY!=='undefined'?LOGO_ITALY:'';
-  var printContent='<!DOCTYPE html><html><head><meta charset="utf-8">'
-    +'<title>Calc Compensa\u00e7\u00e3o -- '+tipo+'</title>'
-    +'<style>'
-    +'*{box-sizing:border-box;margin:0;padding:0}'
-    +'body{font-family:Arial,sans-serif;padding:22px;color:#1f2937;font-size:12px}'
-    +'.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2d8fa5;padding-bottom:14px;margin-bottom:18px}'
-    +'.logo{height:54px;object-fit:contain}'
-    +'h1{font-size:18px;font-weight:900;color:#2d8fa5;margin-bottom:2px}'
-    +'.sub{font-size:11px;color:#6b7280}'
-    +'.params{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px}'
-    +'.param-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;font-weight:700}'
-    +'.param-val{font-size:13px;font-weight:700;font-family:monospace;color:#0f172a}'
-    +'table{width:100%;border-collapse:collapse}'
-    +'th{background:#e0f2fe;padding:6px 8px;border:1px solid #bfdbfe;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em}'
-    +'.foot{margin-top:16px;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px}'
+  var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');};
+  var printContent='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orçamento</title><style>'
+    +'*{margin:0;padding:0;box-sizing:border-box}'
+    +'body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}'
+    +'h2{font-size:16px;margin-bottom:4px}'
+    +'.info{margin-bottom:16px;font-size:13px}'
+    +'.info span{font-weight:bold}'
+    +'table{width:100%;border-collapse:collapse;margin-top:12px}'
+    +'th{background:#222;color:#fff;padding:8px;text-align:left;font-size:11px}'
+    +'td{padding:8px;border-bottom:1px solid #ddd;font-size:12px}'
+    +'tr:nth-child(even) td{background:#f9f9f9}'
+    +'.rodape{margin-top:20px;font-size:11px;color:#666}'
     +'@media print{body{padding:10px}}'
     +'</style></head><body>'
-    +'<div class="hdr">'
-    +'<div>'+(logoSrc?'<img src="'+logoSrc+'" class="logo" alt="Italy Embalagens">':'<div style="font-size:18px;font-weight:900;color:#2d8fa5">Italy Embalagens</div>')+'</div>'
-    +'<div style="text-align:right">'
-    +'<h1>CALCULADORA DE COMPENSAÇÃO</h1>'
-    +'<div class="sub">Fórmulas Garcia — '+new Date().toLocaleDateString('pt-BR')+'</div>'
-    +(cliNome?'<div style="margin-top:4px;font-size:12px"><b>Cliente:</b> '+cliNome+'</div>':'')
-    +'</div></div>'
-    +'<div class="params">'
-    +'<div><div class="param-lbl">Tipo / Modelo</div><div class="param-val">'+tipo+'</div></div>'
-    +'<div><div class="param-lbl">Dimensões (mm)</div><div class="param-val">'+C+' × '+L+' × '+A+'</div></div>'
-    +'<div><div class="param-lbl">Quantidade</div><div class="param-val">'+qtd.toLocaleString('pt-BR')+' un</div></div>'
-    +'<div><div class="param-lbl">Onda B (R$/m²)</div><div class="param-val">'+vb+'</div></div>'
-    +'<div><div class="param-lbl">Onda C (R$/m²)</div><div class="param-val">'+vc+'</div></div>'
-    +'<div><div class="param-lbl">Onda BC (R$/m²)</div><div class="param-val">'+vbc+'</div></div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
+    +(logoSrc?'<img src="'+logoSrc+'" style="height:40px;object-fit:contain">':'<div style="font-weight:900">'+esc(empNome)+'</div>')
+    +'<div style="text-align:right"><div style="font-weight:900;font-size:14px">Orçamento</div><div style="font-size:11px;color:#444">'+new Date().toLocaleDateString('pt-BR')+'</div></div>'
     +'</div>'
-    +'<table>'
-    +'<thead><tr>'
-    +'<th>Compensação</th><th>Medida</th><th>Onda</th>'
-    +'<th>Largura (mm)</th><th>Comprimento (mm)</th><th>m²</th>'
-    +'<th>Vl. Total Bruto</th><th>Vl. Venda Líquida</th><th>c/ Frete</th><th>Vl. Unit.</th>'
-    +'</tr></thead>'
-    +'<tbody>'+rowsHtml+'</tbody>'
-    +'</table>'
-    +'<div class="foot">Documento gerado automaticamente pelo sistema PCP/ERP — '+new Date().toLocaleString('pt-BR')+'</div>'
+    +'<div class="info" style="margin-top:10px">'
+    +'<p>Cliente: <span>'+esc(cliNome||'—')+'</span></p>'
+    +'<p>Medidas: <span>'+esc(C+' × '+L+' × '+A+' mm')+'</span></p>'
+    +'</div>'
+    +'<table><thead><tr>'
+    +'<th>COMPENSAÇÃO</th><th>MEDIDAS (mm)</th><th>QUANTIDADE</th><th>M²</th><th>VL. UNITÁRIO LÍQUIDO</th><th>VL. UNITÁRIO C/ FRETE</th>'
+    +'</tr></thead><tbody>'
+    +(rowsHtml||'<tr><td colspan="6" style="text-align:center;padding:20px">Nenhum dado disponível</td></tr>')
+    +'</tbody></table>'
+    +'<div class="rodape"><p>Italy Embalagens — Documento gerado em '+new Date().toLocaleString('pt-BR')+'</p></div>'
     +'</body></html>';
 
   var win=window.open('','_blank','width=1100,height=750');
@@ -13363,7 +13324,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
     <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
     <div id="calc-extra-fields" style="display:flex;gap:10px"></div>
-    <span style="font-size:.7rem;color:var(--accent);font-family:var(--mono);padding:4px 10px;background:var(--asoft,#2563eb22);border-radius:6px">Exibindo: Ondas B · C · BC</span>
+    <span style="font-size:.7rem;color:var(--accent);font-family:var(--mono);padding:4px 10px;background:var(--asoft,#2563eb22);border-radius:6px">Exibindo: Comp. 1 · Comp. 2 · Comp. 3</span>
   </div>
 
   <!-- Spreadsheet Table — exact copy of Excel layout -->
@@ -13373,7 +13334,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <tr style="background:var(--s3)">
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:left;font-family:var(--mono);color:var(--text2);white-space:nowrap;min-width:90px">TABELA PARA COMPENSAÇÃO DE EMBALAGENS</th>
           <th colspan="2" style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label">—</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text2)">ONDA</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">LARGURA (mm)</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">COMPRIMENTO (mm)</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">TOTAL (mm)</th>
