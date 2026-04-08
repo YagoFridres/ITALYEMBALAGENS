@@ -9256,7 +9256,8 @@ function calcRecalc(){
   }
 
   var rowLabels=['1','2','3'];
-  var rowTitles=['Comp. 1','Comp. 2 (média)','Comp. 3 (maior)'];
+  var rowTitles=['Onda B','Onda C','Onda BC'];
+  var ondasNomes=['B','C','BC'];
   var rows='';
   var rowColors=['var(--s2)','var(--surface)','var(--s3)'];
 
@@ -9269,7 +9270,8 @@ function calcRecalc(){
     var td='padding:5px 8px;border:1px solid var(--s3);white-space:nowrap;';
     var rowOutline=isBest?';outline:2px solid var(--green)':'';
 
-    var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
+    var od=ondasNomes[i]||'B';
+    var preco=calcPreco(opt.area,od,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
     var vUnit=preco.liquida/qtd;
     var compTitle=rowTitles[i]||('Comp. '+rowLabels[i]);
     rows+='<tr style="background:'+bg+rowOutline+';border-top:1px solid var(--border)">';
@@ -9284,18 +9286,19 @@ function calcRecalc(){
     rows+='<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
     rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(vUnit)+'</td>';
     rows+='<td style="'+td+'text-align:center">'
-      +'<button onclick="calcUsarOpcao('+i+',&quot;'+onda+'&quot;)" style="font-size:.62rem;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:var(--mono)">+Orc</button>'
+      +'<button onclick="calcUsarOpcao('+i+',&quot;'+od+'&quot;)" style="font-size:.62rem;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:var(--mono)">+Orc</button>'
       +'</td>';
     rows+='</tr>';
-    allResults.push({compLabel:rowLabels[i],compTitle:compTitle,compIdx:i,onda:onda,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
+    allResults.push({compLabel:rowLabels[i],compTitle:compTitle,compIdx:i,onda:od,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
   });
   tbody.innerHTML=rows;
 
   calcLastResult={tipo:tipoNome,comp:C,larg:L,alt:A,onda:onda,qtd:qtd,
     allResults:allResults,
     compensacoes:compensacoes.map(function(opt,i){
-    var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
-    return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.liquida/qtd,onda:onda};
+    var od=ondasNomes[i]||'B';
+    var preco=calcPreco(opt.area,od,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
+    return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.liquida/qtd,onda:od};
   })};
 }
 
@@ -9336,7 +9339,7 @@ function calcUsarOpcao(compIdx, onda){
 
 function calcUsarNoOrcamento(){
   // Fallback: use média (comp 1) with the onda B (first)
-  calcUsarOpcao(1,'B');
+  calcUsarOpcao(0,'B');
 }
 
 function calcImprimir(){
@@ -13324,7 +13327,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
     <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
     <div id="calc-extra-fields" style="display:flex;gap:10px"></div>
-    <span style="font-size:.7rem;color:var(--accent);font-family:var(--mono);padding:4px 10px;background:var(--asoft,#2563eb22);border-radius:6px">Exibindo: Comp. 1 · Comp. 2 · Comp. 3</span>
+    <span style="font-size:.7rem;color:var(--accent);font-family:var(--mono);padding:4px 10px;background:var(--asoft,#2563eb22);border-radius:6px">Exibindo: Onda B · Onda C · Onda BC</span>
   </div>
 
   <!-- Spreadsheet Table — exact copy of Excel layout -->
