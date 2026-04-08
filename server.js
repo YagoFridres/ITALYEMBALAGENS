@@ -472,6 +472,19 @@ async function selectAll(table, orderBy) {
   return data || [];
 }
 
+app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('historico_acoes')
+      .select('*')
+      .order('data_hora', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    return res.json(data || []);
+  } catch (e) {
+    return res.status(500).json({ error: String(e.message || e) });
+  }
+});
 async function insertOne(table, row) {
   if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   const { data, error } = await supabase.from(table).insert([row]).select('*').limit(1);

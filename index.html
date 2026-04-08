@@ -654,6 +654,17 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 <script>
 console.log('sistema carregado v2');
 
+function parseFluxo(v){
+  if(Array.isArray(v)) return v;
+  if(typeof v==='string'){
+    try{
+      const p=JSON.parse(v);
+      return Array.isArray(p)?p:[];
+    }catch(e){ return []; }
+  }
+  return [];
+}
+
 function escH(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -1982,43 +1993,47 @@ function salvarAlteracaoOF(ofNum){
 
 // ===================== MODAL OF =====================
 async function abrirModalOF(id){
-  if(id){
-    const o=(OFs||[]).find(x=>x.id===id);
-    if(o){ window.ofSel = o.of || o.numero || ''; alterarOFSel(); return; }
-  }
+  const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   ofImgsTemp=[];
   ofItensTemp=[];
-  document.getElementById('f-of').value=nextOFNum();
-  document.getElementById('f-dia').value=today();
-  ['f-ent','f-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  const fprodDescNew=document.getElementById('f-prod-desc');if(fprodDescNew)fprodDescNew.value='';
-  const fpagto=document.getElementById('f-pagto');if(fpagto)fpagto.value='';
-  document.getElementById('f-urg').value='0';document.getElementById('f-st').value='Em aberto';
-  document.getElementById('saldo-msg').innerHTML='';
-  const empSel=document.getElementById('f-emp');if(empSel)empSel.value=EMP_FILTRO||'';
-  const csel=document.getElementById('f-cli');csel.innerHTML='<option value="">Selecionar...</option>';
+  const fOf=document.getElementById('f-of'); if(fOf) fOf.value=oEdit?(oEdit.of||oEdit.numero||''):nextOFNum();
+  const fDia=document.getElementById('f-dia'); if(fDia) fDia.value=oEdit?(oEdit.dia||oEdit.data||today()):today();
+  const fEnt=document.getElementById('f-ent'); if(fEnt) fEnt.value=oEdit?(oEdit.ent||oEdit.data_entrega||''):'';
+  const fObs=document.getElementById('f-obs'); if(fObs) fObs.value=oEdit?(oEdit.obs||''):'';
+  const fprodDescNew=document.getElementById('f-prod-desc');if(fprodDescNew)fprodDescNew.value=oEdit?(oEdit.prodDesc||oEdit.prod||''):'';
+  const fpagto=document.getElementById('f-pagto');if(fpagto)fpagto.value=oEdit?(oEdit.pagto||''):'';
+  const fUrg=document.getElementById('f-urg'); if(fUrg) fUrg.value=oEdit?(oEdit.urg?'1':'0'):'0';
+  const fSt=document.getElementById('f-st'); if(fSt) fSt.value=oEdit?(oEdit.status||'Em aberto'):'Em aberto';
+  const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
+  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empresa||EMP_FILTRO||''):(EMP_FILTRO||'');
+  const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
   CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+(c.tel||'')+' · '+(c.cidade||'')+'/'+(c.uf||'')+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
   const fCliSearch=document.getElementById('f-cli-search'); if(fCliSearch) fCliSearch.value='';
-  const vsel=document.getElementById('f-vend');vsel.innerHTML='<option value="">Sem vendedor</option>';
+  const vsel=document.getElementById('f-vend'); vsel.innerHTML='<option value="">Sem vendedor</option>';
   VENDEDORES.forEach(v=>vsel.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
-  const fsel=document.getElementById('f-fl');fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
+  const fsel=document.getElementById('f-fl'); fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
   FLUXOS.forEach(f=>fsel.innerHTML+=`<option value="${f.id}">${f.nome}</option>`);
   try{ await carregarChapas(); }catch(e){}
   ofAtualizaChapas();
-  document.getElementById('f-qchp').value='';
-  renderMaqChks([]);
-  ofAddItem(); // começa com 1 item vazio
-  // Reset footer/title
+  const fQ=document.getElementById('f-qchp'); if(fQ) fQ.value='';
+  if(oEdit){
+    if(csel && (oEdit.cliId||oEdit.cliente)) csel.value=oEdit.cliId||oEdit.cliente||'';
+    if(vsel && (oEdit.vendId||oEdit.vendedor)) vsel.value=oEdit.vendId||'';
+    if(fsel && oEdit.fluxo_id) fsel.value=oEdit.fluxo_id;
+    renderMaqChks(parseFluxo(oEdit.fluxo_maquinas||[]));
+    ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length ? oEdit.itens.slice() : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null}];
+  } else {
+    renderMaqChks([]);
+    ofAddItem();
+  }
   const footer=document.querySelector('#modal-of .modal-footer');
   footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
-  document.querySelector('#modal-of h2').textContent='📋 Nova Ordem de Fabricação';
+  document.querySelector('#modal-of h2').textContent=oEdit?'✏️ Editar Ordem de Fabricação':'📋 Nova Ordem de Fabricação';
   abrir('modal-of');
-  // Autocomplete pagamento — attach/re-init
   setTimeout(()=>{
     const pagEl=document.getElementById('f-pagto');
     if(pagEl){
-      pagEl.value='';
       if(!pagEl._acAttached){
         pagEl._acAttached=true;
         ac(pagEl,(q)=>acPagamento(q),(data,lbl)=>{ pagEl.value=lbl; },{minLen:0});
@@ -2147,9 +2162,8 @@ function preencherMaq(){
 }
 function getMaqSel(){return [...(OF_FLUXO_IDS||[])];}
 function ofFluxoNamesFromIds(ids){
-  if (typeof ids === 'string') { try { ids = JSON.parse(ids); } catch(e) { ids = []; } }
-  if (!Array.isArray(ids)) ids = [];
-  return (ids||[]).map(id=>{
+  ids = parseFluxo(ids);
+  return ids.map(id=>{
     const m=(MAQUINAS||[]).find(x=>x.id===id);
     return m?m.col:String(id||'').trim();
   }).filter(Boolean);
