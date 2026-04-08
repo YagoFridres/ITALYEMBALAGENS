@@ -1467,7 +1467,9 @@ function renderPCP(){
 }
 
 function ofFluxoGetNames(o){
-  const f=Array.isArray(o?.fluxo_maquinas)?o.fluxo_maquinas:[];
+  let fm=o?.fluxo_maquinas;
+  if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
+  const f=Array.isArray(fm)?fm:[];
   if(f && f.length) return f.map(x=>String(x||'').trim()).filter(Boolean);
   if(typeof ofFluxoNamesFromIds==='function') return ofFluxoNamesFromIds(o?.maq||[]);
   return (o?.maq||[]).map(x=>String(x||'').trim()).filter(Boolean);
@@ -1630,10 +1632,10 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
   if(r && r.ok){
-    mostrarToast(r.concluida ? 'OF #'+(numero||id)+' CONCLUÍDA!' : ('Baixa registrada! Próxima: '+(r.proxima_maquina||'—')), 'success');
+    toast(r.concluida ? 'OF #'+(numero||id)+' CONCLUÍDA!' : ('Baixa registrada! Próxima: '+(r.proxima_maquina||'—')), 'success');
     renderOFsPorMaquina();
   } else {
-    mostrarToast('Erro: '+(r && r.error ? r.error : 'falha'), 'error');
+    toast('Erro: '+(r && r.error ? r.error : 'falha'), 'error');
   }
 }
 
@@ -1862,21 +1864,21 @@ function cancelarOFSel(){
 }
 
 async function cancelarOF(id, numero) {
-  if (!id) { mostrarToast('OF inválida', 'error'); return; }
+  if (!id) { toast('OF inválida', 'error'); return; }
   if (!confirm('Confirmar cancelamento da OF #' + (numero || id) + '?')) return;
   try {
     const r = await api('PATCH', '/ofs/' + encodeURIComponent(id), { status: 'Cancelada' });
-    if (r && r.error) { mostrarToast('Erro: ' + r.error, 'error'); return; }
+    if (r && r.error) { toast('Erro: ' + r.error, 'error'); return; }
     await api('POST', '/historico_acoes', {
       tipo_acao: 'cancelar_of',
       descricao: 'OF #' + (numero || id) + ' cancelada',
       usuario: (CURRENT_USER && CURRENT_USER.nome) || 'sistema'
     });
-    mostrarToast('OF #' + (numero || id) + ' cancelada', 'success');
+    toast('OF #' + (numero || id) + ' cancelada', 'success');
     if (typeof carregarOFs === 'function') await carregarOFs();
     if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
   } catch (e) {
-    mostrarToast('Erro ao cancelar: ' + e.message, 'error');
+    toast('Erro ao cancelar: ' + e.message, 'error');
   }
 }
 function alterarOFSel(){
@@ -2145,6 +2147,8 @@ function preencherMaq(){
 }
 function getMaqSel(){return [...(OF_FLUXO_IDS||[])];}
 function ofFluxoNamesFromIds(ids){
+  if (typeof ids === 'string') { try { ids = JSON.parse(ids); } catch(e) { ids = []; } }
+  if (!Array.isArray(ids)) ids = [];
   return (ids||[]).map(id=>{
     const m=(MAQUINAS||[]).find(x=>x.id===id);
     return m?m.col:String(id||'').trim();
@@ -6698,7 +6702,12 @@ async function carregarApontamentos(){
 }
 async function carregarOFs(){
   const r = await api('GET','/ofs');
-  if(r && r.ok && r.data) OFs = r.data.map(normalizeOF);
+  if(r && r.ok && r.data) OFs = r.data.map(o=>{
+    let fm=o && o.fluxo_maquinas;
+    if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
+    if(!Array.isArray(fm)) fm=[];
+    return normalizeOF({ ...o, fluxo_maquinas: fm });
+  });
   return r;
 }
 async function carregarClientes(){
