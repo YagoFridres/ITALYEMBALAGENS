@@ -96,6 +96,7 @@ if (!_supabaseEnvOk) {
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
   console.log('✅ Supabase conectado:', supabaseUrl);
+  console.log('✅ Supabase key:', supabaseKeySource, 'len:', (supabaseKey ? String(supabaseKey).length : 0), 'tipo provável:', (supabaseKey && String(supabaseKey).length > 200 ? 'SERVICE ROLE' : 'ANON/curta'));
 }
 
 const app = express();
@@ -222,29 +223,46 @@ function avatarColorFromText(s) {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, senha } = req.body || {};
-    if (!email || !senha) return res.status(400).json({ error: 'Email e senha obrigatórios' });
+    const { email, senha } = req.body;
+    if (!email || !senha)
+      return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
-    const em = String(email).toLowerCase().trim();
-    const se = String(senha);
-
-    const { data: usuarios, error: errBusca } = await supabase
+    const { data: rows, error: e1 } = await supabase
       .from('usuarios')
       .select('*')
-      .eq('email', em)
+      .eq('email', String(email).trim().toLowerCase())
       .eq('ativo', true)
       .limit(1);
 
-    if (errBusca || !usuarios || usuarios.length === 0) {
-      return res.status(401).json({ error: 'Usuário não encontrado' });
+    if (e1) {
+      console.error('Erro busca usuario:', e1);
+      return res.status(500).json({ error: 'Erro ao buscar usuário: ' + e1.message });
     }
+    if (!rows || rows.length === 0)
+      return res.status(401).json({ error: 'Usuário não encontrado' });
 
-    const usuario = usuarios[0];
+    const usuario = rows[0];
+    console.log('Usuario encontrado:', usuario.email, '| hash:', usuario.senha_hash?.substring(0, 10));
 
-    const { data: senhaOk, error: errSenha } = await supabase
-      .rpc('verificar_senha', { senha_input: se, hash: usuario.senha_hash });
+    const { data: ok, error: e2 } = await supabase
+      .rpc('verificar_senha', {
+        senha_input: String(senha),
+        hash: usuario.senha_hash
+      });
 
-    if (errSenha || !senhaOk) return res.status(401).json({ error: 'Senha incorreta' });
+    console.log('verificar_senha resultado:', ok, '| erro:', e2);
+
+    if (e2) {
+      console.error('Erro RPC verificar_senha:', e2);
+      try {
+        const bcryptOk = await bcrypt.compare(String(senha), usuario.senha_hash);
+        if (!bcryptOk) return res.status(401).json({ error: 'Senha incorreta' });
+      } catch {
+        return res.status(500).json({ error: 'Erro ao verificar senha: ' + e2.message });
+      }
+    } else if (!ok) {
+      return res.status(401).json({ error: 'Senha incorreta' });
+    }
 
     const token = jwt.sign(
       {
@@ -258,10 +276,11 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '8h' }
     );
 
-    await supabase
-      .from('usuarios')
+    await supabase.from('usuarios')
       .update({ ultimo_acesso: new Date().toISOString() })
       .eq('id', usuario.id);
+
+    console.log('Login OK:', usuario.email);
 
     res.json({
       token,
@@ -277,7 +296,7 @@ app.post('/api/auth/login', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Erro login:', err);
+    console.error('Erro geral no login:', err);
     res.status(500).json({ error: 'Erro interno: ' + err.message });
   }
 });
