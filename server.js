@@ -718,6 +718,46 @@ app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.post('/api/roteiro_entrega', authMiddleware, async (req, res) => {
+  try {
+    const { cidade, dia_semana, observacao } = req.body || {};
+    if (!cidade || !dia_semana) return bad(res, 'Cidade e dia obrigatórios');
+    const payload = {
+      cidade: String(cidade).trim(),
+      dia_semana: parseInt(dia_semana),
+      observacao: observacao || null,
+      ativo: req.body?.ativo !== false,
+    };
+    const { data, error } = await supabase.from('roteiro_entrega').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/roteiro_entrega/:id', authMiddleware, async (req, res) => {
+  try {
+    const { cidade, dia_semana, ativo, observacao } = req.body || {};
+    const payload = {
+      cidade: cidade != null ? String(cidade).trim() : undefined,
+      dia_semana: dia_semana != null ? parseInt(dia_semana) : undefined,
+      ativo: ativo != null ? !!ativo : undefined,
+      observacao: observacao != null ? observacao : undefined,
+    };
+    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+    const { data, error } = await supabase.from('roteiro_entrega').update(payload).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/roteiro_entrega/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('roteiro_entrega').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // CLIENTES
 // ══════════════════════════════════════════════════════════════
