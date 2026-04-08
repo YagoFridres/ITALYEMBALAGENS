@@ -238,8 +238,18 @@ app.post('/api/auth/login', async (req, res) => {
       console.error('Erro busca usuario:', e1);
       return res.status(500).json({ error: 'Erro ao buscar usuário: ' + e1.message });
     }
-    if (!rows || rows.length === 0)
+    if (!rows || rows.length === 0) {
+      console.error('Usuário não encontrado (ou acesso bloqueado por RLS).', {
+        email: String(email).trim().toLowerCase(),
+        keySource: supabaseKeySource,
+      });
+      if (supabaseKeySource === 'SUPABASE_ANON_KEY' || supabaseKeySource === 'index.html:SUPABASE_KEY') {
+        return res.status(500).json({
+          error: 'Login bloqueado por permissões (RLS) ao ler public.usuarios. No Railway, use SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY com service_role).',
+        });
+      }
       return res.status(401).json({ error: 'Usuário não encontrado' });
+    }
 
     const usuario = rows[0];
     console.log('Usuario encontrado:', usuario.email, '| hash:', usuario.senha_hash?.substring(0, 10));
