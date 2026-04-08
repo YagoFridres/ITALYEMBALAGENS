@@ -9270,7 +9270,7 @@ function calcRecalc(){
     var rowOutline=isBest?';outline:2px solid var(--green)':'';
 
     var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
-    var vUnit=preco.comFrete/qtd;
+    var vUnit=preco.liquida/qtd;
     var compTitle=rowTitles[i]||('Comp. '+rowLabels[i]);
     rows+='<tr style="background:'+bg+rowOutline+';border-top:1px solid var(--border)">';
     rows+='<td style="'+td+bold+'color:var(--accent);font-family:var(--mono)">'+compTitle+'</td>';
@@ -9295,7 +9295,7 @@ function calcRecalc(){
     allResults:allResults,
     compensacoes:compensacoes.map(function(opt,i){
     var preco=calcPreco(opt.area,onda,vb,vc,vbc,qtd,cm,cf,mg,cvend,imp,vkm,km);
-    return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.comFrete/qtd,onda:onda};
+    return {label:rowLabels[i],compTitle:rowTitles[i]||('Comp. '+rowLabels[i]),largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:preco.liquida/qtd,onda:onda};
   })};
 }
 
