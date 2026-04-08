@@ -225,8 +225,8 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, senha } = req.body || {};
     if (!email || !senha) return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
-    const em = String(email || '').trim().toLowerCase();
-    const se = String(senha || '').trim();
+    const em = String(email).toLowerCase().trim();
+    const se = String(senha);
 
     const { data: usuarios, error: errBusca } = await supabase
       .from('usuarios')
@@ -236,23 +236,23 @@ app.post('/api/auth/login', async (req, res) => {
       .limit(1);
 
     if (errBusca || !usuarios || usuarios.length === 0) {
-      return res.status(401).json({ error: 'Usuário não encontrado ou inativo' });
+      return res.status(401).json({ error: 'Usuário não encontrado' });
     }
 
-    const usuarioDb = usuarios[0];
+    const usuario = usuarios[0];
 
     const { data: senhaOk, error: errSenha } = await supabase
-      .rpc('verificar_senha', { senha_input: se, hash: usuarioDb.senha_hash });
+      .rpc('verificar_senha', { senha_input: se, hash: usuario.senha_hash });
 
     if (errSenha || !senhaOk) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign(
       {
-        id: usuarioDb.id,
-        nome: usuarioDb.nome,
-        email: usuarioDb.email,
-        perfil: usuarioDb.perfil,
-        permissoes: usuarioDb.permissoes,
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil,
+        permissoes: usuario.permissoes,
       },
       process.env.JWT_SECRET || 'italy_secret_2026',
       { expiresIn: '8h' }
@@ -261,24 +261,24 @@ app.post('/api/auth/login', async (req, res) => {
     await supabase
       .from('usuarios')
       .update({ ultimo_acesso: new Date().toISOString() })
-      .eq('id', usuarioDb.id);
+      .eq('id', usuario.id);
 
     res.json({
       token,
       usuario: {
-        id: usuarioDb.id,
-        nome: usuarioDb.nome,
-        email: usuarioDb.email,
-        perfil: usuarioDb.perfil,
-        permissoes: usuarioDb.permissoes,
-        canais_chat: usuarioDb.canais_chat,
-        avatar_iniciais: usuarioDb.avatar_iniciais,
-        avatar_cor: usuarioDb.avatar_cor,
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil,
+        permissoes: usuario.permissoes,
+        canais_chat: usuario.canais_chat,
+        avatar_iniciais: usuario.avatar_iniciais || 'AD',
+        avatar_cor: usuario.avatar_cor || '#4A90D9',
       },
     });
   } catch (err) {
-    console.error('Erro no login:', err);
-    res.status(500).json({ error: 'Erro interno no login' });
+    console.error('Erro login:', err);
+    res.status(500).json({ error: 'Erro interno: ' + err.message });
   }
 });
 
@@ -286,14 +286,13 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,permissoes,canais_chat,avatar_iniciais,avatar_cor')
+      .select('id, nome, email, perfil, permissoes, canais_chat, avatar_iniciais, avatar_cor')
       .eq('id', req.usuario.id)
       .single();
-    if (error) return res.status(500).json({ error: 'Erro ao buscar usuário' });
-    if (!usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+    if (error || !usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
     res.json(usuario);
-  } catch (e) {
-    res.status(500).json({ error: 'Erro ao buscar usuário' });
+  } catch(err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

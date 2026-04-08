@@ -6341,33 +6341,31 @@ function trocarUsuario(){
   document.querySelectorAll('.sidebar-section').forEach(s=>s.style.display='');
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
+// Executar logo no início, antes de iniciarSistema()
+(async function verificarSessao() {
   const token = localStorage.getItem('auth_token');
   const userStr = localStorage.getItem('auth_user');
-
   if (token && userStr) {
     try {
       CURRENT_USER = JSON.parse(userStr);
-      AUTH_TOKEN = token;
-      const resp = await fetch(API_BASE + '/api/auth/me', {
+      const resp = await fetch('/api/auth/me', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (resp.ok) {
-        try{
-          const u = await resp.json();
-          if(u && u.id) CURRENT_USER = u;
-          localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
-        }catch(e){}
-        aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
-        iniciarSistema(CURRENT_USER);
+        const userData = await resp.json();
+        CURRENT_USER = { ...CURRENT_USER, ...userData };
+        localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
+        if (typeof aplicarPermissoes === 'function')
+          aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
+        if (typeof iniciarSistema === 'function') iniciarSistema();
         return;
       }
-    } catch(e) {}
+    } catch(e) { console.log('Sessão inválida:', e.message); }
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_user');
   }
-  mostrarTelaLogin();
-});
+  if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
+})();
 
 // ===================== API CLIENT — BANCO CENTRAL =====================
 // Todos os dados vão para o servidor Node.js/SQLite, não para localStorage.
@@ -6400,20 +6398,20 @@ function api(method, url, body) {
     method: method,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      'Authorization': token ? ('Bearer ' + token) : ''
     }
   };
   if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
-  return fetch(API_BASE + '/api' + url, opts).then(async (r) => {
-    const ct = r.headers.get('content-type') || '';
-    if (!ct.includes('application/json')) {
-      const txt = await r.text();
-      return { ok: false, error: 'Resposta inválida do servidor', status: r.status, text: txt };
-    }
-    const j = await r.json().catch(() => null);
-    if (j && typeof j === 'object') j.status = r.status;
-    return j;
-  });
+  return fetch(url.startsWith('http') ? url : ('/api' + url), opts)
+    .then(r => {
+      if (r.status === 401) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
+        throw new Error('Sessão expirada');
+      }
+      return r.json();
+    });
 }
 
 function apiUnavailable(res){
