@@ -704,6 +704,19 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('roteiro_entrega')
+      .select('*')
+      .eq('ativo', true)
+      .order('dia_semana', { ascending: true })
+      .order('cidade', { ascending: true });
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // CLIENTES
 // ══════════════════════════════════════════════════════════════

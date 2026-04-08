@@ -670,6 +670,77 @@ function setVal(id, val){
   if(el) el.value = (val==null?'':val);
 }
 
+// ═══════════════════════════════════════════════════
+// ROTEIRO DE ENTREGA SEMANAL
+// Chave: nome da cidade (lowercase, sem acento)
+// Valor: dia da semana de entrega (1=seg, 2=ter, 3=qua, 4=qui, 5=sex)
+// ═══════════════════════════════════════════════════
+const ROTEIRO_ENTREGA = {
+  'flor do sertao':    1, 'flor do sertão':   1,
+  'iraceminha':        1,
+  'maravilha':         1,
+  'tigrinhos':         1,
+  'pinhalzinho':       1,
+  'saudades':          1,
+  'sao carlos':        1, 'são carlos':        1,
+  'palmitos':          1,
+  'cunha pora':        2, 'cunha porã':        2,
+  'caibi':             3,
+  'riqueza':           3,
+  'mondai':            3, 'mondaí':            3,
+  'ipora':             3, 'iporã':             3,
+  'sao joao':          3, 'são joão':          3,
+  'itapiranga':        3,
+  'nova erechim':      4,
+  'nova itaberaba':    4,
+  'chapeco':           4, 'chapecó':           4,
+  'sao miguel':        5, 'são miguel':        5,
+  'paraiso':           5, 'paraíso':           5,
+  'guaraciaba':        5,
+  'anchieta':          5,
+  'palma sola':        5,
+  'sao jose do cedro': 5, 'são josé do cedro': 5,
+  'guaruja':           5, 'guarujá':           5,
+  'dionisio':          5, 'dionísio':          5,
+  'santo antonio':     5, 'santo antônio':     5,
+};
+
+const DIAS_SEMANA = ['','Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+
+function calcDiaProgramacao(diaEntrega){
+  let diaProd = Number(diaEntrega||0) - 3;
+  if (diaProd <= 0) diaProd += 5;
+  return diaProd;
+}
+
+function buscarRoteiroCidade(nomeCidade){
+  if(!nomeCidade) return null;
+  const key = String(nomeCidade).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim();
+  if (ROTEIRO_ENTREGA[key] !== undefined) return ROTEIRO_ENTREGA[key];
+  for (const cidade in ROTEIRO_ENTREGA){
+    if (key.includes(cidade) || cidade.includes(key)) return ROTEIRO_ENTREGA[cidade];
+  }
+  return null;
+}
+
+async function carregarRoteiroEntrega(){
+  try{
+    const r = await api('GET','/roteiro_entrega');
+    const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+    if(!rows.length) return;
+    Object.keys(ROTEIRO_ENTREGA).forEach(k=>{ try{ delete ROTEIRO_ENTREGA[k]; }catch(e){} });
+    rows.forEach(row=>{
+      const cidade = String(row.cidade||'').trim();
+      const dia = Number(row.dia_semana||0);
+      if(!cidade || !(dia>=1 && dia<=5)) return;
+      const key = cidade.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      ROTEIRO_ENTREGA[key] = dia;
+    });
+  }catch(e){}
+}
+
 function escH(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -2049,7 +2120,10 @@ function salvarAlteracaoOF(ofNum){
   o.qtd=qtdTotal;
   o.val=valTotal;
   o.vunit=itens.length===1?itens[0].vunit:0;
-  o.dia=document.getElementById('f-dia').value;
+  o.data_pedido=document.getElementById('f-dia').value;
+  o.modo_programacao=(document.getElementById('f-modo-prog')||{}).value||o.modo_programacao||'manual';
+  o.dia_programacao=(document.getElementById('f-dia-prog')||{}).value||o.dia_programacao||'';
+  o.dia=o.dia_programacao||o.data_pedido;
   o.ent=document.getElementById('f-ent').value;
   o.fluxo=document.getElementById('f-fl').value;
   o.maq=getMaqSel();
@@ -2061,6 +2135,7 @@ function salvarAlteracaoOF(ofNum){
   o.pagto=(document.getElementById('f-pagto')||{}).value||'';
   o.obs=document.getElementById('f-obs').value;
   o.empId=(document.getElementById('f-emp')||{}).value||o.empId||'';
+  try{ const cc=getCli(cliId)||{}; o.cidade_entrega=cc.cidade||o.cidade_entrega||''; }catch(e){}
   // derive imgs from item images
   const itemImgsAlt=itens.map(it=>it.img||null);
   const firstImgAlt=itemImgsAlt.find(img=>img!==null);
@@ -2083,13 +2158,16 @@ async function abrirModalOF(id){
   ofImgsTemp=[];
   ofItensTemp=[];
   setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
-  setVal('f-dia', oEdit ? (oEdit.dia||oEdit.data_pedido||oEdit.data||today()) : today());
+  setVal('f-dia', oEdit ? (oEdit.data_pedido||oEdit.dia||oEdit.data||today()) : today());
   setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
   setVal('f-obs', oEdit ? (oEdit.obs||oEdit.observacao||'') : '');
   setVal('f-prod-desc', oEdit ? (oEdit.prodDesc||oEdit.produto||oEdit.prod||oEdit.descricao||'') : '');
   setVal('f-pagto', oEdit ? (oEdit.pagto||'') : '');
   setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
   setVal('f-st', oEdit ? (oEdit.status||'Em aberto') : 'Em aberto');
+  setVal('f-modo-prog', oEdit ? (oEdit.modo_programacao||'manual') : 'automatico');
+  setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
+  const progInfo=document.getElementById('f-prog-info'); if(progInfo) progInfo.innerHTML='';
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
   const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.empresa||EMP_FILTRO||''):(EMP_FILTRO||'');
   const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
@@ -2119,6 +2197,7 @@ async function abrirModalOF(id){
   document.querySelector('#modal-of h2').textContent=oEdit?'✏️ Editar Ordem de Fabricação':'📋 Nova Ordem de Fabricação';
   abrir('modal-of');
   setTimeout(()=>{
+    try{ ofModoProgChange(); }catch(e){}
     const pagEl=document.getElementById('f-pagto');
     if(pagEl){
       if(!pagEl._acAttached){
@@ -2164,6 +2243,80 @@ function ofCliChange(){
     +(c.pagto?` &nbsp;·&nbsp; <span style="color:var(--green);font-weight:600">💳 ${c.pagto}</span>`:'');
   const fpagto=document.getElementById('f-pagto');
   if(fpagto&&!fpagto.value&&c.pagto) fpagto.value=c.pagto;
+  try{
+    const modo=document.getElementById('f-modo-prog');
+    if(modo && modo.value==='automatico') aplicarProgramacaoAutomatica();
+  }catch(e){}
+}
+
+function ofModoProgChange(){
+  const modo = document.getElementById('f-modo-prog')?.value || 'manual';
+  const inputDia = document.getElementById('f-dia-prog');
+  if (inputDia) inputDia.disabled = (modo === 'automatico');
+  if (modo === 'automatico') aplicarProgramacaoAutomatica();
+}
+
+function ofDiaProgManualChange(){
+  const modoSel = document.getElementById('f-modo-prog');
+  if (modoSel) modoSel.value = 'manual';
+  const inputDia = document.getElementById('f-dia-prog');
+  if (inputDia) inputDia.disabled = false;
+}
+
+function aplicarProgramacaoAutomatica(){
+  const cliSel = document.getElementById('f-cli');
+  const cliId = cliSel?.value || '';
+  const cli = (CLIENTES||[]).find(c => c.id === cliId);
+  const cidade = cli?.cidade || cli?.city || '';
+
+  const infoEl = document.getElementById('f-prog-info');
+  const inputDia = document.getElementById('f-dia-prog');
+  const inputEnt = document.getElementById('f-ent');
+
+  if (!cidade) {
+    if (infoEl) infoEl.innerHTML = '<span style="color:#ff9800">⚠ Cliente sem cidade cadastrada. Use modo manual.</span>';
+    const modoSel = document.getElementById('f-modo-prog');
+    if (modoSel) modoSel.value = 'manual';
+    if (inputDia) inputDia.disabled = false;
+    return;
+  }
+
+  const diaEntrega = buscarRoteiroCidade(cidade);
+  if (diaEntrega === null) {
+    if (infoEl) infoEl.innerHTML = `<span style="color:#ff9800">⚠ Cidade "<b>${escH(cidade)}</b>" não encontrada no roteiro. Use modo manual.</span>`;
+    const modoSel = document.getElementById('f-modo-prog');
+    if (modoSel) modoSel.value = 'manual';
+    if (inputDia) inputDia.disabled = false;
+    return;
+  }
+
+  const diaProd = calcDiaProgramacao(diaEntrega);
+  const hoje = new Date();
+  const diaSemanaHoje = hoje.getDay() || 7;
+  let diasAte = diaProd - diaSemanaHoje;
+  if (diasAte <= 0) diasAte += 7;
+  const dataProd = new Date(hoje);
+  dataProd.setDate(hoje.getDate() + diasAte);
+  const dataProdStr = dataProd.toISOString().slice(0,10);
+
+  const dataEntrega = new Date(dataProd);
+  let diasUtil = 0;
+  while (diasUtil < 3) {
+    dataEntrega.setDate(dataEntrega.getDate() + 1);
+    const dow = dataEntrega.getDay();
+    if (dow !== 0 && dow !== 6) diasUtil++;
+  }
+  const dataEntregaStr = dataEntrega.toISOString().slice(0,10);
+
+  if (infoEl) infoEl.innerHTML = `
+    <span style="color:var(--green)">✅ Rota encontrada!</span><br>
+    🏙 Cidade: <b>${escH(cidade)}</b><br>
+    🚚 Entrega: <b>${DIAS_SEMANA[diaEntrega]}-feira</b> (${fmtDataBR(dataEntregaStr)})<br>
+    🏭 Produção sugerida: <b>${DIAS_SEMANA[diaProd]}-feira</b> (${fmtDataBR(dataProdStr)})
+  `;
+
+  if (inputDia) { inputDia.value = dataProdStr; inputDia.disabled = true; }
+  if (inputEnt && !inputEnt.value) inputEnt.value = dataEntregaStr;
 }
 var OF_FLUXO_IDS=[];
 function _posIcon(i){
@@ -2402,10 +2555,16 @@ function salvarOF(){
   const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
+  const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
+  const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
+  const data_pedido = document.getElementById('f-dia').value;
+  const dia = dia_programacao || data_pedido;
+  const cliObj = getCli(cliId) || {};
+  const cidade_entrega = cliObj.cidade || '';
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  OFs.push({seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia:document.getElementById('f-dia').value,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId,_estoqueJaBaixadoCriacao});
+  OFs.push({seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido});
   fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
   logAction('Nova OF criada', document.getElementById('f-of').value);
 }
@@ -6455,6 +6614,7 @@ function iniciarSistema(user){
   if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
   if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
   aplicarPermissoes(CURRENT_USER?CURRENT_USER.permissoes:[], CURRENT_USER?CURRENT_USER.perfil:'');
+  try{ carregarRoteiroEntrega(); }catch(e){}
   try{ autoSaveLoad(); }catch(e){}
   try{ startNotificacoesDB(); }catch(e){}
 }
@@ -12565,6 +12725,24 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <select id="f-cli" onchange="ofCliChange()" style="display:none"></select>
     </div>
     <div id="f-cli-info" style="font-size:.68rem;color:var(--text2);grid-column:1/-1;margin-top:-6px;padding:4px 8px;background:var(--s2);border-radius:4px;display:none"></div>
+    <div class="mf fgf" style="grid-column:1/-1">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📅 PROGRAMAÇÃO DE PRODUÇÃO</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px">Modo:</label>
+          <select id="f-modo-prog" onchange="ofModoProgChange()" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">
+            <option value="automatico">🤖 Automático (roteiro)</option>
+            <option value="manual">✏️ Manual</option>
+          </select>
+        </div>
+        <div id="f-prog-info" style="margin-top:8px;font-size:12px;color:var(--text2)"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+          <label style="font-size:12px">Data de programação:</label>
+          <input type="date" id="f-dia-prog" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)" onchange="ofDiaProgManualChange()">
+          <button type="button" onclick="aplicarProgramacaoAutomatica()" style="padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">🔄 Aplicar Roteiro</button>
+        </div>
+      </div>
+    </div>
     <div class="mf"><label>VENDEDOR</label><select id="f-vend"><option value="">Sem vendedor</option></select></div>
     <div class="mf"><label>COND. PAGAMENTO</label>
       <div class="ac-wrap">
