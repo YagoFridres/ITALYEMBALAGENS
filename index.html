@@ -6175,37 +6175,39 @@ function hasPerm(keyOrList){
 function aplicarPermissoes(permissoes, perfil) {
   const ehAdmin = perfil === 'admin' || (Array.isArray(permissoes) && permissoes.includes('tudo'));
 
-  document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
+  const MAPA_MENUS = {
+    'pcp_completo':     ['menu-pcp'],
+    'ofs_por_maquina':  ['menu-ofs-maquina'],
+    'lancar_pedidos':   ['menu-pedidos','btn-nova-of'],
+    'ver_pedidos':      ['menu-pcp'],
+    'editar_pedidos':   ['btn-alterar-of'],
+    'cancelar_pedidos': ['btn-cancelar-of'],
+    'dar_baixa_of':     ['btn-baixa-of'],
+    'estoque_chapas':   ['menu-estoque'],
+    'editar_estoque':   ['btn-reset-estoque'],
+    'solicitar_compra': [],
+    'recebimento':      [],
+    'relatorio_mensal': ['menu-relatorio'],
+    'relatorio_admin':  ['menu-relatorio'],
+    'financeiro':       [],
+    'notificacoes':     ['menu-notificacoes'],
+    'cadastros':        ['menu-usuarios'],
+    'orcamentos':       []
+  };
 
   if (ehAdmin) {
-    document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = '');
+    document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
     return;
   }
 
-  const mapa = {
-    'lancar_pedidos':   'menu-pedidos',
-    'ver_pedidos':      'menu-pedidos',
-    'editar_pedidos':   'menu-pedidos',
-    'cancelar_pedidos': 'menu-pedidos',
-    'pcp_completo':     'menu-pcp',
-    'ofs_por_maquina':  'menu-ofs-maquina',
-    'dar_baixa_of':     'menu-ofs-maquina',
-    'estoque_chapas':   'menu-estoque',
-    'editar_estoque':   'menu-estoque',
-    'solicitar_compra': 'menu-estoque',
-    'recebimento':      'menu-estoque',
-    'relatorio_mensal': 'menu-relatorio',
-    'relatorio_admin':  'menu-relatorio',
-    'financeiro':       'menu-financeiro',
-    'notificacoes':     'menu-notificacoes'
-  };
+  document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = 'none');
 
   (Array.isArray(permissoes) ? permissoes : []).forEach(perm => {
-    const menuId = mapa[perm];
-    if (menuId) {
-      const el = document.getElementById(menuId);
+    const ids = MAPA_MENUS[perm] || [];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
       if (el) el.style.display = '';
-    }
+    });
   });
 }
 
@@ -7739,6 +7741,10 @@ async function handleImportChapasFile(file){
 }
 
 function abrirModalResetChapas(){
+  const c1 = confirm('⚠️ ATENÇÃO: Esta ação vai APAGAR TODO o estoque atual e substituir pelos novos dados.\n\nTem certeza que deseja continuar?');
+  if(!c1) return;
+  const c2 = prompt('⚠️ CONFIRMAÇÃO FINAL: Todos os registros atuais serão DELETADOS permanentemente.\n\nDigite OK para confirmar.');
+  if(String(c2||'').trim().toUpperCase()!=='OK') return;
   const ta=document.getElementById('rst-chp-json');
   if(ta) ta.value='';
   abrir('modal-reset-chapas');
@@ -7753,7 +7759,6 @@ async function executarResetChapas(){
   let items=null;
   try{ items=JSON.parse(raw); }catch(e){ toast('JSON inválido','var(--red)'); return; }
   if(!Array.isArray(items) || items.length===0){ toast('Lista vazia','var(--red)'); return; }
-  if(!confirm(`ATENÇÃO: isso vai APAGAR TODO o estoque atual e inserir ${items.length} registros.\n\nDeseja continuar?`)) return;
 
   showSaveIndicator('⏳ resetando estoque...','var(--yellow)');
   const r=await api('POST','/chapas_estoque/reset',{ items });
@@ -10904,6 +10909,9 @@ function renderUsuarios(){
 function usrModalGetPerms(){
   return [...document.querySelectorAll('#modal-usr .usr-perm:checked')].map(x=>x.value);
 }
+function coletarPermissoes(){
+  return [...document.querySelectorAll('#usr-perms-grid input[type=checkbox]:checked')].map(cb=>cb.value);
+}
 function usrModalSetPerms(perms){
   const set = new Set(Array.isArray(perms)?perms:[]);
   document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.checked=set.has(cb.value);});
@@ -10967,8 +10975,9 @@ async function salvarUsuarioModal(){
   const email = String((document.getElementById('usr-email')||{}).value||'').trim().toLowerCase();
   const ativo = (String((document.getElementById('usr-ativo')||{}).value||'1')==='1');
   const avatar_cor = String((document.getElementById('usr-cor')||{}).value||'').trim();
-  const permissoes = usrModalGetPerms();
+  const permissoes = coletarPermissoes();
   const perfil = permissoes.includes('tudo') ? 'admin' : 'custom';
+  const canais_chat = permissoes.filter(p=>String(p||'').startsWith('chat_')).map(p=>String(p||'').replace('chat_',''));
 
   if(!nome || !email){
     if(errEl) errEl.textContent='Informe nome e email.';
@@ -10982,13 +10991,13 @@ async function salvarUsuarioModal(){
       if(errEl) errEl.textContent='Senhas não conferem.';
       return;
     }
-    const r = await api('POST','/usuarios',{nome,email,senha,perfil,permissoes,ativo,avatar_cor});
+    const r = await api('POST','/usuarios',{nome,email,senha,perfil,permissoes,canais_chat,ativo,avatar_cor});
     if(!r || !r.ok){
       if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
       return;
     }
   } else {
-    const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{nome,email,perfil,permissoes,ativo,avatar_cor});
+    const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{nome,email,perfil,permissoes,canais_chat,ativo,avatar_cor});
     if(!r || !r.ok){
       if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
       return;
@@ -11221,7 +11230,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="flex:1"></div>
     <div id="pcp-dia-resumo" style="font-size:.72rem;color:var(--text2);font-family:var(--mono);"></div>
     <button class="btn btn-red btn-sm" onclick="atravessarSel()">⬆ Atravessar</button>
-    <button class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
+    <button id="btn-cancelar-of" class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
     <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
     <button id="btn-baixa-of" class="btn btn-green btn-sm" onclick="marcarProntoSel()" title="Marca a OF selecionada como Concluído">✅ Pedido Pronto</button>
     <button class="btn btn-ghost btn-sm" onclick="imprimirProgramacao('dia')" title="Imprimir programação do dia">🖨 Imprimir Dia</button>
@@ -11359,7 +11368,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
     <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar Excel</button>
-    <button class="btn btn-red btn-sm" onclick="abrirModalResetChapas()">🧹 Resetar Estoque</button>
+    <button id="btn-reset-estoque" class="btn btn-red btn-sm" onclick="abrirModalResetChapas()">🧹 Resetar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
