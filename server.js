@@ -882,20 +882,56 @@ app.get('/api/empresas', async (req, res) => {
 });
 
 app.get('/api/orcamentos', async (req, res) => {
-  try { ok(res, await selectAll('orcamentos', 'created_at')); } catch (e) { bad(res, e.message); }
+  try {
+    const numero = req.query.numero ? parseInt(String(req.query.numero), 10) : null;
+    const cliente = req.query.cliente ? String(req.query.cliente) : '';
+    const empId = req.query.empId ? String(req.query.empId) : '';
+
+    const orderCols = ['criado_em', 'created_at'];
+    let lastErr = null;
+    for (const orderCol of orderCols) {
+      let q = supabase.from('orcamentos').select('*').order(orderCol, { ascending: false });
+      if (Number.isFinite(numero)) q = q.eq('numero', numero);
+      if (cliente) q = q.ilike('cliente_nome', `%${cliente}%`);
+      if (empId) q = q.eq('emp_id', empId);
+      const { data, error } = await q.limit(50);
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (msg.includes('column') || msg.includes('Could not find')) continue;
+      throw error;
+    }
+    throw lastErr;
+  } catch (e) { return err(res, e); }
 });
 app.post('/api/orcamentos', async (req, res) => {
-  try { ok(res, await insertOne('orcamentos', req.body || {})); } catch (e) { bad(res, e.message); }
+  try {
+    const payload = {
+      ...(req.body || {}),
+      criado_por: req.usuario?.nome || 'sistema',
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('orcamentos').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
 });
 app.put('/api/orcamentos/:id', async (req, res) => {
   try {
-    const payload = { ...(req.body || {}) };
+    const payload = { ...(req.body || {}), atualizado_em: new Date().toISOString() };
     delete payload.id;
-    ok(res, await updateOne('orcamentos', req.params.id, payload));
-  } catch (e) { bad(res, e.message); }
+    const { data, error } = await supabase.from('orcamentos').update(payload).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
 });
 app.delete('/api/orcamentos/:id', async (req, res) => {
-  try { await deleteOne('orcamentos', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+  try {
+    const { error } = await supabase.from('orcamentos').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
 });
 
 // ══════════════════════════════════════════════════════════════

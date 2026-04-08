@@ -9176,6 +9176,144 @@ function calcPreco(area, onda, vb, vc, vbc, qtd, cm, cf, mg, cvend, imp, vkm, km
 }
 
 var calcLastResult = null;
+let _orcNumeroAtual = null;
+let _orcIdAtual = null;
+let _calcOpcaoSelecionada = { compIdx: 0, onda: 'B' };
+
+function fecharCalc(){ fechar('modal-calc'); }
+
+function calcUsarOpcaoSelecionada(){
+  if(!_calcOpcaoSelecionada) return calcUsarNoOrcamento();
+  return calcUsarOpcao(_calcOpcaoSelecionada.compIdx||0, _calcOpcaoSelecionada.onda||'B');
+}
+
+async function salvarOrcamentoCalc(){
+  if(!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length===0){
+    toast('Calcule primeiro antes de salvar','var(--red)');return;
+  }
+  const calcCli=document.getElementById('calc-cli');
+  const clienteId=String((calcCli||{}).value||'');
+  const clienteNome=(calcCli && calcCli.options && calcCli.selectedIndex>=0) ? (calcCli.options[calcCli.selectedIndex].textContent||'').trim() : (clienteId||'—');
+  const qtd=parseInt(String((document.getElementById('calc-qtd')||{}).value||'0'),10)||0;
+  const C=String((document.getElementById('calc-comp')||{}).value||'');
+  const L=String((document.getElementById('calc-larg')||{}).value||'');
+  const A=String((document.getElementById('calc-alt')||{}).value||'');
+  const medidas=C+'x'+L+'x'+A;
+
+  const sel=_calcOpcaoSelecionada || {compIdx:0,onda:'B'};
+  const opt=calcLastResult.allResults.find(r=>r && r.compIdx===sel.compIdx && String(r.onda||'')===String(sel.onda||'')) || calcLastResult.allResults[0];
+  const valorUnitario = qtd>0 ? (Number(opt.comFrete)||0)/qtd : 0;
+  const valorTotal = Number(opt.comFrete)||0;
+
+  const payload={
+    cliente_id: clienteId,
+    cliente_nome: clienteNome||'—',
+    medidas,
+    quantidade: qtd,
+    onda: String(opt.onda||''),
+    valor_unitario: valorUnitario,
+    valor_total: valorTotal,
+    parametros:{
+      cm:(document.getElementById('calc-cm')||{}).value,
+      cf:(document.getElementById('calc-cf')||{}).value,
+      mg:(document.getElementById('calc-mg')||{}).value,
+      cvend:(document.getElementById('calc-cv')||{}).value,
+      imp:(document.getElementById('calc-imp')||{}).value,
+      vkm:(document.getElementById('calc-vkm')||{}).value,
+      km:(document.getElementById('calc-km')||{}).value,
+      vb:(document.getElementById('calc-vb')||{}).value,
+      vc:(document.getElementById('calc-vc')||{}).value,
+      vbc:(document.getElementById('calc-vbc')||{}).value,
+      sob:(document.getElementById('calc-sob')||{}).value,
+      enc:(document.getElementById('calc-enc')||{}).value,
+      tipo:(document.getElementById('calc-tipo')||{}).value,
+    },
+    resultados: calcLastResult.allResults,
+    emp_id: EMP_FILTRO || '',
+  };
+
+  const metodo=_orcIdAtual ? 'PUT' : 'POST';
+  const url=_orcIdAtual ? ('/orcamentos/'+encodeURIComponent(_orcIdAtual)) : '/orcamentos';
+  const r = await api(metodo, url, payload);
+  if(!r || r.ok===false || r.error){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+  const row=r.data || r;
+  _orcIdAtual = row.id;
+  _orcNumeroAtual = row.numero;
+  toast('Orçamento Nº '+row.numero+' salvo ✓','var(--green)');
+  const numEl=document.getElementById('orc-numero-display');
+  if(numEl) numEl.textContent = row.numero ? ('Orçamento Nº '+row.numero) : '';
+}
+
+async function buscarOrcamento(){
+  const busca=String((document.getElementById('orc-busca-num')||{}).value||'').trim();
+  if(!busca) return;
+  const isNum = /^\d+$/.test(busca);
+  const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const params = isNum ? ('?numero='+encodeURIComponent(busca)+empParam) : ('?cliente='+encodeURIComponent(busca)+empParam);
+  const r = await api('GET','/orcamentos'+params);
+  const lista = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r)?r:[]);
+  if(!lista || lista.length===0){ toast('Orçamento não encontrado','var(--orange)'); return; }
+  if(lista.length===1){ carregarOrcamentoCalc(lista[0]); return; }
+  const opcoes = lista.map(o=>'Nº '+o.numero+' — '+(o.cliente_nome||'—')+' — '+(o.medidas||'')).join('\n');
+  const idx = prompt('Encontrados '+lista.length+' orçamentos:\n\n'+opcoes+'\n\nDigite o número do orçamento desejado:');
+  const orc = lista.find(o=>String(o.numero)===String(idx));
+  if(orc) carregarOrcamentoCalc(orc);
+}
+
+function carregarOrcamentoCalc(orc){
+  if(!orc) return;
+  _orcIdAtual = orc.id;
+  _orcNumeroAtual = orc.numero;
+  const numEl=document.getElementById('orc-numero-display');
+  if(numEl) numEl.textContent = orc.numero ? ('Orçamento Nº '+orc.numero) : '';
+
+  if(orc.medidas){
+    const parts=String(orc.medidas).split('x');
+    if(document.getElementById('calc-comp')) document.getElementById('calc-comp').value = parts[0]||'';
+    if(document.getElementById('calc-larg')) document.getElementById('calc-larg').value = parts[1]||'';
+    if(document.getElementById('calc-alt')) document.getElementById('calc-alt').value = parts[2]||'';
+  }
+  if(orc.quantidade!=null && document.getElementById('calc-qtd')) document.getElementById('calc-qtd').value = orc.quantidade;
+  if(orc.parametros){
+    const p=orc.parametros||{};
+    const map={cm:'calc-cm',cf:'calc-cf',mg:'calc-mg',cvend:'calc-cv',imp:'calc-imp',vkm:'calc-vkm',km:'calc-km',vb:'calc-vb',vc:'calc-vc',vbc:'calc-vbc',sob:'calc-sob',enc:'calc-enc',tipo:'calc-tipo'};
+    Object.keys(map).forEach(k=>{
+      const el=document.getElementById(map[k]);
+      if(el && p[k]!==undefined && p[k]!==null) el.value = p[k];
+    });
+    const vb2=document.getElementById('calc-vb2'); const vb=document.getElementById('calc-vb');
+    if(vb2 && vb) vb2.value = vb.value;
+  }
+  if(orc.cliente_id){
+    const calcCli=document.getElementById('calc-cli');
+    if(calcCli) calcCli.value = orc.cliente_id;
+  }
+
+  const ondas=['B','C','BC'];
+  const oi=ondas.indexOf(String(orc.onda||''));
+  if(oi>=0) _calcOpcaoSelecionada = { compIdx: oi, onda: ondas[oi] };
+  toast('Orçamento Nº '+orc.numero+' carregado ✓','var(--green)');
+  if(typeof calcRecalc==='function') calcRecalc();
+}
+
+async function enviarOrcamentoPorEmail(){
+  const email = prompt('Digite o e-mail do destinatário:');
+  if(!email || !String(email).includes('@')){ toast('E-mail inválido','var(--red)'); return; }
+  const calcCli=document.getElementById('calc-cli');
+  const clienteNome=(calcCli && calcCli.options && calcCli.selectedIndex>=0) ? (calcCli.options[calcCli.selectedIndex].textContent||'').trim() : 'Cliente';
+  const medidas=(document.getElementById('calc-comp')?.value||'')+'x'+(document.getElementById('calc-larg')?.value||'')+'x'+(document.getElementById('calc-alt')?.value||'');
+  const assunto=encodeURIComponent('Orçamento Italy Embalagens'+(_orcNumeroAtual?' Nº '+_orcNumeroAtual:''));
+  const corpo=encodeURIComponent(
+    'Prezado(a) '+clienteNome+',\n\n'
+    +'Segue orçamento de embalagens:\n'
+    +'Medidas: '+medidas+'\n'
+    +'Quantidade: '+(document.getElementById('calc-qtd')?.value||'')+'\n\n'
+    +'Em anexo o orçamento detalhado.\n\n'
+    +'Atenciosamente,\nEleomar Fridres\n(49) 99998-0203\natendimento@italyembalagens.com.br\nRUA GEOVANI BARRICHELLO, 200 - BAIRRO SANTA RITA - SÃO MIGUEL DO OESTE'
+  );
+  window.open('mailto:'+String(email).trim()+'?subject='+assunto+'&body='+corpo);
+  toast('Cliente de e-mail aberto ✓','var(--green)');
+}
 
 function abrirCalculadora(){
   // Populate client dropdown from CLIENTES array
@@ -9313,6 +9451,7 @@ function syncVb(){
 function calcUsarOpcao(compIdx, onda){
   // Called from the +Orc button on each row
   if(!calcLastResult){toast('Calcule primeiro','var(--yellow)');return;}
+  try{ _calcOpcaoSelecionada = { compIdx: compIdx, onda: onda }; }catch(e){}
   var opt=calcLastResult.allResults && calcLastResult.allResults.find(function(r){return r.compIdx===compIdx&&r.onda===onda;});
   if(!opt) opt=(calcLastResult.compensacoes[compIdx]||calcLastResult.compensacoes[0]);
   var vunit=opt?opt.vunit:0;
@@ -9343,70 +9482,112 @@ function calcUsarNoOrcamento(){
 }
 
 function calcImprimir(){
-  if(!calcLastResult){toast('Calcule primeiro','var(--yellow)');return;}
-
-  var calcCliEl=document.getElementById('calc-cli');
-  var cliNome='';
-  if(calcCliEl&&calcCliEl.selectedIndex>0){
-    cliNome=calcCliEl.options[calcCliEl.selectedIndex].textContent.trim();
+  if (!calcLastResult || !calcLastResult.allResults) {
+    toast('Nada para imprimir', 'var(--red)'); return;
   }
+  const calcCli = document.getElementById('calc-cli');
+  const clienteNome = (calcCli && calcCli.options && calcCli.selectedIndex >= 0) ? (calcCli.options[calcCli.selectedIndex].textContent || '—') : '—';
+  const medidas = (document.getElementById('calc-comp')?.value||'') + ' × ' +
+                  (document.getElementById('calc-larg')?.value||'') + ' × ' +
+                  (document.getElementById('calc-alt')?.value||'') + ' mm';
+  const qtd = document.getElementById('calc-qtd')?.value || '—';
+  const numOrc = _orcNumeroAtual ? 'Nº ' + _orcNumeroAtual : '';
+  const tipo = document.getElementById('calc-tipo')?.options?.[document.getElementById('calc-tipo')?.selectedIndex]?.text || '';
 
-  var tipo=calcLastResult.tipo||'';
-  var C=calcLastResult.comp, L=calcLastResult.larg, A=calcLastResult.alt;
-  var qtd=calcLastResult.qtd;
-  var empNome=typeof getEmp==='function'?((getEmp||function(){return{};})('IT')||{nome:'Italy Embalagens'}).nome:'Italy Embalagens';
+  const linhasHtml = (calcLastResult.allResults||[]).map(r => {
+    const vLiq = (Number(r.liquida)||0) / (Number(calcLastResult.qtd)||1);
+    const vFre = (Number(r.comFrete)||0) / (Number(calcLastResult.qtd)||1);
+    return `
+      <tr>
+        <td>${escH(r.compTitle||r.compLabel||'')}</td>
+        <td>${escH(medidas)}</td>
+        <td style="text-align:center">${escH(String(calcLastResult.qtd||qtd||''))}</td>
+        <td style="text-align:right">R$ ${vLiq.toFixed(4)}</td>
+        <td style="text-align:right"><b>R$ ${vFre.toFixed(4)}</b></td>
+      </tr>
+    `;
+  }).join('');
 
-  var results=calcLastResult.allResults||[];
-  var rowsHtml='';
-  results.forEach(function(r){
-    var vlLiq=(r.liquida||0)/qtd;
-    var vlFre=(r.comFrete||0)/qtd;
-    rowsHtml += '<tr>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd;font-weight:700">'+(r.compTitle||('Comp. '+r.compLabel))+'</td>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd">'+C+' × '+L+' × '+A+'</td>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right">'+qtd.toLocaleString('pt-BR')+'</td>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace">'+Number(r.area||0).toFixed(6)+'</td>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace">'+fmtR(vlLiq)+'</td>'
-      +'<td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-family:monospace;font-weight:800">'+fmtR(vlFre)+'</td>'
-      +'</tr>';
-  });
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Orçamento Italy Embalagens ${escH(numOrc)}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #000; padding: 24px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; border-bottom:2px solid #333; padding-bottom:12px; }
+    .header h1 { font-size:18px; color:#333; }
+    .header .num { font-size:14px; color:#666; margin-top:4px; }
+    .info-box { background:#f5f5f5; padding:10px 14px; border-radius:6px; margin-bottom:16px; }
+    .info-box p { margin-bottom:4px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    th { background:#333; color:#fff; padding:8px 10px; text-align:left; font-size:11px; }
+    td { padding:8px 10px; border-bottom:1px solid #ddd; font-size:12px; }
+    tr:nth-child(even) td { background:#f9f9f9; }
+    .rodape { margin-top:24px; padding-top:16px; border-top:1px solid #ccc; font-size:11px; color:#333; line-height:1.8; }
+    .rodape .empresa { font-weight:bold; font-size:12px; margin-bottom:8px; }
+    @media print {
+      body { padding: 12px; }
+      button { display:none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Italy Embalagens</h1>
+      <div class="num">${numOrc ? 'Orçamento ' + escH(numOrc) : 'Orçamento'}</div>
+    </div>
+    <div style="text-align:right;font-size:11px;color:#666">
+      <div>Data: ${new Date().toLocaleDateString('pt-BR')}</div>
+      <div>Tipo: ${escH(tipo)}</div>
+    </div>
+  </div>
 
-  var logoSrc=typeof LOGO_ITALY!=='undefined'?LOGO_ITALY:'';
-  var esc=function(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');};
-  var printContent='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Orçamento</title><style>'
-    +'*{margin:0;padding:0;box-sizing:border-box}'
-    +'body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}'
-    +'h2{font-size:16px;margin-bottom:4px}'
-    +'.info{margin-bottom:16px;font-size:13px}'
-    +'.info span{font-weight:bold}'
-    +'table{width:100%;border-collapse:collapse;margin-top:12px}'
-    +'th{background:#222;color:#fff;padding:8px;text-align:left;font-size:11px}'
-    +'td{padding:8px;border-bottom:1px solid #ddd;font-size:12px}'
-    +'tr:nth-child(even) td{background:#f9f9f9}'
-    +'.rodape{margin-top:20px;font-size:11px;color:#666}'
-    +'@media print{body{padding:10px}}'
-    +'</style></head><body>'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-    +(logoSrc?'<img src="'+logoSrc+'" style="height:40px;object-fit:contain">':'<div style="font-weight:900">'+esc(empNome)+'</div>')
-    +'<div style="text-align:right"><div style="font-weight:900;font-size:14px">Orçamento</div><div style="font-size:11px;color:#444">'+new Date().toLocaleDateString('pt-BR')+'</div></div>'
-    +'</div>'
-    +'<div class="info" style="margin-top:10px">'
-    +'<p>Cliente: <span>'+esc(cliNome||'—')+'</span></p>'
-    +'<p>Medidas: <span>'+esc(C+' × '+L+' × '+A+' mm')+'</span></p>'
-    +'</div>'
-    +'<table><thead><tr>'
-    +'<th>COMPENSAÇÃO</th><th>MEDIDAS (mm)</th><th>QUANTIDADE</th><th>M²</th><th>VL. UNITÁRIO LÍQUIDO</th><th>VL. UNITÁRIO C/ FRETE</th>'
-    +'</tr></thead><tbody>'
-    +(rowsHtml||'<tr><td colspan="6" style="text-align:center;padding:20px">Nenhum dado disponível</td></tr>')
-    +'</tbody></table>'
-    +'<div class="rodape"><p>Italy Embalagens — Documento gerado em '+new Date().toLocaleString('pt-BR')+'</p></div>'
-    +'</body></html>';
+  <div class="info-box">
+    <p><b>Cliente:</b> ${escH(clienteNome)}</p>
+    <p><b>Medidas:</b> ${escH(medidas)} &nbsp;&nbsp; <b>Quantidade:</b> ${escH(String(qtd))}</p>
+  </div>
 
-  var win=window.open('','_blank','width=1100,height=750');
-  if(!win){toast('Permita pop-up para imprimir','var(--yellow)');return;}
-  win.document.write(printContent);
+  <table>
+    <thead>
+      <tr>
+        <th>TIPO DE ONDA</th>
+        <th>MEDIDAS</th>
+        <th style="text-align:center">QUANTIDADE</th>
+        <th style="text-align:right">VL. UNIT. LÍQUIDO</th>
+        <th style="text-align:right">VL. UNIT. C/ FRETE</th>
+      </tr>
+    </thead>
+    <tbody>${linhasHtml}</tbody>
+  </table>
+
+  <div class="rodape">
+    <div class="empresa">Italy Embalagens</div>
+    <p>FATURAMENTO PELA EMPRESA NO LUCRO REAL</p>
+    <p>CRÉDITO DE ICMS 12%</p>
+    <p>IPI - 15% OU COM CARTA DE ISENÇÃO</p>
+    <p>&nbsp;</p>
+    <p>FATURAMENTO PELO SIMPLES</p>
+    <p>CRÉDITO DE ICMS - BASE GOVERNO DO ESTADO</p>
+    <p>SEM IPI</p>
+    <p>&nbsp;</p>
+    <p>ATENCIOSAMENTE</p>
+    <p><b>ELEOMAR FRIDRES</b></p>
+    <p>(49) 99998 0203 (WHATSAPP) &nbsp; (49) 3622 8512</p>
+    <p>atendimento@italyembalagens.com.br</p>
+    <p>RUA GEOVANI BARRICHELLO, 200 - BAIRRO SANTA RITA - SÃO MIGUEL DO OESTE</p>
+  </div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank', 'width=820,height=700');
+  if(!win){toast('Permita pop-up para imprimir', 'var(--yellow)');return;}
+  win.document.write(html);
   win.document.close();
-  win.onload=function(){ try{win.print();}catch(e){} };
+  win.focus();
+  setTimeout(() => win.print(), 600);
 }
 
 function renderOrcamentos(){
@@ -13258,6 +13439,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <select id="calc-cli" style="flex:1;font-size:.82rem;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">
       <option value="">— Selecione o cliente —</option>
     </select>
+    <span id="orc-numero-display" style="font-size:.65rem;color:var(--accent);font-family:var(--mono);font-weight:800"></span>
     <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Usado ao gerar orçamento</span>
   </div>
 
@@ -13354,10 +13536,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </table>
   </div>
 
-  <div class="modal-footer">
-    <button class="btn btn-ghost" onclick="fechar('modal-calc')">Fechar</button>
-    <button class="btn btn-ghost btn-sm" onclick="calcImprimir()">🖨 Imprimir</button>
-    <button class="btn btn-green btn-sm" onclick="calcUsarNoOrcamento()">➕ Usar no Orçamento</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:16px;border-top:1px solid var(--border)">
+    <div style="display:flex;gap:6px;align-items:center;margin-right:auto">
+      <input id="orc-busca-num" type="text" placeholder="Nº ou cliente..." style="padding:6px 10px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);width:160px" onkeydown="if(event.key==='Enter') buscarOrcamento()">
+      <button onclick="buscarOrcamento()" style="padding:6px 12px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🔍</button>
+    </div>
+    <button onclick="fecharCalc()" style="padding:8px 16px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">Fechar</button>
+    <button onclick="calcImprimir()" style="padding:8px 16px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🖨 Imprimir</button>
+    <button onclick="salvarOrcamentoCalc()" style="padding:8px 16px;border-radius:6px;background:#4A90D9;color:#fff;border:none;cursor:pointer">💾 Salvar Orçamento</button>
+    <button onclick="enviarOrcamentoPorEmail()" style="padding:8px 16px;border-radius:6px;background:#7B68EE;color:#fff;border:none;cursor:pointer">📧 Enviar por Email</button>
+    <button onclick="calcUsarOpcaoSelecionada()" style="padding:8px 16px;border-radius:6px;background:#4CAF50;color:#fff;border:none;cursor:pointer">+ Usar no Orçamento</button>
   </div>
 </div></div>
 
