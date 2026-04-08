@@ -501,15 +501,17 @@ async function selectAll(table, orderBy) {
 
 app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    let q = supabase
       .from('historico_acoes')
       .select('*')
       .order('data_hora', { ascending: false })
       .limit(500);
+    if (req.query?.tipo) q = q.ilike('tipo_acao', `%${String(req.query.tipo)}%`);
+    const { data, error } = await q;
     if (error) throw error;
-    return res.json(data || []);
+    return ok(res, data || []);
   } catch (e) {
-    return res.status(500).json({ error: String(e.message || e) });
+    return err(res, e);
   }
 });
 async function insertOne(table, row) {
@@ -597,44 +599,43 @@ function vendedoresIn(p) {
   return out;
 }
 
-app.get('/api/ofs', async (req, res) => {
+app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
     const from = req.query.from ? String(req.query.from) : '';
     const to = req.query.to ? String(req.query.to) : '';
-    if (from || to) {
-      const fields = ['data_producao', 'dia', 'created_at'];
-      let lastError = null;
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
+
+    let lastError = null;
+    for (const empCol of empCols) {
       for (const field of fields) {
         let q = supabase.from('ofs').select('*').order('seq', { ascending: true });
-        if (from) q = q.gte(field, from);
-        if (to) q = q.lte(field, to);
+        if (empCol) q = q.eq(empCol, empId);
+        if (field) {
+          if (from) q = q.gte(field, from);
+          if (to) q = q.lte(field, to);
+        }
         const { data, error } = await q;
         if (!error) return ok(res, data || []);
         lastError = error;
         const msg = String(error.message || error);
-        if (!msg.includes('column')) break;
+        if (empCol && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        if (field && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        throw error;
       }
-      throw lastError;
     }
-    ok(res, await selectAll('ofs', 'seq'));
+    throw lastError;
   } catch (e) { bad(res, e.message); }
 });
-app.post('/api/ofs', async (req, res) => {
+app.post('/api/ofs', authMiddleware, async (req, res) => {
   try { ok(res, await insertOne('ofs', ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
 });
-app.put('/api/ofs/:id', async (req, res) => {
+app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try { ok(res, await updateOne('ofs', req.params.id, ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
 });
-app.delete('/api/ofs/:id', async (req, res) => {
+app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
   try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
-});
-
-app.get('/api/ofs', authMiddleware, async (req, res) => {
-  try {
-    const { data, error } = await supabase.from('ofs').select('*').order('created_at', { ascending: false });
-    if (error) throw error;
-    return res.json(data || []);
-  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
 
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
@@ -720,15 +721,26 @@ app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // CLIENTES
 // ══════════════════════════════════════════════════════════════
-app.get('/api/clientes', async (req, res) => {
+app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('clientes').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('clientes').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/clientes', async (req, res) => {
+app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const payload = clientesIn(req.body || {});
     let { data, error } = await supabase.from('clientes').insert([payload]).select();
@@ -745,7 +757,7 @@ app.post('/api/clientes', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/clientes/:id', async (req, res) => {
+app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const payload = clientesIn({ ...(req.body || {}) }); delete payload.id;
     let { data, error } = await supabase.from('clientes').update(payload).eq('id', req.params.id).select();
@@ -762,7 +774,7 @@ app.put('/api/clientes/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.delete('/api/clientes/:id', async (req, res) => {
+app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('clientes').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -1020,15 +1032,26 @@ app.delete('/api/compras/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // FORNECEDORES
 // ══════════════════════════════════════════════════════════════
-app.get('/api/fornecedores', async (req, res) => {
+app.get('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('fornecedores').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('fornecedores').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/fornecedores', async (req, res) => {
+app.post('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('fornecedores').insert([fornecedoresIn(req.body || {})]).select();
     if (error) throw error;
@@ -1036,7 +1059,7 @@ app.post('/api/fornecedores', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/fornecedores/:id', async (req, res) => {
+app.put('/api/fornecedores/:id', authMiddleware, async (req, res) => {
   try {
     const payload = fornecedoresIn({ ...(req.body || {}) }); delete payload.id;
     const { data, error } = await supabase.from('fornecedores')
@@ -1046,7 +1069,7 @@ app.put('/api/fornecedores/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.delete('/api/fornecedores/:id', async (req, res) => {
+app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('fornecedores').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -1236,31 +1259,41 @@ app.delete('/api/cliches_estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // CHAPAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
-app.get('/api/chapas_estoque', async (req, res) => {
+app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    const empId = req.query.empId ? String(req.query.empId) : '';
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
-      let { data, error } = await supabase.from(t).select('*')
-        .order('fornecedor', { ascending: true })
-        .order('nomenclatura', { ascending: true })
-        .order('tamanho', { ascending: true });
-      if (error) {
-        const msg = String(error.message || error);
-        if (msg.includes('column') || msg.includes('Could not find')) {
-          ({ data, error } = await supabase.from(t).select('*').order('nome'));
+      const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+      for (const col of empCols) {
+        let q = supabase.from(t).select('*');
+        if (col) q = q.eq(col, empId);
+        let { data, error } = await q
+          .order('fornecedor', { ascending: true })
+          .order('nomenclatura', { ascending: true })
+          .order('tamanho', { ascending: true });
+        if (error) {
+          const msg = String(error.message || error);
+          if (msg.includes('column') || msg.includes('Could not find')) {
+            ({ data, error } = await (col ? supabase.from(t).select('*').eq(col, empId) : supabase.from(t).select('*')).order('nome'));
+          }
         }
+        if (!error) return ok(res, data);
+        lastErr = error;
+        const msg = String(error.message || error);
+        if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) break;
+        break;
       }
-      if (!error) return ok(res, data);
-      lastErr = error;
-      const msg = String(error.message || error);
-      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
-      throw error;
+      const msg2 = String(lastErr?.message || lastErr || '');
+      if (msg2.includes('does not exist') || msg2.includes('relation') || msg2.includes('not find')) continue;
+      throw lastErr;
     }
     throw lastErr;
   } catch (e) { err(res, e); }
 });
-app.post('/api/chapas_estoque', async (req, res) => {
+app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
@@ -1299,7 +1332,7 @@ app.post('/api/chapas_estoque', async (req, res) => {
     throw lastErr;
   } catch (e) { err(res, e); }
 });
-app.put('/api/chapas_estoque/:id', async (req, res) => {
+app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const input = { ...req.body }; delete input.id;
     const payload = {
@@ -1337,7 +1370,7 @@ app.put('/api/chapas_estoque/:id', async (req, res) => {
     throw lastErr;
   } catch (e) { err(res, e); }
 });
-app.delete('/api/chapas_estoque/:id', async (req, res) => {
+app.delete('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
@@ -1353,7 +1386,7 @@ app.delete('/api/chapas_estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.get('/api/chapas_estoque/search', async (req, res) => {
+app.get('/api/chapas_estoque/search', authMiddleware, async (req, res) => {
   try {
     const q = String(req.query.nomenclatura || '').trim();
     if (!q) return ok(res, []);
@@ -1398,7 +1431,7 @@ app.get('/api/chapas_estoque/search', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/chapas_estoque/reset', async (req, res) => {
+app.post('/api/chapas_estoque/reset', authMiddleware, async (req, res) => {
   try {
     console.log('chapas_estoque/reset body type:', Array.isArray(req.body) ? 'array' : typeof req.body);
     if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
@@ -1548,7 +1581,7 @@ app.post('/api/chapas_estoque/reset', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/historico_acoes', async (req, res) => {
+app.post('/api/historico_acoes', authMiddleware, async (req, res) => {
   try {
     const row = {
       data_hora: new Date().toISOString(),

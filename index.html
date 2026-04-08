@@ -805,9 +805,21 @@ function setEmpFiltro(id){
     if(!id&&b.dataset.emp==='todas')  b.classList.add('active-todas');
     if(id&&b.dataset.emp===id){const e=getEmp(id);if(e)b.classList.add('active-'+e.cor);}
   });
-  // Re-render active page
+  try{ setEmpresa(EMP_FILTRO); }catch(e){}
+}
+
+async function setEmpresa(empId){
+  EMP_FILTRO = empId || null;
+  const promises = [];
+  if(typeof carregarOFs === 'function') promises.push(carregarOFs());
+  if(typeof carregarChapas === 'function') promises.push(carregarChapas());
+  if(typeof carregarClientes === 'function') promises.push(carregarClientes());
+  if(typeof carregarFornecedores === 'function') promises.push(carregarFornecedores());
+  await Promise.all(promises);
   const ap=document.querySelector('.page.active');
-  if(ap&&ap.id){const pid=ap.id.replace('page-','');_goBase(pid);}
+  const pid=ap && ap.id ? ap.id.replace('page-','') : '';
+  if(pid==='ofmaq') return renderOFsPorMaquina();
+  try{ renderActivePageSync(); }catch(e){ try{ renderPCP(); }catch(e2){} }
 }
 
 function empFilterList(lista, campo){
@@ -2193,7 +2205,9 @@ async function abrirModalOF(id){
     ofAddItem();
   }
   const footer=document.querySelector('#modal-of .modal-footer');
-  footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
+  footer.innerHTML=oEdit
+    ? `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-purple" onclick="salvarEdicaoOFId('${escAttr(oEdit.id||'')}')">✏ Salvar Alteração</button>`
+    : `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
   document.querySelector('#modal-of h2').textContent=oEdit?'✏️ Editar Ordem de Fabricação':'📋 Nova Ordem de Fabricação';
   abrir('modal-of');
   setTimeout(()=>{
@@ -2537,7 +2551,7 @@ function getOfItensFromModal(){
   return ofItensTemp.map(it=>({desc:it.desc||'',ref:it.ref||'',qtd:parseFloat(it.qtd)||0,vunit:parseFloat(it.vunit)||0,img:it.img||null}));
 }
 
-function salvarOF(){
+async function salvarOF(){
   const cliId=document.getElementById('f-cli').value;
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
@@ -2564,9 +2578,77 @@ function salvarOF(){
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  OFs.push({seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido});
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const r = await salvarViaApiOuLocal('ofs',
+    ()=>api('POST','/ofs', payloadLocal),
+    ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao salvar OF','var(--red)');return;}
+  if(!r.local){
+    try{ await carregarOFs(); }catch(e){}
+  } else {
+    if(!OFs.find(x=>x.seq===payloadLocal.seq && x.of===payloadLocal.of)) OFs.push(payloadLocal);
+  }
   fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
   logAction('Nova OF criada', document.getElementById('f-of').value);
+}
+
+async function salvarEdicaoOFId(id){
+  const o=OFs.find(x=>x.id===id);if(!o){toast('OF não encontrada','var(--red)');return;}
+  const cliId=document.getElementById('f-cli').value;
+  const itens=getOfItensFromModal();
+  const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
+  const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
+  if(!cliId){toast('Selecione o cliente','var(--red)');return;}
+  if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+  const pagto=(document.getElementById('f-pagto')||{}).value||'';
+  if(pagto) adicionarFormaPagamento(pagto);
+  const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
+  const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
+  const data_pedido = document.getElementById('f-dia').value;
+  const dia = dia_programacao || data_pedido;
+  const cliObj = getCli(cliId) || {};
+  const cidade_entrega = cliObj.cidade || '';
+  const itemImgs=itens.map(it=>it.img||null);
+  const firstImg=itemImgs.find(img=>img!==null);
+  const empSel=(document.getElementById('f-emp')||null);
+  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
+  const payload={
+    of:document.getElementById('f-of').value,
+    prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
+    cliId,
+    vendId:document.getElementById('f-vend').value,
+    itens,
+    qtd:qtdTotal,
+    val:valTotal,
+    vunit:itens.length===1?itens[0].vunit:0,
+    dia,
+    data_pedido,
+    ent:document.getElementById('f-ent').value,
+    fluxo:document.getElementById('f-fl').value,
+    maq:getMaqSel(),
+    status:document.getElementById('f-st').value,
+    urg:document.getElementById('f-urg').value==='1',
+    pagto,
+    obs:document.getElementById('f-obs').value,
+    imgs:firstImg?[firstImg]:[],
+    empId:empCode,
+    modo_programacao,
+    dia_programacao,
+    cidade_entrega,
+  };
+  const r = await salvarViaApiOuLocal('ofs',
+    ()=>api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id }),
+    ()=>{ Object.assign(o,payload); return {ok:true, local:true}; }
+  );
+  if(!r || !r.ok){toast('Erro ao salvar alteração','var(--red)');return;}
+  if(!r.local){
+    try{ await carregarOFs(); }catch(e){}
+  } else {
+    Object.assign(o,payload);
+  }
+  fechar('modal-of');autoSaveTrigger();renderPCP();updateBadges();
+  toast('✏ Alteração salva ✓','var(--green)');
 }
 
 // ===================== LANÇAMENTO =====================
@@ -2852,20 +2934,51 @@ function _renderEstoqueBase(){
   const fornColor=(f)=>fornColors[String(f||'').toUpperCase()]||'var(--teal)';
   renderTabelaChapas(lista);
 
-  // ---- HISTÓRICO ----
-  document.getElementById('est-hist').innerHTML=HIST_EST.slice(0,80).map((h,idx)=>{
-    const ch=getCh(h.chp);
-    const cor=h.tipo==='entrada'?'var(--green)':h.tipo==='saida'?'var(--red)':'var(--yellow)';
-    const sinal=h.tipo==='entrada'?'+':h.tipo==='saida'?'-':'±';
-    return `<div class="hist-row" style="display:grid;grid-template-columns:70px 90px 1fr auto auto auto;gap:8px;align-items:center">
-      <span style="font-weight:700;color:${cor};font-family:var(--mono)">${(h.tipo||'').toUpperCase()}</span>
-      <span style="color:${cor};font-weight:700;font-family:var(--mono)">${sinal}${Number(h.qtd||0).toLocaleString()}</span>
-      <span style="color:var(--text2)">${ch?ch.nome:(h.chp||'—')}<span style="display:block;font-size:.68rem;color:var(--text3)">${[h.of&&h.of!=='—'?h.of:'', h.obs||''].filter(Boolean).join(' · ')}</span></span>
-      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(h.data||'')}</span>
-      <button class="btn-icon btn-sm" onclick="editarMovEstoque(${idx})" title="Editar" style="color:var(--accent)">✏</button>
-      <button class="btn-icon btn-sm" onclick="apagarMovEstoque(${idx})" title="Apagar" style="color:var(--red)">🗑</button>
+  const histEl=document.getElementById('est-hist');
+  if(histEl){
+    if(_apiConectado && CURRENT_USER){
+      carregarHistoricoEstoque();
+    } else {
+      histEl.innerHTML=HIST_EST.slice(0,80).map((h,idx)=>{
+        const ch=getCh(h.chp);
+        const cor=h.tipo==='entrada'?'var(--green)':h.tipo==='saida'?'var(--red)':'var(--yellow)';
+        const sinal=h.tipo==='entrada'?'+':h.tipo==='saida'?'-':'±';
+        return `<div class="hist-row" style="display:grid;grid-template-columns:70px 90px 1fr auto auto auto;gap:8px;align-items:center">
+          <span style="font-weight:700;color:${cor};font-family:var(--mono)">${(h.tipo||'').toUpperCase()}</span>
+          <span style="color:${cor};font-weight:700;font-family:var(--mono)">${sinal}${Number(h.qtd||0).toLocaleString()}</span>
+          <span style="color:var(--text2)">${ch?ch.nome:(h.chp||'—')}<span style="display:block;font-size:.68rem;color:var(--text3)">${[h.of&&h.of!=='—'?h.of:'', h.obs||''].filter(Boolean).join(' · ')}</span></span>
+          <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(h.data||'')}</span>
+          <button class="btn-icon btn-sm" onclick="editarMovEstoque(${idx})" title="Editar" style="color:var(--accent)">✏</button>
+          <button class="btn-icon btn-sm" onclick="apagarMovEstoque(${idx})" title="Apagar" style="color:var(--red)">🗑</button>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+async function carregarHistoricoEstoque(){
+  try{
+    const r = await api('GET','/historico_acoes?tipo=estoque');
+    const lista = (r && r.ok && Array.isArray(r.data)) ? r.data : [];
+    renderHistoricoEstoque(lista);
+  }catch(e){
+    try{ renderHistoricoEstoque([]); }catch(e2){}
+  }
+}
+
+function renderHistoricoEstoque(lista){
+  const el=document.getElementById('est-hist');
+  if(!el) return;
+  const rows = (Array.isArray(lista)?lista:[]).slice(0,120);
+  el.innerHTML = rows.length ? rows.map(h=>{
+    const tipo = String(h.tipo_acao||'').toLowerCase();
+    const cor = tipo.includes('saida') ? 'var(--red)' : tipo.includes('entrada') ? 'var(--green)' : tipo.includes('ajuste') ? 'var(--yellow)' : (tipo.includes('reset') ? 'var(--orange)' : 'var(--text2)');
+    return `<div class="hist-row" style="display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center">
+      <span style="font-weight:800;color:${cor};font-family:var(--mono)">${escH(String(h.tipo_acao||'').toUpperCase())}</span>
+      <span style="color:var(--text2)">${escH(h.descricao||'')}</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(String(h.data_hora||''))} · ${escH(h.usuario||'')}</span>
     </div>`;
-  }).join('');
+  }).join('') : `<div style="padding:14px;color:var(--text3);text-align:center">Sem histórico</div>`;
 }
 
 function renderTabelaChapas(lista){
@@ -7026,7 +7139,8 @@ async function carregarApontamentos(){
   return r;
 }
 async function carregarOFs(){
-  const r = await api('GET','/ofs');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/ofs'+empParam);
   if(r && r.ok && r.data) OFs = r.data.map(o=>{
     let fm=o && o.fluxo_maquinas;
     if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
@@ -7036,7 +7150,8 @@ async function carregarOFs(){
   return r;
 }
 async function carregarClientes(){
-  const r = await api('GET','/clientes');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/clientes'+empParam);
   if(r && r.ok && r.data && r.data.length) CLIENTES = r.data.map(normalizeCli);
   return r;
 }
@@ -7088,7 +7203,8 @@ async function carregarCliches(){
   return r;
 }
 async function carregarChapas(){
-  const r = await api('GET','/chapas_estoque');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/chapas_estoque'+empParam);
   if(r && r.ok && r.data && r.data.length) ESTOQUE = r.data.map(normalizeEst);
   return r;
 }
@@ -7102,7 +7218,8 @@ async function carregarVendedores(){
   return r;
 }
 async function carregarFornecedores(){
-  const r = await api('GET','/fornecedores');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/fornecedores'+empParam);
   if(r && r.ok && r.data && r.data.length) FORNECEDORES = r.data.map(normalizeForn);
   return r;
 }
