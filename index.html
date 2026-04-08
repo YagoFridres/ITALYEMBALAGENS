@@ -6309,7 +6309,10 @@ async function doLogin(){
   }
   AUTH_TOKEN = token;
   CURRENT_USER = user;
+  localStorage.setItem('auth_token', AUTH_TOKEN);
+  localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
   authSave(AUTH_TOKEN, CURRENT_USER);
+  if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
   iniciarSistema(CURRENT_USER);
   try{ logAction('Login realizado','—'); }catch(e){}
   toast('Bem-vindo, '+(CURRENT_USER?CURRENT_USER.nome:'')+' ✓');
