@@ -1580,17 +1580,6 @@ async function renderOFsPorMaquina(){
     return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
   }).join('');
   wrap.innerHTML = html;
-
-  const html=groups.map(({m,fila})=>{
-    return `<div class="sbox" style="margin-bottom:12px">
-      <div class="sbox-h">🏭 ${m.col} <span style="color:var(--text3);font-size:.7rem">(${fila.length})</span></div>
-      <div class="sbox-b" style="display:flex;flex-direction:column;gap:8px">
-        ${fila.length?fila.map(card).join(''):`<div style="color:var(--text3);padding:10px">Nenhuma OF</div>`}
-      </div>
-    </div>`;
-  }).join('');
-
-  wrap.innerHTML=html;
 }
 
 function ofmaqSetFiltroData(m){
