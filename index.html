@@ -1520,88 +1520,130 @@ function setFiltroOFsMaquina(f){
   renderOFsPorMaquina();
 }
 
+let _ofsMaqRenderizando=false;
+let _ofsMaqUltimaRender=0;
+
+function ordenarOFsParaMaquina(lista){
+  return (lista||[]).sort((a,b)=>{
+    const urgA=!!(a && (a.urg===true||a.urg===1||a.urg==='1'||a.urgente===true||a.urgente===1||a.urgente==='1'));
+    const urgB=!!(b && (b.urg===true||b.urg===1||b.urg==='1'||b.urgente===true||b.urgente===1||b.urgente==='1'));
+    if(urgA && !urgB) return -1;
+    if(!urgA && urgB) return 1;
+    const dA=String((a && (a.ent||a.data_entrega||a.dataEntrega))||'9999-12-31').split('T')[0];
+    const dB=String((b && (b.ent||b.data_entrega||b.dataEntrega))||'9999-12-31').split('T')[0];
+    if(dA<dB) return -1;
+    if(dA>dB) return 1;
+    return String(a && (a.of||a.numero||'')).localeCompare(String(b && (b.of||b.numero||'')));
+  });
+}
+
 async function renderOFsPorMaquina(){
+  const agora=Date.now();
+  if(_ofsMaqRenderizando) return;
+  if(agora - _ofsMaqUltimaRender < 2000) return;
+  _ofsMaqRenderizando=true;
+  _ofsMaqUltimaRender=agora;
   const wrap=document.getElementById('ofs-por-maquina-container')||document.getElementById('ofmaq-body');if(!wrap)return;
   wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
-  let data = await api('GET','/ofs');
-  let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
-  let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada' && o.status!=='Cancelado' && o.status!=='Pedido Pronto');
-  const empFil = EMP_FILTRO || '';
-  if(empFil) OFsBase = OFsBase.filter(o=>String(o.empId||o.empresa||'')===String(empFil));
-  const filtroData=filtroOFsMaquina||'todas';
-  const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
-  const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
+  try{
+    let data = await api('GET','/ofs');
+    let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
+    let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada' && o.status!=='Cancelado' && o.status!=='Pedido Pronto');
+    const empFil = EMP_FILTRO || '';
+    if(empFil) OFsBase = OFsBase.filter(o=>String(o.empId||o.empresa||'')===String(empFil));
+    const filtroData=filtroOFsMaquina||'todas';
+    const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
+    const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
 
-  const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
-    const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
-    const nb=parseInt(String(b.id||'').replace(/\D+/g,''))||999;
-    return na-nb;
-  });
+    const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
+      const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
+      const nb=parseInt(String(b.id||'').replace(/\D+/g,''))||999;
+      return na-nb;
+    });
 
-  const entOK=(o)=>{
-    if(filtroData==='todas') return true;
-    const ent=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
-    if(!ent) return false;
-    const hoje=today();
-    if(filtroData==='hoje') return ent===hoje;
-    if(filtroData==='semana'){
-      const d0=new Date(hoje+'T12:00:00');
-      const domingo=new Date(d0); domingo.setDate(d0.getDate() + (7 - d0.getDay())%7);
-      const de=hoje;
-      const ate=domingo.toISOString().split('T')[0];
-      return ent>=de && ent<=ate;
-    }
-    return true;
-  };
+    const entOK=(o)=>{
+      if(filtroData==='todas') return true;
+      const ent=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
+      if(!ent) return false;
+      const hoje=today();
+      if(filtroData==='hoje') return ent===hoje;
+      if(filtroData==='semana'){
+        const d0=new Date(hoje+'T12:00:00');
+        const domingo=new Date(d0); domingo.setDate(d0.getDate() + (7 - d0.getDay())%7);
+        const de=hoje;
+        const ate=domingo.toISOString().split('T')[0];
+        return ent>=de && ent<=ate;
+      }
+      return true;
+    };
 
-  const filt=(o)=>{
-    if((st||'') && (o.status||'')!==st) return false;
-    if(!entOK(o)) return false;
-    if(!busca) return true;
-    const cli=(getCli(o.cliId)||{}).nome||'';
-    const vend=(getV(o.vendId)||{}).nome||o.vendedor||'';
-    const txt=[o.of,o.prodDesc,o.prod,o.status,cli,vend].join(' ').toLowerCase();
-    return txt.includes(busca);
-  };
+    const filt=(o)=>{
+      if((st||'') && (o.status||'')!==st) return false;
+      if(!entOK(o)) return false;
+      if(!busca) return true;
+      const cli=(getCli(o.cliId)||{}).nome||'';
+      const vend=(getV(o.vendId)||{}).nome||o.vendedor||'';
+      const txt=[o.of,o.prodDesc,o.prod,o.status,cli,vend].join(' ').toLowerCase();
+      return txt.includes(busca);
+    };
 
-  const card=(o)=>{
-    const cli=getCli(o.cliId)||{nome:'—'};
-    const img = o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
-    const ent=String(o.ent||o.data_entrega||'');
-    const flow=ofFluxoLinha(o);
-    return `<div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
-      <div style="font-family:var(--mono);font-weight:900;color:var(--accent);min-width:86px">${o.of||'—'}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cli.nome}</div>
-        <div style="color:var(--text2);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.prodDesc||o.prod||''}</div>
-        <div style="color:var(--text3);font-size:.7rem;font-family:var(--mono);margin-top:2px">Entrega: ${fmtDataBR(ent)}</div>
-        ${flow?`<div style="color:var(--text2);font-size:.68rem;font-family:var(--mono);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escH(flow.replace(/<[^>]*>/g,''))}">${flow}</div>`:''}
-      </div>
-      <div style="text-align:right;font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:160px">
-        <div>${(Number(o.qtd)||0).toLocaleString()} un</div>
-        <div>${stTag(o.status||'')}</div>
-        <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();ofmaqVerImagem('${o.id||''}')" style="font-size:.7rem">🖼 Ver Imagem</button>
-          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="event.stopPropagation();darBaixaOFId('${o.id||''}','${escAttr(o.of||o.numero||'')}','${escAttr(ofFluxoGetMaquinaAtual(o)||'')}')" style="font-size:.7rem">✅ Dar Baixa</button>`:''}
+    const card=(o,maquinaAtual)=>{
+      const cli=getCli(o.cliId)||{nome:'—'};
+      const nomeCliente=cli && cli.nome ? cli.nome : (o.cliente||'—');
+      const isUrg=!!(o && (o.urg===true||o.urg===1||o.urg==='1'||o.urgente===true||o.urgente===1||o.urgente==='1'));
+      const hoje=today();
+      const diaStr=String(o.dia||o.data_pedido||o.dataPedido||'').split('T')[0];
+      const entStr=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
+      const atrasada=entStr && entStr<hoje;
+      const qtd = Number(o.qtd!=null?o.qtd:o.quantidade)||0;
+      const f=ofFluxoGetNames(o);
+      const idx=ofFluxoGetIndex(o);
+      const progresso=(f||[]).map((m,i)=>{
+        const s=escH(String(m||''));
+        if(i<idx) return `<span style="color:var(--green);text-decoration:line-through">${s}</span>`;
+        if(i===idx) return `<span style="background:var(--accent);color:#fff;padding:2px 6px;border-radius:6px;font-weight:900">${s}</span>`;
+        return `<span style="color:var(--text3)">${s}</span>`;
+      }).join(` <span style="color:var(--text3)">→</span> `);
+      const img = o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
+      const border = isUrg ? '#f44336' : (atrasada ? '#ff9800' : 'var(--border)');
+      return `<div style="background:var(--surface);border:1px solid ${border};border-radius:10px;padding:12px;margin-bottom:10px;position:relative">
+        ${isUrg?'<span style="position:absolute;top:8px;right:8px;background:#f44336;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:900;font-family:var(--mono)">🔴 URGENTE</span>':''}
+        <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px">
+          <div style="font-family:var(--mono);font-weight:900;color:var(--accent)">OF #${escH(o.of||o.numero||'—')}</div>
+          <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${escH(String(maquinaAtual||''))}</div>
         </div>
-      </div>
-    </div>`;
-  };
+        <div style="font-size:13px;margin-bottom:4px"><b>Cliente:</b> ${escH(nomeCliente)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">
+          📅 Pedido: ${fmtDataBR(diaStr)} &nbsp;|&nbsp;
+          🚚 Entrega: <span style="color:${atrasada?'#f44336':(entStr===hoje?'#ff9800':'var(--text2)')}">${fmtDataBR(entStr)}</span>
+        </div>
+        <div style="font-size:12px;margin-bottom:8px"><b>Qtd:</b> ${fmtN(qtd)} <span style="color:var(--text3)">|</span> <b>Empresa:</b> ${escH(o.empId||o.empresa||'—')}</div>
+        ${progresso?`<div style="font-size:11px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escH((f||[]).join(' → '))}">${progresso}</div>`:''}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="darBaixaOFId('${escAttr(o.id||'')}','${escAttr(o.of||o.numero||'')}','${escAttr(maquinaAtual||'')}')">✅ Dar Baixa</button>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(o.id||'')}')">✏️ Editar</button>
+          ${img?`<button class="btn btn-ghost btn-sm" onclick="ofmaqVerImagem('${escAttr(o.id||'')}')">🖼 Ver Imagem</button>`:''}
+        </div>
+      </div>`;
+    };
 
-  const grupos={};
-  (OFsBase||[]).filter(filt).forEach(o=>{
-    const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem Máquina';
-    if(!grupos[m]) grupos[m]=[];
-    grupos[m].push(o);
-  });
-  const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
-  if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
-  const html = maquinasOrdenadas.map(m=>{
-    const fila = grupos[m] || [];
-    const cards = fila.map(o=>card(o)).join('');
-    return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
-  }).join('');
-  wrap.innerHTML = html;
+    const grupos={};
+    (OFsBase||[]).filter(filt).forEach(o=>{
+      const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem Máquina';
+      if(!grupos[m]) grupos[m]=[];
+      grupos[m].push(o);
+    });
+    const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
+    if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
+    const html = maquinasOrdenadas.map(m=>{
+      const fila = ordenarOFsParaMaquina(grupos[m] || []);
+      const cards = fila.map(o=>card(o,m)).join('');
+      return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
+    }).join('');
+    wrap.innerHTML = html;
+  } finally {
+    _ofsMaqRenderizando=false;
+  }
 }
 
 function ofmaqSetFiltroData(m){
@@ -2229,6 +2271,17 @@ function ofItemRemoveImg(i){
   ofItensTemp[i].img=null;
   renderOfItens();
 }
+function ofItemChange(idx, campo, val){
+  if(!ofItensTemp[idx]) return;
+  if(campo==='qtd') ofItensTemp[idx].qtd=parseFloat(val)||0;
+  if(campo==='vunit') ofItensTemp[idx].vunit=parseFloat(val)||0;
+  recalcularTotaisOF();
+  const totalEl=document.getElementById('of-item-total-'+idx);
+  if(totalEl) totalEl.textContent = fmtR((ofItensTemp[idx].qtd||0)*(ofItensTemp[idx].vunit||0));
+}
+function recalcularTotaisOF(){
+  recalcOfItens();
+}
 function renderOfItens(){
   const tbody=document.getElementById('of-itens-body');
   if(!tbody)return;
@@ -2236,9 +2289,9 @@ function renderOfItens(){
     <td class="tc" style="color:var(--text3);font-family:var(--mono);text-align:center;vertical-align:middle">${i+1}</td>
     <td style="vertical-align:middle"><input type="text" value="${it.desc||''}" placeholder="Descrição do produto/item..." oninput="ofItensTemp[${i}].desc=this.value;recalcOfItens()" style="min-width:180px"></td>
     <td style="vertical-align:middle"><input type="text" value="${it.ref||''}" placeholder="Ref..." oninput="ofItensTemp[${i}].ref=this.value"></td>
-    <td style="vertical-align:middle"><input type="number" value="${it.qtd||''}" placeholder="0" oninput="ofItensTemp[${i}].qtd=parseFloat(this.value)||0;recalcOfItens()" style="text-align:right"></td>
-    <td style="vertical-align:middle"><input type="number" step="0.0001" value="${it.vunit||''}" placeholder="0,0000" oninput="ofItensTemp[${i}].vunit=parseFloat(this.value)||0;recalcOfItens()" style="text-align:right"></td>
-    <td style="text-align:right;font-family:var(--mono);color:var(--green);font-size:.75rem;font-weight:700;padding:4px 8px;vertical-align:middle">${fmtR((it.qtd||0)*(it.vunit||0))}</td>
+    <td style="vertical-align:middle"><input type="number" value="${it.qtd||''}" placeholder="0" oninput="ofItemChange(${i},'qtd',this.value)" style="text-align:right"></td>
+    <td style="vertical-align:middle"><input type="number" step="0.0001" value="${it.vunit||''}" placeholder="0,0000" oninput="ofItemChange(${i},'vunit',this.value)" style="text-align:right"></td>
+    <td id="of-item-total-${i}" style="text-align:right;font-family:var(--mono);color:var(--green);font-size:.75rem;font-weight:700;padding:4px 8px;vertical-align:middle">${fmtR((it.qtd||0)*(it.vunit||0))}</td>
     <td class="tc" style="vertical-align:middle;padding:4px 6px;min-width:68px">
       ${it.img
         ? `<div style="position:relative;display:inline-block">
@@ -2479,6 +2532,40 @@ async function excluirCliente(id){
 
 var EST_SORT = {campo:'nome', asc:true};
 
+let _estoqueBase = [];
+let _estoqueBaixoOnly = false;
+
+function popularFiltrosEstoque(chapas){
+  _estoqueBase = Array.isArray(chapas) ? chapas : [];
+  const fornSet=[...new Set(_estoqueBase.map(c=>c.forn).filter(Boolean))].sort();
+  const fabSet=[...new Set(_estoqueBase.map(c=>c.cnpj).filter(Boolean))].sort();
+  const nomSet=[...new Set(_estoqueBase.map(c=>c.nom).filter(Boolean))].sort();
+  const setOpts=(id,arr,label)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    const cur=el.value;
+    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escH(v)}">${escH(v)}</option>`).join('');
+    if(cur && arr.includes(cur)) el.value=cur;
+  };
+  setOpts('ef-fornecedor', fornSet, 'Por Fornecedor');
+  setOpts('ef-fabricante', fabSet, 'Por Fabricante');
+  setOpts('ef-nomenclatura', nomSet, 'Por Nomenclatura');
+}
+
+function estoqueFiltrar(tipo){
+  tipo=String(tipo||'');
+  if(tipo==='todos'){
+    const f1=document.getElementById('ef-fornecedor'); if(f1) f1.value='';
+    const f2=document.getElementById('ef-fabricante'); if(f2) f2.value='';
+    const f3=document.getElementById('ef-nomenclatura'); if(f3) f3.value='';
+    const b=document.getElementById('ef-busca'); if(b) b.value='';
+    _estoqueBaixoOnly=false;
+  }
+  if(tipo==='baixo') _estoqueBaixoOnly=true;
+  if(tipo==='fornecedor' || tipo==='fabricante' || tipo==='nomenclatura' || tipo==='busca') _estoqueBaixoOnly=false;
+  renderEstoque();
+}
+
 function estOrdenar(campo){
   if(EST_SORT.campo===campo) EST_SORT.asc=!EST_SORT.asc;
   else{EST_SORT.campo=campo; EST_SORT.asc=true;}
@@ -2496,6 +2583,22 @@ function _renderEstoqueBase(){
   if(filForn) lista=lista.filter(c=>c.forn===filForn);
   if(filEmp) lista=lista.filter(c=>(c.empId||'')===filEmp);
   renderEmpBar();
+
+  popularFiltrosEstoque(lista);
+  const efForn=(document.getElementById('ef-fornecedor')||{}).value||'';
+  const efFab=(document.getElementById('ef-fabricante')||{}).value||'';
+  const efNom=(document.getElementById('ef-nomenclatura')||{}).value||'';
+  const efBusca=String((document.getElementById('ef-busca')||{}).value||'').toLowerCase().trim();
+  if(efForn) lista=lista.filter(c=>c.forn===efForn);
+  if(efFab) lista=lista.filter(c=>c.cnpj===efFab);
+  if(efNom) lista=lista.filter(c=>c.nom===efNom);
+  if(_estoqueBaixoOnly) lista=lista.filter(c=>(Number(c.qtd)||0)<200);
+  if(efBusca) lista=lista.filter(c=>
+    String(c.nome||'').toLowerCase().includes(efBusca) ||
+    String(c.nom||'').toLowerCase().includes(efBusca) ||
+    String(c.forn||'').toLowerCase().includes(efBusca) ||
+    String(c.tam||'').toLowerCase().includes(efBusca)
+  );
 
   // Sort
   lista.sort((a,b)=>{
@@ -2553,14 +2656,30 @@ function _renderEstoqueBase(){
     'BRAGAGNOLO':'var(--orange)'
   };
   const fornColor=(f)=>fornColors[String(f||'').toUpperCase()]||'var(--teal)';
-  // ---- TABELA ----
-  const thS='padding:8px 10px;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);background:var(--s2);color:var(--text2);white-space:nowrap;';
+  renderTabelaChapas(lista);
+
+  // ---- HISTÓRICO ----
+  document.getElementById('est-hist').innerHTML=HIST_EST.slice(0,80).map((h,idx)=>{
+    const ch=getCh(h.chp);
+    const cor=h.tipo==='entrada'?'var(--green)':h.tipo==='saida'?'var(--red)':'var(--yellow)';
+    const sinal=h.tipo==='entrada'?'+':h.tipo==='saida'?'-':'±';
+    return `<div class="hist-row" style="display:grid;grid-template-columns:70px 90px 1fr auto auto auto;gap:8px;align-items:center">
+      <span style="font-weight:700;color:${cor};font-family:var(--mono)">${(h.tipo||'').toUpperCase()}</span>
+      <span style="color:${cor};font-weight:700;font-family:var(--mono)">${sinal}${Number(h.qtd||0).toLocaleString()}</span>
+      <span style="color:var(--text2)">${ch?ch.nome:(h.chp||'—')}<span style="display:block;font-size:.68rem;color:var(--text3)">${[h.of&&h.of!=='—'?h.of:'', h.obs||''].filter(Boolean).join(' · ')}</span></span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(h.data||'')}</span>
+      <button class="btn-icon btn-sm" onclick="editarMovEstoque(${idx})" title="Editar" style="color:var(--accent)">✏</button>
+      <button class="btn-icon btn-sm" onclick="apagarMovEstoque(${idx})" title="Apagar" style="color:var(--red)">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function renderTabelaChapas(lista){
   const tdS='padding:6px 10px;border:1px solid var(--border);font-size:.78rem;vertical-align:middle;';
   const trS=(i)=>i%2===0?'background:var(--surface)':'background:var(--s2)';
-
-  const rows=lista.length===0
+  const rows=(lista||[]).length===0
     ?`<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma chapa cadastrada — clique em ＋ Nova Chapa para começar</td></tr>`
-    :lista.map((c,i)=>{
+    :(lista||[]).map((c,i)=>{
       const min = (c.min!=null?Number(c.min):200) || 200;
       const qtd = Number(c.qtd)||0;
       const vunit = Number(c.val)||0;
@@ -2595,36 +2714,20 @@ function _renderEstoqueBase(){
   const tabEl=document.getElementById('est-table-body');
   if(tabEl) tabEl.innerHTML=rows;
 
-  // Totals footer
   const footEl=document.getElementById('est-table-foot');
   if(footEl){
-    const totalQtd=lista.reduce((s,c)=>s+c.qtd,0);
-    const totalValUnit=lista.length>0?lista.reduce((s,c)=>s+(c.val||0),0)/lista.length:0;
-    const totalValTotal=lista.reduce((s,c)=>s+(Number(c.valor_total)!=null?Number(c.valor_total):c.qtd*(c.val||0)),0);
+    const totalQtd=(lista||[]).reduce((s,c)=>s+(Number(c.qtd)||0),0);
+    const totalValUnit=(lista||[]).length>0?(lista||[]).reduce((s,c)=>s+(Number(c.val)||0),0)/(lista||[]).length:0;
+    const totalValTotal=(lista||[]).reduce((s,c)=>s+(Number(c.valor_total)!=null?Number(c.valor_total):(Number(c.qtd)||0)*(Number(c.val)||0)),0);
     const tdFS='padding:8px 10px;border:1px solid var(--border);font-size:.75rem;font-weight:700;background:var(--s3);';
     footEl.innerHTML=`<tr>
-      <td style="${tdFS}color:var(--text2)" colspan="6">TOTAIS (${lista.length} item${lista.length!==1?'s':''})</td>
+      <td style="${tdFS}color:var(--text2)" colspan="6">TOTAIS (${(lista||[]).length} item${(lista||[]).length!==1?'s':''})</td>
       <td style="${tdFS}text-align:right;color:var(--text2)">${fmtR(totalValUnit)} <span style="font-size:.62rem;color:var(--text3)">média</span></td>
       <td style="${tdFS}text-align:right;color:var(--text)">${totalQtd.toLocaleString()} un</td>
       <td style="${tdFS}text-align:right;color:var(--green)">${fmtR(totalValTotal)}</td>
       <td style="${tdFS}" colspan="2"></td>
     </tr>`;
   }
-
-  // ---- HISTÓRICO ----
-  document.getElementById('est-hist').innerHTML=HIST_EST.slice(0,80).map((h,idx)=>{
-    const ch=getCh(h.chp);
-    const cor=h.tipo==='entrada'?'var(--green)':h.tipo==='saida'?'var(--red)':'var(--yellow)';
-    const sinal=h.tipo==='entrada'?'+':h.tipo==='saida'?'-':'±';
-    return `<div class="hist-row" style="display:grid;grid-template-columns:70px 90px 1fr auto auto auto;gap:8px;align-items:center">
-      <span style="font-weight:700;color:${cor};font-family:var(--mono)">${(h.tipo||'').toUpperCase()}</span>
-      <span style="color:${cor};font-weight:700;font-family:var(--mono)">${sinal}${Number(h.qtd||0).toLocaleString()}</span>
-      <span style="color:var(--text2)">${ch?ch.nome:(h.chp||'—')}<span style="display:block;font-size:.68rem;color:var(--text3)">${[h.of&&h.of!=='—'?h.of:'', h.obs||''].filter(Boolean).join(' · ')}</span></span>
-      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${fmtDataBR(h.data||'')}</span>
-      <button class="btn-icon btn-sm" onclick="editarMovEstoque(${idx})" title="Editar" style="color:var(--accent)">✏</button>
-      <button class="btn-icon btn-sm" onclick="apagarMovEstoque(${idx})" title="Apagar" style="color:var(--red)">🗑</button>
-    </div>`;
-  }).join('');
 }
 
 function getChapaEmpId(ch){
@@ -11384,6 +11487,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
+      <div id="estoque-filtros" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center">
+        <button class="btn btn-sm" onclick="estoqueFiltrar('todos')" id="ef-todos" style="background:var(--accent)">Todos</button>
+        <select id="ef-fornecedor" onchange="estoqueFiltrar('fornecedor')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
+          <option value="">Por Fornecedor</option>
+        </select>
+        <select id="ef-fabricante" onchange="estoqueFiltrar('fabricante')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
+          <option value="">Por Fabricante</option>
+        </select>
+        <select id="ef-nomenclatura" onchange="estoqueFiltrar('nomenclatura')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
+          <option value="">Por Nomenclatura</option>
+        </select>
+        <button class="btn btn-sm btn-warning" onclick="estoqueFiltrar('baixo')" style="background:#ff9800;color:#000">⚠ Baixo Estoque</button>
+        <input id="ef-busca" type="text" placeholder="🔍 Buscar..." oninput="estoqueFiltrar('busca')" style="padding:4px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
+      </div>
       <div id="est-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
           <thead>
