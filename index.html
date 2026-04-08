@@ -1509,6 +1509,8 @@ async function renderOFsPorMaquina(){
   let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
   let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada');
   const filtroData=filtroOFsMaquina||'todas';
+  const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
+  const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
 
   const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
     const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
@@ -1533,7 +1535,7 @@ async function renderOFsPorMaquina(){
   };
 
   const filt=(o)=>{
-    if(st && (o.status||'')!==st) return false;
+    if((st||'') && (o.status||'')!==st) return false;
     if(!entOK(o)) return false;
     if(!busca) return true;
     const cli=(getCli(o.cliId)||{}).nome||'';
@@ -1856,24 +1858,27 @@ function cancelarOFSel(){
   if(!ofSel){toast('Selecione uma OF primeiro','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
   if(!o)return;
-  if(o.status==='Cancelado'){toast('OF já está cancelada','var(--yellow)');return;}
-  if(!confirm(`Cancelar ${o.of} — ${(getCli(o.cliId)||{nome:'?'}).nome}?\n\nEsta ação irá:\n• Marcar status como Cancelado\n• Devolver chapas ao estoque (se houver baixa)\n• Manter histórico`))return;
-  
-  // Restore stock if it had a chapa linked
-  if(o.chp && o.qchp > 0){
-    const ch=getCh(o.chp);
-    if(ch){
-      ch.qtd+=o.qchp;
-      HIST_EST.unshift({tipo:'entrada',chp:o.chp,qtd:o.qchp,of:o.of,data:today(),obs:'Estorno de cancelamento OF',empId:o.empId||getChapaEmpId(getCh(o.chp))||''});
-    }
-  }
-  o.status='Cancelado';
-  o._cancelado=true;
-  renderPCP();updateBadges();
-  toast(`✕ ${o.of} cancelada — estoque restaurado`,'var(--orange)');
-  gerarNotificacoes();renderNotificacoes();
+  cancelarOF(o.id||'', o.of||o.numero||'');
 }
 
+async function cancelarOF(id, numero) {
+  if (!id) { mostrarToast('OF inválida', 'error'); return; }
+  if (!confirm('Confirmar cancelamento da OF #' + (numero || id) + '?')) return;
+  try {
+    const r = await api('PATCH', '/ofs/' + encodeURIComponent(id), { status: 'Cancelada' });
+    if (r && r.error) { mostrarToast('Erro: ' + r.error, 'error'); return; }
+    await api('POST', '/historico_acoes', {
+      tipo_acao: 'cancelar_of',
+      descricao: 'OF #' + (numero || id) + ' cancelada',
+      usuario: (CURRENT_USER && CURRENT_USER.nome) || 'sistema'
+    });
+    mostrarToast('OF #' + (numero || id) + ' cancelada', 'success');
+    if (typeof carregarOFs === 'function') await carregarOFs();
+    if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
+  } catch (e) {
+    mostrarToast('Erro ao cancelar: ' + e.message, 'error');
+  }
+}
 function alterarOFSel(){
   if(!hasPerm('editar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para editar pedidos','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF para alterar','var(--yellow)');return;}
@@ -6150,11 +6155,6 @@ function aplicarPermissoes(permissoes, perfil) {
   }
 
   const mapa = {
-    'chat_geral':       'menu-chat',
-    'chat_vendas':      'menu-chat',
-    'chat_pcp':         'menu-chat',
-    'chat_estoque':     'menu-chat',
-    'chat_pedidos':     'menu-chat',
     'lancar_pedidos':   'menu-pedidos',
     'ver_pedidos':      'menu-pedidos',
     'editar_pedidos':   'menu-pedidos',
@@ -10969,234 +10969,7 @@ async function usrExcluir(id){
   toast('🗑️ Usuário excluído','var(--orange)');
 }
 
-var CHAT_STATE = { aberto:false, canais:[], canalId:null, canalNome:'', msgs:[], lastId:'', poll:null, unread:{} };
-
-function toggleChatPanel(){
-  if(!CURRENT_USER){toast('Faça login','var(--yellow)');return;}
-  if(!hasPerm(['chat_geral','chat_vendas','chat_pcp','chat_estoque','chat_pedidos','tudo'])){
-    toast('Sem permissão para chat','var(--red)');
-    return;
-  }
-  const p=document.getElementById('chat-panel');
-  if(!p) return;
-  const show = (p.style.display==='none' || !p.style.display);
-  p.style.display = show ? 'block' : 'none';
-  CHAT_STATE.aberto = show;
-  if(show){
-    carregarChatCanais();
-    chatStartPoll();
-  } else {
-    chatStopPoll();
-  }
-}
-
-async function carregarChatCanais(){
-  const r = await api('GET','/chat/canais');
-  if(!r || !r.ok) return;
-  CHAT_STATE.canais = Array.isArray(r.data) ? r.data : [];
-  if(!CHAT_STATE.canalId && CHAT_STATE.canais.length){
-    chatSelecionarCanal(CHAT_STATE.canais[0].id);
-  }
-  renderChatCanais();
-  chatAtualizarBadges();
-}
-
-function renderChatCanais(){
-  const wrap=document.getElementById('chat-canais'); if(!wrap) return;
-  const unread=CHAT_STATE.unread||{};
-  wrap.innerHTML = (CHAT_STATE.canais||[]).map(c=>{
-    const ativo = c.id===CHAT_STATE.canalId;
-    const n = Number(unread[c.id]||0);
-    return `<div onclick="chatSelecionarCanal('${c.id}')" style="display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid ${ativo?'var(--accent)':'var(--border)'};border-radius:10px;background:${ativo?'var(--accent-soft)':'var(--surface)'};cursor:pointer;">
-      <div style="font-weight:900;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(c.nome||'—')}</div>
-      ${n>0?`<span style="background:var(--red);color:#fff;border-radius:999px;padding:1px 7px;font-size:.65rem;font-family:var(--mono);font-weight:900">${n}</span>`:''}
-    </div>`;
-  }).join('');
-}
-
-async function chatSelecionarCanal(id){
-  CHAT_STATE.canalId = id;
-  CHAT_STATE.lastId = '';
-  CHAT_STATE.msgs = [];
-  const c = (CHAT_STATE.canais||[]).find(x=>x.id===id);
-  CHAT_STATE.canalNome = c ? (c.nome||'') : '';
-  const t=document.getElementById('chat-canal-titulo'); if(t) t.textContent = CHAT_STATE.canalNome || '—';
-  document.getElementById('chat-msgs').innerHTML = '';
-  await chatCarregarMensagens(true);
-  renderChatCanais();
-}
-
-function chatStartPoll(){
-  if(CHAT_STATE.poll) return;
-  CHAT_STATE.poll = setInterval(async ()=>{
-    if(!CHAT_STATE.aberto) return;
-    await chatCarregarMensagens(false);
-    await chatAtualizarBadges();
-  }, 3000);
-}
-function chatStopPoll(){
-  if(CHAT_STATE.poll){ clearInterval(CHAT_STATE.poll); CHAT_STATE.poll=null; }
-}
-
-async function chatCarregarMensagens(full){
-  const canalId = CHAT_STATE.canalId;
-  if(!canalId) return;
-  const after = (!full && CHAT_STATE.lastId) ? ('&after='+encodeURIComponent(CHAT_STATE.lastId)) : '';
-  const r = await api('GET','/chat/mensagens?canal_id='+encodeURIComponent(canalId)+after);
-  if(!r || !r.ok) return;
-  const arr = Array.isArray(r.data) ? r.data : [];
-  if(full){
-    CHAT_STATE.msgs = arr;
-  } else {
-    const existing = new Set((CHAT_STATE.msgs||[]).map(m=>m.id));
-    arr.forEach(m=>{ if(!existing.has(m.id)) CHAT_STATE.msgs.push(m); });
-  }
-  const last = CHAT_STATE.msgs.length ? CHAT_STATE.msgs[CHAT_STATE.msgs.length-1] : null;
-  CHAT_STATE.lastId = last ? (last.id||'') : CHAT_STATE.lastId;
-  chatRenderMensagens();
-  chatMarcarVisiveisComoLidas();
-}
-
-function chatFmtHora(iso){
-  if(!iso) return '';
-  const d=new Date(String(iso));
-  if(String(d)==='Invalid Date') return '';
-  return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-
-function chatRenderMensagens(){
-  const wrap=document.getElementById('chat-msgs'); if(!wrap) return;
-  const me = String((CURRENT_USER||{}).id||'');
-  const msgs = CHAT_STATE.msgs||[];
-  wrap.innerHTML = msgs.map(m=>{
-    const isMe = me && String(m.usuario_id||'')===me;
-    const ini = (m.usuario_iniciais||'??').toUpperCase();
-    const cor = m.usuario_cor || 'var(--accent)';
-    const hora = chatFmtHora(m.criado_em);
-    const nome = escH(m.usuario_nome||'—');
-    let body = '';
-    if(m.tipo==='imagem' && m.arquivo_url){
-      body = `<img src="${escH(m.arquivo_url)}" style="max-width:260px;border-radius:10px;display:block;">`;
-    } else if(m.tipo!=='texto' && m.arquivo_url){
-      const nm = escH(m.conteudo || m.arquivo_url.split('/').slice(-1)[0] || 'arquivo');
-      body = `<div style="display:flex;align-items:center;gap:8px">
-        <div style="font-size:1.2rem">📄</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nm}</div>
-          <div style="font-size:.68rem;color:var(--text3);font-family:var(--mono)">${escH(String(m.arquivo_tipo||''))}</div>
-        </div>
-        <a class="btn btn-ghost btn-sm" href="${escH(m.arquivo_url)}" download style="text-decoration:none">⬇</a>
-      </div>`;
-    } else {
-      body = `<div style="white-space:pre-wrap;word-break:break-word">${escH(m.conteudo||'')}</div>`;
-    }
-    return `<div style="display:flex;gap:8px;justify-content:${isMe?'flex-end':'flex-start'};margin:8px 0;">
-      ${isMe?'':`<div style="width:32px;height:32px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);flex:0 0 auto;">${escH(ini)}</div>`}
-      <div style="max-width:min(520px,78%);background:${isMe?'var(--accent-soft)':'var(--surface)'};border:1px solid ${isMe?'var(--accent)':'var(--border)'};border-radius:14px;padding:10px 12px;">
-        <div style="display:flex;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:4px">
-          <div style="font-weight:900;font-size:.72rem;color:${isMe?'var(--accent)':'var(--text2)'}">${isMe?'Você':nome}</div>
-          <div style="font-size:.66rem;color:var(--text3);font-family:var(--mono)">${escH(hora)}</div>
-        </div>
-        ${body}
-      </div>
-      ${isMe?`<div style="width:32px;height:32px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);flex:0 0 auto;">${escH(ini)}</div>`:''}
-    </div>`;
-  }).join('');
-  try{ wrap.scrollTop = wrap.scrollHeight; }catch(e){}
-}
-
-async function chatMarcarVisiveisComoLidas(){
-  const me = String((CURRENT_USER||{}).id||'');
-  if(!me) return;
-  const canalId = CHAT_STATE.canalId;
-  if(!canalId) return;
-  const msgs = (CHAT_STATE.msgs||[]).slice(-50);
-  const pend = msgs.filter(m=>Array.isArray(m.lida_por)?!m.lida_por.includes(me):true);
-  for(const m of pend){
-    try{
-      const r = await api('PATCH','/chat/mensagens/'+encodeURIComponent(m.id)+'/lida',{});
-      if(r && r.ok && r.data){
-        const idx = CHAT_STATE.msgs.findIndex(x=>x.id===m.id);
-        if(idx>=0) CHAT_STATE.msgs[idx] = r.data;
-      }
-    }catch(e){}
-  }
-}
-
-async function chatEnviarTexto(){
-  const inp=document.getElementById('chat-texto'); if(!inp) return;
-  const txt=String(inp.value||'').trim();
-  if(!txt) return;
-  const canal_id = CHAT_STATE.canalId;
-  if(!canal_id){toast('Selecione um canal','var(--yellow)');return;}
-  inp.value='';
-  const r=await api('POST','/chat/mensagens',{canal_id,tipo:'texto',conteudo:txt});
-  if(!r || !r.ok){toast('Erro ao enviar: '+(r && r.error ? r.error : ''),'var(--red)');return;}
-  CHAT_STATE.msgs.push(r.data);
-  CHAT_STATE.lastId = r.data.id || CHAT_STATE.lastId;
-  chatRenderMensagens();
-  chatAtualizarBadges();
-}
-
-async function chatFileSelecionado(ev){
-  const file = ev && ev.target && ev.target.files ? ev.target.files[0] : null;
-  ev.target.value='';
-  if(!file) return;
-  const canal_id = CHAT_STATE.canalId;
-  if(!canal_id){toast('Selecione um canal','var(--yellow)');return;}
-  const up = await chatUploadFile(file);
-  if(!up) return;
-  const tipo = up.tipo === 'imagem' ? 'imagem' : 'arquivo';
-  const nome = up.nome || file.name || '';
-  const r = await api('POST','/chat/mensagens',{canal_id,tipo,conteudo:nome,arquivo_url:up.url,arquivo_tipo:up.arquivo_tipo});
-  if(!r || !r.ok){toast('Erro ao enviar: '+(r && r.error ? r.error : ''),'var(--red)');return;}
-  CHAT_STATE.msgs.push(r.data);
-  CHAT_STATE.lastId = r.data.id || CHAT_STATE.lastId;
-  chatRenderMensagens();
-  chatAtualizarBadges();
-}
-
-async function chatUploadFile(file){
-  try{
-    const fd = new FormData();
-    fd.append('file', file);
-    const headers = {};
-    const token = localStorage.getItem('auth_token');
-    if(token) headers['Authorization'] = 'Bearer ' + token;
-    const r = await fetch(API_BASE + '/api/chat/upload', { method:'POST', headers, body: fd });
-    const j = await r.json().catch(()=>null);
-    if(!r.ok || !j || !j.ok){toast('Erro upload: '+((j&&j.error)?j.error:'falha'),'var(--red)');return null;}
-    return j.data;
-  }catch(e){
-    toast('Erro upload: '+e.message,'var(--red)');
-    return null;
-  }
-}
-
-async function chatAtualizarBadges(){
-  const canais = CHAT_STATE.canais || [];
-  const me = String((CURRENT_USER||{}).id||'');
-  if(!me || !canais.length) return;
-  const unread = {};
-  for(const c of canais){
-    const r = await api('GET','/chat/mensagens?canal_id='+encodeURIComponent(c.id));
-    if(!r || !r.ok) continue;
-    const msgs = Array.isArray(r.data)?r.data:[];
-    const n = msgs.filter(m=>{
-      const l = Array.isArray(m.lida_por)?m.lida_por:[];
-      return !l.includes(me);
-    }).length;
-    unread[c.id] = n;
-  }
-  CHAT_STATE.unread = unread;
-  renderChatCanais();
-  const total = Object.values(unread).reduce((s,n)=>s+(Number(n)||0),0);
-  const b = document.getElementById('chat-badge');
-  if(b){
-    if(total>0){ b.style.display='flex'; b.textContent=String(total>99?99:total); }
-    else { b.style.display='none'; }
-  }
-}
+var CHAT_STATE = null;
 
 console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </script>
@@ -11253,10 +11026,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span class="tbadge tb-yellow" id="bdg-ug">0 URGENTES</span>
     <span class="tbadge tb-green" id="bdg-ok">0 CONCLUÍDOS</span>
   </div>
-  <div id="menu-chat" style="position:relative;cursor:pointer;" onclick="toggleChatPanel()">
-    <span style="font-size:1rem;">💬</span>
-    <span id="chat-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;min-width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);padding:0 3px;">0</span>
-  </div>
   <div id="menu-notificacoes" style="position:relative;cursor:pointer;" onclick="toggleNotifPanel()">
     <span style="font-size:1rem;">🔔</span>
     <span id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);">0</span>
@@ -11264,29 +11033,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="notif-panel" style="display:none;position:fixed;top:56px;right:10px;width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:800;max-height:420px;overflow-y:auto;box-shadow:var(--shadow-lg);">
     <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:.8rem;display:flex;align-items:center;gap:8px;">🔔 Notificações <button onclick="dispensarTodasNotifs();event.stopPropagation();" style="margin-left:auto;background:none;border:none;color:var(--accent);cursor:pointer;font-size:.72rem;font-weight:700;">Limpar</button><button onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;">✕</button></div>
     <div id="notif-list" style="padding:8px;"></div>
-  </div>
-  <div id="chat-panel" style="display:none;position:fixed;top:56px;right:10px;width:min(740px,calc(100vw - 20px));height:min(560px,calc(100vh - 80px));background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:850;box-shadow:var(--shadow-lg);overflow:hidden;">
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:.82rem;">
-      <span>💬 Chat Italy</span>
-      <div style="flex:1"></div>
-      <button onclick="toggleChatPanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;">✕</button>
-    </div>
-    <div style="display:flex;height:calc(100% - 42px);">
-      <div style="width:190px;border-right:1px solid var(--border);background:var(--s2);display:flex;flex-direction:column;">
-        <div style="padding:10px 10px;border-bottom:1px solid var(--border);font-size:.7rem;color:var(--text2);font-family:var(--mono);">CANAIS</div>
-        <div id="chat-canais" style="padding:8px;display:flex;flex-direction:column;gap:6px;overflow:auto;"></div>
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
-        <div id="chat-canal-titulo" style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
-        <div id="chat-msgs" style="flex:1;overflow:auto;padding:12px;background:linear-gradient(180deg,rgba(0,0,0,.02),rgba(0,0,0,0));"></div>
-        <div style="border-top:1px solid var(--border);padding:10px;display:flex;gap:8px;align-items:flex-end;">
-          <input id="chat-texto" type="text" placeholder="Digite uma mensagem..." style="flex:1;min-width:0;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:10px 12px;font-size:.82rem;" onkeydown="if(event.key==='Enter')chatEnviarTexto()">
-          <input id="chat-file" type="file" style="display:none" onchange="chatFileSelecionado(event)">
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('chat-file').click()" title="Anexar arquivo">📎</button>
-          <button class="btn btn-accent btn-sm" onclick="chatEnviarTexto()">Enviar</button>
-        </div>
-      </div>
-    </div>
   </div>
   <div class="clock" id="clock">--:--:--</div>
   <!-- Theme toggle -->
