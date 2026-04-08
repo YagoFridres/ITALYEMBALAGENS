@@ -1456,6 +1456,7 @@ function pararPollingOFsMaquina() {
 function _goBase(id){
   const prev = window._PAGE_ATUAL || '';
   if(prev === 'ofmaq' && id !== 'ofmaq') pararPollingOFsMaquina();
+  if(!temPermPagina(id)) { toast('Sem permissão para acessar esta área','var(--red)'); return; }
   window._PAGE_ATUAL = id;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2768,13 +2769,13 @@ async function salvarEdicaoCliente(id){
     vendedor: vendNome || null,
     empId:(document.getElementById('cl-emp')||{}).value||''
   };
-  const r = await salvarViaApiOuLocal('cliente',
-    ()=>api('PUT','/clientes/'+encodeURIComponent(c.id), payload),
-    ()=>{ Object.assign(c,payload); return {ok:true, local:true}; }
-  );
-  if(!r || !r.ok){toast('Erro ao atualizar cliente','var(--red)');return;}
-  Object.assign(c,payload,{vendId, vendedor:vendNome});
-  fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente atualizado!');
+  const r = await api('PUT','/clientes/'+encodeURIComponent(c.id), payload);
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  fechar('modal-cli');
+  await carregarClientes();
+  renderClientes();
+  autoSaveTrigger();
+  toast('Cliente salvo ✓','var(--green)');
 }
 async function salvarCliente(){
   const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
@@ -2784,14 +2785,14 @@ async function salvarCliente(){
   const empId=(document.getElementById('cl-emp')||{}).value||EMP_FILTRO||'';
   const vendId=(document.getElementById('cl-vend')||{}).value||'';
   const vendNome=(getV(vendId)||{}).nome||'';
-  const novo={id:'C'+String(CLIENTES.length+1).padStart(2,'0'),nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId,vendedor_id:vendId||null,vendedor:vendNome||null,vendId,vendedor:vendNome};
-  const r = await salvarViaApiOuLocal('cliente',
-    ()=>api('POST','/clientes', novo),
-    ()=>{ CLIENTES.push(novo); return {ok:true, local:true}; }
-  );
-  if(!r || !r.ok){toast('Erro ao cadastrar cliente','var(--red)');return;}
-  if(!CLIENTES.find(x=>x.id===novo.id)) CLIENTES.push(novo);
-  fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente cadastrado!');
+  const payload={nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId,vendedor_id:vendId||null,vendedor:vendNome||null,vendId,vendedor:vendNome};
+  const r = await api('POST','/clientes', payload);
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  fechar('modal-cli');
+  await carregarClientes();
+  renderClientes();
+  autoSaveTrigger();
+  toast('Cliente salvo ✓','var(--green)');
   logAction('Novo cliente cadastrado', nome);
 }
 async function excluirCliente(id){
@@ -2802,13 +2803,12 @@ async function excluirCliente(id){
   } else {
     if(!confirm(`Excluir cliente "${c.nome}"?\n\nEsta ação não pode ser desfeita.`))return;
   }
-  const r = await salvarViaApiOuLocal('cliente',
-    ()=>api('DELETE','/clientes/'+encodeURIComponent(id)),
-    ()=>({ok:true, local:true})
-  );
-  if(!r || !r.ok){toast('Erro ao excluir cliente','var(--red)');return;}
-  CLIENTES=CLIENTES.filter(x=>x.id!==id);
-  autoSaveTrigger();renderClientes();toast('🗑 Cliente excluído','var(--orange)');
+  const r = await api('DELETE','/clientes/'+encodeURIComponent(id));
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  await carregarClientes();
+  renderClientes();
+  autoSaveTrigger();
+  toast('🗑 Cliente excluído','var(--orange)');
 }
 
 var EST_SORT = {campo:'nome', asc:true};
@@ -4220,54 +4220,32 @@ function abrirFornecedor(id){abrirModalFornecedor(id);}
 function editarFornecedor(id){abrirModalFornecedor(id);}
 
 async function salvarFornecedor(){
-  var id=document.getElementById('forn-edit-id').value;
-  var nome=document.getElementById('forn-e-nome').value.trim();
+  const id=String((document.getElementById('forn-edit-id')||{}).value||'').trim();
+  const nome = (document.getElementById('forn-nome') || document.getElementById('f-forn-nome') || document.getElementById('fornecedor-nome') || document.getElementById('forn-e-nome') || {}).value?.trim() || '';
   if(!nome){toast('Informe o nome do fornecedor','var(--red)');return;}
-  var dados={
-    nome,
-    tipo:document.getElementById('forn-e-tipo').value,
-    cnpj:document.getElementById('forn-e-cnpj').value,
-    tel:document.getElementById('forn-e-tel').value,
-    email:document.getElementById('forn-e-email').value,
-    cidade:document.getElementById('forn-e-cidade').value,
-    uf:document.getElementById('forn-e-uf').value,
-    end:document.getElementById('forn-e-end').value,
-    contato:document.getElementById('forn-e-contato').value,
-    obs:document.getElementById('forn-e-obs').value,
-    empId:(document.getElementById('forn-e-emp')||{}).value||EMP_FILTRO||''
-  };
   const payload={
-    nome:dados.nome,
-    cnpj:dados.cnpj,
-    tel:dados.tel,
-    email:dados.email,
-    cidade:dados.cidade,
-    uf:dados.uf,
-    endereco:dados.end,
-    obs:dados.obs
+    nome,
+    tipo:(document.getElementById('forn-tipo')||document.getElementById('forn-e-tipo')||{}).value||'',
+    cnpj:(document.getElementById('forn-cnpj')||document.getElementById('forn-e-cnpj')||{}).value?.trim()||'',
+    tel:(document.getElementById('forn-tel')||document.getElementById('forn-e-tel')||{}).value?.trim()||'',
+    email:(document.getElementById('forn-email')||document.getElementById('forn-e-email')||{}).value?.trim()||'',
+    cidade:(document.getElementById('forn-cidade')||document.getElementById('forn-e-cidade')||{}).value?.trim()||'',
+    uf:(document.getElementById('forn-estado')||document.getElementById('forn-e-uf')||{}).value?.trim()||'',
+    end:(document.getElementById('forn-endereco')||document.getElementById('forn-e-end')||{}).value?.trim()||'',
+    contato:(document.getElementById('forn-contato')||document.getElementById('forn-e-contato')||{}).value?.trim()||'',
+    obs:(document.getElementById('forn-obs')||document.getElementById('forn-e-obs')||{}).value?.trim()||'',
+    empId:(document.getElementById('forn-empresa')||document.getElementById('forn-e-emp')||{}).value||EMP_FILTRO||'',
   };
-  if(id){
-    var f=FORNECEDORES.find(x=>x.id===id);
-    if(f)Object.assign(f,dados);
-    const r=await salvarViaApiOuLocal('fornecedor',
-      ()=>api('PUT','/fornecedores/'+encodeURIComponent(id), payload),
-      ()=>({ok:true, local:true})
-    );
-    if(!r || !r.ok){toast('Erro ao salvar fornecedor','var(--red)');return;}
-    if(!r.local){ try{ await carregarFornecedores(); }catch(e){} }
-  } else {
-    dados.id='F'+String(++FORN_SEQ).padStart(2,'0');
-    FORNECEDORES.push(dados);
-    atualizarFornecedorNoEstoque(dados.nome,dados);
-    const r=await salvarViaApiOuLocal('fornecedor',
-      ()=>api('POST','/fornecedores', payload),
-      ()=>({ok:true, local:true})
-    );
-    if(!r || !r.ok){toast('Erro ao cadastrar fornecedor','var(--red)');return;}
-    if(!r.local){ try{ await carregarFornecedores(); }catch(e){} }
-  }
-  fechar('modal-fornecedor');renderFornecedores();autoSaveTrigger();
-  toast('✓ Fornecedor salvo!','var(--green)');
+  const r = id
+    ? await api('PUT','/fornecedores/'+encodeURIComponent(id), payload)
+    : await api('POST','/fornecedores', payload);
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  atualizarFornecedorNoEstoque(nome,payload);
+  toast('Fornecedor salvo ✓','var(--green)');
+  fechar('modal-fornecedor');
+  await carregarFornecedores();
+  renderFornecedores();
+  autoSaveTrigger();
 }
 
 function atualizarFornecedorNoEstoque(nome,forn){
@@ -4276,15 +4254,12 @@ function atualizarFornecedorNoEstoque(nome,forn){
 
 async function excluirFornecedor(id){
   if(!confirm('Excluir fornecedor? Isso não remove chapas do estoque vinculadas a ele.'))return;
-  var idx=FORNECEDORES.findIndex(x=>x.id===id);
-  const r=await salvarViaApiOuLocal('fornecedor',
-    ()=>api('DELETE','/fornecedores/'+encodeURIComponent(id)),
-    ()=>({ok:true, local:true})
-  );
-  if(!r || !r.ok){toast('Erro ao excluir fornecedor','var(--red)');return;}
-  if(idx>=0) FORNECEDORES.splice(idx,1);
-  if(!r.local){ try{ await carregarFornecedores(); }catch(e){} }
-  renderFornecedores();autoSaveTrigger();toast('Fornecedor excluído');
+  const r=await api('DELETE','/fornecedores/'+encodeURIComponent(id));
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  await carregarFornecedores();
+  renderFornecedores();
+  autoSaveTrigger();
+  toast('Fornecedor excluído','var(--orange)');
 }
 
 function getFornNomes(){return FORNECEDORES.map(function(f){return f.nome;});}
@@ -6624,6 +6599,32 @@ function aplicarPermissoes(permissoes, perfil) {
       if (el) el.style.display = '';
     });
   });
+}
+
+const PAGINA_PERM = {
+  'pcp': ['pcp_completo','ver_pedidos','tudo'],
+  'ofmaq': ['ofs_por_maquina','tudo'],
+  'ofs-maquina': ['ofs_por_maquina','tudo'],
+  'lancamento': ['lancar_pedidos','tudo'],
+  'lancar-pedido': ['lancar_pedidos','tudo'],
+  'estoque': ['estoque_chapas','tudo'],
+  'estoques': ['estoque_chapas','tudo'],
+  'relmensal': ['relatorio_mensal','tudo'],
+  'relatorio-mensal': ['relatorio_mensal','tudo'],
+  'relatorios': ['relatorio_mensal','relatorio_admin','tudo'],
+  'usuarios': ['tudo'],
+  'roteiro-entrega': ['cadastros','tudo'],
+  'compras': ['solicitar_compra','tudo'],
+  'orcamentos': ['orcamentos','tudo'],
+};
+
+function temPermPagina(pagina){
+  if(!CURRENT_USER) return false;
+  const perms = Array.isArray(CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
+  if(perms.includes('tudo') || CURRENT_USER.perfil === 'admin') return true;
+  const necessarias = PAGINA_PERM[String(pagina||'')];
+  if(!necessarias) return true;
+  return necessarias.some(p => perms.includes(p));
 }
 
 
