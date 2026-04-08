@@ -825,15 +825,26 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // VENDEDORES
 // ══════════════════════════════════════════════════════════════
-app.get('/api/vendedores', async (req, res) => {
+app.get('/api/vendedores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('vendedores').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('vendedores').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/vendedores', async (req, res) => {
+app.post('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('vendedores').insert([vendedoresIn(req.body || {})]).select();
     if (error) throw error;
@@ -841,7 +852,7 @@ app.post('/api/vendedores', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/vendedores/:id', async (req, res) => {
+app.put('/api/vendedores/:id', authMiddleware, async (req, res) => {
   try {
     const payload = vendedoresIn({ ...(req.body || {}) }); delete payload.id;
     const { data, error } = await supabase.from('vendedores')
@@ -851,7 +862,7 @@ app.put('/api/vendedores/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.delete('/api/vendedores/:id', async (req, res) => {
+app.delete('/api/vendedores/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('vendedores').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -920,15 +931,26 @@ app.put('/api/apontamentos/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // OPERADORES
 // ══════════════════════════════════════════════════════════════
-app.get('/api/operadores', async (req, res) => {
+app.get('/api/operadores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('operadores').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('operadores').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/operadores', async (req, res) => {
+app.post('/api/operadores', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('operadores').insert([req.body]).select();
     if (error) throw error;
@@ -936,7 +958,7 @@ app.post('/api/operadores', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/operadores/:id', async (req, res) => {
+app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body }; delete payload.id;
     const { data, error } = await supabase.from('operadores')
@@ -946,7 +968,7 @@ app.put('/api/operadores/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.delete('/api/operadores/:id', async (req, res) => {
+app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('operadores').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -1233,21 +1255,32 @@ app.delete('/api/estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // FACAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
-app.get('/api/facas_estoque', async (req, res) => {
+app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('facas_estoque').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('facas_estoque').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
-app.post('/api/facas_estoque', async (req, res) => {
+app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('facas_estoque').insert([req.body]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
-app.put('/api/facas_estoque/:id', async (req, res) => {
+app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body }; delete payload.id;
     const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
@@ -1255,7 +1288,7 @@ app.put('/api/facas_estoque/:id', async (req, res) => {
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
-app.delete('/api/facas_estoque/:id', async (req, res) => {
+app.delete('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('facas_estoque').delete().eq('id', req.params.id);
     if (error) throw error;
@@ -1266,21 +1299,32 @@ app.delete('/api/facas_estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // CLICHÊS ESTOQUE
 // ══════════════════════════════════════════════════════════════
-app.get('/api/cliches_estoque', async (req, res) => {
+app.get('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('cliches_estoque').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('cliches_estoque').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
-app.post('/api/cliches_estoque', async (req, res) => {
+app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('cliches_estoque').insert([req.body]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
-app.put('/api/cliches_estoque/:id', async (req, res) => {
+app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body }; delete payload.id;
     const { data, error } = await supabase.from('cliches_estoque').update(payload).eq('id', req.params.id).select();
@@ -1288,7 +1332,7 @@ app.put('/api/cliches_estoque/:id', async (req, res) => {
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
-app.delete('/api/cliches_estoque/:id', async (req, res) => {
+app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('cliches_estoque').delete().eq('id', req.params.id);
     if (error) throw error;

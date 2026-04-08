@@ -2167,6 +2167,7 @@ function salvarAlteracaoOF(ofNum){
 
 // ===================== MODAL OF =====================
 async function abrirModalOF(id){
+  try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   ofImgsTemp=[];
@@ -2728,6 +2729,7 @@ function toggleRamoCustom(){
   if(sel.value==='__outro__') cust.focus();
 }
 function abrirModalCliente(id){
+  try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const c=id?CLIENTES.find(x=>x.id===id):null;
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
@@ -4158,13 +4160,10 @@ async function salvarVendedor(){
   const reg=document.getElementById('vd-reg').value;
   const meta=parseFloat(document.getElementById('vd-meta').value)||0;
   const row={nome,tel,email,registro:reg,obs:String(meta||0),comissao:comissaoPct};
-  const r=await salvarViaApiOuLocal('vendedor',
-    ()=>api('POST','/vendedores', row),
-    ()=>{ VENDEDORES.push({id:'V'+String(VENDEDORES.length+1).padStart(2,'0'),nome,tel,email,reg,meta,comissaoPct}); return {ok:true, local:true}; }
-  );
-  if(!r || !r.ok){toast('Erro ao salvar vendedor','var(--red)');return;}
-  if(!r.local){ try{ await carregarVendedores(); }catch(e){} }
-  fechar('modal-vend');renderVendedores();autoSaveTrigger();toast('✓ Vendedor cadastrado!');
+  const r=await api('POST','/vendedores', row);
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  await carregarVendedores();
+  fechar('modal-vend');renderVendedores();autoSaveTrigger();toast('✓ Vendedor cadastrado!','var(--green)');
 }
 // ===================== NOTAS FISCAIS =====================
 // ===================== FORNECEDORES =====================
@@ -6874,24 +6873,12 @@ function usarFallbackLocal(nome){
   showSaveIndicator('⚠ modo local','var(--orange)');
 }
 async function salvarViaApiOuLocal(nome, fnApi, fnLocal){
-  try{
-    const r = await fnApi();
-    if(r && r.ok) return r;
-    usarFallbackLocal(nome);
-    if(typeof fnLocal === 'function'){
-      fnLocal();
-      toast('⚠ Servidor indisponível. Dados salvos localmente.','var(--orange)');
-      return { ok:true, local:true };
-    }
-    return r || { ok:false, error:'Falha ao salvar' };
-  }catch(e){
-    usarFallbackLocal(nome);
-    if(typeof fnLocal === 'function'){
-      fnLocal();
-      toast('⚠ Servidor indisponível. Dados salvos localmente.','var(--orange)');
-      return { ok:true, local:true };
-    }
-    return { ok:false, error:e.message };
+  try {
+    return await fnApi();
+  } catch (e) {
+    console.error('Erro ao salvar ' + nome + ':', e && e.message ? e.message : e);
+    toast('Erro ao salvar ' + nome + ': ' + (e && e.message ? e.message : 'falha'), 'var(--red)');
+    throw e;
   }
 }
 
@@ -7162,7 +7149,8 @@ async function carregarClientes(){
   return r;
 }
 async function carregarOperadores(){
-  const r = await api('GET','/operadores');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/operadores'+empParam);
   if(r && r.ok && r.data) OPERADORES = r.data.map(normalizeOp);
   return r;
 }
@@ -7199,12 +7187,14 @@ function normalizeCliche(r){
   };
 }
 async function carregarFacas(){
-  const r = await api('GET','/facas_estoque');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/facas_estoque'+empParam);
   if(r && r.ok && r.data && r.data.length) FACAS = r.data.map(normalizeFaca);
   return r;
 }
 async function carregarCliches(){
-  const r = await api('GET','/cliches_estoque');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/cliches_estoque'+empParam);
   if(r && r.ok && r.data && r.data.length) CLICHES = r.data.map(normalizeCliche);
   return r;
 }
@@ -7219,7 +7209,8 @@ function normalizeFluxo(r){
   return { id:r.id, nome:r.nome||'', etapas:tryParse(r.etapas, r.etapas||[]) };
 }
 async function carregarVendedores(){
-  const r = await api('GET','/vendedores');
+  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/vendedores'+empParam);
   if(r && r.ok && r.data && r.data.length) VENDEDORES = r.data.map(normalizeVend);
   return r;
 }
@@ -10349,21 +10340,25 @@ function abrirModalOperador() {
   abrir('modal-operador');
 }
 
-function salvarOperador() {
+async function salvarOperador() {
   const nome = document.getElementById('opr-nome').value.trim();
   if (!nome) { toast('Informe o nome','var(--red)'); return; }
-  OPERADORES.push({
-    id:'OP'+String(OP_SEQ).padStart(2,'0'),
+  const payload={
     nome,
-    mat:  document.getElementById('opr-mat').value,
+    mat:document.getElementById('opr-mat').value,
     maqId:document.getElementById('opr-maq').value,
     setor:document.getElementById('opr-setor').value,
     admissao:document.getElementById('opr-admissao').value,
     status:document.getElementById('opr-st').value,
-    obs:  document.getElementById('opr-obs').value,
-  });
-  OP_SEQ++;
-  fechar('modal-operador'); renderOperadores(); toast('✓ Operador cadastrado!');
+    obs:document.getElementById('opr-obs').value,
+    empId: EMP_FILTRO || ''
+  };
+  const r = await api('POST','/operadores', payload);
+  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  fechar('modal-operador');
+  await carregarOperadores();
+  renderOperadores();
+  toast('✓ Operador cadastrado!','var(--green)');
 }
 
 function abrirHistOp(opId) {
@@ -13159,7 +13154,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>VENDEDOR RESPONSÁVEL</label><select id="cl-vend"><option value="">—</option></select></div>
     <div class="mf"><label>TELEFONE</label><input id="cl-tel"></div>
     <div class="mf"><label>E-MAIL</label><input id="cl-email"></div>
-    <div class="mf"><label>CIDADE</label><input id="cl-cidade"></div>
+    <div class="mf"><label>CIDADE</label><input id="cl-cidade" type="text" list="cidades-roteiro-list" placeholder="Cidade..." autocomplete="off"></div>
     <div class="mf"><label>ESTADO</label><input id="cl-uf" placeholder="SC"></div>
     <div class="mf fgf"><label>ENDEREÇO</label><input id="cl-end"></div>
     <div class="mf"><label>RAMO DE ATIVIDADE</label>
