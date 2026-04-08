@@ -6176,6 +6176,7 @@ function aplicarPermissoes(permissoes, perfil) {
     'lancar_pedidos':   'menu-pedidos',
     'ver_pedidos':      'menu-pedidos',
     'editar_pedidos':   'menu-pedidos',
+    'cancelar_pedidos': 'menu-pedidos',
     'pcp_completo':     'menu-pcp',
     'ofs_por_maquina':  'menu-ofs-maquina',
     'dar_baixa_of':     'menu-ofs-maquina',
@@ -10791,6 +10792,48 @@ logAction = async function(acao, detalhe){
 };
 
 var USUARIOS = [];
+const PERMISSOES_DISPONIVEIS = [
+  { key: 'chat_geral', label: 'Chat - Canal Geral', grupo: 'Chat' },
+  { key: 'chat_vendas', label: 'Chat - Canal Vendas', grupo: 'Chat' },
+  { key: 'chat_pcp', label: 'Chat - Canal PCP', grupo: 'Chat' },
+  { key: 'chat_estoque', label: 'Chat - Canal Estoque', grupo: 'Chat' },
+  { key: 'chat_pedidos', label: 'Chat - Canal Pedidos', grupo: 'Chat' },
+  { key: 'lancar_pedidos', label: 'Lançar Pedidos/OFs', grupo: 'Pedidos' },
+  { key: 'ver_pedidos', label: 'Ver Pedidos', grupo: 'Pedidos' },
+  { key: 'editar_pedidos', label: 'Editar Pedidos', grupo: 'Pedidos' },
+  { key: 'cancelar_pedidos', label: 'Cancelar Pedidos', grupo: 'Pedidos' },
+  { key: 'pcp_completo', label: 'PCP Completo', grupo: 'PCP' },
+  { key: 'ofs_por_maquina', label: 'OFs por Máquina', grupo: 'PCP' },
+  { key: 'dar_baixa_of', label: 'Dar Baixa em OFs', grupo: 'PCP' },
+  { key: 'estoque_chapas', label: 'Ver Estoque de Chapas', grupo: 'Estoque' },
+  { key: 'editar_estoque', label: 'Editar Estoque', grupo: 'Estoque' },
+  { key: 'solicitar_compra', label: 'Solicitar Compra', grupo: 'Estoque' },
+  { key: 'recebimento', label: 'Recebimento', grupo: 'Estoque' },
+  { key: 'relatorio_mensal', label: 'Relatório Mensal', grupo: 'Relatórios' },
+  { key: 'relatorio_admin', label: 'Relatório Administrativo', grupo: 'Relatórios' },
+  { key: 'financeiro', label: 'Financeiro', grupo: 'Outros' },
+  { key: 'notificacoes', label: 'Notificações', grupo: 'Outros' },
+  { key: 'cadastros', label: 'Cadastros', grupo: 'Outros' },
+  { key: 'orcamentos', label: 'Orçamentos', grupo: 'Outros' },
+];
+
+function renderPermissoesDisponiveis(){
+  const wrap=document.getElementById('usr-perms-grid');
+  if(!wrap) return;
+  const grupos={};
+  (PERMISSOES_DISPONIVEIS||[]).forEach(p=>{
+    const g=String(p.grupo||'Outros');
+    if(!grupos[g]) grupos[g]=[];
+    grupos[g].push(p);
+  });
+  const ordem=['Chat','Pedidos','PCP','Estoque','Relatórios','Outros'];
+  const keys=[...ordem.filter(g=>grupos[g]), ...Object.keys(grupos).filter(g=>!ordem.includes(g))];
+  wrap.innerHTML = keys.map(g=>{
+    const itens=grupos[g]||[];
+    const itemsHtml = itens.map(p=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="${escAttr(p.key)}"> ${escH(p.label)}</label>`).join('');
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)"><div style="font-weight:900;margin-bottom:8px">${escH(String(g).toUpperCase())}</div>${itemsHtml}</div>`;
+  }).join('');
+}
 async function carregarUsuarios(){
   if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
   const r = await api('GET','/usuarios');
@@ -10841,7 +10884,7 @@ function renderUsuarios(){
           <button class="btn btn-ghost btn-sm" onclick="abrirModalUsuarioEditar('${u.id}')" title="Editar">✏️ Editar</button>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalSenhaUsuario('${u.id}')" title="Alterar senha">🔑 Senha</button>
           <button class="btn btn-ghost btn-sm" onclick="usrToggleAtivo('${u.id}')" title="Ativar/Desativar">${u.ativo===false?'🟢 Ativar':'🔴 Desativar'}</button>
-          <button class="btn btn-ghost btn-sm" onclick="usrExcluir('${u.id}')" title="Excluir" style="color:var(--red)">🗑️ Excluir</button>
+          ${u.id !== (CURRENT_USER && CURRENT_USER.id) ? `<button class="btn btn-ghost btn-sm" onclick="usrExcluir('${u.id}')" title="Excluir" style="color:var(--red)">🗑️ Excluir</button>` : '<span style="color:var(--text3);padding:6px 8px">—</span>'}
         </div>
       </td>
     </tr>`;
@@ -10858,9 +10901,9 @@ function usrModalSetPerms(perms){
 function usrAtalho(tipo){
   tipo = String(tipo||'custom');
   const map = {
-    vendedor: ["chat_geral","chat_vendas","chat_pedidos","lancar_pedidos","ver_pedidos"],
+    vendedor: ["chat_geral","chat_vendas","chat_pedidos","lancar_pedidos","ver_pedidos","cancelar_pedidos"],
     estoque: ["chat_geral","chat_estoque","estoque_chapas","editar_estoque","solicitar_compra","recebimento"],
-    pcp: ["chat_geral","chat_pcp","pcp_completo","ofs_por_maquina","dar_baixa_of","relatorio_mensal"],
+    pcp: ["chat_geral","chat_pcp","pcp_completo","ofs_por_maquina","dar_baixa_of","relatorio_mensal","cancelar_pedidos"],
     admin: ["tudo"],
     custom: []
   };
@@ -10882,6 +10925,7 @@ function abrirModalUsuarioNovo(){
   document.getElementById('usr-senha2').value='';
   document.getElementById('usr-pass-wrap').style.display='';
   document.getElementById('usr-err').textContent='';
+  renderPermissoesDisponiveis();
   usrAtalho('custom');
   abrir('modal-usr');
 }
@@ -10898,6 +10942,7 @@ function abrirModalUsuarioEditar(id){
   document.getElementById('usr-cor').value=u.avatar_cor||'#4A90D9';
   document.getElementById('usr-pass-wrap').style.display='none';
   document.getElementById('usr-err').textContent='';
+  renderPermissoesDisponiveis();
   usrModalSetPerms(Array.isArray(u.permissoes)?u.permissoes:[]);
   const isAdmin = (u.perfil==='admin') || (Array.isArray(u.permissoes)&&u.permissoes.includes('tudo'));
   document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.disabled=isAdmin;});
@@ -12422,45 +12467,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
 
     <div class="fgrp">PERMISSÕES DE ACESSO</div>
-    <div class="mf fgf" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">💬 CHAT</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_geral"> Canal Geral</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_vendas"> Canal Vendas</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_pcp"> Canal PCP</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_estoque"> Canal Estoque</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="chat_pedidos"> Canal Pedidos</label>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">📋 PEDIDOS / OFs</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="lancar_pedidos"> Lançar pedidos</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="ver_pedidos"> Ver pedidos</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="editar_pedidos"> Editar pedidos</label>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">🏭 PCP</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="pcp_completo"> PCP completo</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="ofs_por_maquina"> OFs por máquina</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="dar_baixa_of"> Dar baixa em OFs</label>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">📦 ESTOQUE</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="estoque_chapas"> Ver estoque chapas</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="editar_estoque"> Editar estoque</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="solicitar_compra"> Solicitar compra</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="recebimento"> Recebimento</label>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">📊 RELATÓRIOS</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="relatorio_mensal"> Relatório mensal</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="relatorio_admin"> Relatório administrativo</label>
-      </div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)">
-        <div style="font-weight:900;margin-bottom:8px">💰 OUTROS</div>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="financeiro"> Financeiro</label>
-        <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="notificacoes"> Notificações</label>
-      </div>
-    </div>
+    <div class="mf fgf" id="usr-perms-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"></div>
 
     <div id="usr-err" style="color:var(--red);font-size:.75rem;min-height:18px;font-weight:700;"></div>
   </div>

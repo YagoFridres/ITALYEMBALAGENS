@@ -254,25 +254,26 @@ app.post('/api/auth/login', async (req, res) => {
     const usuario = rows[0];
     console.log('Usuario encontrado:', usuario.email, '| hash:', usuario.senha_hash?.substring(0, 10));
 
-    const { data: ok, error: e2 } = await supabase
-      .rpc('verificar_senha', {
-        senha_input: String(senha),
-        hash: usuario.senha_hash
-      });
+    const hash = String(usuario.senha_hash || '');
+    let senhaValida = false;
 
-    console.log('verificar_senha resultado:', ok, '| erro:', e2);
-
-    if (e2) {
-      console.error('Erro RPC verificar_senha:', e2);
-      try {
-        const bcryptOk = await bcrypt.compare(String(senha), usuario.senha_hash);
-        if (!bcryptOk) return res.status(401).json({ error: 'Senha incorreta' });
-      } catch {
-        return res.status(500).json({ error: 'Erro ao verificar senha: ' + e2.message });
-      }
-    } else if (!ok) {
-      return res.status(401).json({ error: 'Senha incorreta' });
+    try {
+      senhaValida = await bcrypt.compare(String(senha), hash);
+      console.log('bcrypt resultado:', senhaValida);
+    } catch (e) {
+      console.error('Erro bcrypt:', String(e.message || e));
+      senhaValida = false;
     }
+
+    if (!senhaValida && !hash.startsWith('$2')) {
+      const { data: ok, error: e2 } = await supabase
+        .rpc('verificar_senha', { senha_input: String(senha), hash });
+      console.log('verificar_senha resultado:', ok, '| erro:', e2);
+      if (e2) console.error('Erro RPC verificar_senha:', e2);
+      senhaValida = !e2 && !!ok;
+    }
+
+    if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign(
       {
@@ -413,6 +414,21 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    if (String(req.usuario?.id || '') === id) {
+      return res.status(400).json({ error: 'Você não pode deletar seu próprio usuário' });
+    }
+
+    const { data: admins, error: aerr } = await supabase
+      .from('usuarios')
+      .select('id')
+      .eq('perfil', 'admin')
+      .eq('ativo', true);
+    if (aerr) throw aerr;
+    if (Array.isArray(admins) && admins.length <= 1 && String(admins[0]?.id || '') === id) {
+      return res.status(400).json({ error: 'Não é possível remover o único administrador do sistema' });
+    }
+
     const { error } = await supabase.from('usuarios').delete().eq('id', id);
     if (error) throw error;
     return ok(res, true);
