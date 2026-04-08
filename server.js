@@ -8,6 +8,17 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const crypto = require('crypto');
 
+function parseFluxo(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try {
+      const p = JSON.parse(v);
+      return Array.isArray(p) ? p : [];
+    } catch (e) { return []; }
+  }
+  return [];
+}
+
 function loadDotEnv() {
   try {
     const envPath = path.join(__dirname, '.env');
@@ -629,10 +640,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    const payload = ofIn(req.body || {});
+    const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     if (error) throw error;
-    return res.json(data);
+    return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
 
@@ -646,16 +657,9 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const of = rows && rows[0] ? rows[0] : null;
     if (!of) return bad(res, 'OF não encontrada');
 
-    const tryParse = (v, fallback) => {
-      try { return JSON.parse(v); } catch (e) { return fallback; }
-    };
-
-    let fluxo = [];
-    if (Array.isArray(of.fluxo_maquinas)) fluxo = of.fluxo_maquinas;
-    else if (typeof of.fluxo_maquinas === 'string') fluxo = tryParse(of.fluxo_maquinas, []);
-
+    let fluxo = parseFluxo(of.fluxo_maquinas);
     if (!Array.isArray(fluxo) || fluxo.length === 0) {
-      const maq = Array.isArray(of.maq) ? of.maq : (typeof of.maq === 'string' ? tryParse(of.maq, []) : []);
+      const maq = parseFluxo(of.maq);
       fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
     }
 
@@ -668,13 +672,14 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
 
     const nowIso = new Date().toISOString();
     let payload = { maquina_atual_index: nextIdx };
-    if (concluida) payload = { ...payload, status: 'Concluído', data_conclusao: nowIso };
+    payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
+    if (concluida) payload = { ...payload, data_conclusao: nowIso };
 
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     if (upd.error) {
       const msg = String(upd.error.message || upd.error);
       if (msg.includes('column') || msg.includes('Could not find')) {
-        const fallbackPayload = concluida ? { status: 'Concluído' } : {};
+        const fallbackPayload = { status: concluida ? 'Pedido Pronto' : 'Em Produção' };
         upd = await supabase.from('ofs').update(fallbackPayload).eq('id', id).select('*').single();
       }
     }
@@ -683,8 +688,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const msg = concluida
-      ? `OF #${numero} baixada na máquina ${atual || '—'}, concluída`
-      : `OF #${numero} baixada na máquina ${atual || '—'}, seguindo para ${proxima || '—'}`;
+      ? `OF #${numero} baixada em ${atual || '—'} — PEDIDO PRONTO ✓`
+      : `OF #${numero} baixada em ${atual || '—'} → próxima: ${proxima || '—'}`;
 
     try {
       await supabase.from('historico_acoes').insert([{
@@ -695,7 +700,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }]);
     } catch (e) {}
 
-    res.json({ ok: true, concluida, proxima_maquina: proxima || null });
+    res.json({ ok: true, concluida, proxima: proxima || null, status: payload.status });
   } catch (e) { err(res, e); }
 });
 

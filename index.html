@@ -665,6 +665,11 @@ function parseFluxo(v){
   return [];
 }
 
+function setVal(id, val){
+  const el=document.getElementById(id);
+  if(el) el.value = (val==null?'':val);
+}
+
 function escH(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -1408,10 +1413,10 @@ function renderPCP(){
   // OR if search/status filter applied, show all matching
   if(!busca && !fs){
     lista=lista.filter(o=>{
-      if(o.status==='Cancelado') return false;
+      if(o.status==='Cancelado' || o.status==='Cancelada') return false;
       if(o.dia===PCP_DIA_ATUAL) return true;
       // Also show active OFs (in production) regardless of day
-      if(o.status==='Em produção') return true;
+      if(o.status==='Em produção' || o.status==='Em Produção') return true;
       // Show overdue OFs
       if(o.ent && o.ent < PCP_DIA_ATUAL && o.status!=='Concluído') return true;
       return false;
@@ -1429,8 +1434,8 @@ function renderPCP(){
   // Day summary
   const resumoEl=document.getElementById('pcp-dia-resumo');
   if(resumoEl){
-    const doDia=OFs.filter(o=>o.dia===PCP_DIA_ATUAL&&o.status!=='Cancelado');
-    const emProd=doDia.filter(o=>o.status==='Em produção').length;
+    const doDia=OFs.filter(o=>o.dia===PCP_DIA_ATUAL&&o.status!=='Cancelado'&&o.status!=='Cancelada');
+    const emProd=doDia.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
     const concl=doDia.filter(o=>o.status==='Concluído').length;
     resumoEl.textContent=`${doDia.length} OF(s) do dia · ${emProd} em produção · ${concl} concluída(s)`;
   }
@@ -1520,7 +1525,9 @@ async function renderOFsPorMaquina(){
   wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
   let data = await api('GET','/ofs');
   let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
-  let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada');
+  let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada' && o.status!=='Cancelado' && o.status!=='Pedido Pronto');
+  const empFil = EMP_FILTRO || '';
+  if(empFil) OFsBase = OFsBase.filter(o=>String(o.empId||o.empresa||'')===String(empFil));
   const filtroData=filtroOFsMaquina||'todas';
   const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
   const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
@@ -1583,11 +1590,11 @@ async function renderOFsPorMaquina(){
 
   const grupos={};
   (OFsBase||[]).filter(filt).forEach(o=>{
-    const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem máquina definida';
+    const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem Máquina';
     if(!grupos[m]) grupos[m]=[];
     grupos[m].push(o);
   });
-  const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem máquina definida'].filter(m=>grupos[m]);
+  const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
   if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
   const html = maquinasOrdenadas.map(m=>{
     const fila = grupos[m] || [];
@@ -1629,11 +1636,12 @@ async function ofmaqDarBaixa(id){
   const upd=r.data||r;
   const it=(OFs||[]).find(x=>x.id===o.id);
   if(it){
-    if(r.concluida===true) it.status='Concluída';
+    if(r && r.status) it.status = r.status;
+    else if(r && r.concluida===true) it.status='Pedido Pronto';
     it.maquina_atual_index = Number(it.maquina_atual_index||0)+1;
   }
   showSaveIndicator('✓ baixa salva','var(--green)');
-  toast(r.concluida?`✅ ${o.of||o.numero||''} concluída`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima_maquina||proxima||'—'}`,'var(--green)');
+  toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
   try{ await carregarOFs(); }catch(e){}
   renderOFsPorMaquina();
 }
@@ -1643,10 +1651,10 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
   if(r && r.ok){
-    toast(r.concluida ? 'OF #'+(numero||id)+' CONCLUÍDA!' : ('Baixa registrada! Próxima: '+(r.proxima_maquina||'—')), 'success');
+    toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
     renderOFsPorMaquina();
   } else {
-    toast('Erro: '+(r && r.error ? r.error : 'falha'), 'error');
+    toast('Erro: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
   }
 }
 
@@ -1875,21 +1883,21 @@ function cancelarOFSel(){
 }
 
 async function cancelarOF(id, numero) {
-  if (!id) { toast('OF inválida', 'error'); return; }
+  if (!id) { toast('OF inválida','var(--red)'); return; }
   if (!confirm('Confirmar cancelamento da OF #' + (numero || id) + '?')) return;
   try {
     const r = await api('PATCH', '/ofs/' + encodeURIComponent(id), { status: 'Cancelada' });
-    if (r && r.error) { toast('Erro: ' + r.error, 'error'); return; }
+    if (r && r.error) { toast('Erro: ' + r.error,'var(--red)'); return; }
     await api('POST', '/historico_acoes', {
       tipo_acao: 'cancelar_of',
       descricao: 'OF #' + (numero || id) + ' cancelada',
       usuario: (CURRENT_USER && CURRENT_USER.nome) || 'sistema'
     });
-    toast('OF #' + (numero || id) + ' cancelada', 'success');
+    toast('OF #' + (numero || id) + ' cancelada ✓','var(--green)');
     if (typeof carregarOFs === 'function') await carregarOFs();
     if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
   } catch (e) {
-    toast('Erro ao cancelar: ' + e.message, 'error');
+    toast('Erro ao cancelar: ' + e.message,'var(--red)');
   }
 }
 function alterarOFSel(){
@@ -1997,16 +2005,16 @@ async function abrirModalOF(id){
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   ofImgsTemp=[];
   ofItensTemp=[];
-  const fOf=document.getElementById('f-of'); if(fOf) fOf.value=oEdit?(oEdit.of||oEdit.numero||''):nextOFNum();
-  const fDia=document.getElementById('f-dia'); if(fDia) fDia.value=oEdit?(oEdit.dia||oEdit.data||today()):today();
-  const fEnt=document.getElementById('f-ent'); if(fEnt) fEnt.value=oEdit?(oEdit.ent||oEdit.data_entrega||''):'';
-  const fObs=document.getElementById('f-obs'); if(fObs) fObs.value=oEdit?(oEdit.obs||''):'';
-  const fprodDescNew=document.getElementById('f-prod-desc');if(fprodDescNew)fprodDescNew.value=oEdit?(oEdit.prodDesc||oEdit.prod||''):'';
-  const fpagto=document.getElementById('f-pagto');if(fpagto)fpagto.value=oEdit?(oEdit.pagto||''):'';
-  const fUrg=document.getElementById('f-urg'); if(fUrg) fUrg.value=oEdit?(oEdit.urg?'1':'0'):'0';
-  const fSt=document.getElementById('f-st'); if(fSt) fSt.value=oEdit?(oEdit.status||'Em aberto'):'Em aberto';
+  setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
+  setVal('f-dia', oEdit ? (oEdit.dia||oEdit.data_pedido||oEdit.data||today()) : today());
+  setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
+  setVal('f-obs', oEdit ? (oEdit.obs||oEdit.observacao||'') : '');
+  setVal('f-prod-desc', oEdit ? (oEdit.prodDesc||oEdit.produto||oEdit.prod||oEdit.descricao||'') : '');
+  setVal('f-pagto', oEdit ? (oEdit.pagto||'') : '');
+  setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
+  setVal('f-st', oEdit ? (oEdit.status||'Em aberto') : 'Em aberto');
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
-  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empresa||EMP_FILTRO||''):(EMP_FILTRO||'');
+  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.empresa||EMP_FILTRO||''):(EMP_FILTRO||'');
   const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
   CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+(c.tel||'')+' · '+(c.cidade||'')+'/'+(c.uf||'')+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
   const fCliSearch=document.getElementById('f-cli-search'); if(fCliSearch) fCliSearch.value='';
@@ -2023,6 +2031,8 @@ async function abrirModalOF(id){
     if(fsel && oEdit.fluxo_id) fsel.value=oEdit.fluxo_id;
     renderMaqChks(parseFluxo(oEdit.fluxo_maquinas||[]));
     ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length ? oEdit.itens.slice() : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null}];
+    renderOfItens();
+    try{ ofCliChange(); }catch(e){}
   } else {
     renderMaqChks([]);
     ofAddItem();
