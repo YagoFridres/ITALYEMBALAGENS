@@ -6404,7 +6404,7 @@ function api(method, url, body) {
   if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
   return fetch(url.startsWith('http') ? url : ('/api' + url), opts)
     .then(r => {
-      if (r.status === 401) {
+      if (r.status === 401 && !String(url||'').includes('/auth/login')) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
         if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();

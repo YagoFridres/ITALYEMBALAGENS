@@ -165,7 +165,7 @@ app.use((req, res, next) => {
   if (!req.path.startsWith('/api')) return next();
   if (req.method === 'OPTIONS') return next();
   if (req.path === '/api/health') return next();
-  if (req.path === '/api/auth/login') return next();
+  if (req.path === '/api/auth/login' || req.path === '/api/auth/login/') return next();
   return authMiddleware(req, res, next);
 });
 
