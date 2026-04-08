@@ -1296,6 +1296,7 @@ function toast(msg,cor='var(--green)'){
 function fechar(id){document.getElementById(id).classList.remove('open');}
 function abrir(id){document.getElementById(id).classList.add('open');}
 function zoomImg(src){document.getElementById('zoom-img').src=src;abrir('modal-img');}
+function verImagemOF(url){ if(url) zoomImg(url); }
 
 function estimativaMedia(maqId,qtd){
   const aps=APONTAMENTOS.filter(a=>a.maqId===maqId&&a.tempReal>0);
@@ -1354,7 +1355,25 @@ function openNavGroupForPage(pageId){
 }
 
 
+let _ofsMaqTimer = null;
+let _ofsMaqAtiva = false;
+
+function iniciarPollingOFsMaquina() {
+  _ofsMaqAtiva = true;
+  if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
+  renderOFsPorMaquina();
+  _ofsMaqTimer = setInterval(() => { if (_ofsMaqAtiva) renderOFsPorMaquina(); }, 8000);
+}
+
+function pararPollingOFsMaquina() {
+  _ofsMaqAtiva = false;
+  if (_ofsMaqTimer) { clearInterval(_ofsMaqTimer); _ofsMaqTimer = null; }
+}
+
 function _goBase(id){
+  const prev = window._PAGE_ATUAL || '';
+  if(prev === 'ofmaq' && id !== 'ofmaq') pararPollingOFsMaquina();
+  window._PAGE_ATUAL = id;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -1363,7 +1382,7 @@ function _goBase(id){
   updateBadges();
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
   if(id==='pcp')renderPCP();
-  if(id==='ofmaq')renderOFsPorMaquina();
+  if(id==='ofmaq')iniciarPollingOFsMaquina();
   if(id==='lancamento')renderLancamento();
   if(id==='clientes')renderClientes();
   if(id==='estoque')renderEstoque();
@@ -1544,7 +1563,9 @@ async function renderOFsPorMaquina(){
   _ofsMaqRenderizando=true;
   _ofsMaqUltimaRender=agora;
   const wrap=document.getElementById('ofs-por-maquina-container')||document.getElementById('ofmaq-body');if(!wrap)return;
-  wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
+  const prevScroll = wrap.scrollTop || 0;
+  const first = wrap.dataset && wrap.dataset.ofmaqLoaded !== '1';
+  if(first) wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
   try{
     let data = await api('GET','/ofs');
     let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
@@ -1605,24 +1626,33 @@ async function renderOFsPorMaquina(){
         return `<span style="color:var(--text3)">${s}</span>`;
       }).join(` <span style="color:var(--text3)">→</span> `);
       const img = o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
+      const imgHtml = img
+        ? `<div onclick="verImagemOF('${escAttr(img)}')" style="width:60px;height:60px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--accent);flex-shrink:0;background:var(--s2)" title="Ver imagem da OF">
+             <img src="${escH(img)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<span style=\\\"font-size:20px;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)\\\">📄</span>'">
+           </div>`
+        : `<div style="width:60px;height:60px;border-radius:8px;background:var(--s2);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border);color:var(--text3)" title="Sem imagem">📄</div>`;
       const border = isUrg ? '#f44336' : (atrasada ? '#ff9800' : 'var(--border)');
       return `<div style="background:var(--surface);border:1px solid ${border};border-radius:10px;padding:12px;margin-bottom:10px;position:relative">
         ${isUrg?'<span style="position:absolute;top:8px;right:8px;background:#f44336;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:900;font-family:var(--mono)">🔴 URGENTE</span>':''}
-        <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px">
-          <div style="font-family:var(--mono);font-weight:900;color:var(--accent)">OF #${escH(o.of||o.numero||'—')}</div>
-          <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${escH(String(maquinaAtual||''))}</div>
-        </div>
-        <div style="font-size:13px;margin-bottom:4px"><b>Cliente:</b> ${escH(nomeCliente)}</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">
-          📅 Pedido: ${fmtDataBR(diaStr)} &nbsp;|&nbsp;
-          🚚 Entrega: <span style="color:${atrasada?'#f44336':(entStr===hoje?'#ff9800':'var(--text2)')}">${fmtDataBR(entStr)}</span>
-        </div>
-        <div style="font-size:12px;margin-bottom:8px"><b>Qtd:</b> ${fmtN(qtd)} <span style="color:var(--text3)">|</span> <b>Empresa:</b> ${escH(o.empId||o.empresa||'—')}</div>
-        ${progresso?`<div style="font-size:11px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escH((f||[]).join(' → '))}">${progresso}</div>`:''}
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="darBaixaOFId('${escAttr(o.id||'')}','${escAttr(o.of||o.numero||'')}','${escAttr(maquinaAtual||'')}')">✅ Dar Baixa</button>`:''}
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(o.id||'')}')">✏️ Editar</button>
-          ${img?`<button class="btn btn-ghost btn-sm" onclick="ofmaqVerImagem('${escAttr(o.id||'')}')">🖼 Ver Imagem</button>`:''}
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          ${imgHtml}
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px">
+              <div style="font-family:var(--mono);font-weight:900;color:var(--accent)">OF #${escH(o.of||o.numero||'—')}</div>
+              <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${escH(String(maquinaAtual||''))}</div>
+            </div>
+            <div style="font-size:13px;margin-bottom:4px"><b>Cliente:</b> ${escH(nomeCliente)}</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">
+              📅 Pedido: ${fmtDataBR(diaStr)} &nbsp;|&nbsp;
+              🚚 Entrega: <span style="color:${atrasada?'#f44336':(entStr===hoje?'#ff9800':'var(--text2)')}">${fmtDataBR(entStr)}</span>
+            </div>
+            <div style="font-size:12px;margin-bottom:8px"><b>Qtd:</b> ${fmtN(qtd)} <span style="color:var(--text3)">|</span> <b>Empresa:</b> ${escH(o.empId||o.empresa||'—')}</div>
+            ${progresso?`<div style="font-size:11px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escH((f||[]).join(' → '))}">${progresso}</div>`:''}
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="darBaixaOFId('${escAttr(o.id||'')}','${escAttr(o.of||o.numero||'')}','${escAttr(maquinaAtual||'')}')">✅ Dar Baixa</button>`:''}
+              <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(o.id||'')}')">✏️ Editar</button>
+            </div>
+          </div>
         </div>
       </div>`;
     };
@@ -1640,15 +1670,20 @@ async function renderOFsPorMaquina(){
       const cards = fila.map(o=>card(o,m)).join('');
       return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
     }).join('');
-    wrap.innerHTML = html;
+    if(!wrap.dataset) wrap.dataset = {};
+    if(wrap.dataset.ofmaqLastHtml !== html){
+      wrap.innerHTML = html;
+      wrap.dataset.ofmaqLastHtml = html;
+      wrap.dataset.ofmaqLoaded = '1';
+    }
+    try{ wrap.scrollTop = prevScroll; }catch(e){}
   } finally {
     _ofsMaqRenderizando=false;
   }
 }
 
 function ofmaqSetFiltroData(m){
-  window.OFMAQ_DATA_FILTRO=m;
-  renderOFsPorMaquina();
+  setFiltroOFsMaquina(m);
 }
 function ofmaqVerImagem(id){
   const o=(OFs||[]).find(x=>x.id===id);
@@ -7104,7 +7139,27 @@ function renderActivePageSync(){
   if(!ap || !ap.id) { try{ renderPCP(); }catch(e){} return; }
   const pid=ap.id.replace('page-','');
   if(pid==='relmensal') return;
-  try{ _goBase(pid); }catch(e){ try{ renderPCP(); }catch(e2){} }
+  if(pid==='ofmaq') return;
+  try{
+    if(pid==='pcp') return renderPCP();
+    if(pid==='lancamento') return renderLancamento();
+    if(pid==='clientes') return renderClientes();
+    if(pid==='estoque') return renderEstoque();
+    if(pid==='fluxos') return renderFluxos();
+    if(pid==='maquinas') return renderMaquinasConf();
+    if(pid==='vendedores') return renderVendedores();
+    if(pid==='fornecedores') return renderFornecedores();
+    if(pid==='dashboard') return renderDashboard();
+    if(pid==='relatorios') return renderRelatorio();
+    if(pid==='compras') return renderCompras();
+    if(pid==='orcamentos') return renderOrcamentos();
+    if(pid==='usuarios') return carregarUsuarios();
+    if(pid==='sistema') return renderSistema();
+    if(pid==='facas1') return renderFacas1();
+    if(pid==='cliches') return renderCliches();
+  }catch(e){
+    try{ renderPCP(); }catch(e2){}
+  }
 }
 
 function broadcastDataSnapshot(reason){
@@ -11369,11 +11424,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option>Em aberto</option><option>Em produção</option>
       <option>Concluído</option><option>Atrasado</option><option>Cancelado</option>
     </select>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('hoje')">Hoje</button>
-      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('semana')">Esta Semana</button>
-      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetFiltroData('todas')">Todas</button>
-    </div>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
   </div>
