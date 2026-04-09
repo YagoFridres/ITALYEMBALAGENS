@@ -1696,6 +1696,13 @@ function cardOFMaquina(of, maquinaAtual){
   const hoje = new Date().toISOString().slice(0,10);
   const entStr = (of.ent || of.data_entrega || '').slice(0,10);
   const atrasada = entStr && entStr < hoje;
+  const temImagem = !!(of.imagem_url || of.img || of.imagem);
+  const urlImagem = of.imagem_url || of.img || of.imagem || '';
+  const imgHtml = temImagem
+    ? '<div onclick="verImagemOF(\''+escAttr(urlImagem)+'\')" title="Ver imagem da OF" style="float:right;width:80px;height:80px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--accent);margin:0 0 8px 12px;background:var(--bg3);flex-shrink:0">'
+      +'<img src="'+escH(urlImagem)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=font-size:24px;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)>📄</span>\'">'
+      +'</div>'
+    : '<div style="float:right;width:80px;height:80px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;margin:0 0 8px 12px;border:1px solid var(--border);color:var(--text3);font-size:24px;flex-shrink:0" title="Sem imagem">📄</div>';
 
   const progressoHtml = (fluxo||[]).map((m,i)=>{
     if(i < idx) return '<span style="color:#4CAF50;text-decoration:line-through;font-size:11px">'+escH(m)+'</span>';
@@ -1705,6 +1712,7 @@ function cardOFMaquina(of, maquinaAtual){
 
   return '<div style="background:var(--bg2);border:2px solid '+(isUrg?'#f44336':atrasada?'#ff9800':'var(--border)')+';border-radius:10px;padding:16px;margin-bottom:10px">'
     +(isUrg?'<div style="background:#f44336;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:bold;display:inline-block;margin-bottom:8px">🔴 URGENTE</div>':'' )
+    +imgHtml
     +'<div style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2">'+escH(produto)+'</div>'
     +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
     +'<span style="font-size:13px;color:#4A90D9">OF #'+escH(of.of||of.numero||String(of.id||'').substring(0,8)||'')+'</span>'
@@ -1718,7 +1726,6 @@ function cardOFMaquina(of, maquinaAtual){
     +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button onclick="darBaixaOFId(\''+escAttr(of.id)+'\',\''+escAttr(of.of||of.numero||'')+'\',\''+escAttr(maquinaAtual||'')+'\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✅ Dar Baixa</button>'
-    +(of.imagem_url?'<button onclick="verImagemOF(\''+escAttr(of.imagem_url)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">🖼</button>':'')
     +'<button onclick="abrirModalOF(\''+escAttr(of.id)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">✏️ Editar</button>'
     +'</div></div>';
 }
@@ -1787,9 +1794,11 @@ async function renderOFsPorMaquina(){
       if(!grupos[m]) grupos[m]=[];
       grupos[m].push(o);
     });
-    const maquinasOrdenadas = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
-    if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
-    const html = maquinasOrdenadas.map(m=>{
+    const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value || '';
+    let maquinasParaMostrar = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
+    if (filtroMaq) maquinasParaMostrar = maquinasParaMostrar.filter(m => m === filtroMaq);
+    if(!maquinasParaMostrar.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
+    const html = maquinasParaMostrar.map(m=>{
       const fila = ordenarOFsParaMaquina(grupos[m] || []);
       const cards = fila.map(o=>cardOFMaquina(o,m)).join('');
       return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
@@ -11988,6 +11997,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <button id="filtro-maq-hoje" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('hoje')">📅 Hoje</button>
       <button id="filtro-maq-semana" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('semana')">📆 Esta Semana</button>
       <button id="filtro-maq-todas" class="btn-filtro-maquina btn btn-ghost btn-sm ativo" onclick="setFiltroOFsMaquina('todas')">📋 Todas</button>
+      <select id="ofsmaq-filtro-maquina" onchange="renderOFsPorMaquina()" style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);margin-left:8px">
+        <option value="">🏭 Todas as máquinas</option>
+        <option value="IMP 01">IMP 01</option>
+        <option value="IMP 02">IMP 02</option>
+        <option value="IMP 03">IMP 03</option>
+        <option value="IMP 04">IMP 04</option>
+        <option value="IMP 05">IMP 05</option>
+        <option value="COLADEIRA">COLADEIRA</option>
+        <option value="RISCADOR 01">RISCADOR 01</option>
+        <option value="RISCADOR 02">RISCADOR 02</option>
+        <option value="ACABAMENTO">ACABAMENTO</option>
+        <option value="CORTE VINCO ROTATIVA">CORTE VINCO ROTATIVA</option>
+        <option value="CORTE PLANA">CORTE PLANA</option>
+      </select>
     </div>
     <div id="ofs-por-maquina-container"></div>
   </div>
@@ -13198,12 +13221,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
     </div>
     <div class="mf"><label>VENDEDOR</label><select id="f-vend"><option value="">Sem vendedor</option></select></div>
-    <div class="mf"><label>COND. PAGAMENTO</label>
-      <div class="ac-wrap">
-        <input type="text" id="f-pagto" placeholder="Ex: 30/60, À vista, Boleto 30d..." autocomplete="off" style="width:100%">
-      </div>
-      <div style="font-size:.62rem;color:var(--text3);margin-top:2px">💡 Digite ou selecione — <a href="#" onclick="abrirGerenciarPagamentos();return false;" style="color:var(--accent);text-decoration:none">Gerenciar formas</a></div>
-    </div>
     <div class="mf"><label>URGENTE?</label><select id="f-urg"><option value="0">Não</option><option value="1">Sim — URGENTE</option></select></div>
     <div class="mf"><label>FLUXO</label><select id="f-fl" onchange="preencherMaq()"><option value="">Selecionar fluxo...</option></select></div>
     <div class="mf"><label>MODELO CHAPA</label><select id="f-chp" onchange="verificarSaldo()"><option value="">Sem vínculo</option></select></div>
