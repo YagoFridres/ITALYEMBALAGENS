@@ -1407,7 +1407,10 @@ function toast(msg,cor='var(--green)'){
 function fechar(id){document.getElementById(id).classList.remove('open');}
 function abrir(id){document.getElementById(id).classList.add('open');}
 function zoomImg(src){document.getElementById('zoom-img').src=src;abrir('modal-img');}
-function verImagemOF(url){ if(url) zoomImg(url); }
+function verImagemOF(url){
+  if(!url){ toast('Sem imagem cadastrada','var(--orange)'); return; }
+  zoomImg(url);
+}
 
 function estimativaMedia(maqId,qtd){
   const aps=APONTAMENTOS.filter(a=>a.maqId===maqId&&a.tempReal>0);
@@ -1696,13 +1699,13 @@ function cardOFMaquina(of, maquinaAtual){
   const hoje = new Date().toISOString().slice(0,10);
   const entStr = (of.ent || of.data_entrega || '').slice(0,10);
   const atrasada = entStr && entStr < hoje;
-  const temImagem = !!(of.imagem_url || of.img || of.imagem);
-  const urlImagem = of.imagem_url || of.img || of.imagem || '';
+  const urlImagem = of.imagem_url || (Array.isArray(of.imgs)&&of.imgs.length?of.imgs[0]:'') || of.img || of.imagem || '';
+  const temImagem = !!urlImagem;
   const imgHtml = temImagem
     ? '<div onclick="verImagemOF(\''+escAttr(urlImagem)+'\')" title="Ver imagem da OF" style="float:right;width:80px;height:80px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--accent);margin:0 0 8px 12px;background:var(--bg3);flex-shrink:0">'
       +'<img src="'+escH(urlImagem)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=font-size:24px;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)>📄</span>\'">'
       +'</div>'
-    : '<div style="float:right;width:80px;height:80px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;margin:0 0 8px 12px;border:1px solid var(--border);color:var(--text3);font-size:24px;flex-shrink:0" title="Sem imagem">📄</div>';
+    : '<div onclick="verImagemOF(\'\')" title="Sem imagem" style="float:right;width:80px;height:80px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;margin:0 0 8px 12px;border:1px solid var(--border);color:var(--text3);font-size:24px;flex-shrink:0;cursor:pointer">📄</div>';
 
   const progressoHtml = (fluxo||[]).map((m,i)=>{
     if(i < idx) return '<span style="color:#4CAF50;text-decoration:line-through;font-size:11px">'+escH(m)+'</span>';
@@ -2118,7 +2121,9 @@ function alterarOFSel(){
   if(o._cancelado){toast('Não é possível alterar OF cancelada','var(--red)');return;}
   
   // Load items — preserve per-item images
-  ofImgsTemp=[];
+  ofImgsTemp=Array.isArray(o.imgs)?o.imgs.filter(Boolean).slice():[];
+  if(o.imagem_url) ofImgsTemp.unshift(o.imagem_url);
+  renderImgsTemp();
   ofItensTemp=(o.itens&&o.itens.length>0)
     ? o.itens.map(it=>({...it, img: it.img||null}))
     : [{desc:o.obs||'Item único',ref:'',qtd:o.qtd||0,vunit:o.vunit||0,img:null}];
@@ -2201,7 +2206,9 @@ function salvarAlteracaoOF(ofNum){
   // derive imgs from item images
   const itemImgsAlt=itens.map(it=>it.img||null);
   const firstImgAlt=itemImgsAlt.find(img=>img!==null);
-  o.imgs=firstImgAlt?[firstImgAlt]:[];
+  const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImgAlt].filter(Boolean))];
+  o.imgs = imgs;
+  o.imagem_url = imgs.length ? imgs[0] : null;
   
   // Reset modal footer/title for future new OFs
   const footer=document.querySelector('#modal-of .modal-footer');
@@ -2218,7 +2225,10 @@ async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
-  ofImgsTemp=[];
+  ofImgsTemp=oEdit
+    ? (Array.isArray(oEdit.imgs)?oEdit.imgs.filter(Boolean).slice():(oEdit.imagem_url?[oEdit.imagem_url]:[]))
+    : [];
+  renderImgsTemp();
   ofItensTemp=[];
   setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
   setVal('f-dia', oEdit ? (oEdit.data_pedido||oEdit.dia||oEdit.data||today()) : today());
@@ -2494,10 +2504,39 @@ function verificarSaldo(){
 }
 function renderImgsTemp(){
   const g=document.getElementById('of-imgs');
+  if(!g) return;
   g.innerHTML=ofImgsTemp.map((img,i)=>`<div class="igu-item"><img src="${img}" onclick="zoomImg('${img}')"><button class="igu-del" onclick="rmImg(${i})">✕</button></div>`).join('');
-  g.innerHTML+=`<div class="igu-add" onclick="document.getElementById('img-inp').click()">📷<span>Adicionar</span></div>`;
+  g.innerHTML+=`<div class="igu-add" onclick="document.getElementById('of-img-upload').click()">📷<span>Adicionar</span></div>`;
 }
-function handleImgs(e){[...e.target.files].forEach(f=>{const r=new FileReader();r.onload=ev=>{ofImgsTemp.push(ev.target.result);renderImgsTemp();};r.readAsDataURL(f);});e.target.value='';}
+async function handleOfImgsUpload(e){
+  const files = [...(e.target.files||[])];
+  if(!files.length) return;
+  const token = localStorage.getItem('auth_token');
+  for(const f of files){
+    try{
+      const fd = new FormData();
+      fd.append('file', f);
+      const resp = await fetch('/api/ofs/upload', { method:'POST', headers: { 'Authorization': token ? ('Bearer '+token) : '' }, body: fd });
+      const j = await resp.json();
+      if(j && j.ok && j.url){
+        ofImgsTemp.push(j.url);
+        renderImgsTemp();
+        continue;
+      }
+      throw new Error((j && (j.error||j.message)) || 'upload falhou');
+    }catch(err){
+      try{
+        const r = new FileReader();
+        await new Promise((resolve,reject)=>{
+          r.onload=ev=>{ ofImgsTemp.push(ev.target.result); renderImgsTemp(); resolve(); };
+          r.onerror=()=>reject(new Error('falha ao ler arquivo'));
+          r.readAsDataURL(f);
+        });
+      }catch(e2){}
+    }
+  }
+  e.target.value='';
+}
 function rmImg(i){ofImgsTemp.splice(i,1);renderImgsTemp();}
 // ===================== OF ITENS =====================
 let ofItensTemp = [];
@@ -2617,8 +2656,6 @@ async function salvarOF(){
   if(chpId&&qchp>0){const ch=getCh(chpId);if(ch&&qchp>ch.qtd){toast('⚠ Saldo insuficiente!','var(--red)');return;}if(ch){ch.qtd-=qchp;HIST_EST.unshift({tipo:'saida',chp:chpId,qtd:qchp,of:document.getElementById('f-of').value,data:today(),obs:'Baixa automática — criação OF'});}}
   const _estoqueJaBaixadoCriacao = chpId&&qchp>0;
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
-  // Auto-learn new payment form
-  if(pagto) adicionarFormaPagamento(pagto);
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'E1');
   const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
@@ -2633,7 +2670,8 @@ async function salvarOF(){
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -2657,7 +2695,6 @@ async function salvarEdicaoOFId(id){
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
-  if(pagto) adicionarFormaPagamento(pagto);
   const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
   const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
   const data_pedido = document.getElementById('f-dia').value;
@@ -2666,6 +2703,7 @@ async function salvarEdicaoOFId(id){
   const cidade_entrega = cliObj.cidade || '';
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
+  const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
   const payload={
@@ -2686,7 +2724,8 @@ async function salvarEdicaoOFId(id){
     urg:document.getElementById('f-urg').value==='1',
     pagto,
     obs:document.getElementById('f-obs').value,
-    imgs:firstImg?[firstImg]:[],
+    imgs,
+    imagem_url:imgs.length?imgs[0]:null,
     empId:empCode,
     modo_programacao,
     dia_programacao,
@@ -2778,8 +2817,8 @@ function toggleRamoCustom(){
 }
 function abrirModalCliente(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
-  const c=id?CLIENTES.find(x=>x.id===id):null;
-  const hid=document.getElementById('cli-id'); if(hid) hid.value = c ? (c.id||'') : '';
+  const c=(id && typeof id==='object') ? id : (id?CLIENTES.find(x=>x.id===id):null);
+  const hid=document.getElementById('cli-id'); if(hid) hid.value = c ? (c.id||c.cli_id||'') : '';
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
   const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?(c.empId||''):(EMP_FILTRO||'E1');
@@ -5620,7 +5659,7 @@ function importarDados(){
   reader.onload=ev=>{
     try{
       const data=JSON.parse(ev.target.result);
-      const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
+      const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
       const found=keys.filter(k=>data[k]!==undefined);
       const prev=document.getElementById('sis-import-preview');
       if(prev) prev.innerHTML=`<div style="background:var(--s2);border-radius:6px;padding:10px;margin-top:6px">
@@ -5638,7 +5677,7 @@ function confirmarImport(){
   if(!window._importData){toast('Nenhum dado para importar','var(--yellow)');return;}
   if(!confirm('ATENÇÃO: Isso irá substituir TODOS os dados atuais. Tem certeza?'))return;
   const data=window._importData;
-  const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FORMAS_PAGAMENTO','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
+  const keys=['OFs','CLIENTES','ESTOQUE','HIST_EST','APONTAMENTOS','COMPRAS','NOTAS_FISCAIS','MAQUINAS','FLUXOS','VENDEDORES','OPERADORES','INCONFORMIDADES','ORCAMENTOS','FORNECEDORES','TEMPO_IA','FACAS','CLICHES','CONTAS_PAGAR','CONTAS_RECEBER'];
   keys.forEach(k=>{if(data[k]!==undefined){try{window[k]=data[k];}catch(e){}}});
   if(data.FACAS!==undefined) FACAS = data.FACAS;
   localStorage.setItem('pcpro_data',JSON.stringify(data));
@@ -5652,34 +5691,6 @@ function renderSistema(){
   const el=document.getElementById('sis-ts-label');
   if(el&&ts){const ago=Math.round((Date.now()-parseInt(ts))/60000);el.textContent='Último save local: '+ago+' min atrás';}
   else if(el) el.textContent='Nenhum save local encontrado.';
-  // Render payment forms list
-  const pl=document.getElementById('sis-pag-lista');
-  if(pl) pl.innerHTML=FORMAS_PAGAMENTO.map((f,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);font-size:.8rem">
-      <span style="flex:1;font-family:var(--mono)">${f}</span>
-      <button onclick="sisPagRemove(${i})" style="background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:.68rem">✕</button>
-    </div>`).join('') || '<div style="padding:14px;color:var(--text3);text-align:center">Nenhuma forma cadastrada</div>';
-}
-
-function sisPagAdd(){
-  const inp=document.getElementById('sis-pag-nova');
-  if(!inp)return;
-  const val=inp.value.trim();
-  if(!val){toast('Digite a forma de pagamento','var(--yellow)');return;}
-  if(adicionarFormaPagamento(val)){
-    inp.value='';
-    renderSistema();
-    toast('✓ Forma de pagamento adicionada!','var(--green)');
-  } else {
-    toast('Já existe essa forma de pagamento','var(--yellow)');
-  }
-}
-
-function sisPagRemove(idx){
-  FORMAS_PAGAMENTO.splice(idx,1);
-  salvarFormasPagamento();
-  renderSistema();
-  toast('Forma removida','var(--orange)');
 }
 function exportarDadosCompletos(){
   try{
@@ -5688,7 +5699,7 @@ function exportarDadosCompletos(){
       versao:'PCP Pro v12 — Multiempresa',
       EMPRESAS,OFs,CLIENTES,ESTOQUE,HIST_EST,APONTAMENTOS,COMPRAS,
       NOTAS_FISCAIS,MAQUINAS,FLUXOS,VENDEDORES,OPERADORES,
-      INCONFORMIDADES,ORCAMENTOS,FORNECEDORES,TEMPO_IA,FORMAS_PAGAMENTO
+      INCONFORMIDADES,ORCAMENTOS,FORNECEDORES,TEMPO_IA
     };
     const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob);
@@ -6524,13 +6535,6 @@ function acObservacoes(q, empId){
     results.push({label:obs, sub:'', data:{obs}});
   });
   return results;
-}
-
-function acPagamento(q, empId){
-  const lq=q.toLowerCase();
-  return FORMAS_PAGAMENTO
-    .filter(f=>!lq||f.toLowerCase().includes(lq))
-    .map(f=>({label:f, sub:'', data:{pagto:f}}));
 }
 
 function acClientes(q, empId){
@@ -7476,7 +7480,7 @@ function buildDataSnapshot(){
     OFs, CLIENTES, ESTOQUE, HIST_EST, APONTAMENTOS, COMPRAS,
     NOTAS_FISCAIS, FLUXOS, VENDEDORES, OPERADORES,
     INCONFORMIDADES, ORCAMENTOS, FORNECEDORES, TEMPO_IA,
-    FORMAS_PAGAMENTO, MAQUINAS, RISC_VINCULOS,
+    MAQUINAS, RISC_VINCULOS,
     TAB_STATE,
     CMP_SEQ, ORC_SEQ, OP_SEQ, IC_SEQ, FORN_SEQ, NF_SEQ,
     FACAS, CLICHES,
@@ -7535,7 +7539,6 @@ function applyDataSnapshot(d, opts){
   if(d.FORNECEDORES) FORNECEDORES  = d.FORNECEDORES;
   if(d.TEMPO_IA)     TEMPO_IA      = d.TEMPO_IA;
   if(d.TAB_STATE)    TAB_STATE     = d.TAB_STATE;
-  if(d.FORMAS_PAGAMENTO) FORMAS_PAGAMENTO = d.FORMAS_PAGAMENTO;
   if(d.MAQUINAS&&d.MAQUINAS.length) MAQUINAS = d.MAQUINAS;
   if(d.RISC_VINCULOS)RISC_VINCULOS = d.RISC_VINCULOS;
   if(d.CMP_SEQ)  CMP_SEQ  = d.CMP_SEQ;
@@ -7730,13 +7733,6 @@ async function _tentarCarregarServidor(){
   } catch(e){ /* servidor indisponível — usa localStorage */ }
 }
 
-function autoSaveClear(){
-  if(confirm('Limpar TODOS os dados salvos e reiniciar com dados padrão?\n\nATENÇÃO: Esta ação não pode ser desfeita!')){
-    localStorage.removeItem(LS_KEY);
-    location.reload();
-  }
-}
-
 // Polling: atualiza dados a cada 30s — SÓ roda se o usuário estiver logado
 setInterval(async ()=>{
   // Não faz polling se não há usuário logado (evita erros na tela de login)
@@ -7885,69 +7881,6 @@ let COMPRAS = [
   {id:'CMP-002',data:'2025-06-02',forn:'Cartão Norte',cnpj:'11.111.111/0001-11',nom:'BC',tam:'1000x700',nome:'Chapa BC 1000x700 Cartão Norte',nf:'',qtd:5000,vunit:1.10,vtot:5500,prev:'2025-06-06',status:'Comprada',obs:''},
 ];
 let CMP_SEQ = 3;
-
-// ===================== FORMAS DE PAGAMENTO =====================
-let FORMAS_PAGAMENTO = [
-  'À vista','7 dias','14 dias','21 dias','28 dias','30 dias',
-  '30/60','30/60/90','45 dias','45/90',
-  'Boleto 30d','Boleto 30/60','Boleto 30/60/90',
-  'Cartão','Cartão 2x','Cartão 3x','Cartão 4x','Cartão 6x','Cartão 12x',
-  'PIX','Cheque 30d','Cheque 30/60','Outro'
-];
-
-function salvarFormasPagamento(){autoSaveTrigger();}
-function adicionarFormaPagamento(val){
-  val=(val||'').trim();
-  if(!val||FORMAS_PAGAMENTO.includes(val))return false;
-  FORMAS_PAGAMENTO.push(val);
-  salvarFormasPagamento();
-  return true;
-}
-function getFormasPagamentoOptions(selected){
-  return FORMAS_PAGAMENTO.map(f=>`<option value="${f}" ${selected===f?'selected':''}>${f}</option>`).join('');
-}
-
-function abrirGerenciarPagamentos(){
-  renderPagamentosLista();
-  abrir('modal-pagamentos');
-}
-
-function renderPagamentosLista(){
-  const el=document.getElementById('pag-lista');
-  if(!el)return;
-  el.innerHTML=FORMAS_PAGAMENTO.map((f,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:.82rem">
-      <span style="flex:1;font-family:var(--mono)">${f}</span>
-      <button onclick="removerFormaPagamento(${i})" style="background:var(--red-soft);border:1px solid var(--red);color:var(--red);border-radius:5px;padding:2px 8px;cursor:pointer;font-size:.7rem" title="Remover">✕</button>
-    </div>`).join('') || '<div style="padding:16px;color:var(--text3);text-align:center">Nenhuma forma cadastrada</div>';
-}
-
-function adicionarFormaPagamentoUI(){
-  const inp=document.getElementById('pag-nova');
-  if(!inp)return;
-  const val=inp.value.trim();
-  if(!val){toast('Digite a forma de pagamento','var(--yellow)');return;}
-  if(adicionarFormaPagamento(val)){
-    inp.value='';
-    renderPagamentosLista();
-    // Refresh AC on open pagamento inputs
-    toast('✓ Forma de pagamento adicionada!','var(--green)');
-  } else {
-    toast('Essa forma já está cadastrada','var(--yellow)');
-  }
-}
-
-function removerFormaPagamento(idx){
-  if(idx===0&&FORMAS_PAGAMENTO.length<=1){toast('Mantenha ao menos 1 forma','var(--yellow)');return;}
-  FORMAS_PAGAMENTO.splice(idx,1);
-  salvarFormasPagamento();
-  renderPagamentosLista();
-}
-
-
-
-
-
 // CIDADES BR com coordenadas no SVG (viewport 800x560)
 // Lat/Lng mapeadas para SVG: lng→x, lat→y (invertido)
 // Brasil: ~-34° a -5° lat, -74° a -35° lng
@@ -9243,20 +9176,28 @@ async function salvarOrcamentoCalc(){
   const clienteId=String((calcCli||{}).value||'');
   const clienteNome=(calcCli && calcCli.options && calcCli.selectedIndex>=0) ? (calcCli.options[calcCli.selectedIndex].textContent||'').trim() : (clienteId||'—');
   const qtd=parseInt(String((document.getElementById('calc-qtd')||{}).value||'0'),10)||0;
-  const C=String((document.getElementById('calc-comp')||{}).value||'');
-  const L=String((document.getElementById('calc-larg')||{}).value||'');
-  const A=String((document.getElementById('calc-alt')||{}).value||'');
+  const C=String((document.getElementById('calc-c')||document.getElementById('calc-comp')||{}).value||'');
+  const L=String((document.getElementById('calc-l')||document.getElementById('calc-larg')||{}).value||'');
+  const A=String((document.getElementById('calc-a')||document.getElementById('calc-alt')||{}).value||'');
   const medidas=C+'x'+L+'x'+A;
 
   const sel=_calcOpcaoSelecionada || {compIdx:0,onda:'B'};
   const opt=calcLastResult.allResults.find(r=>r && r.compIdx===sel.compIdx && String(r.onda||'')===String(sel.onda||'')) || calcLastResult.allResults[0];
   const valorUnitario = qtd>0 ? (Number(opt.comFrete)||0)/qtd : 0;
   const valorTotal = Number(opt.comFrete)||0;
+  const tipoVal = (document.getElementById('calc-tipo')||{}).value || '';
+  const vbVal = (document.getElementById('calc-vb')||{}).value || (document.getElementById('calc-vb2')||{}).value || '';
+  const vcVal = (document.getElementById('calc-vc')||{}).value || (document.getElementById('calc-vc2')||{}).value || '';
+  const vbcVal = (document.getElementById('calc-vbc')||{}).value || (document.getElementById('calc-vbc2')||{}).value || '';
 
   const payload={
     cliente_id: clienteId,
     cliente_nome: clienteNome||'—',
     medidas,
+    tipo: tipoVal,
+    comp: C,
+    larg: L,
+    alt: A,
     quantidade: qtd,
     onda: String(opt.onda||''),
     valor_unitario: valorUnitario,
@@ -9269,12 +9210,15 @@ async function salvarOrcamentoCalc(){
       imp:(document.getElementById('calc-imp')||{}).value,
       vkm:(document.getElementById('calc-vkm')||{}).value,
       km:(document.getElementById('calc-km')||{}).value,
-      vb:(document.getElementById('calc-vb')||{}).value,
-      vc:(document.getElementById('calc-vc')||{}).value,
-      vbc:(document.getElementById('calc-vbc')||{}).value,
+      vb: vbVal,
+      vc: vcVal,
+      vbc: vbcVal,
       sob:(document.getElementById('calc-sob')||{}).value,
       enc:(document.getElementById('calc-enc')||{}).value,
-      tipo:(document.getElementById('calc-tipo')||{}).value,
+      tipo: tipoVal,
+      comp: C,
+      larg: L,
+      alt: A,
     },
     resultados: calcLastResult.allResults,
     emp_id: EMP_FILTRO || '',
@@ -12012,7 +11956,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <button id="filtro-maq-hoje" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('hoje')">📅 Hoje</button>
       <button id="filtro-maq-semana" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('semana')">📆 Esta Semana</button>
       <button id="filtro-maq-todas" class="btn-filtro-maquina btn btn-ghost btn-sm ativo" onclick="setFiltroOFsMaquina('todas')">📋 Todas</button>
-      <select id="ofsmaq-filtro-maquina" onchange="renderOFsPorMaquina()" style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);margin-left:8px">
+      <select id="ofsmaq-filtro-maquina" onchange="renderOFsPorMaquina()" style="padding:6px 10px;border-radius:6px;background:var(--bg2,#1a1a2e);color:var(--text1,#fff);border:1px solid var(--border,#333);margin-left:8px;min-width:160px">
         <option value="">🏭 Todas as máquinas</option>
         <option value="IMP 01">IMP 01</option>
         <option value="IMP 02">IMP 02</option>
@@ -12938,28 +12882,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </div>
       </div>
     </div>
-    <!-- Formas de Pagamento -->
-    <div class="sbox" style="margin-top:14px">
-      <div class="sbox-h">💳 Formas de Pagamento</div>
-      <div class="sbox-b">
-        <p style="font-size:.78rem;color:var(--text2);margin-bottom:12px">Gerencie as formas de pagamento disponíveis para uso em Ordens de Fabricação e Orçamentos. Ficam disponíveis como autocomplete em todos os campos de pagamento.</p>
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-          <input id="sis-pag-nova" placeholder="Ex: 30/60/90, Cartão 10x, Consignado 45d..." style="flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:.8rem"
-            onkeydown="if(event.key==='Enter'){sisPagAdd();event.preventDefault();}">
-          <button class="btn btn-accent" onclick="sisPagAdd()">＋ Adicionar</button>
-        </div>
-        <div id="sis-pag-lista" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--s2)"></div>
-        <div style="margin-top:8px;font-size:.68rem;color:var(--text3)">💡 Você pode também acessar via <b>Gerenciar formas</b> ao preencher qualquer campo de pagamento nos modais de OF.</div>
-      </div>
-    </div>
-    <!-- Reset -->
-    <div class="sbox" style="border-color:var(--red)">
-      <div class="sbox-h" style="color:var(--red)">⚠ Zona de Perigo</div>
-      <div class="sbox-b" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <div style="font-size:.78rem;color:var(--text2);flex:1">Limpa todos os dados salvos no navegador e reinicia o sistema com os dados padrão. <b style="color:var(--red)">Esta ação não pode ser desfeita.</b></div>
-        <button class="btn btn-red" onclick="autoSaveClear()">🗑 Limpar e Reiniciar</button>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -13241,6 +13163,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>MODELO CHAPA</label><select id="f-chp" onchange="verificarSaldo()"><option value="">Sem vínculo</option></select></div>
     <div class="mf"><label>QTD CHAPAS</label><input id="f-qchp" type="number" placeholder="0" oninput="verificarSaldo()"></div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="f-obs" rows="2"></textarea></div>
+    <div class="mf fgf" style="grid-column:1/-1">
+      <label>IMAGEM DA OF</label>
+      <div id="of-imgs" class="img-grid-upload"></div>
+      <input type="file" id="of-img-upload" accept="image/*" multiple style="display:none" onchange="handleOfImgsUpload(event)">
+    </div>
     <!-- ITENS DA OF -->
     <div class="fgrp">📦 ITENS DA ORDEM DE FABRICAÇÃO</div>
     <div class="mf fgf">
@@ -13488,7 +13415,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- Modal Amostra -->
 <!-- Modal Calculadora de Caixas -->
 <div class="modal-overlay" id="modal-calc">
-<div class="modal" style="width:min(1100px,98vw);max-height:95vh;overflow-y:auto;padding:18px">
+<div class="modal" style="width:95vw;max-width:1200px;height:90vh;overflow-y:auto;padding:18px">
   <button class="close-btn" onclick="fechar('modal-calc')">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
   <!-- CLIENTE do orçamento -->
@@ -13940,28 +13867,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-rm-manual')">Cancelar</button>
     <button class="btn btn-accent" onclick="rmSalvarManual()">Salvar</button>
-  </div>
-</div></div>
-
-<!-- Modal Gerenciar Formas de Pagamento -->
-<div class="modal-overlay" id="modal-pagamentos">
-<div class="modal" style="width:min(560px,98vw)">
-  <button class="close-btn" onclick="fechar('modal-pagamentos')">✕</button>
-  <h2>💳 Formas de Pagamento</h2>
-  <div style="margin-bottom:12px;font-size:.78rem;color:var(--text2)">Cadastre formas de pagamento personalizadas. Todas ficam disponíveis como sugestão em qualquer campo de pagamento.</div>
-
-  <!-- Add new -->
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <input id="pag-nova" placeholder="Ex: 30/60/90, Cartão 10x, Consignado 45d..." style="flex:1;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:.8rem"
-      onkeydown="if(event.key==='Enter'){adicionarFormaPagamentoUI();event.preventDefault();}">
-    <button class="btn btn-accent" onclick="adicionarFormaPagamentoUI()">＋ Adicionar</button>
-  </div>
-
-  <!-- List -->
-  <div id="pag-lista" style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--s2)"></div>
-
-  <div class="modal-footer">
-    <button class="btn btn-ghost" onclick="fechar('modal-pagamentos')">Fechar</button>
   </div>
 </div></div>
 

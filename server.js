@@ -469,6 +469,29 @@ const chatUpload = multer({
   },
 });
 
+const ofUploadDir = path.join(__dirname, 'uploads', 'of');
+try { fs.mkdirSync(ofUploadDir, { recursive: true }); } catch (e) {}
+
+const ofStorage = multer.diskStorage({
+  destination: function (req, file, cb) { cb(null, ofUploadDir); },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 12);
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2));
+    cb(null, id + ext);
+  },
+});
+
+const ofUpload = multer({
+  storage: ofStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    return cb(null, true);
+  },
+});
+
 function chatPermForCanal(nome) {
   const n = String(nome || '').trim().toLowerCase();
   if (n === 'geral') return 'chat_geral';
@@ -838,6 +861,14 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
   try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+});
+
+app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    return ok(res, { url: '/uploads/of/' + f.filename });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
