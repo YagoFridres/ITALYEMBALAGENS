@@ -1656,17 +1656,72 @@ app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
 });
 app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('facas_estoque').insert([req.body]).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const b = req.body || {};
+    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const payloadBase = {
+      nome: b.nome || b.descricao || b.codigo || '',
+      codigo: b.codigo || b.nome || '',
+      descricao: b.descricao || b.nome || '',
+      quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
+      cliente: b.cliente || '',
+      emp_id: b.emp_id || b.empId || 'E1',
+      medidas: b.medidas || '',
+      valor: Number(b.valor ?? b.valor_unitario ?? 0) || 0,
+      observacoes: b.observacoes || b.obs || '',
+      obs: b.obs || b.observacoes || '',
+      imagem_url: b.imagem_url || b.foto || b.imagem || '',
+      foto: b.foto || b.imagem_url || b.imagem || '',
+      maquinas: asJson(b.maquinas || []),
+      clientes: asJson(b.clientes || []),
+    };
+    Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
+    let payload = { ...payloadBase };
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('facas_estoque').insert([payload]).select();
+      if (!error) return ok(res, data[0]);
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/);
+      const m2 = msg.match(/column \"([^\"]+)\"/);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && payload[col] !== undefined) { delete payload[col]; continue; }
+      throw error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao inserir faca' });
   } catch (e) { err(res, e); }
 });
 app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const b = { ...req.body }; delete b.id;
+    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const payloadBase = {
+      nome: b.nome || b.descricao || b.codigo,
+      codigo: b.codigo || b.nome,
+      descricao: b.descricao || b.nome,
+      quantidade: b.quantidade ?? b.qtd,
+      cliente: b.cliente,
+      emp_id: b.emp_id || b.empId,
+      medidas: b.medidas,
+      valor: b.valor ?? b.valor_unitario,
+      observacoes: b.observacoes || b.obs,
+      obs: b.obs || b.observacoes,
+      imagem_url: b.imagem_url || b.foto || b.imagem,
+      foto: b.foto || b.imagem_url || b.imagem,
+      maquinas: b.maquinas !== undefined ? asJson(b.maquinas) : undefined,
+      clientes: b.clientes !== undefined ? asJson(b.clientes) : undefined,
+    };
+    Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
+    let payload = { ...payloadBase };
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('facas_estoque').update(payload).eq('id', req.params.id).select();
+      if (!error) return ok(res, data[0]);
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/);
+      const m2 = msg.match(/column \"([^\"]+)\"/);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && payload[col] !== undefined) { delete payload[col]; continue; }
+      throw error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao atualizar faca' });
   } catch (e) { err(res, e); }
 });
 app.delete('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
@@ -1700,17 +1755,72 @@ app.get('/api/cliches_estoque', authMiddleware, async (req, res) => {
 });
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('cliches_estoque').insert([req.body]).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const b = req.body || {};
+    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const payloadBase = {
+      nome: b.nome || b.descricao || b.codigo || '',
+      codigo: b.codigo || b.nome || '',
+      descricao: b.descricao || b.nome || '',
+      quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
+      cliente: b.cliente || '',
+      emp_id: b.emp_id || b.empId || 'E1',
+      medidas: b.medidas || '',
+      valor: Number(b.valor ?? b.valor_unitario ?? 0) || 0,
+      observacoes: b.observacoes || b.obs || '',
+      obs: b.obs || b.observacoes || '',
+      imagem_url: b.imagem_url || b.foto || b.imagem || '',
+      foto: b.foto || b.imagem_url || b.imagem || '',
+      maquinas: asJson(b.maquinas || []),
+      clientes: asJson(b.clientes || []),
+    };
+    Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
+    let payload = { ...payloadBase };
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('cliches_estoque').insert([payload]).select();
+      if (!error) return ok(res, data[0]);
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/);
+      const m2 = msg.match(/column \"([^\"]+)\"/);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && payload[col] !== undefined) { delete payload[col]; continue; }
+      throw error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao inserir clichê' });
   } catch (e) { err(res, e); }
 });
 app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('cliches_estoque').update(payload).eq('id', req.params.id).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    const b = { ...req.body }; delete b.id;
+    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const payloadBase = {
+      nome: b.nome || b.descricao || b.codigo,
+      codigo: b.codigo || b.nome,
+      descricao: b.descricao || b.nome,
+      quantidade: b.quantidade ?? b.qtd,
+      cliente: b.cliente,
+      emp_id: b.emp_id || b.empId,
+      medidas: b.medidas,
+      valor: b.valor ?? b.valor_unitario,
+      observacoes: b.observacoes || b.obs,
+      obs: b.obs || b.observacoes,
+      imagem_url: b.imagem_url || b.foto || b.imagem,
+      foto: b.foto || b.imagem_url || b.imagem,
+      maquinas: b.maquinas !== undefined ? asJson(b.maquinas) : undefined,
+      clientes: b.clientes !== undefined ? asJson(b.clientes) : undefined,
+    };
+    Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
+    let payload = { ...payloadBase };
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('cliches_estoque').update(payload).eq('id', req.params.id).select();
+      if (!error) return ok(res, data[0]);
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/);
+      const m2 = msg.match(/column \"([^\"]+)\"/);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && payload[col] !== undefined) { delete payload[col]; continue; }
+      throw error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao atualizar clichê' });
   } catch (e) { err(res, e); }
 });
 app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {

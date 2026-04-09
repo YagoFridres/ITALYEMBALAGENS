@@ -1697,6 +1697,7 @@ let filtroOFsMaquina='todas';
 function setFiltroOFsMaquina(f){
   document.querySelectorAll('.btn-filtro-maquina').forEach(b=>b.classList.remove('ativo'));
   document.getElementById('filtro-maq-'+f)?.classList.add('ativo');
+  window._filtroOFsMaqData = f;
   renderOFsPorMaquina();
 }
 
@@ -1777,7 +1778,8 @@ async function renderOFsPorMaquina(){
     }
     lista = (lista||[]).map(normalizeOF);
 
-    const filtroData = document.getElementById('ofsmaq-filtro-data')?.value ||
+    const filtroData = window._filtroOFsMaqData ||
+      document.getElementById('ofsmaq-filtro-data')?.value ||
       (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
     const hoje = new Date().toISOString().slice(0,10);
     const fimSem = new Date(); fimSem.setDate(fimSem.getDate()+(7-fimSem.getDay()||7));
@@ -1830,10 +1832,15 @@ async function renderOFsPorMaquina(){
         if(ua&&!ub)return -1; if(!ua&&ub)return 1;
         return (a.ent||a.data_entrega||'9')>(b.ent||b.data_entrega||'9')?1:-1;
       });
+      const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       return `<div style="margin-bottom:20px">
-        <h3 style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:6px;margin-bottom:12px">
-          🏭 ${escH(maq)} <span style="font-size:13px;color:var(--text2)">(${ofs.length} OF${ofs.length>1?'s':''})</span>
-        </h3>
+        <div style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px">🏭 ${escH(maq)}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:2px">${ofs.length} OF${ofs.length>1?'s':''} na fila</div>
+          </div>
+          <div style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
+        </div>
         ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
       </div>`;
     }).join('');
@@ -13794,7 +13801,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
   <!-- Header row: inputs left, percents right — identical to Excel -->
   <div style="display:grid;grid-template-columns:1fr auto;gap:16px;margin-bottom:12px">
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;align-items:end">
+    <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end">
       <div class="mf">
         <label style="font-size:.6rem">TIPO</label>
         <select id="calc-tipo" onchange="calcTipoChange()" style="font-size:.72rem;padding:4px 6px">
@@ -13839,7 +13846,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Percentages block — right side like Excel -->
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px;min-width:280px">
       <div style="font-size:.6rem;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:6px">PARÂMETROS COMERCIAIS &nbsp;<span id="calc-w3-display" style="color:var(--green)"></span></div>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:3px;align-items:center;font-size:.72rem">
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:4px 8px;font-size:12px;align-items:center">
         <span style="color:var(--text2)">Custo Mercadoria (%)</span><input id="calc-cm" type="number" value="49" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
         <span style="color:var(--text2)">Custo Fixo (%)</span><input id="calc-cf" type="number" value="15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
         <span style="color:var(--text2)">Margem (%)</span><input id="calc-mg" type="number" value="25" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
@@ -13872,10 +13879,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">COMPRIMENTO (mm)</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">TOTAL (mm)</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">m²</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--yellow)">VAL.TOTAL BRUTO</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green)">VL. VENDA LÍQUIDA</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green)">c/ FRETE</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green)">VL. UNIT. (R$/un)</th>
+          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--yellow);min-width:90px">VAL.TOTAL BRUTO</th>
+          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">VL. VENDA LÍQUIDA</th>
+          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">c/ FRETE</th>
+          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">VL. UNIT. (R$/un)</th>
           <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--accent)">USAR NO ORC.</th>
         </tr>
       </thead>
@@ -13885,7 +13892,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </table>
   </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:16px;border-top:1px solid var(--border)">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)">
     <div style="display:flex;gap:6px;align-items:center;margin-right:auto">
       <input id="orc-busca-num" type="text" placeholder="Nº ou cliente..." style="padding:6px 10px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);width:160px" onkeydown="if(event.key==='Enter') buscarOrcamento()">
       <button onclick="buscarOrcamento()" style="padding:6px 12px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🔍</button>
