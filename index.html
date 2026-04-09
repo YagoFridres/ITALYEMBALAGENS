@@ -4249,48 +4249,27 @@ function abrirFornecedor(id){abrirModalFornecedor(id);}
 function editarFornecedor(id){abrirModalFornecedor(id);}
 
 async function salvarFornecedor(){
-  console.log('Campos forn:', {
-    'forn-nome': document.getElementById('forn-nome')?.value,
-    'forn-e-nome': document.getElementById('forn-e-nome')?.value,
-    'f-forn-nome': document.getElementById('f-forn-nome')?.value,
-  });
-
-  const nomeEl =
-    document.getElementById('forn-e-nome') ||
-    document.getElementById('forn-nome') ||
-    document.getElementById('f-forn-nome') ||
-    document.getElementById('modal-forn-nome');
-
-  const nome = nomeEl?.value?.trim() || '';
-  if (!nome) {
-    toast('Informe o nome do fornecedor', 'var(--red)');
-    if (nomeEl) nomeEl.focus();
-    return;
-  }
+  const nome = document.getElementById('forn-e-nome')?.value?.trim() || '';
+  if (!nome) { toast('Informe o nome do fornecedor', 'var(--red)'); return; }
 
   const id = document.getElementById('forn-edit-id')?.value?.trim() || '';
-  const empSel = document.getElementById('forn-empresa') || document.getElementById('forn-e-emp');
-  const empVal = empSel?.value || '';
-  const empTxt = (empSel && empSel.options && empSel.selectedIndex >= 0) ? (empSel.options[empSel.selectedIndex].textContent || '') : '';
-  const empresa_id = empresaUuidBy(empVal) || empresaUuidBy(empTxt) || (String(empVal).match(/^[0-9a-f-]{36}$/i) ? empVal : null);
+  const empVal = document.getElementById('forn-e-emp')?.value || EMP_FILTRO || 'E1';
 
   const payload = {
     nome,
-    razao_social: (document.getElementById('forn-razao') || document.getElementById('forn-e-razao') || {}).value?.trim() || nome,
-    cnpj: (document.getElementById('forn-cnpj') || document.getElementById('forn-e-cnpj') || {}).value?.trim() || '',
-    telefone: (document.getElementById('forn-tel') || document.getElementById('forn-e-tel') || document.getElementById('forn-telefone') || {}).value?.trim() || '',
-    email: (document.getElementById('forn-email') || document.getElementById('forn-e-email') || {}).value?.trim() || '',
-    endereco: (document.getElementById('forn-endereco') || document.getElementById('forn-e-end') || document.getElementById('forn-end') || {}).value?.trim() || '',
-    contato: (document.getElementById('forn-contato') || document.getElementById('forn-e-contato') || {}).value?.trim() || '',
-    tipo: (document.getElementById('forn-tipo') || document.getElementById('forn-e-tipo') || {}).value || '',
-    cidade: (document.getElementById('forn-cidade') || document.getElementById('forn-e-cidade') || {}).value?.trim() || '',
-    uf: (document.getElementById('forn-estado') || document.getElementById('forn-e-uf') || {}).value?.trim() || '',
-    obs: (document.getElementById('forn-obs') || document.getElementById('forn-e-obs') || {}).value?.trim() || '',
+    tipo: document.getElementById('forn-e-tipo')?.value || '',
+    cnpj: document.getElementById('forn-e-cnpj')?.value?.trim() || '',
+    telefone: document.getElementById('forn-e-tel')?.value?.trim() || '',
+    email: document.getElementById('forn-e-email')?.value?.trim() || '',
+    cidade: document.getElementById('forn-e-cidade')?.value?.trim() || '',
+    estado: document.getElementById('forn-e-uf')?.value?.trim() || '',
+    endereco: document.getElementById('forn-e-end')?.value?.trim() || '',
+    contato: document.getElementById('forn-e-contato')?.value?.trim() || '',
+    observacoes: document.getElementById('forn-e-obs')?.value?.trim() || '',
+    emp_id: empVal,
   };
 
-  if (empresa_id) payload.empresa_id = empresa_id;
-
-  Object.keys(payload).forEach(k => { if (payload[k] === '' || payload[k] === undefined || payload[k] === null) delete payload[k]; });
+  Object.keys(payload).forEach(k => { if (!payload[k]) delete payload[k]; });
 
   const r = id
     ? await api('PUT', '/fornecedores/' + encodeURIComponent(id), payload)
@@ -4298,9 +4277,12 @@ async function salvarFornecedor(){
 
   if (r && r.error) { toast('Erro: ' + r.error, 'var(--red)'); return; }
   toast('Fornecedor salvo ✓', 'var(--green)');
-  fechar('modal-fornecedor');
+
+  const modal = document.getElementById('modal-fornecedor') ||
+                document.getElementById('ch-forn') ||
+                document.querySelector('[id*="forn"][id*="modal"]');
+  if (modal) modal.style.display = 'none';
   await carregarFornecedores();
-  renderFornecedores();
 }
 
 function atualizarFornecedorNoEstoque(nome,forn){
