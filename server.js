@@ -898,49 +898,80 @@ app.get('/api/empresas', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.get('/api/orcamentos', async (req, res) => {
+app.get('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
-    const numero = req.query.numero ? parseInt(String(req.query.numero), 10) : null;
-    const cliente = req.query.cliente ? String(req.query.cliente) : '';
-    const empId = req.query.empId ? String(req.query.empId) : '';
+    let q = supabase.from('orcamentos').select('*').order('criado_em', { ascending: false });
+    if (req.query.numero) q = q.eq('numero_orcamento', String(req.query.numero));
+    if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
+    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    const { data, error } = await q.limit(50);
+    if (error) return res.status(500).json({ error: error.message });
+    return ok(res, data || []);
+  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
+});
+app.post('/api/orcamentos', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
 
     const orderCols = ['criado_em', 'created_at'];
+    let ultimo = null;
     let lastErr = null;
     for (const orderCol of orderCols) {
-      let q = supabase.from('orcamentos').select('*').order(orderCol, { ascending: false });
-      if (Number.isFinite(numero)) q = q.eq('numero', numero);
-      if (cliente) q = q.ilike('cliente_nome', `%${cliente}%`);
-      if (empId) q = q.eq('emp_id', empId);
-      const { data, error } = await q.limit(50);
-      if (!error) return ok(res, data || []);
-      lastErr = error;
-      const msg = String(error.message || error);
+      const r = await supabase.from('orcamentos').select('numero_orcamento').order(orderCol, { ascending: false }).limit(1);
+      if (!r.error) { ultimo = r.data; break; }
+      lastErr = r.error;
+      const msg = String(r.error.message || r.error);
       if (msg.includes('column') || msg.includes('Could not find')) continue;
-      throw error;
+      throw r.error;
     }
-    throw lastErr;
-  } catch (e) { return err(res, e); }
-});
-app.post('/api/orcamentos', async (req, res) => {
-  try {
+    if (lastErr && ultimo === null) throw lastErr;
+
+    const ultimoNum = parseInt(String(ultimo?.[0]?.numero_orcamento || '0').replace(/\D/g, ''), 10) || 0;
+    const novoNum = String(ultimoNum + 1).padStart(4, '0');
+
     const payload = {
-      ...(req.body || {}),
+      numero_orcamento: novoNum,
+      titulo: b.medidas || b.titulo || '',
+      descricao: b.cliente_nome || b.descricao || '',
+      cliente_nome: b.cliente_nome || '',
+      medidas: b.medidas || '',
+      quantidade: b.quantidade || 0,
+      onda: b.onda || '',
+      valor_unitario: b.valor_unitario || 0,
+      valor_total: b.valor_total || 0,
+      parametros: b.parametros || {},
+      resultados: b.resultados || [],
+      emp_id: b.emp_id || '',
       criado_por: req.usuario?.nome || 'sistema',
       criado_em: new Date().toISOString(),
+      status: 'Rascunho',
     };
+    if (b.cliente_id && String(b.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = b.cliente_id;
+
     const { data, error } = await supabase.from('orcamentos').insert([payload]).select().single();
-    if (error) throw error;
+    if (error) return res.status(500).json({ error: error.message });
     return ok(res, data);
-  } catch (e) { return err(res, e); }
+  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
-app.put('/api/orcamentos/:id', async (req, res) => {
+app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...(req.body || {}) };
-    delete payload.id;
-    const { data, error } = await supabase.from('orcamentos').update(payload).eq('id', req.params.id).select().single();
-    if (error) throw error;
+    const b = req.body || {};
+    const updates = {
+      titulo: b.medidas || b.titulo || '',
+      descricao: b.cliente_nome || b.descricao || '',
+      cliente_nome: b.cliente_nome || '',
+      medidas: b.medidas || '',
+      quantidade: b.quantidade || 0,
+      onda: b.onda || '',
+      valor_unitario: b.valor_unitario || 0,
+      valor_total: b.valor_total || 0,
+      parametros: b.parametros || {},
+      resultados: b.resultados || [],
+    };
+    const { data, error } = await supabase.from('orcamentos').update(updates).eq('id', req.params.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
     return ok(res, data);
-  } catch (e) { return err(res, e); }
+  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
 app.delete('/api/orcamentos/:id', async (req, res) => {
   try {

@@ -9232,10 +9232,10 @@ async function salvarOrcamentoCalc(){
   if(!r || r.ok===false || r.error){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
   const row=r.data || r;
   _orcIdAtual = row.id;
-  _orcNumeroAtual = row.numero;
-  toast('Orçamento Nº '+row.numero+' salvo ✓','var(--green)');
+  _orcNumeroAtual = row.numero_orcamento || row.numero || (row.id ? String(row.id).substring(0, 8) : null);
+  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓','var(--green)');
   const numEl=document.getElementById('orc-numero-display');
-  if(numEl) numEl.textContent = row.numero ? ('Orçamento Nº '+row.numero) : '';
+  if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
 }
 
 async function buscarOrcamento(){
@@ -9248,18 +9248,18 @@ async function buscarOrcamento(){
   const lista = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r)?r:[]);
   if(!lista || lista.length===0){ toast('Orçamento não encontrado','var(--orange)'); return; }
   if(lista.length===1){ carregarOrcamentoCalc(lista[0]); return; }
-  const opcoes = lista.map(o=>'Nº '+o.numero+' — '+(o.cliente_nome||'—')+' — '+(o.medidas||'')).join('\n');
+  const opcoes = lista.map(o=>'Nº '+(o.numero_orcamento||o.numero||String(o.id||'').substring(0,8))+' — '+(o.cliente_nome||'—')+' — '+(o.medidas||'')).join('\n');
   const idx = prompt('Encontrados '+lista.length+' orçamentos:\n\n'+opcoes+'\n\nDigite o número do orçamento desejado:');
-  const orc = lista.find(o=>String(o.numero)===String(idx));
+  const orc = lista.find(o=>String(o.numero_orcamento||o.numero||'')===String(idx));
   if(orc) carregarOrcamentoCalc(orc);
 }
 
 function carregarOrcamentoCalc(orc){
   if(!orc) return;
   _orcIdAtual = orc.id;
-  _orcNumeroAtual = orc.numero;
+  _orcNumeroAtual = orc.numero_orcamento || orc.numero || (orc.id ? String(orc.id).substring(0, 8) : null);
   const numEl=document.getElementById('orc-numero-display');
-  if(numEl) numEl.textContent = orc.numero ? ('Orçamento Nº '+orc.numero) : '';
+  if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
 
   if(orc.medidas){
     const parts=String(orc.medidas).split('x');
@@ -9286,7 +9286,7 @@ function carregarOrcamentoCalc(orc){
   const ondas=['B','C','BC'];
   const oi=ondas.indexOf(String(orc.onda||''));
   if(oi>=0) _calcOpcaoSelecionada = { compIdx: oi, onda: ondas[oi] };
-  toast('Orçamento Nº '+orc.numero+' carregado ✓','var(--green)');
+  toast('Orçamento Nº '+(_orcNumeroAtual||'')+' carregado ✓','var(--green)');
   if(typeof calcRecalc==='function') calcRecalc();
 }
 
