@@ -662,14 +662,132 @@ async function clientesUpdateCompat(id, payload) {
 }
 
 function fornecedoresIn(p) {
-  const tel = p.tel !== undefined ? p.tel : p.fone;
-  const end = p.end !== undefined ? p.end : p.endereco;
+  const tel = p.telefone !== undefined ? p.telefone : (p.tel !== undefined ? p.tel : p.fone);
+  const end = p.endereco !== undefined ? p.endereco : (p.end !== undefined ? p.end : p.endereco);
   const out = { ...p };
-  if (tel !== undefined) out.tel = tel;
-  if (end !== undefined) out.end = end;
+  if (tel !== undefined) out.telefone = tel;
+  if (end !== undefined) out.endereco = end;
   delete out.fone;
-  delete out.endereco;
+  delete out.tel;
+  delete out.end;
   return out;
+}
+
+function fornecedoresPayload(p) {
+  const b = fornecedoresIn(p || {});
+  const out = {};
+  const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+
+  const nome = (b.nome || '').trim();
+  if (nome) out.nome = nome;
+  if (b.razao_social !== undefined) out.razao_social = b.razao_social;
+  else if (b.rs !== undefined) out.razao_social = b.rs;
+  else if (!out.razao_social) out.razao_social = nome;
+
+  if (b.cnpj !== undefined) out.cnpj = b.cnpj;
+  if (b.telefone !== undefined) out.telefone = b.telefone;
+  if (b.email !== undefined) out.email = b.email;
+  if (b.contato !== undefined) out.contato = b.contato;
+  else if (b.representante !== undefined) out.contato = b.representante;
+  if (b.endereco !== undefined) out.endereco = b.endereco;
+  if (b.tipo !== undefined) out.tipo = b.tipo;
+  if (b.cidade !== undefined) out.cidade = b.cidade;
+  if (b.uf !== undefined) out.uf = b.uf;
+  if (b.estado !== undefined && out.uf === undefined) out.uf = b.estado;
+  if (b.obs !== undefined) out.obs = b.obs;
+  if (b.observacoes !== undefined) out.observacoes = b.observacoes;
+
+  const emp = b.empresa_id ?? b.empresaId ?? b.emp_id ?? b.empId ?? null;
+  if (isUuid(emp)) out.empresa_id = emp;
+
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === null) && delete out[k]);
+  return out;
+}
+
+async function fornecedoresInsertCompat(payload) {
+  const tryInsertDroppingUnknown = async (p) => {
+    let cur = { ...(p || {}) };
+    let lastErr = null;
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('fornecedores').insert([cur]).select();
+      if (!error) return { data, error: null };
+      lastErr = error;
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        delete cur[col];
+        continue;
+      }
+      return { data: null, error };
+    }
+    return { data: null, error: lastErr };
+  };
+
+  const attempts = [
+    payload,
+    (() => {
+      const p = { ...payload };
+      if (p.telefone !== undefined) { p.tel = p.telefone; delete p.telefone; }
+      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
+      if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
+      if (p.empresa_id !== undefined) { p.emp_id = p.empresa_id; delete p.empresa_id; }
+      return p;
+    })(),
+  ];
+  let lastErr = null;
+  for (const p of attempts) {
+    const r = await tryInsertDroppingUnknown(p);
+    if (!r.error) return r;
+    lastErr = r.error;
+    const msg = String(r.error.message || r.error);
+    if (msg.includes('column') || msg.includes('Could not find')) continue;
+  }
+  return { data: null, error: lastErr };
+}
+
+async function fornecedoresUpdateCompat(id, payload) {
+  const tryUpdateDroppingUnknown = async (p) => {
+    let cur = { ...(p || {}) };
+    let lastErr = null;
+    for (let i = 0; i < 10; i++) {
+      const { data, error } = await supabase.from('fornecedores').update(cur).eq('id', id).select();
+      if (!error) return { data, error: null };
+      lastErr = error;
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        delete cur[col];
+        continue;
+      }
+      return { data: null, error };
+    }
+    return { data: null, error: lastErr };
+  };
+
+  const attempts = [
+    payload,
+    (() => {
+      const p = { ...payload };
+      if (p.telefone !== undefined) { p.tel = p.telefone; delete p.telefone; }
+      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
+      if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
+      if (p.empresa_id !== undefined) { p.emp_id = p.empresa_id; delete p.empresa_id; }
+      return p;
+    })(),
+  ];
+  let lastErr = null;
+  for (const p of attempts) {
+    const r = await tryUpdateDroppingUnknown(p);
+    if (!r.error) return r;
+    lastErr = r.error;
+    const msg = String(r.error.message || r.error);
+    if (msg.includes('column') || msg.includes('Could not find')) continue;
+  }
+  return { data: null, error: lastErr };
 }
 
 function vendedoresIn(p) {
@@ -1284,20 +1402,25 @@ app.get('/api/fornecedores', authMiddleware, async (req, res) => {
 
 app.post('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('fornecedores').insert([fornecedoresIn(req.body || {})]).select();
+    const b = req.body || {};
+    const nome = String(b.nome || '').trim();
+    if (!nome) return res.status(400).json({ error: 'Nome obrigatório' });
+    const payload = fornecedoresPayload(b);
+    let { data, error } = await fornecedoresInsertCompat(payload);
     if (error) throw error;
-    ok(res, data[0]);
-  } catch (e) { err(res, e); }
+    return ok(res, data[0]);
+  } catch (e) { return err(res, e); }
 });
 
 app.put('/api/fornecedores/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = fornecedoresIn({ ...(req.body || {}) }); delete payload.id;
-    const { data, error } = await supabase.from('fornecedores')
-      .update(payload).eq('id', req.params.id).select();
+    const payload = fornecedoresPayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    const { data, error } = await fornecedoresUpdateCompat(req.params.id, payload);
     if (error) throw error;
-    ok(res, data[0]);
-  } catch (e) { err(res, e); }
+    return ok(res, data[0]);
+  } catch (e) { return err(res, e); }
 });
 
 app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {

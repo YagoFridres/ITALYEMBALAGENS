@@ -4249,32 +4249,60 @@ function abrirFornecedor(id){abrirModalFornecedor(id);}
 function editarFornecedor(id){abrirModalFornecedor(id);}
 
 async function salvarFornecedor(){
-  const id=String((document.getElementById('forn-edit-id')||{}).value||'').trim();
-  const nome = (document.getElementById('forn-nome') || document.getElementById('f-forn-nome') || document.getElementById('fornecedor-nome') || document.getElementById('forn-e-nome') || {}).value?.trim() || '';
-  if(!nome){toast('Informe o nome do fornecedor','var(--red)');return;}
-  const payload={
+  console.log('Campos forn:', {
+    'forn-nome': document.getElementById('forn-nome')?.value,
+    'forn-e-nome': document.getElementById('forn-e-nome')?.value,
+    'f-forn-nome': document.getElementById('f-forn-nome')?.value,
+  });
+
+  const nomeEl =
+    document.getElementById('forn-nome') ||
+    document.getElementById('forn-e-nome') ||
+    document.getElementById('f-forn-nome') ||
+    document.getElementById('modal-forn-nome') ||
+    document.querySelector('#modal-fornecedor [id*="nome"]') ||
+    document.querySelector('#modal-forn [id*="nome"]');
+
+  const nome = nomeEl?.value?.trim() || '';
+  if (!nome) {
+    toast('Informe o nome do fornecedor', 'var(--red)');
+    if (nomeEl) nomeEl.focus();
+    return;
+  }
+
+  const id = document.getElementById('forn-id')?.value?.trim() || document.getElementById('forn-edit-id')?.value?.trim() || '';
+  const empSel = document.getElementById('forn-empresa') || document.getElementById('forn-e-emp');
+  const empVal = empSel?.value || '';
+  const empTxt = (empSel && empSel.options && empSel.selectedIndex >= 0) ? (empSel.options[empSel.selectedIndex].textContent || '') : '';
+  const empresa_id = empresaUuidBy(empVal) || empresaUuidBy(empTxt) || (String(empVal).match(/^[0-9a-f-]{36}$/i) ? empVal : null);
+
+  const payload = {
     nome,
-    tipo:(document.getElementById('forn-tipo')||document.getElementById('forn-e-tipo')||{}).value||'',
-    cnpj:(document.getElementById('forn-cnpj')||document.getElementById('forn-e-cnpj')||{}).value?.trim()||'',
-    tel:(document.getElementById('forn-tel')||document.getElementById('forn-e-tel')||{}).value?.trim()||'',
-    email:(document.getElementById('forn-email')||document.getElementById('forn-e-email')||{}).value?.trim()||'',
-    cidade:(document.getElementById('forn-cidade')||document.getElementById('forn-e-cidade')||{}).value?.trim()||'',
-    uf:(document.getElementById('forn-estado')||document.getElementById('forn-e-uf')||{}).value?.trim()||'',
-    end:(document.getElementById('forn-endereco')||document.getElementById('forn-e-end')||{}).value?.trim()||'',
-    contato:(document.getElementById('forn-contato')||document.getElementById('forn-e-contato')||{}).value?.trim()||'',
-    obs:(document.getElementById('forn-obs')||document.getElementById('forn-e-obs')||{}).value?.trim()||'',
-    empId:(document.getElementById('forn-empresa')||document.getElementById('forn-e-emp')||{}).value||EMP_FILTRO||'E1',
+    razao_social: (document.getElementById('forn-razao') || document.getElementById('forn-e-razao') || {}).value?.trim() || nome,
+    cnpj: (document.getElementById('forn-cnpj') || document.getElementById('forn-e-cnpj') || {}).value?.trim() || '',
+    telefone: (document.getElementById('forn-tel') || document.getElementById('forn-e-tel') || document.getElementById('forn-telefone') || {}).value?.trim() || '',
+    email: (document.getElementById('forn-email') || document.getElementById('forn-e-email') || {}).value?.trim() || '',
+    endereco: (document.getElementById('forn-endereco') || document.getElementById('forn-e-end') || document.getElementById('forn-end') || {}).value?.trim() || '',
+    contato: (document.getElementById('forn-contato') || document.getElementById('forn-e-contato') || {}).value?.trim() || '',
+    tipo: (document.getElementById('forn-tipo') || document.getElementById('forn-e-tipo') || {}).value || '',
+    cidade: (document.getElementById('forn-cidade') || document.getElementById('forn-e-cidade') || {}).value?.trim() || '',
+    uf: (document.getElementById('forn-estado') || document.getElementById('forn-e-uf') || {}).value?.trim() || '',
+    obs: (document.getElementById('forn-obs') || document.getElementById('forn-e-obs') || {}).value?.trim() || '',
   };
+
+  if (empresa_id) payload.empresa_id = empresa_id;
+
+  Object.keys(payload).forEach(k => { if (payload[k] === '' || payload[k] === undefined || payload[k] === null) delete payload[k]; });
+
   const r = id
-    ? await api('PUT','/fornecedores/'+encodeURIComponent(id), payload)
-    : await api('POST','/fornecedores', payload);
-  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
-  atualizarFornecedorNoEstoque(nome,payload);
-  toast('Fornecedor salvo ✓','var(--green)');
+    ? await api('PUT', '/fornecedores/' + encodeURIComponent(id), payload)
+    : await api('POST', '/fornecedores', payload);
+
+  if (r && r.error) { toast('Erro: ' + r.error, 'var(--red)'); return; }
+  toast('Fornecedor salvo ✓', 'var(--green)');
   fechar('modal-fornecedor');
   await carregarFornecedores();
   renderFornecedores();
-  autoSaveTrigger();
 }
 
 function atualizarFornecedorNoEstoque(nome,forn){
@@ -7127,7 +7155,13 @@ function normalizeCmp(r){
 function normalizeForn(r){
   const tel = r.tel ?? r.fone ?? r.telefone ?? '';
   const end = r.end ?? r.endereco ?? '';
-  return { id:r.id, nome:r.nome, cnpj:r.cnpj, contato:r.contato, tel, email:r.email, cidade:r.cidade, uf:r.uf, end, tipo:r.tipo, obs:r.obs, empId:r.emp_id||r.empId||'' };
+  const empresaUuid = r.empresa_id ?? r.empresaId ?? null;
+  let empId = r.emp_id || r.empId || '';
+  if(!empId && empresaUuid){
+    const e = (EMPRESAS_DB||[]).find(x => x.id === empresaUuid);
+    if(e && e.codigo) empId = e.codigo;
+  }
+  return { id:r.id, nome:r.nome, cnpj:r.cnpj, contato:r.contato, tel, email:r.email, cidade:r.cidade, uf:r.uf, end, tipo:r.tipo, obs:r.obs, empId, empresa_id: empresaUuid };
 }
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
