@@ -751,6 +751,35 @@ function escH(str) {
     .replace(/'/g, '&#39;');
 }
 
+// ═══════════════════════════════════════════════
+// MÓDULOS DO SISTEMA — adicionar novos módulos aqui
+// Cada módulo tem: key, label, grupo, menuId, paginaId
+// ═══════════════════════════════════════════════
+const MODULOS_SISTEMA = [
+  { key:'pcp',            label:'PCP / Programação',   grupo:'Produção',  menuId:'menu-pcp',             paginaId:'pcp' },
+  { key:'ofs_maquina',    label:'OFs por Máquina',     grupo:'Produção',  menuId:'menu-ofs-maquina',     paginaId:'ofs-maquina' },
+  { key:'lancar_pedido',  label:'Lançar Pedido',       grupo:'Produção',  menuId:'menu-pedidos',         paginaId:'lancar-pedido' },
+  { key:'orcamentos',     label:'Orçamentos',          grupo:'Produção',  menuId:'menu-orcamentos',      paginaId:'orcamentos' },
+  { key:'compras',        label:'Compras MP',          grupo:'Produção',  menuId:'menu-compras',         paginaId:'compras' },
+  { key:'fluxos',         label:'Fluxos',              grupo:'Máquinas',  menuId:'menu-fluxos',          paginaId:'fluxos' },
+  { key:'maquinas',       label:'Máquinas',            grupo:'Máquinas',  menuId:'menu-maquinas',        paginaId:'maquinas' },
+  { key:'clientes',       label:'Clientes',            grupo:'Cadastros', menuId:'menu-clientes',        paginaId:'clientes' },
+  { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
+  { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
+  { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
+  { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
+  { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
+  { key:'estoque_facas',  label:'Estoque de Facas',    grupo:'Estoques',  menuId:'menu-facas',           paginaId:'facas' },
+  { key:'estoque_cliches',label:'Estoque Clichês',     grupo:'Estoques',  menuId:'menu-cliches',         paginaId:'cliches' },
+  { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
+  { key:'relatorios',     label:'Relatórios',          grupo:'Análises',  menuId:'menu-relatorio',       paginaId:'relatorio' },
+  { key:'relatorio_mensal',label:'Relatório Mensal',   grupo:'Análises',  menuId:'menu-relatorio-mensal',paginaId:'relatorio-mensal' },
+  { key:'backup',         label:'Backup / Importar',   grupo:'Análises',  menuId:'menu-backup',          paginaId:'backup' },
+  { key:'notificacoes',   label:'Notificações',        grupo:'Análises',  menuId:'menu-notificacoes',    paginaId:'notificacoes' },
+];
+
+const PERM_ADMIN = 'tudo';
+
 function fmtR(v) {
   if (v === null || v === undefined || v === '') return 'R$ 0,00';
   return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2829,30 +2858,35 @@ async function salvarEdicaoCliente(id){
   const hid=document.getElementById('cli-id'); if(hid) hid.value = String(id||'');
   return salvarCliente();
 }
-async function salvarCliente(){
-  const id = document.getElementById('cli-id')?.value?.trim() || '';
-  const nome = (document.getElementById('cli-nome') || document.getElementById('cl-nome'))?.value?.trim() || '';
+async function salvarCliente() {
+  const idEl = document.getElementById('cli-id');
+  const id = (idEl ? idEl.value : '').trim();
+  const nomeEl = document.getElementById('cli-nome') || document.getElementById('cl-nome');
+  const nome = nomeEl ? nomeEl.value.trim() : '';
   if (!nome) { toast('Informe o nome', 'var(--red)'); return; }
-  const campos = ['cnpj','tel','email','cidade','estado','endereco','contato','obs','empresa'];
-  const payload = { nome };
-  campos.forEach(c => {
-    const el = document.getElementById('cli-'+c) || document.getElementById('cl-'+c);
-    if (!el) return;
-    payload[c === 'empresa' ? 'emp_id' : c] = el.value?.trim() || '';
-  });
-  const ufEl = document.getElementById('cl-uf'); if (ufEl && payload.estado === undefined) payload.estado = ufEl.value?.trim() || '';
-  const endEl = document.getElementById('cl-end'); if (endEl && payload.endereco === undefined) payload.endereco = endEl.value?.trim() || '';
-  const empEl = document.getElementById('cl-emp'); if (empEl && payload.emp_id === undefined) payload.emp_id = empEl.value?.trim() || '';
-  const obsEl = document.getElementById('cl-obs'); if (obsEl && payload.obs === undefined) payload.obs = obsEl.value?.trim() || '';
-  delete payload.end;
-  if (!payload.emp_id) payload.emp_id = EMP_FILTRO || 'E1';
+  const g = k => (document.getElementById(k)||{}).value||'';
+  const payload = {
+    nome,
+    razao_social: g('cli-razao')||g('cl-razao'),
+    cnpj: g('cli-cnpj')||g('cl-cnpj'),
+    telefone: g('cli-tel')||g('cl-tel'),
+    email: g('cli-email')||g('cl-email'),
+    cidade: g('cli-cidade')||g('cl-cidade'),
+    estado: g('cli-estado')||g('cl-estado'),
+    endereco: g('cli-endereco')||g('cl-end'),
+    contato: g('cli-contato')||g('cl-contato'),
+    observacoes: g('cli-obs')||g('cl-obs'),
+    emp_id: g('cli-empresa')||g('cl-empresa')||EMP_FILTRO||'E1',
+    ramo_atividade: g('cli-ramo')||g('cl-ramo'),
+  };
+  Object.keys(payload).forEach(k=>{if(!payload[k])delete payload[k];});
+  console.log('[CLI SALVAR] id='+id+' nome='+nome);
   const r = id
-    ? await api('PUT', '/clientes/' + encodeURIComponent(id), payload)
+    ? await api('PUT', '/clientes/'+encodeURIComponent(id), payload)
     : await api('POST', '/clientes', payload);
-  if (r && r.error) { toast('Erro: ' + r.error, 'var(--red)'); return; }
-  toast('Cliente salvo ✓', 'var(--green)');
+  if(r&&r.error){toast('Erro: '+r.error,'var(--red)');return;}
+  toast(id?'Cliente atualizado ✓':'Cliente criado ✓','var(--green)');
   fechar('modal-cli');
-  const hid=document.getElementById('cli-id'); if(hid) hid.value = '';
   await carregarClientes();
   renderClientes();
 }
@@ -6598,79 +6632,61 @@ var AUTH_TOKEN = null;
 
 function hasPerm(keyOrList){
   const perms = Array.isArray(CURRENT_USER && CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if(perms.includes('tudo')) return true;
-  if(Array.isArray(keyOrList)) return keyOrList.some(k=>perms.includes(k));
-  return perms.includes(String(keyOrList||''));
+  if(perms.includes(PERM_ADMIN)) return true;
+  const alias = {
+    'pcp_completo': 'pcp',
+    'ver_pedidos': 'pcp',
+    'ofs_por_maquina': 'ofs_maquina',
+    'lancar_pedidos': 'lancar_pedido',
+    'estoque_chapas': 'estoque_chapas',
+    'solicitar_compra': 'compras',
+    'orcamentos': 'orcamentos',
+  };
+  const hasOne = (k)=>{
+    const kk = String(k||'');
+    const mapped = alias[kk] || kk;
+    return perms.includes(kk) || perms.includes(mapped);
+  };
+  if(Array.isArray(keyOrList)) return keyOrList.some(hasOne);
+  return hasOne(keyOrList);
 }
 
 function aplicarPermissoes(permissoes, perfil) {
-  const ehAdmin = perfil === 'admin' || (Array.isArray(permissoes) && permissoes.includes('tudo'));
+  const perms = Array.isArray(permissoes) ? permissoes : [];
+  const ehAdmin = perfil === 'admin' || perms.includes(PERM_ADMIN);
 
-  const MAPA_MENUS = {
-    'pcp_completo':     ['menu-pcp'],
-    'ofs_por_maquina':  ['menu-ofs-maquina'],
-    'lancar_pedidos':   ['menu-pedidos','btn-nova-of'],
-    'ver_pedidos':      ['menu-pcp'],
-    'editar_pedidos':   ['btn-alterar-of'],
-    'cancelar_pedidos': ['btn-cancelar-of'],
-    'dar_baixa_of':     ['btn-baixa-of'],
-    'estoque_chapas':   ['menu-estoque','menu-estoques'],
-    'editar_estoque':   ['btn-reset-estoque'],
-    'solicitar_compra': ['menu-compras'],
-    'recebimento':      [],
-    'relatorio_mensal': ['menu-relatorio'],
-    'relatorio_admin':  ['menu-relatorio'],
-    'financeiro':       [],
-    'notificacoes':     ['menu-notificacoes'],
-    'cadastros':        ['menu-clientes','menu-fornecedores','menu-vendedores','menu-fluxos','menu-maquinas','menu-usuarios','menu-roteiro'],
-    'orcamentos':       ['menu-orcamentos']
-  };
+  MODULOS_SISTEMA.forEach(mod => {
+    const temAcesso = ehAdmin || perms.includes(mod.key);
+    const el = mod.menuId ? document.getElementById(mod.menuId) : null;
+    if (el) el.style.display = temAcesso ? '' : 'none';
+  });
 
   if (ehAdmin) {
     document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
-    return;
   }
-
-  document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = 'none');
-
-  (Array.isArray(permissoes) ? permissoes : []).forEach(perm => {
-    const ids = MAPA_MENUS[perm] || [];
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.style.display = '';
-    });
-  });
 }
 
-const PAGINA_PERM = {
-  'pcp': ['pcp_completo','ver_pedidos','tudo'],
-  'ofmaq': ['ofs_por_maquina','tudo'],
-  'ofs-maquina': ['ofs_por_maquina','tudo'],
-  'lancamento': ['lancar_pedidos','tudo'],
-  'lancar-pedido': ['lancar_pedidos','tudo'],
-  'estoque': ['estoque_chapas','tudo'],
-  'estoques': ['estoque_chapas','tudo'],
-  'relmensal': ['relatorio_mensal','tudo'],
-  'relatorio-mensal': ['relatorio_mensal','tudo'],
-  'relatorios': ['relatorio_mensal','relatorio_admin','tudo'],
-  'usuarios': ['tudo'],
-  'clientes': ['cadastros','tudo'],
-  'fornecedores': ['cadastros','tudo'],
-  'vendedores': ['cadastros','tudo'],
-  'fluxos': ['cadastros','tudo'],
-  'maquinas': ['cadastros','tudo'],
-  'roteiro-entrega': ['cadastros','tudo'],
-  'compras': ['solicitar_compra','tudo'],
-  'orcamentos': ['orcamentos','tudo'],
-};
-
-function temPermPagina(pagina){
+function temPermPagina(paginaId){
   if(!CURRENT_USER) return false;
   const perms = Array.isArray(CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if(perms.includes('tudo') || CURRENT_USER.perfil === 'admin') return true;
-  const necessarias = PAGINA_PERM[String(pagina||'')];
-  if(!necessarias) return true;
-  return necessarias.some(p => perms.includes(p));
+  if(perms.includes(PERM_ADMIN) || CURRENT_USER.perfil === 'admin') return true;
+  const pg = String(paginaId||'');
+  const alias = {
+    'ofmaq': 'ofs_maquina',
+    'lancamento': 'lancar_pedido',
+    'estoque': 'estoque_chapas',
+    'facas1': 'estoque_facas',
+    'facas2': 'estoque_facas',
+    'cliches': 'estoque_cliches',
+    'relatorios': 'relatorios',
+    'relmensal': 'relatorio_mensal',
+    'sistema': 'backup',
+  };
+  const forcedKey = alias[pg] || null;
+  if(forcedKey) return perms.includes(forcedKey);
+  const mod = MODULOS_SISTEMA.find(m => m.paginaId === pg || pg.includes(m.paginaId));
+  if(!mod) return true;
+  return perms.includes(mod.key);
 }
 
 
@@ -11516,47 +11532,47 @@ logAction = async function(acao, detalhe){
 };
 
 var USUARIOS = [];
-const PERMISSOES_DISPONIVEIS = [
-  { key: 'chat_geral', label: 'Chat - Canal Geral', grupo: 'Chat' },
-  { key: 'chat_vendas', label: 'Chat - Canal Vendas', grupo: 'Chat' },
-  { key: 'chat_pcp', label: 'Chat - Canal PCP', grupo: 'Chat' },
-  { key: 'chat_estoque', label: 'Chat - Canal Estoque', grupo: 'Chat' },
-  { key: 'chat_pedidos', label: 'Chat - Canal Pedidos', grupo: 'Chat' },
-  { key: 'lancar_pedidos', label: 'Lançar Pedidos/OFs', grupo: 'Pedidos' },
-  { key: 'ver_pedidos', label: 'Ver Pedidos', grupo: 'Pedidos' },
-  { key: 'editar_pedidos', label: 'Editar Pedidos', grupo: 'Pedidos' },
-  { key: 'cancelar_pedidos', label: 'Cancelar Pedidos', grupo: 'Pedidos' },
-  { key: 'pcp_completo', label: 'PCP Completo', grupo: 'PCP' },
-  { key: 'ofs_por_maquina', label: 'OFs por Máquina', grupo: 'PCP' },
-  { key: 'dar_baixa_of', label: 'Dar Baixa em OFs', grupo: 'PCP' },
-  { key: 'estoque_chapas', label: 'Ver Estoque de Chapas', grupo: 'Estoque' },
-  { key: 'editar_estoque', label: 'Editar Estoque', grupo: 'Estoque' },
-  { key: 'solicitar_compra', label: 'Solicitar Compra', grupo: 'Estoque' },
-  { key: 'recebimento', label: 'Recebimento', grupo: 'Estoque' },
-  { key: 'relatorio_mensal', label: 'Relatório Mensal', grupo: 'Relatórios' },
-  { key: 'relatorio_admin', label: 'Relatório Administrativo', grupo: 'Relatórios' },
-  { key: 'financeiro', label: 'Financeiro', grupo: 'Outros' },
-  { key: 'notificacoes', label: 'Notificações', grupo: 'Outros' },
-  { key: 'cadastros', label: 'Cadastros', grupo: 'Outros' },
-  { key: 'orcamentos', label: 'Orçamentos', grupo: 'Outros' },
-];
 
-function renderPermissoesDisponiveis(){
+function renderPermissoesDisponiveis(permsAtivas) {
   const wrap=document.getElementById('usr-perms-grid');
   if(!wrap) return;
-  const grupos={};
-  (PERMISSOES_DISPONIVEIS||[]).forEach(p=>{
-    const g=String(p.grupo||'Outros');
-    if(!grupos[g]) grupos[g]=[];
-    grupos[g].push(p);
+
+  const grupos = {};
+  MODULOS_SISTEMA.forEach(m => {
+    if (!grupos[m.grupo]) grupos[m.grupo] = [];
+    grupos[m.grupo].push(m);
   });
-  const ordem=['Chat','Pedidos','PCP','Estoque','Relatórios','Outros'];
-  const keys=[...ordem.filter(g=>grupos[g]), ...Object.keys(grupos).filter(g=>!ordem.includes(g))];
-  wrap.innerHTML = keys.map(g=>{
-    const itens=grupos[g]||[];
-    const itemsHtml = itens.map(p=>`<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="usr-perm" value="${escAttr(p.key)}"> ${escH(p.label)}</label>`).join('');
-    return `<div style="border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--s2)"><div style="font-weight:900;margin-bottom:8px">${escH(String(g).toUpperCase())}</div>${itemsHtml}</div>`;
-  }).join('');
+
+  const icones = { 'Produção':'🏭', 'Máquinas':'⚙️', 'Cadastros':'👥', 'Estoques':'📦', 'Análises':'📊' };
+
+  wrap.innerHTML = Object.entries(grupos).map(([grupo, mods]) => `
+    <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:bold;font-size:13px;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        <span>${icones[grupo]||'•'}</span> ${grupo}
+        <button type="button" onclick="toggleGrupoPerms(this,'${grupo}')"
+          style="margin-left:auto;padding:2px 8px;border-radius:4px;background:var(--bg2);border:1px solid var(--border);cursor:pointer;font-size:11px;color:var(--text2)">
+          Todos/Nenhum
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+        ${mods.map(m => `
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;background:var(--bg2);border-radius:6px;border:1px solid var(--border);transition:background 0.2s"
+            onmouseover="this.style.background='var(--bg1)'" onmouseout="this.style.background='var(--bg2)'">
+            <input type="checkbox" value="${m.key}" data-grupo="${grupo}"
+              ${(Array.isArray(permsAtivas) && permsAtivas.includes(m.key)) ? 'checked' : ''}
+              style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent)">
+            <span style="font-size:13px">${m.label}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleGrupoPerms(btn, grupo) {
+  const checks = document.querySelectorAll('#usr-perms-grid input[data-grupo=\"'+grupo+'\"]');
+  const algumMarcado = [...checks].some(c => c.checked);
+  checks.forEach(c => c.checked = !algumMarcado);
 }
 async function carregarUsuarios(){
   if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
@@ -11616,28 +11632,28 @@ function renderUsuarios(){
 }
 
 function usrModalGetPerms(){
-  return [...document.querySelectorAll('#modal-usr .usr-perm:checked')].map(x=>x.value);
+  return [...document.querySelectorAll('#usr-perms-grid input[type=checkbox]:checked')].map(x=>x.value);
 }
 function coletarPermissoes(){
   return [...document.querySelectorAll('#usr-perms-grid input[type=checkbox]:checked')].map(cb=>cb.value);
 }
 function usrModalSetPerms(perms){
   const set = new Set(Array.isArray(perms)?perms:[]);
-  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.checked=set.has(cb.value);});
+  document.querySelectorAll('#usr-perms-grid input[type=checkbox]').forEach(cb=>{cb.checked=set.has(cb.value);});
 }
 function usrAtalho(tipo){
   tipo = String(tipo||'custom');
   const map = {
-    vendedor: ["chat_geral","chat_vendas","chat_pedidos","lancar_pedidos","ver_pedidos","cancelar_pedidos"],
-    estoque: ["chat_geral","chat_estoque","estoque_chapas","editar_estoque","solicitar_compra","recebimento"],
-    pcp: ["chat_geral","chat_pcp","pcp_completo","ofs_por_maquina","dar_baixa_of","relatorio_mensal","cancelar_pedidos"],
-    admin: ["tudo"],
+    vendedor: ["lancar_pedido","orcamentos","clientes"],
+    estoque: ["estoque_chapas","compras","fornecedores"],
+    pcp: ["pcp","ofs_maquina","lancar_pedido"],
+    admin: [PERM_ADMIN],
     custom: []
   };
   const perms = map[tipo] || [];
   usrModalSetPerms(perms);
-  const isAdmin = perms.includes('tudo');
-  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.disabled=isAdmin;});
+  const isAdmin = perms.includes(PERM_ADMIN);
+  document.querySelectorAll('#usr-perms-grid input[type=checkbox]').forEach(cb=>{cb.disabled=isAdmin;});
 }
 
 function abrirModalUsuarioNovo(){
@@ -11652,7 +11668,7 @@ function abrirModalUsuarioNovo(){
   document.getElementById('usr-senha2').value='';
   document.getElementById('usr-pass-wrap').style.display='';
   document.getElementById('usr-err').textContent='';
-  renderPermissoesDisponiveis();
+  renderPermissoesDisponiveis([]);
   usrAtalho('custom');
   abrir('modal-usr');
 }
@@ -11669,10 +11685,10 @@ function abrirModalUsuarioEditar(id){
   document.getElementById('usr-cor').value=u.avatar_cor||'#4A90D9';
   document.getElementById('usr-pass-wrap').style.display='none';
   document.getElementById('usr-err').textContent='';
-  renderPermissoesDisponiveis();
-  usrModalSetPerms(Array.isArray(u.permissoes)?u.permissoes:[]);
-  const isAdmin = (u.perfil==='admin') || (Array.isArray(u.permissoes)&&u.permissoes.includes('tudo'));
-  document.querySelectorAll('#modal-usr .usr-perm').forEach(cb=>{cb.disabled=isAdmin;});
+  const perms = Array.isArray(u.permissoes) ? u.permissoes : [];
+  renderPermissoesDisponiveis(perms);
+  const isAdmin = (u.perfil==='admin') || perms.includes(PERM_ADMIN);
+  document.querySelectorAll('#usr-perms-grid input[type=checkbox]').forEach(cb=>{cb.disabled=isAdmin;});
   abrir('modal-usr');
 }
 
@@ -11686,7 +11702,7 @@ async function salvarUsuarioModal(){
   const avatar_cor = String((document.getElementById('usr-cor')||{}).value||'').trim();
   const permissoes = coletarPermissoes();
   console.log('[USR] permissoes selecionadas:', permissoes);
-  const perfil = permissoes.includes('tudo') ? 'admin' : 'custom';
+  const perfil = permissoes.includes(PERM_ADMIN) ? 'admin' : 'custom';
   const canais_chat = permissoes.filter(p=>String(p||'').startsWith('chat_')).map(p=>String(p||'').replace('chat_',''));
 
   if(!nome || !email){
@@ -11896,8 +11912,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
-      <div class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
-      <div class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
+      <div id="menu-facas" class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
+      <div id="menu-cliches" class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
     </div>
   </div>
 
@@ -11907,10 +11923,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span class="ng-ico">📊</span>Análises<span class="ng-arr">▶</span>
     </div>
     <div class="nav-group-items">
-      <div class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
-      <div class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
-      <div id="menu-relatorio" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
-      <div class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
+      <div id="menu-dashboard" class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
+      <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
+      <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
+      <div id="menu-backup" class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
     </div>
   </div>
 </div>
