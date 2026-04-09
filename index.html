@@ -10823,6 +10823,90 @@ function renderRelatorio() {
     const o = document.createElement('option'); o.value='operadores'; o.textContent='Operadores / Qualidade';
     sel.appendChild(o);
   }
+  const tipo = document.getElementById('rel-tipo')?.value || '';
+  if (tipo === 'vendas-por-vendedor') {
+    carregarRelatorioVendedor();
+  }
+}
+
+async function carregarRelatorioVendedor() {
+  const mes = document.getElementById('rm-mes')?.value ? `${document.getElementById('rm-ano')?.value||new Date().getFullYear()}-${String(document.getElementById('rm-mes').value).padStart(2,'0')}` : new Date().toISOString().slice(0,7);
+  const empId = EMP_FILTRO || '';
+  const params = '?mes=' + mes + (empId ? '&empId=' + encodeURIComponent(empId) : '');
+  const r = await api('GET', '/relatorio/vendedor' + params);
+  if (!r || r.error) { toast('Erro: ' + (r && r.error ? r.error : 'desconhecido'), 'var(--red)'); return; }
+  renderRelatorioVendedor(r);
+}
+
+function renderRelatorioVendedor(data) {
+  const vendedores = data && data.vendedores ? data.vendedores : [];
+  const totalGeral = data && data.totalGeral != null ? data.totalGeral : 0;
+  const totalPedidos = data && data.totalPedidos != null ? data.totalPedidos : 0;
+  const wrap = document.getElementById('rm-vendedor-wrap') || document.getElementById('rel-content');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center">
+        <div style="font-size:22px;font-weight:bold;color:var(--accent)">${fmtR(totalGeral)}</div>
+        <div style="font-size:12px;color:var(--text2)">Total Vendido</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center">
+        <div style="font-size:22px;font-weight:bold;color:#4CAF50">${totalPedidos}</div>
+        <div style="font-size:12px;color:var(--text2)">Total de Pedidos</div>
+      </div>
+      <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center">
+        <div style="font-size:22px;font-weight:bold;color:#ff9800">${(vendedores||[]).length}</div>
+        <div style="font-size:12px;color:var(--text2)">Vendedores Ativos</div>
+      </div>
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg3)">
+        <th style="padding:10px;text-align:left">VENDEDOR</th>
+        <th style="padding:10px;text-align:center">PEDIDOS</th>
+        <th style="padding:10px;text-align:center">QTD TOTAL</th>
+        <th style="padding:10px;text-align:right">VALOR TOTAL</th>
+        <th style="padding:10px;text-align:right">TICKET MÉDIO</th>
+        <th style="padding:10px;text-align:center">PARTICIPAÇÃO</th>
+      </tr></thead>
+      <tbody>
+        ${(vendedores||[]).map(v=>`
+          <tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="toggleDetalheVendedor('${escAttr(v.vendedor)}')">
+            <td style="padding:10px;font-weight:500">${escH(v.vendedor)}</td>
+            <td style="padding:10px;text-align:center">${v.pedidos}</td>
+            <td style="padding:10px;text-align:center">${fmtN(v.qtdTotal)}</td>
+            <td style="padding:10px;text-align:right;color:var(--green)">${fmtR(v.valorTotal)}</td>
+            <td style="padding:10px;text-align:right">${fmtR(v.ticketMedio)}</td>
+            <td style="padding:10px;text-align:center">
+              <div style="background:var(--bg3);border-radius:4px;overflow:hidden;height:18px">
+                <div style="background:var(--accent);height:100%;width:${v.participacao}%;transition:width 0.5s"></div>
+              </div>
+              <span style="font-size:11px">${v.participacao}%</span>
+            </td>
+          </tr>
+          <tr id="detalhe-${escAttr(v.vendedor)}" style="display:none">
+            <td colspan="6" style="padding:0 10px 10px">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <tr style="background:var(--bg3)"><th style="padding:6px">OF</th><th>Cliente</th><th>Qtd</th><th>Data Pedido</th><th>Entrega</th><th>Status</th><th style="text-align:right">Valor</th></tr>
+                ${(v.ofs||[]).map(of=>`<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:6px">#${escH(of.numero)}</td>
+                  <td>${escH(of.cliente)}</td>
+                  <td style="text-align:center">${fmtN(of.qtd)}</td>
+                  <td>${fmtD(of.dataPedido)}</td>
+                  <td>${fmtD(of.dataEntrega)}</td>
+                  <td>${escH(of.status)}</td>
+                  <td style="text-align:right">${fmtR(of.valor)}</td>
+                </tr>`).join('')}
+              </table>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function toggleDetalheVendedor(nome) {
+  const el = document.getElementById('detalhe-'+nome);
+  if(el) el.style.display = el.style.display==='none' ? '' : 'none';
 }
 
 var RM_TAB = 'resumo';

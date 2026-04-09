@@ -871,6 +871,53 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
+app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
+  try {
+    const mes = String(req.query.mes || '').trim();
+    const empId = String(req.query.empId || '').trim();
+    let query = supabase.from('ofs').select('*');
+    if (mes) {
+      const inicio = mes + '-01';
+      const fim = mes + '-31';
+      query = query.gte('dia', inicio).lte('dia', fim);
+    }
+    if (empId) query = query.eq('emp_id', empId);
+    query = query.neq('status', 'Cancelada').neq('status', 'Cancelado');
+    const { data: ofs, error } = await query;
+    if (error) return res.status(500).json({ error: error.message });
+    const { data: vendedores } = await supabase.from('vendedores').select('id, nome');
+    const mapVend = {};
+    (vendedores || []).forEach(v => { mapVend[v.id] = v.nome; });
+    const grupos = {};
+    let totalGeral = 0;
+    (ofs || []).forEach(of => {
+      const vendNome = mapVend[of.vendId || of.vendedor_id] || of.vendedor || of.vend || 'Sem Vendedor';
+      const valor = Number(of.valor || of.valor_venda || of.valor_total || of.vtot || of.vunit || 0);
+      const qtd = Number(of.qtd || of.quantidade || 0);
+      if (!grupos[vendNome]) grupos[vendNome] = { vendedor: vendNome, pedidos: 0, qtdTotal: 0, valorTotal: 0, ofs: [] };
+      grupos[vendNome].pedidos++;
+      grupos[vendNome].qtdTotal += qtd;
+      grupos[vendNome].valorTotal += valor;
+      grupos[vendNome].ofs.push({
+        numero: of.of || of.numero || '',
+        cliente: of.cliId || of.cliente || '',
+        qtd, valor,
+        dataPedido: of.dia || of.data_pedido || '',
+        dataEntrega: of.ent || of.data_entrega || '',
+        status: of.status || ''
+      });
+      totalGeral += valor;
+    });
+    const resultado = Object.values(grupos).map(g => ({
+      ...g,
+      ticketMedio: g.pedidos > 0 ? g.valorTotal / g.pedidos : 0,
+      participacao: totalGeral > 0 ? (g.valorTotal / totalGeral * 100).toFixed(1) : '0.0',
+    })).sort((a, b) => b.valorTotal - a.valorTotal);
+    return res.json({ vendedores: resultado, totalGeral, totalPedidos: (ofs || []).length });
+  } catch (err) {
+    return res.status(500).json({ error: String(err.message || err) });
+  }
+});
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
@@ -878,7 +925,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     if (error) throw error;
     return res.json({ ok: true, data });
-  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
