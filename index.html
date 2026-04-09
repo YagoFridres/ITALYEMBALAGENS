@@ -839,7 +839,12 @@ async function setEmpresa(empId){
     if (typeof renderActivePageSync === 'function') renderActivePageSync();
   }
 
-  const nomeEmp = EMP_FILTRO ? ((getEmp(EMP_FILTRO)||{}).nome || EMP_FILTRO) : 'Todas as empresas';
+  const nomeEmp = ({
+    'E1': 'Italy Embalagens',
+    'E2': 'Cartoeste',
+    'E3': 'Oestepack',
+    '': 'Todas'
+  })[EMP_FILTRO || ''] || EMP_FILTRO;
   toast('Empresa: ' + nomeEmp, 'var(--accent)');
 }
 
@@ -2182,7 +2187,7 @@ function salvarAlteracaoOF(ofNum){
   o.urg=document.getElementById('f-urg').value==='1';
   o.pagto=(document.getElementById('f-pagto')||{}).value||'';
   o.obs=document.getElementById('f-obs').value;
-  o.empId=(document.getElementById('f-emp')||{}).value||o.empId||'';
+  o.empId=(document.getElementById('f-emp')||{}).value||o.empId||EMP_FILTRO||'E1';
   try{ const cc=getCli(cliId)||{}; o.cidade_entrega=cc.cidade||o.cidade_entrega||''; }catch(e){}
   // derive imgs from item images
   const itemImgsAlt=itens.map(it=>it.img||null);
@@ -2218,7 +2223,7 @@ async function abrirModalOF(id){
   setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
   const progInfo=document.getElementById('f-prog-info'); if(progInfo) progInfo.innerHTML='';
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
-  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.empresa||EMP_FILTRO||''):(EMP_FILTRO||'');
+  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.empresa||EMP_FILTRO||'E1'):(EMP_FILTRO||'E1');
   const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
   CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+(c.tel||'')+' · '+(c.cidade||'')+'/'+(c.uf||'')+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
   const fCliSearch=document.getElementById('f-cli-search'); if(fCliSearch) fCliSearch.value='';
@@ -2606,7 +2611,7 @@ async function salvarOF(){
   // Auto-learn new payment form
   if(pagto) adicionarFormaPagamento(pagto);
   const empSel=(document.getElementById('f-emp')||null);
-  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
+  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'E1');
   const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
@@ -2619,7 +2624,7 @@ async function salvarOF(){
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs:firstImg?[firstImg]:[],empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -2653,7 +2658,7 @@ async function salvarEdicaoOFId(id){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const empSel=(document.getElementById('f-emp')||null);
-  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
+  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
   const payload={
     of:document.getElementById('f-of').value,
     prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
@@ -2768,7 +2773,7 @@ function abrirModalCliente(id){
   const hid=document.getElementById('cli-id'); if(hid) hid.value = c ? (c.id||'') : '';
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
-  const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?c.empId||'':'';
+  const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?(c.empId||''):(EMP_FILTRO||'E1');
   const vsel=document.getElementById('cl-vend');
   if(vsel){
     vsel.innerHTML='<option value="">—</option>'+VENDEDORES.map(v=>`<option value="${v.id}">${v.nome}</option>`).join('');
@@ -2801,6 +2806,7 @@ async function salvarCliente(){
   const endEl = document.getElementById('cl-end'); if (endEl && payload.endereco === undefined) payload.endereco = endEl.value?.trim() || '';
   const empEl = document.getElementById('cl-emp'); if (empEl && payload.emp_id === undefined) payload.emp_id = empEl.value?.trim() || '';
   const obsEl = document.getElementById('cl-obs'); if (obsEl && payload.obs === undefined) payload.obs = obsEl.value?.trim() || '';
+  if (!payload.emp_id) payload.emp_id = EMP_FILTRO || 'E1';
   const r = id
     ? await api('PUT', '/clientes/' + encodeURIComponent(id), payload)
     : await api('POST', '/clientes', payload);
@@ -4225,7 +4231,7 @@ function abrirModalFornecedor(id){
   document.getElementById('forn-e-end').value=f?f.end:'';
   document.getElementById('forn-e-contato').value=f?f.contato:'';
   document.getElementById('forn-e-obs').value=f?f.obs:'';
-  const esel=document.getElementById('forn-e-emp');if(esel)esel.value=f?f.empId||'':EMP_FILTRO||'';
+  const esel=document.getElementById('forn-e-emp');if(esel)esel.value=f?(f.empId||''):(EMP_FILTRO||'E1');
   abrir('modal-fornecedor');
 }
 
@@ -4247,7 +4253,7 @@ async function salvarFornecedor(){
     end:(document.getElementById('forn-endereco')||document.getElementById('forn-e-end')||{}).value?.trim()||'',
     contato:(document.getElementById('forn-contato')||document.getElementById('forn-e-contato')||{}).value?.trim()||'',
     obs:(document.getElementById('forn-obs')||document.getElementById('forn-e-obs')||{}).value?.trim()||'',
-    empId:(document.getElementById('forn-empresa')||document.getElementById('forn-e-emp')||{}).value||EMP_FILTRO||'',
+    empId:(document.getElementById('forn-empresa')||document.getElementById('forn-e-emp')||{}).value||EMP_FILTRO||'E1',
   };
   const r = id
     ? await api('PUT','/fornecedores/'+encodeURIComponent(id), payload)
