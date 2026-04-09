@@ -1278,6 +1278,7 @@ var PCP_DIA_ATUAL = null;
 
 function pcpNavDia(dir){
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
+  if(PCP_DIA_ATUAL==='__todas__') PCP_DIA_ATUAL = today();
   if(dir===0){ PCP_DIA_ATUAL=today(); }
   else{
     const d=new Date(PCP_DIA_ATUAL+'T12:00:00');
@@ -1289,6 +1290,7 @@ function pcpNavDia(dir){
 function pcpSetDia(val){ if(val){ PCP_DIA_ATUAL=val; renderPCP(); } }
 function pcpDiaLabel(dateStr){
   if(!dateStr) return '—';
+  if(dateStr==='__todas__') return 'TODAS';
   try{
     const d=new Date(dateStr+'T12:00:00');
     if(isNaN(d.getTime())) return dateStr;
@@ -1495,6 +1497,7 @@ function updateBadges(){
 // ===================== PCP POR DIA =====================
 function renderPCP(){
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
+  const isTodas = PCP_DIA_ATUAL === '__todas__';
   const busca=(document.getElementById('pcp-busca')||{}).value||'';
   const fs=(document.getElementById('pcp-status')||{}).value||'';
   const fv=(document.getElementById('pcp-vend')||{}).value||'';
@@ -1505,17 +1508,27 @@ function renderPCP(){
   const lbl=document.getElementById('pcp-dia-label');
   const inp=document.getElementById('pcp-dia-input');
   if(lbl) lbl.textContent=pcpDiaLabel(PCP_DIA_ATUAL);
-  if(inp) inp.value=PCP_DIA_ATUAL;
+  if(inp) inp.value=isTodas?'':PCP_DIA_ATUAL;
   const isHoje=PCP_DIA_ATUAL===today();
   const hbtn=document.getElementById('pcp-hoje-btn');
   if(hbtn) hbtn.style.display=isHoje?'none':'';
 
   // Filter: show OFs for the current day OR active (in production) OR all if no date filter
-  let lista=[...OFs].sort((a,b)=>a.seq-b.seq);
+  let lista=[...OFs];
+  if(isTodas){
+    lista.sort((a,b)=>{
+      const aa=String(a.created_at||'');
+      const bb=String(b.created_at||'');
+      if(bb && aa && bb!==aa) return bb.localeCompare(aa);
+      return String(b.of||'').localeCompare(String(a.of||''));
+    });
+  } else {
+    lista.sort((a,b)=>a.seq-b.seq);
+  }
 
   // Day filter: show OFs with dia===PCP_DIA_ATUAL OR status===Em produção/Atrasado (active)
   // OR if search/status filter applied, show all matching
-  if(!busca && !fs){
+  if(!isTodas && !busca && !fs){
     lista=lista.filter(o=>{
       if(o.status==='Cancelado' || o.status==='Cancelada') return false;
       if(o.dia===PCP_DIA_ATUAL) return true;
@@ -1527,7 +1540,7 @@ function renderPCP(){
     });
   }
   if(busca)lista=lista.filter(o=>o.of.toLowerCase().includes(busca.toLowerCase())||(getCli(o.cliId)||{nome:''}).nome.toLowerCase().includes(busca.toLowerCase()));
-  if(fs)lista=lista.filter(o=>o.status===fs);
+  if(fs && !isTodas) lista=lista.filter(o=>o.status===fs);
   if(fv)lista=lista.filter(o=>o.vendId===fv);
   // Filtro multiempresa
   const fpcp=(document.getElementById('pcp-emp')||{}).value||'';
@@ -1538,10 +1551,16 @@ function renderPCP(){
   // Day summary
   const resumoEl=document.getElementById('pcp-dia-resumo');
   if(resumoEl){
-    const doDia=OFs.filter(o=>o.dia===PCP_DIA_ATUAL&&o.status!=='Cancelado'&&o.status!=='Cancelada');
-    const emProd=doDia.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
-    const concl=doDia.filter(o=>o.status==='Concluído').length;
-    resumoEl.textContent=`${doDia.length} OF(s) do dia · ${emProd} em produção · ${concl} concluída(s)`;
+    if(isTodas){
+      const emProd=OFs.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
+      const concl=OFs.filter(o=>o.status==='Concluído').length;
+      resumoEl.textContent=`${OFs.length} OF(s) · ${emProd} em produção · ${concl} concluída(s)`;
+    } else {
+      const doDia=OFs.filter(o=>o.dia===PCP_DIA_ATUAL&&o.status!=='Cancelado'&&o.status!=='Cancelada');
+      const emProd=doDia.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
+      const concl=doDia.filter(o=>o.status==='Concluído').length;
+      resumoEl.textContent=`${doDia.length} OF(s) do dia · ${emProd} em produção · ${concl} concluída(s)`;
+    }
   }
 
   updateBadges();
@@ -1563,7 +1582,7 @@ function renderPCP(){
     const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':o.status==='Concluído'?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&o.status!=='Concluído'?'background:rgba(220,38,38,.05);':'';
     return `<tr class="${rc}" style="${rowBg}" onclick="selecionarOF('${o.of}')">
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
-      <td class="tc" style="${o.dia===PCP_DIA_ATUAL?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
+      <td class="tc" style="${(!isTodas && o.dia===PCP_DIA_ATUAL)?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
       <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
       <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}</td>
       <td class="tc">${imgC}</td>
@@ -1641,10 +1660,47 @@ function ordenarOFsParaMaquina(lista){
   });
 }
 
+function cardOFMaquina(of, maquinaAtual){
+  const fluxo = parseFluxo(of.fluxo_maquinas);
+  const idx = of.maquina_atual_index || 0;
+  const cli = (CLIENTES||[]).find(c=>c.id===of.cliId);
+  const nomeCliente = cli?.nome || of.cliente || '—';
+  const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
+  const isUrg = !!(of.urg||of.urgente);
+  const hoje = new Date().toISOString().slice(0,10);
+  const entStr = (of.ent || of.data_entrega || '').slice(0,10);
+  const atrasada = entStr && entStr < hoje;
+
+  const progressoHtml = (fluxo||[]).map((m,i)=>{
+    if(i < idx) return '<span style="color:#4CAF50;text-decoration:line-through;font-size:11px">'+escH(m)+'</span>';
+    if(i === idx) return '<span style="background:#4A90D9;color:#fff;padding:3px 8px;border-radius:4px;font-weight:bold;font-size:12px">'+escH(m)+'</span>';
+    return '<span style="color:#666;font-size:11px">'+escH(m)+'</span>';
+  }).join(' <span style="color:#555">→</span> ');
+
+  return '<div style="background:var(--bg2);border:2px solid '+(isUrg?'#f44336':atrasada?'#ff9800':'var(--border)')+';border-radius:10px;padding:16px;margin-bottom:10px">'
+    +(isUrg?'<div style="background:#f44336;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:bold;display:inline-block;margin-bottom:8px">🔴 URGENTE</div>':'' )
+    +'<div style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2">'+escH(produto)+'</div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<span style="font-size:13px;color:#4A90D9">OF #'+escH(of.of||of.numero||String(of.id||'').substring(0,8)||'')+'</span>'
+    +'<span style="font-size:13px"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
+    +'<span style="font-size:13px"><b>Qtd:</b> '+fmtN(of.qtd||of.quantidade||0)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">'
+    +'<span style="font-size:13px">📅 <b>Pedido:</b> '+fmtD(of.dia||of.data_pedido||'')+'</span>'
+    +'<span style="font-size:13px;color:'+(atrasada?'#f44336':entStr===hoje?'#ff9800':'#4CAF50')+'">🚚 <b>Entrega:</b> '+fmtD(entStr)+'</span>'
+    +'</div>'
+    +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button onclick="darBaixaOFId(\''+escAttr(of.id)+'\',\''+escAttr(of.of||of.numero||'')+'\',\''+escAttr(maquinaAtual||'')+'\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✅ Dar Baixa</button>'
+    +(of.imagem_url?'<button onclick="verImagemOF(\''+escAttr(of.imagem_url)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">🖼</button>':'')
+    +'<button onclick="abrirModalOF(\''+escAttr(of.id)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">✏️ Editar</button>'
+    +'</div></div>';
+}
+
 async function renderOFsPorMaquina(){
   const agora=Date.now();
   if(_ofsMaqRenderizando) return;
-  if(agora - _ofsMaqUltimaRender < 2000) return;
+  if(agora - _ofsMaqUltimaRender < 300) return;
   _ofsMaqRenderizando=true;
   _ofsMaqUltimaRender=agora;
   const wrap=document.getElementById('ofs-por-maquina-container')||document.getElementById('ofmaq-body');if(!wrap)return;
@@ -1652,11 +1708,10 @@ async function renderOFsPorMaquina(){
   const first = wrap.dataset && wrap.dataset.ofmaqLoaded !== '1';
   if(first) wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
   try{
-    let data = await api('GET','/ofs');
-    let lista = Array.isArray(data)?data:((data && data.data)?data.data:[]);
-    let OFsBase = (Array.isArray(lista)?lista:[]).filter(o=>o.status!=='Concluída' && o.status!=='Cancelada' && o.status!=='Cancelado' && o.status!=='Pedido Pronto');
-    const empFil = EMP_FILTRO || '';
-    if(empFil) OFsBase = OFsBase.filter(o=>String(o.empId||o.empresa||'')===String(empFil));
+    const r = await api('GET','/ofs');
+    const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+    let OFsBase = (rows||[]).map(normalizeOF);
+
     const filtroData=filtroOFsMaquina||'todas';
     const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
     const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
@@ -1684,67 +1739,24 @@ async function renderOFsPorMaquina(){
     };
 
     const filt=(o)=>{
-      if((st||'') && (o.status||'')!==st) return false;
+      const status = String(o.status||'');
+      if(st){
+        if(status !== st) return false;
+      } else {
+        if(status === 'Cancelado' || status === 'Cancelada' || status === 'Concluído' || status === 'Concluída' || status === 'Pedido Pronto') return false;
+      }
       if(!entOK(o)) return false;
       if(!busca) return true;
-      const cli=(getCli(o.cliId)||{}).nome||'';
-      const vend=(getV(o.vendId)||{}).nome||o.vendedor||'';
-      const txt=[o.of,o.prodDesc,o.prod,o.status,cli,vend].join(' ').toLowerCase();
+      const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
+      const txt=[o.of,o.prodDesc,o.prod,o.produto,o.descricao,status,cli].join(' ').toLowerCase();
       return txt.includes(busca);
-    };
-
-    const card=(o,maquinaAtual)=>{
-      const cli=getCli(o.cliId)||{nome:'—'};
-      const nomeCliente=cli && cli.nome ? cli.nome : (o.cliente||'—');
-      const isUrg=!!(o && (o.urg===true||o.urg===1||o.urg==='1'||o.urgente===true||o.urgente===1||o.urgente==='1'));
-      const hoje=today();
-      const diaStr=String(o.dia||o.data_pedido||o.dataPedido||'').split('T')[0];
-      const entStr=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
-      const atrasada=entStr && entStr<hoje;
-      const qtd = Number(o.qtd!=null?o.qtd:o.quantidade)||0;
-      const f=ofFluxoGetNames(o);
-      const idx=ofFluxoGetIndex(o);
-      const progresso=(f||[]).map((m,i)=>{
-        const s=escH(String(m||''));
-        if(i<idx) return `<span style="color:var(--green);text-decoration:line-through">${s}</span>`;
-        if(i===idx) return `<span style="background:var(--accent);color:#fff;padding:2px 6px;border-radius:6px;font-weight:900">${s}</span>`;
-        return `<span style="color:var(--text3)">${s}</span>`;
-      }).join(` <span style="color:var(--text3)">→</span> `);
-      const img = o.imagem_url || (Array.isArray(o.imgs)&&o.imgs.length?o.imgs[0]:'');
-      const imgHtml = img
-        ? `<div onclick="verImagemOF('${escAttr(img)}')" style="width:60px;height:60px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--accent);flex-shrink:0;background:var(--s2)" title="Ver imagem da OF">
-             <img src="${escH(img)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<span style=\\\"font-size:20px;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)\\\">📄</span>'">
-           </div>`
-        : `<div style="width:60px;height:60px;border-radius:8px;background:var(--s2);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border);color:var(--text3)" title="Sem imagem">📄</div>`;
-      const border = isUrg ? '#f44336' : (atrasada ? '#ff9800' : 'var(--border)');
-      return `<div style="background:var(--surface);border:1px solid ${border};border-radius:10px;padding:12px;margin-bottom:10px;position:relative">
-        ${isUrg?'<span style="position:absolute;top:8px;right:8px;background:#f44336;color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:900;font-family:var(--mono)">🔴 URGENTE</span>':''}
-        <div style="display:flex;gap:12px;align-items:flex-start">
-          ${imgHtml}
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px">
-              <div style="font-family:var(--mono);font-weight:900;color:var(--accent)">OF #${escH(o.of||o.numero||'—')}</div>
-              <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${escH(String(maquinaAtual||''))}</div>
-            </div>
-            <div style="font-size:13px;margin-bottom:4px"><b>Cliente:</b> ${escH(nomeCliente)}</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:4px">
-              📅 Pedido: ${fmtDataBR(diaStr)} &nbsp;|&nbsp;
-              🚚 Entrega: <span style="color:${atrasada?'#f44336':(entStr===hoje?'#ff9800':'var(--text2)')}">${fmtDataBR(entStr)}</span>
-            </div>
-            <div style="font-size:12px;margin-bottom:8px"><b>Qtd:</b> ${fmtN(qtd)} <span style="color:var(--text3)">|</span> <b>Empresa:</b> ${escH(o.empId||o.empresa||'—')}</div>
-            ${progresso?`<div style="font-size:11px;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escH((f||[]).join(' → '))}">${progresso}</div>`:''}
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              ${(hasPerm('dar_baixa_of')||hasPerm('tudo'))?`<button class="btn btn-green btn-sm" onclick="darBaixaOFId('${escAttr(o.id||'')}','${escAttr(o.of||o.numero||'')}','${escAttr(maquinaAtual||'')}')">✅ Dar Baixa</button>`:''}
-              <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(o.id||'')}')">✏️ Editar</button>
-            </div>
-          </div>
-        </div>
-      </div>`;
     };
 
     const grupos={};
     (OFsBase||[]).filter(filt).forEach(o=>{
-      const m=String(ofFluxoGetMaquinaAtual(o)||'').trim()||'Sem Máquina';
+      const fluxo=parseFluxo(o.fluxo_maquinas);
+      const idx=o.maquina_atual_index||0;
+      const m=String((fluxo||[])[idx]||'').trim()||'Sem Máquina';
       if(!grupos[m]) grupos[m]=[];
       grupos[m].push(o);
     });
@@ -1752,7 +1764,7 @@ async function renderOFsPorMaquina(){
     if(!maquinasOrdenadas.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
     const html = maquinasOrdenadas.map(m=>{
       const fila = ordenarOFsParaMaquina(grupos[m] || []);
-      const cards = fila.map(o=>card(o,m)).join('');
+      const cards = fila.map(o=>cardOFMaquina(o,m)).join('');
       return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
     }).join('');
     if(!wrap.dataset) wrap.dataset = {};
@@ -2731,6 +2743,7 @@ function toggleRamoCustom(){
 function abrirModalCliente(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const c=id?CLIENTES.find(x=>x.id===id):null;
+  const hid=document.getElementById('cli-id'); if(hid) hid.value = c ? (c.id||'') : '';
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
   const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?c.empId||'':'';
@@ -2743,59 +2756,38 @@ function abrirModalCliente(id){
   const h2=document.querySelector('#modal-cli h2');
   if(h2)h2.textContent=c?'✏ Editar Cliente':'👤 Cadastrar Cliente';
   const btn=document.querySelector('#modal-cli .modal-footer .btn-accent');
-  if(btn){btn.textContent=c?'Salvar Alterações':'Salvar';btn.onclick=c?()=>salvarEdicaoCliente(c.id):salvarCliente;}
+  if(btn){btn.textContent=c?'Salvar Alterações':'Salvar';btn.onclick=salvarCliente;}
   abrir('modal-cli');
 }
 function editarCliente(id){abrirModalCliente(id);}
 async function salvarEdicaoCliente(id){
-  const c=CLIENTES.find(x=>x.id===id);if(!c)return;
-  const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const ramoSel=document.getElementById('cl-ramo').value;
-  const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
-  const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
-  const vendId=(document.getElementById('cl-vend')||{}).value||'';
-  const vendNome=(getV(vendId)||{}).nome||'';
-  const payload={
-    id:c.id,
-    nome,
-    rs:document.getElementById('cl-rs').value,
-    cnpj:document.getElementById('cl-cnpj').value,
-    tel:document.getElementById('cl-tel').value,
-    email:document.getElementById('cl-email').value,
-    cidade:document.getElementById('cl-cidade').value,
-    uf:document.getElementById('cl-uf').value,
-    end:document.getElementById('cl-end').value,
-    ramo,
-    obs:document.getElementById('cl-obs').value,
-    vendedor_id: vendId || null,
-    vendedor: vendNome || null,
-    empId:(document.getElementById('cl-emp')||{}).value||''
-  };
-  const r = await api('PUT','/clientes/'+encodeURIComponent(c.id), payload);
-  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
-  fechar('modal-cli');
-  await carregarClientes();
-  renderClientes();
-  autoSaveTrigger();
-  toast('Cliente salvo ✓','var(--green)');
+  const hid=document.getElementById('cli-id'); if(hid) hid.value = String(id||'');
+  return salvarCliente();
 }
 async function salvarCliente(){
-  const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const ramoSel=document.getElementById('cl-ramo').value;
-  const ramoCustom=(document.getElementById('cl-ramo-custom')||{}).value||'';
-  const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
-  const empId=(document.getElementById('cl-emp')||{}).value||EMP_FILTRO||'';
-  const vendId=(document.getElementById('cl-vend')||{}).value||'';
-  const vendNome=(getV(vendId)||{}).nome||'';
-  const payload={nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,tel:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,empId,vendedor_id:vendId||null,vendedor:vendNome||null,vendId,vendedor:vendNome};
-  const r = await api('POST','/clientes', payload);
-  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  const id = document.getElementById('cli-id')?.value?.trim() || '';
+  const nome = (document.getElementById('cli-nome') || document.getElementById('cl-nome'))?.value?.trim() || '';
+  if (!nome) { toast('Informe o nome', 'var(--red)'); return; }
+  const campos = ['cnpj','tel','email','cidade','estado','endereco','contato','obs','empresa'];
+  const payload = { nome };
+  campos.forEach(c => {
+    const el = document.getElementById('cli-'+c) || document.getElementById('cl-'+c);
+    if (!el) return;
+    payload[c === 'empresa' ? 'emp_id' : c] = el.value?.trim() || '';
+  });
+  const ufEl = document.getElementById('cl-uf'); if (ufEl && payload.estado === undefined) payload.estado = ufEl.value?.trim() || '';
+  const endEl = document.getElementById('cl-end'); if (endEl && payload.endereco === undefined) payload.endereco = endEl.value?.trim() || '';
+  const empEl = document.getElementById('cl-emp'); if (empEl && payload.emp_id === undefined) payload.emp_id = empEl.value?.trim() || '';
+  const obsEl = document.getElementById('cl-obs'); if (obsEl && payload.obs === undefined) payload.obs = obsEl.value?.trim() || '';
+  const r = id
+    ? await api('PUT', '/clientes/' + encodeURIComponent(id), payload)
+    : await api('POST', '/clientes', payload);
+  if (r && r.error) { toast('Erro: ' + r.error, 'var(--red)'); return; }
+  toast('Cliente salvo ✓', 'var(--green)');
   fechar('modal-cli');
+  const hid=document.getElementById('cli-id'); if(hid) hid.value = '';
   await carregarClientes();
   renderClientes();
-  autoSaveTrigger();
-  toast('Cliente salvo ✓','var(--green)');
-  logAction('Novo cliente cadastrado', nome);
 }
 async function excluirCliente(id){
   const c=CLIENTES.find(x=>x.id===id);if(!c)return;
@@ -6970,6 +6962,7 @@ function normalizeOF(r){
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrl = r.imagem_url ?? null;
   const dataConc = r.data_conclusao ?? null;
+  const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
   return {
     id:r.id,
     seq:r.seq ?? r.prioridade ?? 0,
@@ -6993,6 +6986,7 @@ function normalizeOF(r){
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
     imagem_url: imgUrl,
     data_conclusao: dataConc,
+    created_at: createdAt,
     empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? ''
   };
 }
@@ -11902,6 +11896,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Day navigation -->
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(-1)" title="Dia anterior">‹ Anterior</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(0)" title="Hoje" id="pcp-hoje-btn">📅 Hoje</button>
+    <button class="btn btn-ghost btn-sm" onclick="PCP_DIA_ATUAL='__todas__';renderPCP()" title="Mostrar todas as OFs">📋 Todas</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(1)" title="Próximo dia">Próximo ›</button>
     <div id="pcp-dia-label" style="font-family:var(--mono);font-weight:700;font-size:.88rem;color:var(--accent);padding:4px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;white-space:nowrap;"></div>
     <input type="date" id="pcp-dia-input" onchange="pcpSetDia(this.value)" style="width:140px;" title="Ir para data específica">
@@ -13291,6 +13286,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal">
   <button class="close-btn" onclick="fechar('modal-cli')">✕</button>
   <h2>👤 Cadastrar Cliente</h2>
+  <input type="hidden" id="cli-id">
   <div class="fg">
     <div class="mf fgf"><label>NOME *</label><input id="cl-nome"></div>
     <div class="mf"><label>RAZÃO SOCIAL</label><input id="cl-rs"></div>

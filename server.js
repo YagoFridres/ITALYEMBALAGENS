@@ -692,6 +692,23 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       ? `OF #${numero} baixada em ${atual || '—'} — PEDIDO PRONTO ✓`
       : `OF #${numero} baixada em ${atual || '—'} → próxima: ${proxima || '—'}`;
 
+    if (concluida) {
+      try {
+        const mesRef = new Date().toISOString().slice(0, 7);
+        await supabase.from('relatorio_producao').insert([{
+          mes_referencia: mesRef,
+          data: nowIso.slice(0, 10),
+          of_numero: numero || '',
+          cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
+          produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
+          quantidade: of.qtd ?? of.quantidade ?? 0,
+          valor: of.valor ?? of.valor_venda ?? of.val ?? 0,
+          maquina: atual || '',
+          status: 'Pedido Pronto',
+        }]);
+      } catch (e) {}
+    }
+
     try {
       await supabase.from('historico_acoes').insert([{
         data_hora: nowIso,
