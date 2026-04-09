@@ -2815,6 +2815,7 @@ async function salvarCliente(){
   const endEl = document.getElementById('cl-end'); if (endEl && payload.endereco === undefined) payload.endereco = endEl.value?.trim() || '';
   const empEl = document.getElementById('cl-emp'); if (empEl && payload.emp_id === undefined) payload.emp_id = empEl.value?.trim() || '';
   const obsEl = document.getElementById('cl-obs'); if (obsEl && payload.obs === undefined) payload.obs = obsEl.value?.trim() || '';
+  delete payload.end;
   if (!payload.emp_id) payload.emp_id = EMP_FILTRO || 'E1';
   const r = id
     ? await api('PUT', '/clientes/' + encodeURIComponent(id), payload)

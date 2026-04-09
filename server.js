@@ -567,14 +567,98 @@ function ofIn(p) {
 
 function clientesIn(p) {
   const tel = p.tel !== undefined ? p.tel : p.fone;
+  const end = p.end !== undefined ? p.end : undefined;
   const out = { ...p };
   if (tel !== undefined) out.tel = tel;
+  if (out.endereco === undefined && end !== undefined) out.endereco = end;
   if (out.vend_id !== undefined && out.vendedor_id === undefined) out.vendedor_id = out.vend_id;
   if (out.vendedorId !== undefined && out.vendedor_id === undefined) out.vendedor_id = out.vendedorId;
+  delete out.end;
   delete out.fone;
   delete out.vend_id;
   delete out.vendedorId;
   return out;
+}
+
+function clientesPayload(p) {
+  const b = clientesIn(p || {});
+  const out = {};
+  const map = {
+    nome: 'nome',
+    razao_social: 'razao_social',
+    rs: 'razao_social',
+    cnpj: 'cnpj',
+    cpf: 'cpf',
+    tel: 'tel',
+    telefone: 'tel',
+    email: 'email',
+    cidade: 'cidade',
+    estado: 'estado',
+    uf: 'estado',
+    endereco: 'endereco',
+    contato: 'contato',
+    observacoes: 'observacoes',
+    obs: 'observacoes',
+    emp_id: 'emp_id',
+    empId: 'emp_id',
+    ramo_atividade: 'ramo_atividade',
+    ramo: 'ramo_atividade',
+    vendedor_id: 'vendedor_id',
+    vendId: 'vendedor_id',
+    ativo: 'ativo',
+  };
+  Object.entries(map).forEach(([from, to]) => {
+    if (b[from] !== undefined) out[to] = b[from];
+  });
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  delete out.end;
+  return out;
+}
+
+async function clientesInsertCompat(payload) {
+  const attempts = [
+    payload,
+    (() => {
+      const p = { ...payload };
+      if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
+      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
+      if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
+      if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
+      return p;
+    })(),
+  ];
+  let lastErr = null;
+  for (const p of attempts) {
+    const { data, error } = await supabase.from('clientes').insert([p]).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    if (msg.includes('column') || msg.includes('Could not find')) continue;
+  }
+  return { data: null, error: lastErr };
+}
+
+async function clientesUpdateCompat(id, payload) {
+  const attempts = [
+    payload,
+    (() => {
+      const p = { ...payload };
+      if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
+      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
+      if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
+      if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
+      return p;
+    })(),
+  ];
+  let lastErr = null;
+  for (const p of attempts) {
+    const { data, error } = await supabase.from('clientes').update(p).eq('id', id).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    if (msg.includes('column') || msg.includes('Could not find')) continue;
+  }
+  return { data: null, error: lastErr };
 }
 
 function fornecedoresIn(p) {
@@ -799,14 +883,14 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const payload = clientesIn(req.body || {});
-    let { data, error } = await supabase.from('clientes').insert([payload]).select();
+    const payload = clientesPayload(req.body || {});
+    let { data, error } = await clientesInsertCompat(payload);
     if (error) {
       const msg = String(error.message || error);
       if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
         delete payload.vendedor_id;
         delete payload.vendedor;
-        ({ data, error } = await supabase.from('clientes').insert([payload]).select());
+        ({ data, error } = await clientesInsertCompat(payload));
       }
     }
     if (error) throw error;
@@ -816,14 +900,16 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = clientesIn({ ...(req.body || {}) }); delete payload.id;
-    let { data, error } = await supabase.from('clientes').update(payload).eq('id', req.params.id).select();
+    const payload = clientesPayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    let { data, error } = await clientesUpdateCompat(req.params.id, payload);
     if (error) {
       const msg = String(error.message || error);
       if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
         delete payload.vendedor_id;
         delete payload.vendedor;
-        ({ data, error } = await supabase.from('clientes').update(payload).eq('id', req.params.id).select());
+        ({ data, error } = await clientesUpdateCompat(req.params.id, payload));
       }
     }
     if (error) throw error;
