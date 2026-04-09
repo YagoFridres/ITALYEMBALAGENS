@@ -910,7 +910,6 @@ app.post('/api/orcamentos', async (req, res) => {
       ...(req.body || {}),
       criado_por: req.usuario?.nome || 'sistema',
       criado_em: new Date().toISOString(),
-      atualizado_em: new Date().toISOString(),
     };
     const { data, error } = await supabase.from('orcamentos').insert([payload]).select().single();
     if (error) throw error;
@@ -919,7 +918,7 @@ app.post('/api/orcamentos', async (req, res) => {
 });
 app.put('/api/orcamentos/:id', async (req, res) => {
   try {
-    const payload = { ...(req.body || {}), atualizado_em: new Date().toISOString() };
+    const payload = { ...(req.body || {}) };
     delete payload.id;
     const { data, error } = await supabase.from('orcamentos').update(payload).eq('id', req.params.id).select().single();
     if (error) throw error;
