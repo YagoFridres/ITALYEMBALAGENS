@@ -4256,12 +4256,10 @@ async function salvarFornecedor(){
   });
 
   const nomeEl =
-    document.getElementById('forn-nome') ||
     document.getElementById('forn-e-nome') ||
+    document.getElementById('forn-nome') ||
     document.getElementById('f-forn-nome') ||
-    document.getElementById('modal-forn-nome') ||
-    document.querySelector('#modal-fornecedor [id*="nome"]') ||
-    document.querySelector('#modal-forn [id*="nome"]');
+    document.getElementById('modal-forn-nome');
 
   const nome = nomeEl?.value?.trim() || '';
   if (!nome) {
@@ -4270,7 +4268,7 @@ async function salvarFornecedor(){
     return;
   }
 
-  const id = document.getElementById('forn-id')?.value?.trim() || document.getElementById('forn-edit-id')?.value?.trim() || '';
+  const id = document.getElementById('forn-edit-id')?.value?.trim() || '';
   const empSel = document.getElementById('forn-empresa') || document.getElementById('forn-e-emp');
   const empVal = empSel?.value || '';
   const empTxt = (empSel && empSel.options && empSel.selectedIndex >= 0) ? (empSel.options[empSel.selectedIndex].textContent || '') : '';
