@@ -2225,24 +2225,28 @@ async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
+  console.log('[EDIT OF] dados carregados:', JSON.stringify({
+    id: oEdit?.id, of: oEdit?.of, cliente: oEdit?.cliId,
+    produto: oEdit?.prodDesc, qtd: oEdit?.qtd, fluxo: oEdit?.fluxo_maquinas
+  }));
   ofImgsTemp=oEdit
     ? (Array.isArray(oEdit.imgs)?oEdit.imgs.filter(Boolean).slice():(oEdit.imagem_url?[oEdit.imagem_url]:[]))
     : [];
   renderImgsTemp();
   ofItensTemp=[];
   setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
-  setVal('f-dia', oEdit ? (oEdit.data_pedido||oEdit.dia||oEdit.data||today()) : today());
+  setVal('f-dia', oEdit ? (oEdit.dia||oEdit.data_pedido||oEdit.data||today()) : today());
   setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
   setVal('f-obs', oEdit ? (oEdit.obs||oEdit.observacao||'') : '');
   setVal('f-prod-desc', oEdit ? (oEdit.prodDesc||oEdit.produto||oEdit.prod||oEdit.descricao||'') : '');
-  setVal('f-pagto', oEdit ? (oEdit.pagto||'') : '');
   setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
   setVal('f-st', oEdit ? (oEdit.status||'Em aberto') : 'Em aberto');
   setVal('f-modo-prog', oEdit ? (oEdit.modo_programacao||'manual') : 'automatico');
   setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
   const progInfo=document.getElementById('f-prog-info'); if(progInfo) progInfo.innerHTML='';
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
-  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.empresa||EMP_FILTRO||'E1'):(EMP_FILTRO||'E1');
+  const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.emp_id||oEdit.empresa||EMP_FILTRO||'E1'):(EMP_FILTRO||'E1');
+  const cidadeEl=document.getElementById('f-cidade-of'); if(cidadeEl) cidadeEl.value=oEdit?(oEdit.cidade_entrega||''):'';
   const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
   CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+(c.tel||'')+' · '+(c.cidade||'')+'/'+(c.uf||'')+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
   const fCliSearch=document.getElementById('f-cli-search'); if(fCliSearch) fCliSearch.value='';
@@ -2256,7 +2260,7 @@ async function abrirModalOF(id){
   if(oEdit){
     if(csel && (oEdit.cliId||oEdit.cliente)) csel.value=oEdit.cliId||oEdit.cliente||'';
     if(vsel && (oEdit.vendId||oEdit.vendedor)) vsel.value=oEdit.vendId||'';
-    if(fsel && oEdit.fluxo_id) fsel.value=oEdit.fluxo_id;
+    if(fsel && (oEdit.fluxo_id||oEdit.fluxo)) fsel.value=oEdit.fluxo_id||oEdit.fluxo||'';
     renderMaqChks(parseFluxo(oEdit.fluxo_maquinas||[]));
     ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length ? oEdit.itens.slice() : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null}];
     renderOfItens();
@@ -2271,16 +2275,7 @@ async function abrirModalOF(id){
     : `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
   document.querySelector('#modal-of h2').textContent=oEdit?'✏️ Editar Ordem de Fabricação':'📋 Nova Ordem de Fabricação';
   abrir('modal-of');
-  setTimeout(()=>{
-    try{ ofModoProgChange(); }catch(e){}
-    const pagEl=document.getElementById('f-pagto');
-    if(pagEl){
-      if(!pagEl._acAttached){
-        pagEl._acAttached=true;
-        ac(pagEl,(q)=>acPagamento(q),(data,lbl)=>{ pagEl.value=lbl; },{minLen:0});
-      }
-    }
-  },50);
+  setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
 }
 
 function ofAtualizaChapas(){
@@ -2694,13 +2689,13 @@ async function salvarEdicaoOFId(id){
   const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-  const pagto=(document.getElementById('f-pagto')||{}).value||'';
   const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
   const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
   const data_pedido = document.getElementById('f-dia').value;
   const dia = dia_programacao || data_pedido;
   const cliObj = getCli(cliId) || {};
-  const cidade_entrega = cliObj.cidade || '';
+  const cidadeManual = (document.getElementById('f-cidade-of')||{}).value ? String(document.getElementById('f-cidade-of').value).trim() : '';
+  const cidade_entrega = cidadeManual || cliObj.cidade || '';
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
@@ -2722,7 +2717,6 @@ async function salvarEdicaoOFId(id){
     maq:getMaqSel(),
     status:document.getElementById('f-st').value,
     urg:document.getElementById('f-urg').value==='1',
-    pagto,
     obs:document.getElementById('f-obs').value,
     imgs,
     imagem_url:imgs.length?imgs[0]:null,
@@ -2731,16 +2725,12 @@ async function salvarEdicaoOFId(id){
     dia_programacao,
     cidade_entrega,
   };
-  const r = await salvarViaApiOuLocal('ofs',
-    ()=>api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id }),
-    ()=>{ Object.assign(o,payload); return {ok:true, local:true}; }
-  );
-  if(!r || !r.ok){toast('Erro ao salvar alteração','var(--red)');return;}
-  if(!r.local){
-    try{ await carregarOFs(); }catch(e){}
-  } else {
-    Object.assign(o,payload);
-  }
+  const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
+  if(!r || r.ok===false || r.error){toast('Erro ao salvar alteração','var(--red)');return;}
+  const dadosAtualizados = r.data || r;
+  const idx = OFs.findIndex(x=>x.id===id);
+  if(idx>-1) OFs[idx] = normalizeOF({ ...OFs[idx], ...dadosAtualizados });
+  Object.assign(o, OFs[idx] || o);
   fechar('modal-of');autoSaveTrigger();renderPCP();updateBadges();
   toast('✏ Alteração salva ✓','var(--green)');
 }
@@ -6624,16 +6614,16 @@ function aplicarPermissoes(permissoes, perfil) {
     'editar_pedidos':   ['btn-alterar-of'],
     'cancelar_pedidos': ['btn-cancelar-of'],
     'dar_baixa_of':     ['btn-baixa-of'],
-    'estoque_chapas':   ['menu-estoque'],
+    'estoque_chapas':   ['menu-estoque','menu-estoques'],
     'editar_estoque':   ['btn-reset-estoque'],
-    'solicitar_compra': [],
+    'solicitar_compra': ['menu-compras'],
     'recebimento':      [],
     'relatorio_mensal': ['menu-relatorio'],
     'relatorio_admin':  ['menu-relatorio'],
     'financeiro':       [],
     'notificacoes':     ['menu-notificacoes'],
-    'cadastros':        ['menu-usuarios','menu-roteiro'],
-    'orcamentos':       []
+    'cadastros':        ['menu-clientes','menu-fornecedores','menu-vendedores','menu-fluxos','menu-maquinas','menu-usuarios','menu-roteiro'],
+    'orcamentos':       ['menu-orcamentos']
   };
 
   if (ehAdmin) {
@@ -6664,6 +6654,11 @@ const PAGINA_PERM = {
   'relatorio-mensal': ['relatorio_mensal','tudo'],
   'relatorios': ['relatorio_mensal','relatorio_admin','tudo'],
   'usuarios': ['tudo'],
+  'clientes': ['cadastros','tudo'],
+  'fornecedores': ['cadastros','tudo'],
+  'vendedores': ['cadastros','tudo'],
+  'fluxos': ['cadastros','tudo'],
+  'maquinas': ['cadastros','tudo'],
   'roteiro-entrega': ['cadastros','tudo'],
   'compras': ['solicitar_compra','tudo'],
   'orcamentos': ['orcamentos','tudo'],
@@ -6808,6 +6803,9 @@ async function doLogin(){
   }
   AUTH_TOKEN = token;
   CURRENT_USER = user;
+  if(!Array.isArray(CURRENT_USER.permissoes)){
+    try{ CURRENT_USER.permissoes = typeof CURRENT_USER.permissoes==='string' ? JSON.parse(CURRENT_USER.permissoes) : []; }catch(e){ CURRENT_USER.permissoes = []; }
+  }
   localStorage.setItem('auth_token', AUTH_TOKEN);
   localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
   authSave(AUTH_TOKEN, CURRENT_USER);
@@ -7080,7 +7078,34 @@ function normalizeVend(r){
   const comissaoPct = comissaoRaw === '' || comissaoRaw == null ? null : (Number(comissaoRaw) || 0);
   return { id:r.id, nome:r.nome||'', tel, email:r.email||'', reg, meta, comissaoPct };
 }
-function normalizeOrc(r){ return {id:r.id,data:r.data,cliId:r.cli_id,vendId:r.vendedor_id||'',vendedor:r.vendedor||'',tipo:r.tipo,prod:r.prod,comp:r.comp,larg:r.larg,alt:r.alt,area:r.area,onda:r.onda,gram:r.gram,margem:r.margem,frete:r.frete,comissao:r.comissao,qtd:r.qtd,vunit:r.vunit,vtot:r.vtot,status:r.status,obs:r.obs,empId:r.emp_id||r.empId||''}; }
+function normalizeOrc(r){
+  const parametros = tryParse(r.parametros, (typeof r.parametros === 'object' && r.parametros) ? r.parametros : {});
+  const resultados = tryParse(r.resultados, Array.isArray(r.resultados) ? r.resultados : []);
+  const numero = r.numero_orcamento ?? r.numero ?? r.numeroOrcamento ?? '';
+  const medidas = r.medidas ?? r.titulo ?? '';
+  const clienteNome = r.cliente_nome ?? r.descricao ?? r.clienteNome ?? '';
+  const qtd = r.quantidade ?? r.qtd ?? r.quantidade_total ?? 0;
+  const vtot = r.valor_total ?? r.vtot ?? r.valorTotal ?? 0;
+  const vunit = r.valor_unitario ?? r.vunit ?? r.valorUnitario ?? 0;
+  const criado = r.criado_em ?? r.data ?? r.created_at ?? r.criadoEm ?? null;
+  return {
+    id: r.id,
+    numero_orcamento: numero,
+    cliente_id: r.cliente_id ?? r.cli_id ?? r.cliId ?? '',
+    cliente_nome: clienteNome,
+    medidas,
+    quantidade: qtd,
+    onda: r.onda ?? '',
+    valor_unitario: vunit,
+    valor_total: vtot,
+    parametros,
+    resultados,
+    criado_em: criado,
+    empId: r.emp_id ?? r.empId ?? '',
+    status: r.status ?? '',
+    vendId: r.vendedor_id ?? r.vend_id ?? r.vendId ?? '',
+  };
+}
 function normalizeEst(r){
   return {
     id:r.id,
@@ -9241,6 +9266,14 @@ async function salvarOrcamentoCalc(){
   const row=r.data || r;
   _orcIdAtual = row.id;
   _orcNumeroAtual = row.numero_orcamento || row.numero || (row.id ? String(row.id).substring(0, 8) : null);
+  try{
+    const n = normalizeOrc(row);
+    const i = ORCAMENTOS.findIndex(x=>String(x.id||'')===String(n.id||''));
+    if(i>=0) ORCAMENTOS[i]=n; else ORCAMENTOS.unshift(n);
+    const ap=document.querySelector('.page.active');
+    const pid=ap && ap.id ? ap.id.replace('page-','') : '';
+    if(pid==='orcamentos') renderOrcamentos();
+  }catch(e){}
   toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓','var(--green)');
   const numEl=document.getElementById('orc-numero-display');
   if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
@@ -9593,39 +9626,42 @@ function calcImprimir(){
 }
 
 function renderOrcamentos(){
-  const fil=(document.getElementById('orc-fil-st')||{}).value||'';
   const empFil=(document.getElementById('orc-fil-emp')||{}).value||EMP_FILTRO||'';
   let lista=ORCAMENTOS;
-  if(fil)lista=lista.filter(o=>o.status===fil);
-  if(empFil)lista=lista.filter(o=>(o.empId||'')===empFil);
+  if(empFil)lista=lista.filter(o=>(o.empId||o.emp_id||'')===empFil);
   renderEmpBar();
-  const stMap={'Em aberto':'orc-status-ab','Enviado':'orc-status-en','Aprovado':'orc-status-ap','Reprovado':'orc-status-rp','Convertido':'orc-status-cv'};
   document.getElementById('orc-body').innerHTML=lista.map(orc=>{
-    const cli=getCli(orc.cliId)||{nome:'—'};const v=getV(orc.vendId)||{nome:'—'};
-    return `<div class="orc-card">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
-        <span class="orc-num">${orc.id}</span>
-        <span class="tag ${stMap[orc.status]||''}">${orc.status}</span>
-        <span style="font-size:.75rem;color:var(--text2)">${fmtDataBR(orc.data||'')}</span>
-        <span style="font-weight:700">${cli.nome}</span>
-        <span style="color:var(--text2);font-size:.75rem">${v.nome}</span>
-        ${empBadge(orc.empId)}
-        <span style="color:var(--green);font-weight:800;font-family:var(--mono);margin-left:auto">${fmtR(orc.vtot)}</span>
+    const num = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0,8) : '');
+    const cliente = orc.cliente_nome || orc.descricao || '—';
+    const medidas = orc.medidas || orc.titulo || '—';
+    const qtd = orc.quantidade ?? orc.qtd ?? '—';
+    const onda = orc.onda || '—';
+    const vtot = orc.valor_total ?? orc.vtot ?? 0;
+    const dt = orc.criado_em || orc.data || '';
+    return `<div class="orc-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:bold;color:var(--accent)">Orç. Nº ${escH(num)}</span>
+        <span style="font-size:11px;color:var(--text2)">${fmtD(dt)}</span>
       </div>
-      <div style="font-size:.82rem;margin-bottom:6px"><b>${orc.prod}</b> — ${orc.qtd.toLocaleString()} un × ${fmtR(orc.vunit)}</div>
-      ${orc.tipo?`<div style="font-size:.7rem;color:var(--accent);font-family:var(--mono)">Modelo: ${orc.tipo}${orc.onda?' · Onda '+orc.onda:''}${orc.area?' · Área: '+orc.area+' m²':''}</div>`:''}
-      ${(orc.comp&&orc.larg)?`<div style="font-size:.7rem;color:var(--text3)">${orc.comp}×${orc.larg}${orc.alt?'×'+orc.alt:''} mm${orc.gram?' · '+orc.gram+' g/m²':''}</div>`:''}
-      ${orc.obs?`<div style="font-size:.75rem;color:var(--text2)">${orc.obs}</div>`:''}
-      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
-        ${['Em aberto','Enviado','Aprovado','Reprovado'].map(s=>`<button class="btn btn-ghost btn-sm" onclick="setOrcStatus('${orc.id}','${s}')" style="${orc.status===s?'border-color:var(--accent);color:var(--accent);':''}">${s}</button>`).join('')}
-        ${orc.status==='Aprovado'?`<button class="btn btn-green btn-sm" onclick="converterOrcParaOF('${orc.id}')">✅ Converter em OF</button>`:''}
-        <button class="btn btn-ghost btn-sm" onclick="editarOrcamento('${orc.id}')">✏</button>
-        <button class="btn btn-ghost btn-sm" onclick="excluirOrcamento('${orc.id}')" style="color:var(--red)">🗑</button>
-        <button class="btn btn-ghost btn-sm" onclick="imprimirOrcId('${orc.id}')">🖨</button>
+      <div><b>Cliente:</b> ${escH(cliente)}</div>
+      <div><b>Medidas:</b> ${escH(medidas)} | <b>Qtd:</b> ${escH(String(qtd))} | <b>Onda:</b> ${escH(onda)}</div>
+      <div style="color:var(--green)"><b>Valor Total:</b> ${fmtR(vtot)}</div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="abrirCalculadoraComOrc('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">✏️ Editar/Ver</button>
+        <button onclick="imprimirOrcamentoId('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🖨 Imprimir</button>
+        <button onclick="excluirOrcamento('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:#f44336;color:#fff;border:none;cursor:pointer;font-size:12px">🗑</button>
       </div>
     </div>`;
   }).join('')||'<div style="color:var(--text3)">Nenhum orçamento</div>';
 }
+
+function abrirCalculadoraComOrc(id){
+  const orc = (ORCAMENTOS||[]).find(x=>String(x.id||'')===String(id||'')) || null;
+  if(!orc){ toast('Orçamento não encontrado','var(--orange)'); return; }
+  carregarOrcamentoCalc(orc);
+  abrirCalculadora();
+}
+function imprimirOrcamentoId(id){ return imprimirOrcId(id); }
 
 function orcAtualizaVendInfo(){
   const sel=document.getElementById('oc-vend');
@@ -9800,29 +9836,39 @@ function converterOrcParaOF(id){
 
 function imprimirOrcId(id){
   const orc=ORCAMENTOS.find(x=>x.id===id);if(!orc)return;
-  const cli=getCli(orc.cliId)||{nome:'—'};
-  const v=getV(orc.vendId)||{nome:'—',tel:'',fone:'',email:''};
-  const emp=(typeof getEmp==='function'?getEmp(orc.empId)||{nome:'Italy Embalagens'}:{nome:'Italy Embalagens'});
+  const cliId = orc.cliente_id || orc.cliId || '';
+  const cliNome = orc.cliente_nome || (getCli(cliId)||{}).nome || '—';
+  const cli={nome:cliNome||'—'};
+  const vendId = orc.vendId || orc.vendedor_id || '';
+  const v=getV(vendId)||{nome:'—',tel:'',fone:'',email:''};
+  const empId = orc.empId || orc.emp_id || '';
+  const emp=(typeof getEmp==='function'?getEmp(empId)||{nome:'Italy Embalagens'}:{nome:'Italy Embalagens'});
   const vendTel=v.tel||v.fone||'';
   const vendEmail=v.email||'';
-  const medidas=[orc.comp,orc.larg,orc.alt].filter(Boolean).join(' × ');
-  const medidasStr=medidas?medidas+' mm':'—';
+  const medidas = String(orc.medidas||'').trim() || [orc.comp,orc.larg,orc.alt].filter(Boolean).join(' × ');
+  const medidasStr=medidas?medidas+(String(orc.medidas||'').trim()?'':' mm'):'—';
+  const prod = orc.prod || orc.titulo || orc.medidas || orc.descricao || '—';
+  const qtd = Number(orc.quantidade ?? orc.qtd ?? 0) || 0;
+  const vtot = Number(orc.valor_total ?? orc.vtot ?? 0) || 0;
+  const vunit = Number(orc.valor_unitario ?? orc.vunit ?? (qtd ? (vtot/qtd) : 0)) || 0;
+  const numero = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0,8) : '');
+  const criadoEm = orc.criado_em || orc.data || new Date().toLocaleDateString('pt-BR');
   const fmtMon=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const escH=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const prodBlock='<div style="font-size:13px;font-weight:700;color:#1f2937">'+escH(orc.prod||'—')+'</div>'
+  const prodBlock='<div style="font-size:13px;font-weight:700;color:#1f2937">'+escH(prod)+'</div>'
     +(orc.tipo?'<div style="font-size:11px;color:#2d8fa5;margin-top:2px">Modelo: '+escH(orc.tipo)+(orc.onda?' &nbsp;·&nbsp; Onda: '+escH(orc.onda):'')+'</div>':'')
     +(medidas?'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:3px;background:#f0f8fa;padding:4px 8px;border-radius:4px;display:inline-block">📐 '+medidasStr+'</div>':'')
     +(orc.area?'<div style="font-size:11px;color:#6b7280;margin-top:2px">Área: '+escH(orc.area)+' m²'+(orc.gram?' &nbsp;·&nbsp; Gramatura: '+escH(orc.gram)+' g/m²':'')+'</div>':'');
   const vendContato=(vendTel||vendEmail)?'<div style="font-size:11px;color:#555;margin-top:4px">'+(vendTel?'📞 '+escH(vendTel):'')+((vendTel&&vendEmail)?'&nbsp;&nbsp;':'')+(vendEmail?'✉ '+escH(vendEmail):'')+'</div>':'';
   const win=window.open('','_blank','width=980,height=760');
   if(!win){alert('Permita pop-up para imprimir o orçamento.');return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+escH(orc.id)+'</title>'+
+  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+escH(numero)+'</title>'+
     '<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;padding:32px;color:#1f2937;background:#fff}@media print{body{padding:16px}}</style></head><body>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2d8fa5;padding-bottom:16px;margin-bottom:22px">'+
       '<div>'+(LOGO_ITALY?'<img src="'+LOGO_ITALY+'" style="height:66px;object-fit:contain" alt="Italy Embalagens">':'<span style="font-size:20px;font-weight:900;color:#2d8fa5">'+escH(emp.nome)+'</span>')+'</div>'+
       '<div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#2d8fa5;letter-spacing:1px">ORÇAMENTO</div>'+
-      '<div style="font-weight:800;font-size:15px;color:#374151">'+escH(orc.id)+'</div>'+
-      '<div style="font-size:11px;color:#6b7280;margin-top:2px">'+escH(emp.nome)+' &nbsp;·&nbsp; Emitido em '+escH(orc.data||new Date().toLocaleDateString('pt-BR'))+'</div>'+
+      '<div style="font-weight:800;font-size:15px;color:#374151">'+escH('Orç. Nº '+numero)+'</div>'+
+      '<div style="font-size:11px;color:#6b7280;margin-top:2px">'+escH(emp.nome)+' &nbsp;·&nbsp; Emitido em '+escH(criadoEm)+'</div>'+
       '<div style="font-size:11px;color:#6b7280;margin-top:1px">Status: <b>'+escH(orc.status||'Em aberto')+'</b></div></div>'+
     '</div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">'+
@@ -9846,17 +9892,17 @@ function imprimirOrcId(id){
         '<th style="padding:10px 12px;text-align:right;border:1px solid #2d8fa5;white-space:nowrap">Total</th>'+
       '</tr></thead>'+
       '<tbody><tr style="background:#f9fafb">'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb">'+escH(orc.prod||'—')+(medidas?' <span style="color:#6b7280;font-size:11px">('+medidasStr+')</span>':'')+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700">'+Number(orc.qtd||0).toLocaleString('pt-BR')+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right">'+fmtMon(orc.vunit||0)+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;color:#16a34a">'+fmtMon(orc.vtot||0)+'</td>'+
+        '<td style="padding:10px 12px;border:1px solid #e5e7eb">'+escH(prod)+(medidas?' <span style="color:#6b7280;font-size:11px">('+medidasStr+')</span>':'')+'</td>'+
+        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700">'+Number(qtd||0).toLocaleString('pt-BR')+'</td>'+
+        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right">'+fmtMon(vunit||0)+'</td>'+
+        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;color:#16a34a">'+fmtMon(vtot||0)+'</td>'+
       '</tr></tbody>'+
     '</table>'+
-    (orc.obs?'<div style="border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;margin-bottom:20px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#92400e;margin-bottom:4px">Observações</div><div style="font-size:12px">'+escH(orc.obs)+'</div></div>':'')+
+    ((orc.observacoes||orc.obs)?'<div style="border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;margin-bottom:20px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#92400e;margin-bottom:4px">Observações</div><div style="font-size:12px">'+escH(orc.observacoes||orc.obs)+'</div></div>':'')+
     '<div style="display:flex;justify-content:flex-end;margin-bottom:28px">'+
       '<div style="border:2px solid #2d8fa5;border-radius:12px;padding:16px 24px;min-width:240px;text-align:right">'+
         '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em">Valor Total</div>'+
-        '<div style="font-size:28px;font-weight:900;color:#2d8fa5">'+fmtMon(orc.vtot||0)+'</div>'+
+        '<div style="font-size:28px;font-weight:900;color:#2d8fa5">'+fmtMon(vtot||0)+'</div>'+
       '</div>'+
     '</div>'+
     '<div style="border-top:1px solid #e5e7eb;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af">'+
@@ -11369,34 +11415,7 @@ converterOrcParaOF = async function(id){
 };
 
 function editarOrcamento(id){
-  const orc=ORCAMENTOS.find(x=>x.id===id);if(!orc)return;
-  document.getElementById('oc-num').value=orc.id||'';
-  document.getElementById('oc-data').value=orc.data||today();
-  document.getElementById('oc-prod').value=orc.prod||'';
-  document.getElementById('oc-qtd').value=orc.qtd!=null?orc.qtd:'';
-  document.getElementById('oc-vunit').value=orc.vunit!=null?orc.vunit:'';
-  document.getElementById('oc-vtot').value=orc.vtot!=null?fmtR(orc.vtot):'';
-  document.getElementById('oc-obs').value=orc.obs||'';
-  document.getElementById('oc-comp').value=orc.comp||'';
-  document.getElementById('oc-larg').value=orc.larg||'';
-  document.getElementById('oc-alt').value=orc.alt||'';
-  document.getElementById('oc-area').value=orc.area||'';
-  document.getElementById('oc-gram').value=orc.gram||'';
-  document.getElementById('oc-frete').value=orc.frete||'';
-  document.getElementById('oc-comissao').value=orc.comissao||'';
-  document.getElementById('oc-margem').value=orc.margem||'30';
-  document.getElementById('oc-st').value=orc.status||'Em aberto';
-  document.getElementById('oc-tipo').value=orc.tipo||'';
-  document.getElementById('oc-onda').value=orc.onda||'';
-  const empSel=document.getElementById('oc-emp');if(empSel)empSel.value=orc.empId||EMP_FILTRO||'';
-  const cs=document.getElementById('oc-cli');cs.innerHTML='<option value="">—</option>';CLIENTES.forEach(c=>cs.innerHTML+=`<option value="${c.id}">${c.nome}</option>`);
-  const vs=document.getElementById('oc-vend');vs.innerHTML='<option value="">—</option>';VENDEDORES.forEach(v=>vs.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
-  document.getElementById('oc-cli').value=orc.cliId||'';
-  document.getElementById('oc-vend').value=orc.vendId||'';
-  orcAtualizaVendInfo();
-  const h2=document.querySelector('#modal-orc h2');if(h2)h2.textContent='✏ Editar Orçamento';
-  const btn=document.querySelector('#modal-orc .btn-accent');if(btn){btn.textContent='Salvar Alterações';btn.onclick=()=>salvarEdicaoOrcamento(id);}
-  abrir('modal-orc');
+  return abrirCalculadoraComOrc(id);
 }
 
 async function salvarEdicaoOrcamento(id){
@@ -11666,6 +11685,7 @@ async function salvarUsuarioModal(){
   const ativo = (String((document.getElementById('usr-ativo')||{}).value||'1')==='1');
   const avatar_cor = String((document.getElementById('usr-cor')||{}).value||'').trim();
   const permissoes = coletarPermissoes();
+  console.log('[USR] permissoes selecionadas:', permissoes);
   const perfil = permissoes.includes('tudo') ? 'admin' : 'custom';
   const canais_chat = permissoes.filter(p=>String(p||'').startsWith('chat_')).map(p=>String(p||'').replace('chat_',''));
 
@@ -11841,8 +11861,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq')"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
-  <div class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
-  <div class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
+  <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos')"><span class="ico">💰</span>Orçamentos</div>
+  <div id="menu-compras" class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
 
   <!-- GRUPO: MÁQUINAS -->
   <div class="nav-group" id="ng-maquinas">
@@ -11850,8 +11870,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span class="ng-ico">⚙</span>Máquinas<span class="ng-arr">▶</span>
     </div>
     <div class="nav-group-items">
-      <div class="nav-item" onclick="go('fluxos');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🔀</span>Fluxos</div>
-      <div class="nav-item" onclick="go('maquinas');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⚙</span>Máquinas</div>
+      <div id="menu-fluxos" class="nav-item" onclick="go('fluxos');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🔀</span>Fluxos</div>
+      <div id="menu-maquinas" class="nav-item" onclick="go('maquinas');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⚙</span>Máquinas</div>
     </div>
   </div>
 
@@ -11861,9 +11881,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span class="ng-ico">📁</span>Cadastros<span class="ng-arr">▶</span>
     </div>
     <div class="nav-group-items">
-      <div class="nav-item" onclick="go('clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👥</span>Clientes</div>
-      <div class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
-      <div class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
+      <div id="menu-clientes" class="nav-item" onclick="go('clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👥</span>Clientes</div>
+      <div id="menu-fornecedores" class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
+      <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
       <div id="menu-roteiro" class="nav-item" onclick="go('roteiro-entrega');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Roteiro de Entrega</div>
     </div>
@@ -13013,17 +13033,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- ========== ORÇAMENTOS ========== -->
 <div id="page-orcamentos" class="page">
   <div class="ptoolbar">
-    <select id="orc-fil-st" onchange="renderOrcamentos()">
-      <option value="">Todos</option>
-      <option>Em aberto</option><option>Enviado</option>
-      <option>Aprovado</option><option>Reprovado</option><option>Convertido</option>
-    </select>
     <select id="orc-fil-emp" onchange="renderOrcamentos()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas empresas</option>
     </select>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="abrirCalculadora()">🧮 Calculadora de Caixas</button>
-    <button class="btn btn-accent" onclick="abrirModalOrc()">＋ Novo Orçamento</button>
   </div>
   <div class="page-body" id="orc-body"></div>
 </div>
