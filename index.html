@@ -1695,9 +1695,8 @@ function ofFluxoLinha(o){
 
 let filtroOFsMaquina='todas';
 function setFiltroOFsMaquina(f){
-  filtroOFsMaquina=f;
   document.querySelectorAll('.btn-filtro-maquina').forEach(b=>b.classList.remove('ativo'));
-  const el=document.getElementById('filtro-maq-'+f); if(el) el.classList.add('ativo');
+  document.getElementById('filtro-maq-'+f)?.classList.add('ativo');
   renderOFsPorMaquina();
 }
 
@@ -1763,88 +1762,84 @@ function cardOFMaquina(of, maquinaAtual){
 }
 
 async function renderOFsPorMaquina(){
-  const agora=Date.now();
   if(_ofsMaqRenderizando) return;
-  if(agora - _ofsMaqUltimaRender < 300) return;
-  _ofsMaqRenderizando=true;
-  _ofsMaqUltimaRender=agora;
-  const wrap=document.getElementById('ofs-por-maquina-container')||document.getElementById('ofmaq-body');if(!wrap)return;
-  const prevScroll = wrap.scrollTop || 0;
-  const first = wrap.dataset && wrap.dataset.ofmaqLoaded !== '1';
-  if(first) wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
-  try{
-    const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-    const r = await api('GET','/ofs'+empParam);
-    const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
-    let OFsBase = (rows||[]).map(normalizeOF);
-
-    const filtroData=filtroOFsMaquina||'todas';
-    const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
-    const st=String((document.getElementById('ofmaq-status')||{}).value||'').trim();
-
-    const maqOrdenadas=[...MAQUINAS].sort((a,b)=>{
-      const na=parseInt(String(a.id||'').replace(/\D+/g,''))||999;
-      const nb=parseInt(String(b.id||'').replace(/\D+/g,''))||999;
-      return na-nb;
-    });
-
-    const entOK=(o)=>{
-      if(filtroData==='todas') return true;
-      const ent=String(o.ent||o.data_entrega||o.dataEntrega||'').split('T')[0];
-      if(!ent) return false;
-      const hoje=today();
-      if(filtroData==='hoje') return ent===hoje;
-      if(filtroData==='semana'){
-        const d0=new Date(hoje+'T12:00:00');
-        const domingo=new Date(d0); domingo.setDate(d0.getDate() + (7 - d0.getDay())%7);
-        const de=hoje;
-        const ate=domingo.toISOString().split('T')[0];
-        return ent>=de && ent<=ate;
-      }
-      return true;
-    };
-
-    const filt=(o)=>{
-      const status = String(o.status||'');
-      if(st){
-        if(status !== st) return false;
-      } else {
-        if(status === 'Cancelado' || status === 'Cancelada' || status === 'Concluído' || status === 'Concluída' || status === 'Pedido Pronto') return false;
-      }
-      if(!entOK(o)) return false;
-      if(!busca) return true;
-      const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
-      const txt=[o.of,o.prodDesc,o.prod,o.produto,o.descricao,status,cli].join(' ').toLowerCase();
-      return txt.includes(busca);
-    };
-
-    const grupos={};
-    (OFsBase||[]).filter(filt).forEach(o=>{
-      const fluxo=parseFluxo(o.fluxo_maquinas);
-      const idx=o.maquina_atual_index||0;
-      const m=String((fluxo||[])[idx]||'').trim()||'Sem Máquina';
-      if(!grupos[m]) grupos[m]=[];
-      grupos[m].push(o);
-    });
-    const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value || '';
-    let maquinasParaMostrar = [...maqOrdenadas.map(x=>x.col), 'Sem Máquina'].filter(m=>grupos[m]);
-    if (filtroMaq) maquinasParaMostrar = maquinasParaMostrar.filter(m => m === filtroMaq);
-    if(!maquinasParaMostrar.length){ wrap.innerHTML='<div style="padding:30px;text-align:center;color:#888">Nenhuma OF na fila para este filtro.</div>'; return; }
-    const html = maquinasParaMostrar.map(m=>{
-      const fila = ordenarOFsParaMaquina(grupos[m] || []);
-      const cards = fila.map(o=>cardOFMaquina(o,m)).join('');
-      return `<div style="margin-bottom:24px"><h3 style="color:#4A90D9;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:12px">🏭 ${escH(m)} <span style="font-size:13px;color:#888">(${fila.length})</span></h3>${cards}</div>`;
-    }).join('');
-    if(!wrap.dataset) wrap.dataset = {};
-    if(wrap.dataset.ofmaqLastHtml !== html){
-      wrap.innerHTML = html;
-      wrap.dataset.ofmaqLastHtml = html;
-      wrap.dataset.ofmaqLoaded = '1';
+  if(Date.now()-_ofsMaqUltimaRender < 500) return;
+  _ofsMaqRenderizando = true;
+  _ofsMaqUltimaRender = Date.now();
+  try {
+    let lista = Array.isArray(OFs) && OFs.length > 0 ? OFs : null;
+    if(!lista){
+      const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+      const r = await api('GET','/ofs'+empParam);
+      const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+      lista = rows || [];
+      if(Array.isArray(OFs) && OFs.length === 0) OFs = lista.map(normalizeOF);
     }
-    try{ wrap.scrollTop = prevScroll; }catch(e){}
-  } finally {
-    _ofsMaqRenderizando=false;
-  }
+    lista = (lista||[]).map(normalizeOF);
+
+    const filtroData = document.getElementById('ofsmaq-filtro-data')?.value ||
+      (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
+    const hoje = new Date().toISOString().slice(0,10);
+    const fimSem = new Date(); fimSem.setDate(fimSem.getDate()+(7-fimSem.getDay()||7));
+    const fimSemStr = fimSem.toISOString().slice(0,10);
+
+    if(filtroData==='hoje') {
+      lista = lista.filter(o=>(o.ent||o.data_entrega||'').slice(0,10)===hoje);
+    } else if(filtroData==='semana') {
+      lista = lista.filter(o=>{const d=(o.ent||o.data_entrega||'').slice(0,10); return d>=hoje&&d<=fimSemStr;});
+    }
+
+    const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
+    const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
+
+    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado');
+    if(busca){
+      lista = lista.filter(o=>{
+        const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
+        const txt=[o.of,o.prodDesc,o.prod,o.produto,o.descricao,o.status,cli].join(' ').toLowerCase();
+        return txt.includes(busca);
+      });
+    }
+
+    const grupos = {};
+    lista.forEach(of=>{
+      const fluxo = parseFluxo(of.fluxo_maquinas);
+      const idx = of.maquina_atual_index||0;
+      const maq = fluxo[idx]||'Sem Máquina';
+      if(!filtroMaq||maq===filtroMaq){
+        if(!grupos[maq])grupos[maq]=[];
+        grupos[maq].push(of);
+      }
+    });
+
+    const container = document.getElementById('ofs-por-maquina-container')||document.getElementById('ofsmaq-container')||document.getElementById('ofmaq-body');
+    if(!container){_ofsMaqRenderizando=false;return;}
+    const scroll = container.scrollTop;
+
+    if(Object.keys(grupos).length===0){
+      container.innerHTML='<div style="padding:30px;text-align:center;color:var(--text3)">Nenhuma OF encontrada para este filtro.</div>';
+      _ofsMaqRenderizando=false;return;
+    }
+
+    const ordemMaq=['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','COLADEIRA','RISCADOR 01','RISCADOR 02','ACABAMENTO','CORTE VINCO ROTATIVA','CORTE PLANA','Sem Máquina'];
+    const maquinas = [...new Set([...ordemMaq.filter(m=>grupos[m]),...Object.keys(grupos)])];
+
+    container.innerHTML = maquinas.filter(m=>grupos[m]).map(maq=>{
+      const ofs = grupos[maq].sort((a,b)=>{
+        const ua=!!(a.urg||a.urgente), ub=!!(b.urg||b.urgente);
+        if(ua&&!ub)return -1; if(!ua&&ub)return 1;
+        return (a.ent||a.data_entrega||'9')>(b.ent||b.data_entrega||'9')?1:-1;
+      });
+      return `<div style="margin-bottom:20px">
+        <h3 style="color:var(--accent);border-bottom:2px solid var(--accent);padding-bottom:6px;margin-bottom:12px">
+          🏭 ${escH(maq)} <span style="font-size:13px;color:var(--text2)">(${ofs.length} OF${ofs.length>1?'s':''})</span>
+        </h3>
+        ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
+      </div>`;
+    }).join('');
+
+    container.scrollTop = scroll;
+  } finally { _ofsMaqRenderizando=false; }
 }
 
 function ofmaqSetFiltroData(m){
@@ -6655,14 +6650,26 @@ function aplicarPermissoes(permissoes, perfil) {
   const perms = Array.isArray(permissoes) ? permissoes : [];
   const ehAdmin = perfil === 'admin' || perms.includes(PERM_ADMIN);
 
-  MODULOS_SISTEMA.forEach(mod => {
-    const temAcesso = ehAdmin || perms.includes(mod.key);
-    const el = mod.menuId ? document.getElementById(mod.menuId) : null;
-    if (el) el.style.display = temAcesso ? '' : 'none';
-  });
+  document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');
 
-  if (ehAdmin) {
+  if(ehAdmin) {
     document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
+    return;
+  }
+
+  if(typeof MODULOS_SISTEMA !== 'undefined') {
+    MODULOS_SISTEMA.forEach(mod => {
+      if(perms.includes(mod.key)) {
+        const el = document.getElementById(mod.menuId);
+        if(el) el.style.display = '';
+      }
+    });
+  }
+
+  if(perms.includes('lancar_pedidos')||perms.includes('lancar_pedido')||perms.includes('pcp')) {
+    const btn = document.getElementById('btn-nova-of');
+    if(btn) btn.style.display = '';
   }
 }
 
@@ -9850,86 +9857,100 @@ function converterOrcParaOF(id){
   renderOrcamentos();renderPCP();toast('✅ '+ofNum+' criado a partir de '+orc.id,'var(--green)');updateBadges();
 }
 
-function imprimirOrcId(id){
-  const orc=ORCAMENTOS.find(x=>x.id===id);if(!orc)return;
-  const cliId = orc.cliente_id || orc.cliId || '';
-  const cliNome = orc.cliente_nome || (getCli(cliId)||{}).nome || '—';
-  const cli={nome:cliNome||'—'};
-  const vendId = orc.vendId || orc.vendedor_id || '';
-  const v=getV(vendId)||{nome:'—',tel:'',fone:'',email:''};
-  const empId = orc.empId || orc.emp_id || '';
-  const emp=(typeof getEmp==='function'?getEmp(empId)||{nome:'Italy Embalagens'}:{nome:'Italy Embalagens'});
-  const vendTel=v.tel||v.fone||'';
-  const vendEmail=v.email||'';
-  const medidas = String(orc.medidas||'').trim() || [orc.comp,orc.larg,orc.alt].filter(Boolean).join(' × ');
-  const medidasStr=medidas?medidas+(String(orc.medidas||'').trim()?'':' mm'):'—';
-  const prod = orc.prod || orc.titulo || orc.medidas || orc.descricao || '—';
-  const qtd = Number(orc.quantidade ?? orc.qtd ?? 0) || 0;
-  const vtot = Number(orc.valor_total ?? orc.vtot ?? 0) || 0;
-  const vunit = Number(orc.valor_unitario ?? orc.vunit ?? (qtd ? (vtot/qtd) : 0)) || 0;
-  const numero = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0,8) : '');
-  const criadoEm = orc.criado_em || orc.data || new Date().toLocaleDateString('pt-BR');
-  const fmtMon=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const escH=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const prodBlock='<div style="font-size:13px;font-weight:700;color:#1f2937">'+escH(prod)+'</div>'
-    +(orc.tipo?'<div style="font-size:11px;color:#2d8fa5;margin-top:2px">Modelo: '+escH(orc.tipo)+(orc.onda?' &nbsp;·&nbsp; Onda: '+escH(orc.onda):'')+'</div>':'')
-    +(medidas?'<div style="font-size:12px;font-weight:700;color:#374151;margin-top:3px;background:#f0f8fa;padding:4px 8px;border-radius:4px;display:inline-block">📐 '+medidasStr+'</div>':'')
-    +(orc.area?'<div style="font-size:11px;color:#6b7280;margin-top:2px">Área: '+escH(orc.area)+' m²'+(orc.gram?' &nbsp;·&nbsp; Gramatura: '+escH(orc.gram)+' g/m²':'')+'</div>':'');
-  const vendContato=(vendTel||vendEmail)?'<div style="font-size:11px;color:#555;margin-top:4px">'+(vendTel?'📞 '+escH(vendTel):'')+((vendTel&&vendEmail)?'&nbsp;&nbsp;':'')+(vendEmail?'✉ '+escH(vendEmail):'')+'</div>':'';
-  const win=window.open('','_blank','width=980,height=760');
-  if(!win){alert('Permita pop-up para imprimir o orçamento.');return;}
-  win.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+escH(numero)+'</title>'+
-    '<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;padding:32px;color:#1f2937;background:#fff}@media print{body{padding:16px}}</style></head><body>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #2d8fa5;padding-bottom:16px;margin-bottom:22px">'+
-      '<div>'+(LOGO_ITALY?'<img src="'+LOGO_ITALY+'" style="height:66px;object-fit:contain" alt="Italy Embalagens">':'<span style="font-size:20px;font-weight:900;color:#2d8fa5">'+escH(emp.nome)+'</span>')+'</div>'+
-      '<div style="text-align:right"><div style="font-size:26px;font-weight:900;color:#2d8fa5;letter-spacing:1px">ORÇAMENTO</div>'+
-      '<div style="font-weight:800;font-size:15px;color:#374151">'+escH('Orç. Nº '+numero)+'</div>'+
-      '<div style="font-size:11px;color:#6b7280;margin-top:2px">'+escH(emp.nome)+' &nbsp;·&nbsp; Emitido em '+escH(criadoEm)+'</div>'+
-      '<div style="font-size:11px;color:#6b7280;margin-top:1px">Status: <b>'+escH(orc.status||'Em aberto')+'</b></div></div>'+
-    '</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">'+
-      '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px">'+
-        '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;font-weight:700;margin-bottom:6px">Cliente</div>'+
-        '<div style="font-size:15px;font-weight:800;color:#1f2937">'+escH(cli.nome||'—')+'</div>'+
-      '</div>'+
-      '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px">'+
-        '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;font-weight:700;margin-bottom:6px">Vendedor</div>'+
-        '<div style="font-size:15px;font-weight:800;color:#1f2937">'+escH(v.nome||'—')+'</div>'+vendContato+
-      '</div>'+
-    '</div>'+
-    '<div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:20px">'+
-      '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;font-weight:700;margin-bottom:8px">Produto</div>'+prodBlock+
-    '</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">'+
-      '<thead><tr style="background:#2d8fa5;color:#fff">'+
-        '<th style="padding:10px 12px;text-align:left;border:1px solid #2d8fa5">Descrição</th>'+
-        '<th style="padding:10px 12px;text-align:right;border:1px solid #2d8fa5;white-space:nowrap">Quantidade</th>'+
-        '<th style="padding:10px 12px;text-align:right;border:1px solid #2d8fa5;white-space:nowrap">Valor Unit.</th>'+
-        '<th style="padding:10px 12px;text-align:right;border:1px solid #2d8fa5;white-space:nowrap">Total</th>'+
-      '</tr></thead>'+
-      '<tbody><tr style="background:#f9fafb">'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb">'+escH(prod)+(medidas?' <span style="color:#6b7280;font-size:11px">('+medidasStr+')</span>':'')+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700">'+Number(qtd||0).toLocaleString('pt-BR')+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right">'+fmtMon(vunit||0)+'</td>'+
-        '<td style="padding:10px 12px;border:1px solid #e5e7eb;text-align:right;font-weight:700;color:#16a34a">'+fmtMon(vtot||0)+'</td>'+
-      '</tr></tbody>'+
-    '</table>'+
-    ((orc.observacoes||orc.obs)?'<div style="border:1px solid #fde68a;background:#fffbeb;border-radius:8px;padding:12px;margin-bottom:20px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#92400e;margin-bottom:4px">Observações</div><div style="font-size:12px">'+escH(orc.observacoes||orc.obs)+'</div></div>':'')+
-    '<div style="display:flex;justify-content:flex-end;margin-bottom:28px">'+
-      '<div style="border:2px solid #2d8fa5;border-radius:12px;padding:16px 24px;min-width:240px;text-align:right">'+
-        '<div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.06em">Valor Total</div>'+
-        '<div style="font-size:28px;font-weight:900;color:#2d8fa5">'+fmtMon(vtot||0)+'</div>'+
-      '</div>'+
-    '</div>'+
-    '<div style="border-top:1px solid #e5e7eb;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af">'+
-      '<div>'+escH(emp.nome)+'</div>'+
-      '<div style="text-align:right">Gerado em '+new Date().toLocaleString('pt-BR')+
-        ((vendTel||vendEmail)?'<br><span style="color:#6b7280">'+(vendTel?'📞 '+escH(vendTel):'')+' '+(vendEmail?'✉ '+escH(vendEmail):'')+'</span>':'')+
-      '</div>'+
-    '</div>'+
-    '</body></html>');
-  win.document.close();
-  win.onload=function(){try{win.print();}catch(e){}setTimeout(function(){try{win.close();}catch(e){}},300);};
+function imprimirOrcId(id) {
+  const orc = (ORCAMENTOS||[]).find(o=>o.id===id);
+  if(!orc){ toast('Orçamento não encontrado','var(--orange)'); return; }
+  
+  const resultados = orc.resultados || orc.parametros?.resultados || [];
+  const numOrc = orc.numero_orcamento || orc.id?.substring(0,8) || '—';
+  const cliente = orc.cliente_nome || orc.descricao || '—';
+  const medidas = orc.medidas || orc.titulo || '—';
+  const qtd = orc.quantidade || '—';
+  const data = fmtD(orc.criado_em);
+  const tipo = orc.parametros?.tipo || orc.onda || '—';
+
+  const linhas = resultados.map(r => ` 
+    <tr> 
+      <td>${escH(r.compTitle||r.compLabel||r.onda||'')}</td> 
+      <td>${escH(medidas)}</td> 
+      <td style="text-align:center">${qtd}</td> 
+      <td style="text-align:right">R$ ${Number(r.vLiq||r.valor_unitario||0).toFixed(4)}</td> 
+      <td style="text-align:right"><b>R$ ${Number(r.vUnit||r.vLiq||0).toFixed(4)}</b></td> 
+      <td style="text-align:right"><b>R$ ${Number((r.vUnit||0)*Number(qtd||0)).toFixed(2)}</b></td> 
+    </tr>`).join('') || `<tr> 
+      <td>${escH(orc.onda||'—')}</td> 
+      <td>${escH(medidas)}</td> 
+      <td style="text-align:center">${qtd}</td> 
+      <td style="text-align:right">${fmtR(orc.valor_unitario)}</td> 
+      <td style="text-align:right"><b>${fmtR(orc.valor_unitario)}</b></td> 
+      <td style="text-align:right"><b>${fmtR(orc.valor_total)}</b></td> 
+    </tr>`; 
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"> 
+<title>Orçamento Nº ${numOrc} — Italy Embalagens</title> 
+<style> 
+  *{margin:0;padding:0;box-sizing:border-box} 
+  body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px} 
+  .header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px} 
+  .header h1{font-size:20px;color:#333} 
+  .header .num{font-size:15px;font-weight:bold;color:#1a5276;margin-top:4px} 
+  .info{background:#f5f5f5;padding:10px 14px;border-radius:4px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px} 
+  .info p{font-size:12px} 
+  table{width:100%;border-collapse:collapse;margin-bottom:16px} 
+  th{background:#2c3e50;color:#fff;padding:8px 10px;text-align:left;font-size:11px} 
+  td{padding:8px 10px;border-bottom:1px solid #ddd} 
+  tr:nth-child(even) td{background:#f9f9f9} 
+  .total-row td{background:#eaf2ff;font-weight:bold;border-top:2px solid #2c3e50} 
+  .rodape{margin-top:20px;padding-top:14px;border-top:1px solid #ccc;font-size:11px;line-height:1.9;color:#333} 
+  .rodape b{font-size:12px} 
+  @media print{body{padding:10px}} 
+</style></head><body> 
+<div class="header"> 
+  <div> 
+    <h1>Italy Embalagens</h1> 
+    <div class="num">Orçamento Nº ${numOrc}</div> 
+  </div> 
+  <div style="text-align:right;font-size:11px;color:#666"> 
+    <div>Data: ${data}</div> 
+    <div>Tipo: ${escH(tipo)}</div> 
+    <div>Validade: 30 dias</div> 
+  </div> 
+</div> 
+<div class="info"> 
+  <p><b>Cliente:</b> ${escH(cliente)}</p> 
+  <p><b>Medidas:</b> ${escH(medidas)}</p> 
+  <p><b>Quantidade:</b> ${qtd} unidades</p> 
+  <p><b>Onda:</b> ${escH(orc.onda||tipo)}</p> 
+</div> 
+<table> 
+  <thead><tr> 
+    <th>TIPO DE ONDA</th><th>MEDIDAS (mm)</th><th>QUANTIDADE</th> 
+    <th>VL. UNIT. LÍQUIDO</th><th>VL. UNIT. C/FRETE</th><th>VALOR TOTAL</th> 
+  </tr></thead> 
+  <tbody>${linhas}</tbody> 
+  <tfoot><tr class="total-row"> 
+    <td colspan="5" style="text-align:right">VALOR TOTAL DO PEDIDO:</td> 
+    <td style="text-align:right">${fmtR(orc.valor_total)}</td> 
+  </tr></tfoot> 
+</table> 
+${orc.observacoes ? '<p style="margin-bottom:16px"><b>Obs:</b> '+escH(orc.observacoes)+'</p>' : ''} 
+<div class="rodape"> 
+  <p>FATURAMENTO PELA EMPRESA NO LUCRO REAL</p> 
+  <p>CRÉDITO DE ICMS 12% &nbsp;|&nbsp; IPI - 15% OU COM CARTA DE ISENÇÃO</p> 
+  <p>FATURAMENTO PELO SIMPLES</p> 
+  <p>CRÉDITO DE ICMS - BASE GOVERNO DO ESTADO &nbsp;|&nbsp; SEM IPI</p> 
+  <br> 
+  <p>ATENCIOSAMENTE</p> 
+  <p><b>ELEOMAR FRIDRES</b></p> 
+  <p>(49) 99998 0203 (WHATSAPP) &nbsp;&nbsp; (49) 3622 8512</p> 
+  <p>atendimento@italyembalagens.com.br</p> 
+  <p>RUA GEOVANI BARRICHELLO, 200 - BAIRRO SANTA RITA - SÃO MIGUEL DO OESTE</p> 
+</div> 
+</body></html>`;
+
+  const w = window.open('','_blank','width=900,height=750');
+  w.document.write(html); w.document.close(); w.focus();
+  setTimeout(()=>w.print(), 600);
 }
 function imprimirOrc(){
   const id=document.getElementById('oc-num').value;
