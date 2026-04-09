@@ -798,28 +798,49 @@ function empBadge(empId){
 function empCor(empId){const e=getEmp(empId);return e?e.cor:'';}
 
 function setEmpFiltro(id){
-  EMP_FILTRO=id||null;
-  // Update buttons
-  document.querySelectorAll('.emp-sel-btn').forEach(b=>{
-    b.className='emp-sel-btn';
-    if(!id&&b.dataset.emp==='todas')  b.classList.add('active-todas');
-    if(id&&b.dataset.emp===id){const e=getEmp(id);if(e)b.classList.add('active-'+e.cor);}
-  });
-  try{ setEmpresa(EMP_FILTRO); }catch(e){}
+  try{ setEmpresa(id||null); }catch(e){}
 }
 
 async function setEmpresa(empId){
   EMP_FILTRO = empId || null;
-  const promises = [];
-  if(typeof carregarOFs === 'function') promises.push(carregarOFs());
-  if(typeof carregarChapas === 'function') promises.push(carregarChapas());
-  if(typeof carregarClientes === 'function') promises.push(carregarClientes());
-  if(typeof carregarFornecedores === 'function') promises.push(carregarFornecedores());
-  await Promise.all(promises);
+
+  document.querySelectorAll('[data-emp-btn], .emp-sel-btn').forEach(btn=>{
+    const bid = btn.getAttribute('data-emp-btn') || btn.getAttribute('data-emp') || '';
+    const isAtivo = (EMP_FILTRO && bid === EMP_FILTRO) || (!EMP_FILTRO && bid === 'todas');
+    if(btn.classList && btn.classList.contains('emp-sel-btn')){
+      btn.className = 'emp-sel-btn';
+      if(isAtivo){
+        if(!EMP_FILTRO) btn.classList.add('active-todas');
+        else { const e=getEmp(EMP_FILTRO); if(e) btn.classList.add('active-'+e.cor); }
+      }
+    } else {
+      btn.style.background = isAtivo ? 'var(--accent)' : 'var(--bg3)';
+      btn.style.color = isAtivo ? '#fff' : 'var(--text1)';
+    }
+  });
+
+  const tarefas = [];
+  if (typeof carregarOFs === 'function') tarefas.push(carregarOFs());
+  if (typeof carregarClientes === 'function') tarefas.push(carregarClientes());
+  if (typeof carregarFornecedores === 'function') tarefas.push(carregarFornecedores());
+  if (typeof carregarChapas === 'function') tarefas.push(carregarChapas());
+  if (typeof carregarVendedores === 'function') tarefas.push(carregarVendedores());
+  if (typeof carregarOperadores === 'function') tarefas.push(carregarOperadores());
+  if (typeof carregarOrcamentos === 'function') tarefas.push(carregarOrcamentos());
+  if (typeof carregarFacas === 'function') tarefas.push(carregarFacas());
+  if (typeof carregarCliches === 'function') tarefas.push(carregarCliches());
+  await Promise.all(tarefas);
+
   const ap=document.querySelector('.page.active');
   const pid=ap && ap.id ? ap.id.replace('page-','') : '';
-  if(pid==='ofmaq') return renderOFsPorMaquina();
-  try{ renderActivePageSync(); }catch(e){ try{ renderPCP(); }catch(e2){} }
+  if(pid==='ofmaq'){
+    if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
+  } else {
+    if (typeof renderActivePageSync === 'function') renderActivePageSync();
+  }
+
+  const nomeEmp = EMP_FILTRO ? ((getEmp(EMP_FILTRO)||{}).nome || EMP_FILTRO) : 'Todas as empresas';
+  toast('Empresa: ' + nomeEmp, 'var(--accent)');
 }
 
 function empFilterList(lista, campo){
@@ -830,8 +851,8 @@ function empFilterList(lista, campo){
 function renderEmpBar(){
   const b=document.getElementById('emp-bar');if(!b)return;
   b.innerHTML=`<span style="color:var(--text3);font-family:var(--mono);font-size:.65rem;text-transform:uppercase;letter-spacing:.5px;margin-right:4px">EMPRESA:</span>`
-    +`<button class="emp-sel-btn ${!EMP_FILTRO?'active-todas':''}" data-emp="todas" onclick="setEmpFiltro(null)">Todas</button>`
-    +EMPRESAS.map(e=>`<button class="emp-sel-btn ${EMP_FILTRO===e.id?'active-'+e.cor:''}" data-emp="${e.id}" onclick="setEmpFiltro('${e.id}')">${e.nome}</button>`).join('');
+    +`<button class="emp-sel-btn ${!EMP_FILTRO?'active-todas':''}" data-emp-btn="todas" onclick="setEmpresa(null)">Todas</button>`
+    +EMPRESAS.map(e=>`<button class="emp-sel-btn ${EMP_FILTRO===e.id?'active-'+e.cor:''}" data-emp-btn="${e.id}" onclick="setEmpresa('${e.id}')">${e.nome}</button>`).join('');
 }
 
 function empSelect(selId, required, currentVal){
@@ -1708,7 +1729,8 @@ async function renderOFsPorMaquina(){
   const first = wrap.dataset && wrap.dataset.ofmaqLoaded !== '1';
   if(first) wrap.innerHTML='<div style="padding:20px;color:#888">Carregando...</div>';
   try{
-    const r = await api('GET','/ofs');
+    const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+    const r = await api('GET','/ofs'+empParam);
     const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
     let OFsBase = (rows||[]).map(normalizeOF);
 
@@ -7550,13 +7572,14 @@ async function syncFromServerSilent(){
   if(_syncBusy) return;
   _syncBusy = true;
   try{
-    const ping = await api('GET', '/ofs');
+    const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
+    const ping = await api('GET', '/ofs'+empParam);
     if(!ping.ok){ _apiConectado = false; return; }
     _apiConectado = true;
     const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops, nfs, inc] = await Promise.all([
-      api('GET','/ofs'), api('GET','/clientes'), api('GET','/estoque'), api('GET','/apontamentos'),
-      api('GET','/compras'), api('GET','/orcamentos'), api('GET','/fornecedores'), api('GET','/vendedores'),
-      api('GET','/operadores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
+      api('GET','/ofs'+empParam), api('GET','/clientes'+empParam), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
+      api('GET','/compras'), api('GET','/orcamentos'+empParam), api('GET','/fornecedores'+empParam), api('GET','/vendedores'+empParam),
+      api('GET','/operadores'+empParam), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
     let mudou = false;
     if(ofs.ok && ofs.data){ OFs = ofs.data.map(normalizeOF); mudou = true; }
@@ -7689,8 +7712,9 @@ setInterval(async ()=>{
   // Não faz polling se não há usuário logado (evita erros na tela de login)
   if(!window.CURRENT_USER) return;
   try {
+    const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
     const [ofs,orcs,aps] = await Promise.all([
-      api('GET','/ofs'), api('GET','/orcamentos'), api('GET','/apontamentos')
+      api('GET','/ofs'+empParam), api('GET','/orcamentos'+empParam), api('GET','/apontamentos')
     ]);
     if(ofs.ok && ofs.data)  { OFs=ofs.data.map(normalizeOF); try{renderPCP();}catch(e){} }
     if(orcs.ok && orcs.data && orcs.data.length){ ORCAMENTOS=orcs.data.map(normalizeOrc); }

@@ -1303,9 +1303,20 @@ app.delete('/api/notas_fiscais/:id', async (req, res) => {
 
 app.get('/api/estoque', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('estoque').select('*').order('nome');
-    if (error) throw error;
-    ok(res, data);
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    let lastErr = null;
+    for (const col of cols) {
+      let q = supabase.from('estoque').select('*').order('nome');
+      if (col) q = q.eq(col, empId);
+      const { data, error } = await q;
+      if (!error) return ok(res, data || []);
+      lastErr = error;
+      const msg = String(error.message || error);
+      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      throw error;
+    }
+    throw lastErr;
   } catch (e) { err(res, e); }
 });
 
