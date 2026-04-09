@@ -2908,9 +2908,7 @@ let _estoqueBaixoOnly = false;
 
 function popularFiltrosEstoque(chapas){
   _estoqueBase = Array.isArray(chapas) ? chapas : [];
-  const fornSet=[...new Set(_estoqueBase.map(c=>c.forn).filter(Boolean))].sort();
-  const fabSet=[...new Set(_estoqueBase.map(c=>c.cnpj).filter(Boolean))].sort();
-  const nomSet=[...new Set(_estoqueBase.map(c=>c.nom).filter(Boolean))].sort();
+  const fornSet=[...new Set(_estoqueBase.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
     if(!el) return;
@@ -2918,22 +2916,24 @@ function popularFiltrosEstoque(chapas){
     el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escH(v)}">${escH(v)}</option>`).join('');
     if(cur && arr.includes(cur)) el.value=cur;
   };
-  setOpts('ef-fornecedor', fornSet, 'Por Fornecedor');
-  setOpts('ef-fabricante', fabSet, 'Por Fabricante');
-  setOpts('ef-nomenclatura', nomSet, 'Por Nomenclatura');
+  setOpts('ef-fornecedor', fornSet, '🏭 Fornecedor');
 }
 
 function estoqueFiltrar(tipo){
   tipo=String(tipo||'');
   if(tipo==='todos'){
+    const c=document.getElementById('ef-categoria'); if(c) c.value='';
     const f1=document.getElementById('ef-fornecedor'); if(f1) f1.value='';
-    const f2=document.getElementById('ef-fabricante'); if(f2) f2.value='';
-    const f3=document.getElementById('ef-nomenclatura'); if(f3) f3.value='';
     const b=document.getElementById('ef-busca'); if(b) b.value='';
+    const bx=document.getElementById('ef-baixo'); if(bx) bx.classList.remove('ativo');
     _estoqueBaixoOnly=false;
   }
-  if(tipo==='baixo') _estoqueBaixoOnly=true;
-  if(tipo==='fornecedor' || tipo==='fabricante' || tipo==='nomenclatura' || tipo==='busca') _estoqueBaixoOnly=false;
+  if(tipo==='baixo'){
+    const bx=document.getElementById('ef-baixo');
+    if(bx) bx.classList.toggle('ativo');
+    _estoqueBaixoOnly=!!bx?.classList?.contains('ativo');
+  }
+  if(tipo==='fornecedor' || tipo==='categoria' || tipo==='busca') _estoqueBaixoOnly=false;
   renderEstoque();
 }
 
@@ -2945,31 +2945,23 @@ function estOrdenar(campo){
 
 // ===================== ESTOQUE =====================
 function _renderEstoqueBase(){
-  // ---- TABELA PRINCIPAL ----
-  const busca=(document.getElementById('est-busca')||{}).value||'';
-  const filForn=(document.getElementById('est-fil-forn')||{}).value||'';
-  const filEmp=(document.getElementById('est-fil-emp')||{}).value||EMP_FILTRO||'';
+  const buscaTop=String((document.getElementById('est-busca')||{}).value||'').toLowerCase().trim();
+  const filFornTop=(document.getElementById('est-fil-forn')||{}).value||'';
+  const filEmpTop=(document.getElementById('est-fil-emp')||{}).value||EMP_FILTRO||'';
   let lista=[...ESTOQUE];
-  if(busca) lista=lista.filter(c=>(c.nome+c.forn+c.nom+c.tam+(c.qual||'')).toLowerCase().includes(busca.toLowerCase()));
-  if(filForn) lista=lista.filter(c=>c.forn===filForn);
-  if(filEmp) lista=lista.filter(c=>(c.empId||'')===filEmp);
+  if(buscaTop) lista=lista.filter(c=>[(c.nome||''),(c.fornecedor||c.forn||''),(c.nomenclatura||c.nom||''),(c.tamanho||c.tam||''),(c.qual_cnpj||c.qual||'')].join(' ').toLowerCase().includes(buscaTop));
+  if(filFornTop) lista=lista.filter(c=>(c.fornecedor||c.forn||'')===filFornTop);
+  if(filEmpTop) lista=lista.filter(c=>(c.emp_id||c.empId||'')===filEmpTop);
   renderEmpBar();
 
-  popularFiltrosEstoque(lista);
-  const efForn=(document.getElementById('ef-fornecedor')||{}).value||'';
-  const efFab=(document.getElementById('ef-fabricante')||{}).value||'';
-  const efNom=(document.getElementById('ef-nomenclatura')||{}).value||'';
-  const efBusca=String((document.getElementById('ef-busca')||{}).value||'').toLowerCase().trim();
-  if(efForn) lista=lista.filter(c=>c.forn===efForn);
-  if(efFab) lista=lista.filter(c=>c.cnpj===efFab);
-  if(efNom) lista=lista.filter(c=>c.nom===efNom);
-  if(_estoqueBaixoOnly) lista=lista.filter(c=>(Number(c.qtd)||0)<200);
-  if(efBusca) lista=lista.filter(c=>
-    String(c.nome||'').toLowerCase().includes(efBusca) ||
-    String(c.nom||'').toLowerCase().includes(efBusca) ||
-    String(c.forn||'').toLowerCase().includes(efBusca) ||
-    String(c.tam||'').toLowerCase().includes(efBusca)
-  );
+  const catFil = String((document.getElementById('ef-categoria')||{}).value||'').toLowerCase();
+  const fornFil = String((document.getElementById('ef-fornecedor')||{}).value||'').toLowerCase();
+  const busca = String((document.getElementById('ef-busca')||{}).value||'').toLowerCase().trim();
+  const baixo = !!document.getElementById('ef-baixo')?.classList?.contains('ativo');
+  if(catFil) lista=lista.filter(c=>String(c.categoria||'').toLowerCase()===catFil);
+  if(fornFil) lista=lista.filter(c=>String(c.fornecedor||c.forn||'').toLowerCase()===fornFil);
+  if(baixo) lista=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<200);
+  if(busca) lista=lista.filter(c=>[(c.nome||''),(c.nomenclatura||c.nom||''),(c.fornecedor||c.forn||''),(c.tamanho||c.tam||'')].join(' ').toLowerCase().includes(busca));
 
   // Sort
   lista.sort((a,b)=>{
@@ -2978,21 +2970,21 @@ function _renderEstoqueBase(){
     return EST_SORT.asc?(va>vb?1:va<vb?-1:0):(va<vb?1:va>vb?-1:0);
   });
 
-  // Populate fornecedor filter
+  // Populate fornecedor filter (top bar)
   const ff=document.getElementById('est-fil-forn');
   if(ff&&ff.options.length<=1){
-    const forns=[...new Set(ESTOQUE.map(c=>c.forn).filter(Boolean))].sort();
+    const forns=[...new Set(ESTOQUE.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
     forns.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;ff.appendChild(o);});
   }
 
   // Summary totals
-  const totalVal=lista.reduce((s,c)=>s+c.qtd*(c.val||0),0);
+  const totalVal=lista.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
   const totalItens=lista.length;
-  const baixoEst=lista.filter(c=>c.qtd<=c.min).length;
-  const semEst=lista.filter(c=>c.qtd<=0).length;
+  const baixoEst=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<=(Number(c.estoque_minimo??c.min??200))).length;
+  const semEst=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<=0).length;
   const resolveEmpId=(c)=>{
-    if(c.empId) return c.empId;
-    const q=(c.qual||'').toString().toUpperCase();
+    if(c.emp_id||c.empId) return c.emp_id||c.empId;
+    const q=(c.qual_cnpj||c.qual||'').toString().toUpperCase();
     if(q.includes('ITALY')) return 'E1';
     if(q.includes('CARTO')) return 'E2';
     if(q.includes('OESTE')) return 'E3';
@@ -3001,33 +2993,94 @@ function _renderEstoqueBase(){
   const listaComEmp = lista.map(c=>({...c, _empIdCalc: resolveEmpId(c)}));
   const empresaCards = EMPRESAS.map(e=>{
     const itensEmp=listaComEmp.filter(c=>c._empIdCalc=== e.id);
-    const tot=itensEmp.reduce((s,c)=>s+c.qtd*(c.val||0),0);
+    const tot=itensEmp.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
     return `<div class="card"><div class="card-lbl"><span class="emp-badge emp-${e.cor}" style="font-size:.55rem">${e.sigla}</span></div><div class="card-val" style="font-size:1rem;color:var(--emp-${e.cor})">${fmtR(tot)}</div><div class="card-sub">${itensEmp.length} item(ns)</div></div>`;
   }).join('');
-  const fornecedorCards = [...new Set(lista.map(c=>c.forn).filter(Boolean))].sort().slice(0,8).map(f=>{
-    const itens=f?lista.filter(c=>c.forn===f):[];
-    const tot=itens.reduce((s,c)=>s+c.qtd*(c.val||0),0);
-    const qtd=itens.reduce((s,c)=>s+c.qtd,0);
+  const fornecedorCards = [...new Set(lista.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort().slice(0,8).map(f=>{
+    const itens=f?lista.filter(c=>(c.fornecedor||c.forn)===f):[];
+    const tot=itens.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
+    const qtd=itens.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0),0);
     return `<div class="card"><div class="card-lbl" style="color:var(--teal)">${f}</div><div class="card-val cv-g" style="font-size:1rem">${fmtR(tot)}</div><div class="card-sub">${itens.length} itens · ${qtd.toLocaleString()} un</div></div>`;
   }).join('');
   const el=document.getElementById('est-summary');
   if(el) el.innerHTML=`
-    <div class="card"><div class="card-lbl">Total de Itens</div><div class="card-val cv-a">${totalItens}</div><div class="card-sub">${lista.reduce((s,c)=>s+c.qtd,0).toLocaleString()} unidades</div></div>
+    <div class="card"><div class="card-lbl">Total de Itens</div><div class="card-val cv-a">${totalItens}</div><div class="card-sub">${lista.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0),0).toLocaleString()} unidades</div></div>
     <div class="card"><div class="card-lbl">Valor em Estoque</div><div class="card-val cv-g" style="font-size:1.1rem">${fmtR(totalVal)}</div></div>
     <div class="card"><div class="card-lbl">⚠ Estoque Baixo</div><div class="card-val cv-r">${baixoEst}</div><div class="card-sub">abaixo do mínimo</div></div>
     <div class="card"><div class="card-lbl">● Sem Estoque</div><div class="card-val cv-r">${semEst}</div></div>
     ${empresaCards}
     ${fornecedorCards}`;
 
-  const fornColors={
-    'FAPOLPA':'var(--accent)',
-    'ADAMI':'var(--green)',
-    'KLABIN':'var(--yellow)',
-    'TROMBINI':'var(--purple)',
-    'BRAGAGNOLO':'var(--orange)'
-  };
-  const fornColor=(f)=>fornColors[String(f||'').toUpperCase()]||'var(--teal)';
-  renderTabelaChapas(lista);
+  const wrap = document.getElementById('est-table-wrap');
+  if(!wrap) return;
+  const fornSel = document.getElementById('ef-fornecedor');
+  if(fornSel && !fornFil){
+    const fornSet = [...new Set((ESTOQUE||[]).map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
+    fornSel.innerHTML = '<option value="">🏭 Fornecedor</option>' + fornSet.map(f=>`<option value="${escAttr(String(f).toLowerCase())}">${escH(f)}</option>`).join('');
+  }
+
+  if(lista.length===0){
+    wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum item encontrado.</div>';
+  } else {
+    const grupos = {};
+    lista.forEach(c=>{
+      const cat = c.categoria || 'Sem Categoria';
+      if(!grupos[cat]) grupos[cat]=[];
+      grupos[cat].push(c);
+    });
+    wrap.innerHTML = Object.entries(grupos).map(([cat, itens]) => `
+      <div style="margin-bottom:20px">
+        <div onclick="toggleGrupoEstoque('grp-${escAttr(cat)}')"
+          style="background:var(--bg3);padding:10px 14px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-weight:bold;color:var(--accent)">📦 ${escH(cat)}</span>
+          <span style="font-size:12px;color:var(--text2)">${itens.length} itens | Total: ${fmtR(itens.reduce((s,i)=>s+(Number(i.valor_unitario??i.val??0)*Number(i.quantidade??i.qtd??0)),0))}</span>
+        </div>
+        <div id="grp-${escAttr(cat)}">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:var(--bg3)">
+              <th style="padding:8px;text-align:left">NOME/USO</th>
+              <th style="padding:8px;color:#4A90D9">NOMENCLATURA</th>
+              <th style="padding:8px;color:#4A90D9">FORNECEDOR</th>
+              <th style="padding:8px;color:#9B59B6">FABRICANTE</th>
+              <th style="padding:8px">TAMANHO</th>
+              <th style="padding:8px">NF</th>
+              <th style="padding:8px;text-align:right">R$/UN</th>
+              <th style="padding:8px;text-align:center">QTD</th>
+              <th style="padding:8px;text-align:right;color:#4CAF50">TOTAL R$</th>
+              <th style="padding:8px;text-align:center">AÇÕES</th>
+            </tr></thead>
+            <tbody>
+              ${itens.map(c=>{
+                const qtd = Number(c.quantidade??c.qtd??0);
+                const vunit = Number(c.valor_unitario??c.val??0);
+                const total = vunit*qtd;
+                const baixoEst = qtd < 200;
+                return `<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:8px">${escH(c.nome||'—')}</td>
+                  <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
+                  <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
+                  <td style="padding:8px;color:#9B59B6">${escH(c.qual_cnpj||c.qual||'—')}</td>
+                  <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
+                  <td style="padding:8px;font-size:11px">${escH(c.nf_entrada||c.nf||'—')}</td>
+                  <td style="padding:8px;text-align:right">${fmtR(vunit)}</td>
+                  <td style="padding:8px;text-align:center;color:${baixoEst?'#ff9800':'#4CAF50'}">
+                    ${fmtN(qtd)}${baixoEst?'<br><span style="font-size:10px">⚠ Baixo</span>':''}
+                  </td>
+                  <td style="padding:8px;text-align:right;color:#4CAF50">${fmtR(total)}</td>
+                  <td style="padding:8px;text-align:center;display:flex;gap:4px;justify-content:center">
+                    <button onclick="ajustarQtdChapa('${escAttr(c.id)}',-1)" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">-</button>
+                    <button onclick="ajustarQtdChapa('${escAttr(c.id)}',1)" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">+</button>
+                    <button onclick="editarChapa('${escAttr(c.id)}')" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">✏️</button>
+                    <button onclick="excluirChapa('${escAttr(c.id)}')" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid #f44336;cursor:pointer;color:#f44336">🗑</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join('');
+  }
 
   const histEl=document.getElementById('est-hist');
   if(histEl){
@@ -3049,6 +3102,11 @@ function _renderEstoqueBase(){
       }).join('');
     }
   }
+}
+
+function toggleGrupoEstoque(id) {
+  const el = document.getElementById(id);
+  if(el) el.style.display = el.style.display==='none' ? '' : 'none';
 }
 
 async function carregarHistoricoEstoque(){
@@ -3197,6 +3255,51 @@ function apagarMovEstoque(idx){
   autoSaveTrigger(); renderEstoque(); toast('🗑 Movimentação apagada','var(--orange)');
 }
 
+function calcTotalChapa() {
+  const qtd = Number(document.getElementById('chapa-quantidade')?.value||0);
+  const vunit = Number(document.getElementById('chapa-valor-unitario')?.value||0);
+  const total = qtd * vunit;
+  const el = document.getElementById('chapa-total');
+  if(el) el.value = fmtR(total);
+}
+
+function abrirModalNovaChapa(id) {
+  const c = id ? (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id) : null;
+  document.getElementById('chapa-edit-id').value = c?.id||'';
+  document.getElementById('chapa-categoria').value = c?.categoria||'Estoque Simples';
+  document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
+  document.getElementById('chapa-fornecedor').value = c?.fornecedor||c?.forn||'';
+  document.getElementById('chapa-qual-cnpj').value = c?.qual_cnpj||c?.cnpj||c?.qual||'';
+  document.getElementById('chapa-tamanho').value = c?.tamanho||c?.tam||'';
+  document.getElementById('chapa-nome').value = c?.nome||'';
+  document.getElementById('chapa-nf').value = c?.nf_entrada||c?.nf||'';
+  document.getElementById('chapa-quantidade').value = c?.quantidade??c?.qtd??0;
+  document.getElementById('chapa-valor-unitario').value = c?.valor_unitario??c?.val??0;
+  document.getElementById('chapa-data-entrada').value = c?.data_entrada||'';
+  document.getElementById('chapa-obs').value = c?.observacao||c?.obs||'';
+  document.getElementById('chapa-modal-titulo').textContent = c ? 'Editar Chapa' : 'Nova Chapa';
+  calcTotalChapa();
+  document.getElementById('modal-nova-chapa').style.display = 'flex';
+}
+
+function editarChapa(id) { abrirModalNovaChapa(id); }
+
+async function ajustarQtdChapa(id, delta) {
+  const c = (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id);
+  if(!c) return;
+  const atual = Number(c.quantidade??c.qtd??0);
+  const novaQtd = Math.max(0, atual + Number(delta||0));
+  const r = await api('PATCH','/chapas_estoque/'+encodeURIComponent(id), { quantidade: novaQtd });
+  if(r && r.error){toast('Erro: '+r.error,'var(--red)');return;}
+  await api('POST','/historico_acoes',{
+    tipo_acao:'estoque_ajuste',
+    descricao:'Chapa '+(c.nomenclatura||c.nom||'')+' '+(c.tamanho||c.tam||'')+': '+(delta>0?'+':'')+(delta)+' ('+atual+'→'+novaQtd+')',
+    usuario: CURRENT_USER?.nome||'sistema'
+  });
+  await carregarChapas();
+  renderEstoque();
+}
+
 function abrirEditarChapa(id){
   const c=getCh(id); if(!c) return;
   // Populate modal with existing data
@@ -3278,18 +3381,39 @@ function chToggleVinco(){
   if(!v){const e=document.getElementById('ch-vincos');if(e)e.value='';}
 }
 function abrirModalChapa(){
-  ['ch-forn','ch-nom','ch-tam','ch-nome','ch-cnpj','ch-nf','ch-qtd','ch-val','ch-min','ch-comp','ch-larg','ch-vincos'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
-  const vsel=document.getElementById('ch-vincada');if(vsel)vsel.value='0';
-  const esel=document.getElementById('ch-emp');if(esel)esel.value=EMP_FILTRO||'';
-  chToggleVinco();
-  // Reset button
-  const btn=document.querySelector('#modal-chp .modal-footer .btn-accent');
-  if(btn){btn.textContent='Salvar';btn.onclick=salvarChapa;}
-  const h2=document.querySelector('#modal-chp h2');
-  if(h2) h2.textContent='📦 Cadastrar Chapa';
-  abrir('modal-chp');
+  abrirModalNovaChapa();
 }
 async function salvarChapa(){
+  const modalNova = document.getElementById('modal-nova-chapa');
+  if(modalNova && modalNova.style.display === 'flex'){
+    const id = document.getElementById('chapa-edit-id')?.value||'';
+    const nomenclatura = document.getElementById('chapa-nomenclatura')?.value?.trim()||'';
+    const fornecedor = document.getElementById('chapa-fornecedor')?.value?.trim()||'';
+    if(!nomenclatura||!fornecedor){toast('Nomenclatura e Fornecedor obrigatórios','var(--red)');return;}
+    const payload = {
+      categoria: document.getElementById('chapa-categoria')?.value||'Estoque Simples',
+      nomenclatura, fornecedor,
+      qual_cnpj: document.getElementById('chapa-qual-cnpj')?.value?.trim()||'',
+      tamanho: document.getElementById('chapa-tamanho')?.value?.trim()?.toUpperCase()||'',
+      nome: document.getElementById('chapa-nome')?.value?.trim()||'',
+      nf: document.getElementById('chapa-nf')?.value?.trim()||'',
+      nf_entrada: document.getElementById('chapa-nf')?.value?.trim()||'',
+      quantidade: Number(document.getElementById('chapa-quantidade')?.value||0),
+      valor_unitario: Number(document.getElementById('chapa-valor-unitario')?.value||0),
+      data_entrada: document.getElementById('chapa-data-entrada')?.value||null,
+      observacao: document.getElementById('chapa-obs')?.value?.trim()||'',
+      emp_id: EMP_FILTRO||'E1',
+    };
+    const r = id
+      ? await api('PUT','/chapas_estoque/'+encodeURIComponent(id),payload)
+      : await api('POST','/chapas_estoque',payload);
+    if(r&&r.error){toast('Erro: '+r.error,'var(--red)');return;}
+    toast('Chapa salva ✓','var(--green)');
+    modalNova.style.display='none';
+    await carregarChapas();
+    renderEstoque();
+    return;
+  }
   const forn=document.getElementById('ch-forn').value.trim();
   const nom=document.getElementById('ch-nom').value.trim();
   const nome=document.getElementById('ch-nome').value.trim();
@@ -6671,6 +6795,12 @@ function aplicarPermissoes(permissoes, perfil) {
     const btn = document.getElementById('btn-nova-of');
     if(btn) btn.style.display = '';
   }
+  if(perms.includes('estoque_chapas')) {
+    const btn = document.getElementById('btn-nova-chapa');
+    if(btn) btn.style.display = '';
+    const rst = document.getElementById('btn-reset-estoque');
+    if(rst) rst.style.display = '';
+  }
 }
 
 function temPermPagina(paginaId){
@@ -7130,24 +7260,51 @@ function normalizeOrc(r){
   };
 }
 function normalizeEst(r){
+  const categoria = r.categoria ?? 'Estoque Simples';
+  const fornecedor = r.fornecedor ?? r.forn ?? r.fornecedor_nome ?? r.fornecedorName ?? '';
+  const nomenclatura = r.nomenclatura ?? r.nom ?? r.codigo ?? r.cod ?? r.tipo_papel ?? r.tipoPapel ?? '';
+  const tamanho = r.tamanho ?? r.tam ?? '';
+  const nome = r.nome ?? r.descricao ?? '';
+  const qual_cnpj = r.qual_cnpj ?? r.cnpj ?? '';
+  const quantidade = r.quantidade!=null ? r.quantidade : (r.qtd!=null ? r.qtd : (r.quantidade_atual!=null ? r.quantidade_atual : r.saldo));
+  const valor_unitario = r.valor_unitario!=null ? r.valor_unitario : (r.val!=null ? r.val : r.custo_unitario);
+  const estoque_minimo = r.estoque_minimo!=null ? r.estoque_minimo : (r.min!=null ? r.min : r.quantidade_minima);
+  const data_entrada = r.data_entrada ?? null;
+  const nf_entrada = r.nf_entrada ?? r.nf ?? '';
+  const placa_veiculo = r.placa_veiculo ?? '';
+  const responsavel = r.responsavel ?? '';
+  const observacao = r.observacao ?? r.observacoes ?? r.obs ?? '';
   return {
     id:r.id,
-    forn:r.forn||r.fornecedor||r.fornecedor_nome||r.fornecedorName||'',
-    nom:r.nomenclatura||r.nom||r.codigo||r.cod||r.tipo_papel||r.tipoPapel||'',
-    tam:r.tam||r.tamanho||'',
+    categoria,
+    fornecedor,
+    nomenclatura,
+    tamanho,
+    forn:fornecedor,
+    nom:nomenclatura,
+    tam:tamanho,
     comp:r.comp!=null?r.comp:(r.comprimento_mm!=null?r.comprimento_mm:r.comprimento),
     larg:r.larg!=null?r.larg:(r.largura_mm!=null?r.largura_mm:r.largura),
-    nome:r.nome||r.descricao||'',
+    nome,
     qual:r.qual||r.qualidade||r.tipo_papel||r.tipoPapel||'',
-    cnpj:r.qual_cnpj||r.cnpj||'',
-    nf:r.nf||'',
-    qtd:r.quantidade!=null?r.quantidade:(r.qtd!=null?r.qtd:(r.quantidade_atual!=null?r.quantidade_atual:r.saldo)),
-    val:r.val!=null?r.val:r.valor_unitario!=null?r.valor_unitario:r.custo_unitario,
-    min:r.estoque_minimo!=null?r.estoque_minimo:(r.min!=null?r.min:r.quantidade_minima),
+    qual_cnpj,
+    cnpj:qual_cnpj,
+    nf:r.nf||nf_entrada,
+    nf_entrada,
+    data_entrada,
+    placa_veiculo,
+    responsavel,
+    observacao,
+    obs:observacao,
+    qtd:quantidade,
+    quantidade,
+    val:valor_unitario,
+    valor_unitario,
+    min:estoque_minimo,
+    estoque_minimo,
     valor_total:r.valor_total!=null?r.valor_total:(r.total!=null?r.total:r.vtot),
     vincada:!!(r.vincada||r.vincada===true),
     vincos:r.vincos||'',
-    obs:r.obs||'',
     empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
   };
 }
@@ -7309,7 +7466,8 @@ async function carregarCliches(){
 async function carregarChapas(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/chapas_estoque'+empParam);
-  if(r && r.ok && r.data && r.data.length) ESTOQUE = r.data.map(normalizeEst);
+  const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+  if(rows && rows.length) ESTOQUE = rows.map(normalizeEst);
   return r;
 }
 
@@ -7675,7 +7833,10 @@ async function syncFromServerSilent(){
     let mudou = false;
     if(ofs.ok && ofs.data){ OFs = ofs.data.map(normalizeOF); mudou = true; }
     if(clis.ok && clis.data){ CLIENTES = clis.data.map(normalizeCli); mudou = true; }
-    if(est.ok && est.data){ ESTOQUE = est.data.map(normalizeEst); mudou = true; }
+    {
+      const rows = (est && est.ok && Array.isArray(est.data)) ? est.data : (Array.isArray(est) ? est : null);
+      if(rows){ ESTOQUE = rows.map(normalizeEst); mudou = true; }
+    }
     if(aps.ok && aps.data){ APONTAMENTOS = aps.data.map(normalizeAp); mudou = true; }
     if(cmp.ok && cmp.data){ COMPRAS = cmp.data.map(normalizeCmp); mudou = true; }
     if(orcs.ok && orcs.data){ ORCAMENTOS = orcs.data.map(normalizeOrc); mudou = true; }
@@ -8350,7 +8511,8 @@ async function executarResetChapas(){
   let totalApi = null;
   try{
     const g = await api('GET','/chapas_estoque');
-    if(g && g.ok && Array.isArray(g.data)) totalApi = g.data.length;
+    if(Array.isArray(g)) totalApi = g.length;
+    else if(g && g.ok && Array.isArray(g.data)) totalApi = g.data.length;
   }catch(e){}
 
   if(out){
@@ -12264,7 +12426,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
     <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar Excel</button>
     <button id="btn-reset-estoque" class="btn btn-red btn-sm" onclick="abrirModalResetChapas()">🧹 Resetar Estoque</button>
-    <button class="btn btn-accent" onclick="abrirModalChapa()">＋ Nova Chapa</button>
+    <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body">
@@ -12279,19 +12441,33 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
-      <div id="estoque-filtros" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center">
-        <button class="btn btn-sm" onclick="estoqueFiltrar('todos')" id="ef-todos" style="background:var(--accent)">Todos</button>
-        <select id="ef-fornecedor" onchange="estoqueFiltrar('fornecedor')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
-          <option value="">Por Fornecedor</option>
+      <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center">
+        <select id="ef-categoria" onchange="_renderEstoqueBase()"
+          style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border)">
+          <option value="">📦 Todas as categorias</option>
+          <option value="Estoque Simples">Estoque Simples</option>
+          <option value="Estoque Duplo">Estoque Duplo</option>
+          <option value="Estoque Duplo Col.8">Estoque Duplo Col.8</option>
+          <option value="Estoque Simples Col.5">Estoque Simples Col.5</option>
+          <option value="Gran Mestri">Gran Mestri</option>
+          <option value="Caixas Antigas Gran Mestri">Caixas Antigas Gran Mestri</option>
+          <option value="Caixas Vincadas">Caixas Vincadas</option>
         </select>
-        <select id="ef-fabricante" onchange="estoqueFiltrar('fabricante')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
-          <option value="">Por Fabricante</option>
+        <select id="ef-fornecedor" onchange="_renderEstoqueBase()"
+          style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border)">
+          <option value="">🏭 Fornecedor</option>
         </select>
-        <select id="ef-nomenclatura" onchange="estoqueFiltrar('nomenclatura')" style="padding:4px 8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
-          <option value="">Por Nomenclatura</option>
-        </select>
-        <button class="btn btn-sm btn-warning" onclick="estoqueFiltrar('baixo')" style="background:#ff9800;color:#000">⚠ Baixo Estoque</button>
-        <input id="ef-busca" type="text" placeholder="🔍 Buscar..." oninput="estoqueFiltrar('busca')" style="padding:4px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
+        <button onclick="estoqueFiltrar('baixo')" id="ef-baixo"
+          style="padding:6px 12px;border-radius:6px;background:#ff9800;color:#000;border:none;cursor:pointer;font-size:12px">
+          ⚠ Baixo Estoque
+        </button>
+        <input id="ef-busca" type="text" placeholder="🔍 Buscar nome, nomenclatura, tamanho..."
+          oninput="_renderEstoqueBase()"
+          style="padding:6px 12px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);min-width:220px;flex:1">
+        <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa"
+          style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500">
+          + Nova Chapa
+        </button>
       </div>
       <div id="est-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
@@ -13504,6 +13680,49 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent" onclick="salvarChapa()">Salvar Chapa</button>
   </div>
 </div></div>
+
+<div id="modal-nova-chapa" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:12px;padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto">
+    <h3 id="chapa-modal-titulo" style="margin:0 0 16px">Nova Chapa</h3>
+    <input type="hidden" id="chapa-edit-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label style="font-size:12px">Categoria *</label>
+        <select id="chapa-categoria" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+          <option>Estoque Simples</option><option>Estoque Duplo</option>
+          <option>Estoque Duplo Col.8</option><option>Estoque Simples Col.5</option>
+          <option>Gran Mestri</option><option>Caixas Antigas Gran Mestri</option>
+          <option>Caixas Vincadas</option>
+        </select></div>
+      <div><label style="font-size:12px">Nomenclatura *</label>
+        <input id="chapa-nomenclatura" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Fornecedor *</label>
+        <input id="chapa-fornecedor" type="text" list="lista-fornecedores-chapa" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+        <datalist id="lista-fornecedores-chapa"><option value="ADAMI"><option value="FAPOLPA"><option value="KLABIN"><option value="TROMBINI"><option value="BRAGAGNOLO"></datalist></div>
+      <div><label style="font-size:12px">Fabricante (qual_cnpj)</label>
+        <input id="chapa-qual-cnpj" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Tamanho (ex: 1240X980)</label>
+        <input id="chapa-tamanho" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Nome/Uso</label>
+        <input id="chapa-nome" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">NF</label>
+        <input id="chapa-nf" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Quantidade *</label>
+        <input id="chapa-quantidade" type="number" min="0" oninput="calcTotalChapa()" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Valor Unitário (R$)</label>
+        <input id="chapa-valor-unitario" type="number" step="0.00001" min="0" oninput="calcTotalChapa()" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Total R$ (automático)</label>
+        <input id="chapa-total" type="text" readonly style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:#4CAF50;border:1px solid var(--border)"></div>
+      <div><label style="font-size:12px">Data de Entrada</label>
+        <input id="chapa-data-entrada" type="date" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="grid-column:span 2"><label style="font-size:12px">Observação</label>
+        <input id="chapa-obs" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button onclick="document.getElementById('modal-nova-chapa').style.display='none'" style="padding:8px 16px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer">Cancelar</button>
+      <button onclick="salvarChapa()" style="padding:8px 16px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500">Salvar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Entrada estoque -->
 <div class="modal-overlay" id="modal-ent">
