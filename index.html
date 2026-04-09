@@ -4288,8 +4288,21 @@ function abrirFornecedor(id){abrirModalFornecedor(id);}
 function editarFornecedor(id){abrirModalFornecedor(id);}
 
 async function salvarFornecedor(){
-  const nome = document.getElementById('forn-e-nome')?.value?.trim() || '';
-  if (!nome) { toast('Informe o nome do fornecedor', 'var(--red)'); return; }
+  const modal = document.getElementById('modal-fornecedor') || document.getElementById('modal-forn') || null;
+  const nomeEl =
+    document.getElementById('forn-e-nome') ||
+    (modal ? modal.querySelector('#forn-e-nome') : null) ||
+    document.getElementById('forn-nome') ||
+    document.getElementById('f-forn-nome') ||
+    (modal ? (modal.querySelector('input[placeholder*="Papel Sul"]') || modal.querySelector('input[id*="nome"]')) : null);
+  const nome = nomeEl ? String(nomeEl.value || '').trim() : '';
+  console.log('[FORN] nomeEl:', nomeEl, '| nome:', nome);
+  if (!nome) {
+    toast('Informe o nome do fornecedor', 'var(--red)');
+    if(!nomeEl) toast('Campo do nome não encontrado (forn-e-nome)', 'var(--orange)');
+    if(nomeEl && typeof nomeEl.focus === 'function') nomeEl.focus();
+    return;
+  }
 
   const id = document.getElementById('forn-edit-id')?.value?.trim() || '';
   const empVal = document.getElementById('forn-e-emp')?.value || EMP_FILTRO || 'E1';
@@ -4317,10 +4330,7 @@ async function salvarFornecedor(){
   if (r && r.error) { toast('Erro: ' + r.error, 'var(--red)'); return; }
   toast('Fornecedor salvo ✓', 'var(--green)');
 
-  const modal = document.getElementById('modal-fornecedor') ||
-                document.getElementById('ch-forn') ||
-                document.querySelector('[id*="forn"][id*="modal"]');
-  if (modal) modal.style.display = 'none';
+  if(document.getElementById('modal-fornecedor')) fechar('modal-fornecedor');
   await carregarFornecedores();
 }
 
