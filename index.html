@@ -2868,7 +2868,8 @@ async function salvarEdicaoCliente(id){
 }
 async function salvarCliente() {
   const idEl = document.getElementById('cli-id');
-  const id = (idEl ? idEl.value : '').trim();
+  let id = (idEl ? idEl.value : '').trim();
+  if(id === 'undefined' || id === 'null') id = '';
   const nomeEl = document.getElementById('cli-nome') || document.getElementById('cl-nome');
   const nome = nomeEl ? nomeEl.value.trim() : '';
   if (!nome) { toast('Informe o nome', 'var(--red)'); return; }
@@ -2957,142 +2958,61 @@ function estOrdenar(campo){
 }
 
 // ===================== ESTOQUE =====================
-function _renderEstoqueBase(){
-  const buscaTop=String((document.getElementById('est-busca')||{}).value||'').toLowerCase().trim();
-  const filFornTop=(document.getElementById('est-fil-forn')||{}).value||'';
-  const filEmpTop=(document.getElementById('est-fil-emp')||{}).value||EMP_FILTRO||'';
-  let lista=[...ESTOQUE];
-  if(buscaTop) lista=lista.filter(c=>[(c.nome||''),(c.fornecedor||c.forn||''),(c.nomenclatura||c.nom||''),(c.tamanho||c.tam||''),(c.qual_cnpj||c.qual||'')].join(' ').toLowerCase().includes(buscaTop));
-  if(filFornTop) lista=lista.filter(c=>(c.fornecedor||c.forn||'')===filFornTop);
-  if(filEmpTop) lista=lista.filter(c=>(c.emp_id||c.empId||'')===filEmpTop);
-  renderEmpBar();
-
-  const catFil = String((document.getElementById('ef-categoria')||{}).value||'').toLowerCase();
-  const fornFil = String((document.getElementById('ef-fornecedor')||{}).value||'').toLowerCase();
-  const busca = String((document.getElementById('ef-busca')||{}).value||'').toLowerCase().trim();
-  const baixo = !!document.getElementById('ef-baixo')?.classList?.contains('ativo');
-  if(catFil) lista=lista.filter(c=>String(c.categoria||'').toLowerCase()===catFil);
-  if(fornFil) lista=lista.filter(c=>String(c.fornecedor||c.forn||'').toLowerCase()===fornFil);
-  if(baixo) lista=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<200);
-  if(busca) lista=lista.filter(c=>[(c.nome||''),(c.nomenclatura||c.nom||''),(c.fornecedor||c.forn||''),(c.tamanho||c.tam||'')].join(' ').toLowerCase().includes(busca));
-
-  // Sort
-  lista.sort((a,b)=>{
-    let va=a[EST_SORT.campo]||0, vb=b[EST_SORT.campo]||0;
-    if(typeof va==='string') va=va.toLowerCase(); if(typeof vb==='string') vb=vb.toLowerCase();
-    return EST_SORT.asc?(va>vb?1:va<vb?-1:0):(va<vb?1:va>vb?-1:0);
-  });
-
-  // Populate fornecedor filter (top bar)
-  const ff=document.getElementById('est-fil-forn');
-  if(ff&&ff.options.length<=1){
-    const forns=[...new Set(ESTOQUE.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
-    forns.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;ff.appendChild(o);});
-  }
-
-  // Summary totals
-  const totalVal=lista.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
-  const totalItens=lista.length;
-  const baixoEst=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<=(Number(c.estoque_minimo??c.min??200))).length;
-  const semEst=lista.filter(c=>(Number(c.quantidade??c.qtd??0))<=0).length;
-  const resolveEmpId=(c)=>{
-    if(c.emp_id||c.empId) return c.emp_id||c.empId;
-    const q=(c.qual_cnpj||c.qual||'').toString().toUpperCase();
-    if(q.includes('ITALY')) return 'E1';
-    if(q.includes('CARTO')) return 'E2';
-    if(q.includes('OESTE')) return 'E3';
-    return '';
-  };
-  const listaComEmp = lista.map(c=>({...c, _empIdCalc: resolveEmpId(c)}));
-  const empresaCards = EMPRESAS.map(e=>{
-    const itensEmp=listaComEmp.filter(c=>c._empIdCalc=== e.id);
-    const tot=itensEmp.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
-    return `<div class="card"><div class="card-lbl"><span class="emp-badge emp-${e.cor}" style="font-size:.55rem">${e.sigla}</span></div><div class="card-val" style="font-size:1rem;color:var(--emp-${e.cor})">${fmtR(tot)}</div><div class="card-sub">${itensEmp.length} item(ns)</div></div>`;
-  }).join('');
-  const fornecedorCards = [...new Set(lista.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort().slice(0,8).map(f=>{
-    const itens=f?lista.filter(c=>(c.fornecedor||c.forn)===f):[];
-    const tot=itens.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0)*Number(c.valor_unitario??c.val??0),0);
-    const qtd=itens.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0),0);
-    return `<div class="card"><div class="card-lbl" style="color:var(--teal)">${f}</div><div class="card-val cv-g" style="font-size:1rem">${fmtR(tot)}</div><div class="card-sub">${itens.length} itens · ${qtd.toLocaleString()} un</div></div>`;
-  }).join('');
-  const el=document.getElementById('est-summary');
-  if(el) el.innerHTML=`
-    <div class="card"><div class="card-lbl">Total de Itens</div><div class="card-val cv-a">${totalItens}</div><div class="card-sub">${lista.reduce((s,c)=>s+Number(c.quantidade??c.qtd??0),0).toLocaleString()} unidades</div></div>
-    <div class="card"><div class="card-lbl">Valor em Estoque</div><div class="card-val cv-g" style="font-size:1.1rem">${fmtR(totalVal)}</div></div>
-    <div class="card"><div class="card-lbl">⚠ Estoque Baixo</div><div class="card-val cv-r">${baixoEst}</div><div class="card-sub">abaixo do mínimo</div></div>
-    <div class="card"><div class="card-lbl">● Sem Estoque</div><div class="card-val cv-r">${semEst}</div></div>
-    ${empresaCards}
-    ${fornecedorCards}`;
-
+function _renderEstoqueBase(chapas) {
+  if (Array.isArray(chapas)) _estoqueBase = chapas;
+  const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
   const wrap = document.getElementById('est-table-wrap');
   if(!wrap) return;
-  const fornSel = document.getElementById('ef-fornecedor');
-  if(fornSel && !fornFil){
-    const fornSet = [...new Set((ESTOQUE||[]).map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
-    fornSel.innerHTML = '<option value="">🏭 Fornecedor</option>' + fornSet.map(f=>`<option value="${escAttr(String(f).toLowerCase())}">${escH(f)}</option>`).join('');
-  }
 
-  if(lista.length===0){
-    wrap.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">Nenhum item encontrado.</div>';
-  } else {
+  const catFil = String(document.getElementById('ef-categoria')?.value || '').trim();
+  const fornFil = String(document.getElementById('ef-fornecedor')?.value || '').trim().toLowerCase();
+  const busca = String(document.getElementById('ef-busca')?.value || '').trim().toLowerCase();
+  const baixo = !!document.getElementById('ef-baixo')?.classList?.contains('ativo');
+
+  let filtrada = lista.filter(c => {
+    const cat = String((c.categoria || 'Estoque Simples')).trim();
+    if(catFil && cat !== catFil) return false;
+    const forn = String(c.fornecedor || c.forn || '');
+    if(fornFil && !forn.toLowerCase().includes(fornFil)) return false;
+    const qtd = Number(c.quantidade ?? c.qtd ?? 0) || 0;
+    if(baixo && qtd >= 200) return false;
+    if(busca) {
+      const txt = [(c.nome||''),(c.nomenclatura||c.nom||''),forn,(c.tamanho||c.tam||'')].join(' ').toLowerCase();
+      if(!txt.includes(busca)) return false;
+    }
+    return true;
+  });
+
+  filtrada.sort((a,b)=>{
+    const ca = String((a.categoria||'Estoque Simples')).trim().toLowerCase();
+    const cb = String((b.categoria||'Estoque Simples')).trim().toLowerCase();
+    if(ca !== cb) return ca > cb ? 1 : -1;
+    const fa = String(a.fornecedor||a.forn||'').trim().toLowerCase();
+    const fb = String(b.fornecedor||b.forn||'').trim().toLowerCase();
+    if(fa !== fb) return fa > fb ? 1 : -1;
+    const na = String(a.nomenclatura||a.nom||'').trim().toLowerCase();
+    const nb = String(b.nomenclatura||b.nom||'').trim().toLowerCase();
+    return na > nb ? 1 : na < nb ? -1 : 0;
+  });
+
+  if(filtrada.length === 0) {
+    wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum item encontrado.</div>';
+  } else if(!catFil) {
     const grupos = {};
-    lista.forEach(c=>{
-      const cat = c.categoria || 'Estoque Simples';
-      if(!grupos[cat]) grupos[cat]=[];
+    filtrada.forEach(c => {
+      const cat = String((c.categoria || 'Estoque Simples')).trim();
+      if(!grupos[cat]) grupos[cat] = [];
       grupos[cat].push(c);
     });
-    wrap.innerHTML = Object.entries(grupos).map(([cat, itens]) => `
-      <div style="margin-bottom:20px">
-        <div onclick="toggleGrupoEstoque('${escAttr(estoqueGrupoId(cat))}')"
-          style="background:var(--bg3);padding:10px 14px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-weight:bold;color:var(--accent)">📦 ${escH(cat)}</span>
-          <span style="font-size:12px;color:var(--text2)">${itens.length} itens | Total: ${fmtR(itens.reduce((s,i)=>s+(Number(i.valor_unitario??i.val??0)*Number(i.quantidade??i.qtd??0)),0))}</span>
-        </div>
-        <div id="${escAttr(estoqueGrupoId(cat))}">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="background:var(--bg3)">
-              <th style="padding:8px;text-align:left">NOME/USO</th>
-              <th style="padding:8px;color:#4A90D9">NOMENCLATURA</th>
-              <th style="padding:8px;color:#4A90D9">FORNECEDOR</th>
-              <th style="padding:8px;color:#9B59B6">FABRICANTE</th>
-              <th style="padding:8px">TAMANHO</th>
-              <th style="padding:8px">NF</th>
-              <th style="padding:8px;text-align:right">R$/UN</th>
-              <th style="padding:8px;text-align:center">QTD</th>
-              <th style="padding:8px;text-align:right;color:#4CAF50">TOTAL R$</th>
-              <th style="padding:8px;text-align:center">AÇÕES</th>
-            </tr></thead>
-            <tbody>
-              ${itens.map(c=>{
-                const qtd = Number(c.quantidade??c.qtd??0);
-                const vunit = Number(c.valor_unitario??c.val??0);
-                const total = vunit*qtd;
-                const baixoEst = qtd < 200;
-                return `<tr style="border-bottom:1px solid var(--border)">
-                  <td style="padding:8px">${escH(c.nome||'—')}</td>
-                  <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
-                  <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
-                  <td style="padding:8px;color:#9B59B6">${escH(c.qual_cnpj||c.qual||'—')}</td>
-                  <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
-                  <td style="padding:8px;font-size:11px">${escH(c.nf_entrada||c.nf||'—')}</td>
-                  <td style="padding:8px;text-align:right">${fmtR(vunit)}</td>
-                  <td style="padding:8px;text-align:center;color:${baixoEst?'#ff9800':'#4CAF50'}">
-                    ${fmtN(qtd)}${baixoEst?'<br><span style="font-size:10px">⚠ Baixo</span>':''}
-                  </td>
-                  <td style="padding:8px;text-align:right;color:#4CAF50">${fmtR(total)}</td>
-                  <td style="padding:8px;text-align:center;display:flex;gap:4px;justify-content:center">
-                    <button onclick="ajustarQtdChapa('${escAttr(c.id)}',-1)" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">-</button>
-                    <button onclick="ajustarQtdChapa('${escAttr(c.id)}',1)" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">+</button>
-                    <button onclick="editarChapa('${escAttr(c.id)}')" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">✏️</button>
-                    <button onclick="excluirChapa('${escAttr(c.id)}')" style="padding:3px 8px;border-radius:4px;background:var(--bg3);border:1px solid #f44336;cursor:pointer;color:#f44336">🗑</button>
-                  </td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    `).join('');
+    wrap.innerHTML = Object.entries(grupos).map(([cat, itens]) => renderGrupoEstoque(cat, itens)).join('');
+  } else {
+    wrap.innerHTML = renderTabelaEstoque(filtrada);
+  }
+
+  const fornSel = document.getElementById('ef-fornecedor');
+  if(fornSel && fornSel.options.length <= 1) {
+    const fornSet = [...new Set(lista.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
+    fornSel.innerHTML = '<option value="">🏭 Fornecedor</option>' + fornSet.map(f=>`<option value="${escAttr(String(f).toLowerCase())}">${escH(f)}</option>`).join('');
   }
 
   const histEl=document.getElementById('est-hist');
@@ -3120,6 +3040,68 @@ function _renderEstoqueBase(){
 function estoqueGrupoId(cat){
   const s = String(cat||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
   return 'grp-' + s.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+
+function renderGrupoEstoque(cat, itens) {
+  const totalCat = (itens||[]).reduce((s,c)=>s+Number(c.valor_unitario??c.val??0)*Number(c.quantidade??c.qtd??0),0);
+  const id = estoqueGrupoId(cat);
+  return `<div style="margin-bottom:16px">
+    <div style="background:var(--bg3);padding:10px 14px;border-radius:6px;margin-bottom:6px;display:flex;justify-content:space-between;cursor:pointer"
+      onclick="toggleGrupoEstoque('${escAttr(id)}')">
+      <span style="font-weight:bold;color:var(--accent)">📦 ${escH(cat)}</span>
+      <span style="font-size:12px;color:var(--text2)">${(itens||[]).length} itens | ${fmtR(totalCat)}</span>
+    </div>
+    <div id="${escAttr(id)}">${renderTabelaEstoque(itens)}</div>
+  </div>`;
+}
+
+function renderTabelaEstoque(itens) {
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:var(--bg3)">
+      <th style="padding:8px;text-align:left">NOME/USO</th>
+      <th style="padding:8px;color:#4A90D9">NOMENCLATURA</th>
+      <th style="padding:8px;color:#4A90D9">FORNECEDOR</th>
+      <th style="padding:8px;color:#9B59B6">FABRICANTE</th>
+      <th style="padding:8px">TAMANHO (MM)</th>
+      <th style="padding:8px">N° NF</th>
+      <th style="padding:8px;text-align:right">R$/UN</th>
+      <th style="padding:8px;text-align:center">QUANTIDADE</th>
+      <th style="padding:8px;text-align:right;color:#4CAF50">TOTAL R$</th>
+      <th style="padding:8px">VINCOS</th>
+      <th style="padding:8px;text-align:center">AÇÕES</th>
+    </tr></thead>
+    <tbody>
+      ${(itens||[]).map(c => {
+        const qtd = Number(c.quantidade??c.qtd??0) || 0;
+        const vunit = Number(c.valor_unitario??c.val??0) || 0;
+        const total = vunit*qtd;
+        const baixo = qtd < 200;
+        const nf = c.nf_entrada || c.nf || '—';
+        return `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:8px">${escH(c.nome||'—')}</td>
+          <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
+          <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
+          <td style="padding:8px;color:#9B59B6">${escH(c.qual_cnpj||c.qual||'—')}</td>
+          <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
+          <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
+          <td style="padding:8px;text-align:right">${fmtR(vunit)}</td>
+          <td style="padding:8px;text-align:center;color:${baixo?'#ff9800':'#4CAF50'}">
+            ${fmtN(qtd)}${baixo?'<br><span style="font-size:10px">⚠ Baixo</span>':''}
+          </td>
+          <td style="padding:8px;text-align:right;color:#4CAF50;font-weight:500">${fmtR(total)}</td>
+          <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(c.vincos||c.vinculos||'—')}</td>
+          <td style="padding:8px;text-align:center">
+            <div style="display:flex;gap:3px;justify-content:center">
+              <button onclick="ajustarQtdChapa('${escAttr(c.id)}',-1)" title="Remover" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;color:#f44336">—</button>
+              <button onclick="ajustarQtdChapa('${escAttr(c.id)}',1)" title="Adicionar" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;color:#4CAF50">+</button>
+              <button onclick="editarChapa('${escAttr(c.id)}')" title="Editar" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer">▼</button>
+              <button onclick="excluirChapa('${escAttr(c.id)}')" title="Excluir" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid #f44336;cursor:pointer;color:#f44336">🗑</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
 }
 
 function toggleGrupoEstoque(id) {
@@ -7278,7 +7260,7 @@ function normalizeOrc(r){
   };
 }
 function normalizeEst(r){
-  const categoria = r.categoria ?? 'Estoque Simples';
+  const categoria = (r.categoria != null && String(r.categoria).trim() !== '') ? r.categoria : 'Estoque Simples';
   const fornecedor = r.fornecedor ?? r.forn ?? r.fornecedor_nome ?? r.fornecedorName ?? '';
   const nomenclatura = r.nomenclatura ?? r.nom ?? r.codigo ?? r.cod ?? r.tipo_papel ?? r.tipoPapel ?? '';
   const tamanho = r.tamanho ?? r.tam ?? '';
