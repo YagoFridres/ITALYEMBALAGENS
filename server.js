@@ -1836,37 +1836,56 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    console.log('[chapas_estoque] iniciando query...');
+
+    let { data, error } = await supabase
       .from('chapas_estoque')
       .select('*')
-      .order('fornecedor', { ascending: true })
-      .order('nomenclatura', { ascending: true });
+      .limit(5);
+
     if (error) {
-      console.error('Erro chapas_estoque:', error);
-      return res.status(500).json({ error: error.message, details: error.details });
+      console.error('[chapas_estoque] erro no select*:', JSON.stringify(error));
+
+      const r2 = await supabase
+        .from('chapas_estoque')
+        .select('id, nome, fornecedor, nomenclatura, tamanho, quantidade, valor_unitario, nf, qual_cnpj')
+        .limit(5);
+
+      if (r2.error) {
+        console.error('[chapas_estoque] erro nas colunas basicas:', JSON.stringify(r2.error));
+        return res.status(500).json({
+          error: r2.error.message,
+          hint: r2.error.hint,
+          details: r2.error.details
+        });
+      }
+
+      data = r2.data;
+      error = null;
+      console.log('[chapas_estoque] colunas basicas OK:', data?.length);
     }
-    let rows = data || [];
+
+    const { data: allData, error: allError } = await supabase
+      .from('chapas_estoque')
+      .select('id, nome, fornecedor, nomenclatura, tamanho, quantidade, valor_unitario, nf, qual_cnpj, emp_id')
+      .order('fornecedor')
+      .order('nomenclatura');
+
+    if (allError) {
+      console.error('[chapas_estoque] erro na busca completa:', JSON.stringify(allError));
+      return res.status(500).json({ error: allError.message });
+    }
+
+    let rows = allData || [];
     if (req.query.empId) {
-      const emp = String(req.query.empId).trim();
-      rows = rows.filter(r => (r.qual_cnpj === emp) || (r.emp_id === emp) || (r.empId === emp) || (r.empresa === emp));
+      rows = rows.filter(r => r.emp_id === req.query.empId || r.qual_cnpj === req.query.empId);
     }
-    if (req.query.fornecedor) {
-      const f = String(req.query.fornecedor).toLowerCase();
-      rows = rows.filter(r => String(r.fornecedor||'').toLowerCase().includes(f));
-    }
-    if (req.query.categoria) {
-      const c = String(req.query.categoria);
-      rows = rows.filter(r => (r.categoria||'') === c);
-    }
-    if (req.query.busca) {
-      const b = String(req.query.busca).toLowerCase();
-      rows = rows.filter(r => [(r.nome||''),(r.nomenclatura||''),(r.fornecedor||''),(r.tamanho||'')].join(' ').toLowerCase().includes(b));
-    }
-    console.log('[chapas_estoque] retornando:', rows.length, 'registros');
+
+    console.log('[chapas_estoque] sucesso, retornando:', rows.length, 'registros');
     return res.json(rows);
   } catch (err) {
-    console.error('Erro geral chapas_estoque:', err.message);
-    return res.status(500).json({ error: String(err.message || err) });
+    console.error('[chapas_estoque] CATCH:', err.message, err.stack?.substring(0, 200));
+    return res.status(500).json({ error: err.message });
   }
 });
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
