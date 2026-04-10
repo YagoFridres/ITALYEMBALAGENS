@@ -7467,7 +7467,11 @@ async function carregarChapas(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/chapas_estoque'+empParam);
   const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
-  if(rows && rows.length) ESTOQUE = rows.map(normalizeEst);
+  const dados = (rows||[]).map(normalizeEst);
+  ESTOQUE = dados;
+  _estoqueBase = dados;
+  try{ popularFiltrosEstoque(dados); }catch(e){}
+  try{ _renderEstoqueBase(dados); }catch(e){}
   return r;
 }
 
@@ -12442,7 +12446,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
       <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
-        <select id="ef-categoria" onchange="_renderEstoqueBase()"
+        <select id="ef-categoria" onchange="console.log('categoria selecionada:', this.value, '| _estoqueBase:', _estoqueBase?.length); _renderEstoqueBase()"
           style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
           <option value="">📦 Todas as categorias</option>
           <option value="Estoque Simples">Estoque Simples</option>
