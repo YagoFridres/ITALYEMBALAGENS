@@ -1834,82 +1834,351 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // CHAPAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
+async function _chapasPreferV2Table() {
+  const tables = ['chapas_estoque_v2', 'chapas_estoque'];
+  let lastErr = null;
+  for (const t of tables) {
+    const { error } = await supabase.from(t).select('id').limit(1);
+    if (!error) return t;
+    lastErr = error;
+    const msg = String(error.message || error);
+    if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+  }
+  return 'chapas_estoque';
+}
+
+function _chapasNormKey(s) {
+  return String(s || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s\-]+/g, '_')
+    .replace(/_+/g, '_');
+}
+
+function _chapasKeyMap(row) {
+  const m = {};
+  Object.keys(row || {}).forEach((k) => { m[_chapasNormKey(k)] = k; });
+  return m;
+}
+
+function _chapasGet(row, km, keys) {
+  for (const k0 of keys) {
+    const k = km[_chapasNormKey(k0)];
+    if (!k) continue;
+    const v = row[k];
+    if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+  }
+  return '';
+}
+
+function _chapasNum(v) {
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function _chapasCanonicalFromAny(row, table) {
+  if (table === 'chapas_estoque_v2') {
+    const qtd = Number(row.quantidade || 0) || 0;
+    const vunit = Number(row.valor_unitario || 0) || 0;
+    const vtot = Number(row.valor_total || 0) || (qtd * vunit);
+    return {
+      id: row.id,
+      fornecedor: row.fornecedor || '',
+      nomenclatura: row.nomenclatura || '',
+      tamanho: row.tamanho || '',
+      nome: row.nome_uso || row.nome || '',
+      qual_cnpj: row.qual_cnpj || row.fabricante || '',
+      nf: row.nf || '',
+      quantidade: qtd,
+      valor_unitario: vunit,
+      valor_total: vtot,
+      categoria: row.categoria || 'Estoque Simples',
+      vincos: row.vincos || '',
+      observacao: row.observacao || '',
+      cliente: row.cliente_nome || row.cliente || '',
+      cliente_id: row.cliente_id || null,
+      riscada: !!row.riscada,
+      risca_desc: row.risca_desc || '',
+      estoque_minimo: Number(row.estoque_minimo || 200) || 200,
+      data_entrada: row.data_entrada || null,
+      emp_id: row.emp_id || '',
+      criado_por: row.criado_por || '',
+      atualizado_por: row.atualizado_por || '',
+      criado_em: row.created_at || row.criado_em || null,
+      atualizado_em: row.updated_at || row.atualizado_em || null,
+    };
+  }
+
+  const km = _chapasKeyMap(row);
+  const fornecedor = _chapasGet(row, km, ['fornecedor', 'forn']);
+  const nomenclatura = _chapasGet(row, km, ['nomenclatura', 'nom', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
+  const nome = _chapasGet(row, km, ['nome_uso', 'nome uso', 'nome', 'name', 'nome_comercial', 'nome comercial', 'descricao', 'desc']) || nomenclatura;
+  const tamanho = _chapasGet(row, km, ['tamanho', 'tam']);
+  const qualCnpj = _chapasGet(row, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj', 'fabricante']);
+  const nf = _chapasGet(row, km, ['nf', 'numero_nf', 'numero nf', 'nota', 'nota_fiscal', 'nota fiscal']);
+  const qtd = _chapasNum(_chapasGet(row, km, ['quantidade', 'qtd', 'saldo']));
+  const vunit = _chapasNum(_chapasGet(row, km, ['valor_unitario', 'valor unitario', 'val', 'vunit', 'rs']));
+  const vtot = _chapasNum(_chapasGet(row, km, ['valor_total', 'valor total', 'total', 'vtot']));
+  const estoqueMin = _chapasNum(_chapasGet(row, km, ['estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima', 'min']));
+  const vincos = _chapasGet(row, km, ['vincos', 'víncos']);
+  const observacao = _chapasGet(row, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
+  const dataEntrada = _chapasGet(row, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
+  const categoria = _chapasGet(row, km, ['categoria']) || 'Estoque Simples';
+  const cliente = _chapasGet(row, km, ['cliente', 'cliente_nome', 'cliente nome']);
+  const riscadaRaw = _chapasGet(row, km, ['riscada', 'riscado', 'ver_real', 'ver real']);
+  const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
+  const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
+  const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
+  const id = _chapasGet(row, km, ['id']);
+  const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
+  const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
+
+  return {
+    id,
+    fornecedor,
+    nomenclatura,
+    tamanho,
+    nome,
+    qual_cnpj: qualCnpj,
+    nf,
+    quantidade: qtd,
+    valor_unitario: vunit,
+    valor_total: vtot || (qtd * vunit),
+    categoria,
+    vincos,
+    observacao,
+    cliente,
+    cliente_id: null,
+    riscada,
+    risca_desc: riscaDesc,
+    estoque_minimo: estoqueMin || 200,
+    data_entrada: dataEntrada || null,
+    emp_id: empId,
+    criado_por: criadoPor,
+    atualizado_por: atualizadoPor,
+    criado_em: row.criado_em || row.created_at || null,
+    atualizado_em: row.atualizado_em || row.updated_at || null,
+  };
+}
+
+function _chapasBool(v) {
+  if (v === true || v === false) return v;
+  const s = String(v ?? '').trim().toLowerCase();
+  if (!s) return false;
+  return s === '1' || s === 'true' || s === 'sim' || s === 'yes' || s === 'y';
+}
+
+function _chapasToNum(v, fallback = 0) {
+  if (v == null || v === '') return fallback;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
+  const s0 = String(v).trim().replace(/R\$/gi, '').replace(/\s+/g, '');
+  const s = s0.includes(',') ? s0.replace(/\./g, '').replace(',', '.') : s0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function _chapasPayloadV2FromBody(b, req, isUpdate) {
+  const payload = {};
+  const set = (k, v) => {
+    if (v === undefined) return;
+    payload[k] = v;
+  };
+
+  const fornecedor = (b.fornecedor ?? b.forn ?? '').toString().trim();
+  const nomenclatura = (b.nomenclatura ?? b.nom ?? b.codigo ?? b.cod ?? '').toString().trim();
+  const tamanho = (b.tamanho ?? b.tam ?? '').toString().trim().toUpperCase();
+  const nomeUso = (b.nome_uso ?? b.nomeUso ?? b.nome ?? b.nome_uso ?? '').toString().trim();
+  const categoria = (b.categoria ?? '').toString().trim() || 'Estoque Simples';
+
+  if (!isUpdate) {
+    if (!fornecedor) throw new Error('Fornecedor obrigatório');
+    if (!nomenclatura) throw new Error('Nomenclatura obrigatória');
+    if (!tamanho) throw new Error('Tamanho obrigatório');
+    if (!nomeUso) throw new Error('Nome/Uso obrigatório');
+    if (!categoria) throw new Error('Categoria obrigatória');
+  }
+
+  if (fornecedor) set('fornecedor', fornecedor);
+  if (nomenclatura) set('nomenclatura', nomenclatura);
+  if (tamanho) set('tamanho', tamanho);
+  if (nomeUso) set('nome_uso', nomeUso);
+  if (categoria) set('categoria', categoria);
+
+  const qualCnpj = (b.qual_cnpj ?? b.qual ?? b.fabricante ?? '').toString().trim();
+  const nf = (b.nf ?? b.nf_entrada ?? '').toString().trim();
+  const vincos = (b.vincos ?? '').toString().trim();
+  const observacao = (b.observacao ?? b.observacoes ?? '').toString().trim();
+  const riscada = _chapasBool(b.riscada);
+  const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
+  const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
+  const dataEntrada = (b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null) || null;
+  const empId = (b.emp_id ?? b.empId ?? '').toString().trim() || (req?.query?.empId ? String(req.query.empId).trim() : '') || 'E1';
+
+  if (qualCnpj !== '') set('qual_cnpj', qualCnpj);
+  if (nf !== '') set('nf', nf);
+  set('riscada', riscada);
+  if (riscaDesc !== '') set('risca_desc', riscaDesc);
+  if (vincos !== '') set('vincos', vincos);
+  if (observacao !== '') set('observacao', observacao);
+  if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
+  if (dataEntrada !== undefined) set('data_entrada', dataEntrada);
+  if (empId !== '') set('emp_id', empId);
+
+  const qtd = b.quantidade != null ? Math.trunc(_chapasToNum(b.quantidade, 0)) : (b.qtd != null ? Math.trunc(_chapasToNum(b.qtd, 0)) : undefined);
+  if (qtd !== undefined) {
+    if (qtd < 0) throw new Error('Quantidade não pode ser negativa');
+    set('quantidade', qtd);
+  }
+
+  const vunit = b.valor_unitario != null ? _chapasToNum(b.valor_unitario, 0) : (b.val != null ? _chapasToNum(b.val, 0) : undefined);
+  if (vunit !== undefined) {
+    if (vunit < 0) throw new Error('Valor unitário inválido');
+    set('valor_unitario', vunit);
+  }
+
+  const clienteId = (b.cliente_id ?? b.clienteId ?? '').toString().trim();
+  const clienteNome = (b.cliente_nome ?? b.clienteNome ?? b.cliente ?? '').toString().trim();
+  if (clienteId) set('cliente_id', clienteId);
+  if (clienteNome) set('cliente_nome', clienteNome);
+  if (!clienteId && clienteNome === '') {
+    if (b.cliente_id === null || b.clienteId === null) set('cliente_id', null);
+    if (b.cliente_nome === null || b.clienteNome === null || b.cliente === null) set('cliente_nome', null);
+  }
+
+  if (!isUpdate) set('criado_por', req?.usuario?.nome || 'sistema');
+  set('atualizado_por', req?.usuario?.nome || 'sistema');
+
+  return payload;
+}
+
+async function _chapasLogAcao(req, tipo, descricao) {
+  const row = {
+    tipo_acao: String(tipo || '').trim().slice(0, 60),
+    descricao: String(descricao || '').trim().slice(0, 300),
+    usuario: req?.usuario?.nome || 'sistema',
+    data_hora: new Date().toISOString(),
+  };
+  try {
+    await supabase.from('historico_acoes').insert([row]);
+  } catch (_) {}
+}
+
+const chapasCsvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (ext !== '.csv') return cb(new Error('Apenas CSV'));
+    return cb(null, true);
+  },
+});
+
+function _chapasParseCsv(text) {
+  const s = String(text || '');
+  const firstLine = (s.split(/\r?\n/)[0] || '');
+  const sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+
+  const rows = [];
+  let row = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = false;
+      } else cur += ch;
+      continue;
+    }
+    if (ch === '"') { inQuotes = true; continue; }
+    if (ch === sep) { row.push(cur); cur = ''; continue; }
+    if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; continue; }
+    if (ch === '\r') continue;
+    cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+
+  const header = (rows.shift() || []).map((h) => String(h || '').trim());
+  const norm = (k) => String(k || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s\-]+/g, '_')
+    .replace(/_+/g, '_');
+
+  const idx = {};
+  header.forEach((h, i) => { idx[norm(h)] = i; });
+
+  const get = (r, keys) => {
+    for (const k of keys) {
+      const i = idx[norm(k)];
+      if (i == null) continue;
+      const v = r[i];
+      if (v != null && String(v).trim() !== '') return v;
+    }
+    return '';
+  };
+
+  const out = [];
+  for (const r of rows) {
+    if (!r || !r.length) continue;
+    const fornecedor = get(r, ['fornecedor', 'forn']);
+    const nomenclatura = get(r, ['nomenclatura', 'nom', 'codigo', 'cod', 'modelo', 'tipo_papel', 'tipo papel']);
+    const tamanho = get(r, ['tamanho', 'tam']);
+    const nomeUso = get(r, ['nome_uso', 'nome uso', 'nome', 'descricao', 'uso']);
+    const qualCnpj = get(r, ['qual_cnpj', 'qual cnpj', 'fabricante', 'cnpj']);
+    const nf = get(r, ['nf', 'nota_fiscal', 'nota fiscal']);
+    const quantidade = get(r, ['quantidade', 'qtd', 'saldo']);
+    const valorUnitario = get(r, ['valor_unitario', 'valor unitario', 'rs/un', 'r$/un', 'val', 'vunit']);
+    const categoria = get(r, ['categoria', 'grupo']);
+    const vincos = get(r, ['vincos']);
+    const observacao = get(r, ['observacao', 'observação', 'obs']);
+    const clienteNome = get(r, ['cliente', 'cliente_nome', 'cliente nome']);
+    const riscada = get(r, ['riscada', 'riscado', 'ja_vem_riscada', 'já vem riscada']);
+    const riscaDesc = get(r, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
+    const estoqueMin = get(r, ['estoque_minimo', 'estoque minimo', 'min']);
+    const dataEntrada = get(r, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados']);
+
+    const item = {
+      fornecedor,
+      nomenclatura,
+      tamanho,
+      nome_uso: nomeUso,
+      qual_cnpj: qualCnpj,
+      nf,
+      quantidade: quantidade,
+      valor_unitario: valorUnitario,
+      categoria,
+      vincos,
+      observacao,
+      cliente_nome: clienteNome,
+      riscada,
+      risca_desc: riscaDesc,
+      estoque_minimo: estoqueMin,
+      data_entrada: dataEntrada,
+    };
+
+    if ([fornecedor, nomenclatura, tamanho, nomeUso].every(v => String(v || '').trim() === '')) continue;
+    out.push(item);
+  }
+
+  return out;
+}
+
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
-    const normalizeKey = (s) => String(s || '')
-      .trim()
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[\s\-]+/g, '_')
-      .replace(/_+/g, '_');
-
-    const buildKeyMap = (row) => {
-      const m = {};
-      Object.keys(row || {}).forEach((k) => { m[normalizeKey(k)] = k; });
-      return m;
-    };
-
-    const getField = (row, keyMap, candidates) => {
-      for (const cand of candidates) {
-        const k = keyMap[normalizeKey(cand)];
-        if (!k) continue;
-        const v = row[k];
-        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
-      }
-      return '';
-    };
-
-    const toNum = (v) => {
-      const n = Number(String(v ?? '').replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
-    };
-
-    const { data, error } = await supabase
-      .from('chapas_estoque')
-      .select('*');
-
+    const table = await _chapasPreferV2Table();
+    const { data, error } = await supabase.from(table).select('*');
     if (error) {
       console.error('[chapas_estoque] erro Supabase:', JSON.stringify(error));
       return res.json([]);
     }
 
-    let rows = (data || []).map((c) => {
-      const km = buildKeyMap(c);
-      const fornecedor = getField(c, km, ['forn', 'fornecedor', 'fornecedor_nome', 'fornecedor name']);
-      const nomenclatura = getField(c, km, ['nom', 'nomenclatura', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
-      const nome = getField(c, km, ['nome', 'name', 'nome_comercial', 'nome comercial', 'descricao', 'desc']) || nomenclatura;
-      const tamanho = getField(c, km, ['tam', 'tamanho']);
-      const qualCnpj = getField(c, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj']);
-      const nf = getField(c, km, ['nf', 'numero_nf', 'numero nf', 'nota', 'nota_fiscal', 'nota fiscal']);
-      const qtd = toNum(getField(c, km, ['qtd', 'quantidade', 'saldo']));
-      const val = toNum(getField(c, km, ['val', 'valor_unitario', 'valor unitario', 'vunit', 'rs']));
-      const min = toNum(getField(c, km, ['min', 'estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima']));
-      const empId = getField(c, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
-      const vincos = getField(c, km, ['vincos', 'víncos']);
-      const observacao = getField(c, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
-      const dataEntrada = getField(c, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
-      const categoria = getField(c, km, ['categoria']) || 'Estoque Simples';
-      const id = getField(c, km, ['id']);
-
-      return {
-        id,
-        nome,
-        fornecedor,
-        nomenclatura,
-        tamanho,
-        qual_cnpj: qualCnpj,
-        nf,
-        quantidade: qtd,
-        valor_unitario: val,
-        estoque_minimo: min,
-        vincos,
-        observacao,
-        data_entrada: dataEntrada,
-        emp_id: empId,
-        categoria,
-      };
-    });
+    let rows = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
 
     if (req.query.empId) {
       const emp = String(req.query.empId).trim();
@@ -1925,16 +2194,46 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     }
     if (req.query.busca) {
       const b = String(req.query.busca).toLowerCase();
-      rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho].join(' ').toLowerCase().includes(b));
+      rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
+    }
+    if (req.query.cliente) {
+      const c = String(req.query.cliente).toLowerCase();
+      rows = rows.filter(r => String(r.cliente || '').toLowerCase().includes(c));
+    }
+    if (req.query.nf) {
+      const n = String(req.query.nf).toLowerCase();
+      rows = rows.filter(r => String(r.nf || '').toLowerCase().includes(n));
+    }
+    if (req.query.nomenclatura) {
+      const n = String(req.query.nomenclatura).toLowerCase();
+      rows = rows.filter(r => String(r.nomenclatura || '').toLowerCase().includes(n));
+    }
+    if (req.query.tamanho) {
+      const t = String(req.query.tamanho).toLowerCase();
+      rows = rows.filter(r => String(r.tamanho || '').toLowerCase().includes(t));
+    }
+    if (req.query.riscadas === '1') rows = rows.filter(r => !!r.riscada);
+    if (req.query.com_vincos === '1') rows = rows.filter(r => String(r.vincos || '').trim() !== '');
+    if (req.query.baixo === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) < (Number(r.estoque_minimo || 200) || 200));
+    if (req.query.sem_estoque === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) <= 0);
+    if (req.query.cliente_id) {
+      const cid = String(req.query.cliente_id).trim();
+      rows = rows.filter(r => String(r.cliente_id || '').trim() === cid);
     }
 
     rows.sort((a,b)=>{
+      const ca = String(a.categoria||'').toLowerCase();
+      const cb = String(b.categoria||'').toLowerCase();
+      if(ca !== cb) return ca > cb ? 1 : -1;
       const fa = String(a.fornecedor||'').toLowerCase();
       const fb = String(b.fornecedor||'').toLowerCase();
       if(fa !== fb) return fa > fb ? 1 : -1;
       const na = String(a.nomenclatura||'').toLowerCase();
       const nb = String(b.nomenclatura||'').toLowerCase();
-      return na > nb ? 1 : na < nb ? -1 : 0;
+      if(na !== nb) return na > nb ? 1 : -1;
+      const ta = String(a.tamanho||'').toLowerCase();
+      const tb = String(b.tamanho||'').toLowerCase();
+      return ta > tb ? 1 : ta < tb ? -1 : 0;
     });
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros');
@@ -1946,7 +2245,17 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 });
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    const table = await _chapasPreferV2Table();
     const b = req.body || {};
+
+    if (table === 'chapas_estoque_v2') {
+      const payload = _chapasPayloadV2FromBody(b, req, false);
+      const { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
+      if (error) return res.status(500).json({ error: error.message });
+      await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''}`);
+      return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
+    }
+
     const payload = {
       forn: b.fornecedor || b.forn || '',
       nom: b.nomenclatura || b.nom || b.codigo || b.cod || b.nome || '',
@@ -1963,12 +2272,24 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     };
     const { data, error } = await supabase.from('chapas_estoque').insert(payload).select().single();
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+    await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''}`);
+    return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
 });
 app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
+    const table = await _chapasPreferV2Table();
     const b = req.body || {};
+
+    if (table === 'chapas_estoque_v2') {
+      const payload = _chapasPayloadV2FromBody(b, req, true);
+      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
+      if (error) return res.status(500).json({ error: error.message });
+      await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''}`);
+      return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
+    }
+
     const payload = {};
     if (b.fornecedor || b.forn) payload.forn = b.fornecedor || b.forn;
     if (b.nomenclatura || b.nom || b.codigo || b.cod || b.nome) payload.nom = b.nomenclatura || b.nom || b.codigo || b.cod || b.nome;
@@ -1983,28 +2304,187 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+    await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''}`);
+    return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
 });
 app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
+    const table = await _chapasPreferV2Table();
     const b = req.body || {};
+
+    if (table === 'chapas_estoque_v2') {
+      const payload = _chapasPayloadV2FromBody(b, req, true);
+      if (b.quantidade !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.quantidade, 0));
+      if (b.qtd !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.qtd, 0));
+      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
+      if (error) return res.status(500).json({ error: error.message });
+      await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · qtd=${data?.quantidade ?? ''}`);
+      return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
+    }
+
     const payload = {};
     if (b.quantidade !== undefined) payload.qtd = Number(b.quantidade);
     if (b.qtd !== undefined) payload.qtd = Number(b.qtd);
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
+    await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida (legado): ${data?.nom || ''} · ${data?.forn || ''} · qtd=${data?.qtd ?? ''}`);
+    return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    const b = req.body || {};
+    const tipo = String(b.tipo || '').trim().toLowerCase();
+    if (!['entrada', 'saida', 'ajuste'].includes(tipo)) return res.status(400).json({ ok: false, error: 'Tipo inválido (entrada/saida/ajuste)' });
+
+    const id = req.params.id;
+    const { data: cur, error: curErr } = await supabase.from(table).select('*').eq('id', id).single();
+    if (curErr) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const canonCur = _chapasCanonicalFromAny(cur, table);
+    const oldQtd = Number(canonCur.quantidade || 0) || 0;
+    let newQtd = oldQtd;
+
+    if (tipo === 'ajuste') {
+      const alvo = Math.trunc(_chapasToNum(b.quantidade, NaN));
+      if (!Number.isFinite(alvo) || alvo < 0) return res.status(400).json({ ok: false, error: 'Quantidade inválida' });
+      newQtd = alvo;
+    } else {
+      const delta = Math.trunc(_chapasToNum(b.delta, NaN));
+      if (!Number.isFinite(delta) || delta <= 0) return res.status(400).json({ ok: false, error: 'Delta inválido' });
+      newQtd = tipo === 'entrada' ? (oldQtd + delta) : (oldQtd - delta);
+      if (newQtd < 0) return res.status(400).json({ ok: false, error: 'Saldo insuficiente' });
+    }
+
+    const patch = table === 'chapas_estoque_v2'
+      ? { quantidade: newQtd, atualizado_por: req?.usuario?.nome || 'sistema' }
+      : { qtd: newQtd };
+
+    if (b.nf) {
+      if (table === 'chapas_estoque_v2') patch.nf = String(b.nf).trim();
+      else patch.nf = String(b.nf).trim();
+    }
+
+    const { data: upd, error: updErr } = await supabase.from(table).update(patch).eq('id', id).select().single();
+    if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
+
+    const canonUpd = _chapasCanonicalFromAny(upd, table);
+    const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(newQtd - oldQtd)}`;
+    const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
+    await _chapasLogAcao(req, `estoque_${tipo}`, desc);
+
+    return ok(res, canonUpd);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.single('file'), async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
+    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo CSV não recebido' });
+
+    const mode = String(req.query.mode || req.body?.mode || 'append').toLowerCase().trim();
+    if (!['append', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode inválido (append/replace)' });
+
+    const text = req.file.buffer.toString('utf8');
+    const parsed = _chapasParseCsv(text);
+    if (!parsed.length) return res.status(400).json({ ok: false, error: 'CSV vazio ou sem linhas válidas' });
+
+    if (mode === 'replace') {
+      const delFilter = '00000000-0000-0000-0000-000000000000';
+      const { error: delErr } = await supabase.from('chapas_estoque_v2').delete().neq('id', delFilter);
+      if (delErr) return res.status(500).json({ ok: false, error: delErr.message });
+    }
+
+    const clean = [];
+    const errors = [];
+    for (let i = 0; i < parsed.length; i++) {
+      try {
+        const p = _chapasPayloadV2FromBody(parsed[i], req, false);
+        clean.push(p);
+      } catch (e) {
+        if (errors.length < 25) errors.push({ line: i + 2, error: String(e?.message || e) });
+      }
+    }
+
+    if (!clean.length) return res.status(400).json({ ok: false, error: 'Nenhuma linha válida para importar', errors });
+
+    const chunkSize = 200;
+    let inserted = 0;
+    for (let i = 0; i < clean.length; i += chunkSize) {
+      const chunk = clean.slice(i, i + chunkSize);
+      const { error } = await supabase.from('chapas_estoque_v2').insert(chunk);
+      if (error) return res.status(500).json({ ok: false, error: error.message, inserted, errors });
+      inserted += chunk.length;
+    }
+
+    await _chapasLogAcao(req, 'estoque_chapas_import_csv', `Import CSV (${mode}): ${inserted} itens importados`);
+    return ok(res, { inserted, totalParsed: parsed.length, errors });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
+
+    const { data: legacy, error: legacyErr } = await supabase.from('chapas_estoque').select('*');
+    if (legacyErr) return res.status(500).json({ ok: false, error: legacyErr.message });
+
+    const canonical = (legacy || []).map((r) => _chapasCanonicalFromAny(r, 'chapas_estoque'));
+    const mapped = canonical.map((c) => ({
+      fornecedor: c.fornecedor || '',
+      nomenclatura: c.nomenclatura || '',
+      tamanho: c.tamanho || '',
+      nome_uso: c.nome || c.nomenclatura || '',
+      qual_cnpj: c.qual_cnpj || '',
+      nf: c.nf || '',
+      quantidade: Math.trunc(Number(c.quantidade || 0) || 0),
+      valor_unitario: Number(c.valor_unitario || 0) || 0,
+      categoria: c.categoria || 'Estoque Simples',
+      vincos: c.vincos || '',
+      observacao: c.observacao || '',
+      cliente_nome: c.cliente || null,
+      riscada: !!c.riscada,
+      risca_desc: c.risca_desc || '',
+      estoque_minimo: Math.trunc(Number(c.estoque_minimo || 200) || 200),
+      data_entrada: c.data_entrada || null,
+      emp_id: c.emp_id || 'E1',
+      criado_por: req?.usuario?.nome || 'sistema',
+      atualizado_por: req?.usuario?.nome || 'sistema',
+    })).filter(x => x.fornecedor && x.nomenclatura && x.tamanho);
+
+    const chunkSize = 200;
+    let inserted = 0;
+    for (let i = 0; i < mapped.length; i += chunkSize) {
+      const chunk = mapped.slice(i, i + chunkSize);
+      const { error } = await supabase.from('chapas_estoque_v2').insert(chunk);
+      if (error) return res.status(500).json({ ok: false, error: error.message, inserted });
+      inserted += chunk.length;
+    }
+
+    await _chapasLogAcao(req, 'estoque_chapas_migrar_legacy', `Migração legado -> v2: ${inserted} itens`);
+    return ok(res, { inserted, legacyCount: (legacy || []).length });
   } catch (e) { err(res, e); }
 });
 app.delete('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
   try {
-    const tables = ['chapas_estoque', 'estoque_chapas', 'estoque'];
+    const preferred = await _chapasPreferV2Table();
+    const tables = preferred === 'chapas_estoque_v2'
+      ? ['chapas_estoque_v2', 'chapas_estoque', 'estoque_chapas', 'estoque']
+      : ['chapas_estoque', 'estoque_chapas', 'estoque'];
     let lastErr = null;
     for (const t of tables) {
       const { error } = await supabase.from(t).delete().eq('id', req.params.id);
-      if (!error) return res.json({ ok: true });
+      if (!error) {
+        await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída (id=${req.params.id})`);
+        return res.json({ ok: true });
+      }
       lastErr = error;
       const msg = String(error.message || error);
       if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;

@@ -2922,15 +2922,20 @@ let _estoqueBaixoOnly = false;
 
 function popularFiltrosEstoque(chapas){
   _estoqueBase = Array.isArray(chapas) ? chapas : [];
-  const fornSet=[...new Set(_estoqueBase.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
+  const norm = (s) => String(s || '').trim();
+  const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
     if(!el) return;
     const cur=el.value;
-    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escAttr(String(v).toLowerCase())}">${escH(v)}</option>`).join('');
+    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escAttr(String(v))}">${escH(v)}</option>`).join('');
     if(cur) el.value=cur;
   };
+  setOpts('ef-categoria', catSet, '📦 Categoria');
   setOpts('ef-fornecedor', fornSet, '🏭 Fornecedor');
+  setOpts('ef-cliente', cliSet, '👤 Cliente');
 }
 
 function estoqueFiltrar(tipo){
@@ -2938,16 +2943,13 @@ function estoqueFiltrar(tipo){
   if(tipo==='todos'){
     const c=document.getElementById('ef-categoria'); if(c) c.value='';
     const f1=document.getElementById('ef-fornecedor'); if(f1) f1.value='';
+    const cl=document.getElementById('ef-cliente'); if(cl) cl.value='';
+    const nf=document.getElementById('ef-nf'); if(nf) nf.value='';
+    const nom=document.getElementById('ef-nomenclatura'); if(nom) nom.value='';
+    const tam=document.getElementById('ef-tamanho'); if(tam) tam.value='';
     const b=document.getElementById('ef-busca'); if(b) b.value='';
-    const bx=document.getElementById('ef-baixo'); if(bx) bx.classList.remove('ativo');
-    _estoqueBaixoOnly=false;
+    ['ef-baixo','ef-sem','ef-riscadas','ef-com-vincos'].forEach(id=>{const e=document.getElementById(id); if(e) e.checked=false;});
   }
-  if(tipo==='baixo'){
-    const bx=document.getElementById('ef-baixo');
-    if(bx) bx.classList.toggle('ativo');
-    _estoqueBaixoOnly=!!bx?.classList?.contains('ativo');
-  }
-  if(tipo==='fornecedor' || tipo==='categoria' || tipo==='busca') _estoqueBaixoOnly=false;
   renderEstoque();
 }
 
@@ -2961,58 +2963,129 @@ function estOrdenar(campo){
 function _renderEstoqueBase(chapas) {
   if (Array.isArray(chapas)) _estoqueBase = chapas;
   const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
-  const wrap = document.getElementById('est-table-wrap');
-  if(!wrap) return;
+  const bodyEl = document.getElementById('est-table-body');
+  if(!bodyEl) return;
+  const footEl = document.getElementById('est-table-foot');
 
   const catFil = String(document.getElementById('ef-categoria')?.value || '').trim();
   const fornFil = String(document.getElementById('ef-fornecedor')?.value || '').trim().toLowerCase();
+  const cliFil = String(document.getElementById('ef-cliente')?.value || '').trim().toLowerCase();
+  const nfFil = String(document.getElementById('ef-nf')?.value || '').trim().toLowerCase();
+  const nomFil = String(document.getElementById('ef-nomenclatura')?.value || '').trim().toLowerCase();
+  const tamFil = String(document.getElementById('ef-tamanho')?.value || '').trim().toLowerCase();
   const busca = String(document.getElementById('ef-busca')?.value || '').trim().toLowerCase();
-  const baixo = !!document.getElementById('ef-baixo')?.classList?.contains('ativo');
+  const baixo = !!document.getElementById('ef-baixo')?.checked;
+  const sem = !!document.getElementById('ef-sem')?.checked;
+  const riscadas = !!document.getElementById('ef-riscadas')?.checked;
+  const comVincos = !!document.getElementById('ef-com-vincos')?.checked;
 
   let filtrada = lista.filter(c => {
     const cat = String((c.categoria || 'Estoque Simples')).trim();
     if(catFil && cat !== catFil) return false;
     const forn = String(c.fornecedor || c.forn || '');
     if(fornFil && !forn.toLowerCase().includes(fornFil)) return false;
+    const cliente = String(c.cliente || '');
+    if(cliFil && !cliente.toLowerCase().includes(cliFil)) return false;
+    const nf = String(c.nf || c.nf_entrada || '');
+    if(nfFil && !nf.toLowerCase().includes(nfFil)) return false;
+    const nom = String(c.nomenclatura || c.nom || '');
+    if(nomFil && !nom.toLowerCase().includes(nomFil)) return false;
+    const tam = String(c.tamanho || c.tam || '');
+    if(tamFil && !tam.toLowerCase().includes(tamFil)) return false;
     const qtd = Number(c.quantidade ?? c.qtd ?? 0) || 0;
-    if(baixo && qtd >= 200) return false;
+    const min = Number(c.estoque_minimo ?? c.min ?? 200) || 200;
+    if(sem && qtd !== 0) return false;
+    if(baixo && !(qtd < min)) return false;
+    if(riscadas && !c.riscada) return false;
+    if(comVincos && String(c.vincos || '').trim() === '') return false;
     if(busca) {
-      const txt = [(c.nome||''),(c.nomenclatura||c.nom||''),forn,(c.tamanho||c.tam||'')].join(' ').toLowerCase();
+      const txt = [
+        (c.nome||''),(c.nomenclatura||c.nom||''),(c.fornecedor||c.forn||''),
+        (c.qual_cnpj||c.qual||''),(c.tamanho||c.tam||''),(c.nf||''),
+        (c.vincos||''),(c.observacao||''),(c.categoria||''),(c.cliente||''),(c.risca_desc||'')
+      ].join(' ').toLowerCase();
       if(!txt.includes(busca)) return false;
     }
     return true;
   });
 
+  const getSortVal = (r) => {
+    const k = EST_SORT?.campo || 'nome';
+    if (k === 'quantidade') return Number(r.quantidade ?? r.qtd ?? 0) || 0;
+    if (k === 'valor_unitario') return Number(r.valor_unitario ?? r.val ?? 0) || 0;
+    if (k === 'valor_total') return Number(r.valor_total ?? ((Number(r.quantidade??r.qtd??0)||0) * (Number(r.valor_unitario??r.val??0)||0))) || 0;
+    if (k === 'riscada') return r.riscada ? 1 : 0;
+    return String(r[k] ?? r[k.replace('_','')] ?? r.nom ?? r.nome ?? '').toLowerCase();
+  };
   filtrada.sort((a,b)=>{
-    const ca = String((a.categoria||'Estoque Simples')).trim().toLowerCase();
-    const cb = String((b.categoria||'Estoque Simples')).trim().toLowerCase();
-    if(ca !== cb) return ca > cb ? 1 : -1;
-    const fa = String(a.fornecedor||a.forn||'').trim().toLowerCase();
-    const fb = String(b.fornecedor||b.forn||'').trim().toLowerCase();
-    if(fa !== fb) return fa > fb ? 1 : -1;
-    const na = String(a.nomenclatura||a.nom||'').trim().toLowerCase();
-    const nb = String(b.nomenclatura||b.nom||'').trim().toLowerCase();
-    return na > nb ? 1 : na < nb ? -1 : 0;
+    const va = getSortVal(a);
+    const vb = getSortVal(b);
+    const dir = EST_SORT?.asc ? 1 : -1;
+    if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+    return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
 
-  if(filtrada.length === 0) {
-    wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text3)">Nenhum item encontrado.</div>';
-  } else if(!catFil) {
-    const grupos = {};
-    filtrada.forEach(c => {
-      const cat = String((c.categoria || 'Estoque Simples')).trim();
-      if(!grupos[cat]) grupos[cat] = [];
-      grupos[cat].push(c);
-    });
-    wrap.innerHTML = Object.entries(grupos).map(([cat, itens]) => renderGrupoEstoque(cat, itens)).join('');
+  const colsCount = 14;
+  if(!filtrada.length){
+    bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
+    if(footEl) footEl.innerHTML = '';
   } else {
-    wrap.innerHTML = renderTabelaEstoque(filtrada);
-  }
+    bodyEl.innerHTML = filtrada.map((c,i)=>{
+      const qtd = Number(c.quantidade??c.qtd??0) || 0;
+      const vunit = Number(c.valor_unitario??c.val??0) || 0;
+      const total = Number(c.valor_total ?? (qtd*vunit) ?? 0) || 0;
+      const min = Number(c.estoque_minimo ?? c.min ?? 200) || 200;
+      const baixoEst = qtd > 0 && qtd < min;
+      const zerado = qtd === 0;
+      const nf = c.nf_entrada || c.nf || '—';
+      const ris = c.riscada ? 'SIM' : 'NÃO';
+      const risCor = c.riscada ? 'var(--orange)' : 'var(--text3)';
+      const risDesc = String(c.risca_desc || '').trim();
+      const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
+      const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
+      return `<tr style="background:${trBg}">
+        <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--purple);font-family:var(--mono);font-size:.72rem;min-width:120px">${escH(c.qual_cnpj||c.qual||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:90px">${escH(nf)}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:90px">${fmtR(vunit)}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:110px">
+          <span style="font-weight:900;color:${zerado?'var(--red)':baixoEst?'var(--orange)':'var(--green)'}">${qtd.toLocaleString()}</span>
+          ${(zerado||baixoEst)?`<div style="font-size:.62rem;color:${zerado?'var(--red)':'var(--orange)'};font-weight:900">${zerado?'ZERADO':`BAIXO (mín ${min})`}</div>`:''}
+        </td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);min-width:140px">${escH(c.cliente||'—')}</td>
+        <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:900;color:${risCor};min-width:80px">${ris}${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(risDescShort)}</div>`:''}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);min-width:140px">${escH(c.categoria||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
+          <div style="display:flex;gap:4px;justify-content:center">
+            <button class="btn-icon btn-sm" onclick="ajustarQtdChapa('${escAttr(c.id)}',-1)" title="Saída 1" style="color:var(--red)">—</button>
+            <button class="btn-icon btn-sm" onclick="ajustarQtdChapa('${escAttr(c.id)}',1)" title="Entrada 1" style="color:var(--green)">+</button>
+            <button class="btn-icon btn-sm" onclick="editarChapa('${escAttr(c.id)}')" title="Editar">✏</button>
+            <button class="btn-icon btn-sm" onclick="excluirChapa('${escAttr(c.id)}')" title="Excluir" style="color:var(--red)">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
 
-  const fornSel = document.getElementById('ef-fornecedor');
-  if(fornSel && fornSel.options.length <= 1) {
-    const fornSet = [...new Set(lista.map(c=>c.fornecedor||c.forn).filter(Boolean))].sort();
-    fornSel.innerHTML = '<option value="">🏭 Fornecedor</option>' + fornSet.map(f=>`<option value="${escAttr(String(f).toLowerCase())}">${escH(f)}</option>`).join('');
+    if(footEl){
+      const totalQtd = filtrada.reduce((s,c)=>s+(Number(c.quantidade??c.qtd??0)||0),0);
+      const totalValTotal = filtrada.reduce((s,c)=>{
+        const qtd = Number(c.quantidade??c.qtd??0)||0;
+        const vunit = Number(c.valor_unitario??c.val??0)||0;
+        const total = Number(c.valor_total ?? (qtd*vunit) ?? 0) || 0;
+        return s + total;
+      },0);
+      footEl.innerHTML = `<tr style="background:var(--s3)">
+        <td colspan="7" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
+        <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
+        <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(totalValTotal)}</td>
+        <td colspan="5" style="padding:10px;border:1px solid var(--border)"></td>
+      </tr>`;
+    }
   }
 
   const histEl=document.getElementById('est-hist');
@@ -3200,7 +3273,7 @@ function getChapaEmpId(ch){
   return '';
 }
 
-function novaMovEstoque(){
+async function novaMovEstoque(){
   const op=(prompt('Tipo da movimentação: entrada, saida ou ajuste','entrada')||'').toLowerCase().trim();
   if(!op) return;
   const chTxt=(prompt('Digite o ID da chapa ou parte do nome/nomenclatura','')||'').trim();
@@ -3211,12 +3284,14 @@ function novaMovEstoque(){
   const data=(prompt('Data (YYYY-MM-DD)', today())||today()).trim()||today();
   const obs=(prompt('Observação','')||'').trim();
   const of=(prompt('OF vinculada (opcional)','—')||'—').trim()||'—';
-  if(op==='saida' && qtd>ch.qtd){ toast('Saldo insuficiente para saída','var(--red)'); return; }
-  if(op==='entrada') ch.qtd += qtd;
-  else if(op==='saida') ch.qtd -= qtd;
-  else if(op==='ajuste') ch.qtd = qtd;
-  HIST_EST.unshift({tipo:op,chp:ch.id,qtd,of,data,obs,empId:getChapaEmpId(ch)});
-  autoSaveTrigger(); renderEstoque(); toast('✓ Movimentação registrada','var(--green)');
+  const payload = op === 'ajuste'
+    ? { tipo: 'ajuste', quantidade: Math.trunc(qtd), obs, of, data }
+    : { tipo: op, delta: Math.trunc(qtd), obs, of, data };
+  const r = await api('POST','/chapas_estoque/'+encodeURIComponent(ch.id)+'/movimento', payload);
+  if(r && r.ok===false){ toast('Erro: '+(r.error||'falha'),'var(--red)'); return; }
+  await carregarChapas();
+  renderEstoque();
+  toast('✓ Movimentação registrada','var(--green)');
 }
 
 function editarMovEstoque(idx){
@@ -3263,8 +3338,32 @@ function calcTotalChapa() {
   if(el) el.value = fmtR(total);
 }
 
+function toggleChapaRisca(){
+  const v = document.getElementById('chapa-riscada')?.value === '1';
+  const wrap = document.getElementById('chapa-risca-wrap');
+  if(wrap) wrap.style.display = v ? 'flex' : 'none';
+  if(!v){
+    const d = document.getElementById('chapa-risca-desc');
+    if(d) d.value = '';
+  }
+}
+
 function abrirModalNovaChapa(id) {
   const c = id ? (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id) : null;
+  const dl = document.getElementById('lista-clientes-chapa');
+  if(dl && Array.isArray(CLIENTES)){
+    dl.innerHTML = CLIENTES.map(cl=>{
+      const n = (cl.nome || cl.nome_fantasia || cl.razao_social || '').trim();
+      return n ? `<option value="${escAttr(n)}"></option>` : '';
+    }).join('');
+  }
+  const dlCat = document.getElementById('lista-categorias-chapa');
+  if(dlCat){
+    const baseCats = ['Estoque Simples','Estoque Duplo','Estoque Duplo Col.8','Estoque Simples Col.5','Gran Mestri','Caixas Antigas Gran Mestri','Caixas Vincadas'];
+    const dynCats = [...new Set((Array.isArray(ESTOQUE)?ESTOQUE:[]).map(x=>String(x.categoria||'').trim()).filter(Boolean))];
+    const cats = [...new Set([...baseCats, ...dynCats])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    dlCat.innerHTML = cats.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
+  }
   document.getElementById('chapa-edit-id').value = c?.id||'';
   document.getElementById('chapa-categoria').value = c?.categoria||'Estoque Simples';
   document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
@@ -3277,6 +3376,17 @@ function abrirModalNovaChapa(id) {
   document.getElementById('chapa-valor-unitario').value = c?.valor_unitario??c?.val??0;
   document.getElementById('chapa-data-entrada').value = c?.data_entrada||'';
   document.getElementById('chapa-obs').value = c?.observacao||c?.obs||'';
+  const minEl = document.getElementById('chapa-estoque-minimo');
+  if(minEl) minEl.value = Number(c?.estoque_minimo ?? c?.min ?? 200) || 200;
+  const vincEl = document.getElementById('chapa-vincos');
+  if(vincEl) vincEl.value = c?.vincos || '';
+  const cliEl = document.getElementById('chapa-cliente');
+  if(cliEl) cliEl.value = c?.cliente || '';
+  const risSel = document.getElementById('chapa-riscada');
+  if(risSel) risSel.value = c?.riscada ? '1' : '0';
+  const risDesc = document.getElementById('chapa-risca-desc');
+  if(risDesc) risDesc.value = c?.risca_desc || '';
+  toggleChapaRisca();
   document.getElementById('chapa-modal-titulo').textContent = c ? 'Editar Chapa' : 'Nova Chapa';
   calcTotalChapa();
   document.getElementById('modal-nova-chapa').style.display = 'flex';
@@ -3288,14 +3398,11 @@ async function ajustarQtdChapa(id, delta) {
   const c = (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id);
   if(!c) return;
   const atual = Number(c.quantidade??c.qtd??0);
-  const novaQtd = Math.max(0, atual + Number(delta||0));
-  const r = await api('PATCH','/chapas_estoque/'+encodeURIComponent(id), { quantidade: novaQtd });
-  if(r && r.error){toast('Erro: '+r.error,'var(--red)');return;}
-  await api('POST','/historico_acoes',{
-    tipo_acao:'estoque_ajuste',
-    descricao:'Chapa '+(c.nomenclatura||c.nom||'')+' '+(c.tamanho||c.tam||'')+': '+(delta>0?'+':'')+(delta)+' ('+atual+'→'+novaQtd+')',
-    usuario: CURRENT_USER?.nome||'sistema'
-  });
+  const d = Number(delta||0);
+  if(!d) return;
+  const tipo = d > 0 ? 'entrada' : 'saida';
+  const r = await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { tipo, delta: Math.abs(d) });
+  if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
   await carregarChapas();
   renderEstoque();
 }
@@ -3387,27 +3494,36 @@ async function salvarChapa(){
   const modalNova = document.getElementById('modal-nova-chapa');
   if(modalNova && modalNova.style.display === 'flex'){
     const id = document.getElementById('chapa-edit-id')?.value||'';
+    const nomeUso = document.getElementById('chapa-nome')?.value?.trim()||'';
     const nomenclatura = document.getElementById('chapa-nomenclatura')?.value?.trim()||'';
     const fornecedor = document.getElementById('chapa-fornecedor')?.value?.trim()||'';
-    if(!nomenclatura||!fornecedor){toast('Nomenclatura e Fornecedor obrigatórios','var(--red)');return;}
+    const tamanho = document.getElementById('chapa-tamanho')?.value?.trim()?.toUpperCase()||'';
+    const categoria = document.getElementById('chapa-categoria')?.value||'Estoque Simples';
+    if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!categoria){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Tamanho e Categoria','var(--red)');return;}
     const payload = {
-      categoria: document.getElementById('chapa-categoria')?.value||'Estoque Simples',
+      categoria,
+      nome_uso: nomeUso,
       nomenclatura, fornecedor,
       qual_cnpj: document.getElementById('chapa-qual-cnpj')?.value?.trim()||'',
-      tamanho: document.getElementById('chapa-tamanho')?.value?.trim()?.toUpperCase()||'',
-      nome: document.getElementById('chapa-nome')?.value?.trim()||'',
+      tamanho,
       nf: document.getElementById('chapa-nf')?.value?.trim()||'',
       nf_entrada: document.getElementById('chapa-nf')?.value?.trim()||'',
       quantidade: Number(document.getElementById('chapa-quantidade')?.value||0),
       valor_unitario: Number(document.getElementById('chapa-valor-unitario')?.value||0),
       data_entrada: document.getElementById('chapa-data-entrada')?.value||null,
+      vincos: document.getElementById('chapa-vincos')?.value?.trim()||'',
+      cliente_nome: document.getElementById('chapa-cliente')?.value?.trim()||'',
+      riscada: document.getElementById('chapa-riscada')?.value === '1',
+      risca_desc: document.getElementById('chapa-risca-desc')?.value?.trim()||'',
+      estoque_minimo: Number(document.getElementById('chapa-estoque-minimo')?.value||200),
       observacao: document.getElementById('chapa-obs')?.value?.trim()||'',
       emp_id: EMP_FILTRO||'E1',
     };
     const r = id
       ? await api('PUT','/chapas_estoque/'+encodeURIComponent(id),payload)
       : await api('POST','/chapas_estoque',payload);
-    if(r&&r.error){toast('Erro: '+r.error,'var(--red)');return;}
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    if(r && r.error){toast('Erro: '+r.error,'var(--red)');return;}
     toast('Chapa salva ✓','var(--green)');
     modalNova.style.display='none';
     await carregarChapas();
@@ -3449,9 +3565,32 @@ async function salvarChapa(){
   fechar('modal-chp');autoSaveTrigger();renderEstoque();toast('✓ Chapa cadastrada!');
 }
 function abrirModalEntrada(){const s=document.getElementById('en-chp');s.innerHTML=ESTOQUE.map(c=>`<option value="${c.id}">${chapaLabel(c)}</option>`).join('');['en-qtd','en-nf','en-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});abrir('modal-ent');}
-function salvarEntrada(){const id=document.getElementById('en-chp').value,qtd=parseInt(document.getElementById('en-qtd').value)||0;if(!qtd){toast('Informe a quantidade','var(--red)');return;}const ch=getCh(id);if(!ch)return;ch.qtd+=qtd;HIST_EST.unshift({tipo:'entrada',chp:id,qtd,of:'—',data:today(),obs:'NF: '+(document.getElementById('en-nf').value||'—'),empId:getChapaEmpId(ch)});fechar('modal-ent');autoSaveTrigger();renderEstoque();toast(`✓ +${qtd.toLocaleString()} unidades`);}
+async function salvarEntrada(){
+  const id=document.getElementById('en-chp').value;
+  const qtd=parseInt(document.getElementById('en-qtd').value)||0;
+  if(!qtd){toast('Informe a quantidade','var(--red)');return;}
+  const nf=(document.getElementById('en-nf')?.value||'').trim();
+  const obs=(document.getElementById('en-obs')?.value||'').trim();
+  const r=await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento',{tipo:'entrada',delta:qtd,nf,obs});
+  if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+  fechar('modal-ent');
+  await carregarChapas();
+  renderEstoque();
+  toast(`✓ +${qtd.toLocaleString()} unidades`,'var(--green)');
+}
 function abrirModalAjuste(){const s=document.getElementById('aj-chp');s.innerHTML=ESTOQUE.map(c=>`<option value="${c.id}">${chapaLabel(c)}</option>`).join('');abrir('modal-aj');}
-function salvarAjuste(){const id=document.getElementById('aj-chp').value,n=parseInt(document.getElementById('aj-sal').value);if(isNaN(n)){toast('Informe o saldo','var(--red)');return;}const ch=getCh(id);if(!ch)return;HIST_EST.unshift({tipo:'ajuste',chp:id,qtd:Math.abs(n-ch.qtd),of:'—',data:today(),obs:document.getElementById('aj-mot').value||'Ajuste manual',empId:getChapaEmpId(ch)});ch.qtd=n;fechar('modal-aj');renderEstoque();toast('✓ Ajuste registrado');}
+async function salvarAjuste(){
+  const id=document.getElementById('aj-chp').value;
+  const n=parseInt(document.getElementById('aj-sal').value);
+  const obs=(document.getElementById('aj-mot')?.value||'').trim();
+  if(isNaN(n) || n<0){toast('Informe o saldo','var(--red)');return;}
+  const r=await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento',{tipo:'ajuste',quantidade:n,obs});
+  if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+  fechar('modal-aj');
+  await carregarChapas();
+  renderEstoque();
+  toast('✓ Ajuste registrado','var(--green)');
+}
 
 // ===================== FLUXOS =====================
 function renderFluxos(){
@@ -7067,6 +7206,27 @@ function api(method, url, body) {
     });
 }
 
+function apiUpload(url, formData) {
+  const token = localStorage.getItem('auth_token');
+  const opts = {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? ('Bearer ' + token) : ''
+    },
+    body: formData
+  };
+  return fetch(url.startsWith('http') ? url : ('/api' + url), opts)
+    .then(r => {
+      if (r.status === 401 && !String(url||'').includes('/auth/login')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
+        throw new Error('Sessão expirada');
+      }
+      return r.json();
+    });
+}
+
 function apiUnavailable(res){
   return !res || res.ok === false;
 }
@@ -7261,7 +7421,7 @@ function normalizeOrc(r){
 }
 function normalizeEst(c) {
   const categoria = (c.categoria != null && String(c.categoria).trim() !== '') ? c.categoria : 'Estoque Simples';
-  const nome = c.nom || c.nome || c.name || c.nome_comercial || '';
+  const nome = c.nome_uso || c.nomeUso || c.nome || c.name || c.nome_comercial || c.nom || '';
   const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
   const fornecedor = c.forn || c.fornecedor || '';
   const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
@@ -7269,13 +7429,21 @@ function normalizeEst(c) {
   const nf = c.nf || c.nota || c.numero_nf || '';
   const quantidade = Number(c.qtd ?? c.quantidade ?? 0) || 0;
   const valor_unitario = Number(c.val ?? c.valor_unitario ?? c.vunit ?? 0) || 0;
+  const valor_total = Number(c.valor_total ?? c.vtot ?? (quantidade * valor_unitario) ?? 0) || 0;
   const vincos = c.vincos || '';
   const observacao = c.observacao || c.observacoes || '';
   const data_entrada = c.entrada_de_dados || c.entrada_de_dados || c.data_entrada || '';
   const emp_id = c.emp_id || '';
   const comp = c.comp ?? c.comprimento_mm ?? c.Comprimento_mm ?? c.comprimento ?? null;
   const larg = c.larg ?? c.largura_mm ?? c.largura_mm ?? c.largura ?? null;
-  const min = c.min ?? c.estoque_minimo ?? c.quantidade_minima ?? null;
+  const estoque_minimo = c.estoque_minimo ?? c.min ?? c.quantidade_minima ?? null;
+  const min = estoque_minimo != null ? (Number(estoque_minimo) || 0) : null;
+  const cliente = c.cliente_nome || c.clienteNome || c.cliente || '';
+  const cliente_id = c.cliente_id || c.clienteId || null;
+  const riscada = (c.riscada === true) || String(c.riscada || '').toLowerCase() === 'true' || String(c.riscada || '').toLowerCase() === 'sim' || String(c.riscada || '') === '1';
+  const risca_desc = c.risca_desc || c.descricao_risca || '';
+  const criado_por = c.criado_por || c.usuario || '';
+  const atualizado_por = c.atualizado_por || '';
   return {
     id: c.id,
     nome,
@@ -7286,11 +7454,19 @@ function normalizeEst(c) {
     nf,
     quantidade,
     valor_unitario,
+    valor_total,
     vincos,
     observacao,
     data_entrada,
     emp_id,
     categoria,
+    cliente,
+    cliente_id,
+    riscada,
+    risca_desc,
+    estoque_minimo: (min != null ? min : 200),
+    criado_por,
+    atualizado_por,
     forn: fornecedor,
     nom: nomenclatura,
     tam: tamanho,
@@ -8287,26 +8463,73 @@ function dispensarAlertaChapa(id){
   api('POST','/historico_acoes',{tipo_acao:'alerta_estoque_ok',descricao:desc,usuario:'sistema'});
 }
 
+function renderEstoqueResumo(){
+  const el=document.getElementById('est-summary'); if(!el) return;
+  const lista = Array.isArray(ESTOQUE) ? ESTOQUE : [];
+  const totalItens = lista.length;
+  const totalQtd = lista.reduce((s,c)=>s+(Number(c.qtd??c.quantidade??0)||0),0);
+  const totalVal = lista.reduce((s,c)=>{
+    const qtd = Number(c.qtd??c.quantidade??0)||0;
+    const vunit = Number(c.val??c.valor_unitario??0)||0;
+    const vtot = Number(c.valor_total ?? (qtd*vunit) ?? 0) || 0;
+    return s + vtot;
+  },0);
+  const semEstoque = lista.filter(c=>(Number(c.qtd??c.quantidade??0)||0)===0).length;
+  const baixoEstoque = lista.filter(c=>{
+    const qtd = Number(c.qtd??c.quantidade??0)||0;
+    const min = Number(c.estoque_minimo ?? c.min ?? 200)||200;
+    return qtd>0 && qtd<min;
+  }).length;
+
+  const porForn = {};
+  lista.forEach(c=>{
+    const f = String(c.forn||c.fornecedor||'').trim() || '—';
+    const qtd = Number(c.qtd??c.quantidade??0)||0;
+    if(!porForn[f]) porForn[f]={qtd:0, val:0};
+    porForn[f].qtd += qtd;
+    porForn[f].val += Number(c.valor_total ?? (qtd*(Number(c.val??c.valor_unitario??0)||0)) ?? 0) || 0;
+  });
+  const topForn = Object.entries(porForn).sort((a,b)=>b[1].val-a[1].val).slice(0,3);
+
+  el.innerHTML = `
+    <div class="card"><div class="card-lbl">Total de Itens</div><div class="card-val cv-a">${totalItens.toLocaleString()}</div></div>
+    <div class="card"><div class="card-lbl">Valor em Estoque</div><div class="card-val cv-g">${fmtR(totalVal)}</div></div>
+    <div class="card"><div class="card-lbl">Baixo Estoque</div><div class="card-val cv-o">${baixoEstoque.toLocaleString()}</div></div>
+    <div class="card"><div class="card-lbl">Sem Estoque</div><div class="card-val cv-r">${semEstoque.toLocaleString()}</div></div>
+    <div class="card"><div class="card-lbl">Qtd Total (un)</div><div class="card-val cv-p">${totalQtd.toLocaleString()}</div></div>
+    <div class="card"><div class="card-lbl">Top Fornecedores</div><div class="card-val cv-a" style="font-size:.85rem;line-height:1.2">${topForn.map(([f,x])=>`${escH(f)} · ${fmtR(x.val)}`).join('<br>') || '—'}</div></div>
+  `;
+}
+
 function renderAlertasEstoque(){
   const el=document.getElementById('est-alertas');if(!el)return;
-  const zeros=ESTOQUE.filter(c=>c.qtd===0&&!_alertasOK.has(c.id));
-  const crits=ESTOQUE.filter(c=>c.qtd>0&&c.qtd<100&&!_alertasOK.has(c.id));
-  const warns=ESTOQUE.filter(c=>c.qtd>=100&&c.qtd<200&&!_alertasOK.has(c.id));
+  const zeros=ESTOQUE.filter(c=>(Number(c.qtd??c.quantidade??0)||0)===0&&!_alertasOK.has(c.id));
+  const baixos=ESTOQUE.filter(c=>{
+    const qtd=Number(c.qtd??c.quantidade??0)||0;
+    const min=Number(c.estoque_minimo ?? c.min ?? 200)||200;
+    return qtd>0 && qtd<min && !_alertasOK.has(c.id);
+  });
   let html='';
   const btnsSt=`style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0"`;
   const btnComp=`style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer;font-weight:600;white-space:nowrap"`;
   const btnOk=`style="background:var(--s2);color:var(--text2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.72rem;cursor:pointer;white-space:nowrap"`;
   zeros.forEach(c=>html+=`<div class="alerta-est alerta-zero" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span>🚫</span><span><b>ZERADO:</b> ${c.nome} — <b>${c.forn}</b> ${c.nom} ${c.tam||''} — saldo: 0 unidades</span></div><div ${btnsSt}><button ${btnComp} onclick="solicitarCompraChapa('${c.id}')">🛒 Solicitar Compra</button><button ${btnOk} onclick="dispensarAlertaChapa('${c.id}')">✓ OK</button></div></div>`);
-  crits.forEach(c=>html+=`<div class="alerta-est alerta-crit" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span>🔴</span><span><b>Estoque crítico:</b> ${c.nome} — <b>${c.forn}</b> ${c.nom} ${c.tam||''} — ${c.qtd} unidades (abaixo de 100)</span></div><div ${btnsSt}><button ${btnComp} onclick="solicitarCompraChapa('${c.id}')">🛒 Solicitar Compra</button><button ${btnOk} onclick="dispensarAlertaChapa('${c.id}')">✓ OK</button></div></div>`);
-  warns.forEach(c=>html+=`<div class="alerta-est alerta-warn" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span>🟡</span><span><b>Estoque baixo:</b> ${c.nome} — <b>${c.forn}</b> ${c.nom} ${c.tam||''} — ${c.qtd} unidades (abaixo de 200)</span></div><div ${btnsSt}><button ${btnComp} onclick="solicitarCompraChapa('${c.id}')">🛒 Solicitar Compra</button><button ${btnOk} onclick="dispensarAlertaChapa('${c.id}')">✓ OK</button></div></div>`);
-  if(!html&&(ESTOQUE.filter(c=>c.qtd===0).length>0||ESTOQUE.filter(c=>c.qtd>0&&c.qtd<200).length>0)){
+  baixos.forEach(c=>{
+    const min=Number(c.estoque_minimo ?? c.min ?? 200)||200;
+    html+=`<div class="alerta-est alerta-warn" style="display:flex;align-items:center;gap:10px;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px;min-width:0"><span>🟡</span><span><b>Estoque baixo:</b> ${c.nome} — <b>${c.forn}</b> ${c.nom} ${c.tam||''} — ${c.qtd} unidades (mín ${min})</span></div><div ${btnsSt}><button ${btnComp} onclick="solicitarCompraChapa('${c.id}')">🛒 Solicitar Compra</button><button ${btnOk} onclick="dispensarAlertaChapa('${c.id}')">✓ OK</button></div></div>`;
+  });
+  if(!html&&(ESTOQUE.filter(c=>(Number(c.qtd??c.quantidade??0)||0)===0).length>0||ESTOQUE.filter(c=>{
+    const qtd=Number(c.qtd??c.quantidade??0)||0;
+    const min=Number(c.estoque_minimo ?? c.min ?? 200)||200;
+    return qtd>0 && qtd<min;
+  }).length>0)){
     html=`<div style="padding:10px 14px;font-size:.78rem;color:var(--green);background:var(--s2);border-radius:8px;border:1px solid var(--border)">✅ Todos os alertas foram verificados nesta sessão.</div>`;
   }
   el.innerHTML=html;
 }
 
 // Override renderEstoque to also show alerts
-function renderEstoque(){_renderEstoqueBase();renderAlertasEstoque();gerarNotificacoes();renderNotificacoes();if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();}
+function renderEstoque(){_renderEstoqueBase();renderEstoqueResumo();renderAlertasEstoque();gerarNotificacoes();renderNotificacoes();if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();}
 
 function triggerImportChapas(){
   const inp = document.getElementById('est-import-file');
@@ -8315,12 +8538,26 @@ function triggerImportChapas(){
 
 async function handleImportChapasFile(file){
   if(!file) return;
-  if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
-    toast('SheetJS (XLSX) não disponível','var(--red)');
-    return;
-  }
   const name = (file.name||'').toLowerCase();
   const isCsv = name.endsWith('.csv');
+  if(isCsv){
+    try{
+      const fd = new FormData();
+      fd.append('file', file, file.name || 'chapas.csv');
+      const r = await apiUpload('/chapas_estoque/import_csv?mode=append', fd);
+      if(!r || r.ok===false){ toast('Erro ao importar: '+(r.error||'falha'), 'var(--red)'); return; }
+      toast(`Importação concluída: ${r.data?.inserted ?? 0} itens`, 'var(--green)');
+      await carregarChapas();
+      renderEstoque();
+    }catch(e){
+      toast('Erro ao importar CSV: '+String(e?.message||e), 'var(--red)');
+    }
+    return;
+  }
+  if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
+    toast('Para Excel (.xlsx), instale/adicione SheetJS (XLSX) ou exporte para CSV.', 'var(--red)');
+    return;
+  }
 
   const readFile = () => new Promise((resolve, reject)=>{
     const fr = new FileReader();
@@ -12441,47 +12678,37 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
       <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
-        <select id="ef-categoria" onchange="console.log('categoria selecionada:', this.value, '| _estoqueBase:', _estoqueBase?.length); _renderEstoqueBase()"
-          style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
-          <option value="">📦 Todas as categorias</option>
-          <option value="Estoque Simples">Estoque Simples</option>
-          <option value="Estoque Duplo">Estoque Duplo</option>
-          <option value="Estoque Duplo Col.8">Estoque Duplo Col.8</option>
-          <option value="Estoque Simples Col.5">Estoque Simples Col.5</option>
-          <option value="Gran Mestri">Gran Mestri</option>
-          <option value="Caixas Antigas Gran Mestri">Caixas Antigas Gran Mestri</option>
-          <option value="Caixas Vincadas">Caixas Vincadas</option>
-        </select>
-        <select id="ef-fornecedor" onchange="_renderEstoqueBase()"
-          style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
-          <option value="">🏭 Fornecedor</option>
-        </select>
-        <button onclick="estoqueFiltrar('baixo')" id="ef-baixo"
-          style="padding:6px 12px;border-radius:6px;background:#ff9800;color:#000;border:none;cursor:pointer;font-size:12px">
-          ⚠ Baixo Estoque
-        </button>
-        <input id="ef-busca" type="text" placeholder="🔍 Buscar nome, nomenclatura, tamanho..."
-          oninput="_renderEstoqueBase()"
-          style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
-        <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa"
-          style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500">
-          + Nova Chapa
-        </button>
+        <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
+        <select id="ef-fornecedor" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">🏭 Fornecedor</option></select>
+        <select id="ef-cliente" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">👤 Cliente</option></select>
+        <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
+        <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
+        <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-riscadas" type="checkbox" onchange="_renderEstoqueBase()">Riscadas</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-com-vincos" type="checkbox" onchange="_renderEstoqueBase()">Com vincos</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-baixo" type="checkbox" onchange="_renderEstoqueBase()">Baixo</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-sem" type="checkbox" onchange="_renderEstoqueBase()">Sem</label>
+        <input id="ef-busca" type="text" placeholder="🔍 Busca geral..." oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
+        <button class="btn btn-ghost btn-sm" onclick="estoqueFiltrar('todos')" style="white-space:nowrap">Limpar</button>
+        <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap">+ Nova Chapa</button>
       </div>
       <div id="est-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
           <thead>
             <tr style="background:var(--s2)">
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO (MM)</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">N° NF</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QUANTIDADE</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL R$</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VÍNCULOS</th>
+              <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
+              <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
+              <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
+              <th onclick="estOrdenar('qual_cnpj')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE</th>
+              <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
+              <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
+              <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
+              <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
+              <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
+              <th onclick="estOrdenar('vincos')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
+              <th onclick="estOrdenar('cliente')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CLIENTE</th>
+              <th onclick="estOrdenar('riscada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--orange);white-space:nowrap;text-align:center">RISCADA?</th>
+              <th onclick="estOrdenar('categoria')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CATEGORIA</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
             </tr>
           </thead>
@@ -13686,12 +13913,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <input type="hidden" id="chapa-edit-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Categoria *</label>
-        <select id="chapa-categoria" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
-          <option>Estoque Simples</option><option>Estoque Duplo</option>
-          <option>Estoque Duplo Col.8</option><option>Estoque Simples Col.5</option>
-          <option>Gran Mestri</option><option>Caixas Antigas Gran Mestri</option>
-          <option>Caixas Vincadas</option>
-        </select></div>
+        <input id="chapa-categoria" type="text" list="lista-categorias-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+        <datalist id="lista-categorias-chapa">
+          <option value="Estoque Simples"></option>
+          <option value="Estoque Duplo"></option>
+          <option value="Estoque Duplo Col.8"></option>
+          <option value="Estoque Simples Col.5"></option>
+          <option value="Gran Mestri"></option>
+          <option value="Caixas Antigas Gran Mestri"></option>
+          <option value="Caixas Vincadas"></option>
+        </datalist>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nomenclatura *</label>
         <input id="chapa-nomenclatura" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor *</label>
@@ -13701,7 +13933,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="chapa-qual-cnpj" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho (ex: 1240X980)</label>
         <input id="chapa-tamanho" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nome/Uso</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nome/Uso *</label>
         <input id="chapa-nome" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">NF</label>
         <input id="chapa-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
@@ -13711,8 +13943,23 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="chapa-valor-unitario" type="number" step="0.00001" min="0" oninput="calcTotalChapa()" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Total R$ (automático)</label>
         <input id="chapa-total" type="text" readonly style="padding:8px;border-radius:6px;background:var(--bg3);color:#4CAF50;border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Estoque Mínimo</label>
+        <input id="chapa-estoque-minimo" type="number" min="0" value="200" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Entrada</label>
         <input id="chapa-data-entrada" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Vincos</label>
+        <input id="chapa-vincos" type="text" placeholder="Ex: 1 vinco / 2 vincos / sem vincos..." style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Cliente (opcional)</label>
+        <input id="chapa-cliente" type="text" list="lista-clientes-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+        <datalist id="lista-clientes-chapa"></datalist>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Já vem riscada?</label>
+        <select id="chapa-riscada" onchange="toggleChapaRisca()" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+          <option value="0">Não</option>
+          <option value="1">Sim</option>
+        </select></div>
+      <div id="chapa-risca-wrap" style="grid-column:span 2;display:none;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Descrição da risca</label>
+        <input id="chapa-risca-desc" type="text" placeholder="Detalhe do padrão da risca..." style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="grid-column:span 2;display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Observação</label>
         <input id="chapa-obs" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
     </div>
