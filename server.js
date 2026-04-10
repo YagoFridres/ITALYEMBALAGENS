@@ -1836,52 +1836,112 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    const normalizeKey = (s) => String(s || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[\s\-]+/g, '_')
+      .replace(/_+/g, '_');
+
+    const buildKeyMap = (row) => {
+      const m = {};
+      Object.keys(row || {}).forEach((k) => { m[normalizeKey(k)] = k; });
+      return m;
+    };
+
+    const getField = (row, keyMap, candidates) => {
+      for (const cand of candidates) {
+        const k = keyMap[normalizeKey(cand)];
+        if (!k) continue;
+        const v = row[k];
+        if (v !== undefined && v !== null && String(v).trim() !== '') return v;
+      }
+      return '';
+    };
+
+    const toNum = (v) => {
+      const n = Number(String(v ?? '').replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+
     const { data, error } = await supabase
       .from('chapas_estoque')
-      .select('id, forn, nom, tam, qual, nf, qtd, val, min, qual_cnpj, emp_id, vincos, observacao, entrada_de_dados')
-      .order('forn', { ascending: true })
-      .order('nom', { ascending: true });
+      .select('*');
 
     if (error) {
-      console.error('[chapas_estoque] erro:', error.message);
-      return res.status(500).json({ error: error.message });
+      console.error('[chapas_estoque] erro Supabase:', JSON.stringify(error));
+      return res.json([]);
     }
 
-    let rows = (data || []).map(c => ({
-      id: c.id,
-      nome: c.nom || c.nome || '',
-      fornecedor: c.forn || c.fornecedor || '',
-      nomenclatura: c.nom || '',
-      tamanho: c.tam || '',
-      qual_cnpj: c.qual_cnpj || c.qual || '',
-      nf: c.nf || '',
-      quantidade: Number(c.qtd || 0),
-      valor_unitario: Number(c.val || 0),
-      vincos: c.vincos || '',
-      observacao: c.observacao || '',
-      data_entrada: c.entrada_de_dados || '',
-      emp_id: c.emp_id || '',
-      categoria: c.categoria || 'Estoque Simples',
-    }));
+    let rows = (data || []).map((c) => {
+      const km = buildKeyMap(c);
+      const fornecedor = getField(c, km, ['forn', 'fornecedor', 'fornecedor_nome', 'fornecedor name']);
+      const nomenclatura = getField(c, km, ['nom', 'nomenclatura', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
+      const nome = getField(c, km, ['nome', 'name', 'nome_comercial', 'nome comercial', 'descricao', 'desc']) || nomenclatura;
+      const tamanho = getField(c, km, ['tam', 'tamanho']);
+      const qualCnpj = getField(c, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj']);
+      const nf = getField(c, km, ['nf', 'numero_nf', 'numero nf', 'nota', 'nota_fiscal', 'nota fiscal']);
+      const qtd = toNum(getField(c, km, ['qtd', 'quantidade', 'saldo']));
+      const val = toNum(getField(c, km, ['val', 'valor_unitario', 'valor unitario', 'vunit', 'rs']));
+      const min = toNum(getField(c, km, ['min', 'estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima']));
+      const empId = getField(c, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
+      const vincos = getField(c, km, ['vincos', 'víncos']);
+      const observacao = getField(c, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
+      const dataEntrada = getField(c, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
+      const categoria = getField(c, km, ['categoria']) || 'Estoque Simples';
+      const id = getField(c, km, ['id']);
+
+      return {
+        id,
+        nome,
+        fornecedor,
+        nomenclatura,
+        tamanho,
+        qual_cnpj: qualCnpj,
+        nf,
+        quantidade: qtd,
+        valor_unitario: val,
+        estoque_minimo: min,
+        vincos,
+        observacao,
+        data_entrada: dataEntrada,
+        emp_id: empId,
+        categoria,
+      };
+    });
 
     if (req.query.empId) {
       const emp = String(req.query.empId).trim();
-      rows = rows.filter(r => r.emp_id === emp || r.qual_cnpj === emp);
+      rows = rows.filter(r => String(r.emp_id || '').trim() === emp || String(r.qual_cnpj || '').trim() === emp);
     }
     if (req.query.fornecedor) {
       const f = String(req.query.fornecedor).toLowerCase();
       rows = rows.filter(r => String(r.fornecedor || '').toLowerCase().includes(f));
+    }
+    if (req.query.categoria) {
+      const cat = String(req.query.categoria).trim();
+      rows = rows.filter(r => String(r.categoria || '').trim() === cat);
     }
     if (req.query.busca) {
       const b = String(req.query.busca).toLowerCase();
       rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho].join(' ').toLowerCase().includes(b));
     }
 
+    rows.sort((a,b)=>{
+      const fa = String(a.fornecedor||'').toLowerCase();
+      const fb = String(b.fornecedor||'').toLowerCase();
+      if(fa !== fb) return fa > fb ? 1 : -1;
+      const na = String(a.nomenclatura||'').toLowerCase();
+      const nb = String(b.nomenclatura||'').toLowerCase();
+      return na > nb ? 1 : na < nb ? -1 : 0;
+    });
+
     console.log('[chapas_estoque] OK:', rows.length, 'registros');
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.json([]);
   }
 });
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
