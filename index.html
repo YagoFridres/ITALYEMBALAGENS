@@ -1529,7 +1529,13 @@ function _goBase(id){
   if(id==='ofmaq')iniciarPollingOFsMaquina();
   if(id==='lancamento')renderLancamento();
   if(id==='clientes')renderClientes();
-  if(id==='estoque')renderEstoque();
+  if(id==='estoque'){
+    if(_apiConectado && CURRENT_USER){
+      carregarChapas().then(()=>renderEstoque()).catch(()=>renderEstoque());
+    } else {
+      renderEstoque();
+    }
+  }
   if(id==='fluxos')renderFluxos();
   if(id==='maquinas')renderMaquinasConf();
   if(id==='vendedores')renderVendedores();
@@ -2920,8 +2926,8 @@ function popularFiltrosEstoque(chapas){
     const el=document.getElementById(id);
     if(!el) return;
     const cur=el.value;
-    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escH(v)}">${escH(v)}</option>`).join('');
-    if(cur && arr.includes(cur)) el.value=cur;
+    el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escAttr(String(v).toLowerCase())}">${escH(v)}</option>`).join('');
+    if(cur) el.value=cur;
   };
   setOpts('ef-fornecedor', fornSet, '🏭 Fornecedor');
 }
@@ -3031,18 +3037,18 @@ function _renderEstoqueBase(){
   } else {
     const grupos = {};
     lista.forEach(c=>{
-      const cat = c.categoria || 'Sem Categoria';
+      const cat = c.categoria || 'Estoque Simples';
       if(!grupos[cat]) grupos[cat]=[];
       grupos[cat].push(c);
     });
     wrap.innerHTML = Object.entries(grupos).map(([cat, itens]) => `
       <div style="margin-bottom:20px">
-        <div onclick="toggleGrupoEstoque('grp-${escAttr(cat)}')"
+        <div onclick="toggleGrupoEstoque('${escAttr(estoqueGrupoId(cat))}')"
           style="background:var(--bg3);padding:10px 14px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-weight:bold;color:var(--accent)">📦 ${escH(cat)}</span>
           <span style="font-size:12px;color:var(--text2)">${itens.length} itens | Total: ${fmtR(itens.reduce((s,i)=>s+(Number(i.valor_unitario??i.val??0)*Number(i.quantidade??i.qtd??0)),0))}</span>
         </div>
-        <div id="grp-${escAttr(cat)}">
+        <div id="${escAttr(estoqueGrupoId(cat))}">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
             <thead><tr style="background:var(--bg3)">
               <th style="padding:8px;text-align:left">NOME/USO</th>
@@ -3109,6 +3115,11 @@ function _renderEstoqueBase(){
       }).join('');
     }
   }
+}
+
+function estoqueGrupoId(cat){
+  const s = String(cat||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return 'grp-' + s.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 }
 
 function toggleGrupoEstoque(id) {
@@ -12448,9 +12459,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
-      <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center">
+      <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
         <select id="ef-categoria" onchange="_renderEstoqueBase()"
-          style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border)">
+          style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
           <option value="">📦 Todas as categorias</option>
           <option value="Estoque Simples">Estoque Simples</option>
           <option value="Estoque Duplo">Estoque Duplo</option>
@@ -12461,7 +12472,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <option value="Caixas Vincadas">Caixas Vincadas</option>
         </select>
         <select id="ef-fornecedor" onchange="_renderEstoqueBase()"
-          style="padding:6px 10px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border)">
+          style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
           <option value="">🏭 Fornecedor</option>
         </select>
         <button onclick="estoqueFiltrar('baixo')" id="ef-baixo"
@@ -12470,7 +12481,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </button>
         <input id="ef-busca" type="text" placeholder="🔍 Buscar nome, nomenclatura, tamanho..."
           oninput="_renderEstoqueBase()"
-          style="padding:6px 12px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);min-width:220px;flex:1">
+          style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
         <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa"
           style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500">
           + Nova Chapa
@@ -13692,37 +13703,37 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div style="background:var(--bg2);border-radius:12px;padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto">
     <h3 id="chapa-modal-titulo" style="margin:0 0 16px">Nova Chapa</h3>
     <input type="hidden" id="chapa-edit-id">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><label style="font-size:12px">Categoria *</label>
-        <select id="chapa-categoria" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Categoria *</label>
+        <select id="chapa-categoria" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
           <option>Estoque Simples</option><option>Estoque Duplo</option>
           <option>Estoque Duplo Col.8</option><option>Estoque Simples Col.5</option>
           <option>Gran Mestri</option><option>Caixas Antigas Gran Mestri</option>
           <option>Caixas Vincadas</option>
         </select></div>
-      <div><label style="font-size:12px">Nomenclatura *</label>
-        <input id="chapa-nomenclatura" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Fornecedor *</label>
-        <input id="chapa-fornecedor" type="text" list="lista-fornecedores-chapa" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nomenclatura *</label>
+        <input id="chapa-nomenclatura" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor *</label>
+        <input id="chapa-fornecedor" type="text" list="lista-fornecedores-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
         <datalist id="lista-fornecedores-chapa"><option value="ADAMI"><option value="FAPOLPA"><option value="KLABIN"><option value="TROMBINI"><option value="BRAGAGNOLO"></datalist></div>
-      <div><label style="font-size:12px">Fabricante (qual_cnpj)</label>
-        <input id="chapa-qual-cnpj" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Tamanho (ex: 1240X980)</label>
-        <input id="chapa-tamanho" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Nome/Uso</label>
-        <input id="chapa-nome" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">NF</label>
-        <input id="chapa-nf" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Quantidade *</label>
-        <input id="chapa-quantidade" type="number" min="0" oninput="calcTotalChapa()" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Valor Unitário (R$)</label>
-        <input id="chapa-valor-unitario" type="number" step="0.00001" min="0" oninput="calcTotalChapa()" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Total R$ (automático)</label>
-        <input id="chapa-total" type="text" readonly style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:#4CAF50;border:1px solid var(--border)"></div>
-      <div><label style="font-size:12px">Data de Entrada</label>
-        <input id="chapa-data-entrada" type="date" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="grid-column:span 2"><label style="font-size:12px">Observação</label>
-        <input id="chapa-obs" type="text" style="width:100%;padding:7px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fabricante (qual_cnpj)</label>
+        <input id="chapa-qual-cnpj" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho (ex: 1240X980)</label>
+        <input id="chapa-tamanho" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nome/Uso</label>
+        <input id="chapa-nome" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">NF</label>
+        <input id="chapa-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade *</label>
+        <input id="chapa-quantidade" type="number" min="0" oninput="calcTotalChapa()" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Valor Unitário (R$)</label>
+        <input id="chapa-valor-unitario" type="number" step="0.00001" min="0" oninput="calcTotalChapa()" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Total R$ (automático)</label>
+        <input id="chapa-total" type="text" readonly style="padding:8px;border-radius:6px;background:var(--bg3);color:#4CAF50;border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Entrada</label>
+        <input id="chapa-data-entrada" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="grid-column:span 2;display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Observação</label>
+        <input id="chapa-obs" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button onclick="document.getElementById('modal-nova-chapa').style.display='none'" style="padding:8px 16px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer">Cancelar</button>
