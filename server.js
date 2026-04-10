@@ -1836,27 +1836,38 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
-    const empId = String(req.query.empId || '').trim();
-    const fornecedor = String(req.query.fornecedor || '').trim();
-    const categoria = String(req.query.categoria || '').trim();
-    const busca = String(req.query.busca || '').trim();
-
-    let q = supabase.from('chapas_estoque').select('*');
-    if (empId) {
-      q = q.or(`emp_id.eq.${empId},empId.eq.${empId},empresa.eq.${empId},qual_cnpj.eq.${empId}`);
+    const { data, error } = await supabase
+      .from('chapas_estoque')
+      .select('*')
+      .order('fornecedor', { ascending: true })
+      .order('nomenclatura', { ascending: true });
+    if (error) {
+      console.error('Erro chapas_estoque:', error);
+      return res.status(500).json({ error: error.message, details: error.details });
     }
-    if (fornecedor) q = q.ilike('fornecedor', '%' + fornecedor + '%');
-    if (categoria) q = q.eq('categoria', categoria);
-    if (busca) {
-      const b = busca.replace(/%/g, '');
-      q = q.or('nome.ilike.%' + b + '%,nomenclatura.ilike.%' + b + '%,fornecedor.ilike.%' + b + '%,tamanho.ilike.%' + b + '%');
+    let rows = data || [];
+    if (req.query.empId) {
+      const emp = String(req.query.empId).trim();
+      rows = rows.filter(r => (r.qual_cnpj === emp) || (r.emp_id === emp) || (r.empId === emp) || (r.empresa === emp));
     }
-    q = q.order('categoria').order('fornecedor').order('nomenclatura');
-
-    const { data, error } = await q;
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
-  } catch (e) { err(res, e); }
+    if (req.query.fornecedor) {
+      const f = String(req.query.fornecedor).toLowerCase();
+      rows = rows.filter(r => String(r.fornecedor||'').toLowerCase().includes(f));
+    }
+    if (req.query.categoria) {
+      const c = String(req.query.categoria);
+      rows = rows.filter(r => (r.categoria||'') === c);
+    }
+    if (req.query.busca) {
+      const b = String(req.query.busca).toLowerCase();
+      rows = rows.filter(r => [(r.nome||''),(r.nomenclatura||''),(r.fornecedor||''),(r.tamanho||'')].join(' ').toLowerCase().includes(b));
+    }
+    console.log('[chapas_estoque] retornando:', rows.length, 'registros');
+    return res.json(rows);
+  } catch (err) {
+    console.error('Erro geral chapas_estoque:', err.message);
+    return res.status(500).json({ error: String(err.message || err) });
+  }
 });
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
