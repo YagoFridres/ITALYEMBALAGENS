@@ -7259,53 +7259,48 @@ function normalizeOrc(r){
     vendId: r.vendedor_id ?? r.vend_id ?? r.vendId ?? '',
   };
 }
-function normalizeEst(r){
-  const categoria = (r.categoria != null && String(r.categoria).trim() !== '') ? r.categoria : 'Estoque Simples';
-  const fornecedor = r.fornecedor ?? r.forn ?? r.fornecedor_nome ?? r.fornecedorName ?? '';
-  const nomenclatura = r.nomenclatura ?? r.nom ?? r.codigo ?? r.cod ?? r.tipo_papel ?? r.tipoPapel ?? '';
-  const tamanho = r.tamanho ?? r.tam ?? '';
-  const nome = r.nome ?? r.descricao ?? '';
-  const qual_cnpj = r.qual_cnpj ?? r.cnpj ?? '';
-  const quantidade = r.quantidade!=null ? r.quantidade : (r.qtd!=null ? r.qtd : (r.quantidade_atual!=null ? r.quantidade_atual : r.saldo));
-  const valor_unitario = r.valor_unitario!=null ? r.valor_unitario : (r.val!=null ? r.val : r.custo_unitario);
-  const estoque_minimo = r.estoque_minimo!=null ? r.estoque_minimo : (r.min!=null ? r.min : r.quantidade_minima);
-  const data_entrada = r.data_entrada ?? null;
-  const nf_entrada = r.nf_entrada ?? r.nf ?? '';
-  const placa_veiculo = r.placa_veiculo ?? '';
-  const responsavel = r.responsavel ?? '';
-  const observacao = r.observacao ?? r.observacoes ?? r.obs ?? '';
+function normalizeEst(c) {
+  const categoria = (c.categoria != null && String(c.categoria).trim() !== '') ? c.categoria : 'Estoque Simples';
+  const nome = c.nom || c.nome || c.name || c.nome_comercial || '';
+  const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
+  const fornecedor = c.forn || c.fornecedor || '';
+  const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
+  const tamanho = c.tam || c.tamanho || '';
+  const nf = c.nf || c.nota || c.numero_nf || '';
+  const quantidade = Number(c.qtd ?? c.quantidade ?? 0) || 0;
+  const valor_unitario = Number(c.val ?? c.valor_unitario ?? c.vunit ?? 0) || 0;
+  const vincos = c.vincos || '';
+  const observacao = c.observacao || c.observacoes || '';
+  const data_entrada = c.entrada_de_dados || c.entrada_de_dados || c.data_entrada || '';
+  const emp_id = c.emp_id || '';
+  const comp = c.comp ?? c.comprimento_mm ?? c.Comprimento_mm ?? c.comprimento ?? null;
+  const larg = c.larg ?? c.largura_mm ?? c.largura_mm ?? c.largura ?? null;
+  const min = c.min ?? c.estoque_minimo ?? c.quantidade_minima ?? null;
   return {
-    id:r.id,
-    categoria,
-    fornecedor,
-    nomenclatura,
-    tamanho,
-    forn:fornecedor,
-    nom:nomenclatura,
-    tam:tamanho,
-    comp:r.comp!=null?r.comp:(r.comprimento_mm!=null?r.comprimento_mm:r.comprimento),
-    larg:r.larg!=null?r.larg:(r.largura_mm!=null?r.largura_mm:r.largura),
+    id: c.id,
     nome,
-    qual:r.qual||r.qualidade||r.tipo_papel||r.tipoPapel||'',
+    nomenclatura,
+    fornecedor,
     qual_cnpj,
-    cnpj:qual_cnpj,
-    nf:r.nf||nf_entrada,
-    nf_entrada,
-    data_entrada,
-    placa_veiculo,
-    responsavel,
-    observacao,
-    obs:observacao,
-    qtd:quantidade,
+    tamanho,
+    nf,
     quantidade,
-    val:valor_unitario,
     valor_unitario,
-    min:estoque_minimo,
-    estoque_minimo,
-    valor_total:r.valor_total!=null?r.valor_total:(r.total!=null?r.total:r.vtot),
-    vincada:!!(r.vincada||r.vincada===true),
-    vincos:r.vincos||'',
-    empId:r.emp_id||r.empId||r.emp_id||r.empId||r.empresa_id||r.empresaId||''
+    vincos,
+    observacao,
+    data_entrada,
+    emp_id,
+    categoria,
+    forn: fornecedor,
+    nom: nomenclatura,
+    tam: tamanho,
+    qual: qual_cnpj,
+    qtd: quantidade,
+    val: valor_unitario,
+    empId: emp_id,
+    comp,
+    larg,
+    min,
   };
 }
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
