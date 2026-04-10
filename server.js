@@ -1878,17 +1878,26 @@ function _chapasNum(v) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function _chapasEmpresaFromEmpId(empId) {
+  const e = String(empId || '').trim().toUpperCase();
+  if (e === 'E2' || e.includes('CARTO')) return 'CARTOESTE';
+  if (e === 'E3' || e.includes('OESTE')) return 'OESTEPACK';
+  return 'ITALY EMBALAGENS';
+}
+
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
     const qtd = Number(row.quantidade || 0) || 0;
     const vunit = Number(row.valor_unitario || 0) || 0;
     const vtot = Number(row.valor_total || 0) || (qtd * vunit);
+    const empId = row.emp_id || '';
     return {
       id: row.id,
       fornecedor: row.fornecedor || '',
       nomenclatura: row.nomenclatura || '',
       tamanho: row.tamanho || '',
       nome: row.nome_uso || row.nome || '',
+      empresa_vinculada: row.empresa_vinculada || _chapasEmpresaFromEmpId(empId),
       qual_cnpj: row.qual_cnpj || row.fabricante || '',
       nf: row.nf || '',
       quantidade: qtd,
@@ -1903,7 +1912,7 @@ function _chapasCanonicalFromAny(row, table) {
       risca_desc: row.risca_desc || '',
       estoque_minimo: Number(row.estoque_minimo || 200) || 200,
       data_entrada: row.data_entrada || null,
-      emp_id: row.emp_id || '',
+      emp_id: empId,
       criado_por: row.criado_por || '',
       atualizado_por: row.atualizado_por || '',
       criado_em: row.created_at || row.criado_em || null,
@@ -1931,6 +1940,7 @@ function _chapasCanonicalFromAny(row, table) {
   const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
   const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
   const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
+  const empresaVinc = _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
   const id = _chapasGet(row, km, ['id']);
   const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
   const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
@@ -1941,6 +1951,7 @@ function _chapasCanonicalFromAny(row, table) {
     nomenclatura,
     tamanho,
     nome,
+    empresa_vinculada: empresaVinc,
     qual_cnpj: qualCnpj,
     nf,
     quantidade: qtd,
@@ -2015,9 +2026,12 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
   const dataEntrada = (b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null) || null;
   const empId = (b.emp_id ?? b.empId ?? '').toString().trim() || (req?.query?.empId ? String(req.query.empId).trim() : '') || 'E1';
+  const empresaVinculadaRaw = (b.empresa_vinculada ?? b.empresaVinculada ?? b.empresa ?? '').toString().trim();
+  const empresaVinculada = empresaVinculadaRaw || _chapasEmpresaFromEmpId(empId);
 
-  if (qualCnpj !== '') set('qual_cnpj', qualCnpj);
-  if (nf !== '') set('nf', nf);
+  if (b.qual_cnpj !== undefined || b.qual !== undefined || b.fabricante !== undefined) set('qual_cnpj', qualCnpj);
+  if (b.nf !== undefined || b.nf_entrada !== undefined) set('nf', nf);
+  if (b.empresa_vinculada !== undefined || b.empresaVinculada !== undefined || b.empresa !== undefined) set('empresa_vinculada', empresaVinculada);
   set('riscada', riscada);
   if (riscaDesc !== '') set('risca_desc', riscaDesc);
   if (vincos !== '') set('vincos', vincos);
@@ -2130,6 +2144,7 @@ function _chapasParseCsv(text) {
     const nomenclatura = get(r, ['nomenclatura', 'nom', 'codigo', 'cod', 'modelo', 'tipo_papel', 'tipo papel']);
     const tamanho = get(r, ['tamanho', 'tam']);
     const nomeUso = get(r, ['nome_uso', 'nome uso', 'nome', 'descricao', 'uso']);
+    const empresaVinculada = get(r, ['empresa_vinculada', 'empresa vinculada', 'empresa', 'fabricante_empresa', 'fabricante empresa']);
     const qualCnpj = get(r, ['qual_cnpj', 'qual cnpj', 'fabricante', 'cnpj']);
     const nf = get(r, ['nf', 'nota_fiscal', 'nota fiscal']);
     const quantidade = get(r, ['quantidade', 'qtd', 'saldo']);
@@ -2148,6 +2163,7 @@ function _chapasParseCsv(text) {
       nomenclatura,
       tamanho,
       nome_uso: nomeUso,
+      empresa_vinculada: empresaVinculada,
       qual_cnpj: qualCnpj,
       nf,
       quantidade: quantidade,
@@ -2194,7 +2210,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     }
     if (req.query.busca) {
       const b = String(req.query.busca).toLowerCase();
-      rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
+      rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.empresa_vinculada, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
     }
     if (req.query.cliente) {
       const c = String(req.query.cliente).toLowerCase();
@@ -2211,6 +2227,10 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     if (req.query.tamanho) {
       const t = String(req.query.tamanho).toLowerCase();
       rows = rows.filter(r => String(r.tamanho || '').toLowerCase().includes(t));
+    }
+    if (req.query.empresa_vinculada) {
+      const ev = String(req.query.empresa_vinculada).toLowerCase();
+      rows = rows.filter(r => String(r.empresa_vinculada || '').toLowerCase().includes(ev));
     }
     if (req.query.riscadas === '1') rows = rows.filter(r => !!r.riscada);
     if (req.query.com_vincos === '1') rows = rows.filter(r => String(r.vincos || '').trim() !== '');
@@ -2250,7 +2270,17 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, false);
-      const { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
+      let { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
+      if (error) {
+        const msg = String(error.message || error);
+        if (msg.toLowerCase().includes('empresa_vinculada') && msg.toLowerCase().includes('column')) {
+          const retry = { ...payload };
+          delete retry.empresa_vinculada;
+          const r2 = await supabase.from('chapas_estoque_v2').insert([retry]).select().single();
+          data = r2.data;
+          error = r2.error;
+        }
+      }
       if (error) return res.status(500).json({ error: error.message });
       await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
@@ -2284,7 +2314,17 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, true);
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
-      const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
+      let { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
+      if (error) {
+        const msg = String(error.message || error);
+        if (msg.toLowerCase().includes('empresa_vinculada') && msg.toLowerCase().includes('column')) {
+          const retry = { ...payload };
+          delete retry.empresa_vinculada;
+          const r2 = await supabase.from('chapas_estoque_v2').update(retry).eq('id', req.params.id).select().single();
+          data = r2.data;
+          error = r2.error;
+        }
+      }
       if (error) return res.status(500).json({ error: error.message });
       await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
@@ -2378,7 +2418,88 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
     await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
+    if (table === 'chapas_estoque_v2') {
+      const delta = Math.trunc((Number(newQtd) || 0) - (Number(oldQtd) || 0));
+      const mov = {
+        chapa_id: id,
+        tipo,
+        delta,
+        qtd_anterior: Math.trunc(oldQtd),
+        qtd_nova: Math.trunc(newQtd),
+        nf: (b.nf != null && String(b.nf).trim() !== '') ? String(b.nf).trim() : null,
+        obs: (b.obs != null && String(b.obs).trim() !== '') ? String(b.obs).trim() : null,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: canonUpd.emp_id || null,
+      };
+      try {
+        await supabase.from('chapas_estoque_movimentos_v2').insert([mov]);
+      } catch (_) {}
+    }
+
     return ok(res, canonUpd);
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') return ok(res, []);
+    const limit = Math.max(1, Math.min(500, Math.trunc(_chapasToNum(req.query.limit, 120))));
+    const chapaId = String(req.query.chapa_id || '').trim();
+    const empId = String(req.query.empId || '').trim();
+
+    let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
+    if (chapaId) q = q.eq('chapa_id', chapaId);
+    if (empId) q = q.eq('emp_id', empId);
+
+    const { data, error } = await q;
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation')) return ok(res, []);
+      return res.status(500).json({ ok: false, error: error.message });
+    }
+    return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+
+    const movId = req.params.id;
+    const { data: mov, error: movErr } = await supabase.from('chapas_estoque_movimentos_v2').select('*').eq('id', movId).single();
+    if (movErr || !mov) return res.status(404).json({ ok: false, error: 'Movimentação não encontrada' });
+    if (mov.reverted) return res.status(400).json({ ok: false, error: 'Movimentação já revertida' });
+
+    const chapaId = mov.chapa_id;
+    const { data: cur, error: curErr } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).single();
+    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const canonCur = _chapasCanonicalFromAny(cur, 'chapas_estoque_v2');
+    const curQtd = Math.trunc(Number(canonCur.quantidade || 0) || 0);
+    const delta = Math.trunc(Number(mov.delta || 0) || 0);
+    const newQtd = curQtd - delta;
+    if (newQtd < 0) return res.status(400).json({ ok: false, error: 'Reversão inválida (saldo ficaria negativo)' });
+
+    const { data: upd, error: updErr } = await supabase
+      .from('chapas_estoque_v2')
+      .update({ quantidade: newQtd, atualizado_por: req?.usuario?.nome || 'sistema' })
+      .eq('id', chapaId)
+      .select()
+      .single();
+    if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
+
+    const { error: revErr } = await supabase
+      .from('chapas_estoque_movimentos_v2')
+      .update({ reverted: true, reverted_by: req?.usuario?.nome || 'sistema', reverted_at: new Date().toISOString() })
+      .eq('id', movId);
+    if (revErr) return res.status(500).json({ ok: false, error: revErr.message });
+
+    const canonUpd = _chapasCanonicalFromAny(upd, 'chapas_estoque_v2');
+    await _chapasLogAcao(req, 'estoque_movimento_revertido', `Movimento revertido (${mov.tipo}) delta=${delta} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`);
+
+    return ok(res, { chapa: canonUpd });
   } catch (e) { err(res, e); }
 });
 
@@ -2442,6 +2563,7 @@ app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, asyn
       nomenclatura: c.nomenclatura || '',
       tamanho: c.tamanho || '',
       nome_uso: c.nome || c.nomenclatura || '',
+      empresa_vinculada: c.empresa_vinculada || _chapasEmpresaFromEmpId(c.emp_id),
       qual_cnpj: c.qual_cnpj || '',
       nf: c.nf || '',
       quantidade: Math.trunc(Number(c.quantidade || 0) || 0),

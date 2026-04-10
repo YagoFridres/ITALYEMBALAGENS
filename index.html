@@ -2919,12 +2919,57 @@ var EST_SORT = {campo:'nome', asc:true};
 
 let _estoqueBase = [];
 let _estoqueBaixoOnly = false;
+let _estBusy = false;
+
+function estEmpresaFromEmpId(empId){
+  const e = String(empId||'').trim().toUpperCase();
+  if(e === 'E2' || e.includes('CARTO')) return 'CARTOESTE';
+  if(e === 'E3' || e.includes('OESTE')) return 'OESTEPACK';
+  return 'ITALY EMBALAGENS';
+}
+
+function estEmpIdFromEmpresa(empresa){
+  const s = String(empresa||'').trim().toUpperCase();
+  if(!s) return 'E1';
+  if(s.includes('CARTO')) return 'E2';
+  if(s.includes('OESTE')) return 'E3';
+  return 'E1';
+}
+
+function estSetBusy(v){
+  _estBusy = !!v;
+  const bar = document.getElementById('estoque-filtros-bar');
+  if(bar) bar.style.opacity = _estBusy ? '0.75' : '';
+}
+
+function renderEstFiltrosAtivos(qtdExibida, qtdTotal){
+  const el = document.getElementById('est-filtros-ativos');
+  if(!el) return;
+  const parts = [];
+  const get = (id) => String(document.getElementById(id)?.value || '').trim();
+  const getB = (id) => !!document.getElementById(id)?.checked;
+  const cat = get('ef-categoria'); if(cat) parts.push(`Categoria=${cat}`);
+  const forn = get('ef-fornecedor'); if(forn) parts.push(`Fornecedor=${forn}`);
+  const emp = get('ef-empresa'); if(emp) parts.push(`Empresa=${emp}`);
+  const cli = get('ef-cliente'); if(cli) parts.push(`Cliente=${cli}`);
+  const nf = get('ef-nf'); if(nf) parts.push(`NF~${nf}`);
+  const nom = get('ef-nomenclatura'); if(nom) parts.push(`Nom~${nom}`);
+  const tam = get('ef-tamanho'); if(tam) parts.push(`Tam~${tam}`);
+  const busca = get('ef-busca'); if(busca) parts.push(`Busca~${busca}`);
+  if(getB('ef-riscadas')) parts.push('Riscadas');
+  if(getB('ef-com-vincos')) parts.push('ComVincos');
+  if(getB('ef-baixo')) parts.push('Baixo');
+  if(getB('ef-sem')) parts.push('Sem');
+  const head = `Exibindo ${Number(qtdExibida||0).toLocaleString()} de ${Number(qtdTotal||0).toLocaleString()}`;
+  el.innerHTML = parts.length ? `${head} · ${parts.map(p=>`<span style="display:inline-block;background:var(--s2);border:1px solid var(--border);padding:2px 8px;border-radius:999px;margin-right:6px">${escH(p)}</span>`).join('')}` : head;
+}
 
 function popularFiltrosEstoque(chapas){
   _estoqueBase = Array.isArray(chapas) ? chapas : [];
   const norm = (s) => String(s || '').trim();
   const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const empSet=[...new Set(_estoqueBase.map(c=>norm(c.empresa_vinculada||c.empresa||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
@@ -2935,6 +2980,7 @@ function popularFiltrosEstoque(chapas){
   };
   setOpts('ef-categoria', catSet, '📦 Categoria');
   setOpts('ef-fornecedor', fornSet, '🏭 Fornecedor');
+  setOpts('ef-empresa', empSet, '🏢 Empresa');
   setOpts('ef-cliente', cliSet, '👤 Cliente');
 }
 
@@ -2943,6 +2989,7 @@ function estoqueFiltrar(tipo){
   if(tipo==='todos'){
     const c=document.getElementById('ef-categoria'); if(c) c.value='';
     const f1=document.getElementById('ef-fornecedor'); if(f1) f1.value='';
+    const e1=document.getElementById('ef-empresa'); if(e1) e1.value='';
     const cl=document.getElementById('ef-cliente'); if(cl) cl.value='';
     const nf=document.getElementById('ef-nf'); if(nf) nf.value='';
     const nom=document.getElementById('ef-nomenclatura'); if(nom) nom.value='';
@@ -2969,6 +3016,7 @@ function _renderEstoqueBase(chapas) {
 
   const catFil = String(document.getElementById('ef-categoria')?.value || '').trim();
   const fornFil = String(document.getElementById('ef-fornecedor')?.value || '').trim().toLowerCase();
+  const empFil = String(document.getElementById('ef-empresa')?.value || '').trim().toLowerCase();
   const cliFil = String(document.getElementById('ef-cliente')?.value || '').trim().toLowerCase();
   const nfFil = String(document.getElementById('ef-nf')?.value || '').trim().toLowerCase();
   const nomFil = String(document.getElementById('ef-nomenclatura')?.value || '').trim().toLowerCase();
@@ -2984,6 +3032,8 @@ function _renderEstoqueBase(chapas) {
     if(catFil && cat !== catFil) return false;
     const forn = String(c.fornecedor || c.forn || '');
     if(fornFil && !forn.toLowerCase().includes(fornFil)) return false;
+    const emp = String(c.empresa_vinculada || c.empresa || '');
+    if(empFil && !emp.toLowerCase().includes(empFil)) return false;
     const cliente = String(c.cliente || '');
     if(cliFil && !cliente.toLowerCase().includes(cliFil)) return false;
     const nf = String(c.nf || c.nf_entrada || '');
@@ -3001,7 +3051,7 @@ function _renderEstoqueBase(chapas) {
     if(busca) {
       const txt = [
         (c.nome||''),(c.nomenclatura||c.nom||''),(c.fornecedor||c.forn||''),
-        (c.qual_cnpj||c.qual||''),(c.tamanho||c.tam||''),(c.nf||''),
+        (c.empresa_vinculada||c.empresa||''),(c.qual_cnpj||c.qual||''),(c.tamanho||c.tam||''),(c.nf||c.nf_entrada||''),
         (c.vincos||''),(c.observacao||''),(c.categoria||''),(c.cliente||''),(c.risca_desc||'')
       ].join(' ').toLowerCase();
       if(!txt.includes(busca)) return false;
@@ -3025,7 +3075,7 @@ function _renderEstoqueBase(chapas) {
     return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
 
-  const colsCount = 14;
+  const colsCount = 15;
   if(!filtrada.length){
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
@@ -3037,7 +3087,7 @@ function _renderEstoqueBase(chapas) {
       const min = Number(c.estoque_minimo ?? c.min ?? 200) || 200;
       const baixoEst = qtd > 0 && qtd < min;
       const zerado = qtd === 0;
-      const nf = c.nf_entrada || c.nf || '—';
+      const nf = (c.nf || c.nf_entrada || '').trim() || '—';
       const ris = c.riscada ? 'SIM' : 'NÃO';
       const risCor = c.riscada ? 'var(--orange)' : 'var(--text3)';
       const risDesc = String(c.risca_desc || '').trim();
@@ -3047,6 +3097,7 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2);font-family:var(--mono);font-weight:900;min-width:140px">${escH(c.empresa_vinculada||c.empresa||'ITALY EMBALAGENS')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--purple);font-family:var(--mono);font-size:.72rem;min-width:120px">${escH(c.qual_cnpj||c.qual||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:90px">${escH(nf)}</td>
@@ -3080,13 +3131,15 @@ function _renderEstoqueBase(chapas) {
         return s + total;
       },0);
       footEl.innerHTML = `<tr style="background:var(--s3)">
-        <td colspan="7" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
+        <td colspan="8" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(totalValTotal)}</td>
         <td colspan="5" style="padding:10px;border:1px solid var(--border)"></td>
       </tr>`;
     }
   }
+
+  renderEstFiltrosAtivos(filtrada.length, lista.length);
 
   const histEl=document.getElementById('est-hist');
   if(histEl){
@@ -3184,12 +3237,64 @@ function toggleGrupoEstoque(id) {
 
 async function carregarHistoricoEstoque(){
   try{
+    const empParam = EMP_FILTRO ? ('&empId=' + encodeURIComponent(EMP_FILTRO)) : '';
+    const r2 = await api('GET','/chapas_estoque_movimentos?limit=160' + empParam);
+    const lista2 = (r2 && r2.ok && Array.isArray(r2.data)) ? r2.data : null;
+    if(lista2){
+      renderHistoricoMovimentosChapas(lista2);
+      return;
+    }
     const r = await api('GET','/historico_acoes?tipo=estoque');
     const lista = (r && r.ok && Array.isArray(r.data)) ? r.data : [];
     renderHistoricoEstoque(lista);
   }catch(e){
     try{ renderHistoricoEstoque([]); }catch(e2){}
   }
+}
+
+async function excluirMovimentoChapas(movId){
+  if(!movId) return;
+  if(!confirm('Excluir esta movimentação e desfazer o impacto no estoque?')) return;
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const r = await api('DELETE','/chapas_estoque_movimentos/'+encodeURIComponent(movId));
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    toast('Movimentação revertida ✓','var(--green)');
+    await carregarChapas();
+    renderEstoque();
+    await carregarHistoricoEstoque();
+  } finally {
+    estSetBusy(false);
+  }
+}
+
+function renderHistoricoMovimentosChapas(lista){
+  const el=document.getElementById('est-hist');
+  if(!el) return;
+  const rows = (Array.isArray(lista)?lista:[]).slice(0,160);
+  el.innerHTML = rows.length ? rows.map(h=>{
+    const tipo = String(h.tipo||'').toLowerCase();
+    const cor = tipo.includes('saida') ? 'var(--red)' : tipo.includes('entrada') ? 'var(--green)' : tipo.includes('ajuste') ? 'var(--yellow)' : 'var(--text2)';
+    const delta = Number(h.delta||0)||0;
+    const sinal = delta>0?'+':delta<0?'-':'±';
+    const deltaAbs = Math.abs(delta);
+    const rev = !!h.reverted;
+    const ch = (Array.isArray(ESTOQUE)?ESTOQUE:[]).find(c=>c.id===h.chapa_id);
+    const lblCh = ch ? `${ch.nome||''} · ${ch.nomenclatura||''} · ${ch.tamanho||''}` : (h.chapa_id||'—');
+    const nf = (h.nf||'').trim();
+    const obs = (h.obs||'').trim();
+    const meta = [nf?('NF '+nf):'', obs].filter(Boolean).join(' · ');
+    const when = fmtDataBR(String(h.created_at||'')) || '';
+    const user = h.usuario || '';
+    return `<div class="hist-row" style="display:grid;grid-template-columns:86px 86px 1fr auto auto;gap:8px;align-items:center;opacity:${rev?0.6:1}">
+      <span style="font-weight:900;color:${cor};font-family:var(--mono)">${escH(String(tipo||'').toUpperCase())}</span>
+      <span style="color:${cor};font-weight:900;font-family:var(--mono)">${sinal}${deltaAbs.toLocaleString()}</span>
+      <span style="color:var(--text2)">${escH(lblCh)}${meta?`<span style="display:block;font-size:.68rem;color:var(--text3)">${escH(meta)}</span>`:''}${rev?`<span style="display:block;font-size:.68rem;color:var(--orange);font-weight:900">REVERTIDA</span>`:''}</span>
+      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${escH(when)} · ${escH(user)}</span>
+      ${rev?`<span></span>`:`<button class="btn-icon btn-sm" onclick="excluirMovimentoChapas('${escAttr(h.id)}')" title="Excluir e reverter" style="color:var(--red)">🗑</button>`}
+    </div>`;
+  }).join('') : `<div style="padding:14px;color:var(--text3);text-align:center">Sem histórico</div>`;
 }
 
 function renderHistoricoEstoque(lista){
@@ -3368,10 +3473,12 @@ function abrirModalNovaChapa(id) {
   document.getElementById('chapa-categoria').value = c?.categoria||'Estoque Simples';
   document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
   document.getElementById('chapa-fornecedor').value = c?.fornecedor||c?.forn||'';
+  const empSel = document.getElementById('chapa-empresa');
+  if(empSel) empSel.value = c?.empresa_vinculada || c?.empresa || estEmpresaFromEmpId(c?.emp_id || c?.empId || '');
   document.getElementById('chapa-qual-cnpj').value = c?.qual_cnpj||c?.cnpj||c?.qual||'';
   document.getElementById('chapa-tamanho').value = c?.tamanho||c?.tam||'';
   document.getElementById('chapa-nome').value = c?.nome||'';
-  document.getElementById('chapa-nf').value = c?.nf_entrada||c?.nf||'';
+  document.getElementById('chapa-nf').value = c?.nf||c?.nf_entrada||'';
   document.getElementById('chapa-quantidade').value = c?.quantidade??c?.qtd??0;
   document.getElementById('chapa-valor-unitario').value = c?.valor_unitario??c?.val??0;
   document.getElementById('chapa-data-entrada').value = c?.data_entrada||'';
@@ -3397,14 +3504,22 @@ function editarChapa(id) { abrirModalNovaChapa(id); }
 async function ajustarQtdChapa(id, delta) {
   const c = (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id);
   if(!c) return;
+  if(_estBusy) return;
   const atual = Number(c.quantidade??c.qtd??0);
   const d = Number(delta||0);
   if(!d) return;
   const tipo = d > 0 ? 'entrada' : 'saida';
-  const r = await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { tipo, delta: Math.abs(d) });
-  if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
-  await carregarChapas();
-  renderEstoque();
+  try{
+    estSetBusy(true);
+    const r = await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { tipo, delta: Math.abs(d) });
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    await carregarChapas();
+    renderEstoque();
+    const sinal = d>0?'+':'-';
+    toast(`${sinal}${Math.abs(d)} un atualizado`,'var(--green)');
+  }finally{
+    estSetBusy(false);
+  }
 }
 
 function abrirEditarChapa(id){
@@ -3499,11 +3614,14 @@ async function salvarChapa(){
     const fornecedor = document.getElementById('chapa-fornecedor')?.value?.trim()||'';
     const tamanho = document.getElementById('chapa-tamanho')?.value?.trim()?.toUpperCase()||'';
     const categoria = document.getElementById('chapa-categoria')?.value||'Estoque Simples';
-    if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!categoria){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Tamanho e Categoria','var(--red)');return;}
+    const empresa = document.getElementById('chapa-empresa')?.value?.trim()||'';
+    if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!categoria||!empresa){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Empresa, Tamanho e Categoria','var(--red)');return;}
+    if(_estBusy) return;
     const payload = {
       categoria,
       nome_uso: nomeUso,
       nomenclatura, fornecedor,
+      empresa_vinculada: empresa,
       qual_cnpj: document.getElementById('chapa-qual-cnpj')?.value?.trim()||'',
       tamanho,
       nf: document.getElementById('chapa-nf')?.value?.trim()||'',
@@ -3517,18 +3635,23 @@ async function salvarChapa(){
       risca_desc: document.getElementById('chapa-risca-desc')?.value?.trim()||'',
       estoque_minimo: Number(document.getElementById('chapa-estoque-minimo')?.value||200),
       observacao: document.getElementById('chapa-obs')?.value?.trim()||'',
-      emp_id: EMP_FILTRO||'E1',
+      emp_id: estEmpIdFromEmpresa(empresa),
     };
-    const r = id
-      ? await api('PUT','/chapas_estoque/'+encodeURIComponent(id),payload)
-      : await api('POST','/chapas_estoque',payload);
-    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
-    if(r && r.error){toast('Erro: '+r.error,'var(--red)');return;}
-    toast('Chapa salva ✓','var(--green)');
-    modalNova.style.display='none';
-    await carregarChapas();
-    renderEstoque();
-    return;
+    try{
+      estSetBusy(true);
+      const r = id
+        ? await api('PUT','/chapas_estoque/'+encodeURIComponent(id),payload)
+        : await api('POST','/chapas_estoque',payload);
+      if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+      if(r && r.error){toast('Erro: '+r.error,'var(--red)');return;}
+      toast('Chapa salva ✓','var(--green)');
+      modalNova.style.display='none';
+      await carregarChapas();
+      renderEstoque();
+      return;
+    } finally {
+      estSetBusy(false);
+    }
   }
   const forn=document.getElementById('ch-forn').value.trim();
   const nom=document.getElementById('ch-nom').value.trim();
@@ -7424,16 +7547,17 @@ function normalizeEst(c) {
   const nome = c.nome_uso || c.nomeUso || c.nome || c.name || c.nome_comercial || c.nom || '';
   const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
   const fornecedor = c.forn || c.fornecedor || '';
+  const emp_id = c.emp_id || c.empId || '';
+  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('CARTO') ? 'CARTOESTE' : (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('OESTE') ? 'OESTEPACK' : '')) || estEmpresaFromEmpId(emp_id);
   const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
   const tamanho = c.tam || c.tamanho || '';
-  const nf = c.nf || c.nota || c.numero_nf || '';
+  const nf = c.nf || c.nf_entrada || c.nota || c.numero_nf || '';
   const quantidade = Number(c.qtd ?? c.quantidade ?? 0) || 0;
   const valor_unitario = Number(c.val ?? c.valor_unitario ?? c.vunit ?? 0) || 0;
   const valor_total = Number(c.valor_total ?? c.vtot ?? (quantidade * valor_unitario) ?? 0) || 0;
   const vincos = c.vincos || '';
   const observacao = c.observacao || c.observacoes || '';
   const data_entrada = c.entrada_de_dados || c.entrada_de_dados || c.data_entrada || '';
-  const emp_id = c.emp_id || '';
   const comp = c.comp ?? c.comprimento_mm ?? c.Comprimento_mm ?? c.comprimento ?? null;
   const larg = c.larg ?? c.largura_mm ?? c.largura_mm ?? c.largura ?? null;
   const estoque_minimo = c.estoque_minimo ?? c.min ?? c.quantidade_minima ?? null;
@@ -7449,6 +7573,7 @@ function normalizeEst(c) {
     nome,
     nomenclatura,
     fornecedor,
+    empresa_vinculada,
     qual_cnpj,
     tamanho,
     nf,
@@ -12680,6 +12805,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
         <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
         <select id="ef-fornecedor" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">🏭 Fornecedor</option></select>
+        <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">🏢 Empresa</option></select>
         <select id="ef-cliente" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">👤 Cliente</option></select>
         <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
         <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
@@ -12692,6 +12818,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <button class="btn btn-ghost btn-sm" onclick="estoqueFiltrar('todos')" style="white-space:nowrap">Limpar</button>
         <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap">+ Nova Chapa</button>
       </div>
+      <div id="est-filtros-ativos" style="margin:8px 10px 0;color:var(--text3);font-size:.74rem;font-family:var(--mono)"></div>
       <div id="est-table-wrap" style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;min-width:960px">
           <thead>
@@ -12699,7 +12826,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
               <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
               <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
-              <th onclick="estOrdenar('qual_cnpj')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE</th>
+              <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">EMPRESA</th>
+              <th onclick="estOrdenar('qual_cnpj')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE / CNPJ</th>
               <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
               <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
               <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
@@ -13907,8 +14035,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div></div>
 
-<div id="modal-nova-chapa" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:var(--bg2);border-radius:12px;padding:24px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto">
+<div id="modal-nova-chapa" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:24px;width:620px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
     <h3 id="chapa-modal-titulo" style="margin:0 0 16px">Nova Chapa</h3>
     <input type="hidden" id="chapa-edit-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
@@ -13929,7 +14057,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor *</label>
         <input id="chapa-fornecedor" type="text" list="lista-fornecedores-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
         <datalist id="lista-fornecedores-chapa"><option value="ADAMI"><option value="FAPOLPA"><option value="KLABIN"><option value="TROMBINI"><option value="BRAGAGNOLO"></datalist></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fabricante (qual_cnpj)</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa Vinculada *</label>
+        <select id="chapa-empresa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+          <option value="ITALY EMBALAGENS">ITALY EMBALAGENS</option>
+          <option value="CARTOESTE">CARTOESTE</option>
+          <option value="OESTEPACK">OESTEPACK</option>
+        </select></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fabricante / Qual CNPJ</label>
         <input id="chapa-qual-cnpj" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho (ex: 1240X980)</label>
         <input id="chapa-tamanho" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
