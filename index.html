@@ -1783,8 +1783,24 @@ function ofFluxoLinha(o){
 let filtroOFsMaquina='todas';
 function setFiltroOFsMaquina(f){
   document.querySelectorAll('.btn-filtro-maquina').forEach(b=>b.classList.remove('ativo'));
-  document.getElementById('filtro-maq-'+f)?.classList.add('ativo');
-  window._filtroOFsMaqData = f;
+  const hoje = new Date().toISOString().slice(0,10);
+  const inp = document.getElementById('ofmaq-data');
+  if (inp && !inp.value) inp.value = hoje;
+
+  if(f === 'todas'){
+    if(inp) inp.value = hoje;
+    document.getElementById('filtro-maq-todas')?.classList.add('ativo');
+    window._filtroOFsMaqData = 'todas';
+  } else if (f === 'semana'){
+    document.getElementById('filtro-maq-semana')?.classList.add('ativo');
+    window._filtroOFsMaqData = 'semana';
+  } else if (f === 'hoje'){
+    if(inp) inp.value = hoje;
+    document.getElementById('filtro-maq-hoje')?.classList.add('ativo');
+    window._filtroOFsMaqData = 'hoje';
+  } else {
+    window._filtroOFsMaqData = 'data';
+  }
   renderOFsPorMaquina();
 }
 
@@ -1865,17 +1881,32 @@ async function renderOFsPorMaquina(){
     }
     lista = (lista||[]).map(normalizeOF);
 
-    const filtroData = window._filtroOFsMaqData ||
-      document.getElementById('ofsmaq-filtro-data')?.value ||
-      (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
+    const modo = window._filtroOFsMaqData || (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
     const hoje = new Date().toISOString().slice(0,10);
-    const fimSem = new Date(); fimSem.setDate(fimSem.getDate()+(7-fimSem.getDay()||7));
-    const fimSemStr = fimSem.toISOString().slice(0,10);
+    const inp = document.getElementById('ofmaq-data');
+    if(inp && !inp.value) inp.value = hoje;
+    const dataSel = String(inp?.value || '').slice(0,10);
 
-    if(filtroData==='hoje') {
-      lista = lista.filter(o=>(o.ent||o.data_entrega||'').slice(0,10)===hoje);
-    } else if(filtroData==='semana') {
-      lista = lista.filter(o=>{const d=(o.ent||o.data_entrega||'').slice(0,10); return d>=hoje&&d<=fimSemStr;});
+    const diaOf = (o) => String((o.dia || o.data_pedido || o.dataPedido || '') || '').slice(0,10);
+
+    if(modo === 'hoje'){
+      lista = lista.filter(o => diaOf(o) === hoje);
+    } else if(modo === 'data'){
+      if(dataSel) lista = lista.filter(o => diaOf(o) === dataSel);
+    } else if(modo === 'semana'){
+      const now = new Date();
+      const mon = new Date(now);
+      const diff = (now.getDay() + 6) % 7;
+      mon.setDate(now.getDate() - diff);
+      mon.setHours(0,0,0,0);
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      const monStr = mon.toISOString().slice(0,10);
+      const sunStr = sun.toISOString().slice(0,10);
+      lista = lista.filter(o => {
+        const d = diaOf(o);
+        return d && d >= monStr && d <= sunStr;
+      });
     }
 
     const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
@@ -12355,12 +12386,6 @@ function renderDashboard() {
 // ===================== EXTEND RELATORIO com operadores =====================
 function renderRelatorio() {
   _renderRelatorioBase();
-  // Add new option if not present
-  const sel = document.getElementById('rel-tipo');
-  if (sel && ![...sel.options].find(o=>o.value==='operadores')) {
-    const o = document.createElement('option'); o.value='operadores'; o.textContent='Operadores / Qualidade';
-    sel.appendChild(o);
-  }
   const tipo = document.getElementById('rel-tipo')?.value || '';
   if (tipo === 'vendas-por-vendedor') {
     carregarRelatorioVendedor();
@@ -13631,6 +13656,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div id="page-ofmaq" class="page">
   <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
     <span style="font-size:.78rem;color:var(--text2)">🏭 OFs agrupadas por máquina</span>
+    <span style="font-size:.72rem;color:var(--text2);font-family:var(--mono)">DATA:</span>
+    <input type="date" id="ofmaq-data" onchange="setFiltroOFsMaquina('data')" style="width:150px;">
     <input id="ofmaq-busca" placeholder="🔍 OF, cliente, produto..." oninput="renderOFsPorMaquina()" style="width:190px;">
     <select id="ofmaq-status" onchange="renderOFsPorMaquina()">
       <option value="">Todos status</option>
@@ -14554,10 +14581,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="pedidos-concluidos">Pedidos Concluídos</option>
       <option value="estoque">Estoque de Chapas</option>
       <option value="maquinas">Produção por Máquina</option>
-      <option value="tempos">Tempos Reais por Máquina</option>
-      <option value="nfe">Notas Fiscais</option>
       <option value="compras">Compras de MP</option>
-      <option value="qualidade">Qualidade / Perdas</option>
     </select>
     <select id="rel-vendedor-fil" onchange="renderRelatorio()" style="display:none;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;font-family:var(--font)">
       <option value="">Todos os vendedores</option>

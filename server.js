@@ -2401,79 +2401,61 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 
 app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => {
   try {
-    const table = await _chapasPreferV2Table();
     const b = req.body || {};
+    const table = await _chapasPreferV2Table();
     const payload = {};
-
-    if (b.empresa_vinculada !== undefined) {
-      const v = String(b.empresa_vinculada || '').trim();
-      payload.empresa_vinculada = v !== '' ? v : null;
-    }
-    if (b.qual_cnpj !== undefined) {
-      const v = String(b.qual_cnpj || '').trim();
-      payload.qual_cnpj = v !== '' ? v : null;
-    }
-    if (b.categoria !== undefined) {
-      const v = String(b.categoria || '').trim();
-      payload.categoria = v !== '' ? v : null;
-    }
-    if (b.riscada !== undefined) payload.riscada = _chapasBool(b.riscada);
-    if (b.emp_id !== undefined || b.empId !== undefined) {
-      const v = String((b.emp_id ?? b.empId ?? '') || '').trim();
-      payload.emp_id = v !== '' ? v : null;
-    }
-
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido' });
-    payload.atualizado_por = req?.usuario?.nome || 'sistema';
+    const bool = (v) => (v === true || v === 'true' || v === 1 || v === '1');
 
     if (table === 'chapas_estoque_v2') {
-      let { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
-      if (error) {
-        const msg = String(error.message || error);
-        if (msg.toLowerCase().includes('empresa_vinculada') && msg.toLowerCase().includes('column')) {
-          const retry = { ...payload };
-          delete retry.empresa_vinculada;
-          if (!Object.keys(retry).length) return res.status(400).json({ error: 'Nenhum campo válido' });
-          const r2 = await supabase.from('chapas_estoque_v2').update(retry).eq('id', req.params.id).select().single();
+      if (b.qual_cnpj !== undefined) payload.qual_cnpj = String(b.qual_cnpj);
+      else if (b.empresa_vinculada !== undefined) payload.qual_cnpj = String(b.empresa_vinculada);
+      if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
+      if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
+      if (b.emp_id !== undefined || b.empId !== undefined) payload.emp_id = String(b.emp_id ?? b.empId ?? '');
+      if (b.empresa_vinculada !== undefined) payload.empresa_vinculada = String(b.empresa_vinculada);
+      payload.atualizado_por = req.usuario?.nome || 'sistema';
+    } else {
+      if (b.qual_cnpj !== undefined) {
+        payload.qual = String(b.qual_cnpj);
+        payload.qual_cnpj = String(b.qual_cnpj);
+      } else if (b.empresa_vinculada !== undefined) {
+        payload.qual = String(b.empresa_vinculada);
+        payload.qual_cnpj = String(b.empresa_vinculada);
+      }
+      if (b.emp_id !== undefined || b.empId !== undefined) payload.emp_id = String(b.emp_id ?? b.empId ?? '');
+      if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
+      if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
+    }
+
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
+
+    let { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().single();
+    if (error) {
+      const msg = String(error.message || error);
+      const isMissingColumn = msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist');
+      if (isMissingColumn) {
+        const retry = { ...payload };
+        delete retry.empresa_vinculada;
+        delete retry.categoria;
+        delete retry.riscada;
+        if (Object.keys(retry).length) {
+          const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().single();
           data = r2.data;
           error = r2.error;
         }
       }
-      if (error) return res.status(500).json({ error: error.message });
-      await _chapasLogAcao(req, 'estoque_chapas_inline', `Inline: ${req.params.id} · ${Object.keys(payload).join(',')}`);
-      return res.json({ ok: true, data: _chapasCanonicalFromAny(data, 'chapas_estoque_v2') });
     }
 
-    const legacy = {};
-    if (b.qual_cnpj !== undefined) {
-      legacy.qual = String(b.qual_cnpj || '').trim();
-      legacy.qual_cnpj = String(b.qual_cnpj || '').trim();
-    } else if (b.empresa_vinculada !== undefined) {
-      legacy.qual = String(b.empresa_vinculada || '').trim();
-      legacy.qual_cnpj = String(b.empresa_vinculada || '').trim();
-    }
-    if (b.emp_id !== undefined || b.empId !== undefined) legacy.emp_id = String((b.emp_id ?? b.empId ?? '') || '').trim();
-    if (b.categoria !== undefined) legacy.categoria = String(b.categoria || '').trim();
-    if (b.riscada !== undefined) legacy.riscada = _chapasBool(b.riscada);
-    if (!Object.keys(legacy).length) return res.status(400).json({ error: 'Nenhum campo válido' });
-
-    let { data, error } = await supabase.from('chapas_estoque').update(legacy).eq('id', req.params.id).select().single();
     if (error) {
-      const msg = String(error.message || error);
-      if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist')) {
-        const retry = { ...legacy };
-        delete retry.categoria;
-        delete retry.riscada;
-        if (!Object.keys(retry).length) return res.status(400).json({ error: 'Nenhum campo válido' });
-        const r2 = await supabase.from('chapas_estoque').update(retry).eq('id', req.params.id).select().single();
-        data = r2.data;
-        error = r2.error;
-      }
+      console.error('[inline patch] erro supabase:', { table, id: req.params.id, body: b, payload, error });
+      return res.status(500).json({ ok: false, error: error.message });
     }
-    if (error) return res.status(500).json({ error: error.message });
-    await _chapasLogAcao(req, 'estoque_chapas_inline', `Inline (legado): ${req.params.id} · ${Object.keys(legacy).join(',')}`);
-    return res.json({ ok: true, data: _chapasCanonicalFromAny(data, 'chapas_estoque') });
-  } catch (e) { err(res, e); }
+
+    return res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[inline patch] catch:', e && e.message ? e.message : e);
+    return res.status(500).json({ ok: false, error: String((e && e.message) ? e.message : e) });
+  }
 });
 
 app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) => {
