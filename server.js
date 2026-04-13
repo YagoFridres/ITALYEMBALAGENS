@@ -2405,41 +2405,48 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     const table = await _chapasPreferV2Table();
     const payload = {};
     const bool = (v) => (v === true || v === 'true' || v === 1 || v === '1');
-
-    if (table === 'chapas_estoque_v2') {
-      if (b.qual_cnpj !== undefined) payload.qual_cnpj = String(b.qual_cnpj);
-      else if (b.empresa_vinculada !== undefined) payload.qual_cnpj = String(b.empresa_vinculada);
-      if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
-      if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
-      if (b.emp_id !== undefined || b.empId !== undefined) payload.emp_id = String(b.emp_id ?? b.empId ?? '');
-      if (b.empresa_vinculada !== undefined) payload.empresa_vinculada = String(b.empresa_vinculada);
-      payload.atualizado_por = req.usuario?.nome || 'sistema';
-    } else {
-      if (b.qual_cnpj !== undefined) {
-        payload.qual = String(b.qual_cnpj);
-        payload.qual_cnpj = String(b.qual_cnpj);
-      } else if (b.empresa_vinculada !== undefined) {
-        payload.qual = String(b.empresa_vinculada);
-        payload.qual_cnpj = String(b.empresa_vinculada);
-      }
-      if (b.emp_id !== undefined || b.empId !== undefined) payload.emp_id = String(b.emp_id ?? b.empId ?? '');
-      if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
-      if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
-    }
+    if (b.empresa_vinculada !== undefined) payload.empresa_vinculada = String(b.empresa_vinculada);
+    if (b.qual_cnpj !== undefined) payload.qual_cnpj = String(b.qual_cnpj);
+    if (b.emp_id !== undefined) payload.emp_id = String(b.emp_id);
+    if (b.empId !== undefined && payload.emp_id === undefined) payload.emp_id = String(b.empId);
+    if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
+    if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
 
     if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
 
-    let { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().single();
+    const finalPayload = { ...payload };
+    if (table === 'chapas_estoque_v2') {
+      finalPayload.atualizado_por = req.usuario?.nome || 'sistema';
+      if (finalPayload.qual_cnpj === undefined && finalPayload.empresa_vinculada !== undefined) finalPayload.qual_cnpj = finalPayload.empresa_vinculada;
+    } else {
+      const legacy = {};
+      if (finalPayload.qual_cnpj !== undefined) {
+        legacy.qual = String(finalPayload.qual_cnpj);
+        legacy.qual_cnpj = String(finalPayload.qual_cnpj);
+      } else if (finalPayload.empresa_vinculada !== undefined) {
+        legacy.qual = String(finalPayload.empresa_vinculada);
+        legacy.qual_cnpj = String(finalPayload.empresa_vinculada);
+      }
+      if (finalPayload.emp_id !== undefined) legacy.emp_id = String(finalPayload.emp_id);
+      if (finalPayload.categoria !== undefined) legacy.categoria = String(finalPayload.categoria || '').trim();
+      if (finalPayload.riscada !== undefined) legacy.riscada = bool(finalPayload.riscada);
+      Object.keys(finalPayload).forEach(k => { delete finalPayload[k]; });
+      Object.assign(finalPayload, legacy);
+    }
+
+    console.log('[inline patch] table:', table, 'id:', req.params.id, 'payload:', finalPayload);
+
+    let { data, error } = await supabase.from(table).update(finalPayload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
       const msg = String(error.message || error);
       const isMissingColumn = msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist');
       if (isMissingColumn) {
-        const retry = { ...payload };
+        const retry = { ...finalPayload };
         delete retry.empresa_vinculada;
         delete retry.categoria;
         delete retry.riscada;
         if (Object.keys(retry).length) {
-          const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().single();
+          const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
           data = r2.data;
           error = r2.error;
         }
@@ -2447,10 +2454,13 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     }
 
     if (error) {
-      console.error('[inline patch] erro supabase:', { table, id: req.params.id, body: b, payload, error });
+      console.error('[inline patch] supabase error:', JSON.stringify(error));
+      console.error('[inline patch] erro supabase (ctx):', { table, id: req.params.id, body: b, payload: finalPayload });
       return res.status(500).json({ ok: false, error: error.message });
     }
 
+    if (!data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada (ou sem permissão)' });
+    console.log('[inline patch] OK:', data?.id);
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[inline patch] catch:', e && e.message ? e.message : e);
@@ -2987,7 +2997,7 @@ app.post('/api/relatorios/producao', async (req, res) => {
 
 app.post('/api/relatorios/aparras', async (req, res) => {
   try {
-    const arr = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+    const arr = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : (req.body && typeof req.body === 'object' ? [req.body] : []));
     if (!Array.isArray(arr) || arr.length === 0) return bad(res, 'vazio');
     const chunk = 1000;
     let inserted = 0;
@@ -2998,6 +3008,42 @@ app.post('/api/relatorios/aparras', async (req, res) => {
       inserted += part.length;
     }
     ok(res, { inserted });
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/relatorio/producao/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    const { data, error } = await supabase.from('relatorio_producao').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/relatorio/producao/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('relatorio_producao').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/relatorios/aparras/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    const { data, error } = await supabase.from('relatorio_aparras').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/relatorios/aparras/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('relatorio_aparras').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
 

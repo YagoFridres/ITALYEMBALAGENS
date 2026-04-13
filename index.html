@@ -8714,6 +8714,8 @@ function normalizeMaq(r){
   return {
     id:r.id,
     col:r.col||r.nome||r.name||'',
+    nome:r.nome||r.col||r.name||'',
+    ordem:(r.ordem!=null?Number(r.ordem):null),
     ico:r.ico||r.icon||'⚙',
     phora:Number(phora)||0,
     setup:Number(setup)||0,
@@ -8819,7 +8821,15 @@ async function carregarOperadores(){
 }
 async function carregarMaquinas(){
   const r = await api('GET','/maquinas');
-  if(r && r.ok && r.data && r.data.length) MAQUINAS = r.data.map(normalizeMaq);
+  if(r && r.ok && r.data && r.data.length) {
+    MAQUINAS = r.data.map(normalizeMaq);
+    MAQUINAS.sort((a,b)=>{
+      const oa = a.ordem!=null && Number.isFinite(a.ordem) ? a.ordem : 99;
+      const ob = b.ordem!=null && Number.isFinite(b.ordem) ? b.ordem : 99;
+      if(oa !== ob) return oa - ob;
+      return String(a.col||'').localeCompare(String(b.col||''),'pt-BR');
+    });
+  }
   return r;
 }
 
@@ -9589,22 +9599,33 @@ function renderNotificacoes(){
   list.innerHTML=NOTIFICACOES.map((n,idx)=>`<div class="notif-item ${corMap[n.tipo]||''}" id="ni-${idx}"><span class="notif-icon">${icoMap[n.tipo]||'🔔'}</span><span class="notif-msg">${escH(n.msg||'')}</span><span class="notif-time">${n.time||''}</span><button class="notif-ok-btn" onclick="dispensarNotif(${idx})">OK</button></div>`).join('');
 }
 
-function dispensarNotif(idx){
+async function dispensarNotif(idx){
   const n=NOTIFICACOES[idx];
+  if(!n) return;
   NOTIFICACOES.splice(idx,1);
   renderNotificacoes();
   if(n){
     const tipo=(n.tipo||'info');
     const desc=(n.msg||'').toString().slice(0,300);
     const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
-    if(n.id) api('PATCH','/notificacoes/'+encodeURIComponent(n.id),{lida:true});
-    api('POST','/historico_acoes',{tipo_acao:tipo==='success'?'ok_notificacao':tipo,descricao:desc,usuario});
+    try{
+      if(n.id){
+        const r = await api('PATCH','/notificacoes/'+encodeURIComponent(n.id),{lida:true});
+        if(!r || r.ok===false) toast('Erro ao marcar notificação como lida','var(--red)');
+      }
+    }catch(e){ toast('Erro ao salvar notificação','var(--red)'); }
+    try{ api('POST','/historico_acoes',{tipo_acao:tipo==='success'?'ok_notificacao':tipo,descricao:desc,usuario}); }catch(e){}
+    try{ await syncNotificacoesDB(); }catch(e){}
   }
 }
-function dispensarTodasNotifs(){
-  api('POST','/notificacoes/clear',{});
+async function dispensarTodasNotifs(){
+  try{
+    const r = await api('POST','/notificacoes/clear',{});
+    if(!r || r.ok===false) toast('Erro ao limpar notificações','var(--red)');
+  }catch(e){ toast('Erro ao limpar notificações','var(--red)'); }
   NOTIFICACOES=[];
   renderNotificacoes();
+  try{ await syncNotificacoesDB(); }catch(e){}
 }
 
 
@@ -12407,6 +12428,18 @@ function renderRelatorioVendedor(data) {
   const totalPedidos = data && data.totalPedidos != null ? data.totalPedidos : 0;
   const wrap = document.getElementById('rm-vendedor-wrap') || document.getElementById('rel-content');
   if (!wrap) return;
+  const totalG = Number(totalGeral) || 0;
+  const vendList = (vendedores||[]).map(v=>{
+    const valorTotal = Number(v.valorTotal || 0) || 0;
+    const participacaoVendedor = totalG > 0 ? ((valorTotal / totalG) * 100) : 0;
+    const ofs = (v.ofs||[]).map(of=>{
+      const valor = Number(of.valor || 0) || 0;
+      const participacaoOf = totalG > 0 ? ((valor / totalG) * 100) : 0;
+      return { ...of, participacaoOf };
+    });
+    const ticketMedio = (Number(v.ticketMedio || 0) || (v.pedidos ? (valorTotal / Number(v.pedidos||1)) : 0));
+    return { ...v, valorTotal, ticketMedio, participacaoVendedor, ofs };
+  });
   wrap.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
       <div style="background:var(--bg2);padding:14px;border-radius:8px;text-align:center">
@@ -12432,7 +12465,7 @@ function renderRelatorioVendedor(data) {
         <th style="padding:10px;text-align:center">PARTICIPAÇÃO</th>
       </tr></thead>
       <tbody>
-        ${(vendedores||[]).map(v=>`
+        ${(vendList||[]).map(v=>`
           <tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="toggleDetalheVendedor('${escAttr(v.vendedor)}')">
             <td style="padding:10px;font-weight:500">${escH(v.vendedor)}</td>
             <td style="padding:10px;text-align:center">${v.pedidos}</td>
@@ -12441,23 +12474,24 @@ function renderRelatorioVendedor(data) {
             <td style="padding:10px;text-align:right">${fmtR(v.ticketMedio)}</td>
             <td style="padding:10px;text-align:center">
               <div style="background:var(--bg3);border-radius:4px;overflow:hidden;height:18px">
-                <div style="background:var(--accent);height:100%;width:${v.participacao}%;transition:width 0.5s"></div>
+                <div style="background:var(--accent);height:100%;width:${Math.max(0,Math.min(100,v.participacaoVendedor))}%;transition:width 0.5s"></div>
               </div>
-              <span style="font-size:11px">${v.participacao}%</span>
+              <span style="font-size:11px">${v.participacaoVendedor.toFixed(1)}%</span>
             </td>
           </tr>
           <tr id="detalhe-${escAttr(v.vendedor)}" style="display:none">
             <td colspan="6" style="padding:0 10px 10px">
               <table style="width:100%;border-collapse:collapse;font-size:12px">
-                <tr style="background:var(--bg3)"><th style="padding:6px">OF</th><th>Cliente</th><th>Qtd</th><th>Data Pedido</th><th>Entrega</th><th>Status</th><th style="text-align:right">Valor</th></tr>
+                <tr style="background:var(--bg3)"><th style="padding:6px">OF</th><th>Cliente</th><th>Valor</th><th>% do Total</th><th>Qtd</th><th>Data Pedido</th><th>Entrega</th><th>Status</th></tr>
                 ${(v.ofs||[]).map(of=>`<tr style="border-bottom:1px solid var(--border)">
                   <td style="padding:6px">#${escH(of.numero)}</td>
                   <td>${escH(of.cliente)}</td>
+                  <td style="text-align:right">${fmtR(of.valor)}</td>
+                  <td style="text-align:right">${(Number(of.participacaoOf||0)).toFixed(2)}%</td>
                   <td style="text-align:center">${fmtN(of.qtd)}</td>
                   <td>${fmtD(of.dataPedido)}</td>
                   <td>${fmtD(of.dataEntrega)}</td>
                   <td>${escH(of.status)}</td>
-                  <td style="text-align:right">${fmtR(of.valor)}</td>
                 </tr>`).join('')}
               </table>
             </td>
@@ -12508,11 +12542,13 @@ function rmSetTab(tab){
 
 function rmAbrirManual(){
   const mesRef=rmMesRef();
+  const idEl=document.getElementById('rm-man-id'); if(idEl) idEl.value='';
   const m=document.getElementById('rm-man-mes');if(m)m.value=mesRef;
   const d=document.getElementById('rm-man-data');if(d&&!d.value)d.value=mesRef+'-01';
   abrir('modal-rm-manual');
 }
 async function rmSalvarManual(){
+  const editId = String((document.getElementById('rm-man-id')||{}).value||'').trim();
   const mes=String((document.getElementById('rm-man-mes')||{}).value||'').trim()||rmMesRef();
   const row={
     mes_referencia: mes,
@@ -12530,7 +12566,9 @@ async function rmSalvarManual(){
     desperdicio: parseFloat((document.getElementById('rm-man-desp')||{}).value)||null
   };
   showSaveIndicator('Salvando lançamento...','var(--yellow)');
-  const r=await api('POST','/relatorio/producao/manual',row);
+  const r = editId
+    ? await api('PUT','/relatorio/producao/'+encodeURIComponent(editId), row)
+    : await api('POST','/relatorio/producao/manual',row);
   if(!r||!r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao salvar lançamento','var(--red)');
@@ -12540,6 +12578,124 @@ async function rmSalvarManual(){
   RM_CACHE_PROD[mes]=null;
   showSaveIndicator('✓ salvo','var(--green)');
   toast('✓ Lançamento salvo','var(--green)');
+  carregarRelatorioMensal();
+}
+
+function rmAbrirAparra(){
+  const mesRef=rmMesRef();
+  const idEl=document.getElementById('rm-ap-id'); if(idEl) idEl.value='';
+  const m=document.getElementById('rm-ap-mes'); if(m) m.value=mesRef;
+  const d=document.getElementById('rm-ap-data'); if(d) d.value = d.value || (mesRef+'-01');
+  const maqSel=document.getElementById('rm-ap-maq');
+  if(maqSel){
+    const cur = maqSel.value;
+    maqSel.innerHTML = '<option value="">Selecionar...</option>' + (MAQUINAS||[]).map(x=>`<option value="${escAttr(x.col)}">${escH(x.col)}</option>`).join('');
+    if(cur) maqSel.value = cur;
+  }
+  const empSel=document.getElementById('rm-ap-emp');
+  if(empSel && !empSel.dataset.bound){
+    empSel.dataset.bound='1';
+    empSel.innerHTML = `
+      <option value="Italy Embalagens">Italy Embalagens</option>
+      <option value="Cartoeste">Cartoeste</option>
+      <option value="Oestepack">Oestepack</option>`;
+  }
+  abrir('modal-rm-aparra');
+}
+
+async function rmSalvarAparra(){
+  const editId = String((document.getElementById('rm-ap-id')||{}).value||'').trim();
+  const mes=String((document.getElementById('rm-ap-mes')||{}).value||'').trim()||rmMesRef();
+  const row={
+    mes_referencia: mes,
+    data: String((document.getElementById('rm-ap-data')||{}).value||'').trim() || (mes+'-01'),
+    maquina: String((document.getElementById('rm-ap-maq')||{}).value||'').trim(),
+    tipo_aparra: String((document.getElementById('rm-ap-tipo')||{}).value||'').trim(),
+    tipo_papel: String((document.getElementById('rm-ap-tipo')||{}).value||'').trim(),
+    quantidade_kg: Number((document.getElementById('rm-ap-kg')||{}).value)||0,
+    quantidade: Number((document.getElementById('rm-ap-kg')||{}).value)||0,
+    observacao: String((document.getElementById('rm-ap-obs')||{}).value||'').trim(),
+    obs: String((document.getElementById('rm-ap-obs')||{}).value||'').trim(),
+    empresa: String((document.getElementById('rm-ap-emp')||{}).value||'').trim()
+  };
+  showSaveIndicator('Salvando aparra...','var(--yellow)');
+  const r = editId
+    ? await api('PUT','/relatorios/aparras/'+encodeURIComponent(editId), row)
+    : await api('POST','/relatorios/aparras', row);
+  if(!r||!r.ok){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao salvar aparra','var(--red)');
+    return;
+  }
+  fechar('modal-rm-aparra');
+  RM_CACHE_APAR[mes]=null;
+  showSaveIndicator('✓ salvo','var(--green)');
+  toast('✓ Aparra salva','var(--green)');
+  carregarRelatorioMensal();
+}
+
+function rmEditarProd(id){
+  const mesRef=rmMesRef();
+  const row=(RM_CACHE_PROD[mesRef]||[]).find(x=>String(x.id||'')===String(id||''));
+  if(!row){toast('Registro não encontrado','var(--red)');return;}
+  document.getElementById('rm-man-id').value = row.id;
+  document.getElementById('rm-man-mes').value = row.mes_referencia || mesRef;
+  document.getElementById('rm-man-data').value = row.data ? String(row.data).slice(0,10) : (mesRef+'-01');
+  document.getElementById('rm-man-maq').value = row.maquina || '';
+  document.getElementById('rm-man-vend').value = row.vendedor || '';
+  document.getElementById('rm-man-cli').value = row.cliente || '';
+  document.getElementById('rm-man-tipo').value = row.tipo_papel || '';
+  document.getElementById('rm-man-gram').value = row.gramatura!=null?row.gramatura:'';
+  document.getElementById('rm-man-comp').value = row.comprimento_mm!=null?row.comprimento_mm:'';
+  document.getElementById('rm-man-larg').value = row.largura_mm!=null?row.largura_mm:'';
+  document.getElementById('rm-man-qtd').value = row.quantidade!=null?row.quantidade:'';
+  document.getElementById('rm-man-venda').value = row.valor_venda!=null?row.valor_venda:'';
+  document.getElementById('rm-man-emp').value = row.empresa||'';
+  document.getElementById('rm-man-desp').value = row.desperdicio!=null?row.desperdicio:'';
+  abrir('modal-rm-manual');
+}
+
+async function rmExcluirProd(id){
+  if(!confirm('Excluir este lançamento de produção?')) return;
+  const r = await api('DELETE','/relatorio/producao/'+encodeURIComponent(id),{});
+  if(!r || r.ok===false){toast('Erro ao excluir','var(--red)');return;}
+  RM_CACHE_PROD[rmMesRef()] = null;
+  toast('🗑 Excluído','var(--orange)');
+  carregarRelatorioMensal();
+}
+
+function rmEditarAparra(id){
+  const mesRef=rmMesRef();
+  const row=(RM_CACHE_APAR[mesRef]||[]).find(x=>String(x.id||'')===String(id||''));
+  if(!row){toast('Registro não encontrado','var(--red)');return;}
+  document.getElementById('rm-ap-id').value = row.id;
+  document.getElementById('rm-ap-mes').value = row.mes_referencia || mesRef;
+  document.getElementById('rm-ap-data').value = row.data ? String(row.data).slice(0,10) : (mesRef+'-01');
+  document.getElementById('rm-ap-tipo').value = row.tipo_aparra || row.tipo || row.tipo_papel || '';
+  document.getElementById('rm-ap-kg').value = row.quantidade_kg!=null?row.quantidade_kg:(row.kg!=null?row.kg:(row.quantidade!=null?row.quantidade:''));
+  document.getElementById('rm-ap-obs').value = row.observacao || row.obs || '';
+  const maqSel=document.getElementById('rm-ap-maq');
+  if(maqSel){
+    maqSel.innerHTML = '<option value="">Selecionar...</option>' + (MAQUINAS||[]).map(x=>`<option value="${escAttr(x.col)}">${escH(x.col)}</option>`).join('');
+    maqSel.value = row.maquina || '';
+  }
+  const empSel=document.getElementById('rm-ap-emp');
+  if(empSel){
+    empSel.innerHTML = `
+      <option value="Italy Embalagens">Italy Embalagens</option>
+      <option value="Cartoeste">Cartoeste</option>
+      <option value="Oestepack">Oestepack</option>`;
+    empSel.value = row.empresa || 'Italy Embalagens';
+  }
+  abrir('modal-rm-aparra');
+}
+
+async function rmExcluirAparra(id){
+  if(!confirm('Excluir este lançamento de aparra?')) return;
+  const r = await api('DELETE','/relatorios/aparras/'+encodeURIComponent(id),{});
+  if(!r || r.ok===false){toast('Erro ao excluir','var(--red)');return;}
+  RM_CACHE_APAR[rmMesRef()] = null;
+  toast('🗑 Excluído','var(--orange)');
   carregarRelatorioMensal();
 }
 
@@ -12756,6 +12912,10 @@ function rmRenderTabelaProducao(rows){
     <td style="${tdS}">${r.valor_venda!=null?r.valor_venda:''}</td>
     <td style="${tdS}">${r.empresa||''}</td>
     <td style="${tdS}">${r.desperdicio!=null?r.desperdicio:''}</td>
+    <td style="${tdS};text-align:center">
+      ${r.id?`<button class="btn-icon btn-sm" onclick="rmEditarProd('${escAttr(r.id)}')" title="Editar">✏</button>
+             <button class="btn-icon btn-sm" onclick="rmExcluirProd('${escAttr(r.id)}')" title="Excluir" style="color:var(--red)">🗑</button>`:''}
+    </td>
   </tr>`).join('');
   return `<div class="sbox"><div class="sbox-h" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <span>📋 Produção (${filtered.length})</span>
@@ -12776,9 +12936,9 @@ function rmRenderTabelaProducao(rows){
           <th style="${thS}">Data</th><th style="${thS}">Máquina</th><th style="${thS}">Vendedor</th><th style="${thS}">Cliente</th>
           <th style="${thS}">Tipo</th><th style="${thS}">Gramatura</th><th style="${thS}">Comp</th><th style="${thS}">Larg</th>
           <th style="${thS}">m²</th><th style="${thS}">Custo</th><th style="${thS}">Qtd</th><th style="${thS}">Transp</th>
-          <th style="${thS}">Venda</th><th style="${thS}">Empresa</th><th style="${thS}">Desperdício</th>
+          <th style="${thS}">Venda</th><th style="${thS}">Empresa</th><th style="${thS}">Desperdício</th><th style="${thS}">Ações</th>
         </tr></thead>
-        <tbody>${body||`<tr><td colspan="15" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
+        <tbody>${body||`<tr><td colspan="16" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
       </table>
     </div>
   </div></div>`;
@@ -12791,10 +12951,12 @@ function rmRenderTabelaAparras(rows){
   const cli=RM_APAR_UI.cli.trim().toLowerCase();
   const tipo=RM_APAR_UI.tipo.trim().toLowerCase();
   const filtered=(rows||[]).filter(r=>{
-    const t=[r.data,r.cliente,r.tipo_papel].join(' ').toLowerCase();
+    const tipoA = r.tipo_aparra || r.tipo || r.tipo_papel || '';
+    const kg = r.quantidade_kg!=null?r.quantidade_kg:(r.kg!=null?r.kg:r.quantidade);
+    const t=[r.data,r.cliente,r.maquina,tipoA,kg,r.empresa,r.observacao,r.obs].join(' ').toLowerCase();
     if(q && !t.includes(q)) return false;
     if(cli && !String(r.cliente||'').toLowerCase().includes(cli)) return false;
-    if(tipo && !String(r.tipo_papel||'').toLowerCase().includes(tipo)) return false;
+    if(tipo && !String(tipoA||'').toLowerCase().includes(tipo)) return false;
     return true;
   });
   const pageSize=RM_APAR_UI.pageSize||50;
@@ -12803,17 +12965,23 @@ function rmRenderTabelaAparras(rows){
   const start=(RM_APAR_UI.page-1)*pageSize;
   const view=filtered.slice(start,start+pageSize);
 
-  const body=view.map((r,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
-    <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
-    <td style="${tdS}">${r.cliente||''}</td>
-    <td style="${tdS}">${r.tipo_papel||''}</td>
-    <td style="${tdS}">${r.comprimento_mm!=null?r.comprimento_mm:''}</td>
-    <td style="${tdS}">${r.largura_mm!=null?r.largura_mm:''}</td>
-    <td style="${tdS}">${r.valor_custo!=null?r.valor_custo:''}</td>
-    <td style="${tdS}">${r.custo!=null?r.custo:''}</td>
-    <td style="${tdS}">${r.quantidade!=null?r.quantidade:''}</td>
-    <td style="${tdS}">${r.valor_final!=null?r.valor_final:''}</td>
-  </tr>`).join('');
+  const body=view.map((r,i)=>{
+    const tipoA = r.tipo_aparra || r.tipo || r.tipo_papel || '';
+    const kg = r.quantidade_kg!=null?r.quantidade_kg:(r.kg!=null?r.kg:r.quantidade);
+    const obs = r.observacao || r.obs || '';
+    return `<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+      <td style="${tdS};font-family:var(--mono)">${fmtDataBR(r.data||'')}</td>
+      <td style="${tdS}">${r.maquina||''}</td>
+      <td style="${tdS}">${escH(tipoA)}</td>
+      <td style="${tdS};text-align:right">${kg!=null?fmtN(kg):''}</td>
+      <td style="${tdS};max-width:240px;overflow:hidden;text-overflow:ellipsis">${escH(obs)}</td>
+      <td style="${tdS}">${escH(r.empresa||'')}</td>
+      <td style="${tdS};text-align:center">
+        ${r.id?`<button class="btn-icon btn-sm" onclick="rmEditarAparra('${escAttr(r.id)}')" title="Editar">✏</button>
+               <button class="btn-icon btn-sm" onclick="rmExcluirAparra('${escAttr(r.id)}')" title="Excluir" style="color:var(--red)">🗑</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
   return `<div class="sbox"><div class="sbox-h" style="display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap">
       <span>📦 Aparras (${filtered.length})</span>
       <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">Página ${RM_APAR_UI.page}/${pageCount}</span>
@@ -12829,10 +12997,9 @@ function rmRenderTabelaAparras(rows){
     <div style="max-height:560px;overflow:auto">
       <table style="width:100%;border-collapse:collapse;min-width:1100px">
         <thead><tr>
-          <th style="${thS}">Data</th><th style="${thS}">Cliente</th><th style="${thS}">Tipo</th><th style="${thS}">Comp</th><th style="${thS}">Larg</th>
-          <th style="${thS}">Valor Custo</th><th style="${thS}">Custo</th><th style="${thS}">Qtd</th><th style="${thS}">Valor Final</th>
+          <th style="${thS}">Data</th><th style="${thS}">Máquina</th><th style="${thS}">Tipo Aparra</th><th style="${thS}">Kg</th><th style="${thS}">Obs</th><th style="${thS}">Empresa</th><th style="${thS}">Ações</th>
         </tr></thead>
-        <tbody>${body||`<tr><td colspan="9" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
+        <tbody>${body||`<tr><td colspan="7" style="${tdS};color:var(--text3)">Sem dados</td></tr>`}</tbody>
       </table>
     </div>
   </div></div>`;
@@ -12845,12 +13012,15 @@ function exportarRelMensalCSV(){
   const rows = RM_TAB==='aparras' ? apar : prod;
   if(!rows.length){toast('Sem dados para exportar (carregue Produção/Aparras primeiro)','var(--orange)');return;}
   const header = RM_TAB==='aparras'
-    ? ['data','cliente','tipo_papel','comprimento_mm','largura_mm','valor_custo','custo','quantidade','valor_final']
+    ? ['data','maquina','tipo_aparra','quantidade_kg','observacao','empresa']
     : ['data','maquina','vendedor','cliente','tipo_papel','gramatura','comprimento_mm','largura_mm','tamanho_m2','custo','quantidade','transporte','valor_venda','empresa','desperdicio'];
   const lines=[header.join(';')];
   rows.forEach(r=>{
     const row = header.map(k=>{
-      const v=r[k];
+      const v = (k==='tipo_aparra') ? (r.tipo_aparra || r.tipo || r.tipo_papel || '') :
+                (k==='quantidade_kg') ? (r.quantidade_kg!=null?r.quantidade_kg:(r.kg!=null?r.kg:r.quantidade)) :
+                (k==='observacao') ? (r.observacao || r.obs || '') :
+                r[k];
       if(k==='data') return fmtDataBR(v||'');
       return v==null?'':String(v).replaceAll(';',',');
     });
@@ -14629,7 +14799,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent btn-sm" onclick="carregarRelatorioMensal()">Gerar</button>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="exportarRelMensalCSV()">📊 Exportar CSV</button>
-    <button class="btn btn-ghost btn-sm" onclick="rmAbrirManual()">＋ Lançamento Manual</button>
+    <button class="btn btn-ghost btn-sm" onclick="rmAbrirManual()">＋ Produção</button>
+    <button class="btn btn-ghost btn-sm" onclick="rmAbrirAparra()">＋ Aparra</button>
   </div>
   <div class="page-body" id="rm-content"></div>
 </div>
@@ -15804,6 +15975,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal" style="width:min(760px,98vw)">
   <button class="close-btn" onclick="fechar('modal-rm-manual')">✕</button>
   <h2>＋ Lançamento Manual (Produção)</h2>
+  <input type="hidden" id="rm-man-id">
   <div class="fg">
     <div class="mf"><label>MÊS/ANO</label><input id="rm-man-mes" placeholder="2026-03"></div>
     <div class="mf"><label>MÁQUINA</label><input id="rm-man-maq" placeholder="Máquina 1"></div>
@@ -15822,6 +15994,26 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-rm-manual')">Cancelar</button>
     <button class="btn btn-accent" onclick="rmSalvarManual()">Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-rm-aparra">
+<div class="modal" style="width:min(760px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-rm-aparra')">✕</button>
+  <h2>＋ Lançamento Manual (Aparras)</h2>
+  <input type="hidden" id="rm-ap-id">
+  <div class="fg">
+    <div class="mf"><label>MÊS/ANO</label><input id="rm-ap-mes" placeholder="2026-03"></div>
+    <div class="mf"><label>DATA</label><input id="rm-ap-data" type="date"></div>
+    <div class="mf fgf"><label>MÁQUINA</label><select id="rm-ap-maq"><option value="">Selecionar...</option></select></div>
+    <div class="mf fgf"><label>TIPO DE APARRA</label><input id="rm-ap-tipo" placeholder="Ex: Apara Lateral"></div>
+    <div class="mf"><label>QUANTIDADE (kg)</label><input id="rm-ap-kg" type="number" step="0.01" min="0"></div>
+    <div class="mf fgf"><label>OBSERVAÇÃO</label><input id="rm-ap-obs" placeholder="Opcional"></div>
+    <div class="mf"><label>EMPRESA</label><select id="rm-ap-emp"></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-rm-aparra')">Cancelar</button>
+    <button class="btn btn-accent" onclick="rmSalvarAparra()">Lançar Aparra</button>
   </div>
 </div></div>
 
