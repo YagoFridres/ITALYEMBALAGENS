@@ -3094,6 +3094,38 @@ app.delete('/api/recebimento_insumos/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/chapas_categorias', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chapas_categorias').select('*').order('ordem');
+    if (error) throw error;
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas_categorias', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chapas_categorias').insert([{ nome: req.body.nome, ordem: req.body.ordem || 0 }]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/chapas_categorias/:id', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('chapas_categorias').update({ nome: req.body.nome, ordem: req.body.ordem }).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/chapas_categorias/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('chapas_categorias').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
 app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);

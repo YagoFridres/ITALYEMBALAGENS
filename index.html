@@ -1113,6 +1113,7 @@ const CLIENTES_FALLBACK = [
 ];
 let CLIENTES = CLIENTES_FALLBACK.slice();
 let CLIENTE_ATUAL_ID = '';
+let CHAPAS_CATEGORIAS = [];
 
 let VENDEDORES = [
   {id:'V01',nome:'ELEOMAR',tel:'',email:'',reg:'',meta:0,comissaoPct:null},
@@ -2910,6 +2911,37 @@ async function salvarCliente() {
   await carregarClientes();
   renderClientes();
 }
+
+function _normClienteNome(v){
+  return String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+async function dedupeClientePorNome(nome){
+  const key = _normClienteNome(nome);
+  if(!key) return;
+  const matches = (CLIENTES||[]).filter(c=>_normClienteNome(c.nome)===key);
+  if(matches.length <= 1) return;
+  const counts = matches.map(c=>({
+    id: String(c.id||'').trim(),
+    nome: c.nome,
+    ofs: (OFs||[]).filter(o=>String(o.cliId||o.cliente_id||'').trim()===String(c.id||'').trim()).length
+  })).filter(x=>x.id);
+  if(counts.length <= 1) return;
+  counts.sort((a,b)=>b.ofs-a.ofs);
+  const keep = counts[0];
+  const toDel = counts.slice(1).filter(x=>x.ofs===0);
+  if(!toDel.length) return;
+  const msg = `Cliente duplicado detectado: "${nome}".\nManter: ${keep.id} (${keep.ofs} OFs)\nExcluir: ${toDel.map(d=>d.id).join(', ')} (0 OFs)\n\nConfirmar exclusão?`;
+  if(!confirm(msg)) return;
+  for(const d of toDel){
+    const resp = await apiFetch('/api/clientes/'+encodeURIComponent(d.id), { method:'DELETE' });
+    const r = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (r && r.error)){ toast('Erro ao excluir duplicado: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+    CLIENTES = (CLIENTES||[]).filter(c=>String(c.id||'').trim()!==d.id);
+  }
+  toast('Duplicata removida ✓','var(--green)');
+  try{ renderClientes(); }catch(e){}
+}
 async function excluirCliente(id){
   const c=CLIENTES.find(x=>x.id===id);if(!c)return;
   const ofs=OFs.filter(o=>o.cliId===id);
@@ -3289,7 +3321,9 @@ function renderEstoqueCategoriaTabs(cats){
   if(!wrap){ console.log('[CHAPAS] est-cat-tabs NÃO encontrado no DOM'); return; }
   const sel = document.getElementById('ef-categoria');
   const active = String(sel?.value || '').trim();
-  const all = [''].concat((cats||[]).filter(Boolean));
+  const dbCats = (CHAPAS_CATEGORIAS||[]).map(c=>String(c?.nome||'').trim()).filter(Boolean);
+  const list = dbCats.length ? dbCats : ((cats||[]).filter(Boolean));
+  const all = [''].concat(list);
   console.log('[CHAPAS] renderEstoqueCategoriaTabs', { cats: all.length, active });
   const btn = (val, label) => {
     const on = String(val||'').trim() === active;
@@ -3299,7 +3333,8 @@ function renderEstoqueCategoriaTabs(cats){
     const fw = on ? '900' : '700';
     return `<button type="button" onclick="estSelecionarCategoriaTab('${escAttr(String(val||''))}')" style="padding:6px 10px;border-radius:999px;background:${bg};color:${co};border:1px solid ${br};cursor:pointer;font-size:.72rem;font-family:var(--mono);font-weight:${fw}">${escH(label)}</button>`;
   };
-  wrap.innerHTML = all.map(v=>btn(v, v ? v : 'Todas')).join('');
+  const gear = `<button type="button" onclick="abrirModalCategoriasChapas()" style="padding:6px 10px;border-radius:999px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:.72rem;font-family:var(--mono);font-weight:800">⚙ Gerenciar Categorias</button>`;
+  wrap.innerHTML = all.map(v=>btn(v, v ? v : 'Todas')).join('') + gear;
 }
 
 function estSelecionarCategoriaTab(cat){
@@ -3311,7 +3346,9 @@ function estSelecionarCategoriaTab(cat){
 function popularFiltrosEstoque(chapas){
   _estoqueBase = Array.isArray(chapas) ? chapas : [];
   const norm = (s) => String(s || '').trim();
-  const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const dbCats = (CHAPAS_CATEGORIAS||[]).map(c=>norm(c?.nome)).filter(Boolean);
+  const catUnique=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const catSet=(dbCats.length ? dbCats : catUnique);
   const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(v=>v&&v!=='—'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
@@ -3330,6 +3367,109 @@ function popularFiltrosEstoque(chapas){
   setDatalist('ef-fornecedor-dl', fornSet);
   setDatalist('ef-cliente-dl', cliSet);
   renderEstoqueCategoriaTabs(catSet);
+  renderChapaCategoriaSelect(catSet);
+}
+
+function renderChapaCategoriaSelect(catNames){
+  const sel = document.getElementById('chapa-categoria');
+  if(!sel || sel.tagName !== 'SELECT') return;
+  const cur = String(sel.value||'').trim();
+  const opts = (catNames||[]).filter(Boolean);
+  sel.innerHTML = opts.map(v=>`<option value="${escAttr(String(v))}">${escH(v)}</option>`).join('');
+  if(cur) sel.value = cur;
+}
+
+async function carregarCategoriasChapas(){
+  try{
+    const resp = await apiFetch('/api/chapas_categorias', { method:'GET' });
+    if(!resp) return [];
+    const j = await resp.json().catch(()=>null);
+    if(!resp.ok || (j && j.error)) return [];
+    const data = (j && (j.data || j)) || [];
+    CHAPAS_CATEGORIAS = Array.isArray(data) ? data : [];
+    const names = CHAPAS_CATEGORIAS.map(c=>String(c?.nome||'').trim()).filter(Boolean);
+    renderChapaCategoriaSelect(names);
+    try{ renderEstoqueCategoriaTabs(names); }catch(e){}
+    return CHAPAS_CATEGORIAS;
+  } catch(e){ return []; }
+}
+
+function abrirModalCategoriasChapas(){
+  const m = document.getElementById('modal-chapas-categorias');
+  if(!m) return;
+  renderModalCategoriasChapas();
+  m.style.display='flex';
+}
+
+function fecharModalCategoriasChapas(){
+  const m = document.getElementById('modal-chapas-categorias');
+  if(m) m.style.display='none';
+}
+
+function renderModalCategoriasChapas(){
+  const body = document.getElementById('cc-body');
+  if(!body) return;
+  const rows = Array.isArray(CHAPAS_CATEGORIAS) ? CHAPAS_CATEGORIAS : [];
+  body.innerHTML = rows.map((c,i)=>{
+    const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
+    return `<tr style="background:${trBg}">
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem">${escH(String(c.id||'').slice(0,8))}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border)"><input id="cc-nome-${escAttr(c.id)}" value="${escAttr(c.nome||'')}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></td>
+      <td style="padding:8px 10px;border:1px solid var(--border);width:90px"><input id="cc-ord-${escAttr(c.id)}" type="number" value="${escAttr(String(c.ordem??0))}" style="width:80px;padding:6px 8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="salvarCategoriaChapa('${escAttr(c.id)}')">Salvar</button>
+        <button class="btn btn-red btn-sm" onclick="excluirCategoriaChapa('${escAttr(c.id)}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="4" style="padding:18px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhuma categoria</td></tr>`;
+}
+
+async function recarregarCategoriasChapasUI(){
+  await carregarCategoriasChapas();
+  const names = (CHAPAS_CATEGORIAS||[]).map(c=>String(c?.nome||'').trim()).filter(Boolean);
+  renderChapaCategoriaSelect(names);
+  try{ renderEstoqueCategoriaTabs(names); }catch(e){}
+  try{ popularFiltrosEstoque(_estoqueBase); }catch(e){}
+}
+
+async function criarCategoriaChapa(){
+  const nome = String(document.getElementById('cc-new-nome')?.value||'').trim();
+  const ordem = Number(document.getElementById('cc-new-ord')?.value||0) || 0;
+  if(!nome){ toast('Informe o nome da categoria','var(--red)'); return; }
+  const resp = await apiFetch('/api/chapas_categorias', { method:'POST', body:{ nome, ordem } });
+  const r = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (r && r.error)){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+  document.getElementById('cc-new-nome').value='';
+  document.getElementById('cc-new-ord').value='0';
+  await recarregarCategoriasChapasUI();
+  renderModalCategoriasChapas();
+  toast('Categoria criada ✓','var(--green)');
+}
+
+async function salvarCategoriaChapa(id){
+  const cid = String(id||'').trim();
+  if(!cid) return;
+  const nome = String(document.getElementById('cc-nome-'+cid)?.value||'').trim();
+  const ordem = Number(document.getElementById('cc-ord-'+cid)?.value||0) || 0;
+  if(!nome){ toast('Nome inválido','var(--red)'); return; }
+  const resp = await apiFetch('/api/chapas_categorias/'+encodeURIComponent(cid), { method:'PUT', body:{ nome, ordem } });
+  const r = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (r && r.error)){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+  await recarregarCategoriasChapasUI();
+  renderModalCategoriasChapas();
+  toast('Categoria salva ✓','var(--green)');
+}
+
+async function excluirCategoriaChapa(id){
+  const cid = String(id||'').trim();
+  if(!cid) return;
+  if(!confirm('Excluir esta categoria?')) return;
+  const resp = await apiFetch('/api/chapas_categorias/'+encodeURIComponent(cid), { method:'DELETE' });
+  const r = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (r && r.error)){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+  await recarregarCategoriasChapasUI();
+  renderModalCategoriasChapas();
+  toast('Categoria excluída ✓','var(--orange)');
 }
 
 function estoqueFiltrar(tipo){
@@ -3844,13 +3984,11 @@ function toggleChapaRisca(){
 function abrirModalNovaChapa(id) {
   const c = id ? (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id) : null;
   CHAPA_ATUAL_ID = c ? String(c.id||'').trim() : '';
-  const dlCat = document.getElementById('lista-categorias-chapa');
-  if(dlCat){
-    const baseCats = ['Estoque Simples','Estoque Duplo','Estoque Duplo Col.8','Estoque Simples Col.5','Gran Mestri','Caixas Antigas Gran Mestri','Caixas Vincadas'];
-    const dynCats = [...new Set((Array.isArray(ESTOQUE)?ESTOQUE:[]).map(x=>String(x.categoria||'').trim()).filter(Boolean))];
-    const cats = [...new Set([...baseCats, ...dynCats])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    dlCat.innerHTML = cats.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
-  }
+  const baseCats = ['Estoque Simples','Estoque Duplo','Estoque Duplo Col.8','Estoque Simples Col.5','Gran Mestri','Caixas Antigas Gran Mestri','Caixas Vincadas'];
+  const dbCats = (CHAPAS_CATEGORIAS||[]).map(x=>String(x?.nome||'').trim()).filter(Boolean);
+  const dynCats = [...new Set((Array.isArray(ESTOQUE)?ESTOQUE:[]).map(x=>String(x.categoria||'').trim()).filter(Boolean))];
+  const cats = (dbCats.length ? dbCats : [...new Set([...baseCats, ...dynCats])]).slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  renderChapaCategoriaSelect(cats);
   document.getElementById('chapa-edit-id').value = CHAPA_ATUAL_ID;
   document.getElementById('chapa-categoria').value = c?.categoria||'Estoque Simples';
   document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
@@ -4112,21 +4250,24 @@ async function salvarChapa(){
     const empresa = estEmpresaFromAny(empresaRaw, '');
     if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!String(categoria||'').trim()||!String(empresa||'').trim()){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Empresa, Tamanho e Categoria','var(--red)');return;}
     if(_estBusy) return;
+    const nfVal = document.getElementById('chapa-nf')?.value?.trim() || null;
+    const vincosVal = document.getElementById('chapa-vincos')?.value?.trim() || null;
+    const obsVal = document.getElementById('chapa-obs')?.value?.trim() || null;
     const payload = {
       categoria,
       nome_uso: nomeUso,
       nomenclatura, fornecedor,
       empresa_vinculada: empresa,
       tamanho,
-      nf: document.getElementById('chapa-nf')?.value?.trim()||'',
+      nf: nfVal,
       quantidade: Number(document.getElementById('chapa-quantidade')?.value||0),
       valor_unitario: Number(document.getElementById('chapa-valor-unitario')?.value||0),
       data_entrada: document.getElementById('chapa-data-entrada')?.value||null,
-      vincos: document.getElementById('chapa-vincos')?.value?.trim()||'',
+      vincos: vincosVal,
       riscada: document.getElementById('chapa-riscada')?.value === '1',
       risca_desc: document.getElementById('chapa-risca-desc')?.value?.trim()||'',
       estoque_minimo: Number(document.getElementById('chapa-estoque-minimo')?.value||200),
-      observacao: document.getElementById('chapa-obs')?.value?.trim()||'',
+      observacao: obsVal,
       emp_id: estEmpIdFromEmpresa(empresa),
     };
     try{
@@ -4138,6 +4279,19 @@ async function salvarChapa(){
       const r = resp ? await resp.json().catch(()=>null) : null;
       console.log('[CHAPAS] salvarChapa resp', { ok: !!resp?.ok, status: resp?.status, body: r });
       if(!resp || !resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)|| (r&&r.message) || (resp?resp.statusText:'falha') || 'falha'),'var(--red)');return;}
+      const updatedRaw = (r && (r.data || r)) || null;
+      if(updatedRaw && updatedRaw.id){
+        const updated = (typeof normalizeEst === 'function') ? normalizeEst(updatedRaw) : updatedRaw;
+        if(Array.isArray(_estoqueBase)){
+          const i = _estoqueBase.findIndex(x=>x.id===updated.id);
+          if(i>=0) _estoqueBase[i] = { ..._estoqueBase[i], ...updated };
+        }
+        if(Array.isArray(ESTOQUE)){
+          const j = ESTOQUE.findIndex(x=>x.id===updated.id);
+          if(j>=0) ESTOQUE[j] = { ...ESTOQUE[j], ...updated };
+        }
+        try{ _renderEstoqueBase(_estoqueBase); }catch(e){}
+      }
       toast('Chapa salva ✓','var(--green)');
       modalNova.style.display='none';
       await carregarChapas();
@@ -7266,6 +7420,7 @@ async function loadCoreData(){
     carregarOFs(),
     carregarApontamentos(),
     carregarChapas(),
+    carregarCategoriasChapas?.()||Promise.resolve(),
     carregarFacas(),
     carregarCliches()
   ]);
@@ -7306,6 +7461,7 @@ async function bootAuthAndData(){
   try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
   try{ iniciarSistema(CURRENT_USER); }catch(e){}
   try{ await loadCoreData(); }catch(e){}
+  try{ await dedupeClientePorNome('Beethoven Agropet'); }catch(e){}
 }
 
 // Popula todos os <select> que precisam das opções de empresa
@@ -14642,16 +14798,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <input type="hidden" id="chapa-edit-id">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Categoria *</label>
-        <input id="chapa-categoria" type="text" list="lista-categorias-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
-        <datalist id="lista-categorias-chapa">
-          <option value="Estoque Simples"></option>
-          <option value="Estoque Duplo"></option>
-          <option value="Estoque Duplo Col.8"></option>
-          <option value="Estoque Simples Col.5"></option>
-          <option value="Gran Mestri"></option>
-          <option value="Caixas Antigas Gran Mestri"></option>
-          <option value="Caixas Vincadas"></option>
-        </datalist>
+        <select id="chapa-categoria" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></select>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nomenclatura *</label>
         <input id="chapa-nomenclatura" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
@@ -14731,6 +14878,39 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalExcluirChapa()">Cancelar</button>
       <button class="btn btn-red btn-sm" onclick="confirmarExclusaoChapa()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-chapas-categorias" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px;width:860px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <h3 style="margin:0">Gerenciar Categorias de Chapas</h3>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalCategoriasChapas()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div style="display:flex;flex-direction:column;gap:4px;min-width:260px;flex:1">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nova Categoria</label>
+        <input id="cc-new-nome" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;width:120px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Ordem</label>
+        <input id="cc-new-ord" type="number" value="0" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="criarCategoriaChapa()">+ Adicionar</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:760px">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">ID</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Nome</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Ordem</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="cc-body"></tbody>
+      </table>
     </div>
   </div>
 </div>
