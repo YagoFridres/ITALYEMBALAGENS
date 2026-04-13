@@ -3599,6 +3599,44 @@ function estOrdenar(campo){
   renderEstoque();
 }
 
+function bindEstoqueEmpresaInline(){
+  document.querySelectorAll('select.est-emp-inline').forEach(sel=>{
+    if(sel.dataset.bound==='1') return;
+    sel.dataset.bound='1';
+    sel.addEventListener('change', async function() {
+      const novoValor = String(this.value || '').trim();
+      const chapaId = String(this.dataset.id || '').trim();
+      if (!novoValor || !chapaId) return;
+      if(_estBusy) return;
+      try{
+        estSetBusy(true);
+        const body = { empresa_vinculada: novoValor, qual_cnpj: novoValor, emp_id: estEmpIdFromEmpresa(novoValor) };
+        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(chapaId)}`, {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+        const data = await r.json().catch(()=>null);
+        if (!r.ok || (data && data.error)) { toast('Erro ao salvar empresa: ' + ((data && data.error) || 'falha'), 'var(--red)'); return; }
+        const applyLocal = (arr) => {
+          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===chapaId);
+          if(!it) return;
+          it.empresa_vinculada = novoValor;
+          it.qual_cnpj = novoValor;
+          it.emp_id = body.emp_id;
+          it.empId = body.emp_id;
+        };
+        applyLocal(_estoqueBase);
+        applyLocal(ESTOQUE);
+        toast('Empresa atualizada ✓','var(--green)');
+      } catch(e) {
+        toast('Erro na requisição','var(--red)');
+      } finally {
+        estSetBusy(false);
+      }
+    });
+  });
+}
+
 function _riscadaToggleHtml(id, riscada, descShort, cellRid){
   const onNo = !riscada;
   const onYes = !!riscada;
@@ -3739,6 +3777,7 @@ function _renderEstoqueBase(chapas) {
       const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
       const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
       const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
+      const empSel = (emp === 'Italy Embalagens' || emp === 'Cartoeste' || emp === 'Oestepack') ? emp : '';
       const cellRid = 'risc-cell-' + String(c.id||'').replace(/[^a-zA-Z0-9_-]/g,'_');
       const riscHtml = _riscadaToggleHtml(String(c.id||''), !!c.riscada, risDescShort, cellRid);
       return `<tr style="background:${trBg}">
@@ -3746,10 +3785,10 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select onchange="atualizarEmpresaChapa('${escAttr(c.id)}', this.value)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
-            <option value="Italy Embalagens" ${emp.toLowerCase().includes('italy')?'selected':''}>Italy Embalagens</option>
-            <option value="Cartoeste" ${emp.toLowerCase().includes('carto')?'selected':''}>Cartoeste</option>
-            <option value="Oestepack" ${emp.toLowerCase().includes('oeste')?'selected':''}>Oestepack</option>
+          <select class="est-emp-inline" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+            <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
+            <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
+            <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
           </select>
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
@@ -3778,6 +3817,7 @@ function _renderEstoqueBase(chapas) {
         </td>
       </tr>`;
     }).join('');
+    try{ bindEstoqueEmpresaInline(); }catch(e){}
 
     if(footEl){
       const totalQtd = filtrada.reduce((s,c)=>s+(Number(c.quantidade??c.qtd??0)||0),0);
