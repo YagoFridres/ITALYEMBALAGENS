@@ -3600,12 +3600,18 @@ function estOrdenar(campo){
 }
 
 function setupEstoqueInlineDelegation(){
-  if(window.__ESTOQUE_INLINE_DELEGATION__) return;
-  window.__ESTOQUE_INLINE_DELEGATION__ = true;
+  console.log('[INLINE] setup chamado');
+  // if(window.__ESTOQUE_INLINE_DELEGATION__) return;
+  // window.__ESTOQUE_INLINE_DELEGATION__ = true;
 
   document.addEventListener('change', async function(e) {
     const el = e && e.target ? e.target : null;
     if(!el || !el.classList) return;
+
+    if (el.classList.contains('est-empresa-sel') || el.classList.contains('est-cat-sel')) {
+      console.log('[INLINE] change disparado:', el.className, el.dataset);
+      console.log('[INLINE] apiFetch existe?', typeof apiFetch);
+    }
 
     if (el.classList.contains('est-empresa-sel')) {
       const id = String(el.dataset.id || '').trim();
@@ -3674,6 +3680,9 @@ function setupEstoqueInlineDelegation(){
     const el = e && e.target ? e.target : null;
     if(!el || !el.classList) return;
     if (!el.classList.contains('est-riscada-btn')) return;
+    
+    console.log('[INLINE] click disparado:', el.className, el.dataset);
+    console.log('[INLINE] apiFetch existe?', typeof apiFetch);
 
     const id = String(el.dataset.id || '').trim();
     const val = String(el.dataset.val || '').trim() === 'true';
@@ -7689,12 +7698,15 @@ document.addEventListener('DOMContentLoaded', function(){
       const licoEl=document.querySelector('.logo-icon');
       if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
-    try{ setupEstoqueInlineDelegation(); }catch(e){}
+    // try{ setupEstoqueInlineDelegation(); }catch(e){}
     bootAuthAndData();
   } catch(e) {
     console.error('DOMContentLoaded error:', e);
   }
 });
+
+// ===================== LISTENER DE INLINE (GLOBAL) =====================
+setupEstoqueInlineDelegation();
 
 async function loadCoreData(){
   await Promise.all([
