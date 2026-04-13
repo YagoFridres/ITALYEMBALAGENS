@@ -2968,7 +2968,7 @@ function popularFiltrosEstoque(chapas){
   const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const empSet=[...new Set(_estoqueBase.map(c=>norm(c.empresa_vinculada||c.empresa||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(v=>v&&v!=='—')))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(v=>v&&v!=='—'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
     if(!el) return;
@@ -5924,7 +5924,7 @@ function _renderRelatorioBase(){
     html=tbl(['ID','Nº NF','SÉRIE','TIPO','EMITENTE','DESTINATÁRIO','DATA','VALOR','STATUS','CHAVE'],NOTAS_FISCAIS.map((n,i)=>`<tr style="${trStyle(i)}"><td style="${tdStyle};font-family:var(--mono)">${n.id}</td><td style="${tdStyle};font-family:var(--mono);font-weight:700;color:var(--accent)">${n.num||'—'}</td><td style="${tdStyle};text-align:center">${n.serie||'—'}</td><td style="${tdStyle};color:${n.tipo==='saida'?'var(--accent)':'var(--green)'};font-weight:700">${n.tipo==='saida'?'⬆ Saída':'⬇ Entrada'}</td><td style="${tdStyle}">${n.emit||'—'}</td><td style="${tdStyle}">${n.dest||'—'}</td><td style="${tdStyle}">${n.data||'—'}</td><td style="${tdStyle};text-align:right;color:var(--green);font-weight:700">${fmtR(n.valor||0)}</td><td style="${tdStyle};font-weight:700">${n.status}</td><td style="${tdStyle};font-family:var(--mono);font-size:.6rem;color:var(--text3)">${n.chave?n.chave.slice(0,20)+'...':'—'}</td></tr>`));
   } else if(tipo==='vendas-mensal-comissao'){
     // Get distinct months from OFs
-    const meses=[...new Set(OFs.filter(o=>o.dia).map(o=>o.dia.slice(0,7)))].sort().reverse();
+    const meses=[...new Set(OFs.filter(o=>o.dia).map(o=>o.dia.slice(0,7))].sort().reverse();
     const mesSel=ramo; // reuse ramo select to pick month - but actually use a month selector
     // Build month selector
     const relContent=document.getElementById('rel-content');
@@ -11272,7 +11272,7 @@ function renderQualidade() {
     MAQUINAS.forEach(m=>{ const el=document.createElement('option'); el.value=m.id; el.textContent=m.col; maqSel2.appendChild(el); });
   const mesSel = document.getElementById('qa-fil-mes');
   if (mesSel && mesSel.options.length <= 1) {
-    const meses=[...new Set(INCONFORMIDADES.map(ic=>ic.data.slice(0,7)))].sort().reverse();
+    const meses=[...new Set(INCONFORMIDADES.map(ic=>ic.data.slice(0,7))].sort().reverse();
     meses.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; mesSel.appendChild(o); });
   }
 
