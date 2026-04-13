@@ -2543,13 +2543,11 @@ function renderImgsTemp(){
 async function handleOfImgsUpload(e){
   const files = [...(e.target.files||[])];
   if(!files.length) return;
-  const token = localStorage.getItem('auth_token');
   for(const f of files){
     try{
       const fd = new FormData();
       fd.append('file', f);
-      const resp = await fetch('/api/ofs/upload', { method:'POST', headers: { 'Authorization': token ? ('Bearer '+token) : '' }, body: fd });
-      const j = await resp.json();
+      const j = await apiUpload('/ofs/upload', fd);
       if(j && j.ok && j.url){
         ofImgsTemp.push(j.url);
         renderImgsTemp();
@@ -2923,9 +2921,9 @@ let _estBusy = false;
 
 function estEmpresaFromEmpId(empId){
   const e = String(empId||'').trim().toUpperCase();
-  if(e === 'E2' || e.includes('CARTO')) return 'CARTOESTE';
-  if(e === 'E3' || e.includes('OESTE')) return 'OESTEPACK';
-  return 'ITALY EMBALAGENS';
+  if(e === 'E2' || e.includes('CARTO')) return 'Cartoeste';
+  if(e === 'E3' || e.includes('OESTE')) return 'Oestepack';
+  return 'Italy Embalagens';
 }
 
 function estEmpIdFromEmpresa(empresa){
@@ -2970,7 +2968,7 @@ function popularFiltrosEstoque(chapas){
   const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const empSet=[...new Set(_estoqueBase.map(c=>norm(c.empresa_vinculada||c.empresa||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(v=>v&&v!=='—')))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
     if(!el) return;
@@ -3051,7 +3049,7 @@ function _renderEstoqueBase(chapas) {
     if(busca) {
       const txt = [
         (c.nome||''),(c.nomenclatura||c.nom||''),(c.fornecedor||c.forn||''),
-        (c.empresa_vinculada||c.empresa||''),(c.qual_cnpj||c.qual||''),(c.tamanho||c.tam||''),(c.nf||c.nf_entrada||''),
+        (c.empresa_vinculada||c.empresa||''),(c.tamanho||c.tam||''),(c.nf||c.nf_entrada||''),
         (c.vincos||''),(c.observacao||''),(c.categoria||''),(c.cliente||''),(c.risca_desc||'')
       ].join(' ').toLowerCase();
       if(!txt.includes(busca)) return false;
@@ -3075,7 +3073,7 @@ function _renderEstoqueBase(chapas) {
     return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
 
-  const colsCount = 15;
+  const colsCount = 13;
   if(!filtrada.length){
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
@@ -3093,12 +3091,18 @@ function _renderEstoqueBase(chapas) {
       const risDesc = String(c.risca_desc || '').trim();
       const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
       const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
+      const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
       return `<tr style="background:${trBg}">
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2);font-family:var(--mono);font-weight:900;min-width:140px">${escH(c.empresa_vinculada||c.empresa||'ITALY EMBALAGENS')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--purple);font-family:var(--mono);font-size:.72rem;min-width:120px">${escH(c.qual_cnpj||c.qual||'—')}</td>
+        <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
+          <select onchange="atualizarEmpresaChapa('${escAttr(c.id)}', this.value)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+            <option value="Italy Embalagens" ${emp.toLowerCase().includes('italy')?'selected':''}>Italy Embalagens</option>
+            <option value="Cartoeste" ${emp.toLowerCase().includes('carto')?'selected':''}>Cartoeste</option>
+            <option value="Oestepack" ${emp.toLowerCase().includes('oeste')?'selected':''}>Oestepack</option>
+          </select>
+        </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:90px">${escH(nf)}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:90px">${fmtR(vunit)}</td>
@@ -3108,15 +3112,14 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);min-width:140px">${escH(c.cliente||'—')}</td>
         <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:900;color:${risCor};min-width:80px">${ris}${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(risDescShort)}</div>`:''}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:140px">${escH(c.categoria||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
           <div style="display:flex;gap:4px;justify-content:center">
-            <button class="btn-icon btn-sm" onclick="ajustarQtdChapa('${escAttr(c.id)}',-1)" title="Saída 1" style="color:var(--red)">—</button>
-            <button class="btn-icon btn-sm" onclick="ajustarQtdChapa('${escAttr(c.id)}',1)" title="Entrada 1" style="color:var(--green)">+</button>
+            <button class="btn-icon btn-sm" onclick="abrirModalMovLinha('saida','${escAttr(c.id)}')" title="Saída" style="color:var(--red)">—</button>
+            <button class="btn-icon btn-sm" onclick="abrirModalMovLinha('entrada','${escAttr(c.id)}')" title="Entrada" style="color:var(--green)">+</button>
             <button class="btn-icon btn-sm" onclick="editarChapa('${escAttr(c.id)}')" title="Editar">✏</button>
-            <button class="btn-icon btn-sm" onclick="excluirChapa('${escAttr(c.id)}')" title="Excluir" style="color:var(--red)">🗑</button>
+            <button class="btn-icon btn-sm" onclick="abrirModalExcluirChapa('${escAttr(c.id)}')" title="Excluir" style="color:var(--red)">🗑</button>
           </div>
         </td>
       </tr>`;
@@ -3131,7 +3134,7 @@ function _renderEstoqueBase(chapas) {
         return s + total;
       },0);
       footEl.innerHTML = `<tr style="background:var(--s3)">
-        <td colspan="8" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
+        <td colspan="6" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(totalValTotal)}</td>
         <td colspan="5" style="padding:10px;border:1px solid var(--border)"></td>
@@ -3187,7 +3190,7 @@ function renderTabelaEstoque(itens) {
       <th style="padding:8px;text-align:left">NOME/USO</th>
       <th style="padding:8px;color:#4A90D9">NOMENCLATURA</th>
       <th style="padding:8px;color:#4A90D9">FORNECEDOR</th>
-      <th style="padding:8px;color:#9B59B6">FABRICANTE</th>
+      <th style="padding:8px;color:#9B59B6">EMPRESA/CNPJ</th>
       <th style="padding:8px">TAMANHO (MM)</th>
       <th style="padding:8px">N° NF</th>
       <th style="padding:8px;text-align:right">R$/UN</th>
@@ -3203,11 +3206,12 @@ function renderTabelaEstoque(itens) {
         const total = vunit*qtd;
         const baixo = qtd < 200;
         const nf = c.nf_entrada || c.nf || '—';
+        const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
         return `<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:8px">${escH(c.nome||'—')}</td>
           <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
           <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
-          <td style="padding:8px;color:#9B59B6">${escH(c.qual_cnpj||c.qual||'—')}</td>
+          <td style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
           <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
           <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
           <td style="padding:8px;text-align:right">${fmtR(vunit)}</td>
@@ -3455,13 +3459,6 @@ function toggleChapaRisca(){
 
 function abrirModalNovaChapa(id) {
   const c = id ? (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id) : null;
-  const dl = document.getElementById('lista-clientes-chapa');
-  if(dl && Array.isArray(CLIENTES)){
-    dl.innerHTML = CLIENTES.map(cl=>{
-      const n = (cl.nome || cl.nome_fantasia || cl.razao_social || '').trim();
-      return n ? `<option value="${escAttr(n)}"></option>` : '';
-    }).join('');
-  }
   const dlCat = document.getElementById('lista-categorias-chapa');
   if(dlCat){
     const baseCats = ['Estoque Simples','Estoque Duplo','Estoque Duplo Col.8','Estoque Simples Col.5','Gran Mestri','Caixas Antigas Gran Mestri','Caixas Vincadas'];
@@ -3475,7 +3472,6 @@ function abrirModalNovaChapa(id) {
   document.getElementById('chapa-fornecedor').value = c?.fornecedor||c?.forn||'';
   const empSel = document.getElementById('chapa-empresa');
   if(empSel) empSel.value = c?.empresa_vinculada || c?.empresa || estEmpresaFromEmpId(c?.emp_id || c?.empId || '');
-  document.getElementById('chapa-qual-cnpj').value = c?.qual_cnpj||c?.cnpj||c?.qual||'';
   document.getElementById('chapa-tamanho').value = c?.tamanho||c?.tam||'';
   document.getElementById('chapa-nome').value = c?.nome||'';
   document.getElementById('chapa-nf').value = c?.nf||c?.nf_entrada||'';
@@ -3487,8 +3483,6 @@ function abrirModalNovaChapa(id) {
   if(minEl) minEl.value = Number(c?.estoque_minimo ?? c?.min ?? 200) || 200;
   const vincEl = document.getElementById('chapa-vincos');
   if(vincEl) vincEl.value = c?.vincos || '';
-  const cliEl = document.getElementById('chapa-cliente');
-  if(cliEl) cliEl.value = c?.cliente || '';
   const risSel = document.getElementById('chapa-riscada');
   if(risSel) risSel.value = c?.riscada ? '1' : '0';
   const risDesc = document.getElementById('chapa-risca-desc');
@@ -3518,6 +3512,102 @@ async function ajustarQtdChapa(id, delta) {
     const sinal = d>0?'+':'-';
     toast(`${sinal}${Math.abs(d)} un atualizado`,'var(--green)');
   }finally{
+    estSetBusy(false);
+  }
+}
+
+async function atualizarEmpresaChapa(id, empresa){
+  const emp = String(empresa||'').trim();
+  if(!id || !emp) return;
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const payload = { empresa_vinculada: emp, emp_id: estEmpIdFromEmpresa(emp) };
+    const r = await api('PUT','/chapas_estoque/'+encodeURIComponent(id), payload);
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    await carregarChapas();
+    renderEstoque();
+    toast('Empresa atualizada ✓','var(--green)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
+function abrirModalMovLinha(tipo, id){
+  const t = String(tipo||'').toLowerCase().trim();
+  if(!['entrada','saida'].includes(t)) return;
+  const c = (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id);
+  if(!c) return;
+  const modal = document.getElementById('modal-mov-linha');
+  if(!modal) return;
+  document.getElementById('mov-linha-id').value = id;
+  document.getElementById('mov-linha-tipo').value = t;
+  const qtdEl = document.getElementById('mov-linha-qtd');
+  if(qtdEl){qtdEl.value='1';qtdEl.min='1';}
+  const h = document.getElementById('mov-linha-titulo');
+  if(h) h.textContent = t === 'entrada' ? 'Entrada de chapas' : 'Saída de chapas';
+  const sub = document.getElementById('mov-linha-sub');
+  if(sub) sub.textContent = `${c.nome||''} · ${c.nomenclatura||c.nom||''} · ${c.tamanho||c.tam||''}`.trim();
+  const btn = document.getElementById('mov-linha-confirmar');
+  if(btn){btn.textContent = t === 'entrada' ? 'Confirmar entrada' : 'Confirmar saída'; btn.className = t === 'entrada' ? 'btn btn-green btn-sm' : 'btn btn-red btn-sm';}
+  modal.style.display = 'flex';
+  setTimeout(()=>{try{qtdEl && qtdEl.focus && qtdEl.focus();}catch(e){}}, 0);
+}
+
+function fecharModalMovLinha(){
+  const modal = document.getElementById('modal-mov-linha');
+  if(modal) modal.style.display = 'none';
+}
+
+async function confirmarModalMovLinha(){
+  const id = document.getElementById('mov-linha-id')?.value || '';
+  const tipo = String(document.getElementById('mov-linha-tipo')?.value || '').toLowerCase().trim();
+  const qtd = Math.trunc(Number(document.getElementById('mov-linha-qtd')?.value || 0));
+  if(!id || !['entrada','saida'].includes(tipo)) return;
+  if(!Number.isFinite(qtd) || qtd < 1){toast('Informe uma quantidade (mínimo 1)','var(--red)');return;}
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const r = await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { tipo, delta: qtd });
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    fecharModalMovLinha();
+    await carregarChapas();
+    renderEstoque();
+    toast('Movimentação registrada ✓','var(--green)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
+function abrirModalExcluirChapa(id){
+  const c = (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id);
+  if(!c) return;
+  const modal = document.getElementById('modal-excluir-chapa-confirm');
+  if(!modal) return;
+  document.getElementById('exc-chapa-id').value = id;
+  const d = document.getElementById('exc-chapa-desc');
+  if(d) d.textContent = `${c.nome||''} · ${c.nomenclatura||c.nom||''} · ${c.tamanho||c.tam||''} · qtd=${Number(c.quantidade??c.qtd??0)||0}`.trim();
+  modal.style.display = 'flex';
+}
+
+function fecharModalExcluirChapa(){
+  const modal = document.getElementById('modal-excluir-chapa-confirm');
+  if(modal) modal.style.display = 'none';
+}
+
+async function confirmarExclusaoChapa(){
+  const id = document.getElementById('exc-chapa-id')?.value || '';
+  if(!id) return;
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const r = await api('DELETE','/chapas_estoque/'+encodeURIComponent(id));
+    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
+    fecharModalExcluirChapa();
+    await carregarChapas();
+    renderEstoque();
+    toast('Chapa excluída ✓','var(--orange)');
+  } finally {
     estSetBusy(false);
   }
 }
@@ -3571,15 +3661,7 @@ async function atualizarChapa(id){
 }
 
 async function excluirChapa(id){
-  const c=getCh(id); if(!c) return;
-  if(!confirm(`Excluir chapa "${c.nome}" (${c.qtd.toLocaleString()} un em estoque)?\n\nEsta ação não pode ser desfeita.`)) return;
-  const r=await salvarViaApiOuLocal('chapa',
-    ()=>api('DELETE','/chapas_estoque/'+encodeURIComponent(id)),
-    ()=>({ok:true, local:true})
-  );
-  if(!r || !r.ok){toast('Erro ao excluir chapa','var(--red)');return;}
-  ESTOQUE=ESTOQUE.filter(x=>x.id!==id);
-  autoSaveTrigger(); renderEstoque(); toast('🗑 Chapa excluída','var(--orange)');
+  abrirModalExcluirChapa(id);
 }
 
 function abrirEntradaRapida(id){
@@ -3622,15 +3704,12 @@ async function salvarChapa(){
       nome_uso: nomeUso,
       nomenclatura, fornecedor,
       empresa_vinculada: empresa,
-      qual_cnpj: document.getElementById('chapa-qual-cnpj')?.value?.trim()||'',
       tamanho,
       nf: document.getElementById('chapa-nf')?.value?.trim()||'',
-      nf_entrada: document.getElementById('chapa-nf')?.value?.trim()||'',
       quantidade: Number(document.getElementById('chapa-quantidade')?.value||0),
       valor_unitario: Number(document.getElementById('chapa-valor-unitario')?.value||0),
       data_entrada: document.getElementById('chapa-data-entrada')?.value||null,
       vincos: document.getElementById('chapa-vincos')?.value?.trim()||'',
-      cliente_nome: document.getElementById('chapa-cliente')?.value?.trim()||'',
       riscada: document.getElementById('chapa-riscada')?.value === '1',
       risca_desc: document.getElementById('chapa-risca-desc')?.value?.trim()||'',
       estoque_minimo: Number(document.getElementById('chapa-estoque-minimo')?.value||200),
@@ -7151,24 +7230,41 @@ else initDevice();
 var AUTH_TOKEN_KEY='auth_token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
-function authSave(token, user){
+var AUTH_TOKEN_KEY2='token';
+function getStoredToken(){
   try{
-    const exp=Date.now()+1000*60*60*24*30;
-    localStorage.setItem(AUTH_TOKEN_KEY, String(token||''));
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user||null));
-    localStorage.setItem(AUTH_EXP_KEY, String(exp));
+    return String(localStorage.getItem(AUTH_TOKEN_KEY2) || localStorage.getItem(AUTH_TOKEN_KEY) || '').trim();
+  }catch(e){ return ''; }
+}
+function setStoredToken(token){
+  try{
+    const t = String(token||'');
+    localStorage.setItem(AUTH_TOKEN_KEY2, t);
+    localStorage.setItem(AUTH_TOKEN_KEY, t);
   }catch(e){}
 }
-function authClear(){
+function clearStoredAuth(){
   try{
+    localStorage.removeItem(AUTH_TOKEN_KEY2);
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_EXP_KEY);
   }catch(e){}
 }
+function authSave(token, user){
+  try{
+    const exp=Date.now()+1000*60*60*24*30;
+    setStoredToken(token);
+    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user||null));
+    localStorage.setItem(AUTH_EXP_KEY, String(exp));
+  }catch(e){}
+}
+function authClear(){
+  clearStoredAuth();
+}
 function authRestore(){
   try{
-    const token=localStorage.getItem(AUTH_TOKEN_KEY);
+    const token=getStoredToken();
     const user=localStorage.getItem(AUTH_USER_KEY);
     const exp=parseInt(localStorage.getItem(AUTH_EXP_KEY)||'0',10);
     if(!token || !user) return null;
@@ -7221,7 +7317,6 @@ async function doLogin(){
   if(!Array.isArray(CURRENT_USER.permissoes)){
     try{ CURRENT_USER.permissoes = typeof CURRENT_USER.permissoes==='string' ? JSON.parse(CURRENT_USER.permissoes) : []; }catch(e){ CURRENT_USER.permissoes = []; }
   }
-  localStorage.setItem('auth_token', AUTH_TOKEN);
   localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
   authSave(AUTH_TOKEN, CURRENT_USER);
   if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
@@ -7258,16 +7353,13 @@ function trocarUsuario(){
 
 // Executar logo no início, antes de iniciarSistema()
 (async function verificarSessao() {
-  const token = localStorage.getItem('auth_token');
+  const token = getStoredToken();
   const userStr = localStorage.getItem('auth_user');
   if (token && userStr) {
     try {
       CURRENT_USER = JSON.parse(userStr);
-      const resp = await fetch('/api/auth/me', {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      if (resp.ok) {
-        const userData = await resp.json();
+      const userData = await api('GET','/auth/me');
+      if (userData && !userData.error) {
         CURRENT_USER = { ...CURRENT_USER, ...userData };
         localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
         if (typeof aplicarPermissoes === 'function')
@@ -7276,8 +7368,7 @@ function trocarUsuario(){
         return;
       }
     } catch(e) { console.log('Sessão inválida:', e.message); }
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    clearStoredAuth();
   }
   if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
 })();
@@ -7307,47 +7398,68 @@ var DESPERDICIO_CHAPAS = [];
 var AGENDA_VENDEDORES = [];
 var AGENDA_SEQ = 1;
 
-function api(method, url, body) {
-  const token = localStorage.getItem('auth_token');
-  const opts = {
-    method: method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': token ? ('Bearer ' + token) : ''
-    }
-  };
-  if (body !== undefined && body !== null) opts.body = JSON.stringify(body);
-  return fetch(url.startsWith('http') ? url : ('/api' + url), opts)
-    .then(r => {
-      if (r.status === 401 && !String(url||'').includes('/auth/login')) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
-        throw new Error('Sessão expirada');
-      }
-      return r.json();
-    });
+async function apiFetchRaw(method, url, body, extra) {
+  const headers = Object.assign({}, (extra && extra.headers) ? extra.headers : {});
+  const token = getStoredToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  if (!headers['Content-Type'] && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  const opts = { method, headers };
+  if (body !== undefined && body !== null) opts.body = body instanceof FormData ? body : JSON.stringify(body);
+  const full = url.startsWith('http') ? url : (API_BASE + '/api' + url);
+  return fetch(full, opts);
 }
 
-function apiUpload(url, formData) {
-  const token = localStorage.getItem('auth_token');
-  const opts = {
-    method: 'POST',
-    headers: {
-      'Authorization': token ? ('Bearer ' + token) : ''
-    },
-    body: formData
-  };
-  return fetch(url.startsWith('http') ? url : ('/api' + url), opts)
-    .then(r => {
-      if (r.status === 401 && !String(url||'').includes('/auth/login')) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
-        if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
-        throw new Error('Sessão expirada');
-      }
-      return r.json();
-    });
+async function api(method, url, body) {
+  const isAuthLogin = String(url||'').includes('/auth/login');
+  const isAuthRefresh = String(url||'').includes('/auth/refresh');
+  let resp = await apiFetchRaw(method, url, body, null);
+  if (resp.status === 401 && !isAuthLogin && !isAuthRefresh) {
+    const curToken = getStoredToken();
+    if (curToken) {
+      try {
+        const r2 = await apiFetchRaw('POST', '/auth/refresh', null, { headers: { 'Authorization': 'Bearer ' + curToken } });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          if (j2 && j2.token) {
+            setStoredToken(j2.token);
+            resp = await apiFetchRaw(method, url, body, null);
+          }
+        }
+      } catch (e) {}
+    }
+  }
+  if (resp.status === 401 && !isAuthLogin && !isAuthRefresh) {
+    clearStoredAuth();
+    if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
+    throw new Error('Sessão expirada');
+  }
+  return resp.json();
+}
+
+async function apiUpload(url, formData) {
+  const isAuthRefresh = String(url||'').includes('/auth/refresh');
+  let resp = await apiFetchRaw('POST', url, formData, { headers: {} });
+  if (resp.status === 401 && !isAuthRefresh) {
+    const curToken = getStoredToken();
+    if (curToken) {
+      try {
+        const r2 = await apiFetchRaw('POST', '/auth/refresh', null, { headers: { 'Authorization': 'Bearer ' + curToken } });
+        if (r2.ok) {
+          const j2 = await r2.json();
+          if (j2 && j2.token) {
+            setStoredToken(j2.token);
+            resp = await apiFetchRaw('POST', url, formData, { headers: {} });
+          }
+        }
+      } catch (e) {}
+    }
+  }
+  if (resp.status === 401 && !isAuthRefresh) {
+    clearStoredAuth();
+    if (typeof mostrarTelaLogin === 'function') mostrarTelaLogin();
+    throw new Error('Sessão expirada');
+  }
+  return resp.json();
 }
 
 function apiUnavailable(res){
@@ -7548,7 +7660,7 @@ function normalizeEst(c) {
   const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
   const fornecedor = c.forn || c.fornecedor || '';
   const emp_id = c.emp_id || c.empId || '';
-  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('CARTO') ? 'CARTOESTE' : (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('OESTE') ? 'OESTEPACK' : '')) || estEmpresaFromEmpId(emp_id);
+  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('CARTO') ? 'Cartoeste' : (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('OESTE') ? 'Oestepack' : '')) || estEmpresaFromEmpId(emp_id);
   const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
   const tamanho = c.tam || c.tamanho || '';
   const nf = c.nf || c.nf_entrada || c.nota || c.numero_nf || '';
@@ -7942,13 +8054,7 @@ async function migrarClientesParaSupabase(){
     };
 
     try{
-      const r = await fetch(API_BASE + '/api/clientes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const ct = r.headers.get('content-type') || '';
-      const data = ct.includes('application/json') ? await r.json() : { ok:false, error: await r.text() };
+      const data = await api('POST','/clientes', payload);
       if(data && data.ok){
         okCount++;
       } else {
@@ -12826,15 +12932,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
               <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
               <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
-              <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">EMPRESA</th>
-              <th onclick="estOrdenar('qual_cnpj')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">FABRICANTE / CNPJ</th>
+              <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">EMPRESA/CNPJ</th>
               <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
               <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
               <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
               <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
               <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
               <th onclick="estOrdenar('vincos')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
-              <th onclick="estOrdenar('cliente')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CLIENTE</th>
               <th onclick="estOrdenar('riscada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--orange);white-space:nowrap;text-align:center">RISCADA?</th>
               <th onclick="estOrdenar('categoria')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CATEGORIA</th>
               <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
@@ -14057,14 +14161,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor *</label>
         <input id="chapa-fornecedor" type="text" list="lista-fornecedores-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
         <datalist id="lista-fornecedores-chapa"><option value="ADAMI"><option value="FAPOLPA"><option value="KLABIN"><option value="TROMBINI"><option value="BRAGAGNOLO"></datalist></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa Vinculada *</label>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa/CNPJ *</label>
         <select id="chapa-empresa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
-          <option value="ITALY EMBALAGENS">ITALY EMBALAGENS</option>
-          <option value="CARTOESTE">CARTOESTE</option>
-          <option value="OESTEPACK">OESTEPACK</option>
+          <option value="Italy Embalagens">Italy Embalagens</option>
+          <option value="Cartoeste">Cartoeste</option>
+          <option value="Oestepack">Oestepack</option>
         </select></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fabricante / Qual CNPJ</label>
-        <input id="chapa-qual-cnpj" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho (ex: 1240X980)</label>
         <input id="chapa-tamanho" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nome/Uso *</label>
@@ -14083,10 +14185,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="chapa-data-entrada" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Vincos</label>
         <input id="chapa-vincos" type="text" placeholder="Ex: 1 vinco / 2 vincos / sem vincos..." style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
-      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Cliente (opcional)</label>
-        <input id="chapa-cliente" type="text" list="lista-clientes-chapa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
-        <datalist id="lista-clientes-chapa"></datalist>
-      </div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Já vem riscada?</label>
         <select id="chapa-riscada" onchange="toggleChapaRisca()" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
           <option value="0">Não</option>
@@ -14100,6 +14198,41 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button onclick="document.getElementById('modal-nova-chapa').style.display='none'" style="padding:8px 16px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer">Cancelar</button>
       <button onclick="salvarChapa()" style="padding:8px 16px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:500">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-mov-linha" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:420px;max-width:95vw;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <h3 id="mov-linha-titulo" style="margin:0">Movimentação</h3>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalMovLinha()">✕</button>
+    </div>
+    <input type="hidden" id="mov-linha-id">
+    <input type="hidden" id="mov-linha-tipo">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade</label>
+      <input id="mov-linha-qtd" type="number" min="1" value="1" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+      <div id="mov-linha-sub" style="font-size:.74rem;color:var(--text3)"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalMovLinha()">Cancelar</button>
+      <button id="mov-linha-confirmar" class="btn btn-accent btn-sm" onclick="confirmarModalMovLinha()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-excluir-chapa-confirm" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:460px;max-width:95vw;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+    <h3 style="margin:0 0 10px">Excluir chapa</h3>
+    <input type="hidden" id="exc-chapa-id">
+    <div style="color:var(--text2);font-size:.9rem;line-height:1.35;margin-bottom:10px">
+      Tem certeza que deseja excluir esta chapa? Esta ação não pode ser desfeita.
+    </div>
+    <div id="exc-chapa-desc" style="color:var(--text3);font-size:.76rem;font-family:var(--mono);margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalExcluirChapa()">Cancelar</button>
+      <button class="btn btn-red btn-sm" onclick="confirmarExclusaoChapa()">Excluir</button>
     </div>
   </div>
 </div>
