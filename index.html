@@ -2229,7 +2229,7 @@ async function cancelarOF(id, numero) {
     toast('Erro ao cancelar: ' + e.message,'var(--red)');
   }
 }
-function alterarOFSel(){
+async function alterarOFSel(){
   if(!hasPerm('editar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para editar pedidos','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF para alterar','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
