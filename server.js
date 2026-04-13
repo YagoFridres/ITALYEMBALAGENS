@@ -1356,9 +1356,9 @@ app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // MÁQUINAS
 // ══════════════════════════════════════════════════════════════
-app.get('/api/maquinas', async (req, res) => {
+app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('maquinas').select('*');
+    const { data, error } = await supabase.from('maquinas').select('*').order('ordem', { ascending: true });
     if (error) throw error;
     ok(res, data);
   } catch (e) { err(res, e); }
