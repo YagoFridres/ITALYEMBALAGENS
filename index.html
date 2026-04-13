@@ -2942,6 +2942,14 @@ function estEmpIdFromEmpresa(empresa){
   return 'E1';
 }
 
+function estEmpresaFromAny(v, empId){
+  const s = String(v||'').trim().toUpperCase();
+  if(s.includes('CARTO')) return 'Cartoeste';
+  if(s.includes('OESTE')) return 'Oestepack';
+  if(s.includes('ITALY')) return 'Italy Embalagens';
+  return estEmpresaFromEmpId(empId||'');
+}
+
 function estSetBusy(v){
   _estBusy = !!v;
   const bar = document.getElementById('estoque-filtros-bar');
@@ -3486,7 +3494,12 @@ function abrirModalNovaChapa(id) {
   document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
   document.getElementById('chapa-fornecedor').value = c?.fornecedor||c?.forn||'';
   const empSel = document.getElementById('chapa-empresa');
-  if(empSel) empSel.value = c?.empresa_vinculada || c?.empresa || estEmpresaFromEmpId(c?.emp_id || c?.empId || '');
+  if(empSel){
+    const empId = c?.emp_id || c?.empId || '';
+    const raw = c?.empresa_vinculada || c?.empresa || c?.qual_cnpj || c?.qual || '';
+    empSel.value = estEmpresaFromAny(raw, empId);
+    if(!empSel.value) empSel.value = 'Italy Embalagens';
+  }
   document.getElementById('chapa-tamanho').value = c?.tamanho||c?.tam||'';
   document.getElementById('chapa-nome').value = c?.nome||'';
   document.getElementById('chapa-nf').value = c?.nf||c?.nf_entrada||'';
@@ -3715,8 +3728,9 @@ async function salvarChapa(){
     const fornecedor = document.getElementById('chapa-fornecedor')?.value?.trim()||'';
     const tamanho = document.getElementById('chapa-tamanho')?.value?.trim()?.toUpperCase()||'';
     const categoria = document.getElementById('chapa-categoria')?.value||'Estoque Simples';
-    const empresa = document.getElementById('chapa-empresa')?.value?.trim()||'';
-    if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!categoria||!empresa){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Empresa, Tamanho e Categoria','var(--red)');return;}
+    const empresaRaw = document.getElementById('chapa-empresa')?.value ?? '';
+    const empresa = estEmpresaFromAny(empresaRaw, '');
+    if(!nomeUso||!nomenclatura||!fornecedor||!tamanho||!String(categoria||'').trim()||!String(empresa||'').trim()){toast('Preencha Nome/Uso, Nomenclatura, Fornecedor, Empresa, Tamanho e Categoria','var(--red)');return;}
     if(_estBusy) return;
     const payload = {
       categoria,
@@ -7239,26 +7253,24 @@ function initDevice(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initDevice);
 else initDevice();
 
-var AUTH_TOKEN_KEY='auth_token';
+var AUTH_TOKEN_KEY='token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
 var AUTH_TOKEN_KEY2='token';
 function getStoredToken(){
   try{
-    return String(localStorage.getItem(AUTH_TOKEN_KEY2) || localStorage.getItem(AUTH_TOKEN_KEY) || '').trim();
+    return String(localStorage.getItem(AUTH_TOKEN_KEY2) || '').trim();
   }catch(e){ return ''; }
 }
 function setStoredToken(token){
   try{
     const t = String(token||'');
     localStorage.setItem(AUTH_TOKEN_KEY2, t);
-    localStorage.setItem(AUTH_TOKEN_KEY, t);
   }catch(e){}
 }
 function clearStoredAuth(){
   try{
     localStorage.removeItem(AUTH_TOKEN_KEY2);
-    localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_EXP_KEY);
   }catch(e){}
@@ -7365,15 +7377,15 @@ function trocarUsuario(){
 
 // Executar logo no início, antes de iniciarSistema()
 (async function verificarSessao() {
-  const token = getStoredToken();
-  const userStr = localStorage.getItem('auth_user');
-  if (token && userStr) {
+  const token = (function(){ try{ return String(localStorage.getItem('token')||'').trim(); }catch(e){ return ''; } })();
+  const userStr = (function(){ try{ return localStorage.getItem('auth_user'); }catch(e){ return null; } })();
+  if (token) {
     try {
-      CURRENT_USER = JSON.parse(userStr);
       const userData = await api('GET','/auth/me');
       if (userData && !userData.error) {
-        CURRENT_USER = { ...CURRENT_USER, ...userData };
-        localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER));
+        const prevUser = userStr ? (function(){ try{ return JSON.parse(userStr); }catch(e){ return null; } })() : null;
+        CURRENT_USER = prevUser ? { ...prevUser, ...userData } : userData;
+        try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
         if (typeof aplicarPermissoes === 'function')
           aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
         if (typeof iniciarSistema === 'function') iniciarSistema();
@@ -7413,7 +7425,7 @@ var AGENDA_SEQ = 1;
 async function apiFetch(url, opts = {}) {
   let token = '';
   try{
-    token = String(localStorage.getItem('token') || localStorage.getItem('auth_token') || '').trim();
+    token = String(localStorage.getItem('token') || '').trim();
   }catch(e){ token = ''; }
   if(!token) token = getStoredToken();
   const headers = Object.assign({}, opts.headers || {});
@@ -7442,12 +7454,11 @@ async function apiFetch(url, opts = {}) {
       const novo = j && j.token ? String(j.token) : '';
       if (novo) {
         try{ localStorage.setItem('token', novo); }catch(e){}
-        try{ localStorage.setItem('auth_token', novo); }catch(e){}
         headers['Authorization'] = 'Bearer ' + novo;
         r = await doFetch(fullUrl, toReqOpts(headers));
       }
     } else {
-      try{ localStorage.clear(); }catch(e){}
+      try{ clearStoredAuth(); }catch(e){}
       window.location.href = '/';
       return;
     }
@@ -7712,12 +7723,13 @@ function normalizeOrc(r){
   };
 }
 function normalizeEst(c) {
-  const categoria = (c.categoria != null && String(c.categoria).trim() !== '') ? c.categoria : 'Estoque Simples';
+  const categoriaRaw = c.categoria ?? c.categoria_nome ?? c.categoriaNome ?? c.categoria_chapa ?? c.cat ?? c.grupo ?? c.tipo_estoque ?? c.tipoEstoque ?? '';
+  const categoria = (categoriaRaw != null && String(categoriaRaw).trim() !== '') ? String(categoriaRaw).trim() : 'Estoque Simples';
   const nome = c.nome_uso || c.nomeUso || c.nome || c.name || c.nome_comercial || c.nom || '';
   const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
   const fornecedor = c.forn || c.fornecedor || '';
   const emp_id = c.emp_id || c.empId || '';
-  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('CARTO') ? 'Cartoeste' : (String(c.qual_cnpj||c.qual||'').toUpperCase().includes('OESTE') ? 'Oestepack' : '')) || estEmpresaFromEmpId(emp_id);
+  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || estEmpresaFromAny(c.qual_cnpj||c.qual||'', emp_id);
   const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
   const tamanho = c.tam || c.tamanho || '';
   const nf = c.nf || c.nf_entrada || c.nota || c.numero_nf || '';
