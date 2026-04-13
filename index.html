@@ -3599,41 +3599,120 @@ function estOrdenar(campo){
   renderEstoque();
 }
 
-function bindEstoqueEmpresaInline(){
-  document.querySelectorAll('select.est-emp-inline').forEach(sel=>{
-    if(sel.dataset.bound==='1') return;
-    sel.dataset.bound='1';
-    sel.addEventListener('change', async function() {
-      const novoValor = String(this.value || '').trim();
-      const chapaId = String(this.dataset.id || '').trim();
-      if (!novoValor || !chapaId) return;
+function setupEstoqueInlineDelegation(){
+  if(window.__ESTOQUE_INLINE_DELEGATION__) return;
+  window.__ESTOQUE_INLINE_DELEGATION__ = true;
+
+  document.addEventListener('change', async function(e) {
+    const el = e && e.target ? e.target : null;
+    if(!el || !el.classList) return;
+
+    if (el.classList.contains('est-empresa-sel')) {
+      const id = String(el.dataset.id || '').trim();
+      const val = String(el.value || '').trim();
+      if (!id || !val) return;
       if(_estBusy) return;
       try{
         estSetBusy(true);
-        const body = { empresa_vinculada: novoValor, qual_cnpj: novoValor, emp_id: estEmpIdFromEmpresa(novoValor) };
-        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(chapaId)}`, {
+        const payload = { empresa_vinculada: val, qual_cnpj: val, emp_id: estEmpIdFromEmpresa(val) };
+        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
           method: 'PUT',
-          body: JSON.stringify(body)
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-        const data = await r.json().catch(()=>null);
-        if (!r.ok || (data && data.error)) { toast('Erro ao salvar empresa: ' + ((data && data.error) || 'falha'), 'var(--red)'); return; }
+        const d = await r.json().catch(()=>null);
+        if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
         const applyLocal = (arr) => {
-          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===chapaId);
+          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
           if(!it) return;
-          it.empresa_vinculada = novoValor;
-          it.qual_cnpj = novoValor;
-          it.emp_id = body.emp_id;
-          it.empId = body.emp_id;
+          it.empresa_vinculada = val;
+          it.qual_cnpj = val;
+          it.emp_id = payload.emp_id;
+          it.empId = payload.emp_id;
         };
         applyLocal(_estoqueBase);
         applyLocal(ESTOQUE);
         toast('Empresa atualizada ✓','var(--green)');
-      } catch(e) {
+      } catch(err) {
         toast('Erro na requisição','var(--red)');
       } finally {
         estSetBusy(false);
       }
-    });
+    }
+
+    if (el.classList.contains('est-cat-sel')) {
+      const id = String(el.dataset.id || '').trim();
+      const val = String(el.value || '').trim();
+      if (!id || !val) return;
+      if(_estBusy) return;
+      try{
+        estSetBusy(true);
+        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ categoria: val })
+        });
+        const d = await r.json().catch(()=>null);
+        if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
+        const applyLocal = (arr) => {
+          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
+          if(!it) return;
+          it.categoria = val;
+        };
+        applyLocal(_estoqueBase);
+        applyLocal(ESTOQUE);
+        toast('Categoria atualizada ✓','var(--green)');
+      } catch(err) {
+        toast('Erro na requisição','var(--red)');
+      } finally {
+        estSetBusy(false);
+      }
+    }
+  });
+
+  document.addEventListener('click', async function(e) {
+    const el = e && e.target ? e.target : null;
+    if(!el || !el.classList) return;
+    if (!el.classList.contains('est-riscada-btn')) return;
+
+    const id = String(el.dataset.id || '').trim();
+    const val = String(el.dataset.val || '').trim() === 'true';
+    if (!id) return;
+    if(_estBusy) return;
+
+    try{
+      estSetBusy(true);
+      const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ riscada: val })
+      });
+      const d = await r.json().catch(()=>null);
+      if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
+
+      const applyLocal = (arr) => {
+        const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
+        if(!it) return;
+        it.riscada = val;
+      };
+      applyLocal(_estoqueBase);
+      applyLocal(ESTOQUE);
+
+      document.querySelectorAll('.est-riscada-btn').forEach(b=>{
+        if(String(b.dataset.id||'')!==id) return;
+        const isActive = String(b.dataset.val||'') === String(val);
+        const isYes = String(b.dataset.val||'') === 'true';
+        b.style.background = isActive ? (isYes ? '#2a7a2a' : '#555') : 'transparent';
+        b.style.borderColor = isActive ? (isYes ? '#2a7a2a' : '#555') : 'rgba(255,255,255,0.18)';
+        b.style.color = isActive ? 'white' : 'rgba(255,255,255,0.55)';
+      });
+
+      toast('Riscada atualizada ✓','var(--green)');
+    } catch(err) {
+      toast('Erro na requisição','var(--red)');
+    } finally {
+      estSetBusy(false);
+    }
   });
 }
 
@@ -3642,13 +3721,9 @@ function _riscadaToggleHtml(id, riscada, descShort, cellRid){
   const onYes = !!riscada;
   const bBase = 'padding:2px 12px;border-radius:999px;font-weight:900;font-family:var(--mono);cursor:pointer;border:1px solid;min-width:54px;text-align:center;';
   const inactive = `${bBase}background:transparent;border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.55);`;
-  const bNo = onNo
-    ? `${bBase}background:#555;border-color:#555;color:#fff;`
-    : inactive;
-  const bYes = onYes
-    ? `${bBase}background:#2a7a2a;border-color:#2a7a2a;color:#fff;`
-    : inactive;
-  const btn = (label, val, style) => `<button type="button" onclick="event.stopPropagation();atualizarRiscadaChapa('${escAttr(id)}', ${val?'true':'false'}, '${escAttr(cellRid)}')" style="${style}">${label}</button>`;
+  const bNo = onNo ? `${bBase}background:#555;border-color:#555;color:#fff;` : inactive;
+  const bYes = onYes ? `${bBase}background:#2a7a2a;border-color:#2a7a2a;color:#fff;` : inactive;
+  const btn = (label, val, style) => `<button type="button" class="est-riscada-btn" data-id="${escAttr(id)}" data-val="${val?'true':'false'}" style="${style}">${label}</button>`;
   return `<div style="display:flex;justify-content:center;gap:6px;align-items:center">${btn('Não', false, bNo)}${btn('Sim', true, bYes)}</div>${descShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(descShort)}</div>`:''}`;
 }
 
@@ -3785,7 +3860,7 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select class="est-emp-inline" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select class="est-empresa-sel" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
@@ -3802,7 +3877,7 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
         <td id="${escAttr(cellRid)}" title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
-          <select onchange="atualizarCategoriaChapa('${escAttr(c.id)}', this.value)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select class="est-cat-sel" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="">—</option>
             ${(CHAPAS_CATEGORIAS||[]).map(cat=>`<option value="${escAttr(cat.nome)}" ${String(c.categoria||'').trim()===String(cat.nome||'').trim()?'selected':''}>${escH(cat.nome)}</option>`).join('')}
           </select>
@@ -3817,7 +3892,6 @@ function _renderEstoqueBase(chapas) {
         </td>
       </tr>`;
     }).join('');
-    try{ bindEstoqueEmpresaInline(); }catch(e){}
 
     if(footEl){
       const totalQtd = filtrada.reduce((s,c)=>s+(Number(c.quantidade??c.qtd??0)||0),0);
@@ -7615,6 +7689,7 @@ document.addEventListener('DOMContentLoaded', function(){
       const licoEl=document.querySelector('.logo-icon');
       if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
+    try{ setupEstoqueInlineDelegation(); }catch(e){}
     bootAuthAndData();
   } catch(e) {
     console.error('DOMContentLoaded error:', e);
