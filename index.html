@@ -654,6 +654,16 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 <script>
 console.log('sistema carregado v2');
 
+let OFs = [];
+
+function escolherDispositivo(tipo){
+  aplicarDispositivo(tipo);
+  const ds=document.getElementById('device-screen');
+  const ls=document.getElementById('login-screen');
+  if(ds) ds.classList.remove('show');
+  if(ls && !CURRENT_USER) ls.style.display='flex';
+}
+
 function parseFluxo(v){
   if(Array.isArray(v)) return v;
   if(typeof v==='string'){
@@ -1108,8 +1118,6 @@ let VENDEDORES = [
   {id:'V02',nome:'RONI VENDA CHEIA',tel:'',email:'',reg:'',meta:0,comissaoPct:1.0},
   {id:'V03',nome:'RONI MEIA VENDA',tel:'',email:'',reg:'',meta:0,comissaoPct:0.5},
 ];
-
-let OFs = [];
 
 let ESTOQUE = [
   {id:'CE001',forn:'FAPOLPA',nom:'FCM03',tam:'2170X1350',comp:2170,larg:1350,nome:'ESTOQUE SIMPLES',qual:'OESTEPACK',cnpj:'',nf:'115858',qtd:480,val:6.04,min:200,vincada:false,vincos:'',empId:''},
@@ -7182,13 +7190,6 @@ function aplicarDispositivo(device){
   if(pill) pill.textContent=getDeviceLabel(d);
   closeMobMenu();
 }
-function escolherDispositivo(device){
-  aplicarDispositivo(device);
-  const ds=document.getElementById('device-screen');
-  const ls=document.getElementById('login-screen');
-  if(ds) ds.classList.remove('show');
-  if(ls && !CURRENT_USER) ls.style.display='flex';
-}
 function trocarDispositivo(){
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
@@ -11272,7 +11273,7 @@ function renderQualidade() {
     MAQUINAS.forEach(m=>{ const el=document.createElement('option'); el.value=m.id; el.textContent=m.col; maqSel2.appendChild(el); });
   const mesSel = document.getElementById('qa-fil-mes');
   if (mesSel && mesSel.options.length <= 1) {
-    const meses=[...new Set(INCONFORMIDADES.map(ic=>ic.data.slice(0,7))].sort().reverse();
+    const meses=[...new Set(INCONFORMIDADES.map(ic=>ic.data.slice(0,7)))].sort().reverse();
     meses.forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; mesSel.appendChild(o); });
   }
 
