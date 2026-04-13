@@ -295,7 +295,7 @@ app.post('/api/auth/login', async (req, res) => {
         permissoes: usuario.permissoes,
       },
       process.env.JWT_SECRET || 'italy_secret_2026',
-      { expiresIn: '8h' }
+      { expiresIn: '24h' }
     );
 
     await supabase.from('usuarios')
@@ -335,6 +335,16 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   } catch(err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.post('/api/auth/refresh', authMiddleware, (req, res) => {
+  const u = req.usuario;
+  const token = jwt.sign(
+    { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, permissoes: u.permissoes },
+    JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+  res.json({ token });
 });
 
 app.get('/api/usuarios', requireAdmin, async (req, res) => {
@@ -675,7 +685,7 @@ async function clientesUpdateCompat(id, payload) {
   ];
   let lastErr = null;
   for (const p of attempts) {
-    const { data, error } = await supabase.from('clientes').update(p).eq('id', id).select();
+    const { data, error } = await supabase.from('clientes').update(p).eq('id', id).select().limit(1);
     if (!error) return { data, error: null };
     lastErr = error;
     const msg = String(error.message || error);
@@ -1109,7 +1119,9 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
       }
     }
     if (error) throw error;
-    ok(res, data[0]);
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
+    ok(res, updated);
   } catch (e) { err(res, e); }
 });
 
