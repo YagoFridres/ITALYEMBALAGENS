@@ -2009,6 +2009,12 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
     payload[k] = v;
   };
 
+  const setText = (k, v, present) => {
+    if (!present) return;
+    const s = String(v ?? '').trim();
+    set(k, s !== '' ? s : (isUpdate ? null : undefined));
+  };
+
   const fornecedor = (b.fornecedor ?? b.forn ?? '').toString().trim();
   const nomenclatura = (b.nomenclatura ?? b.nom ?? b.codigo ?? b.cod ?? '').toString().trim();
   const tamanho = (b.tamanho ?? b.tam ?? '').toString().trim().toUpperCase();
@@ -2036,18 +2042,21 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const riscada = _chapasBool(b.riscada);
   const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
-  const dataEntrada = (b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null) || null;
-  const empId = (b.emp_id ?? b.empId ?? '').toString().trim() || (req?.query?.empId ? String(req.query.empId).trim() : '') || 'E1';
+  const hasDataEntrada = (b.data_entrada !== undefined || b.dataEntrada !== undefined || b.entrada_de_dados !== undefined);
+  const dataEntrada = hasDataEntrada ? ((b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null) || null) : undefined;
+  const empIdBody = (b.emp_id ?? b.empId ?? '').toString().trim();
+  const empIdQuery = req?.query?.empId ? String(req.query.empId).trim() : '';
+  const empId = empIdBody || empIdQuery || (isUpdate ? '' : 'E1');
   const empresaVinculadaRaw = (b.empresa_vinculada ?? b.empresaVinculada ?? b.empresa ?? '').toString().trim();
-  const empresaVinculada = empresaVinculadaRaw || _chapasEmpresaFromEmpId(empId);
+  const empresaVinculada = empresaVinculadaRaw || _chapasEmpresaFromEmpId(empId || 'E1');
 
-  if (b.qual_cnpj !== undefined || b.qual !== undefined || b.fabricante !== undefined) set('qual_cnpj', qualCnpj);
-  if (b.nf !== undefined || b.nf_entrada !== undefined) set('nf', nf);
+  setText('qual_cnpj', qualCnpj, (b.qual_cnpj !== undefined || b.qual !== undefined || b.fabricante !== undefined));
+  setText('nf', nf, (b.nf !== undefined || b.nf_entrada !== undefined));
   if (b.empresa_vinculada !== undefined || b.empresaVinculada !== undefined || b.empresa !== undefined) set('empresa_vinculada', empresaVinculada);
   set('riscada', riscada);
-  if (riscaDesc !== '') set('risca_desc', riscaDesc);
-  if (vincos !== '') set('vincos', vincos);
-  if (observacao !== '') set('observacao', observacao);
+  setText('risca_desc', riscaDesc, (b.risca_desc !== undefined || b.descricao_risca !== undefined));
+  setText('vincos', vincos, (b.vincos !== undefined));
+  setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined));
   if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
   if (dataEntrada !== undefined) set('data_entrada', dataEntrada);
   if (empId !== '') set('emp_id', empId);
@@ -3043,6 +3052,46 @@ app.post('/api/hist_estoque', async (req, res) => {
 
 app.post('/api/log', async (req, res) => {
   ok(res, true);
+});
+
+app.get('/api/recebimento_insumos', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('recebimento_insumos').select('*').order('data_recebimento', { ascending: false });
+    if (req.query.mes) q = q.gte('data_recebimento', req.query.mes + '-01').lte('data_recebimento', req.query.mes + '-31');
+    if (req.query.empresa) q = q.eq('empresa', req.query.empresa);
+    if (req.query.fornecedor) q = q.ilike('fornecedor', '%' + req.query.fornecedor + '%');
+    if (req.query.cliente) q = q.ilike('cliente', '%' + req.query.cliente + '%');
+    if (req.query.nota_fiscal) q = q.ilike('nota_fiscal', '%' + req.query.nota_fiscal + '%');
+    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/recebimento_insumos', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('recebimento_insumos').insert([req.body]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/recebimento_insumos/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...req.body }; delete payload.id;
+    const { data, error } = await supabase.from('recebimento_insumos').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/recebimento_insumos/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('recebimento_insumos').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
 });
 
 app.use((e, req, res, next) => {

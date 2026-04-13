@@ -77,3 +77,21 @@ create table if not exists public.chapas_estoque_movimentos_v2 (
 
 create index if not exists chapas_estoque_movimentos_v2_chapa_id_idx on public.chapas_estoque_movimentos_v2 (chapa_id, created_at desc);
 create index if not exists chapas_estoque_movimentos_v2_reverted_idx on public.chapas_estoque_movimentos_v2 (reverted, created_at desc);
+
+create table if not exists public.recebimento_insumos (
+  id uuid primary key default gen_random_uuid(),
+  data_recebimento date,
+  placa_veiculo text,
+  nota_fiscal text,
+  produto text,
+  fornecedor text,
+  quantidade integer,
+  ordem_compra text,
+  data_validade date,
+  responsavel text,
+  devolucao boolean default false,
+  cliente text,
+  empresa text,
+  emp_id text,
+  created_at timestamp default now()
+);

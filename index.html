@@ -2927,6 +2927,305 @@ let _estoqueBase = [];
 let _estoqueBaixoOnly = false;
 let _estBusy = false;
 
+let CHAPAS_TAB = 'estoque';
+let RECEB_INSUMOS = [];
+let _recBusy = false;
+
+function chpSetTab(tab){
+  const t = (tab === 'receb') ? 'receb' : 'estoque';
+  CHAPAS_TAB = t;
+  const a = document.getElementById('chp-tab-estoque');
+  const b = document.getElementById('chp-tab-receb');
+  if(a) a.style.display = (t === 'estoque') ? '' : 'none';
+  if(b) b.style.display = (t === 'receb') ? '' : 'none';
+  const btnA = document.getElementById('chp-tab-btn-estoque');
+  const btnB = document.getElementById('chp-tab-btn-receb');
+  if(btnA) btnA.style.opacity = (t === 'estoque') ? '1' : '0.65';
+  if(btnB) btnB.style.opacity = (t === 'receb') ? '1' : '0.65';
+  if(t === 'receb') {
+    initRecebimentosInsumosUI();
+    if(!RECEB_INSUMOS.length) buscarRecebimentosInsumos();
+  }
+}
+
+function recSetBusy(v){
+  _recBusy = !!v;
+  const bar = document.getElementById('chp-tab-receb');
+  if(bar) bar.style.opacity = _recBusy ? '0.75' : '';
+}
+
+function initRecebimentosInsumosUI(){
+  const mesEl = document.getElementById('rec-mes');
+  if(mesEl && !mesEl.value){
+    const now = new Date();
+    mesEl.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+  const empSel = document.getElementById('rec-empresa');
+  if(empSel){
+    const empId = String(EMP_FILTRO||'').trim();
+    if(empId){
+      empSel.value = estEmpresaFromEmpId(empId);
+      empSel.disabled = true;
+      empSel.style.opacity = '0.85';
+    } else {
+      empSel.disabled = false;
+      empSel.style.opacity = '';
+    }
+  }
+}
+
+async function buscarRecebimentosInsumos(){
+  const mes = String(document.getElementById('rec-mes')?.value || '').trim();
+  if(!mes){ toast('Selecione o mês','var(--red)'); return; }
+  if(_recBusy) return;
+  const empresa = String(document.getElementById('rec-empresa')?.value || '').trim();
+  const fornecedor = String(document.getElementById('rec-fornecedor')?.value || '').trim();
+  const cliente = String(document.getElementById('rec-cliente')?.value || '').trim();
+  const notaFiscal = String(document.getElementById('rec-nf')?.value || '').trim();
+  const empId = String(EMP_FILTRO||'').trim();
+
+  const qs = new URLSearchParams();
+  qs.set('mes', mes);
+  if(empresa) qs.set('empresa', empresa);
+  if(fornecedor) qs.set('fornecedor', fornecedor);
+  if(cliente) qs.set('cliente', cliente);
+  if(notaFiscal) qs.set('nota_fiscal', notaFiscal);
+  if(empId) qs.set('empId', empId);
+
+  try{
+    recSetBusy(true);
+    const resp = await apiFetch('/api/recebimento_insumos?'+qs.toString(), { method:'GET' });
+    if(!resp) return;
+    const j = await resp.json().catch(()=>null);
+    const data = (j && (j.data || j)) || [];
+    RECEB_INSUMOS = Array.isArray(data) ? data : [];
+    renderRecebimentosInsumos();
+  } finally {
+    recSetBusy(false);
+  }
+}
+
+function renderRecebimentosInsumos(){
+  const body = document.getElementById('rec-insumos-body');
+  const status = document.getElementById('rec-insumos-status');
+  if(!body) return;
+  const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
+  if(status) status.textContent = `Exibindo ${rows.length.toLocaleString()} registro(s)`;
+  if(!rows.length){
+    body.innerHTML = `<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum recebimento encontrado.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map((r,i)=>{
+    const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
+    const devol = r.devolucao ? 'SIM' : 'NÃO';
+    const devolCor = r.devolucao ? 'var(--orange)' : 'var(--text3)';
+    return `<tr style="background:${trBg}">
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);white-space:nowrap">${escH(fmtDataBR(String(r.data_recebimento||''))||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.placa_veiculo||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);color:var(--accent);font-weight:900">${escH(r.nota_fiscal||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.produto||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.fornecedor||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900">${Number(r.quantidade||0).toLocaleString()}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.ordem_compra||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);white-space:nowrap">${escH(fmtDataBR(String(r.data_validade||''))||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.responsavel||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;font-family:var(--mono);font-weight:900;color:${devolCor}">${devol}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.cliente||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:var(--purple)">${escH(r.empresa||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center"><button class="btn btn-ghost btn-sm" onclick="abrirModalRecebimentoInsumos('${escAttr(r.id)}')">Editar</button></td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center"><button class="btn btn-red btn-sm" onclick="excluirRecebimentoInsumos('${escAttr(r.id)}')">Excluir</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalRecebimentoInsumos(id){
+  const m = document.getElementById('modal-receb-insumos');
+  if(!m) return;
+  const r = id ? (RECEB_INSUMOS||[]).find(x=>x.id===id) : null;
+  document.getElementById('ri-id').value = r?.id || '';
+  document.getElementById('ri-data').value = (r?.data_recebimento || '') ? String(r.data_recebimento).slice(0,10) : '';
+  document.getElementById('ri-placa').value = r?.placa_veiculo || '';
+  document.getElementById('ri-nf').value = r?.nota_fiscal || '';
+  document.getElementById('ri-produto').value = r?.produto || '';
+  document.getElementById('ri-fornecedor').value = r?.fornecedor || '';
+  document.getElementById('ri-quantidade').value = (r?.quantidade ?? '') === null ? '' : String(r?.quantidade ?? '');
+  document.getElementById('ri-oc').value = r?.ordem_compra || '';
+  document.getElementById('ri-validade').value = (r?.data_validade || '') ? String(r.data_validade).slice(0,10) : '';
+  document.getElementById('ri-responsavel').value = r?.responsavel || '';
+  document.getElementById('ri-devolucao').checked = !!r?.devolucao;
+  document.getElementById('ri-cliente').value = r?.cliente || '';
+
+  const empSel = document.getElementById('ri-empresa');
+  if(empSel){
+    const empId = String(EMP_FILTRO||'').trim();
+    if(empId){
+      empSel.value = estEmpresaFromEmpId(empId);
+      empSel.disabled = true;
+      empSel.style.opacity = '0.85';
+    } else {
+      empSel.value = String(r?.empresa || '').trim() || 'Italy Embalagens';
+      empSel.disabled = false;
+      empSel.style.opacity = '';
+    }
+  }
+
+  const title = document.getElementById('ri-title');
+  if(title) title.textContent = id ? 'Editar Recebimento' : 'Novo Recebimento';
+  m.style.display = 'flex';
+}
+
+function fecharModalRecebimentoInsumos(){
+  const m = document.getElementById('modal-receb-insumos');
+  if(m) m.style.display = 'none';
+}
+
+async function salvarRecebimentoInsumos(){
+  const id = String(document.getElementById('ri-id')?.value || '').trim();
+  const dataReceb = String(document.getElementById('ri-data')?.value || '').trim() || null;
+  const placa = String(document.getElementById('ri-placa')?.value || '').trim() || null;
+  const nf = String(document.getElementById('ri-nf')?.value || '').trim() || null;
+  const produto = String(document.getElementById('ri-produto')?.value || '').trim() || null;
+  const fornecedor = String(document.getElementById('ri-fornecedor')?.value || '').trim() || null;
+  const qtdStr = String(document.getElementById('ri-quantidade')?.value || '').trim();
+  const quantidade = qtdStr === '' ? null : Math.trunc(Number(qtdStr));
+  const oc = String(document.getElementById('ri-oc')?.value || '').trim() || null;
+  const validade = String(document.getElementById('ri-validade')?.value || '').trim() || null;
+  const responsavel = String(document.getElementById('ri-responsavel')?.value || '').trim() || null;
+  const devolucao = !!document.getElementById('ri-devolucao')?.checked;
+  const cliente = String(document.getElementById('ri-cliente')?.value || '').trim() || null;
+
+  const empIdLock = String(EMP_FILTRO||'').trim();
+  const empSel = String(document.getElementById('ri-empresa')?.value || '').trim();
+  const empresa = empIdLock ? estEmpresaFromEmpId(empIdLock) : (empSel || null);
+  const emp_id = empIdLock ? empIdLock : (empresa ? estEmpIdFromEmpresa(empresa) : null);
+
+  if(!dataReceb){ toast('Informe a Data de Recebimento','var(--red)'); return; }
+  if(quantidade !== null && (!Number.isFinite(quantidade) || quantidade < 0)){ toast('Quantidade inválida','var(--red)'); return; }
+  if(_recBusy) return;
+
+  const payload = {
+    data_recebimento: dataReceb,
+    placa_veiculo: placa,
+    nota_fiscal: nf,
+    produto,
+    fornecedor,
+    quantidade,
+    ordem_compra: oc,
+    data_validade: validade,
+    responsavel,
+    devolucao,
+    cliente,
+    empresa,
+    emp_id,
+  };
+  Object.keys(payload).forEach(k=>{ if(payload[k] === null) return; if(payload[k] === undefined) delete payload[k]; });
+
+  try{
+    recSetBusy(true);
+    const url = id ? ('/api/recebimento_insumos/'+encodeURIComponent(id)) : '/api/recebimento_insumos';
+    const method = id ? 'PUT' : 'POST';
+    const resp = await apiFetch(url, { method, body: payload });
+    if(!resp) return;
+    const j = await resp.json().catch(()=>null);
+    if(!resp.ok || (j && (j.ok===false || j.error))){ toast('Erro: '+((j&&j.error)||resp.statusText||'falha'),'var(--red)'); return; }
+    fecharModalRecebimentoInsumos();
+    toast(id?'Recebimento atualizado ✓':'Recebimento criado ✓','var(--green)');
+    await buscarRecebimentosInsumos();
+  } finally {
+    recSetBusy(false);
+  }
+}
+
+async function excluirRecebimentoInsumos(id){
+  const rid = String(id||'').trim();
+  if(!rid) return;
+  if(!confirm('Excluir este recebimento? Esta ação não pode ser desfeita.')) return;
+  if(_recBusy) return;
+  try{
+    recSetBusy(true);
+    const resp = await apiFetch('/api/recebimento_insumos/'+encodeURIComponent(rid), { method:'DELETE' });
+    if(!resp) return;
+    const j = await resp.json().catch(()=>null);
+    if(!resp.ok || (j && (j.ok===false || j.error))){ toast('Erro: '+((j&&j.error)||resp.statusText||'falha'),'var(--red)'); return; }
+    toast('Recebimento excluído ✓','var(--orange)');
+    await buscarRecebimentosInsumos();
+  } finally {
+    recSetBusy(false);
+  }
+}
+
+function exportarRecebimentosInsumosXlsx(){
+  if(typeof XLSX === 'undefined' || !XLSX?.utils){ toast('SheetJS (XLSX) não carregado','var(--red)'); return; }
+  const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
+  const aoa = [
+    ['Data Rec.', 'Placa', 'NF', 'Produto', 'Fornecedor', 'Qtd', 'Ordem Compra', 'Validade', 'Responsável', 'Devolução', 'Cliente', 'Empresa'],
+    ...rows.map(r=>[
+      fmtDataBR(String(r.data_recebimento||''))||'',
+      r.placa_veiculo||'',
+      r.nota_fiscal||'',
+      r.produto||'',
+      r.fornecedor||'',
+      r.quantidade ?? '',
+      r.ordem_compra||'',
+      fmtDataBR(String(r.data_validade||''))||'',
+      r.responsavel||'',
+      r.devolucao ? 'Sim' : 'Não',
+      r.cliente||'',
+      r.empresa||'',
+    ])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Recebimentos');
+  const mes = String(document.getElementById('rec-mes')?.value||'').trim() || 'mes';
+  XLSX.writeFile(wb, `recebimento_insumos_${mes}.xlsx`);
+}
+
+function imprimirRecebimentosInsumos(){
+  const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
+  const mes = String(document.getElementById('rec-mes')?.value||'').trim();
+  const title = `Checklist de Recebimento de Insumos${mes?(' · '+mes):''}`;
+  const html = `
+  <html><head><meta charset="utf-8"><title>${title}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:18px;color:#111}
+    h2{margin:0 0 12px}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th,td{border:1px solid #ccc;padding:6px 8px;vertical-align:top}
+    th{background:#f2f2f2;text-transform:uppercase;font-size:11px;letter-spacing:.3px}
+  </style></head><body>
+    <h2>${title}</h2>
+    <table>
+      <thead><tr>
+        <th>Data Rec.</th><th>Placa</th><th>NF</th><th>Produto</th><th>Fornecedor</th><th>Qtd</th><th>Ordem Compra</th><th>Validade</th><th>Responsável</th><th>Devolução</th><th>Cliente</th><th>Empresa</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr>
+          <td>${escH(fmtDataBR(String(r.data_recebimento||''))||'')}</td>
+          <td>${escH(r.placa_veiculo||'')}</td>
+          <td>${escH(r.nota_fiscal||'')}</td>
+          <td>${escH(r.produto||'')}</td>
+          <td>${escH(r.fornecedor||'')}</td>
+          <td style="text-align:right">${escH(String(r.quantidade??''))}</td>
+          <td>${escH(r.ordem_compra||'')}</td>
+          <td>${escH(fmtDataBR(String(r.data_validade||''))||'')}</td>
+          <td>${escH(r.responsavel||'')}</td>
+          <td style="text-align:center">${r.devolucao?'Sim':'Não'}</td>
+          <td>${escH(r.cliente||'')}</td>
+          <td>${escH(r.empresa||'')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ toast('Pop-up bloqueado','var(--red)'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
 function estEmpresaFromEmpId(empId){
   const e = String(empId||'').trim().toUpperCase();
   if(e === 'E2' || e.includes('CARTO')) return 'Cartoeste';
@@ -12976,53 +13275,119 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
     <!-- Main table -->
     <div class="sbox" style="margin-bottom:14px">
-      <div class="sbox-h">📦 Estoque Central de Chapas</div>
-      <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
-        <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
-        <input id="ef-fornecedor" type="text" list="ef-fornecedor-dl" placeholder="Fornecedor" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
-        <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
-          <option value="">Todos</option>
-          <option value="Italy Embalagens">Italy Embalagens</option>
-          <option value="Cartoeste">Cartoeste</option>
-          <option value="Oestepack">Oestepack</option>
-        </select>
-        <input id="ef-cliente" type="text" list="ef-cliente-dl" placeholder="Cliente" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
-        <datalist id="ef-fornecedor-dl"></datalist>
-        <datalist id="ef-cliente-dl"></datalist>
-        <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
-        <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
-        <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-riscadas" type="checkbox" onchange="_renderEstoqueBase()">Riscadas</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-com-vincos" type="checkbox" onchange="_renderEstoqueBase()">Com vincos</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-baixo" type="checkbox" onchange="_renderEstoqueBase()">Baixo</label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-sem" type="checkbox" onchange="_renderEstoqueBase()">Sem</label>
-        <input id="ef-busca" type="text" placeholder="🔍 Busca geral..." oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
-        <button class="btn btn-ghost btn-sm" onclick="estoqueFiltrar('todos')" style="white-space:nowrap">Limpar</button>
-        <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap">+ Nova Chapa</button>
+      <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span>📦 Chapas</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button id="chp-tab-btn-estoque" class="btn btn-ghost btn-sm" onclick="chpSetTab('estoque')">Estoque</button>
+          <button id="chp-tab-btn-receb" class="btn btn-ghost btn-sm" onclick="chpSetTab('receb')">Checklist de Recebimento</button>
+        </div>
       </div>
-      <div id="est-filtros-ativos" style="margin:8px 10px 0;color:var(--text3);font-size:.74rem;font-family:var(--mono)"></div>
-      <div id="est-table-wrap" style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;min-width:960px">
-          <thead>
-            <tr style="background:var(--s2)">
-              <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
-              <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
-              <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
-              <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">EMPRESA/CNPJ</th>
-              <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
-              <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
-              <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
-              <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
-              <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
-              <th onclick="estOrdenar('vincos')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
-              <th onclick="estOrdenar('riscada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--orange);white-space:nowrap;text-align:center">RISCADA?</th>
-              <th onclick="estOrdenar('categoria')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CATEGORIA</th>
-              <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
-            </tr>
-          </thead>
-          <tbody id="est-table-body"></tbody>
-          <tfoot id="est-table-foot"></tfoot>
-        </table>
+      <div id="chp-tab-estoque">
+        <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
+          <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
+          <input id="ef-fornecedor" type="text" list="ef-fornecedor-dl" placeholder="Fornecedor" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
+          <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
+            <option value="">Todos</option>
+            <option value="Italy Embalagens">Italy Embalagens</option>
+            <option value="Cartoeste">Cartoeste</option>
+            <option value="Oestepack">Oestepack</option>
+          </select>
+          <input id="ef-cliente" type="text" list="ef-cliente-dl" placeholder="Cliente" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
+          <datalist id="ef-fornecedor-dl"></datalist>
+          <datalist id="ef-cliente-dl"></datalist>
+          <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
+          <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
+          <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-riscadas" type="checkbox" onchange="_renderEstoqueBase()">Riscadas</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-com-vincos" type="checkbox" onchange="_renderEstoqueBase()">Com vincos</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-baixo" type="checkbox" onchange="_renderEstoqueBase()">Baixo</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-sem" type="checkbox" onchange="_renderEstoqueBase()">Sem</label>
+          <input id="ef-busca" type="text" placeholder="🔍 Busca geral..." oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="estoqueFiltrar('todos')" style="white-space:nowrap">Limpar</button>
+          <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap">+ Nova Chapa</button>
+        </div>
+        <div id="est-filtros-ativos" style="margin:8px 10px 0;color:var(--text3);font-size:.74rem;font-family:var(--mono)"></div>
+        <div id="est-table-wrap" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;min-width:960px">
+            <thead>
+              <tr style="background:var(--s2)">
+                <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
+                <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
+                <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
+                <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">EMPRESA/CNPJ</th>
+                <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
+                <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
+                <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
+                <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
+                <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
+                <th onclick="estOrdenar('vincos')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
+                <th onclick="estOrdenar('riscada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--orange);white-space:nowrap;text-align:center">RISCADA?</th>
+                <th onclick="estOrdenar('categoria')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CATEGORIA</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">AÇÕES</th>
+              </tr>
+            </thead>
+            <tbody id="est-table-body"></tbody>
+            <tfoot id="est-table-foot"></tfoot>
+          </table>
+        </div>
+      </div>
+      <div id="chp-tab-receb" style="display:none">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:flex-end;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Mês *</label>
+            <input id="rec-mes" type="month" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:150px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa</label>
+            <select id="rec-empresa" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
+              <option value="">Todos</option>
+              <option value="Italy Embalagens">Italy Embalagens</option>
+              <option value="Cartoeste">Cartoeste</option>
+              <option value="Oestepack">Oestepack</option>
+            </select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor</label>
+            <input id="rec-fornecedor" type="text" placeholder="Fornecedor..." style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Cliente</label>
+            <input id="rec-cliente" type="text" placeholder="Cliente..." style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:180px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nota Fiscal</label>
+            <input id="rec-nf" type="text" placeholder="NF..." style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:120px">
+          </div>
+          <button class="btn btn-accent btn-sm" onclick="buscarRecebimentosInsumos()">Buscar</button>
+          <div style="flex:1"></div>
+          <button class="btn btn-accent btn-sm" onclick="abrirModalRecebimentoInsumos()">＋ Novo Recebimento</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportarRecebimentosInsumosXlsx()">Exportar Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="imprimirRecebimentosInsumos()">Imprimir</button>
+        </div>
+        <div id="rec-insumos-status" style="margin:8px 10px 0;color:var(--text3);font-size:.74rem;font-family:var(--mono)"></div>
+        <div style="overflow-x:auto;margin:10px">
+          <table style="width:100%;border-collapse:collapse;min-width:1100px">
+            <thead>
+              <tr style="background:var(--s2)">
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Data Rec.</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Placa</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Produto</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Fornecedor</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">Qtd</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Ordem Compra</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Validade</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Responsável</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Devolução</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Cliente</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Empresa</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Editar</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">Excluir</th>
+              </tr>
+            </thead>
+            <tbody id="rec-insumos-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -14309,6 +14674,52 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalExcluirChapa()">Cancelar</button>
       <button class="btn btn-red btn-sm" onclick="confirmarExclusaoChapa()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-receb-insumos" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:22px;width:720px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+      <h3 id="ri-title" style="margin:0">Novo Recebimento</h3>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalRecebimentoInsumos()">✕</button>
+    </div>
+    <input type="hidden" id="ri-id">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Recebimento *</label>
+        <input id="ri-data" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Placa do Veículo</label>
+        <input id="ri-placa" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nº Nota Fiscal</label>
+        <input id="ri-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Produto</label>
+        <input id="ri-produto" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor</label>
+        <input id="ri-fornecedor" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade</label>
+        <input id="ri-quantidade" type="number" min="0" step="1" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Ordem de Compra</label>
+        <input id="ri-oc" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data de Validade</label>
+        <input id="ri-validade" type="date" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Responsável</label>
+        <input id="ri-responsavel" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:22px">
+        <input id="ri-devolucao" type="checkbox">
+        <label for="ri-devolucao" style="font-size:12px;color:var(--text2);text-transform:uppercase">Devolução</label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Cliente</label>
+        <input id="ri-cliente" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Empresa</label>
+        <select id="ri-empresa" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+          <option value="Italy Embalagens">Italy Embalagens</option>
+          <option value="Cartoeste">Cartoeste</option>
+          <option value="Oestepack">Oestepack</option>
+        </select></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalRecebimentoInsumos()">Cancelar</button>
+      <button class="btn btn-accent btn-sm" onclick="salvarRecebimentoInsumos()">Salvar</button>
     </div>
   </div>
 </div>
