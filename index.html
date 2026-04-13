@@ -949,7 +949,8 @@ const MAQUINAS_FLUXO = [
   'Impressora 05',
   'Coladeira Automática',
   'Corte Vinco Rotativo',
-  'Corte Plana'
+  'Corte Plana',
+  'Acabamento'
 ];
 
 let MAQUINAS_FLUXO_ITENS = null;
@@ -964,7 +965,8 @@ const MAQ_CODIGO_PARA_NOME = {
   'IMP05': 'Impressora 05',
   'COLA': 'Coladeira Automática',
   'CVR': 'Corte Vinco Rotativo',
-  'CORTEP': 'Corte Plana'
+  'CORTEP': 'Corte Plana',
+  'ACAB': 'Acabamento'
 };
 
 function _normMaqNome(s){
@@ -3597,6 +3599,51 @@ function estOrdenar(campo){
   renderEstoque();
 }
 
+function _riscadaToggleHtml(id, riscada, descShort, cellRid){
+  const onNo = !riscada;
+  const onYes = !!riscada;
+  const bBase = 'padding:2px 10px;border-radius:999px;font-weight:900;font-family:var(--mono);cursor:pointer;border:1px solid;';
+  const bNo = `${bBase}background:${onNo?'rgba(255,255,255,0.06)':'transparent'};border-color:${onNo?'var(--border)':'var(--border)'};color:${onNo?'var(--text2)':'var(--text3)'}`;
+  const bYes = `${bBase}background:${onYes?'rgba(76,175,80,0.14)':'transparent'};border-color:${onYes?'rgba(76,175,80,0.35)':'var(--border)'};color:${onYes?'var(--green)':'var(--text3)'}`;
+  const btn = (label, val, style) => `<button type="button" onclick="event.stopPropagation();atualizarRiscadaChapa('${escAttr(id)}', ${val?'true':'false'}, '${escAttr(cellRid)}')" style="${style}">${label}</button>`;
+  return `<div style="display:flex;justify-content:center;gap:6px;align-items:center">${btn('Não', false, bNo)}${btn('Sim', true, bYes)}</div>${descShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(descShort)}</div>`:''}`;
+}
+
+async function atualizarRiscadaChapa(id, riscada, cellRid){
+  const cid = String(id||'').trim();
+  if(!cid) return;
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const payload = { riscada: !!riscada };
+    const r = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(cid), { method: 'PUT', body: payload });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || (j && j.error)){ toast('Erro: '+((j&&j.error)||'falha'),'var(--red)'); return; }
+
+    const applyLocal = (arr) => {
+      const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===cid);
+      if(it) it.riscada = !!riscada;
+    };
+    applyLocal(ESTOQUE);
+    applyLocal(_estoqueBase);
+
+    const el = cellRid ? document.getElementById(String(cellRid)) : null;
+    if(el){
+      const it = (Array.isArray(_estoqueBase)?_estoqueBase:[]).find(x=>String(x.id||'')===cid) || (Array.isArray(ESTOQUE)?ESTOQUE:[]).find(x=>String(x.id||'')===cid) || {};
+      const desc = String(it.risca_desc || '').trim();
+      const short = desc.length > 34 ? (desc.slice(0, 34) + '…') : desc;
+      el.innerHTML = _riscadaToggleHtml(cid, !!riscada, short, String(cellRid));
+      el.title = desc;
+    }
+
+    toast('Riscada atualizada ✓','var(--green)');
+  } catch(e) {
+    toast('Erro na requisição','var(--red)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
 // ===================== ESTOQUE =====================
 function _renderEstoqueBase(chapas) {
   if (Array.isArray(chapas)) _estoqueBase = chapas;
@@ -3683,12 +3730,12 @@ function _renderEstoqueBase(chapas) {
       const baixoEst = qtd > 0 && qtd < min;
       const zerado = qtd === 0;
       const nf = (c.nf || c.nf_entrada || '').trim() || '—';
-      const ris = c.riscada ? 'SIM' : 'NÃO';
-      const risCor = c.riscada ? 'var(--orange)' : 'var(--text3)';
       const risDesc = String(c.risca_desc || '').trim();
       const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
       const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
       const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
+      const cellRid = 'risc-cell-' + String(c.id||'').replace(/[^a-zA-Z0-9_-]/g,'_');
+      const riscHtml = _riscadaToggleHtml(String(c.id||''), !!c.riscada, risDescShort, cellRid);
       return `<tr style="background:${trBg}">
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
@@ -3709,13 +3756,7 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
-        <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:100px">
-          ${c.riscada
-            ? `<span style="display:inline-block;padding:2px 10px;border-radius:999px;background:rgba(76,175,80,0.14);border:1px solid rgba(76,175,80,0.35);color:var(--green);font-weight:900;font-family:var(--mono)">Sim</span>`
-            : `<span style="display:inline-block;padding:2px 10px;border-radius:999px;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text3);font-weight:900;font-family:var(--mono)">Não</span>`
-          }
-          ${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(risDescShort)}</div>`:''}
-        </td>
+        <td id="${escAttr(cellRid)}" title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
           <select onchange="atualizarCategoriaChapa('${escAttr(c.id)}', this.value)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="">—</option>
@@ -4179,11 +4220,12 @@ async function atualizarEmpresaChapa(id, empresa){
 async function atualizarCategoriaChapa(id, categoria){
   const cat = String(categoria||'').trim();
   if(!id) return;
+  if(!cat) return;
   if(_estBusy) return;
   try{
     estSetBusy(true);
     const payload = { categoria: cat };
-    const r = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method: 'PUT', body: JSON.stringify(payload) });
+    const r = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method: 'PUT', body: payload });
     const j = await r.json().catch(()=>null);
     if(!r.ok || (j && j.error)){ toast('Erro: '+((j&&j.error)||'falha'),'var(--red)'); return; }
     await carregarChapas();

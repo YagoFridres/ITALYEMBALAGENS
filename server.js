@@ -2033,7 +2033,12 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   if (nomenclatura) set('nomenclatura', nomenclatura);
   if (tamanho) set('tamanho', tamanho);
   if (nomeUso) set('nome_uso', nomeUso);
-  if (categoria) set('categoria', categoria);
+  if (!isUpdate) {
+    if (categoria) set('categoria', categoria);
+  } else if (b.categoria !== undefined) {
+    const c = String(b.categoria ?? '').trim();
+    set('categoria', c !== '' ? c : null);
+  }
 
   const qualCnpj = (b.qual_cnpj ?? b.qual ?? b.fabricante ?? '').toString().trim();
   const nf = (b.nf ?? b.nf_entrada ?? '').toString().trim();
