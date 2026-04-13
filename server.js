@@ -2035,16 +2035,12 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   if (nomeUso) set('nome_uso', nomeUso);
   if (!isUpdate) {
     if (categoria) set('categoria', categoria);
-  } else if (b.categoria !== undefined) {
-    const c = String(b.categoria ?? '').trim();
-    set('categoria', c !== '' ? c : null);
   }
 
   const qualCnpj = (b.qual_cnpj ?? b.qual ?? b.fabricante ?? '').toString().trim();
   const nf = (b.nf ?? b.nf_entrada ?? '').toString().trim();
   const vincos = (b.vincos ?? '').toString().trim();
   const observacao = (b.observacao ?? b.observacoes ?? '').toString().trim();
-  const riscada = _chapasBool(b.riscada);
   const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
   const hasDataEntrada = (b.data_entrada !== undefined || b.dataEntrada !== undefined || b.entrada_de_dados !== undefined);
@@ -2058,7 +2054,6 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   setText('qual_cnpj', qualCnpj, (b.qual_cnpj !== undefined || b.qual !== undefined || b.fabricante !== undefined));
   setText('nf', nf, (b.nf !== undefined || b.nf_entrada !== undefined));
   if (b.empresa_vinculada !== undefined || b.empresaVinculada !== undefined || b.empresa !== undefined) set('empresa_vinculada', empresaVinculada);
-  set('riscada', riscada);
   setText('risca_desc', riscaDesc, (b.risca_desc !== undefined || b.descricao_risca !== undefined));
   setText('vincos', vincos, (b.vincos !== undefined));
   setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined));
@@ -2089,6 +2084,9 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
 
   if (!isUpdate) set('criado_por', req?.usuario?.nome || 'sistema');
   set('atualizado_por', req?.usuario?.nome || 'sistema');
+
+  if (b.categoria !== undefined) set('categoria', String(b.categoria || '').trim());
+  if (b.riscada !== undefined) set('riscada', _chapasBool(b.riscada));
 
   return payload;
 }
