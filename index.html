@@ -1112,6 +1112,7 @@ const CLIENTES_FALLBACK = [
   {id:'C207',nome:'FLORESTAL OESTE',rs:'WANDERLEI PAULO MALDANER & CIA LTDA',cnpj:'03.437.640/0001-51',tel:'(49) 991538686',email:'cleimaldaner06@gmail.com',cidade:'SAO JOSE DO CEDRO',uf:'SC',end:'',ramo:'INDUSTRIA',pagto:'CHEQUE 30 DD',rep:'ELEOMAR',ie:'253944090',obs:'',empId:''}
 ];
 let CLIENTES = CLIENTES_FALLBACK.slice();
+let CLIENTE_ATUAL_ID = '';
 
 let VENDEDORES = [
   {id:'V01',nome:'ELEOMAR',tel:'',email:'',reg:'',meta:0,comissaoPct:null},
@@ -2851,7 +2852,9 @@ function toggleRamoCustom(){
 function abrirModalCliente(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const c=(id && typeof id==='object') ? id : (id?CLIENTES.find(x=>x.id===id):null);
-  const hid=document.getElementById('cli-id'); if(hid) hid.value = c ? (c.id||c.cli_id||'') : '';
+  CLIENTE_ATUAL_ID = c ? String(c.id||c.cli_id||'').trim() : '';
+  const hid=document.getElementById('cli-id'); if(hid) hid.value = CLIENTE_ATUAL_ID;
+  console.log('[CLIENTE] abrirModalCliente', { passed: id, resolvedId: CLIENTE_ATUAL_ID, hasObj: !!c });
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs','cl-ramo-custom'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
   const rs=document.getElementById('cl-ramo');if(rs)rs.value=c?c.ramo||'':'';
   const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?(c.empId||''):(EMP_FILTRO||'E1');
@@ -2874,7 +2877,7 @@ async function salvarEdicaoCliente(id){
 }
 async function salvarCliente() {
   const idEl = document.getElementById('cli-id');
-  let id = (idEl ? idEl.value : '').trim();
+  let id = String(CLIENTE_ATUAL_ID || (idEl ? idEl.value : '') || '').trim();
   if(id === 'undefined' || id === 'null') id = '';
   const nomeEl = document.getElementById('cli-nome') || document.getElementById('cl-nome');
   const nome = nomeEl ? nomeEl.value.trim() : '';
@@ -2895,7 +2898,7 @@ async function salvarCliente() {
     ramo_atividade: g('cli-ramo')||g('cl-ramo'),
   };
   Object.keys(payload).forEach(k=>{if(!payload[k])delete payload[k];});
-  console.log('[CLI SALVAR] id='+id+' nome='+nome);
+  console.log('[CLIENTE] salvarCliente', { idDom: (idEl?idEl.value:''), idVar: CLIENTE_ATUAL_ID, idUsado: id, nome, payload });
   const resp = id
     ? await apiFetch('/api/clientes/'+encodeURIComponent(id), { method:'PUT', body: payload })
     : await apiFetch('/api/clientes', { method:'POST', body: payload });
@@ -2903,6 +2906,7 @@ async function salvarCliente() {
   if(!resp || !resp.ok || (r && r.error)){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
   toast(id?'Cliente atualizado ✓':'Cliente criado ✓','var(--green)');
   fechar('modal-cli');
+  CLIENTE_ATUAL_ID = '';
   await carregarClientes();
   renderClientes();
 }
@@ -2927,6 +2931,8 @@ var EST_SORT = {campo:'nome', asc:true};
 let _estoqueBase = [];
 let _estoqueBaixoOnly = false;
 let _estBusy = false;
+let CHAPA_ATUAL_ID = '';
+let CHAPA_EXCLUIR_ID = '';
 
 let CHAPAS_TAB = 'estoque';
 let RECEB_INSUMOS = [];
@@ -3280,10 +3286,11 @@ function renderEstFiltrosAtivos(qtdExibida, qtdTotal){
 
 function renderEstoqueCategoriaTabs(cats){
   const wrap = document.getElementById('est-cat-tabs');
-  if(!wrap) return;
+  if(!wrap){ console.log('[CHAPAS] est-cat-tabs NÃO encontrado no DOM'); return; }
   const sel = document.getElementById('ef-categoria');
   const active = String(sel?.value || '').trim();
   const all = [''].concat((cats||[]).filter(Boolean));
+  console.log('[CHAPAS] renderEstoqueCategoriaTabs', { cats: all.length, active });
   const btn = (val, label) => {
     const on = String(val||'').trim() === active;
     const bg = on ? 'var(--accent)' : 'var(--s2)';
@@ -3836,6 +3843,7 @@ function toggleChapaRisca(){
 
 function abrirModalNovaChapa(id) {
   const c = id ? (_estoqueBase||ESTOQUE||[]).find(x=>x.id===id) : null;
+  CHAPA_ATUAL_ID = c ? String(c.id||'').trim() : '';
   const dlCat = document.getElementById('lista-categorias-chapa');
   if(dlCat){
     const baseCats = ['Estoque Simples','Estoque Duplo','Estoque Duplo Col.8','Estoque Simples Col.5','Gran Mestri','Caixas Antigas Gran Mestri','Caixas Vincadas'];
@@ -3843,7 +3851,7 @@ function abrirModalNovaChapa(id) {
     const cats = [...new Set([...baseCats, ...dynCats])].sort((a,b)=>a.localeCompare(b,'pt-BR'));
     dlCat.innerHTML = cats.map(v=>`<option value="${escAttr(v)}"></option>`).join('');
   }
-  document.getElementById('chapa-edit-id').value = c?.id||'';
+  document.getElementById('chapa-edit-id').value = CHAPA_ATUAL_ID;
   document.getElementById('chapa-categoria').value = c?.categoria||'Estoque Simples';
   document.getElementById('chapa-nomenclatura').value = c?.nomenclatura||c?.nom||'';
   document.getElementById('chapa-fornecedor').value = c?.fornecedor||c?.forn||'';
@@ -3873,6 +3881,13 @@ function abrirModalNovaChapa(id) {
   document.getElementById('chapa-modal-titulo').textContent = c ? 'Editar Chapa' : 'Nova Chapa';
   calcTotalChapa();
   document.getElementById('modal-nova-chapa').style.display = 'flex';
+  console.log('[CHAPAS] abrirModalNovaChapa', { passed: id, resolvedId: CHAPA_ATUAL_ID });
+  console.log('[CHAPAS] riscada DOM', {
+    hid: !!document.getElementById('chapa-riscada'),
+    sim: !!document.getElementById('chapa-riscada-sim'),
+    nao: !!document.getElementById('chapa-riscada-nao'),
+    tabs: !!document.getElementById('est-cat-tabs')
+  });
 }
 
 function editarChapa(id) { abrirModalNovaChapa(id); }
@@ -3968,10 +3983,12 @@ function abrirModalExcluirChapa(id){
   if(!c) return;
   const modal = document.getElementById('modal-excluir-chapa-confirm');
   if(!modal) return;
+  CHAPA_EXCLUIR_ID = String(id||'').trim();
   document.getElementById('exc-chapa-id').value = id;
   const d = document.getElementById('exc-chapa-desc');
   if(d) d.textContent = `${c.nome||''} · ${c.nomenclatura||c.nom||''} · ${c.tamanho||c.tam||''} · qtd=${Number(c.quantidade??c.qtd??0)||0}`.trim();
   modal.style.display = 'flex';
+  console.log('[CHAPAS] abrirModalExcluirChapa', { passed: id, resolvedId: CHAPA_EXCLUIR_ID });
 }
 
 function fecharModalExcluirChapa(){
@@ -3980,14 +3997,16 @@ function fecharModalExcluirChapa(){
 }
 
 async function confirmarExclusaoChapa(){
-  const id = document.getElementById('exc-chapa-id')?.value || '';
+  const id = String(CHAPA_EXCLUIR_ID || document.getElementById('exc-chapa-id')?.value || '').trim();
   if(!id) return;
   if(_estBusy) return;
   try{
     estSetBusy(true);
+    console.log('[CHAPAS] confirmarExclusaoChapa', { idDom: (document.getElementById('exc-chapa-id')?.value||''), idVar: CHAPA_EXCLUIR_ID, idUsado: id });
     const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method:'DELETE' });
     if(!resp) return;
     const r = await resp.json().catch(()=>null);
+    console.log('[CHAPAS] confirmarExclusaoChapa resp', { ok: !!resp?.ok, status: resp?.status, body: r });
     if(!resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp.statusText||'falha'),'var(--red)');return;}
     fecharModalExcluirChapa();
     if(Array.isArray(_estoqueBase)) _estoqueBase = _estoqueBase.filter(x=>x.id!==id);
@@ -4001,6 +4020,7 @@ async function confirmarExclusaoChapa(){
     toast('Chapa excluída ✓','var(--orange)');
   } finally {
     estSetBusy(false);
+    CHAPA_EXCLUIR_ID = '';
   }
 }
 
@@ -4082,7 +4102,7 @@ function abrirModalChapa(){
 async function salvarChapa(){
   const modalNova = document.getElementById('modal-nova-chapa');
   if(modalNova && modalNova.style.display === 'flex'){
-    const id = document.getElementById('chapa-edit-id')?.value||'';
+    const id = String(CHAPA_ATUAL_ID || document.getElementById('chapa-edit-id')?.value || '').trim();
     const nomeUso = document.getElementById('chapa-nome')?.value?.trim()||'';
     const nomenclatura = document.getElementById('chapa-nomenclatura')?.value?.trim()||'';
     const fornecedor = document.getElementById('chapa-fornecedor')?.value?.trim()||'';
@@ -4111,10 +4131,12 @@ async function salvarChapa(){
     };
     try{
       estSetBusy(true);
+      console.log('[CHAPAS] salvarChapa', { idDom: (document.getElementById('chapa-edit-id')?.value||''), idVar: CHAPA_ATUAL_ID, idUsado: id, payload });
       const resp = id
         ? await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method:'PUT', body: payload })
         : await apiFetch('/api/chapas_estoque', { method:'POST', body: payload });
       const r = resp ? await resp.json().catch(()=>null) : null;
+      console.log('[CHAPAS] salvarChapa resp', { ok: !!resp?.ok, status: resp?.status, body: r });
       if(!resp || !resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)|| (r&&r.message) || (resp?resp.statusText:'falha') || 'falha'),'var(--red)');return;}
       toast('Chapa salva ✓','var(--green)');
       modalNova.style.display='none';
@@ -4123,6 +4145,7 @@ async function salvarChapa(){
       return;
     } finally {
       estSetBusy(false);
+      CHAPA_ATUAL_ID = '';
     }
   }
   const forn=document.getElementById('ch-forn').value.trim();
