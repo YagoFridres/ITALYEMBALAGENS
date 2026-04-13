@@ -2975,7 +2975,6 @@ function popularFiltrosEstoque(chapas){
   const norm = (s) => String(s || '').trim();
   const catSet=[...new Set(_estoqueBase.map(c=>norm(c.categoria||'')).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const fornSet=[...new Set(_estoqueBase.map(c=>norm(c.fornecedor||c.forn)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const empSet=[...new Set(_estoqueBase.map(c=>{const v=norm(c.empresa_vinculada||c.empresa||'');return v||estEmpresaFromEmpId(c.emp_id||c.empId||'');}).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const cliSet=[...new Set(_estoqueBase.map(c=>norm(c.cliente||'')).filter(v=>v&&v!=='—'))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
   const setOpts=(id,arr,label)=>{
     const el=document.getElementById(id);
@@ -2984,10 +2983,14 @@ function popularFiltrosEstoque(chapas){
     el.innerHTML = `<option value="">${label}</option>` + arr.map(v=>`<option value="${escAttr(String(v))}">${escH(v)}</option>`).join('');
     if(cur) el.value=cur;
   };
+  const setDatalist=(id,arr)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = (arr||[]).map(v=>`<option value="${escAttr(String(v))}"></option>`).join('');
+  };
   setOpts('ef-categoria', catSet, '📦 Categoria');
-  setOpts('ef-fornecedor', fornSet, '🏭 Fornecedor');
-  setOpts('ef-empresa', empSet, '🏢 Empresa');
-  setOpts('ef-cliente', cliSet, '👤 Cliente');
+  setDatalist('ef-fornecedor-dl', fornSet);
+  setDatalist('ef-cliente-dl', cliSet);
 }
 
 function estoqueFiltrar(tipo){
@@ -3038,7 +3041,11 @@ function _renderEstoqueBase(chapas) {
     if(catFil && cat !== catFil) return false;
     const forn = String(c.fornecedor || c.forn || '');
     if(fornFil && !forn.toLowerCase().includes(fornFil)) return false;
-    const emp = String(c.empresa_vinculada || c.empresa || '');
+    const emp = [
+      (c.empresa_vinculada||c.empresa||''),
+      (c.qual_cnpj||c.qual||''),
+      estEmpresaFromEmpId(c.emp_id||c.empId||'')
+    ].join(' ');
     if(empFil && !emp.toLowerCase().includes(empFil)) return false;
     const cliente = String(c.cliente || '');
     if(cliFil && !cliente.toLowerCase().includes(cliFil)) return false;
@@ -12960,9 +12967,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="sbox-h">📦 Estoque Central de Chapas</div>
       <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
         <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
-        <select id="ef-fornecedor" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">🏭 Fornecedor</option></select>
-        <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">🏢 Empresa</option></select>
-        <select id="ef-cliente" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">👤 Cliente</option></select>
+        <input id="ef-fornecedor" type="text" list="ef-fornecedor-dl" placeholder="Fornecedor" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
+        <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
+          <option value="">Todos</option>
+          <option value="Italy Embalagens">Italy Embalagens</option>
+          <option value="Cartoeste">Cartoeste</option>
+          <option value="Oestepack">Oestepack</option>
+        </select>
+        <input id="ef-cliente" type="text" list="ef-cliente-dl" placeholder="Cliente" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
+        <datalist id="ef-fornecedor-dl"></datalist>
+        <datalist id="ef-cliente-dl"></datalist>
         <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
         <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
         <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
