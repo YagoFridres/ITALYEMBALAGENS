@@ -3600,18 +3600,12 @@ function estOrdenar(campo){
 }
 
 function setupEstoqueInlineDelegation(){
-  console.log('[INLINE] setup chamado');
-  // if(window.__ESTOQUE_INLINE_DELEGATION__) return;
-  // window.__ESTOQUE_INLINE_DELEGATION__ = true;
+  if(window.__ESTOQUE_INLINE_DELEGATION__) return;
+  window.__ESTOQUE_INLINE_DELEGATION__ = true;
 
   document.addEventListener('change', async function(e) {
     const el = e && e.target ? e.target : null;
     if(!el || !el.classList) return;
-
-    if (el.classList.contains('est-empresa-sel') || el.classList.contains('est-cat-sel')) {
-      console.log('[INLINE] change disparado:', el.className, el.dataset);
-      console.log('[INLINE] apiFetch existe?', typeof apiFetch);
-    }
 
     if (el.classList.contains('est-empresa-sel')) {
       const id = String(el.dataset.id || '').trim();
@@ -3621,8 +3615,8 @@ function setupEstoqueInlineDelegation(){
       try{
         estSetBusy(true);
         const payload = { empresa_vinculada: val, qual_cnpj: val, emp_id: estEmpIdFromEmpresa(val) };
-        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
-          method: 'PUT',
+        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
@@ -3653,8 +3647,8 @@ function setupEstoqueInlineDelegation(){
       if(_estBusy) return;
       try{
         estSetBusy(true);
-        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
-          method: 'PUT',
+        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ categoria: val })
         });
@@ -3680,9 +3674,6 @@ function setupEstoqueInlineDelegation(){
     const el = e && e.target ? e.target : null;
     if(!el || !el.classList) return;
     if (!el.classList.contains('est-riscada-btn')) return;
-    
-    console.log('[INLINE] click disparado:', el.className, el.dataset);
-    console.log('[INLINE] apiFetch existe?', typeof apiFetch);
 
     const id = String(el.dataset.id || '').trim();
     const val = String(el.dataset.val || '').trim() === 'true';
@@ -3691,8 +3682,8 @@ function setupEstoqueInlineDelegation(){
 
     try{
       estSetBusy(true);
-      const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}`, {
-        method: 'PUT',
+      const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ riscada: val })
       });
@@ -8399,8 +8390,8 @@ async function apiFetch(url, opts = {}) {
       }
     } else {
       try{ clearStoredAuth(); }catch(e){}
-      window.location.href = '/';
-      return;
+      try{ mostrarTelaLogin(); }catch(e){}
+      return new Response(JSON.stringify({ ok:false, error:'Sessão expirada' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
   }
   return r;
