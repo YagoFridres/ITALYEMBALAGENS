@@ -117,6 +117,23 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13
 .ptoolbar input:focus,.ptoolbar select:focus{outline:none;border-color:var(--accent);}
 .ptoolbar input::placeholder{color:var(--text3);}
 
+/* ===== FORM CONTROLS (contraste no tema escuro) ===== */
+[data-theme="dark"] select,
+:root select{
+  background-color: var(--bg2, #1e1e2e);
+  color: var(--text, #e0e0e0);
+  border: 1px solid #444;
+}
+[data-theme="dark"] select:focus,
+:root select:focus{outline:none;border-color:var(--accent);}
+[data-theme="dark"] option,
+[data-theme="dark"] optgroup,
+:root option,
+:root optgroup{
+  background-color: var(--bg2, #1e1e2e);
+  color: var(--text, #e0e0e0);
+}
+
 /* ===== BUTTONS ===== */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;font-family:var(--font);transition:.12s;white-space:nowrap;}
 .btn:active{transform:scale(.97);}
@@ -481,7 +498,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 
 /* ===== AUTOCOMPLETE ===== */
 .ac-wrap{position:relative;width:100%;}
-.ac-list{position:absolute;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;box-shadow:var(--shadow-lg);z-index:9999;max-height:220px;overflow-y:auto;display:none;}
+.ac-list{position:fixed;left:0;top:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;box-shadow:var(--shadow-lg);z-index:9999;max-height:300px;overflow-y:auto;display:none;}
 .ac-list.open{display:block;}
 .ac-list.ac-up{bottom:100%;top:auto;margin-bottom:2px;border-radius:8px 8px 0 0;}
 .ac-list.ac-down{top:100%;bottom:auto;margin-top:2px;border-radius:0 0 8px 8px;}
@@ -7507,11 +7524,12 @@ function ac(inputEl, getFn, onSelectFn, opts){
   }
 
   // Create dropdown (or reuse)
-  let list = wrap.querySelector('.ac-list');
+  let list = inputEl._acList;
   if(!list){
     list = document.createElement('div');
     list.className = 'ac-list';
-    wrap.appendChild(list);
+    document.body.appendChild(list);
+    inputEl._acList = list;
   }
 
   let selIdx = -1;
@@ -7531,7 +7549,28 @@ function ac(inputEl, getFn, onSelectFn, opts){
     const rect = inputEl.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
-    return spaceBelow < 200 && spaceAbove > spaceBelow;
+    return spaceBelow < 260 && spaceAbove > spaceBelow;
+  }
+
+  function positionList(goUp){
+    const rect = inputEl.getBoundingClientRect();
+    list.style.left = Math.max(8, rect.left) + 'px';
+    list.style.width = Math.max(220, rect.width) + 'px';
+    list.style.maxHeight = '300px';
+    list.style.top = '0px';
+    list.style.bottom = 'auto';
+    list.style.visibility = 'hidden';
+    list.classList.add('open');
+    const h = Math.min(list.scrollHeight || 0, 300);
+    if(goUp){
+      const top = rect.top - h - 6;
+      list.style.top = Math.max(8, top) + 'px';
+    } else {
+      const top = rect.bottom + 6;
+      const maxTop = window.innerHeight - h - 8;
+      list.style.top = Math.min(maxTop, Math.max(8, top)) + 'px';
+    }
+    list.style.visibility = 'visible';
   }
 
   function renderList(items){
@@ -7560,7 +7599,7 @@ function ac(inputEl, getFn, onSelectFn, opts){
     const goUp = shouldOpenUp();
     list.classList.remove('ac-up','ac-down');
     list.classList.add(goUp ? 'ac-up' : 'ac-down');
-    list.classList.add('open');
+    positionList(goUp);
     _acActive = list;
   }
 
@@ -7571,9 +7610,24 @@ function ac(inputEl, getFn, onSelectFn, opts){
     if(onSelectFn) onSelectFn(item.data||item, item.label);
   }
 
+  function close(){
+    list.classList.remove('open','ac-up','ac-down');
+  }
+
+  function onViewportChange(){
+    if(!list.classList.contains('open')) return;
+    positionList(list.classList.contains('ac-up'));
+  }
+
+  if(!inputEl._acViewportBound){
+    inputEl._acViewportBound = true;
+    window.addEventListener('scroll', onViewportChange, true);
+    window.addEventListener('resize', onViewportChange);
+  }
+
   inputEl.addEventListener('input', function(){
     const q = this.value.trim();
-    if(q.length < minLen){ list.classList.remove('open','ac-up','ac-down'); return; }
+    if(q.length < minLen){ close(); return; }
     renderList(getFn(q, getEmpId()));
   });
 
@@ -7587,12 +7641,12 @@ function ac(inputEl, getFn, onSelectFn, opts){
     if(e.key==='ArrowDown'){ e.preventDefault(); selIdx=Math.min(selIdx+1,items.length-1); _acHighlight(list,selIdx); }
     else if(e.key==='ArrowUp'){ e.preventDefault(); selIdx=Math.max(selIdx-1,-1); _acHighlight(list,selIdx); }
     else if(e.key==='Enter'&&selIdx>=0){ e.preventDefault(); pick(items[selIdx]); }
-    else if(e.key==='Escape'){ list.classList.remove('open','ac-up','ac-down'); }
+    else if(e.key==='Escape'){ close(); }
   });
 
   inputEl.addEventListener('blur', function(){
     if(_picking) return; // mousedown already fired, click incoming — don't close yet
-    setTimeout(()=>{ if(!_picking) list.classList.remove('open','ac-up','ac-down'); }, 180);
+    setTimeout(()=>{ if(!_picking) close(); }, 180);
   });
 }
 

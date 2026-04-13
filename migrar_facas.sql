@@ -1,3 +1,0 @@
-﻿-- Tabela alvo: facas_estoque
--- Nenhum array hardcoded encontrado em index.html para gerar INSERTs.
--- Preencha manualmente se necessario.
