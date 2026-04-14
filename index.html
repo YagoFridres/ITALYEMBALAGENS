@@ -1828,6 +1828,7 @@ function cardOFMaquina(of, maquinaAtual){
   const nomeCliente = cli?.nome || of.cliente || '—';
   const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
   const isUrg = !!(of.urg||of.urgente);
+  const canBaixa = (CURRENT_USER && CURRENT_USER.perfil === 'admin') || hasPerm('tudo') || hasPerm('baixa_of');
   const hoje = new Date().toISOString().slice(0,10);
   const entStr = (of.ent || of.data_entrega || '').slice(0,10);
   const atrasada = entStr && entStr < hoje;
@@ -1860,7 +1861,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'</div>'
     +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button onclick="darBaixaOFId(\''+escAttr(of.id)+'\',\''+escAttr(of.of||of.numero||'')+'\',\''+escAttr(maquinaAtual||'')+'\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✅ Dar Baixa</button>'
+    +(canBaixa?'<button onclick="darBaixaOFId(\''+escAttr(of.id)+'\',\''+escAttr(of.of||of.numero||'')+'\',\''+escAttr(maquinaAtual||'')+'\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✅ Dar Baixa</button>':'')
     +'<button onclick="abrirModalOF(\''+escAttr(of.id)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">✏️ Editar</button>'
     +'</div></div>';
 }
@@ -1978,7 +1979,7 @@ function ofmaqVerImagem(id){
   zoomImg(img);
 }
 async function ofmaqDarBaixa(id){
-  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
+  if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
   const o=(OFs||[]).find(x=>x.id===id);
   if(!o){toast('OF não encontrada','var(--red)');return;}
   const f=ofFluxoGetNames(o);
@@ -2009,7 +2010,7 @@ async function ofmaqDarBaixa(id){
 }
 
 async function darBaixaOFId(id, numero, maquinaAtual){
-  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
+  if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
   if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
   if(r && r.ok){
@@ -2105,7 +2106,7 @@ async function darBaixaOF(o){
   try{ renderPCP(); }catch(e){}
 }
 function marcarProntoSel(){
-  if(!hasPerm('dar_baixa_of') && !hasPerm('tudo')){toast('Sem permissão para dar baixa','var(--red)');return;}
+  if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF primeiro','var(--yellow)');return;}
   const o=OFs.find(x=>x.of===ofSel);
   if(!o)return;
@@ -9202,7 +9203,7 @@ function renderActivePageSync(){
     if(pid==='vendedores') return renderVendedores();
     if(pid==='fornecedores') return renderFornecedores();
     if(pid==='dashboard') return renderDashboard();
-    if(pid==='relatorios') return renderRelatorio();
+    if(pid==='relatorios') return;
     if(pid==='compras') return renderCompras();
     if(pid==='orcamentos') return renderOrcamentos();
     if(pid==='usuarios') return carregarUsuarios();
@@ -12409,7 +12410,16 @@ function renderRelatorio() {
   _renderRelatorioBase();
   const tipo = document.getElementById('rel-tipo')?.value || '';
   if (tipo === 'vendas-por-vendedor') {
-    carregarRelatorioVendedor();
+    const wrap = document.getElementById('rel-content');
+    if(wrap){
+      wrap.innerHTML = `<div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>📊 Vendas por Vendedor no Mês</span>
+          <button class="btn btn-accent btn-sm" onclick="carregarRelatorioVendedor()">Gerar Relatório</button>
+        </div>
+        <div class="sbox-b"><div id="rm-vendedor-wrap"></div></div>
+      </div>`;
+    }
   }
 }
 
@@ -13371,12 +13381,16 @@ logAction = async function(acao, detalhe){
 
 var USUARIOS = [];
 
+const PERMISSOES_DISPONIVEIS_EXTRA = [
+  { key:'baixa_of', label:'Dar Baixa em OFs', grupo:'Produção' },
+];
+
 function renderPermissoesDisponiveis(permsAtivas) {
   const wrap=document.getElementById('usr-perms-grid');
   if(!wrap) return;
 
   const grupos = {};
-  MODULOS_SISTEMA.forEach(m => {
+  [...PERMISSOES_DISPONIVEIS_EXTRA, ...MODULOS_SISTEMA].forEach(m => {
     if (!grupos[m.grupo]) grupos[m.grupo] = [];
     grupos[m.grupo].push(m);
   });

@@ -2410,7 +2410,7 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     if (b.emp_id !== undefined) payload.emp_id = String(b.emp_id);
     if (b.empId !== undefined && payload.emp_id === undefined) payload.emp_id = String(b.empId);
     if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
-    if (b.riscada !== undefined) payload.riscada = bool(b.riscada);
+    if (b.riscada !== undefined && table === 'chapas_estoque_v2') payload.riscada = bool(b.riscada);
 
     if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
 
@@ -2439,16 +2439,26 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     let { data, error } = await supabase.from(table).update(finalPayload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
       const msg = String(error.message || error);
-      const isMissingColumn = msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist');
-      if (isMissingColumn) {
+      const m = msg.match(/Could not find the '([^']+)' column/i);
+      if (m && m[1] && finalPayload[m[1]] !== undefined) {
         const retry = { ...finalPayload };
-        delete retry.empresa_vinculada;
-        delete retry.categoria;
-        delete retry.riscada;
-        if (Object.keys(retry).length) {
-          const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
-          data = r2.data;
-          error = r2.error;
+        delete retry[m[1]];
+        if (!Object.keys(retry).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
+        const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
+        data = r2.data;
+        error = r2.error;
+      } else {
+        const isMissingColumn = msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist');
+        if (isMissingColumn) {
+          const retry = { ...finalPayload };
+          delete retry.empresa_vinculada;
+          delete retry.categoria;
+          delete retry.riscada;
+          if (Object.keys(retry).length) {
+            const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
+            data = r2.data;
+            error = r2.error;
+          }
         }
       }
     }
