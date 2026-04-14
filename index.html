@@ -1634,10 +1634,26 @@ function _goBase(id){
   openNavGroupForPage(id);
   updateBadges();
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
-  if(id==='pcp')renderPCP();
+  if(id==='pcp'){
+    if(_apiConectado && CURRENT_USER){
+      const dia = PCP_DIA_ATUAL === '__todas__' ? '' : PCP_DIA_ATUAL;
+      Promise.all([
+        carregarVendedores(false),
+        (dia ? carregarOFs({ from: dia, to: dia }) : carregarOFs({}))
+      ]).then(()=>renderPCP()).catch(()=>renderPCP());
+    } else {
+      renderPCP();
+    }
+  }
   if(id==='ofmaq')iniciarPollingOFsMaquina();
   if(id==='lancamento')renderLancamento();
-  if(id==='clientes')renderClientes();
+  if(id==='clientes'){
+    if(_apiConectado && CURRENT_USER){
+      carregarClientes(false).then(()=>renderClientes()).catch(()=>renderClientes());
+    } else {
+      renderClientes();
+    }
+  }
   if(id==='estoque'){
     if(_apiConectado && CURRENT_USER){
       carregarChapas().then(()=>renderEstoque()).catch(()=>renderEstoque());
@@ -1645,10 +1661,26 @@ function _goBase(id){
       renderEstoque();
     }
   }
-  if(id==='fluxos')renderFluxos();
-  if(id==='maquinas')renderMaquinasConf();
-  if(id==='vendedores')renderVendedores();
-  if(id==='fornecedores')renderFornecedores();
+  if(id==='fluxos'){
+    if(_apiConectado && CURRENT_USER) carregarFluxos(false).then(()=>renderFluxos()).catch(()=>renderFluxos());
+    else renderFluxos();
+  }
+  if(id==='maquinas'){
+    if(_apiConectado && CURRENT_USER) carregarMaquinas(false).then(()=>renderMaquinasConf()).catch(()=>renderMaquinasConf());
+    else renderMaquinasConf();
+  }
+  if(id==='vendedores'){
+    if(_apiConectado && CURRENT_USER){
+      Promise.all([carregarVendedores(false), carregarVisitasVendedor?.()||Promise.resolve(), carregarClientes(false)])
+        .then(()=>renderVendedores()).catch(()=>renderVendedores());
+    } else {
+      renderVendedores();
+    }
+  }
+  if(id==='fornecedores'){
+    if(_apiConectado && CURRENT_USER) carregarFornecedores(false).then(()=>renderFornecedores()).catch(()=>renderFornecedores());
+    else renderFornecedores();
+  }
   if(id==='roteiro-entrega')carregarRoteiro();
   if(id==='dashboard')renderDashboard();
   if(id==='relatorios')renderRelatorio();
@@ -1657,8 +1689,14 @@ function _goBase(id){
   if(id==='orcamentos')renderOrcamentos();
   if(id==='usuarios')carregarUsuarios();
   if(id==='sistema')renderSistema();
-  if(id==='facas1')renderFacas1();
-  if(id==='cliches')renderCliches();
+  if(id==='facas1'){
+    if(_apiConectado && CURRENT_USER) carregarFacas().then(()=>renderFacas1()).catch(()=>renderFacas1());
+    else renderFacas1();
+  }
+  if(id==='cliches'){
+    if(_apiConectado && CURRENT_USER) carregarCliches().then(()=>renderCliches()).catch(()=>renderCliches());
+    else renderCliches();
+  }
 }
 
 function updateBadges(){
@@ -7940,28 +7978,14 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 async function loadCoreData(){
+  const hoje = today();
   await Promise.all([
     carregarEmpresas?.()||Promise.resolve(),
-    carregarMaquinas(),
-    carregarOperadores(),
-    carregarVendedores(),
-    carregarVisitasVendedor?.()||Promise.resolve(),
-    carregarFornecedores(),
-    carregarFluxos(),
-    carregarCompras(),
-    carregarOrcamentos(),
-    carregarClientes(),
-    carregarOFs(),
-    carregarApontamentos(),
-    carregarChapas(),
-    carregarCategoriasChapas?.()||Promise.resolve(),
-    carregarFacas(),
-    carregarCliches()
+    carregarOFs({ from: hoje, to: hoje, forcar: true }),
+    carregarVendedores(false)
   ]);
   try{updateBadges();}catch(e){}
   try{renderPCP();}catch(e){}
-  try{renderApontamentos();}catch(e){}
-  try{renderOperadores();}catch(e){}
 }
 
 async function authValidateOrRefresh(){
@@ -9026,21 +9050,44 @@ async function carregarApontamentos(){
   if(r && r.ok && r.data) APONTAMENTOS = r.data.map(normalizeAp);
   return r;
 }
-async function carregarOFs(){
-  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const r = await api('GET','/ofs'+empParam);
+
+const CACHE_TTL = 5 * 60 * 1000;
+let _ultimaCargaOFs = 0;
+let _ultimaCargaClientes = 0;
+let _ultimaCargaFornecedores = 0;
+let _ultimaCargaMaquinas = 0;
+let _ultimaCargaFluxos = 0;
+let _ultimaCargaVendedores = 0;
+let _ultimaCargaChapas = 0;
+
+async function carregarOFs(opts){
+  opts = opts || {};
+  const forcar = !!opts.forcar;
+  const from = opts.from ? String(opts.from) : '';
+  const to = opts.to ? String(opts.to) : '';
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaOFs) < CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
+  const qs = new URLSearchParams();
+  if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+  if(from) qs.set('from', from);
+  if(to) qs.set('to', to);
+  const r = await api('GET','/ofs' + (qs.toString()?('?'+qs.toString()):''));
   if(r && r.ok && r.data) OFs = r.data.map(o=>{
     let fm=o && o.fluxo_maquinas;
     if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
     if(!Array.isArray(fm)) fm=[];
     return normalizeOF({ ...o, fluxo_maquinas: fm });
   });
+  if(r && r.ok) _ultimaCargaOFs = Date.now();
   return r;
 }
-async function carregarClientes(){
+async function carregarClientes(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/clientes'+empParam);
   if(r && r.ok && r.data && r.data.length) CLIENTES = r.data.map(normalizeCli);
+  if(r && r.ok) _ultimaCargaClientes = Date.now();
   return r;
 }
 async function carregarOperadores(){
@@ -9049,7 +9096,9 @@ async function carregarOperadores(){
   if(r && r.ok && r.data) OPERADORES = r.data.map(normalizeOp);
   return r;
 }
-async function carregarMaquinas(){
+async function carregarMaquinas(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaMaquinas) < CACHE_TTL && Array.isArray(MAQUINAS) && MAQUINAS.length > 0) return { ok:true, cached:true, data:MAQUINAS };
   const r = await api('GET','/maquinas');
   if(r && r.ok && r.data && r.data.length) {
     MAQUINAS = r.data.map(normalizeMaq);
@@ -9060,6 +9109,7 @@ async function carregarMaquinas(){
       return String(a.col||'').localeCompare(String(b.col||''),'pt-BR');
     });
   }
+  if(r && r.ok) _ultimaCargaMaquinas = Date.now();
   return r;
 }
 
@@ -9101,7 +9151,13 @@ async function carregarCliches(){
   if(r && r.ok && r.data && r.data.length) CLICHES = r.data.map(normalizeCliche);
   return r;
 }
-async function carregarChapas(){
+async function carregarChapas(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaChapas) < CACHE_TTL && Array.isArray(ESTOQUE) && ESTOQUE.length > 0) {
+    try{ popularFiltrosEstoque(ESTOQUE); }catch(e){}
+    try{ _renderEstoqueBase(ESTOQUE); }catch(e){}
+    return { ok:true, cached:true, data:ESTOQUE };
+  }
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/chapas_estoque'+empParam);
   const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
@@ -9110,22 +9166,29 @@ async function carregarChapas(){
   _estoqueBase = dados;
   try{ popularFiltrosEstoque(dados); }catch(e){}
   try{ _renderEstoqueBase(dados); }catch(e){}
+  if(r && r.ok) _ultimaCargaChapas = Date.now();
   return r;
 }
 
 function normalizeFluxo(r){
   return { id:r.id, nome:r.nome||'', etapas:tryParse(r.etapas, r.etapas||[]) };
 }
-async function carregarVendedores(){
+async function carregarVendedores(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaVendedores) < CACHE_TTL && Array.isArray(VENDEDORES) && VENDEDORES.length > 0) return { ok:true, cached:true, data:VENDEDORES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/vendedores'+empParam);
   if(r && r.ok && r.data && r.data.length) VENDEDORES = r.data.map(normalizeVend);
+  if(r && r.ok) _ultimaCargaVendedores = Date.now();
   return r;
 }
-async function carregarFornecedores(){
+async function carregarFornecedores(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaFornecedores) < CACHE_TTL && Array.isArray(FORNECEDORES) && FORNECEDORES.length > 0) return { ok:true, cached:true, data:FORNECEDORES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/fornecedores'+empParam);
   if(r && r.ok && r.data && r.data.length) FORNECEDORES = r.data.map(normalizeForn);
+  if(r && r.ok) _ultimaCargaFornecedores = Date.now();
   return r;
 }
 
@@ -9245,9 +9308,12 @@ async function carregarOrcamentos(){
   if(r && r.ok && r.data && r.data.length) ORCAMENTOS = r.data.map(normalizeOrc);
   return r;
 }
-async function carregarFluxos(){
+async function carregarFluxos(forcar=false){
+  const now = Date.now();
+  if(!forcar && (now - _ultimaCargaFluxos) < CACHE_TTL && Array.isArray(FLUXOS) && FLUXOS.length > 0) return { ok:true, cached:true, data:FLUXOS };
   const r = await api('GET','/fluxos');
   if(r && r.ok && r.data && r.data.length) FLUXOS = r.data.map(normalizeFluxo);
+  if(r && r.ok) _ultimaCargaFluxos = Date.now();
   return r;
 }
 

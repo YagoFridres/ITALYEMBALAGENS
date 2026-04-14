@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
+const compression = require('compression');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
@@ -112,6 +113,7 @@ if (!_supabaseEnvOk) {
 
 const app = express();
 app.set('etag', false);
+app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
@@ -861,6 +863,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = req.query.from ? String(req.query.from) : '';
     const to = req.query.to ? String(req.query.to) : '';
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const hasPaging = req.query.limit != null || req.query.offset != null;
+    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
+    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
@@ -875,6 +880,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           if (to) q = q.lte(field, to);
         }
         if (!incluirExcluidas) q = q.is('deleted_at', null);
+        if (hasPaging) q = q.range(offset, offset + limit - 1);
 
         let { data, error } = await q;
         if (error) {
@@ -886,6 +892,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
               if (from) q2 = q2.gte(field, from);
               if (to) q2 = q2.lte(field, to);
             }
+            if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
             const r2 = await q2;
             data = r2.data;
             error = r2.error;
@@ -1151,11 +1158,15 @@ app.delete('/api/roteiro_entrega/:id', authMiddleware, async (req, res) => {
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const hasPaging = req.query.limit != null || req.query.offset != null;
+    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
+    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
       let q = supabase.from('clientes').select('*').order('nome');
       if (col) q = q.eq(col, empId);
+      if (hasPaging) q = q.range(offset, offset + limit - 1);
       const { data, error } = await q;
       if (!error) return ok(res, data || []);
       lastErr = error;
