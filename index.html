@@ -4034,8 +4034,9 @@ function _renderEstoqueBase(chapas) {
       const risDesc = String(c.risca_desc || '').trim();
       const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
       const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
-      const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
-      const empSel = (emp === 'Italy Embalagens' || emp === 'Cartoeste' || emp === 'Oestepack') ? emp : '';
+      const empRaw = String(c.empresa_vinculada || c.qual_cnpj || c.qual || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
+      const empKey = empRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const empSel = empKey.includes('cartoeste') ? 'Cartoeste' : empKey.includes('oestepack') ? 'Oestepack' : empKey.includes('italy') ? 'Italy Embalagens' : 'Italy Embalagens';
       const cid = String(c.id||'').trim();
       const riscCls = 'risc-btn-' + cid;
       const onNo = !c.riscada;
@@ -4053,7 +4054,7 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel || 'Italy Embalagens')}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada: val, qual_cnpj: val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));el.value=el.dataset.original;return;}el.dataset.original=val;const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;}};update(_estoqueBase);update(ESTOQUE);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada: val, qual_cnpj: val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
@@ -11877,9 +11878,57 @@ function converterOrcParaOF(id){
   renderOrcamentos();renderPCP();toast('✅ '+ofNum+' criado a partir de '+orc.id,'var(--green)');updateBadges();
 }
 
+function _orcResultadosFromParametros(orc){
+  try{
+    const p = (orc && orc.parametros && typeof orc.parametros === 'object') ? orc.parametros : {};
+    const medidas = String(orc.medidas || orc.titulo || '').toLowerCase();
+    const parts = medidas.split('x').map(s=>String(s||'').trim()).filter(Boolean);
+    const C = Number(parts[0]||0) || 0;
+    const L = Number(parts[1]||0) || 0;
+    const A = Number(parts[2]||0) || 0;
+    const qtd = Number(orc.quantidade ?? orc.qtd ?? 0) || 0;
+    const tipo = parseInt(String(p.tipo ?? ''), 10) || 0;
+    const vb = Number(p.vb ?? 2.47) || 2.47;
+    const vc = Number(p.vc ?? 3.29) || 3.29;
+    const vbc = Number(p.vbc ?? 4.46) || 4.46;
+    const cm = Number(p.cm ?? 49) || 49;
+    const cf = Number(p.cf ?? 15) || 15;
+    const mg = Number(p.mg ?? 25) || 25;
+    const cvend = Number(p.cvend ?? 1) || 1;
+    const imp = Number(p.imp ?? 10) || 10;
+    const vkm = Number(p.vkm ?? 1.15) || 1.15;
+    const km = Number(p.km ?? 0) || 0;
+    const sob = Number(p.sob ?? 0) || 0;
+    const enc = Number(p.enc ?? 0) || 0;
+    if(!tipo || !C || !L || !A || !qtd) return [];
+    if(typeof calcCompensacao !== 'function' || typeof calcPreco !== 'function') return [];
+    const comps = calcCompensacao(tipo, C, L, A, { sob, enc });
+    if(!Array.isArray(comps) || comps.length < 1) return [];
+    const rowTitles=['Onda B','Onda C','Onda BC'];
+    const ondasNomes=['B','C','BC'];
+    return comps.slice(0,3).map((opt,i)=>{
+      const od = ondasNomes[i] || 'B';
+      const preco = calcPreco(opt.area, od, vb, vc, vbc, qtd, cm, cf, mg, cvend, imp, vkm, km);
+      const totLiq = Number(preco.liquida||0) || 0;
+      const totFrete = Number(preco.comFrete||0) || 0;
+      return {
+        compTitle: rowTitles[i] || od,
+        compLabel: String(i+1),
+        compIdx: i,
+        onda: od,
+        vLiq: qtd ? (totLiq / qtd) : 0,
+        vUnit: qtd ? (totFrete / qtd) : 0,
+        total: totFrete
+      };
+    });
+  }catch(e){ return []; }
+}
+
 function imprimirOrcData(orc) {
   if(!orc){ toast('Orçamento não encontrado','var(--orange)'); return; }
-  const resultados = orc.resultados || orc.parametros?.resultados || [];
+  let resultados = orc.resultados || orc.parametros?.resultados || [];
+  if(!Array.isArray(resultados)) resultados = [];
+  if(resultados.length===0) resultados = _orcResultadosFromParametros(orc);
   const numOrc = orc.numero_orcamento || orc.id?.substring(0,8) || '—';
   const cid = String(orc.cliente_id || orc.cli_id || orc.clienteId || orc.cliId || '').trim();
   const cliDb = cid ? getCli(cid) : null;
@@ -11906,6 +11955,10 @@ function imprimirOrcData(orc) {
       <td style="text-align:right"><b>${fmtR(orc.valor_unitario)}</b></td> 
       <td style="text-align:right"><b>${fmtR(orc.valor_total)}</b></td> 
     </tr>`; 
+ 
+  const valorTotal = (orc.valor_total != null && String(orc.valor_total).trim() !== '') ? orc.valor_total : (
+    resultados && resultados.length ? Number(resultados[0].total || ((resultados[0].vUnit||0)*Number(qtd||0))) : 0
+  );
 
   const empNome = (getEmp(orc.empId||orc.emp_id||EMP_FILTRO)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"> 
@@ -11952,7 +12005,7 @@ function imprimirOrcData(orc) {
   <tbody>${linhas}</tbody> 
   <tfoot><tr class="total-row"> 
     <td colspan="5" style="text-align:right">VALOR TOTAL DO PEDIDO:</td> 
-    <td style="text-align:right">${fmtR(orc.valor_total)}</td> 
+    <td style="text-align:right">${fmtR(valorTotal)}</td> 
   </tr></tfoot> 
 </table> 
 ${orc.observacoes ? '<p style="margin-bottom:16px"><b>Obs:</b> '+escH(orc.observacoes)+'</p>' : ''} 
