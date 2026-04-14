@@ -632,6 +632,33 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
   .dev-cards{grid-template-columns:1fr;}
 }
 
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); position: fixed; z-index: 1000; transition: transform 0.3s; left: 0 !important; }
+  .sidebar.open, .sidebar.mob-open { transform: translateX(0); }
+  .main { margin-left: 0 !important; width: 100% !important; }
+  .topbar { position: sticky; top: 0; z-index: 100; }
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+  .shell { flex-direction: column; }
+  .view { padding: 8px !important; }
+  .card-grid { grid-template-columns: 1fr !important; }
+  input, select, textarea { font-size: 16px !important; }
+  .btn { min-height: 44px; min-width: 44px; }
+  .modal-content { width: 95vw !important; max-height: 90vh; overflow-y: auto; }
+}
+
+@media (max-width: 480px) {
+  .topbar-right { display: none; }
+  .brand-sub, .sidebar-brand-sub { display: none; }
+  th, td { padding: 6px 8px !important; font-size: 12px !important; }
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #modal-roteiro-visita, #modal-roteiro-visita * { visibility: visible; }
+  #modal-roteiro-visita { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+  .no-print { display: none !important; }
+}
+
 </style>
 </head>
 <body data-device="desktop">
@@ -3969,15 +3996,15 @@ function _renderEstoqueBase(chapas) {
       const btnNo = onNo ? `${btnBase}background:#555;border-color:#555;color:#fff;` : btnInactive;
       const btnYes = onYes ? `${btnBase}background:#2a7a2a;border-color:#2a7a2a;color:#fff;` : btnInactive;
       const riscHtml = `<div style="display:flex;justify-content:center;gap:6px;align-items:center">
-        <button type="button" class="${escAttr(riscCls)}" data-val="false" style="${btnNo}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val==String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';});})(false,'${escAttr(cid)}')">Não</button>
-        <button type="button" class="${escAttr(riscCls)}" data-val="true" style="${btnYes}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val==String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';});})(true,'${escAttr(cid)}')">Sim</button>
+        <button type="button" class="${escAttr(riscCls)}" data-val="false" style="${btnNo}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));return;}const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].riscada=val;};update(_estoqueBase);update(ESTOQUE);document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val===String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';b.style.fontWeight=act?'700':'400';});})(false,'${escAttr(cid)}')">Não</button>
+        <button type="button" class="${escAttr(riscCls)}" data-val="true" style="${btnYes}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));return;}const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].riscada=val;};update(_estoqueBase);update(ESTOQUE);document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val===String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';b.style.fontWeight=act?'700':'400';});})(true,'${escAttr(cid)}')">Sim</button>
       </div>${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(risDescShort)}</div>`:''}`;
       return `<tr style="background:${trBg}">
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select data-id="${escAttr(c.id)}" onchange="(async function(el){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(el.dataset.id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada:el.value,qual_cnpj:el.value})});const d=await r.json().catch(()=>null);if(!d||!d.ok)alert('Erro: '+(d&&d.error?d.error:'falha'));})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel || 'Italy Embalagens')}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada: val, qual_cnpj: val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));el.value=el.dataset.original;return;}el.dataset.original=val;const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;}};update(_estoqueBase);update(ESTOQUE);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
@@ -5640,7 +5667,7 @@ function renderVendedores(){
         <div class="est-bar"><div class="est-bf" style="width:${pct}%;background:${pct>=100?'var(--green)':pct>=70?'var(--yellow)':'var(--red)'}"></div></div>
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="abrirRoteiroVisita('${v.id}')" style="font-size:.68rem;">🖨 Roteiro de Visita</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirRoteiroVisita('${v.id}')" style="font-size:.68rem;">🗺 Roteiro de Visita</button>
         <button class="btn btn-ghost btn-sm" onclick="editarVendedor('${v.id}')" style="font-size:.68rem;">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="excluirVendedor('${v.id}')" style="font-size:.68rem;color:var(--red);">🗑 Excluir</button>
       </div>
@@ -5664,31 +5691,35 @@ async function abrirRoteiroVisita(vendId){
     try{ await carregarClientes(); }catch(e){}
   }
   const v = (VENDEDORES||[]).find(x=>String(x.id||'')===id) || { nome:'Vendedor' };
-  const clientes = _clientesDoVendedor(id);
+  const clientes = _clientesDoVendedor(id).sort((a,b)=>{
+    const ca = String(a.cidade||'').trim().toLowerCase();
+    const cb = String(b.cidade||'').trim().toLowerCase();
+    if(ca !== cb) return ca.localeCompare(cb,'pt-BR');
+    return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR');
+  });
 
-  let modal = document.getElementById('modal-roteiro-vend');
+  let modal = document.getElementById('modal-roteiro-visita');
   if(!modal){
     modal = document.createElement('div');
     modal.className = 'modal-overlay';
-    modal.id = 'modal-roteiro-vend';
+    modal.id = 'modal-roteiro-visita';
     modal.innerHTML = `<div class="modal" style="width:min(980px,98vw)">
-      <button class="close-btn" onclick="fechar('modal-roteiro-vend')">✕</button>
-      <h2>🗺 Roteiro de Visita</h2>
+      <button class="close-btn no-print" onclick="fechar('modal-roteiro-visita')">✕</button>
+      <h2 id="rv-title">Roteiro de Visita — ${escH(v.nome||'')}</h2>
       <div class="page-body" id="rv-body" style="padding:12px 0"></div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="fechar('modal-roteiro-vend')">Fechar</button>
-        <button class="btn btn-accent" onclick="imprimirRoteiroVisita('${escAttr(id)}')">Imprimir</button>
+      <div class="modal-footer no-print">
+        <button class="btn btn-ghost" onclick="fechar('modal-roteiro-visita')">Fechar</button>
+        <button class="btn btn-accent" onclick="imprimirRoteiroVisita()">🖨 Imprimir</button>
       </div>
     </div>`;
     document.body.appendChild(modal);
-  } else {
-    const btn = modal.querySelector('.btn-accent');
-    if(btn) btn.setAttribute('onclick', `imprimirRoteiroVisita('${escAttr(id)}')`);
   }
 
   const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
   const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
   const body = document.getElementById('rv-body');
+  const titleEl = document.getElementById('rv-title');
+  if(titleEl) titleEl.textContent = `Roteiro de Visita — ${v.nome||''}`;
   if(body){
     body.innerHTML = `<div class="sbox"><div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <span>Vendedor: <b>${escH(v.nome||'')}</b> · Clientes: <b>${clientes.length}</b></span>
@@ -5696,57 +5727,25 @@ async function abrirRoteiroVisita(vendId){
       <div style="max-height:60vh;overflow:auto">
         <table style="width:100%;border-collapse:collapse;min-width:860px">
           <thead><tr>
-            <th style="${th}">Cliente</th><th style="${th}">Cidade</th><th style="${th}">Telefone</th><th style="${th}">Observações</th>
+            <th style="${th}">Cliente</th><th style="${th}">Cidade/Estado</th><th style="${th}">Telefone</th><th style="${th}">Email</th>
           </tr></thead>
           <tbody>
             ${clientes.length?clientes.map((c,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
               <td style="${td};font-weight:800">${escH(c.nome||'')}</td>
               <td style="${td}">${escH([c.cidade||'',c.uf||''].filter(Boolean).join('/'))}</td>
               <td style="${td};font-family:var(--mono)">${escH(c.tel||'')}</td>
-              <td style="${td};max-width:420px;overflow:hidden;text-overflow:ellipsis">${escH(c.obs||c.observacoes||'')}</td>
+              <td style="${td};max-width:420px;overflow:hidden;text-overflow:ellipsis">${escH(c.email||'')}</td>
             </tr>`).join(''):`<tr><td colspan="4" style="${td};text-align:center;color:var(--text3)">Nenhum cliente vinculado</td></tr>`}
           </tbody>
         </table>
       </div>
     </div></div>`;
   }
-  abrir('modal-roteiro-vend');
+  abrir('modal-roteiro-visita');
 }
 
-function imprimirRoteiroVisita(vendId){
-  const id = String(vendId||'').trim();
-  const v = (VENDEDORES||[]).find(x=>String(x.id||'')===id) || { nome:'Vendedor' };
-  const clientes = _clientesDoVendedor(id);
-  const pa=document.getElementById('print-area');
-  if(!pa) return;
-  const empNome=(getEmp(EMP_FILTRO)||{nome:'Italy Embalagens / Cartoeste / Oestepack'}).nome||'Italy Embalagens / Cartoeste / Oestepack';
-  const th='padding:7px 9px;border:1px solid #ddd;background:#f3f5f7;font-size:11px;font-weight:900;text-align:left;text-transform:uppercase;';
-  const td='padding:7px 9px;border:1px solid #eee;font-size:11px;';
-  pa.innerHTML = `<div class="rp" style="font-family:Arial,sans-serif;color:#111">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2d8fa5">
-      <img src="${LOGO_ITALY}" style="height:54px;object-fit:contain" alt="Italy Embalagens">
-      <div style="text-align:right">
-        <div style="font-size:18px;font-weight:900;color:#2d8fa5">ROTEIRO DE VISITA</div>
-        <div style="font-size:11px;color:#666">${empNome}</div>
-        <div style="font-size:10px;color:#888">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
-      </div>
-    </div>
-    <div style="margin-bottom:10px;font-size:12px"><b>Vendedor:</b> ${escH(v.nome||'')}</div>
-    <table style="width:100%;border-collapse:collapse">
-      <thead><tr><th style="${th}">Cliente</th><th style="${th}">Cidade</th><th style="${th}">Telefone</th><th style="${th}">Observações</th></tr></thead>
-      <tbody>
-        ${clientes.map(c=>`<tr>
-          <td style="${td};font-weight:700">${escH(c.nome||'')}</td>
-          <td style="${td}">${escH([c.cidade||'',c.uf||''].filter(Boolean).join('/'))}</td>
-          <td style="${td}">${escH(c.tel||'')}</td>
-          <td style="${td}">${escH(c.obs||c.observacoes||'')}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>`;
-  pa.style.display='block';
+function imprimirRoteiroVisita(){
   window.print();
-  setTimeout(()=>pa.style.display='none',1500);
 }
 var _vendEditId = null;
 function abrirModalVendedor(){
@@ -7904,6 +7903,17 @@ document.addEventListener('DOMContentLoaded', function(){
     PCP_DIA_ATUAL = today();
     applyTheme();
     startClock();
+    try{
+      const btn = document.getElementById('mob-menu-btn');
+      if(btn && !btn.dataset.bound){
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', () => {
+          const sb = document.querySelector('.sidebar');
+          if(sb){ sb.classList.toggle('open'); sb.classList.toggle('mob-open'); }
+          document.getElementById('mob-sidebar-overlay')?.classList.toggle('show');
+        });
+      }
+    }catch(e){}
     const logData = document.getElementById('log-data');
     if(logData) logData.value = today();
     try { renderCalendar(); } catch(e){ console.warn('renderCalendar init error:',e); }
@@ -8407,13 +8417,13 @@ function toggleMobMenu(){
   if(!isMobileAttr && !isNarrow) return;
   const sb=document.querySelector('.sidebar');
   const ov=document.getElementById('mob-sidebar-overlay');
-  if(sb) sb.classList.toggle('mob-open');
+  if(sb) { sb.classList.toggle('open'); sb.classList.toggle('mob-open'); }
   if(ov) ov.classList.toggle('show');
 }
 function closeMobMenu(){
   const sb=document.querySelector('.sidebar');
   const ov=document.getElementById('mob-sidebar-overlay');
-  if(sb) sb.classList.remove('mob-open');
+  if(sb) { sb.classList.remove('open'); sb.classList.remove('mob-open'); }
   if(ov) ov.classList.remove('show');
 }
 function initDevice(){
@@ -13929,7 +13939,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">PCP Pro ERP</span>
     </div>
   </div>
-  <button id="mob-menu-btn" onclick="toggleMobMenu()">☰</button>
+  <button id="mob-menu-btn">☰</button>
   <div id="user-action-badge" style="font-size:.7rem;color:var(--text2);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
   <div class="topbar-badges">
     <span class="tbadge tb-red" id="bdg-at">0 ATRASADOS</span>
