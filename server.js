@@ -1483,7 +1483,10 @@ app.post('/api/fluxos', authMiddleware, async (req, res) => {
   try {
     const payload = { ...(req.body || {}) };
     if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
-    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
+    if (typeof payload.etapas === 'string') {
+      try { payload.etapas = JSON.parse(payload.etapas); } catch (_) { payload.etapas = []; }
+    }
+    if (!Array.isArray(payload.etapas)) payload.etapas = [];
     console.log('[fluxos POST] payload:', payload);
     const { data, error } = await supabase.from('fluxos').insert([payload]).select();
     if (error) { console.error('[fluxos POST] erro:', JSON.stringify(error)); throw error; }
@@ -1494,12 +1497,19 @@ app.post('/api/fluxos', authMiddleware, async (req, res) => {
 app.put('/api/fluxos/:id', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    let etapas = b.etapas;
+    if (etapas !== undefined) {
+      if (typeof etapas === 'string') {
+        try { etapas = JSON.parse(etapas); } catch (_) { etapas = []; }
+      }
+      if (!Array.isArray(etapas)) etapas = [];
+    }
     const payload = {
       nome: b.nome !== undefined ? String(b.nome || '').trim() : undefined,
       descricao: b.descricao !== undefined ? (String(b.descricao || '').trim() || null) : undefined,
       emp_id: (b.emp_id !== undefined || b.empId !== undefined) ? (String(b.emp_id ?? b.empId ?? '').trim() || null) : undefined,
       ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1'),
-      etapas: b.etapas === undefined ? undefined : (Array.isArray(b.etapas) ? JSON.stringify(b.etapas) : String(b.etapas))
+      etapas: etapas === undefined ? undefined : etapas
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
     const { data, error } = await supabase.from('fluxos').update(payload).eq('id', req.params.id).select();
@@ -1755,7 +1765,13 @@ app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
 app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const parseArr = (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      }
+      return [];
+    };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo || '',
       codigo: b.codigo || b.nome || '',
@@ -1769,8 +1785,8 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes || '',
       imagem_url: b.imagem_url || b.foto || b.imagem || '',
       foto: b.foto || b.imagem_url || b.imagem || '',
-      maquinas: asJson(b.maquinas || []),
-      clientes: asJson(b.clientes || []),
+      maquinas: parseArr(b.maquinas),
+      clientes: parseArr(b.clientes),
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
@@ -1792,7 +1808,13 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
 app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
-    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const parseArr = (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      }
+      return [];
+    };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo,
       codigo: b.codigo || b.nome,
@@ -1806,8 +1828,8 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes,
       imagem_url: b.imagem_url || b.foto || b.imagem,
       foto: b.foto || b.imagem_url || b.imagem,
-      maquinas: b.maquinas !== undefined ? asJson(b.maquinas) : undefined,
-      clientes: b.clientes !== undefined ? asJson(b.clientes) : undefined,
+      maquinas: b.maquinas !== undefined ? parseArr(b.maquinas) : undefined,
+      clientes: b.clientes !== undefined ? parseArr(b.clientes) : undefined,
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
@@ -1856,7 +1878,13 @@ app.get('/api/cliches_estoque', authMiddleware, async (req, res) => {
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const parseArr = (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      }
+      return [];
+    };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo || '',
       codigo: b.codigo || b.nome || '',
@@ -1870,8 +1898,8 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes || '',
       imagem_url: b.imagem_url || b.foto || b.imagem || '',
       foto: b.foto || b.imagem_url || b.imagem || '',
-      maquinas: asJson(b.maquinas || []),
-      clientes: asJson(b.clientes || []),
+      maquinas: parseArr(b.maquinas),
+      clientes: parseArr(b.clientes),
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
@@ -1893,7 +1921,13 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
 app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
-    const asJson = (v) => (Array.isArray(v) || (v && typeof v === 'object')) ? JSON.stringify(v) : v;
+    const parseArr = (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      }
+      return [];
+    };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo,
       codigo: b.codigo || b.nome,
@@ -1907,8 +1941,8 @@ app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes,
       imagem_url: b.imagem_url || b.foto || b.imagem,
       foto: b.foto || b.imagem_url || b.imagem,
-      maquinas: b.maquinas !== undefined ? asJson(b.maquinas) : undefined,
-      clientes: b.clientes !== undefined ? asJson(b.clientes) : undefined,
+      maquinas: b.maquinas !== undefined ? parseArr(b.maquinas) : undefined,
+      clientes: b.clientes !== undefined ? parseArr(b.clientes) : undefined,
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
@@ -2493,12 +2527,17 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
   try {
     const b = req.body || {};
     const table = await _chapasPreferV2Table();
-    const allowed = ['empresa_vinculada', 'qual_cnpj', 'categoria', 'emp_id', 'riscada'];
+    const allowed = ['qual_cnpj', 'qual', 'categoria', 'emp_id', 'riscada'];
+    if (table === 'chapas_estoque_v2') allowed.push('empresa_vinculada');
     const payload = {};
     allowed.forEach(k => { if (k in b) payload[k] = b[k]; });
-    if (b.empresa_vinculada) payload.qual_cnpj = b.empresa_vinculada;
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Recebido: ' + JSON.stringify(b) });
+    }
+    if ('empresa_vinculada' in b) {
+      if (table === 'chapas_estoque_v2') payload.empresa_vinculada = String(b.empresa_vinculada);
+      payload.qual_cnpj = String(b.empresa_vinculada);
+      if (table !== 'chapas_estoque_v2') payload.qual = String(b.empresa_vinculada);
     }
     if (table === 'chapas_estoque_v2') {
       payload.atualizado_por = req.usuario?.nome || 'sistema';
