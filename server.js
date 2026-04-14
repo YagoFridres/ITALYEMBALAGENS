@@ -456,20 +456,36 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
+  try {
+    const dirs = [
+      path.join(__dirname, 'uploads', 'of'),
+      path.join(__dirname, 'uploads', 'chat')
+    ];
+    let total = 0;
+    for (const dir of dirs) {
+      if (!fs.existsSync(dir)) continue;
+      const files = fs.readdirSync(dir);
+      for (const f of files) {
+        const p = path.join(dir, f);
+        try {
+          const st = fs.statSync(p);
+          if (st.isFile()) {
+            fs.unlinkSync(p);
+            total++;
+          }
+        } catch (e) {}
+      }
+    }
+    return ok(res, { deletados: total });
+  } catch (e) { return err(res, e); }
+});
+
 const chatUploadDir = path.join(__dirname, 'uploads', 'chat');
 try { fs.mkdirSync(chatUploadDir, { recursive: true }); } catch (e) {}
 
-const chatStorage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, chatUploadDir); },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 12);
-    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2));
-    cb(null, id + ext);
-  },
-});
-
 const chatUpload = multer({
-  storage: chatStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: function (req, file, cb) {
     const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.xlsx', '.docx', '.txt']);
@@ -482,17 +498,8 @@ const chatUpload = multer({
 const ofUploadDir = path.join(__dirname, 'uploads', 'of');
 try { fs.mkdirSync(ofUploadDir, { recursive: true }); } catch (e) {}
 
-const ofStorage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, ofUploadDir); },
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname || '').toLowerCase().slice(0, 12);
-    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(16).slice(2));
-    cb(null, id + ext);
-  },
-});
-
 const ofUpload = multer({
-  storage: ofStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: function (req, file, cb) {
     const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
@@ -500,6 +507,21 @@ const ofUpload = multer({
     if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
     return cb(null, true);
   },
+});
+
+app.post('/api/chat/upload', authMiddleware, chatUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const filename = `chat/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
+    return ok(res, { url: urlData?.publicUrl || '' });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 function chatPermForCanal(nome) {
@@ -920,7 +942,14 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
   try {
     const f = req.file || null;
     if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
-    return ok(res, { url: '/uploads/of/' + f.filename });
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const filename = `of/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
+    return ok(res, { url: urlData?.publicUrl || '' });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
