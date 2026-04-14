@@ -1232,6 +1232,44 @@ app.delete('/api/vendedores/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/visitas_vendedor', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('visitas_vendedor').select('*').order('data_visita', { ascending: true });
+    if (req.query.vendedor_id) q = q.eq('vendedor_id', String(req.query.vendedor_id));
+    if (req.query.status) q = q.eq('status', String(req.query.status));
+    if (req.query.data) q = q.eq('data_visita', String(req.query.data));
+    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    const { data, error } = await q;
+    if (error) throw error;
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/visitas_vendedor', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('visitas_vendedor').insert([req.body || {}]).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/visitas_vendedor/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) }; delete payload.id;
+    const { data, error } = await supabase.from('visitas_vendedor').update(payload).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data[0]);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/visitas_vendedor/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('visitas_vendedor').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // EMPRESAS
 // ══════════════════════════════════════════════════════════════
