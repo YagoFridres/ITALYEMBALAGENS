@@ -1364,17 +1364,44 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/maquinas', async (req, res) => {
+app.post('/api/maquinas', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('maquinas').insert([req.body]).select();
+    const b = req.body || {};
+    const payload = {
+      nome: String(b.nome ?? b.col ?? b.name ?? '').trim(),
+      ordem: b.ordem != null ? Number(b.ordem) : undefined,
+      setor: String(b.setor ?? '').trim() || null,
+      producao: b.producao != null ? Number(b.producao) : (b.phora != null ? Number(b.phora) : 0),
+      setup_medio: b.setup_medio != null ? Number(b.setup_medio) : (b.setup != null ? Number(b.setup) : 0),
+      passagem_media: b.passagem_media != null ? Number(b.passagem_media) : (b.passagem != null ? Number(b.passagem) : 0),
+      descricao: String(b.descricao ?? b.desc ?? '').trim() || null,
+      icone: String(b.icone ?? b.ico ?? '').trim() || null,
+      ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
+    };
+    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+    console.log('[maquinas POST] payload:', payload);
+    const { data, error } = await supabase.from('maquinas').insert([payload]).select();
+    if (error) { console.error('[maquinas POST] erro:', JSON.stringify(error)); throw error; }
     if (error) throw error;
     ok(res, data[0]);
-  } catch (e) { err(res, e); }
+  } catch (e) { console.error('[maquinas POST] catch:', e && e.message ? e.message : e); err(res, e); }
 });
 
-app.put('/api/maquinas/:id', async (req, res) => {
+app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
+    const b = req.body || {};
+    const payload = {
+      nome: b.nome !== undefined || b.col !== undefined || b.name !== undefined ? String(b.nome ?? b.col ?? b.name ?? '').trim() : undefined,
+      ordem: b.ordem != null ? Number(b.ordem) : undefined,
+      setor: b.setor !== undefined ? (String(b.setor ?? '').trim() || null) : undefined,
+      producao: b.producao !== undefined || b.phora !== undefined ? Number(b.producao ?? b.phora ?? 0) : undefined,
+      setup_medio: b.setup_medio !== undefined || b.setup !== undefined ? Number(b.setup_medio ?? b.setup ?? 0) : undefined,
+      passagem_media: b.passagem_media !== undefined || b.passagem !== undefined ? Number(b.passagem_media ?? b.passagem ?? 0) : undefined,
+      descricao: b.descricao !== undefined || b.desc !== undefined ? (String(b.descricao ?? b.desc ?? '').trim() || null) : undefined,
+      icone: b.icone !== undefined || b.ico !== undefined ? (String(b.icone ?? b.ico ?? '').trim() || null) : undefined,
+      ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
+    };
+    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
     const { data, error } = await supabase.from('maquinas')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
@@ -1401,21 +1428,34 @@ app.get('/api/fluxos', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/fluxos', async (req, res) => {
+app.post('/api/fluxos', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...(req.body || {}) };
-    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
+    const b = req.body || {};
+    const payload = {
+      nome: String(b.nome || '').trim(),
+      descricao: String(b.descricao || '').trim() || null,
+      emp_id: String(b.emp_id ?? b.empId ?? '').trim() || null,
+      ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1'),
+      etapas: Array.isArray(b.etapas) ? JSON.stringify(b.etapas) : (b.etapas != null ? String(b.etapas) : '[]')
+    };
+    console.log('[fluxos POST] payload:', payload);
     const { data, error } = await supabase.from('fluxos').insert([payload]).select();
-    if (error) throw error;
+    if (error) { console.error('[fluxos POST] erro:', JSON.stringify(error)); throw error; }
     ok(res, data[0]);
-  } catch (e) { err(res, e); }
+  } catch (e) { console.error('[fluxos POST] catch:', e && e.message ? e.message : e); err(res, e); }
 });
 
-app.put('/api/fluxos/:id', async (req, res) => {
+app.put('/api/fluxos/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...(req.body || {}) };
-    delete payload.id;
-    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
+    const b = req.body || {};
+    const payload = {
+      nome: b.nome !== undefined ? String(b.nome || '').trim() : undefined,
+      descricao: b.descricao !== undefined ? (String(b.descricao || '').trim() || null) : undefined,
+      emp_id: (b.emp_id !== undefined || b.empId !== undefined) ? (String(b.emp_id ?? b.empId ?? '').trim() || null) : undefined,
+      ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1'),
+      etapas: b.etapas === undefined ? undefined : (Array.isArray(b.etapas) ? JSON.stringify(b.etapas) : String(b.etapas))
+    };
+    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
     const { data, error } = await supabase.from('fluxos').update(payload).eq('id', req.params.id).select();
     if (error) throw error;
     ok(res, data[0]);
@@ -2405,12 +2445,12 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     const table = await _chapasPreferV2Table();
     const payload = {};
     const bool = (v) => (v === true || v === 'true' || v === 1 || v === '1');
-    if (b.empresa_vinculada !== undefined) payload.empresa_vinculada = String(b.empresa_vinculada);
-    if (b.qual_cnpj !== undefined) payload.qual_cnpj = String(b.qual_cnpj);
-    if (b.emp_id !== undefined) payload.emp_id = String(b.emp_id);
-    if (b.empId !== undefined && payload.emp_id === undefined) payload.emp_id = String(b.empId);
-    if (b.categoria !== undefined) payload.categoria = String(b.categoria || '').trim();
-    if (b.riscada !== undefined && table === 'chapas_estoque_v2') payload.riscada = bool(b.riscada);
+    if ('empresa_vinculada' in b) payload.empresa_vinculada = String(b.empresa_vinculada);
+    if ('qual_cnpj' in b) payload.qual_cnpj = String(b.qual_cnpj);
+    if ('emp_id' in b) payload.emp_id = String(b.emp_id);
+    if ('empId' in b && payload.emp_id === undefined) payload.emp_id = String(b.empId);
+    if ('categoria' in b) payload.categoria = String(b.categoria || '').trim();
+    if ('riscada' in b && table === 'chapas_estoque_v2') payload.riscada = bool(b.riscada);
 
     if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
 

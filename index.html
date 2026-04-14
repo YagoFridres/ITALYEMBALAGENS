@@ -1659,7 +1659,7 @@ function renderPCP(){
   if(hbtn) hbtn.style.display=isHoje?'none':'';
 
   // Filter: show OFs for the current day OR active (in production) OR all if no date filter
-  let lista=[...OFs];
+  let lista=[...OFs].filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
   if(isTodas){
     lista.sort((a,b)=>{
       const aa=String(a.created_at||'');
@@ -1676,6 +1676,7 @@ function renderPCP(){
   if(!isTodas && !busca && !fs){
     lista=lista.filter(o=>{
       if(o.status==='Cancelado' || o.status==='Cancelada') return false;
+      if(o.status==='Pedido Pronto') return false;
       if(o.dia===PCP_DIA_ATUAL) return true;
       // Also show active OFs (in production) regardless of day
       if(o.status==='Em produção' || o.status==='Em Produção') return true;
@@ -1913,7 +1914,7 @@ async function renderOFsPorMaquina(){
     const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
     const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
 
-    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado');
+    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado'&&String(o.status||'').trim()!=='Pedido Pronto');
     if(busca){
       lista = lista.filter(o=>{
         const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
@@ -2920,7 +2921,13 @@ async function salvarEdicaoOFId(id){
 // ===================== LANÇAMENTO =====================
 function renderLancamento(){
   const hoje=today();
-  const recentes=[...OFs].sort((a,b)=>b.seq-a.seq).slice(0,8);
+  const prontas=[...OFs].filter(o=>String(o.status||'').trim()==='Pedido Pronto').sort((a,b)=>{
+    const aa=String(a.data_conclusao||a.updated_at||a.created_at||'');
+    const bb=String(b.data_conclusao||b.updated_at||b.created_at||'');
+    if(bb && aa && bb!==aa) return bb.localeCompare(aa);
+    return String(b.of||'').localeCompare(String(a.of||''));
+  });
+  const recentes=prontas.slice(0,30);
   document.getElementById('lanc-lista').innerHTML=recentes.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
     return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--s2);font-size:.78rem;flex-wrap:wrap">
@@ -2932,13 +2939,13 @@ function renderLancamento(){
       <span style="color:var(--green);font-family:var(--mono);margin-left:auto">${fmtR(o.val)}</span>
     </div>`;
   }).join('');
-  const total=OFs.reduce((s,o)=>s+(o.val||0),0);
-  const abertos=OFs.filter(o=>o.status!=='Concluído').length;
+  const total=prontas.reduce((s,o)=>s+(o.val||0),0);
+  const abertos=OFs.filter(o=>!['Concluído','Pedido Pronto','Cancelada','Cancelado'].includes(String(o.status||'').trim())).length;
   document.getElementById('lanc-resumo').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="card" style="background:var(--s2)"><div class="card-lbl">Total de OFs</div><div class="card-val cv-a">${OFs.length}</div></div>
+      <div class="card" style="background:var(--s2)"><div class="card-lbl">OFs Prontas</div><div class="card-val cv-g">${prontas.length}</div></div>
       <div class="card" style="background:var(--s2)"><div class="card-lbl">OFs em Aberto</div><div class="card-val cv-y">${abertos}</div></div>
-      <div class="card" style="background:var(--s2)"><div class="card-lbl">Total Vendido</div><div class="card-val cv-g" style="font-size:1.2rem">${fmtR(total)}</div></div>
+      <div class="card" style="background:var(--s2)"><div class="card-lbl">Total (OFs Prontas)</div><div class="card-val cv-g" style="font-size:1.2rem">${fmtR(total)}</div></div>
     </div>`;
 }
 
@@ -13319,9 +13326,23 @@ async function excluirOrcamento(id){
 // ── Fornecedores ─────────────────────────────────────────────
 const _salvarForn_orig = salvarFornecedor;
 salvarFornecedor = async function(){
-  const nome=(document.getElementById('fn-nome')||{}).value||'';
-  if(!nome.trim()){toast('Informe o nome','var(--red)');return;}
-  const payload={nome:nome.trim(),cnpj:(document.getElementById('fn-cnpj')||{}).value||'',contato:(document.getElementById('fn-contato')||{}).value||'',fone:(document.getElementById('fn-fone')||{}).value||'',email:(document.getElementById('fn-email')||{}).value||'',obs:(document.getElementById('fn-obs')||{}).value||''};
+  const nomeVal = (document.getElementById('forn-e-nome')||{}).value || '';
+  console.log('[FORN] nome:', nomeVal);
+  const nome = String(nomeVal||'').trim();
+  if(!nome){toast('Informe o nome','var(--red)');return;}
+  const payload={
+    nome,
+    tipo:(document.getElementById('forn-e-tipo')||{}).value||'',
+    cnpj:(document.getElementById('forn-e-cnpj')||{}).value||'',
+    telefone:(document.getElementById('forn-e-tel')||{}).value||'',
+    email:(document.getElementById('forn-e-email')||{}).value||'',
+    cidade:(document.getElementById('forn-e-cidade')||{}).value||'',
+    uf:(document.getElementById('forn-e-uf')||{}).value||'',
+    endereco:(document.getElementById('forn-e-end')||{}).value||'',
+    contato:(document.getElementById('forn-e-contato')||{}).value||'',
+    obs:(document.getElementById('forn-e-obs')||{}).value||'',
+    emp_id:(document.getElementById('forn-e-emp')||{}).value||''
+  };
   const r=await salvarViaApiOuLocal('fornecedor', ()=>api('POST','/fornecedores',payload), _salvarForn_orig);
   if(r.ok && !r.local){FORNECEDORES.push({...payload,id:r.data.id});fechar('modal-fornecedor');renderFornecedores();autoSaveTrigger();}
   else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
