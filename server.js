@@ -1395,6 +1395,17 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     return ok(res, data || []);
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
+
+app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    if (!data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    return ok(res, data);
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
 app.post('/api/orcamentos', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};

@@ -11656,7 +11656,33 @@ function abrirCalculadoraComOrc(id){
   carregarOrcamentoCalc(orc);
   abrirCalculadora();
 }
-function imprimirOrcamentoId(id){ return imprimirOrcId(id); }
+async function imprimirOrcamentoId(id){
+  const sid = String(id||'').trim();
+  if(!sid) return;
+  if(_apiConectado && CURRENT_USER){
+    try{
+      const r = await apiFetch('/api/orcamentos/'+encodeURIComponent(sid), { method:'GET' });
+      const d = r ? await r.json().catch(()=>null) : null;
+      const full = d && (d.data || d.id) ? (d.data || d) : null;
+      if(r && r.ok && full){
+        const cid = String(full.cliente_id || full.cli_id || full.clienteId || full.cliId || '').trim();
+        const hasNome = String(full.cliente_nome || full.clienteNome || full.descricao || '').trim();
+        if(cid && (!hasNome || hasNome.toLowerCase().includes('selecione'))){
+          if(!Array.isArray(CLIENTES) || CLIENTES.length === 0){
+            try{ await carregarClientes(false); }catch(e){}
+          }
+          const c = getCli(cid);
+          if(c && c.nome) full.cliente_nome = c.nome;
+        }
+        const idx = (ORCAMENTOS||[]).findIndex(o=>String(o.id||'')===sid);
+        if(idx >= 0) ORCAMENTOS[idx] = { ...(ORCAMENTOS[idx]||{}), ...full };
+        else ORCAMENTOS.push(full);
+        return imprimirOrcData(full);
+      }
+    }catch(e){}
+  }
+  return imprimirOrcId(sid);
+}
 
 function orcAtualizaVendInfo(){
   const sel=document.getElementById('oc-vend');
@@ -11829,16 +11855,17 @@ function converterOrcParaOF(id){
   renderOrcamentos();renderPCP();toast('✅ '+ofNum+' criado a partir de '+orc.id,'var(--green)');updateBadges();
 }
 
-function imprimirOrcId(id) {
-  const orc = (ORCAMENTOS||[]).find(o=>o.id===id);
+function imprimirOrcData(orc) {
   if(!orc){ toast('Orçamento não encontrado','var(--orange)'); return; }
-  
   const resultados = orc.resultados || orc.parametros?.resultados || [];
   const numOrc = orc.numero_orcamento || orc.id?.substring(0,8) || '—';
-  const cliente = orc.cliente_nome || orc.descricao || '—';
+  const cid = String(orc.cliente_id || orc.cli_id || orc.clienteId || orc.cliId || '').trim();
+  const cliDb = cid ? getCli(cid) : null;
+  let cliente = String(orc.cliente_nome || orc.clienteNome || orc.descricao || '').trim();
+  if(!cliente || cliente.toLowerCase().includes('selecione')) cliente = (cliDb && cliDb.nome) ? cliDb.nome : '—';
   const medidas = orc.medidas || orc.titulo || '—';
-  const qtd = orc.quantidade || '—';
-  const data = fmtD(orc.criado_em);
+  const qtd = (orc.quantidade ?? orc.qtd) || '—';
+  const data = fmtD(orc.criado_em || orc.data || new Date().toISOString());
   const tipo = orc.parametros?.tipo || orc.onda || '—';
 
   const linhas = resultados.map(r => ` 
@@ -11858,6 +11885,7 @@ function imprimirOrcId(id) {
       <td style="text-align:right"><b>${fmtR(orc.valor_total)}</b></td> 
     </tr>`; 
 
+  const empNome = (getEmp(orc.empId||orc.emp_id||EMP_FILTRO)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"> 
 <title>Orçamento Nº ${numOrc} — Italy Embalagens</title> 
 <style> 
@@ -11879,7 +11907,7 @@ function imprimirOrcId(id) {
 </style></head><body> 
 <div class="header"> 
   <div> 
-    <h1>Italy Embalagens</h1> 
+    <h1>${escH(empNome)}</h1> 
     <div class="num">Orçamento Nº ${numOrc}</div> 
   </div> 
   <div style="text-align:right;font-size:11px;color:#666"> 
@@ -11923,6 +11951,10 @@ ${orc.observacoes ? '<p style="margin-bottom:16px"><b>Obs:</b> '+escH(orc.observ
   const w = window.open('','_blank','width=900,height=750');
   w.document.write(html); w.document.close(); w.focus();
   setTimeout(()=>w.print(), 600);
+}
+function imprimirOrcId(id) {
+  const orc = (ORCAMENTOS||[]).find(o=>o.id===id);
+  return imprimirOrcData(orc);
 }
 function imprimirOrc(){
   const id=document.getElementById('oc-num').value;
