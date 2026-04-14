@@ -117,6 +117,28 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+const _serverCache = {};
+const _serverCacheTTL = {};
+const SERVER_CACHE_TTL = 2 * 60 * 1000;
+
+function cacheGet(key) {
+  if (_serverCacheTTL[key] && Date.now() < _serverCacheTTL[key]) return _serverCache[key];
+  return null;
+}
+function cacheSet(key, data) {
+  _serverCache[key] = data;
+  _serverCacheTTL[key] = Date.now() + SERVER_CACHE_TTL;
+}
+function cacheClear(key) {
+  delete _serverCache[key];
+  delete _serverCacheTTL[key];
+}
+function cacheClearPrefix(prefix) {
+  Object.keys(_serverCacheTTL).forEach((k) => {
+    if (k.startsWith(prefix)) cacheClear(k);
+  });
+}
+
 function setNoCache(res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -562,7 +584,7 @@ app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
       .from('historico_acoes')
       .select('*')
       .order('data_hora', { ascending: false })
-      .limit(500);
+      .limit(100);
     if (req.query?.tipo) q = q.ilike('tipo_acao', `%${String(req.query.tipo)}%`);
     const { data, error } = await q;
     if (error) throw error;
@@ -867,6 +889,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
+    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prod,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor,obs,imgs,deleted_at,created_at,data_producao,data_entrega";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
@@ -874,7 +897,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let lastError = null;
     for (const empCol of empCols) {
       for (const field of fields) {
-        let q = supabase.from('ofs').select('*').order('seq', { ascending: true });
+        let q = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
         if (empCol) q = q.eq(empCol, empId);
         if (field) {
           if (from) q = q.gte(field, from);
@@ -887,7 +910,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (error) {
           const msg = String(error.message || error);
           if (!incluirExcluidas && msg.toLowerCase().includes("deleted_at") && (msg.includes('column') || msg.includes('Could not find'))) {
-            let q2 = supabase.from('ofs').select('*').order('seq', { ascending: true });
+            let q2 = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
             if (empCol) q2 = q2.eq(empCol, empId);
             if (field) {
               if (from) q2 = q2.gte(field, from);
@@ -1202,8 +1225,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const lite = String(req.query.lite || '') === '1';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
+    const selectSlim = 'id,nome,razao_social,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     for (const col of cols) {
-      let q = supabase.from('clientes').select('*').order('nome');
+      let q = supabase.from('clientes').select(selectSlim).order('nome');
       if (col) q = q.eq(col, empId);
       if (hasPaging) q = q.range(offset, offset + limit - 1);
       const { data, error } = await q;
@@ -1293,13 +1317,20 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
 app.get('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const cacheKey = 'vendedores_' + empId;
+    const cached = cacheGet(cacheKey);
+    if (cached) return ok(res, cached);
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
       let q = supabase.from('vendedores').select('*').order('nome');
       if (col) q = q.eq(col, empId);
       const { data, error } = await q;
-      if (!error) return ok(res, data || []);
+      if (!error) {
+        const rows = data || [];
+        cacheSet(cacheKey, rows);
+        return ok(res, rows);
+      }
       lastErr = error;
       const msg = String(error.message || error);
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
@@ -1313,6 +1344,7 @@ app.post('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('vendedores').insert([vendedoresIn(req.body || {})]).select();
     if (error) throw error;
+    cacheClearPrefix('vendedores_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1323,6 +1355,7 @@ app.put('/api/vendedores/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('vendedores')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
+    cacheClearPrefix('vendedores_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1331,6 +1364,7 @@ app.delete('/api/vendedores/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('vendedores').delete().eq('id', req.params.id);
     if (error) throw error;
+    cacheClearPrefix('vendedores_');
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
@@ -1378,8 +1412,11 @@ app.delete('/api/visitas_vendedor/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/empresas', async (req, res) => {
   try {
+    const cached = cacheGet('empresas');
+    if (cached) return ok(res, cached);
     const { data, error } = await supabase.from('empresas').select('*').order('nome');
     if (error) throw error;
+    cacheSet('empresas', data || []);
     ok(res, data);
   } catch (e) { err(res, e); }
 });
@@ -1561,8 +1598,11 @@ app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
+    const cached = cacheGet('maquinas');
+    if (cached) return ok(res, cached);
     const { data, error } = await supabase.from('maquinas').select('*').order('ordem', { ascending: true });
     if (error) throw error;
+    cacheSet('maquinas', data || []);
     ok(res, data);
   } catch (e) { err(res, e); }
 });
@@ -1586,6 +1626,7 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('maquinas').insert([payload]).select();
     if (error) { console.error('[maquinas POST] erro:', JSON.stringify(error)); throw error; }
     if (error) throw error;
+    cacheClear('maquinas');
     ok(res, data[0]);
   } catch (e) { console.error('[maquinas POST] catch:', e && e.message ? e.message : e); err(res, e); }
 });
@@ -1608,6 +1649,7 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('maquinas')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
+    cacheClear('maquinas');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1616,6 +1658,7 @@ app.delete('/api/maquinas/:id', async (req, res) => {
   try {
     const { error } = await supabase.from('maquinas').delete().eq('id', req.params.id);
     if (error) throw error;
+    cacheClear('maquinas');
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
@@ -1625,8 +1668,11 @@ app.delete('/api/maquinas/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/fluxos', async (req, res) => {
   try {
+    const cached = cacheGet('fluxos');
+    if (cached) return ok(res, cached);
     const { data, error } = await supabase.from('fluxos').select('*').order('nome');
     if (error) throw error;
+    cacheSet('fluxos', data || []);
     ok(res, data);
   } catch (e) { err(res, e); }
 });
@@ -1648,6 +1694,7 @@ app.post('/api/fluxos', authMiddleware, async (req, res) => {
     console.log('[fluxos POST] payload:', payload);
     const { data, error } = await supabase.from('fluxos').insert([payload]).select();
     if (error) { console.error('[fluxos POST] erro:', JSON.stringify(error)); throw error; }
+    cacheClear('fluxos');
     ok(res, data[0]);
   } catch (e) { console.error('[fluxos POST] catch:', e && e.message ? e.message : e); err(res, e); }
 });
@@ -1676,6 +1723,7 @@ app.put('/api/fluxos/:id', authMiddleware, async (req, res) => {
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
     const { data, error } = await supabase.from('fluxos').update(payload).eq('id', req.params.id).select();
     if (error) throw error;
+    cacheClear('fluxos');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1684,6 +1732,7 @@ app.delete('/api/fluxos/:id', async (req, res) => {
   try {
     const { error } = await supabase.from('fluxos').delete().eq('id', req.params.id);
     if (error) throw error;
+    cacheClear('fluxos');
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
@@ -2506,6 +2555,9 @@ function _chapasParseCsv(text) {
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
+    const cacheKey = 'chapas_estoque:' + table + ':' + JSON.stringify(req.query || {});
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
     const { data, error } = await supabase.from(table).select('*');
     if (error) {
       console.error('[chapas_estoque] erro Supabase:', JSON.stringify(error));
@@ -2575,6 +2627,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     });
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros');
+    cacheSet(cacheKey, rows);
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
@@ -2600,6 +2653,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
         }
       }
       if (error) return res.status(500).json({ error: error.message });
+      cacheClearPrefix('chapas_estoque:');
       await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
@@ -2620,6 +2674,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     };
     const { data, error } = await supabase.from('chapas_estoque').insert(payload).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    cacheClearPrefix('chapas_estoque:');
     await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
@@ -2644,6 +2699,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
         }
       }
       if (error) return res.status(500).json({ error: error.message });
+      cacheClearPrefix('chapas_estoque:');
       await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
@@ -2662,6 +2718,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    cacheClearPrefix('chapas_estoque:');
     await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
@@ -2678,6 +2735,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
       const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
       if (error) return res.status(500).json({ error: error.message });
+      cacheClearPrefix('chapas_estoque:');
       await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · qtd=${data?.quantidade ?? ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
@@ -2688,6 +2746,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    cacheClearPrefix('chapas_estoque:');
     await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida (legado): ${data?.nom || ''} · ${data?.forn || ''} · qtd=${data?.qtd ?? ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
@@ -2717,6 +2776,7 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
       console.error('[inline] erro:', error.message, 'payload:', payload);
       return res.status(500).json({ ok: false, error: error.message });
     }
+    cacheClearPrefix('chapas_estoque:');
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[inline] catch:', e.message);
@@ -2761,6 +2821,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
     const { data: upd, error: updErr } = await supabase.from(table).update(patch).eq('id', id).select().single();
     if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
+    cacheClearPrefix('chapas_estoque:');
 
     const canonUpd = _chapasCanonicalFromAny(upd, table);
     const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(newQtd - oldQtd)}`;

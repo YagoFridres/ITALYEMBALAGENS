@@ -4013,6 +4013,16 @@ function _renderEstoqueBase(chapas) {
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
   } else {
+    const cats = (CHAPAS_CATEGORIAS && CHAPAS_CATEGORIAS.length > 0)
+      ? CHAPAS_CATEGORIAS
+      : [{nome:'Estoque Simples'},{nome:'Estoque Duplo'},{nome:'Estoque Duplo Col.8'},{nome:'Estoque Simples Col.5'},{nome:'Estoque Simples Col.6'}];
+    const buildCatOptions = (item)=>{
+      const atual = String(item.categoria||'').trim();
+      return cats.map(c=>{
+        const nome = String((c&&c.nome)||'').trim();
+        return `<option value="${escAttr(nome)}" ${atual===nome?'selected':''}>${escH(nome)}</option>`;
+      }).join('');
+    };
     bodyEl.innerHTML = filtrada.map((c,i)=>{
       const qtd = Number(c.quantidade??c.qtd??0) || 0;
       const vunit = Number(c.valor_unitario??c.val??0) || 0;
@@ -4060,9 +4070,8 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
         <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
-          <select data-id="${escAttr(c.id)}" onchange="(async function(el){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(el.dataset.id)+'/inline',{method:'PATCH',body:JSON.stringify({categoria:el.value})});const d=await r.json().catch(()=>null);if(!d||!d.ok)alert('Erro: '+(d&&d.error?d.error:'falha'));})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
-            <option value="">—</option>
-            ${(CHAPAS_CATEGORIAS||[]).map(cat=>`<option value="${escAttr(cat.nome)}" ${String(c.categoria||'').trim()===String(cat.nome||'').trim()?'selected':''}>${escH(cat.nome)}</option>`).join('')}
+          <select class="est-cat-sel" data-id="${escAttr(c.id)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({categoria:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}const upd=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].categoria=val;};upd(_estoqueBase);upd(ESTOQUE);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+            ${buildCatOptions(c)}
           </select>
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
@@ -9153,6 +9162,9 @@ async function carregarCliches(){
 }
 async function carregarChapas(forcar=false){
   const now = Date.now();
+  if(!Array.isArray(CHAPAS_CATEGORIAS) || CHAPAS_CATEGORIAS.length===0){
+    try{ await carregarCategoriasChapas(); }catch(e){}
+  }
   if(!forcar && (now - _ultimaCargaChapas) < CACHE_TTL && Array.isArray(ESTOQUE) && ESTOQUE.length > 0) {
     try{ popularFiltrosEstoque(ESTOQUE); }catch(e){}
     try{ _renderEstoqueBase(ESTOQUE); }catch(e){}
@@ -9528,7 +9540,7 @@ async function syncFromServerSilent(){
     if(!ping.ok){ _apiConectado = false; return; }
     _apiConectado = true;
     const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops, nfs, inc] = await Promise.all([
-      api('GET','/ofs'+empParam), api('GET','/clientes'+empParam), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
+      api('GET','/ofs'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/clientes'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
       api('GET','/compras'), api('GET','/orcamentos'+empParam), api('GET','/fornecedores'+empParam), api('GET','/vendedores'+empParam),
       api('GET','/operadores'+empParam), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
@@ -9595,7 +9607,7 @@ function setupRealtimeSync(){
         if(applyDataSnapshot(d)) showSaveIndicator('↻ sincronizado','var(--teal)');
       }
     }catch(e){}
-  }, 5000);
+  }, 10 * 60 * 1000);
 }
 
 
@@ -10077,7 +10089,17 @@ function renderAlertasEstoque(){
 }
 
 // Override renderEstoque to also show alerts
-function renderEstoque(){_renderEstoqueBase();renderEstoqueResumo();renderAlertasEstoque();gerarNotificacoes();renderNotificacoes();if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();}
+function renderEstoque(){
+  if(!Array.isArray(CHAPAS_CATEGORIAS) || CHAPAS_CATEGORIAS.length===0){
+    carregarCategoriasChapas().then(()=>{ try{ _renderEstoqueBase(); }catch(e){} }).catch(()=>{});
+  }
+  _renderEstoqueBase();
+  renderEstoqueResumo();
+  renderAlertasEstoque();
+  gerarNotificacoes();
+  renderNotificacoes();
+  if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();
+}
 
 function triggerImportChapas(){
   const inp = document.getElementById('est-import-file');
