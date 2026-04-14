@@ -1659,7 +1659,7 @@ function renderPCP(){
   if(hbtn) hbtn.style.display=isHoje?'none':'';
 
   // Filter: show OFs for the current day OR active (in production) OR all if no date filter
-  let lista=[...OFs].filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
+  let lista=[...OFs].filter(o=>String(o.status||'').trim()!=='Pedido Pronto' && !o.deleted_at);
   if(isTodas){
     lista.sort((a,b)=>{
       const aa=String(a.created_at||'');
@@ -1677,6 +1677,7 @@ function renderPCP(){
     lista=lista.filter(o=>{
       if(o.status==='Cancelado' || o.status==='Cancelada') return false;
       if(o.status==='Pedido Pronto') return false;
+      if(o.deleted_at) return false;
       if(o.dia===PCP_DIA_ATUAL) return true;
       // Also show active OFs (in production) regardless of day
       if(o.status==='Em produção' || o.status==='Em Produção') return true;
@@ -1914,7 +1915,7 @@ async function renderOFsPorMaquina(){
     const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
     const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
 
-    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado'&&String(o.status||'').trim()!=='Pedido Pronto');
+    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado'&&String(o.status||'').trim()!=='Pedido Pronto' && !o.deleted_at);
     if(busca){
       lista = lista.filter(o=>{
         const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
@@ -2919,34 +2920,190 @@ async function salvarEdicaoOFId(id){
 }
 
 // ===================== LANÇAMENTO =====================
+var OFS_HIST = null;
+var LANC_UI = { tab:'prontas', busca:'', emp:'', mes:'' };
+
+function lancEmpNome(o){
+  const e = getEmp(o.empId||'');
+  const nome = (e && e.nome) ? e.nome : (o.empresa || o.empresa_nome || '');
+  return String(nome||'').trim();
+}
+function lancCliNome(o){
+  const cli = getCli(o.cliId)||null;
+  return String((cli && cli.nome) ? cli.nome : (o.cliente||o.cliente_nome||'')).trim() || '—';
+}
+function lancVendNome(o){
+  const v = getV(o.vendId)||null;
+  return String((v && v.nome) ? v.nome : (o.vendedor||o.vendedor_nome||'')).trim() || '—';
+}
+function lancDia(o){ return String((o.dia||o.data_pedido||o.dataPedido||'')||'').slice(0,10); }
+function lancEnt(o){ return String((o.ent||o.data_entrega||o.dataEntrega||'')||'').slice(0,10); }
+function lancTs(o, field){
+  const v = field ? o[field] : (o.deleted_at || o.data_conclusao || o.updated_at || o.created_at || '');
+  return String(v||'');
+}
+
+async function lancCarregarHistorico(){
+  const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const r = await api('GET','/ofs?incluir_excluidas=1'+(empParam?('&'+empParam.slice(1)):''));
+  if(!r || !r.ok){ toast('Erro ao carregar histórico: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
+  OFS_HIST = (Array.isArray(r.data)?r.data:[]).map(normalizeOF);
+  renderLancamento();
+}
+
+function lancSetTab(t){
+  LANC_UI.tab = t;
+  renderLancamento();
+}
+
+async function lancReativar(id){
+  const r = await api('PATCH','/ofs/'+encodeURIComponent(id), { status:'Aguardando' });
+  if(!r || !r.ok){ toast('Erro ao reativar: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
+  await lancCarregarHistorico();
+}
+async function lancRestaurar(id){
+  const r = await api('PATCH','/ofs/'+encodeURIComponent(id)+'/restore', {});
+  if(!r || !r.ok){ toast('Erro ao restaurar: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
+  await lancCarregarHistorico();
+}
+
+function lancAbrirDetalhes(id){
+  const of = (OFS_HIST||[]).find(x=>String(x.id||'')===String(id||'')) || (OFs||[]).find(x=>String(x.id||'')===String(id||'')) || null;
+  if(!of){ toast('OF não encontrada','var(--red)'); return; }
+  let modal = document.getElementById('modal-lanc-det');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-lanc-det';
+    modal.innerHTML = `<div class="modal" style="width:min(920px,98vw)">
+      <button class="close-btn" onclick="fechar('modal-lanc-det')">✕</button>
+      <h2>📄 Detalhes da OF</h2>
+      <div class="page-body" id="lanc-det-body" style="padding:12px 0"></div>
+      <div class="modal-footer" id="lanc-det-actions">
+        <button class="btn btn-ghost" onclick="fechar('modal-lanc-det')">Fechar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  const body = document.getElementById('lanc-det-body');
+  const act = document.getElementById('lanc-det-actions');
+  const cliNome = lancCliNome(of);
+  const vendNome = lancVendNome(of);
+  const empNome = lancEmpNome(of);
+  const status = String(of.status||'').trim();
+  body.innerHTML = `<div class="sbox"><div class="sbox-h">OF #${escH(of.of||'')}</div><div class="sbox-b">
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Cliente</div><div style="font-weight:800">${escH(cliNome)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Vendedor</div><div style="font-weight:800">${escH(vendNome)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Empresa</div><div style="font-weight:800">${escH(empNome||'—')}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Produto</div><div style="font-weight:800">${escH(of.prodDesc||'—')}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Qtd</div><div style="font-weight:800">${fmtN(of.qtd||0)} un</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Valor</div><div style="font-weight:900;color:var(--green)">${fmtR(of.val||0)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Pedido</div><div>${fmtD(lancDia(of))}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Entrega</div><div>${fmtD(lancEnt(of))}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Status</div><div>${escH(status||'—')}</div></div>
+    </div>
+    ${of.obs?`<div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono);margin-bottom:4px">Obs</div>${escH(of.obs)}</div>`:''}
+  </div></div>`;
+  act.innerHTML = `<button class="btn btn-ghost" onclick="fechar('modal-lanc-det')">Fechar</button>` +
+    ((status==='Cancelada'||status==='Cancelado') ? `<button class="btn btn-accent" onclick="lancReativar('${escAttr(of.id)}')">Reativar</button>` : '') +
+    (of.deleted_at ? `<button class="btn btn-accent" onclick="lancRestaurar('${escAttr(of.id)}')">Restaurar</button>` : '');
+  abrir('modal-lanc-det');
+}
+
 function renderLancamento(){
-  const hoje=today();
-  const prontas=[...OFs].filter(o=>String(o.status||'').trim()==='Pedido Pronto').sort((a,b)=>{
-    const aa=String(a.data_conclusao||a.updated_at||a.created_at||'');
-    const bb=String(b.data_conclusao||b.updated_at||b.created_at||'');
-    if(bb && aa && bb!==aa) return bb.localeCompare(aa);
+  const host = document.getElementById('lanc-lista');
+  const resumo = document.getElementById('lanc-resumo');
+  if(!host || !resumo) return;
+
+  if(!LANC_UI.mes) LANC_UI.mes = today().slice(0,7);
+
+  if(!Array.isArray(OFS_HIST)){
+    host.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando histórico...</div>`;
+    resumo.innerHTML = `<div style="padding:14px;color:var(--text3)">—</div>`;
+    lancCarregarHistorico();
+    return;
+  }
+
+  const q = String(LANC_UI.busca||'').trim().toLowerCase();
+  const emp = String(LANC_UI.emp||'').trim();
+  const mes = String(LANC_UI.mes||'').trim();
+
+  const base = (OFS_HIST||[]).filter(o=>{
+    const empNome = lancEmpNome(o);
+    const okEmp = !emp || empNome === emp;
+    if(!okEmp) return false;
+    if(mes){
+      const d = lancDia(o);
+      if(d && !String(d).startsWith(mes)) return false;
+    }
+    if(q){
+      const txt = [o.of, lancCliNome(o), o.prodDesc, lancVendNome(o), o.status, empNome].join(' ').toLowerCase();
+      if(!txt.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const prontas = base.filter(o=>String(o.status||'').trim()==='Pedido Pronto' && !o.deleted_at);
+  const cancel = base.filter(o=>['Cancelada','Cancelado'].includes(String(o.status||'').trim()) && !o.deleted_at);
+  const excl = base.filter(o=>!!o.deleted_at);
+
+  const tab = LANC_UI.tab || 'prontas';
+  let rows = tab==='canceladas' ? cancel : tab==='excluidas' ? excl : prontas;
+  rows = rows.slice().sort((a,b)=>{
+    const fa = tab==='excluidas' ? lancTs(a,'deleted_at') : tab==='canceladas' ? lancTs(a,'updated_at') : lancTs(a,'data_conclusao');
+    const fb = tab==='excluidas' ? lancTs(b,'deleted_at') : tab==='canceladas' ? lancTs(b,'updated_at') : lancTs(b,'data_conclusao');
+    if(fb && fa && fb!==fa) return fb.localeCompare(fa);
     return String(b.of||'').localeCompare(String(a.of||''));
   });
-  const recentes=prontas.slice(0,30);
-  document.getElementById('lanc-lista').innerHTML=recentes.map(o=>{
-    const cli=getCli(o.cliId)||{nome:'—'};
-    return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--s2);font-size:.78rem;flex-wrap:wrap">
-      <span class="of-num">${o.of}</span>
-      <span>${cli.nome}</span>
-      <span style="color:var(--text2)">${(o.qtd||0).toLocaleString()} un</span>
-      <span style="color:var(--text2)">${o.dia||'—'}</span>
-      ${stTag(o.status)}
-      <span style="color:var(--green);font-family:var(--mono);margin-left:auto">${fmtR(o.val)}</span>
-    </div>`;
-  }).join('');
-  const total=prontas.reduce((s,o)=>s+(o.val||0),0);
-  const abertos=OFs.filter(o=>!['Concluído','Pedido Pronto','Cancelada','Cancelado'].includes(String(o.status||'').trim())).length;
-  document.getElementById('lanc-resumo').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="card" style="background:var(--s2)"><div class="card-lbl">OFs Prontas</div><div class="card-val cv-g">${prontas.length}</div></div>
-      <div class="card" style="background:var(--s2)"><div class="card-lbl">OFs em Aberto</div><div class="card-val cv-y">${abertos}</div></div>
-      <div class="card" style="background:var(--s2)"><div class="card-lbl">Total (OFs Prontas)</div><div class="card-val cv-g" style="font-size:1.2rem">${fmtR(total)}</div></div>
-    </div>`;
+
+  const btn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${LANC_UI.tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
+
+  resumo.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    ${btn('prontas','Pedidos Prontos',prontas.length)}
+    ${btn('canceladas','Canceladas',cancel.length)}
+    ${btn('excluidas','Excluídas',excl.length)}
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar</button>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+    <input id="lanc-busca" placeholder="🔍 Cliente / Nº OF / Produto" value="${escAttr(LANC_UI.busca||'')}" oninput="LANC_UI.busca=this.value;renderLancamento()" style="width:230px">
+    <select id="lanc-emp" onchange="LANC_UI.emp=this.value;renderLancamento()" style="width:190px">
+      <option value="">Todas empresas</option>
+      <option value="Italy Embalagens" ${LANC_UI.emp==='Italy Embalagens'?'selected':''}>Italy Embalagens</option>
+      <option value="Cartoeste" ${LANC_UI.emp==='Cartoeste'?'selected':''}>Cartoeste</option>
+      <option value="Oestepack" ${LANC_UI.emp==='Oestepack'?'selected':''}>Oestepack</option>
+    </select>
+    <input id="lanc-mes" type="month" value="${escAttr(LANC_UI.mes||'')}" onchange="LANC_UI.mes=this.value;renderLancamento()" style="width:160px">
+  </div>`;
+
+  const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  host.innerHTML = `<div style="max-height:66vh;overflow:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:1100px">
+      <thead><tr>
+        <th style="${th}">OF</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Qtd</th>
+        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${rows.length?rows.map(o=>`
+          <tr style="background:var(--surface)">
+            <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
+            <td style="${td}">${escH(lancCliNome(o))}</td>
+            <td style="${td};max-width:280px;overflow:hidden;text-overflow:ellipsis">${escH(o.prodDesc||'—')}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(o.qtd||0)}</td>
+            <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
+            <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
+            <td style="${td}">${escH(lancVendNome(o))}</td>
+            <td style="${td};text-align:center">
+              <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver detalhes</button>
+              ${(tab==='canceladas')?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
+              ${(tab==='excluidas')?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
+            </td>
+          </tr>`).join(''):`<tr><td colspan="8" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 // ===================== CLIENTES =====================
@@ -3654,6 +3811,7 @@ function setupEstoqueInlineDelegation(){
       try{
         estSetBusy(true);
         const payload = { empresa_vinculada: val, qual_cnpj: val, emp_id: estEmpIdFromEmpresa(val) };
+        console.log('[EMPRESA] enviando:', { id, empresa_vinculada: val, qual_cnpj: val, emp_id: payload.emp_id });
         const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -3721,6 +3879,7 @@ function setupEstoqueInlineDelegation(){
 
     try{
       estSetBusy(true);
+      console.log('[RISCADA] enviando:', { id, riscada: val });
       const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -4710,6 +4869,7 @@ function renderFluxos(){
 async function novoFluxo(){
   const nome=prompt('Nome do fluxo:');if(!nome)return;
   const row={nome:nome.trim(),etapas:[]};
+  console.log('[FLUXO] payload enviado:', JSON.stringify(row));
   const r=await salvarViaApiOuLocal('fluxo',
     ()=>api('POST','/fluxos', row),
     ()=>({ok:true, local:true})
@@ -4735,6 +4895,7 @@ async function addEtapa(fi,sel){
   if(!sel.value)return;
   const fl=FLUXOS[fi]; if(!fl) return;
   fl.etapas.push(sel.value);sel.value='';
+  console.log('[FLUXO] payload enviado:', JSON.stringify({ nome: fl.nome, etapas: fl.etapas }));
   const r=await salvarViaApiOuLocal('fluxo',
     ()=>api('PUT','/fluxos/'+encodeURIComponent(fl.id), { nome:fl.nome, etapas:fl.etapas }),
     ()=>({ok:true, local:true})
@@ -4746,6 +4907,7 @@ async function addEtapa(fi,sel){
 async function rmEtapa(fi,ei){
   const fl=FLUXOS[fi]; if(!fl) return;
   fl.etapas.splice(ei,1);
+  console.log('[FLUXO] payload enviado:', JSON.stringify({ nome: fl.nome, etapas: fl.etapas }));
   const r=await salvarViaApiOuLocal('fluxo',
     ()=>api('PUT','/fluxos/'+encodeURIComponent(fl.id), { nome:fl.nome, etapas:fl.etapas }),
     ()=>({ok:true, local:true})
@@ -4777,7 +4939,7 @@ function renderMaquinasConf(){
 // ===================== TABLETS =====================
 function renderTablets(){
   document.getElementById('maq-sel-grid').innerHTML=MAQUINAS.map(m=>{
-    const fila=OFs.filter(o=>(o.maq||[]).includes(m.id)&&o.status!=='Concluído').sort((a,b)=>a.seq-b.seq);
+    const fila=OFs.filter(o=>(o.maq||[]).includes(m.id)&&o.status!=='Concluído'&&String(o.status||'').trim()!=='Pedido Pronto'&&!o.deleted_at).sort((a,b)=>a.seq-b.seq);
     const st=TAB_STATE[m.id];
     const busy=st&&st.status==='rodando';
     return `<div class="maq-sel-card ${busy?'busy':''}" onclick="abrirTablet('${m.id}')">
@@ -4805,7 +4967,7 @@ function fecharTablet(){
 
 function renderTabletBody(){
   const maqId=tabMaq;
-  const fila=OFs.filter(o=>(o.maq||[]).includes(maqId)&&o.status!=='Concluído').sort((a,b)=>a.seq-b.seq);
+  const fila=OFs.filter(o=>(o.maq||[]).includes(maqId)&&o.status!=='Concluído'&&String(o.status||'').trim()!=='Pedido Pronto'&&!o.deleted_at).sort((a,b)=>a.seq-b.seq);
   const atual=fila[0];
   const st=TAB_STATE[maqId]||{status:'aguardando',acumSecs:0,fase:'setup'};
   const histMaq=APONTAMENTOS.filter(a=>a.maqId===maqId).slice(-6).reverse();
@@ -5259,7 +5421,7 @@ function tabProximoPedido(maqId, ofNum){
   if(!o){ toast('OF não encontrada','var(--red)'); return; }
 
   // Fila desta máquina (excluindo cancelados/concluídos)
-  const fila=OFs.filter(x=>(x.maq||[]).includes(maqId)&&x.status!=='Concluído'&&x.status!=='Cancelado').sort((a,b)=>a.seq-b.seq);
+  const fila=OFs.filter(x=>(x.maq||[]).includes(maqId)&&x.status!=='Concluído'&&x.status!=='Cancelado'&&String(x.status||'').trim()!=='Pedido Pronto'&&!x.deleted_at).sort((a,b)=>a.seq-b.seq);
 
   if(fila.length<=1){
     toast('Não há próximo pedido na fila','var(--yellow)');
@@ -8566,6 +8728,7 @@ function normalizeOF(r){
   const imgUrl = r.imagem_url ?? null;
   const dataConc = r.data_conclusao ?? null;
   const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
+  const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
   return {
     id:r.id,
     seq:r.seq ?? r.prioridade ?? 0,
@@ -8590,7 +8753,8 @@ function normalizeOF(r){
     imagem_url: imgUrl,
     data_conclusao: dataConc,
     created_at: createdAt,
-    empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? ''
+    empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? '',
+    deleted_at: deletedAt
   };
 }
 function normalizeCli(r){
@@ -9474,6 +9638,7 @@ async function salvarMaquina(){
       const m = MAQUINAS[idx];
       if(!m){toast('Máquina não encontrada','var(--red)');return;}
       const payload = {...m, ...dados, id: m.id};
+      console.log('[MAQ] payload enviado:', JSON.stringify(payload));
       const r = await salvarViaApiOuLocal('maquina',
         ()=>api('PUT','/maquinas/'+encodeURIComponent(m.id), payload),
         ()=>{ Object.assign(m, dados); return {ok:true, local:true}; }
@@ -9484,6 +9649,7 @@ async function salvarMaquina(){
     } else {
       dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
       const payload = {...dados};
+      console.log('[MAQ] payload enviado:', JSON.stringify(payload));
       const r = await salvarViaApiOuLocal('maquina',
         ()=>api('POST','/maquinas', payload),
         ()=>{ MAQUINAS.push(payload); return {ok:true, local:true}; }
@@ -16153,19 +16319,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       btn.id = 'btn-excluir-of-def';
       btn.className = 'btn btn-red btn-sm';
       btn.textContent = '🗑 Excluir OF';
-      btn.title = 'Exclui definitivamente a OF selecionada';
+      btn.title = 'Move a OF para a aba Excluídas';
       btn.onclick = function(){ excluirOFDefinitivaSel(); };
       if(refBtn && refBtn.parentNode) refBtn.parentNode.insertBefore(btn, refBtn.nextSibling);
       else toolbar.appendChild(btn);
     }catch(e){}
   }
 
-  function hardDeleteLocal(o){
+  function softDeleteLocal(o){
     if(!o) return false;
     const ofNum = o.of;
-    OFs = OFs.filter(x => x.of !== ofNum && x.id !== o.id);
-    if(Array.isArray(APONTAMENTOS)) APONTAMENTOS = APONTAMENTOS.filter(a => (a.of||a.ofNum||a.of_num) !== ofNum);
-    if(Array.isArray(NOTIFICACOES)) NOTIFICACOES = NOTIFICACOES.filter(n => (n.of||n.ofNum||n.ref) !== ofNum);
+    o.deleted_at = new Date().toISOString();
     if(typeof ofSel !== 'undefined' && ofSel === ofNum) ofSel = null;
     try{ gerarNotificacoes(); }catch(e){}
     try{ renderNotificacoes(); }catch(e){}
@@ -16173,7 +16337,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     try{ renderLancamento(); }catch(e){}
     try{ updateBadges(); }catch(e){}
     try{ autoSaveTrigger('delete-of'); }catch(e){}
-    try{ logAction('OF excluída definitivamente', ofNum); }catch(e){}
+    try{ logAction('OF excluída', ofNum); }catch(e){}
     return true;
   }
 
@@ -16183,10 +16347,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     if(!o){ toast('OF não encontrada','var(--red)'); return; }
     const cli = (typeof getCli==='function' ? (getCli(o.cliId)||{nome:'?'}) : {nome:'?'}).nome;
     const ok = confirm(
-      'EXCLUIR DEFINITIVAMENTE a OF '+o.of+'?\n\n' +
+      'EXCLUIR a OF '+o.of+'?\n\n' +
       'Cliente: '+cli+'\n' +
       'Quantidade: '+((o.qtd||0).toLocaleString ? (o.qtd||0).toLocaleString('pt-BR') : (o.qtd||0))+' un\n\n' +
-      'Esta ação remove a OF do PCP e do lançamento de pedidos.'
+      'Esta ação move a OF para a aba "Excluídas".'
     );
     if(!ok) return;
 
@@ -16204,15 +16368,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     }
 
     if(!deleted){
-      hardDeleteLocal(o);
-      toast('🗑 OF excluída definitivamente','var(--green)');
+      softDeleteLocal(o);
+      toast('🗑 OF excluída','var(--green)');
       return;
     }
 
-    hardDeleteLocal(o);
+    softDeleteLocal(o);
     try{ await syncFromServerSilent(); }catch(e){}
     showSaveIndicator('✓ excluído','var(--green)');
-    toast('🗑 OF excluída definitivamente','var(--green)');
+    toast('🗑 OF excluída','var(--green)');
   };
 
   // Real time mais agressivo para novas OFs entre usuários via backend/API.
@@ -16898,7 +17062,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
   function enhanceTabletDOM(){
     if(!window.tabMaq) return;
-    const fila=OFs.filter(o=>(o.maq||[]).includes(tabMaq)&&o.status!=='Concluído').sort((a,b)=>a.seq-b.seq);
+    const fila=OFs.filter(o=>(o.maq||[]).includes(tabMaq)&&o.status!=='Concluído'&&String(o.status||'').trim()!=='Pedido Pronto'&&!o.deleted_at).sort((a,b)=>a.seq-b.seq);
     const atual=fila[0]; const prox=fila.slice(1,5);
     const tvOf=document.querySelector('.tv-of');
     if(tvOf && atual){

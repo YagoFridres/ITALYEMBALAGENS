@@ -839,6 +839,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = req.query.from ? String(req.query.from) : '';
     const to = req.query.to ? String(req.query.to) : '';
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
 
@@ -851,7 +852,24 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           if (from) q = q.gte(field, from);
           if (to) q = q.lte(field, to);
         }
-        const { data, error } = await q;
+        if (!incluirExcluidas) q = q.is('deleted_at', null);
+
+        let { data, error } = await q;
+        if (error) {
+          const msg = String(error.message || error);
+          if (!incluirExcluidas && msg.toLowerCase().includes("deleted_at") && (msg.includes('column') || msg.includes('Could not find'))) {
+            let q2 = supabase.from('ofs').select('*').order('seq', { ascending: true });
+            if (empCol) q2 = q2.eq(empCol, empId);
+            if (field) {
+              if (from) q2 = q2.gte(field, from);
+              if (to) q2 = q2.lte(field, to);
+            }
+            const r2 = await q2;
+            data = r2.data;
+            error = r2.error;
+          }
+        }
+
         if (!error) return ok(res, data || []);
         lastError = error;
         const msg = String(error.message || error);
@@ -870,7 +888,32 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try { ok(res, await updateOne('ofs', req.params.id, ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
-  try { await deleteOne('ofs', req.params.id); ok(res, true); } catch (e) { bad(res, e.message); }
+  try {
+    const id = String(req.params.id || '').trim();
+    const now = new Date().toISOString();
+    const payload = { deleted_at: now, updated_at: now };
+    let { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
+        await deleteOne('ofs', id);
+        return ok(res, true);
+      }
+      throw error;
+    }
+    return res.json({ ok: true, data });
+  } catch (e) { bad(res, e.message); }
+});
+
+app.patch('/api/ofs/:id/restore', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const now = new Date().toISOString();
+    const payload = { deleted_at: null, updated_at: now };
+    const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
@@ -893,7 +936,15 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     }
     if (empId) query = query.eq('emp_id', empId);
     query = query.neq('status', 'Cancelada').neq('status', 'Cancelado');
-    const { data: ofs, error } = await query;
+    let { data: ofs, error } = await query.is('deleted_at', null);
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
+        const r2 = await query;
+        ofs = r2.data;
+        error = r2.error;
+      }
+    }
     if (error) return res.status(500).json({ error: error.message });
     const { data: vendedores } = await supabase.from('vendedores').select('id, nome');
     const mapVend = {};
