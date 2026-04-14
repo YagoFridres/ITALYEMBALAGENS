@@ -2570,7 +2570,15 @@ function _posIcon(i){
 }
 function _maqListaFluxoUI(){
   if (Array.isArray(MAQUINAS) && MAQUINAS.length > 0) {
+    const seen = new Set();
     return [...MAQUINAS]
+      .filter(m => {
+        const k = String(m.nome || m.col || '').trim().toLowerCase();
+        if (!k) return false;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      })
       .map(m=>({ id:String(m.id), nome:String(m.nome||m.col||'').trim()||String(m.id), ordem:(m.ordem!=null?Number(m.ordem):null) }))
       .sort((a,b)=> (Number(a.ordem||99) - Number(b.ordem||99)));
   }
@@ -10709,8 +10717,8 @@ async function salvarFaca1(){
     medidas: document.getElementById('fa1-medidas')?.value || '',
     valor: parseFloat(document.getElementById('fa1-valor')?.value) || 0,
     obs: document.getElementById('fa1-obs')?.value || '',
-    maquinas: _getChips('fa1-maquinas-chips'),
-    clientes: _getChips('fa1-clientes-chips'),
+    maquinas: JSON.stringify(_getChips('fa1-maquinas-chips') || []),
+    clientes: JSON.stringify(_getChips('fa1-clientes-chips') || []),
     emp_id: EMP_FILTRO || 'E1'
   };
   const r = await apiFetch('/api/facas_estoque', { method: 'POST', body: JSON.stringify(row) });
@@ -10822,8 +10830,8 @@ async function salvarCliche(){
     medidas: document.getElementById('cl2-medidas')?.value || '',
     valor: parseFloat(document.getElementById('cl2-valor')?.value) || 0,
     obs: document.getElementById('cl2-obs')?.value || '',
-    maquinas: _getChips('cl2-maquinas-chips'),
-    clientes: _getChips('cl2-clientes-chips'),
+    maquinas: JSON.stringify(_getChips('cl2-maquinas-chips') || []),
+    clientes: JSON.stringify(_getChips('cl2-clientes-chips') || []),
     emp_id: EMP_FILTRO || 'E1'
   };
   const r = await apiFetch('/api/cliches_estoque', { method: 'POST', body: JSON.stringify(row) });

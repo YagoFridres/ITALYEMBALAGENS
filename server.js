@@ -2493,14 +2493,15 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
   try {
     const b = req.body || {};
     const table = await _chapasPreferV2Table();
-    let allowed = ['empresa_vinculada', 'qual_cnpj', 'categoria', 'emp_id'];
-    if (table === 'chapas_estoque_v2') allowed.push('riscada');
+    const allowed = ['empresa_vinculada', 'qual_cnpj', 'categoria', 'emp_id', 'riscada'];
     const payload = {};
     allowed.forEach(k => { if (k in b) payload[k] = b[k]; });
     if (b.empresa_vinculada) payload.qual_cnpj = b.empresa_vinculada;
-    payload.atualizado_por = req.usuario?.nome || 'sistema';
-    if (Object.keys(payload).length <= 1) {
+    if (Object.keys(payload).length === 0) {
       return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Recebido: ' + JSON.stringify(b) });
+    }
+    if (table === 'chapas_estoque_v2') {
+      payload.atualizado_por = req.usuario?.nome || 'sistema';
     }
     const { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
