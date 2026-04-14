@@ -2528,6 +2528,7 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
 
     let { data, error } = await supabase.from(table).update(finalPayload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
+      console.error('[inline patch] SUPABASE ERROR:', JSON.stringify(error, null, 2));
       const msg = String(error.message || error);
       const m = msg.match(/Could not find the '([^']+)' column/i);
       if (m && m[1] && finalPayload[m[1]] !== undefined) {

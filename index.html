@@ -3229,19 +3229,23 @@ async function salvarCliente() {
     : await apiFetch('/api/clientes', { method:'POST', body: payload });
   const r = resp ? await resp.json().catch(()=>null) : null;
   if(!resp || !resp.ok || (r && r.error)){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
-  const saved = normalizeCli((r && (r.data || r)) || payload);
+  const saved = normalizeCli((r && r.data) ? r.data : payload);
   if(id){
     const idx = (CLIENTES||[]).findIndex(c=>String(c.id||'').trim()===id);
     if(idx >= 0) CLIENTES[idx] = { ...CLIENTES[idx], ...saved, id };
     else CLIENTES.push({ ...saved, id });
   } else {
+    // Para novos, pega o ID gerado pelo backend se existir
+    if (r && r.data && r.data.id) saved.id = r.data.id;
+    else if (r && r.id) saved.id = r.id;
     CLIENTES.push(saved);
   }
   toast(id?'Cliente atualizado ✓':'Cliente criado ✓','var(--green)');
   fechar('modal-cli');
   CLIENTE_ATUAL_ID = '';
   renderClientes();
-  autoSaveTrigger();
+  // Evitar race condition: não chamar carregarClientes imediatamente se foi um PUT
+  if (!id) autoSaveTrigger();
 }
 
 function _normClienteNome(v){
@@ -4789,17 +4793,35 @@ function renderFluxos(){
     </div>`).join('');
 }
 async function novoFluxo(){
-  const nome=prompt('Nome do fluxo:');if(!nome)return;
-  const row={nome:nome.trim(),etapas:[]};
+  document.getElementById('fluxo-nome-input').value = '';
+  abrir('modal-fluxo');
+  setTimeout(()=>document.getElementById('fluxo-nome-input').focus(),100);
+}
+
+async function salvarNovoFluxo(){
+  const input = document.getElementById('fluxo-nome-input');
+  const nome = input.value.trim();
+  if(!nome) { toast('Informe o nome do fluxo','var(--red)'); return; }
+  
+  const row={nome,etapas:[]};
   console.log('[FLUXO] payload enviado:', JSON.stringify(row));
+  
+  let token = String(localStorage.getItem('token') || '').trim();
+  const headers = { 'Content-Type': 'application/json' };
+  if(token) headers['Authorization'] = `Bearer ${token}`;
+  
   const r=await salvarViaApiOuLocal('fluxo',
-    ()=>api('POST','/fluxos', row),
+    ()=>fetch((window.API_BASE || '') + '/api/fluxos', { method: 'POST', headers, body: JSON.stringify(row) }).then(res=>res.json()),
     ()=>({ok:true, local:true})
   );
+  
   if(!r || !r.ok){toast('Erro ao criar fluxo','var(--red)');return;}
   if(!r.local){ try{ await carregarFluxos(); }catch(e){} }
   else FLUXOS.push({id:'F'+Date.now(),nome:row.nome,etapas:[]});
+  
+  fechar('modal-fluxo');
   renderFluxos();
+  toast('Fluxo criado!','var(--green)');
 }
 async function delFluxo(fi){
   if(!confirm('Remover fluxo?'))return;
@@ -8631,9 +8653,27 @@ async function apiFetchRaw(method, url, body, extra) {
 }
 
 async function api(method, url, body) {
-  const resp = await apiFetch('/api' + url, { method, body });
-  if(!resp) return null;
-  return resp.json();
+  let token = String(localStorage.getItem('token') || '').trim();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  
+  const fullUrl = (window.API_BASE || '') + '/api' + url;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  
+  let resp = await fetch(fullUrl, opts);
+  if (resp.status === 401) {
+    const ref = await fetch((window.API_BASE || '') + '/api/auth/refresh', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (ref.ok) {
+      const j = await ref.json().catch(()=>null);
+      if (j && j.token) {
+        localStorage.setItem('token', j.token);
+        headers['Authorization'] = `Bearer ${j.token}`;
+        resp = await fetch(fullUrl, opts);
+      }
+    }
+  }
+  return resp.json().catch(() => null);
 }
 
 async function apiUpload(url, formData) {
@@ -10687,7 +10727,7 @@ function _readFoto1(cb){
 async function salvarFaca1(){
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome da faca','var(--red)');return;}
   const foto = await new Promise((resolve)=>_readFoto1(resolve));
-  const row={id:_idFaca(FACAS),nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null};
+  const row={nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null};
   const r=await salvarViaApiOuLocal('faca',
     ()=>api('POST','/facas_estoque', row),
     ()=>{ FACAS.push(row); return {ok:true, local:true, data:row}; }
@@ -15979,6 +16019,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent" onclick="salvarFornecedor()">Salvar Fornecedor</button>
   </div>
 </div></div>
+
+<!-- Modal Fluxo -->
+<div class="modal-overlay" id="modal-fluxo">
+<div class="modal" style="width:min(400px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-fluxo')">✕</button>
+  <h2>🔄 Novo Fluxo</h2>
+  <div class="fg">
+    <div class="mf fgf"><label>NOME DO FLUXO *</label><input id="fluxo-nome-input" placeholder="Ex: PADRÃO 1"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-fluxo')">Cancelar</button>
+    <button class="btn btn-primary" onclick="salvarNovoFluxo()">Salvar Fluxo</button>
+  </div>
+</div>
+</div>
 
 <!-- Modal Máquina -->
 <div class="modal-overlay" id="modal-maquina">
