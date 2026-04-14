@@ -1481,14 +1481,9 @@ app.get('/api/fluxos', async (req, res) => {
 
 app.post('/api/fluxos', authMiddleware, async (req, res) => {
   try {
-    const b = req.body || {};
-    const payload = {
-      nome: String(b.nome || '').trim(),
-      descricao: String(b.descricao || '').trim() || null,
-      emp_id: String(b.emp_id ?? b.empId ?? '').trim() || null,
-      ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1'),
-      etapas: Array.isArray(b.etapas) ? JSON.stringify(b.etapas) : (b.etapas != null ? String(b.etapas) : '[]')
-    };
+    const payload = { ...(req.body || {}) };
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    if (Array.isArray(payload.etapas)) payload.etapas = JSON.stringify(payload.etapas);
     console.log('[fluxos POST] payload:', payload);
     const { data, error } = await supabase.from('fluxos').insert([payload]).select();
     if (error) { console.error('[fluxos POST] erro:', JSON.stringify(error)); throw error; }
@@ -1779,9 +1774,11 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
+    console.log('[facas POST] payload:', payload);
     for (let i = 0; i < 10; i++) {
       const { data, error } = await supabase.from('facas_estoque').insert([payload]).select();
       if (!error) return ok(res, data[0]);
+      console.error('[facas POST] erro:', JSON.stringify(error));
       const msg = String(error.message || error);
       const m1 = msg.match(/Could not find the '([^']+)' column/);
       const m2 = msg.match(/column \"([^\"]+)\"/);
@@ -1878,9 +1875,11 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
     };
     Object.keys(payloadBase).forEach(k => payloadBase[k] === undefined && delete payloadBase[k]);
     let payload = { ...payloadBase };
+    console.log('[cliches POST] payload:', payload);
     for (let i = 0; i < 10; i++) {
       const { data, error } = await supabase.from('cliches_estoque').insert([payload]).select();
       if (!error) return ok(res, data[0]);
+      console.error('[cliches POST] erro:', JSON.stringify(error));
       const msg = String(error.message || error);
       const m1 = msg.match(/Could not find the '([^']+)' column/);
       const m2 = msg.match(/column \"([^\"]+)\"/);

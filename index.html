@@ -457,7 +457,7 @@ td.tc{text-align:center;}
 .ic-tipo{font-size:.68rem;font-weight:700;font-family:var(--mono);background:var(--s3);border-radius:4px;padding:2px 7px;color:var(--orange);}
 
 /* ===== MODAL ===== */
-.modal-overlay{display:none;position:fixed;inset:0;background:#00000070;backdrop-filter:blur(4px);z-index:900;align-items:flex-start;justify-content:center;padding:20px 10px;overflow-y:auto;}
+.modal-overlay{display:none;position:fixed;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7)!important;backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px 10px;overflow-y:auto;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:min(700px,98vw);position:relative;box-shadow:var(--shadow-lg);}
 .modal h2{font-size:.92rem;margin-bottom:16px;color:var(--accent);font-family:var(--mono);display:flex;align-items:center;gap:8px;font-weight:700;}
@@ -2377,7 +2377,7 @@ async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
-  try{ await carregarMaquinasFluxo(); }catch(e){}
+  try{ await carregarMaquinas(); }catch(e){}
   console.log('[EDIT OF] dados carregados:', JSON.stringify({
     id: oEdit?.id, of: oEdit?.of, cliente: oEdit?.cliId,
     produto: oEdit?.prodDesc, qtd: oEdit?.qtd, fluxo: oEdit?.fluxo_maquinas
@@ -2568,13 +2568,34 @@ function _posIcon(i){
   const a=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
   return a[i-1]||String(i);
 }
+function _maqListaFluxoUI(){
+  const base = (Array.isArray(MAQUINAS) && MAQUINAS.length)
+    ? MAQUINAS.map(m=>({ id:String(m.id), nome:String(m.nome||m.col||'').trim()||String(m.id), ordem:(m.ordem!=null?Number(m.ordem):null) }))
+    : [];
+  const byNome = new Set(base.map(x=>_normMaqNome(x.nome)));
+  MAQUINAS_FLUXO.forEach((nome,idx)=>{
+    const k = _normMaqNome(nome);
+    if(!byNome.has(k)){
+      base.push({ id:nome, nome, ordem: 1000+idx });
+      byNome.add(k);
+    }
+  });
+  if(!base.length){
+    return MAQUINAS_FLUXO.map((nome,idx)=>({ id:nome, nome, ordem: 1000+idx }));
+  }
+  base.sort((a,b)=>{
+    const oa = a.ordem!=null && Number.isFinite(a.ordem) ? a.ordem : 99;
+    const ob = b.ordem!=null && Number.isFinite(b.ordem) ? b.ordem : 99;
+    if(oa !== ob) return oa - ob;
+    return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR');
+  });
+  return base;
+}
 function renderMaqChks(sel){
   if(Array.isArray(sel)) OF_FLUXO_IDS=[...sel].map(v=>String(v));
   OF_FLUXO_IDS=[...new Set((OF_FLUXO_IDS||[]).map(v=>String(v)).filter(v=>v && v!=='undefined' && v!=='null'))];
 
-  const maqOrdenadas=(Array.isArray(MAQUINAS_FLUXO_ITENS) && MAQUINAS_FLUXO_ITENS.length)
-    ? MAQUINAS_FLUXO_ITENS
-    : MAQUINAS_FLUXO.map(nome=>({ id:nome, nome }));
+  const maqOrdenadas=_maqListaFluxoUI();
 
   const posOf=(id)=>{const i=(OF_FLUXO_IDS||[]).indexOf(String(id));return i>=0?i+1:0;};
   const domId=(id)=>String(id).replace(/[^a-zA-Z0-9_-]/g,'_');
@@ -2643,15 +2664,13 @@ function ofFluxoDrop(targetId,ev){
 async function preencherMaq(){
   const fl=getF(document.getElementById('f-fl').value);
   if(!fl){toast('Selecione um fluxo primeiro','var(--yellow)');return;}
-  try{ await carregarMaquinasFluxo(); }catch(e){}
-  const itens=(Array.isArray(MAQUINAS_FLUXO_ITENS) && MAQUINAS_FLUXO_ITENS.length)
-    ? MAQUINAS_FLUXO_ITENS
-    : MAQUINAS_FLUXO.map(nome=>({ id:nome, nome }));
+  try{ await carregarMaquinas(); }catch(e){}
+  const itens=_maqListaFluxoUI();
   const ids = (fl.etapas||[]).map(step=>{
     const raw = String(step||'').trim();
     const nome = MAQ_CODIGO_PARA_NOME[raw] || raw;
     const it = itens.find(x=>String(x.id)===raw) || itens.find(x=>_normMaqNome(x.nome)===_normMaqNome(nome));
-    return it ? String(it.id) : raw;
+    return it ? String(it.id) : (String(nome||raw));
   }).filter(Boolean);
   OF_FLUXO_IDS = ids;
   renderMaqChks();
@@ -2664,15 +2683,19 @@ function ofFluxoNamesFromIds(ids){
     const raw = String(id||'').trim();
     const nomeCod = MAQ_CODIGO_PARA_NOME[raw];
     if(nomeCod) return nomeCod;
-    const it = (Array.isArray(MAQUINAS_FLUXO_ITENS) ? MAQUINAS_FLUXO_ITENS : []).find(x=>String(x.id)===raw);
-    return it ? it.nome : raw;
+    const it = (Array.isArray(MAQUINAS) ? MAQUINAS : []).find(x=>String(x.id||'')===raw);
+    if(it) return String(it.nome||it.col||'').trim() || raw;
+    const ui = _maqListaFluxoUI().find(x=>String(x.id)===raw);
+    return ui ? ui.nome : raw;
   }).filter(Boolean);
 }
 function ofFluxoIdsFromNames(names){
   return (names||[]).map(n=>{
     const s=String(n||'').trim();
-    const it = (Array.isArray(MAQUINAS_FLUXO_ITENS) ? MAQUINAS_FLUXO_ITENS : []).find(x=>_normMaqNome(x.nome)===_normMaqNome(s));
-    return it ? String(it.id) : s;
+    const it = (Array.isArray(MAQUINAS) ? MAQUINAS : []).find(x=>_normMaqNome(x.nome||x.col||'')===_normMaqNome(s));
+    if(it) return String(it.id);
+    const ui = _maqListaFluxoUI().find(x=>_normMaqNome(x.nome)===_normMaqNome(s));
+    return ui ? String(ui.id) : s;
   }).filter(Boolean);
 }
 function verificarSaldo(){
@@ -3206,11 +3229,19 @@ async function salvarCliente() {
     : await apiFetch('/api/clientes', { method:'POST', body: payload });
   const r = resp ? await resp.json().catch(()=>null) : null;
   if(!resp || !resp.ok || (r && r.error)){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
+  const saved = normalizeCli((r && (r.data || r)) || payload);
+  if(id){
+    const idx = (CLIENTES||[]).findIndex(c=>String(c.id||'').trim()===id);
+    if(idx >= 0) CLIENTES[idx] = { ...CLIENTES[idx], ...saved, id };
+    else CLIENTES.push({ ...saved, id });
+  } else {
+    CLIENTES.push(saved);
+  }
   toast(id?'Cliente atualizado ✓':'Cliente criado ✓','var(--green)');
   fechar('modal-cli');
   CLIENTE_ATUAL_ID = '';
-  await carregarClientes();
   renderClientes();
+  autoSaveTrigger();
 }
 
 function _normClienteNome(v){
@@ -3795,125 +3826,6 @@ function estOrdenar(campo){
   renderEstoque();
 }
 
-function setupEstoqueInlineDelegation(){
-  if(window.__ESTOQUE_INLINE_DELEGATION__) return;
-  window.__ESTOQUE_INLINE_DELEGATION__ = true;
-
-  document.addEventListener('change', async function(e) {
-    const el = e && e.target ? e.target : null;
-    if(!el || !el.classList) return;
-
-    if (el.classList.contains('est-empresa-sel')) {
-      const id = String(el.dataset.id || '').trim();
-      const val = String(el.value || '').trim();
-      if (!id || !val) return;
-      if(_estBusy) return;
-      try{
-        estSetBusy(true);
-        const payload = { empresa_vinculada: val, qual_cnpj: val, emp_id: estEmpIdFromEmpresa(val) };
-        console.log('[EMPRESA] enviando:', { id, empresa_vinculada: val, qual_cnpj: val, emp_id: payload.emp_id });
-        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const d = await r.json().catch(()=>null);
-        if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
-        const applyLocal = (arr) => {
-          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
-          if(!it) return;
-          it.empresa_vinculada = val;
-          it.qual_cnpj = val;
-          it.emp_id = payload.emp_id;
-          it.empId = payload.emp_id;
-        };
-        applyLocal(_estoqueBase);
-        applyLocal(ESTOQUE);
-        toast('Empresa atualizada ✓','var(--green)');
-      } catch(err) {
-        toast('Erro na requisição','var(--red)');
-      } finally {
-        estSetBusy(false);
-      }
-    }
-
-    if (el.classList.contains('est-cat-sel')) {
-      const id = String(el.dataset.id || '').trim();
-      const val = String(el.value || '').trim();
-      if (!id || !val) return;
-      if(_estBusy) return;
-      try{
-        estSetBusy(true);
-        const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ categoria: val })
-        });
-        const d = await r.json().catch(()=>null);
-        if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
-        const applyLocal = (arr) => {
-          const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
-          if(!it) return;
-          it.categoria = val;
-        };
-        applyLocal(_estoqueBase);
-        applyLocal(ESTOQUE);
-        toast('Categoria atualizada ✓','var(--green)');
-      } catch(err) {
-        toast('Erro na requisição','var(--red)');
-      } finally {
-        estSetBusy(false);
-      }
-    }
-  });
-
-  document.addEventListener('click', async function(e) {
-    const el = e && e.target ? e.target : null;
-    if(!el || !el.classList) return;
-    if (!el.classList.contains('est-riscada-btn')) return;
-
-    const id = String(el.dataset.id || '').trim();
-    const val = String(el.dataset.val || '').trim() === 'true';
-    if (!id) return;
-    if(_estBusy) return;
-
-    try{
-      estSetBusy(true);
-      console.log('[RISCADA] enviando:', { id, riscada: val });
-      const r = await apiFetch(`/api/chapas_estoque/${encodeURIComponent(id)}/inline`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ riscada: val })
-      });
-      const d = await r.json().catch(()=>null);
-      if (!r.ok || (d && d.error)) { toast('Erro: ' + ((d && d.error) || 'falha'), 'var(--red)'); return; }
-
-      const applyLocal = (arr) => {
-        const it = (Array.isArray(arr) ? arr : []).find(x=>String(x.id||'')===id);
-        if(!it) return;
-        it.riscada = val;
-      };
-      applyLocal(_estoqueBase);
-      applyLocal(ESTOQUE);
-
-      document.querySelectorAll('.est-riscada-btn').forEach(b=>{
-        if(String(b.dataset.id||'')!==id) return;
-        const isActive = String(b.dataset.val||'') === String(val);
-        const isYes = String(b.dataset.val||'') === 'true';
-        b.style.background = isActive ? (isYes ? '#2a7a2a' : '#555') : 'transparent';
-        b.style.borderColor = isActive ? (isYes ? '#2a7a2a' : '#555') : 'rgba(255,255,255,0.18)';
-        b.style.color = isActive ? 'white' : 'rgba(255,255,255,0.55)';
-      });
-
-      toast('Riscada atualizada ✓','var(--green)');
-    } catch(err) {
-      toast('Erro na requisição','var(--red)');
-    } finally {
-      estSetBusy(false);
-    }
-  });
-}
-
 function _riscadaToggleHtml(id, riscada, descShort, cellRid){
   const onNo = !riscada;
   const onYes = !!riscada;
@@ -4051,14 +3963,24 @@ function _renderEstoqueBase(chapas) {
       const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
       const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
       const empSel = (emp === 'Italy Embalagens' || emp === 'Cartoeste' || emp === 'Oestepack') ? emp : '';
-      const cellRid = 'risc-cell-' + String(c.id||'').replace(/[^a-zA-Z0-9_-]/g,'_');
-      const riscHtml = _riscadaToggleHtml(String(c.id||''), !!c.riscada, risDescShort, cellRid);
+      const cid = String(c.id||'').trim();
+      const riscCls = 'risc-btn-' + cid;
+      const onNo = !c.riscada;
+      const onYes = !!c.riscada;
+      const btnBase = 'padding:2px 12px;border-radius:999px;font-weight:900;font-family:var(--mono);cursor:pointer;border:1px solid;min-width:54px;text-align:center;';
+      const btnInactive = `${btnBase}background:transparent;border-color:rgba(255,255,255,0.18);color:rgba(255,255,255,0.55);`;
+      const btnNo = onNo ? `${btnBase}background:#555;border-color:#555;color:#fff;` : btnInactive;
+      const btnYes = onYes ? `${btnBase}background:#2a7a2a;border-color:#2a7a2a;color:#fff;` : btnInactive;
+      const riscHtml = `<div style="display:flex;justify-content:center;gap:6px;align-items:center">
+        <button type="button" class="${escAttr(riscCls)}" data-val="false" style="${btnNo}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val==String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';});})(false,'${escAttr(cid)}')">Não</button>
+        <button type="button" class="${escAttr(riscCls)}" data-val="true" style="${btnYes}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val==String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';});})(true,'${escAttr(cid)}')">Sim</button>
+      </div>${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(risDescShort)}</div>`:''}`;
       return `<tr style="background:${trBg}">
         <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select class="est-empresa-sel" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select data-id="${escAttr(c.id)}" onchange="(async function(el){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(el.dataset.id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada:el.value,qual_cnpj:el.value})});const d=await r.json().catch(()=>null);if(!d||!d.ok)alert('Erro: '+(d&&d.error?d.error:'falha'));})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
@@ -4073,9 +3995,9 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
-        <td id="${escAttr(cellRid)}" title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
+        <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
-          <select class="est-cat-sel" data-id="${escAttr(c.id)}" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select data-id="${escAttr(c.id)}" onchange="(async function(el){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(el.dataset.id)+'/inline',{method:'PATCH',body:JSON.stringify({categoria:el.value})});const d=await r.json().catch(()=>null);if(!d||!d.ok)alert('Erro: '+(d&&d.error?d.error:'falha'));})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="">—</option>
             ${(CHAPAS_CATEGORIAS||[]).map(cat=>`<option value="${escAttr(cat.nome)}" ${String(c.categoria||'').trim()===String(cat.nome||'').trim()?'selected':''}>${escH(cat.nome)}</option>`).join('')}
           </select>
@@ -5711,11 +5633,113 @@ function renderVendedores(){
         <div class="est-bar"><div class="est-bf" style="width:${pct}%;background:${pct>=100?'var(--green)':pct>=70?'var(--yellow)':'var(--red)'}"></div></div>
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="abrirRoteiroVisita('${v.id}')" style="font-size:.68rem;">🖨 Roteiro de Visita</button>
         <button class="btn btn-ghost btn-sm" onclick="editarVendedor('${v.id}')" style="font-size:.68rem;">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="excluirVendedor('${v.id}')" style="font-size:.68rem;color:var(--red);">🗑 Excluir</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function _clientesDoVendedor(vendId){
+  const id = String(vendId||'').trim();
+  const arr = Array.isArray(CLIENTES) ? CLIENTES : [];
+  return arr.filter(c=>{
+    const vid = String(c.vendId || c.vendedor_id || c.vend_id || '').trim();
+    return vid && vid === id;
+  }).sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+}
+
+async function abrirRoteiroVisita(vendId){
+  const id = String(vendId||'').trim();
+  if(!id) return;
+  if(!Array.isArray(CLIENTES) || !CLIENTES.length){
+    try{ await carregarClientes(); }catch(e){}
+  }
+  const v = (VENDEDORES||[]).find(x=>String(x.id||'')===id) || { nome:'Vendedor' };
+  const clientes = _clientesDoVendedor(id);
+
+  let modal = document.getElementById('modal-roteiro-vend');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-roteiro-vend';
+    modal.innerHTML = `<div class="modal" style="width:min(980px,98vw)">
+      <button class="close-btn" onclick="fechar('modal-roteiro-vend')">✕</button>
+      <h2>🗺 Roteiro de Visita</h2>
+      <div class="page-body" id="rv-body" style="padding:12px 0"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="fechar('modal-roteiro-vend')">Fechar</button>
+        <button class="btn btn-accent" onclick="imprimirRoteiroVisita('${escAttr(id)}')">Imprimir</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+  } else {
+    const btn = modal.querySelector('.btn-accent');
+    if(btn) btn.setAttribute('onclick', `imprimirRoteiroVisita('${escAttr(id)}')`);
+  }
+
+  const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  const body = document.getElementById('rv-body');
+  if(body){
+    body.innerHTML = `<div class="sbox"><div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <span>Vendedor: <b>${escH(v.nome||'')}</b> · Clientes: <b>${clientes.length}</b></span>
+    </div><div class="sbox-b">
+      <div style="max-height:60vh;overflow:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:860px">
+          <thead><tr>
+            <th style="${th}">Cliente</th><th style="${th}">Cidade</th><th style="${th}">Telefone</th><th style="${th}">Observações</th>
+          </tr></thead>
+          <tbody>
+            ${clientes.length?clientes.map((c,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+              <td style="${td};font-weight:800">${escH(c.nome||'')}</td>
+              <td style="${td}">${escH([c.cidade||'',c.uf||''].filter(Boolean).join('/'))}</td>
+              <td style="${td};font-family:var(--mono)">${escH(c.tel||'')}</td>
+              <td style="${td};max-width:420px;overflow:hidden;text-overflow:ellipsis">${escH(c.obs||c.observacoes||'')}</td>
+            </tr>`).join(''):`<tr><td colspan="4" style="${td};text-align:center;color:var(--text3)">Nenhum cliente vinculado</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div></div>`;
+  }
+  abrir('modal-roteiro-vend');
+}
+
+function imprimirRoteiroVisita(vendId){
+  const id = String(vendId||'').trim();
+  const v = (VENDEDORES||[]).find(x=>String(x.id||'')===id) || { nome:'Vendedor' };
+  const clientes = _clientesDoVendedor(id);
+  const pa=document.getElementById('print-area');
+  if(!pa) return;
+  const empNome=(getEmp(EMP_FILTRO)||{nome:'Italy Embalagens / Cartoeste / Oestepack'}).nome||'Italy Embalagens / Cartoeste / Oestepack';
+  const th='padding:7px 9px;border:1px solid #ddd;background:#f3f5f7;font-size:11px;font-weight:900;text-align:left;text-transform:uppercase;';
+  const td='padding:7px 9px;border:1px solid #eee;font-size:11px;';
+  pa.innerHTML = `<div class="rp" style="font-family:Arial,sans-serif;color:#111">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2d8fa5">
+      <img src="${LOGO_ITALY}" style="height:54px;object-fit:contain" alt="Italy Embalagens">
+      <div style="text-align:right">
+        <div style="font-size:18px;font-weight:900;color:#2d8fa5">ROTEIRO DE VISITA</div>
+        <div style="font-size:11px;color:#666">${empNome}</div>
+        <div style="font-size:10px;color:#888">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      </div>
+    </div>
+    <div style="margin-bottom:10px;font-size:12px"><b>Vendedor:</b> ${escH(v.nome||'')}</div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="${th}">Cliente</th><th style="${th}">Cidade</th><th style="${th}">Telefone</th><th style="${th}">Observações</th></tr></thead>
+      <tbody>
+        ${clientes.map(c=>`<tr>
+          <td style="${td};font-weight:700">${escH(c.nome||'')}</td>
+          <td style="${td}">${escH([c.cidade||'',c.uf||''].filter(Boolean).join('/'))}</td>
+          <td style="${td}">${escH(c.tel||'')}</td>
+          <td style="${td}">${escH(c.obs||c.observacoes||'')}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+  pa.style.display='block';
+  window.print();
+  setTimeout(()=>pa.style.display='none',1500);
 }
 var _vendEditId = null;
 function abrirModalVendedor(){
@@ -7897,9 +7921,6 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 });
 
-// ===================== LISTENER DE INLINE (GLOBAL) =====================
-setupEstoqueInlineDelegation();
-
 async function loadCoreData(){
   await Promise.all([
     carregarEmpresas?.()||Promise.resolve(),
@@ -9644,7 +9665,7 @@ async function salvarMaquina(){
         ()=>{ Object.assign(m, dados); return {ok:true, local:true}; }
       );
       if(!r || !r.ok){toast('Erro ao salvar máquina','var(--red)');return;}
-      if(!r.local){ try{ await carregarMaquinas(); }catch(e){} }
+      if(!r.local){ try{ await carregarMaquinas(); MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){} }catch(e){} }
       else Object.assign(m, dados);
     } else {
       dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
@@ -9655,7 +9676,7 @@ async function salvarMaquina(){
         ()=>{ MAQUINAS.push(payload); return {ok:true, local:true}; }
       );
       if(!r || !r.ok){toast('Erro ao criar máquina','var(--red)');return;}
-      if(!r.local){ try{ await carregarMaquinas(); }catch(e){} }
+      if(!r.local){ try{ await carregarMaquinas(); MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){} }catch(e){} }
       else if(!MAQUINAS.find(x=>x.id===payload.id)) MAQUINAS.push(payload);
     }
     fechar('modal-maquina');
@@ -13357,24 +13378,7 @@ salvarOF = async function(){
   }
 };
 
-// ── Clientes ─────────────────────────────────────────────────
-const _salvarCli_orig = salvarCliente;
-salvarCliente = async function(){
-  const nome=document.getElementById('cl-nome').value.trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const ramoSel=document.getElementById('cl-ramo').value;
-  const ramoCustom=document.getElementById('cl-ramo-custom').value.trim();
-  const ramo=(ramoSel==='__outro__'?ramoCustom:ramoSel)||'Outro';
-  const vendId=(document.getElementById('cl-vend')||{}).value||'';
-  const vendNome=(getV(vendId)||{}).nome||'';
-  const payload={nome,rs:document.getElementById('cl-rs').value,cnpj:document.getElementById('cl-cnpj').value,fone:document.getElementById('cl-tel').value,email:document.getElementById('cl-email').value,cidade:document.getElementById('cl-cidade').value,uf:document.getElementById('cl-uf').value,end:document.getElementById('cl-end').value,ramo,obs:document.getElementById('cl-obs').value,vendedor_id:vendId||null,vendedor:vendNome||null};
-  const r=await salvarViaApiOuLocal('cliente', ()=>api('POST','/clientes',payload), _salvarCli_orig);
-  if(r.ok && !r.local){
-    CLIENTES.push({...payload,id:r.data.id,tel:payload.fone,vendId, vendedor:vendNome});
-    fechar('modal-cli');renderClientes();autoSaveTrigger();toast('✓ Cliente cadastrado!');
-    logAction('Novo cliente',nome);
-  } else if(!r.ok){ toast('Erro: '+(r.error||''),'var(--red)'); }
-};
-
+ 
 // ── Orçamentos ───────────────────────────────────────────────
 const _salvarOrc_orig = salvarOrc;
 salvarOrc = async function(){
