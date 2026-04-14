@@ -656,7 +656,8 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
   body * { visibility: hidden; }
   #modal-roteiro-visita, #modal-roteiro-visita * { visibility: visible; }
   #modal-roteiro-visitas-vendedor, #modal-roteiro-visitas-vendedor * { visibility: visible; }
-  #modal-roteiro-visita, #modal-roteiro-visitas-vendedor { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+  #print-agenda, #print-agenda * { visibility: visible; }
+  #modal-roteiro-visita, #modal-roteiro-visitas-vendedor, #print-agenda { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
   .no-print { display: none !important; }
 }
 
@@ -15087,11 +15088,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sbox" style="margin-bottom:14px">
       <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <span>📅 Agenda de Visitas / Atendimentos</span>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="agFiltroRapido('hoje')" id="ag-qf-hoje">Hoje</button>
           <button class="btn btn-ghost btn-sm" onclick="agFiltroRapido('amanha')" id="ag-qf-amanha">Amanhã</button>
           <button class="btn btn-ghost btn-sm" onclick="agFiltroRapido('semana')" id="ag-qf-semana">Esta semana</button>
           <button class="btn btn-ghost btn-sm" onclick="agFiltroRapido('todas')" id="ag-qf-todas" style="background:var(--accent-soft);color:var(--accent)">Todas</button>
+          <button class="btn btn-ghost btn-sm" onclick="agImprimirPeriodo('hoje')">🖨 Imprimir Hoje</button>
+          <button class="btn btn-ghost btn-sm" onclick="agImprimirPeriodo('semana')">🖨 Imprimir Semana</button>
           <button class="btn btn-ghost btn-sm" onclick="agVistaLista()" id="ag-btn-lista">☰ Lista</button>
           <button class="btn btn-ghost btn-sm" onclick="agVistaPainel()" id="ag-btn-painel" style="background:var(--accent-soft);color:var(--accent)">⊞ Painel</button>
         </div>
@@ -18862,6 +18865,9 @@ async function carregarVisitasVendedor(){
       prioridade: String(x.prioridade||'normal').toLowerCase(),
       status: String(x.status||'pendente').toLowerCase(),
       cidade: x.cidade || '',
+      telefone: x.telefone || '',
+      email: x.email || '',
+      endereco: x.endereco || '',
       obs: x.observacao || x.obs || '',
       dataRealizacao: x.data_realizacao ? String(x.data_realizacao).slice(0,10) : '',
       recorrencia: x.recorrencia || '',
@@ -19005,6 +19011,11 @@ async function salvarAgenda(){
   const vend = VENDEDORES.find(x=>x.id===vendedorId)||{};
   const editId = document.getElementById('ag-edit-id').value;
 
+  const cliCidade = (cli.cidade || '').trim();
+  const cliTel = String(cli.tel || cli.telefone || '').trim();
+  const cliEmail = String(cli.email || '').trim();
+  const cliEnd = String(cli.endereco || cli.end || '').trim();
+
   const dados = {
     vendedorId,
     vendedorNome: vend.nome||'',
@@ -19016,10 +19027,21 @@ async function salvarAgenda(){
     status: document.getElementById('ag-status').value,
     obs: document.getElementById('ag-obs').value,
     tipo,
-    cidade: document.getElementById('ag-cidade').value || cli.cidade||'',
+    cidade: document.getElementById('ag-cidade').value || cliCidade || '',
+    telefone: clienteId ? cliTel : '',
+    email: clienteId ? cliEmail : '',
+    endereco: clienteId ? cliEnd : '',
     empId: EMP_FILTRO||'E1',
   };
 
+  const statusToDb = (s)=>{
+    const v = String(s||'').toLowerCase();
+    if(v==='realizada') return 'Realizada';
+    if(v==='concluido') return 'Concluído';
+    if(v==='nao_atendido') return 'Não Atendido';
+    if(v==='reagendado') return 'Reagendado';
+    return 'Pendente';
+  };
   const toApiPayload = (x)=>({
     vendedor_id: x.vendedorId,
     vendedor_nome: x.vendedorNome,
@@ -19029,8 +19051,11 @@ async function salvarAgenda(){
     data_visita: x.data,
     turno: x.turno || 'Qualquer horário',
     prioridade: x.prioridade || 'Normal',
-    status: x.status || 'Pendente',
+    status: statusToDb(x.status),
     cidade: x.cidade || null,
+    telefone: x.telefone || null,
+    email: x.email || null,
+    endereco: x.endereco || null,
     observacao: x.obs || null,
     emp_id: x.empId || null,
   });
@@ -19088,7 +19113,15 @@ async function agAlterarStatus(id, status){
   if(!ag)return;
   ag.status = status;
   if(_apiConectado){
-    const payload = { status };
+    const statusToDb = (s)=>{
+      const v = String(s||'').toLowerCase();
+      if(v==='realizada') return 'Realizada';
+      if(v==='concluido') return 'Concluído';
+      if(v==='nao_atendido') return 'Não Atendido';
+      if(v==='reagendado') return 'Reagendado';
+      return 'Pendente';
+    };
+    const payload = { status: statusToDb(status) };
     const r = await apiFetch('/api/visitas_vendedor/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify(payload) });
     const d = r ? await r.json().catch(()=>null) : null;
     if(!r || !r.ok || (d && d.error)){ toast('Erro: '+((d&&d.error)||'falha'), 'var(--red)'); return; }
@@ -19100,44 +19133,62 @@ async function agAlterarStatus(id, status){
   toast(labels[status]||status,'var(--teal)');
 }
 
-function _agModalRecorrencia(){
-  let modal = document.getElementById('modal-ag-rec');
+function _agDiaUtilStr(dstr){
+  const d = new Date(String(dstr||'').slice(0,10)+'T12:00:00');
+  if (d.getDay() === 6) d.setDate(d.getDate() + 2);
+  if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+function _agModalReagendar(){
+  let modal = document.getElementById('modal-ag-reag');
   if(modal) return modal;
   modal = document.createElement('div');
   modal.className='modal-overlay';
-  modal.id='modal-ag-rec';
-  modal.innerHTML = `<div class="modal" style="width:min(520px,98vw)">
-    <button class="close-btn no-print" onclick="fechar('modal-ag-rec')">✕</button>
-    <h2>Deseja agendar próxima visita?</h2>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px" id="ag-rec-btns"></div>
+  modal.id='modal-ag-reag';
+  modal.innerHTML = `<div class="modal" style="width:min(560px,98vw)">
+    <button class="close-btn no-print" onclick="fechar('modal-ag-reag')">✕</button>
+    <h2>Deseja reagendar próxima visita?</h2>
+    <div class="fg" style="margin-top:8px">
+      <div class="mf"><label>DATA DA PRÓXIMA VISITA</label><input id="ag-reag-data" type="date"></div>
+      <div class="mf fgf"><label>ATALHOS</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agReagSet && window.__agReagSet(7)">+ 1 semana</button>
+          <button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agReagSet && window.__agReagSet(30)">+ 1 mês</button>
+          <button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agReagSet && window.__agReagSet(90)">+ 3 meses</button>
+          <button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agReagSet && window.__agReagSet(180)">+ 6 meses</button>
+          <button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agReagSet && window.__agReagSet(365)">+ 1 ano</button>
+        </div>
+      </div>
+    </div>
     <div class="modal-footer no-print">
-      <button class="btn btn-ghost" onclick="window.__agRecResolve && window.__agRecResolve(null)">Não agendar</button>
+      <button class="btn btn-ghost" onclick="window.__agReagResolve && window.__agReagResolve(null)">Não reagendar</button>
+      <button class="btn btn-accent" onclick="window.__agReagResolve && window.__agReagResolve((document.getElementById('ag-reag-data')||{}).value||'')">Agendar</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
   return modal;
 }
 
-function agPerguntarRecorrencia(){
-  const modal = _agModalRecorrencia();
-  const wrap = modal.querySelector('#ag-rec-btns');
-  const opts = [
-    {k:'1 semana', d:7},
-    {k:'1 mês', d:30},
-    {k:'3 meses', d:90},
-    {k:'6 meses', d:180},
-    {k:'1 ano', d:365},
-  ];
-  if(wrap){
-    wrap.innerHTML = opts.map(o=>`<button class="btn btn-ghost no-print" style="border:1px solid var(--border)" onclick="window.__agRecResolve && window.__agRecResolve(${o.d})">${o.k}</button>`).join('');
-  }
+function agPerguntarReagendar(){
+  const modal = _agModalReagendar();
+  const input = modal.querySelector('#ag-reag-data');
+  if(input) input.value = '';
+  window.__agReagSet = (days)=>{
+    const hoje = today();
+    const d = proximoDiaUtil(new Date(hoje+'T12:00:00'), Number(days||0));
+    const el = document.getElementById('ag-reag-data');
+    if(el) el.value = d;
+  };
   return new Promise(resolve=>{
-    window.__agRecResolve = (days)=>{
-      try{ delete window.__agRecResolve; }catch(e){}
-      fechar('modal-ag-rec');
-      resolve(days);
+    window.__agReagResolve = (val)=>{
+      try{ delete window.__agReagResolve; }catch(e){}
+      try{ delete window.__agReagSet; }catch(e){}
+      fechar('modal-ag-reag');
+      const v = String(val||'').trim();
+      resolve(v ? _agDiaUtilStr(v) : null);
     };
-    abrir('modal-ag-rec');
+    abrir('modal-ag-reag');
   });
 }
 
@@ -19146,7 +19197,7 @@ async function agMarcarRealizada(id){
   if(!ag) return;
   const hoje = today();
   if(_apiConectado){
-    const r = await apiFetch('/api/visitas_vendedor/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ status:'realizada', data_realizacao: hoje }) });
+    const r = await apiFetch('/api/visitas_vendedor/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ status:'Realizada', data_realizacao: hoje }) });
     const d = r ? await r.json().catch(()=>null) : null;
     if(!r || !r.ok || (d && d.error)){ toast('Erro: '+((d&&d.error)||'falha'), 'var(--red)'); return; }
   } else {
@@ -19155,10 +19206,13 @@ async function agMarcarRealizada(id){
   ag.status='realizada';
   ag.dataRealizacao = hoje;
   renderAgenda();
-  const offset = await agPerguntarRecorrencia();
-  if(!offset) return;
-  const novaData = proximoDiaUtil(new Date(hoje+'T12:00:00'), offset);
-  const obs = `Recorrência automática de visita realizada em ${new Date(hoje+'T12:00:00').toLocaleDateString('pt-BR')}`;
+  const novaData = await agPerguntarReagendar();
+  if(!novaData) return;
+  const obs = `Reagendamento automático de visita realizada em ${new Date(hoje+'T12:00:00').toLocaleDateString('pt-BR')}`;
+  const cliDb = ag.clienteId ? (getCli(ag.clienteId)||{}) : {};
+  const tel = String(ag.telefone || cliDb.tel || cliDb.telefone || '').trim();
+  const email = String(ag.email || cliDb.email || '').trim();
+  const end = String(ag.endereco || cliDb.endereco || cliDb.end || '').trim();
   const nova = {
     vendedorId: ag.vendedorId,
     vendedorNome: ag.vendedorNome,
@@ -19170,9 +19224,12 @@ async function agMarcarRealizada(id){
     status: 'pendente',
     obs,
     tipo: ag.tipo||'visita',
-    cidade: ag.cidade||'',
+    cidade: ag.cidade||cliDb.cidade||'',
+    telefone: tel,
+    email: email,
+    endereco: end,
     empId: ag.empId||EMP_FILTRO||'E1',
-    recorrencia: String(offset),
+    recorrencia: '',
   };
   if(_apiConectado){
     const r = await apiFetch('/api/visitas_vendedor', { method:'POST', body: JSON.stringify({
@@ -19184,10 +19241,13 @@ async function agMarcarRealizada(id){
       data_visita: nova.data,
       turno: nova.turno || 'Qualquer horário',
       prioridade: nova.prioridade || 'Normal',
-      status: 'pendente',
+      status: 'Pendente',
       cidade: nova.cidade || null,
+      telefone: nova.telefone || null,
+      email: nova.email || null,
+      endereco: nova.endereco || null,
       observacao: nova.obs || null,
-      recorrencia: String(offset),
+      recorrencia: null,
       emp_id: nova.empId || null,
     })});
     const d = r ? await r.json().catch(()=>null) : null;
@@ -19196,7 +19256,7 @@ async function agMarcarRealizada(id){
       nova.id = saved.id;
       AGENDA_VENDEDORES.push(nova);
       renderAgenda();
-      toast('Próxima visita agendada!','var(--green)');
+      toast('Próxima visita agendada para '+new Date(novaData+'T12:00:00').toLocaleDateString('pt-BR')+'!','var(--green)');
     }
   } else {
     nova.id = 'AG-'+String(AGENDA_SEQ).padStart(4,'0');
@@ -19204,7 +19264,7 @@ async function agMarcarRealizada(id){
     AGENDA_VENDEDORES.push(nova);
     autoSaveTrigger();
     renderAgenda();
-    toast('Próxima visita agendada!','var(--green)');
+    toast('Próxima visita agendada para '+new Date(novaData+'T12:00:00').toLocaleDateString('pt-BR')+'!','var(--green)');
   }
 }
 
@@ -19275,6 +19335,70 @@ function renderAgenda(){
   const tipoLabel = (t)=>({visita:'🚗 Visita',ligacao:'📞 Ligação',cobranca:'💰 Cobrança',prospeccao:'🔍 Prospecção',retorno:'↩ Retorno'}[t]||t||'—');
   const priorBadge = (p)=>p==='alta'?'<span style="color:var(--red);font-size:.65rem;font-weight:700">🔴 ALTA</span>':p==='baixa'?'<span style="color:var(--text3);font-size:.65rem">⬇</span>':'';
 
+  window.agImprimirPeriodo = function(tipo){
+    const hoje = today();
+    let ini = hoje;
+    let fim = hoje;
+    if(String(tipo||'')==='semana'){
+      const d0 = new Date(hoje+'T12:00:00');
+      const wd = d0.getDay();
+      const diff = (wd===0 ? -6 : 1-wd);
+      d0.setDate(d0.getDate()+diff);
+      ini = d0.toISOString().slice(0,10);
+      const d1 = new Date(ini+'T12:00:00'); d1.setDate(d1.getDate()+6);
+      fim = d1.toISOString().slice(0,10);
+    }
+    const permVend = agGetVendedorFiltro();
+    const uiVend = (document.getElementById('ag-fil-vend')||{}).value||'';
+    const filVend = permVend || uiVend;
+    let itens = (AGENDA_VENDEDORES||[]).filter(a=>{
+      if(filVend && String(a.vendedorId||'')!==String(filVend)) return false;
+      if(String(a.status||'')!=='pendente') return false;
+      const dt = String(a.data||'').slice(0,10);
+      return dt && dt>=ini && dt<=fim;
+    }).sort((a,b)=>String(a.data||'').localeCompare(String(b.data||''),'pt-BR'));
+    if(!itens.length){ toast('Nenhuma visita para imprimir','var(--yellow)'); return; }
+    const vendNome = filVend ? ((VENDEDORES.find(v=>String(v.id||'')===String(filVend))||{}).nome||'') : 'Todos';
+    const periodo = ini===fim ? new Date(ini+'T12:00:00').toLocaleDateString('pt-BR') : (new Date(ini+'T12:00:00').toLocaleDateString('pt-BR')+' a '+new Date(fim+'T12:00:00').toLocaleDateString('pt-BR'));
+    let wrap = document.getElementById('print-agenda');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'print-agenda';
+      wrap.style.display = 'none';
+      document.body.appendChild(wrap);
+    }
+    const line = (v)=>{
+      const cli = v.clienteId ? (getCli(v.clienteId)||null) : null;
+      const nome = (cli && cli.nome) ? cli.nome : (v.clienteNome||'—');
+      const cidade = String(v.cidade || (cli && cli.cidade) || '').trim();
+      const tel = String(v.telefone || (cli && (cli.tel||cli.telefone)) || '').trim();
+      const email = String(v.email || (cli && cli.email) || '').trim();
+      const end = String(v.endereco || (cli && (cli.endereco||cli.end)) || '').trim();
+      const obs = String(v.obs||'').trim();
+      const dataTxt = new Date(String(v.data||'').slice(0,10)+'T12:00:00').toLocaleDateString('pt-BR');
+      return `<div style="padding:10px 0;border-bottom:1px solid #ddd">
+        <div style="font-weight:900;font-size:14px">Cliente: ${escH(nome)} <span style="font-weight:400;color:#555">(${dataTxt})</span></div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:4px">
+          <div>Telefone: ${escH(tel||'—')}</div>
+          <div>Email: ${escH(email||'—')}</div>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-top:4px">
+          <div>Cidade: ${escH(cidade||'—')}</div>
+        </div>
+        ${end?`<div style="margin-top:4px">Endereço: ${escH(end)}</div>`:''}
+        ${obs?`<div style="margin-top:6px;font-style:italic">Observação: ${escH(obs)}</div>`:''}
+      </div>`;
+    };
+    wrap.innerHTML = `<div style="font-family:Arial,sans-serif;color:#111;padding:12px">
+      <div style="font-size:18px;font-weight:900;margin-bottom:6px">ROTEIRO DE VISITAS — ${escH(vendNome)} — ${escH(periodo)}</div>
+      <div style="font-size:12px;color:#666;margin-bottom:10px">Gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      ${itens.map(line).join('')}
+    </div>`;
+    wrap.style.display='block';
+    window.print();
+    setTimeout(()=>{ wrap.style.display='none'; wrap.innerHTML=''; }, 800);
+  };
+
   const statusActions = (ag)=>`
     <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:6px">
       ${ag.status!=='realizada'&&ag.status!=='concluido'?`<button class="btn-icon btn-sm" onclick="agMarcarRealizada('${ag.id}')" title="Marcar realizada" style="color:var(--green);font-size:.65rem">✓</button>`:''}
@@ -19313,12 +19437,17 @@ function renderAgenda(){
         ags.forEach(ag=>{
           const cli = ag.clienteId ? (getCli(ag.clienteId)||null) : null;
           const cliNome = (cli && cli.nome) ? cli.nome : (ag.clienteNome||'—');
-          const cliTel = (cli && cli.tel) ? cli.tel : '';
+          const cliCidade = String(ag.cidade || (cli && cli.cidade) || '').trim();
+          const cliTel = String(ag.telefone || (cli && (cli.tel||cli.telefone)) || '').trim();
+          const cliEmail = String(ag.email || (cli && cli.email) || '').trim();
+          const cliEnd = String(ag.endereco || (cli && (cli.endereco||cli.end)) || '').trim();
           const v=VENDEDORES.find(x=>x.id===ag.vendedorId)||{nome:'—'};
           html+=`<div class="agenda-item">
             <div style="flex:1">
               <div class="agenda-item-nome">${cliNome} ${priorBadge(ag.prioridade)}</div>
-              <div class="agenda-item-sub">${tipoLabel(ag.tipo)} ${cliTel?'· 📞 '+cliTel:''} ${ag.turno?'· '+ag.turno:''}</div>
+              <div class="agenda-item-sub">${tipoLabel(ag.tipo)} ${ag.turno?'· '+ag.turno:''}</div>
+              <div class="agenda-item-sub">${cliCidade?'📍 '+escH(cliCidade):''}${cliTel?` · 📞 ${escH(cliTel)}`:''}${cliEmail?` · ✉ ${escH(cliEmail)}`:''}</div>
+              ${cliEnd?`<div class="agenda-item-sub">🏠 ${escH(cliEnd)}</div>`:''}
               ${ag.obs?`<div class="agenda-item-sub" style="font-style:italic">${ag.obs}</div>`:''}
               <div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
                 ${statusBadge(ag.status)}
