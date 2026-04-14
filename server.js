@@ -1483,10 +1483,16 @@ app.post('/api/fluxos', authMiddleware, async (req, res) => {
   try {
     const payload = { ...(req.body || {}) };
     if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
-    if (typeof payload.etapas === 'string') {
-      try { payload.etapas = JSON.parse(payload.etapas); } catch (_) { payload.etapas = []; }
-    }
-    if (!Array.isArray(payload.etapas)) payload.etapas = [];
+    const parseArr = (v) => {
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
+      }
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
+    };
+    payload.etapas = parseArr(payload.etapas);
     console.log('[fluxos POST] payload:', payload);
     const { data, error } = await supabase.from('fluxos').insert([payload]).select();
     if (error) { console.error('[fluxos POST] erro:', JSON.stringify(error)); throw error; }
@@ -1497,13 +1503,17 @@ app.post('/api/fluxos', authMiddleware, async (req, res) => {
 app.put('/api/fluxos/:id', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    let etapas = b.etapas;
-    if (etapas !== undefined) {
-      if (typeof etapas === 'string') {
-        try { etapas = JSON.parse(etapas); } catch (_) { etapas = []; }
+    const parseArr = (v) => {
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
       }
-      if (!Array.isArray(etapas)) etapas = [];
-    }
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
+    };
+    let etapas = b.etapas;
+    if (etapas !== undefined) etapas = parseArr(etapas);
     const payload = {
       nome: b.nome !== undefined ? String(b.nome || '').trim() : undefined,
       descricao: b.descricao !== undefined ? (String(b.descricao || '').trim() || null) : undefined,
@@ -1766,11 +1776,13 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const parseArr = (v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === 'string') {
-        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
       }
-      return [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
     };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo || '',
@@ -1809,11 +1821,13 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
     const parseArr = (v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === 'string') {
-        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
       }
-      return [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
     };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo,
@@ -1879,11 +1893,13 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const parseArr = (v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === 'string') {
-        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
       }
-      return [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
     };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo || '',
@@ -1922,11 +1938,13 @@ app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   try {
     const b = { ...req.body }; delete b.id;
     const parseArr = (v) => {
-      if (Array.isArray(v)) return v;
-      if (typeof v === 'string') {
-        try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+      if (!v) return [];
+      let arr = v;
+      if (typeof arr === 'string') {
+        try { arr = JSON.parse(arr); } catch (_) { return []; }
       }
-      return [];
+      if (!Array.isArray(arr)) return [];
+      return arr.map(x => typeof x === 'object' ? (x.nome || x.name || x.id || String(x)) : String(x));
     };
     const payloadBase = {
       nome: b.nome || b.descricao || b.codigo,
