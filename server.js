@@ -866,6 +866,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
+    const lite = String(req.query.lite || '') === '1';
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
@@ -899,7 +900,44 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           }
         }
 
-        if (!error) return ok(res, data || []);
+        if (!error) {
+          const rows = data || [];
+          if (!lite) return ok(res, rows);
+          const trimmed = rows.map((r) => ({
+            id: r.id,
+            seq: r.seq ?? r.prioridade ?? null,
+            of: r.of ?? r.numero ?? r.of_num ?? r.ofNum ?? null,
+            numero: r.numero ?? null,
+            of_num: r.of_num ?? null,
+            cli_id: r.cli_id ?? r.cliente_id ?? r.cliId ?? r.clienteId ?? null,
+            cliente_id: r.cliente_id ?? null,
+            cliente_nome: r.cliente_nome ?? r.cliente ?? r.cli_nome ?? null,
+            vendId: r.vendId ?? r.vendedor_id ?? r.vendedorId ?? null,
+            vendedor_id: r.vendedor_id ?? null,
+            vendedor_nome: r.vendedor_nome ?? r.vendedor ?? null,
+            status: r.status ?? null,
+            urg: r.urg ?? r.urgente ?? null,
+            urgente: r.urgente ?? null,
+            qtd: r.qtd ?? r.quantidade ?? null,
+            quantidade: r.quantidade ?? null,
+            dia: r.dia ?? r.data_producao ?? null,
+            data_producao: r.data_producao ?? null,
+            ent: r.ent ?? r.data_entrega ?? null,
+            data_entrega: r.data_entrega ?? null,
+            fluxo: r.fluxo ?? null,
+            maq: r.maq ?? null,
+            fluxo_maquinas: r.fluxo_maquinas ?? null,
+            maquina_atual_index: r.maquina_atual_index ?? null,
+            imagem_url: r.imagem_url ?? null,
+            imgs: r.imgs ?? null,
+            descricao: r.descricao ?? r.prod_desc ?? null,
+            obs: r.obs ?? r.obs2 ?? null,
+            emp_id: r.emp_id ?? r.empId ?? null,
+            deleted_at: r.deleted_at ?? null,
+            created_at: r.created_at ?? null,
+          }));
+          return ok(res, trimmed);
+        }
         lastError = error;
         const msg = String(error.message || error);
         if (empCol && (msg.includes('column') || msg.includes('Could not find'))) continue;
@@ -1161,6 +1199,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
+    const lite = String(req.query.lite || '') === '1';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
@@ -1168,7 +1207,31 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       if (col) q = q.eq(col, empId);
       if (hasPaging) q = q.range(offset, offset + limit - 1);
       const { data, error } = await q;
-      if (!error) return ok(res, data || []);
+      if (!error) {
+        const rows = data || [];
+        if (!lite) return ok(res, rows);
+        const trimmed = rows.map((r) => ({
+          id: r.id,
+          nome: r.nome ?? null,
+          rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
+          razao_social: r.razao_social ?? null,
+          cnpj: r.cnpj ?? null,
+          ie: r.ie ?? null,
+          tel: r.tel ?? r.telefone ?? null,
+          telefone: r.telefone ?? null,
+          email: r.email ?? null,
+          cidade: r.cidade ?? null,
+          uf: r.uf ?? null,
+          ramo: r.ramo ?? null,
+          emp_id: r.emp_id ?? r.empId ?? null,
+          empId: r.empId ?? null,
+          vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
+          vendId: r.vendId ?? null,
+          obs: r.obs ?? r.observacoes ?? null,
+          observacoes: r.observacoes ?? null,
+        }));
+        return ok(res, trimmed);
+      }
       lastErr = error;
       const msg = String(error.message || error);
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
