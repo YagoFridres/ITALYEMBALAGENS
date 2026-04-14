@@ -2493,79 +2493,24 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
   try {
     const b = req.body || {};
     const table = await _chapasPreferV2Table();
+    let allowed = ['empresa_vinculada', 'qual_cnpj', 'categoria', 'emp_id'];
+    if (table === 'chapas_estoque_v2') allowed.push('riscada');
     const payload = {};
-    const bool = (v) => (v === true || v === 'true' || v === 1 || v === '1');
-    if ('empresa_vinculada' in b) payload.empresa_vinculada = String(b.empresa_vinculada);
-    if ('qual_cnpj' in b) payload.qual_cnpj = String(b.qual_cnpj);
-    if ('emp_id' in b) payload.emp_id = String(b.emp_id);
-    if ('empId' in b && payload.emp_id === undefined) payload.emp_id = String(b.empId);
-    if ('categoria' in b) payload.categoria = String(b.categoria || '').trim();
-    if ('riscada' in b && table === 'chapas_estoque_v2') payload.riscada = bool(b.riscada);
-
-    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
-
-    const finalPayload = { ...payload };
-    if (table === 'chapas_estoque_v2') {
-      finalPayload.atualizado_por = req.usuario?.nome || 'sistema';
-      if (finalPayload.qual_cnpj === undefined && finalPayload.empresa_vinculada !== undefined) finalPayload.qual_cnpj = finalPayload.empresa_vinculada;
-    } else {
-      const legacy = {};
-      if (finalPayload.qual_cnpj !== undefined) {
-        legacy.qual = String(finalPayload.qual_cnpj);
-        legacy.qual_cnpj = String(finalPayload.qual_cnpj);
-      } else if (finalPayload.empresa_vinculada !== undefined) {
-        legacy.qual = String(finalPayload.empresa_vinculada);
-        legacy.qual_cnpj = String(finalPayload.empresa_vinculada);
-      }
-      if (finalPayload.emp_id !== undefined) legacy.emp_id = String(finalPayload.emp_id);
-      if (finalPayload.categoria !== undefined) legacy.categoria = String(finalPayload.categoria || '').trim();
-      if (finalPayload.riscada !== undefined) legacy.riscada = bool(finalPayload.riscada);
-      Object.keys(finalPayload).forEach(k => { delete finalPayload[k]; });
-      Object.assign(finalPayload, legacy);
+    allowed.forEach(k => { if (k in b) payload[k] = b[k]; });
+    if (b.empresa_vinculada) payload.qual_cnpj = b.empresa_vinculada;
+    payload.atualizado_por = req.usuario?.nome || 'sistema';
+    if (Object.keys(payload).length <= 1) {
+      return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Recebido: ' + JSON.stringify(b) });
     }
-
-    console.log('[inline patch] table:', table, 'id:', req.params.id, 'payload:', finalPayload);
-
-    let { data, error } = await supabase.from(table).update(finalPayload).eq('id', req.params.id).select().maybeSingle();
+    const { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
-      console.error('[inline patch] SUPABASE ERROR:', JSON.stringify(error, null, 2));
-      const msg = String(error.message || error);
-      const m = msg.match(/Could not find the '([^']+)' column/i);
-      if (m && m[1] && finalPayload[m[1]] !== undefined) {
-        const retry = { ...finalPayload };
-        delete retry[m[1]];
-        if (!Object.keys(retry).length) return res.status(400).json({ ok: false, error: 'Nenhum campo válido' });
-        const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
-        data = r2.data;
-        error = r2.error;
-      } else {
-        const isMissingColumn = msg.toLowerCase().includes('column') && msg.toLowerCase().includes('does not exist');
-        if (isMissingColumn) {
-          const retry = { ...finalPayload };
-          delete retry.empresa_vinculada;
-          delete retry.categoria;
-          delete retry.riscada;
-          if (Object.keys(retry).length) {
-            const r2 = await supabase.from(table).update(retry).eq('id', req.params.id).select().maybeSingle();
-            data = r2.data;
-            error = r2.error;
-          }
-        }
-      }
-    }
-
-    if (error) {
-      console.error('[inline patch] supabase error:', JSON.stringify(error));
-      console.error('[inline patch] erro supabase (ctx):', { table, id: req.params.id, body: b, payload: finalPayload });
+      console.error('[inline] erro:', error.message, 'payload:', payload);
       return res.status(500).json({ ok: false, error: error.message });
     }
-
-    if (!data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada (ou sem permissão)' });
-    console.log('[inline patch] OK:', data?.id);
     return res.json({ ok: true, data });
   } catch (e) {
-    console.error('[inline patch] catch:', e && e.message ? e.message : e);
-    return res.status(500).json({ ok: false, error: String((e && e.message) ? e.message : e) });
+    console.error('[inline] catch:', e.message);
+    return res.status(500).json({ ok: false, error: e.message });
   }
 });
 

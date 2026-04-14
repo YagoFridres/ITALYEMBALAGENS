@@ -2569,27 +2569,12 @@ function _posIcon(i){
   return a[i-1]||String(i);
 }
 function _maqListaFluxoUI(){
-  const base = (Array.isArray(MAQUINAS) && MAQUINAS.length)
-    ? MAQUINAS.map(m=>({ id:String(m.id), nome:String(m.nome||m.col||'').trim()||String(m.id), ordem:(m.ordem!=null?Number(m.ordem):null) }))
-    : [];
-  const byNome = new Set(base.map(x=>_normMaqNome(x.nome)));
-  MAQUINAS_FLUXO.forEach((nome,idx)=>{
-    const k = _normMaqNome(nome);
-    if(!byNome.has(k)){
-      base.push({ id:nome, nome, ordem: 1000+idx });
-      byNome.add(k);
-    }
-  });
-  if(!base.length){
-    return MAQUINAS_FLUXO.map((nome,idx)=>({ id:nome, nome, ordem: 1000+idx }));
+  if (Array.isArray(MAQUINAS) && MAQUINAS.length > 0) {
+    return [...MAQUINAS]
+      .map(m=>({ id:String(m.id), nome:String(m.nome||m.col||'').trim()||String(m.id), ordem:(m.ordem!=null?Number(m.ordem):null) }))
+      .sort((a,b)=> (Number(a.ordem||99) - Number(b.ordem||99)));
   }
-  base.sort((a,b)=>{
-    const oa = a.ordem!=null && Number.isFinite(a.ordem) ? a.ordem : 99;
-    const ob = b.ordem!=null && Number.isFinite(b.ordem) ? b.ordem : 99;
-    if(oa !== ob) return oa - ob;
-    return String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR');
-  });
-  return base;
+  return MAQUINAS_FLUXO.map((nome, i) => ({ id: nome, nome, ordem: i + 1 }));
 }
 function renderMaqChks(sel){
   if(Array.isArray(sel)) OF_FLUXO_IDS=[...sel].map(v=>String(v));
@@ -4793,35 +4778,27 @@ function renderFluxos(){
     </div>`).join('');
 }
 async function novoFluxo(){
-  document.getElementById('fluxo-nome-input').value = '';
+  document.getElementById('modal-fluxo-nome').value = '';
   abrir('modal-fluxo');
-  setTimeout(()=>document.getElementById('fluxo-nome-input').focus(),100);
+  setTimeout(()=>document.getElementById('modal-fluxo-nome').focus(),100);
 }
 
 async function salvarNovoFluxo(){
-  const input = document.getElementById('fluxo-nome-input');
-  const nome = input.value.trim();
-  if(!nome) { toast('Informe o nome do fluxo','var(--red)'); return; }
-  
-  const row={nome,etapas:[]};
-  console.log('[FLUXO] payload enviado:', JSON.stringify(row));
-  
-  let token = String(localStorage.getItem('token') || '').trim();
-  const headers = { 'Content-Type': 'application/json' };
-  if(token) headers['Authorization'] = `Bearer ${token}`;
-  
-  const r=await salvarViaApiOuLocal('fluxo',
-    ()=>fetch((window.API_BASE || '') + '/api/fluxos', { method: 'POST', headers, body: JSON.stringify(row) }).then(res=>res.json()),
-    ()=>({ok:true, local:true})
-  );
-  
-  if(!r || !r.ok){toast('Erro ao criar fluxo','var(--red)');return;}
-  if(!r.local){ try{ await carregarFluxos(); }catch(e){} }
-  else FLUXOS.push({id:'F'+Date.now(),nome:row.nome,etapas:[]});
-  
-  fechar('modal-fluxo');
-  renderFluxos();
-  toast('Fluxo criado!','var(--green)');
+  const nome = (document.getElementById('modal-fluxo-nome')?.value || '').trim();
+  if (!nome) { toast('Informe o nome', 'var(--red)'); return; }
+  const r = await apiFetch('/api/fluxos', {
+    method: 'POST',
+    body: JSON.stringify({ nome, etapas: [] })
+  });
+  const d = r ? await r.json().catch(()=>null) : null;
+  if (d && (d.ok || d.id || (d.data && d.data.id))) {
+    toast('Fluxo criado!', 'var(--green)');
+    await carregarFluxos();
+    renderFluxos();
+    fechar('modal-fluxo');
+  } else {
+    alert('Erro ao criar fluxo: ' + ((d && d.error) ? d.error : JSON.stringify(d)));
+  }
 }
 async function delFluxo(fi){
   if(!confirm('Remover fluxo?'))return;
@@ -10725,16 +10702,27 @@ function _readFoto1(cb){
   const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(inp.files[0]);
 }
 async function salvarFaca1(){
-  const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome da faca','var(--red)');return;}
-  const foto = await new Promise((resolve)=>_readFoto1(resolve));
-  const row={nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips'),foto:foto||null};
-  const r=await salvarViaApiOuLocal('faca',
-    ()=>api('POST','/facas_estoque', row),
-    ()=>{ FACAS.push(row); return {ok:true, local:true, data:row}; }
-  );
-  if(!r || !r.ok){toast('Erro ao cadastrar faca','var(--red)');return;}
-  if(!r.local){ try{ await carregarFacas(); }catch(e){} }
-  fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca cadastrada!');
+  const nome = (document.getElementById('fa1-nome')?.value || '').trim();
+  if (!nome) { toast('Informe o nome da faca', 'var(--red)'); return; }
+  const row = {
+    nome,
+    medidas: document.getElementById('fa1-medidas')?.value || '',
+    valor: parseFloat(document.getElementById('fa1-valor')?.value) || 0,
+    obs: document.getElementById('fa1-obs')?.value || '',
+    maquinas: _getChips('fa1-maquinas-chips'),
+    clientes: _getChips('fa1-clientes-chips'),
+    emp_id: EMP_FILTRO || 'E1'
+  };
+  const r = await apiFetch('/api/facas_estoque', { method: 'POST', body: JSON.stringify(row) });
+  const d = r ? await r.json().catch(()=>null) : null;
+  if (d && (d.ok || d.id || (d.data && d.data.id))) {
+    toast('Faca salva!', 'var(--green)');
+    await carregarFacas();
+    renderFacas1();
+    fechar('modal-faca1');
+  } else {
+    alert('Erro: ' + ((d && d.error) ? d.error : JSON.stringify(d)));
+  }
 }
 async function salvarEdicaoFaca1(id){
   const f=FACAS.find(x=>x.id===id);if(!f)return;
@@ -10827,16 +10815,27 @@ function _readFotoCl(cb){
   const r=new FileReader();r.onload=e=>cb(e.target.result);r.readAsDataURL(inp.files[0]);
 }
 async function salvarCliche(){
-  const nome=(document.getElementById('cl2-nome').value||'').trim();if(!nome){toast('Informe o nome do clichê','var(--red)');return;}
-  const foto = await new Promise((resolve)=>_readFotoCl(resolve));
-  const row={id:_idCliche(),nome,medidas:document.getElementById('cl2-medidas').value,maquinas:_getChips('cl2-maquinas-chips'),valor:parseFloat(document.getElementById('cl2-valor').value)||0,obs:document.getElementById('cl2-obs').value,clientes:_getChips('cl2-clientes-chips'),foto:foto||null};
-  const r=await salvarViaApiOuLocal('cliche',
-    ()=>api('POST','/cliches_estoque', row),
-    ()=>{ CLICHES.push(row); return {ok:true, local:true, data:row}; }
-  );
-  if(!r || !r.ok){toast('Erro ao cadastrar clichê','var(--red)');return;}
-  if(!r.local){ try{ await carregarCliches(); }catch(e){} }
-  fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê cadastrado!');
+  const nome = (document.getElementById('cl2-nome')?.value || '').trim();
+  if (!nome) { toast('Informe o nome do clichê', 'var(--red)'); return; }
+  const row = {
+    nome,
+    medidas: document.getElementById('cl2-medidas')?.value || '',
+    valor: parseFloat(document.getElementById('cl2-valor')?.value) || 0,
+    obs: document.getElementById('cl2-obs')?.value || '',
+    maquinas: _getChips('cl2-maquinas-chips'),
+    clientes: _getChips('cl2-clientes-chips'),
+    emp_id: EMP_FILTRO || 'E1'
+  };
+  const r = await apiFetch('/api/cliches_estoque', { method: 'POST', body: JSON.stringify(row) });
+  const d = r ? await r.json().catch(()=>null) : null;
+  if (d && (d.ok || d.id || (d.data && d.data.id))) {
+    toast('Clichê salvo!', 'var(--green)');
+    await carregarCliches();
+    renderCliches();
+    fechar('modal-cliche');
+  } else {
+    alert('Erro: ' + ((d && d.error) ? d.error : JSON.stringify(d)));
+  }
 }
 async function salvarEdicaoCliche(id){
   const f=CLICHES.find(x=>x.id===id);if(!f)return;
@@ -16026,7 +16025,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <button class="close-btn" onclick="fechar('modal-fluxo')">✕</button>
   <h2>🔄 Novo Fluxo</h2>
   <div class="fg">
-    <div class="mf fgf"><label>NOME DO FLUXO *</label><input id="fluxo-nome-input" placeholder="Ex: PADRÃO 1"></div>
+    <div class="mf fgf"><label>NOME DO FLUXO *</label><input id="modal-fluxo-nome" placeholder="Ex: PADRÃO 1"></div>
   </div>
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-fluxo')">Cancelar</button>
