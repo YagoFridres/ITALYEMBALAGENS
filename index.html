@@ -1707,14 +1707,18 @@ function updateBadges(){
 }
 
 // ===================== PCP POR DIA =====================
+let _pcpRenderizando = false;
 function renderPCP(){
-  if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
-  const isTodas = PCP_DIA_ATUAL === '__todas__';
-  const busca=(document.getElementById('pcp-busca')||{}).value||'';
-  const fs=(document.getElementById('pcp-status')||{}).value||'';
-  const fv=(document.getElementById('pcp-vend')||{}).value||'';
-  const vsel=document.getElementById('pcp-vend');
-  if(vsel&&vsel.options.length<=1){VENDEDORES.forEach(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=v.nome;vsel.appendChild(o);});}
+  if(_pcpRenderizando) return;
+  _pcpRenderizando = true;
+  try{
+    if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
+    const isTodas = PCP_DIA_ATUAL === '__todas__';
+    const busca=(document.getElementById('pcp-busca')||{}).value||'';
+    const fs=(document.getElementById('pcp-status')||{}).value||'';
+    const fv=(document.getElementById('pcp-vend')||{}).value||'';
+    const vsel=document.getElementById('pcp-vend');
+    if(vsel&&vsel.options.length<=1){VENDEDORES.forEach(v=>{const o=document.createElement('option');o.value=v.id;o.textContent=v.nome;vsel.appendChild(o);});}
 
   // Update day label and input
   const lbl=document.getElementById('pcp-dia-label');
@@ -1777,8 +1781,8 @@ function renderPCP(){
     }
   }
 
-  updateBadges();
-  document.getElementById('pcp-tbody').innerHTML=lista.length===0
+    updateBadges();
+    document.getElementById('pcp-tbody').innerHTML=lista.length===0
     ?`<tr><td colspan="22" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF para ${pcpDiaLabel(PCP_DIA_ATUAL)} — <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="abrirModalOF()">＋ Nova OF</button></td></tr>`
     :lista.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
@@ -1816,7 +1820,10 @@ function renderPCP(){
         <button class="btn-icon" onclick="event.stopPropagation();togUrg('${o.of}')" style="color:${o.urg?'var(--red)':'var(--text3)'}" title="Urgente">🔴</button>
       </div></td>
     </tr>`;
-  }).join('');
+    }).join('');
+  } finally {
+    _pcpRenderizando = false;
+  }
 }
 
 function ofFluxoGetNames(o){
@@ -2338,105 +2345,13 @@ async function alterarOFSel(){
   const o=OFs.find(x=>x.of===ofSel);
   if(!o)return;
   if(o._cancelado){toast('Não é possível alterar OF cancelada','var(--red)');return;}
-  
-  // Load items — preserve per-item images
-  ofImgsTemp=Array.isArray(o.imgs)?o.imgs.filter(Boolean).slice():[];
-  if(o.imagem_url) ofImgsTemp.unshift(o.imagem_url);
-  renderImgsTemp();
-  ofItensTemp=(o.itens&&o.itens.length>0)
-    ? o.itens.map(it=>({...it, img: it.img||null}))
-    : [{desc:o.obs||'Item único',ref:'',qtd:o.qtd||0,vunit:o.vunit||0,img:null}];
-  
-  document.getElementById('f-of').value=o.of;
-  const fprodDesc=document.getElementById('f-prod-desc');if(fprodDesc)fprodDesc.value=o.prodDesc||'';
-  document.getElementById('f-dia').value=o.dia||'';
-  document.getElementById('f-ent').value=o.ent||'';
-  document.getElementById('f-obs').value=o.obs||'';
-  document.getElementById('f-urg').value=o.urg?'1':'0';
-  document.getElementById('f-st').value=o.status;
-  const fpagto=document.getElementById('f-pagto');if(fpagto)fpagto.value=o.pagto||'';
-  
-  const csel=document.getElementById('f-cli');csel.innerHTML='<option value="">Selecionar...</option>';
-  CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+c.tel+' · '+c.cidade+'/'+c.uf+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
-  csel.value=o.cliId||'';
-  const fCliSearchEdit=document.getElementById('f-cli-search'); if(fCliSearchEdit) fCliSearchEdit.value=(getCli(o.cliId)||{}).nome||'';
-  
-  const vsel=document.getElementById('f-vend');vsel.innerHTML='<option value="">Sem vendedor</option>';
-  VENDEDORES.forEach(v=>vsel.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
-  vsel.value=o.vendId||'';
-  
-  const fsel=document.getElementById('f-fl');fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
-  FLUXOS.forEach(f=>fsel.innerHTML+=`<option value="${f.id}">${f.nome}</option>`);
-  fsel.value=o.fluxo||'';
-  
-  const empSel=document.getElementById('f-emp');if(empSel)empSel.value=o.empId||'';
-  await ofAtualizaChapas();
-  const chsel=document.getElementById('f-chp');
-  chsel.value=o.chp||'';
-  document.getElementById('f-qchp').value=o.qchp||'';
-  
-  const fluxoIds = (o.fluxo_maquinas && Array.isArray(o.fluxo_maquinas) && o.fluxo_maquinas.length)
-    ? ofFluxoIdsFromNames(o.fluxo_maquinas)
-    : (o.maq||[]);
-  renderMaqChks(fluxoIds);renderOfItens();
-  
-  // Change save button to update
-  const footer=document.querySelector('#modal-of .modal-footer');
-  footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>
-    <button class="btn btn-purple" onclick="salvarAlteracaoOF('${o.of}')">✏ Salvar Alteração</button>`;
-  
-  // Change modal title
-  document.querySelector('#modal-of h2').textContent='✏ Alterar OF — '+o.of;
-  abrir('modal-of');
+  return abrirModalOF(o.id||'');
 }
 
 function salvarAlteracaoOF(ofNum){
   const o=OFs.find(x=>x.of===ofNum);if(!o)return;
-  const cliId=document.getElementById('f-cli').value;
-  const itens=getOfItensFromModal();
-  const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
-  if(!cliId){toast('Selecione o cliente','var(--red)');return;}
-  if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-  
-  o.cliId=cliId;
-  o.prodDesc=(document.getElementById('f-prod-desc')||{}).value||'';
-  o.vendId=document.getElementById('f-vend').value;
-  o.itens=itens;
-  o.qtd=qtdTotal;
-  o.val=valTotal;
-  o.vunit=itens.length===1?itens[0].vunit:0;
-  o.data_pedido=document.getElementById('f-dia').value;
-  o.modo_programacao=(document.getElementById('f-modo-prog')||{}).value||o.modo_programacao||'manual';
-  o.dia_programacao=(document.getElementById('f-dia-prog')||{}).value||o.dia_programacao||'';
-  o.dia=o.dia_programacao||o.data_pedido;
-  o.ent=document.getElementById('f-ent').value;
-  o.fluxo=document.getElementById('f-fl').value;
-  o.maq=getMaqSel();
-  o.fluxo_maquinas=ofFluxoNamesFromIds(o.maq);
-  if(o.maquina_atual_index==null || o.maquina_atual_index<0) o.maquina_atual_index=0;
-  if(o.maquina_atual_index>=o.fluxo_maquinas.length) o.maquina_atual_index=0;
-  o.status=document.getElementById('f-st').value;
-  o.urg=document.getElementById('f-urg').value==='1';
-  o.pagto=(document.getElementById('f-pagto')||{}).value||'';
-  o.obs=document.getElementById('f-obs').value;
-  o.empId=(document.getElementById('f-emp')||{}).value||o.empId||EMP_FILTRO||'E1';
-  try{ const cc=getCli(cliId)||{}; o.cidade_entrega=cc.cidade||o.cidade_entrega||''; }catch(e){}
-  // derive imgs from item images
-  const itemImgsAlt=itens.map(it=>it.img||null);
-  const firstImgAlt=itemImgsAlt.find(img=>img!==null);
-  const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImgAlt].filter(Boolean))];
-  o.imgs = imgs;
-  o.imagem_url = imgs.length ? imgs[0] : null;
-  
-  // Reset modal footer/title for future new OFs
-  const footer=document.querySelector('#modal-of .modal-footer');
-  footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>
-    <button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
-  document.querySelector('#modal-of h2').textContent='📋 Nova Ordem de Fabricação';
-  
-  fechar('modal-of');autoSaveTrigger();renderPCP();updateBadges();
-  toast('✏ '+ofNum+' alterada — '+itens.length+' item(ns)','var(--purple)');
+  if(!o.id){toast('ID da OF não encontrado','var(--red)');return;}
+  return salvarEdicaoOFId(String(o.id));
 }
 
 // ===================== MODAL OF =====================
@@ -3141,9 +3056,18 @@ function renderLancamento(){
   const prontas = base.filter(o=>String(o.status||'').trim()==='Pedido Pronto' && !o.deleted_at);
   const cancel = base.filter(o=>['Cancelada','Cancelado'].includes(String(o.status||'').trim()) && !o.deleted_at);
   const excl = base.filter(o=>!!o.deleted_at);
+  const emAberto = base.filter(o=>{
+    const st = String(o.status||'').trim();
+    return !['Pedido Pronto','Cancelada','Cancelado'].includes(st) && !o.deleted_at;
+  }).sort((a,b)=>{
+    const da = lancEnt(a) || '';
+    const db = lancEnt(b) || '';
+    if(da !== db) return da > db ? 1 : -1;
+    return String(a.of||'').localeCompare(String(b.of||''));
+  });
 
   const tab = LANC_UI.tab || 'prontas';
-  let rows = tab==='canceladas' ? cancel : tab==='excluidas' ? excl : prontas;
+  let rows = tab==='canceladas' ? cancel : tab==='excluidas' ? excl : tab==='abertas' ? emAberto : prontas;
   rows = rows.slice().sort((a,b)=>{
     const fa = tab==='excluidas' ? lancTs(a,'deleted_at') : tab==='canceladas' ? lancTs(a,'updated_at') : lancTs(a,'data_conclusao');
     const fb = tab==='excluidas' ? lancTs(b,'deleted_at') : tab==='canceladas' ? lancTs(b,'updated_at') : lancTs(b,'data_conclusao');
@@ -3155,6 +3079,7 @@ function renderLancamento(){
 
   resumo.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     ${btn('prontas','Pedidos Prontos',prontas.length)}
+    ${btn('abertas','Em Aberto',emAberto.length)}
     ${btn('canceladas','Canceladas',cancel.length)}
     ${btn('excluidas','Excluídas',excl.length)}
     <div style="flex:1"></div>
@@ -3177,7 +3102,7 @@ function renderLancamento(){
     <table style="width:100%;border-collapse:collapse;min-width:1100px">
       <thead><tr>
         <th style="${th}">OF</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Qtd</th>
-        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
+        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
       </tr></thead>
       <tbody>
         ${rows.length?rows.map(o=>`
@@ -3188,13 +3113,15 @@ function renderLancamento(){
             <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(o.qtd||0)}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
+            <td style="${td}">${escH(String(o.status||'').trim()||'—')}</td>
+            <td style="${td}">${escH(ofFluxoGetMaquinaAtual(o)||'—')}</td>
             <td style="${td}">${escH(lancVendNome(o))}</td>
             <td style="${td};text-align:center">
               <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver detalhes</button>
               ${(tab==='canceladas')?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
               ${(tab==='excluidas')?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
             </td>
-          </tr>`).join(''):`<tr><td colspan="8" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
+          </tr>`).join(''):`<tr><td colspan="10" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
       </tbody>
     </table>
   </div>`;
@@ -4066,7 +3993,7 @@ function _renderEstoqueBase(chapas) {
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
-          <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({empresa_vinculada: val, qual_cnpj: val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+          <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;console.log('[EMPRESA-INLINE] id:',id,'val:',val);if(!id||!val){console.warn('[EMPRESA-INLINE] id ou val vazio!');return;}const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_vinculada:val,qual_cnpj:val})});console.log('[EMPRESA-INLINE] status:',r&&r.status);const d=await (r?r.json().catch(e=>{console.error('[EMPRESA-INLINE] json error:',e);return null;}):Promise.resolve(null));console.log('[EMPRESA-INLINE] resposta:',d);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>String(x.id)===String(id));if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;console.log('[EMPRESA-INLINE] atualizado no array índice',i);}else{console.warn('[EMPRESA-INLINE] item não encontrado no array, id:',id);}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);console.log('[EMPRESA-INLINE] salvo com sucesso!');})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
@@ -9585,25 +9512,39 @@ async function syncFromServerSilent(){
       api('GET','/compras'), api('GET','/orcamentos'+empParam), api('GET','/fornecedores'+empParam), api('GET','/vendedores'+empParam),
       api('GET','/operadores'+empParam), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
-    let mudou = false;
-    if(ofs.ok && ofs.data){ OFs = ofs.data.map(normalizeOF); mudou = true; }
-    if(clis.ok && clis.data){ CLIENTES = clis.data.map(normalizeCli); mudou = true; }
+    const hashOFs = (arr)=> (arr||[]).map(o=>String(o.id||'')+'|'+String(o.status||'')+'|'+String(o.maquina_atual_index||0)+'|'+String(o.ent||o.data_entrega||'')).join(',');
+    let mudouAlgo = false;
+    let mudouOFs = false;
+
+    if(ofs.ok && ofs.data){
+      const novos = ofs.data.map(normalizeOF);
+      const hNovo = hashOFs(novos);
+      const hAtual = hashOFs(OFs);
+      if(hNovo !== hAtual){
+        OFs = novos;
+        mudouAlgo = true;
+        mudouOFs = true;
+      }
+    }
+    if(clis.ok && clis.data){ CLIENTES = clis.data.map(normalizeCli); mudouAlgo = true; }
     {
       const rows = (est && est.ok && Array.isArray(est.data)) ? est.data : (Array.isArray(est) ? est : null);
-      if(rows){ ESTOQUE = rows.map(normalizeEst); mudou = true; }
+      if(rows){ ESTOQUE = rows.map(normalizeEst); mudouAlgo = true; }
     }
-    if(aps.ok && aps.data){ APONTAMENTOS = aps.data.map(normalizeAp); mudou = true; }
-    if(cmp.ok && cmp.data){ COMPRAS = cmp.data.map(normalizeCmp); mudou = true; }
-    if(orcs.ok && orcs.data){ ORCAMENTOS = orcs.data.map(normalizeOrc); mudou = true; }
-    if(forn.ok && forn.data){ FORNECEDORES = forn.data.map(normalizeForn); mudou = true; }
-    if(vends.ok && vends.data){ VENDEDORES = vends.data.map(normalizeVend); mudou = true; }
-    if(ops.ok && ops.data){ OPERADORES = ops.data.map(normalizeOp); mudou = true; }
-    if(nfs.ok && nfs.data){ NOTAS_FISCAIS = nfs.data; mudou = true; }
-    if(inc.ok && inc.data){ INCONFORMIDADES = inc.data.map(normalizeInc); mudou = true; }
-    if(mudou){
+    if(aps.ok && aps.data){ APONTAMENTOS = aps.data.map(normalizeAp); mudouAlgo = true; }
+    if(cmp.ok && cmp.data){ COMPRAS = cmp.data.map(normalizeCmp); mudouAlgo = true; }
+    if(orcs.ok && orcs.data){ ORCAMENTOS = orcs.data.map(normalizeOrc); mudouAlgo = true; }
+    if(forn.ok && forn.data){ FORNECEDORES = forn.data.map(normalizeForn); mudouAlgo = true; }
+    if(vends.ok && vends.data){ VENDEDORES = vends.data.map(normalizeVend); mudouAlgo = true; }
+    if(ops.ok && ops.data){ OPERADORES = ops.data.map(normalizeOp); mudouAlgo = true; }
+    if(nfs.ok && nfs.data){ NOTAS_FISCAIS = nfs.data; mudouAlgo = true; }
+    if(inc.ok && inc.data){ INCONFORMIDADES = inc.data.map(normalizeInc); mudouAlgo = true; }
+    if(mudouAlgo){
       autoSaveNow(true);
-      renderActivePageSync();
       try{ updateBadges(); }catch(e){}
+      if(mudouOFs && window._PAGE_ATUAL === 'pcp'){
+        try{ renderPCP(); }catch(e){}
+      }
     }
   }catch(e){
   }finally{

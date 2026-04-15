@@ -134,6 +134,9 @@ function cacheClear(key) {
   delete _serverCacheTTL[key];
 }
 function cacheClearPrefix(prefix) {
+  Object.keys(_serverCache).forEach((k) => {
+    if (k.startsWith(prefix)) cacheClear(k);
+  });
   Object.keys(_serverCacheTTL).forEach((k) => {
     if (k.startsWith(prefix)) cacheClear(k);
   });
@@ -903,7 +906,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           if (from) q = q.gte(field, from);
           if (to) q = q.lte(field, to);
         }
-        if (!incluirExcluidas) q = q.is('deleted_at', null);
+        if (!incluirExcluidas) {
+          try { q = q.is('deleted_at', null); } catch (_) {}
+        }
         if (hasPaging) q = q.range(offset, offset + limit - 1);
 
         let { data, error } = await q;
@@ -917,7 +922,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
               if (from) q3 = q3.gte(field, from);
               if (to) q3 = q3.lte(field, to);
             }
-            if (!incluirExcluidas) q3 = q3.is('deleted_at', null);
+            if (!incluirExcluidas) {
+              try { q3 = q3.is('deleted_at', null); } catch (_) {}
+            }
             if (hasPaging) q3 = q3.range(offset, offset + limit - 1);
             const r3 = await q3;
             data = r3.data;
@@ -2855,12 +2862,15 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
+    console.log('[INLINE] body recebido:', JSON.stringify(b));
+    console.log('[INLINE] id:', req.params.id);
     const table = await _chapasPreferV2Table();
-    const allowed = ['qual_cnpj', 'qual', 'categoria', 'emp_id', 'riscada'];
-    if (table === 'chapas_estoque_v2') allowed.push('empresa_vinculada');
+    console.log('[INLINE] tabela:', table);
+    const allowed = ['qual_cnpj', 'qual', 'categoria', 'emp_id', 'riscada', 'empresa_vinculada'];
     const payload = {};
     allowed.forEach(k => { if (k in b) payload[k] = b[k]; });
     if (Object.keys(payload).length === 0) {
+      console.warn('[INLINE] payload vazio! body:', JSON.stringify(b));
       return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Recebido: ' + JSON.stringify(b) });
     }
     if ('empresa_vinculada' in b) {
@@ -2871,15 +2881,18 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     if (table === 'chapas_estoque_v2') {
       payload.atualizado_por = req.usuario?.nome || 'sistema';
     }
+    console.log('[INLINE] payload final:', JSON.stringify(payload));
     const { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().maybeSingle();
     if (error) {
-      console.error('[inline] erro:', error.message, 'payload:', payload);
+      console.error('[INLINE] erro supabase:', JSON.stringify(error));
       return res.status(500).json({ ok: false, error: error.message });
     }
+    console.log('[INLINE] sucesso, data:', data?.id);
     cacheClearPrefix('chapas_estoque:');
+    cacheClearPrefix('chapas_');
     return res.json({ ok: true, data });
   } catch (e) {
-    console.error('[inline] catch:', e.message);
+    console.error('[INLINE] catch:', e.message);
     return res.status(500).json({ ok: false, error: e.message });
   }
 });
