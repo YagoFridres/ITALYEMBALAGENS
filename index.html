@@ -7165,7 +7165,14 @@ function _renderRelatorioBase(){
 
   let html=filterLabel;
 
-  if(tipo==='vendas-cliente'){
+  if(tipo==='estoque-atual'){
+    const relContent = document.getElementById('rel-content');
+    if(relContent){
+      relContent.innerHTML = `<div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text2)">Carregando inventário de estoque...</div>`;
+    }
+    carregarRelatorioEstoqueInventario(empFil);
+    return;
+  } else if(tipo==='vendas-cliente'){
     let ofs=ofsAll;if(ramo)ofs=ofs.filter(o=>{const c=getCli(o.cliId);return c&&c.ramo===ramo;});
     const por={};ofs.forEach(o=>{const c=getCli(o.cliId);if(!c)return;if(!por[c.id])por[c.id]={c,tot:0,qtd:0,peds:0};por[c.id].tot+=o.val||0;por[c.id].qtd+=o.qtd||0;por[c.id].peds++;});
     html+=tbl(['CLIENTE','RAMO','PEDIDOS','QTD TOTAL','TOTAL','TICKET'],Object.values(por).sort((a,b)=>b.tot-a.tot).map(({c,tot,qtd,peds},i)=>`<tr style="${trStyle(i)}"><td style="${tdStyle};font-weight:700">${c.nome}</td><td style="${tdStyle};color:var(--text2)">${c.ramo}</td><td style="${tdStyle};text-align:center">${peds}</td><td style="${tdStyle};text-align:right">${qtd.toLocaleString()}</td><td style="${tdStyle};text-align:right;color:var(--green);font-weight:700">${fmtR(tot)}</td><td style="${tdStyle};text-align:right;color:var(--text2)">${fmtR(peds?tot/peds:0)}</td></tr>`).join(''));
@@ -7377,6 +7384,78 @@ function _renderRelatorioBase(){
   }
 
   document.getElementById('rel-content').innerHTML=html||'<span style="color:var(--text3)">—</span>';
+}
+
+async function carregarRelatorioEstoqueInventario(empId){
+  const relContent = document.getElementById('rel-content');
+  if(!relContent) return;
+  const q = empId ? ('?empId=' + encodeURIComponent(empId)) : '';
+  const r = await api('GET', '/relatorio/estoque_inventario' + q);
+  if(!r || r.error){
+    relContent.innerHTML = `<div style="padding:14px;color:var(--red)">Erro ao carregar inventário: ${escH((r&&r.error)||'falha')}</div>`;
+    return;
+  }
+  const d = r.data || r || {};
+  const chapas = d.chapas || {};
+  const facas = d.facas || {};
+  const cliches = d.cliches || {};
+  const cats = chapas.por_categoria || {};
+
+  const th='padding:7px 9px;border:1px solid var(--border);background:var(--s2);font-size:.72rem;font-weight:700;text-align:left;font-family:var(--mono);text-transform:uppercase;';
+  const td='padding:6px 9px;border:1px solid var(--s3);font-size:.78rem;';
+  const card=(title,rows)=>`<div class="card" style="padding:12px"><div style="font-weight:800;margin-bottom:8px">${title}</div>${rows.join('')}</div>`;
+  const fmtNn=(n)=>fmtN(Number(n||0));
+
+  let html='';
+  html += `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px">
+    ${card('CHAPAS',[
+      `<div style="font-size:.74rem;color:var(--text2)">Itens cadastrados: <b style="color:var(--text)">${fmtNn(chapas.total_itens)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Quantidade total: <b style="color:var(--text)">${fmtNn(chapas.total_quantidade)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Valor total: <b style="color:var(--green)">${fmtR(chapas.total_valor||0)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Abaixo do mínimo: <b style="color:var(--red)">${fmtNn(chapas.abaixo_minimo)}</b></div>`
+    ])}
+    ${card('FACAS',[
+      `<div style="font-size:.74rem;color:var(--text2)">Itens: <b style="color:var(--text)">${fmtNn(facas.total_itens)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Quantidade: <b style="color:var(--text)">${fmtNn(facas.total_quantidade)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Valor total: <b style="color:var(--green)">${fmtR(facas.total_valor||0)}</b></div>`
+    ])}
+    ${card('CLICHÊS',[
+      `<div style="font-size:.74rem;color:var(--text2)">Itens: <b style="color:var(--text)">${fmtNn(cliches.total_itens)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Quantidade: <b style="color:var(--text)">${fmtNn(cliches.total_quantidade)}</b></div>`,
+      `<div style="font-size:.74rem;color:var(--text2)">Valor total: <b style="color:var(--green)">${fmtR(cliches.total_valor||0)}</b></div>`
+    ])}
+  </div>`;
+
+  html += `<div class="sbox"><div class="sbox-h">📦 Chapas por Categoria</div><div class="sbox-b">`;
+  const catEntries = Object.entries(cats);
+  if(!catEntries.length){
+    html += `<span style="color:var(--text3)">Sem dados de chapas</span>`;
+  }else{
+    catEntries.forEach(([cat,info])=>{
+      html += `<div style="font-weight:800;color:var(--accent);margin:10px 0 6px">${escH(cat)} — Qtd: ${fmtNn(info.quantidade)} · Valor: ${fmtR(info.valor_total||0)}</div>`;
+      html += `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>
+        <th style="${th}">NOME</th><th style="${th}">TAMANHO</th><th style="${th}">FORNECEDOR</th><th style="${th}">QTD</th><th style="${th}">MÍNIMO</th>
+      </tr></thead><tbody>`;
+      (info.itens||[]).forEach((it,i)=>{
+        html += `<tr style="background:${i%2?'var(--surface)':'var(--s2)'}">
+          <td style="${td}">${escH(it.nome||'—')}</td>
+          <td style="${td}">${escH(it.tamanho||'—')}</td>
+          <td style="${td}">${escH(it.fornecedor||'—')}</td>
+          <td style="${td};text-align:right">${fmtNn(it.quantidade)}</td>
+          <td style="${td};text-align:right">${fmtNn(it.estoque_minimo||0)}</td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  const renderItens = (titulo, itens)=>`<div class="sbox" style="margin-top:12px"><div class="sbox-h">${titulo}</div><div class="sbox-b"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="${th}">NOME</th><th style="${th}">MEDIDAS</th><th style="${th}">QTD</th><th style="${th}">VALOR</th></tr></thead><tbody>${(itens||[]).map((it,i)=>`<tr style="background:${i%2?'var(--surface)':'var(--s2)'}"><td style="${td}">${escH(it.nome||'—')}</td><td style="${td}">${escH(it.medidas||'—')}</td><td style="${td};text-align:right">${fmtNn(it.quantidade)}</td><td style="${td};text-align:right">${fmtR(it.valor||0)}</td></tr>`).join('') || `<tr><td style="${td}" colspan="4">Sem dados</td></tr>`}</tbody></table></div></div></div>`;
+  html += renderItens('🪚 Facas', facas.itens || []);
+  html += renderItens('🖨 Clichês', cliches.itens || []);
+
+  html += `<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn btn-purple" onclick="window.print()">🖨 Imprimir Relatório</button></div>`;
+  relContent.innerHTML = html;
 }
 
 function imprimirRel(){
@@ -15333,6 +15412,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="vendas-mensal-comissao">Vendas Mensais + Comissão</option>
       <option value="pedidos-aberto">Pedidos em Aberto</option>
       <option value="pedidos-concluidos">Pedidos Concluídos</option>
+      <option value="estoque-atual">Estoque Atual</option>
       <option value="estoque">Estoque de Chapas</option>
       <option value="maquinas">Produção por Máquina</option>
       <option value="compras">Compras de MP</option>

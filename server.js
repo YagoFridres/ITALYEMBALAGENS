@@ -3708,6 +3708,67 @@ app.get('/api/relatorio/dashboard', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/relatorio/estoque_inventario', authMiddleware, async (req, res) => {
+  try {
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    const table = await _chapasPreferV2Table();
+
+    let qC = supabase.from(table).select('*');
+    if (empId) qC = qC.eq('emp_id', empId);
+    const { data: chapasRaw } = await qC;
+    const chapas = (chapasRaw || []).map((r) => _chapasCanonicalFromAny(r, table));
+
+    const porCategoria = {};
+    chapas.forEach((c) => {
+      const cat = c.categoria || 'Sem Categoria';
+      if (!porCategoria[cat]) porCategoria[cat] = { quantidade: 0, valor_total: 0, itens: [] };
+      porCategoria[cat].quantidade += Number(c.quantidade || 0);
+      porCategoria[cat].valor_total += Number(c.valor_total || 0);
+      porCategoria[cat].itens.push({
+        id: c.id, nome: c.nome || c.nomenclatura,
+        tamanho: c.tamanho, quantidade: c.quantidade,
+        fornecedor: c.fornecedor, estoque_minimo: c.estoque_minimo
+      });
+    });
+
+    let qF = supabase.from('facas_estoque').select('*');
+    if (empId) qF = qF.eq('emp_id', empId);
+    const { data: facas } = await qF;
+
+    let qCl = supabase.from('cliches_estoque').select('*');
+    if (empId) qCl = qCl.eq('emp_id', empId);
+    const { data: cliches } = await qCl;
+
+    return ok(res, {
+      chapas: {
+        total_itens: chapas.length,
+        total_quantidade: chapas.reduce((s, c) => s + Number(c.quantidade || 0), 0),
+        total_valor: chapas.reduce((s, c) => s + Number(c.valor_total || 0), 0),
+        abaixo_minimo: chapas.filter((c) => Number(c.quantidade) < Number(c.estoque_minimo || 200)).length,
+        por_categoria: porCategoria,
+      },
+      facas: {
+        total_itens: (facas || []).length,
+        total_quantidade: (facas || []).reduce((s, f) => s + Number(f.quantidade || f.qtd || 0), 0),
+        total_valor: (facas || []).reduce((s, f) => s + Number(f.valor || 0), 0),
+        itens: (facas || []).map((f) => ({
+          id: f.id, nome: f.nome, medidas: f.medidas,
+          quantidade: f.quantidade || f.qtd || 0, valor: f.valor || 0
+        })),
+      },
+      cliches: {
+        total_itens: (cliches || []).length,
+        total_quantidade: (cliches || []).reduce((s, c) => s + Number(c.quantidade || c.qtd || 0), 0),
+        total_valor: (cliches || []).reduce((s, c) => s + Number(c.valor || 0), 0),
+        itens: (cliches || []).map((c) => ({
+          id: c.id, nome: c.nome, medidas: c.medidas,
+          quantidade: c.quantidade || c.qtd || 0, valor: c.valor || 0
+        })),
+      }
+    });
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/hist_estoque', async (req, res) => {
   try {
     const { data, error } = await supabase.from('hist_estoque')
