@@ -646,7 +646,9 @@ function ofIn(p) {
     out.maquina_atual_index = Number.isFinite(idx) ? idx : 0;
   }
   if (has('chapa_id')) out.chapa_id = p.chapa_id ? String(p.chapa_id) : null;
+  if (has('chp') && !has('chapa_id')) out.chapa_id = p.chp ? String(p.chp) : null;
   if (has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qtd_chapas) || 0);
+  if (has('qchp') && !has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qchp) || 0);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;
@@ -937,7 +939,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega";
+    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega,chapa_id,qtd_chapas";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
