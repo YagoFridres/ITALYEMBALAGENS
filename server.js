@@ -645,6 +645,8 @@ function ofIn(p) {
     const idx = Number(p.maquina_atual_index);
     out.maquina_atual_index = Number.isFinite(idx) ? idx : 0;
   }
+  if (has('chapa_id')) out.chapa_id = p.chapa_id ? String(p.chapa_id) : null;
+  if (has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qtd_chapas) || 0);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;
@@ -655,6 +657,38 @@ function ofIn(p) {
     delete out.cliente_id;
   }
   return out;
+}
+
+async function ofsInsertWithRetry(row) {
+  let p = { ...(row || {}) };
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    const r = await supabase.from('ofs').insert([p]).select('*').single();
+    if (!r.error) return r;
+    const msg = String(r.error.message || r.error);
+    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      delete p[col];
+      continue;
+    }
+    return r;
+  }
+  return { data: null, error: { message: 'Falha ao inserir OF após tentativas' } };
+}
+
+async function ofsUpdateWithRetry(id, row) {
+  let p = { ...(row || {}) };
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    const r = await supabase.from('ofs').update(p).eq('id', id).select('*').single();
+    if (!r.error) return r;
+    const msg = String(r.error.message || r.error);
+    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      delete p[col];
+      continue;
+    }
+    return r;
+  }
+  return { data: null, error: { message: 'Falha ao atualizar OF após tentativas' } };
 }
 
 function clientesIn(p) {
@@ -1073,9 +1107,10 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
-    const created = await insertOne('ofs', ofIn(body));
+    const createdRes = await ofsInsertWithRetry(ofIn(body));
+    if (createdRes.error) throw createdRes.error;
+    const created = createdRes.data;
     await _maybeRegistrarComissaoOF(req, body, created);
-    await _maybeBaixaAutomaticaChapasOF(req, body, created);
     return ok(res, created);
   } catch (e) { bad(res, e.message); }
 });
@@ -1094,7 +1129,9 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
-    const updated = await updateOne('ofs', req.params.id, ofIn(body));
+    const updRes = await ofsUpdateWithRetry(req.params.id, ofIn(body));
+    if (updRes.error) throw updRes.error;
+    const updated = updRes.data;
     await _maybeRegistrarComissaoOF(req, body, updated);
     return ok(res, updated);
   } catch (e) { bad(res, e.message); }
@@ -1279,6 +1316,28 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           maquina: atual || '',
           status: 'Pedido Pronto',
         }]);
+      } catch (e) {}
+    }
+
+    if (concluida) {
+      try {
+        const ofAtual = upd && upd.data ? upd.data : of;
+        const chapaId = String(ofAtual?.chapa_id || ofAtual?.chp || '').trim();
+        const ofNumRef = String(ofAtual?.of ?? ofAtual?.numero ?? '').trim();
+        let jaBaixado = false;
+        const tableCh = await _chapasPreferV2Table();
+        if (tableCh === 'chapas_estoque_v2' && chapaId && ofNumRef) {
+          const ex = await supabase
+            .from('chapas_estoque_movimentos_v2')
+            .select('id')
+            .eq('chapa_id', chapaId)
+            .eq('of_numero', ofNumRef)
+            .eq('tipo', 'saida')
+            .limit(1)
+            .maybeSingle();
+          if (!ex.error && ex.data) jaBaixado = true;
+        }
+        if (!jaBaixado) await _maybeBaixaAutomaticaChapasOF(req, ofAtual, ofAtual);
       } catch (e) {}
     }
 
