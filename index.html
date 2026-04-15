@@ -3055,7 +3055,16 @@ async function salvarEdicaoOFId(id){
   const idx = OFs.findIndex(x=>x.id===id);
   if(idx>-1) OFs[idx] = normalizeOF({ ...OFs[idx], ...dadosAtualizados });
   Object.assign(o, OFs[idx] || o);
+  if(Array.isArray(OFS_HIST)){
+    const hi = OFS_HIST.findIndex(x=>String(x.id||'')===String(id));
+    if(hi>=0){
+      OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...dadosAtualizados });
+    } else if(idx>-1){
+      OFS_HIST.unshift(normalizeOF(OFs[idx]));
+    }
+  }
   fechar('modal-of');autoSaveTrigger();renderPCP();updateBadges();
+  if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
   toast('✏ Alteração salva ✓','var(--green)');
 }
 
@@ -3105,6 +3114,22 @@ async function lancRestaurar(id){
   const r = await api('PATCH','/ofs/'+encodeURIComponent(id)+'/restore', {});
   if(!r || !r.ok){ toast('Erro ao restaurar: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
   await lancCarregarHistorico();
+}
+
+function lancEditarOF(id){
+  abrirModalOF(String(id||''));
+}
+
+async function lancExcluirOF(id){
+  const of = (OFS_HIST||[]).find(x=>String(x.id||'')===String(id||'')) || null;
+  const num = of ? (of.of||of.numero||'') : '';
+  if(!confirm('Deseja excluir a OF #'+(num||id)+'?')) return;
+  const r = await api('DELETE','/ofs/'+encodeURIComponent(id));
+  if(!r || !r.ok){ toast('Erro ao excluir: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
+  if(Array.isArray(OFS_HIST)) OFS_HIST = OFS_HIST.filter(x=>String(x.id||'')!==String(id));
+  OFs = (OFs||[]).filter(x=>String(x.id||'')!==String(id));
+  toast('OF excluída ✓','var(--green)');
+  renderLancamento();
 }
 
 function lancAbrirDetalhes(id){
@@ -3251,6 +3276,8 @@ function renderLancamento(){
             <td style="${td}">${escH(lancVendNome(o))}</td>
             <td style="${td};text-align:center">
               <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver detalhes</button>
+              ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
+              ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancExcluirOF('${escAttr(o.id)}')" title="Excluir" style="color:var(--red)">🗑️</button>`:''}
               ${(tab==='canceladas')?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
               ${(tab==='excluidas')?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
             </td>
