@@ -898,11 +898,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = req.query.from ? String(req.query.from) : '';
     const to = req.query.to ? String(req.query.to) : '';
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const status = req.query.status ? String(req.query.status) : '';
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega";
+    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
@@ -912,6 +913,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       for (const field of fields) {
         let q = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
         if (empCol) q = q.eq(empCol, empId);
+        if (status) q = q.eq('status', status);
         if (field) {
           if (from) q = q.gte(field, from);
           if (to) q = q.lte(field, to);
@@ -928,6 +930,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           if (isMissingColumn) {
             let q3 = supabase.from('ofs').select('*').order('seq', { ascending: true });
             if (empCol) q3 = q3.eq(empCol, empId);
+            if (status) q3 = q3.eq('status', status);
             if (field) {
               if (from) q3 = q3.gte(field, from);
               if (to) q3 = q3.lte(field, to);
@@ -946,6 +949,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           if (!incluirExcluidas && msg.toLowerCase().includes("deleted_at") && (msg.includes('column') || msg.includes('Could not find'))) {
             let q2 = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
             if (empCol) q2 = q2.eq(empCol, empId);
+            if (status) q2 = q2.eq('status', status);
             if (field) {
               if (from) q2 = q2.gte(field, from);
               if (to) q2 = q2.lte(field, to);

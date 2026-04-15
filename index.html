@@ -2104,6 +2104,13 @@ async function ofmaqDarBaixa(id){
     if(r && r.status) it.status = r.status;
     else if(r && r.concluida===true) it.status='Pedido Pronto';
     it.maquina_atual_index = Number(it.maquina_atual_index||0)+1;
+    Object.assign(it, normalizeOF({ ...it, ...upd }));
+  }
+  if(Array.isArray(OFS_HIST)){
+    const hi=(OFS_HIST||[]).findIndex(x=>String(x.id||'')===String(o.id));
+    if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd });
+    else if(it) OFS_HIST.unshift(normalizeOF(it));
+    if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
   }
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
@@ -2114,13 +2121,23 @@ async function ofmaqDarBaixa(id){
 async function darBaixaOFId(id, numero, maquinaAtual){
   if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
   if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
-  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
+  const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{usuario});
   if(r && r.ok){
     const idx = (OFs||[]).findIndex(o=>String(o.id||'')===String(id));
     if(idx>=0){
       if(r.status) OFs[idx].status = r.status;
       else if(r.concluida===true) OFs[idx].status = 'Pedido Pronto';
       OFs[idx].maquina_atual_index = Number(OFs[idx].maquina_atual_index||0)+1;
+      const upd=r.data||r;
+      OFs[idx] = normalizeOF({ ...OFs[idx], ...upd });
+    }
+    if(Array.isArray(OFS_HIST)){
+      const upd=r.data||r;
+      const hi=(OFS_HIST||[]).findIndex(o=>String(o.id||'')===String(id));
+      if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd });
+      else if(idx>=0) OFS_HIST.unshift(normalizeOF(OFs[idx]));
+      if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
     }
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
     renderOFsPorMaquina();
@@ -2142,6 +2159,14 @@ async function concluirProcessoOf(ofId){
       OFs[idx].status = 'Pedido Pronto';
       OFs[idx].maquina_atual_index = 999;
       OFs[idx].data_conclusao = payload.data_conclusao;
+      OFs[idx] = normalizeOF({ ...OFs[idx], ...(r.data||r) });
+    }
+    if(Array.isArray(OFS_HIST)){
+      const upd=r.data||r;
+      const hi=(OFS_HIST||[]).findIndex(o=>String(o.id||'')===id);
+      if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd, status:'Pedido Pronto', maquina_atual_index: 999 });
+      else if(idx>=0) OFS_HIST.unshift(normalizeOF(OFs[idx]));
+      if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
     }
     toast('OF concluída!','var(--green)');
     renderOFsPorMaquina();
