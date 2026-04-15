@@ -999,6 +999,7 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
     const valorOf = Number(body?.valor ?? body?.valor_venda ?? body?.valor_total ?? body?.val ?? ofRow?.valor ?? ofRow?.valor_venda ?? ofRow?.valor_total ?? ofRow?.val ?? 0);
+    console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
     const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
@@ -1019,6 +1020,7 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
     if (body && body._estoqueJaBaixadoCriacao) return;
     const chapaId = String(body?.chapa_id ?? body?.chapaId ?? body?.chp ?? ofRow?.chapa_id ?? ofRow?.chapaId ?? ofRow?.chp ?? '').trim();
     const qtdChapas = Math.trunc(Number(body?.qtd_chapas ?? body?.qtdChapas ?? body?.qchp ?? 0) || 0);
+    console.log('[OF BAIXA CHAPAS] chapaId:', chapaId, 'qtdChapas:', qtdChapas);
     if (!chapaId || !(qtdChapas > 0)) return;
     const table = await _chapasPreferV2Table();
     if (!table) return;
@@ -1063,6 +1065,18 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     return ok(res, created);
   } catch (e) { bad(res, e.message); }
 });
+
+app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    if (!data) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    return ok(res, data);
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};

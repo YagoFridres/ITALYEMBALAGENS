@@ -1938,6 +1938,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +(canBaixa?'<button onclick="darBaixaOFId(\''+escAttr(of.id)+'\',\''+escAttr(of.of||of.numero||'')+'\',\''+escAttr(maquinaAtual||'')+'\')" style="background:#4CAF50;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✅ Dar Baixa</button>':'')
+    +'<button onclick="concluirProcessoOf(\''+escAttr(of.id)+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir Tudo</button>'
     +'<button onclick="abrirModalOF(\''+escAttr(of.id)+'\')" style="background:var(--bg3);color:var(--text1);border:1px solid var(--border);padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px">✏️ Editar</button>'
     +'</div></div>';
 }
@@ -2081,8 +2082,8 @@ async function ofmaqDarBaixa(id){
   }
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
-  try{ await carregarOFs(); }catch(e){}
   renderOFsPorMaquina();
+  try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
 }
 
 async function darBaixaOFId(id, numero, maquinaAtual){
@@ -2090,10 +2091,38 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{});
   if(r && r.ok){
+    const idx = (OFs||[]).findIndex(o=>String(o.id||'')===String(id));
+    if(idx>=0){
+      if(r.status) OFs[idx].status = r.status;
+      else if(r.concluida===true) OFs[idx].status = 'Pedido Pronto';
+      OFs[idx].maquina_atual_index = Number(OFs[idx].maquina_atual_index||0)+1;
+    }
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
     renderOFsPorMaquina();
+    try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
   } else {
     toast('Erro: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
+  }
+}
+
+async function concluirProcessoOf(ofId){
+  const id = String(ofId||'').trim();
+  if(!id) return;
+  if(!confirm('Confirmar conclusão de TODAS as etapas desta OF? Ela será marcada como Pedido Pronto.')) return;
+  const payload = { status: 'Pedido Pronto', maquina_atual_index: 999, data_conclusao: new Date().toISOString() };
+  const r = await api('PATCH','/ofs/'+encodeURIComponent(id), payload);
+  if(r && r.ok){
+    const idx = (OFs||[]).findIndex(o=>String(o.id||'')===id);
+    if(idx>=0){
+      OFs[idx].status = 'Pedido Pronto';
+      OFs[idx].maquina_atual_index = 999;
+      OFs[idx].data_conclusao = payload.data_conclusao;
+    }
+    toast('OF concluída!','var(--green)');
+    renderOFsPorMaquina();
+    try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
+  } else {
+    alert('Erro: ' + (r && r.error ? r.error : 'falha'));
   }
 }
 
@@ -2355,11 +2384,35 @@ function salvarAlteracaoOF(ofNum){
 }
 
 // ===================== MODAL OF =====================
+async function abrirEdicaoOf(id){
+  return abrirModalOF(String(id||''));
+}
+var OF_ATUAL_ID = '';
 async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
-  const oEdit = id ? (OFs||[]).find(x=>x.id===id) : null;
+  OF_ATUAL_ID = String(id||'');
+  let oEdit = id ? (OFs||[]).find(x=>String(x.id||'')===String(id)) : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   try{ await carregarMaquinas(); }catch(e){}
+  try{
+    if(_apiConectado && CURRENT_USER){
+      if(!Array.isArray(CLIENTES) || CLIENTES.length===0) await carregarClientes(false);
+      if(!Array.isArray(VENDEDORES) || VENDEDORES.length===0) await carregarVendedores(false);
+      if(!Array.isArray(FLUXOS) || FLUXOS.length===0) await carregarFluxos(false);
+    }
+  }catch(e){}
+  if(id && !oEdit && _apiConectado && CURRENT_USER){
+    try{
+      const r = await apiFetch('/api/ofs/'+encodeURIComponent(String(id)), { method:'GET' });
+      const d = r ? await r.json().catch(()=>null) : null;
+      const ofFull = d && (d.data || d.id) ? (d.data || d) : null;
+      if(r && r.ok && ofFull){
+        const norm = normalizeOF ? normalizeOF(ofFull) : ofFull;
+        oEdit = norm;
+        if(!OFs.find(x=>String(x.id||'')===String(norm.id||''))) OFs.push(norm);
+      }
+    }catch(e){}
+  }
   console.log('[EDIT OF] dados carregados:', JSON.stringify({
     id: oEdit?.id, of: oEdit?.of, cliente: oEdit?.cliId,
     produto: oEdit?.prodDesc, qtd: oEdit?.qtd, fluxo: oEdit?.fluxo_maquinas
@@ -2389,6 +2442,16 @@ async function abrirModalOF(id){
   VENDEDORES.forEach(v=>vsel.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
   const fsel=document.getElementById('f-fl'); fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
   FLUXOS.forEach(f=>fsel.innerHTML+=`<option value="${f.id}">${f.nome}</option>`);
+  if(fsel){
+    fsel.onchange = function(){
+      const vid = String(this.value||'').trim();
+      if(!vid){ renderMaqChks([]); return; }
+      const fl = (FLUXOS||[]).find(x=>String(x.id||'')===vid) || null;
+      if(!fl){ renderMaqChks([]); return; }
+      const ids = ofFluxoIdsFromNames(parseFluxo(fl.etapas||fl.maquinas||[]));
+      renderMaqChks(ids);
+    };
+  }
   try{ await carregarChapas(); }catch(e){}
   await ofAtualizaChapas();
   const fQ=document.getElementById('f-qchp'); if(fQ) fQ.value='';
@@ -2855,7 +2918,7 @@ async function salvarOF(){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,val:valTotal,valor:valTotal,valor_venda:valTotal,valor_total:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -2898,6 +2961,9 @@ async function salvarEdicaoOFId(id){
     itens,
     qtd:qtdTotal,
     val:valTotal,
+    valor: valTotal,
+    valor_venda: valTotal,
+    valor_total: valTotal,
     vunit:itens.length===1?itens[0].vunit:0,
     dia,
     data_pedido,
@@ -9084,6 +9150,14 @@ async function carregarMaquinas(forcar=false){
       const ob = b.ordem!=null && Number.isFinite(b.ordem) ? b.ordem : 99;
       if(oa !== ob) return oa - ob;
       return String(a.col||'').localeCompare(String(b.col||''),'pt-BR');
+    });
+    const seen = new Set();
+    MAQUINAS = MAQUINAS.filter(m=>{
+      const k = String(m.nome || m.col || '').trim().toLowerCase();
+      if(!k) return false;
+      if(seen.has(k)) return false;
+      seen.add(k);
+      return true;
     });
   }
   if(r && r.ok) _ultimaCargaMaquinas = Date.now();
