@@ -2862,34 +2862,58 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    console.log('[INLINE] body recebido:', JSON.stringify(b));
-    console.log('[INLINE] id:', req.params.id);
     const table = await _chapasPreferV2Table();
-    console.log('[INLINE] tabela:', table);
-    const allowed = ['qual_cnpj', 'qual', 'categoria', 'emp_id', 'riscada', 'empresa_vinculada'];
+    console.log('[INLINE] table:', table, 'body:', JSON.stringify(b));
     const payload = {};
-    allowed.forEach(k => { if (k in b) payload[k] = b[k]; });
-    if (Object.keys(payload).length === 0) {
-      console.warn('[INLINE] payload vazio! body:', JSON.stringify(b));
-      return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Recebido: ' + JSON.stringify(b) });
-    }
+
+    // empresa_vinculada só existe na v2; no legado mapear para qual_cnpj/qual
     if ('empresa_vinculada' in b) {
       if (table === 'chapas_estoque_v2') payload.empresa_vinculada = String(b.empresa_vinculada);
       payload.qual_cnpj = String(b.empresa_vinculada);
-      if (table !== 'chapas_estoque_v2') payload.qual = String(b.empresa_vinculada);
+      payload.qual = String(b.empresa_vinculada);
     }
+    if ('qual_cnpj' in b && !('empresa_vinculada' in b)) {
+      payload.qual_cnpj = String(b.qual_cnpj);
+    }
+    if ('categoria' in b) payload.categoria = String(b.categoria || '').trim();
+    if ('emp_id' in b) payload.emp_id = String(b.emp_id);
+    if ('riscada' in b) payload.riscada = b.riscada === true || b.riscada === 'true';
+
+    if (Object.keys(payload).length === 0) {
+      console.warn('[INLINE] payload vazio! body:', JSON.stringify(b));
+      return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Body: ' + JSON.stringify(b) });
+    }
+
     if (table === 'chapas_estoque_v2') {
       payload.atualizado_por = req.usuario?.nome || 'sistema';
     }
-    console.log('[INLINE] payload final:', JSON.stringify(payload));
-    const { data, error } = await supabase.from(table).update(payload).eq('id', req.params.id).select().maybeSingle();
+
+    console.log('[INLINE] payload:', JSON.stringify(payload));
+
+    const { data, error } = await supabase
+      .from(table)
+      .update(payload)
+      .eq('id', req.params.id)
+      .select()
+      .maybeSingle();
+
     if (error) {
-      console.error('[INLINE] erro supabase:', JSON.stringify(error));
+      console.error('[INLINE] supabase error:', JSON.stringify(error));
+      const msg = String(error.message || '');
+      const m = msg.match(/Could not find the '([^']+)' column/);
+      if (m && m[1] && payload[m[1]] !== undefined) {
+        delete payload[m[1]];
+        const r2 = await supabase.from(table).update(payload).eq('id', req.params.id).select().maybeSingle();
+        if (r2.error) return res.status(500).json({ ok: false, error: r2.error.message });
+        cacheClearPrefix('chapas_');
+        cacheClearPrefix('chapas_estoque:');
+        return res.json({ ok: true, data: r2.data });
+      }
       return res.status(500).json({ ok: false, error: error.message });
     }
-    console.log('[INLINE] sucesso, data:', data?.id);
-    cacheClearPrefix('chapas_estoque:');
+
     cacheClearPrefix('chapas_');
+    cacheClearPrefix('chapas_estoque:');
     return res.json({ ok: true, data });
   } catch (e) {
     console.error('[INLINE] catch:', e.message);
