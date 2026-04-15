@@ -595,9 +595,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .notif-ok-btn:hover{background:var(--green);color:#fff;}
 
 /* ===== RESPONSIVE BY DEVICE ===== */
-#mob-menu-btn{display:none;width:32px;height:32px;background:var(--s2);border:1px solid var(--border);border-radius:7px;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;flex-shrink:0;color:var(--text2);}
-#mob-sidebar-overlay{display:none;position:fixed;inset:52px 0 0 0;z-index:850;background:#0006;}
-#mob-sidebar-overlay.show{display:block;}
+#hamburger-btn{display:none;width:32px;height:32px;background:var(--s2);border:1px solid var(--border);border-radius:7px;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;flex-shrink:0;color:var(--text2);}
+#sidebar-overlay{display:none;position:fixed;inset:52px 0 0 0;z-index:850;background:#0006;}
+#sidebar-overlay.show{display:block;}
 body[data-device="tablet"] .sidebar{width:58px;overflow:hidden;}
 body[data-device="tablet"] .sidebar-brand-name,
 body[data-device="tablet"] .sidebar-brand-sub,
@@ -611,7 +611,7 @@ body[data-device="tablet"] .g2,body[data-device="tablet"] .g3{grid-template-colu
 body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{display:none;}
 
 body[data-device="mobile"] .topbar{padding:0 12px;gap:8px;}
-body[data-device="mobile"] #mob-menu-btn{display:flex!important;}
+body[data-device="mobile"] #hamburger-btn{display:flex!important;}
 body[data-device="mobile"] .sidebar{position:fixed;left:-248px;top:52px;bottom:0;z-index:900;width:240px;transition:left .22s;box-shadow:var(--shadow-lg);}
 body[data-device="mobile"] .sidebar.mob-open{left:0;}
 body[data-device="mobile"] .layout{overflow:visible;}
@@ -627,7 +627,7 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 
 @media(max-width:768px){
   body{font-size:14px;}
-  #mob-menu-btn{display:flex!important;}
+  #hamburger-btn{display:flex!important;}
   .sidebar{position:fixed;left:-248px;top:52px;bottom:0;z-index:900;width:240px;transition:left .22s;box-shadow:var(--shadow-lg);}
   .sidebar.mob-open{left:0;}
   .layout{overflow:visible;}
@@ -717,7 +717,7 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
     <div class="dev-hint">A preferência fica salva e pode ser alterada depois</div>
   </div>
 </div>
-<div id="mob-sidebar-overlay" onclick="closeMobMenu()"></div>
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 
 
@@ -8053,13 +8053,13 @@ document.addEventListener('DOMContentLoaded', function(){
     applyTheme();
     startClock();
     try{
-      const btn = document.getElementById('mob-menu-btn');
+      const btn = document.getElementById('hamburger-btn');
       if(btn && !btn.dataset.bound){
         btn.dataset.bound = '1';
         btn.addEventListener('click', () => {
           const sb = document.querySelector('.sidebar');
           if(sb){ sb.classList.toggle('open'); sb.classList.toggle('mob-open'); }
-          document.getElementById('mob-sidebar-overlay')?.classList.toggle('show');
+          document.getElementById('sidebar-overlay')?.classList.toggle('show');
         });
       }
     }catch(e){}
@@ -8552,16 +8552,18 @@ function toggleMobMenu(){
   const isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:768px)').matches;
   if(!isMobileAttr && !isNarrow) return;
   const sb=document.querySelector('.sidebar');
-  const ov=document.getElementById('mob-sidebar-overlay');
+  const ov=document.getElementById('sidebar-overlay');
   if(sb) { sb.classList.toggle('open'); sb.classList.toggle('mob-open'); }
   if(ov) ov.classList.toggle('show');
 }
 function closeMobMenu(){
   const sb=document.querySelector('.sidebar');
-  const ov=document.getElementById('mob-sidebar-overlay');
+  const ov=document.getElementById('sidebar-overlay');
   if(sb) { sb.classList.remove('open'); sb.classList.remove('mob-open'); }
   if(ov) ov.classList.remove('show');
 }
+function toggleSidebar(){ toggleMobMenu(); }
+function closeSidebar(){ closeMobMenu(); }
 function initDevice(){
   const saved=(function(){try{return localStorage.getItem('erp_device');}catch(e){return null;}})();
   const ds=document.getElementById('device-screen');
@@ -14249,7 +14251,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <span style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">PCP Pro ERP</span>
     </div>
   </div>
-  <button id="mob-menu-btn">☰</button>
+      <button id="hamburger-btn" onclick="toggleSidebar()">☰</button>
   <div id="user-action-badge" style="font-size:.7rem;color:var(--text2);background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:3px 10px;display:none;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
   <div class="topbar-badges">
     <span class="tbadge tb-red" id="bdg-at">0 ATRASADOS</span>
@@ -14418,7 +14420,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <button id="filtro-maq-hoje" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('hoje')">📅 Hoje</button>
       <button id="filtro-maq-semana" class="btn-filtro-maquina btn btn-ghost btn-sm" onclick="setFiltroOFsMaquina('semana')">📆 Esta Semana</button>
       <button id="filtro-maq-todas" class="btn-filtro-maquina btn btn-ghost btn-sm ativo" onclick="setFiltroOFsMaquina('todas')">📋 Todas</button>
-      <select id="ofsmaq-filtro-maquina" onchange="renderOFsPorMaquina()" style="padding:6px 10px;border-radius:6px;background:var(--bg2,#1a1a2e);color:var(--text1,#fff);border:1px solid var(--border,#333);margin-left:8px;min-width:160px">
+      <select id="ofsmaq-filtro-maquina" onchange="renderOFsPorMaquina()" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);margin-left:8px;min-width:160px">
         <option value="">🏭 Todas as máquinas</option>
         <option value="IMP 01">IMP 01</option>
         <option value="IMP 02">IMP 02</option>
@@ -14598,26 +14600,26 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
       <div id="chp-tab-estoque">
         <div id="est-cat-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 10px 0"></div>
-        <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
-          <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)"><option value="">📦 Categoria</option></select>
-          <input id="ef-fornecedor" type="text" list="ef-fornecedor-dl" placeholder="Fornecedor" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
-          <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333)">
+        <div id="estoque-filtros-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:center;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px">
+          <select id="ef-categoria" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)"><option value="">📦 Categoria</option></select>
+          <input id="ef-fornecedor" type="text" list="ef-fornecedor-dl" placeholder="Fornecedor" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);width:170px">
+          <select id="ef-empresa" onchange="_renderEstoqueBase()" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border)">
             <option value="">Todos</option>
             <option value="Italy Embalagens">Italy Embalagens</option>
             <option value="Cartoeste">Cartoeste</option>
             <option value="Oestepack">Oestepack</option>
           </select>
-          <input id="ef-cliente" type="text" list="ef-cliente-dl" placeholder="Cliente" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:170px">
+          <input id="ef-cliente" type="text" list="ef-cliente-dl" placeholder="Cliente" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);width:170px">
           <datalist id="ef-fornecedor-dl"></datalist>
           <datalist id="ef-cliente-dl"></datalist>
-          <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
-          <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:150px">
-          <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);width:120px">
+          <input id="ef-nf" placeholder="NF" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);width:120px">
+          <input id="ef-nomenclatura" placeholder="Nomenclatura" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);width:150px">
+          <input id="ef-tamanho" placeholder="Tamanho" oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);width:120px">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-riscadas" type="checkbox" onchange="_renderEstoqueBase()">Riscadas</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-com-vincos" type="checkbox" onchange="_renderEstoqueBase()">Com vincos</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-baixo" type="checkbox" onchange="_renderEstoqueBase()">Baixo</label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);user-select:none"><input id="ef-sem" type="checkbox" onchange="_renderEstoqueBase()">Sem</label>
-          <input id="ef-busca" type="text" placeholder="🔍 Busca geral..." oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2,var(--bg2,#1a1a2e));color:var(--text,var(--text1,#ffffff));border:1px solid var(--border,#333);min-width:220px;flex:1">
+          <input id="ef-busca" type="text" placeholder="🔍 Busca geral..." oninput="_renderEstoqueBase()" style="padding:6px 12px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:220px;flex:1">
           <button class="btn btn-ghost btn-sm" onclick="estoqueFiltrar('todos')" style="white-space:nowrap">Limpar</button>
           <button onclick="abrirModalNovaChapa()" id="btn-nova-chapa" style="padding:6px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap">+ Nova Chapa</button>
         </div>
@@ -14647,7 +14649,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </div>
       </div>
       <div id="chp-tab-receb" style="display:none">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:flex-end;background:var(--s2,var(--bg2,#1a1a2e));border:1px solid var(--border,#333);border-radius:10px;padding:10px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 10px 0;align-items:flex-end;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px">
           <div style="display:flex;flex-direction:column;gap:4px">
             <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Mês *</label>
             <input id="rec-mes" type="month" style="padding:6px 10px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);min-width:150px">
