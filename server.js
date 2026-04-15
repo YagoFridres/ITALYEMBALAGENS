@@ -999,10 +999,10 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
     const valorOf = Number(body?.valor ?? body?.valor_venda ?? body?.valor_total ?? body?.val ?? ofRow?.valor ?? ofRow?.valor_venda ?? ofRow?.valor_total ?? ofRow?.val ?? 0);
-    console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
     const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
+    console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf, 'comissao%:', perc);
     if (!(perc > 0)) return;
     const valorComissao = valorOf * (perc / 100);
     const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';

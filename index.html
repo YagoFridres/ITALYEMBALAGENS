@@ -3009,6 +3009,7 @@ async function salvarEdicaoOFId(id){
     chapa_id:document.getElementById('f-chp').value,
     qtd_chapas:parseInt(document.getElementById('f-qchp').value)||0,
   };
+  console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
   const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
   if(!r || r.ok===false || r.error){toast('Erro ao salvar alteração','var(--red)');return;}
   const dadosAtualizados = r.data || r;
@@ -9103,7 +9104,8 @@ function empresaUuidBy(codeOrName){
 
 const OF_ALLOWED_FIELDS = new Set([
   'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq',
-  'fluxo_maquinas','maquina_atual_index','imagem_url','data_conclusao'
+  'fluxo_maquinas','maquina_atual_index','imagem_url','data_conclusao',
+  'val','valor','valor_venda','valor_total','vtot','valor_unitario','vunit'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -13668,6 +13670,10 @@ salvarOF = async function(){
     urgente: document.getElementById('f-urg').value==='1',
     chp: chpId,
     qtd_chapas: qchp,
+    val: valTotal,
+    valor: valTotal,
+    valor_venda: valTotal,
+    valor_total: valTotal,
     total: valTotal,
     cond_pagamento: pagto,
     pagto: pagto,
@@ -13675,6 +13681,7 @@ salvarOF = async function(){
     descricao: descMain,
     imgs: firstImg?[firstImg]:[]
   });
+  console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
 
   showSaveIndicator('Salvando...','var(--yellow)');
   const r = await salvarViaApiOuLocal('OF', async ()=>{
@@ -13758,6 +13765,10 @@ converterOrcParaOF = async function(id){
     urgente: false,
     chp: '',
     qtd_chapas: 0,
+    val: Number(orc.vtot||0) || 0,
+    valor: Number(orc.vtot||0) || 0,
+    valor_venda: Number(orc.vtot||0) || 0,
+    valor_total: Number(orc.vtot||0) || 0,
     total: orc.vtot,
     obs: 'Convertido de '+orc.id+' — '+orc.prod,
     descricao: 'Convertido de '+orc.id+' — '+orc.prod,
