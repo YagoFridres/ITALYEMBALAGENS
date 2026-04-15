@@ -2943,7 +2943,7 @@ async function salvarOF(){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,val:valTotal,valor:valTotal,valor_venda:valTotal,valor_total:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -2985,11 +2985,8 @@ async function salvarEdicaoOFId(id){
     vendId:document.getElementById('f-vend').value,
     itens,
     qtd:qtdTotal,
-    val:valTotal,
-    valor: valTotal,
-    valor_venda: valTotal,
     valor_total: valTotal,
-    vunit:itens.length===1?itens[0].vunit:0,
+    valor_venda: valTotal,
     dia,
     data_pedido,
     ent:document.getElementById('f-ent').value,
@@ -8880,6 +8877,10 @@ function normalizeOF(r){
   const dataConc = r.data_conclusao ?? null;
   const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
+  const valorTotal = Number(r.valor_total ?? r.valorTotal ?? 0) || 0;
+  const valorVenda = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
+  const val = Number(valorTotal || valorVenda || 0) || 0;
+  const vunit = (qtd && Number(qtd) > 0) ? (val / Number(qtd)) : 0;
   return {
     id:r.id,
     seq:r.seq ?? r.prioridade ?? 0,
@@ -8895,7 +8896,10 @@ function normalizeOF(r){
     urg:!!urg,
     chp:r.chp ?? '',
     qchp:r.qchp ?? 0,
-    val:r.val ?? 0,
+    valor_total: valorTotal,
+    valor_venda: valorVenda,
+    val,
+    vunit,
     obs,
     prodDesc,
     imgs,
@@ -9105,7 +9109,7 @@ function empresaUuidBy(codeOrName){
 const OF_ALLOWED_FIELDS = new Set([
   'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq',
   'fluxo_maquinas','maquina_atual_index','imagem_url','data_conclusao',
-  'val','valor','valor_venda','valor_total','vtot','valor_unitario','vunit'
+  'valor_total','valor_venda'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -13670,10 +13674,8 @@ salvarOF = async function(){
     urgente: document.getElementById('f-urg').value==='1',
     chp: chpId,
     qtd_chapas: qchp,
-    val: valTotal,
-    valor: valTotal,
-    valor_venda: valTotal,
     valor_total: valTotal,
+    valor_venda: valTotal,
     total: valTotal,
     cond_pagamento: pagto,
     pagto: pagto,
@@ -13765,8 +13767,6 @@ converterOrcParaOF = async function(id){
     urgente: false,
     chp: '',
     qtd_chapas: 0,
-    val: Number(orc.vtot||0) || 0,
-    valor: Number(orc.vtot||0) || 0,
     valor_venda: Number(orc.vtot||0) || 0,
     valor_total: Number(orc.vtot||0) || 0,
     total: orc.vtot,

@@ -618,6 +618,16 @@ async function deleteOne(table, id) {
 
 function ofIn(p) {
   const out = { ...p };
+  delete out.val;
+  delete out.valor;
+  delete out.vtot;
+  delete out.vunit;
+  if (out.valor_total === undefined && out.valor_venda !== undefined) {
+    out.valor_total = out.valor_venda;
+  }
+  if (out.valor_venda === undefined && out.valor_total !== undefined) {
+    out.valor_venda = out.valor_total;
+  }
   const has = (k) => Object.prototype.hasOwnProperty.call(p || {}, k);
   if (has('maq')) {
     out.maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
@@ -998,7 +1008,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
-    const valorOf = Number(body?.valor ?? body?.valor_venda ?? body?.valor_total ?? body?.val ?? ofRow?.valor ?? ofRow?.valor_venda ?? ofRow?.valor_total ?? ofRow?.val ?? 0);
+    const valorOf = Number(body?.valor_total ?? body?.valor_venda ?? ofRow?.valor_total ?? ofRow?.valor_venda ?? 0);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
     const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
@@ -1165,7 +1175,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       const vendId = String(of.vendId || of.vend_id || of.vendedor_id || '').trim();
       const vendInfo = vendId && mapVend[vendId] ? mapVend[vendId] : null;
       const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : (of.vendedor || of.vend || 'Sem Vendedor');
-      const valor = Number(of.valor || of.valor_venda || of.valor_total || of.vtot || of.vunit || 0);
+      const valor = Number(of.valor_total || of.valor_venda || 0);
       const qtd = Number(of.qtd || of.quantidade || 0);
       const key = vendId || vendNome;
       if (!grupos[key]) grupos[key] = { vendedorId: vendId || null, vendedor: vendNome, pedidos: 0, qtdTotal: 0, valorTotal: 0, comissaoPct: vendInfo ? vendInfo.comissaoPct : 0, comissaoTotal: 0, ofs: [] };
@@ -1261,7 +1271,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
           produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
           quantidade: of.qtd ?? of.quantidade ?? 0,
-          valor: of.valor ?? of.valor_venda ?? of.val ?? 0,
+          valor: of.valor_total ?? of.valor_venda ?? 0,
           maquina: atual || '',
           status: 'Pedido Pronto',
         }]);
