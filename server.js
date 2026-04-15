@@ -988,11 +988,81 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     throw lastError;
   } catch (e) { bad(res, e.message); }
 });
+async function _maybeRegistrarComissaoOF(req, body, ofRow) {
+  try {
+    const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
+    const valorOf = Number(body?.valor ?? body?.valor_venda ?? body?.valor_total ?? body?.val ?? ofRow?.valor ?? ofRow?.valor_venda ?? ofRow?.valor_total ?? ofRow?.val ?? 0);
+    if (!vendedorId || !(valorOf > 0)) return;
+    const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
+    const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
+    if (!(perc > 0)) return;
+    const valorComissao = valorOf * (perc / 100);
+    const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';
+    await supabase.from('historico_acoes').insert([{
+      tipo_acao: 'comissao_of',
+      descricao: `Comissão OF #${numero || ''}: ${vend?.nome || ''} — R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
+      usuario: req.usuario?.nome || 'sistema',
+      data_hora: new Date().toISOString()
+    }]);
+  } catch (e) {}
+}
+
+async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
+  try {
+    if (body && body._estoqueJaBaixadoCriacao) return;
+    const chapaId = String(body?.chapa_id ?? body?.chapaId ?? body?.chp ?? ofRow?.chapa_id ?? ofRow?.chapaId ?? ofRow?.chp ?? '').trim();
+    const qtdChapas = Math.trunc(Number(body?.qtd_chapas ?? body?.qtdChapas ?? body?.qchp ?? 0) || 0);
+    if (!chapaId || !(qtdChapas > 0)) return;
+    const table = await _chapasPreferV2Table();
+    if (!table) return;
+    const { data: chapa, error: e1 } = await supabase.from(table).select('*').eq('id', chapaId).single();
+    if (e1 || !chapa) return;
+    const canonChapa = _chapasCanonicalFromAny(chapa, table);
+    const qtdAtual = Math.trunc(Number(canonChapa.quantidade || 0) || 0);
+    const qtdNova = Math.max(0, qtdAtual - qtdChapas);
+    const updPayload = table === 'chapas_estoque_v2'
+      ? { quantidade: qtdNova, atualizado_por: req.usuario?.nome || 'sistema' }
+      : { qtd: qtdNova };
+    const upd = await supabase.from(table).update(updPayload).eq('id', chapaId);
+    if (upd.error) return;
+    cacheClearPrefix('chapas_estoque:');
+
+    if (table === 'chapas_estoque_v2') {
+      const ofNumero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? null;
+      const cliRef = body?.cliId ?? body?.cli_id ?? body?.cliente_id ?? ofRow?.cliId ?? ofRow?.cli_id ?? ofRow?.cliente_id ?? '';
+      const empId = body?.emp_id ?? body?.empId ?? ofRow?.emp_id ?? ofRow?.empId ?? 'E1';
+      const mov = {
+        chapa_id: chapaId,
+        tipo: 'saida',
+        delta: -qtdChapas,
+        qtd_anterior: qtdAtual,
+        qtd_nova: qtdNova,
+        obs: `Saída automática - OF #${ofNumero || ''} · Cliente: ${cliRef || ''}`.trim(),
+        usuario: req.usuario?.nome || 'sistema',
+        emp_id: empId || null,
+        of_numero: ofNumero ? String(ofNumero) : null,
+      };
+      try { await supabase.from('chapas_estoque_movimentos_v2').insert([mov]); } catch (e) {}
+    }
+  } catch (e) {}
+}
+
 app.post('/api/ofs', authMiddleware, async (req, res) => {
-  try { ok(res, await insertOne('ofs', ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
+  try {
+    const body = req.body || {};
+    const created = await insertOne('ofs', ofIn(body));
+    await _maybeRegistrarComissaoOF(req, body, created);
+    await _maybeBaixaAutomaticaChapasOF(req, body, created);
+    return ok(res, created);
+  } catch (e) { bad(res, e.message); }
 });
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
-  try { ok(res, await updateOne('ofs', req.params.id, ofIn(req.body || {}))); } catch (e) { bad(res, e.message); }
+  try {
+    const body = req.body || {};
+    const updated = await updateOne('ofs', req.params.id, ofIn(body));
+    await _maybeRegistrarComissaoOF(req, body, updated);
+    return ok(res, updated);
+  } catch (e) { bad(res, e.message); }
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
@@ -1060,23 +1130,36 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       }
     }
     if (error) return res.status(500).json({ error: error.message });
-    const { data: vendedores } = await supabase.from('vendedores').select('id, nome');
+    const { data: vendedores } = await supabase.from('vendedores').select('*');
     const mapVend = {};
-    (vendedores || []).forEach(v => { mapVend[v.id] = v.nome; });
+    (vendedores || []).forEach(v => {
+      const id = String(v.id || '').trim();
+      if (!id) return;
+      const perc = Number(v.comissao ?? v.comissaoPct ?? v.comissao_pct ?? 0);
+      mapVend[id] = { id, nome: v.nome || '', comissaoPct: perc > 0 ? perc : 0 };
+    });
     const grupos = {};
     let totalGeral = 0;
     (ofs || []).forEach(of => {
-      const vendNome = mapVend[of.vendId || of.vendedor_id] || of.vendedor || of.vend || 'Sem Vendedor';
+      const vendId = String(of.vendId || of.vend_id || of.vendedor_id || '').trim();
+      const vendInfo = vendId && mapVend[vendId] ? mapVend[vendId] : null;
+      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : (of.vendedor || of.vend || 'Sem Vendedor');
       const valor = Number(of.valor || of.valor_venda || of.valor_total || of.vtot || of.vunit || 0);
       const qtd = Number(of.qtd || of.quantidade || 0);
-      if (!grupos[vendNome]) grupos[vendNome] = { vendedor: vendNome, pedidos: 0, qtdTotal: 0, valorTotal: 0, ofs: [] };
-      grupos[vendNome].pedidos++;
-      grupos[vendNome].qtdTotal += qtd;
-      grupos[vendNome].valorTotal += valor;
-      grupos[vendNome].ofs.push({
+      const key = vendId || vendNome;
+      if (!grupos[key]) grupos[key] = { vendedorId: vendId || null, vendedor: vendNome, pedidos: 0, qtdTotal: 0, valorTotal: 0, comissaoPct: vendInfo ? vendInfo.comissaoPct : 0, comissaoTotal: 0, ofs: [] };
+      const pct = Number(grupos[key].comissaoPct || 0) || 0;
+      const comissao = pct > 0 ? (valor * (pct / 100)) : 0;
+      grupos[key].pedidos++;
+      grupos[key].qtdTotal += qtd;
+      grupos[key].valorTotal += valor;
+      grupos[key].comissaoTotal += comissao;
+      grupos[key].ofs.push({
         numero: of.of || of.numero || '',
         cliente: of.cliId || of.cliente || '',
         qtd, valor,
+        comissaoPct: pct,
+        comissaoValor: comissao,
         dataPedido: of.dia || of.data_pedido || '',
         dataEntrega: of.ent || of.data_entrega || '',
         status: of.status || ''
@@ -2886,6 +2969,30 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
       return res.status(500).json({ ok: false, error: error.message });
     }
     return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.patch('/api/chapas_estoque_movimentos/:id/confirmar', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+    const movId = String(req.params.id || '').trim();
+    if (!movId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const qtd = Math.trunc(Number(req.body?.qtd_real_utilizada));
+    if (!Number.isFinite(qtd) || qtd < 0) return res.status(400).json({ ok: false, error: 'qtd_real_utilizada inválida' });
+    const payload = {
+      qtd_real_utilizada: qtd,
+      confirmado_por: String(req.body?.confirmado_por || req.usuario?.nome || 'sistema'),
+      confirmado_em: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('chapas_estoque_movimentos_v2')
+      .update(payload)
+      .eq('id', movId)
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, data });
   } catch (e) { err(res, e); }
 });
 

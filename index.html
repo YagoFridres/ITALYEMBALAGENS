@@ -2915,8 +2915,15 @@ async function salvarOF(){
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
-  if(chpId&&qchp>0){const ch=getCh(chpId);if(ch&&qchp>ch.qtd){toast('⚠ Saldo insuficiente!','var(--red)');return;}if(ch){ch.qtd-=qchp;HIST_EST.unshift({tipo:'saida',chp:chpId,qtd:qchp,of:document.getElementById('f-of').value,data:today(),obs:'Baixa automática — criação OF'});}}
-  const _estoqueJaBaixadoCriacao = chpId&&qchp>0;
+  if(chpId&&qchp>0){
+    const ch=getCh(chpId);
+    if(ch&&qchp>ch.qtd){toast('⚠ Saldo insuficiente!','var(--red)');return;}
+    if(!_apiConectado && ch){
+      ch.qtd-=qchp;
+      HIST_EST.unshift({tipo:'saida',chp:chpId,qtd:qchp,of:document.getElementById('f-of').value,data:today(),obs:'Baixa automática — criação OF'});
+    }
+  }
+  const _estoqueJaBaixadoCriacao = (!_apiConectado) && (chpId&&qchp>0);
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'E1');
@@ -2933,7 +2940,7 @@ async function salvarOF(){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,val:valTotal,vunit:itens.length===1?itens[0].vunit:0,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -2991,6 +2998,10 @@ async function salvarEdicaoOFId(id){
     modo_programacao,
     dia_programacao,
     cidade_entrega,
+    chp:document.getElementById('f-chp').value,
+    qchp:parseInt(document.getElementById('f-qchp').value)||0,
+    chapa_id:document.getElementById('f-chp').value,
+    qtd_chapas:parseInt(document.getElementById('f-qchp').value)||0,
   };
   const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
   if(!r || r.ok===false || r.error){toast('Erro ao salvar alteração','var(--red)');return;}
@@ -4239,6 +4250,24 @@ async function excluirMovimentoChapas(movId){
   }
 }
 
+async function confirmarUsoReal(movId){
+  const id = String(movId||'').trim();
+  const el = document.getElementById('real-'+id);
+  const qtd = el ? parseInt(el.value,10) : NaN;
+  if(isNaN(qtd) || qtd < 0){ alert('Informe a quantidade real'); return; }
+  const r = await apiFetch('/api/chapas_estoque_movimentos/'+encodeURIComponent(id)+'/confirmar', {
+    method: 'PATCH',
+    body: JSON.stringify({ qtd_real_utilizada: qtd, confirmado_por: (CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : 'sistema' })
+  });
+  const d = r ? await r.json().catch(()=>null) : null;
+  if(d && d.ok){
+    toast('Uso real confirmado!','var(--green)');
+    await carregarHistoricoEstoque();
+  } else {
+    alert('Erro: ' + ((d && d.error) ? d.error : 'falha'));
+  }
+}
+
 function renderHistoricoMovimentosChapas(lista){
   const el=document.getElementById('est-hist');
   if(!el) return;
@@ -4254,13 +4283,23 @@ function renderHistoricoMovimentosChapas(lista){
     const lblCh = ch ? `${ch.nome||''} · ${ch.nomenclatura||''} · ${ch.tamanho||''}` : (h.chapa_id||'—');
     const nf = (h.nf||'').trim();
     const obs = (h.obs||'').trim();
-    const meta = [nf?('NF '+nf):'', obs].filter(Boolean).join(' · ');
+    const ofNum = String(h.of_numero || '').trim();
+    const meta = [ofNum?('OF '+ofNum):'', nf?('NF '+nf):'', obs].filter(Boolean).join(' · ');
     const when = fmtDataBR(String(h.created_at||'')) || '';
     const user = h.usuario || '';
-    return `<div class="hist-row" style="display:grid;grid-template-columns:86px 86px 1fr auto auto;gap:8px;align-items:center;opacity:${rev?0.6:1}">
+    const canReal = tipo.includes('saida') && !!ofNum;
+    const real = h.qtd_real_utilizada != null ? String(h.qtd_real_utilizada) : '';
+    const realCell = canReal
+      ? `<span style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
+          <input type="number" id="real-${escAttr(h.id)}" value="${escAttr(real)}" style="width:70px;padding:4px;background:var(--s2);color:var(--text1);border:1px solid #444;border-radius:4px">
+          <button onclick="confirmarUsoReal('${escAttr(h.id)}')" style="padding:4px 8px;background:#2a7a2a;color:white;border:none;border-radius:4px;cursor:pointer">✓</button>
+        </span>`
+      : `<span></span>`;
+    return `<div class="hist-row" style="display:grid;grid-template-columns:86px 86px 1fr 140px auto auto;gap:8px;align-items:center;opacity:${rev?0.6:1}">
       <span style="font-weight:900;color:${cor};font-family:var(--mono)">${escH(String(tipo||'').toUpperCase())}</span>
       <span style="color:${cor};font-weight:900;font-family:var(--mono)">${sinal}${deltaAbs.toLocaleString()}</span>
       <span style="color:var(--text2)">${escH(lblCh)}${meta?`<span style="display:block;font-size:.68rem;color:var(--text3)">${escH(meta)}</span>`:''}${rev?`<span style="display:block;font-size:.68rem;color:var(--orange);font-weight:900">REVERTIDA</span>`:''}</span>
+      ${realCell}
       <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${escH(when)} · ${escH(user)}</span>
       ${rev?`<span></span>`:`<button class="btn-icon btn-sm" onclick="excluirMovimentoChapas('${escAttr(h.id)}')" title="Excluir e reverter" style="color:var(--red)">🗑</button>`}
     </div>`;
