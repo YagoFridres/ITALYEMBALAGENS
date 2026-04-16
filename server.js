@@ -1268,10 +1268,10 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 
     const baseCols = [
       'id', 'of', 'numero', 'status', 'dia', 'created_at',
-      'cli_id', 'cliId',
-      'vendedor_id', 'vend_id',
+      'cli_id',
+      'vendedor_id',
       'valor_total', 'valor_venda',
-      'qtd', 'prodDesc', 'descricao',
+      'qtd', 'descricao',
       'emp_id', 'deleted_at',
     ];
     const selectWithRetry = async (table, cols, build) => {
@@ -1307,7 +1307,14 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       ofs = r1.data || [];
     } catch (error) {
       console.error('[RELATORIO VENDEDOR] erro query ofs:', String(error?.message || error));
-      const cols2 = baseCols.filter((c) => c !== 'deleted_at' && c !== 'cliId' && c !== 'vend_id' && c !== 'descricao');
+      const cols2 = [
+        'id', 'of', 'numero', 'status', 'dia', 'created_at',
+        'cli_id',
+        'vendedor_id',
+        'valor_total', 'valor_venda',
+        'qtd', 'descricao',
+        'emp_id',
+      ];
       const r2 = await selectWithRetry('ofs', cols2, (q) => {
         let qq = q;
         if (empId) qq = qq.eq('emp_id', empId);
@@ -1341,7 +1348,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     let totalComissao = 0;
 
     for (const ofRow of ofs) {
-      const vendId = String(ofRow.vendedor_id || ofRow.vend_id || '').trim();
+      const vendId = String(ofRow.vendedor_id || '').trim();
       if (!vendId) continue;
 
       const vend = mapVend[vendId];
@@ -1370,7 +1377,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       grupos[vendId].comissaoTotal += comissaoOf;
       grupos[vendId].ofs.push({
         numero: ofRow.of || ofRow.numero || '',
-        cliente: ofRow.cli_id || ofRow.cliId || '',
+        cliente: ofRow.cli_id || '',
         qtd: Number(ofRow.qtd || 0),
         valor,
         comissaoPct: pct,
