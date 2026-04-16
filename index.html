@@ -1692,13 +1692,7 @@ function _goBase(id){
   if(id==='ofmaq')iniciarPollingOFsMaquina();
   if(id==='lancamento'){
     if(_apiConectado && CURRENT_USER){
-      Promise.resolve()
-        .then(()=>syncOFs(false))
-        .then(()=>{
-          try{ OFS_HIST = OFs; }catch(e){}
-          renderLancamento();
-        })
-        .catch(()=>renderLancamento());
+      Promise.resolve().then(()=>lancCarregarHistorico()).catch(()=>renderLancamento());
     } else {
       renderLancamento();
     }
@@ -1785,7 +1779,8 @@ function renderPCP(){
   if(hbtn) hbtn.style.display=isHoje?'none':'';
 
   // Filter: show OFs for the current day OR active (in production) OR all if no date filter
-  let lista=[...OFs].filter(o=>String(o.status||'').trim()!=='Pedido Pronto' && !o.deleted_at);
+  const ofsVisiveis = [...OFs].filter(o=>String(o.status||'').trim()!=='Cancelada' && String(o.status||'').trim()!=='Cancelado' && !o.deleted_at);
+  let lista=[...ofsVisiveis].filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
   if(isTodas){
     lista.sort((a,b)=>{
       const aa=String(a.created_at||'');
@@ -2025,6 +2020,7 @@ async function renderOFsPorMaquina(){
       qs.set('limit','200');
       qs.set('offset','0');
       qs.set('lite','1');
+      qs.set('excluir_canceladas','1');
       const r = await api('GET','/ofs?'+qs.toString());
       const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
       lista = rows || [];
@@ -2064,7 +2060,8 @@ async function renderOFsPorMaquina(){
     const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
     const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
 
-    lista = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado'&&String(o.status||'').trim()!=='Pedido Pronto' && !o.deleted_at);
+    const ofsVisiveis = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado' && !o.deleted_at);
+    lista = ofsVisiveis.filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
     if(busca){
       lista = lista.filter(o=>{
         const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
@@ -2535,7 +2532,17 @@ async function abrirModalOF(id){
     if(vsel && (oEdit.vendId||oEdit.vendedor)) vsel.value=oEdit.vendId||'';
     if(fsel && (oEdit.fluxo_id||oEdit.fluxo)) fsel.value=oEdit.fluxo_id||oEdit.fluxo||'';
     renderMaqChks((oEdit.maq && Array.isArray(oEdit.maq) && oEdit.maq.length) ? oEdit.maq : ofFluxoIdsFromNames(parseFluxo(oEdit.fluxo_maquinas||[])));
-    ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length ? oEdit.itens.slice() : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null}];
+    ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length
+      ? oEdit.itens.map(it=>({
+          ...it,
+          desc: it.desc||it.descricao||'',
+          qtd: it.qtd ?? it.quantidade ?? 0,
+          vunit: it.vunit ?? it.valor_unitario ?? 0,
+          qtd_chapas: it.qtd_chapas ?? 0,
+          chapa_id: it.chapa_id || '',
+          chapa_nome: it.chapa_nome || '',
+        }))
+      : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0}];
     renderOfItens();
     try{ ofCliChange(); }catch(e){}
   } else {
@@ -2859,7 +2866,7 @@ function rmImg(i){ofImgsTemp.splice(i,1);renderImgsTemp();}
 // ===================== OF ITENS =====================
 let ofItensTemp = [];
 function ofAddItem(item){
-  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null};
+  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0};
   ofItensTemp.push(item);
   renderOfItens();
 }
@@ -2896,16 +2903,33 @@ function ofItemChange(idx, campo, val){
 function recalcularTotaisOF(){
   recalcOfItens();
 }
+function ofChapaLabelOption(c){
+  const forn = String(c.fornecedor || c.forn || '').trim();
+  const nom = String(c.nomenclatura || c.nom || c.nome || '').trim();
+  const tam = String(c.tamanho || c.tam || '').trim();
+  const qtd = Number(c.quantidade ?? c.qtd ?? 0) || 0;
+  return `${forn} | ${nom} | ${tam} — saldo: ${qtd.toLocaleString()}${(c.id?'':'')}`;
+}
 function renderOfItens(){
   const tbody=document.getElementById('of-itens-body');
   if(!tbody)return;
-  tbody.innerHTML=ofItensTemp.map((it,i)=>`<tr>
+  const chapas = Array.isArray(ESTOQUE) ? ESTOQUE : [];
+  const chapaOptions = (selId)=>`<option value="">Sem vínculo</option>${
+    chapas.map(c=>`<option value="${escAttr(c.id||'')}" ${String(selId||'')===String(c.id||'')?'selected':''}>${escH(ofChapaLabelOption(c))}</option>`).join('')
+  }`;
+  tbody.innerHTML=ofItensTemp.map((it,i)=>`<tr class="of-item-row">
     <td class="tc" style="color:var(--text3);font-family:var(--mono);text-align:center;vertical-align:middle">${i+1}</td>
-    <td style="vertical-align:middle"><input type="text" value="${it.desc||''}" placeholder="Descrição do produto/item..." oninput="ofItensTemp[${i}].desc=this.value;recalcOfItens()" style="min-width:180px"></td>
-    <td style="vertical-align:middle"><input type="text" value="${it.ref||''}" placeholder="Ref..." oninput="ofItensTemp[${i}].ref=this.value"></td>
-    <td style="vertical-align:middle"><input type="number" value="${it.qtd||''}" placeholder="0" oninput="ofItemChange(${i},'qtd',this.value)" style="text-align:right"></td>
-    <td style="vertical-align:middle"><input type="number" step="0.0001" value="${it.vunit||''}" placeholder="0,0000" oninput="ofItemChange(${i},'vunit',this.value)" style="text-align:right"></td>
+    <td style="vertical-align:middle"><input name="item-descricao" type="text" value="${it.desc||it.descricao||''}" placeholder="Descrição do produto/item..." oninput="ofItensTemp[${i}].desc=this.value;ofItensTemp[${i}].descricao=this.value;recalcOfItens()" style="min-width:180px"></td>
+    <td style="vertical-align:middle"><input name="item-ref" type="text" value="${it.ref||''}" placeholder="Ref..." oninput="ofItensTemp[${i}].ref=this.value"></td>
+    <td style="vertical-align:middle"><input name="item-qtd" type="number" value="${it.qtd||''}" placeholder="0" oninput="ofItemChange(${i},'qtd',this.value)" style="text-align:right"></td>
+    <td style="vertical-align:middle"><input name="item-vunit" type="number" step="0.0001" value="${it.vunit||''}" placeholder="0,0000" oninput="ofItemChange(${i},'vunit',this.value)" style="text-align:right"></td>
     <td id="of-item-total-${i}" style="text-align:right;font-family:var(--mono);color:var(--green);font-size:.75rem;font-weight:700;padding:4px 8px;vertical-align:middle">${fmtR((it.qtd||0)*(it.vunit||0))}</td>
+    <td style="vertical-align:middle;min-width:220px">
+      <select name="item-chapa" onchange="(function(v){const c=(ESTOQUE||[]).find(x=>String(x.id||'')===String(v));ofItensTemp[${i}].chapa_id=v||'';ofItensTemp[${i}].chapa_nome=c?(c.nomenclatura||c.nom||c.nome||''):'';})(this.value)">${chapaOptions(it.chapa_id)}</select>
+    </td>
+    <td style="vertical-align:middle;min-width:110px">
+      <input name="item-qtd-chapas" type="number" min="0" step="1" value="${it.qtd_chapas||0}" oninput="ofItensTemp[${i}].qtd_chapas=Math.trunc(Number(this.value)||0)">
+    </td>
     <td class="tc" style="vertical-align:middle;padding:4px 6px;min-width:68px">
       ${it.img
         ? `<div style="position:relative;display:inline-block">
@@ -2963,7 +2987,26 @@ function calcularValorTotalOF(){
   return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
 }
 function getOfItensFromModal(){
-  return ofItensTemp.map(it=>({desc:it.desc||'',ref:it.ref||'',qtd:parseFloat(it.qtd)||0,vunit:parseFloat(it.vunit)||0,img:it.img||null}));
+  return ofItensTemp.map(it=>{
+    const qtd = parseFloat(it.qtd)||0;
+    const vunit = parseFloat(it.vunit)||0;
+    const total = qtd * vunit;
+    const desc = it.desc||it.descricao||'';
+    return {
+      desc,
+      descricao: desc,
+      ref:it.ref||'',
+      qtd,
+      quantidade:qtd,
+      vunit,
+      valor_unitario:vunit,
+      valor_total:total,
+      img:it.img||null,
+      chapa_id: it.chapa_id || '',
+      chapa_nome: it.chapa_nome || '',
+      qtd_chapas: Math.trunc(Number(it.qtd_chapas)||0),
+    };
+  });
 }
 
 async function salvarOF(){
@@ -3005,7 +3048,7 @@ async function salvarOF(){
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
   );
-  if(!r || !r.ok){toast('Erro ao salvar OF','var(--red)');return;}
+  if(!r || !r.ok){toast('Erro ao salvar OF: '+((r&&r.error)||'falha'),'var(--red)'); console.error('[SALVAR OF]', r); return;}
   if(!r.local){
     try{ await carregarOFs(); }catch(e){}
   } else {
@@ -3016,26 +3059,27 @@ async function salvarOF(){
 }
 
 async function salvarEdicaoOFId(id){
-  const o=OFs.find(x=>x.id===id);if(!o){toast('OF não encontrada','var(--red)');return;}
-  const cliId=document.getElementById('f-cli').value;
-  const itens=getOfItensFromModal();
-  const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=calcularValorTotalOF();
-  if(!cliId){toast('Selecione o cliente','var(--red)');return;}
-  if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-  const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
-  const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
-  const data_pedido = document.getElementById('f-dia').value;
-  const dia = dia_programacao || data_pedido;
-  const cliObj = getCli(cliId) || {};
-  const cidadeManual = (document.getElementById('f-cidade-of')||{}).value ? String(document.getElementById('f-cidade-of').value).trim() : '';
-  const cidade_entrega = cidadeManual || cliObj.cidade || '';
-  const itemImgs=itens.map(it=>it.img||null);
-  const firstImg=itemImgs.find(img=>img!==null);
-  const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const empSel=(document.getElementById('f-emp')||null);
-  const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
-  const payload={
+  try{
+    const o=OFs.find(x=>x.id===id);if(!o){toast('OF não encontrada','var(--red)');return;}
+    const cliId=document.getElementById('f-cli').value;
+    const itens=getOfItensFromModal();
+    const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
+    const valTotal=calcularValorTotalOF();
+    if(!cliId){toast('Selecione o cliente','var(--red)');return;}
+    if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+    const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
+    const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
+    const data_pedido = document.getElementById('f-dia').value;
+    const dia = dia_programacao || data_pedido;
+    const cliObj = getCli(cliId) || {};
+    const cidadeManual = (document.getElementById('f-cidade-of')||{}).value ? String(document.getElementById('f-cidade-of').value).trim() : '';
+    const cidade_entrega = cidadeManual || cliObj.cidade || '';
+    const itemImgs=itens.map(it=>it.img||null);
+    const firstImg=itemImgs.find(img=>img!==null);
+    const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
+    const empSel=(document.getElementById('f-emp')||null);
+    const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
+    const payload={
     of:document.getElementById('f-of').value,
     prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
     cliId,
@@ -3064,25 +3108,29 @@ async function salvarEdicaoOFId(id){
     qchp:parseInt(document.getElementById('f-qchp').value)||0,
     chapa_id:document.getElementById('f-chp').value,
     qtd_chapas:parseInt(document.getElementById('f-qchp').value)||0,
-  };
-  console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
-  const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
-  if(!r || r.ok===false || r.error){toast('Erro ao salvar alteração','var(--red)');return;}
-  const dadosAtualizados = r.data || r;
-  const idx = OFs.findIndex(x=>x.id===id);
-  if(idx>-1) OFs[idx] = normalizeOF({ ...OFs[idx], ...dadosAtualizados });
-  Object.assign(o, OFs[idx] || o);
-  if(Array.isArray(OFS_HIST)){
-    const hi = OFS_HIST.findIndex(x=>String(x.id||'')===String(id));
-    if(hi>=0){
-      OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...dadosAtualizados });
-    } else if(idx>-1){
-      OFS_HIST.unshift(normalizeOF(OFs[idx]));
+    };
+    console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
+    const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
+    if(!r || r.ok===false || r.error) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
+    const dadosAtualizados = r.data || r;
+    const idx = OFs.findIndex(x=>x.id===id);
+    if(idx>-1) OFs[idx] = normalizeOF({ ...OFs[idx], ...dadosAtualizados });
+    Object.assign(o, OFs[idx] || o);
+    if(Array.isArray(OFS_HIST)){
+      const hi = OFS_HIST.findIndex(x=>String(x.id||'')===String(id));
+      if(hi>=0){
+        OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...dadosAtualizados });
+      } else if(idx>-1){
+        OFS_HIST.unshift(normalizeOF(OFs[idx]));
+      }
     }
+    fechar('modal-of');autoSaveTrigger();
+    _rerenderOFViews();
+    toast('✏ Alteração salva ✓','var(--green)');
+  }catch(e){
+    toast('Erro ao salvar OF: '+(e.message||e),'var(--red)');
+    console.error('[SALVAR OF]', e);
   }
-  fechar('modal-of');autoSaveTrigger();
-  _rerenderOFViews();
-  toast('✏ Alteração salva ✓','var(--green)');
 }
 
 // ===================== LANÇAMENTO =====================
@@ -3110,18 +3158,18 @@ function lancTs(o, field){
 }
 
 async function lancCarregarHistorico(){
-  try{
-    await syncOFs(true);
-    OFS_HIST = OFs;
-    renderLancamento();
-  }catch(e){
-    toast('Erro ao carregar histórico','var(--red)');
-  }
+  const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
+  const st = (LANC_UI.tab === 'canceladas') ? '&status=Cancelada' : '';
+  const url = '/ofs?incluir_excluidas=1'+(empParam?('&'+empParam.slice(1)):'')+st;
+  const r = await api('GET', url);
+  if(!r || !r.ok){ toast('Erro ao carregar histórico: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
+  OFS_HIST = (Array.isArray(r.data)?r.data:[]).map(normalizeOF);
+  renderLancamento();
 }
 
 function lancSetTab(t){
   LANC_UI.tab = t;
-  renderLancamento();
+  lancCarregarHistorico();
 }
 
 async function lancReativar(id){
@@ -9342,6 +9390,7 @@ async function syncOFs(force=false){
   if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
   qs.set('limit','200');
   qs.set('lite','1');
+  qs.set('excluir_canceladas','1');
   const r = await api('GET','/ofs?'+qs.toString());
   const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
   OFs = (rows||[]).map(normalizeOF);
@@ -13958,6 +14007,7 @@ salvarOF = async function(){
     logAction('Nova OF criada',payload.of_num||payload.numero);
   } else if(!r.ok){
     toast('Erro ao salvar OF: '+(r.error||''),'var(--red)');
+    console.error('[SALVAR OF]', r);
   }
 };
 
@@ -15936,6 +15986,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="width:90px">QUANTIDADE</th>
               <th style="width:110px">VL. UNIT. (R$)</th>
               <th style="width:110px">TOTAL (R$)</th>
+              <th style="min-width:220px">CHAPA VINCULADA</th>
+              <th style="width:110px">QTD CHAPAS</th>
               <th style="width:60px" title="Imagem do item">📷</th>
               <th style="width:28px">✕</th>
             </tr>
@@ -17590,6 +17642,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       logAction('Nova OF criada', multi ? (seedAdjusted+' · '+p.itens.length+' itens') : p.ofSeed);
     }catch(e){
       toast('Erro ao salvar OF: '+(e.message||e),'var(--red)');
+      console.error('[SALVAR OF]', e);
     }
   };
 
@@ -17642,6 +17695,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       toast('✏ OF alterada com sucesso','var(--purple)');
     }catch(e){
       toast('Erro ao atualizar OF: '+(e.message||e),'var(--red)');
+      console.error('[SALVAR OF]', e);
     }
   };
 

@@ -611,16 +611,46 @@ app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
 });
 async function insertOne(table, row) {
   if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
-  const { data, error } = await supabase.from(table).insert([row]).select('*').limit(1);
-  if (error) throw error;
-  return (data && data[0]) || null;
+  if (table !== 'ofs') {
+    const { data, error } = await supabase.from(table).insert([row]).select('*').limit(1);
+    if (error) throw error;
+    return (data && data[0]) || null;
+  }
+  let payload = { ...(row || {}) };
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    const { data, error } = await supabase.from(table).insert([payload]).select('*').limit(1);
+    if (!error) return (data && data[0]) || null;
+    const msg = String(error.message || error);
+    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+      delete payload[col];
+      continue;
+    }
+    throw error;
+  }
+  throw new Error('Falha ao inserir OF após tentativas');
 }
 
 async function updateOne(table, id, row) {
   if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
-  const { data, error } = await supabase.from(table).update(row).eq('id', id).select('*').limit(1);
-  if (error) throw error;
-  return (data && data[0]) || null;
+  if (table !== 'ofs') {
+    const { data, error } = await supabase.from(table).update(row).eq('id', id).select('*').limit(1);
+    if (error) throw error;
+    return (data && data[0]) || null;
+  }
+  let payload = { ...(row || {}) };
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    const { data, error } = await supabase.from(table).update(payload).eq('id', id).select('*').limit(1);
+    if (!error) return (data && data[0]) || null;
+    const msg = String(error.message || error);
+    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+      delete payload[col];
+      continue;
+    }
+    throw error;
+  }
+  throw new Error('Falha ao atualizar OF após tentativas');
 }
 
 async function deleteOne(table, id) {
@@ -647,6 +677,12 @@ function ofIn(p) {
   }
   if (has('imgs')) {
     out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
+  }
+  if (has('itens')) {
+    if (Array.isArray(p.itens)) out.itens = p.itens;
+    else if (typeof p.itens === 'string') {
+      try { out.itens = JSON.parse(p.itens || '[]'); } catch (e) { out.itens = []; }
+    } else out.itens = [];
   }
   if (has('fluxo_maquinas')) {
     if (Array.isArray(p.fluxo_maquinas)) out.fluxo_maquinas = p.fluxo_maquinas;
@@ -954,6 +990,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const lite = String(req.query.lite || '') === '1';
     const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega,chapa_id,qtd_chapas";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
+    const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
     const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
@@ -966,6 +1003,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         let q = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
         if (empCol) q = q.eq(empCol, empId);
         if (status) q = q.eq('status', status);
+        if (excluirCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
         if (field) {
           if (from) q = q.gte(field, from);
           if (to) q = q.lte(field, to);
@@ -984,6 +1022,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             let q3 = supabase.from('ofs').select('*').order('seq', { ascending: true });
             if (empCol) q3 = q3.eq(empCol, empId);
             if (status) q3 = q3.eq('status', status);
+            if (excluirCanceladas) q3 = q3.neq('status', 'Cancelada').neq('status', 'Cancelado');
             if (field) {
               if (from) q3 = q3.gte(field, from);
               if (to) q3 = q3.lte(field, to);
@@ -1004,6 +1043,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             let q2 = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
             if (empCol) q2 = q2.eq(empCol, empId);
             if (status) q2 = q2.eq('status', status);
+            if (excluirCanceladas) q2 = q2.neq('status', 'Cancelada').neq('status', 'Cancelado');
             if (field) {
               if (from) q2 = q2.gte(field, from);
               if (to) q2 = q2.lte(field, to);
@@ -1133,6 +1173,7 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
+    console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(body));
     if (createdRes.error) throw createdRes.error;
     const created = createdRes.data;
@@ -1155,6 +1196,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
+    console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const updRes = await ofsUpdateWithRetry(req.params.id, ofIn(body));
     if (updRes.error) throw updRes.error;
     const updated = updRes.data;
@@ -1367,6 +1409,17 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           if (!ex.error && ex.data) jaBaixado = true;
         }
         if (!jaBaixado) await _maybeBaixaAutomaticaChapasOF(req, ofAtual, ofAtual);
+        const itens = Array.isArray(ofAtual?.itens) ? ofAtual.itens : (typeof ofAtual?.itens === 'string' ? JSON.parse(ofAtual.itens || '[]') : []);
+        for (const item of itens) {
+          const itemChapaId = String(item?.chapa_id || '').trim();
+          const itemQtdChapas = Number(item?.qtd_chapas || 0);
+          if (!itemChapaId || !(itemQtdChapas > 0)) continue;
+          await _maybeBaixaAutomaticaChapasOF(req, {
+            chapa_id: itemChapaId,
+            qtd_chapas: itemQtdChapas,
+            _estoqueJaBaixadoCriacao: false,
+          }, ofAtual);
+        }
       } catch (e) {}
     }
 
