@@ -1072,6 +1072,7 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
     const valorOf = Number(body?.valor_total ?? body?.valor_venda ?? ofRow?.valor_total ?? ofRow?.valor_venda ?? 0);
+    console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
     const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
@@ -1311,12 +1312,15 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
 
+    console.log('[BAIXA]', id, 'concluida:', concluida, 'payload:', payload);
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
+    console.log('[BAIXA] upd.data:', upd.data, 'upd.error:', upd.error);
     if (upd.error) {
       const msg = String(upd.error.message || upd.error);
       if (msg.includes('column') || msg.includes('Could not find')) {
         const fallbackPayload = { status: concluida ? 'Pedido Pronto' : 'Em Produção' };
         upd = await supabase.from('ofs').update(fallbackPayload).eq('id', id).select('*').single();
+        console.log('[BAIXA] fallback upd.data:', upd.data, 'upd.error:', upd.error);
       }
     }
     if (upd.error) throw upd.error;

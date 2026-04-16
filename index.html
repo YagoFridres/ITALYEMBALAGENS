@@ -625,6 +625,20 @@ body[data-device="mobile"] .modal{border-radius:0;margin:0;width:100vw;min-heigh
 body[data-device="mobile"] .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
 body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 
+#modal-of.modal-overlay{overflow:hidden;padding:0;}
+#modal-of .modal{
+  width:min(860px,96vw);
+  max-height:92vh;
+  overflow-y:auto;
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  z-index:9999;
+}
+body[data-device="mobile"] #modal-of.modal-overlay{align-items:center;justify-content:center;padding:0 8px;}
+body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-height:92vh;border-radius:14px;margin:0;}
+
 @media(max-width:768px){
   body{font-size:14px;}
   #hamburger-btn{display:flex!important;}
@@ -643,6 +657,8 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
   .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
   .modal{width:100vw;min-height:100vh;max-height:100vh;border-radius:0;margin:0;padding:18px;}
   .modal-footer{position:sticky;bottom:0;background:var(--surface);padding-top:10px;margin-top:14px;}
+  #modal-of.modal-overlay{align-items:center;justify-content:center;padding:0 8px;}
+  #modal-of .modal{width:96vw;min-height:auto;max-height:92vh;border-radius:14px;margin:0;}
 }
 
 @media(min-width:769px) and (max-width:1024px){
@@ -1639,7 +1655,10 @@ let _ofsMaqAtiva = false;
 function iniciarPollingOFsMaquina() {
   _ofsMaqAtiva = true;
   if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
-  renderOFsPorMaquina();
+  Promise.resolve()
+    .then(()=>syncOFs(false))
+    .then(()=>renderOFsPorMaquina())
+    .catch(()=>renderOFsPorMaquina());
   _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 300000);
 }
 
@@ -1662,17 +1681,28 @@ function _goBase(id){
   if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
   if(id==='pcp'){
     if(_apiConectado && CURRENT_USER){
-      const dia = PCP_DIA_ATUAL === '__todas__' ? '' : PCP_DIA_ATUAL;
       Promise.all([
         carregarVendedores(false),
-        (dia ? carregarOFs({ from: dia, to: dia }) : carregarOFs({}))
+        syncOFs(false)
       ]).then(()=>renderPCP()).catch(()=>renderPCP());
     } else {
       renderPCP();
     }
   }
   if(id==='ofmaq')iniciarPollingOFsMaquina();
-  if(id==='lancamento')renderLancamento();
+  if(id==='lancamento'){
+    if(_apiConectado && CURRENT_USER){
+      Promise.resolve()
+        .then(()=>syncOFs(false))
+        .then(()=>{
+          try{ OFS_HIST = OFs; }catch(e){}
+          renderLancamento();
+        })
+        .catch(()=>renderLancamento());
+    } else {
+      renderLancamento();
+    }
+  }
   if(id==='clientes'){
     if(_apiConectado && CURRENT_USER){
       carregarClientes(false).then(()=>renderClientes()).catch(()=>renderClientes());
@@ -2124,24 +2154,15 @@ async function ofmaqDarBaixa(id){
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
     return;
   }
-  const upd=r.data||r;
-  const it=(OFs||[]).find(x=>x.id===o.id);
-  if(it){
-    if(r && r.status) it.status = r.status;
-    else if(r && r.concluida===true) it.status='Pedido Pronto';
-    it.maquina_atual_index = Number(it.maquina_atual_index||0)+1;
-    Object.assign(it, normalizeOF({ ...it, ...upd }));
-  }
-  if(Array.isArray(OFS_HIST)){
-    const hi=(OFS_HIST||[]).findIndex(x=>String(x.id||'')===String(o.id));
-    if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd });
-    else if(it) OFS_HIST.unshift(normalizeOF(it));
-    if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
-  }
+  const patch = {
+    status: (r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'),
+    maquina_atual_index: Number(o.maquina_atual_index||0)+1,
+    data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
+  };
+  _atualizarOFLocal(o.id, patch);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
-  renderOFsPorMaquina();
-  try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
+  _rerenderOFViews();
 }
 
 async function darBaixaOFId(id, numero, maquinaAtual){
@@ -2150,24 +2171,15 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{usuario});
   if(r && r.ok){
-    const idx = (OFs||[]).findIndex(o=>String(o.id||'')===String(id));
-    if(idx>=0){
-      if(r.status) OFs[idx].status = r.status;
-      else if(r.concluida===true) OFs[idx].status = 'Pedido Pronto';
-      OFs[idx].maquina_atual_index = Number(OFs[idx].maquina_atual_index||0)+1;
-      const upd=r.data||r;
-      OFs[idx] = normalizeOF({ ...OFs[idx], ...upd });
-    }
-    if(Array.isArray(OFS_HIST)){
-      const upd=r.data||r;
-      const hi=(OFS_HIST||[]).findIndex(o=>String(o.id||'')===String(id));
-      if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd });
-      else if(idx>=0) OFS_HIST.unshift(normalizeOF(OFs[idx]));
-      if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
-    }
+    const it = (OFs||[]).find(o=>String(o.id||'')===String(id)) || null;
+    const patch = {
+      status: (r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'),
+      maquina_atual_index: Number(it?.maquina_atual_index||0)+1,
+      data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
+    };
+    _atualizarOFLocal(id, patch);
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
-    renderOFsPorMaquina();
-    try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
+    _rerenderOFViews();
   } else {
     toast('Erro: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
   }
@@ -2180,23 +2192,9 @@ async function concluirProcessoOf(ofId){
   const payload = { status: 'Pedido Pronto', maquina_atual_index: 999, data_conclusao: new Date().toISOString() };
   const r = await api('PATCH','/ofs/'+encodeURIComponent(id), payload);
   if(r && r.ok){
-    const idx = (OFs||[]).findIndex(o=>String(o.id||'')===id);
-    if(idx>=0){
-      OFs[idx].status = 'Pedido Pronto';
-      OFs[idx].maquina_atual_index = 999;
-      OFs[idx].data_conclusao = payload.data_conclusao;
-      OFs[idx] = normalizeOF({ ...OFs[idx], ...(r.data||r) });
-    }
-    if(Array.isArray(OFS_HIST)){
-      const upd=r.data||r;
-      const hi=(OFS_HIST||[]).findIndex(o=>String(o.id||'')===id);
-      if(hi>=0) OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...upd, status:'Pedido Pronto', maquina_atual_index: 999 });
-      else if(idx>=0) OFS_HIST.unshift(normalizeOF(OFs[idx]));
-      if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
-    }
+    _atualizarOFLocal(id, { status:'Pedido Pronto', maquina_atual_index: 999, data_conclusao: payload.data_conclusao });
     toast('OF concluída!','var(--green)');
-    renderOFsPorMaquina();
-    try{ carregarOFs({ forcar:true }).catch(()=>{}); }catch(e){}
+    _rerenderOFViews();
   } else {
     alert('Erro: ' + (r && r.error ? r.error : 'falha'));
   }
@@ -2961,6 +2959,9 @@ function recalcOfItens(){
   const fq=document.getElementById('f-qtd');if(fq)fq.value=qtdTotal;
   const fv=document.getElementById('f-val');if(fv)fv.value=valTotal.toFixed(2);
 }
+function calcularValorTotalOF(){
+  return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
+}
 function getOfItensFromModal(){
   return ofItensTemp.map(it=>({desc:it.desc||'',ref:it.ref||'',qtd:parseFloat(it.qtd)||0,vunit:parseFloat(it.vunit)||0,img:it.img||null}));
 }
@@ -2969,7 +2970,7 @@ async function salvarOF(){
   const cliId=document.getElementById('f-cli').value;
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
+  const valTotal=calcularValorTotalOF();
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
@@ -2998,7 +2999,8 @@ async function salvarOF(){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:document.getElementById('f-vend').value,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const vendIdSel=document.getElementById('f-vend').value;
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3018,7 +3020,7 @@ async function salvarEdicaoOFId(id){
   const cliId=document.getElementById('f-cli').value;
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
+  const valTotal=calcularValorTotalOF();
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
@@ -3038,6 +3040,8 @@ async function salvarEdicaoOFId(id){
     prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
     cliId,
     vendId:document.getElementById('f-vend').value,
+    vend_id:document.getElementById('f-vend').value,
+    vendedor_id:document.getElementById('f-vend').value,
     itens,
     qtd:qtdTotal,
     valor_total: valTotal,
@@ -3076,8 +3080,8 @@ async function salvarEdicaoOFId(id){
       OFS_HIST.unshift(normalizeOF(OFs[idx]));
     }
   }
-  fechar('modal-of');autoSaveTrigger();renderPCP();updateBadges();
-  if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
+  fechar('modal-of');autoSaveTrigger();
+  _rerenderOFViews();
   toast('✏ Alteração salva ✓','var(--green)');
 }
 
@@ -3106,11 +3110,13 @@ function lancTs(o, field){
 }
 
 async function lancCarregarHistorico(){
-  const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const r = await api('GET','/ofs?incluir_excluidas=1'+(empParam?('&'+empParam.slice(1)):''));
-  if(!r || !r.ok){ toast('Erro ao carregar histórico: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
-  OFS_HIST = (Array.isArray(r.data)?r.data:[]).map(normalizeOF);
-  renderLancamento();
+  try{
+    await syncOFs(true);
+    OFS_HIST = OFs;
+    renderLancamento();
+  }catch(e){
+    toast('Erro ao carregar histórico','var(--red)');
+  }
 }
 
 function lancSetTab(t){
@@ -9327,6 +9333,51 @@ async function carregarOFs(opts){
   if(r && r.ok) _ultimaCargaOFs = Date.now();
   return r;
 }
+async function syncOFs(force=false){
+  const now = Date.now();
+  if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < 3 * 60 * 1000 && Array.isArray(OFs) && OFs.length > 0){
+    return OFs;
+  }
+  const qs = new URLSearchParams();
+  if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+  qs.set('limit','200');
+  qs.set('lite','1');
+  const r = await api('GET','/ofs?'+qs.toString());
+  const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+  OFs = (rows||[]).map(normalizeOF);
+  try{ window.OFS = OFs; }catch(e){}
+  try{ if(Array.isArray(OFS_HIST)) OFS_HIST = OFs; }catch(e){}
+  try{ window.OFS_HIST = OFs; }catch(e){}
+  window._ofsCarregadasEm = now;
+  _ultimaCargaOFs = now;
+  return OFs;
+}
+function _atualizarOFLocal(id, patch){
+  const sid = String(id||'').trim();
+  if(!sid) return null;
+  let updated = null;
+  const applyArr = (arr)=>{
+    if(!Array.isArray(arr)) return;
+    const i = arr.findIndex(x=>String(x && x.id || '').trim()===sid);
+    if(i>=0){
+      arr[i] = normalizeOF({ ...arr[i], ...(patch||{}) });
+      updated = arr[i];
+    }
+  };
+  try{ applyArr(OFs); }catch(e){}
+  try{ applyArr(OFS_HIST); }catch(e){}
+  try{ applyArr(window.OFS); }catch(e){}
+  try{ applyArr(window.OFS_HIST); }catch(e){}
+  window._ofsCarregadasEm = Date.now();
+  _ultimaCargaOFs = window._ofsCarregadasEm;
+  return updated;
+}
+function _rerenderOFViews(){
+  try{ updateBadges(); }catch(e){}
+  if(window._PAGE_ATUAL === 'pcp'){ try{ renderPCP(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'ofmaq'){ try{ renderOFsPorMaquina(); }catch(e){} }
+}
 async function carregarClientes(forcar=false){
   const now = Date.now();
   try{
@@ -13812,6 +13863,23 @@ document.addEventListener('keydown',function(e){
     if(e.key==='Enter'&&(document.activeElement.id==='login-user'||document.activeElement.id==='login-pass'))doLogin();
   }
 });
+try{
+  if(!window._escCloseModalOF){
+    window._escCloseModalOF = true;
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Escape') return;
+      const modalOf = document.getElementById('modal-of')
+        || document.querySelector('[id*="modal"][id*="of"]')
+        || document.querySelector('.modal-of');
+      const isOpen = !!(modalOf && (modalOf.classList?.contains('open') || modalOf.style?.display === 'flex' || modalOf.style?.display === 'block'));
+      if (!isOpen) return;
+      if (typeof cancelarModalOF === 'function') cancelarModalOF();
+      else if (typeof fecharModalOF === 'function') fecharModalOF();
+      else if (typeof fechar === 'function') fechar('modal-of');
+      else modalOf.style.display = 'none';
+    });
+  }
+}catch(e){}
 
 // ═══════════════════════════════════════════════════════════════
 // API OVERRIDES — sobrescreve funções locais para usar o backend
@@ -13823,7 +13891,7 @@ salvarOF = async function(){
   const cliId=document.getElementById('f-cli').value;
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=itens.reduce((s,it)=>s+it.qtd*it.vunit,0);
+  const valTotal=calcularValorTotalOF();
   if(!cliId){toast('Selecione o cliente','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
@@ -13846,7 +13914,8 @@ salvarOF = async function(){
     cliente_id: cliId,
     cli_id: cliId,
     vendedor: vendNome || null,
-    empresa_id: empUuid || null,
+    vend_id: vendId || null,
+    vendedor_id: vendId || null,
     empresa_id: empUuid || null,
     emp_id: empCode || null,
     qtd: qtdTotal,
