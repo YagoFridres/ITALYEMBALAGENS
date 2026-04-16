@@ -1250,139 +1250,154 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
 
 app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   try {
-    console.log('[RELATORIO VENDEDOR] query:', req.query);
+    console.log('[RELATORIO VENDEDOR] iniciando, query:', req.query);
+
     const mes = String(req.query.mes || '').trim();
-    const deQ = String(req.query.de || '').trim();
-    const ateQ = String(req.query.ate || '').trim();
+    const de = String(req.query.de || '').trim();
+    const ate = String(req.query.ate || '').trim();
     const empId = String(req.query.empId || '').trim();
-    let de = deQ;
-    let ate = ateQ;
-    if (mes && (!de || !ate)) {
-      const m = String(mes).slice(0, 7);
-      const [yy, mm] = m.split('-').map((x) => Number(x));
-      if (yy > 1900 && mm >= 1 && mm <= 12) {
-        const dtIni = new Date(yy, mm - 1, 1);
-        const dtFim = new Date(yy, mm, 0);
-        de = dtIni.toISOString().slice(0, 10);
-        ate = dtFim.toISOString().slice(0, 10);
-      }
-    }
 
-    const buildBaseQuery = () => {
-      let q = supabase.from('ofs').select('*');
-      if (empId) q = q.eq('emp_id', empId);
-      q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      return q;
+    const monthBounds = (m) => {
+      const s = String(m || '').slice(0, 7);
+      const [yy, mm] = s.split('-').map((x) => Number(x));
+      if (!(yy > 1900 && mm >= 1 && mm <= 12)) return { ini: '', fim: '' };
+      const dtIni = new Date(yy, mm - 1, 1);
+      const dtFim = new Date(yy, mm, 0);
+      return { ini: dtIni.toISOString().slice(0, 10), fim: dtFim.toISOString().slice(0, 10) };
     };
-    let { data: ofs, error } = await buildBaseQuery().is('deleted_at', null);
-    if (error) {
-      const msg = String(error.message || error);
-      if (msg.toLowerCase().includes('deleted_at')) {
-        const r2 = await buildBaseQuery();
-        ofs = r2.data;
-        error = r2.error;
-      }
-    }
-    if (error) return res.status(500).json({ error: String(error.message || error) });
 
-    const inPeriodo = (of) => {
-      const base = String(of?.dia || of?.created_at || '').slice(0, 10);
-      if (!base) return false;
-      if (de && base < de) return false;
-      if (ate && base > ate) return false;
+    const baseCols = [
+      'id', 'of', 'numero', 'status', 'dia', 'created_at',
+      'cli_id', 'cliId',
+      'vendedor_id', 'vend_id',
+      'valor_total', 'valor_venda',
+      'qtd', 'prodDesc', 'descricao',
+      'emp_id', 'deleted_at',
+    ];
+    const selectWithRetry = async (table, cols, build) => {
+      let useCols = cols.slice();
+      for (let tentativa = 0; tentativa < 5; tentativa++) {
+        const q = build(supabase.from(table).select(useCols.join(',')));
+        const r = await q.limit(500);
+        if (!r.error) return { data: r.data || [], usedCols: useCols };
+        const msg = String(r.error.message || r.error);
+        console.error('[RELATORIO VENDEDOR] erro query:', msg);
+        const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+        if (col && useCols.includes(col)) {
+          useCols = useCols.filter((c) => c !== col);
+          continue;
+        }
+        throw r.error;
+      }
+      throw new Error('Falha ao buscar OFs após tentativas');
+    };
+
+    const { ini: iniMes, fim: fimMes } = mes ? monthBounds(mes) : { ini: '', fim: '' };
+    const diaIni = mes ? iniMes : (de || '');
+    const diaFim = mes ? fimMes : (ate || '');
+
+    let ofs = [];
+    try {
+      const r1 = await selectWithRetry('ofs', baseCols, (q) => {
+        let qq = q;
+        if (empId) qq = qq.eq('emp_id', empId);
+        if (diaIni && diaFim) qq = qq.gte('dia', diaIni).lte('dia', diaFim);
+        return qq;
+      });
+      ofs = r1.data || [];
+    } catch (error) {
+      console.error('[RELATORIO VENDEDOR] erro query ofs:', String(error?.message || error));
+      const cols2 = baseCols.filter((c) => c !== 'deleted_at' && c !== 'cliId' && c !== 'vend_id' && c !== 'descricao');
+      const r2 = await selectWithRetry('ofs', cols2, (q) => {
+        let qq = q;
+        if (empId) qq = qq.eq('emp_id', empId);
+        if (mes && iniMes && fimMes) qq = qq.gte('created_at', iniMes).lte('created_at', fimMes);
+        return qq;
+      });
+      ofs = r2.data || [];
+    }
+
+    ofs = (ofs || []).filter((of) => {
+      if (!of) return false;
+      const st = String(of.status || '').toLowerCase();
+      if (st === 'cancelada' || st === 'cancelado') return false;
+      if (of.deleted_at) return false;
       return true;
-    };
-    const ofsPeriodo = (ofs || []).filter(inPeriodo);
-
-    const { data: vendedores } = await supabase.from('vendedores').select('*');
-    const mapVend = {};
-    (vendedores || []).forEach((v) => {
-      const id = String(v.id || '').trim();
-      if (!id) return;
-      const perc = Number(v.comissao_pct || 0);
-      mapVend[id] = { id, nome: v.nome || '', comissaoPct: perc > 0 ? perc : 0 };
     });
 
-    const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s || '').trim());
-    const ofCliId = (of) => String(of?.cliente_id ?? of?.cli_id ?? of?.cliId ?? '').trim();
-    const cliIdsMissingVend = Array.from(new Set((ofsPeriodo || [])
-      .filter((of) => !String(of?.vendedor_id ?? of?.vend_id ?? '').trim())
-      .map(ofCliId)
-      .filter((id) => id && isUuid(id))));
-    const mapCliVend = {};
-    if (cliIdsMissingVend.length) {
-      const { data: clis, error: eCli } = await supabase
-        .from('clientes')
-        .select('id,vendedor_id,vendId,vend_id')
-        .in('id', cliIdsMissingVend);
-      if (eCli) throw eCli;
-      (clis || []).forEach((c) => {
-        const id = String(c.id || '').trim();
-        if (!id) return;
-        const vid = String(c.vendedor_id ?? c.vendId ?? c.vend_id ?? '').trim();
-        if (vid) mapCliVend[id] = vid;
-      });
-    }
+    console.log('[RELATORIO VENDEDOR] OFs após filtro:', ofs.length);
+
+    const { data: vendedores, error: ev } = await supabase.from('vendedores').select('id,nome,comissao_pct');
+    if (ev) throw ev;
+    const mapVend = {};
+    (vendedores || []).forEach((v) => {
+      mapVend[String(v.id)] = { id: v.id, nome: v.nome || '', pct: Number(v.comissao_pct || 0) };
+    });
+
+    console.log('[RELATORIO VENDEDOR] vendedores:', Object.keys(mapVend).length);
 
     const grupos = {};
     let totalGeral = 0;
     let totalComissao = 0;
-    let totalPedidos = 0;
-    (ofsPeriodo || []).forEach((of) => {
-      let vendId = String(of?.vendedor_id ?? of?.vend_id ?? '').trim();
-      if (!vendId) {
-        const cid = ofCliId(of);
-        if (cid && mapCliVend[cid]) vendId = String(mapCliVend[cid] || '').trim();
-      }
-      if (!vendId) return;
-      const vendInfo = vendId && mapVend[vendId] ? mapVend[vendId] : null;
-      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : `Vendedor ${vendId}`;
-      const valor = Number(of.valor_total || of.valor_venda || 0);
-      const pct = Number((vendInfo && vendInfo.comissaoPct) || 0) || 0;
-      const comissao = valor * (pct / 100);
-      const key = vendId || vendNome;
-      if (!grupos[key]) {
-        grupos[key] = {
-          vendedorId: vendId || null,
+
+    for (const ofRow of ofs) {
+      const vendId = String(ofRow.vendedor_id || ofRow.vend_id || '').trim();
+      if (!vendId) continue;
+
+      const vend = mapVend[vendId];
+      const vendNome = vend ? vend.nome : 'Vendedor não encontrado';
+      const pct = vend ? vend.pct : 0;
+      const valor = Number(ofRow.valor_total || ofRow.valor_venda || 0);
+      const comissaoOf = valor * (pct / 100);
+      const dtOf = ofRow.dia || (ofRow.created_at ? String(ofRow.created_at).slice(0, 10) : '');
+
+      if (!grupos[vendId]) {
+        grupos[vendId] = {
+          vendedorId: vendId,
           vendedor: vendNome,
-          pedidos: 0,
-          valorTotal: 0,
           comissaoPct: pct,
+          pedidos: 0,
+          qtdTotal: 0,
+          valorTotal: 0,
           comissaoTotal: 0,
           ofs: [],
         };
       }
-      grupos[key].pedidos += 1;
-      grupos[key].valorTotal += valor;
-      grupos[key].comissaoTotal += comissao;
-      grupos[key].ofs.push({
-        numero: of.of || of.numero || '',
-        cliente: of.cliente_nome || of.cli_nome || of.cliente || of.cliId || '',
-        vendedor: vendNome,
+
+      grupos[vendId].pedidos++;
+      grupos[vendId].qtdTotal += Number(ofRow.qtd || 0);
+      grupos[vendId].valorTotal += valor;
+      grupos[vendId].comissaoTotal += comissaoOf;
+      grupos[vendId].ofs.push({
+        numero: ofRow.of || ofRow.numero || '',
+        cliente: ofRow.cli_id || ofRow.cliId || '',
+        qtd: Number(ofRow.qtd || 0),
         valor,
         comissaoPct: pct,
-        comissaoValor: comissao,
-        data: String(of.dia || of.created_at || '').slice(0, 10),
-        status: of.status || '',
+        comissaoValor: comissaoOf,
+        dataPedido: dtOf,
+        status: ofRow.status || '',
       });
-      totalGeral += valor;
-      totalComissao += comissao;
-      totalPedidos += 1;
-    });
 
-    const resultado = Object.values(grupos).map((g) => ({
-      ...g,
-      ticketMedio: g.pedidos > 0 ? g.valorTotal / g.pedidos : 0,
-    })).sort((a, b) => b.valorTotal - a.valorTotal);
+      totalGeral += valor;
+      totalComissao += comissaoOf;
+    }
+
+    const resultado = Object.values(grupos)
+      .map((g) => ({ ...g, ticketMedio: g.pedidos > 0 ? g.valorTotal / g.pedidos : 0 }))
+      .sort((a, b) => b.valorTotal - a.valorTotal);
+
+    console.log('[RELATORIO VENDEDOR] grupos:', resultado.length);
+
     return res.json({
       vendedores: resultado,
       totalGeral,
       totalComissao,
-      totalPedidos,
+      totalPedidos: ofs.length,
     });
-  } catch (err) {
-    console.error('[RELATORIO VENDEDOR] ERRO:', err?.message, err?.stack);
-    return res.status(500).json({ error: String(err.message || err) });
+  } catch (e) {
+    console.error('[RELATORIO VENDEDOR] ERRO FATAL:', e?.message, e?.stack);
+    return res.status(500).json({ error: String(e.message || e) });
   }
 });
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
