@@ -108,6 +108,12 @@ if (!_supabaseEnvOk) {
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
   console.log('✅ Supabase conectado:', supabaseUrl);
+  try {
+    cacheClearPrefix('chapas_estoque:');
+    cacheClearPrefix('chapas_');
+  } catch (_) {
+    globalThis.__pendingCacheClearPrefixes = ['chapas_estoque:', 'chapas_'];
+  }
   console.log('✅ Supabase key:', supabaseKeySource, 'len:', (supabaseKey ? String(supabaseKey).length : 0), 'tipo provável:', (supabaseKey && String(supabaseKey).length > 200 ? 'SERVICE ROLE' : 'ANON/curta'));
 }
 
@@ -141,6 +147,12 @@ function cacheClearPrefix(prefix) {
   Object.keys(_serverCacheTTL).forEach((k) => {
     if (k.startsWith(prefix)) cacheClear(k);
   });
+}
+if (Array.isArray(globalThis.__pendingCacheClearPrefixes) && globalThis.__pendingCacheClearPrefixes.length) {
+  globalThis.__pendingCacheClearPrefixes.forEach((p) => {
+    try { cacheClearPrefix(String(p || '')); } catch (_) {}
+  });
+  try { delete globalThis.__pendingCacheClearPrefixes; } catch (_) { globalThis.__pendingCacheClearPrefixes = null; }
 }
 
 function setNoCache(res) {
@@ -2507,12 +2519,12 @@ function _chapasCanonicalFromAny(row, table) {
   const km = _chapasKeyMap(row);
   const fornecedor = _chapasGet(row, km, ['fornecedor', 'forn']);
   const nomenclatura = _chapasGet(row, km, ['nomenclatura', 'nom', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
-  const nome = _chapasGet(row, km, ['nome_uso', 'nome uso', 'nome', 'name', 'nome_comercial', 'nome comercial', 'descricao', 'desc']) || nomenclatura;
+  const nome = _chapasGet(row, km, ['nome_comercial', 'nome comercial', 'nome_uso', 'nome uso', 'nome', 'nom', 'descricao', 'desc', 'name']) || nomenclatura;
   const tamanho = _chapasGet(row, km, ['tamanho', 'tam']);
   const qualCnpj = _chapasGet(row, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj', 'fabricante']);
-  const nf = _chapasGet(row, km, ['nf', 'numero_nf', 'numero nf', 'nota', 'nota_fiscal', 'nota fiscal']);
-  const qtd = _chapasNum(_chapasGet(row, km, ['quantidade', 'qtd', 'saldo']));
-  const vunit = _chapasNum(_chapasGet(row, km, ['valor_unitario', 'valor unitario', 'val', 'vunit', 'rs']));
+  const nf = _chapasGet(row, km, ['numero_nf', 'nf']);
+  const qtd = _chapasNum(_chapasGet(row, km, ['quantidade_atual', 'quantidade', 'qtd', 'saldo']));
+  const vunit = _chapasNum(_chapasGet(row, km, ['valor_unitario', 'val', 'custo_unitario', 'valor unitario', 'vunit', 'rs']));
   const vtot = _chapasNum(_chapasGet(row, km, ['valor_total', 'valor total', 'total', 'vtot']));
   const estoqueMin = _chapasNum(_chapasGet(row, km, ['estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima', 'min']));
   const vincos = _chapasGet(row, km, ['vincos', 'víncos']);
@@ -2524,7 +2536,7 @@ function _chapasCanonicalFromAny(row, table) {
   const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
   const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
   const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
-  const empresaVinc = _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
+  const empresaVinc = qualCnpj || _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
   const id = _chapasGet(row, km, ['id']);
   const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
   const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
