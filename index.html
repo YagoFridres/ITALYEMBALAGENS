@@ -1924,8 +1924,8 @@ function ordenarOFsParaMaquina(lista){
 }
 
 function cardOFMaquina(of, maquinaAtual){
-  const fluxo = parseFluxo(of.fluxo_maquinas);
-  const idx = of.maquina_atual_index || 0;
+  const fluxo = ofFluxoGetNames(of);
+  const idx = ofFluxoGetIndex(of);
   const cli = (CLIENTES||[]).find(c=>c.id===of.cliId);
   const nomeCliente = cli?.nome || of.cliente || '—';
   const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
@@ -1976,6 +1976,7 @@ async function renderOFsPorMaquina(){
   _ofsMaqRenderizando = true;
   _ofsMaqUltimaRender = Date.now();
   try {
+    const dbg = !!window._debugOfmaq;
     const container = document.getElementById('ofs-por-maquina-container')||document.getElementById('ofsmaq-container')||document.getElementById('ofmaq-body');
     if(!container){_ofsMaqRenderizando=false;return;}
     let lista = Array.isArray(OFs) && OFs.length > 0 ? OFs : null;
@@ -1991,12 +1992,13 @@ async function renderOFsPorMaquina(){
       </div>`;
       const qs = new URLSearchParams();
       if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-      qs.set('limit','100');
+      qs.set('limit','200');
       qs.set('offset','0');
       qs.set('lite','1');
       const r = await api('GET','/ofs?'+qs.toString());
       const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
       lista = rows || [];
+      if(dbg) console.log('[OFMAQ] fetch /api/ofs rows:', lista.length, 'respOk:', !!(r&&r.ok));
       if(Array.isArray(OFs) && OFs.length === 0) OFs = lista.map(normalizeOF);
     }
     lista = (lista||[]).map(normalizeOF);
@@ -2007,7 +2009,7 @@ async function renderOFsPorMaquina(){
     if(inp && !inp.value) inp.value = hoje;
     const dataSel = String(inp?.value || '').slice(0,10);
 
-    const diaOf = (o) => String((o.dia || o.data_pedido || o.dataPedido || '') || '').slice(0,10);
+    const diaOf = (o) => String((o.dia || o.data_producao || o.dataProducao || o.created_at || '') || '').slice(0,10);
 
     if(modo === 'hoje'){
       lista = lista.filter(o => diaOf(o) === hoje);
@@ -2040,17 +2042,26 @@ async function renderOFsPorMaquina(){
         return txt.includes(busca);
       });
     }
+    if(dbg) console.log('[OFMAQ] after status/date/search:', lista.length, 'modo:', modo, 'dataSel:', dataSel);
 
-    const grupos = {};
+    const gruposAll = {};
     lista.forEach(of=>{
-      const fluxo = parseFluxo(of.fluxo_maquinas);
-      const idx = of.maquina_atual_index||0;
-      const maq = fluxo[idx]||'Sem Máquina';
-      if(!filtroMaq||maq===filtroMaq){
-        if(!grupos[maq])grupos[maq]=[];
-        grupos[maq].push(of);
-      }
+      const fluxo = ofFluxoGetNames(of);
+      const idx = ofFluxoGetIndex(of);
+      const maq = String(fluxo[idx]||'').trim() || 'Sem Máquina';
+      if(!gruposAll[maq])gruposAll[maq]=[];
+      gruposAll[maq].push(of);
     });
+    const sel=document.getElementById('ofsmaq-filtro-maquina');
+    if(sel){
+      const cur=sel.value||'';
+      const maqList = Object.keys(gruposAll).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+      sel.innerHTML='<option value="">Todas as máquinas</option>'+maqList.map(m=>`<option value="${escAttr(m)}"${cur===m?' selected':''}>${escH(m)} (${gruposAll[m].length})</option>`).join('');
+      if(cur && !gruposAll[cur]) sel.value='';
+    }
+    const filtroOk = filtroMaq && gruposAll[filtroMaq];
+    const grupos = filtroOk ? { [filtroMaq]: gruposAll[filtroMaq] } : gruposAll;
+    if(dbg) console.log('[OFMAQ] grupos:', Object.keys(gruposAll).length, 'filtrando:', filtroOk ? filtroMaq : '(todas)');
 
     const scroll = container.scrollTop;
 
@@ -2548,15 +2559,16 @@ async function ofAtualizaChapas(){
   try {
     let chapas = Array.isArray(ESTOQUE) && ESTOQUE.length ? ESTOQUE : null;
     if(!chapas){
-      const r = await apiFetch('/api/chapas_estoque');
+      const qs = new URLSearchParams();
+      if (EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+      const url = '/api/chapas_estoque' + (qs.toString() ? ('?' + qs.toString()) : '');
+      const r = await apiFetch(url);
       const data = await r.json();
       chapas = Array.isArray(data) ? data : (data.data || []);
-      chapas.forEach(c => {
-        if(!ESTOQUE.find(x => x.id === c.id)) {
-          ESTOQUE.push(normalizeEst ? normalizeEst(c) : c);
-        }
-      });
-      chapas = ESTOQUE;
+      const dados = (chapas||[]).map(c => (normalizeEst ? normalizeEst(c) : c));
+      ESTOQUE = dados;
+      _estoqueBase = dados;
+      chapas = dados;
     }
 
     chsel.innerHTML='<option value="">Sem vínculo</option>';
@@ -3546,7 +3558,7 @@ function renderRecebimentosInsumos(){
   const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
   if(status) status.textContent = `Exibindo ${rows.length.toLocaleString()} registro(s)`;
   if(!rows.length){
-    body.innerHTML = `<tr><td colspan="14" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum recebimento encontrado.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="15" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum recebimento encontrado.</td></tr>`;
     return;
   }
   body.innerHTML = rows.map((r,i)=>{
@@ -3558,6 +3570,7 @@ function renderRecebimentosInsumos(){
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.placa_veiculo||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);color:var(--accent);font-weight:900">${escH(r.nota_fiscal||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.produto||'—')}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.tamanho_chapa||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border)">${escH(r.fornecedor||'—')}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900">${Number(r.quantidade||0).toLocaleString()}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.ordem_compra||'—')}</td>
@@ -3581,6 +3594,8 @@ function abrirModalRecebimentoInsumos(id){
   document.getElementById('ri-placa').value = r?.placa_veiculo || '';
   document.getElementById('ri-nf').value = r?.nota_fiscal || '';
   document.getElementById('ri-produto').value = r?.produto || '';
+  const tc = document.getElementById('rec-tamanho-chapa');
+  if(tc) tc.value = r?.tamanho_chapa || '';
   document.getElementById('ri-fornecedor').value = r?.fornecedor || '';
   document.getElementById('ri-quantidade').value = (r?.quantidade ?? '') === null ? '' : String(r?.quantidade ?? '');
   document.getElementById('ri-oc').value = r?.ordem_compra || '';
@@ -3619,6 +3634,7 @@ async function salvarRecebimentoInsumos(){
   const placa = String(document.getElementById('ri-placa')?.value || '').trim() || null;
   const nf = String(document.getElementById('ri-nf')?.value || '').trim() || null;
   const produto = String(document.getElementById('ri-produto')?.value || '').trim() || null;
+  const tamanho_chapa = String(document.getElementById('rec-tamanho-chapa')?.value || '').trim() || null;
   const fornecedor = String(document.getElementById('ri-fornecedor')?.value || '').trim() || null;
   const qtdStr = String(document.getElementById('ri-quantidade')?.value || '').trim();
   const quantidade = qtdStr === '' ? null : Math.trunc(Number(qtdStr));
@@ -3642,6 +3658,7 @@ async function salvarRecebimentoInsumos(){
     placa_veiculo: placa,
     nota_fiscal: nf,
     produto,
+    tamanho_chapa,
     fornecedor,
     quantidade,
     ordem_compra: oc,
@@ -3692,12 +3709,13 @@ function exportarRecebimentosInsumosXlsx(){
   if(typeof XLSX === 'undefined' || !XLSX?.utils){ toast('SheetJS (XLSX) não carregado','var(--red)'); return; }
   const rows = Array.isArray(RECEB_INSUMOS) ? RECEB_INSUMOS : [];
   const aoa = [
-    ['Data Rec.', 'Placa', 'NF', 'Produto', 'Fornecedor', 'Qtd', 'Ordem Compra', 'Validade', 'Responsável', 'Devolução', 'Cliente', 'Empresa'],
+    ['Data Rec.', 'Placa', 'NF', 'Produto', 'Tamanho da Chapa', 'Fornecedor', 'Qtd', 'Ordem Compra', 'Validade', 'Responsável', 'Devolução', 'Cliente', 'Empresa'],
     ...rows.map(r=>[
       fmtDataBR(String(r.data_recebimento||''))||'',
       r.placa_veiculo||'',
       r.nota_fiscal||'',
       r.produto||'',
+      r.tamanho_chapa||'',
       r.fornecedor||'',
       r.quantidade ?? '',
       r.ordem_compra||'',
@@ -3731,7 +3749,7 @@ function imprimirRecebimentosInsumos(){
     <h2>${title}</h2>
     <table>
       <thead><tr>
-        <th>Data Rec.</th><th>Placa</th><th>NF</th><th>Produto</th><th>Fornecedor</th><th>Qtd</th><th>Ordem Compra</th><th>Validade</th><th>Responsável</th><th>Devolução</th><th>Cliente</th><th>Empresa</th>
+        <th>Data Rec.</th><th>Placa</th><th>NF</th><th>Produto</th><th>Tamanho da Chapa</th><th>Fornecedor</th><th>Qtd</th><th>Ordem Compra</th><th>Validade</th><th>Responsável</th><th>Devolução</th><th>Cliente</th><th>Empresa</th>
       </tr></thead>
       <tbody>
         ${rows.map(r=>`<tr>
@@ -3739,6 +3757,7 @@ function imprimirRecebimentosInsumos(){
           <td>${escH(r.placa_veiculo||'')}</td>
           <td>${escH(r.nota_fiscal||'')}</td>
           <td>${escH(r.produto||'')}</td>
+          <td>${escH(r.tamanho_chapa||'')}</td>
           <td>${escH(r.fornecedor||'')}</td>
           <td style="text-align:right">${escH(String(r.quantidade??''))}</td>
           <td>${escH(r.ordem_compra||'')}</td>
@@ -14814,6 +14833,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Placa</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Produto</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Tamanho da Chapa</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Fornecedor</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">Qtd</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">Ordem Compra</th>
@@ -16149,8 +16169,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div>
 
-<div id="modal-receb-insumos" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
-  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:22px;width:720px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+<div id="modal-receb-insumos" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:flex-start;justify-content:center;overflow-y:auto;padding:0 10px">
+  <div style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:14px 14px 12px;width:min(720px,95vw);max-height:90vh;overflow-y:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65);margin:5vh auto">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
       <h3 id="ri-title" style="margin:0">Novo Recebimento</h3>
       <button class="btn btn-ghost btn-sm" onclick="fecharModalRecebimentoInsumos()">✕</button>
@@ -16165,6 +16185,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="ri-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Produto</label>
         <input id="ri-produto" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Tamanho da Chapa</label>
+        <input id="rec-tamanho-chapa" type="text" placeholder="Ex: 1200x1000mm" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Fornecedor</label>
         <input id="ri-fornecedor" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade</label>

@@ -2788,7 +2788,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const hasFiltros = qEntries.length > 0;
     const cacheKey = hasFiltros
       ? ('chapas_estoque:' + table + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
-      : 'chapas_estoque:all';
+      : ('chapas_estoque:' + table + ':all');
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
     const selectV2Base = [
