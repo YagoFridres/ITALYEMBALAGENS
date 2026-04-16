@@ -1250,6 +1250,7 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
 
 app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   try {
+    console.log('[RELATORIO VENDEDOR] query:', req.query);
     const mes = String(req.query.mes || '').trim();
     const deQ = String(req.query.de || '').trim();
     const ateQ = String(req.query.ate || '').trim();
@@ -1267,14 +1268,17 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       }
     }
 
-    let query = supabase.from('ofs').select('*');
-    if (empId) query = query.eq('emp_id', empId);
-    query = query.neq('status', 'Cancelada').neq('status', 'Cancelado');
-    let { data: ofs, error } = await query.is('deleted_at', null);
+    const buildBaseQuery = () => {
+      let q = supabase.from('ofs').select('*');
+      if (empId) q = q.eq('emp_id', empId);
+      q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
+      return q;
+    };
+    let { data: ofs, error } = await buildBaseQuery().is('deleted_at', null);
     if (error) {
       const msg = String(error.message || error);
-      if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
-        const r2 = await query;
+      if (msg.toLowerCase().includes('deleted_at')) {
+        const r2 = await buildBaseQuery();
         ofs = r2.data;
         error = r2.error;
       }
@@ -1299,11 +1303,12 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       mapVend[id] = { id, nome: v.nome || '', comissaoPct: perc > 0 ? perc : 0 };
     });
 
-    const ofCliId = (of) => String(of?.cliente_id ?? of?.cli_id ?? of?.cliId ?? of?.cliente ?? '').trim();
+    const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s || '').trim());
+    const ofCliId = (of) => String(of?.cliente_id ?? of?.cli_id ?? of?.cliId ?? '').trim();
     const cliIdsMissingVend = Array.from(new Set((ofsPeriodo || [])
       .filter((of) => !String(of?.vendedor_id ?? of?.vend_id ?? '').trim())
       .map(ofCliId)
-      .filter(Boolean)));
+      .filter((id) => id && isUuid(id))));
     const mapCliVend = {};
     if (cliIdsMissingVend.length) {
       const { data: clis, error: eCli } = await supabase
@@ -1376,6 +1381,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       totalPedidos,
     });
   } catch (err) {
+    console.error('[RELATORIO VENDEDOR] ERRO:', err?.message, err?.stack);
     return res.status(500).json({ error: String(err.message || err) });
   }
 });

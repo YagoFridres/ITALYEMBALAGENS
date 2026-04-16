@@ -9601,6 +9601,7 @@ async function carregarOFs(opts){
   return r;
 }
 async function syncOFs(force=false){
+  if(force) window._ofsCarregadasEm = null;
   const now = Date.now();
   if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < 3 * 60 * 1000 && Array.isArray(OFs) && OFs.length > 0){
     return OFs;
@@ -9619,6 +9620,25 @@ async function syncOFs(force=false){
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
   return OFs;
+}
+function _inserirOFLocal(nova){
+  const o = normalizeOF(nova);
+  const id = String(o?.id || '').trim();
+  const apply = (arr)=>{
+    if(!Array.isArray(arr)) return;
+    if(id){
+      const i = arr.findIndex(x=>String(x && x.id || '').trim()===id);
+      if(i>=0){ arr[i] = o; return; }
+    }
+    arr.unshift(o);
+  };
+  try{ if(!Array.isArray(OFs)) OFs=[]; apply(OFs); }catch(e){}
+  try{ if(!Array.isArray(window.OFS)) window.OFS=[]; apply(window.OFS); }catch(e){}
+  try{ if(!Array.isArray(OFS_HIST)) OFS_HIST=[]; apply(OFS_HIST); }catch(e){}
+  try{ if(!Array.isArray(window.OFS_HIST)) window.OFS_HIST=[]; apply(window.OFS_HIST); }catch(e){}
+  window._ofsCarregadasEm = null;
+  _ultimaCargaOFs = 0;
+  return o;
 }
 function _atualizarOFLocal(id, patch){
   const sid = String(id||'').trim();
@@ -17860,6 +17880,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     const seedAdjusted=buildOfLike(p.ofSeed, startNum-parseFirstNumber(p.ofSeed));
     try{
       const shape = await inferOfShape();
+      const novas = [];
       for(let idx=0; idx<p.itens.length; idx++){
         const it = p.itens[idx];
         const ofNum = multi ? buildOfLike(seedAdjusted, idx) : p.ofSeed;
@@ -17888,12 +17909,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         const payload = buildOfPayload(shape, localOf);
         const r = await api('POST','/ofs', payload);
         if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
+        const row = (r && r.data) ? r.data : { ...localOf };
+        novas.push(_inserirOFLocal(row));
       }
-      await carregarOFs();
       fechar('modal-of');
       autoSaveTrigger();
-      renderPCP();
-      updateBadges();
+      _rerenderOFViews();
       toast(multi ? ('✓ Pedido dividido em '+p.itens.length+' OFs separadas!') : '✓ OF cadastrada!','var(--green)');
       logAction('Nova OF criada', multi ? (seedAdjusted+' · '+p.itens.length+' itens') : p.ofSeed);
     }catch(e){
@@ -17942,12 +17963,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       if(!id){ throw new Error('OF sem id (uuid). Recarregue a lista e tente novamente.'); }
       const r = await api('PUT','/ofs/'+encodeURIComponent(id), payload);
       if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao atualizar OF');
-      await carregarOFs();
+      const row = (r && r.data) ? r.data : { ...upd, id };
+      _atualizarOFLocal(id, row);
+      window._ofsCarregadasEm = null;
+      _ultimaCargaOFs = 0;
       propagateOfNumber(ofNum,novoOf);
       fechar('modal-of');
       autoSaveTrigger();
-      renderPCP();
-      updateBadges();
+      _rerenderOFViews();
       toast('✏ OF alterada com sucesso','var(--purple)');
     }catch(e){
       toast('Erro ao atualizar OF: '+(e.message||e),'var(--red)');
