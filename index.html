@@ -1640,7 +1640,7 @@ function iniciarPollingOFsMaquina() {
   _ofsMaqAtiva = true;
   if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
   renderOFsPorMaquina();
-  _ofsMaqTimer = setInterval(() => { if (_ofsMaqAtiva) renderOFsPorMaquina(); }, 8000);
+  _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 300000);
 }
 
 function pararPollingOFsMaquina() {
@@ -1970,6 +1970,7 @@ function cardOFMaquina(of, maquinaAtual){
 }
 
 async function renderOFsPorMaquina(){
+  if(document.hidden) return;
   if(_ofsMaqRenderizando) return;
   if(Date.now()-_ofsMaqUltimaRender < 500) return;
   _ofsMaqRenderizando = true;
@@ -9771,6 +9772,7 @@ function broadcastDataSnapshot(reason){
 }
 
 async function syncFromServerSilent(){
+  if(document.hidden) return;
   if(_syncBusy) return;
   _syncBusy = true;
   try{
@@ -9860,7 +9862,7 @@ function setupRealtimeSync(){
         if(applyDataSnapshot(d)) showSaveIndicator('↻ sincronizado','var(--teal)');
       }
     }catch(e){}
-  }, 10 * 60 * 1000);
+  }, 15 * 60 * 1000);
 }
 
 
@@ -9923,6 +9925,7 @@ async function _tentarCarregarServidor(){
 setInterval(async ()=>{
   // Não faz polling se não há usuário logado (evita erros na tela de login)
   if(!window.CURRENT_USER) return;
+  if(document.hidden) return;
   try {
     const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
     const [ofs,orcs,aps] = await Promise.all([
@@ -9934,7 +9937,7 @@ setInterval(async ()=>{
     if(ofs.ok){ _apiConectado=true; showSaveIndicator('✓ sync','var(--green)'); }
     try{ updateBadges(); }catch(e){}
   } catch(e){ /* silencioso — já tratado dentro de api() */ }
-}, 30000);
+}, 300000);
 
 // ===================== MÁQUINAS CRUD =====================
 function renderMaquinasConf(){
@@ -10132,6 +10135,7 @@ const FABRICA_COORD = latLngToSvg(-26.73, -53.52);
 // ===================== NOTIFICAÇÕES (SUPABASE) =====================
 var NOTIF_POLL_TIMER=null;
 async function syncNotificacoesDB(){
+  if(document.hidden) return;
   const r=await api('GET','/notificacoes?lida=false');
   if(!r||!r.ok||!Array.isArray(r.data)) return;
   NOTIFICACOES = r.data.map(n=>({
@@ -10146,7 +10150,7 @@ function startNotificacoesDB(){
   if(NOTIF_POLL_TIMER) return;
   if(!hasPerm('notificacoes') && !hasPerm('tudo')) return;
   syncNotificacoesDB();
-  NOTIF_POLL_TIMER=setInterval(syncNotificacoesDB,10000);
+  NOTIF_POLL_TIMER=setInterval(syncNotificacoesDB,300000);
 }
 
 function renderNotificacoes(){
@@ -16910,6 +16914,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   window.syncRealtimeOFSilent = async function(force){
     if(_rtBusy || !window.CURRENT_USER) return;
     if(!force && document.hidden) return;
+    if(!force){
+      const pg = window._PAGE_ATUAL || '';
+      if(pg !== 'pcp' && pg !== 'lancamento' && pg !== 'ofmaq') return;
+    }
     _rtBusy = true;
     try{
       if(window._apiConectado && typeof api === 'function'){
@@ -16960,7 +16968,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     injectDeleteButton();
     try{ _rtLastHash = buildOFHash(window.OFs || []); }catch(e){}
     // sincronização mais rápida para ver OF nova quase em tempo real
-    setInterval(function(){ window.syncRealtimeOFSilent(false); }, 3000);
+    setInterval(function(){ window.syncRealtimeOFSilent(false); }, 600000);
     // força atualização ao abrir PCP/Lançamento
     document.addEventListener('visibilitychange', function(){ if(!document.hidden) window.syncRealtimeOFSilent(true); });
     ['click','focus'].forEach(evt => window.addEventListener(evt, function(){ injectDeleteButton(); }, {passive:true}));
