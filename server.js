@@ -119,15 +119,16 @@ app.use(express.json({ limit: '50mb' }));
 
 const _serverCache = {};
 const _serverCacheTTL = {};
-const SERVER_CACHE_TTL = 2 * 60 * 1000;
+const SERVER_CACHE_TTL = 10 * 60 * 1000;
 
 function cacheGet(key) {
   if (_serverCacheTTL[key] && Date.now() < _serverCacheTTL[key]) return _serverCache[key];
   return null;
 }
-function cacheSet(key, data) {
+function cacheSet(key, data, ttlMs) {
   _serverCache[key] = data;
-  _serverCacheTTL[key] = Date.now() + SERVER_CACHE_TTL;
+  const ttl = Number(ttlMs);
+  _serverCacheTTL[key] = Date.now() + (Number.isFinite(ttl) && ttl > 0 ? ttl : SERVER_CACHE_TTL);
 }
 function cacheClear(key) {
   delete _serverCache[key];
@@ -943,6 +944,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
+    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
+    const cached = cacheGet(cacheKey);
+    if (cached) return ok(res, cached);
 
     let lastError = null;
     for (const empCol of empCols) {
@@ -958,6 +962,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           try { q = q.is('deleted_at', null); } catch (_) {}
         }
         if (hasPaging) q = q.range(offset, offset + limit - 1);
+        else q = q.limit(200);
 
         let { data, error } = await q;
         if (error) {
@@ -975,6 +980,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
               try { q3 = q3.is('deleted_at', null); } catch (_) {}
             }
             if (hasPaging) q3 = q3.range(offset, offset + limit - 1);
+            else q3 = q3.limit(200);
             const r3 = await q3;
             data = r3.data;
             error = r3.error;
@@ -991,6 +997,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
               if (to) q2 = q2.lte(field, to);
             }
             if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
+            else q2 = q2.limit(200);
             const r2 = await q2;
             data = r2.data;
             error = r2.error;
@@ -999,7 +1006,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
         if (!error) {
           const rows = data || [];
-          if (!lite) return ok(res, rows);
+          if (!lite) {
+            cacheSet(cacheKey, rows, 3 * 60 * 1000);
+            return ok(res, rows);
+          }
           const trimmed = rows.map((r) => ({
             id: r.id,
             seq: r.seq ?? r.prioridade ?? null,
@@ -1033,6 +1043,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             deleted_at: r.deleted_at ?? null,
             created_at: r.created_at ?? null,
           }));
+          cacheSet(cacheKey, trimmed, 3 * 60 * 1000);
           return ok(res, trimmed);
         }
         lastError = error;
@@ -1419,6 +1430,11 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
+    const cacheKey = !hasPaging ? ('clientes_' + (empId || 'all') + ':' + (lite ? 'lite' : 'full')) : '';
+    if (cacheKey) {
+      const cached = cacheGet(cacheKey);
+      if (cached) return ok(res, cached);
+    }
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     const selectSlim = 'id,nome,razao_social,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
@@ -1429,7 +1445,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       const { data, error } = await q;
       if (!error) {
         const rows = data || [];
-        if (!lite) return ok(res, rows);
+        if (!lite) {
+          if (cacheKey) cacheSet(cacheKey, rows);
+          return ok(res, rows);
+        }
         const trimmed = rows.map((r) => ({
           id: r.id,
           nome: r.nome ?? null,
@@ -1450,6 +1469,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           obs: r.obs ?? r.observacoes ?? null,
           observacoes: r.observacoes ?? null,
         }));
+        if (cacheKey) cacheSet(cacheKey, trimmed);
         return ok(res, trimmed);
       }
       lastErr = error;
@@ -1474,6 +1494,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       }
     }
     if (error) throw error;
+    cacheClearPrefix('clientes_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1503,6 +1524,7 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('clientes').delete().eq('id', req.params.id);
     if (error) throw error;
+    cacheClearPrefix('clientes_');
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
@@ -1582,6 +1604,7 @@ app.post('/api/visitas_vendedor', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('visitas_vendedor').insert([req.body || {}]).select();
     if (error) throw error;
+    cacheClearPrefix('clientes_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1747,13 +1770,20 @@ app.put('/api/apontamentos/:id', async (req, res) => {
 app.get('/api/operadores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const cacheKey = 'operadores_' + (empId || 'all');
+    const cached = cacheGet(cacheKey);
+    if (cached) return ok(res, cached);
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
       let q = supabase.from('operadores').select('*').order('nome');
       if (col) q = q.eq(col, empId);
       const { data, error } = await q;
-      if (!error) return ok(res, data || []);
+      if (!error) {
+        const rows = data || [];
+        cacheSet(cacheKey, rows);
+        return ok(res, rows);
+      }
       lastErr = error;
       const msg = String(error.message || error);
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
@@ -1767,6 +1797,7 @@ app.post('/api/operadores', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('operadores').insert([req.body]).select();
     if (error) throw error;
+    cacheClearPrefix('operadores_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1777,6 +1808,7 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('operadores')
       .update(payload).eq('id', req.params.id).select();
     if (error) throw error;
+    cacheClearPrefix('operadores_');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
@@ -1785,6 +1817,7 @@ app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('operadores').delete().eq('id', req.params.id);
     if (error) throw error;
+    cacheClearPrefix('operadores_');
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
@@ -2751,10 +2784,39 @@ function _chapasParseCsv(text) {
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
-    const cacheKey = 'chapas_estoque:' + table + ':' + JSON.stringify(req.query || {});
+    const qEntries = Object.entries(req.query || {}).filter(([_, v]) => String(v ?? '').trim() !== '');
+    const hasFiltros = qEntries.length > 0;
+    const cacheKey = hasFiltros
+      ? ('chapas_estoque:' + table + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
+      : 'chapas_estoque:all';
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
-    const { data, error } = await supabase.from(table).select('*');
+    const selectV2Base = [
+      'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria','quantidade',
+      'valor_unitario','valor_total','estoque_minimo','emp_id','empresa_vinculada',
+      'riscada','cliente_nome','cliente_id','data_entrada','qual_cnpj','qual','nf','vincos','observacao','risca_desc'
+    ];
+    let selectStr = '*';
+    if (table === 'chapas_estoque_v2') selectStr = selectV2Base.join(',');
+    let sel = selectStr;
+    let data = null;
+    let error = null;
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const r = await supabase.from(table).select(sel);
+      data = r.data;
+      error = r.error;
+      if (!error) break;
+      const msg = String(error.message || error);
+      const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+      if (col && table === 'chapas_estoque_v2' && sel !== '*') {
+        const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
+        const next = parts.filter(p => p !== col);
+        if (next.length === parts.length) break;
+        sel = next.join(',');
+        continue;
+      }
+      break;
+    }
     if (error) {
       console.error('[chapas_estoque] erro Supabase:', JSON.stringify(error));
       return res.json([]);

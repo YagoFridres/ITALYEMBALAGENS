@@ -9309,11 +9309,18 @@ async function carregarOFs(opts){
 }
 async function carregarClientes(forcar=false){
   const now = Date.now();
+  try{
+    if(!forcar && Array.isArray(window._CLIENTES) && window._CLIENTES.length > 0){
+      CLIENTES = window._CLIENTES;
+      return { ok:true, cached:true, data:CLIENTES };
+    }
+  }catch(e){}
   if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/clientes'+empParam);
   if(r && r.ok && r.data && r.data.length) CLIENTES = r.data.map(normalizeCli);
   if(r && r.ok) _ultimaCargaClientes = Date.now();
+  try{ window._CLIENTES = CLIENTES; }catch(e){}
   return r;
 }
 async function carregarOperadores(){
@@ -9324,6 +9331,12 @@ async function carregarOperadores(){
 }
 async function carregarMaquinas(forcar=false){
   const now = Date.now();
+  try{
+    if(!forcar && Array.isArray(window._MAQUINAS) && window._MAQUINAS.length > 0){
+      MAQUINAS = window._MAQUINAS;
+      return { ok:true, cached:true, data:MAQUINAS };
+    }
+  }catch(e){}
   if(!forcar && (now - _ultimaCargaMaquinas) < CACHE_TTL && Array.isArray(MAQUINAS) && MAQUINAS.length > 0) return { ok:true, cached:true, data:MAQUINAS };
   const r = await api('GET','/maquinas');
   if(r && r.ok && r.data && r.data.length) {
@@ -9344,6 +9357,7 @@ async function carregarMaquinas(forcar=false){
     });
   }
   if(r && r.ok) _ultimaCargaMaquinas = Date.now();
+  try{ window._MAQUINAS = MAQUINAS; }catch(e){}
   return r;
 }
 
