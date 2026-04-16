@@ -3947,10 +3947,14 @@ async function salvarRecebimentoInsumos(){
     const resp = await apiFetch(url, { method, body: payload });
     if(!resp) return;
     const j = await resp.json().catch(()=>null);
-    if(!resp.ok || (j && (j.ok===false || j.error))){ toast('Erro: '+((j&&j.error)||resp.statusText||'falha'),'var(--red)'); return; }
+    console.log('[RECEBIMENTO SAVE]', j);
+    if(!j || j.ok !== true) throw new Error((j && j.error) ? j.error : 'Erro ao salvar');
     fecharModalRecebimentoInsumos();
     toast(id?'Recebimento atualizado ✓':'Recebimento criado ✓','var(--green)');
     await buscarRecebimentosInsumos();
+  } catch(e){
+    toast('Erro ao salvar recebimento: '+(e.message||e),'var(--red)');
+    console.error('[RECEBIMENTO SAVE]', e);
   } finally {
     recSetBusy(false);
   }

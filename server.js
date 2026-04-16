@@ -3086,11 +3086,26 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       val: Number(b.valor_unitario || b.val || 0),
       vincos: b.vincos || '',
       observacao: b.observacao || b.observacoes || '',
-      entrada_de_dados: b.data_entrada || b.entrada_de_dados || null,
+      data_entrada: b.data_entrada || b.dataEntrada || b.entrada_de_dados || null,
       emp_id: b.emp_id || 'E1',
     };
-    const { data, error } = await supabase.from('chapas_estoque').insert(payload).select().single();
-    if (error) return res.status(500).json({ error: error.message });
+    let insPayload = { ...payload };
+    let data = null;
+    let error = null;
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const r = await supabase.from('chapas_estoque').insert(insPayload).select().single();
+      data = r.data;
+      error = r.error;
+      if (!error) break;
+      const msg = String(error.message || error);
+      const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+      if (col && Object.prototype.hasOwnProperty.call(insPayload, col)) {
+        delete insPayload[col];
+        continue;
+      }
+      break;
+    }
+    if (error) return res.status(500).json({ error: String(error.message || error) });
     cacheClearPrefix('chapas_estoque:');
     await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
@@ -4014,7 +4029,17 @@ app.post('/api/log', async (req, res) => {
 app.get('/api/recebimento_insumos', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('recebimento_insumos').select('*').order('data_recebimento', { ascending: false });
-    if (req.query.mes) q = q.gte('data_recebimento', req.query.mes + '-01').lte('data_recebimento', req.query.mes + '-31');
+    if (req.query.mes) {
+      const m = String(req.query.mes || '').slice(0, 7);
+      const [yy, mm] = m.split('-').map((x) => Number(x));
+      if (yy > 1900 && mm >= 1 && mm <= 12) {
+        const dtIni = new Date(yy, mm - 1, 1);
+        const dtFim = new Date(yy, mm, 0);
+        const de = dtIni.toISOString().slice(0, 10);
+        const ate = dtFim.toISOString().slice(0, 10);
+        q = q.gte('data_recebimento', de).lte('data_recebimento', ate);
+      }
+    }
     if (req.query.empresa) q = q.eq('empresa', req.query.empresa);
     if (req.query.fornecedor) q = q.ilike('fornecedor', '%' + req.query.fornecedor + '%');
     if (req.query.cliente) q = q.ilike('cliente', '%' + req.query.cliente + '%');
