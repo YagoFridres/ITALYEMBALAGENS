@@ -4582,8 +4582,9 @@ function renderTabelaEstoque(itens) {
         const baixo = qtd < 200;
         const nf = c.nf_entrada || c.nf || '—';
         const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
+        const nomeExibir = c.nome || c.nome_comercial || c.nomenclatura || c.nom || '';
         return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:8px">${escH(c.nome||'—')}</td>
+          <td style="padding:8px">${escH(nomeExibir||'—')}</td>
           <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
           <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
           <td style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
@@ -4731,8 +4732,9 @@ function renderTabelaChapas(lista){
       const total = (c.valor_total!=null ? Number(c.valor_total) : (qtd*vunit));
       const statusCor=qtd===0?'var(--red)':qtd<min?'var(--orange)':'var(--green)';
       const dim=c.tam||((c.larg||c.largura||c.largura_mm||'')+'X'+(c.comp||c.comprimento||c.comprimento_mm||''));
+      const nomeExibir = c.nome || c.nome_comercial || c.nome_uso || c.nomenclatura || c.nom || '';
       return `<tr style="${trS(i)}" id="est-row-${c.id}">
-        <td style="${tdS};font-weight:700;color:var(--text)">${escH(c.nome||'')}</td>
+        <td style="${tdS};font-weight:700;color:var(--text)">${escH(nomeExibir||'')}</td>
         <td style="${tdS};color:var(--accent);font-family:var(--mono);font-weight:900;cursor:pointer" onclick="copyToClipboard('${escH(c.nom||'')}');toast('Copiado','var(--accent)')">${escH(c.nom||'—')}</td>
         <td style="${tdS};color:var(--accent);cursor:pointer" onclick="copyToClipboard('${escH(c.forn||'')}');toast('Copiado','var(--accent)')">${escH(c.forn||'—')}</td>
         <td style="${tdS};font-size:.72rem;color:var(--purple);font-family:var(--mono)">${escH(c.cnpj||'—')}</td>

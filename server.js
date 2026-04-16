@@ -2672,7 +2672,7 @@ function _chapasCanonicalFromAny(row, table) {
   const km = _chapasKeyMap(row);
   const fornecedor = _chapasGet(row, km, ['fornecedor', 'forn']);
   const nomenclatura = _chapasGet(row, km, ['nomenclatura', 'nom', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
-  const nome = _chapasGet(row, km, ['nome_comercial', 'nome comercial', 'nome_uso', 'nome uso', 'nome', 'nom', 'descricao', 'desc', 'name']) || nomenclatura;
+  const nome = _chapasGet(row, km, ['nome', 'nome_uso', 'nome uso', 'nome_comercial', 'nome comercial', 'nom', 'descricao', 'desc', 'name']) || nomenclatura;
   const tamanho = _chapasGet(row, km, ['tamanho', 'tam']);
   const qualCnpj = _chapasGet(row, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj', 'fabricante']);
   const nf = _chapasGet(row, km, ['numero_nf', 'nf']);
