@@ -2466,7 +2466,12 @@ var OF_ATUAL_ID = '';
 async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   OF_ATUAL_ID = String(id||'');
-  let oEdit = id ? (OFs||[]).find(x=>String(x.id||'')===String(id)) : null;
+  let oEdit = id
+    ? ((OFs||[]).find(x=>String(x.id||'')===String(id))
+      || (Array.isArray(OFS_HIST) ? (OFS_HIST||[]).find(x=>String(x.id||'')===String(id)) : null)
+      || (Array.isArray(window.OFS) ? (window.OFS||[]).find(x=>String(x.id||'')===String(id)) : null)
+      || (Array.isArray(window.OFS_HIST) ? (window.OFS_HIST||[]).find(x=>String(x.id||'')===String(id)) : null))
+    : null;
   if(!hasPerm('lancar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para lançar pedidos','var(--red)');return;}
   try{
     const needsApi = _apiConectado && CURRENT_USER;
@@ -2486,7 +2491,10 @@ async function abrirModalOF(id){
       if(r && r.ok && ofFull){
         const norm = normalizeOF ? normalizeOF(ofFull) : ofFull;
         oEdit = norm;
-        if(!OFs.find(x=>String(x.id||'')===String(norm.id||''))) OFs.push(norm);
+        try{
+          if(!OFs.find(x=>String(x.id||'')===String(norm.id||''))) OFs.push(norm);
+          if(Array.isArray(OFS_HIST) && !OFS_HIST.find(x=>String(x.id||'')===String(norm.id||''))) OFS_HIST.unshift(norm);
+        }catch(e){}
       }
     }catch(e){}
   }
@@ -2530,11 +2538,20 @@ async function abrirModalOF(id){
     };
   }
   await ofAtualizaChapas();
+  const fCh=document.getElementById('f-chp');
   const fQ=document.getElementById('f-qchp'); if(fQ) fQ.value='';
   if(oEdit){
     if(csel && (oEdit.cliId||oEdit.cliente)) csel.value=oEdit.cliId||oEdit.cliente||'';
     if(vsel && (oEdit.vendId||oEdit.vendedor)) vsel.value=oEdit.vendId||'';
-    if(fsel && (oEdit.fluxo_id||oEdit.fluxo)) fsel.value=oEdit.fluxo_id||oEdit.fluxo||'';
+    if(fsel && oEdit.fluxo) fsel.value=oEdit.fluxo||'';
+    if(fCh){
+      const chpId = String(oEdit.chp || oEdit.chapa_id || '').trim();
+      if(chpId) fCh.value = chpId;
+    }
+    if(fQ){
+      const q = (oEdit.qchp != null ? oEdit.qchp : (oEdit.qtd_chapas != null ? oEdit.qtd_chapas : 0));
+      fQ.value = String(q || '');
+    }
     renderMaqChks((oEdit.maq && Array.isArray(oEdit.maq) && oEdit.maq.length) ? oEdit.maq : ofFluxoIdsFromNames(parseFluxo(oEdit.fluxo_maquinas||[])));
     ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length
       ? oEdit.itens.map(it=>({
@@ -2557,7 +2574,8 @@ async function abrirModalOF(id){
   footer.innerHTML=oEdit
     ? `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-purple" onclick="salvarEdicaoOFId('${escAttr(oEdit.id||'')}')">✏ Salvar Alteração</button>`
     : `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
-  document.querySelector('#modal-of h2').textContent=oEdit?'✏️ Editar Ordem de Fabricação':'📋 Nova Ordem de Fabricação';
+  const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
+  document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
 }
@@ -9300,7 +9318,7 @@ function normalizeOF(r){
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
   const vendNome = r.vendedor ?? r.vendedor_nome ?? r.vendedorNome ?? '';
-  let vendId = r.vendedor_id ?? r.vendedorId ?? r.vendId ?? '';
+  let vendId = r.vendedor_id ?? r.vend_id ?? r.vendedorId ?? r.vendId ?? '';
   if(vendNome && (!vendId || vendId.length>12)){
     const found = (VENDEDORES||[]).find(x=>(x.nome||'')===vendNome);
     if(found) vendId = found.id;
@@ -9316,6 +9334,7 @@ function normalizeOF(r){
   const prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';
   const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
+  const itens = Array.isArray(r.itens) ? r.itens : tryParse(r.itens, []);
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrl = r.imagem_url ?? null;
@@ -9326,6 +9345,8 @@ function normalizeOF(r){
   const valorVenda = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
   const val = Number(valorTotal || valorVenda || 0) || 0;
   const vunit = (qtd && Number(qtd) > 0) ? (val / Number(qtd)) : 0;
+  const chp = r.chapa_id ?? r.chapaId ?? r.chp ?? r.chpId ?? '';
+  const qchp = r.qtd_chapas ?? r.qtdChapas ?? r.qchp ?? 0;
   return {
     id:r.id,
     seq:r.seq ?? r.prioridade ?? 0,
@@ -9339,14 +9360,15 @@ function normalizeOF(r){
     maq:maqArr,
     status:r.status ?? 'Em aberto',
     urg:!!urg,
-    chp:r.chp ?? '',
-    qchp:r.qchp ?? 0,
+    chp,
+    qchp,
     valor_total: valorTotal,
     valor_venda: valorVenda,
     val,
     vunit,
     obs,
     prodDesc,
+    itens,
     imgs,
     fluxo_maquinas: fluxoMaq,
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
