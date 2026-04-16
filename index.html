@@ -3413,6 +3413,7 @@ function comRecalcularLocal(){
 }
 function renderComissoes(){
   const d = window._comissoesData || { vendedores: [] };
+  const semOfsComVendedor = !(Number(d.totalPedidos || 0) > 0);
   const cards = document.getElementById('com-cards');
   if(cards){
     cards.innerHTML = `
@@ -3431,6 +3432,9 @@ function renderComissoes(){
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Ação</th>
     </tr>`;
     const rows = [];
+    if(semOfsComVendedor){
+      tabVend.querySelector('tbody').innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+    } else {
     (d.vendedores || []).forEach(v=>{
       const id = String(v.vendedorId || '');
       const isEdit = window._comEditVend === id && !!id;
@@ -3474,7 +3478,8 @@ function renderComissoes(){
         </td></tr>`);
       }
     });
-    tabVend.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Sem dados no período.</td></tr>`;
+    tabVend.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+    }
   }
   const tabOfs = document.getElementById('tabela-comissoes-ofs');
   if(tabOfs){
@@ -3489,6 +3494,10 @@ function renderComissoes(){
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Status</th>
     </tr>`;
     const rows = [];
+    if(semOfsComVendedor){
+      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+      return;
+    }
     (d.vendedores || []).forEach(v=>{
       (v.ofs || []).forEach(of=>{
         const st = String(of.status || '').trim();

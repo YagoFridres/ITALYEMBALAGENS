@@ -1299,13 +1299,39 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       mapVend[id] = { id, nome: v.nome || '', comissaoPct: perc > 0 ? perc : 0 };
     });
 
+    const ofCliId = (of) => String(of?.cliente_id ?? of?.cli_id ?? of?.cliId ?? of?.cliente ?? '').trim();
+    const cliIdsMissingVend = Array.from(new Set((ofsPeriodo || [])
+      .filter((of) => !String(of?.vendedor_id ?? of?.vend_id ?? '').trim())
+      .map(ofCliId)
+      .filter(Boolean)));
+    const mapCliVend = {};
+    if (cliIdsMissingVend.length) {
+      const { data: clis, error: eCli } = await supabase
+        .from('clientes')
+        .select('id,vendedor_id,vendId,vend_id')
+        .in('id', cliIdsMissingVend);
+      if (eCli) throw eCli;
+      (clis || []).forEach((c) => {
+        const id = String(c.id || '').trim();
+        if (!id) return;
+        const vid = String(c.vendedor_id ?? c.vendId ?? c.vend_id ?? '').trim();
+        if (vid) mapCliVend[id] = vid;
+      });
+    }
+
     const grupos = {};
     let totalGeral = 0;
     let totalComissao = 0;
+    let totalPedidos = 0;
     (ofsPeriodo || []).forEach((of) => {
-      const vendId = String(of.vendedor_id || '').trim();
+      let vendId = String(of?.vendedor_id ?? of?.vend_id ?? '').trim();
+      if (!vendId) {
+        const cid = ofCliId(of);
+        if (cid && mapCliVend[cid]) vendId = String(mapCliVend[cid] || '').trim();
+      }
+      if (!vendId) return;
       const vendInfo = vendId && mapVend[vendId] ? mapVend[vendId] : null;
-      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : (of.vendedor || 'Sem Vendedor');
+      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : `Vendedor ${vendId}`;
       const valor = Number(of.valor_total || of.valor_venda || 0);
       const pct = Number((vendInfo && vendInfo.comissaoPct) || 0) || 0;
       const comissao = valor * (pct / 100);
@@ -1336,6 +1362,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       });
       totalGeral += valor;
       totalComissao += comissao;
+      totalPedidos += 1;
     });
 
     const resultado = Object.values(grupos).map((g) => ({
@@ -1346,7 +1373,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       vendedores: resultado,
       totalGeral,
       totalComissao,
-      totalPedidos: (ofsPeriodo || []).length,
+      totalPedidos,
     });
   } catch (err) {
     return res.status(500).json({ error: String(err.message || err) });
