@@ -1697,6 +1697,10 @@ function _goBase(id){
       renderLancamento();
     }
   }
+  if(id==='comissoes'){
+    initComissoesUI();
+    calcularComissoes();
+  }
   if(id==='clientes'){
     if(_apiConectado && CURRENT_USER){
       carregarClientes(false).then(()=>renderClientes()).catch(()=>renderClientes());
@@ -2597,8 +2601,8 @@ function ofCliChange(){
   const c=getCli(cliId);
   if(!c){el.style.display='none';return;}
   const vsel=document.getElementById('f-vend');
-  if(vsel && !vsel.value){
-    const vid = c.vendId || c.vendedor_id || '';
+  if(vsel){
+    const vid = c.vendedor_id || c.vendId || c.vend_id || '';
     if(vid) vsel.value = vid;
     else if(c.vendedor){
       const found = (VENDEDORES||[]).find(v=>(v.nome||'')===c.vendedor);
@@ -3352,6 +3356,208 @@ function renderLancamento(){
       </tbody>
     </table>
   </div>`;
+}
+
+// ===================== COMISSOES =====================
+window._comissoesData = { vendedores: [], totalGeral: 0, totalComissao: 0, totalPedidos: 0 };
+window._comissoesExpanded = {};
+window._comEditVend = null;
+
+function comFmtMoney(v){
+  return Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function comFmtDate(v){
+  const s = String(v || '').slice(0,10);
+  return s ? fmtD(s) : '—';
+}
+function initComissoesUI(){
+  const mes = document.getElementById('com-mes');
+  if(mes && !mes.value) mes.value = new Date().toISOString().slice(0,7);
+  const emp = document.getElementById('com-emp');
+  if(emp && !emp._loaded){
+    const cur = EMP_FILTRO || '';
+    emp.innerHTML = '<option value="">Todas empresas</option>' + EMPRESAS.map(e=>`<option value="${escAttr(e.id)}"${cur===e.id?' selected':''}>${escH(e.nome)}</option>`).join('');
+    emp._loaded = true;
+  }
+}
+function comRecalcularLocal(){
+  const d = window._comissoesData || { vendedores: [] };
+  let totalGeral = 0;
+  let totalComissao = 0;
+  let totalPedidos = 0;
+  (d.vendedores || []).forEach(v=>{
+    const pct = Number(v.comissaoPct || 0);
+    v.comissaoPct = pct;
+    let valorTotal = 0;
+    let comissaoTotal = 0;
+    (v.ofs || []).forEach(of=>{
+      const valor = Number(of.valor || 0);
+      of.comissaoPct = pct;
+      of.comissaoValor = valor * (pct / 100);
+      valorTotal += valor;
+      comissaoTotal += Number(of.comissaoValor || 0);
+    });
+    v.pedidos = (v.ofs || []).length;
+    v.valorTotal = valorTotal;
+    v.comissaoTotal = comissaoTotal;
+    v.ticketMedio = v.pedidos ? (valorTotal / v.pedidos) : 0;
+    totalGeral += valorTotal;
+    totalComissao += comissaoTotal;
+    totalPedidos += v.pedidos;
+  });
+  d.totalGeral = totalGeral;
+  d.totalComissao = totalComissao;
+  d.totalPedidos = totalPedidos;
+  d.vendedores = (d.vendedores || []).slice().sort((a,b)=>Number(b.valorTotal||0)-Number(a.valorTotal||0));
+  window._comissoesData = d;
+}
+function renderComissoes(){
+  const d = window._comissoesData || { vendedores: [] };
+  const cards = document.getElementById('com-cards');
+  if(cards){
+    cards.innerHTML = `
+      <div class="sbox"><div class="sbox-h">💵 Total Vendido</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${comFmtMoney(d.totalGeral)}</div></div>
+      <div class="sbox"><div class="sbox-h">🤝 Total Comissão</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${comFmtMoney(d.totalComissao)}</div></div>
+      <div class="sbox"><div class="sbox-h">📦 Total OFs</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${fmtN(d.totalPedidos || 0)}</div></div>`;
+  }
+  const tabVend = document.getElementById('tabela-comissoes-vendedor');
+  if(tabVend){
+    tabVend.querySelector('thead').innerHTML = `<tr>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">OFs</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Total Vendido</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">% Comissão</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão R$</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Ação</th>
+    </tr>`;
+    const rows = [];
+    (d.vendedores || []).forEach(v=>{
+      const id = String(v.vendedorId || '');
+      const isEdit = window._comEditVend === id && !!id;
+      rows.push(`<tr onclick="comToggleVend('${escAttr(id || v.vendedor)}')" style="cursor:pointer">
+        <td style="padding:8px;border:1px solid var(--s3)">${escH(v.vendedor || 'Sem vendedor')}</td>
+        <td style="padding:8px;border:1px solid var(--s3);text-align:right">${fmtN(v.pedidos || 0)}</td>
+        <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(v.valorTotal)}</td>
+        <td style="padding:8px;border:1px solid var(--s3);text-align:right">${isEdit?`<input id="com-pct-${escAttr(id)}" type="number" step="0.01" min="0" value="${escAttr(String(v.comissaoPct||0))}" style="width:88px">`:`${Number(v.comissaoPct||0).toFixed(2)}%`}</td>
+        <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(v.comissaoTotal)}</td>
+        <td style="padding:8px;border:1px solid var(--s3);text-align:center">
+          ${id ? (isEdit
+            ? `<button class="btn btn-accent btn-sm" onclick="event.stopPropagation();comSalvarPct('${escAttr(id)}')">Salvar</button>`
+            : `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();comEditarPct('${escAttr(id)}')">✏️</button>`) : '—'}
+        </td>
+      </tr>`);
+      const expanded = !!window._comissoesExpanded[String(id || v.vendedor)];
+      if(expanded){
+        rows.push(`<tr><td colspan="6" style="padding:8px;border:1px solid var(--s3);background:var(--bg2)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">N° OF</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Cliente</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem;text-align:right">Valor OF</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem;text-align:right">%</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem;text-align:right">Comissão</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Data</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Status</th>
+            </tr></thead>
+            <tbody>
+              ${(v.ofs||[]).map(of=>`<tr>
+                <td style="padding:6px;border:1px solid var(--s3)">#${escH(of.numero||'')}</td>
+                <td style="padding:6px;border:1px solid var(--s3)">${escH(of.cliente||'—')}</td>
+                <td style="padding:6px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
+                <td style="padding:6px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
+                <td style="padding:6px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
+                <td style="padding:6px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
+                <td style="padding:6px;border:1px solid var(--s3)">${escH(of.status||'—')}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </td></tr>`);
+      }
+    });
+    tabVend.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Sem dados no período.</td></tr>`;
+  }
+  const tabOfs = document.getElementById('tabela-comissoes-ofs');
+  if(tabOfs){
+    tabOfs.querySelector('thead').innerHTML = `<tr>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">N° OF</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Cliente</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Valor OF</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">%</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão R$</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Status</th>
+    </tr>`;
+    const rows = [];
+    (d.vendedores || []).forEach(v=>{
+      (v.ofs || []).forEach(of=>{
+        const st = String(of.status || '').trim();
+        if(st === 'Cancelada' || st === 'Cancelado') return;
+        rows.push(`<tr>
+          <td style="padding:8px;border:1px solid var(--s3)">#${escH(of.numero||'')}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(of.cliente||'—')}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(v.vendedor||'—')}</td>
+          <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
+          <td style="padding:8px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
+          <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(st||'—')}</td>
+        </tr>`);
+      });
+    });
+    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
+  }
+}
+function comToggleVend(key){
+  const k = String(key || '');
+  window._comissoesExpanded[k] = !window._comissoesExpanded[k];
+  renderComissoes();
+}
+function comEditarPct(id){
+  window._comEditVend = String(id || '');
+  renderComissoes();
+}
+async function comSalvarPct(id){
+  const sid = String(id || '');
+  const inp = document.getElementById('com-pct-'+sid);
+  const novo = Number(inp?.value || 0);
+  const r = await api('PUT','/vendedores/'+encodeURIComponent(sid), { comissao_pct: novo });
+  if(!r || !r.ok){ toast('Erro ao salvar comissão do vendedor','var(--red)'); return; }
+  const d = window._comissoesData || { vendedores: [] };
+  const v = (d.vendedores || []).find(x=>String(x.vendedorId||'')===sid);
+  if(v) v.comissaoPct = novo;
+  window._comEditVend = null;
+  comRecalcularLocal();
+  renderComissoes();
+  toast('Comissão atualizada e recalculada','var(--green)');
+}
+async function calcularComissoes(){
+  initComissoesUI();
+  const hostCards = document.getElementById('com-cards');
+  if(hostCards) hostCards.innerHTML = `<div class="sbox"><div class="sbox-b">Carregando comissões...</div></div>`;
+  const mes = String((document.getElementById('com-mes')||{}).value || '').trim();
+  const de = String((document.getElementById('com-de')||{}).value || '').trim();
+  const ate = String((document.getElementById('com-ate')||{}).value || '').trim();
+  const emp = String((document.getElementById('com-emp')||{}).value || EMP_FILTRO || '').trim();
+  const qs = new URLSearchParams();
+  if(de || ate){
+    if(de) qs.set('de', de);
+    if(ate) qs.set('ate', ate);
+  } else if(mes){
+    qs.set('mes', mes);
+  }
+  if(emp) qs.set('empId', emp);
+  const r = await api('GET','/relatorio/vendedor?'+qs.toString());
+  if(!r || !r.vendedores){ toast('Erro ao calcular comissões','var(--red)'); return; }
+  window._comissoesData = {
+    vendedores: Array.isArray(r.vendedores) ? r.vendedores : [],
+    totalGeral: Number(r.totalGeral || 0),
+    totalComissao: Number(r.totalComissao || 0),
+    totalPedidos: Number(r.totalPedidos || 0),
+  };
+  window._comEditVend = null;
+  comRecalcularLocal();
+  renderComissoes();
 }
 
 // ===================== CLIENTES =====================
@@ -14603,6 +14809,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-dashboard" class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
+      <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-backup" class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
     </div>
@@ -15632,6 +15839,42 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn-icon" onclick="calHoje()" style="margin-left:6px;font-size:.68rem">Hoje</button>
   </div>
   <div class="page-body" id="rel-content"></div>
+</div>
+
+<!-- ========== 13A. COMISSÕES ========== -->
+<div id="page-comissoes" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <input type="month" id="com-mes" style="width:150px">
+    <span style="font-size:.72rem;color:var(--text2)">ou</span>
+    <input type="date" id="com-de" style="width:145px">
+    <span style="font-size:.72rem;color:var(--text2)">até</span>
+    <input type="date" id="com-ate" style="width:145px">
+    <select id="com-emp" style="width:180px">
+      <option value="">Todas empresas</option>
+    </select>
+    <button class="btn btn-accent btn-sm" onclick="calcularComissoes()">Calcular</button>
+  </div>
+  <div class="page-body" style="display:grid;gap:10px">
+    <div id="com-cards" class="g3"></div>
+    <div class="sbox">
+      <div class="sbox-h">💰 Comissão por Vendedor</div>
+      <div class="sbox-b" style="overflow:auto">
+        <table id="tabela-comissoes-vendedor" style="width:100%;border-collapse:collapse;min-width:900px">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="sbox">
+      <div class="sbox-h">📋 Detalhamento das OFs</div>
+      <div class="sbox-b" style="overflow:auto">
+        <table id="tabela-comissoes-ofs" style="width:100%;border-collapse:collapse;min-width:1000px">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ========== 13B. RELATÓRIO MENSAL ========== -->

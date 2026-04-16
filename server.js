@@ -1251,13 +1251,23 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
 app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
+    const deQ = String(req.query.de || '').trim();
+    const ateQ = String(req.query.ate || '').trim();
     const empId = String(req.query.empId || '').trim();
-    let query = supabase.from('ofs').select('*');
-    if (mes) {
-      const inicio = mes + '-01';
-      const fim = mes + '-31';
-      query = query.gte('dia', inicio).lte('dia', fim);
+    let de = deQ;
+    let ate = ateQ;
+    if (mes && (!de || !ate)) {
+      const m = String(mes).slice(0, 7);
+      const [yy, mm] = m.split('-').map((x) => Number(x));
+      if (yy > 1900 && mm >= 1 && mm <= 12) {
+        const dtIni = new Date(yy, mm - 1, 1);
+        const dtFim = new Date(yy, mm, 0);
+        de = dtIni.toISOString().slice(0, 10);
+        ate = dtFim.toISOString().slice(0, 10);
+      }
     }
+
+    let query = supabase.from('ofs').select('*');
     if (empId) query = query.eq('emp_id', empId);
     query = query.neq('status', 'Cancelada').neq('status', 'Cancelado');
     let { data: ofs, error } = await query.is('deleted_at', null);
@@ -1269,49 +1279,75 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         error = r2.error;
       }
     }
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return res.status(500).json({ error: String(error.message || error) });
+
+    const inPeriodo = (of) => {
+      const base = String(of?.dia || of?.created_at || '').slice(0, 10);
+      if (!base) return false;
+      if (de && base < de) return false;
+      if (ate && base > ate) return false;
+      return true;
+    };
+    const ofsPeriodo = (ofs || []).filter(inPeriodo);
+
     const { data: vendedores } = await supabase.from('vendedores').select('*');
     const mapVend = {};
-    (vendedores || []).forEach(v => {
+    (vendedores || []).forEach((v) => {
       const id = String(v.id || '').trim();
       if (!id) return;
-      const perc = Number(v.comissao ?? v.comissaoPct ?? v.comissao_pct ?? 0);
+      const perc = Number(v.comissao_pct || 0);
       mapVend[id] = { id, nome: v.nome || '', comissaoPct: perc > 0 ? perc : 0 };
     });
+
     const grupos = {};
     let totalGeral = 0;
-    (ofs || []).forEach(of => {
-      const vendId = String(of.vendId || of.vend_id || of.vendedor_id || '').trim();
+    let totalComissao = 0;
+    (ofsPeriodo || []).forEach((of) => {
+      const vendId = String(of.vendedor_id || '').trim();
       const vendInfo = vendId && mapVend[vendId] ? mapVend[vendId] : null;
-      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : (of.vendedor || of.vend || 'Sem Vendedor');
+      const vendNome = (vendInfo && vendInfo.nome) ? vendInfo.nome : (of.vendedor || 'Sem Vendedor');
       const valor = Number(of.valor_total || of.valor_venda || 0);
-      const qtd = Number(of.qtd || of.quantidade || 0);
+      const pct = Number((vendInfo && vendInfo.comissaoPct) || 0) || 0;
+      const comissao = valor * (pct / 100);
       const key = vendId || vendNome;
-      if (!grupos[key]) grupos[key] = { vendedorId: vendId || null, vendedor: vendNome, pedidos: 0, qtdTotal: 0, valorTotal: 0, comissaoPct: vendInfo ? vendInfo.comissaoPct : 0, comissaoTotal: 0, ofs: [] };
-      const pct = Number(grupos[key].comissaoPct || 0) || 0;
-      const comissao = pct > 0 ? (valor * (pct / 100)) : 0;
-      grupos[key].pedidos++;
-      grupos[key].qtdTotal += qtd;
+      if (!grupos[key]) {
+        grupos[key] = {
+          vendedorId: vendId || null,
+          vendedor: vendNome,
+          pedidos: 0,
+          valorTotal: 0,
+          comissaoPct: pct,
+          comissaoTotal: 0,
+          ofs: [],
+        };
+      }
+      grupos[key].pedidos += 1;
       grupos[key].valorTotal += valor;
       grupos[key].comissaoTotal += comissao;
       grupos[key].ofs.push({
         numero: of.of || of.numero || '',
-        cliente: of.cliId || of.cliente || '',
-        qtd, valor,
+        cliente: of.cliente_nome || of.cli_nome || of.cliente || of.cliId || '',
+        vendedor: vendNome,
+        valor,
         comissaoPct: pct,
         comissaoValor: comissao,
-        dataPedido: of.dia || of.data_pedido || '',
-        dataEntrega: of.ent || of.data_entrega || '',
-        status: of.status || ''
+        data: String(of.dia || of.created_at || '').slice(0, 10),
+        status: of.status || '',
       });
       totalGeral += valor;
+      totalComissao += comissao;
     });
-    const resultado = Object.values(grupos).map(g => ({
+
+    const resultado = Object.values(grupos).map((g) => ({
       ...g,
       ticketMedio: g.pedidos > 0 ? g.valorTotal / g.pedidos : 0,
-      participacao: totalGeral > 0 ? (g.valorTotal / totalGeral * 100).toFixed(1) : '0.0',
     })).sort((a, b) => b.valorTotal - a.valorTotal);
-    return res.json({ vendedores: resultado, totalGeral, totalPedidos: (ofs || []).length });
+    return res.json({
+      vendedores: resultado,
+      totalGeral,
+      totalComissao,
+      totalPedidos: (ofsPeriodo || []).length,
+    });
   } catch (err) {
     return res.status(500).json({ error: String(err.message || err) });
   }
@@ -1548,6 +1584,33 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     throw lastErr;
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data: cli, error: e1 } = await supabase
+      .from('clientes')
+      .select('id,nome,vendedor_id,vendId,vend_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (e1) throw e1;
+    if (!cli) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
+    const vendedorId = String(cli.vendedor_id || cli.vendId || cli.vend_id || '').trim();
+    if (!vendedorId) return res.json({ vendedor_id: null, vendedor_nome: null, comissao_pct: 0 });
+    const { data: vend, error: e2 } = await supabase
+      .from('vendedores')
+      .select('id,nome,comissao_pct')
+      .eq('id', vendedorId)
+      .maybeSingle();
+    if (e2) throw e2;
+    return res.json({
+      vendedor_id: vendedorId,
+      vendedor_nome: vend?.nome || null,
+      comissao_pct: Number(vend?.comissao_pct || 0),
+    });
+  } catch (e) { return err(res, e); }
 });
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
