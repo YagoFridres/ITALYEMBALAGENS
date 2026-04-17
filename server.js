@@ -1110,12 +1110,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
-    const vendedorId = String(body?.vend_id ?? body?.vendId ?? body?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? ofRow?.vendedor_id ?? '').trim();
+    const vendedorId = String(body?.vendedor_id ?? body?.vend_id ?? body?.vendId ?? ofRow?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? '').trim();
     const valorOf = Number(body?.valor_total ?? body?.valor_venda ?? ofRow?.valor_total ?? ofRow?.valor_venda ?? 0);
     console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
-    const perc = Number(vend?.comissao ?? vend?.comissaoPct ?? vend?.comissao_pct ?? 0);
+    const perc = Number(vend?.comissao_pct ?? vend?.comissao ?? vend?.comissaoPct ?? 0);
     console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf, 'comissao%:', perc);
     if (!(perc > 0)) return;
     const valorComissao = valorOf * (perc / 100);
@@ -1218,6 +1218,19 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
       throw error;
     }
+    try {
+      const vendId = String(data?.vendedor_id || '').trim();
+      const val = Number(data?.valor_total || data?.valor_venda || 0);
+      const numero = data?.of ?? data?.numero ?? '';
+      if (vendId && val > 0) {
+        await supabase.from('historico_acoes').insert([{
+          tipo_acao: 'comissao_cancelada',
+          descricao: `Comissão cancelada - OF #${numero || ''} cancelada/excluída`,
+          usuario: req.usuario?.nome || 'sistema',
+          data_hora: new Date().toISOString()
+        }]);
+      }
+    } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { bad(res, e.message); }
 });
@@ -1413,6 +1426,22 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     if (error) throw error;
+    try {
+      const st = String(payload?.status || '').trim().toLowerCase();
+      if (st === 'cancelada' || st === 'cancelado') {
+        const vendId = String(data?.vendedor_id || '').trim();
+        const val = Number(data?.valor_total || data?.valor_venda || 0);
+        const numero = data?.of ?? data?.numero ?? '';
+        if (vendId && val > 0) {
+          await supabase.from('historico_acoes').insert([{
+            tipo_acao: 'comissao_cancelada',
+            descricao: `Comissão cancelada - OF #${numero || ''} cancelada/excluída`,
+            usuario: req.usuario?.nome || 'sistema',
+            data_hora: new Date().toISOString()
+          }]);
+        }
+      }
+    } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -3103,19 +3132,28 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
 
+    const nomeObrig = String(b.nome_uso || b.nome || b.nom || b.nomenclatura || b.descricao || b.nome_comercial || '').trim();
     const payload = {
       forn: b.fornecedor || b.forn || '',
       nom: b.nomenclatura || b.nom || b.codigo || b.cod || b.nome || '',
       tam: b.tamanho || b.tam || '',
+      nome: nomeObrig,
+      nome_uso: nomeObrig,
+      nome_comercial: b.nome_comercial || b.nomenclatura || b.nom || '',
       qual: b.qual_cnpj || b.qual || '',
       qual_cnpj: b.qual_cnpj || b.qual || '',
       nf: b.nf || '',
+      numero_nf: b.numero_nf || b.nf || '',
       qtd: Number(b.quantidade || b.qtd || 0),
+      quantidade: Number(b.quantidade || b.qtd || 0),
+      quantidade_atual: Number(b.quantidade_atual || b.quantidade || b.qtd || 0),
       val: Number(b.valor_unitario || b.val || 0),
+      valor_unitario: Number(b.valor_unitario || b.val || 0),
       vincos: b.vincos || '',
       observacao: b.observacao || b.observacoes || '',
       data_entrada: b.data_entrada || b.dataEntrada || b.entrada_de_dados || null,
       emp_id: b.emp_id || 'E1',
+      categoria: b.categoria || 'Estoque Simples',
     };
     let insPayload = { ...payload };
     let data = null;

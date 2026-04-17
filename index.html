@@ -2439,6 +2439,7 @@ async function cancelarOF(id, numero) {
     toast('OF #' + (numero || id) + ' cancelada ✓','var(--green)');
     if (typeof carregarOFs === 'function') await carregarOFs();
     if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
+    if (window._PAGE_ATUAL === 'comissoes' && typeof calcularComissoes === 'function') calcularComissoes();
   } catch (e) {
     toast('Erro ao cancelar: ' + e.message,'var(--red)');
   }
@@ -3219,6 +3220,7 @@ async function lancExcluirOF(id){
   OFs = (OFs||[]).filter(x=>String(x.id||'')!==String(id));
   toast('OF excluída ✓','var(--green)');
   renderLancamento();
+  if (window._PAGE_ATUAL === 'comissoes' && typeof calcularComissoes === 'function') calcularComissoes();
 }
 
 function lancAbrirDetalhes(id){
@@ -4941,10 +4943,17 @@ async function ajustarQtdChapa(id, delta) {
   const tipo = d > 0 ? 'entrada' : 'saida';
   try{
     estSetBusy(true);
-    const r = await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { tipo, delta: Math.abs(d) });
-    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
-    await carregarChapas();
+    const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { method:'POST', body:{ tipo, delta: Math.abs(d) } });
+    const r = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp?.statusText||'falha'),'var(--red)');return;}
+    const upd = (r && r.data) ? r.data : r;
+    if(upd && upd.id){
+      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+    }
+    _ultimaCargaChapas = 0;
     renderEstoque();
+    try{ carregarHistoricoEstoque(); }catch(e){}
     const sinal = d>0?'+':'-';
     toast(`${sinal}${Math.abs(d)} un atualizado`,'var(--green)');
   }finally{
@@ -4959,9 +4968,15 @@ async function atualizarEmpresaChapa(id, empresa){
   try{
     estSetBusy(true);
     const payload = { empresa_vinculada: emp, emp_id: estEmpIdFromEmpresa(emp) };
-    const r = await api('PUT','/chapas_estoque/'+encodeURIComponent(id), payload);
-    if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
-    await carregarChapas();
+    const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method:'PUT', body: payload });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (j && j.error)){toast('Erro: '+((j&&j.error)||resp?.statusText||'falha'),'var(--red)');return;}
+    const upd = (j && j.data) ? j.data : j;
+    if(upd && upd.id){
+      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+    }
+    _ultimaCargaChapas = 0;
     renderEstoque();
     toast('Empresa atualizada ✓','var(--green)');
   } finally {
@@ -4980,7 +4995,12 @@ async function atualizarCategoriaChapa(id, categoria){
     const r = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method: 'PUT', body: payload });
     const j = await r.json().catch(()=>null);
     if(!r.ok || (j && j.error)){ toast('Erro: '+((j&&j.error)||'falha'),'var(--red)'); return; }
-    await carregarChapas();
+    const upd = (j && j.data) ? j.data : j;
+    if(upd && upd.id){
+      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+    }
+    _ultimaCargaChapas = 0;
     renderEstoque();
     toast('Categoria atualizada ✓','var(--green)');
   } catch(e) {
@@ -5030,8 +5050,14 @@ async function confirmarModalMovLinha(){
     const r = await resp.json().catch(()=>null);
     if(!resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp.statusText||'falha'),'var(--red)');return;}
     fecharModalMovLinha();
-    await carregarChapas();
+    const upd = (r && r.data) ? r.data : r;
+    if(upd && upd.id){
+      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+    }
+    _ultimaCargaChapas = 0;
     renderEstoque();
+    try{ carregarHistoricoEstoque(); }catch(e){}
     toast('Movimentação registrada ✓','var(--green)');
   } finally {
     estSetBusy(false);
@@ -5116,12 +5142,21 @@ async function atualizarChapa(id){
   const tam=(document.getElementById('ch-tam').value)||(comp&&larg?`${comp}x${larg}mm`:'');
   const empId=(document.getElementById('ch-emp')||{}).value||c.empId||'';
   const payload={id,cod:c.cod,forn:document.getElementById('ch-forn').value.trim(),nom:document.getElementById('ch-nom').value.trim(),tam,nome,cnpj:document.getElementById('ch-cnpj').value,nf:document.getElementById('ch-nf').value,qtd:novaQtd,val:parseFloat(document.getElementById('ch-val').value)||0,min:parseInt(document.getElementById('ch-min').value)||100,comp,larg,vincada,vincos,empId,emp_id:empId};
-  const r=await salvarViaApiOuLocal('chapa',
-    ()=>api('PUT','/chapas_estoque/'+encodeURIComponent(id), payload),
-    ()=>{ Object.assign(c,payload); return {ok:true, local:true}; }
-  );
+  const r=await salvarViaApiOuLocal('chapa', async ()=>{
+    const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id), { method:'PUT', body: payload });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (j && j.error)) throw new Error((j&&j.error)||resp?.statusText||'falha');
+    return { ok:true, data: (j && j.data) ? j.data : j };
+  }, ()=>{ Object.assign(c,payload); return {ok:true, local:true, data: payload}; });
   if(!r || !r.ok){toast('Erro ao atualizar chapa','var(--red)');return;}
-  if(!r.local){ try{ await carregarChapas(); }catch(e){} }
+  if(r && r.data && r.data.id){
+    const upd = r.data;
+    const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+    try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+  } else {
+    try{ await carregarChapas(true); }catch(e){}
+  }
+  _ultimaCargaChapas = 0;
   const cc=getCh(id); if(cc) Object.assign(cc,payload);
   if(novaQtd!==oldQtd){HIST_EST.unshift({tipo:'ajuste',chp:id,qtd:Math.abs(novaQtd-oldQtd),of:'—',data:today(),obs:'Edição de cadastro'});}
   // Reset button back
@@ -9689,6 +9724,7 @@ function _rerenderOFViews(){
   if(window._PAGE_ATUAL === 'pcp'){ try{ renderPCP(); }catch(e){} }
   if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
   if(window._PAGE_ATUAL === 'ofmaq'){ try{ renderOFsPorMaquina(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'comissoes'){ try{ calcularComissoes(); }catch(e){} }
 }
 async function carregarClientes(forcar=false){
   const now = Date.now();
