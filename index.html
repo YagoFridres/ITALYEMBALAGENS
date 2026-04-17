@@ -3529,15 +3529,78 @@ function comRecalcularLocal(){
   d.vendedores = (d.vendedores || []).slice().sort((a,b)=>Number(b.valorTotal||0)-Number(a.valorTotal||0));
   window._comissoesData = d;
 }
-function renderComissoes(){
+async function ensureChartJsLoaded(){
+  if(typeof Chart !== 'undefined') return true;
+  if(window._chartJsLoadingPromise) return window._chartJsLoadingPromise;
+  window._chartJsLoadingPromise = new Promise((resolve)=>{
+    try{
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+      s.onload = ()=>resolve(true);
+      s.onerror = ()=>resolve(false);
+      document.head.appendChild(s);
+    }catch(e){ resolve(false); }
+  });
+  return window._chartJsLoadingPromise;
+}
+
+async function renderComissoes(){
   const d = window._comissoesData || { vendedores: [] };
   const semOfsComVendedor = !(Number(d.totalPedidos || 0) > 0);
+  const clientesRef = Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(CLIENTES) ? CLIENTES : []);
+  const clienteNome = (idOuNome) => {
+    const key = String(idOuNome || '').trim();
+    if(!key) return '—';
+    const cli = clientesRef.find(c => String(c.id || '').trim() === key);
+    return cli ? (cli.nome || key) : key;
+  };
   const cards = document.getElementById('com-cards');
   if(cards){
     cards.innerHTML = `
       <div class="sbox"><div class="sbox-h">💵 Total Vendido</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${comFmtMoney(d.totalGeral)}</div></div>
       <div class="sbox"><div class="sbox-h">🤝 Total Comissão</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${comFmtMoney(d.totalComissao)}</div></div>
       <div class="sbox"><div class="sbox-h">📦 Total OFs</div><div class="sbox-b" style="font-size:1.15rem;font-weight:700">${fmtN(d.totalPedidos || 0)}</div></div>`;
+    if(Number(d.totalPedidos||0)>0 && Number(d.totalGeral||0)===0){
+      cards.insertAdjacentHTML('beforeend', `<div class="sbox" style="grid-column:1/-1"><div class="sbox-b" style="color:var(--text3)">Valores zerados — as OFs anteriores não tinham valor cadastrado. Novas OFs com valor aparecerão aqui automaticamente.</div></div>`);
+    }
+  }
+  const canvas = document.getElementById('grafico-comissoes');
+  if(canvas){
+    canvas.style.display = 'block';
+    canvas.height = 120;
+    const okChart = await ensureChartJsLoaded();
+    if(okChart && typeof Chart !== 'undefined'){
+      try{
+        if(window._graficoComissoes && typeof window._graficoComissoes.destroy === 'function'){
+          window._graficoComissoes.destroy();
+          window._graficoComissoes = null;
+        }
+        const dadosVendedores = Array.isArray(d.vendedores) ? d.vendedores : [];
+        window._graficoComissoes = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: dadosVendedores.map(v => v.vendedor),
+            datasets: [
+              { label: 'Total Vendido (R$)', data: dadosVendedores.map(v => v.valorTotal), backgroundColor: 'rgba(54,162,235,0.7)', borderRadius: 4 },
+              { label: 'Comissão (R$)', data: dadosVendedores.map(v => v.comissaoTotal), backgroundColor: 'rgba(75,192,100,0.7)', borderRadius: 4 }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              title: { display: true, text: 'Vendas e Comissões por Vendedor' }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR') }
+              }
+            }
+          }
+        });
+      }catch(e){}
+    }
   }
   const tabVend = document.getElementById('tabela-comissoes-vendedor');
   if(tabVend){
@@ -3553,6 +3616,9 @@ function renderComissoes(){
     if(semOfsComVendedor){
       tabVend.querySelector('tbody').innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
     } else {
+    const sumPedidos = (d.vendedores || []).reduce((s,v)=>s+Number(v.pedidos||0),0);
+    const sumVendido = (d.vendedores || []).reduce((s,v)=>s+Number(v.valorTotal||0),0);
+    const sumCom = (d.vendedores || []).reduce((s,v)=>s+Number(v.comissaoTotal||0),0);
     (d.vendedores || []).forEach(v=>{
       const id = String(v.vendedorId || '');
       const isEdit = window._comEditVend === id && !!id;
@@ -3584,7 +3650,7 @@ function renderComissoes(){
             <tbody>
               ${(v.ofs||[]).map(of=>`<tr>
                 <td style="padding:6px;border:1px solid var(--s3)">#${escH(of.numero||'')}</td>
-                <td style="padding:6px;border:1px solid var(--s3)">${escH(of.cliente||'—')}</td>
+                <td style="padding:6px;border:1px solid var(--s3)">${escH(clienteNome(of.cliente))}</td>
                 <td style="padding:6px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
                 <td style="padding:6px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
                 <td style="padding:6px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
@@ -3596,6 +3662,14 @@ function renderComissoes(){
         </td></tr>`);
       }
     });
+    rows.push(`<tr style="background:var(--s2);font-weight:800">
+      <td style="padding:8px;border:1px solid var(--s3)">TOTAL</td>
+      <td style="padding:8px;border:1px solid var(--s3);text-align:right">${fmtN(sumPedidos)}</td>
+      <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(sumVendido)}</td>
+      <td style="padding:8px;border:1px solid var(--s3);text-align:right">—</td>
+      <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(sumCom)}</td>
+      <td style="padding:8px;border:1px solid var(--s3)"></td>
+    </tr>`);
     tabVend.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
     }
   }
@@ -3604,6 +3678,8 @@ function renderComissoes(){
     tabOfs.querySelector('thead').innerHTML = `<tr>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">N° OF</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Cliente</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Produto</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Qtd</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Valor OF</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">%</th>
@@ -3613,16 +3689,20 @@ function renderComissoes(){
     </tr>`;
     const rows = [];
     if(semOfsComVendedor){
-      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
       return;
     }
     (d.vendedores || []).forEach(v=>{
       (v.ofs || []).forEach(of=>{
         const st = String(of.status || '').trim();
         if(st === 'Cancelada' || st === 'Cancelado') return;
+        const prod = of.descricao || of.prodDesc || of.produto || '—';
+        const qtd = Number(of.qtd || of.quantidade || 0) || 0;
         rows.push(`<tr>
           <td style="padding:8px;border:1px solid var(--s3)">#${escH(of.numero||'')}</td>
-          <td style="padding:8px;border:1px solid var(--s3)">${escH(of.cliente||'—')}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(clienteNome(of.cliente))}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(prod)}</td>
+          <td style="padding:8px;border:1px solid var(--s3);text-align:right">${fmtN(qtd)}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(v.vendedor||'—')}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.valor)}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
@@ -3632,7 +3712,7 @@ function renderComissoes(){
         </tr>`);
       });
     });
-    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
+    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
   }
 }
 function comToggleVend(key){
@@ -5155,7 +5235,17 @@ async function confirmarModalMovLinha(){
     fecharModalMovLinha();
     const upd = (r && r.data) ? r.data : r;
     if(upd && upd.id){
-      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      const newQtd = (upd.quantidade != null ? Number(upd.quantidade) : (upd.qtd != null ? Number(upd.qtd) : (upd.quantidade_atual != null ? Number(upd.quantidade_atual) : NaN)));
+      const apply=(arr)=>{
+        const i=(arr||[]).findIndex(x=>x.id===upd.id);
+        if(i>=0){
+          arr[i]=Object.assign(arr[i], upd);
+          if(Number.isFinite(newQtd)){
+            arr[i].qtd = newQtd;
+            arr[i].quantidade = newQtd;
+          }
+        }
+      };
       try{ apply(_estoqueBase); apply(ESTOQUE); apply(window.ESTOQUE); apply(window._estoqueBase); }catch(e){}
     }
     try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
@@ -16083,6 +16173,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="com-cards" class="g3"></div>
     <div class="sbox">
       <div class="sbox-h">💰 Comissão por Vendedor</div>
+      <div class="sbox-b" style="padding-bottom:0">
+        <canvas id="grafico-comissoes" height="120"></canvas>
+      </div>
       <div class="sbox-b" style="overflow:auto">
         <table id="tabela-comissoes-vendedor" style="width:100%;border-collapse:collapse;min-width:900px">
           <thead></thead>
