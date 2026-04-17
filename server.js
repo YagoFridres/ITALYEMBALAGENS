@@ -1357,6 +1357,15 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 
     console.log('[RELATORIO VENDEDOR] OFs após filtro:', ofs.length);
 
+    const cliIds = Array.from(new Set((ofs || []).map((o) => String(o?.cli_id || '').trim()).filter(Boolean)));
+    const mapCli = {};
+    if (cliIds.length) {
+      try {
+        const { data: clis, error: ec } = await supabase.from('clientes').select('id,nome').in('id', cliIds);
+        if (!ec) (clis || []).forEach((c) => { if (c && c.id) mapCli[String(c.id)] = c.nome || ''; });
+      } catch (_) {}
+    }
+
     const { data: vendedores, error: ev } = await supabase.from('vendedores').select('id,nome,comissao_pct');
     if (ev) throw ev;
     const mapVend = {};
@@ -1400,7 +1409,8 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       grupos[vendId].comissaoTotal += comissaoOf;
       grupos[vendId].ofs.push({
         numero: ofRow.of || ofRow.numero || '',
-        cliente: ofRow.cli_id || '',
+        cliente: mapCli[String(ofRow.cli_id || '').trim()] || (ofRow.cli_id || ''),
+        descricao: ofRow.descricao || '',
         qtd: Number(ofRow.qtd || 0),
         valor,
         comissaoPct: pct,
