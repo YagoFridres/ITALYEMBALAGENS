@@ -2145,11 +2145,22 @@ async function ofmaqDarBaixa(id){
   const i=ofFluxoGetIndex(o);
   const atual=f[i]||'';
   const proxima=f[i+1]||'';
-  const msg=proxima?`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima}`:`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → Concluir`;
-  if(!confirm(msg)) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+  const baixaBody = { usuario };
+  if(!proxima){
+    const qtdPadrao = Number(o?.qtd || 0) || 0;
+    const valPadrao = Number(o?.valor_total || o?.valor_venda || o?.val || 0) || 0;
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, valPadrao });
+    if(!resp) return;
+    baixaBody.qtd_real = resp.qtd_real;
+    baixaBody.valor_total = resp.valor_total;
+    baixaBody.valor_venda = resp.valor_total;
+  } else {
+    const msg=`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima}`;
+    if(!confirm(msg)) return;
+  }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
-  const r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',{usuario});
+  const r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',baixaBody);
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
@@ -2180,17 +2191,11 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
     const valPadrao = Number(it?.valor_total || it?.valor_venda || it?.val || 0) || 0;
-    const qtdStr = prompt('Quantas caixas foram produzidas nesta OF?', String(qtdPadrao));
-    if(qtdStr===null) return;
-    const qtdReal = Number(String(qtdStr||'').replace(',', '.'));
-    if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
-    const valStr = prompt('Valor total da OF (R$):', String(valPadrao));
-    if(valStr===null) return;
-    const valorTotal = Number(String(valStr||'').replace(',', '.'));
-    if(!Number.isFinite(valorTotal) || valorTotal < 0){ toast('Valor total inválido','var(--red)'); return; }
-    baixaBody.qtd_real = qtdReal;
-    baixaBody.valor_total = valorTotal;
-    baixaBody.valor_venda = valorTotal;
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, valPadrao });
+    if(!resp) return;
+    baixaBody.qtd_real = resp.qtd_real;
+    baixaBody.valor_total = resp.valor_total;
+    baixaBody.valor_venda = resp.valor_total;
   } else {
     if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   }
@@ -2209,6 +2214,44 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   } else {
     toast('Erro: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
   }
+}
+
+let _baixaConclusaoResolve = null;
+function abrirModalBaixaConclusao(opts){
+  const modal = document.getElementById('modal-baixa-conclusao');
+  if(!modal) return Promise.resolve(null);
+  const titulo = document.getElementById('baixa-conc-titulo');
+  const qtdEl = document.getElementById('baixa-conc-qtd');
+  const valEl = document.getElementById('baixa-conc-val');
+  const sub = document.getElementById('baixa-conc-sub');
+  if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
+  if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
+  if(valEl) valEl.value = String((opts && opts.valPadrao)!=null ? opts.valPadrao : 0);
+  if(sub) sub.textContent = 'Informe a produção real e o valor final da OF para concluir.';
+  modal.style.display = 'flex';
+  setTimeout(()=>{ try{ qtdEl && qtdEl.focus && qtdEl.focus(); }catch(e){} }, 0);
+  return new Promise((resolve)=>{
+    _baixaConclusaoResolve = resolve;
+  });
+}
+function fecharModalBaixaConclusao(ret){
+  const modal = document.getElementById('modal-baixa-conclusao');
+  if(modal) modal.style.display = 'none';
+  if(typeof _baixaConclusaoResolve === 'function'){
+    const r = ret === undefined ? null : ret;
+    const fn = _baixaConclusaoResolve;
+    _baixaConclusaoResolve = null;
+    fn(r);
+  }
+}
+function confirmarModalBaixaConclusao(){
+  const qtdEl = document.getElementById('baixa-conc-qtd');
+  const valEl = document.getElementById('baixa-conc-val');
+  const qtdReal = Number(String(qtdEl?.value||'').replace(',', '.'));
+  const valorTotal = Number(String(valEl?.value||'').replace(',', '.'));
+  if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
+  if(!Number.isFinite(valorTotal) || valorTotal < 0){ toast('Valor total inválido','var(--red)'); return; }
+  fecharModalBaixaConclusao({ qtd_real: qtdReal, valor_total: valorTotal });
 }
 
 async function concluirProcessoOf(ofId){
@@ -2299,17 +2342,11 @@ async function darBaixaOF(o){
   if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
     const valPadrao = Number(o?.valor_total || o?.valor_venda || o?.val || 0) || 0;
-    const qtdStr = prompt('Quantas caixas foram produzidas nesta OF?', String(qtdPadrao));
-    if(qtdStr===null){ showSaveIndicator('',''); return; }
-    const qtdReal = Number(String(qtdStr||'').replace(',', '.'));
-    if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
-    const valStr = prompt('Valor total da OF (R$):', String(valPadrao));
-    if(valStr===null){ showSaveIndicator('',''); return; }
-    const valorTotal = Number(String(valStr||'').replace(',', '.'));
-    if(!Number.isFinite(valorTotal) || valorTotal < 0){ toast('Valor total inválido','var(--red)'); return; }
-    baixaBody.qtd_real = qtdReal;
-    baixaBody.valor_total = valorTotal;
-    baixaBody.valor_venda = valorTotal;
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, valPadrao });
+    if(!resp){ showSaveIndicator('',''); return; }
+    baixaBody.qtd_real = resp.qtd_real;
+    baixaBody.valor_total = resp.valor_total;
+    baixaBody.valor_venda = resp.valor_total;
   }
   const nowIso=new Date().toISOString();
   let r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa', baixaBody);
@@ -16657,6 +16694,30 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalMovLinha()">Cancelar</button>
       <button id="mov-linha-confirmar" class="btn btn-accent btn-sm" onclick="confirmarModalMovLinha()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-baixa-conclusao" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:480px;max-width:95vw;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+      <h3 id="baixa-conc-titulo" style="margin:0">Confirmar conclusão</h3>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">✕</button>
+    </div>
+    <div id="baixa-conc-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantas caixas foram produzidas?</label>
+        <input id="baixa-conc-qtd" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Valor total da OF (R$)</label>
+        <input id="baixa-conc-val" type="number" min="0" step="0.01" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">Cancelar</button>
+      <button class="btn btn-accent btn-sm" onclick="confirmarModalBaixaConclusao()">Confirmar Conclusão</button>
     </div>
   </div>
 </div>
