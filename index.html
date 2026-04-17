@@ -2155,7 +2155,7 @@ async function ofmaqDarBaixa(id){
   const idxAtual = Number(o.maquina_atual_index ?? 0) || 0;
   const atual = fluxo[idxAtual] || '';
   const proxima = fluxo[idxAtual+1] || '';
-  const vaiConcluir = (idxAtual + 1) >= fluxo.length;
+  const vaiConcluir = fluxo.length > 0 && (idxAtual + 1) >= fluxo.length;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const baixaBody = { usuario };
   if(vaiConcluir){
@@ -2167,7 +2167,7 @@ async function ofmaqDarBaixa(id){
     baixaBody.valor_total = resp.valor_total;
     baixaBody.valor_venda = resp.valor_total;
   } else {
-    const msg=`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima}`;
+    const msg=`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima||'—'}`;
     if(!confirm(msg)) return;
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
@@ -2199,7 +2199,7 @@ async function darBaixaOFId(id, numero, maquinaAtual){
     try{ fluxo = Array.isArray(it?.maq) ? it.maq : parseFluxo(it?.maq||[]); }catch(e){ fluxo = []; }
   }
   const idxAtual = Number(it?.maquina_atual_index||0);
-  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : true;
+  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : false;
   const baixaBody = { usuario:(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema' };
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
@@ -2271,7 +2271,19 @@ async function concluirProcessoOf(ofId){
   const id = String(ofId||'').trim();
   if(!id) return;
   if(!confirm('Confirmar conclusão de TODAS as etapas desta OF? Ela será marcada como Pedido Pronto.')) return;
-  const payload = { status: 'Pedido Pronto', maquina_atual_index: 999, data_conclusao: new Date().toISOString() };
+  const it = (OFs||[]).find(o=>String(o.id||'')===id) || null;
+  const qtdPadrao = Number(it?.qtd || 0) || 0;
+  const valPadrao = Number(it?.valor_total || it?.valor_venda || it?.val || 0) || 0;
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao, valPadrao });
+  if(!resp) return;
+  const payload = {
+    status: 'Pedido Pronto',
+    maquina_atual_index: 999,
+    data_conclusao: new Date().toISOString(),
+    qtd: Number(resp.qtd_real)||0,
+    valor_total: Number(resp.valor_total)||0,
+    valor_venda: Number(resp.valor_total)||0,
+  };
   const r = await api('PATCH','/ofs/'+encodeURIComponent(id), payload);
   if(r && r.ok){
     _atualizarOFLocal(id, { status:'Pedido Pronto', maquina_atual_index: 999, data_conclusao: payload.data_conclusao });
@@ -2342,7 +2354,7 @@ async function darBaixaOF(o){
     try{ fluxo = Array.isArray(o?.maq) ? o.maq : parseFluxo(o?.maq||[]); }catch(e){ fluxo = []; }
   }
   const idxAtual = Number(o?.maquina_atual_index||0);
-  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : true;
+  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : false;
   if(!o.id){
     o.status='Concluído';
     o.data_conclusao=new Date().toISOString();
@@ -3682,13 +3694,7 @@ async function calcularComissoes(){
     qs.set('mes', mes);
   }
   if(emp) qs.set('empId', emp);
-  const resp = await apiFetch('/api/relatorio/vendedor?'+qs.toString(), {
-    method:'GET',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization': 'Bearer ' + (TOKEN || window.TOKEN || '')
-    }
-  });
+  const resp = await apiFetch('/api/relatorio/vendedor?'+qs.toString(), { method:'GET' });
   const j = resp ? await resp.json().catch(()=>null) : null;
   console.log('[COMISSOES] resp:', j);
   if(!resp || !resp.ok || !j){ toast('Erro ao calcular comissões','var(--red)'); return; }
@@ -5167,7 +5173,7 @@ async function confirmarModalMovLinha(){
     const upd = (r && r.data) ? r.data : r;
     if(upd && upd.id){
       const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
-      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+      try{ apply(_estoqueBase); apply(ESTOQUE); apply(window.ESTOQUE); apply(window._estoqueBase); }catch(e){}
     }
     _ultimaCargaChapas = 0;
     renderEstoque();
