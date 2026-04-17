@@ -1483,10 +1483,10 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     let payload = { maquina_atual_index: nextIdx };
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
-    if (req.body && req.body.qtd_real !== undefined && req.body.qtd_real !== null && String(req.body.qtd_real).trim() !== '') {
+    if (req.body && req.body.qtd_real != null && Number(req.body.qtd_real) > 0) {
       payload.qtd = Number(req.body.qtd_real);
     }
-    if (req.body && req.body.valor_total !== undefined && req.body.valor_total !== null && String(req.body.valor_total).trim() !== '') {
+    if (req.body && req.body.valor_total != null && Number(req.body.valor_total) >= 0) {
       payload.valor_total = Number(req.body.valor_total);
       payload.valor_venda = Number(req.body.valor_total);
     }
@@ -1503,12 +1503,13 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }
     }
     if (upd.error) throw upd.error;
-    if (concluida && (payload.valor_total !== undefined || payload.qtd !== undefined)) {
+    if (concluida) {
       try {
         const row = upd && upd.data ? upd.data : of;
         await _maybeRegistrarComissaoOF(req, {
           vendedor_id: row?.vendedor_id ?? of?.vendedor_id ?? null,
-          valor_total: row?.valor_total ?? row?.valor_venda ?? payload.valor_total ?? null,
+          valor_total: row?.valor_total ?? row?.valor_venda ?? null,
+          valor_venda: row?.valor_venda ?? null,
           of: row?.of ?? of?.of ?? null,
           numero: row?.numero ?? of?.numero ?? null,
         }, row);

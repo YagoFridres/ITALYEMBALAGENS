@@ -2008,7 +2008,7 @@ async function renderOFsPorMaquina(){
     const dbg = !!window._debugOfmaq;
     const container = document.getElementById('ofs-por-maquina-container')||document.getElementById('ofsmaq-container')||document.getElementById('ofmaq-body');
     if(!container){_ofsMaqRenderizando=false;return;}
-    let lista = Array.isArray(OFs) && OFs.length > 0 ? OFs : null;
+    let lista = Array.isArray(window.OFS) && window.OFS.length > 0 ? window.OFS : (Array.isArray(OFs) && OFs.length > 0 ? OFs : null);
     if(!lista){
       container.innerHTML = `<div style="padding:18px 16px;color:var(--text2)">
         <div style="display:flex;align-items:center;gap:10px">
@@ -2064,8 +2064,11 @@ async function renderOFsPorMaquina(){
     const filtroMaq = document.getElementById('ofsmaq-filtro-maquina')?.value||'';
     const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
 
-    const ofsVisiveis = lista.filter(o=>o.status!=='Cancelada'&&o.status!=='Cancelado' && !o.deleted_at);
-    lista = ofsVisiveis.filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
+    const ofsAtivas = (lista||[]).filter(of => {
+      const st = String(of.status || '').toLowerCase().trim();
+      return st !== 'pedido pronto' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
+    });
+    lista = ofsAtivas;
     if(busca){
       lista = lista.filter(o=>{
         const cli=(getCli(o.cliId)||{}).nome||o.cliente||'';
@@ -2141,13 +2144,21 @@ async function ofmaqDarBaixa(id){
   if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
   const o=(OFs||[]).find(x=>x.id===id);
   if(!o){toast('OF não encontrada','var(--red)');return;}
-  const f=ofFluxoGetNames(o);
-  const i=ofFluxoGetIndex(o);
-  const atual=f[i]||'';
-  const proxima=f[i+1]||'';
+  let fluxo = [];
+  try{
+    fluxo = Array.isArray(o.fluxo_maquinas) ? o.fluxo_maquinas : (typeof o.fluxo_maquinas === 'string' ? JSON.parse(o.fluxo_maquinas || '[]') : []);
+  }catch(e){ fluxo = []; }
+  if(!Array.isArray(fluxo) || !fluxo.length){
+    try{ fluxo = Array.isArray(o.maq) ? o.maq : (typeof o.maq === 'string' ? JSON.parse(o.maq || '[]') : []); }catch(e){ fluxo=[]; }
+  }
+  fluxo = (Array.isArray(fluxo)?fluxo:[]).map(x=>String(x||'').trim()).filter(Boolean);
+  const idxAtual = Number(o.maquina_atual_index ?? 0) || 0;
+  const atual = fluxo[idxAtual] || '';
+  const proxima = fluxo[idxAtual+1] || '';
+  const vaiConcluir = (idxAtual + 1) >= fluxo.length;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const baixaBody = { usuario };
-  if(!proxima){
+  if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
     const valPadrao = Number(o?.valor_total || o?.valor_venda || o?.val || 0) || 0;
     const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, valPadrao });
@@ -2171,6 +2182,8 @@ async function ofmaqDarBaixa(id){
     maquina_atual_index: Number(o.maquina_atual_index||0)+1,
     data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
   };
+  if(baixaBody.qtd_real!==undefined) patch.qtd = Number(baixaBody.qtd_real)||0;
+  if(baixaBody.valor_total!==undefined){ patch.valor_total = Number(baixaBody.valor_total)||0; patch.valor_venda = Number(baixaBody.valor_total)||0; }
   _atualizarOFLocal(o.id, patch);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
@@ -9775,13 +9788,21 @@ async function syncOFs(force=false){
   qs.set('excluir_canceladas','1');
   const r = await api('GET','/ofs?'+qs.toString());
   const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
-  OFs = (rows||[]).map(normalizeOF);
-  try{ window.OFS = OFs; }catch(e){}
-  try{ if(Array.isArray(OFS_HIST)) OFS_HIST = OFs; }catch(e){}
-  try{ window.OFS_HIST = OFs; }catch(e){}
+  const todos = (rows||[]).map(normalizeOF);
+  const ativos = todos.filter(of => {
+    const st = String(of.status || '').toLowerCase().trim();
+    return st !== 'pedido pronto' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
+  });
+  const prontasPrev = (Array.isArray(window.OFS_HIST) ? window.OFS_HIST : []).filter(o => String(o.status||'').toLowerCase().trim() === 'pedido pronto');
+  const histIds = new Set(todos.map(o=>String(o.id||'')));
+  const hist = [...todos, ...prontasPrev.filter(o=>!histIds.has(String(o.id||'')))];
+  OFs = ativos;
+  try{ window.OFS = ativos; }catch(e){}
+  try{ if(Array.isArray(OFS_HIST)) OFS_HIST = hist; }catch(e){}
+  try{ window.OFS_HIST = hist; }catch(e){}
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
-  return OFs;
+  return ativos;
 }
 function _inserirOFLocal(nova){
   const o = normalizeOF(nova);
@@ -16698,7 +16719,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div>
 
-<div id="modal-baixa-conclusao" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:9999;align-items:center;justify-content:center">
+<div id="modal-baixa-conclusao" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center">
   <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:480px;max-width:95vw;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
       <h3 id="baixa-conc-titulo" style="margin:0">Confirmar conclusão</h3>
