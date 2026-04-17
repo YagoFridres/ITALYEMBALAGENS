@@ -661,6 +661,11 @@ async function deleteOne(table, id) {
 
 function ofIn(p) {
   const out = { ...p };
+  const sanitizeDate = (v) => {
+    if (v === undefined || v === null) return v;
+    const s = String(v).trim();
+    return s === '' ? null : s;
+  };
   delete out.val;
   delete out.valor;
   delete out.vtot;
@@ -698,6 +703,11 @@ function ofIn(p) {
   if (has('chp') && !has('chapa_id')) out.chapa_id = p.chp ? String(p.chp) : null;
   if (has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qtd_chapas) || 0);
   if (has('qchp') && !has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qchp) || 0);
+  if (has('dia')) out.dia = sanitizeDate(p.dia);
+  if (has('ent')) out.ent = sanitizeDate(p.ent);
+  if (has('data_producao')) out.data_producao = sanitizeDate(p.data_producao);
+  if (has('data_entrega')) out.data_entrega = sanitizeDate(p.data_entrega);
+  if (has('data_conclusao')) out.data_conclusao = sanitizeDate(p.data_conclusao);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;
@@ -1473,6 +1483,13 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     let payload = { maquina_atual_index: nextIdx };
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
+    if (req.body && req.body.qtd_real !== undefined && req.body.qtd_real !== null && String(req.body.qtd_real).trim() !== '') {
+      payload.qtd = Number(req.body.qtd_real);
+    }
+    if (req.body && req.body.valor_total !== undefined && req.body.valor_total !== null && String(req.body.valor_total).trim() !== '') {
+      payload.valor_total = Number(req.body.valor_total);
+      payload.valor_venda = Number(req.body.valor_total);
+    }
 
     console.log('[BAIXA]', id, 'concluida:', concluida, 'payload:', payload);
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
@@ -1486,6 +1503,17 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }
     }
     if (upd.error) throw upd.error;
+    if (concluida && (payload.valor_total !== undefined || payload.qtd !== undefined)) {
+      try {
+        const row = upd && upd.data ? upd.data : of;
+        await _maybeRegistrarComissaoOF(req, {
+          vendedor_id: row?.vendedor_id ?? of?.vendedor_id ?? null,
+          valor_total: row?.valor_total ?? row?.valor_venda ?? payload.valor_total ?? null,
+          of: row?.of ?? of?.of ?? null,
+          numero: row?.numero ?? of?.numero ?? null,
+        }, row);
+      } catch (_) {}
+    }
 
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');

@@ -2168,16 +2168,41 @@ async function ofmaqDarBaixa(id){
 
 async function darBaixaOFId(id, numero, maquinaAtual){
   if(!hasPerm('baixa_of') && !hasPerm('tudo') && !(CURRENT_USER && CURRENT_USER.perfil==='admin')){toast('Sem permissão para dar baixa','var(--red)');return;}
-  if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
-  const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
-  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',{usuario});
+  const it = (OFs||[]).find(o=>String(o.id||'')===String(id)) || null;
+  let fluxo = [];
+  try{ fluxo = parseFluxo((it&&it.fluxo_maquinas)||[]); }catch(e){ fluxo = []; }
+  if(!Array.isArray(fluxo) || !fluxo.length){
+    try{ fluxo = Array.isArray(it?.maq) ? it.maq : parseFluxo(it?.maq||[]); }catch(e){ fluxo = []; }
+  }
+  const idxAtual = Number(it?.maquina_atual_index||0);
+  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : true;
+  const baixaBody = { usuario:(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema' };
+  if(vaiConcluir){
+    const qtdPadrao = Number(it?.qtd || 0) || 0;
+    const valPadrao = Number(it?.valor_total || it?.valor_venda || it?.val || 0) || 0;
+    const qtdStr = prompt('Quantas caixas foram produzidas nesta OF?', String(qtdPadrao));
+    if(qtdStr===null) return;
+    const qtdReal = Number(String(qtdStr||'').replace(',', '.'));
+    if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
+    const valStr = prompt('Valor total da OF (R$):', String(valPadrao));
+    if(valStr===null) return;
+    const valorTotal = Number(String(valStr||'').replace(',', '.'));
+    if(!Number.isFinite(valorTotal) || valorTotal < 0){ toast('Valor total inválido','var(--red)'); return; }
+    baixaBody.qtd_real = qtdReal;
+    baixaBody.valor_total = valorTotal;
+    baixaBody.valor_venda = valorTotal;
+  } else {
+    if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
+  }
+  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
   if(r && r.ok){
-    const it = (OFs||[]).find(o=>String(o.id||'')===String(id)) || null;
     const patch = {
       status: (r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'),
       maquina_atual_index: Number(it?.maquina_atual_index||0)+1,
       data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
     };
+    if(baixaBody.qtd_real!==undefined) patch.qtd = Number(baixaBody.qtd_real)||0;
+    if(baixaBody.valor_total!==undefined){ patch.valor_total = Number(baixaBody.valor_total)||0; patch.valor_venda = Number(baixaBody.valor_total)||0; }
     _atualizarOFLocal(id, patch);
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
     _rerenderOFViews();
@@ -2255,6 +2280,13 @@ function nextStatus(num){const s=['Em aberto','Em produção','Concluído'];cons
 async function darBaixaOF(o){
   if(!o) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+  let fluxo = [];
+  try{ fluxo = parseFluxo((o&&o.fluxo_maquinas)||[]); }catch(e){ fluxo = []; }
+  if(!Array.isArray(fluxo) || !fluxo.length){
+    try{ fluxo = Array.isArray(o?.maq) ? o.maq : parseFluxo(o?.maq||[]); }catch(e){ fluxo = []; }
+  }
+  const idxAtual = Number(o?.maquina_atual_index||0);
+  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : true;
   if(!o.id){
     o.status='Concluído';
     o.data_conclusao=new Date().toISOString();
@@ -2263,8 +2295,24 @@ async function darBaixaOF(o){
     return;
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
+  const baixaBody = { usuario };
+  if(vaiConcluir){
+    const qtdPadrao = Number(o?.qtd || 0) || 0;
+    const valPadrao = Number(o?.valor_total || o?.valor_venda || o?.val || 0) || 0;
+    const qtdStr = prompt('Quantas caixas foram produzidas nesta OF?', String(qtdPadrao));
+    if(qtdStr===null){ showSaveIndicator('',''); return; }
+    const qtdReal = Number(String(qtdStr||'').replace(',', '.'));
+    if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
+    const valStr = prompt('Valor total da OF (R$):', String(valPadrao));
+    if(valStr===null){ showSaveIndicator('',''); return; }
+    const valorTotal = Number(String(valStr||'').replace(',', '.'));
+    if(!Number.isFinite(valorTotal) || valorTotal < 0){ toast('Valor total inválido','var(--red)'); return; }
+    baixaBody.qtd_real = qtdReal;
+    baixaBody.valor_total = valorTotal;
+    baixaBody.valor_venda = valorTotal;
+  }
   const nowIso=new Date().toISOString();
-  let r=await api('PUT','/ofs/'+encodeURIComponent(o.id),{status:'Concluído',data_conclusao:nowIso});
+  let r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa', baixaBody);
   if(!r || !r.ok){
     const msg=(r && (r.error||''))?String(r.error):'';
     if(msg.includes('column')||msg.includes('Could not find')){
@@ -2278,6 +2326,8 @@ async function darBaixaOF(o){
   }
   o.status='Concluído';
   o.data_conclusao=nowIso;
+  if(baixaBody.qtd_real!==undefined) o.qtd = Number(baixaBody.qtd_real)||0;
+  if(baixaBody.valor_total!==undefined){ o.valor_total = Number(baixaBody.valor_total)||0; o.valor_venda = Number(baixaBody.valor_total)||0; }
   try{ await api('POST','/relatorios/lancar_of',{of_id:o.id}); }catch(e){}
   try{ await api('POST','/historico_acoes',{tipo_acao:'baixa_of',descricao:`Baixa OF ${o.of||o.numero||''}`,usuario}); }catch(e){}
   showSaveIndicator('✓ baixa salva','var(--green)');
@@ -3009,6 +3059,10 @@ function recalcOfItens(){
 function calcularValorTotalOF(){
   return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
 }
+function sanitizeDateInput(v){
+  if (!v || String(v).trim() === '') return null;
+  return String(v).trim();
+}
 function getOfItensFromModal(){
   return ofItensTemp.map(it=>{
     const qtd = parseFloat(it.qtd)||0;
@@ -3066,7 +3120,7 @@ async function salvarOF(){
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const vendIdSel=document.getElementById('f-vend').value;
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia,ent:document.getElementById('f-ent').value,fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao,cidade_entrega,data_pedido,maquina_atual_index:0};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3113,9 +3167,11 @@ async function salvarEdicaoOFId(id){
     qtd:qtdTotal,
     valor_total: valTotal,
     valor_venda: valTotal,
-    dia,
-    data_pedido,
-    ent:document.getElementById('f-ent').value,
+    dia:sanitizeDateInput(dia),
+    data_pedido:sanitizeDateInput(data_pedido),
+    data_producao:sanitizeDateInput(dia),
+    ent:sanitizeDateInput(document.getElementById('f-ent').value),
+    data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),
     fluxo:document.getElementById('f-fl').value,
     maq:getMaqSel(),
     status:document.getElementById('f-st').value,
@@ -3125,7 +3181,7 @@ async function salvarEdicaoOFId(id){
     imagem_url:imgs.length?imgs[0]:null,
     empId:empCode,
     modo_programacao,
-    dia_programacao,
+    dia_programacao:sanitizeDateInput(dia_programacao),
     cidade_entrega,
     chp:document.getElementById('f-chp').value,
     qchp:parseInt(document.getElementById('f-qchp').value)||0,
@@ -3576,7 +3632,13 @@ async function calcularComissoes(){
     qs.set('mes', mes);
   }
   if(emp) qs.set('empId', emp);
-  const resp = await apiFetch('/api/relatorio/vendedor?'+qs.toString(), { method:'GET', headers:{ 'Content-Type':'application/json' } });
+  const resp = await apiFetch('/api/relatorio/vendedor?'+qs.toString(), {
+    method:'GET',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization': 'Bearer ' + (TOKEN || window.TOKEN || '')
+    }
+  });
   const j = resp ? await resp.json().catch(()=>null) : null;
   console.log('[COMISSOES] resp:', j);
   if(!resp || !resp.ok || !j){ toast('Erro ao calcular comissões','var(--red)'); return; }
@@ -5098,10 +5160,12 @@ async function confirmarExclusaoChapa(){
     if(!resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp.statusText||'falha'),'var(--red)');return;}
     fecharModalExcluirChapa();
     if(Array.isArray(_estoqueBase)) _estoqueBase = _estoqueBase.filter(x=>x.id!==id);
-    if(Array.isArray(ESTOQUE)){
-      const i = ESTOQUE.findIndex(x=>x.id===id);
-      if(i>=0) ESTOQUE.splice(i,1);
-    }
+    if(Array.isArray(ESTOQUE)) ESTOQUE = ESTOQUE.filter(x=>x.id!==id);
+    try{ window.ESTOQUE = (window.ESTOQUE || []).filter(c=>String(c.id||'')!==id); }catch(e){}
+    try{ window._estoqueBase = (window._estoqueBase || []).filter(c=>String(c.id||'')!==id); }catch(e){}
+    window._ofsCarregadasEm = null;
+    _ultimaCargaChapas = 0;
+    try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
     try{ _renderEstoqueBase(_estoqueBase); }catch(e){}
     try{ renderEstoqueResumo(); }catch(e){}
     try{ renderAlertasEstoque(); }catch(e){}
@@ -17865,6 +17929,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   function maxOfNumeric(){
     return Math.max(0,...OFs.map(o=>parseFirstNumber(o.of)||0));
   }
+  function sanitizeDate(v){
+    if(!v || String(v).trim()==='') return null;
+    return String(v).trim();
+  }
   function collectModalOfPayload(){
     const cliId=byId('f-cli').value;
     const itens=getOfItensFromModal();
@@ -17883,8 +17951,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       cliId, itens, qtdTotal, valTotal, chpId, qchp, pagto,
       empId:(byId('f-emp')||{}).value||EMP_FILTRO||'',
       vendId:byId('f-vend').value,
-      dia:byId('f-dia').value,
-      ent:byId('f-ent').value,
+      dia:sanitizeDate(byId('f-dia').value),
+      ent:sanitizeDate(byId('f-ent').value),
       fluxo:byId('f-fl').value,
       maq:getMaqSel(),
       status:byId('f-st').value,
