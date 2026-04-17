@@ -1486,14 +1486,9 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     if (req.body && req.body.qtd_real != null && Number(req.body.qtd_real) > 0) {
       payload.qtd = Number(req.body.qtd_real);
     }
-    if (req.body && req.body.valor_total != null && Number(req.body.valor_total) >= 0) {
-      payload.valor_total = Number(req.body.valor_total);
-      payload.valor_venda = Number(req.body.valor_total);
-    }
-
-    console.log('[BAIXA]', id, 'concluida:', concluida, 'payload:', payload);
+    console.log('[BAIXA FINAL] payload update:', payload);
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
-    console.log('[BAIXA] upd.data:', upd.data, 'upd.error:', upd.error);
+    console.log('[BAIXA FINAL] upd.error:', upd.error);
     if (upd.error) {
       const msg = String(upd.error.message || upd.error);
       if (msg.includes('column') || msg.includes('Could not find')) {
