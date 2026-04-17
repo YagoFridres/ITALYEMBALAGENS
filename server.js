@@ -4071,18 +4071,34 @@ app.get('/api/relatorio/estoque_inventario', authMiddleware, async (req, res) =>
   } catch (e) { err(res, e); }
 });
 
-app.get('/api/hist_estoque', async (req, res) => {
+app.get('/api/hist_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('hist_estoque')
-      .select('*').order('created_at', { ascending: false }).limit(500);
+    const { data, error } = await supabase.from('historico_acoes')
+      .select('*')
+      .ilike('tipo_acao', '%estoque%')
+      .order('data_hora', { ascending: false })
+      .limit(500);
     if (error) throw error;
-    ok(res, data);
+    ok(res, data || []);
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/hist_estoque', async (req, res) => {
+app.post('/api/hist_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('hist_estoque').insert([req.body]).select();
+    const b = req.body || {};
+    const descricao = String(
+      b.descricao ||
+      [b.tipo ? String(b.tipo).toUpperCase() : 'ESTOQUE', b.item_id ? `item=${b.item_id}` : '', b.qtd != null ? `qtd=${b.qtd}` : '', b.motivo || b.obs || '']
+        .filter(Boolean)
+        .join(' · ')
+    ).trim() || 'Movimentação manual de estoque';
+    const payload = {
+      tipo_acao: 'estoque_manual',
+      descricao,
+      usuario: b.usuario || req.usuario?.nome || 'sistema',
+      data_hora: new Date().toISOString()
+    };
+    const { data, error } = await supabase.from('historico_acoes').insert([payload]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }

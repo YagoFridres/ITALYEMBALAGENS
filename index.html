@@ -3576,13 +3576,15 @@ async function calcularComissoes(){
     qs.set('mes', mes);
   }
   if(emp) qs.set('empId', emp);
-  const r = await api('GET','/relatorio/vendedor?'+qs.toString());
-  if(!r || !r.vendedores){ toast('Erro ao calcular comissões','var(--red)'); return; }
+  const resp = await apiFetch('/api/relatorio/vendedor?'+qs.toString(), { method:'GET', headers:{ 'Content-Type':'application/json' } });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  console.log('[COMISSOES] resp:', j);
+  if(!resp || !resp.ok || !j){ toast('Erro ao calcular comissões','var(--red)'); return; }
   window._comissoesData = {
-    vendedores: Array.isArray(r.vendedores) ? r.vendedores : [],
-    totalGeral: Number(r.totalGeral || 0),
-    totalComissao: Number(r.totalComissao || 0),
-    totalPedidos: Number(r.totalPedidos || 0),
+    vendedores: Array.isArray(j.vendedores) ? j.vendedores : [],
+    totalGeral: Number(j.totalGeral || 0),
+    totalComissao: Number(j.totalComissao || 0),
+    totalPedidos: Number(j.totalPedidos || 0),
   };
   window._comEditVend = null;
   comRecalcularLocal();
@@ -14294,9 +14296,6 @@ salvarOF = async function(){
   showSaveIndicator('Salvando...','var(--yellow)');
   const r = await salvarViaApiOuLocal('OF', async ()=>{
     const resp = await api('POST','/ofs',payload);
-    if(resp.ok && chpId && qchp>0){
-      await api('POST','/hist_estoque',{item_id:chpId,tipo:'saida',qtd:qchp,motivo:'Baixa OF '+payload.of_num,usuario:CURRENT_USER?CURRENT_USER.nome:''});
-    }
     return resp;
   }, _salvarOF_orig);
 
@@ -14492,9 +14491,29 @@ salvarEntrada = async function(){
   const qtd=parseInt((document.getElementById('en-qtd')||{}).value)||0;
   if(!qtd){toast('Informe a quantidade','var(--red)');return;}
   const ch=getCh(id);if(!ch)return;
-  const r=await salvarViaApiOuLocal('entrada de estoque', ()=>api('POST','/hist_estoque',{item_id:id,tipo:'entrada',qtd,motivo:'NF: '+((document.getElementById('en-nf')||{}).value||'—'),usuario:CURRENT_USER?CURRENT_USER.nome:''}), _salvarEnt_orig);
-  if(r.ok && !r.local){ch.qtd+=qtd;HIST_EST.unshift({tipo:'entrada',chp:id,qtd,of:'—',data:today(),obs:'NF: '+((document.getElementById('en-nf')||{}).value||'—')});fechar('modal-ent');autoSaveTrigger();renderEstoque();toast(`✓ +${qtd.toLocaleString()} unidades`);}
-  else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
+  const nf = (document.getElementById('en-nf')||{}).value||'';
+  const obs = (document.getElementById('en-obs')||{}).value||'';
+  const r=await salvarViaApiOuLocal('entrada de estoque', async ()=>{
+    const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { method:'POST', body:{ tipo:'entrada', delta:qtd, nf, obs } });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (j && (j.ok===false || j.error))) throw new Error((j&&j.error)||resp?.statusText||'falha');
+    return { ok:true, data: (j && j.data) ? j.data : j };
+  }, _salvarEnt_orig);
+  if(r.ok && !r.local){
+    const upd = r.data;
+    if(upd && upd.id){
+      const apply=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===upd.id); if(i>=0) arr[i]=Object.assign(arr[i], upd);};
+      try{ apply(_estoqueBase); apply(ESTOQUE); }catch(e){}
+    } else {
+      try{ ch.qtd+=qtd; }catch(e){}
+    }
+    _ultimaCargaChapas = 0;
+    fechar('modal-ent');autoSaveTrigger();renderEstoque();
+    try{ carregarHistoricoEstoque(); }catch(e){}
+    toast(`✓ +${qtd.toLocaleString()} unidades`,'var(--green)');
+  } else if(!r.ok){
+    toast('Erro: '+(r.error||''),'var(--red)');
+  }
 };
 
 // ── Log de ações ─────────────────────────────────────────────
