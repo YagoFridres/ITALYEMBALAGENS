@@ -3625,7 +3625,21 @@ function _chapasParseCsv(text) {
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
-    const qEntries = Object.entries(req.query || {}).filter(([_, v]) => String(v ?? '').trim() !== '');
+    const _isFiltroVazioChapas = (v) => {
+      const s = String(v ?? '').trim().toLowerCase();
+      return (
+        s === '' ||
+        s === 'todos' ||
+        s === 'todas' ||
+        s === 'todos fornecedores' ||
+        s === 'todas empresas' ||
+        s === 'todos clientes' ||
+        s === 'todas categorias' ||
+        s === 'sem filtro' ||
+        s === 'all'
+      );
+    };
+    const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
     const hasFiltros = qEntries.length > 0;
     const cacheKey = hasFiltros
       ? ('chapas_estoque:' + table + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
@@ -3665,47 +3679,47 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
 
     let rows = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
 
-    if (req.query.empId) {
+    if (!_isFiltroVazioChapas(req.query.empId)) {
       const emp = String(req.query.empId).trim();
       rows = rows.filter(r => String(r.emp_id || '').trim() === emp || String(r.qual_cnpj || '').trim() === emp);
     }
-    if (req.query.fornecedor) {
-      const f = String(req.query.fornecedor).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.fornecedor)) {
+      const f = String(req.query.fornecedor).trim().toLowerCase();
       rows = rows.filter(r => String(r.fornecedor || '').toLowerCase().includes(f));
     }
-    if (req.query.categoria) {
+    if (!_isFiltroVazioChapas(req.query.categoria)) {
       const cat = String(req.query.categoria).trim();
       rows = rows.filter(r => String(r.categoria || '').trim() === cat);
     }
-    if (req.query.busca) {
-      const b = String(req.query.busca).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.busca)) {
+      const b = String(req.query.busca).trim().toLowerCase();
       rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.empresa_vinculada, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
     }
-    if (req.query.cliente) {
-      const c = String(req.query.cliente).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.cliente)) {
+      const c = String(req.query.cliente).trim().toLowerCase();
       rows = rows.filter(r => String(r.cliente || '').toLowerCase().includes(c));
     }
-    if (req.query.nf) {
-      const n = String(req.query.nf).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.nf)) {
+      const n = String(req.query.nf).trim().toLowerCase();
       rows = rows.filter(r => String(r.nf || '').toLowerCase().includes(n));
     }
-    if (req.query.nomenclatura) {
-      const n = String(req.query.nomenclatura).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.nomenclatura)) {
+      const n = String(req.query.nomenclatura).trim().toLowerCase();
       rows = rows.filter(r => String(r.nomenclatura || '').toLowerCase().includes(n));
     }
-    if (req.query.tamanho) {
-      const t = String(req.query.tamanho).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.tamanho)) {
+      const t = String(req.query.tamanho).trim().toLowerCase();
       rows = rows.filter(r => String(r.tamanho || '').toLowerCase().includes(t));
     }
-    if (req.query.empresa_vinculada) {
-      const ev = String(req.query.empresa_vinculada).toLowerCase();
+    if (!_isFiltroVazioChapas(req.query.empresa_vinculada)) {
+      const ev = String(req.query.empresa_vinculada).trim().toLowerCase();
       rows = rows.filter(r => String(r.empresa_vinculada || '').toLowerCase().includes(ev));
     }
     if (req.query.riscadas === '1') rows = rows.filter(r => !!r.riscada);
     if (req.query.com_vincos === '1') rows = rows.filter(r => String(r.vincos || '').trim() !== '');
     if (req.query.baixo === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) < (Number(r.estoque_minimo || 200) || 200));
     if (req.query.sem_estoque === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) <= 0);
-    if (req.query.cliente_id) {
+    if (!_isFiltroVazioChapas(req.query.cliente_id)) {
       const cid = String(req.query.cliente_id).trim();
       rows = rows.filter(r => String(r.cliente_id || '').trim() === cid);
     }
