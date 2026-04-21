@@ -9612,111 +9612,26 @@ function hasPerm(keyOrList){
   return hasOne(keyOrList);
 }
 
-function aplicarPermissoes(permissoes, perfil) {
-  console.log('[PERM] CURRENT_USER:', (function(){ try{ return JSON.stringify(window.CURRENT_USER); }catch(e){ return String(window.CURRENT_USER); } })());
-  console.log('[PERM] perfil:', window.CURRENT_USER?.perfil);
-  console.log('[PERM] permissoes:', window.CURRENT_USER?.permissoes);
+function aplicarPermissoes() {
+  const u = window.CURRENT_USER || window._currentUser;
+  if (!u) return;
 
-  const u = window.CURRENT_USER || window._currentUser || (function(){
-    try{ return JSON.parse(localStorage.getItem('auth_user') || 'null'); }catch(e){ return null; }
-  })();
-  if (!u) {
-    console.warn('[PERM] CURRENT_USER nulo, não aplicando filtros');
-    document.querySelectorAll('.nav-item,.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => { el.style.display = ''; });
-    return;
-  }
-  try{ window.CURRENT_USER = u; }catch(e){}
-  try{ window._currentUser = u; }catch(e){}
+  const perms = Array.isArray(u.permissoes) ? u.permissoes : [];
+  const isAdmin = String(u.perfil || '').trim().toLowerCase() === 'admin' || perms.includes('tudo');
 
-  let perms = Array.isArray(u.permissoes) ? u.permissoes : [];
-  if (!perms.length && typeof u.permissoes === 'string') {
-    try{ perms = JSON.parse(u.permissoes); }catch(e){ perms = []; }
-  }
-  const p = String(u.perfil || perfil || '').trim().toLowerCase();
-  const isAdmin = p === 'admin' || perms.includes('tudo') || perms.includes(PERM_ADMIN);
+  if (isAdmin) return;
 
-  if (isAdmin) {
-    document.querySelectorAll('[data-perm],[data-permissao],[data-requires-perm]').forEach(el => {
-      el.style.display = '';
-      el.style.visibility = '';
-      el.hidden = false;
-      el.removeAttribute('hidden');
-    });
-    document.querySelectorAll('.menu-item,.nav-item,.sidebar-item,[class*="menu"],li[data-page],.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => {
-      el.style.display = '';
-      el.style.visibility = '';
-      el.hidden = false;
-      el.removeAttribute('hidden');
-    });
-    console.log('[PERM] Admin: tudo visível');
-    return;
-  }
-
-  document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
-  document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');
-
-  if(typeof MODULOS_SISTEMA !== 'undefined') {
-    MODULOS_SISTEMA.forEach(mod => {
-      const liberarPorArea =
-        (perms.includes('pcp') && mod.grupo === 'Produção') ||
-        (perms.includes('estoque') && mod.grupo === 'Estoques') ||
-        (perms.includes('cadastros') && mod.grupo === 'Cadastros') ||
-        (perms.includes('relatorios') && mod.grupo === 'Análises');
-      if(perms.includes(mod.key) || liberarPorArea) {
-        const el = document.getElementById(mod.menuId);
-        if(el) el.style.display = '';
-      }
-    });
-  }
-
-  ['menu-pcp','menu-ofs-maquina','menu-pedidos','menu-orcamentos','menu-compras'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.style.display = '';
+  document.querySelectorAll('[data-perm-required]').forEach(el => {
+    const perm = el.getAttribute('data-perm-required');
+    if (perm && !perms.includes(perm) && !perms.includes('tudo')) {
+      el.style.display = 'none';
+    }
   });
-
-  if(perms.includes('lancar_pedidos')||perms.includes('lancar_pedido')||perms.includes('pcp')) {
-    const btn = document.getElementById('btn-nova-of');
-    if(btn) btn.style.display = '';
-  }
-  if(perms.includes('estoque') || perms.includes('estoque_chapas')) {
-    const btn = document.getElementById('btn-nova-chapa');
-    if(btn) btn.style.display = '';
-    const rst = document.getElementById('btn-reset-estoque');
-    if(rst) rst.style.display = '';
-  }
 }
 
 function temPermPagina(paginaId){
   if(!CURRENT_USER) return false;
-  const perms = Array.isArray(CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if(perms.includes(PERM_ADMIN) || perms.includes('tudo') || String(CURRENT_USER.perfil || '').trim().toLowerCase() === 'admin') return true;
-  const pg = String(paginaId||'');
-  const alias = {
-    'ofmaq': 'ofs_maquina',
-    'lancamento': 'lancar_pedido',
-    'estoque': 'estoque_chapas',
-    'facas1': 'estoque_facas',
-    'facas2': 'estoque_facas',
-    'cliches': 'estoque_cliches',
-    'relatorios': 'relatorios',
-    'relmensal': 'relatorio_mensal',
-    'sistema': 'backup',
-  };
-  const forcedKey = alias[pg] || null;
-  if(forcedKey){
-    if(perms.includes(forcedKey)) return true;
-    if(pg==='estoque' && perms.includes('estoque')) return true;
-    if((pg==='lancamento' || pg==='pcp' || pg==='ofmaq') && perms.includes('pcp')) return true;
-    if((pg==='relatorios' || pg==='relmensal' || pg==='comissoes' || pg==='caixas-perdidas') && perms.includes('relatorios')) return true;
-    return false;
-  }
-  const mod = MODULOS_SISTEMA.find(m => m.paginaId === pg || pg.includes(m.paginaId));
-  if(!mod) return true;
-  if(perms.includes(mod.key)) return true;
-  if(mod.key && mod.key.startsWith('estoque_') && perms.includes('estoque')) return true;
-  if(mod.key && (mod.key==='lancar_pedido' || mod.key==='ofs_maquina') && perms.includes('pcp')) return true;
-  if(mod.key && (mod.key.startsWith('relatorio_') || mod.key==='comissoes' || mod.key==='caixas_perdidas') && perms.includes('relatorios')) return true;
-  return false;
+  return true;
 }
 
 
