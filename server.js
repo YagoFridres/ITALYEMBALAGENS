@@ -1251,6 +1251,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     if (createdRes.error) throw createdRes.error;
     const created = createdRes.data;
     await _maybeRegistrarComissaoOF(req, body, created);
+    await _maybeBaixaAutomaticaChapasOF(req, body, created);
     return ok(res, created);
   } catch (e) { bad(res, e.message); }
 });
@@ -1992,10 +1993,86 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase.from('clientes').delete().eq('id', req.params.id);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const manterParaRaw = (req.query && req.query.manter_para != null) ? req.query.manter_para : (req.body && req.body.manter_para != null ? req.body.manter_para : null);
+    const manterPara = String(manterParaRaw || '').trim();
+    const manter = (manterPara && manterPara !== id) ? manterPara : '';
+
+    const cols = ['cli_id', 'cliId', 'cliente_id', 'clienteId'];
+    const isMissingCol = (err) => {
+      const msg = String(err?.message || err || '');
+      return msg.includes("Could not find the '") || msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist');
+    };
+
+    let hasRefs = false;
+    for (const col of cols) {
+      try {
+        const { data, error } = await supabase.from('ofs').select('id').eq(col, id).limit(1);
+        if (error) {
+          if (isMissingCol(error)) continue;
+          throw error;
+        }
+        if (Array.isArray(data) && data.length > 0) { hasRefs = true; break; }
+      } catch (e) {
+        if (isMissingCol(e)) continue;
+        throw e;
+      }
+    }
+
+    if (hasRefs) {
+      const alvo = manter ? manter : null;
+      let algumUpdate = false;
+      let lastConstraintErr = null;
+
+      for (const col of cols) {
+        try {
+          const { error } = await supabase.from('ofs').update({ [col]: alvo }).eq(col, id);
+          if (error) {
+            if (isMissingCol(error)) continue;
+            lastConstraintErr = error;
+            continue;
+          }
+          algumUpdate = true;
+        } catch (e) {
+          if (isMissingCol(e)) continue;
+          lastConstraintErr = e;
+          continue;
+        }
+      }
+
+      if (!algumUpdate) {
+        if (manter) return res.status(400).json({ ok: false, error: 'Não foi possível migrar as OFs deste cliente. Verifique as colunas de cliente na tabela ofs.' });
+        if (lastConstraintErr) return res.status(400).json({ ok: false, error: 'Cliente possui OFs vinculadas. Informe manter_para para migrar ou verifique se o vínculo pode ser removido.' });
+      }
+    }
+
+    const { error } = await supabase.from('clientes').delete().eq('id', id);
     if (error) throw error;
     cacheClearPrefix('clientes_');
     res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/chapas_estoque/:id/detalhes_compra', authMiddleware, async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    const c = _chapasCanonicalFromAny(data, table);
+    return ok(res, {
+      fornecedor: c.fornecedor || null,
+      nomenclatura: c.nomenclatura || null,
+      tamanho: c.tamanho || null,
+      valor_unitario: Number(c.valor_unitario || 0),
+      empresa_vinculada: c.empresa_vinculada || null,
+      qual_cnpj: c.qual_cnpj || null,
+      nome: c.nome || null,
+      categoria: c.categoria || null,
+    });
   } catch (e) { err(res, e); }
 });
 

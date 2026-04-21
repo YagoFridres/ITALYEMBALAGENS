@@ -4323,14 +4323,33 @@ async function dedupeClientePorNome(nome){
   if(counts.length <= 1) return;
   counts.sort((a,b)=>b.ofs-a.ofs);
   const keep = counts[0];
-  const toDel = counts.slice(1).filter(x=>x.ofs===0);
+  const toDel = counts.slice(1);
   if(!toDel.length) return;
-  const msg = `Cliente duplicado detectado: "${nome}".\nManter: ${keep.id} (${keep.ofs} OFs)\nExcluir: ${toDel.map(d=>d.id).join(', ')} (0 OFs)\n\nConfirmar exclusão?`;
+  const msg = `Cliente duplicado detectado: "${nome}".\nManter: ${keep.id} (${keep.ofs} OFs)\nMigrar + excluir: ${toDel.map(d=>`${d.id} (${d.ofs} OFs)`).join(', ')}\n\nConfirmar?`;
   if(!confirm(msg)) return;
+  const swapClienteIdLocal = (oldId, newId) => {
+    const a = String(oldId||'').trim();
+    const b = String(newId||'').trim();
+    if(!a || !b || a===b) return;
+    const apply = (arr) => {
+      if(!Array.isArray(arr)) return;
+      for(const o of arr){
+        if(!o) continue;
+        const cur = String(o.cliId ?? o.cliente_id ?? o.cli_id ?? '').trim();
+        if(cur === a){
+          if(o.cliId !== undefined) o.cliId = b;
+          if(o.cliente_id !== undefined) o.cliente_id = b;
+          if(o.cli_id !== undefined) o.cli_id = b;
+        }
+      }
+    };
+    [OFs, window.OFs, window.OFS, OFS_HIST, window.OFS_HIST].forEach(apply);
+  };
   for(const d of toDel){
-    const resp = await apiFetch('/api/clientes/'+encodeURIComponent(d.id), { method:'DELETE' });
+    const resp = await apiFetch('/api/clientes/'+encodeURIComponent(d.id)+'?manter_para='+encodeURIComponent(keep.id), { method:'DELETE' });
     const r = resp ? await resp.json().catch(()=>null) : null;
     if(!resp || !resp.ok || (r && r.error)){ toast('Erro ao excluir duplicado: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+    swapClienteIdLocal(d.id, keep.id);
     CLIENTES = (CLIENTES||[]).filter(c=>String(c.id||'').trim()!==d.id);
   }
   toast('Duplicata removida ✓','var(--green)');
