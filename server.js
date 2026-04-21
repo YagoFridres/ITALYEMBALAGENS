@@ -208,8 +208,14 @@ function authMiddleware(req, res, next) {
 
 function requireAdmin(req, res, next) {
   const u = req.usuario || null;
-  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
-  if (u?.perfil === 'admin' || perms.includes('tudo')) return next();
+  let perms = u?.permissoes;
+  if (!Array.isArray(perms) && typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+  }
+  perms = Array.isArray(perms) ? perms : [];
+  const perfil = String(u?.perfil || '').trim().toLowerCase();
+  console.log('[REQUIRE ADMIN]', perfil, perms);
+  if (perfil.includes('admin') || perms.includes('tudo')) return next();
   return res.status(403).json({ ok: false, error: 'Sem permissão' });
 }
 

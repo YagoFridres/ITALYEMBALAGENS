@@ -15300,10 +15300,19 @@ function toggleGrupoPerms(btn, grupo) {
   checks.forEach(c => c.checked = !algumMarcado);
 }
 async function carregarUsuarios(){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
-  const r = await api('GET','/usuarios');
-  if(!r || !r.ok){toast('Erro ao carregar usuários: '+(r && r.error ? r.error : ''),'var(--red)');return;}
-  USUARIOS = Array.isArray(r.data) ? r.data : [];
+  const u = window.CURRENT_USER || window._currentUser;
+  if(!u){toast('Sem permissão','var(--red)');return;}
+  let perms = Array.isArray(u.permissoes) ? u.permissoes : [];
+  if(!perms.length && typeof u.permissoes === 'string'){ try{ perms = JSON.parse(u.permissoes); }catch(e){ perms = []; } }
+  const perfil = String(u.perfil || '').trim().toLowerCase();
+  const isAdmin = perfil.includes('admin') || perms.includes('tudo');
+  if(!isAdmin){toast('Sem permissão','var(--red)');return;}
+
+  const resp = await apiFetch('/api/usuarios', { method: 'GET' });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  console.log('[USUARIOS] resposta:', j);
+  if(!resp || !resp.ok || !j || !j.ok){toast('Erro ao carregar usuários: '+(j && j.error ? j.error : ''),'var(--red)');return;}
+  USUARIOS = Array.isArray(j.data) ? j.data : [];
   renderUsuarios();
 }
 function usrPerfilLabel(u){
@@ -15382,7 +15391,11 @@ function usrAtalho(tipo){
 }
 
 function abrirModalUsuarioNovo(){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u = window.CURRENT_USER || window._currentUser;
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  const perfil = String(u?.perfil || '').trim().toLowerCase();
+  const isAdmin = perfil.includes('admin') || perms.includes('tudo');
+  if(!u || !isAdmin){toast('Sem permissão','var(--red)');return;}
   document.getElementById('usr-modal-title').textContent='👤 Novo Usuário';
   document.getElementById('usr-id').value='';
   document.getElementById('usr-nome').value='';
@@ -15399,7 +15412,11 @@ function abrirModalUsuarioNovo(){
 }
 
 function abrirModalUsuarioEditar(id){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const ucur = window.CURRENT_USER || window._currentUser;
+  const permsCur = Array.isArray(ucur?.permissoes) ? ucur.permissoes : [];
+  const perfilCur = String(ucur?.perfil || '').trim().toLowerCase();
+  const isAdminCur = perfilCur.includes('admin') || permsCur.includes('tudo');
+  if(!ucur || !isAdminCur){toast('Sem permissão','var(--red)');return;}
   const u = (USUARIOS||[]).find(x=>x.id===id);
   if(!u){toast('Usuário não encontrado','var(--red)');return;}
   document.getElementById('usr-modal-title').textContent='✏ Editar Usuário';
@@ -15418,7 +15435,11 @@ function abrirModalUsuarioEditar(id){
 }
 
 async function salvarUsuarioModal(){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const ucur = window.CURRENT_USER || window._currentUser;
+  const permsCur = Array.isArray(ucur?.permissoes) ? ucur.permissoes : [];
+  const perfilCur = String(ucur?.perfil || '').trim().toLowerCase();
+  const isAdminCur = perfilCur.includes('admin') || permsCur.includes('tudo');
+  if(!ucur || !isAdminCur){toast('Sem permissão','var(--red)');return;}
   const errEl=document.getElementById('usr-err'); if(errEl) errEl.textContent='';
   const id = String((document.getElementById('usr-id')||{}).value||'').trim();
   const nome = String((document.getElementById('usr-nome')||{}).value||'').trim();
@@ -15442,15 +15463,17 @@ async function salvarUsuarioModal(){
       if(errEl) errEl.textContent='Senhas não conferem.';
       return;
     }
-    const r = await api('POST','/usuarios',{nome,email,senha,perfil,permissoes,canais_chat,ativo,avatar_cor});
-    if(!r || !r.ok){
-      if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+    const resp = await apiFetch('/api/usuarios', { method: 'POST', body: { nome,email,senha,perfil,permissoes,canais_chat,ativo,avatar_cor } });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j || !j.ok){
+      if(errEl) errEl.textContent=(j && j.error)?String(j.error):'Erro ao salvar.';
       return;
     }
   } else {
-    const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{nome,email,perfil,permissoes,canais_chat,ativo,avatar_cor});
-    if(!r || !r.ok){
-      if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+    const resp = await apiFetch('/api/usuarios/'+encodeURIComponent(id), { method: 'PUT', body: { nome,email,perfil,permissoes,canais_chat,ativo,avatar_cor } });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j || !j.ok){
+      if(errEl) errEl.textContent=(j && j.error)?String(j.error):'Erro ao salvar.';
       return;
     }
   }
@@ -15460,7 +15483,11 @@ async function salvarUsuarioModal(){
 }
 
 function abrirModalSenhaUsuario(id){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u = window.CURRENT_USER || window._currentUser;
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  const perfil = String(u?.perfil || '').trim().toLowerCase();
+  const isAdmin = perfil.includes('admin') || perms.includes('tudo');
+  if(!u || !isAdmin){toast('Sem permissão','var(--red)');return;}
   document.getElementById('usr-senha-id').value=id||'';
   document.getElementById('usr-nova-senha').value='';
   document.getElementById('usr-nova-senha2').value='';
@@ -15469,7 +15496,11 @@ function abrirModalSenhaUsuario(id){
 }
 
 async function salvarSenhaUsuario(){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const u = window.CURRENT_USER || window._currentUser;
+  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+  const perfil = String(u?.perfil || '').trim().toLowerCase();
+  const isAdmin = perfil.includes('admin') || perms.includes('tudo');
+  if(!u || !isAdmin){toast('Sem permissão','var(--red)');return;}
   const errEl=document.getElementById('usr-senha-err'); if(errEl) errEl.textContent='';
   const id=String((document.getElementById('usr-senha-id')||{}).value||'').trim();
   const s1=String((document.getElementById('usr-nova-senha')||{}).value||'').trim();
@@ -15478,9 +15509,10 @@ async function salvarSenhaUsuario(){
     if(errEl) errEl.textContent='Senhas não conferem.';
     return;
   }
-  const r=await api('PUT','/usuarios/'+encodeURIComponent(id)+'/senha',{senha:s1});
-  if(!r || !r.ok){
-    if(errEl) errEl.textContent=(r && r.error)?String(r.error):'Erro ao salvar.';
+  const resp = await apiFetch('/api/usuarios/'+encodeURIComponent(id)+'/senha', { method: 'PUT', body: { senha: s1 } });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || !j || !j.ok){
+    if(errEl) errEl.textContent=(j && j.error)?String(j.error):'Erro ao salvar.';
     return;
   }
   fechar('modal-usr-senha');
@@ -15488,23 +15520,33 @@ async function salvarSenhaUsuario(){
 }
 
 async function usrToggleAtivo(id){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const ucur = window.CURRENT_USER || window._currentUser;
+  const permsCur = Array.isArray(ucur?.permissoes) ? ucur.permissoes : [];
+  const perfilCur = String(ucur?.perfil || '').trim().toLowerCase();
+  const isAdminCur = perfilCur.includes('admin') || permsCur.includes('tudo');
+  if(!ucur || !isAdminCur){toast('Sem permissão','var(--red)');return;}
   const u=(USUARIOS||[]).find(x=>x.id===id); if(!u) return;
   const ativo = !(u.ativo===false);
   const novo = !ativo;
-  const r = await api('PUT','/usuarios/'+encodeURIComponent(id),{ativo:novo});
-  if(!r || !r.ok){toast('Erro: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  const resp = await apiFetch('/api/usuarios/'+encodeURIComponent(id), { method: 'PUT', body: { ativo: novo } });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || !j || !j.ok){toast('Erro: '+(j && j.error ? j.error : ''),'var(--red)');return;}
   u.ativo = novo;
   renderUsuarios();
   toast(novo?'🟢 Ativado':'🔴 Desativado', novo?'var(--green)':'var(--orange)');
 }
 
 async function usrExcluir(id){
-  if(!CURRENT_USER || !hasPerm('tudo')){toast('Sem permissão','var(--red)');return;}
+  const ucur = window.CURRENT_USER || window._currentUser;
+  const permsCur = Array.isArray(ucur?.permissoes) ? ucur.permissoes : [];
+  const perfilCur = String(ucur?.perfil || '').trim().toLowerCase();
+  const isAdminCur = perfilCur.includes('admin') || permsCur.includes('tudo');
+  if(!ucur || !isAdminCur){toast('Sem permissão','var(--red)');return;}
   const u=(USUARIOS||[]).find(x=>x.id===id); if(!u) return;
   if(!confirm(`Tem certeza que deseja excluir o usuário ${u.nome}?\nEsta ação não pode ser desfeita.`)) return;
-  const r = await api('DELETE','/usuarios/'+encodeURIComponent(id));
-  if(!r || !r.ok){toast('Erro: '+(r && r.error ? r.error : ''),'var(--red)');return;}
+  const resp = await apiFetch('/api/usuarios/'+encodeURIComponent(id), { method: 'DELETE' });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || !j || !j.ok){toast('Erro: '+(j && j.error ? j.error : ''),'var(--red)');return;}
   USUARIOS = (USUARIOS||[]).filter(x=>x.id!==id);
   renderUsuarios();
   toast('🗑️ Usuário excluído','var(--orange)');
