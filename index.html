@@ -9607,7 +9607,7 @@ function hasPerm(keyOrList){
 
 function aplicarPermissoes(permissoes, perfil) {
   const perms = Array.isArray(permissoes) ? permissoes : [];
-  const ehAdmin = perfil === 'admin' || perms.includes(PERM_ADMIN);
+  const ehAdmin = perfil === 'admin' || perms.includes(PERM_ADMIN) || perms.includes('tudo');
 
   document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
   document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');

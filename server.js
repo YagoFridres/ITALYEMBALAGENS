@@ -340,6 +340,12 @@ app.post('/api/auth/login', async (req, res) => {
       senhaValida = !e2 && !!ok;
     }
 
+    if (!senhaValida && hash && !hash.startsWith('$2')) {
+      senhaValida = (senhaStr === hash);
+    }
+
+    console.log('[LOGIN]', String(email).trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
+
     if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign(
@@ -2149,7 +2155,7 @@ app.get('/api/operadores', authMiddleware, async (req, res) => {
       lastErr = error;
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
         cacheSet(cacheKey, []);
         return ok(res, []);
       }
@@ -2434,7 +2440,7 @@ app.get('/api/inconformidades', async (req, res) => {
     if (error) {
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
         return ok(res, []);
       }
       throw error;
