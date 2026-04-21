@@ -110,3 +110,27 @@ create table if not exists public.recebimento_insumos (
   emp_id text,
   created_at timestamp default now()
 );
+
+create table if not exists public.caixas_perdidas (
+  id uuid primary key default gen_random_uuid(),
+  of_id uuid,
+  of_numero text,
+  produto text,
+  cliente text,
+  valor_unitario numeric not null default 0,
+  qtd_perdida integer not null default 0,
+  valor_perdido numeric not null default 0,
+  data date,
+  mes_referencia text,
+  emp_id text,
+  usuario text,
+  obs text,
+  created_at timestamptz not null default now(),
+  constraint caixas_perdidas_qtd_nonneg check (qtd_perdida >= 0),
+  constraint caixas_perdidas_valor_unit_nonneg check (valor_unitario >= 0),
+  constraint caixas_perdidas_valor_perd_nonneg check (valor_perdido >= 0)
+);
+
+create index if not exists caixas_perdidas_mes_idx on public.caixas_perdidas (mes_referencia);
+create index if not exists caixas_perdidas_emp_idx on public.caixas_perdidas (emp_id);
+create index if not exists caixas_perdidas_data_idx on public.caixas_perdidas (data desc);

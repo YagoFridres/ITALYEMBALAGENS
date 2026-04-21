@@ -1467,7 +1467,14 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     if (req.query.de) q = q.gte('data', req.query.de);
     if (req.query.ate) q = q.lte('data', req.query.ate);
     const { data, error } = await q;
-    if (error) throw error;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, []);
+      }
+      throw error;
+    }
     return ok(res, data || []);
   } catch (e) { err(res, e); }
 });
@@ -1492,7 +1499,14 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       obs: b.obs || ''
     };
     const { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
-    if (error) throw error;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, { skipped: true, reason: 'table_missing' });
+      }
+      throw error;
+    }
     return ok(res, data);
   } catch (e) { err(res, e); }
 });
@@ -1500,7 +1514,14 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
 app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
-    if (error) throw error;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, true);
+      }
+      throw error;
+    }
     return ok(res, true);
   } catch (e) { err(res, e); }
 });
