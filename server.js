@@ -1252,37 +1252,48 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
     if (!chapaId || !(qtdChapas > 0)) return;
     const table = await _chapasPreferV2Table();
     if (!table) return;
-    const { data: chapa, error: e1 } = await supabase.from(table).select('*').eq('id', chapaId).single();
+    const { data: chapa, error: e1 } = await supabase.from(table).select('*').eq('id', chapaId).maybeSingle();
     if (e1 || !chapa) return;
     const canonChapa = _chapasCanonicalFromAny(chapa, table);
+
+    const ofNumero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? null;
+    const cliRef = body?.cliId ?? body?.cli_id ?? body?.cliente_id ?? ofRow?.cliId ?? ofRow?.cli_id ?? ofRow?.cliente_id ?? '';
+    const empId = body?.emp_id ?? body?.empId ?? ofRow?.emp_id ?? ofRow?.empId ?? 'E1';
+    const usuario = req?.usuario?.nome || 'sistema';
+
+    if (table === 'chapas_estoque_v2') {
+      const obs = `Saída automática - OF #${ofNumero || ''} · Cliente: ${cliRef || ''}`.trim();
+      const origemId = ofNumero ? String(ofNumero) : (ofRow?.id ? String(ofRow.id) : null);
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: chapaId,
+        tipo: 'saida',
+        quantidade: qtdChapas,
+        nf: body?.nf || null,
+        obs,
+        origem: 'of',
+        origem_id: origemId,
+        usuario,
+        emp_id: empId || null,
+      });
+      if (movRes?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) {
+          console.warn('[OF BAIXA CHAPAS] saldo insuficiente:', movRes.error?.message || movRes.error);
+          return;
+        }
+        return;
+      }
+      cacheClearPrefix('chapas_estoque:');
+      const desc = `Estoque chapas: SAIDA -${qtdChapas} · ${canonChapa.nome || ''} · ${canonChapa.fornecedor || ''} · ${canonChapa.nomenclatura || ''} · ${canonChapa.tamanho || ''}${ofNumero ? (' · OF #' + String(ofNumero)) : ''}`.trim();
+      await _chapasLogAcao(req, 'estoque_saida', desc);
+      return;
+    }
+
     const qtdAtual = Math.trunc(Number(canonChapa.quantidade || 0) || 0);
     const qtdNova = Math.max(0, qtdAtual - qtdChapas);
-    const updPayload = table === 'chapas_estoque_v2'
-      ? { quantidade: qtdNova, atualizado_por: req.usuario?.nome || 'sistema' }
-      : { qtd: qtdNova };
+    const updPayload = { qtd: qtdNova };
     const upd = await supabase.from(table).update(updPayload).eq('id', chapaId);
     if (upd.error) return;
     cacheClearPrefix('chapas_estoque:');
-
-    if (table === 'chapas_estoque_v2') {
-      const ofNumero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? null;
-      const cliRef = body?.cliId ?? body?.cli_id ?? body?.cliente_id ?? ofRow?.cliId ?? ofRow?.cli_id ?? ofRow?.cliente_id ?? '';
-      const empId = body?.emp_id ?? body?.empId ?? ofRow?.emp_id ?? ofRow?.empId ?? 'E1';
-      const desc = `Estoque chapas: SAIDA -${qtdChapas} · ${canonChapa.nome || ''} · ${canonChapa.fornecedor || ''} · ${canonChapa.nomenclatura || ''} · ${canonChapa.tamanho || ''}${ofNumero ? (' · OF #' + String(ofNumero)) : ''}`.trim();
-      await _chapasLogAcao(req, 'estoque_saida', desc);
-      const mov = {
-        chapa_id: chapaId,
-        tipo: 'saida',
-        delta: -qtdChapas,
-        qtd_anterior: qtdAtual,
-        qtd_nova: qtdNova,
-        obs: `Saída automática - OF #${ofNumero || ''} · Cliente: ${cliRef || ''}`.trim(),
-        usuario: req.usuario?.nome || 'sistema',
-        emp_id: empId || null,
-        of_numero: ofNumero ? String(ofNumero) : null,
-      };
-      try { await supabase.from('chapas_estoque_movimentos_v2').insert([mov]); } catch (e) {}
-    }
   } catch (e) {}
 }
 
@@ -3271,7 +3282,7 @@ function _chapasCanonicalFromAny(row, table) {
     const qtd = Number(row.quantidade || 0) || 0;
     const vunit = Number(row.valor_unitario || 0) || 0;
     const vtot = Number(row.valor_total || 0) || (qtd * vunit);
-    const empId = row.emp_id || '';
+    const empId = row.emp_id || 'E1';
     return {
       id: row.id,
       fornecedor: row.fornecedor || '',
@@ -3369,6 +3380,39 @@ function _chapasToNum(v, fallback = 0) {
   const s = s0.includes(',') ? s0.replace(/\./g, '').replace(',', '.') : s0;
   const n = Number(s);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function _chapasMovRpcIsSaldoInsuficiente(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return msg.includes('saldo insuficiente');
+}
+
+function _chapasMovRpcIsValidacao(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('quantidade inválida') ||
+    msg.includes('quantidade invalida') ||
+    msg.includes('tipo de movimentação inválido') ||
+    msg.includes('tipo de movimentacao invalido') ||
+    msg.includes('chapa não encontrada') ||
+    msg.includes('chapa nao encontrada')
+  );
+}
+
+async function _chapasMovimentarV2Rpc(params) {
+  const p = params || {};
+  const rpcArgs = {
+    p_chapa_id: p.chapa_id,
+    p_tipo: p.tipo,
+    p_quantidade: p.quantidade,
+    p_nf: p.nf ?? null,
+    p_obs: p.obs ?? null,
+    p_origem: p.origem ?? null,
+    p_origem_id: p.origem_id ?? null,
+    p_usuario: p.usuario ?? null,
+    p_emp_id: p.emp_id ?? null,
+  };
+  return supabase.rpc('movimentar_chapa_estoque_v2', rpcArgs);
 }
 
 function _chapasPayloadV2FromBody(b, req, isUpdate) {
@@ -3587,7 +3631,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       ? ('chapas_estoque:' + table + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
       : ('chapas_estoque:' + table + ':all');
     const cached = cacheGet(cacheKey);
-    if (cached) return res.json(cached);
+    if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
     const selectV2Base = [
       'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria','quantidade',
       'valor_unitario','valor_total','estoque_minimo','emp_id','empresa_vinculada',
@@ -3682,7 +3726,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     });
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros');
-    cacheSet(cacheKey, rows);
+    if (rows.length > 0) cacheSet(cacheKey, rows);
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
@@ -3705,6 +3749,8 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
 
       const payload = _chapasPayloadV2FromBody({ ...b, fornecedor, nomenclatura, tamanho, nome_uso: nomeUso, nome: nomeUso }, req, false);
+      const qtdInicial = Math.trunc(Number(payload.quantidade ?? 0) || 0);
+      if (qtdInicial > 0) payload.quantidade = 0;
       let { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
       if (error) {
         const msg = String(error.message || error);
@@ -3720,21 +3766,26 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       if (error) return res.status(500).json({ ok: false, error: error.message });
 
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''} · qtd=${payload.quantidade ?? 0}`);
+      await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''} · qtd=${qtdInicial}`);
 
-      if (Number(payload.quantidade) > 0) {
+      if (qtdInicial > 0) {
+        const movRes = await _chapasMovimentarV2Rpc({
+          chapa_id: data.id,
+          tipo: 'entrada',
+          quantidade: qtdInicial,
+          nf: payload.nf || null,
+          obs: 'Entrada inicial de estoque',
+          origem: 'entrada_inicial',
+          origem_id: String(data.id),
+          usuario: req?.usuario?.nome || 'sistema',
+          emp_id: payload.emp_id || null,
+        });
+        if (movRes?.error) {
+          return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+        }
         try {
-          await supabase.from('chapas_estoque_movimentos_v2').insert([{
-            chapa_id: data.id,
-            tipo: 'entrada',
-            delta: Number(payload.quantidade),
-            qtd_anterior: 0,
-            qtd_nova: Number(payload.quantidade),
-            nf: payload.nf || null,
-            obs: 'Entrada inicial de estoque',
-            usuario: req?.usuario?.nome || 'sistema',
-            emp_id: payload.emp_id || null,
-          }]);
+          const r3 = await supabase.from('chapas_estoque_v2').select('*').eq('id', data.id).maybeSingle();
+          if (r3?.data) data = r3.data;
         } catch (_) {}
       }
 
@@ -3958,13 +4009,65 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       if (!Number.isFinite(deltaAbs) || deltaAbs <= 0) return res.status(400).json({ ok: false, error: 'Quantidade (delta) deve ser um número positivo' });
       newQtd = tipo === 'entrada' ? (oldQtd + deltaAbs) : (oldQtd - deltaAbs);
       if (newQtd < 0) {
-        return res.status(400).json({
+        return res.status(409).json({
           ok: false,
-          error: `Saldo insuficiente — atual: ${oldQtd}, tentativa de saída: ${deltaAbs}`,
+          error: 'Saldo insuficiente',
           saldo: oldQtd,
           solicitado: deltaAbs,
         });
       }
+    }
+
+    if (table === 'chapas_estoque_v2') {
+      if (tipo === 'ajuste' && Math.trunc(Number(deltaAbs) || 0) === 0) {
+        return ok(res, { ...canonCur, _movimento: { tipo, oldQtd, newQtd: oldQtd, delta: 0 } });
+      }
+
+      const tipoRpc = tipo === 'ajuste' ? (deltaAbs > 0 ? 'entrada' : 'saida') : tipo;
+      const qtdRpc = tipo === 'ajuste' ? Math.abs(Math.trunc(Number(deltaAbs) || 0)) : Math.abs(Math.trunc(Number(deltaAbs) || 0));
+      const obs = (b.obs != null && String(b.obs).trim() !== '')
+        ? String(b.obs).trim()
+        : (tipo === 'ajuste' ? `Ajuste de estoque (alvo=${Math.trunc(Number(newQtd) || 0)})` : null);
+      const origem = (b.origem != null && String(b.origem).trim() !== '') ? String(b.origem).trim() : (tipo === 'ajuste' ? 'ajuste' : 'manual');
+      const origemId = (b.origem_id != null && String(b.origem_id).trim() !== '') ? String(b.origem_id).trim() : null;
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: id,
+        tipo: tipoRpc,
+        quantidade: qtdRpc,
+        nf: (b.nf != null && String(b.nf).trim() !== '') ? String(b.nf).trim() : null,
+        obs,
+        origem,
+        origem_id: origemId,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: canonCur.emp_id || null,
+      });
+
+      if (movRes?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) return res.status(409).json({ ok: false, error: 'Saldo insuficiente' });
+        if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+        return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+      }
+
+      if (b.nf != null && String(b.nf).trim() !== '') {
+        try {
+          await supabase.from('chapas_estoque_v2').update({ nf: String(b.nf).trim(), atualizado_por: req?.usuario?.nome || 'sistema' }).eq('id', id);
+        } catch (_) {}
+      }
+
+      cacheClearPrefix('chapas_estoque:');
+
+      let updRow = null;
+      try {
+        const r2 = await supabase.from('chapas_estoque_v2').select('*').eq('id', id).maybeSingle();
+        updRow = r2?.data || null;
+      } catch (_) {}
+      const canonUpd = updRow ? _chapasCanonicalFromAny(updRow, 'chapas_estoque_v2') : { ...canonCur, quantidade: Math.trunc(Number(newQtd) || 0) };
+
+      const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
+      const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
+      await _chapasLogAcao(req, `estoque_${tipo}`, desc);
+
+      return ok(res, { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } });
     }
 
     const patch = table === 'chapas_estoque_v2'
@@ -4100,16 +4203,26 @@ app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res
     const canonCur = _chapasCanonicalFromAny(cur, 'chapas_estoque_v2');
     const curQtd = Math.trunc(Number(canonCur.quantidade || 0) || 0);
     const delta = Math.trunc(Number(mov.delta || 0) || 0);
-    const newQtd = curQtd - delta;
-    if (newQtd < 0) return res.status(400).json({ ok: false, error: 'Reversão inválida (saldo ficaria negativo)' });
-
-    const { data: upd, error: updErr } = await supabase
-      .from('chapas_estoque_v2')
-      .update({ quantidade: newQtd, atualizado_por: req?.usuario?.nome || 'sistema' })
-      .eq('id', chapaId)
-      .select()
-      .single();
-    if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
+    const tipoRpc = delta < 0 ? 'entrada' : 'saida';
+    const qtdRpc = Math.abs(delta);
+    if (qtdRpc > 0) {
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: chapaId,
+        tipo: tipoRpc,
+        quantidade: qtdRpc,
+        nf: null,
+        obs: `Reversão do movimento ${movId} (${mov.tipo})`.trim(),
+        origem: 'reversao_movimento',
+        origem_id: String(movId),
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: canonCur.emp_id || mov.emp_id || null,
+      });
+      if (movRes?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) return res.status(409).json({ ok: false, error: 'Saldo insuficiente' });
+        if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+        return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+      }
+    }
 
     const { error: revErr } = await supabase
       .from('chapas_estoque_movimentos_v2')
@@ -4117,7 +4230,9 @@ app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res
       .eq('id', movId);
     if (revErr) return res.status(500).json({ ok: false, error: revErr.message });
 
-    const canonUpd = _chapasCanonicalFromAny(upd, 'chapas_estoque_v2');
+    cacheClearPrefix('chapas_estoque:');
+    const { data: upd } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).maybeSingle();
+    const canonUpd = upd ? _chapasCanonicalFromAny(upd, 'chapas_estoque_v2') : { ...canonCur, quantidade: curQtd - delta };
     await _chapasLogAcao(req, 'estoque_movimento_revertido', `Movimento revertido (${mov.tipo}) delta=${delta} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`);
 
     return ok(res, { chapa: canonUpd });
