@@ -3228,15 +3228,18 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 async function _chapasPreferV2Table() {
   const tables = ['chapas_estoque_v2', 'chapas_estoque'];
-  let lastErr = null;
+  let firstOk = null;
   for (const t of tables) {
-    const { error } = await supabase.from(t).select('id').limit(1);
-    if (!error) return t;
-    lastErr = error;
-    const msg = String(error.message || error);
-    if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+    const { data, error } = await supabase.from(t).select('id').limit(1);
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
+      continue;
+    }
+    if (!firstOk) firstOk = t;
+    if (Array.isArray(data) && data.length > 0) return t;
   }
-  return 'chapas_estoque';
+  return firstOk || 'chapas_estoque';
 }
 
 function _chapasNormKey(s) {
@@ -3624,7 +3627,6 @@ function _chapasParseCsv(text) {
 
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
-    const table = await _chapasPreferV2Table();
     const _isFiltroVazioChapas = (v) => {
       const s = String(v ?? '').trim().toLowerCase();
       return (
@@ -3642,8 +3644,8 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
     const hasFiltros = qEntries.length > 0;
     const cacheKey = hasFiltros
-      ? ('chapas_estoque:' + table + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
-      : ('chapas_estoque:' + table + ':all');
+      ? ('chapas_estoque:auto:q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
+      : ('chapas_estoque:auto:all');
     const cached = cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
     const selectV2Base = [
@@ -3651,78 +3653,107 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       'valor_unitario','valor_total','estoque_minimo','emp_id','empresa_vinculada',
       'riscada','cliente_nome','cliente_id','data_entrada','qual_cnpj','qual','nf','vincos','observacao','risca_desc'
     ];
-    let selectStr = '*';
-    if (table === 'chapas_estoque_v2') selectStr = selectV2Base.join(',');
-    let sel = selectStr;
-    let data = null;
-    let error = null;
-    for (let tentativa = 0; tentativa < 5; tentativa++) {
-      const r = await supabase.from(table).select(sel);
-      data = r.data;
-      error = r.error;
-      if (!error) break;
-      const msg = String(error.message || error);
-      const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
-      if (col && table === 'chapas_estoque_v2' && sel !== '*') {
-        const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
-        const next = parts.filter(p => p !== col);
-        if (next.length === parts.length) break;
-        sel = next.join(',');
+    const applyFilters = (inRows) => {
+      let rows = Array.isArray(inRows) ? inRows : [];
+      if (!_isFiltroVazioChapas(req.query.empId)) {
+        const emp = String(req.query.empId).trim();
+        rows = rows.filter(r => String(r.emp_id || '').trim() === emp || String(r.qual_cnpj || '').trim() === emp);
+      }
+      if (!_isFiltroVazioChapas(req.query.fornecedor)) {
+        const f = String(req.query.fornecedor).trim().toLowerCase();
+        rows = rows.filter(r => String(r.fornecedor || '').toLowerCase().includes(f));
+      }
+      if (!_isFiltroVazioChapas(req.query.categoria)) {
+        const cat = String(req.query.categoria).trim();
+        rows = rows.filter(r => String(r.categoria || '').trim() === cat);
+      }
+      if (!_isFiltroVazioChapas(req.query.busca)) {
+        const b = String(req.query.busca).trim().toLowerCase();
+        rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.empresa_vinculada, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
+      }
+      if (!_isFiltroVazioChapas(req.query.cliente)) {
+        const c = String(req.query.cliente).trim().toLowerCase();
+        rows = rows.filter(r => String(r.cliente || '').toLowerCase().includes(c));
+      }
+      if (!_isFiltroVazioChapas(req.query.nf)) {
+        const n = String(req.query.nf).trim().toLowerCase();
+        rows = rows.filter(r => String(r.nf || '').toLowerCase().includes(n));
+      }
+      if (!_isFiltroVazioChapas(req.query.nomenclatura)) {
+        const n = String(req.query.nomenclatura).trim().toLowerCase();
+        rows = rows.filter(r => String(r.nomenclatura || '').toLowerCase().includes(n));
+      }
+      if (!_isFiltroVazioChapas(req.query.tamanho)) {
+        const t = String(req.query.tamanho).trim().toLowerCase();
+        rows = rows.filter(r => String(r.tamanho || '').toLowerCase().includes(t));
+      }
+      if (!_isFiltroVazioChapas(req.query.empresa_vinculada)) {
+        const ev = String(req.query.empresa_vinculada).trim().toLowerCase();
+        rows = rows.filter(r => String(r.empresa_vinculada || '').toLowerCase().includes(ev));
+      }
+      if (req.query.riscadas === '1') rows = rows.filter(r => !!r.riscada);
+      if (req.query.com_vincos === '1') rows = rows.filter(r => String(r.vincos || '').trim() !== '');
+      if (req.query.baixo === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) < (Number(r.estoque_minimo || 200) || 200));
+      if (req.query.sem_estoque === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) <= 0);
+      if (!_isFiltroVazioChapas(req.query.cliente_id)) {
+        const cid = String(req.query.cliente_id).trim();
+        rows = rows.filter(r => String(r.cliente_id || '').trim() === cid);
+      }
+      return rows;
+    };
+
+    const preferred = await _chapasPreferV2Table();
+    const tablesToTry = preferred === 'chapas_estoque_v2'
+      ? ['chapas_estoque_v2', 'chapas_estoque']
+      : ['chapas_estoque', 'chapas_estoque_v2'];
+
+    let usedTable = preferred;
+    let rows = [];
+    let lastError = null;
+
+    for (const table of tablesToTry) {
+      let sel = (table === 'chapas_estoque_v2') ? selectV2Base.join(',') : '*';
+      let data = null;
+      let error = null;
+
+      for (let tentativa = 0; tentativa < 5; tentativa++) {
+        const r = await supabase.from(table).select(sel);
+        data = r.data;
+        error = r.error;
+        if (!error) break;
+
+        const msg = String(error.message || error);
+        const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+        if (col && table === 'chapas_estoque_v2' && sel !== '*') {
+          const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
+          const next = parts.filter(p => p !== col);
+          if (next.length === parts.length) break;
+          sel = next.join(',');
+          continue;
+        }
+        break;
+      }
+
+      if (error) {
+        lastError = error;
+        console.error('[chapas_estoque] erro Supabase table=' + table + ':', JSON.stringify(error));
         continue;
       }
-      break;
+
+      const canon = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
+      const filtered = applyFilters(canon);
+      if (filtered.length > 0 || table === tablesToTry[tablesToTry.length - 1]) {
+        usedTable = table;
+        rows = filtered;
+        break;
+      }
     }
-    if (error) {
-      console.error('[chapas_estoque] erro Supabase:', JSON.stringify(error));
+
+    if (lastError && rows.length === 0) {
       return res.json([]);
     }
 
-    let rows = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
-
-    if (!_isFiltroVazioChapas(req.query.empId)) {
-      const emp = String(req.query.empId).trim();
-      rows = rows.filter(r => String(r.emp_id || '').trim() === emp || String(r.qual_cnpj || '').trim() === emp);
-    }
-    if (!_isFiltroVazioChapas(req.query.fornecedor)) {
-      const f = String(req.query.fornecedor).trim().toLowerCase();
-      rows = rows.filter(r => String(r.fornecedor || '').toLowerCase().includes(f));
-    }
-    if (!_isFiltroVazioChapas(req.query.categoria)) {
-      const cat = String(req.query.categoria).trim();
-      rows = rows.filter(r => String(r.categoria || '').trim() === cat);
-    }
-    if (!_isFiltroVazioChapas(req.query.busca)) {
-      const b = String(req.query.busca).trim().toLowerCase();
-      rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.empresa_vinculada, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
-    }
-    if (!_isFiltroVazioChapas(req.query.cliente)) {
-      const c = String(req.query.cliente).trim().toLowerCase();
-      rows = rows.filter(r => String(r.cliente || '').toLowerCase().includes(c));
-    }
-    if (!_isFiltroVazioChapas(req.query.nf)) {
-      const n = String(req.query.nf).trim().toLowerCase();
-      rows = rows.filter(r => String(r.nf || '').toLowerCase().includes(n));
-    }
-    if (!_isFiltroVazioChapas(req.query.nomenclatura)) {
-      const n = String(req.query.nomenclatura).trim().toLowerCase();
-      rows = rows.filter(r => String(r.nomenclatura || '').toLowerCase().includes(n));
-    }
-    if (!_isFiltroVazioChapas(req.query.tamanho)) {
-      const t = String(req.query.tamanho).trim().toLowerCase();
-      rows = rows.filter(r => String(r.tamanho || '').toLowerCase().includes(t));
-    }
-    if (!_isFiltroVazioChapas(req.query.empresa_vinculada)) {
-      const ev = String(req.query.empresa_vinculada).trim().toLowerCase();
-      rows = rows.filter(r => String(r.empresa_vinculada || '').toLowerCase().includes(ev));
-    }
-    if (req.query.riscadas === '1') rows = rows.filter(r => !!r.riscada);
-    if (req.query.com_vincos === '1') rows = rows.filter(r => String(r.vincos || '').trim() !== '');
-    if (req.query.baixo === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) < (Number(r.estoque_minimo || 200) || 200));
-    if (req.query.sem_estoque === '1') rows = rows.filter(r => (Number(r.quantidade || 0) || 0) <= 0);
-    if (!_isFiltroVazioChapas(req.query.cliente_id)) {
-      const cid = String(req.query.cliente_id).trim();
-      rows = rows.filter(r => String(r.cliente_id || '').trim() === cid);
-    }
+    try { res.setHeader('X-Chapas-Table', usedTable); } catch (_) {}
 
     rows.sort((a,b)=>{
       const ca = String(a.categoria||'').toLowerCase();
@@ -3739,7 +3770,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       return ta > tb ? 1 : ta < tb ? -1 : 0;
     });
 
-    console.log('[chapas_estoque] OK:', rows.length, 'registros');
+    console.log('[chapas_estoque] OK:', rows.length, 'registros', '| table:', usedTable);
     if (rows.length > 0) cacheSet(cacheKey, rows);
     return res.json(rows);
   } catch (err) {
