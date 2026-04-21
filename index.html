@@ -2182,16 +2182,10 @@ async function ofmaqDarBaixa(id){
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
     return;
   }
-  const patch = {
-    status: (r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'),
-    maquina_atual_index: Number(o.maquina_atual_index||0)+1,
-    data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
-  };
-  if(baixaBody.qtd_real!==undefined) patch.qtd = Number(baixaBody.qtd_real)||0;
-  _atualizarOFLocal(o.id, patch);
+  _aplicarResultadoBaixaOF(o.id, o, baixaBody, r);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
-  _rerenderOFViews();
+  _rerenderOFViewsBaixa();
 }
 
 async function darBaixaOFId(id, numero, maquinaAtual){
@@ -2215,15 +2209,9 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   }
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
   if(r && r.ok){
-    const patch = {
-      status: (r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'),
-      maquina_atual_index: Number(it?.maquina_atual_index||0)+1,
-      data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
-    };
-    if(baixaBody.qtd_real!==undefined) patch.qtd = Number(baixaBody.qtd_real)||0;
-    _atualizarOFLocal(id, patch);
+    _aplicarResultadoBaixaOF(id, it, baixaBody, r);
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
-    _rerenderOFViews();
+    _rerenderOFViewsBaixa();
   } else {
     toast('Erro: '+(r && r.error ? r.error : 'falha'), 'var(--red)');
   }
@@ -2270,20 +2258,19 @@ async function concluirProcessoOf(ofId){
   const qtdPadrao = Number(it?.qtd || 0) || 0;
   const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao });
   if(!resp) return;
-  const payload = {
-    status: 'Pedido Pronto',
-    maquina_atual_index: 999,
-    data_conclusao: new Date().toISOString(),
-    qtd: Number(resp.qtd_real)||0,
-  };
-  const r = await api('PATCH','/ofs/'+encodeURIComponent(id), payload);
-  if(r && r.ok){
-    _atualizarOFLocal(id, { status:'Pedido Pronto', maquina_atual_index: 999, data_conclusao: payload.data_conclusao });
-    toast('OF concluída!','var(--green)');
-    _rerenderOFViews();
-  } else {
+  const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
+  const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
+  showSaveIndicator('Salvando conclusão...','var(--yellow)');
+  const r = await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa', baixaBody);
+  if(!r || !r.ok){
+    showSaveIndicator('✖ erro','var(--red)');
     alert('Erro: ' + (r && r.error ? r.error : 'falha'));
+    return;
   }
+  _aplicarResultadoBaixaOF(id, it, baixaBody, r);
+  showSaveIndicator('✓ concluída','var(--green)');
+  toast('OF concluída!','var(--green)');
+  _rerenderOFViewsBaixa();
 }
 
 function selecionarOF(num){ofSel=ofSel===num?null:num;renderPCP();}
@@ -2340,48 +2327,27 @@ function nextStatus(num){const s=['Em aberto','Em produção','Concluído'];cons
 async function darBaixaOF(o){
   if(!o) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
-  let fluxo = [];
-  try{ fluxo = parseFluxo((o&&o.fluxo_maquinas)||[]); }catch(e){ fluxo = []; }
-  if(!Array.isArray(fluxo) || !fluxo.length){
-    try{ fluxo = Array.isArray(o?.maq) ? o.maq : parseFluxo(o?.maq||[]); }catch(e){ fluxo = []; }
-  }
-  const idxAtual = Number(o?.maquina_atual_index||0);
-  const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : false;
   if(!o.id){
-    o.status='Concluído';
+    o.status='Pedido Pronto';
     o.data_conclusao=new Date().toISOString();
     try{ api('POST','/historico_acoes',{tipo_acao:'baixa_of',descricao:`Baixa OF ${o.of||o.numero||''}`,usuario}); }catch(e){}
     toast('OF concluída (sem id do banco)','var(--yellow)');
     return;
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
-  const baixaBody = { usuario };
-  if(vaiConcluir){
-    const qtdPadrao = Number(o?.qtd || 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
-    if(!resp){ showSaveIndicator('',''); return; }
-    baixaBody.qtd_real = resp.qtd_real;
-  }
-  const nowIso=new Date().toISOString();
+  const qtdPadrao = Number(o?.qtd || 0) || 0;
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
+  if(!resp){ showSaveIndicator('',''); return; }
+  const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
   let r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa', baixaBody);
-  if(!r || !r.ok){
-    const msg=(r && (r.error||''))?String(r.error):'';
-    if(msg.includes('column')||msg.includes('Could not find')){
-      r=await api('PUT','/ofs/'+encodeURIComponent(o.id),{status:'Concluído'});
-    }
-  }
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
     return;
   }
-  o.status='Concluído';
-  o.data_conclusao=nowIso;
-  if(baixaBody.qtd_real!==undefined) o.qtd = Number(baixaBody.qtd_real)||0;
-  try{ await api('POST','/relatorios/lancar_of',{of_id:o.id}); }catch(e){}
-  try{ await api('POST','/historico_acoes',{tipo_acao:'baixa_of',descricao:`Baixa OF ${o.of||o.numero||''}`,usuario}); }catch(e){}
+  _aplicarResultadoBaixaOF(o.id, o, baixaBody, r);
   showSaveIndicator('✓ baixa salva','var(--green)');
-  toast(`✅ ${o.of||o.numero||''} concluída`,'var(--green)');
+  toast(`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`,'var(--green)');
   try{ await carregarOFs(); }catch(e){}
   try{ renderPCP(); }catch(e){}
 }
@@ -2664,8 +2630,10 @@ async function abrirModalOF(id){
           chapa_id: it.chapa_id || '',
           chapa_nome: it.chapa_nome || '',
           maquina: it.maquina || '',
+          maquinas_fluxo: Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : []),
+          maquinas_fluxo_ids: ofFluxoIdsFromNames(Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : [])),
         }))
-      : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:''}];
+      : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
     renderOfItens();
     try{ ofCliChange(); }catch(e){}
   } else {
@@ -2990,7 +2958,7 @@ function rmImg(i){ofImgsTemp.splice(i,1);renderImgsTemp();}
 // ===================== OF ITENS =====================
 let ofItensTemp = [];
 function ofAddItem(item){
-  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:''};
+  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]};
   ofItensTemp.push(item);
   renderOfItens();
 }
@@ -3024,6 +2992,45 @@ function ofItemChange(idx, campo, val){
   const totalEl=document.getElementById('of-item-total-'+idx);
   if(totalEl) totalEl.textContent = fmtR((ofItensTemp[idx].qtd||0)*(ofItensTemp[idx].vunit||0));
 }
+function _ofItemFluxoEnsure(idx){
+  const it = ofItensTemp[idx];
+  if(!it) return;
+  if(!Array.isArray(it.maquinas_fluxo_ids)) it.maquinas_fluxo_ids = [];
+  if(!Array.isArray(it.maquinas_fluxo)) it.maquinas_fluxo = parseFluxo(it.maquinas_fluxo);
+  if(it.maquinas_fluxo_ids.length === 0 && Array.isArray(it.maquinas_fluxo) && it.maquinas_fluxo.length){
+    it.maquinas_fluxo_ids = ofFluxoIdsFromNames(it.maquinas_fluxo);
+  }
+  it.maquinas_fluxo_ids = [...new Set((it.maquinas_fluxo_ids||[]).map(v=>String(v)).filter(Boolean))];
+  it.maquinas_fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids);
+}
+function ofItemFluxoToggle(itemIdx, maqId){
+  const idx = Number(itemIdx);
+  if(!Number.isFinite(idx) || idx<0) return;
+  _ofItemFluxoEnsure(idx);
+  const it = ofItensTemp[idx];
+  const k = String(maqId);
+  const i = (it.maquinas_fluxo_ids||[]).indexOf(k);
+  if(i>=0) it.maquinas_fluxo_ids.splice(i,1);
+  else it.maquinas_fluxo_ids.push(k);
+  it.maquinas_fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids);
+  renderOfItens();
+}
+function ofItemFluxoMove(itemIdx, maqId, dir){
+  const idx = Number(itemIdx);
+  if(!Number.isFinite(idx) || idx<0) return;
+  _ofItemFluxoEnsure(idx);
+  const it = ofItensTemp[idx];
+  const k = String(maqId);
+  const i = (it.maquinas_fluxo_ids||[]).indexOf(k);
+  if(i<0) return;
+  const j = i + Number(dir||0);
+  if(j<0 || j>=it.maquinas_fluxo_ids.length) return;
+  const tmp = it.maquinas_fluxo_ids[i];
+  it.maquinas_fluxo_ids[i] = it.maquinas_fluxo_ids[j];
+  it.maquinas_fluxo_ids[j] = tmp;
+  it.maquinas_fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids);
+  renderOfItens();
+}
 function recalcularTotaisOF(){
   recalcOfItens();
 }
@@ -3038,17 +3045,44 @@ function renderOfItens(){
   const tbody=document.getElementById('of-itens-body');
   if(!tbody)return;
   const chapas = Array.isArray(ESTOQUE) ? ESTOQUE : [];
-  const maquinas = Array.isArray(MAQUINAS) ? MAQUINAS : [];
+  const maqOrdenadas = _maqListaFluxoUI();
+  const domId=(id)=>String(id).replace(/[^a-zA-Z0-9_-]/g,'_');
+  const posIcon=_posIcon;
   const chapaOptions = (selId)=>`<option value="">Sem vínculo</option>${
     chapas.map(c=>`<option value="${escAttr(c.id||'')}" ${String(selId||'')===String(c.id||'')?'selected':''}>${escH(ofChapaLabelOption(c))}</option>`).join('')
   }`;
-  const maqOptions = (selId)=>`<option value="">Sem máquina específica</option>${
-    maquinas.map(m=>{
-      const id = String(m.id||'').trim();
-      const lbl = String(m.nome||m.col||m.id||'').trim() || id;
-      return `<option value="${escAttr(id)}" ${String(selId||'')===id?'selected':''}>${escH(lbl)}</option>`;
-    }).join('')
-  }`;
+  const itemMaqUI = (it, itemIdx) => {
+    _ofItemFluxoEnsure(itemIdx);
+    const ids = (it.maquinas_fluxo_ids||[]).map(v=>String(v));
+    const posOf = (id) => {
+      const i = ids.indexOf(String(id));
+      return i>=0 ? (i+1) : 0;
+    };
+    const seq = (ids||[]).map((id,idx)=>{
+      const row = maqOrdenadas.find(x=>String(x.id)===String(id));
+      const nome = row ? row.nome : String(id||'').trim();
+      return `${posIcon(idx+1)} ${nome}`;
+    }).join('  →  ');
+    const chips = maqOrdenadas.map(m=>{
+      const mid = String(m.id);
+      const pos = posOf(mid);
+      const selected = pos>0;
+      const prefix = selected ? `${posIcon(pos)} ` : '';
+      const border = selected ? 'var(--accent)' : 'var(--border)';
+      const upBtn = selected ? `<button class="btn-icon btn-sm" onclick="event.preventDefault();event.stopPropagation();ofItemFluxoMove(${itemIdx},'${escAttr(mid)}',-1)" title="Subir" style="margin-left:auto">▲</button>` : '';
+      const dnBtn = selected ? `<button class="btn-icon btn-sm" onclick="event.preventDefault();event.stopPropagation();ofItemFluxoMove(${itemIdx},'${escAttr(mid)}',1)" title="Descer">▼</button>` : '';
+      return `<label style="display:flex;align-items:center;gap:6px;cursor:pointer;background:var(--s2);border:1px solid ${border};border-radius:8px;padding:6px 10px;font-size:.66rem;font-family:var(--mono);user-select:none;">
+        <input type="checkbox" id="imc-${itemIdx}-${domId(mid)}" value="${escAttr(mid)}" ${selected?'checked':''} onchange="ofItemFluxoToggle(${itemIdx},'${escAttr(mid)}')" style="width:auto;padding:0;">
+        <span style="font-weight:${selected?900:700};color:${selected?'var(--text)':'var(--text2)'}">${escH(prefix)}${escH(m.nome)}</span>
+        ${upBtn}${dnBtn}
+      </label>`;
+    }).join('');
+    return `<div class="item-maquinas-fluxo" style="display:flex;flex-direction:column;gap:4px">
+      <label style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">Sequência de máquinas:</label>
+      <div class="item-maq-checkboxes" style="display:flex;flex-wrap:wrap;gap:6px">${chips}</div>
+      <div style="font-family:var(--mono);font-size:.66rem;color:var(--text2)">${escH(seq||'')}</div>
+    </div>`;
+  };
   tbody.innerHTML=ofItensTemp.map((it,i)=>`<tr class="of-item-row">
     <td class="tc" style="color:var(--text3);font-family:var(--mono);text-align:center;vertical-align:middle">${i+1}</td>
     <td style="vertical-align:middle"><input name="item-descricao" type="text" value="${it.desc||it.descricao||''}" placeholder="Descrição do produto/item..." oninput="ofItensTemp[${i}].desc=this.value;ofItensTemp[${i}].descricao=this.value;recalcOfItens()" style="min-width:180px"></td>
@@ -3063,7 +3097,7 @@ function renderOfItens(){
       <input name="item-qtd-chapas" type="number" min="0" step="1" value="${it.qtd_chapas||0}" oninput="ofItensTemp[${i}].qtd_chapas=Math.trunc(Number(this.value)||0)">
     </td>
     <td style="vertical-align:middle;min-width:200px">
-      <select class="of-item-maquina" data-item-idx="${i}" onchange="ofItensTemp[${i}].maquina=this.value||''">${maqOptions(it.maquina||'')}</select>
+      ${itemMaqUI(it,i)}
     </td>
     <td class="tc" style="vertical-align:middle;padding:4px 6px;min-width:68px">
       ${it.img
@@ -3145,6 +3179,16 @@ function getOfItensFromModal(){
       chapa_nome: it.chapa_nome || '',
       qtd_chapas: Math.trunc(Number(it.qtd_chapas)||0),
       maquina: it.maquina || '',
+      maquinas_fluxo: (() => {
+        const ids = Array.isArray(it.maquinas_fluxo_ids) ? it.maquinas_fluxo_ids : [];
+        let names = ofFluxoNamesFromIds(ids);
+        if(!names.length && it.maquina){
+          const n = ofFluxoNamesFromIds([it.maquina])[0];
+          if(n) names = [n];
+        }
+        if(!names.length && Array.isArray(it.maquinas_fluxo)) names = parseFluxo(it.maquinas_fluxo);
+        return names;
+      })(),
     };
   });
 }
@@ -5035,38 +5079,62 @@ function renderHistoricoMovimentosChapas(lista){
   const el=document.getElementById('est-hist');
   if(!el) return;
   const rows = (Array.isArray(lista)?lista:[]).slice(0,160);
-  el.innerHTML = rows.length ? rows.map(h=>{
-    const tipo = String(h.tipo||'').toLowerCase();
-    const cor = tipo.includes('saida') ? 'var(--red)' : tipo.includes('entrada') ? 'var(--green)' : tipo.includes('ajuste') ? 'var(--yellow)' : 'var(--text2)';
-    const delta = Number(h.delta||0)||0;
-    const sinal = delta>0?'+':delta<0?'-':'±';
-    const deltaAbs = Math.abs(delta);
-    const rev = !!h.reverted;
-    const ch = (Array.isArray(ESTOQUE)?ESTOQUE:[]).find(c=>c.id===h.chapa_id);
-    const lblCh = ch ? `${ch.nome||''} · ${ch.nomenclatura||''} · ${ch.tamanho||''}` : (h.chapa_id||'—');
-    const nf = (h.nf||'').trim();
-    const obs = (h.obs||'').trim();
-    const ofNum = String(h.of_numero || '').trim();
-    const meta = [ofNum?('OF '+ofNum):'', nf?('NF '+nf):'', obs].filter(Boolean).join(' · ');
-    const when = fmtDataBR(String(h.created_at||'')) || '';
-    const user = h.usuario || '';
-    const canReal = tipo.includes('saida') && !!ofNum;
-    const real = h.qtd_real_utilizada != null ? String(h.qtd_real_utilizada) : '';
-    const realCell = canReal
-      ? `<span style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
-          <input type="number" id="real-${escAttr(h.id)}" value="${escAttr(real)}" style="width:70px;padding:4px;background:var(--s2);color:var(--text1);border:1px solid #444;border-radius:4px">
-          <button onclick="confirmarUsoReal('${escAttr(h.id)}')" style="padding:4px 8px;background:#2a7a2a;color:white;border:none;border-radius:4px;cursor:pointer">✓</button>
-        </span>`
-      : `<span></span>`;
-    return `<div class="hist-row" style="display:grid;grid-template-columns:86px 86px 1fr 140px auto auto;gap:8px;align-items:center;opacity:${rev?0.6:1}">
-      <span style="font-weight:900;color:${cor};font-family:var(--mono)">${escH(String(tipo||'').toUpperCase())}</span>
-      <span style="color:${cor};font-weight:900;font-family:var(--mono)">${sinal}${deltaAbs.toLocaleString()}</span>
-      <span style="color:var(--text2)">${escH(lblCh)}${meta?`<span style="display:block;font-size:.68rem;color:var(--text3)">${escH(meta)}</span>`:''}${rev?`<span style="display:block;font-size:.68rem;color:var(--orange);font-weight:900">REVERTIDA</span>`:''}</span>
-      ${realCell}
-      <span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">${escH(when)} · ${escH(user)}</span>
-      ${rev?`<span></span>`:`<button class="btn-icon btn-sm" onclick="excluirMovimentoChapas('${escAttr(h.id)}')" title="Excluir e reverter" style="color:var(--red)">🗑</button>`}
-    </div>`;
-  }).join('') : `<div style="padding:14px;color:var(--text3);text-align:center">Sem histórico</div>`;
+  const parseDesc = (desc)=>{
+    const d = String(desc||'');
+    const mOf = d.match(/\bOF\s*#?\s*([0-9]+)/i);
+    const of = mOf ? String(mOf[1]||'').trim() : '';
+    const mTipo = d.match(/Estoque chapas:\s*([A-ZÇ]+)/i);
+    const tipo = mTipo ? String(mTipo[1]||'').trim().toLowerCase() : '';
+    let qtd = null;
+    const mDelta = d.match(/([+-]\s*\d+)/);
+    if(mDelta) qtd = Math.abs(parseInt(String(mDelta[1]).replace(/\s/g,''),10));
+    const mDePara = d.match(/de\s+(\d+)\s+para\s+(\d+)/i);
+    if(qtd==null && mDePara) qtd = Math.abs(Number(mDePara[2]) - Number(mDePara[1]));
+    const parts = d.split('·').map(x=>String(x||'').trim()).filter(Boolean);
+    let chapa = '';
+    if(parts.length >= 5) chapa = parts.slice(1,5).join(' · ');
+    else if(parts.length >= 2) chapa = parts.slice(1).join(' · ');
+    return { tipo, qtd, chapa, of };
+  };
+  const thS='padding:7px 8px;border:1px solid var(--border);font-size:.65rem;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.04em;background:var(--bg3);position:sticky;top:0;z-index:1';
+  const tdS='padding:7px 8px;border:1px solid var(--border);font-size:.78rem;vertical-align:middle;background:var(--surface)';
+  const trS=(i)=>i%2===0?'background:var(--surface)':'background:var(--s2)';
+  el.innerHTML = rows.length ? `<div style="overflow:auto;max-height:420px;border:1px solid var(--border);border-radius:8px">
+    <table style="width:100%;border-collapse:collapse;min-width:840px">
+      <thead><tr>
+        <th style="${thS};min-width:110px">Data</th>
+        <th style="${thS};min-width:90px">Tipo</th>
+        <th style="${thS};min-width:360px">Chapa</th>
+        <th style="${thS};min-width:110px;text-align:right">Quantidade</th>
+        <th style="${thS};min-width:110px">OF vinculada</th>
+        <th style="${thS};min-width:140px">Usuário</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((h,i)=>{
+          const parsed = parseDesc(h.descricao || '');
+          const tipoRaw = String(h.tipo||parsed.tipo||h.tipo_acao||'').trim().toLowerCase();
+          const cor = tipoRaw.includes('saida') ? 'var(--red)' : tipoRaw.includes('entrada') ? 'var(--green)' : tipoRaw.includes('ajuste') ? 'var(--yellow)' : 'var(--text2)';
+          const deltaAbs = (h.delta!=null && Number.isFinite(Number(h.delta))) ? Math.abs(Number(h.delta)) : (parsed.qtd!=null ? Number(parsed.qtd) : 0);
+          const when = fmtDataBR(String(h.created_at||h.data_hora||'')) || '';
+          const user = String(h.usuario||'').trim();
+          const ofNum = String(h.of_numero || parsed.of || '').trim();
+          const ch = (h.chapa_id && Array.isArray(ESTOQUE)) ? (ESTOQUE||[]).find(c=>String(c.id||'')===String(h.chapa_id)) : null;
+          const lblCh = ch
+            ? `${String(ch.fornecedor||ch.forn||'').trim()} · ${String(ch.nomenclatura||ch.nom||'').trim()} · ${String(ch.tamanho||ch.tam||'').trim()}`
+            : (parsed.chapa || (h.chapa_id||'—'));
+          const delBtn = (!h.reverted && h.id) ? `<button class="btn-icon btn-sm" onclick="excluirMovimentoChapas('${escAttr(h.id)}')" title="Excluir e reverter" style="color:var(--red);margin-left:8px">🗑</button>` : '';
+          return `<tr style="${trS(i)}">
+            <td style="${tdS};font-family:var(--mono);color:var(--text2)">${escH(when||'')}</td>
+            <td style="${tdS};font-family:var(--mono);font-weight:900;color:${cor}">${escH(String(tipoRaw||'').toUpperCase())}</td>
+            <td style="${tdS};color:var(--text2)">${escH(lblCh||'—')}</td>
+            <td style="${tdS};text-align:right;font-family:var(--mono);font-weight:900;color:${cor}">${fmtN(deltaAbs||0)}</td>
+            <td style="${tdS};font-family:var(--mono);color:var(--accent);font-weight:900">${escH(ofNum||'—')}</td>
+            <td style="${tdS};font-family:var(--mono);color:var(--text2)">${escH(user||'—')}${delBtn}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>` : `<div style="padding:14px;color:var(--text3);text-align:center">Sem histórico</div>`;
 }
 
 function renderHistoricoEstoque(lista){
@@ -10138,6 +10206,56 @@ function _atualizarOFLocal(id, patch){
   window._ofsCarregadasEm = Date.now();
   _ultimaCargaOFs = window._ofsCarregadasEm;
   return updated;
+}
+function _removerOFAtivaLocal(id){
+  const sid = String(id||'').trim();
+  if(!sid) return;
+  const rm = (arr)=>{
+    if(!Array.isArray(arr)) return;
+    const i = arr.findIndex(x=>String(x && x.id || '').trim()===sid);
+    if(i>=0) arr.splice(i,1);
+  };
+  try{ rm(OFs); }catch(e){}
+  try{ rm(window.OFS); }catch(e){}
+}
+function _upsertOFHistLocal(ofRow){
+  const o = normalizeOF(ofRow);
+  const sid = String(o?.id||'').trim();
+  if(!sid) return null;
+  const up = (arr)=>{
+    if(!Array.isArray(arr)) return;
+    const i = arr.findIndex(x=>String(x && x.id || '').trim()===sid);
+    if(i>=0) arr[i] = o;
+    else arr.unshift(o);
+  };
+  try{ if(!Array.isArray(OFS_HIST)) OFS_HIST=[]; up(OFS_HIST); }catch(e){}
+  try{ if(!Array.isArray(window.OFS_HIST)) window.OFS_HIST=[]; up(window.OFS_HIST); }catch(e){}
+  return o;
+}
+function _aplicarResultadoBaixaOF(id, before, baixaBody, r){
+  const sid = String(id||'').trim();
+  if(!sid) return null;
+  const row = (r && r.data) ? normalizeOF(r.data) : null;
+  const status = (row && row.status) ? row.status : ((r && r.status) ? r.status : (r && r.concluida===true ? 'Pedido Pronto' : 'Em Produção'));
+  const patch = row ? row : {
+    status,
+    maquina_atual_index: before ? (Number(before.maquina_atual_index||0)+1) : undefined,
+    data_conclusao: (r && r.concluida===true) ? new Date().toISOString() : undefined,
+  };
+  if(baixaBody && baixaBody.qtd_real!=null) patch.qtd = Number(baixaBody.qtd_real)||0;
+  const updated = _atualizarOFLocal(sid, patch) || normalizeOF({ ...(before||{ id:sid }), ...(row||{}), ...(patch||{}) });
+  const st = String(updated?.status || status || '').toLowerCase().trim();
+  const pronto = (r && r.concluida===true) || st === 'pedido pronto';
+  _upsertOFHistLocal(updated);
+  if(pronto) _removerOFAtivaLocal(sid);
+  return updated;
+}
+function _rerenderOFViewsBaixa(){
+  try{ updateBadges(); }catch(e){}
+  try{ renderOFsPorMaquina(); }catch(e){}
+  try{ renderLancamento(); }catch(e){}
+  if(window._PAGE_ATUAL === 'pcp'){ try{ renderPCP(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'comissoes'){ try{ calcularComissoes(); }catch(e){} }
 }
 function _rerenderOFViews(){
   try{ updateBadges(); }catch(e){}
@@ -16766,7 +16884,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="width:110px">TOTAL (R$)</th>
               <th style="min-width:220px">CHAPA VINCULADA</th>
               <th style="width:110px">QTD CHAPAS</th>
-              <th style="min-width:200px">MÁQUINA</th>
+              <th style="min-width:320px">SEQUÊNCIA DE MÁQUINAS</th>
               <th style="width:60px" title="Imagem do item">📷</th>
               <th style="width:28px">✕</th>
             </tr>

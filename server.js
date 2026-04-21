@@ -1164,6 +1164,8 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
       const ofNumero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? null;
       const cliRef = body?.cliId ?? body?.cli_id ?? body?.cliente_id ?? ofRow?.cliId ?? ofRow?.cli_id ?? ofRow?.cliente_id ?? '';
       const empId = body?.emp_id ?? body?.empId ?? ofRow?.emp_id ?? ofRow?.empId ?? 'E1';
+      const desc = `Estoque chapas: SAIDA -${qtdChapas} · ${canonChapa.nome || ''} · ${canonChapa.fornecedor || ''} · ${canonChapa.nomenclatura || ''} · ${canonChapa.tamanho || ''}${ofNumero ? (' · OF #' + String(ofNumero)) : ''}`.trim();
+      await _chapasLogAcao(req, 'estoque_saida', desc);
       const mov = {
         chapa_id: chapaId,
         tipo: 'saida',
@@ -1482,12 +1484,14 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
     }
 
+    const concluirTudo = !!(req.body?.concluir_tudo || req.body?.concluirTudo);
     const idx0 = Number(of.maquina_atual_index != null ? of.maquina_atual_index : 0);
     const idx = Number.isFinite(idx0) && idx0 >= 0 ? idx0 : 0;
-    const atual = fluxo[idx] != null ? String(fluxo[idx]) : '';
-    const nextIdx = idx + 1;
-    const proxima = nextIdx < fluxo.length ? String(fluxo[nextIdx]) : '';
-    const concluida = fluxo.length === 0 || nextIdx >= fluxo.length;
+    const atual0 = fluxo[idx] != null ? String(fluxo[idx]) : '';
+    const nextIdx = concluirTudo ? Math.max(fluxo.length, idx + 1) : (idx + 1);
+    const proxima = (!concluirTudo && nextIdx < fluxo.length) ? String(fluxo[nextIdx]) : '';
+    const concluida = concluirTudo ? true : (fluxo.length === 0 || nextIdx >= fluxo.length);
+    const atual = concluirTudo ? (fluxo.length ? String(fluxo[fluxo.length - 1]) : atual0) : atual0;
 
     const nowIso = new Date().toISOString();
     let payload = { maquina_atual_index: nextIdx };
@@ -1499,7 +1503,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       payload.qtd = qtdReal;
 
       const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
-      if (valorOriginal > 0 && qtdOriginal > 0) {
+      if (valorOriginal > 0 && qtdOriginal > 0 && qtdReal !== qtdOriginal) {
         const novoValor = (qtdReal / qtdOriginal) * valorOriginal;
         payload.valor_total = Math.round(novoValor * 100) / 100;
         payload.valor_venda = payload.valor_total;
@@ -1596,7 +1600,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }]);
     } catch (e) {}
 
-    res.json({ ok: true, concluida, proxima: proxima || null, status: payload.status });
+    res.json({ ok: true, data: upd?.data || null, concluida, proxima: proxima || null, status: payload.status });
   } catch (e) { err(res, e); }
 });
 
@@ -3278,7 +3282,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · qtd=${data?.quantidade ?? ''}`);
+      await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''} · qtd=${data?.quantidade ?? ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
 
@@ -3289,7 +3293,7 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
     cacheClearPrefix('chapas_estoque:');
-    await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida (legado): ${data?.nom || ''} · ${data?.forn || ''} · qtd=${data?.qtd ?? ''}`);
+    await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''} · qtd=${data?.qtd ?? ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
 });
