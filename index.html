@@ -9613,7 +9613,7 @@ function aplicarPermissoes(permissoes, perfil) {
   document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');
 
   if(ehAdmin) {
-    document.querySelectorAll('[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
+    document.querySelectorAll('.nav-item,.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
     return;
   }
 
@@ -9997,7 +9997,7 @@ async function autoSaveLoad(){
 
   // Testa conectividade primeiro com um ping simples
   const pingOk = await api('GET', '/ofs');
-  if(!pingOk.ok){
+  if(!pingOk || !pingOk.ok){
     if(pingOk && (pingOk.status===401 || pingOk.status===403)){
       toast('Sessão expirada. Faça login novamente.','var(--yellow)');
       trocarUsuario();
@@ -10016,12 +10016,14 @@ async function autoSaveLoad(){
 
   _apiConectado = true;
   try {
-    const [ofs, clis, vends, orcs, est, aps, maq, ops, cmp, forn, nfs, inc] = await Promise.all([
+    const [ofs, clis, vends, orcs, est, aps, maq, ops0, cmp, forn, nfs, inc0] = await Promise.all([
       api('GET','/ofs'), api('GET','/clientes'), api('GET','/vendedores'),
       api('GET','/orcamentos'), api('GET','/estoque'), api('GET','/apontamentos'),
       api('GET','/maquinas'), api('GET','/operadores'), api('GET','/compras'),
       api('GET','/fornecedores'), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
+    const ops = (ops0 && ops0.ok && Array.isArray(ops0.data)) ? ops0 : { ok:true, data:[] };
+    const inc = (inc0 && inc0.ok && Array.isArray(inc0.data)) ? inc0 : { ok:true, data:[] };
     if(ofs.ok && ofs.data)    OFs          = ofs.data.map(normalizeOF);
     if(clis.ok && clis.data && clis.data.length)  CLIENTES     = clis.data.map(normalizeCli);
     if(vends.ok && vends.data)VENDEDORES   = vends.data.map(normalizeVend);
@@ -10499,9 +10501,18 @@ async function carregarClientes(forcar=false){
 }
 async function carregarOperadores(){
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const r = await api('GET','/operadores'+empParam);
-  if(r && r.ok && r.data) OPERADORES = r.data.map(normalizeOp);
-  return r;
+  try{
+    const r = await api('GET','/operadores'+empParam);
+    if(!r || r.ok === false || r.error){
+      OPERADORES = [];
+      return { ok:true, data:[] };
+    }
+    if(r.data) OPERADORES = r.data.map(normalizeOp);
+    return r;
+  }catch(e){
+    OPERADORES = [];
+    return { ok:true, data:[] };
+  }
 }
 async function carregarMaquinas(forcar=false){
   const now = Date.now();
@@ -10953,11 +10964,13 @@ async function syncFromServerSilent(){
     const ping = await api('GET', '/ofs'+empParam);
     if(!ping.ok){ _apiConectado = false; return; }
     _apiConectado = true;
-    const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops, nfs, inc] = await Promise.all([
+    const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops0, nfs, inc0] = await Promise.all([
       api('GET','/ofs'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/clientes'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
       api('GET','/compras'), api('GET','/orcamentos'+empParam), api('GET','/fornecedores'+empParam), api('GET','/vendedores'+empParam),
       api('GET','/operadores'+empParam), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
+    const ops = (ops0 && ops0.ok && Array.isArray(ops0.data)) ? ops0 : { ok:true, data:[] };
+    const inc = (inc0 && inc0.ok && Array.isArray(inc0.data)) ? inc0 : { ok:true, data:[] };
     const hashOFs = (arr)=> (arr||[]).map(o=>String(o.id||'')+'|'+String(o.status||'')+'|'+String(o.maquina_atual_index||0)+'|'+String(o.ent||o.data_entrega||'')).join(',');
     let mudouAlgo = false;
     let mudouOFs = false;

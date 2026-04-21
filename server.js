@@ -278,6 +278,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !senha)
       return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
+    console.log('[LOGIN DEBUG] email tentado:', String(email).trim().toLowerCase());
+    console.log('[LOGIN DEBUG] senha recebida length:', (senha == null ? 0 : String(senha).length));
+
     const { data: rows, error: e1 } = await supabase
       .from('usuarios')
       .select('*')
@@ -303,13 +306,26 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const usuario = rows[0];
-    console.log('Usuario encontrado:', usuario.email, '| hash:', usuario.senha_hash?.substring(0, 10));
+    const hashCandidates = [usuario?.senha_hash, usuario?.senhaHash, usuario?.hash, usuario?.senha]
+      .map((h) => (h == null ? '' : String(h)))
+      .filter((h) => String(h || '').trim() !== '');
+    const hash = (hashCandidates.find((h) => String(h).startsWith('$2')) || hashCandidates[0] || '').trim();
+    console.log('[LOGIN DEBUG] hash do banco:', hash ? hash.substring(0, 20) : '');
 
-    const hash = String(usuario.senha_hash || '');
     let senhaValida = false;
 
+    const senhaStr = senha == null ? '' : String(senha);
+    const senhaTrim = senhaStr.trim();
+    const senhaNoNbsp = senhaStr.replace(/\u00A0/g, ' ').trim();
+    const senhaNorm = (senhaStr && senhaStr.normalize) ? senhaStr.normalize('NFKC') : senhaStr;
+    const senhaNormTrim = (senhaNorm && senhaNorm.normalize) ? senhaNorm.trim() : (senhaNorm || '').trim();
+
     try {
-      senhaValida = await bcrypt.compare(String(senha), hash);
+      senhaValida = await bcrypt.compare(senhaStr, hash);
+      if (!senhaValida && senhaTrim && senhaTrim !== senhaStr) senhaValida = await bcrypt.compare(senhaTrim, hash);
+      if (!senhaValida && senhaNoNbsp && senhaNoNbsp !== senhaStr) senhaValida = await bcrypt.compare(senhaNoNbsp, hash);
+      if (!senhaValida && senhaNorm && senhaNorm !== senhaStr) senhaValida = await bcrypt.compare(senhaNorm, hash);
+      if (!senhaValida && senhaNormTrim && senhaNormTrim !== senhaTrim) senhaValida = await bcrypt.compare(senhaNormTrim, hash);
       console.log('bcrypt resultado:', senhaValida);
     } catch (e) {
       console.error('Erro bcrypt:', String(e.message || e));
@@ -1735,7 +1751,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
-    const selectSlim = 'id,nome,razao_social,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
+    const selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     for (const col of cols) {
       let q = supabase.from('clientes').select(selectSlim).order('nome');
       if (col) q = q.eq(col, empId);
@@ -2111,6 +2127,11 @@ app.get('/api/operadores', authMiddleware, async (req, res) => {
       }
       lastErr = error;
       const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        cacheSet(cacheKey, []);
+        return ok(res, []);
+      }
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
       throw error;
     }
@@ -2389,7 +2410,14 @@ app.get('/api/inconformidades', async (req, res) => {
   try {
     const { data, error } = await supabase.from('inconformidades')
       .select('*').order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, []);
+      }
+      throw error;
+    }
     ok(res, data);
   } catch (e) { err(res, e); }
 });
