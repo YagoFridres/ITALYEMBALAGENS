@@ -1270,11 +1270,96 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
-    console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
-    const updRes = await ofsUpdateWithRetry(req.params.id, ofIn(body));
+    const id = String(req.params.id || '').trim();
+    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body)));
+
+    const { data: ofAtual } = await supabase
+      .from('ofs')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    const updRes = await ofsUpdateWithRetry(id, ofIn(body));
     if (updRes.error) throw updRes.error;
     const updated = updRes.data;
     await _maybeRegistrarComissaoOF(req, body, updated);
+
+    try {
+      const hasQtd = Object.prototype.hasOwnProperty.call(body, 'qtd') || Object.prototype.hasOwnProperty.call(body, 'quantidade');
+      const qtdNovaRaw = hasQtd ? (body.qtd ?? body.quantidade) : undefined;
+      const qtdNova = Number(qtdNovaRaw ?? NaN);
+      const qtdAntiga = Number(ofAtual?.qtd ?? NaN);
+      const statusAtual = String(ofAtual?.status || '').trim().toLowerCase();
+      const foiConcluida = statusAtual === 'pedido pronto' || statusAtual === 'concluida' || statusAtual === 'concluído';
+
+      if (foiConcluida && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova < qtdAntiga) {
+        const qtdPerdida = Math.trunc(qtdAntiga - qtdNova);
+        const valorOriginal = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
+        const valorUnit = qtdAntiga > 0 ? (valorOriginal / qtdAntiga) : 0;
+        const cliId = String(
+          ofAtual?.cli_id ?? ofAtual?.cliId ?? ofAtual?.cliente_id ?? ofAtual?.clienteId
+          ?? updated?.cli_id ?? updated?.cliId ?? updated?.cliente_id ?? updated?.clienteId
+          ?? body?.cli_id ?? body?.cliId ?? body?.cliente_id ?? body?.clienteId
+          ?? ''
+        ).trim();
+
+        let cliNome = '';
+        if (cliId) {
+          try {
+            const { data: cliData } = await supabase.from('clientes').select('nome').eq('id', cliId).maybeSingle();
+            cliNome = String(cliData?.nome || '').trim();
+          } catch (_) {}
+        }
+
+        const hoje = new Date().toISOString().slice(0, 10);
+        const mes = new Date().toISOString().slice(0, 7);
+        const payload = {
+          of_id: id,
+          of_numero: String(updated?.of ?? updated?.numero ?? body?.of ?? body?.numero ?? ''),
+          produto: String(updated?.prodDesc ?? updated?.descricao ?? body?.prodDesc ?? body?.descricao ?? ''),
+          cliente: String(cliNome || cliId || ''),
+          valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
+          qtd_perdida: qtdPerdida,
+          valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
+          data: hoje,
+          mes_referencia: mes,
+          emp_id: String(updated?.emp_id ?? updated?.empId ?? body?.emp_id ?? body?.empId ?? ''),
+          usuario: req.usuario?.nome || 'sistema',
+          obs: 'Ajuste pós-conclusão de OF',
+        };
+
+        try {
+          const { error } = await supabase.from('caixas_perdidas').insert([payload]);
+          if (error) {
+            const msg = String(error.message || error).toLowerCase();
+            if (!(msg.includes('does not exist') || msg.includes('not exist') || msg.includes('not find') || msg.includes('not found'))) {
+              throw error;
+            }
+          }
+        } catch (_) {}
+
+        try {
+          await supabase.from('historico_acoes').insert([{
+            tipo_acao: 'caixas_perdidas_ajuste',
+            descricao: `OF #${String(updated?.of ?? updated?.numero ?? '')}: ajuste de qtd ${qtdAntiga}→${qtdNova}, ${qtdPerdida} cx perdidas`,
+            usuario: req.usuario?.nome || 'sistema',
+            data_hora: new Date().toISOString(),
+          }]);
+        } catch (_) {}
+      }
+
+      const valorOriginal = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
+      const semValorNoBody = !Object.prototype.hasOwnProperty.call(body, 'valor_total') && !Object.prototype.hasOwnProperty.call(body, 'valor_venda');
+      if (semValorNoBody && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova !== qtdAntiga && valorOriginal > 0) {
+        const novoValor = Math.round(((qtdNova / qtdAntiga) * valorOriginal) * 100) / 100;
+        try {
+          await supabase.from('ofs').update({ valor_total: novoValor, valor_venda: novoValor }).eq('id', id);
+          if (updated) { updated.valor_total = novoValor; updated.valor_venda = novoValor; }
+        } catch (_) {}
+      }
+    } catch (errCaixas) {
+      console.error('[OF PUT] erro ao registrar caixas perdidas:', errCaixas?.message);
+    }
     return ok(res, updated);
   } catch (e) { bad(res, e.message); }
 });
