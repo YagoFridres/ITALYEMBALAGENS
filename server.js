@@ -1494,7 +1494,16 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
     if (req.body && req.body.qtd_real != null && Number(req.body.qtd_real) > 0) {
-      payload.qtd = Number(req.body.qtd_real);
+      const qtdOriginal = Number(of.qtd || req.body.qtd_real);
+      const qtdReal = Number(req.body.qtd_real);
+      payload.qtd = qtdReal;
+
+      const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
+      if (valorOriginal > 0 && qtdOriginal > 0) {
+        const novoValor = (qtdReal / qtdOriginal) * valorOriginal;
+        payload.valor_total = Math.round(novoValor * 100) / 100;
+        payload.valor_venda = payload.valor_total;
+      }
     }
     console.log('[BAIXA FINAL] payload update:', payload);
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
@@ -1529,6 +1538,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
 
     if (concluida) {
       try {
+        const ofRel = (upd && upd.data) ? upd.data : of;
         const mesRef = new Date().toISOString().slice(0, 7);
         await supabase.from('relatorio_producao').insert([{
           mes_referencia: mesRef,
@@ -1536,8 +1546,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           of_numero: numero || '',
           cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
           produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
-          quantidade: of.qtd ?? of.quantidade ?? 0,
-          valor: of.valor_total ?? of.valor_venda ?? 0,
+          quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
+          valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
           maquina: atual || '',
           status: 'Pedido Pronto',
         }]);
@@ -3414,23 +3424,51 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
-    const preferred = await _chapasPreferV2Table();
-    if (preferred !== 'chapas_estoque_v2') return ok(res, []);
     const limit = Math.max(1, Math.min(500, Math.trunc(_chapasToNum(req.query.limit, 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
     const empId = String(req.query.empId || '').trim();
 
-    let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
-    if (chapaId) q = q.eq('chapa_id', chapaId);
-    if (empId) q = q.eq('emp_id', empId);
-
-    const { data, error } = await q;
-    if (error) {
-      const msg = String(error.message || error);
-      if (msg.includes('does not exist') || msg.includes('relation')) return ok(res, []);
-      return res.status(500).json({ ok: false, error: error.message });
+    let movs = null;
+    let movErr = null;
+    try {
+      let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
+      if (chapaId) q = q.eq('chapa_id', chapaId);
+      if (empId) q = q.eq('emp_id', empId);
+      const r = await q;
+      movs = r?.data || [];
+      movErr = r?.error || null;
+      if (!movErr && Array.isArray(movs) && movs.length > 0) return ok(res, movs);
+    } catch (e) {
+      movErr = e;
     }
-    return ok(res, data || []);
+
+    if (movErr || !Array.isArray(movs) || movs.length === 0) {
+      const tipos = ['estoque_entrada', 'estoque_saida', 'estoque_ajuste', 'estoque_manual', 'estoque_chapas_patch', 'baixa_of'];
+      const { data: hist, error: histErr } = await supabase
+        .from('historico_acoes')
+        .select('*')
+        .in('tipo_acao', tipos)
+        .order('data_hora', { ascending: false })
+        .limit(limit);
+
+      if (histErr) {
+        const msg = String(histErr.message || histErr);
+        if (msg.includes('does not exist') || msg.includes('relation')) return ok(res, []);
+        return res.status(500).json({ ok: false, error: histErr.message });
+      }
+      return ok(res, (hist || []).map(h => ({
+        id: h.id,
+        tipo: h.tipo_acao,
+        descricao: h.descricao,
+        usuario: h.usuario,
+        created_at: h.data_hora,
+        delta: null,
+        qtd_anterior: null,
+        qtd_nova: null
+      })));
+    }
+
+    return ok(res, movs || []);
   } catch (e) { err(res, e); }
 });
 
