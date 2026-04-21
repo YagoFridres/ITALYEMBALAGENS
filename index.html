@@ -747,6 +747,12 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
 
 <!-- ========== LOGIN SCREEN ========== -->
 <script>
+window.onerror = function(msg, src, line, col, err) {
+  try{ console.error('[ERRO GLOBAL]', msg, 'linha:', line, err); }catch(e){}
+};
+window.addEventListener('unhandledrejection', function(e) {
+  try{ console.error('[PROMISE REJEITADA]', e && e.reason ? e.reason : e); }catch(_){}
+});
 console.log('sistema carregado v2');
 
 let OFs = [];
@@ -9607,16 +9613,47 @@ function hasPerm(keyOrList){
 }
 
 function aplicarPermissoes(permissoes, perfil) {
-  const perms = Array.isArray(permissoes) ? permissoes : [];
-  const ehAdmin = String(perfil || '').trim().toLowerCase() === 'admin' || perms.includes(PERM_ADMIN) || perms.includes('tudo');
+  console.log('[PERM] CURRENT_USER:', (function(){ try{ return JSON.stringify(window.CURRENT_USER); }catch(e){ return String(window.CURRENT_USER); } })());
+  console.log('[PERM] perfil:', window.CURRENT_USER?.perfil);
+  console.log('[PERM] permissoes:', window.CURRENT_USER?.permissoes);
+
+  const u = window.CURRENT_USER || window._currentUser || (function(){
+    try{ return JSON.parse(localStorage.getItem('auth_user') || 'null'); }catch(e){ return null; }
+  })();
+  if (!u) {
+    console.warn('[PERM] CURRENT_USER nulo, não aplicando filtros');
+    document.querySelectorAll('.nav-item,.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => { el.style.display = ''; });
+    return;
+  }
+  try{ window.CURRENT_USER = u; }catch(e){}
+  try{ window._currentUser = u; }catch(e){}
+
+  let perms = Array.isArray(u.permissoes) ? u.permissoes : [];
+  if (!perms.length && typeof u.permissoes === 'string') {
+    try{ perms = JSON.parse(u.permissoes); }catch(e){ perms = []; }
+  }
+  const p = String(u.perfil || perfil || '').trim().toLowerCase();
+  const isAdmin = p === 'admin' || perms.includes('tudo') || perms.includes(PERM_ADMIN);
+
+  if (isAdmin) {
+    document.querySelectorAll('[data-perm],[data-permissao],[data-requires-perm]').forEach(el => {
+      el.style.display = '';
+      el.style.visibility = '';
+      el.hidden = false;
+      el.removeAttribute('hidden');
+    });
+    document.querySelectorAll('.menu-item,.nav-item,.sidebar-item,[class*="menu"],li[data-page],.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => {
+      el.style.display = '';
+      el.style.visibility = '';
+      el.hidden = false;
+      el.removeAttribute('hidden');
+    });
+    console.log('[PERM] Admin: tudo visível');
+    return;
+  }
 
   document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
   document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');
-
-  if(ehAdmin) {
-    document.querySelectorAll('.nav-item,.nav-group,.sidebar-section,[id^="menu-"],[id^="btn-"]').forEach(el => el.style.display = '');
-    return;
-  }
 
   if(typeof MODULOS_SISTEMA !== 'undefined') {
     MODULOS_SISTEMA.forEach(mod => {
@@ -9631,6 +9668,11 @@ function aplicarPermissoes(permissoes, perfil) {
       }
     });
   }
+
+  ['menu-pcp','menu-ofs-maquina','menu-pedidos','menu-orcamentos','menu-compras'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = '';
+  });
 
   if(perms.includes('lancar_pedidos')||perms.includes('lancar_pedido')||perms.includes('pcp')) {
     const btn = document.getElementById('btn-nova-of');
@@ -9785,6 +9827,8 @@ function iniciarSistema(user){
     AUTH_TOKEN = String(user.token||'');
     CURRENT_USER = user.user;
   }
+  try{ window.CURRENT_USER = CURRENT_USER; }catch(e){}
+  try{ window._currentUser = CURRENT_USER; }catch(e){}
   const ls=document.getElementById('login-screen');
   if(ls) ls.style.display='none';
   const uname=document.getElementById('topbar-user-name');
@@ -9792,6 +9836,7 @@ function iniciarSistema(user){
   const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
   if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
   if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
+  console.log('[MENU] CURRENT_USER ao renderizar:', window.CURRENT_USER?.perfil, window.CURRENT_USER?.permissoes);
   aplicarPermissoes(CURRENT_USER?CURRENT_USER.permissoes:[], CURRENT_USER?CURRENT_USER.perfil:'');
   try{ carregarRoteiroEntrega(); }catch(e){}
   try{ autoSaveLoad(); }catch(e){}
@@ -9818,6 +9863,8 @@ async function doLogin(){
   }
   AUTH_TOKEN = token;
   CURRENT_USER = user;
+  try{ window.CURRENT_USER = CURRENT_USER; }catch(e){}
+  try{ window._currentUser = CURRENT_USER; }catch(e){}
   if(!Array.isArray(CURRENT_USER.permissoes)){
     try{ CURRENT_USER.permissoes = typeof CURRENT_USER.permissoes==='string' ? JSON.parse(CURRENT_USER.permissoes) : []; }catch(e){ CURRENT_USER.permissoes = []; }
   }
