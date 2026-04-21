@@ -1660,7 +1660,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
       }]);
     } catch (e) {}
 
-    res.json({ ok: true, data: upd?.data || null, concluida, proxima: proxima || null, status: payload.status });
+    const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
+    res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
   } catch (e) { err(res, e); }
 });
 

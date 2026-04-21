@@ -2272,26 +2272,28 @@ async function registrarCaixasPerdidasAposBaixa(ofLocal, qtdPerdida, baixaResp){
     const qp = Math.trunc(Number(qtdPerdida||0));
     if(!(qp > 0)) return;
     const row = (baixaResp && baixaResp.data) ? baixaResp.data : baixaResp;
-    const ofId = String(ofLocal?.id || row?.id || '').trim();
-    const ofNumero = String(ofLocal?.of || ofLocal?.numero || row?.of || row?.numero || '').trim();
-    const produto = String(ofLocal?.prodDesc || ofLocal?.descricao || row?.prodDesc || row?.descricao || row?.produto || '').trim();
-    const cliObj = (typeof getCli === 'function') ? (getCli(ofLocal?.cliId)||null) : null;
-    const cliente = String(cliObj?.nome || ofLocal?.cliente || row?.cliente || '').trim();
-    const valorTotal = Number(row?.valor_total ?? row?.valor_venda ?? ofLocal?.val ?? ofLocal?.valor_total ?? ofLocal?.valor_venda ?? 0) || 0;
-    const qtdBase = Number(row?.qtd ?? row?.quantidade ?? baixaResp?.qtd_real ?? ofLocal?.qtd ?? 0) || 0;
-    const valorUnit = (qtdBase > 0) ? (valorTotal / qtdBase) : 0;
+    const of = Object.assign({}, ofLocal||{}, row||{});
+    const ofId = String(of?.id || '').trim();
+    const ofNumero = String(of?.of || of?.numero || '').trim();
+    const produto = String(of?.prodDesc || of?.descricao || '').trim();
+    const cliId = String(of?.cli_id || of?.cliente_id || of?.cliId || of?.cli_id || ofLocal?.cliId || '').trim();
+    const cliente = String(((CLIENTES||[]).find(c=>String(c && c.id || '').trim() === cliId)||{}).nome || of?.cli_id || of?.cliId || '').trim();
+    const qtdTotalOf = Number(of?.qtd || 1);
+    const valorTotalOf = Number(of?.valor_total || of?.valor_venda || 0);
+    const valorUnitario = qtdTotalOf > 0 ? (valorTotalOf / qtdTotalOf) : 0;
+    const valorPerdido = qp * valorUnitario;
     const hoje = new Date().toISOString().slice(0,10);
     const mesRef = new Date().toISOString().slice(0,7);
-    const empId = String(row?.emp_id || ofLocal?.empId || ofLocal?.emp_id || EMP_FILTRO || '').trim();
+    const empId = String(of?.emp_id || of?.empId || EMP_FILTRO || '').trim();
     const usuario = (typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : 'sistema';
     const payload = {
       of_id: ofId || null,
       of_numero: ofNumero,
       produto,
       cliente,
-      valor_unitario: Math.round(valorUnit * 10000) / 10000,
+      valor_unitario: Math.round(valorUnitario * 100) / 100,
       qtd_perdida: qp,
-      valor_perdido: Math.round((qp * valorUnit) * 100) / 100,
+      valor_perdido: Math.round(valorPerdido * 100) / 100,
       data: hoje,
       mes_referencia: mesRef,
       emp_id: empId,
@@ -3359,15 +3361,9 @@ async function salvarEdicaoOFId(id){
     const dadosAtualizados = r.data || r;
     const idx = OFs.findIndex(x=>x.id===id);
     if(idx>-1) OFs[idx] = normalizeOF({ ...OFs[idx], ...dadosAtualizados });
-    Object.assign(o, OFs[idx] || o);
-    if(Array.isArray(OFS_HIST)){
-      const hi = OFS_HIST.findIndex(x=>String(x.id||'')===String(id));
-      if(hi>=0){
-        OFS_HIST[hi] = normalizeOF({ ...OFS_HIST[hi], ...dadosAtualizados });
-      } else if(idx>-1){
-        OFS_HIST.unshift(normalizeOF(OFs[idx]));
-      }
-    }
+    const updatedLocal = _atualizarOFLocal(id, dadosAtualizados) || (idx>-1 ? OFs[idx] : normalizeOF({ ...(o||{}), ...dadosAtualizados }));
+    _upsertOFHistLocal(updatedLocal);
+    Object.assign(o, updatedLocal || OFs[idx] || o);
     fechar('modal-of');autoSaveTrigger();
     _rerenderOFViews();
     toast('✏ Alteração salva ✓','var(--green)');
@@ -5630,18 +5626,37 @@ async function confirmarModalMovLinha(){
     if(!resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp.statusText||'falha'),'var(--red)');return;}
     fecharModalMovLinha();
     const chapaAtualizada = (r && r.data) ? r.data : r;
-    const novaQtd = Number(chapaAtualizada?.quantidade ?? chapaAtualizada?.quantidade_atual ?? chapaAtualizada?.qtd ?? 0);
-    const chapaId = String(id||'').trim();
+    const novaQtdRaw = Number(chapaAtualizada?.quantidade ?? chapaAtualizada?.quantidade_atual ?? chapaAtualizada?.qtd ?? NaN);
+    const novaQtd = Number.isFinite(novaQtdRaw) ? novaQtdRaw : null;
+    const chapaIdRet = String(chapaAtualizada?.id || '').trim();
+    const chapaIdModal = String(id||'').trim();
+    const chapaId = chapaIdRet || chapaIdModal;
+    console.log('[MOV RESULT] quantidade retornada:', chapaAtualizada?.quantidade);
+    console.log('[MOV RESULT] chapa id:', chapaId);
+    console.log('[MOV RESULT] idx em ESTOQUE:', Array.isArray(ESTOQUE) ? ESTOQUE.findIndex(c=>String(c && c.id || '').trim()===chapaId) : -1);
+
+    const idsTry = [...new Set([chapaId, chapaIdModal, chapaIdRet].filter(Boolean))];
+    let atualizouAlgum = false;
     [ESTOQUE, window.ESTOQUE, window._estoqueBase, _estoqueBase].forEach(arr=>{
       if(!Array.isArray(arr)) return;
-      const idx = arr.findIndex(c => String(c && c.id || '').trim() === chapaId);
-      if(idx >= 0){
-        arr[idx] = Object.assign({}, arr[idx], chapaAtualizada, { quantidade: novaQtd, quantidade_atual: novaQtd, qtd: novaQtd });
+      for(const idTry of idsTry){
+        const idx = arr.findIndex(c => String(c && c.id || '').trim() === String(idTry||'').trim());
+        if(idx >= 0){
+          const base = Object.assign({}, arr[idx], chapaAtualizada);
+          arr[idx] = (novaQtd != null)
+            ? Object.assign(base, { quantidade: novaQtd, quantidade_atual: novaQtd, qtd: novaQtd })
+            : base;
+          atualizouAlgum = true;
+          break;
+        }
       }
     });
     try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
     window._estoqueCarregadoEm = null;
     _ultimaCargaChapas = 0;
+    if(!atualizouAlgum){
+      try{ await carregarChapas(true); }catch(e){}
+    }
     renderEstoque();
     try{ carregarHistoricoEstoque(); }catch(e){}
     toast('Movimentação registrada ✓','var(--green)');
