@@ -206,17 +206,33 @@ function authMiddleware(req, res, next) {
   }
 }
 
-function requireAdmin(req, res, next) {
-  const u = req.usuario || null;
-  let perms = u?.permissoes;
-  if (!Array.isArray(perms) && typeof perms === 'string') {
-    try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+async function requireAdmin(req, res, next) {
+  try {
+    const u = req.usuario || null;
+    const uid = String(u?.id || '').trim();
+    if (!uid) return res.status(403).json({ ok: false, error: 'Sem permissão' });
+
+    const { data: dbUser, error: dbErr } = await supabase
+      .from('usuarios')
+      .select('perfil,permissoes')
+      .eq('id', uid)
+      .single();
+
+    let perfil = String((dbUser && dbUser.perfil) ? dbUser.perfil : (u?.perfil || '')).trim().toLowerCase();
+    let perms = (dbUser && dbUser.permissoes != null) ? dbUser.permissoes : u?.permissoes;
+    if (!Array.isArray(perms) && typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+    }
+    perms = Array.isArray(perms) ? perms : [];
+
+    if (dbErr) console.error('[REQUIRE ADMIN] erro ao buscar usuario no banco:', dbErr);
+    console.log('[REQUIRE ADMIN]', perfil, perms);
+    if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) return next();
+    return res.status(403).json({ ok: false, error: 'Sem permissão' });
+  } catch (e) {
+    console.error('[REQUIRE ADMIN] erro:', e);
+    return res.status(403).json({ ok: false, error: 'Sem permissão' });
   }
-  perms = Array.isArray(perms) ? perms : [];
-  const perfil = String(u?.perfil || '').trim().toLowerCase();
-  console.log('[REQUIRE ADMIN]', perfil, perms);
-  if (perfil.includes('admin') || perms.includes('tudo')) return next();
-  return res.status(403).json({ ok: false, error: 'Sem permissão' });
 }
 
 app.use((req, res, next) => {
@@ -365,6 +381,7 @@ app.post('/api/auth/login', async (req, res) => {
       process.env.JWT_SECRET || 'italy_secret_2026',
       { expiresIn: '24h' }
     );
+    console.log('[TOKEN GERADO] perfil:', usuario.perfil, 'permissoes:', usuario.permissoes);
 
     await supabase.from('usuarios')
       .update({ ultimo_acesso: new Date().toISOString() })
@@ -405,14 +422,30 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/auth/refresh', authMiddleware, (req, res) => {
-  const u = req.usuario;
-  const token = jwt.sign(
-    { id: u.id, nome: u.nome, email: u.email, perfil: u.perfil, permissoes: u.permissoes },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
-  res.json({ token });
+app.post('/api/auth/refresh', authMiddleware, async (req, res) => {
+  try {
+    const u = req.usuario || null;
+    const uid = String(u?.id || '').trim();
+    if (!uid) return res.status(401).json({ ok: false, error: 'Não autorizado' });
+
+    const { data: dbUser, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,permissoes')
+      .eq('id', uid)
+      .single();
+    if (error || !dbUser) return res.status(404).json({ ok: false, error: 'Usuário não encontrado' });
+
+    const token = jwt.sign(
+      { id: dbUser.id, nome: dbUser.nome, email: dbUser.email, perfil: dbUser.perfil, permissoes: dbUser.permissoes },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    console.log('[TOKEN REFRESH] perfil:', dbUser.perfil, 'permissoes:', dbUser.permissoes);
+    return res.json({ token });
+  } catch (e) {
+    console.error('Erro refresh token:', e);
+    return res.status(500).json({ ok: false, error: 'Erro interno' });
+  }
 });
 
 app.get('/api/usuarios', requireAdmin, async (req, res) => {

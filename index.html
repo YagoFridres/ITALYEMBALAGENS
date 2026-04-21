@@ -3403,6 +3403,46 @@ function lancTs(o, field){
   return String(v||'');
 }
 
+function _lancRound2(v){
+  return Math.round((Number(v || 0) * 100)) / 100;
+}
+
+async function lancSalvarQtdOF(id, novaQtdRaw){
+  try{
+    const sid = String(id||'').trim();
+    const novaQtd = Number(String(novaQtdRaw||'').replace(',', '.'));
+    if(!sid){ toast('OF inválida','var(--red)'); return; }
+    if(!Number.isFinite(novaQtd) || novaQtd < 0){ toast('Quantidade inválida','var(--red)'); return; }
+
+    const of =
+      (Array.isArray(OFS_HIST) ? (OFS_HIST||[]).find(x=>String(x && x.id || '').trim()===sid) : null)
+      || (Array.isArray(OFs) ? (OFs||[]).find(x=>String(x && x.id || '').trim()===sid) : null)
+      || (Array.isArray(window.OFS_HIST) ? (window.OFS_HIST||[]).find(x=>String(x && x.id || '').trim()===sid) : null)
+      || (Array.isArray(window.OFS) ? (window.OFS||[]).find(x=>String(x && x.id || '').trim()===sid) : null)
+      || null;
+    if(!of){ toast('OF não encontrada','var(--red)'); return; }
+
+    const qtdAtual = Number(of.qtd || 0);
+    const valorTotalAtual = Number((of.valor_total ?? of.valor_venda ?? of.val) || 0);
+    const valorUnitario = qtdAtual > 0 ? (valorTotalAtual / qtdAtual) : 0;
+    const novoValor = _lancRound2(novaQtd * valorUnitario);
+
+    try{ showSaveIndicator('Salvando...','var(--yellow)'); }catch(e){}
+    const r = await api('PUT','/ofs/'+encodeURIComponent(sid), { qtd: novaQtd, valor_total: novoValor, valor_venda: novoValor });
+    if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'falha');
+
+    const dados = r.data || r;
+    const updatedLocal = _atualizarOFLocal(sid, { ...(dados||{}), qtd: novaQtd, valor_total: novoValor, valor_venda: novoValor })
+      || normalizeOF({ ...(of||{ id:sid }), ...(dados||{}), qtd: novaQtd, valor_total: novoValor, valor_venda: novoValor });
+    _upsertOFHistLocal(updatedLocal);
+    _rerenderOFViews();
+    try{ showSaveIndicator('✓ salvo','var(--green)'); }catch(e){}
+  }catch(e){
+    try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
+    toast('Erro ao salvar quantidade: '+(e.message||e),'var(--red)');
+  }
+}
+
 async function lancCarregarHistorico(){
   const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const st = (LANC_UI.tab === 'canceladas') ? '&status=Cancelada' : '';
@@ -3582,7 +3622,11 @@ function renderLancamento(){
             <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
             <td style="${td}">${escH(lancCliNome(o))}</td>
             <td style="${td};max-width:280px;overflow:hidden;text-overflow:ellipsis">${escH(o.prodDesc||'—')}</td>
-            <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(o.qtd||0)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${
+              o.id
+                ? `<input type="number" min="0" value="${escAttr(o.qtd||0)}" style="width:86px;text-align:right;font-family:var(--mono);padding:4px 6px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px" onkeydown="if(event.key==='Enter'){this.blur();}" onchange="lancSalvarQtdOF('${escAttr(o.id)}', this.value)">`
+                : fmtN(o.qtd||0)
+            }</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
             <td style="${td}">${escH(String(o.status||'').trim()||'—')}</td>
