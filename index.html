@@ -9540,7 +9540,8 @@ var AUTH_TOKEN = null;
 
 function hasPerm(keyOrList){
   const perms = Array.isArray(CURRENT_USER && CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if((CURRENT_USER && CURRENT_USER.perfil === 'admin') || perms.includes(PERM_ADMIN)) return true;
+  const perfil = String((CURRENT_USER && CURRENT_USER.perfil) ? CURRENT_USER.perfil : '').trim().toLowerCase();
+  if(perfil === 'admin' || perms.includes(PERM_ADMIN) || perms.includes('tudo')) return true;
   const alias = {
     'pcp_completo': 'pcp',
     'ver_pedidos': 'pcp',
@@ -9607,7 +9608,7 @@ function hasPerm(keyOrList){
 
 function aplicarPermissoes(permissoes, perfil) {
   const perms = Array.isArray(permissoes) ? permissoes : [];
-  const ehAdmin = perfil === 'admin' || perms.includes(PERM_ADMIN) || perms.includes('tudo');
+  const ehAdmin = String(perfil || '').trim().toLowerCase() === 'admin' || perms.includes(PERM_ADMIN) || perms.includes('tudo');
 
   document.querySelectorAll('[id^="menu-"]').forEach(el => el.style.display = 'none');
   document.querySelectorAll('[id^="btn-"]').forEach(el => el.style.display = 'none');
@@ -9646,7 +9647,7 @@ function aplicarPermissoes(permissoes, perfil) {
 function temPermPagina(paginaId){
   if(!CURRENT_USER) return false;
   const perms = Array.isArray(CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if(perms.includes(PERM_ADMIN) || CURRENT_USER.perfil === 'admin') return true;
+  if(perms.includes(PERM_ADMIN) || perms.includes('tudo') || String(CURRENT_USER.perfil || '').trim().toLowerCase() === 'admin') return true;
   const pg = String(paginaId||'');
   const alias = {
     'ofmaq': 'ofs_maquina',

@@ -1778,45 +1778,108 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     }
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
-    const selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
+    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     for (const col of cols) {
-      let q = supabase.from('clientes').select(selectSlim).order('nome');
-      if (col) q = q.eq(col, empId);
-      if (hasPaging) q = q.range(offset, offset + limit - 1);
-      const { data, error } = await q;
-      if (!error) {
-        const rows = data || [];
-        if (!lite) {
-          if (cacheKey) cacheSet(cacheKey, rows);
-          return ok(res, rows);
+      let localSelect = selectSlim;
+      let lastLocalErr = null;
+      for (let i = 0; i < 8; i++) {
+        let q = supabase.from('clientes').select(localSelect).order('nome');
+        if (col) q = q.eq(col, empId);
+        if (hasPaging) q = q.range(offset, offset + limit - 1);
+        const { data, error } = await q;
+        if (!error) {
+          const rows = data || [];
+          if (!lite) {
+            if (cacheKey) cacheSet(cacheKey, rows);
+            return ok(res, rows);
+          }
+          const trimmed = rows.map((r) => ({
+            id: r.id,
+            nome: r.nome ?? null,
+            rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
+            razao_social: r.razao_social ?? null,
+            cnpj: r.cnpj ?? null,
+            ie: r.ie ?? null,
+            tel: r.tel ?? r.telefone ?? null,
+            telefone: r.telefone ?? null,
+            email: r.email ?? null,
+            cidade: r.cidade ?? null,
+            uf: r.uf ?? null,
+            ramo: r.ramo ?? null,
+            emp_id: r.emp_id ?? r.empId ?? null,
+            empId: r.empId ?? null,
+            vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
+            vendId: r.vendId ?? null,
+            obs: r.obs ?? r.observacoes ?? null,
+            observacoes: r.observacoes ?? null,
+          }));
+          if (cacheKey) cacheSet(cacheKey, trimmed);
+          return ok(res, trimmed);
         }
-        const trimmed = rows.map((r) => ({
-          id: r.id,
-          nome: r.nome ?? null,
-          rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
-          razao_social: r.razao_social ?? null,
-          cnpj: r.cnpj ?? null,
-          ie: r.ie ?? null,
-          tel: r.tel ?? r.telefone ?? null,
-          telefone: r.telefone ?? null,
-          email: r.email ?? null,
-          cidade: r.cidade ?? null,
-          uf: r.uf ?? null,
-          ramo: r.ramo ?? null,
-          emp_id: r.emp_id ?? r.empId ?? null,
-          empId: r.empId ?? null,
-          vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
-          vendId: r.vendId ?? null,
-          obs: r.obs ?? r.observacoes ?? null,
-          observacoes: r.observacoes ?? null,
-        }));
-        if (cacheKey) cacheSet(cacheKey, trimmed);
-        return ok(res, trimmed);
+
+        lastLocalErr = error;
+        const msg = String(error.message || '');
+        const m = msg.match(/column ["\s]*([\w.]+)["\s]* does not exist/i)
+          || msg.match(/Could not find the '([\w]+)' column/i);
+        const missingCol = m && m[1] ? String(m[1]).split('.').pop() : '';
+
+        if (col && missingCol && missingCol === col) {
+          break;
+        }
+
+        if (missingCol) {
+          localSelect = localSelect.split(',').map(s => s.trim()).filter((c) => c && c !== missingCol).join(',');
+          if (!localSelect) break;
+          continue;
+        }
+
+        if (col && (msg.includes('column') || msg.includes('Could not find'))) {
+          break;
+        }
+        throw error;
       }
-      lastErr = error;
-      const msg = String(error.message || error);
+
+      if (lastLocalErr) lastErr = lastLocalErr;
+      const msg = String(lastLocalErr?.message || lastLocalErr || '');
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
-      throw error;
+
+      if (lastLocalErr) {
+        let q2 = supabase.from('clientes').select('*').order('nome');
+        if (col) q2 = q2.eq(col, empId);
+        if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
+        const all = await q2;
+        if (!all.error) {
+          const rows = all.data || [];
+          if (!lite) {
+            if (cacheKey) cacheSet(cacheKey, rows);
+            return ok(res, rows);
+          }
+          const trimmed = rows.map((r) => ({
+            id: r.id,
+            nome: r.nome ?? null,
+            rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
+            razao_social: r.razao_social ?? null,
+            cnpj: r.cnpj ?? null,
+            ie: r.ie ?? null,
+            tel: r.tel ?? r.telefone ?? null,
+            telefone: r.telefone ?? null,
+            email: r.email ?? null,
+            cidade: r.cidade ?? null,
+            uf: r.uf ?? null,
+            ramo: r.ramo ?? null,
+            emp_id: r.emp_id ?? r.empId ?? null,
+            empId: r.empId ?? null,
+            vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
+            vendId: r.vendId ?? null,
+            obs: r.obs ?? r.observacoes ?? null,
+            observacoes: r.observacoes ?? null,
+          }));
+          if (cacheKey) cacheSet(cacheKey, trimmed);
+          return ok(res, trimmed);
+        }
+        lastErr = all.error;
+      }
+      if (lastLocalErr) throw lastLocalErr;
     }
     throw lastErr;
   } catch (e) { err(res, e); }
