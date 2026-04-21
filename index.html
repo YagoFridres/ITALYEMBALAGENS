@@ -3977,8 +3977,55 @@ async function imprimirRelatorioComissoes(){
     } else {
       comRecalcularLocal();
     }
-    comRenderPrintArea();
-    setTimeout(()=>{ try{ window.print(); }catch(e){} }, 80);
+    const dadosVendedores = Array.isArray(window._comissoesData?.vendedores) ? window._comissoesData.vendedores : [];
+    const mes = comPeriodoLabelPrint();
+    const totalPedidos = dadosVendedores.reduce((s,v)=>s + (Number(v.pedidos||0)||0),0);
+    const totalVendido = dadosVendedores.reduce((s,v)=>s + (Number(v.valorTotal||0)||0),0);
+    const totalComissao = dadosVendedores.reduce((s,v)=>s + (Number(v.comissaoTotal||0)||0),0);
+    const win = window.open('', '_blank');
+    if(!win){ toast('Bloqueio de pop-up impedindo impressão','var(--red)'); return; }
+    win.document.write(`
+      <html><head><title>Comissões ${escH(mes)}</title>
+      <style>
+        body { font-family: Arial; font-size: 12px; color: #000; padding: 18px; }
+        h1 { font-size: 16px; text-align: center; margin: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th { background: #eee; padding: 6px; text-align: left; border: 1px solid #ccc; font-size: 11px; }
+        td { padding: 5px 6px; border: 1px solid #ddd; font-size: 11px; }
+        .total { font-weight: bold; background: #f5f5f5; }
+        .header { text-align: center; margin-bottom: 16px; }
+      </style></head><body>
+      <div class="header">
+        <h1>RELATÓRIO DE COMISSÕES</h1>
+        <p>Período: ${escH(mes)} | Gerado em: ${new Date().toLocaleDateString('pt-BR')}</p>
+      </div>
+      <table>
+        <thead><tr>
+          <th>Vendedor</th><th>OFs</th><th>Total Vendido</th><th>% Comissão</th><th>Comissão R$</th>
+        </tr></thead>
+        <tbody>
+          ${dadosVendedores.map(v=>`
+            <tr>
+              <td>${escH(String(v.vendedor||'—'))}</td>
+              <td style="text-align:center">${Number(v.pedidos||0)||0}</td>
+              <td>R$ ${(Number(v.valorTotal||0)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+              <td style="text-align:center">${(Number(v.comissaoPct||0)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%</td>
+              <td>R$ ${(Number(v.comissaoTotal||0)||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            </tr>
+          `).join('')}
+          <tr class="total">
+            <td>TOTAL</td>
+            <td style="text-align:center">${totalPedidos}</td>
+            <td>R$ ${totalVendido.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+            <td>—</td>
+            <td>R$ ${totalComissao.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+          </tr>
+        </tbody>
+      </table>
+      </body></html>
+    `);
+    win.document.close();
+    setTimeout(()=>{ try{ win.focus(); win.print(); }catch(e){} }, 80);
   }catch(e){
     alert('Erro ao imprimir relatório de comissões.');
   }
@@ -5582,26 +5629,16 @@ async function confirmarModalMovLinha(){
     console.log('[MOV] resp:', r);
     if(!resp.ok || (r && (r.ok===false || r.error))){toast('Erro: '+((r&&r.error)||resp.statusText||'falha'),'var(--red)');return;}
     fecharModalMovLinha();
-    const upd = (r && r.data) ? r.data : r;
-    if(upd && upd.id){
-      const chapaId = String(upd.id||'').trim();
-      const newQtd = (upd.quantidade != null ? Number(upd.quantidade) : (upd.qtd != null ? Number(upd.qtd) : (upd.quantidade_atual != null ? Number(upd.quantidade_atual) : NaN)));
-      const patchQtd = (obj)=>{
-        if(!obj || !Number.isFinite(newQtd)) return;
-        obj.quantidade = newQtd;
-        obj.quantidade_atual = newQtd;
-        obj.qtd = newQtd;
-      };
-      const apply=(arr)=>{
-        if(!Array.isArray(arr)) return;
-        const idx = arr.findIndex(c=>String(c && c.id || '').trim()===chapaId);
-        if(idx>=0){
-          arr[idx] = Object.assign(arr[idx], upd);
-          patchQtd(arr[idx]);
-        }
-      };
-      try{ apply(ESTOQUE); apply(_estoqueBase); apply(window.ESTOQUE); apply(window._estoqueBase); }catch(e){}
-    }
+    const chapaAtualizada = (r && r.data) ? r.data : r;
+    const novaQtd = Number(chapaAtualizada?.quantidade ?? chapaAtualizada?.quantidade_atual ?? chapaAtualizada?.qtd ?? 0);
+    const chapaId = String(id||'').trim();
+    [ESTOQUE, window.ESTOQUE, window._estoqueBase, _estoqueBase].forEach(arr=>{
+      if(!Array.isArray(arr)) return;
+      const idx = arr.findIndex(c => String(c && c.id || '').trim() === chapaId);
+      if(idx >= 0){
+        arr[idx] = Object.assign({}, arr[idx], chapaAtualizada, { quantidade: novaQtd, quantidade_atual: novaQtd, qtd: novaQtd });
+      }
+    });
     try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
     window._estoqueCarregadoEm = null;
     _ultimaCargaChapas = 0;
@@ -9497,12 +9534,31 @@ function hasPerm(keyOrList){
     'estoque_chapas': 'estoque_chapas',
     'solicitar_compra': 'compras',
     'orcamentos': 'orcamentos',
+    'dar_baixa': 'baixa_of',
+    'concluir_of': 'baixa_of',
+    'criar_of': 'lancar_pedido',
+    'editar_of': 'editar_pedidos',
+    'excluir_of': 'editar_pedidos',
+    'entrada_chapa': 'estoque_chapas',
+    'saida_chapa': 'estoque_chapas',
+    'editar_chapa': 'estoque_chapas',
+    'excluir_chapa': 'estoque_chapas',
+    'ver_comissoes': 'comissoes',
+    'ver_dashboard': 'dashboard',
+    'imprimir_relatorio': 'relatorios',
   };
   const areas = {
     pcp: new Set(['pcp','pcp_completo','ver_pedidos','lancar_pedidos','lancar_pedido','editar_pedidos','baixa_of','ofs_maquina','ofmaq']),
     estoque: new Set(['estoque','estoque_chapas','estoque_facas','estoque_cliches']),
     cadastros: new Set(['cadastros','clientes','vendedores','usuarios','operadores','fornecedores']),
     relatorios: new Set(['relatorios','comissoes','caixas_perdidas','caixas-perdidas','relatorio_mensal','relmensal','dashboard','analises']),
+  };
+  const areaSubPerms = {
+    pcp: new Set(['criar_of','editar_of','excluir_of','dar_baixa','concluir_of','lancar_pedido','editar_pedidos','baixa_of','ofs_maquina']),
+    estoque: new Set(['editar_chapa','excluir_chapa','entrada_chapa','saida_chapa','estoque_chapas','estoque']),
+    cadastros: new Set(['criar_cliente','editar_cliente','excluir_cliente','criar_vendedor','editar_vendedor','clientes','vendedores','usuarios','fornecedores']),
+    relatorios: new Set(['ver_comissoes','imprimir_relatorio','ver_dashboard','relatorios','comissoes','dashboard','relatorio_mensal','caixas_perdidas','caixas-perdidas']),
+    lancamento: new Set(['lancar_pedido','editar_lancamento','lancamento']),
   };
   const hasArea = (area)=>{
     const a = String(area||'').trim();
@@ -9522,6 +9578,10 @@ function hasPerm(keyOrList){
     const kk = String(k||'');
     const mapped = alias[kk] || kk;
     if(perms.includes(kk) || perms.includes(mapped)) return true;
+    for(const [area, subs] of Object.entries(areaSubPerms)){
+      if(perms.includes(area) && subs && subs.has && subs.has(kk)) return true;
+      if(perms.includes(area) && subs && subs.has && subs.has(mapped)) return true;
+    }
     const area = areaFromPerm(mapped || kk);
     if(area && hasArea(area)) return true;
     return false;

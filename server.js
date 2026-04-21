@@ -1520,6 +1520,18 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     if (!id) return bad(res, 'id obrigatório');
 
+    console.log('[BAIXA] body recebido:', JSON.stringify(req.body || {}));
+
+    const { data: rowsAtual, error: e0 } = await supabase
+      .from('ofs')
+      .select('qtd,valor_total,valor_venda')
+      .eq('id', id)
+      .limit(1);
+    if (e0) throw e0;
+    const ofAtual = rowsAtual && rowsAtual[0] ? rowsAtual[0] : null;
+    const qtdOriginal = Number(ofAtual?.qtd || 0);
+    const valorOriginal = Number(ofAtual?.valor_total || ofAtual?.valor_venda || 0);
+
     const { data: rows, error: e1 } = await supabase.from('ofs').select('*').eq('id', id).limit(1);
     if (e1) throw e1;
     const of = rows && rows[0] ? rows[0] : null;
@@ -1544,22 +1556,15 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     let payload = { maquina_atual_index: nextIdx };
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
-    console.log('[BAIXA] qtd_real recebido:', req.body?.qtd_real);
-    if (req.body && req.body.qtd_real != null) {
-      const qtdReal = Number(req.body.qtd_real);
-      if (Number.isFinite(qtdReal) && qtdReal >= 0) {
-        const qtdOriginal = Number(of.qtd || qtdReal);
-        payload.qtd = qtdReal;
-
-        const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
-        if (valorOriginal > 0 && qtdOriginal > 0 && qtdReal !== qtdOriginal) {
-          const novoValor = (qtdReal / qtdOriginal) * valorOriginal;
-          payload.valor_total = Math.round(novoValor * 100) / 100;
-          payload.valor_venda = payload.valor_total;
-        }
+    const qtdReal = req.body?.qtd_real != null ? Number(req.body.qtd_real) : null;
+    if (qtdReal != null && Number.isFinite(qtdReal) && qtdReal > 0) {
+      payload.qtd = qtdReal;
+      if (valorOriginal > 0 && qtdOriginal > 0 && qtdReal !== qtdOriginal) {
+        payload.valor_total = Math.round((qtdReal / qtdOriginal) * valorOriginal * 100) / 100;
+        payload.valor_venda = payload.valor_total;
       }
     }
-    console.log('[BAIXA] payload antes update:', JSON.stringify(payload));
+    console.log('[BAIXA FINAL] payload update:', JSON.stringify(payload));
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     console.log('[BAIXA FINAL] upd.error:', upd.error);
     if (upd.error) {
