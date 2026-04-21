@@ -15480,41 +15480,67 @@ function usrPerfilLabel(u){
   if(isP) return {txt:'PCP', color:'var(--purple)'};
   return {txt:'Custom', color:'var(--text2)'};
 }
-function renderUsuarios(){
-  const tbody = document.getElementById('usr-tbody'); if(!tbody) return;
-  const busca = String((document.getElementById('usr-busca')||{}).value||'').trim().toLowerCase();
-  const st = String((document.getElementById('usr-status')||{}).value||'').trim();
-  let rows = Array.isArray(USUARIOS) ? [...USUARIOS] : [];
-  if(st==='ativos') rows = rows.filter(u=>u.ativo!==false);
-  if(st==='inativos') rows = rows.filter(u=>u.ativo===false);
-  if(busca) rows = rows.filter(u=>[u.nome,u.email,u.perfil].join(' ').toLowerCase().includes(busca));
-  const fmt = (iso)=>{
-    if(!iso) return '—';
-    const d = new Date(String(iso));
-    if(String(d)==='Invalid Date') return '—';
-    return d.toLocaleString('pt-BR');
-  };
-  tbody.innerHTML = rows.length ? rows.map(u=>{
-    const ini = (u.avatar_iniciais||'??').toUpperCase();
-    const cor = u.avatar_cor || 'var(--accent)';
-    const badge = usrPerfilLabel(u);
-    return `<tr>
-      <td class="tc"><div style="width:38px;height:38px;border-radius:12px;background:${cor};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-family:var(--mono);margin:0 auto;">${escH(ini)}</div></td>
-      <td style="font-weight:800">${escH(u.nome||'—')}</td>
-      <td style="color:var(--text2);font-family:var(--mono);font-size:.78rem">${escH(u.email||'—')}</td>
-      <td class="tc"><span class="tag" style="border-color:${badge.color};color:${badge.color};background:rgba(0,0,0,.02)">${badge.txt}</span></td>
-      <td class="tc">${u.ativo===false?'<span class="tag t-or">Inativo</span>':'<span class="tag t-gr">Ativo</span>'}</td>
-      <td class="tc" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escH(fmt(u.ultimo_acesso))}</td>
-      <td class="tc">
-        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalUsuarioEditar('${u.id}')" title="Editar">✏️ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalSenhaUsuario('${u.id}')" title="Alterar senha">🔑 Senha</button>
-          <button class="btn btn-ghost btn-sm" onclick="usrToggleAtivo('${u.id}')" title="Ativar/Desativar">${u.ativo===false?'🟢 Ativar':'🔴 Desativar'}</button>
-          ${u.id !== (CURRENT_USER && CURRENT_USER.id) ? `<button class="btn btn-ghost btn-sm" onclick="usrExcluir('${u.id}')" title="Excluir" style="color:var(--red)">🗑️ Excluir</button>` : '<span style="color:var(--text3);padding:6px 8px">—</span>'}
+function renderUsuarios() {
+  const tbody  = document.getElementById('usr-tbody');
+  if (!tbody) return;
+
+  const busca  = String(document.getElementById('usr-busca')?.value || '').toLowerCase().trim();
+  const status = document.getElementById('usr-status')?.value || '';
+
+  let lista = Array.isArray(USUARIOS) ? [...USUARIOS] : [];
+
+  if (busca) {
+    lista = lista.filter(u =>
+      String(u.nome  || '').toLowerCase().includes(busca) ||
+      String(u.email || '').toLowerCase().includes(busca)
+    );
+  }
+  if (status === 'ativos')   lista = lista.filter(u => u.ativo !== false);
+  if (status === 'inativos') lista = lista.filter(u => u.ativo === false);
+
+  lista.sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || '')));
+
+  tbody.innerHTML = lista.map(u => {
+    const ini    = String(u.avatar_iniciais || u.nome?.[0] || '?').toUpperCase().slice(0, 2);
+    const cor    = u.avatar_cor || '#4A90D9';
+    const ativo  = u.ativo !== false;
+    const perfil = String(u.perfil || 'custom').toLowerCase();
+    const isAdm  = perfil === 'admin' || (Array.isArray(u.permissoes) && u.permissoes.includes('tudo'));
+    const ultimo = u.ultimo_acesso
+      ? new Date(u.ultimo_acesso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : '—';
+
+    return `<tr style="opacity:${ativo ? 1 : 0.5}">
+      <td style="text-align:center">
+        <div style="width:36px;height:36px;border-radius:50%;background:${escH(cor)};display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.82rem;font-family:var(--mono)">${escH(ini)}</div>
+      </td>
+      <td style="font-weight:600">${escH(u.nome || '')}</td>
+      <td style="color:var(--text2);font-size:.78rem;font-family:var(--mono)">${escH(u.email || '')}</td>
+      <td>
+        <span style="background:${isAdm ? 'var(--accent-soft)' : 'var(--s2)'};color:${isAdm ? 'var(--accent)' : 'var(--text2)'};border:1px solid ${isAdm ? 'var(--accent)' : 'var(--border)'};border-radius:6px;padding:2px 8px;font-size:.72rem;font-weight:700;font-family:var(--mono)">
+          ${isAdm ? '👑 ADMIN' : '👤 CUSTOM'}
+        </span>
+      </td>
+      <td>
+        <span style="background:${ativo ? 'rgba(0,200,100,.12)' : 'rgba(200,50,50,.1)'};color:${ativo ? 'var(--green)' : 'var(--red)'};border-radius:6px;padding:2px 8px;font-size:.72rem;font-weight:700">
+          ${ativo ? '🟢 Ativo' : '🔴 Inativo'}
+        </span>
+      </td>
+      <td style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${escH(ultimo)}</td>
+      <td>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick='abrirModalUsuario(${JSON.stringify(u)})'>✏ Editar</button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalSenhaUsuario('${escH(u.id)}')">🔑 Senha</button>
+          <button class="btn btn-ghost btn-sm" onclick="usrToggleAtivo('${escH(u.id)}')" title="${ativo ? 'Desativar' : 'Ativar'}">${ativo ? '🔴 Desativar' : '🟢 Ativar'}</button>
+          <button class="btn btn-red btn-sm" onclick="usrExcluir('${escH(u.id)}')">🗑</button>
         </div>
       </td>
     </tr>`;
-  }).join('') : `<tr><td colspan="7" style="text-align:center;padding:26px;color:var(--text3)">Nenhum usuário</td></tr>`;
+  }).join('');
+
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhum usuário encontrado</td></tr>`;
+  }
 }
 
 function usrModalGetPerms(){
@@ -15542,25 +15568,67 @@ function usrAtalho(tipo){
   document.querySelectorAll('#usr-perms-grid input[type=checkbox]').forEach(cb=>{cb.disabled=isAdmin;});
 }
 
-function abrirModalUsuarioNovo(){
-  const u = window.CURRENT_USER || window._currentUser;
-  const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
-  const perfil = String(u?.perfil || '').trim().toLowerCase();
-  const isAdmin = perfil.includes('admin') || perms.includes('tudo');
-  if(!u || !isAdmin){toast('Sem permissão','var(--red)');return;}
-  document.getElementById('usr-modal-title').textContent='👤 Novo Usuário';
-  document.getElementById('usr-id').value='';
-  document.getElementById('usr-nome').value='';
-  document.getElementById('usr-email').value='';
-  document.getElementById('usr-ativo').value='1';
-  document.getElementById('usr-cor').value='#4A90D9';
-  document.getElementById('usr-senha').value='';
-  document.getElementById('usr-senha2').value='';
-  document.getElementById('usr-pass-wrap').style.display='';
-  document.getElementById('usr-err').textContent='';
-  renderPermissoesDisponiveis([]);
-  usrAtalho('custom');
+function abrirModalUsuario(u) {
+  const campos = ['usr-id','usr-nome','usr-email','usr-senha','usr-senha2','usr-cor'];
+  campos.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const errEl = document.getElementById('usr-err');
+  if (errEl) errEl.textContent = '';
+
+  if (u) {
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+    setV('usr-id',    u.id);
+    setV('usr-nome',  u.nome);
+    setV('usr-email', u.email);
+    setV('usr-cor',   u.avatar_cor || '');
+    setV('usr-ativo', u.ativo === false ? '0' : '1');
+
+    const passWrap = document.getElementById('usr-pass-wrap');
+    if (passWrap) passWrap.style.display = 'none';
+  } else {
+    const passWrap = document.getElementById('usr-pass-wrap');
+    if (passWrap) passWrap.style.display = '';
+  }
+
+  const permsParaRender = (() => {
+    if (!u) return [];
+    if (Array.isArray(u.permissoes)) return u.permissoes;
+    if (typeof u.permissoes === 'string') {
+      try { const p = JSON.parse(u.permissoes); return Array.isArray(p) ? p : []; } catch (_) { return []; }
+    }
+    return [];
+  })();
+  try { renderPermissoesDisponiveis(permsParaRender); } catch (_) {}
+
+  setTimeout(() => {
+    const grid = document.getElementById('usr-perms-grid');
+    if (!grid) return;
+
+    if (u) {
+      let permsAtuais = Array.isArray(u.permissoes) ? u.permissoes : [];
+      if (!permsAtuais.length && typeof u.permissoes === 'string') {
+        try { const p = JSON.parse(u.permissoes); permsAtuais = Array.isArray(p) ? p : []; } catch (_) { permsAtuais = []; }
+      }
+      const perfilAtual = String(u.perfil || '').toLowerCase();
+
+      grid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        const val = cb.value || cb.dataset?.perm || '';
+        if (!val) return;
+        if (perfilAtual === 'admin' || permsAtuais.includes('tudo')) cb.checked = true;
+        else cb.checked = permsAtuais.includes(val);
+      });
+    } else {
+      grid.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    }
+  }, 50);
+
   abrir('modal-usr');
+}
+
+function abrirModalUsuarioNovo() {
+  abrirModalUsuario(null);
 }
 
 function abrirModalUsuarioEditar(id){

@@ -216,21 +216,43 @@ async function requireAdmin(req, res, next) {
       .from('usuarios')
       .select('perfil,permissoes')
       .eq('id', uid)
-      .single();
+      .maybeSingle();
 
-    let perfil = String((dbUser && dbUser.perfil) ? dbUser.perfil : (u?.perfil || '')).trim().toLowerCase();
-    let perms = (dbUser && dbUser.permissoes != null) ? dbUser.permissoes : u?.permissoes;
-    if (!Array.isArray(perms) && typeof perms === 'string') {
-      try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+    let perfil, perms;
+
+    if (dbErr || !dbUser) {
+      console.warn('[REQUIRE ADMIN] fallback para JWT, erro banco:', dbErr?.message || 'not found');
+      perfil = String(u?.perfil || '').trim().toLowerCase();
+      perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+      }
+    } else {
+      perfil = String(dbUser.perfil || u?.perfil || '').trim().toLowerCase();
+      perms = dbUser.permissoes != null ? dbUser.permissoes : (u?.permissoes || []);
+      if (!Array.isArray(perms) && typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+      }
+      perms = Array.isArray(perms) ? perms : [];
     }
-    perms = Array.isArray(perms) ? perms : [];
 
-    if (dbErr) console.error('[REQUIRE ADMIN] erro ao buscar usuario no banco:', dbErr);
-    console.log('[REQUIRE ADMIN]', perfil, perms);
-    if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) return next();
-    return res.status(403).json({ ok: false, error: 'Sem permissão' });
+    console.log('[REQUIRE ADMIN] perfil:', perfil, '| perms:', perms);
+
+    if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) {
+      return next();
+    }
+    return res.status(403).json({ ok: false, error: 'Sem permissão — requer perfil admin' });
   } catch (e) {
-    console.error('[REQUIRE ADMIN] erro:', e);
+    console.error('[REQUIRE ADMIN] erro inesperado:', e?.message || e);
+    try {
+      const u = req.usuario || null;
+      const perfil = String(u?.perfil || '').trim().toLowerCase();
+      const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+      if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) {
+        console.warn('[REQUIRE ADMIN] aprovado via JWT fallback de emergência');
+        return next();
+      }
+    } catch (_) {}
     return res.status(403).json({ ok: false, error: 'Sem permissão' });
   }
 }
