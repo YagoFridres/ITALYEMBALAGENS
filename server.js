@@ -1442,6 +1442,53 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     return res.status(500).json({ error: String(e.message || e) });
   }
 });
+
+app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
+    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    if (req.query.mes) q = q.eq('mes_referencia', req.query.mes);
+    if (req.query.de) q = q.gte('data', req.query.de);
+    if (req.query.ate) q = q.lte('data', req.query.ate);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const hoje = new Date().toISOString().slice(0, 10);
+    const mes = new Date().toISOString().slice(0, 7);
+    const payload = {
+      of_id: b.of_id || null,
+      of_numero: String(b.of_numero || ''),
+      produto: String(b.produto || ''),
+      cliente: String(b.cliente || ''),
+      valor_unitario: Number(b.valor_unitario || 0),
+      qtd_perdida: Math.trunc(Number(b.qtd_perdida || 0)),
+      valor_perdido: Number(b.valor_perdido || 0),
+      data: b.data || hoje,
+      mes_referencia: b.mes_referencia || mes,
+      emp_id: b.emp_id || '',
+      usuario: b.usuario || req.usuario?.nome || 'sistema',
+      obs: b.obs || ''
+    };
+    const { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { err(res, e); }
+});
+
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
@@ -1497,24 +1544,32 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     let payload = { maquina_atual_index: nextIdx };
     payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
     if (concluida) payload = { ...payload, data_conclusao: nowIso };
-    if (req.body && req.body.qtd_real != null && Number(req.body.qtd_real) > 0) {
-      const qtdOriginal = Number(of.qtd || req.body.qtd_real);
+    console.log('[BAIXA] qtd_real recebido:', req.body?.qtd_real);
+    if (req.body && req.body.qtd_real != null) {
       const qtdReal = Number(req.body.qtd_real);
-      payload.qtd = qtdReal;
+      if (Number.isFinite(qtdReal) && qtdReal >= 0) {
+        const qtdOriginal = Number(of.qtd || qtdReal);
+        payload.qtd = qtdReal;
 
-      const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
-      if (valorOriginal > 0 && qtdOriginal > 0 && qtdReal !== qtdOriginal) {
-        const novoValor = (qtdReal / qtdOriginal) * valorOriginal;
-        payload.valor_total = Math.round(novoValor * 100) / 100;
-        payload.valor_venda = payload.valor_total;
+        const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
+        if (valorOriginal > 0 && qtdOriginal > 0 && qtdReal !== qtdOriginal) {
+          const novoValor = (qtdReal / qtdOriginal) * valorOriginal;
+          payload.valor_total = Math.round(novoValor * 100) / 100;
+          payload.valor_venda = payload.valor_total;
+        }
       }
     }
-    console.log('[BAIXA FINAL] payload update:', payload);
+    console.log('[BAIXA] payload antes update:', JSON.stringify(payload));
     let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
     console.log('[BAIXA FINAL] upd.error:', upd.error);
     if (upd.error) {
       const msg = String(upd.error.message || upd.error);
-      if (msg.includes('column') || msg.includes('Could not find')) {
+      const missingQtd = msg.toLowerCase().includes('qtd') && (msg.toLowerCase().includes('column') || msg.toLowerCase().includes('could not find'));
+      if (missingQtd) {
+        const { qtd, valor_total, valor_venda, ...payloadSemQtd } = payload || {};
+        upd = await supabase.from('ofs').update(payloadSemQtd).eq('id', id).select('*').single();
+        console.log('[BAIXA] retry sem qtd:', { ok: !upd.error, error: upd.error ? String(upd.error.message || upd.error) : null });
+      } else if (msg.includes('column') || msg.includes('Could not find')) {
         const fallbackPayload = { status: concluida ? 'Pedido Pronto' : 'Em Produção' };
         upd = await supabase.from('ofs').update(fallbackPayload).eq('id', id).select('*').single();
         console.log('[BAIXA] fallback upd.data:', upd.data, 'upd.error:', upd.error);

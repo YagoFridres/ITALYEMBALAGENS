@@ -878,6 +878,8 @@ const MODULOS_SISTEMA = [
   { key:'estoque_cliches',label:'Estoque Clichês',     grupo:'Estoques',  menuId:'menu-cliches',         paginaId:'cliches' },
   { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
   { key:'relatorios',     label:'Relatórios',          grupo:'Análises',  menuId:'menu-relatorio',       paginaId:'relatorio' },
+  { key:'comissoes',      label:'Comissões',           grupo:'Análises',  menuId:'menu-comissoes',       paginaId:'comissoes' },
+  { key:'caixas_perdidas',label:'Caixas Perdidas',     grupo:'Análises',  menuId:'menu-caixas-perdidas', paginaId:'caixas-perdidas' },
   { key:'relatorio_mensal',label:'Relatório Mensal',   grupo:'Análises',  menuId:'menu-relatorio-mensal',paginaId:'relatorio-mensal' },
   { key:'backup',         label:'Backup / Importar',   grupo:'Análises',  menuId:'menu-backup',          paginaId:'backup' },
   { key:'notificacoes',   label:'Notificações',        grupo:'Análises',  menuId:'menu-notificacoes',    paginaId:'notificacoes' },
@@ -1646,7 +1648,7 @@ function openNavGroupForPage(pageId){
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
-    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises',
+    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
   const gId=map[pageId];
   if(gId){
@@ -1747,6 +1749,10 @@ function _goBase(id){
   if(id==='dashboard')renderDashboard();
   if(id==='relatorios')renderRelatorio();
   if(id==='relmensal')renderRelatorioMensal();
+  if(id==='caixas-perdidas'){
+    initCaixasPerdidasUI();
+    carregarCaixasPerdidas();
+  }
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
   if(id==='usuarios')carregarUsuarios();
@@ -2166,11 +2172,13 @@ async function ofmaqDarBaixa(id){
   const vaiConcluir = fluxo.length > 0 && (idxAtual + 1) >= fluxo.length;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const baixaBody = { usuario };
+  let qtdPerdida = 0;
   if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
     const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
+    qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   } else {
     const msg=`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima||'—'}`;
     if(!confirm(msg)) return;
@@ -2183,6 +2191,7 @@ async function ofmaqDarBaixa(id){
     return;
   }
   _aplicarResultadoBaixaOF(o.id, o, baixaBody, r);
+  await registrarCaixasPerdidasAposBaixa(o, qtdPerdida, r);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(r.concluida?`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`:`✅ ${o.of||o.numero||''}: ${atual} → ${r.proxima||proxima||'—'}`,'var(--green)');
   _rerenderOFViewsBaixa();
@@ -2199,17 +2208,20 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   const idxAtual = Number(it?.maquina_atual_index||0);
   const vaiConcluir = Array.isArray(fluxo) && fluxo.length>0 ? (idxAtual+1>=fluxo.length) : false;
   const baixaBody = { usuario:(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema' };
+  let qtdPerdida = 0;
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
     const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
+    qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   } else {
     if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   }
   const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
   if(r && r.ok){
     _aplicarResultadoBaixaOF(id, it, baixaBody, r);
+    await registrarCaixasPerdidasAposBaixa(it, qtdPerdida, r);
     toast(r.concluida ? ('OF #'+(numero||id)+' — PEDIDO PRONTO ✓') : ('Baixa registrada! Próxima: '+(r.proxima||'—')), 'var(--green)');
     _rerenderOFViewsBaixa();
   } else {
@@ -2223,9 +2235,11 @@ function abrirModalBaixaConclusao(opts){
   if(!modal) return Promise.resolve(null);
   const titulo = document.getElementById('baixa-conc-titulo');
   const qtdEl = document.getElementById('baixa-conc-qtd');
+  const perdEl = document.getElementById('qtd-perdida');
   const sub = document.getElementById('baixa-conc-sub');
   if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
   if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
+  if(perdEl) perdEl.value = String((opts && opts.qtdPerdida)!=null ? opts.qtdPerdida : 0);
   if(sub) sub.textContent = 'Informe a produção real para concluir a OF.';
   modal.style.display = 'flex';
   setTimeout(()=>{ try{ qtdEl && qtdEl.focus && qtdEl.focus(); }catch(e){} }, 0);
@@ -2245,9 +2259,49 @@ function fecharModalBaixaConclusao(ret){
 }
 function confirmarModalBaixaConclusao(){
   const qtdEl = document.getElementById('baixa-conc-qtd');
+  const perdEl = document.getElementById('qtd-perdida');
   const qtdReal = Number(String(qtdEl?.value||'').replace(',', '.'));
+  const qtdPerdida = Math.trunc(Number(String(perdEl?.value||'').replace(',', '.')));
   if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
-  fecharModalBaixaConclusao({ qtd_real: qtdReal });
+  if(!Number.isFinite(qtdPerdida) || qtdPerdida < 0){ toast('Quantidade perdida inválida','var(--red)'); return; }
+  fecharModalBaixaConclusao({ qtd_real: qtdReal, qtd_perdida: qtdPerdida });
+}
+
+async function registrarCaixasPerdidasAposBaixa(ofLocal, qtdPerdida, baixaResp){
+  try{
+    const qp = Math.trunc(Number(qtdPerdida||0));
+    if(!(qp > 0)) return;
+    const row = (baixaResp && baixaResp.data) ? baixaResp.data : baixaResp;
+    const ofId = String(ofLocal?.id || row?.id || '').trim();
+    const ofNumero = String(ofLocal?.of || ofLocal?.numero || row?.of || row?.numero || '').trim();
+    const produto = String(ofLocal?.prodDesc || ofLocal?.descricao || row?.prodDesc || row?.descricao || row?.produto || '').trim();
+    const cliObj = (typeof getCli === 'function') ? (getCli(ofLocal?.cliId)||null) : null;
+    const cliente = String(cliObj?.nome || ofLocal?.cliente || row?.cliente || '').trim();
+    const valorTotal = Number(row?.valor_total ?? row?.valor_venda ?? ofLocal?.val ?? ofLocal?.valor_total ?? ofLocal?.valor_venda ?? 0) || 0;
+    const qtdBase = Number(row?.qtd ?? row?.quantidade ?? baixaResp?.qtd_real ?? ofLocal?.qtd ?? 0) || 0;
+    const valorUnit = (qtdBase > 0) ? (valorTotal / qtdBase) : 0;
+    const hoje = new Date().toISOString().slice(0,10);
+    const mesRef = new Date().toISOString().slice(0,7);
+    const empId = String(row?.emp_id || ofLocal?.empId || ofLocal?.emp_id || EMP_FILTRO || '').trim();
+    const usuario = (typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : 'sistema';
+    const payload = {
+      of_id: ofId || null,
+      of_numero: ofNumero,
+      produto,
+      cliente,
+      valor_unitario: Math.round(valorUnit * 10000) / 10000,
+      qtd_perdida: qp,
+      valor_perdido: Math.round((qp * valorUnit) * 100) / 100,
+      data: hoje,
+      mes_referencia: mesRef,
+      emp_id: empId,
+      usuario
+    };
+    const r = await api('POST','/caixas_perdidas', payload);
+    if(!r || r.ok === false){ toast('Caixas perdidas: não foi possível registrar','var(--orange)'); }
+  }catch(e){
+    toast('Caixas perdidas: erro ao registrar','var(--orange)');
+  }
 }
 
 async function concluirProcessoOf(ofId){
@@ -2260,6 +2314,7 @@ async function concluirProcessoOf(ofId){
   if(!resp) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
   const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
+  const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   showSaveIndicator('Salvando conclusão...','var(--yellow)');
   const r = await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa', baixaBody);
   if(!r || !r.ok){
@@ -2268,6 +2323,7 @@ async function concluirProcessoOf(ofId){
     return;
   }
   _aplicarResultadoBaixaOF(id, it, baixaBody, r);
+  await registrarCaixasPerdidasAposBaixa(it, qtdPerdida, r);
   showSaveIndicator('✓ concluída','var(--green)');
   toast('OF concluída!','var(--green)');
   _rerenderOFViewsBaixa();
@@ -2339,6 +2395,7 @@ async function darBaixaOF(o){
   const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
   if(!resp){ showSaveIndicator('',''); return; }
   const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
+  const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   let r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa', baixaBody);
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
@@ -2346,6 +2403,7 @@ async function darBaixaOF(o){
     return;
   }
   _aplicarResultadoBaixaOF(o.id, o, baixaBody, r);
+  await registrarCaixasPerdidasAposBaixa(o, qtdPerdida, r);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`,'var(--green)');
   try{ await carregarOFs(); }catch(e){}
@@ -3875,107 +3933,38 @@ function comRenderPrintArea(){
     return cli ? (cli.nome || key) : key;
   };
   const vendedores = Array.isArray(d.vendedores) ? d.vendedores : [];
-  const ofs = [];
-  vendedores.forEach(v=>{
-    (v.ofs||[]).forEach(of=>{
-      const st = String(of.status || '').trim();
-      if(st === 'Cancelada' || st === 'Cancelado') return;
-      ofs.push({ ...of, vendedor: v.vendedor || '—', comissaoPct: Number(of.comissaoPct||v.comissaoPct||0) });
-    });
-  });
   const area = document.getElementById('com-print-area');
   if(!area) return;
   area.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px">
       <div>
-        <div style="font-size:18px;font-weight:900">Relatório de Comissões — ${escH(periodo)}</div>
+        <div style="font-size:18px;font-weight:900;text-transform:uppercase">RELATÓRIO DE COMISSÕES — ${escH(periodo)}</div>
         <div style="font-size:12px;color:#444;margin-top:4px">Gerado em: ${escH(geradoEm)}</div>
       </div>
       <div style="font-size:12px;color:#444;text-align:right">${escH(empresa)}</div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 12px 0">
-      <div style="border:1px solid #ccc;border-radius:10px;padding:10px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#555">Total Vendido</div>
-        <div style="font-size:16px;font-weight:900;margin-top:4px">${escH(comFmtMoney(d.totalGeral))}</div>
-      </div>
-      <div style="border:1px solid #ccc;border-radius:10px;padding:10px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#555">Total Comissão</div>
-        <div style="font-size:16px;font-weight:900;margin-top:4px">${escH(comFmtMoney(d.totalComissao))}</div>
-      </div>
-      <div style="border:1px solid #ccc;border-radius:10px;padding:10px">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#555">Total OFs</div>
-        <div style="font-size:16px;font-weight:900;margin-top:4px">${escH(fmtN(d.totalPedidos||0))}</div>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px">
+      ${(vendedores.length? vendedores : [{vendedor:'—',pedidos:0,valorTotal:0,comissaoPct:0,comissaoTotal:0}]).map(v=>{
+        const pct = Number(v.comissaoPct||0);
+        return `
+          <div style="border:1px solid #ccc;border-radius:12px;padding:12px">
+            <div style="font-size:14px;font-weight:900;margin-bottom:8px">${escH(v.vendedor || '—')}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:#222">
+              <div><span style="color:#666">Total de OFs:</span> <b>${escH(fmtN(v.pedidos||0))}</b></div>
+              <div><span style="color:#666">Total vendido:</span> <b>${escH(comFmtMoney(v.valorTotal||0))}</b></div>
+              <div><span style="color:#666">% comissão:</span> <b>${escH(pct.toFixed(2))}%</b></div>
+              <div><span style="color:#666">Comissão:</span> <b>${escH(comFmtMoney(v.comissaoTotal||0))}</b></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
 
-    <div style="margin-top:12px;font-size:13px;font-weight:900">Totais por vendedor</div>
-    <table style="margin-top:6px">
-      <thead>
-        <tr>
-          <th>Vendedor</th>
-          <th style="text-align:right">OFs</th>
-          <th style="text-align:right">Total Vendido</th>
-          <th style="text-align:right">% Comissão</th>
-          <th style="text-align:right">Comissão R$</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(vendedores.length? vendedores : [{vendedor:'—',pedidos:0,valorTotal:0,comissaoPct:0,comissaoTotal:0}]).map(v=>`
-          <tr>
-            <td>${escH(v.vendedor || '—')}</td>
-            <td style="text-align:right">${escH(fmtN(v.pedidos||0))}</td>
-            <td style="text-align:right">${escH(comFmtMoney(v.valorTotal||0))}</td>
-            <td style="text-align:right">${escH(Number(v.comissaoPct||0).toFixed(2))}%</td>
-            <td style="text-align:right">${escH(comFmtMoney(v.comissaoTotal||0))}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-
-    <div style="margin-top:14px;font-size:13px;font-weight:900">Detalhamento das OFs</div>
-    <table style="margin-top:6px">
-      <thead>
-        <tr>
-          <th>N° OF</th>
-          <th>Cliente</th>
-          <th>Produto</th>
-          <th style="text-align:right">Qtd</th>
-          <th>Vendedor</th>
-          <th style="text-align:right">Valor OF</th>
-          <th style="text-align:right">%</th>
-          <th style="text-align:right">Comissão R$</th>
-          <th>Data</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${(ofs.length?ofs:[{}]).map(of=>{
-          const prod = of.descricao || of.prodDesc || of.produto || '—';
-          const qtd = Number(of.qtd || of.quantidade || 0) || 0;
-          const pct = Number(of.comissaoPct||0);
-          const valor = Number(of.valor||0);
-          const com = (of.comissaoValor!=null) ? Number(of.comissaoValor||0) : (valor * (pct/100));
-          return `
-            <tr>
-              <td>#${escH(of.numero||'')}</td>
-              <td>${escH(clienteNome(of.cliente))}</td>
-              <td>${escH(prod)}</td>
-              <td style="text-align:right">${escH(fmtN(qtd))}</td>
-              <td>${escH(of.vendedor||'—')}</td>
-              <td style="text-align:right">${escH(comFmtMoney(valor))}</td>
-              <td style="text-align:right">${escH(pct.toFixed(2))}%</td>
-              <td style="text-align:right">${escH(comFmtMoney(com))}</td>
-              <td>${escH(comFmtDate(of.data))}</td>
-              <td>${escH(String(of.status||'—'))}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-
-    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px;font-size:11px;color:#444;text-align:center">
-      ${escH(empresa)}
+    <div style="margin-top:14px;border-top:1px solid #ccc;padding-top:10px;display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#222">
+      <div><span style="color:#666">Total geral vendido:</span> <b>${escH(comFmtMoney(d.totalGeral||0))}</b></div>
+      <div><span style="color:#666">Total geral comissão:</span> <b>${escH(comFmtMoney(d.totalComissao||0))}</b></div>
+      <div><span style="color:#666">Ocorrências (OFs):</span> <b>${escH(fmtN(d.totalPedidos||0))}</b></div>
     </div>
   `;
 }
@@ -3993,6 +3982,116 @@ async function imprimirRelatorioComissoes(){
   }catch(e){
     alert('Erro ao imprimir relatório de comissões.');
   }
+}
+
+window._cpFiltro = window._cpFiltro || { tipo:'mes', de:'', ate:'' };
+
+function initCaixasPerdidasUI(){
+  const emp = document.getElementById('cp-emp');
+  if(emp && !emp._loaded){
+    const cur = EMP_FILTRO || '';
+    emp.innerHTML = '<option value="">Todas empresas</option>' + EMPRESAS.map(e=>`<option value="${escAttr(e.id)}"${cur===e.id?' selected':''}>${escH(e.nome)}</option>`).join('');
+    emp._loaded = true;
+  }
+  if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'' };
+  if(!window._cpFiltro.de || !window._cpFiltro.ate) cpSetRange('mes', true);
+}
+
+function cpSetRange(tipo, silent){
+  const t = String(tipo||'mes');
+  const now = new Date();
+  const hoje = now.toISOString().slice(0,10);
+  let de = hoje;
+  let ate = hoje;
+  if(t === 'semana'){
+    const d = new Date(now);
+    const dow = d.getDay();
+    const diff = (dow === 0 ? -6 : (1 - dow));
+    d.setDate(d.getDate() + diff);
+    de = d.toISOString().slice(0,10);
+    const d2 = new Date(d);
+    d2.setDate(d2.getDate() + 6);
+    ate = d2.toISOString().slice(0,10);
+  } else if(t === 'mes'){
+    const d = new Date(now.getFullYear(), now.getMonth(), 1);
+    const d2 = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    de = d.toISOString().slice(0,10);
+    ate = d2.toISOString().slice(0,10);
+  }
+  window._cpFiltro = { tipo: t, de, ate };
+  if(!silent) carregarCaixasPerdidas();
+}
+
+async function carregarCaixasPerdidas(){
+  initCaixasPerdidasUI();
+  const empId = String((document.getElementById('cp-emp')||{}).value || (EMP_FILTRO||'') || '').trim();
+  const f = window._cpFiltro || {};
+  const qs = new URLSearchParams();
+  if(empId) qs.set('empId', empId);
+  if(f.de) qs.set('de', f.de);
+  if(f.ate) qs.set('ate', f.ate);
+  const j = await api('GET', '/caixas_perdidas' + (qs.toString() ? ('?' + qs.toString()) : ''));
+  if(!j || j.ok === false){
+    toast('Erro ao carregar caixas perdidas','var(--red)');
+    return;
+  }
+  const rows = Array.isArray(j.data) ? j.data : [];
+  cpRender(rows);
+}
+
+function cpRender(rows){
+  const lista = Array.isArray(rows) ? rows : [];
+  const totalQtd = lista.reduce((s,r)=>s + (Number(r.qtd_perdida||0)||0), 0);
+  const totalValor = lista.reduce((s,r)=>s + (Number(r.valor_perdido||0)||0), 0);
+  const ocorr = lista.length;
+  const cards = document.getElementById('cp-cards');
+  if(cards){
+    cards.innerHTML = `
+      <div class="card"><div class="card-lbl">Total Caixas Perdidas</div><div class="card-val cv-r">${fmtN(totalQtd)}</div><div class="card-sub">unidades</div></div>
+      <div class="card"><div class="card-lbl">Valor Total Perdido</div><div class="card-val cv-r" style="font-size:1.1rem">${fmtR(totalValor)}</div></div>
+      <div class="card"><div class="card-lbl">Ocorrências</div><div class="card-val cv-a">${fmtN(ocorr)}</div></div>
+    `;
+  }
+  const tbody = document.querySelector('#cp-table tbody');
+  if(tbody){
+    tbody.innerHTML = lista.map(r=>{
+      const id = String(r.id||'');
+      const data = String(r.data||r.created_at||'').slice(0,10);
+      const ofNum = r.of_numero || r.of || r.numero || '—';
+      const prod = r.produto || '—';
+      const cli = r.cliente || '—';
+      const qtd = Number(r.qtd_perdida||0) || 0;
+      const vu = Number(r.valor_unitario||0) || 0;
+      const vt = Number(r.valor_perdido||0) || (qtd * vu);
+      const usu = r.usuario || '—';
+      return `<tr>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escH(fmtD(data))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">${escH(String(ofNum))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(prod))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(cli))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">${fmtN(qtd)}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${fmtR(vu)}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${fmtR(vt)}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(usu))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="cpExcluir('${escAttr(id)}')" style="color:var(--red)">🗑 Excluir</button>
+        </td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="9" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>`;
+  }
+}
+
+async function cpExcluir(id){
+  const cid = String(id||'').trim();
+  if(!cid) return;
+  if(!confirm('Excluir este lançamento de caixas perdidas?')) return;
+  const r = await api('DELETE','/caixas_perdidas/'+encodeURIComponent(cid));
+  if(!r || r.ok === false){
+    toast('Erro ao excluir','var(--red)');
+    return;
+  }
+  toast('Excluído ✓','var(--green)');
+  carregarCaixasPerdidas();
 }
 
 // ===================== CLIENTES =====================
@@ -5485,18 +5584,23 @@ async function confirmarModalMovLinha(){
     fecharModalMovLinha();
     const upd = (r && r.data) ? r.data : r;
     if(upd && upd.id){
+      const chapaId = String(upd.id||'').trim();
       const newQtd = (upd.quantidade != null ? Number(upd.quantidade) : (upd.qtd != null ? Number(upd.qtd) : (upd.quantidade_atual != null ? Number(upd.quantidade_atual) : NaN)));
+      const patchQtd = (obj)=>{
+        if(!obj || !Number.isFinite(newQtd)) return;
+        obj.quantidade = newQtd;
+        obj.quantidade_atual = newQtd;
+        obj.qtd = newQtd;
+      };
       const apply=(arr)=>{
-        const i=(arr||[]).findIndex(x=>x.id===upd.id);
-        if(i>=0){
-          arr[i]=Object.assign(arr[i], upd);
-          if(Number.isFinite(newQtd)){
-            arr[i].qtd = newQtd;
-            arr[i].quantidade = newQtd;
-          }
+        if(!Array.isArray(arr)) return;
+        const idx = arr.findIndex(c=>String(c && c.id || '').trim()===chapaId);
+        if(idx>=0){
+          arr[idx] = Object.assign(arr[idx], upd);
+          patchQtd(arr[idx]);
         }
       };
-      try{ apply(_estoqueBase); apply(ESTOQUE); apply(window.ESTOQUE); apply(window._estoqueBase); }catch(e){}
+      try{ apply(ESTOQUE); apply(_estoqueBase); apply(window.ESTOQUE); apply(window._estoqueBase); }catch(e){}
     }
     try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
     window._estoqueCarregadoEm = null;
@@ -9384,7 +9488,7 @@ var AUTH_TOKEN = null;
 
 function hasPerm(keyOrList){
   const perms = Array.isArray(CURRENT_USER && CURRENT_USER.permissoes) ? CURRENT_USER.permissoes : [];
-  if(perms.includes(PERM_ADMIN)) return true;
+  if((CURRENT_USER && CURRENT_USER.perfil === 'admin') || perms.includes(PERM_ADMIN)) return true;
   const alias = {
     'pcp_completo': 'pcp',
     'ver_pedidos': 'pcp',
@@ -9394,10 +9498,33 @@ function hasPerm(keyOrList){
     'solicitar_compra': 'compras',
     'orcamentos': 'orcamentos',
   };
+  const areas = {
+    pcp: new Set(['pcp','pcp_completo','ver_pedidos','lancar_pedidos','lancar_pedido','editar_pedidos','baixa_of','ofs_maquina','ofmaq']),
+    estoque: new Set(['estoque','estoque_chapas','estoque_facas','estoque_cliches']),
+    cadastros: new Set(['cadastros','clientes','vendedores','usuarios','operadores','fornecedores']),
+    relatorios: new Set(['relatorios','comissoes','caixas_perdidas','caixas-perdidas','relatorio_mensal','relmensal','dashboard','analises']),
+  };
+  const hasArea = (area)=>{
+    const a = String(area||'').trim();
+    if(!a) return false;
+    return perms.includes(a);
+  };
+  const areaFromPerm = (k)=>{
+    const kk = String(k||'').trim();
+    if(!kk) return '';
+    if(areas.pcp.has(kk)) return 'pcp';
+    if(areas.estoque.has(kk) || kk.startsWith('estoque_')) return 'estoque';
+    if(areas.cadastros.has(kk)) return 'cadastros';
+    if(areas.relatorios.has(kk) || kk.startsWith('relatorio_')) return 'relatorios';
+    return '';
+  };
   const hasOne = (k)=>{
     const kk = String(k||'');
     const mapped = alias[kk] || kk;
-    return perms.includes(kk) || perms.includes(mapped);
+    if(perms.includes(kk) || perms.includes(mapped)) return true;
+    const area = areaFromPerm(mapped || kk);
+    if(area && hasArea(area)) return true;
+    return false;
   };
   if(Array.isArray(keyOrList)) return keyOrList.some(hasOne);
   return hasOne(keyOrList);
@@ -9417,7 +9544,12 @@ function aplicarPermissoes(permissoes, perfil) {
 
   if(typeof MODULOS_SISTEMA !== 'undefined') {
     MODULOS_SISTEMA.forEach(mod => {
-      if(perms.includes(mod.key)) {
+      const liberarPorArea =
+        (perms.includes('pcp') && mod.grupo === 'Produção') ||
+        (perms.includes('estoque') && mod.grupo === 'Estoques') ||
+        (perms.includes('cadastros') && mod.grupo === 'Cadastros') ||
+        (perms.includes('relatorios') && mod.grupo === 'Análises');
+      if(perms.includes(mod.key) || liberarPorArea) {
         const el = document.getElementById(mod.menuId);
         if(el) el.style.display = '';
       }
@@ -9428,7 +9560,7 @@ function aplicarPermissoes(permissoes, perfil) {
     const btn = document.getElementById('btn-nova-of');
     if(btn) btn.style.display = '';
   }
-  if(perms.includes('estoque_chapas')) {
+  if(perms.includes('estoque') || perms.includes('estoque_chapas')) {
     const btn = document.getElementById('btn-nova-chapa');
     if(btn) btn.style.display = '';
     const rst = document.getElementById('btn-reset-estoque');
@@ -9453,10 +9585,20 @@ function temPermPagina(paginaId){
     'sistema': 'backup',
   };
   const forcedKey = alias[pg] || null;
-  if(forcedKey) return perms.includes(forcedKey);
+  if(forcedKey){
+    if(perms.includes(forcedKey)) return true;
+    if(pg==='estoque' && perms.includes('estoque')) return true;
+    if((pg==='lancamento' || pg==='pcp' || pg==='ofmaq') && perms.includes('pcp')) return true;
+    if((pg==='relatorios' || pg==='relmensal' || pg==='comissoes' || pg==='caixas-perdidas') && perms.includes('relatorios')) return true;
+    return false;
+  }
   const mod = MODULOS_SISTEMA.find(m => m.paginaId === pg || pg.includes(m.paginaId));
   if(!mod) return true;
-  return perms.includes(mod.key);
+  if(perms.includes(mod.key)) return true;
+  if(mod.key && mod.key.startsWith('estoque_') && perms.includes('estoque')) return true;
+  if(mod.key && (mod.key==='lancar_pedido' || mod.key==='ofs_maquina') && perms.includes('pcp')) return true;
+  if(mod.key && (mod.key.startsWith('relatorio_') || mod.key==='comissoes' || mod.key==='caixas_perdidas') && perms.includes('relatorios')) return true;
+  return false;
 }
 
 
@@ -15458,6 +15600,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-dashboard" class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
       <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
+      <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-backup" class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
     </div>
@@ -16489,7 +16632,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="page-body" id="rel-content"></div>
 </div>
 
-<!-- ========== 13A. COMISSÕES ========== -->
 <div id="page-comissoes" class="page page-comissoes">
   <div class="ptoolbar filtros-comissao" style="flex-wrap:wrap;gap:8px">
     <input type="month" id="com-mes" style="width:150px">
@@ -16530,7 +16672,44 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="com-print-area" class="com-print-only"></div>
 </div>
 
-<!-- ========== 13B. RELATÓRIO MENSAL ========== -->
+<div id="page-caixas-perdidas" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <span style="font-size:.78rem;color:var(--text2)">📦 Caixas Perdidas por Mês</span>
+    <button class="btn btn-ghost btn-sm" onclick="cpSetRange('hoje')">Hoje</button>
+    <button class="btn btn-ghost btn-sm" onclick="cpSetRange('semana')">Esta Semana</button>
+    <button class="btn btn-ghost btn-sm" onclick="cpSetRange('mes')">Este Mês</button>
+    <select id="cp-emp" style="width:200px">
+      <option value="">Todas empresas</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-accent btn-sm" onclick="carregarCaixasPerdidas()">Atualizar</button>
+  </div>
+  <div class="page-body" style="display:grid;gap:10px">
+    <div id="cp-cards" class="g3"></div>
+    <div class="sbox">
+      <div class="sbox-h">📋 Lançamentos</div>
+      <div class="sbox-b" style="overflow:auto">
+        <table id="cp-table" style="width:100%;border-collapse:collapse;min-width:1100px">
+          <thead>
+            <tr style="background:var(--s2)">
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">DATA</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OF</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">PRODUTO</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">CLIENTE</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">QTD PERDIDA</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR UNIT</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR TOTAL</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">USUÁRIO</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-relmensal" class="page">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
     <span style="font-size:.78rem;color:var(--text2)">📅 Relatório Mensal de OFs</span>
@@ -17146,9 +17325,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">✕</button>
     </div>
     <div id="baixa-conc-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
-    <div style="display:flex;flex-direction:column;gap:6px">
-      <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantas caixas foram produzidas?</label>
-      <input id="baixa-conc-qtd" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantas caixas foram produzidas?</label>
+        <input id="baixa-conc-qtd" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Caixas perdidas/refugo</label>
+        <input id="qtd-perdida" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+      </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">Cancelar</button>
