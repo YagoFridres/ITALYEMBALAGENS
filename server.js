@@ -1273,6 +1273,22 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const created = createdRes.data;
     await _maybeRegistrarComissaoOF(req, body, created);
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
+    try {
+      const itens = Array.isArray(body?.itens) ? body.itens : [];
+      for (const item of itens) {
+        const itemChapaId = String(item?.chapa_id ?? item?.chapaId ?? '').trim();
+        const itemQtdChapas = Math.trunc(Number(item?.qtd_chapas ?? item?.qtdChapas ?? item?.qchp ?? 0) || 0);
+        if (!itemChapaId || !(itemQtdChapas > 0)) continue;
+        await _maybeBaixaAutomaticaChapasOF(req, {
+          chapa_id: itemChapaId,
+          qtd_chapas: itemQtdChapas,
+          of: created?.of ?? body?.of ?? '',
+          numero: created?.numero ?? body?.numero ?? '',
+          emp_id: body?.emp_id ?? body?.empId ?? created?.emp_id ?? created?.empId ?? 'E1',
+          _estoqueJaBaixadoCriacao: false,
+        }, created);
+      }
+    } catch (_) {}
     return ok(res, created);
   } catch (e) { bad(res, e.message); }
 });
@@ -2150,7 +2166,27 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
 
       if (!algumUpdate) {
         if (manter) return res.status(400).json({ ok: false, error: 'Não foi possível migrar as OFs deste cliente. Verifique as colunas de cliente na tabela ofs.' });
-        if (lastConstraintErr) return res.status(400).json({ ok: false, error: 'Cliente possui OFs vinculadas. Informe manter_para para migrar ou verifique se o vínculo pode ser removido.' });
+        if (lastConstraintErr) {
+          return res.status(409).json({
+            ok: false,
+            error: 'Cliente possui OFs vinculadas. Passe manter_para=<id> para migrar antes de excluir.',
+            has_ofs: true,
+            hint: 'DELETE /api/clientes/' + id + '?manter_para=<id_do_cliente_que_fica>',
+          });
+        }
+      }
+
+      if (manter) {
+        try { await supabase.from('orcamentos').update({ cliente_id: manter }).eq('cliente_id', id); } catch (_) {}
+        try { await supabase.from('visitas_vendedor').update({ cliente_id: manter }).eq('cliente_id', id); } catch (_) {}
+        try {
+          await supabase.from('historico_acoes').insert([{
+            tipo_acao: 'cliente_deduplicado',
+            descricao: `Cliente duplicado excluído (id=${id}), OFs migradas para id=${manter}`,
+            usuario: req.usuario?.nome || 'sistema',
+            data_hora: new Date().toISOString(),
+          }]);
+        } catch (_) {}
       }
     }
 
@@ -2179,6 +2215,80 @@ app.get('/api/chapas_estoque/:id/detalhes_compra', authMiddleware, async (req, r
       nome: c.nome || null,
       categoria: c.categoria || null,
     });
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/chapas_estoque/:id/ficha_compra', authMiddleware, async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    const c = _chapasCanonicalFromAny(data, table);
+    let ultimoPreco = Number(c.valor_unitario || 0);
+    let ultimaNF = String(c.nf || '').trim();
+    if (table === 'chapas_estoque_v2') {
+      try {
+        const { data: movs } = await supabase
+          .from('chapas_estoque_movimentos_v2')
+          .select('nf,created_at')
+          .eq('chapa_id', id)
+          .eq('tipo', 'entrada')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (Array.isArray(movs) && movs[0]) ultimaNF = String(movs[0].nf || ultimaNF || '').trim();
+      } catch (_) {}
+    }
+
+    const estoqueMin = Number(c.estoque_minimo || 200);
+    const qtdAtual = Number(c.quantidade || 0);
+    return ok(res, {
+      id: c.id,
+      fornecedor: c.fornecedor,
+      nomenclatura: c.nomenclatura,
+      tamanho: c.tamanho,
+      nome: c.nome,
+      categoria: c.categoria,
+      empresa_vinculada: c.empresa_vinculada,
+      qual_cnpj: c.qual_cnpj,
+      vincos: c.vincos,
+      emp_id: c.emp_id,
+      valor_unitario: ultimoPreco,
+      ultima_nf: ultimaNF,
+      quantidade_atual: qtdAtual,
+      estoque_minimo: estoqueMin,
+      precisa_repor: qtdAtual < estoqueMin,
+      sugestao_compra: Math.max(0, estoqueMin - qtdAtual),
+      _preenchimento: {
+        fornecedor: c.fornecedor,
+        produto: c.nomenclatura,
+        tamanho: c.tamanho,
+        unidade: 'UN',
+        valor_unitario: ultimoPreco,
+        nota_fiscal: ultimaNF,
+        obs: `Reposição: ${c.nome || c.nomenclatura}`,
+        chapa_id: c.id,
+        emp_id: c.emp_id,
+      },
+    });
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/chapas_estoque/alertas_reposicao', authMiddleware, async (req, res) => {
+  try {
+    const table = await _chapasPreferV2Table();
+    const empId = req.query.empId ? String(req.query.empId) : '';
+    let { data, error } = await supabase.from(table).select('*');
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    let rows = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
+    if (empId) rows = rows.filter((r) => String(r.emp_id || '').trim() === empId);
+    const alertas = rows
+      .filter((r) => Number(r.quantidade || 0) < Number(r.estoque_minimo || 200))
+      .map((r) => ({ ...r, deficit: Number(r.estoque_minimo || 200) - Number(r.quantidade || 0) }))
+      .sort((a, b) => b.deficit - a.deficit);
+    return ok(res, alertas);
   } catch (e) { err(res, e); }
 });
 
@@ -3563,51 +3673,87 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const b = req.body || {};
 
     if (table === 'chapas_estoque_v2') {
-      const payload = _chapasPayloadV2FromBody(b, req, false);
+      const fornecedor = String(b.fornecedor ?? b.forn ?? b.fabricante ?? '').trim();
+      const nomenclatura = String(b.nomenclatura ?? b.nom ?? b.codigo ?? b.tipo_papel ?? b.modelo ?? '').trim();
+      const tamanho = String(b.tamanho ?? b.tam ?? b.size ?? '').trim().toUpperCase();
+      const nomeUso = String(b.nome_uso ?? b.nome ?? b.nomeUso ?? nomenclatura ?? '').trim();
+      if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatório: fornecedor' });
+      if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nomenclatura (ou nom / codigo / tipo_papel)' });
+      if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatório: tamanho (ex: 1200X900)' });
+      if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
+
+      const payload = _chapasPayloadV2FromBody({ ...b, fornecedor, nomenclatura, tamanho, nome_uso: nomeUso, nome: nomeUso }, req, false);
       let { data, error } = await supabase.from('chapas_estoque_v2').insert([payload]).select().single();
       if (error) {
         const msg = String(error.message || error);
-        if (msg.toLowerCase().includes('empresa_vinculada') && msg.toLowerCase().includes('column')) {
+        const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+        if (col && payload[col] !== undefined) {
           const retry = { ...payload };
-          delete retry.empresa_vinculada;
+          delete retry[col];
           const r2 = await supabase.from('chapas_estoque_v2').insert([retry]).select().single();
           data = r2.data;
           error = r2.error;
         }
       }
-      if (error) return res.status(500).json({ error: error.message });
+      if (error) return res.status(500).json({ ok: false, error: error.message });
+
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''}`);
-      return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
+      await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''} · qtd=${payload.quantidade ?? 0}`);
+
+      if (Number(payload.quantidade) > 0) {
+        try {
+          await supabase.from('chapas_estoque_movimentos_v2').insert([{
+            chapa_id: data.id,
+            tipo: 'entrada',
+            delta: Number(payload.quantidade),
+            qtd_anterior: 0,
+            qtd_nova: Number(payload.quantidade),
+            nf: payload.nf || null,
+            obs: 'Entrada inicial de estoque',
+            usuario: req?.usuario?.nome || 'sistema',
+            emp_id: payload.emp_id || null,
+          }]);
+        } catch (_) {}
+      }
+
+      return res.json({ ok: true, data: _chapasCanonicalFromAny(data, 'chapas_estoque_v2') });
     }
 
-    const nomeObrig = String(b.nome_uso || b.nome || b.nom || b.nomenclatura || b.descricao || b.nome_comercial || '').trim();
+    const fornecedor = String(b.fornecedor ?? b.forn ?? b.fabricante ?? '').trim();
+    const nomenclatura = String(b.nomenclatura ?? b.nom ?? b.codigo ?? b.tipo_papel ?? b.modelo ?? '').trim();
+    const tamanho = String(b.tamanho ?? b.tam ?? b.size ?? '').trim().toUpperCase();
+    const nomeUso = String(b.nome_uso ?? b.nome ?? b.nomeUso ?? nomenclatura ?? '').trim();
+    if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatório: fornecedor' });
+    if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nomenclatura (ou nom / codigo / tipo_papel)' });
+    if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatório: tamanho (ex: 1200X900)' });
+    if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
+
     const payload = {
-      forn: b.fornecedor || b.forn || '',
-      nom: b.nomenclatura || b.nom || b.codigo || b.cod || b.nome || '',
-      tam: b.tamanho || b.tam || '',
-      nome: nomeObrig,
-      nome_uso: nomeObrig,
-      nome_comercial: b.nome_comercial || b.nomenclatura || b.nom || '',
-      qual: b.qual_cnpj || b.qual || '',
-      qual_cnpj: b.qual_cnpj || b.qual || '',
-      nf: b.nf || '',
-      numero_nf: b.numero_nf || b.nf || '',
-      qtd: Number(b.quantidade || b.qtd || 0),
-      quantidade: Number(b.quantidade || b.qtd || 0),
-      quantidade_atual: Number(b.quantidade_atual || b.quantidade || b.qtd || 0),
-      val: Number(b.valor_unitario || b.val || 0),
-      valor_unitario: Number(b.valor_unitario || b.val || 0),
-      vincos: b.vincos || '',
-      observacao: b.observacao || b.observacoes || '',
-      data_entrada: b.data_entrada || b.dataEntrada || b.entrada_de_dados || null,
-      emp_id: b.emp_id || 'E1',
-      categoria: b.categoria || 'Estoque Simples',
+      forn: fornecedor,
+      nom: nomenclatura,
+      tam: tamanho,
+      nome: nomeUso,
+      nome_uso: nomeUso,
+      nome_comercial: String(b.nome_comercial ?? b.nomeComercial ?? nomenclatura ?? '').trim(),
+      qual: String(b.qual_cnpj ?? b.qual ?? '').trim(),
+      qual_cnpj: String(b.qual_cnpj ?? b.qual ?? '').trim(),
+      nf: String(b.nf ?? '').trim(),
+      numero_nf: String(b.numero_nf ?? b.nf ?? '').trim(),
+      qtd: Math.trunc(Number(b.quantidade ?? b.qtd ?? 0)),
+      quantidade: Math.trunc(Number(b.quantidade ?? b.qtd ?? 0)),
+      quantidade_atual: Math.trunc(Number(b.quantidade_atual ?? b.quantidade ?? b.qtd ?? 0)),
+      val: Number(b.valor_unitario ?? b.val ?? 0),
+      valor_unitario: Number(b.valor_unitario ?? b.val ?? 0),
+      vincos: String(b.vincos ?? '').trim(),
+      observacao: String(b.observacao ?? b.obs ?? b.observacoes ?? '').trim(),
+      data_entrada: b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null,
+      emp_id: String(b.emp_id ?? b.empId ?? 'E1').trim(),
+      categoria: String(b.categoria ?? 'Estoque Simples').trim(),
     };
     let insPayload = { ...payload };
     let data = null;
     let error = null;
-    for (let tentativa = 0; tentativa < 5; tentativa++) {
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
       const r = await supabase.from('chapas_estoque').insert(insPayload).select().single();
       data = r.data;
       error = r.error;
@@ -3620,10 +3766,10 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       }
       break;
     }
-    if (error) return res.status(500).json({ error: String(error.message || error) });
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
     cacheClearPrefix('chapas_estoque:');
-    await _chapasLogAcao(req, 'estoque_chapas_cadastro', `Chapa cadastrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''}`);
-    return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
+    await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''} · qtd=${payload.qtd ?? 0}`);
+    return res.json({ ok: true, data: _chapasCanonicalFromAny(data, 'chapas_estoque') });
   } catch (e) { err(res, e); }
 });
 app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
