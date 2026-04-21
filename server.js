@@ -745,13 +745,27 @@ function ofIn(p) {
     out.imgs = Array.isArray(p.imgs) ? JSON.stringify(p.imgs) : (typeof p.imgs === 'string' ? p.imgs : '[]');
   }
   if (has('itens')) {
-    if (Array.isArray(p.itens)) out.itens = p.itens;
+    if (Array.isArray(p.itens)) {
+      out.itens = p.itens.map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        const maquina = (item.maquina ?? item.maq ?? item.machine ?? '');
+        const maquina_id = (item.maquina_id ?? item.maqId ?? item.machineId ?? null);
+        const maquina_nome = (item.maquina_nome ?? item.maqNome ?? item.machineName ?? item.maquina ?? maquina ?? '');
+        return { ...item, maquina, maquina_id, maquina_nome };
+      });
+    }
     else if (typeof p.itens === 'string') {
       try { out.itens = JSON.parse(p.itens || '[]'); } catch (e) { out.itens = []; }
     } else out.itens = [];
   }
   if (has('fluxo_maquinas')) {
-    if (Array.isArray(p.fluxo_maquinas)) out.fluxo_maquinas = p.fluxo_maquinas;
+    if (Array.isArray(p.fluxo_maquinas)) {
+      out.fluxo_maquinas = p.fluxo_maquinas.map((m) => {
+        if (typeof m === 'string') return m;
+        if (m && typeof m === 'object') return (m.nome ?? m.name ?? m.maquina ?? String(m));
+        return String(m ?? '');
+      });
+    }
     else if (typeof p.fluxo_maquinas === 'string') {
       try { out.fluxo_maquinas = JSON.parse(p.fluxo_maquinas); } catch (e) { out.fluxo_maquinas = []; }
     } else out.fluxo_maquinas = [];
@@ -759,6 +773,13 @@ function ofIn(p) {
   if (has('maquina_atual_index')) {
     const idx = Number(p.maquina_atual_index);
     out.maquina_atual_index = Number.isFinite(idx) ? idx : 0;
+  }
+  if (has('maquina_por_item')) {
+    if (p.maquina_por_item && typeof p.maquina_por_item === 'object' && !Array.isArray(p.maquina_por_item)) {
+      out.maquina_por_item = p.maquina_por_item;
+    } else if (typeof p.maquina_por_item === 'string') {
+      try { out.maquina_por_item = JSON.parse(p.maquina_por_item); } catch (e) { out.maquina_por_item = {}; }
+    } else out.maquina_por_item = {};
   }
   if (has('chapa_id')) out.chapa_id = p.chapa_id ? String(p.chapa_id) : null;
   if (has('chp') && !has('chapa_id')) out.chapa_id = p.chp ? String(p.chp) : null;
@@ -3745,25 +3766,37 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     const table = await _chapasPreferV2Table();
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
-    if (!['entrada', 'saida', 'ajuste'].includes(tipo)) return res.status(400).json({ ok: false, error: 'Tipo inválido (entrada/saida/ajuste)' });
+    if (!['entrada', 'saida', 'ajuste'].includes(tipo)) {
+      return res.status(400).json({ ok: false, error: 'Tipo inválido — use: entrada | saida | ajuste' });
+    }
 
-    const id = req.params.id;
+    const id = String(req.params.id || '').trim();
     const { data: cur, error: curErr } = await supabase.from(table).select('*').eq('id', id).single();
-    if (curErr) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
 
     const canonCur = _chapasCanonicalFromAny(cur, table);
     const oldQtd = Number(canonCur.quantidade || 0) || 0;
     let newQtd = oldQtd;
+    let deltaAbs = 0;
 
     if (tipo === 'ajuste') {
-      const alvo = Math.trunc(_chapasToNum(b.quantidade, NaN));
-      if (!Number.isFinite(alvo) || alvo < 0) return res.status(400).json({ ok: false, error: 'Quantidade inválida' });
+      const alvo = Math.trunc(_chapasToNum((b.quantidade ?? b.qtd_nova ?? b.qtd), NaN));
+      if (!Number.isFinite(alvo) || alvo < 0) return res.status(400).json({ ok: false, error: 'Quantidade inválida para ajuste' });
       newQtd = alvo;
+      deltaAbs = newQtd - oldQtd;
     } else {
-      const delta = Math.trunc(_chapasToNum(b.delta, NaN));
-      if (!Number.isFinite(delta) || delta <= 0) return res.status(400).json({ ok: false, error: 'Delta inválido' });
-      newQtd = tipo === 'entrada' ? (oldQtd + delta) : (oldQtd - delta);
-      if (newQtd < 0) return res.status(400).json({ ok: false, error: 'Saldo insuficiente' });
+      const raw = (b.delta ?? b.quantidade ?? b.qtd);
+      deltaAbs = Math.trunc(_chapasToNum(raw, NaN));
+      if (!Number.isFinite(deltaAbs) || deltaAbs <= 0) return res.status(400).json({ ok: false, error: 'Quantidade (delta) deve ser um número positivo' });
+      newQtd = tipo === 'entrada' ? (oldQtd + deltaAbs) : (oldQtd - deltaAbs);
+      if (newQtd < 0) {
+        return res.status(400).json({
+          ok: false,
+          error: `Saldo insuficiente — atual: ${oldQtd}, tentativa de saída: ${deltaAbs}`,
+          saldo: oldQtd,
+          solicitado: deltaAbs,
+        });
+      }
     }
 
     const patch = table === 'chapas_estoque_v2'
@@ -3780,12 +3813,14 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     cacheClearPrefix('chapas_estoque:');
 
     const canonUpd = _chapasCanonicalFromAny(upd, table);
-    const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(newQtd - oldQtd)}`;
+    const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
     const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
     await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
     if (table === 'chapas_estoque_v2') {
-      const delta = Math.trunc((Number(newQtd) || 0) - (Number(oldQtd) || 0));
+      const delta = tipo === 'entrada'
+        ? Math.abs(deltaAbs)
+        : (tipo === 'saida' ? -Math.abs(deltaAbs) : Math.trunc((Number(newQtd) || 0) - (Number(oldQtd) || 0)));
       const mov = {
         chapa_id: id,
         tipo,
@@ -3802,7 +3837,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       } catch (_) {}
     }
 
-    return ok(res, canonUpd);
+    return ok(res, { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } });
   } catch (e) { err(res, e); }
 });
 
