@@ -635,57 +635,6 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
-app.post('/api/setup-admin-users', requireAdmin, async (req, res) => {
-  try {
-    const senha = '1234';
-    const senha_hash = await bcrypt.hash(senha, 10);
-
-    const alvos = [
-      { email: 'sidao', nome: 'Sidao' },
-      { email: 'mano', nome: 'Mano' },
-    ];
-
-    const resultados = [];
-
-    for (const u of alvos) {
-      const email = String(u.email || '').trim().toLowerCase();
-      if (!email) continue;
-
-      const { data: existente, error: e1 } = await supabase
-        .from('usuarios')
-        .select('id,email')
-        .eq('email', email)
-        .maybeSingle();
-      if (e1) throw e1;
-
-      const base = {
-        nome: String(u.nome || email).trim() || email,
-        email,
-        perfil: 'admin',
-        permissoes: ['tudo'],
-        ativo: true,
-        senha_hash,
-        avatar_iniciais: initialsFromName(String(u.nome || email)),
-        avatar_cor: avatarColorFromText(email),
-      };
-
-      if (existente && existente.id) {
-        const { error: eUp } = await supabase.from('usuarios').update(base).eq('id', existente.id);
-        if (eUp) throw eUp;
-        resultados.push({ email, action: 'updated' });
-      } else {
-        const { error: eIn } = await supabase.from('usuarios').insert([base]);
-        if (eIn) throw eIn;
-        resultados.push({ email, action: 'inserted' });
-      }
-    }
-
-    return res.json({ ok: true, senha, resultados });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
 app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
   try {
     const dirs = [
