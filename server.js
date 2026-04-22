@@ -1226,6 +1226,79 @@ async function vendedoresUpdateCompat(id, payload) {
   return { data: null, error: lastErr };
 }
 
+function comprasIn(p) {
+  const out = { ...(p || {}) };
+  if (out.data !== undefined && out.data_pedido === undefined) out.data_pedido = out.data;
+  if (out.forn_id !== undefined && out.fornecedor_id === undefined) out.fornecedor_id = out.forn_id;
+  if (out.fornecedorId !== undefined && out.fornecedor_id === undefined) out.fornecedor_id = out.fornecedorId;
+  if (out.empId !== undefined && out.emp_id === undefined) out.emp_id = out.empId;
+  if (out.empresaId !== undefined && out.empresa_id === undefined) out.empresa_id = out.empresaId;
+  if (out.valor !== undefined && out.valor_total === undefined) out.valor_total = out.valor;
+  if (out.observacao !== undefined && out.obs === undefined && out.observacoes === undefined) out.obs = out.observacao;
+  delete out.data;
+  delete out.forn_id;
+  delete out.fornecedorId;
+  delete out.empId;
+  delete out.empresaId;
+  return out;
+}
+
+function comprasPayload(body) {
+  const b = comprasIn(body || {});
+  const campos = [
+    'fornecedor_id', 'fornecedor', 'empresa_id', 'emp_id',
+    'data_pedido', 'data_entrega', 'data_previsao',
+    'status', 'valor_total', 'valor', 'obs', 'observacao', 'observacoes',
+    'nf', 'numero_nf', 'itens', 'tipo', 'urgente',
+    'usuario_id', 'created_at', 'updated_at',
+    'item', 'qtd', 'quantidade', 'valor_unitario'
+  ];
+  const p = {};
+  campos.forEach(k => { if (b[k] !== undefined) p[k] = b[k]; });
+  Object.keys(p).forEach(k => (p[k] === undefined || p[k] === '') && delete p[k]);
+  return p;
+}
+
+async function comprasInsertCompat(payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from('compras').insert([cur]).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
+}
+
+async function comprasUpdateCompat(id, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from('compras').update(cur).eq('id', id).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
+}
+
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
     const from = req.query.from ? String(req.query.from) : '';
@@ -3046,19 +3119,20 @@ app.get('/api/compras', async (req, res) => {
 
 app.post('/api/compras', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('compras').insert([req.body]).select();
+    const payload = comprasPayload(req.body || {});
+    const { data, error } = await comprasInsertCompat(payload);
     if (error) throw error;
-    ok(res, data[0]);
+    ok(res, (data && data[0]) ? data[0] : null);
   } catch (e) { err(res, e); }
 });
 
 app.put('/api/compras/:id', async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('compras')
-      .update(payload).eq('id', req.params.id).select();
+    const payload = comprasPayload({ ...(req.body || {}) });
+    delete payload.id;
+    const { data, error } = await comprasUpdateCompat(req.params.id, payload);
     if (error) throw error;
-    ok(res, data[0]);
+    ok(res, (data && data[0]) ? data[0] : null);
   } catch (e) { err(res, e); }
 });
 
