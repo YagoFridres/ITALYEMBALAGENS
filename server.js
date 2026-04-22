@@ -608,6 +608,17 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Você não pode deletar seu próprio usuário' });
     }
 
+    const ADMINS_PROTEGIDOS = ['sidao', 'mano', 'italy'];
+    const { data: uDel, error: uDelErr } = await supabase
+      .from('usuarios')
+      .select('email,perfil')
+      .eq('id', id)
+      .maybeSingle();
+    if (uDelErr) throw uDelErr;
+    if (uDel && ADMINS_PROTEGIDOS.includes(String(uDel.email || '').toLowerCase())) {
+      return res.status(403).json({ ok: false, error: 'Este usuário não pode ser excluído' });
+    }
+
     const { data: admins, error: aerr } = await supabase
       .from('usuarios')
       .select('id')
@@ -622,6 +633,57 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
     if (error) throw error;
     return ok(res, true);
   } catch (e) { return err(res, e); }
+});
+
+app.post('/api/setup-admin-users', requireAdmin, async (req, res) => {
+  try {
+    const senha = '1234';
+    const senha_hash = await bcrypt.hash(senha, 10);
+
+    const alvos = [
+      { email: 'sidao', nome: 'Sidao' },
+      { email: 'mano', nome: 'Mano' },
+    ];
+
+    const resultados = [];
+
+    for (const u of alvos) {
+      const email = String(u.email || '').trim().toLowerCase();
+      if (!email) continue;
+
+      const { data: existente, error: e1 } = await supabase
+        .from('usuarios')
+        .select('id,email')
+        .eq('email', email)
+        .maybeSingle();
+      if (e1) throw e1;
+
+      const base = {
+        nome: String(u.nome || email).trim() || email,
+        email,
+        perfil: 'admin',
+        permissoes: ['tudo'],
+        ativo: true,
+        senha_hash,
+        avatar_iniciais: initialsFromName(String(u.nome || email)),
+        avatar_cor: avatarColorFromText(email),
+      };
+
+      if (existente && existente.id) {
+        const { error: eUp } = await supabase.from('usuarios').update(base).eq('id', existente.id);
+        if (eUp) throw eUp;
+        resultados.push({ email, action: 'updated' });
+      } else {
+        const { error: eIn } = await supabase.from('usuarios').insert([base]);
+        if (eIn) throw eIn;
+        resultados.push({ email, action: 'inserted' });
+      }
+    }
+
+    return res.json({ ok: true, senha, resultados });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
@@ -749,7 +811,9 @@ async function insertOne(table, row) {
     const { data, error } = await supabase.from(table).insert([payload]).select('*').limit(1);
     if (!error) return (data && data[0]) || null;
     const msg = String(error.message || error);
-    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
       delete payload[col];
       continue;
@@ -771,7 +835,9 @@ async function updateOne(table, id, row) {
     const { data, error } = await supabase.from(table).update(payload).eq('id', id).select('*').limit(1);
     if (!error) return (data && data[0]) || null;
     const msg = String(error.message || error);
-    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
       delete payload[col];
       continue;
@@ -869,13 +935,51 @@ function ofIn(p) {
   return out;
 }
 
+function ofPayloadFiltrado(body) {
+  const b = body || {};
+  const campos = [
+    'id',
+    'numero', 'of', 'of_num', 'of_numero', 'seq',
+    'cliente_id', 'cli_id', 'cliId',
+    'vendedor', 'vend_id', 'vendedor_id', 'vendId',
+    'empresa_id', 'emp_id', 'empId',
+    'qtd', 'quantidade',
+    'itens',
+    'dia', 'data_pedido', 'data_producao',
+    'ent', 'data_entrega',
+    'fluxo',
+    'maq',
+    'status',
+    'urg', 'urgente',
+    'chp', 'qtd_chapas', 'chapa_id',
+    'valor_total', 'valor_venda', 'total',
+    'cond_pagamento', 'pagto',
+    'obs', 'descricao', 'prodDesc', 'produto',
+    'imgs', 'imagem_url', 'imagens',
+    'fluxo_maquinas', 'maquinas_fluxo',
+    'maquina_por_item', 'maquina_atual_index',
+    'modo_programacao', 'dia_programacao',
+    'cidade_entrega',
+    'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
+    'caixas_excedentes',
+    'data_conclusao',
+    'updated_at'
+  ];
+  const p = {};
+  campos.forEach(k => { if (b[k] !== undefined) p[k] = b[k]; });
+  p.updated_at = new Date().toISOString();
+  return p;
+}
+
 async function ofsInsertWithRetry(row) {
   let p = { ...(row || {}) };
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
     const msg = String(r.error.message || r.error);
-    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(p, col)) {
       delete p[col];
       continue;
@@ -891,7 +995,9 @@ async function ofsUpdateWithRetry(id, row) {
     const r = await supabase.from('ofs').update(p).eq('id', id).select('*').single();
     if (!r.error) return r;
     const msg = String(r.error.message || r.error);
-    const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(p, col)) {
       delete p[col];
       continue;
@@ -923,6 +1029,7 @@ function clientesPayload(p) {
     nome: 'nome',
     razao_social: 'razao_social',
     rs: 'razao_social',
+    cnpj_cpf: 'cnpj',
     cnpj: 'cnpj',
     cpf: 'cpf',
     tel: 'tel',
@@ -946,6 +1053,7 @@ function clientesPayload(p) {
   Object.entries(map).forEach(([from, to]) => {
     if (b[from] !== undefined) out[to] = b[from];
   });
+  out.updated_at = new Date().toISOString();
   Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
   delete out.end;
   return out;
@@ -1309,7 +1417,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo_maquinas,maquina_por_item,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega,chapa_id,qtd_chapas";
+    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,imgs,imagem_url,imagens,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
@@ -1513,8 +1621,9 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
+    const filtered = ofPayloadFiltrado(body);
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
-    const createdRes = await ofsInsertWithRetry(ofIn(body));
+    const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
     const created = createdRes.data;
     await _maybeRegistrarComissaoOF(req, body, created);
@@ -1553,6 +1662,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const body = req.body || {};
+    const filtered = ofPayloadFiltrado(body);
     const id = String(req.params.id || '').trim();
     console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body)));
 
@@ -1562,7 +1672,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .eq('id', id)
       .maybeSingle();
 
-    const updRes = await ofsUpdateWithRetry(id, ofIn(body));
+    const updRes = await ofsUpdateWithRetry(id, ofIn(filtered));
     if (updRes.error) throw updRes.error;
     const updated = updRes.data;
     await _maybeRegistrarComissaoOF(req, body, updated);
