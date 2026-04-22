@@ -219,39 +219,29 @@ async function requireAdmin(req, res, next) {
       .maybeSingle();
 
     let perfil, perms;
-
     if (dbErr || !dbUser) {
-      console.warn('[REQUIRE ADMIN] fallback para JWT, erro banco:', dbErr?.message || 'not found');
+      console.warn('[REQUIRE ADMIN] fallback JWT:', dbErr?.message || 'not found');
       perfil = String(u?.perfil || '').trim().toLowerCase();
       perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
-      if (typeof perms === 'string') {
-        try { perms = JSON.parse(perms); } catch (_) { perms = []; }
-      }
+      if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
     } else {
       perfil = String(dbUser.perfil || u?.perfil || '').trim().toLowerCase();
       perms = dbUser.permissoes != null ? dbUser.permissoes : (u?.permissoes || []);
-      if (!Array.isArray(perms) && typeof perms === 'string') {
-        try { perms = JSON.parse(perms); } catch (_) { perms = []; }
-      }
+      if (!Array.isArray(perms) && typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
       perms = Array.isArray(perms) ? perms : [];
     }
-
-    console.log('[REQUIRE ADMIN] perfil:', perfil, '| perms:', perms);
 
     if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) {
       return next();
     }
     return res.status(403).json({ ok: false, error: 'Sem permissão — requer perfil admin' });
   } catch (e) {
-    console.error('[REQUIRE ADMIN] erro inesperado:', e?.message || e);
+    console.error('[REQUIRE ADMIN] erro:', e?.message);
     try {
       const u = req.usuario || null;
       const perfil = String(u?.perfil || '').trim().toLowerCase();
       const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
-      if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) {
-        console.warn('[REQUIRE ADMIN] aprovado via JWT fallback de emergência');
-        return next();
-      }
+      if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) return next();
     } catch (_) {}
     return res.status(403).json({ ok: false, error: 'Sem permissão' });
   }
