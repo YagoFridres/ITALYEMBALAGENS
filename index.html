@@ -10706,13 +10706,22 @@ async function carregarClientes(forcar=false){
   try{
     if(!forcar && Array.isArray(window._CLIENTES) && window._CLIENTES.length > 0){
       CLIENTES = window._CLIENTES;
+      CLIENTES = (CLIENTES || []).filter((c, idx, arr) =>
+        arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
+      );
+      try{ window._CLIENTES = CLIENTES; }catch(e){}
       return { ok:true, cached:true, data:CLIENTES };
     }
   }catch(e){}
   if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/clientes'+empParam);
-  if(r && r.ok && r.data && r.data.length) CLIENTES = r.data.map(normalizeCli);
+  if(r && r.ok && r.data && r.data.length) {
+    CLIENTES = r.data.map(normalizeCli);
+    CLIENTES = (CLIENTES || []).filter((c, idx, arr) =>
+      arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
+    );
+  }
   if(r && r.ok) _ultimaCargaClientes = Date.now();
   try{ window._CLIENTES = CLIENTES; }catch(e){}
   return r;

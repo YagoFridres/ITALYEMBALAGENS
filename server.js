@@ -957,7 +957,6 @@ async function clientesInsertCompat(payload) {
     (() => {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
-      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
       if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
       return p;
@@ -965,11 +964,22 @@ async function clientesInsertCompat(payload) {
   ];
   let lastErr = null;
   for (const p of attempts) {
-    const { data, error } = await supabase.from('clientes').insert([p]).select();
-    if (!error) return { data, error: null };
-    lastErr = error;
-    const msg = String(error.message || error);
-    if (msg.includes('column') || msg.includes('Could not find')) continue;
+    let cur = { ...(p || {}) };
+    for (let tentativa = 0; tentativa < 10; tentativa++) {
+      const { data, error } = await supabase.from('clientes').insert([cur]).select();
+      if (!error) return { data, error: null };
+      lastErr = error;
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        delete cur[col];
+        continue;
+      }
+      if (msg.includes('column') || msg.includes('Could not find')) break;
+      return { data: null, error };
+    }
   }
   return { data: null, error: lastErr };
 }
@@ -980,7 +990,6 @@ async function clientesUpdateCompat(id, payload) {
     (() => {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
-      if (p.endereco !== undefined) { p.end = p.endereco; delete p.endereco; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
       if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
       return p;
@@ -988,11 +997,22 @@ async function clientesUpdateCompat(id, payload) {
   ];
   let lastErr = null;
   for (const p of attempts) {
-    const { data, error } = await supabase.from('clientes').update(p).eq('id', id).select().limit(1);
-    if (!error) return { data, error: null };
-    lastErr = error;
-    const msg = String(error.message || error);
-    if (msg.includes('column') || msg.includes('Could not find')) continue;
+    let cur = { ...(p || {}) };
+    for (let tentativa = 0; tentativa < 10; tentativa++) {
+      const { data, error } = await supabase.from('clientes').update(cur).eq('id', id).select().limit(1);
+      if (!error) return { data, error: null };
+      lastErr = error;
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        delete cur[col];
+        continue;
+      }
+      if (msg.includes('column') || msg.includes('Could not find')) break;
+      return { data: null, error };
+    }
   }
   return { data: null, error: lastErr };
 }
@@ -1135,6 +1155,75 @@ function vendedoresIn(p) {
   delete out.fone;
   delete out.registro;
   return out;
+}
+
+function vendedoresPayload(p) {
+  const b = vendedoresIn(p || {});
+  const out = {};
+  const map = {
+    nome: 'nome',
+    email: 'email',
+    tel: 'tel',
+    telefone: 'tel',
+    reg: 'reg',
+    registro: 'reg',
+    regiao: 'reg',
+    meta: 'meta',
+    meta_mensal: 'meta',
+    comissao_pct: 'comissao_pct',
+    comissaoPct: 'comissao_pct',
+    comissao: 'comissao_pct',
+    ativo: 'ativo',
+    emp_id: 'emp_id',
+    empId: 'emp_id',
+    empresa_id: 'emp_id',
+    empresaId: 'emp_id',
+  };
+  Object.entries(map).forEach(([from, to]) => {
+    if (b[from] !== undefined) out[to] = b[from];
+  });
+  Object.keys(out).forEach(k => (out[k] === undefined || out[k] === '') && delete out[k]);
+  return out;
+}
+
+async function vendedoresInsertCompat(payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from('vendedores').insert([cur]).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
+}
+
+async function vendedoresUpdateCompat(id, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const { data, error } = await supabase.from('vendedores').update(cur).eq('id', id).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    return { data: null, error };
+  }
+  return { data: null, error: lastErr };
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
@@ -2530,7 +2619,8 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
 
 app.post('/api/vendedores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('vendedores').insert([vendedoresIn(req.body || {})]).select();
+    const payload = vendedoresPayload(req.body || {});
+    const { data, error } = await vendedoresInsertCompat(payload);
     if (error) throw error;
     cacheClearPrefix('vendedores_');
     ok(res, data[0]);
@@ -2539,9 +2629,10 @@ app.post('/api/vendedores', authMiddleware, async (req, res) => {
 
 app.put('/api/vendedores/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = vendedoresIn({ ...(req.body || {}) }); delete payload.id;
-    const { data, error } = await supabase.from('vendedores')
-      .update(payload).eq('id', req.params.id).select();
+    const payload = vendedoresPayload({ ...(req.body || {}) });
+    delete payload.id;
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    const { data, error } = await vendedoresUpdateCompat(req.params.id, payload);
     if (error) throw error;
     cacheClearPrefix('vendedores_');
     ok(res, data[0]);
@@ -3633,8 +3724,6 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const observacao = (b.observacao ?? b.observacoes ?? '').toString().trim();
   const riscaDesc = (b.risca_desc ?? b.descricao_risca ?? '').toString().trim();
   const estoqueMin = b.estoque_minimo != null ? Math.trunc(_chapasToNum(b.estoque_minimo, 200)) : undefined;
-  const hasDataEntrada = (b.data_entrada !== undefined || b.dataEntrada !== undefined || b.entrada_de_dados !== undefined);
-  const dataEntrada = hasDataEntrada ? ((b.data_entrada ?? b.dataEntrada ?? b.entrada_de_dados ?? null) || null) : undefined;
   const empIdBody = (b.emp_id ?? b.empId ?? '').toString().trim();
   const empIdQuery = req?.query?.empId ? String(req.query.empId).trim() : '';
   const empId = empIdBody || empIdQuery || (isUpdate ? '' : 'E1');
@@ -3648,7 +3737,6 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   setText('vincos', vincos, (b.vincos !== undefined));
   setText('observacao', observacao, (b.observacao !== undefined || b.observacoes !== undefined));
   if (estoqueMin !== undefined) set('estoque_minimo', estoqueMin);
-  if (dataEntrada !== undefined) set('data_entrada', dataEntrada);
   if (empId !== '') set('emp_id', empId);
 
   const qtd = b.quantidade != null ? Math.trunc(_chapasToNum(b.quantidade, 0)) : (b.qtd != null ? Math.trunc(_chapasToNum(b.qtd, 0)) : undefined);
