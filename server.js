@@ -1092,7 +1092,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,maq,fluxo_maquinas,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega,chapa_id,qtd_chapas";
+    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,prodDesc,qtd,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo_maquinas,maquina_por_item,maquina_atual_index,emp_id,vendedor,vend_id,valor_total,valor_venda,obs,imgs,deleted_at,of_numero,numero,descricao,created_at,data_producao,data_entrega,chapa_id,qtd_chapas";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
@@ -1183,6 +1183,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             urgente: r.urgente ?? null,
             qtd: r.qtd ?? r.quantidade ?? null,
             quantidade: r.quantidade ?? null,
+            qtd_pedida: r.qtd_pedida ?? null,
+            qtd_produzida: r.qtd_produzida ?? null,
+            qtd_perdida: r.qtd_perdida ?? null,
+            caixas_excedentes: r.caixas_excedentes ?? null,
+            data_conclusao: r.data_conclusao ?? null,
             dia: r.dia ?? r.data_producao ?? null,
             data_producao: r.data_producao ?? null,
             ent: r.ent ?? r.data_entrega ?? null,
@@ -1190,6 +1195,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             fluxo: r.fluxo ?? null,
             maq: r.maq ?? null,
             fluxo_maquinas: r.fluxo_maquinas ?? null,
+            maquina_por_item: r.maquina_por_item ?? null,
             maquina_atual_index: r.maquina_atual_index ?? null,
             imagem_url: r.imagem_url ?? null,
             imgs: r.imgs ?? null,
@@ -1890,6 +1896,129 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
 
     const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
     res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 'id obrigatório');
+
+    const { data: rows, error: e1 } = await supabase.from('ofs').select('*').eq('id', id).limit(1);
+    if (e1) throw e1;
+    const of = rows && rows[0] ? rows[0] : null;
+    if (!of) return bad(res, 'OF não encontrada');
+
+    const qtdOriginal = Number(of?.qtd || 0);
+    const valorOriginal = Number(of?.valor_total || of?.valor_venda || 0);
+
+    const qtdProduzidaRaw = req.body?.qtd_produzida ?? req.body?.qtd_real ?? req.body?.qtdProduzida ?? null;
+    const qtdProduzida = qtdProduzidaRaw != null ? Number(qtdProduzidaRaw) : null;
+    const qtdPerdida = Math.trunc(Number(req.body?.qtd_perdida ?? req.body?.qtdPerdida ?? 0) || 0);
+    if (qtdProduzida == null || !Number.isFinite(qtdProduzida) || qtdProduzida < 0) return bad(res, 'qtd_produzida inválida');
+    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return bad(res, 'qtd_perdida inválida');
+
+    let fluxo = parseFluxo(of.fluxo_maquinas);
+    if (!Array.isArray(fluxo) || fluxo.length === 0) {
+      const maq = parseFluxo(of.maq);
+      fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
+    }
+
+    const nowIso = new Date().toISOString();
+    const valorUnit = (qtdOriginal > 0) ? (valorOriginal / qtdOriginal) : 0;
+    const novoTotal = Math.round((qtdProduzida * valorUnit) * 100) / 100;
+    const excedente = Math.max(0, Math.trunc(qtdProduzida) - Math.trunc(qtdOriginal || 0));
+
+    const payload = {
+      status: 'Pedido Pronto',
+      data_conclusao: nowIso,
+      maquina_atual_index: Math.max(fluxo.length, Number(of?.maquina_atual_index || 0) || 0),
+      qtd: qtdProduzida,
+      valor_total: novoTotal,
+      valor_venda: novoTotal,
+      qtd_pedida: qtdOriginal,
+      qtd_produzida: qtdProduzida,
+      qtd_perdida: qtdPerdida,
+      caixas_excedentes: excedente,
+    };
+
+    const upd = await ofsUpdateWithRetry(id, payload);
+    if (upd.error) throw upd.error;
+
+    try {
+      const row = upd && upd.data ? upd.data : of;
+      await _maybeRegistrarComissaoOF(req, {
+        vendedor_id: row?.vendedor_id ?? of?.vendedor_id ?? null,
+        valor_total: row?.valor_total ?? row?.valor_venda ?? null,
+        valor_venda: row?.valor_venda ?? null,
+        of: row?.of ?? of?.of ?? null,
+        numero: row?.numero ?? of?.numero ?? null,
+      }, row);
+    } catch (_) {}
+
+    try {
+      const ofAtual = upd && upd.data ? upd.data : of;
+      const chapaId = String(ofAtual?.chapa_id || ofAtual?.chp || '').trim();
+      const ofNumRef = String(ofAtual?.of ?? ofAtual?.numero ?? '').trim();
+      let jaBaixado = false;
+      const tableCh = await _chapasPreferV2Table();
+      if (tableCh === 'chapas_estoque_v2' && chapaId && ofNumRef) {
+        const ex = await supabase
+          .from('chapas_estoque_movimentos_v2')
+          .select('id')
+          .eq('chapa_id', chapaId)
+          .eq('of_numero', ofNumRef)
+          .eq('tipo', 'saida')
+          .limit(1)
+          .maybeSingle();
+        if (!ex.error && ex.data) jaBaixado = true;
+      }
+      if (!jaBaixado) await _maybeBaixaAutomaticaChapasOF(req, ofAtual, ofAtual);
+      const itens = Array.isArray(ofAtual?.itens) ? ofAtual.itens : (typeof ofAtual?.itens === 'string' ? JSON.parse(ofAtual.itens || '[]') : []);
+      for (const item of itens) {
+        const itemChapaId = String(item?.chapa_id || '').trim();
+        const itemQtdChapas = Number(item?.qtd_chapas || 0);
+        if (!itemChapaId || !(itemQtdChapas > 0)) continue;
+        await _maybeBaixaAutomaticaChapasOF(req, {
+          chapa_id: itemChapaId,
+          qtd_chapas: itemQtdChapas,
+          _estoqueJaBaixadoCriacao: false,
+        }, ofAtual);
+      }
+    } catch (e) {}
+
+    const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
+    const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
+    const atual = (Array.isArray(fluxo) && fluxo.length) ? String(fluxo[fluxo.length - 1]) : '';
+    const msg = `OF #${numero} baixada em ${atual || '—'} — PEDIDO PRONTO ✓`;
+
+    try {
+      const ofRel = (upd && upd.data) ? upd.data : of;
+      const mesRef = new Date().toISOString().slice(0, 7);
+      await supabase.from('relatorio_producao').insert([{
+        mes_referencia: mesRef,
+        data: nowIso.slice(0, 10),
+        of_numero: numero || '',
+        cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
+        produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
+        quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
+        valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
+        maquina: atual || '',
+        status: 'Pedido Pronto',
+      }]);
+    } catch (e) {}
+
+    try {
+      await supabase.from('historico_acoes').insert([{
+        data_hora: nowIso,
+        tipo_acao: 'baixa_of',
+        descricao: msg,
+        usuario,
+      }]);
+    } catch (e) {}
+
+    const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
+    return res.json({ ok: true, data: dataOut, concluida: true, proxima: null, status: 'Pedido Pronto' });
   } catch (e) { err(res, e); }
 });
 
