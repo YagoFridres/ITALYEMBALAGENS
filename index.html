@@ -3426,6 +3426,9 @@ async function salvarOF(){
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
   const valTotal=calcularValorTotalOF();
+  const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
+  const descricaoPrincipal = itens.length > 0 ? String(itens[0].desc || itens[0].descricao || '').trim() : '';
+  const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
@@ -3466,7 +3469,7 @@ async function salvarOF(){
       }
     });
   }catch(e){}
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3488,6 +3491,9 @@ async function salvarEdicaoOFId(id){
     const itens=getOfItensFromModal();
     const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
     const valTotal=calcularValorTotalOF();
+    const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
+    const descricaoPrincipal = itens.length > 0 ? String(itens[0].desc || itens[0].descricao || '').trim() : '';
+    const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
     const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
@@ -3515,7 +3521,8 @@ async function salvarEdicaoOFId(id){
     }catch(e){}
     const payload={
     of:document.getElementById('f-of').value,
-    prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
+    prodDesc:titulo,
+    descricao:titulo,
     cliId,
     vendId:document.getElementById('f-vend').value,
     vend_id:document.getElementById('f-vend').value,
@@ -10667,6 +10674,7 @@ let _ultimaCargaMaquinas = 0;
 let _ultimaCargaFluxos = 0;
 let _ultimaCargaVendedores = 0;
 let _ultimaCargaChapas = 0;
+let _clientesCarregados = false;
 
 async function carregarOFs(opts){
   opts = opts || {};
@@ -10816,6 +10824,7 @@ function _rerenderOFViews(){
 }
 async function carregarClientes(forcar=false){
   const now = Date.now();
+  if(!forcar && _clientesCarregados && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
   try{
     if(!forcar && Array.isArray(window._CLIENTES) && window._CLIENTES.length > 0){
       CLIENTES = window._CLIENTES;
@@ -10823,10 +10832,11 @@ async function carregarClientes(forcar=false){
         arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
       );
       try{ window._CLIENTES = CLIENTES; }catch(e){}
+      _clientesCarregados = true;
       return { ok:true, cached:true, data:CLIENTES };
     }
   }catch(e){}
-  if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
+  if(!forcar && (now - _ultimaCargaClientes) < CACHE_TTL && Array.isArray(CLIENTES) && CLIENTES.length > 0) { _clientesCarregados = true; return { ok:true, cached:true, data:CLIENTES }; }
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/clientes'+empParam);
   if(r && r.ok && r.data && r.data.length) {
@@ -10834,6 +10844,7 @@ async function carregarClientes(forcar=false){
     CLIENTES = (CLIENTES || []).filter((c, idx, arr) =>
       arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
     );
+    _clientesCarregados = true;
   }
   if(r && r.ok) _ultimaCargaClientes = Date.now();
   try{ window._CLIENTES = CLIENTES; }catch(e){}
@@ -11191,18 +11202,12 @@ function applyDataSnapshot(d, opts){
 
   if(d.OFs)          OFs           = d.OFs;
 
-  // CLIENTES: só substitui se localStorage tiver mais clientes que o padrão do sistema
-  if(d.CLIENTES && d.CLIENTES.length >= CLIENTES.length){
-    CLIENTES = d.CLIENTES;
-  } else if(d.CLIENTES && d.CLIENTES.length > 0 && d.CLIENTES.length < CLIENTES.length){
-    // Versão antiga — merge: atualiza campos editáveis dos existentes, adiciona novos
-    d.CLIENTES.forEach(saved=>{
-      const item=CLIENTES.find(x=>String(x.id||'')===String(saved.id||''));
-      if(item){ item.tel=saved.tel||item.tel; item.email=saved.email||item.email; item.end=saved.end||item.end; item.obs=saved.obs||item.obs; }
-      else CLIENTES.push(saved);
-    });
+  if(d.CLIENTES){
+    const snap = Array.isArray(d.CLIENTES) ? d.CLIENTES : [];
+    CLIENTES = dedupeById(snap);
+    try{ window._CLIENTES = CLIENTES; }catch(e){}
+    _clientesCarregados = Array.isArray(CLIENTES) && CLIENTES.length > 0;
   }
-  CLIENTES = dedupeById(CLIENTES);
 
   // ESTOQUE: só substitui se localStorage tiver >= itens que o padrão da planilha
   if(d.ESTOQUE && d.ESTOQUE.length >= ESTOQUE.length){

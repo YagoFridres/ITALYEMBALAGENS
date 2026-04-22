@@ -809,6 +809,10 @@ function ofIn(p) {
     const s = String(v).trim();
     return s === '' ? null : s;
   };
+  const toNum = (v, def = 0) => {
+    const n = Number(String(v ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : def;
+  };
   delete out.val;
   delete out.valor;
   delete out.vtot;
@@ -830,11 +834,34 @@ function ofIn(p) {
     if (Array.isArray(p.itens)) {
       out.itens = p.itens.map((item) => {
         if (!item || typeof item !== 'object') return item;
-        const maquina = (item.maquina ?? item.maq ?? item.machine ?? '');
-        const maquina_id = (item.maquina_id ?? item.maqId ?? item.machineId ?? null);
-        const maquina_nome = (item.maquina_nome ?? item.maqNome ?? item.machineName ?? item.maquina ?? maquina ?? '');
-        return { ...item, maquina, maquina_id, maquina_nome };
-      });
+        const desc = String(item.desc ?? item.descricao ?? item.nome ?? item.item ?? '').trim();
+        const ref = String(item.ref ?? item.referencia ?? item.cod ?? '').trim();
+        const qtd = toNum(item.qtd ?? item.quantidade ?? 0, 0);
+        const vunit = toNum(item.vunit ?? item.valor_unitario ?? item.valorUnitario ?? 0, 0);
+        const valor_total = toNum(
+          item.valor_total ?? item.total ?? item.valorTotal ?? (qtd * vunit),
+          (qtd * vunit),
+        );
+
+        const maquina = String(item.maquina ?? item.maquina_item ?? item.maq ?? item.machine ?? '').trim();
+        const maquina_id = item.maquina_id ?? item.maqId ?? item.machineId ?? null;
+        const maquina_nome = String(item.maquina_nome ?? item.maqNome ?? item.machineName ?? item.maquina ?? maquina ?? '').trim();
+
+        return {
+          ...item,
+          desc,
+          descricao: item.descricao ?? desc,
+          ref,
+          qtd,
+          quantidade: item.quantidade ?? qtd,
+          vunit,
+          valor_unitario: item.valor_unitario ?? vunit,
+          valor_total,
+          maquina,
+          maquina_id,
+          maquina_nome,
+        };
+      }).filter(Boolean);
     }
     else if (typeof p.itens === 'string') {
       try { out.itens = JSON.parse(p.itens || '[]'); } catch (e) { out.itens = []; }
@@ -881,6 +908,28 @@ function ofIn(p) {
     if (!out.cli_id) out.cli_id = out.cliente_id;
     delete out.cliente_id;
   }
+
+  if ((out.descricao == null || String(out.descricao).trim() === '') && Array.isArray(out.itens) && out.itens.length) {
+    const d0 = out.itens[0] && typeof out.itens[0] === 'object'
+      ? String(out.itens[0].desc ?? out.itens[0].descricao ?? '').trim()
+      : '';
+    if (d0) out.descricao = d0;
+  }
+  if ((out.prodDesc == null || String(out.prodDesc).trim() === '') && Array.isArray(out.itens) && out.itens.length) {
+    const d0 = out.itens[0] && typeof out.itens[0] === 'object'
+      ? String(out.itens[0].desc ?? out.itens[0].descricao ?? '').trim()
+      : '';
+    if (d0) out.prodDesc = d0;
+  }
+  if (out.valor_total === undefined && out.valor_venda === undefined && Array.isArray(out.itens) && out.itens.length) {
+    const sum = out.itens.reduce((s, it) => {
+      if (!it || typeof it !== 'object') return s;
+      return s + toNum(it.valor_total ?? it.total ?? 0, 0);
+    }, 0);
+    out.valor_total = sum;
+    out.valor_venda = sum;
+  }
+
   return out;
 }
 
@@ -940,6 +989,12 @@ async function ofsInsertWithRetry(row) {
 
 async function ofsUpdateWithRetry(id, row) {
   let p = { ...(row || {}) };
+  delete p.id;
+  delete p.numero;
+  delete p.of;
+  delete p.of_num;
+  delete p.of_numero;
+  delete p.seq;
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').update(p).eq('id', id).select('*').single();
     if (!r.error) return r;
@@ -1300,6 +1355,25 @@ function comprasIn(p) {
   return out;
 }
 
+const STATUS_COMPRA_MAP = {
+  'Solicitada': 'solicitada',
+  'solicitada': 'solicitada',
+  'Em aberto': 'em_aberto',
+  'em aberto': 'em_aberto',
+  'Recebida': 'recebida',
+  'recebida': 'recebida',
+  'Parcial': 'parcial',
+  'parcial': 'parcial',
+};
+
+function normalizeCompraStatus(v) {
+  const raw = v == null ? '' : String(v).trim();
+  if (!raw) return null;
+  if (STATUS_COMPRA_MAP[raw]) return STATUS_COMPRA_MAP[raw];
+  const normalized = raw.toLowerCase().replace(/\s+/g, '_');
+  return normalized || null;
+}
+
 function comprasPayload(body) {
   const b = comprasIn(body || {});
   const campos = [
@@ -1312,6 +1386,7 @@ function comprasPayload(body) {
   ];
   const p = {};
   campos.forEach(k => { if (b[k] !== undefined) p[k] = b[k]; });
+  if (p.status !== undefined) p.status = normalizeCompraStatus(p.status);
   Object.keys(p).forEach(k => (p[k] === undefined || p[k] === '') && delete p[k]);
   return p;
 }
@@ -1613,6 +1688,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const body = req.body || {};
     const filtered = ofPayloadFiltrado(body);
     const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body)));
 
     const { data: ofAtual } = await supabase
@@ -1620,6 +1696,14 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .select('*')
       .eq('id', id)
       .maybeSingle();
+
+    delete filtered.id;
+    delete filtered.numero;
+    delete filtered.of;
+    delete filtered.of_num;
+    delete filtered.of_numero;
+    delete filtered.seq;
+    filtered.updated_at = new Date().toISOString();
 
     const updRes = await ofsUpdateWithRetry(id, ofIn(filtered));
     if (updRes.error) throw updRes.error;
