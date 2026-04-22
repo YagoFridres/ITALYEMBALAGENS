@@ -194,15 +194,27 @@ app.get('/api/health', (req, res) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'italy_secret_2026';
 
+function _getTokenFromReq(req) {
+  const raw = String(req.headers.authorization || req.headers.Authorization || '');
+  if (raw.toLowerCase().startsWith('bearer ')) return raw.slice(7).trim();
+  const x = req.headers['x-access-token'] || req.headers['x-access_token'] || req.headers['x-token'];
+  if (x) return String(x).trim();
+  const cookieHeader = String(req.headers.cookie || '');
+  if (cookieHeader) {
+    const m = cookieHeader.match(/(?:^|;\s*)(?:access_token|token)=([^;]+)/i);
+    if (m && m[1]) return decodeURIComponent(String(m[1]));
+  }
+  return '';
+}
+
 function authMiddleware(req, res, next) {
-  const raw = String(req.headers.authorization || '');
-  const token = raw.startsWith('Bearer ') ? raw.slice('Bearer '.length).trim() : '';
-  if (!token) return res.status(401).json({ ok: false, error: 'Não autorizado' });
+  const token = _getTokenFromReq(req);
+  if (!token) return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
   try {
     req.usuario = jwt.verify(token, JWT_SECRET);
     return next();
   } catch (e) {
-    return res.status(401).json({ ok: false, error: 'Token inválido' });
+    return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
   }
 }
 
@@ -252,6 +264,7 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return next();
   if (req.path === '/api/health') return next();
   if (req.path === '/api/auth/login' || req.path === '/api/auth/login/') return next();
+  if (req.path === '/api/auth/refresh' || req.path === '/api/auth/refresh/') return next();
   return authMiddleware(req, res, next);
 });
 
@@ -382,16 +395,22 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
 
+    let perms = usuario.permissoes != null ? usuario.permissoes : [];
+    if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+    if (!Array.isArray(perms)) perms = [];
+    const perfilNorm = String(usuario.perfil || '').trim().toLowerCase();
+    if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
+
     const token = jwt.sign(
       {
         id: usuario.id,
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
-        permissoes: usuario.permissoes,
+        permissoes: perms,
       },
-      process.env.JWT_SECRET || 'italy_secret_2026',
-      { expiresIn: '24h' }
+      JWT_SECRET,
+      { expiresIn: '30d' }
     );
     console.log('[TOKEN GERADO] perfil:', usuario.perfil, 'permissoes:', usuario.permissoes);
 
@@ -408,7 +427,7 @@ app.post('/api/auth/login', async (req, res) => {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
-        permissoes: usuario.permissoes,
+        permissoes: perms,
         canais_chat: usuario.canais_chat,
         avatar_iniciais: usuario.avatar_iniciais || 'AD',
         avatar_cor: usuario.avatar_cor || '#4A90D9',
@@ -428,32 +447,68 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
       .eq('id', req.usuario.id)
       .single();
     if (error || !usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
-    res.json(usuario);
+    let perms = usuario.permissoes != null ? usuario.permissoes : [];
+    if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+    if (!Array.isArray(perms)) perms = [];
+    const perfilNorm = String(usuario.perfil || '').trim().toLowerCase();
+    if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
+    res.json({ ...usuario, permissoes: perms });
   } catch(err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/refresh', authMiddleware, async (req, res) => {
+app.post('/api/auth/refresh', async (req, res) => {
   try {
-    const u = req.usuario || null;
-    const uid = String(u?.id || '').trim();
-    if (!uid) return res.status(401).json({ ok: false, error: 'Não autorizado' });
+    const oldToken =
+      _getTokenFromReq(req)
+      || String(req.body?.token || req.body?.access_token || req.body?.refresh_token || '').trim()
+      || String(req.headers['x-refresh-token'] || '').trim();
+    if (!oldToken) return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+
+    let payload = null;
+    try {
+      payload = jwt.verify(oldToken, JWT_SECRET, { ignoreExpiration: true });
+    } catch (_) {
+      try { payload = jwt.decode(oldToken); } catch (e) { payload = null; }
+    }
+    const uid = String(payload?.id || '').trim();
+    if (!uid) return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
 
     const { data: dbUser, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,permissoes')
+      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor')
       .eq('id', uid)
       .single();
-    if (error || !dbUser) return res.status(404).json({ ok: false, error: 'Usuário não encontrado' });
+    if (error || !dbUser) return res.status(401).json({ ok: false, error: 'user_not_found', redirect: '/login' });
+    if (dbUser.ativo === false) return res.status(401).json({ ok: false, error: 'user_inactive', redirect: '/login' });
+
+    let perms = dbUser.permissoes != null ? dbUser.permissoes : [];
+    if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+    if (!Array.isArray(perms)) perms = [];
+    const perfilNorm = String(dbUser.perfil || '').trim().toLowerCase();
+    if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
 
     const token = jwt.sign(
-      { id: dbUser.id, nome: dbUser.nome, email: dbUser.email, perfil: dbUser.perfil, permissoes: dbUser.permissoes },
+      { id: dbUser.id, nome: dbUser.nome, email: dbUser.email, perfil: dbUser.perfil, permissoes: perms },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '30d' }
     );
     console.log('[TOKEN REFRESH] perfil:', dbUser.perfil, 'permissoes:', dbUser.permissoes);
-    return res.json({ token });
+    return res.json({
+      ok: true,
+      token,
+      usuario: {
+        id: dbUser.id,
+        nome: dbUser.nome,
+        email: dbUser.email,
+        perfil: dbUser.perfil,
+        permissoes: perms,
+        canais_chat: dbUser.canais_chat,
+        avatar_iniciais: dbUser.avatar_iniciais || initialsFromName(dbUser.nome),
+        avatar_cor: dbUser.avatar_cor || avatarColorFromText(dbUser.email),
+      },
+    });
   } catch (e) {
     console.error('Erro refresh token:', e);
     return res.status(500).json({ ok: false, error: 'Erro interno' });

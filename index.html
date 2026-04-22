@@ -9398,7 +9398,7 @@ async function bootAuthAndData(){
     try{ mostrarTelaLogin(); }catch(e){}
     return;
   }
-  CURRENT_USER = u;
+  CURRENT_USER = normalizarUsuario(u);
   try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
   try{ iniciarSistema(CURRENT_USER); }catch(e){}
   try{ await loadCoreData(); }catch(e){}
@@ -9870,6 +9870,18 @@ var AUTH_TOKEN_KEY='token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
 var AUTH_TOKEN_KEY2='token';
+function normalizarUsuario(u){
+  if(!u) return u;
+  if(typeof u.permissoes === 'string'){
+    try{ u.permissoes = JSON.parse(u.permissoes); }catch(e){ u.permissoes = []; }
+  }
+  if(!Array.isArray(u.permissoes)) u.permissoes = [];
+  const perfil = String(u.perfil||'').toLowerCase();
+  if((perfil === 'admin' || perfil.indexOf('admin') >= 0) && !u.permissoes.includes('tudo')){
+    u.permissoes = ['tudo'].concat(u.permissoes);
+  }
+  return u;
+}
 function getStoredToken(){
   try{
     return String(localStorage.getItem(AUTH_TOKEN_KEY2) || '').trim();
@@ -9919,6 +9931,7 @@ function iniciarSistema(user){
     AUTH_TOKEN = String(user.token||'');
     CURRENT_USER = user.user;
   }
+  CURRENT_USER = normalizarUsuario(CURRENT_USER);
   try{ window.CURRENT_USER = CURRENT_USER; }catch(e){}
   try{ window._currentUser = CURRENT_USER; }catch(e){}
   const ls=document.getElementById('login-screen');
@@ -9955,11 +9968,9 @@ async function doLogin(){
   }
   AUTH_TOKEN = token;
   CURRENT_USER = user;
+  CURRENT_USER = normalizarUsuario(CURRENT_USER);
   try{ window.CURRENT_USER = CURRENT_USER; }catch(e){}
   try{ window._currentUser = CURRENT_USER; }catch(e){}
-  if(!Array.isArray(CURRENT_USER.permissoes)){
-    try{ CURRENT_USER.permissoes = typeof CURRENT_USER.permissoes==='string' ? JSON.parse(CURRENT_USER.permissoes) : []; }catch(e){ CURRENT_USER.permissoes = []; }
-  }
   try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
   try{ localStorage.setItem('token', AUTH_TOKEN); }catch(e){}
   authSave(AUTH_TOKEN, CURRENT_USER);
@@ -10054,6 +10065,21 @@ async function apiFetch(url, opts = {}) {
       if (novo) {
         try{ localStorage.setItem('token', novo); }catch(e){}
         headers['Authorization'] = 'Bearer ' + novo;
+        if(j && j.usuario){
+          try{
+            CURRENT_USER = normalizarUsuario(j.usuario);
+            window.CURRENT_USER = CURRENT_USER;
+            window._currentUser = CURRENT_USER;
+          }catch(e){}
+          try{
+            const uname=document.getElementById('topbar-user-name');
+            if(uname) uname.textContent=CURRENT_USER?CURRENT_USER.nome:'—';
+            const uico=document.getElementById('topbar-user-ico');
+            const icons={'admin':'👑','producao':'🏭','pcp':'📋','artefinal':'🎨','qualidade':'✅','estoque_user':'📦','riscador':'⚙'};
+            if(uico)  uico.textContent=(CURRENT_USER&&icons[CURRENT_USER.perfil])?icons[CURRENT_USER.perfil]:'👤';
+          }catch(e){}
+          try{ if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil); }catch(e){}
+        }
         r = await doFetch(fullUrl, toReqOpts(headers));
       }
     } else {
@@ -10094,10 +10120,28 @@ async function api(method, url, body) {
         localStorage.setItem('token', j.token);
         headers['Authorization'] = `Bearer ${j.token}`;
         resp = await fetch(fullUrl, opts);
+        if(j && j.usuario){
+          try{
+            CURRENT_USER = normalizarUsuario(j.usuario);
+            window.CURRENT_USER = CURRENT_USER;
+            window._currentUser = CURRENT_USER;
+          }catch(e){}
+        }
+      } else {
+        try{ clearStoredAuth(); }catch(e){}
+        try{ mostrarTelaLogin(); }catch(e){}
+        return { ok:false, status:401, error:'Sessão expirada' };
       }
+    } else {
+      try{ clearStoredAuth(); }catch(e){}
+      try{ mostrarTelaLogin(); }catch(e){}
+      return { ok:false, status:401, error:'Sessão expirada' };
     }
   }
-  return resp.json().catch(() => null);
+  const j = await resp.json().catch(() => null);
+  if(j && typeof j === 'object' && j.status == null) j.status = resp.status;
+  if(j && typeof j === 'object' && j.ok == null && resp.ok) j.ok = true;
+  return j;
 }
 
 async function apiUpload(url, formData) {
