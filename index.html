@@ -2717,6 +2717,8 @@ async function abrirModalOF(id){
   const csel=document.getElementById('f-cli'); csel.innerHTML='<option value="">Selecionar...</option>';
   CLIENTES.forEach(c=>{csel.innerHTML+='<option value="'+c.id+'" title="'+(c.tel||'')+' · '+(c.cidade||'')+'/'+(c.uf||'')+'">'+(c.nome)+(c.cidade?' — '+c.cidade:'')+'</option>';});
   const fCliSearch=document.getElementById('f-cli-search'); if(fCliSearch) fCliSearch.value='';
+  const hidCli = ofEnsureCliIdHidden();
+  if(hidCli) hidCli.value = '';
   const vsel=document.getElementById('f-vend'); vsel.innerHTML='<option value="">Sem vendedor</option>';
   VENDEDORES.forEach(v=>vsel.innerHTML+=`<option value="${v.id}">${v.nome}</option>`);
   const fsel=document.getElementById('f-fl'); fsel.innerHTML='<option value="">Selecionar fluxo...</option>';
@@ -2736,6 +2738,7 @@ async function abrirModalOF(id){
   const fQ=document.getElementById('f-qchp'); if(fQ) fQ.value='';
   if(oEdit){
     if(csel && (oEdit.cliId||oEdit.cliente)) csel.value=oEdit.cliId||oEdit.cliente||'';
+    if(hidCli) hidCli.value = String(oEdit.cliId||oEdit.cliente||'');
     if(vsel && (oEdit.vendId||oEdit.vendedor)) vsel.value=oEdit.vendId||'';
     if(fsel && oEdit.fluxo) fsel.value=oEdit.fluxo||'';
     if(fCh){
@@ -2810,9 +2813,24 @@ async function ofAtualizaChapas(){
     chsel.innerHTML='<option value="">Erro ao carregar</option>';
   }
 }
+function ofEnsureCliIdHidden(){
+  let hid = document.getElementById('f-cli-id');
+  if(hid) return hid;
+  const sel = document.getElementById('f-cli');
+  const inp = document.getElementById('f-cli-search');
+  hid = document.createElement('input');
+  hid.type = 'hidden';
+  hid.id = 'f-cli-id';
+  if(inp && inp.parentNode) inp.parentNode.appendChild(hid);
+  else if(sel && sel.parentNode) sel.parentNode.appendChild(hid);
+  return hid;
+}
 function ofResolveCliIdFromModal(){
+  const hid = document.getElementById('f-cli-id');
+  const hidVal = hid ? String(hid.value || '').trim() : '';
   const sel = document.getElementById('f-cli');
   let cliId = sel ? String(sel.value || '').trim() : '';
+  if(!cliId && hidVal) cliId = hidVal;
   if(cliId) return cliId;
   let nome = '';
   const inp = document.getElementById('f-cli-search');
@@ -2820,20 +2838,39 @@ function ofResolveCliIdFromModal(){
   if(!nome && sel && sel.previousSibling && sel.previousSibling.tagName === 'INPUT'){
     try{ nome = String(sel.previousSibling.value || '').trim(); }catch(e){}
   }
+  if(!nome && sel && sel.parentNode){
+    try{
+      const inputs = Array.from(sel.parentNode.querySelectorAll('input')).filter(x=>String((x.type||'')).toLowerCase()!=='hidden');
+      for(const el of inputs){
+        const v = String(el.value || '').trim();
+        if(v){ nome = v; break; }
+      }
+    }catch(e){}
+  }
   if(!nome) return '';
   const nomeClean = String(nome.split('—')[0] || nome).trim();
   const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
   const alvo = norm(nomeClean);
   if(!alvo) return '';
-  const found = (CLIENTES||[]).find(c => norm(c.nome||'') === alvo || (c.rs && norm(c.rs) === alvo)) || null;
+  let cand = (CLIENTES||[]).filter(c => norm(c.nome||'') === alvo || (c.rs && norm(c.rs) === alvo));
+  if(cand.length !== 1){
+    cand = (CLIENTES||[]).filter(c=>{
+      const hay = [c.nome,c.rs].filter(Boolean).map(norm).join(' | ');
+      return hay.includes(alvo);
+    });
+  }
+  const found = cand.length === 1 ? cand[0] : null;
   if(found && sel){
     try{ sel.value = String(found.id||''); }catch(e){}
+    try{ if(hid) hid.value = String(found.id||''); }catch(e){}
     try{ ofCliChange(); }catch(e){}
   }
   return found ? String(found.id||'') : '';
 }
 function ofCliChange(){
   const cliId=document.getElementById('f-cli').value;
+  const hid = document.getElementById('f-cli-id');
+  if(hid) hid.value = String(cliId || '');
   const el=document.getElementById('f-cli-info');
   const cliSearch=document.getElementById('f-cli-search');
   if(!el)return;
@@ -4400,7 +4437,7 @@ async function salvarCliente() {
   if(!resp || !resp.ok || (r && r.error)){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
   const saved = normalizeCli((r && r.data) ? r.data : payload);
   if(id){
-    const idx = (CLIENTES||[]).findIndex(c=>String(c.id||'').trim()===id);
+    const idx = (CLIENTES||[]).findIndex(c=>String(c.id||'').trim()===String(id||'').trim());
     if(idx >= 0) CLIENTES[idx] = { ...CLIENTES[idx], ...saved, id };
     else CLIENTES.push({ ...saved, id });
   } else {
@@ -4409,6 +4446,7 @@ async function salvarCliente() {
     else if (r && r.id) saved.id = r.id;
     CLIENTES.push(saved);
   }
+  CLIENTES = dedupeById(CLIENTES);
   toast(id?'Cliente atualizado ✓':'Cliente criado ✓','var(--green)');
   fechar('modal-cli');
   CLIENTE_ATUAL_ID = '';
@@ -9728,12 +9766,31 @@ function initGlobalAutocomplete(){
     ac(fCliSearch,(q,empId)=>acClientes(q,empId),(data,lbl)=>{
       fCli.value=data.id||'';
       fCliSearch.value=lbl||data.nome||'';
+      const hid = ofEnsureCliIdHidden();
+      if(hid) hid.value = String(fCli.value || '');
       ofCliChange();
     },{minLen:0,maxItems:15});
     fCliSearch.addEventListener('input', function(){
-      if(!this.value.trim()){
+      const v = String(this.value||'').trim();
+      if(!v){
         fCli.value='';
+        const hid = ofEnsureCliIdHidden();
+        if(hid) hid.value = '';
         ofCliChange();
+        return;
+      }
+      const curId = String(fCli.value||'').trim();
+      if(curId){
+        const cur = (typeof getCli==='function') ? (getCli(curId)||{}) : {};
+        const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+        const alvo = norm(String(v.split('—')[0] || v).trim());
+        const curNome = norm(cur.nome||'');
+        if(alvo && curNome && alvo !== curNome){
+          fCli.value='';
+          const hid = ofEnsureCliIdHidden();
+          if(hid) hid.value = '';
+          ofCliChange();
+        }
       }
     });
   }
@@ -10512,6 +10569,17 @@ function normalizeForn(r){
 }
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
+function dedupeById(arr){
+  if(!Array.isArray(arr)) return [];
+  const seen = new Set();
+  return arr.filter(it=>{
+    const id = it && it.id != null ? String(it.id) : '';
+    if(!id) return true;
+    if(seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
 
 let EMPRESAS_DB = [];
 async function carregarEmpresas(){
@@ -10850,7 +10918,7 @@ async function carregarFornecedores(forcar=false){
   if(!forcar && (now - _ultimaCargaFornecedores) < CACHE_TTL && Array.isArray(FORNECEDORES) && FORNECEDORES.length > 0) return { ok:true, cached:true, data:FORNECEDORES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/fornecedores'+empParam);
-  if(r && r.ok && r.data && r.data.length) FORNECEDORES = r.data.map(normalizeForn);
+  if(r && r.ok && r.data && r.data.length) FORNECEDORES = dedupeById(r.data.map(normalizeForn));
   if(r && r.ok) _ultimaCargaFornecedores = Date.now();
   return r;
 }
@@ -11084,11 +11152,12 @@ function applyDataSnapshot(d, opts){
   } else if(d.CLIENTES && d.CLIENTES.length > 0 && d.CLIENTES.length < CLIENTES.length){
     // Versão antiga — merge: atualiza campos editáveis dos existentes, adiciona novos
     d.CLIENTES.forEach(saved=>{
-      const item=CLIENTES.find(x=>x.id===saved.id);
+      const item=CLIENTES.find(x=>String(x.id||'')===String(saved.id||''));
       if(item){ item.tel=saved.tel||item.tel; item.email=saved.email||item.email; item.end=saved.end||item.end; item.obs=saved.obs||item.obs; }
       else CLIENTES.push(saved);
     });
   }
+  CLIENTES = dedupeById(CLIENTES);
 
   // ESTOQUE: só substitui se localStorage tiver >= itens que o padrão da planilha
   if(d.ESTOQUE && d.ESTOQUE.length >= ESTOQUE.length){
@@ -11117,7 +11186,7 @@ function applyDataSnapshot(d, opts){
   if(d.OPERADORES)   OPERADORES    = d.OPERADORES;
   if(d.INCONFORMIDADES) INCONFORMIDADES = d.INCONFORMIDADES;
   if(d.ORCAMENTOS)   ORCAMENTOS    = d.ORCAMENTOS;
-  if(d.FORNECEDORES) FORNECEDORES  = d.FORNECEDORES;
+  if(d.FORNECEDORES) FORNECEDORES  = dedupeById(d.FORNECEDORES);
   if(d.TEMPO_IA)     TEMPO_IA      = d.TEMPO_IA;
   if(d.TAB_STATE)    TAB_STATE     = d.TAB_STATE;
   if(d.MAQUINAS&&d.MAQUINAS.length) MAQUINAS = d.MAQUINAS;
@@ -15490,6 +15559,7 @@ salvarFornecedor = async function(){
   console.log('[FORN] nome:', nomeVal);
   const nome = String(nomeVal||'').trim();
   if(!nome){toast('Informe o nome','var(--red)');return;}
+  const id = String((document.getElementById('forn-edit-id')||{}).value||'').trim();
   const payload={
     nome,
     tipo:(document.getElementById('forn-e-tipo')||{}).value||'',
@@ -15503,8 +15573,18 @@ salvarFornecedor = async function(){
     obs:(document.getElementById('forn-e-obs')||{}).value||'',
     emp_id:(document.getElementById('forn-e-emp')||{}).value||''
   };
-  const r=await salvarViaApiOuLocal('fornecedor', ()=>api('POST','/fornecedores',payload), _salvarForn_orig);
-  if(r.ok && !r.local){FORNECEDORES.push({...payload,id:r.data.id});fechar('modal-fornecedor');renderFornecedores();autoSaveTrigger();}
+  const r=await salvarViaApiOuLocal('fornecedor',
+    ()=> id ? api('PUT','/fornecedores/'+encodeURIComponent(id), payload) : api('POST','/fornecedores',payload),
+    _salvarForn_orig
+  );
+  if(r.ok && !r.local){
+    const saved = normalizeForn({ ...payload, id: (r.data && r.data.id) ? r.data.id : id });
+    const idx = (FORNECEDORES||[]).findIndex(f => String(f.id||'') === String(saved.id||''));
+    if(idx >= 0) FORNECEDORES[idx] = { ...FORNECEDORES[idx], ...saved };
+    else FORNECEDORES.push(saved);
+    FORNECEDORES = dedupeById(FORNECEDORES);
+    fechar('modal-fornecedor');renderFornecedores();autoSaveTrigger();
+  }
   else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
 };
 
@@ -20422,6 +20502,10 @@ function fillCli(c,ctx){
       }
       sel.value=c.id;
     }
+    if(typeof ofEnsureCliIdHidden==='function'){
+      const hid = ofEnsureCliIdHidden();
+      if(hid) hid.value = String(c.id||'');
+    }
     const fp=document.getElementById('f-pagto');
     if(fp&&!fp.value&&c.pagto)fp.value=c.pagto;
     if(typeof ofCliChange==='function')ofCliChange();
@@ -20493,7 +20577,17 @@ function mountAC(selId,ctx){
     drop.classList.add('open');
   }
 
-  inp.addEventListener('input',()=>render(inp.value));
+  inp.addEventListener('input',()=>{
+    if(sel && sel.value){
+      sel.value='';
+      if(typeof ofEnsureCliIdHidden==='function'){
+        const hid = ofEnsureCliIdHidden();
+        if(hid) hid.value = '';
+      }
+      if(ctx==='of' && typeof ofCliChange==='function') ofCliChange();
+    }
+    render(inp.value);
+  });
   inp.addEventListener('focus',()=>{if(inp.value.length>0)render(inp.value);});
   inp.addEventListener('keydown',e=>{
     const items=drop.querySelectorAll('.cli-ac-item');
