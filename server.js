@@ -3913,7 +3913,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const selectV2Base = [
       'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria','quantidade',
       'valor_unitario','valor_total','estoque_minimo','emp_id','empresa_vinculada',
-      'riscada','cliente_nome','cliente_id','data_entrada','qual_cnpj','qual','nf','vincos','observacao','risca_desc'
+      'riscada','cliente_nome','cliente_id','qual_cnpj','qual','nf','vincos','observacao','risca_desc'
     ];
     const applyFilters = (inRows) => {
       let rows = Array.isArray(inRows) ? inRows : [];
@@ -4618,7 +4618,6 @@ app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, asyn
       riscada: !!c.riscada,
       risca_desc: c.risca_desc || '',
       estoque_minimo: Math.trunc(Number(c.estoque_minimo || 200) || 200),
-      data_entrada: c.data_entrada || null,
       emp_id: c.emp_id || 'E1',
       criado_por: req?.usuario?.nome || 'sistema',
       atualizado_por: req?.usuario?.nome || 'sistema',
