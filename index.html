@@ -2810,6 +2810,28 @@ async function ofAtualizaChapas(){
     chsel.innerHTML='<option value="">Erro ao carregar</option>';
   }
 }
+function ofResolveCliIdFromModal(){
+  const sel = document.getElementById('f-cli');
+  let cliId = sel ? String(sel.value || '').trim() : '';
+  if(cliId) return cliId;
+  let nome = '';
+  const inp = document.getElementById('f-cli-search');
+  if(inp) nome = String(inp.value || '').trim();
+  if(!nome && sel && sel.previousSibling && sel.previousSibling.tagName === 'INPUT'){
+    try{ nome = String(sel.previousSibling.value || '').trim(); }catch(e){}
+  }
+  if(!nome) return '';
+  const nomeClean = String(nome.split('—')[0] || nome).trim();
+  const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();
+  const alvo = norm(nomeClean);
+  if(!alvo) return '';
+  const found = (CLIENTES||[]).find(c => norm(c.nome||'') === alvo || (c.rs && norm(c.rs) === alvo)) || null;
+  if(found && sel){
+    try{ sel.value = String(found.id||''); }catch(e){}
+    try{ ofCliChange(); }catch(e){}
+  }
+  return found ? String(found.id||'') : '';
+}
 function ofCliChange(){
   const cliId=document.getElementById('f-cli').value;
   const el=document.getElementById('f-cli-info');
@@ -3338,11 +3360,11 @@ function getOfItensFromModal(){
 }
 
 async function salvarOF(){
-  const cliId=document.getElementById('f-cli').value;
+  const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
   const valTotal=calcularValorTotalOF();
-  if(!cliId){toast('Selecione o cliente','var(--red)');return;}
+  if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
   if(chpId&&qchp>0){
@@ -3394,11 +3416,11 @@ async function salvarOF(){
 async function salvarEdicaoOFId(id){
   try{
     const o=OFs.find(x=>x.id===id);if(!o){toast('OF não encontrada','var(--red)');return;}
-    const cliId=document.getElementById('f-cli').value;
+    const cliId=ofResolveCliIdFromModal();
     const itens=getOfItensFromModal();
     const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
     const valTotal=calcularValorTotalOF();
-    if(!cliId){toast('Selecione o cliente','var(--red)');return;}
+    if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
     const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
     const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
@@ -15264,11 +15286,11 @@ try{
 // ── OFs ──────────────────────────────────────────────────────
 const _salvarOF_orig = salvarOF;
 salvarOF = async function(){
-  const cliId=document.getElementById('f-cli').value;
+  const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
   const valTotal=calcularValorTotalOF();
-  if(!cliId){toast('Selecione o cliente','var(--red)');return;}
+  if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
@@ -19080,11 +19102,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     return String(v).trim();
   }
   function collectModalOfPayload(){
-    const cliId=byId('f-cli').value;
+    const cliId=typeof ofResolveCliIdFromModal==='function' ? ofResolveCliIdFromModal() : byId('f-cli').value;
     const itens=getOfItensFromModal();
     const qtdTotal=itens.reduce((s,it)=>s+(parseFloat(it.qtd)||0),0);
     const valTotal=itens.reduce((s,it)=>s+((parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0)),0);
-    if(!cliId){toast('Selecione o cliente','var(--red)');return null;}
+    if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return null;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return null;}
     const chpId=byId('f-chp').value, qchp=parseInt(byId('f-qchp').value)||0;
     if(chpId&&qchp>0){
