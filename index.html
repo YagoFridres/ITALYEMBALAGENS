@@ -2212,16 +2212,20 @@ async function ofmaqDarBaixa(id){
   let qtdPerdida = 0;
   if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
+    const valorTotalOriginal = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
+    baixaBody.qtd_perdida = qtdPerdida;
   } else {
     const msg=`Confirmar baixa da OF #${o.of||o.numero||''}?\n\n${atual} → ${proxima||'—'}`;
     if(!confirm(msg)) return;
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
-  const r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',baixaBody);
+  const r = vaiConcluir
+    ? await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida })
+    : await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa',baixaBody);
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
@@ -2248,14 +2252,18 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   let qtdPerdida = 0;
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao });
+    const valorTotalOriginal = Number(it?.valor_total ?? it?.valor_venda ?? it?.val ?? 0) || 0;
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
+    baixaBody.qtd_perdida = qtdPerdida;
   } else {
     if(!confirm('Confirmar baixa da OF #'+(numero||id)+' na máquina '+(maquinaAtual||'')+'?')) return;
   }
-  const r=await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
+  const r = vaiConcluir
+    ? await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario: baixaBody.usuario, qtd_produzida: baixaBody.qtd_real, qtd_perdida: baixaBody.qtd_perdida })
+    : await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa',baixaBody);
   if(r && r.ok){
     _aplicarResultadoBaixaOF(id, it, baixaBody, r);
     await registrarCaixasPerdidasAposBaixa(it, qtdPerdida, r);
@@ -2274,10 +2282,32 @@ function abrirModalBaixaConclusao(opts){
   const qtdEl = document.getElementById('baixa-conc-qtd');
   const perdEl = document.getElementById('qtd-perdida');
   const sub = document.getElementById('baixa-conc-sub');
+  const info = document.getElementById('baixa-conc-info');
   if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
   if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
   if(perdEl) perdEl.value = String((opts && opts.qtdPerdida)!=null ? opts.qtdPerdida : 0);
+  const qtdPedida = Number(opts?.qtdPedida ?? opts?.qtdPadrao ?? 0) || 0;
+  const valorTotalOriginal = Number(opts?.valorTotalOriginal ?? 0) || 0;
+  const valorUnit = (qtdPedida > 0) ? (valorTotalOriginal / qtdPedida) : 0;
+  modal.dataset.qtdPedida = String(qtdPedida);
+  modal.dataset.valorUnit = String(valorUnit);
   if(sub) sub.textContent = 'Informe a produção real para concluir a OF.';
+  const atualizarInfo = ()=>{
+    const qtdReal = Number(String(qtdEl?.value||'').replace(',', '.'));
+    const qtdPerdida = Math.trunc(Number(String(perdEl?.value||'').replace(',', '.')));
+    const prod = Number.isFinite(qtdReal) ? qtdReal : 0;
+    const exc = Math.max(0, Math.trunc(prod) - Math.trunc(qtdPedida||0));
+    const novoTotal = (Number.isFinite(prod) ? prod : 0) * (Number.isFinite(valorUnit) ? valorUnit : 0);
+    const perdido = (Number.isFinite(qtdPerdida) ? Math.max(0,qtdPerdida) : 0) * (Number.isFinite(valorUnit) ? valorUnit : 0);
+    if(info){
+      info.innerHTML = `Pedido: <b>${Math.trunc(qtdPedida||0)}</b> · Produzidas: <b>${Math.trunc(prod||0)}</b> · Excedente: <b>${Math.trunc(exc||0)}</b><br>Valor unitário: <b>${fmtR(valorUnit||0)}</b> · Novo total: <b>${fmtR(novoTotal||0)}</b> · Perdas: <b>${fmtR(perdido||0)}</b>`;
+    }
+  };
+  try{
+    if(qtdEl) qtdEl.oninput = atualizarInfo;
+    if(perdEl) perdEl.oninput = atualizarInfo;
+  }catch(e){}
+  atualizarInfo();
   modal.style.display = 'flex';
   setTimeout(()=>{ try{ qtdEl && qtdEl.focus && qtdEl.focus(); }catch(e){} }, 0);
   return new Promise((resolve)=>{
@@ -2349,19 +2379,19 @@ async function concluirProcessoOf(ofId){
   if(!confirm('Confirmar conclusão de TODAS as etapas desta OF? Ela será marcada como Pedido Pronto.')) return;
   const it = (OFs||[]).find(o=>String(o.id||'')===id) || null;
   const qtdPadrao = Number(it?.qtd || 0) || 0;
-  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao });
+  const valorTotalOriginal = Number(it?.valor_total ?? it?.valor_venda ?? it?.val ?? 0) || 0;
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${it?.of||it?.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
   if(!resp) return;
   const usuario=(typeof CURRENT_USER!=='undefined' && CURRENT_USER && CURRENT_USER.nome)?CURRENT_USER.nome:'sistema';
-  const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
   const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
   showSaveIndicator('Salvando conclusão...','var(--yellow)');
-  const r = await api('PATCH','/ofs/'+encodeURIComponent(id)+'/baixa', baixaBody);
+  const r = await api('POST','/ofs/'+encodeURIComponent(id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida });
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     alert('Erro: ' + (r && r.error ? r.error : 'falha'));
     return;
   }
-  _aplicarResultadoBaixaOF(id, it, baixaBody, r);
+  _aplicarResultadoBaixaOF(id, it, { usuario, qtd_real: resp.qtd_real, qtd_perdida: qtdPerdida, concluir_tudo: true }, r);
   await registrarCaixasPerdidasAposBaixa(it, qtdPerdida, r);
   showSaveIndicator('✓ concluída','var(--green)');
   toast('OF concluída!','var(--green)');
@@ -2431,17 +2461,17 @@ async function darBaixaOF(o){
   }
   showSaveIndicator('Salvando baixa...','var(--yellow)');
   const qtdPadrao = Number(o?.qtd || 0) || 0;
-  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao });
+  const valorTotalOriginal = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+  const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
   if(!resp){ showSaveIndicator('',''); return; }
-  const baixaBody = { usuario, qtd_real: resp.qtd_real, concluir_tudo: true };
   const qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
-  let r=await api('PATCH','/ofs/'+encodeURIComponent(o.id)+'/baixa', baixaBody);
+  let r=await api('POST','/ofs/'+encodeURIComponent(o.id)+'/concluir', { usuario, qtd_produzida: resp.qtd_real, qtd_perdida: qtdPerdida });
   if(!r || !r.ok){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro ao dar baixa: '+(r && r.error ? r.error : 'falha'),'var(--red)');
     return;
   }
-  _aplicarResultadoBaixaOF(o.id, o, baixaBody, r);
+  _aplicarResultadoBaixaOF(o.id, o, { usuario, qtd_real: resp.qtd_real, qtd_perdida: qtdPerdida, concluir_tudo: true }, r);
   await registrarCaixasPerdidasAposBaixa(o, qtdPerdida, r);
   showSaveIndicator('✓ baixa salva','var(--green)');
   toast(`✅ ${o.of||o.numero||''} — PEDIDO PRONTO ✓`,'var(--green)');
@@ -2717,8 +2747,11 @@ async function abrirModalOF(id){
       fQ.value = String(q || '');
     }
     renderMaqChks((oEdit.maq && Array.isArray(oEdit.maq) && oEdit.maq.length) ? oEdit.maq : ofFluxoIdsFromNames(parseFluxo(oEdit.fluxo_maquinas||[])));
+    const mp0 = (oEdit.maquina_por_item && typeof oEdit.maquina_por_item === 'object' && !Array.isArray(oEdit.maquina_por_item))
+      ? oEdit.maquina_por_item
+      : tryParse(oEdit.maquina_por_item, {});
     ofItensTemp = Array.isArray(oEdit.itens)&&oEdit.itens.length
-      ? oEdit.itens.map(it=>({
+      ? oEdit.itens.map((it, idx)=>({
           ...it,
           desc: it.desc||it.descricao||'',
           qtd: it.qtd ?? it.quantidade ?? 0,
@@ -2726,7 +2759,7 @@ async function abrirModalOF(id){
           qtd_chapas: it.qtd_chapas ?? 0,
           chapa_id: it.chapa_id || '',
           chapa_nome: it.chapa_nome || '',
-          maquina: it.maquina || '',
+          maquina: it.maquina || mp0[idx] || mp0[String(idx)] || '',
           maquinas_fluxo: Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : []),
           maquinas_fluxo_ids: ofFluxoIdsFromNames(Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : [])),
         }))
@@ -3180,6 +3213,20 @@ function renderOfItens(){
       <div style="font-family:var(--mono);font-size:.66rem;color:var(--text2)">${escH(seq||'')}</div>
     </div>`;
   };
+  const itemMaqSelUI = (it, itemIdx) => {
+    const val = String(it?.maquina || '').trim();
+    const opts = [`<option value="" ${val===''?'selected':''}>(seguir fluxo)</option>`]
+      .concat(maqOrdenadas.map(m=>{
+        const v = String(m.nome||'').trim();
+        if(!v) return '';
+        return `<option value="${escAttr(v)}" ${v===val?'selected':''}>${escH(v)}</option>`;
+      }).filter(Boolean))
+      .join('');
+    return `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+      <label style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">Máquina do item (opcional):</label>
+      <select data-item-maquina="${itemIdx}" onchange="ofItensTemp[${itemIdx}].maquina=this.value||''">${opts}</select>
+    </div>`;
+  };
   tbody.innerHTML=ofItensTemp.map((it,i)=>`<tr class="of-item-row">
     <td class="tc" style="color:var(--text3);font-family:var(--mono);text-align:center;vertical-align:middle">${i+1}</td>
     <td style="vertical-align:middle"><input name="item-descricao" type="text" value="${it.desc||it.descricao||''}" placeholder="Descrição do produto/item..." oninput="ofItensTemp[${i}].desc=this.value;ofItensTemp[${i}].descricao=this.value;recalcOfItens()" style="min-width:180px"></td>
@@ -3194,7 +3241,7 @@ function renderOfItens(){
       <input name="item-qtd-chapas" type="number" min="0" step="1" value="${it.qtd_chapas||0}" oninput="ofItensTemp[${i}].qtd_chapas=Math.trunc(Number(this.value)||0)">
     </td>
     <td style="vertical-align:middle;min-width:200px">
-      ${itemMaqUI(it,i)}
+      ${itemMaqSelUI(it,i)}${itemMaqUI(it,i)}
     </td>
     <td class="tc" style="vertical-align:middle;padding:4px 6px;min-width:68px">
       ${it.img
@@ -3324,7 +3371,12 @@ async function salvarOF(){
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const vendIdSel=document.getElementById('f-vend').value;
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0};
+  const maquina_por_item = itens.reduce((acc, it, idx)=>{
+    const m = String(it?.maquina || '').trim();
+    if(m) acc[idx] = m;
+    return acc;
+  }, {});
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3360,6 +3412,11 @@ async function salvarEdicaoOFId(id){
     const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
     const empSel=(document.getElementById('f-emp')||null);
     const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
+    const maquina_por_item = itens.reduce((acc, it, idx)=>{
+      const m = String(it?.maquina || '').trim();
+      if(m) acc[idx] = m;
+      return acc;
+    }, {});
     const payload={
     of:document.getElementById('f-of').value,
     prodDesc:(document.getElementById('f-prod-desc')||{}).value||'',
@@ -3391,6 +3448,7 @@ async function salvarEdicaoOFId(id){
     qchp:parseInt(document.getElementById('f-qchp').value)||0,
     chapa_id:document.getElementById('f-chp').value,
     qtd_chapas:parseInt(document.getElementById('f-qchp').value)||0,
+    maquina_por_item,
     };
     console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
     const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
@@ -10154,6 +10212,9 @@ function normalizeOF(r){
   const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
   const itens = Array.isArray(r.itens) ? r.itens : tryParse(r.itens, []);
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
+  const maquinaPorItem = (r.maquina_por_item && typeof r.maquina_por_item === 'object' && !Array.isArray(r.maquina_por_item))
+    ? r.maquina_por_item
+    : tryParse(r.maquina_por_item, {});
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrl = r.imagem_url ?? null;
   const dataConc = r.data_conclusao ?? null;
@@ -10163,6 +10224,10 @@ function normalizeOF(r){
   const valorVenda = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
   const val = Number(valorTotal || valorVenda || 0) || 0;
   const vunit = (qtd && Number(qtd) > 0) ? (val / Number(qtd)) : 0;
+  const qtdPedida = Number(r.qtd_pedida ?? r.qtdPedida ?? r.quantidade_pedida ?? r.quantidadePedida ?? NaN);
+  const qtdProduzida = Number(r.qtd_produzida ?? r.qtdProduzida ?? NaN);
+  const qtdPerdida = Number(r.qtd_perdida ?? r.qtdPerdida ?? NaN);
+  const caixasExcedentes = Number(r.caixas_excedentes ?? r.caixasExcedentes ?? NaN);
   const chp = r.chapa_id ?? r.chapaId ?? r.chp ?? r.chpId ?? '';
   const qchp = r.qtd_chapas ?? r.qtdChapas ?? r.qchp ?? 0;
   return {
@@ -10184,11 +10249,16 @@ function normalizeOF(r){
     valor_venda: valorVenda,
     val,
     vunit,
+    qtd_pedida: Number.isFinite(qtdPedida) ? qtdPedida : null,
+    qtd_produzida: Number.isFinite(qtdProduzida) ? qtdProduzida : null,
+    qtd_perdida: Number.isFinite(qtdPerdida) ? qtdPerdida : null,
+    caixas_excedentes: Number.isFinite(caixasExcedentes) ? caixasExcedentes : null,
     obs,
     prodDesc,
     itens,
     imgs,
     fluxo_maquinas: fluxoMaq,
+    maquina_por_item: maquinaPorItem,
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
     imagem_url: imgUrl,
     data_conclusao: dataConc,
@@ -17675,16 +17745,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">✕</button>
     </div>
     <div id="baixa-conc-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantas caixas foram produzidas?</label>
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Total de caixas produzidas</label>
         <input id="baixa-conc-qtd" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Caixas perdidas/refugo</label>
-        <input id="qtd-perdida" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">Caixas perdidas/refugo (opcional)</label>
+        <input id="qtd-perdida" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:700">
       </div>
     </div>
+    <div id="baixa-conc-info" style="margin-top:10px;font-size:.72rem;color:var(--text2);line-height:1.35"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
       <button class="btn btn-ghost btn-sm" onclick="fecharModalBaixaConclusao(null)">Cancelar</button>
       <button class="btn btn-accent btn-sm" onclick="confirmarModalBaixaConclusao()">Confirmar Conclusão</button>
