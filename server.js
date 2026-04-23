@@ -1684,18 +1684,19 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...(req.body || {}) };
-    delete payload.numero;
-    delete payload.of;
-    delete payload.of_num;
-    delete payload.of_numero;
-    delete payload.seq;
-    delete payload.id;
-    delete payload.created_at;
-    const filtered = ofPayloadFiltrado(payload);
+    const body = req.body || {};
+    const cleanBody = { ...body };
+    delete cleanBody.numero;
+    delete cleanBody.of;
+    delete cleanBody.of_num;
+    delete cleanBody.of_numero;
+    delete cleanBody.seq;
+    delete cleanBody.id;
+    delete cleanBody.created_at;
+    const filtered = ofPayloadFiltrado(cleanBody);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(req.body || {})));
+    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
     const { data: ofAtual } = await supabase
       .from('ofs')
