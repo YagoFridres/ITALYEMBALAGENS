@@ -297,6 +297,26 @@ function err(res, e) {
   res.json({ ok: false, error: errorText, meta });
 }
 
+async function logAuditoria(tabela, operacao, registroId, dadosAntes, dadosDepois, req) {
+  try {
+    const ip = req?.headers?.['x-forwarded-for'] || req?.ip || null;
+    const row = {
+      tabela: String(tabela || '').trim(),
+      operacao: String(operacao || '').trim(),
+      registro_id: registroId != null ? String(registroId) : null,
+      dados_antes: dadosAntes ? dadosAntes : null,
+      dados_depois: dadosDepois ? dadosDepois : null,
+      usuario_id: req?.usuario?.id != null ? String(req.usuario.id) : null,
+      usuario_nome: req?.usuario?.nome || req?.usuario?.email || null,
+      ip: ip != null ? String(ip) : null,
+      created_at: new Date().toISOString(),
+    };
+    await supabase.from('audit_log').insert([row]);
+  } catch (e) {
+    try { console.warn('[AUDIT]', e?.message || e); } catch (_) {}
+  }
+}
+
 function bad(res, error) {
   err(res, error);
 }
@@ -416,7 +436,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     await supabase.from('usuarios')
       .update({ ultimo_acesso: new Date().toISOString() })
-      .eq('id', usuario.id);
+      .eq('id', usuario.id)
+      .select('id')
+      .maybeSingle();
 
     console.log('Login OK:', usuario.email);
 
@@ -554,6 +576,7 @@ app.post('/api/usuarios', requireAdmin, async (req, res) => {
 
     const { data, error } = await supabase.from('usuarios').insert([row]).select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,criado_em,ultimo_acesso').single();
     if (error) throw error;
+    await logAuditoria('usuarios', 'INSERT', data?.id, null, data, req);
     return ok(res, data);
   } catch (e) { return err(res, e); }
 });
@@ -562,6 +585,12 @@ app.put('/api/usuarios/:id', requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    let antes = null;
+    try {
+      const r0 = await supabase.from('usuarios').select('*').eq('id', id).maybeSingle();
+      antes = r0?.data || null;
+    } catch (_) {}
 
     const payload = { ...req.body };
     delete payload.id;
@@ -583,6 +612,7 @@ app.put('/api/usuarios/:id', requireAdmin, async (req, res) => {
       .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,criado_em,ultimo_acesso')
       .single();
     if (error) throw error;
+    await logAuditoria('usuarios', 'UPDATE', id, antes, data, req);
     return ok(res, data);
   } catch (e) { return err(res, e); }
 });
@@ -593,9 +623,15 @@ app.put('/api/usuarios/:id/senha', requireAdmin, async (req, res) => {
     const senha = String(req.body?.senha || '').trim();
     if (!id || !senha) return res.status(400).json({ ok: false, error: 'id e senha obrigatórios' });
     const senha_hash = await bcrypt.hash(senha, 10);
-    const { error } = await supabase.from('usuarios').update({ senha_hash }).eq('id', id);
+    let antes = null;
+    try {
+      const r0 = await supabase.from('usuarios').select('*').eq('id', id).maybeSingle();
+      antes = r0?.data || null;
+    } catch (_) {}
+    const { data, error } = await supabase.from('usuarios').update({ senha_hash }).eq('id', id).select('id').maybeSingle();
     if (error) throw error;
-    return ok(res, true);
+    await logAuditoria('usuarios', 'UPDATE', id, antes, data || { id }, req);
+    return ok(res, { id });
   } catch (e) { return err(res, e); }
 });
 
@@ -1649,6 +1685,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
     const created = createdRes.data;
+    await logAuditoria('ofs', 'INSERT', created?.id, null, created, req);
     await _maybeRegistrarComissaoOF(req, body, created);
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
     try {
@@ -1725,6 +1762,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (updRes.error) throw updRes.error;
     const updated = updRes.data;
     await _maybeRegistrarComissaoOF(req, body, updated);
+    await logAuditoria('ofs', 'UPDATE', id, ofAtual, updated, req);
 
     try {
       const hasQtd = Object.prototype.hasOwnProperty.call(body, 'qtd') || Object.prototype.hasOwnProperty.call(body, 'quantidade');
@@ -1795,8 +1833,8 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (semValorNoBody && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova !== qtdAntiga && valorOriginal > 0) {
         const novoValor = Math.round(((qtdNova / qtdAntiga) * valorOriginal) * 100) / 100;
         try {
-          await supabase.from('ofs').update({ valor_total: novoValor, valor_venda: novoValor }).eq('id', id);
-          if (updated) { updated.valor_total = novoValor; updated.valor_venda = novoValor; }
+          const rV = await supabase.from('ofs').update({ valor_total: novoValor, valor_venda: novoValor }).eq('id', id).select('valor_total,valor_venda').maybeSingle();
+          if (!rV?.error && updated) { updated.valor_total = rV?.data?.valor_total ?? novoValor; updated.valor_venda = rV?.data?.valor_venda ?? novoValor; }
         } catch (_) {}
       }
     } catch (errCaixas) {
@@ -1809,12 +1847,18 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const now = new Date().toISOString();
+    let antes = null;
+    try {
+      const r0 = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+      antes = r0?.data || null;
+    } catch (_) {}
     const payload = { deleted_at: now, updated_at: now };
     let { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
     if (error) {
       const msg = String(error.message || error);
       if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
         await deleteOne('ofs', id);
+        await logAuditoria('ofs', 'DELETE', id, antes, null, req);
         return ok(res, true);
       }
       throw error;
@@ -1832,6 +1876,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
         }]);
       }
     } catch (_) {}
+    await logAuditoria('ofs', 'DELETE', id, antes, null, req);
     return res.json({ ok: true, data });
   } catch (e) { bad(res, e.message); }
 });
@@ -2656,12 +2701,18 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
     }
     if (error) throw error;
     cacheClearPrefix('clientes_');
+    await logAuditoria('clientes', 'INSERT', data?.[0]?.id, null, data?.[0] || null, req);
     ok(res, data[0]);
   } catch (e) { err(res, e); }
 });
 
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
+    let antes = null;
+    try {
+      const r0 = await supabase.from('clientes').select('*').eq('id', String(req.params.id || '').trim()).maybeSingle();
+      antes = r0?.data || null;
+    } catch (_) {}
     const payload = clientesPayload({ ...(req.body || {}) });
     delete payload.id;
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
@@ -2677,6 +2728,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     const updated = Array.isArray(data) ? data[0] : data;
     if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
+    await logAuditoria('clientes', 'UPDATE', String(req.params.id || '').trim(), antes, updated, req);
     ok(res, updated);
   } catch (e) { err(res, e); }
 });
@@ -4712,7 +4764,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
       if (b.nf != null && String(b.nf).trim() !== '') {
         try {
-          await supabase.from('chapas_estoque_v2').update({ nf: String(b.nf).trim(), atualizado_por: req?.usuario?.nome || 'sistema' }).eq('id', id);
+          await supabase.from('chapas_estoque_v2').update({ nf: String(b.nf).trim(), atualizado_por: req?.usuario?.nome || 'sistema' }).eq('id', id).select('id').maybeSingle();
         } catch (_) {}
       }
 
@@ -4726,6 +4778,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
       const qtdOut = Math.trunc(Number(canonUpd.quantidade || newQtd) || 0);
+      await logAuditoria('chapas_estoque_v2', 'MOVIMENTO', id, { qtd_anterior: oldQtd }, { qtd_nova: qtdOut, tipo, obs: String(b.obs || '').trim() }, req);
       return res.json({
         ok: true,
         data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } },
@@ -4803,6 +4856,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     }
 
     const qtdOut = Math.trunc(Number(canonUpd.quantidade || canonUpd.qtd || newQtd) || 0);
+    await logAuditoria(String(finalTable || table), 'MOVIMENTO', id, { qtd_anterior: oldQtd }, { qtd_nova: qtdOut, tipo, obs: String(b.obs || '').trim() }, req);
     return res.json({
       ok: true,
       data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } },
@@ -4976,9 +5030,9 @@ app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.singl
     let inserted = 0;
     for (let i = 0; i < clean.length; i += chunkSize) {
       const chunk = clean.slice(i, i + chunkSize);
-      const { error } = await supabase.from('chapas_estoque_v2').insert(chunk);
+      const { data, error } = await supabase.from('chapas_estoque_v2').insert(chunk).select('id');
       if (error) return res.status(500).json({ ok: false, error: error.message, inserted, errors });
-      inserted += chunk.length;
+      inserted += Array.isArray(data) ? data.length : chunk.length;
     }
 
     await _chapasLogAcao(req, 'estoque_chapas_import_csv', `Import CSV (${mode}): ${inserted} itens importados`);
@@ -5021,9 +5075,9 @@ app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, asyn
     let inserted = 0;
     for (let i = 0; i < mapped.length; i += chunkSize) {
       const chunk = mapped.slice(i, i + chunkSize);
-      const { error } = await supabase.from('chapas_estoque_v2').insert(chunk);
+      const { data, error } = await supabase.from('chapas_estoque_v2').insert(chunk).select('id');
       if (error) return res.status(500).json({ ok: false, error: error.message, inserted });
-      inserted += chunk.length;
+      inserted += Array.isArray(data) ? data.length : chunk.length;
     }
 
     await _chapasLogAcao(req, 'estoque_chapas_migrar_legacy', `Migração legado -> v2: ${inserted} itens`);
@@ -5237,9 +5291,9 @@ app.post('/api/chapas_estoque/reset', authMiddleware, async (req, res) => {
     let inserted = 0;
     for (let i = 0; i < clean.length; i += chunkSize) {
       const chunk = clean.slice(i, i + chunkSize);
-      const { error } = await supabase.from(t).insert(chunk);
+      const { data, error } = await supabase.from(t).insert(chunk).select('id');
       if (error) throw error;
-      inserted += chunk.length;
+      inserted += Array.isArray(data) ? data.length : chunk.length;
     }
 
     const saved_fields = [...new Set(clean.flatMap((r) => Object.keys(r)))].sort();
@@ -5307,9 +5361,9 @@ app.patch('/api/notificacoes/:id', async (req, res) => {
 
 app.post('/api/notificacoes/clear', async (req, res) => {
   try {
-    const { error } = await supabase.from('notificacoes').update({ lida: true }).eq('lida', false);
+    const { data, error } = await supabase.from('notificacoes').update({ lida: true }).eq('lida', false).select('id');
     if (error) throw error;
-    ok(res, true);
+    ok(res, { updated: Array.isArray(data) ? data.length : 0 });
   } catch (e) { err(res, e); }
 });
 
@@ -5330,9 +5384,9 @@ app.post('/api/relatorios/producao', async (req, res) => {
     let inserted = 0;
     for (let i = 0; i < arr.length; i += chunk) {
       const part = arr.slice(i, i + chunk);
-      const { error } = await supabase.from('relatorio_producao').insert(part);
+      const { data, error } = await supabase.from('relatorio_producao').insert(part).select('id');
       if (error) throw error;
-      inserted += part.length;
+      inserted += Array.isArray(data) ? data.length : part.length;
     }
     ok(res, { inserted });
   } catch (e) { err(res, e); }
@@ -5346,9 +5400,9 @@ app.post('/api/relatorios/aparras', async (req, res) => {
     let inserted = 0;
     for (let i = 0; i < arr.length; i += chunk) {
       const part = arr.slice(i, i + chunk);
-      const { error } = await supabase.from('relatorio_aparras').insert(part);
+      const { data, error } = await supabase.from('relatorio_aparras').insert(part).select('id');
       if (error) throw error;
-      inserted += part.length;
+      inserted += Array.isArray(data) ? data.length : part.length;
     }
     ok(res, { inserted });
   } catch (e) { err(res, e); }

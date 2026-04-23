@@ -17484,8 +17484,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
-    <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar Excel</button>
-    <button id="btn-reset-estoque" class="btn btn-red btn-sm" onclick="abrirModalResetChapas()">🧹 Resetar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
