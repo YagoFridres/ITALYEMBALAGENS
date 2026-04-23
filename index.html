@@ -880,6 +880,7 @@ const MODULOS_SISTEMA = [
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
   { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
   { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
+  { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Estoques',  menuId:'menu-sel-chapas',      paginaId:'sel-chapas' },
   { key:'estoque_facas',  label:'Estoque de Facas',    grupo:'Estoques',  menuId:'menu-facas',           paginaId:'facas' },
   { key:'estoque_cliches',label:'Estoque Clichês',     grupo:'Estoques',  menuId:'menu-cliches',         paginaId:'cliches' },
   { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
@@ -1709,7 +1710,7 @@ function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
-    estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
+    estoque:'ng-estoques', 'sel-chapas':'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
   const gId=map[pageId];
@@ -1785,6 +1786,14 @@ function _goBase(id){
       carregarChapas().then(()=>renderEstoque()).catch(()=>renderEstoque());
     } else {
       renderEstoque();
+    }
+  }
+  if(id==='sel-chapas'){
+    const doRender = ()=>{ try{ renderSelecaoChapas(); }catch(e){} };
+    if(_apiConectado && CURRENT_USER){
+      Promise.all([carregarChapas(false).catch(()=>null), syncOFs(false).catch(()=>null)]).then(doRender).catch(doRender);
+    } else {
+      doRender();
     }
   }
   if(id==='fluxos'){
@@ -2802,6 +2811,7 @@ async function abrirModalOF(id){
     renderMaqChks([]);
     ofAddItem();
   }
+  try{ ocultarCamposChapaModalOF(); }catch(e){}
   const footer=document.querySelector('#modal-of .modal-footer');
   footer.innerHTML=oEdit
     ? `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-purple" onclick="salvarEdicaoOFId('${escAttr(oEdit.id||'')}')">✏ Salvar Alteração</button>`
@@ -3586,6 +3596,56 @@ function restaurarItensNoModal(of){
   try{ if(typeof recalcOfItens === 'function') recalcOfItens(); }catch(e){}
 }
 
+function getMaquinaPorItemDoModal(){
+  const map = {};
+  try{
+    document.querySelectorAll('[data-item-maquina]').forEach(sel=>{
+      const idx =
+        sel.getAttribute('data-item-maquina') ||
+        sel.getAttribute('data-idx') ||
+        sel.closest('[data-item-idx]')?.getAttribute('data-item-idx');
+      const v = String(sel.value || '').trim();
+      if(idx !== null && idx !== undefined && String(idx).trim() !== '' && v) {
+        map[String(idx)] = v;
+      }
+    });
+  }catch(e){}
+  if(Object.keys(map).length === 0){
+    let i = 0;
+    while(true){
+      const sel = document.getElementById('item-maq-'+i) || document.getElementById('f-item-maq-'+i);
+      if(!sel) break;
+      const v = String(sel.value || '').trim();
+      if(v) map[String(i)] = v;
+      i++;
+    }
+  }
+  return map;
+}
+
+function aplicarMaquinaPorItemNosItens(itens, map){
+  if(!Array.isArray(itens) || !map || typeof map !== 'object') return;
+  Object.keys(map).forEach((k)=>{
+    const idx = Number(k);
+    const v = String(map[k] || '').trim();
+    if(!v) return;
+    if(Number.isFinite(idx) && idx >= 0 && itens[idx]) itens[idx].maquina = v;
+  });
+}
+
+function ocultarCamposChapaModalOF(){
+  const els = [
+    document.getElementById('f-chp'),
+    document.getElementById('f-qchp'),
+    document.querySelector('[data-campo="chapa"]'),
+    document.querySelector('.campo-chapa'),
+  ].filter(Boolean);
+  els.forEach((el)=>{
+    const wrap = el.closest('.mf, .fg, .form-group, .campo-wrapper') || el;
+    if(wrap) wrap.style.display = 'none';
+  });
+}
+
 async function salvarOF(){
   const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
@@ -3596,16 +3656,7 @@ async function salvarOF(){
   const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-  const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
-  if(chpId&&qchp>0){
-    const ch=getCh(chpId);
-    if(ch&&qchp>ch.qtd){toast('⚠ Saldo insuficiente!','var(--red)');return;}
-    if(!_apiConectado && ch){
-      ch.qtd-=qchp;
-      HIST_EST.unshift({tipo:'saida',chp:chpId,qtd:qchp,of:document.getElementById('f-of').value,data:today(),obs:'Baixa automática — criação OF'});
-    }
-  }
-  const _estoqueJaBaixadoCriacao = (!_apiConectado) && (chpId&&qchp>0);
+  const _estoqueJaBaixadoCriacao = false;
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'E1');
@@ -3623,18 +3674,9 @@ async function salvarOF(){
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const vendIdSel=document.getElementById('f-vend').value;
-  const maquina_por_item = {};
-  try{
-    document.querySelectorAll('#of-itens-body tr').forEach((row, idx)=>{
-      const sel = row.querySelector('[data-item-maquina]');
-      if(sel && String(sel.value||'').trim()){
-        const v = String(sel.value||'').trim();
-        maquina_por_item[idx] = v;
-        if(itens[idx]) itens[idx].maquina = v;
-      }
-    });
-  }catch(e){}
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',chp:chpId,qchp,chapa_id:chpId,qtd_chapas:qchp,valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  const maquina_por_item = getMaquinaPorItemDoModal();
+  aplicarMaquinaPorItemNosItens(itens, maquina_por_item);
+  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3673,17 +3715,8 @@ async function salvarEdicaoOFId(id){
     const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
     const empSel=(document.getElementById('f-emp')||null);
     const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
-    const maquina_por_item = {};
-    try{
-      document.querySelectorAll('#of-itens-body tr').forEach((row, idx)=>{
-        const sel = row.querySelector('[data-item-maquina]');
-        if(sel && String(sel.value||'').trim()){
-          const v = String(sel.value||'').trim();
-          maquina_por_item[idx] = v;
-          if(itens[idx]) itens[idx].maquina = v;
-        }
-      });
-    }catch(e){}
+    const maquina_por_item = getMaquinaPorItemDoModal();
+    aplicarMaquinaPorItemNosItens(itens, maquina_por_item);
     const payload={
     of:document.getElementById('f-of').value,
     prodDesc:titulo,
@@ -3712,10 +3745,6 @@ async function salvarEdicaoOFId(id){
     modo_programacao,
     dia_programacao:sanitizeDateInput(dia_programacao),
     cidade_entrega,
-    chp:document.getElementById('f-chp').value,
-    qchp:parseInt(document.getElementById('f-qchp').value)||0,
-    chapa_id:document.getElementById('f-chp').value,
-    qtd_chapas:parseInt(document.getElementById('f-qchp').value)||0,
     maquina_por_item,
     };
     console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
@@ -10175,8 +10204,22 @@ function aplicarPermissoes() {
 }
 
 function temPermPagina(paginaId){
-  if(!CURRENT_USER) return false;
+  const u = CURRENT_USER || window._currentUser;
+  if(!u) return false;
+  if(paginaId === 'sel-chapas') return podeSelecionarChapas();
   return true;
+}
+
+function podeSelecionarChapas(){
+  const u = CURRENT_USER || window._currentUser;
+  if(!u) return false;
+  const perfil = String(u.perfil || '').trim().toLowerCase();
+  const perms = Array.isArray(u.permissoes) ? u.permissoes : [];
+  if(perms.includes('tudo')) return true;
+  if(perfil === 'admin' || perfil.includes('admin')) return true;
+  if(perfil === 'estoque' || perfil.includes('estoque')) return true;
+  if(perms.includes('estoque')) return true;
+  return false;
 }
 
 
@@ -12236,6 +12279,233 @@ function renderEstoque(){
   gerarNotificacoes();
   renderNotificacoes();
   if(window.RISCADOR_ESTOQUE_MODE)_renderEstoque_riscador();
+}
+
+var SEL_CHAPAS_UI = { busca:'', status:'' };
+
+function _selChapasOfNumero(of){
+  return String(of?.of ?? of?.numero ?? of?.of_num ?? of?.of_numero ?? '').trim();
+}
+
+function _selChapasOfAtivas(){
+  const arr = Array.isArray(OFs) ? OFs : [];
+  return arr.filter(of=>{
+    if(!of || of.deleted_at) return false;
+    const st = String(of.status || '').toLowerCase().trim();
+    if(st === 'pedido pronto' || st === 'concluido' || st === 'concluído') return false;
+    if(st === 'cancelada' || st === 'cancelado') return false;
+    return true;
+  });
+}
+
+function renderSelecaoChapas(){
+  const container = document.getElementById('sel-chapas-body');
+  if(!container) return;
+  if(!podeSelecionarChapas()){
+    container.innerHTML = `<div style="padding:16px;color:var(--text2)">Sem permissão.</div>`;
+    return;
+  }
+
+  const ofsAtivas = _selChapasOfAtivas().map(normalizeOF);
+  const chapas = Array.isArray(ESTOQUE) ? ESTOQUE : [];
+  const statuses = [...new Set(ofsAtivas.map(o=>String(o.status||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+  const header = `
+    <div style="padding:16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+        <input id="sel-chapa-busca" placeholder="Buscar OF, cliente, produto..." value="${escAttr(SEL_CHAPAS_UI.busca||'')}" oninput="SEL_CHAPAS_UI.busca=this.value;filtrarSelecaoChapas()" style="padding:8px 12px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;min-width:260px">
+        <select id="sel-chapa-status" onchange="SEL_CHAPAS_UI.status=this.value;filtrarSelecaoChapas()" style="padding:8px 12px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px">
+          <option value="">Todos os status</option>
+          ${statuses.map(s=>`<option value="${escAttr(s)}"${String(SEL_CHAPAS_UI.status||'')===String(s)?' selected':''}>${escH(s)}</option>`).join('')}
+        </select>
+        <div style="flex:1"></div>
+        <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${ofsAtivas.length} OF(s) ativas</div>
+      </div>
+      <div id="sel-chapas-lista">${ofsAtivas.map(of=>renderCardSelChapa(of, chapas)).join('') || `<div style="padding:14px;color:var(--text3)">Nenhuma OF ativa.</div>`}</div>
+    </div>`;
+  container.innerHTML = header;
+  filtrarSelecaoChapas();
+}
+
+function renderCardSelChapa(of, chapas){
+  const itens = Array.isArray(of.itens) ? of.itens : (typeof of.itens === 'string' ? tryParse(of.itens, []) : []);
+  const arrItens = Array.isArray(itens) ? itens : [];
+  const item0 = arrItens[0] || {};
+  const nomeProduto = String(item0.desc || item0.descricao || of.prodDesc || of.descricao || '—').trim() || '—';
+  const ref = String(item0.ref || item0.referencia || '—').trim() || '—';
+  const qtd = Number(of.qtd || of.quantidade || 0) || 0;
+  const valorTotal = Number(of.valor_total ?? of.valor_venda ?? of.val ?? 0) || 0;
+  const vunit = Number(item0.vunit ?? item0.valor_unitario ?? 0) || (qtd > 0 ? (valorTotal / qtd) : 0);
+  const imgUrl = String(of.imagem_url || (Array.isArray(of.imgs) ? of.imgs[0] : '') || '').trim();
+  const dataPedido = String(of.dia || of.data_producao || of.dataPedido || '').slice(0,10) || '—';
+  const dataEntrega = String(of.ent || of.data_entrega || of.dataEntrega || '').slice(0,10) || '—';
+  const cliNome = (getCli(of.cliId) || {}).nome || of.cliente || of.cliente_nome || '—';
+  const numero = _selChapasOfNumero(of) || '—';
+  const chapaAtual = String(of.chapa_id || of.chp || '').trim();
+  const qtdChapas = Math.trunc(Number(of.qtd_chapas || of.qchp || 0) || 0);
+
+  const labelChapa = (c) => {
+    if(typeof ofChapaLabelOption === 'function') return ofChapaLabelOption(c);
+    const forn = String(c.fornecedor || c.forn || '').trim();
+    const nom = String(c.nomenclatura || c.nom || c.nome || '').trim();
+    const tam = String(c.tamanho || c.tam || '').trim();
+    const q = Number(c.quantidade ?? c.qtd ?? 0) || 0;
+    return `${forn} | ${nom} | ${tam} — saldo: ${q}`;
+  };
+  const opcoesChapas = (chapas||[]).map(c=>{
+    const id = String(c.id||'').trim();
+    if(!id) return '';
+    return `<option value="${escAttr(id)}"${id===chapaAtual?' selected':''}>${escH(labelChapa(c))}</option>`;
+  }).filter(Boolean).join('');
+
+  return `
+    <div class="sel-chapa-card" data-of-id="${escAttr(of.id)}" data-status="${escAttr(String(of.status||''))}" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        ${imgUrl ? `<img src="${escAttr(imgUrl)}" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">` : ''}
+        <div style="flex:1;min-width:240px">
+          <div style="font-weight:900;font-size:1.02rem;color:var(--text);margin-bottom:4px">OF #${escH(numero)} — ${escH(nomeProduto)}</div>
+          <div style="font-size:.78rem;color:var(--text2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <span>👤 ${escH(cliNome)}</span>
+            <span>📦 Qtd: <b>${fmtN(qtd)}</b></span>
+            <span>🏷️ Ref: ${escH(ref)}</span>
+            <span>💰 Unit: <b>${fmtR(vunit)}</b></span>
+            <span>💰 Total: <b>${fmtR(valorTotal)}</b></span>
+            <span>📅 Pedido: ${escH(dataPedido)}</span>
+            <span>🚚 Entrega: ${escH(dataEntrega)}</span>
+            <span style="font-family:var(--mono);font-weight:800;color:var(--accent)">${escH(String(of.status||'—'))}</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-weight:800;font-size:.82rem;color:var(--accent);margin-bottom:10px">Vincular Chapa</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+          <div style="flex:2;min-width:240px">
+            <label style="font-size:.72rem;color:var(--text3);font-weight:800">CHAPA DO ESTOQUE</label>
+            <select id="sel-chapa-${escAttr(of.id)}" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:4px">
+              <option value="">— Selecionar chapa —</option>
+              ${opcoesChapas}
+            </select>
+          </div>
+          <div style="flex:1;min-width:120px">
+            <label style="font-size:.72rem;color:var(--text3);font-weight:800">QTD CHAPAS</label>
+            <input type="number" id="sel-qtd-chapa-${escAttr(of.id)}" min="0" value="${escAttr(qtdChapas)}" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:4px">
+          </div>
+          <div style="flex:1;min-width:140px">
+            <label style="font-size:.72rem;color:var(--text3);font-weight:800">É RETALHO?</label>
+            <select id="sel-retalho-${escAttr(of.id)}" onchange="toggleRetalho('${escAttr(of.id)}')" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:4px">
+              <option value="nao">Não</option>
+              <option value="sim">Sim (retalho)</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-accent" onclick="salvarVinculoChapa('${escAttr(of.id)}')">💾 Salvar Vínculo</button>
+          </div>
+        </div>
+
+        <div id="retalho-campos-${escAttr(of.id)}" style="display:none;margin-top:10px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:.72rem;color:var(--text3);font-weight:800">TAMANHO DO RETALHO</label>
+              <input type="text" id="sel-retalho-tam-${escAttr(of.id)}" placeholder="Ex: 1200x800mm" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:4px">
+            </div>
+            <div style="flex:1;min-width:180px">
+              <label style="font-size:.72rem;color:var(--text3);font-weight:800">TIPO DE PAPEL</label>
+              <input type="text" id="sel-retalho-papel-${escAttr(of.id)}" placeholder="Ex: Papelão duplex 3mm" style="width:100%;padding:8px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:4px">
+            </div>
+          </div>
+        </div>
+
+        ${chapaAtual ? `<div style="margin-top:8px;font-size:.75rem;color:var(--text3)">✅ Chapa atual vinculada · Qtd: ${escH(String(qtdChapas||0))}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function toggleRetalho(ofId){
+  const sel = document.getElementById('sel-retalho-'+ofId);
+  const campos = document.getElementById('retalho-campos-'+ofId);
+  if(campos) campos.style.display = (sel && sel.value === 'sim') ? 'block' : 'none';
+  if(sel && sel.value === 'sim'){
+    const chapaSel = document.getElementById('sel-chapa-'+ofId);
+    if(chapaSel) chapaSel.value = '';
+  }
+}
+
+async function salvarVinculoChapa(ofId){
+  const sid = String(ofId||'').trim();
+  if(!sid) return;
+  const chapaId = String((document.getElementById('sel-chapa-'+sid)||{}).value || '').trim();
+  const qtdChapas = Math.trunc(Number((document.getElementById('sel-qtd-chapa-'+sid)||{}).value || 0) || 0);
+  const isRetalho = String((document.getElementById('sel-retalho-'+sid)||{}).value || 'nao') === 'sim';
+  const retalhoTam = String((document.getElementById('sel-retalho-tam-'+sid)||{}).value || '').trim();
+  const retalhoPap = String((document.getElementById('sel-retalho-papel-'+sid)||{}).value || '').trim();
+  if(!chapaId && !isRetalho){ toast('Selecione uma chapa ou marque como retalho','var(--red)'); return; }
+  if(!(qtdChapas > 0)){ toast('Informe a quantidade de chapas','var(--red)'); return; }
+
+  const of = (Array.isArray(OFs) ? OFs.find(o=>String(o && o.id || '').trim()===sid) : null) || (Array.isArray(OFS_HIST) ? OFS_HIST.find(o=>String(o && o.id || '').trim()===sid) : null) || null;
+  const numero = of ? _selChapasOfNumero(of) : '';
+
+  const payloadOf = {
+    chapa_id: isRetalho ? null : (chapaId || null),
+    chp: isRetalho ? null : (chapaId || null),
+    qtd_chapas: qtdChapas,
+    qchp: qtdChapas,
+  };
+
+  if(isRetalho){
+    const tag = `RETALHO: ${retalhoTam || '—'} | ${retalhoPap || '—'}`.trim();
+    const obsAtual = String(of?.obs || '').trim();
+    payloadOf.obs = obsAtual ? (obsAtual + '\n' + tag) : tag;
+    payloadOf.retalho = true;
+    payloadOf.retalho_tam = retalhoTam;
+    payloadOf.retalho_papel = retalhoPap;
+  }
+
+  try{
+    showSaveIndicator('Salvando vínculo...','var(--yellow)');
+    const rOf = await api('PUT','/ofs/'+encodeURIComponent(sid), payloadOf);
+    if(!rOf || rOf.ok === false) throw new Error((rOf && rOf.error) ? rOf.error : 'Erro ao salvar OF');
+    const dadosOf = rOf.data || rOf;
+    _atualizarOFLocal(sid, dadosOf);
+    _upsertOFHistLocal(dadosOf);
+
+    if(!isRetalho && chapaId){
+      const obs = `Baixa automática — OF #${numero || sid}`;
+      const rMov = await api('POST','/chapas_estoque/'+encodeURIComponent(chapaId)+'/movimento', { tipo:'saida', delta:qtdChapas, obs, origem:'of', origem_id:sid });
+      if(!rMov || rMov.ok === false){
+        toast('⚠ OF salva, mas erro ao dar baixa no estoque: '+((rMov && rMov.error) ? rMov.error : 'falha'),'var(--orange)');
+      } else {
+        const d = rMov.data || rMov;
+        const novaQtd = Number(d.quantidade ?? d.qtd ?? d._movimento?.newQtd ?? NaN);
+        const idx = (ESTOQUE||[]).findIndex(e=>String(e && e.id || '').trim()===String(chapaId));
+        if(idx >= 0 && Number.isFinite(novaQtd)){
+          if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = novaQtd;
+          if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = novaQtd;
+        }
+        toast('✅ Chapa vinculada e estoque atualizado','var(--green)');
+      }
+    } else {
+      toast('✅ Retalho salvo','var(--green)');
+    }
+
+    renderSelecaoChapas();
+    showSaveIndicator('✓ salvo','var(--green)');
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: '+(e?.message||e),'var(--red)');
+  }
+}
+
+function filtrarSelecaoChapas(){
+  const busca = String(SEL_CHAPAS_UI.busca || '').trim().toLowerCase();
+  const status = String(SEL_CHAPAS_UI.status || '').trim();
+  document.querySelectorAll('.sel-chapa-card').forEach(card=>{
+    const txt = String(card.textContent || '').toLowerCase();
+    const st = String(card.getAttribute('data-status') || '').trim();
+    const okBusca = !busca || txt.includes(busca);
+    const okStatus = !status || st === status;
+    card.style.display = (okBusca && okStatus) ? '' : 'none';
+  });
 }
 
 function triggerImportChapas(){
@@ -16495,6 +16765,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
+      <div id="menu-sel-chapas" class="nav-item" onclick="go('sel-chapas');closeNavGroupsExcept('ng-estoques')"><span class="ico">🧾</span>Seleção de Chapas</div>
       <div id="menu-facas" class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
       <div id="menu-cliches" class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
     </div>
@@ -16911,6 +17182,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
     </div>
   </div>
+</div>
+
+<!-- ========== 4A. SELEÇÃO DE CHAPAS ========== -->
+<div id="page-sel-chapas" class="page">
+  <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
+    <span style="font-size:.78rem;color:var(--text2)">🧾 Vincular chapas às OFs</span>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="renderSelecaoChapas()">↻ Atualizar</button>
+  </div>
+  <div class="page-body" id="sel-chapas-body"></div>
 </div>
 
 <!-- ========== 5. FLUXOS ========== -->
