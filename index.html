@@ -12488,15 +12488,15 @@ function renderLinhaSelChapa(of, chapas){
           style="padding:4px;background:var(--s3);border:1px solid var(--border);
                  color:var(--text);border-radius:6px;font-size:.72rem">
           <option value="nao">Não</option>
-          <option value="sim">Retalho</option>
+          <option value="sim">Retalho ✂️</option>
         </select>
         <div id="sc-retalho-campos-${escAttr(of.id)}" style="display:none;margin-top:6px">
-          <input id="sc-ret-tam-${escAttr(of.id)}" placeholder="Tamanho (ex: 1200x800)"
-            style="width:100%;padding:4px;background:var(--s3);border:1px solid var(--border);
-                   color:var(--text);border-radius:6px;font-size:.7rem;margin-bottom:3px">
-          <input id="sc-ret-papel-${escAttr(of.id)}" placeholder="Tipo papel"
-            style="width:100%;padding:4px;background:var(--s3);border:1px solid var(--border);
-                   color:var(--text);border-radius:6px;font-size:.7rem">
+          <textarea id="sc-ret-texto-${escAttr(of.id)}"
+            placeholder="Descreva o retalho: tamanho, tipo de papel, etc..."
+            rows="2"
+            style="width:100%;min-width:160px;padding:5px;background:var(--s3);
+                   border:1px solid var(--border);color:var(--text);border-radius:6px;
+                   font-size:.7rem;resize:vertical"></textarea>
         </div>
       </td>
       <td style="padding:6px 10px;text-align:center">
@@ -12504,6 +12504,12 @@ function renderLinhaSelChapa(of, chapas){
           style="padding:5px 12px;background:var(--accent);color:#fff;border:none;
                  border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">
           Salvar
+        </button>
+        <button onclick="scExcluirOF('${escAttr(of.id)}','${escAttr(numero)}')"
+          style="padding:5px 10px;background:var(--red);color:#fff;border:none;
+                 border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;
+                 white-space:nowrap;margin-top:4px;display:block;width:100%">
+          Excluir
         </button>
       </td>
     </tr>
@@ -12515,8 +12521,9 @@ function scToggleRetalho(ofId){
   const campos = document.getElementById('sc-retalho-campos-'+ofId);
   const chapa = document.getElementById('sc-chapa-'+ofId);
   if(!campos) return;
-  campos.style.display = (sel && sel.value === 'sim') ? 'block' : 'none';
-  if(sel && sel.value === 'sim' && chapa) chapa.value = '';
+  const isRet = sel?.value === 'sim';
+  campos.style.display = isRet ? 'block' : 'none';
+  if(isRet && chapa) chapa.value = '';
 }
 
 function filtrarTabelaSelChapas(){
@@ -12532,56 +12539,65 @@ function filtrarTabelaSelChapas(){
 async function scSalvarVinculo(ofId){
   const sid = String(ofId || '').trim();
   if(!sid) return;
-  const chapaId = String(document.getElementById('sc-chapa-'+sid)?.value || '').trim();
-  const qtdCh = Math.trunc(Number(document.getElementById('sc-qtdch-'+sid)?.value || 0) || 0);
-  const isRet = String(document.getElementById('sc-retalho-'+sid)?.value || 'nao') === 'sim';
-  const retTam = String(document.getElementById('sc-ret-tam-'+sid)?.value || '').trim();
-  const retPapel = String(document.getElementById('sc-ret-papel-'+sid)?.value || '').trim();
+  const chapaId  = String((document.getElementById('sc-chapa-'+sid)||{}).value  || '').trim();
+  const qtdCh    = Number((document.getElementById('sc-qtdch-'+sid)||{}).value || 0);
+  const isRet    = String((document.getElementById('sc-retalho-'+sid)||{}).value || '') === 'sim';
+  const retTexto = String((document.getElementById('sc-ret-texto-'+sid)||{}).value || '').trim();
+
   if(!chapaId && !isRet){ toast('Selecione uma chapa ou marque como retalho','var(--red)'); return; }
   if(!(qtdCh > 0)){ toast('Informe a quantidade de chapas','var(--red)'); return; }
 
   const of = (Array.isArray(OFs) ? OFs.find(o=>String(o && o.id || '').trim()===sid) : null)
     || (Array.isArray(OFS_HIST) ? OFS_HIST.find(o=>String(o && o.id || '').trim()===sid) : null)
     || null;
-  const numero = of ? _selChapasOfNumero(of) : '';
-
-  const payloadOf = { chapa_id: isRet ? null : (chapaId || null), chp: isRet ? null : (chapaId || null), qtd_chapas: qtdCh, qchp: qtdCh };
-  if(isRet){
-    const tag = `RETALHO: ${retTam || '—'} | ${retPapel || '—'}`.trim();
-    const obsAtual = String(of?.obs || '').trim();
-    payloadOf.obs = obsAtual ? (obsAtual + '\n' + tag) : tag;
-    payloadOf.retalho = true;
-    payloadOf.retalho_tam = retTam;
-    payloadOf.retalho_papel = retPapel;
-  }
 
   try{
     showSaveIndicator('Salvando vínculo...','var(--yellow)');
-    const rOf = await api('PUT','/ofs/'+encodeURIComponent(sid), payloadOf);
-    if(!rOf || rOf.ok === false) throw new Error((rOf && rOf.error) ? rOf.error : 'Erro ao salvar OF');
-    const dadosOf = rOf.data || rOf;
-    _atualizarOFLocal(sid, dadosOf);
-    _upsertOFHistLocal(dadosOf);
-
-    if(!isRet && chapaId){
-      const obs = `Baixa automática — OF #${numero || sid}`;
-      const rMov = await api('POST','/chapas_estoque/'+encodeURIComponent(chapaId)+'/movimento', { tipo:'saida', delta:qtdCh, obs, origem:'of', origem_id:sid });
-      if(!rMov || rMov.ok === false){
-        toast('⚠ OF salva, mas erro ao dar baixa no estoque: '+((rMov && rMov.error) ? rMov.error : 'falha'),'var(--orange)');
-      } else {
-        const d = rMov.data || rMov;
-        const novaQtd = Number(d.quantidade ?? d.qtd ?? d.qtd_estoque ?? d._movimento?.newQtd ?? NaN);
-        const idx = (ESTOQUE||[]).findIndex(e=>String(e && e.id || '').trim()===String(chapaId));
-        if(idx >= 0 && Number.isFinite(novaQtd)){
-          if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = novaQtd;
-          if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = novaQtd;
-          if(ESTOQUE[idx].qtd_estoque != null) ESTOQUE[idx].qtd_estoque = novaQtd;
-        }
-        toast('✅ Chapa vinculada e estoque atualizado','var(--green)');
-      }
+    const payloadOf = {};
+    if(chapaId){
+      payloadOf.chapa_id = chapaId;
+      payloadOf.chp = chapaId;
     } else {
-      toast('✅ Retalho salvo','var(--green)');
+      payloadOf.chapa_id = null;
+      payloadOf.chp = null;
     }
+    payloadOf.qtd_chapas = qtdCh;
+    payloadOf.qchp = qtdCh;
+    if(isRet){
+      payloadOf.obs_chapa = 'RETALHO: ' + retTexto;
+      const tag = ('RETALHO: ' + retTexto).trim();
+      const obsAtual = String(of?.obs || '').trim();
+      payloadOf.obs = obsAtual ? (obsAtual + '\n' + tag) : tag;
+    }
+
+    const r1 = await apiFetch('/api/ofs/' + encodeURIComponent(sid), { method:'PUT', body: payloadOf });
+    const j1 = r1 ? await r1.json().catch(()=>null) : null;
+    if(!r1 || !r1.ok || !j1 || !j1.ok) throw new Error(j1?.error || 'Erro ao salvar OF');
+
+    if(!isRet && chapaId && qtdCh > 0){
+      const r2 = await apiFetch('/api/chapas_estoque/' + encodeURIComponent(chapaId) + '/movimento', {
+        method: 'POST',
+        body: { tipo:'saida', delta:qtdCh, quantidade:qtdCh, qtd:qtdCh, obs:'Baixa automática — OF #' + sid }
+      });
+      const j2 = r2 ? await r2.json().catch(()=>null) : null;
+      const qtdEst = j2?.qtd_estoque ?? j2?.data?.qtd_estoque ?? j2?.data?.quantidade ?? j2?.data?.qtd;
+      if(qtdEst !== undefined){
+        const idx = (ESTOQUE||[]).findIndex(e => String(e && e.id || '') === String(chapaId));
+        if(idx >= 0){
+          if(ESTOQUE[idx].qtd_estoque != null) ESTOQUE[idx].qtd_estoque = qtdEst;
+          if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = qtdEst;
+          if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = qtdEst;
+        }
+      }
+      toast('✅ Chapa vinculada! Estoque: ' + (qtdEst ?? '?') + ' un.','var(--green)');
+    } else {
+      toast('✅ Informações salvas!','var(--green)');
+    }
+
+    const idx = (OFs||[]).findIndex(o => String(o && o.id || '') === String(sid));
+    if(idx >= 0) OFs[idx] = { ...OFs[idx], ...payloadOf, chapa_id: chapaId };
+    const idxH = (OFS_HIST||[]).findIndex(o => String(o && o.id || '') === String(sid));
+    if(idxH >= 0) OFS_HIST[idxH] = { ...OFS_HIST[idxH], ...payloadOf, chapa_id: chapaId };
 
     const infoEl = document.getElementById('sc-retalho-info-'+sid);
     if(infoEl) infoEl.textContent = '✅ Salvo';
@@ -12589,6 +12605,31 @@ async function scSalvarVinculo(ofId){
   }catch(e){
     showSaveIndicator('✖ erro','var(--red)');
     toast('Erro: '+(e?.message||e),'var(--red)');
+    try{ console.error('[SC SALVAR]', e); }catch(_){}
+  }
+}
+
+async function scExcluirOF(ofId, ofNumero){
+  const sid = String(ofId || '').trim();
+  const num = String(ofNumero || '').trim();
+  if(!sid) return;
+  const conf1 = confirm('Tem certeza que deseja EXCLUIR a OF #' + num + '?\n\nEsta ação não pode ser desfeita.');
+  if(!conf1) return;
+  const conf2 = confirm('⚠️ ATENÇÃO — Confirmação final!\n\nVocê está prestes a EXCLUIR PERMANENTEMENTE a OF #' + num + '.\n\nClique OK para confirmar a exclusão definitiva.');
+  if(!conf2) return;
+  try{
+    const resp = await apiFetch('/api/ofs/' + encodeURIComponent(sid), { method:'DELETE' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j?.ok) throw new Error(j?.error || 'Erro ao excluir OF');
+    OFs = (OFs||[]).filter(o => String(o && o.id || '') !== String(sid));
+    OFS_HIST = (OFS_HIST||[]).filter(o => String(o && o.id || '') !== String(sid));
+    try{ window.OFS = OFs; }catch(e){}
+    try{ window.OFS_HIST = OFS_HIST; }catch(e){}
+    toast('✅ OF #' + num + ' excluída com sucesso','var(--green)');
+    const linha = document.querySelector('#sc-tbody .sc-linha[data-of-id="' + sid + '"]');
+    if(linha) linha.remove();
+  }catch(e){
+    toast('Erro ao excluir: ' + (e?.message||e),'var(--red)');
   }
 }
 
