@@ -1841,7 +1841,15 @@ function _goBase(id){
 function updateBadges(){
   document.getElementById('bdg-at').textContent=OFs.filter(o=>o.status==='Atrasado').length+' ATRASADOS';
   document.getElementById('bdg-ug').textContent=OFs.filter(o=>o.urg).length+' URGENTES';
-  document.getElementById('bdg-ok').textContent=OFs.filter(o=>o.status==='Concluído').length+' CONCLUÍDOS';
+  const hoje = new Date().toISOString().slice(0,10);
+  const concluidas = (OFs||[]).filter(o=>{
+    const st = String(o.status || '').trim();
+    const okSt = st === 'Concluído' || st === 'Concluido' || st === 'Pedido Pronto';
+    if(!okSt) return false;
+    const dc = String(o.data_conclusao || '');
+    return dc.startsWith(hoje);
+  }).length;
+  document.getElementById('bdg-ok').textContent=concluidas+' CONCLUÍDOS';
 }
 
 // ===================== PCP POR DIA =====================
@@ -1868,8 +1876,15 @@ function renderPCP(){
   if(hbtn) hbtn.style.display=isHoje?'none':'';
 
   // Filter: show OFs for the current day OR active (in production) OR all if no date filter
+  const isConcluida = (o) => {
+    const st = String(o?.status || '').trim();
+    return st === 'Concluído' || st === 'Concluido' || st === 'Pedido Pronto';
+  };
   const ofsVisiveis = [...OFs].filter(o=>String(o.status||'').trim()!=='Cancelada' && String(o.status||'').trim()!=='Cancelado' && !o.deleted_at);
-  let lista=[...ofsVisiveis].filter(o=>String(o.status||'').trim()!=='Pedido Pronto');
+  let lista=[...ofsVisiveis];
+  if(!fs) lista = lista.filter(o=>!isConcluida(o));
+  else if(fs === 'Concluído' || fs === 'Concluido' || fs === 'Pedido Pronto') lista = lista.filter(o=>isConcluida(o));
+  else lista = lista.filter(o=>String(o.status||'').trim()===String(fs||'').trim());
   if(isTodas){
     lista.sort((a,b)=>{
       const aa=String(a.created_at||'');
@@ -1886,18 +1901,17 @@ function renderPCP(){
   if(!isTodas && !busca && !fs){
     lista=lista.filter(o=>{
       if(o.status==='Cancelado' || o.status==='Cancelada') return false;
-      if(o.status==='Pedido Pronto') return false;
+      if(isConcluida(o)) return false;
       if(o.deleted_at) return false;
       if(o.dia===PCP_DIA_ATUAL) return true;
       // Also show active OFs (in production) regardless of day
       if(o.status==='Em produção' || o.status==='Em Produção') return true;
       // Show overdue OFs
-      if(o.ent && o.ent < PCP_DIA_ATUAL && o.status!=='Concluído') return true;
+      if(o.ent && o.ent < PCP_DIA_ATUAL && !isConcluida(o)) return true;
       return false;
     });
   }
   if(busca)lista=lista.filter(o=>o.of.toLowerCase().includes(busca.toLowerCase())||(getCli(o.cliId)||{nome:''}).nome.toLowerCase().includes(busca.toLowerCase()));
-  if(fs && !isTodas) lista=lista.filter(o=>o.status===fs);
   if(fv)lista=lista.filter(o=>o.vendId===fv);
   // Filtro multiempresa
   const fpcp=(document.getElementById('pcp-emp')||{}).value||'';
@@ -1910,12 +1924,12 @@ function renderPCP(){
   if(resumoEl){
     if(isTodas){
       const emProd=OFs.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
-      const concl=OFs.filter(o=>o.status==='Concluído').length;
+      const concl=OFs.filter(o=>isConcluida(o)).length;
       resumoEl.textContent=`${OFs.length} OF(s) · ${emProd} em produção · ${concl} concluída(s)`;
     } else {
       const doDia=OFs.filter(o=>o.dia===PCP_DIA_ATUAL&&o.status!=='Cancelado'&&o.status!=='Cancelada');
       const emProd=doDia.filter(o=>o.status==='Em produção'||o.status==='Em Produção').length;
-      const concl=doDia.filter(o=>o.status==='Concluído').length;
+      const concl=doDia.filter(o=>isConcluida(o)).length;
       resumoEl.textContent=`${doDia.length} OF(s) do dia · ${emProd} em produção · ${concl} concluída(s)`;
     }
   }
@@ -1937,7 +1951,7 @@ function renderPCP(){
       :`<span class="img-ph" onclick="event.stopPropagation();abrirModalOF()" title="Adicionar imagem">📷</span>`;
     const fluxoLinha = ofFluxoLinha(o);
     // Status row background highlight
-    const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':o.status==='Concluído'?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&o.status!=='Concluído'?'background:rgba(220,38,38,.05);':'';
+    const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':isConcluida(o)?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&!isConcluida(o)?'background:rgba(220,38,38,.05);':'';
     return `<tr class="${rc}" style="${rowBg}" onclick="selecionarOF('${o.of}')">
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="tc" style="${(!isTodas && o.dia===PCP_DIA_ATUAL)?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
@@ -4003,12 +4017,16 @@ function renderLancamento(){
     return true;
   });
 
-  const prontas = base.filter(o=>String(o.status||'').trim()==='Pedido Pronto' && !o.deleted_at);
+  const isConcluidaStatus = (st) => {
+    const s = String(st || '').trim();
+    return s === 'Concluído' || s === 'Concluido' || s === 'Pedido Pronto';
+  };
+  const prontas = base.filter(o=>isConcluidaStatus(o.status) && !o.deleted_at);
   const cancel = base.filter(o=>['Cancelada','Cancelado'].includes(String(o.status||'').trim()) && !o.deleted_at);
   const excl = base.filter(o=>!!o.deleted_at);
   const emAberto = base.filter(o=>{
     const st = String(o.status||'').trim();
-    return !['Pedido Pronto','Cancelada','Cancelado'].includes(st) && !o.deleted_at;
+    return !isConcluidaStatus(st) && !['Cancelada','Cancelado'].includes(st) && !o.deleted_at;
   }).sort((a,b)=>{
     const da = lancEnt(a) || '';
     const db = lancEnt(b) || '';
@@ -4028,7 +4046,7 @@ function renderLancamento(){
   const btn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${LANC_UI.tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
 
   resumo.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    ${btn('prontas','Pedidos Prontos',prontas.length)}
+    ${btn('prontas','Concluídos',prontas.length)}
     ${btn('abertas','Em Aberto',emAberto.length)}
     ${btn('canceladas','Canceladas',cancel.length)}
     ${btn('excluidas','Excluídas',excl.length)}
@@ -4064,6 +4082,10 @@ function renderLancamento(){
       return ch ? String(ch.nomenclatura || ch.nom || ch.nome || '').trim() : '';
     })();
     const imgUrl = o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : null) || (Array.isArray(o.imagens) ? o.imagens[0] : null) || '';
+    const statusRaw = String(o.status || '').trim();
+    const statusHtml = isConcluidaStatus(statusRaw)
+      ? `<span style="display:inline-block;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.45);color:var(--green);padding:2px 8px;border-radius:999px;font-weight:900;font-size:.7rem">Concluído</span>`
+      : escH(statusRaw || '—');
     return `
           <tr style="background:var(--surface)">
             <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
@@ -4083,7 +4105,7 @@ function renderLancamento(){
             }</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
-            <td style="${td}">${escH(String(o.status||'').trim()||'—')}</td>
+            <td style="${td}">${statusHtml}</td>
             <td style="${td}">${escH(ofFluxoGetMaquinaAtual(o)||'—')}</td>
             <td style="${td}">${escH(lancVendNome(o))}</td>
             <td style="${td};text-align:center">
@@ -10705,7 +10727,8 @@ function normalizeOF(r){
       maquina,
     };
   });
-  if(itens[0] && itens[0].desc) prodDesc = itens[0].desc;
+  const item0 = itens[0] || {};
+  prodDesc = String(item0.desc || item0.descricao || prodDesc || r.descricao || '').trim();
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
   let maquinaPorItem = (r.maquina_por_item && typeof r.maquina_por_item === 'object' && !Array.isArray(r.maquina_por_item))
     ? r.maquina_por_item
@@ -11005,12 +11028,14 @@ async function carregarOFs(opts){
   const forcar = !!opts.forcar;
   const from = opts.from ? String(opts.from) : '';
   const to = opts.to ? String(opts.to) : '';
+  const status = opts.status ? String(opts.status) : '';
   const now = Date.now();
   if(!forcar && (now - _ultimaCargaOFs) < CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
   const qs = new URLSearchParams();
   if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
   if(from) qs.set('from', from);
   if(to) qs.set('to', to);
+  if(status && status !== 'todos') qs.set('status', status);
   const r = await api('GET','/ofs' + (qs.toString()?('?'+qs.toString()):''));
   if(r && r.ok && r.data) OFs = r.data.map(o=>{
     let fm=o && o.fluxo_maquinas;
@@ -11018,6 +11043,11 @@ async function carregarOFs(opts){
     if(!Array.isArray(fm)) fm=[];
     return normalizeOF({ ...o, fluxo_maquinas: fm });
   });
+  if(r && r.ok && Array.isArray(OFs)) {
+    OFS_HIST = OFs.slice();
+    try{ window.OFS = OFs; }catch(e){}
+    try{ window.OFS_HIST = OFS_HIST; }catch(e){}
+  }
   if(r && r.ok) _ultimaCargaOFs = Date.now();
   return r;
 }
@@ -11035,23 +11065,18 @@ async function syncOFs(force=false){
   const r = await api('GET','/ofs?'+qs.toString());
   const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
   const todos = (rows||[]).map(normalizeOF);
-  const ativos = todos.filter(of => {
-    const st = String(of.status || '').toLowerCase().trim();
-    return st !== 'pedido pronto' && st !== 'concluido' && st !== 'concluído' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
-  });
-  const prontasPrev = (Array.isArray(window.OFS_HIST) ? window.OFS_HIST : []).filter(o => {
-    const st = String(o.status||'').toLowerCase().trim();
-    return st === 'pedido pronto' || st === 'concluido' || st === 'concluído';
-  });
-  const histIds = new Set(todos.map(o=>String(o.id||'')));
-  const hist = [...todos, ...prontasPrev.filter(o=>!histIds.has(String(o.id||'')))];
-  OFs = ativos;
-  try{ window.OFS = ativos; }catch(e){}
-  try{ if(Array.isArray(OFS_HIST)) OFS_HIST = hist; }catch(e){}
+  const prevHist = Array.isArray(window.OFS_HIST) ? window.OFS_HIST : (Array.isArray(OFS_HIST) ? OFS_HIST : []);
+  const byId = new Map();
+  todos.forEach(o=>{ const id=String(o && o.id || '').trim(); if(id) byId.set(id, o); });
+  (prevHist||[]).forEach(o=>{ const id=String(o && o.id || '').trim(); if(id && !byId.has(id)) byId.set(id, o); });
+  const hist = Array.from(byId.values());
+  OFs = todos;
+  try{ window.OFS = todos; }catch(e){}
+  try{ OFS_HIST = hist; }catch(e){}
   try{ window.OFS_HIST = hist; }catch(e){}
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
-  return ativos;
+  return todos;
 }
 function _inserirOFLocal(nova){
   const o = normalizeOF(nova);
@@ -12298,33 +12323,273 @@ function _selChapasOfAtivas(){
   });
 }
 
-function renderSelecaoChapas(){
-  const container = document.getElementById('sel-chapas-body');
-  if(!container) return;
+async function renderSelecaoChapas(){
+  const el = document.getElementById('sel-chapas-body');
+  if(!el) return;
   if(!podeSelecionarChapas()){
-    container.innerHTML = `<div style="padding:16px;color:var(--text2)">Sem permissão.</div>`;
+    el.innerHTML = `<div style="padding:16px;color:var(--text2)">Sem permissão.</div>`;
     return;
   }
+  if(!Array.isArray(OFs) || OFs.length === 0) await carregarOFs().catch(()=>null);
+  if(!Array.isArray(ESTOQUE) || ESTOQUE.length === 0) await carregarChapas(false).catch(()=>null);
 
-  const ofsAtivas = _selChapasOfAtivas().map(normalizeOF);
+  const todasOFs = (Array.isArray(OFs) ? OFs : [])
+    .filter(o => o && o.id && !o.deleted_at)
+    .map(normalizeOF)
+    .sort((a,b)=>Number(b.seq||0)-Number(a.seq||0));
+
   const chapas = Array.isArray(ESTOQUE) ? ESTOQUE : [];
-  const statuses = [...new Set(ofsAtivas.map(o=>String(o.status||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
-  const header = `
+  el.innerHTML = `
     <div style="padding:16px">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
-        <input id="sel-chapa-busca" placeholder="Buscar OF, cliente, produto..." value="${escAttr(SEL_CHAPAS_UI.busca||'')}" oninput="SEL_CHAPAS_UI.busca=this.value;filtrarSelecaoChapas()" style="padding:8px 12px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;min-width:260px">
-        <select id="sel-chapa-status" onchange="SEL_CHAPAS_UI.status=this.value;filtrarSelecaoChapas()" style="padding:8px 12px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px">
-          <option value="">Todos os status</option>
-          ${statuses.map(s=>`<option value="${escAttr(s)}"${String(SEL_CHAPAS_UI.status||'')===String(s)?' selected':''}>${escH(s)}</option>`).join('')}
-        </select>
-        <div style="flex:1"></div>
-        <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">${ofsAtivas.length} OF(s) ativas</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+        <h2 style="margin:0;color:var(--accent)">Seleção de Chapas para OFs</h2>
+        <button onclick="renderSelecaoChapas()"
+          style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);
+                 color:var(--text);border-radius:8px;cursor:pointer">↻ Atualizar</button>
       </div>
-      <div id="sel-chapas-lista">${ofsAtivas.map(of=>renderCardSelChapa(of, chapas)).join('') || `<div style="padding:14px;color:var(--text3)">Nenhuma OF ativa.</div>`}</div>
-    </div>`;
-  container.innerHTML = header;
-  filtrarSelecaoChapas();
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <input id="sc-busca" placeholder="Buscar OF, cliente, produto..."
+          oninput="filtrarTabelaSelChapas()"
+          style="flex:2;min-width:220px;padding:8px 12px;background:var(--s2);
+                 border:1px solid var(--border);color:var(--text);border-radius:8px">
+        <select id="sc-status" onchange="filtrarTabelaSelChapas()"
+          style="padding:8px 12px;background:var(--s2);border:1px solid var(--border);
+                 color:var(--text);border-radius:8px">
+          <option value="">Todos os status</option>
+          <option value="Em aberto">Em aberto</option>
+          <option value="Em produção">Em produção</option>
+          <option value="Em Produção">Em Produção</option>
+          <option value="Concluído">Concluído</option>
+          <option value="Concluido">Concluido</option>
+          <option value="Pedido Pronto">Pedido Pronto</option>
+          <option value="Atrasado">Atrasado</option>
+          <option value="Cancelado">Cancelado</option>
+          <option value="Cancelada">Cancelada</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="sc-tabela" style="width:100%;border-collapse:collapse;font-size:.78rem;min-width:1100px">
+          <thead>
+            <tr style="background:var(--s3);color:var(--text2);text-transform:uppercase;font-size:.68rem;letter-spacing:.5px">
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">IMG</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">Nº OF</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">PRODUTO</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">CLIENTE</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">REF</th>
+              <th style="padding:8px 10px;text-align:center;white-space:nowrap">QTD CX</th>
+              <th style="padding:8px 10px;text-align:right;white-space:nowrap">VL UNIT</th>
+              <th style="padding:8px 10px;text-align:right;white-space:nowrap">VL TOTAL</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">PEDIDO</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">ENTREGA</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">STATUS</th>
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap;min-width:200px">CHAPA</th>
+              <th style="padding:8px 10px;text-align:center;white-space:nowrap">QTD CH</th>
+              <th style="padding:8px 10px;text-align:center;white-space:nowrap">RETALHO</th>
+              <th style="padding:8px 10px;text-align:center;white-space:nowrap">AÇÃO</th>
+            </tr>
+          </thead>
+          <tbody id="sc-tbody">
+            ${(todasOFs||[]).map(of=>renderLinhaSelChapa(of, chapas)).join('')}
+          </tbody>
+        </table>
+        ${(todasOFs||[]).length===0 ? '<div style="text-align:center;padding:40px;color:var(--text3)">Nenhuma OF encontrada</div>' : ''}
+      </div>
+    </div>
+  `;
+  filtrarTabelaSelChapas();
+}
+
+function renderLinhaSelChapa(of, chapas){
+  const itens = Array.isArray(of.itens) ? of.itens : (typeof of.itens === 'string' ? tryParse(of.itens, []) : []);
+  const arr = Array.isArray(itens) ? itens : [];
+  const item0 = arr[0] || {};
+  const produto = String(item0.desc || item0.descricao || of.prodDesc || of.descricao || of.produto || '—').trim() || '—';
+  const ref = String(item0.ref || item0.referencia || '—').trim() || '—';
+  const qtd = Number(of.qtd || of.quantidade || 0) || 0;
+  const valorTotal = Number(of.valor_total || of.valor_venda || of.val || 0) || 0;
+  const valorUnit = Number(item0.vunit || item0.valor_unitario || 0) || (qtd > 0 ? (valorTotal / qtd) : 0);
+  const imgUrl = String(of.imagem_url || (Array.isArray(of.imgs) ? of.imgs[0] : '') || (Array.isArray(of.imagens) ? of.imagens[0] : '') || '').trim();
+  const dataPed = String(of.dia || of.data_producao || of.created_at || '').slice(0,10) || '—';
+  const dataEnt = String(of.ent || of.data_entrega || '').slice(0,10) || '—';
+  const numero = _selChapasOfNumero(of) || String(of.seq || '') || '—';
+  const cliente = (getCli(of.cliId)||{}).nome || of.cliente || of.cliente_nome || '—';
+  const chapaAtual = String(of.chapa_id || of.chp || '').trim();
+  const qtdChAtual = Math.trunc(Number(of.qtd_chapas || of.qchp || 0) || 0);
+  const status = String(of.status || '').trim();
+  const statusColor = ({
+    'Concluído': 'var(--green)',
+    'Concluido': 'var(--green)',
+    'Em aberto': 'var(--text2)',
+    'Em produção': 'var(--accent)',
+    'Em Produção': 'var(--accent)',
+    'Pedido Pronto': 'var(--yellow)',
+    'Atrasado': 'var(--red)',
+  })[status] || 'var(--text2)';
+
+  const labelCh = (c)=>{
+    if(typeof ofChapaLabelOption === 'function') return ofChapaLabelOption(c);
+    const nom = String(c.nomenclatura || c.nom || c.nome_uso || c.nome || '?').trim();
+    const tam = String(c.tamanho || c.tam || '').trim();
+    const q = Number(c.quantidade ?? c.qtd ?? c.qtd_estoque ?? 0) || 0;
+    return `${nom}${tam ? (' | ' + tam) : ''} (saldo:${q})`;
+  };
+  const options = (chapas||[]).map(c=>{
+    const id = String(c && c.id || '').trim();
+    if(!id) return '';
+    return `<option value="${escAttr(id)}"${id===chapaAtual?' selected':''}>${escH(labelCh(c))}</option>`;
+  }).filter(Boolean).join('');
+
+  return `
+    <tr class="sc-linha" data-of-id="${escAttr(of.id)}"
+      data-busca="${escAttr((produto+' '+cliente+' '+numero).toLowerCase())}"
+      data-status="${escAttr(status)}"
+      style="border-bottom:1px solid var(--border);transition:.15s"
+      onmouseover="this.style.background='var(--s2)'"
+      onmouseout="this.style.background=''">
+
+      <td style="padding:6px 10px">
+        ${imgUrl
+          ? `<img src="${escAttr(imgUrl)}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer"
+               onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(numero)}')"
+               onerror="this.style.display='none'">`
+          : '<span style="color:var(--text3);font-size:.7rem">—</span>'}
+      </td>
+      <td style="padding:6px 10px;font-weight:700;color:var(--accent);white-space:nowrap">#${escH(numero)}</td>
+      <td style="padding:6px 10px;font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(produto)}">${escH(produto)}</td>
+      <td style="padding:6px 10px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(cliente)}</td>
+      <td style="padding:6px 10px;color:var(--text3)">${escH(ref)}</td>
+      <td style="padding:6px 10px;text-align:center;font-weight:700">${fmtN(qtd)}</td>
+      <td style="padding:6px 10px;text-align:right;white-space:nowrap">${fmtR(valorUnit)}</td>
+      <td style="padding:6px 10px;text-align:right;font-weight:700;white-space:nowrap;color:var(--green)">${fmtR(valorTotal)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;color:var(--text2)">${escH(dataPed)}</td>
+      <td style="padding:6px 10px;white-space:nowrap;color:var(--text2)">${escH(dataEnt)}</td>
+      <td style="padding:6px 10px;white-space:nowrap">
+        <span style="color:${statusColor};font-weight:700;font-size:.72rem">${escH(status || '—')}</span>
+      </td>
+      <td style="padding:6px 10px">
+        <select id="sc-chapa-${escAttr(of.id)}"
+          style="width:100%;padding:5px;background:var(--s3);border:1px solid var(--border);
+                 color:var(--text);border-radius:6px;font-size:.75rem">
+          <option value="">— Chapa do estoque —</option>
+          ${options}
+        </select>
+        <div id="sc-retalho-info-${escAttr(of.id)}" style="font-size:.68rem;color:var(--text3);margin-top:3px">
+          ${chapaAtual ? '✅ Vinculada' : ''}
+        </div>
+      </td>
+      <td style="padding:6px 10px;text-align:center">
+        <input type="number" id="sc-qtdch-${escAttr(of.id)}" min="0" value="${escAttr(qtdChAtual)}"
+          style="width:60px;padding:5px;background:var(--s3);border:1px solid var(--border);
+                 color:var(--text);border-radius:6px;text-align:center;font-size:.75rem">
+      </td>
+      <td style="padding:6px 10px;text-align:center">
+        <select id="sc-retalho-${escAttr(of.id)}" onchange="scToggleRetalho('${escAttr(of.id)}')"
+          style="padding:4px;background:var(--s3);border:1px solid var(--border);
+                 color:var(--text);border-radius:6px;font-size:.72rem">
+          <option value="nao">Não</option>
+          <option value="sim">Retalho</option>
+        </select>
+        <div id="sc-retalho-campos-${escAttr(of.id)}" style="display:none;margin-top:6px">
+          <input id="sc-ret-tam-${escAttr(of.id)}" placeholder="Tamanho (ex: 1200x800)"
+            style="width:100%;padding:4px;background:var(--s3);border:1px solid var(--border);
+                   color:var(--text);border-radius:6px;font-size:.7rem;margin-bottom:3px">
+          <input id="sc-ret-papel-${escAttr(of.id)}" placeholder="Tipo papel"
+            style="width:100%;padding:4px;background:var(--s3);border:1px solid var(--border);
+                   color:var(--text);border-radius:6px;font-size:.7rem">
+        </div>
+      </td>
+      <td style="padding:6px 10px;text-align:center">
+        <button onclick="scSalvarVinculo('${escAttr(of.id)}')"
+          style="padding:5px 12px;background:var(--accent);color:#fff;border:none;
+                 border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">
+          Salvar
+        </button>
+      </td>
+    </tr>
+  `;
+}
+
+function scToggleRetalho(ofId){
+  const sel = document.getElementById('sc-retalho-'+ofId);
+  const campos = document.getElementById('sc-retalho-campos-'+ofId);
+  const chapa = document.getElementById('sc-chapa-'+ofId);
+  if(!campos) return;
+  campos.style.display = (sel && sel.value === 'sim') ? 'block' : 'none';
+  if(sel && sel.value === 'sim' && chapa) chapa.value = '';
+}
+
+function filtrarTabelaSelChapas(){
+  const busca = String(document.getElementById('sc-busca')?.value || '').toLowerCase();
+  const status = String(document.getElementById('sc-status')?.value || '').trim();
+  document.querySelectorAll('#sc-tbody .sc-linha').forEach(tr=>{
+    const matchB = !busca || String(tr.dataset.busca || '').includes(busca);
+    const matchS = !status || String(tr.dataset.status || '') === status;
+    tr.style.display = (matchB && matchS) ? '' : 'none';
+  });
+}
+
+async function scSalvarVinculo(ofId){
+  const sid = String(ofId || '').trim();
+  if(!sid) return;
+  const chapaId = String(document.getElementById('sc-chapa-'+sid)?.value || '').trim();
+  const qtdCh = Math.trunc(Number(document.getElementById('sc-qtdch-'+sid)?.value || 0) || 0);
+  const isRet = String(document.getElementById('sc-retalho-'+sid)?.value || 'nao') === 'sim';
+  const retTam = String(document.getElementById('sc-ret-tam-'+sid)?.value || '').trim();
+  const retPapel = String(document.getElementById('sc-ret-papel-'+sid)?.value || '').trim();
+  if(!chapaId && !isRet){ toast('Selecione uma chapa ou marque como retalho','var(--red)'); return; }
+  if(!(qtdCh > 0)){ toast('Informe a quantidade de chapas','var(--red)'); return; }
+
+  const of = (Array.isArray(OFs) ? OFs.find(o=>String(o && o.id || '').trim()===sid) : null)
+    || (Array.isArray(OFS_HIST) ? OFS_HIST.find(o=>String(o && o.id || '').trim()===sid) : null)
+    || null;
+  const numero = of ? _selChapasOfNumero(of) : '';
+
+  const payloadOf = { chapa_id: isRet ? null : (chapaId || null), chp: isRet ? null : (chapaId || null), qtd_chapas: qtdCh, qchp: qtdCh };
+  if(isRet){
+    const tag = `RETALHO: ${retTam || '—'} | ${retPapel || '—'}`.trim();
+    const obsAtual = String(of?.obs || '').trim();
+    payloadOf.obs = obsAtual ? (obsAtual + '\n' + tag) : tag;
+    payloadOf.retalho = true;
+    payloadOf.retalho_tam = retTam;
+    payloadOf.retalho_papel = retPapel;
+  }
+
+  try{
+    showSaveIndicator('Salvando vínculo...','var(--yellow)');
+    const rOf = await api('PUT','/ofs/'+encodeURIComponent(sid), payloadOf);
+    if(!rOf || rOf.ok === false) throw new Error((rOf && rOf.error) ? rOf.error : 'Erro ao salvar OF');
+    const dadosOf = rOf.data || rOf;
+    _atualizarOFLocal(sid, dadosOf);
+    _upsertOFHistLocal(dadosOf);
+
+    if(!isRet && chapaId){
+      const obs = `Baixa automática — OF #${numero || sid}`;
+      const rMov = await api('POST','/chapas_estoque/'+encodeURIComponent(chapaId)+'/movimento', { tipo:'saida', delta:qtdCh, obs, origem:'of', origem_id:sid });
+      if(!rMov || rMov.ok === false){
+        toast('⚠ OF salva, mas erro ao dar baixa no estoque: '+((rMov && rMov.error) ? rMov.error : 'falha'),'var(--orange)');
+      } else {
+        const d = rMov.data || rMov;
+        const novaQtd = Number(d.quantidade ?? d.qtd ?? d.qtd_estoque ?? d._movimento?.newQtd ?? NaN);
+        const idx = (ESTOQUE||[]).findIndex(e=>String(e && e.id || '').trim()===String(chapaId));
+        if(idx >= 0 && Number.isFinite(novaQtd)){
+          if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = novaQtd;
+          if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = novaQtd;
+          if(ESTOQUE[idx].qtd_estoque != null) ESTOQUE[idx].qtd_estoque = novaQtd;
+        }
+        toast('✅ Chapa vinculada e estoque atualizado','var(--green)');
+      }
+    } else {
+      toast('✅ Retalho salvo','var(--green)');
+    }
+
+    const infoEl = document.getElementById('sc-retalho-info-'+sid);
+    if(infoEl) infoEl.textContent = '✅ Salvo';
+    showSaveIndicator('✓ salvo','var(--green)');
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: '+(e?.message||e),'var(--red)');
+  }
 }
 
 function renderCardSelChapa(of, chapas){

@@ -909,17 +909,15 @@ function ofIn(p) {
     delete out.cliente_id;
   }
 
-  if ((out.descricao == null || String(out.descricao).trim() === '') && Array.isArray(out.itens) && out.itens.length) {
-    const d0 = out.itens[0] && typeof out.itens[0] === 'object'
-      ? String(out.itens[0].desc ?? out.itens[0].descricao ?? '').trim()
-      : '';
-    if (d0) out.descricao = d0;
-  }
-  if ((out.prodDesc == null || String(out.prodDesc).trim() === '') && Array.isArray(out.itens) && out.itens.length) {
-    const d0 = out.itens[0] && typeof out.itens[0] === 'object'
-      ? String(out.itens[0].desc ?? out.itens[0].descricao ?? '').trim()
-      : '';
-    if (d0) out.prodDesc = d0;
+  const itensArr = Array.isArray(out.itens) ? out.itens : [];
+  const primeiroItem = itensArr[0] && typeof itensArr[0] === 'object' ? itensArr[0] : {};
+  const primeiroDesc = String(primeiroItem.desc ?? primeiroItem.descricao ?? '').trim();
+  if (primeiroDesc && !out.descricao_manual) {
+    out.descricao = primeiroDesc;
+    out.prodDesc = primeiroDesc;
+  } else {
+    if ((out.descricao == null || String(out.descricao).trim() === '') && primeiroDesc) out.descricao = primeiroDesc;
+    if ((out.prodDesc == null || String(out.prodDesc).trim() === '') && primeiroDesc) out.prodDesc = primeiroDesc;
   }
   if (out.valor_total === undefined && out.valor_venda === undefined && Array.isArray(out.itens) && out.itens.length) {
     const sum = out.itens.reduce((s, it) => {
@@ -1436,7 +1434,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = req.query.from ? String(req.query.from) : '';
     const to = req.query.to ? String(req.query.to) : '';
     const empId = req.query.empId ? String(req.query.empId) : '';
-    const status = req.query.status ? String(req.query.status) : '';
+    const statusRaw = req.query.status ? String(req.query.status) : '';
+    const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
@@ -1685,11 +1684,18 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
-    const body = req.body || {};
-    const filtered = ofPayloadFiltrado(body);
+    const payload = { ...(req.body || {}) };
+    delete payload.numero;
+    delete payload.of;
+    delete payload.of_num;
+    delete payload.of_numero;
+    delete payload.seq;
+    delete payload.id;
+    delete payload.created_at;
+    const filtered = ofPayloadFiltrado(payload);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body)));
+    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(req.body || {})));
 
     const { data: ofAtual } = await supabase
       .from('ofs')
@@ -1703,6 +1709,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     delete filtered.of_num;
     delete filtered.of_numero;
     delete filtered.seq;
+    delete filtered.created_at;
     filtered.updated_at = new Date().toISOString();
 
     const updRes = await ofsUpdateWithRetry(id, ofIn(filtered));
@@ -2151,7 +2158,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const nowIso = new Date().toISOString();
     const payload = {
       maquina_atual_index: nextIdx,
-      status: concluida ? 'Pedido Pronto' : 'Em Produção',
+      status: concluida ? 'Concluído' : 'Em Produção',
       data_conclusao: concluida ? nowIso : undefined,
     };
 
@@ -2200,7 +2207,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const msg = concluida
-      ? `OF #${numero} baixada em ${atual || '—'} — PEDIDO PRONTO ✓`
+      ? `OF #${numero} baixada em ${atual || '—'} — CONCLUÍDO ✓`
       : `OF #${numero} baixada em ${atual || '—'} → próxima: ${proxima || '—'}`;
 
     if (concluida) {
@@ -2216,7 +2223,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
           valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
           maquina: atual || '',
-          status: 'Pedido Pronto',
+          status: 'Concluído',
         }]);
       } catch (e) {}
     }
@@ -2313,7 +2320,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
     const nowIso = new Date().toISOString();
     const updateData = {
-      status: 'Pedido Pronto',
+      status: 'Concluído',
       qtd_produzida: qtdProduzida || qtdPedida,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
@@ -2378,7 +2385,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const atual = (Array.isArray(fluxo) && fluxo.length) ? String(fluxo[fluxo.length - 1]) : '';
-    const msg = `OF #${numero} baixada em ${atual || '—'} — PEDIDO PRONTO ✓`;
+    const msg = `OF #${numero} baixada em ${atual || '—'} — CONCLUÍDO ✓`;
 
     try {
       const ofRel = (upd && upd.data) ? upd.data : of;
@@ -2392,7 +2399,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
         valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
         maquina: atual || '',
-        status: 'Pedido Pronto',
+        status: 'Concluído',
       }]);
     } catch (e) {}
 
@@ -2411,7 +2418,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       data: dataOut,
       concluida: true,
       proxima: null,
-      status: 'Pedido Pronto',
+      status: 'Concluído',
       excedente,
       novo_valor_total: novoValor,
       mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
