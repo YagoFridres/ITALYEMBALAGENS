@@ -2793,6 +2793,7 @@ async function abrirModalOF(id){
         }))
       : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
     renderOfItens();
+    try{ restaurarItensNoModal(oEdit); }catch(e){}
     try{ ofCliChange(); }catch(e){}
   } else {
     renderMaqChks([]);
@@ -3388,25 +3389,135 @@ function sanitizeDateInput(v){
   return String(v).trim();
 }
 function getOfItensFromModal(){
-  return ofItensTemp.map(it=>{
-    const qtd = parseFloat(it.qtd)||0;
-    const vunit = parseFloat(it.vunit)||0;
+  const itens = [];
+
+  const coerceItem = (idx, desc, ref, qtdRaw, vunitRaw, chapaId, qtdChapasRaw, maquinaRaw) => {
+    const qtd = Number(String(qtdRaw ?? '').replace(',', '.')) || 0;
+    const vunit = Number(String(vunitRaw ?? '').replace(',', '.')) || 0;
     const total = qtd * vunit;
-    const desc = it.desc||it.descricao||'';
+    const d = String(desc || '').trim();
+    const r = String(ref || '').trim();
+    const chapa_id = String(chapaId || '').trim();
+    const qtd_chapas = Math.trunc(Number(String(qtdChapasRaw ?? '').replace(',', '.')) || 0);
+    const maquina = String(maquinaRaw || '').trim();
+    const refTemp = (ofItensTemp && ofItensTemp[idx]) ? ofItensTemp[idx] : {};
+    if(!d && !(qtd > 0) && !(vunit > 0) && !r && !chapa_id && !(qtd_chapas > 0) && !maquina) return;
+    itens.push({
+      desc: d,
+      descricao: d,
+      ref: r,
+      qtd,
+      quantidade: qtd,
+      vunit,
+      valor_unitario: vunit,
+      valor_total: total,
+      img: refTemp && refTemp.img ? refTemp.img : null,
+      chapa_id,
+      chapa_nome: refTemp && refTemp.chapa_nome ? String(refTemp.chapa_nome || '') : '',
+      qtd_chapas,
+      maquina: maquina || (refTemp && refTemp.maquina ? String(refTemp.maquina || '') : ''),
+      maquinas_fluxo: (() => {
+        const ids = refTemp && Array.isArray(refTemp.maquinas_fluxo_ids) ? refTemp.maquinas_fluxo_ids : [];
+        let names = ofFluxoNamesFromIds(ids);
+        if(!names.length && (refTemp && refTemp.maquina)){
+          const n = ofFluxoNamesFromIds([refTemp.maquina])[0];
+          if(n) names = [n];
+        }
+        if(!names.length && refTemp && Array.isArray(refTemp.maquinas_fluxo)) names = parseFluxo(refTemp.maquinas_fluxo);
+        return names;
+      })(),
+    });
+  };
+
+  const tbody = document.getElementById('of-itens-body');
+  const linhas = tbody ? tbody.querySelectorAll('.of-item-row, tr.of-item-row, tr') : document.querySelectorAll('.of-item-row, [data-of-item], .item-row, tr[data-item-idx], .item-linha, [id^="item-row-"]');
+
+  if(linhas && linhas.length){
+    Array.from(linhas).forEach((linha, idx)=>{
+      const q = (sel) => linha.querySelector(sel);
+      const descEl = q('input[name="item-descricao"], input[name="desc"], .item-desc, .desc, [data-desc]') || null;
+      const refEl  = q('input[name="item-ref"], input[name="ref"], .item-ref, .ref, [data-ref]') || null;
+      const qtdEl  = q('input[name="item-qtd"], input[name="qtd"], .item-qtd, .qtd, [data-qtd], input[type="number"]') || null;
+      const vEl    = q('input[name="item-vunit"], input[name="vunit"], .item-vunit, .vunit, .item-preco, [data-vunit]') || null;
+      const chapaEl = q('select[name="item-chapa"], select.item-chapa, .chapa-sel, [data-item-chapa]') || null;
+      const qtdChEl = q('input[name="item-qtd-chapas"], input.qtd-chapa, .qtd-chapa, [data-qtd-chapa]') || null;
+      const maqEl = q('[data-item-maquina], select.item-maq, .item-maq, [data-maquina]') || null;
+      coerceItem(
+        idx,
+        descEl ? descEl.value : '',
+        refEl ? refEl.value : '',
+        qtdEl ? qtdEl.value : '',
+        vEl ? vEl.value : '',
+        chapaEl ? chapaEl.value : '',
+        qtdChEl ? qtdChEl.value : '',
+        maqEl ? maqEl.value : ''
+      );
+    });
+    return itens;
+  }
+
+  let idx = 0;
+  while(true){
+    const desc =
+      document.getElementById('item-desc-'+idx) ||
+      document.getElementById('f-item-desc-'+idx) ||
+      document.querySelector('[data-item-desc="'+idx+'"]');
+    if(!desc) break;
+    const ref =
+      document.getElementById('item-ref-'+idx) ||
+      document.getElementById('f-item-ref-'+idx) ||
+      document.querySelector('[data-item-ref="'+idx+'"]');
+    const qtd =
+      document.getElementById('item-qtd-'+idx) ||
+      document.getElementById('f-item-qtd-'+idx) ||
+      document.querySelector('[data-item-qtd="'+idx+'"]');
+    const vunit =
+      document.getElementById('item-vunit-'+idx) ||
+      document.getElementById('f-item-vunit-'+idx) ||
+      document.getElementById('item-preco-'+idx) ||
+      document.querySelector('[data-item-vunit="'+idx+'"]');
+    const chapa =
+      document.getElementById('item-chapa-'+idx) ||
+      document.querySelector('[data-item-chapa="'+idx+'"]');
+    const qtdChapa =
+      document.getElementById('item-qtd-chapa-'+idx) ||
+      document.querySelector('[data-item-qtd-chapa="'+idx+'"]');
+    const maq =
+      document.getElementById('item-maq-'+idx) ||
+      document.querySelector('[data-item-maquina="'+idx+'"]');
+    coerceItem(
+      idx,
+      desc.value,
+      ref ? ref.value : '',
+      qtd ? qtd.value : '',
+      vunit ? vunit.value : '',
+      chapa ? chapa.value : '',
+      qtdChapa ? qtdChapa.value : '',
+      maq ? maq.value : ''
+    );
+    idx++;
+  }
+
+  if(itens.length) return itens;
+  return (ofItensTemp || []).map((it, i)=>{
+    const qtd = Number(String(it.qtd ?? '').replace(',', '.')) || 0;
+    const vunit = Number(String(it.vunit ?? '').replace(',', '.')) || 0;
+    const total = qtd * vunit;
+    const desc = String(it.desc || it.descricao || '').trim();
     return {
       desc,
       descricao: desc,
-      ref:it.ref||'',
+      ref: String(it.ref || '').trim(),
       qtd,
-      quantidade:qtd,
+      quantidade: qtd,
       vunit,
-      valor_unitario:vunit,
-      valor_total:total,
-      img:it.img||null,
-      chapa_id: it.chapa_id || '',
-      chapa_nome: it.chapa_nome || '',
-      qtd_chapas: Math.trunc(Number(it.qtd_chapas)||0),
-      maquina: it.maquina || '',
+      valor_unitario: vunit,
+      valor_total: total,
+      img: it.img || null,
+      chapa_id: String(it.chapa_id || '').trim(),
+      chapa_nome: String(it.chapa_nome || '').trim(),
+      qtd_chapas: Math.trunc(Number(it.qtd_chapas || 0) || 0),
+      maquina: String(it.maquina || '').trim(),
       maquinas_fluxo: (() => {
         const ids = Array.isArray(it.maquinas_fluxo_ids) ? it.maquinas_fluxo_ids : [];
         let names = ofFluxoNamesFromIds(ids);
@@ -3418,7 +3529,58 @@ function getOfItensFromModal(){
         return names;
       })(),
     };
+  }).filter(it => String(it.desc||'').trim() || Number(it.qtd||0)>0);
+}
+
+function restaurarItensNoModal(of){
+  if(!of) return;
+  let itens = of.itens || [];
+  if(typeof itens === 'string'){
+    try{
+      const p = JSON.parse(itens);
+      itens = Array.isArray(p) ? p : (typeof p === 'string' ? JSON.parse(p) : []);
+    }catch(_){ itens = []; }
+  }
+  if(!Array.isArray(itens) || itens.length === 0) return;
+
+  const setVal = (ids, val) => {
+    const v = (val == null) ? '' : String(val);
+    for(const id of ids){
+      const el = document.getElementById(id);
+      if(el){ el.value = v; return true; }
+    }
+    return false;
+  };
+
+  itens.forEach((it, idx)=>{
+    const desc = it.desc || it.descricao || it.nome || '';
+    const ref = it.ref || it.referencia || '';
+    const qtd = it.qtd ?? it.quantidade ?? 0;
+    const vunit = it.vunit ?? it.valor_unitario ?? 0;
+    setVal(['item-desc-'+idx, 'f-item-desc-'+idx], desc);
+    setVal(['item-ref-'+idx, 'f-item-ref-'+idx], ref);
+    setVal(['item-qtd-'+idx, 'f-item-qtd-'+idx], qtd);
+    setVal(['item-vunit-'+idx, 'f-item-vunit-'+idx, 'item-preco-'+idx], vunit);
+
+    const row = document.querySelector(`#of-itens-body tr:nth-child(${idx+1})`) || null;
+    const maqSel =
+      document.getElementById('item-maq-'+idx) ||
+      document.querySelector('[data-item-maquina="'+idx+'"]') ||
+      (row ? row.querySelector('[data-item-maquina]') : null);
+    const maq = String(it.maquina || '');
+    if(maqSel && maq) maqSel.value = maq;
+
+    const chapaSel =
+      document.getElementById('item-chapa-'+idx) ||
+      document.querySelector('[data-item-chapa="'+idx+'"]') ||
+      (row ? row.querySelector('select[name="item-chapa"]') : null);
+    const chapaId = String(it.chapa_id || it.chapaId || '');
+    if(chapaSel && chapaId) chapaSel.value = chapaId;
   });
+
+  try{ if(typeof calcularValorTotalOF === 'function') calcularValorTotalOF(); }catch(e){}
+  try{ if(typeof atualizarTotaisOF === 'function') atualizarTotaisOF(); }catch(e){}
+  try{ if(typeof recalcOfItens === 'function') recalcOfItens(); }catch(e){}
 }
 
 async function salvarOF(){
@@ -3703,22 +3865,69 @@ function lancAbrirDetalhes(id){
   const empNome = lancEmpNome(of);
   const status = String(of.status||'').trim();
   const fluxoLinha = ofFluxoLinha(of);
+  const itens = Array.isArray(of.itens) ? of.itens : (typeof of.itens === 'string' ? tryParse(of.itens, []) : []);
+  const arrItens = Array.isArray(itens) ? itens : [];
+  const item0 = arrItens[0] || {};
+  const nomeProduto = String(item0.desc || item0.descricao || of.prodDesc || of.descricao || of.produto || '—').trim() || '—';
+  const ref0 = String(item0.ref || item0.referencia || '—').trim() || '—';
+  const qtdTotal = Number(of.qtd || 0) || arrItens.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+  const valorTotal = Number((of.valor_total ?? of.valor_venda ?? of.val) || 0) || arrItens.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+  const vunit0 = Number(item0.vunit ?? item0.valor_unitario ?? 0) || (qtdTotal > 0 ? (valorTotal / qtdTotal) : 0);
+  const chapa0 = String(item0.chapa_nome || '').trim() || (()=>{
+    const id0 = String(item0.chapa_id || item0.chapaId || '').trim();
+    if(!id0) return '';
+    const ch = (typeof getCh === 'function') ? getCh(id0) : null;
+    return ch ? String(ch.nomenclatura || ch.nom || ch.nome || '').trim() : '';
+  })();
+  const itensHtml = arrItens.length ? `<div style="margin-top:12px">
+    <div style="color:var(--text3);font-size:.68rem;font-family:var(--mono);margin-bottom:6px">Itens</div>
+    <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;min-width:760px">
+        <thead><tr>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase">#</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase">Descrição</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase">Ref</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;text-align:right">Qtd</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;text-align:right">Vl.Unit</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;text-align:right">Total</th>
+          <th style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase">Chapa</th>
+        </tr></thead>
+        <tbody>
+          ${arrItens.map((it,i)=>`
+            <tr>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3);font-family:var(--mono);color:var(--text3)">${i+1}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3)">${escH(String(it.desc || it.descricao || '').trim())}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3);font-family:var(--mono)">${escH(String(it.ref || it.referencia || '').trim())}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3);text-align:right;font-family:var(--mono)">${fmtN(Number(it.qtd || it.quantidade || 0) || 0)}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3);text-align:right;font-family:var(--mono)">${fmtR(Number(it.vunit ?? it.valor_unitario ?? 0) || 0)}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3);text-align:right;font-family:var(--mono);color:var(--green)">${fmtR(Number(it.valor_total || it.total || 0) || 0)}</td>
+              <td style="padding:8px 10px;border-top:1px solid var(--s3)">${escH(String(it.chapa_nome || chapa0 || '').trim())}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>` : '';
   body.innerHTML = `<div class="sbox"><div class="sbox-h">OF #${escH(of.of||'')}</div><div class="sbox-b">
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Cliente</div><div style="font-weight:800">${escH(cliNome)}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Vendedor</div><div style="font-weight:800">${escH(vendNome)}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Empresa</div><div style="font-weight:800">${escH(empNome||'—')}</div></div>
-      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Produto</div><div style="font-weight:800">${escH(of.prodDesc||'—')}</div></div>
-      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Qtd</div><div style="font-weight:800">${fmtN(of.qtd||0)} un</div></div>
-      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Valor</div><div style="font-weight:900;color:var(--green)">${fmtR(of.val||0)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Produto</div><div style="font-weight:900;font-size:1.05rem">${escH(nomeProduto)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Ref</div><div style="font-weight:800;font-family:var(--mono)">${escH(ref0)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Chapa</div><div style="font-weight:800">${escH(chapa0||'—')}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Qtd</div><div style="font-weight:800">${fmtN(qtdTotal)} un</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Vl.Unit</div><div style="font-weight:800;font-family:var(--mono)">${fmtR(vunit0)}</div></div>
+      <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Total</div><div style="font-weight:900;color:var(--green)">${fmtR(valorTotal)}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Pedido</div><div>${fmtD(lancDia(of))}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Entrega</div><div>${fmtD(lancEnt(of))}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Status</div><div>${escH(status||'—')}</div></div>
       <div style="grid-column:1/-1"><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Máquinas</div><div style="margin-top:2px;font-family:var(--mono);font-size:.72rem;color:var(--text2)">${fluxoLinha||'—'}</div></div>
     </div>
     ${of.obs?`<div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono);margin-bottom:4px">Obs</div>${escH(of.obs)}</div>`:''}
+    ${itensHtml}
   </div></div>`;
   act.innerHTML = `<button class="btn btn-ghost" onclick="fechar('modal-lanc-det')">Fechar</button>` +
+    ((!of.deleted_at)?`<button class="btn btn-accent" onclick="lancEditarOF('${escAttr(of.id)}')">Editar itens</button>`:'') +
     ((status==='Cancelada'||status==='Cancelado') ? `<button class="btn btn-accent" onclick="lancReativar('${escAttr(of.id)}')">Reativar</button>` : '') +
     (of.deleted_at ? `<button class="btn btn-accent" onclick="lancRestaurar('${escAttr(of.id)}')">Restaurar</button>` : '');
   abrir('modal-lanc-det');
@@ -3751,7 +3960,12 @@ function renderLancamento(){
       if(d && !String(d).startsWith(mes)) return false;
     }
     if(q){
-      const txt = [o.of, lancCliNome(o), o.prodDesc, lancVendNome(o), o.status, empNome].join(' ').toLowerCase();
+      const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      const item0 = arr[0] || {};
+      const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || '').trim();
+      const ref0 = String(item0.ref || item0.referencia || '').trim();
+      const txt = [o.of, lancCliNome(o), nomeProduto, ref0, lancVendNome(o), o.status, empNome].join(' ').toLowerCase();
       if(!txt.includes(q)) return false;
     }
     return true;
@@ -3802,28 +4016,38 @@ function renderLancamento(){
 
   const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
   const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
-  host.innerHTML = `<div style="max-height:66vh;overflow:auto">
-    <table style="width:100%;border-collapse:collapse;min-width:1180px">
-      <thead><tr>
-        <th style="${th}">OF</th><th style="${th}">📷</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Qtd</th>
-        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
-      </tr></thead>
-      <tbody>
-        ${rows.length?rows.map(o=>`
+  const renderRow = (o) => {
+    const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+    const arr = Array.isArray(itens) ? itens : [];
+    const item0 = arr[0] || {};
+    const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '—').trim() || '—';
+    const ref0 = String(item0.ref || item0.referencia || '—').trim() || '—';
+    const qtd = Number(o.qtd || 0) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+    const total = Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+    const vunit = Number(item0.vunit ?? item0.valor_unitario ?? 0) || (qtd > 0 ? (total / qtd) : 0);
+    const chapa = String(item0.chapa_nome || '').trim() || (()=>{
+      const id0 = String(item0.chapa_id || item0.chapaId || '').trim();
+      if(!id0) return '';
+      const ch = (typeof getCh === 'function') ? getCh(id0) : null;
+      return ch ? String(ch.nomenclatura || ch.nom || ch.nome || '').trim() : '';
+    })();
+    const imgUrl = o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : null) || (Array.isArray(o.imagens) ? o.imagens[0] : null) || '';
+    return `
           <tr style="background:var(--surface)">
             <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
-            <td style="${td};text-align:center">${(()=>{
-              const imgUrl = o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : null) || (Array.isArray(o.imagens) ? o.imagens[0] : null) || '';
-              return imgUrl
-                ? `<img src="${escAttr(imgUrl)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(o.of||o.numero||'')}')" onerror="this.style.display='none'">`
-                : '';
-            })()}</td>
+            <td style="${td};text-align:center">${imgUrl
+              ? `<img src="${escAttr(imgUrl)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(o.of||o.numero||'')}')" onerror="this.style.display='none'">`
+              : ''}</td>
             <td style="${td}">${escH(lancCliNome(o))}</td>
-            <td style="${td};max-width:280px;overflow:hidden;text-overflow:ellipsis">${escH(o.prodDesc||'—')}</td>
+            <td style="${td};max-width:260px;overflow:hidden;text-overflow:ellipsis"><div style="font-weight:900">${escH(nomeProduto)}</div></td>
+            <td style="${td};max-width:160px;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)">${escH(ref0)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${fmtR(vunit)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(total)}</td>
+            <td style="${td};max-width:220px;overflow:hidden;text-overflow:ellipsis">${escH(chapa||'—')}</td>
             <td style="${td};text-align:right;font-family:var(--mono)">${
               o.id
-                ? `<input type="number" min="0" value="${escAttr(o.qtd||0)}" style="width:86px;text-align:right;font-family:var(--mono);padding:4px 6px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px" onkeydown="if(event.key==='Enter'){this.blur();}" onchange="lancSalvarQtdOF('${escAttr(o.id)}', this.value)">`
-                : fmtN(o.qtd||0)
+                ? `<input type="number" min="0" value="${escAttr(qtd)}" style="width:86px;text-align:right;font-family:var(--mono);padding:4px 6px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px" onkeydown="if(event.key==='Enter'){this.blur();}" onchange="lancSalvarQtdOF('${escAttr(o.id)}', this.value)">`
+                : fmtN(qtd)
             }</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
@@ -3837,7 +4061,17 @@ function renderLancamento(){
               ${(tab==='canceladas')?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
               ${(tab==='excluidas')?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
             </td>
-          </tr>`).join(''):`<tr><td colspan="11" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
+          </tr>`;
+  };
+  host.innerHTML = `<div style="max-height:66vh;overflow:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:1480px">
+      <thead><tr>
+        <th style="${th}">OF</th><th style="${th}">📷</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Ref</th>
+        <th style="${th}">Vl.Unit</th><th style="${th}">Total</th><th style="${th}">Chapa</th><th style="${th}">Qtd</th>
+        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
+      </tr></thead>
+      <tbody>
+        ${rows.length?rows.map(renderRow).join(''):`<tr><td colspan="15" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
       </tbody>
     </table>
   </div>`;
@@ -10366,6 +10600,18 @@ async function autoSaveLoad(){
 
 // Normalização: converte snake_case do banco para camelCase do sistema
 function normalizeOF(r){
+  const parseAny = (v, def) => {
+    if(v == null) return def;
+    if(typeof v !== 'string') return v;
+    try{
+      const p = JSON.parse(v);
+      if(typeof p === 'string'){
+        try{ return JSON.parse(p); }catch(_){ return def; }
+      }
+      return p;
+    }catch(_){ return def; }
+  };
+
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
   const vendNome = r.vendedor ?? r.vendedor_nome ?? r.vendedorNome ?? '';
@@ -10382,23 +10628,55 @@ function normalizeOF(r){
     ? r.maq
     : (r.maquina_id ? [r.maquina_id] : (r.maquinaId ? [r.maquinaId] : tryParse(r.maq, [])));
   const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
-  const prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
+  let prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';
   const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
-  const itens = Array.isArray(r.itens) ? r.itens : tryParse(r.itens, []);
+  let itens = parseAny(r.itens, []);
+  if(!Array.isArray(itens)) itens = [];
+  itens = itens.map((it0)=>{
+    const it = it0 && typeof it0 === 'object' ? it0 : {};
+    const desc = String(it.desc || it.descricao || it.nome || it.produto || '').trim();
+    const ref = String(it.ref || it.referencia || '').trim();
+    const qtd = Number(it.qtd ?? it.quantidade ?? 0) || 0;
+    const vunit = Number(it.vunit ?? it.valor_unitario ?? it.valorUnitario ?? 0) || 0;
+    const valor_total = Number(it.valor_total ?? it.valorTotal ?? it.total ?? (qtd * vunit)) || 0;
+    const chapa_id = String(it.chapa_id || it.chapaId || it.chp || it.chpId || '').trim();
+    const qtd_chapas = Math.trunc(Number(it.qtd_chapas ?? it.qtdChapas ?? it.qchp ?? 0) || 0);
+    const maquina = String(it.maquina || it.maquina_item || it.maquinaId || '').trim();
+    return {
+      ...it,
+      desc,
+      descricao: desc,
+      ref,
+      referencia: ref,
+      qtd,
+      quantidade: qtd,
+      vunit,
+      valor_unitario: vunit,
+      valor_total,
+      chapa_id,
+      qtd_chapas,
+      maquina,
+    };
+  });
+  if(itens[0] && itens[0].desc) prodDesc = itens[0].desc;
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
-  const maquinaPorItem = (r.maquina_por_item && typeof r.maquina_por_item === 'object' && !Array.isArray(r.maquina_por_item))
+  let maquinaPorItem = (r.maquina_por_item && typeof r.maquina_por_item === 'object' && !Array.isArray(r.maquina_por_item))
     ? r.maquina_por_item
-    : tryParse(r.maquina_por_item, {});
+    : parseAny(r.maquina_por_item, {});
+  if(!maquinaPorItem || typeof maquinaPorItem !== 'object' || Array.isArray(maquinaPorItem)) maquinaPorItem = {};
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrl = r.imagem_url ?? null;
   const dataConc = r.data_conclusao ?? null;
   const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
-  const valorTotal = Number(r.valor_total ?? r.valorTotal ?? 0) || 0;
-  const valorVenda = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
-  const val = Number(valorTotal || valorVenda || 0) || 0;
-  const vunit = (qtd && Number(qtd) > 0) ? (val / Number(qtd)) : 0;
+  const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
+  const qtdNorm = (Number(qtd || 0) > 0) ? Number(qtd || 0) : itensQtdTotal;
+  const itensValTotal = itens.reduce((s, it)=>s + (Number(it.valor_total || 0) || 0), 0);
+  const valorTotalRaw = Number(r.valor_total ?? r.valorTotal ?? 0) || 0;
+  const valorVendaRaw = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
+  const val = Number(valorTotalRaw || valorVendaRaw || itensValTotal || 0) || 0;
+  const vunit = (qtdNorm && Number(qtdNorm) > 0) ? (val / Number(qtdNorm)) : 0;
   const qtdPedida = Number(r.qtd_pedida ?? r.qtdPedida ?? r.quantidade_pedida ?? r.quantidadePedida ?? NaN);
   const qtdProduzida = Number(r.qtd_produzida ?? r.qtdProduzida ?? NaN);
   const qtdPerdida = Number(r.qtd_perdida ?? r.qtdPerdida ?? NaN);
@@ -10411,7 +10689,7 @@ function normalizeOF(r){
     of,
     cliId,
     vendId,
-    qtd,
+    qtd: qtdNorm,
     dia,
     ent,
     fluxo,
@@ -10420,8 +10698,8 @@ function normalizeOF(r){
     urg:!!urg,
     chp,
     qchp,
-    valor_total: valorTotal,
-    valor_venda: valorVenda,
+    valor_total: val,
+    valor_venda: val,
     val,
     vunit,
     qtd_pedida: Number.isFinite(qtdPedida) ? qtdPedida : null,
