@@ -12515,20 +12515,31 @@ async function renderSelecaoChapas(){
 }
 
 function renderLinhaSelChapa(of, chapas){
-  const itens = Array.isArray(of.itens) ? of.itens : (typeof of.itens === 'string' ? tryParse(of.itens, []) : []);
-  const arr = Array.isArray(itens) ? itens : [];
-  const item0 = arr[0] || {};
+  let itens = of?.itens ?? [];
+  if (typeof itens === 'string') {
+    try { itens = JSON.parse(itens); } catch (_) { itens = []; }
+    if (typeof itens === 'string') {
+      try { itens = JSON.parse(itens); } catch (_) { itens = []; }
+    }
+  }
+  if (!Array.isArray(itens)) itens = [];
+  const item0 = itens[0] || {};
   const produto = String(item0.desc || item0.descricao || of.prodDesc || of.descricao || of.produto || '—').trim() || '—';
-  const ref = String(item0.ref || item0.referencia || '—').trim() || '—';
+  const ref = String(item0.ref || item0.referencia || of.ref || of.referencia || '—').trim() || '—';
   const qtd = Number(of.qtd || of.quantidade || 0) || 0;
-  const valorTotal = Number(of.valor_total || of.valor_venda || of.val || 0) || 0;
-  const valorUnit = Number(item0.vunit || item0.valor_unitario || 0) || (qtd > 0 ? (valorTotal / qtd) : 0);
+  let valorUnit = Number(item0.vunit || item0.valor_unitario || item0.preco || of.preco || of.valor_unitario || of.val || 0) || 0;
+  let valorTotal = Number(
+    of.valor_total || of.valor_venda || of.total ||
+    item0.valor_total ||
+    ((valorUnit || 0) * (qtd || 0)) || 0
+  ) || 0;
+  if (!valorUnit && qtd > 0 && valorTotal > 0) valorUnit = valorTotal / qtd;
   const imgUrl = String(of.imagem_url || (Array.isArray(of.imgs) ? of.imgs[0] : '') || (Array.isArray(of.imagens) ? of.imagens[0] : '') || '').trim();
   const dataPed = String(of.dia || of.data_producao || of.created_at || '').slice(0,10) || '—';
   const dataEnt = String(of.ent || of.data_entrega || '').slice(0,10) || '—';
   const numero = _selChapasOfNumero(of) || String(of.seq || '') || '—';
   const cliente = (getCli(of.cliId)||{}).nome || of.cliente || of.cliente_nome || '—';
-  const chapaAtual = String(of.chapa_id || of.chp || '').trim();
+  const chapaAtual = String(of.chapa_id || of.chp || of.chapaid || of.chapa || '').trim();
   const qtdChAtual = Math.trunc(Number(of.qtd_chapas || of.qchp || 0) || 0);
   const status = String(of.status || '').trim();
   const statusColor = ({
@@ -12704,7 +12715,11 @@ async function scSalvarVinculo(ofId){
 
       if(dadosMov && typeof dadosMov.qtd_estoque === 'number'){
         const idxE = (ESTOQUE || []).findIndex(e => String(e.id) === String(chapaId));
-        if(idxE >= 0) ESTOQUE[idxE].qtd_estoque = dadosMov.qtd_estoque;
+        if(idxE >= 0){
+          ESTOQUE[idxE].qtd_estoque = dadosMov.qtd_estoque;
+          if(ESTOQUE[idxE].quantidade != null) ESTOQUE[idxE].quantidade = dadosMov.qtd_estoque;
+          if(ESTOQUE[idxE].qtd != null) ESTOQUE[idxE].qtd = dadosMov.qtd_estoque;
+        }
       }
 
       toast('✅ Chapa vinculada! Estoque: ' + (dadosMov ? dadosMov.qtd_estoque : '?') + ' un.','var(--green)');

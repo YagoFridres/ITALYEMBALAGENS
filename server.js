@@ -4575,9 +4575,56 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
   }
 });
 
+async function _chapasAtualizarQtdEstoqueChapa(chapaId, qtdNova, req, updatedAt) {
+  const id = String(chapaId || '').trim();
+  const qtd = Math.trunc(Number(qtdNova) || 0);
+  const at = updatedAt || new Date().toISOString();
+  const usuario = req?.usuario?.nome || 'sistema';
+
+  const tryUpdate = async (table, payload) => {
+    let p = { ...(payload || {}) };
+    let data = null;
+    let error = null;
+    for (let tentativa = 0; tentativa < 5; tentativa++) {
+      const r = await supabase.from(table).update(p).eq('id', id).select('*').maybeSingle();
+      data = r?.data || null;
+      error = r?.error || null;
+      if (!error) break;
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+        delete p[col];
+        continue;
+      }
+      break;
+    }
+    return { data, error, table };
+  };
+
+  const r1 = await tryUpdate('chapas_estoque_v2', {
+    qtd_estoque: qtd,
+    quantidade: qtd,
+    updated_at: at,
+    atualizado_por: usuario,
+  });
+  if (!r1.error && r1.data) return r1;
+
+  const r2 = await tryUpdate('chapas_estoque', {
+    qtd_estoque: qtd,
+    qtd,
+    quantidade: qtd,
+    updated_at: at,
+  });
+  if (!r2.error && r2.data) return r2;
+
+  const error = r1.error || r2.error || new Error('Falha ao atualizar estoque da chapa');
+  return { data: null, error, table: r2.table || r1.table || '' };
+}
+
 app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) => {
   try {
-    const table = await _chapasPreferV2Table();
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
     if (!['entrada', 'saida', 'ajuste'].includes(tipo)) {
@@ -4585,8 +4632,18 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     }
 
     const id = String(req.params.id || '').trim();
-    const { data: cur, error: curErr } = await supabase.from(table).select('*').eq('id', id).single();
-    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    const preferred = await _chapasPreferV2Table();
+    const tablesToTry = preferred === 'chapas_estoque_v2'
+      ? ['chapas_estoque_v2', 'chapas_estoque']
+      : ['chapas_estoque', 'chapas_estoque_v2'];
+
+    let cur = null;
+    let table = '';
+    for (const t of tablesToTry) {
+      const r = await supabase.from(t).select('*').eq('id', id).maybeSingle();
+      if (r?.data) { cur = r.data; table = t; break; }
+    }
+    if (!cur || !table) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
 
     const canonCur = _chapasCanonicalFromAny(cur, table);
     const oldQtd = Number(canonCur.quantidade || 0) || 0;
@@ -4650,25 +4707,8 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
         return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
       }
 
-      try {
-        let patch = {
-          qtd_estoque: Math.trunc(Number(newQtd) || 0),
-          quantidade: Math.trunc(Number(newQtd) || 0),
-          updated_at: updatedAt,
-          atualizado_por: req?.usuario?.nome || 'sistema',
-        };
-        for (let i = 0; i < 3; i++) {
-          const r = await supabase.from('chapas_estoque_v2').update(patch).eq('id', id);
-          if (!r?.error) break;
-          const msg = String(r.error.message || '');
-          const m = msg.match(/Could not find the '([^']+)' column/);
-          if (m && m[1] && patch[m[1]] !== undefined) {
-            delete patch[m[1]];
-            continue;
-          }
-          break;
-        }
-      } catch (_) {}
+      const updCompat = await _chapasAtualizarQtdEstoqueChapa(id, newQtd, req, updatedAt);
+      if (updCompat?.error) return res.status(500).json({ ok: false, error: String(updCompat.error.message || updCompat.error) });
 
       if (b.nf != null && String(b.nf).trim() !== '') {
         try {
@@ -4678,11 +4718,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
       cacheClearPrefix('chapas_estoque:');
 
-      let updRow = null;
-      try {
-        const r2 = await supabase.from('chapas_estoque_v2').select('*').eq('id', id).maybeSingle();
-        updRow = r2?.data || null;
-      } catch (_) {}
+      const updRow = updCompat?.data || null;
       const canonUpd = updRow ? _chapasCanonicalFromAny(updRow, 'chapas_estoque_v2') : { ...canonCur, quantidade: Math.trunc(Number(newQtd) || 0) };
 
       const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
@@ -4737,7 +4773,11 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
     cacheClearPrefix('chapas_estoque:');
 
-    const canonUpd = _chapasCanonicalFromAny(upd, table);
+    const updCompat2 = await _chapasAtualizarQtdEstoqueChapa(id, newQtd, req, updatedAt);
+    if (updCompat2?.error) return res.status(500).json({ ok: false, error: String(updCompat2.error.message || updCompat2.error) });
+    const finalRow = updCompat2?.data || upd || cur;
+    const finalTable = updCompat2?.data ? updCompat2.table : table;
+    const canonUpd = _chapasCanonicalFromAny(finalRow || {}, finalTable);
     const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
     const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
     await _chapasLogAcao(req, `estoque_${tipo}`, desc);
