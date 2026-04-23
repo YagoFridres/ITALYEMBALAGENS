@@ -1684,18 +1684,10 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
-    const body = req.body || {};
-    const cleanBody = { ...body };
-    delete cleanBody.numero;
-    delete cleanBody.of;
-    delete cleanBody.of_num;
-    delete cleanBody.of_numero;
-    delete cleanBody.seq;
-    delete cleanBody.id;
-    delete cleanBody.created_at;
-    const filtered = ofPayloadFiltrado(cleanBody);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const body = req.body || {};
+    const cleanBody = { ...body };
     console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
     const { data: ofAtual } = await supabase
@@ -1703,7 +1695,23 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .select('*')
       .eq('id', id)
       .maybeSingle();
+    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
+    ['numero', 'of', 'of_num', 'of_numero', 'seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
+    if (!Object.prototype.hasOwnProperty.call(body, 'itens')) delete cleanBody.itens;
+
+    const valorAtual = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
+    const zerarValor = body?._zerar_valor === true || body?._zerar_valor === 'true' || body?._zerar_valor === 1 || body?._zerar_valor === '1';
+    const hasValor = Object.prototype.hasOwnProperty.call(body, 'valor_total') || Object.prototype.hasOwnProperty.call(body, 'valor_venda');
+    if (hasValor && !zerarValor) {
+      const valBody = Number(cleanBody.valor_total ?? cleanBody.valor_venda ?? NaN);
+      if (Number.isFinite(valBody) && valBody === 0 && valorAtual > 0) {
+        delete cleanBody.valor_total;
+        delete cleanBody.valor_venda;
+      }
+    }
+
+    const filtered = ofPayloadFiltrado(cleanBody);
     delete filtered.id;
     delete filtered.numero;
     delete filtered.of;
@@ -4034,6 +4042,31 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   return payload;
 }
 
+async function _chapasUpdateCompatV2(id, payload) {
+  const p = { ...(payload || {}) };
+  const proibidos = ['observacao', 'obs', 'data_entrada', 'obs_chapa', 'retalho', 'retalho_tam', 'retalho_papel'];
+  proibidos.forEach((k) => { delete p[k]; });
+
+  let data = null;
+  let error = null;
+  for (let tentativa = 0; tentativa < 6; tentativa++) {
+    const r = await supabase.from('chapas_estoque_v2').update(p).eq('id', id).select().maybeSingle();
+    data = r?.data || null;
+    error = r?.error || null;
+    if (!error) break;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      delete p[col];
+      continue;
+    }
+    break;
+  }
+  return { data, error };
+}
+
 async function _chapasLogAcao(req, tipo, descricao) {
   const row = {
     tipo_acao: String(tipo || '').trim().slice(0, 60),
@@ -4425,17 +4458,7 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, true);
       if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
-      let { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
-      if (error) {
-        const msg = String(error.message || error);
-        if (msg.toLowerCase().includes('empresa_vinculada') && msg.toLowerCase().includes('column')) {
-          const retry = { ...payload };
-          delete retry.empresa_vinculada;
-          const r2 = await supabase.from('chapas_estoque_v2').update(retry).eq('id', req.params.id).select().single();
-          data = r2.data;
-          error = r2.error;
-        }
-      }
+      const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
       await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''}`);
