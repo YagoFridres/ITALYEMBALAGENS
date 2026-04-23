@@ -12392,6 +12392,20 @@ async function renderSelecaoChapas(){
           <tbody id="sc-tbody">
             ${(todasOFs||[]).map(of=>renderLinhaSelChapa(of, chapas)).join('')}
           </tbody>
+          <tfoot>
+            <tr style="background:var(--s3);font-weight:800;font-size:.8rem;border-top:2px solid var(--accent)">
+              <td colspan="5" style="padding:10px;text-align:right;color:var(--text2)">
+                TOTAIS (OFs: <span id="sc-tot-ofs">0</span>):
+              </td>
+              <td id="sc-tot-qtd" style="padding:10px;text-align:center;color:var(--accent)">0</td>
+              <td style="padding:10px"></td>
+              <td id="sc-tot-valor" style="padding:10px;text-align:right;color:var(--green);white-space:nowrap">R$ 0,00</td>
+              <td colspan="3" style="padding:10px"></td>
+              <td style="padding:10px"></td>
+              <td id="sc-tot-chapas" style="padding:10px;text-align:center;color:var(--accent)">0</td>
+              <td colspan="2" style="padding:10px"></td>
+            </tr>
+          </tfoot>
         </table>
         ${(todasOFs||[]).length===0 ? '<div style="text-align:center;padding:40px;color:var(--text3)">Nenhuma OF encontrada</div>' : ''}
       </div>
@@ -12480,6 +12494,7 @@ function renderLinhaSelChapa(of, chapas){
       </td>
       <td style="padding:6px 10px;text-align:center">
         <input type="number" id="sc-qtdch-${escAttr(of.id)}" min="0" value="${escAttr(qtdChAtual)}"
+          oninput="scAtualizarTotais()"
           style="width:60px;padding:5px;background:var(--s3);border:1px solid var(--border);
                  color:var(--text);border-radius:6px;text-align:center;font-size:.75rem">
       </td>
@@ -12534,79 +12549,112 @@ function filtrarTabelaSelChapas(){
     const matchS = !status || String(tr.dataset.status || '') === status;
     tr.style.display = (matchB && matchS) ? '' : 'none';
   });
+  scAtualizarTotais();
 }
 
 async function scSalvarVinculo(ofId){
-  const sid = String(ofId || '').trim();
-  if(!sid) return;
-  const chapaId  = String((document.getElementById('sc-chapa-'+sid)||{}).value  || '').trim();
-  const qtdCh    = Number((document.getElementById('sc-qtdch-'+sid)||{}).value || 0);
-  const isRet    = String((document.getElementById('sc-retalho-'+sid)||{}).value || '') === 'sim';
-  const retTexto = String((document.getElementById('sc-ret-texto-'+sid)||{}).value || '').trim();
-
-  if(!chapaId && !isRet){ toast('Selecione uma chapa ou marque como retalho','var(--red)'); return; }
-  if(!(qtdCh > 0)){ toast('Informe a quantidade de chapas','var(--red)'); return; }
-
-  const of = (Array.isArray(OFs) ? OFs.find(o=>String(o && o.id || '').trim()===sid) : null)
-    || (Array.isArray(OFS_HIST) ? OFS_HIST.find(o=>String(o && o.id || '').trim()===sid) : null)
-    || null;
-
   try{
-    showSaveIndicator('Salvando vínculo...','var(--yellow)');
-    const payloadOf = {};
-    if(chapaId){
-      payloadOf.chapa_id = chapaId;
-      payloadOf.chp = chapaId;
-    } else {
-      payloadOf.chapa_id = null;
-      payloadOf.chp = null;
+    const elChapa   = document.getElementById('sc-chapa-' + ofId);
+    const elQtd     = document.getElementById('sc-qtdch-' + ofId);
+    const elRetalho = document.getElementById('sc-retalho-' + ofId);
+    const elTexto   = document.getElementById('sc-ret-texto-' + ofId);
+
+    const chapaId  = elChapa ? String(elChapa.value || '') : '';
+    const qtdCh    = elQtd ? Number(elQtd.value || 0) : 0;
+    const isRet    = elRetalho ? (elRetalho.value === 'sim') : false;
+    const retTexto = elTexto ? String(elTexto.value || '') : '';
+
+    if(!chapaId && !isRet){
+      toast('Selecione uma chapa ou marque como retalho','var(--red)');
+      return;
     }
-    payloadOf.qtd_chapas = qtdCh;
-    payloadOf.qchp = qtdCh;
-    if(isRet){
-      payloadOf.obs_chapa = 'RETALHO: ' + retTexto;
-      const tag = ('RETALHO: ' + retTexto).trim();
-      const obsAtual = String(of?.obs || '').trim();
-      payloadOf.obs = obsAtual ? (obsAtual + '\n' + tag) : tag;
+    if(qtdCh <= 0){
+      toast('Informe a quantidade de chapas','var(--red)');
+      return;
     }
 
-    const r1 = await apiFetch('/api/ofs/' + encodeURIComponent(sid), { method:'PUT', body: payloadOf });
-    const j1 = r1 ? await r1.json().catch(()=>null) : null;
-    if(!r1 || !r1.ok || !j1 || !j1.ok) throw new Error(j1?.error || 'Erro ao salvar OF');
+    const ofUpdate = {};
+    ofUpdate.qtd_chapas = qtdCh;
+    ofUpdate.qchp = qtdCh;
+    if(chapaId && !isRet){
+      ofUpdate.chapa_id = chapaId;
+      ofUpdate.chp = chapaId;
+    }
+    if(isRet && retTexto){
+      ofUpdate.obs_chapa = 'RETALHO: ' + retTexto;
+    }
+
+    const respOf = await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PUT', body: ofUpdate });
+    if(!respOf) throw new Error('Sem resposta do servidor');
+    const dadosOf = await respOf.json().catch(()=>null);
+    if(!respOf.ok || !dadosOf || !dadosOf.ok){
+      throw new Error((dadosOf && dadosOf.error) ? dadosOf.error : 'Erro ao salvar OF');
+    }
 
     if(!isRet && chapaId && qtdCh > 0){
-      const r2 = await apiFetch('/api/chapas_estoque/' + encodeURIComponent(chapaId) + '/movimento', {
-        method: 'POST',
-        body: { tipo:'saida', delta:qtdCh, quantidade:qtdCh, qtd:qtdCh, obs:'Baixa automática — OF #' + sid }
-      });
-      const j2 = r2 ? await r2.json().catch(()=>null) : null;
-      const qtdEst = j2?.qtd_estoque ?? j2?.data?.qtd_estoque ?? j2?.data?.quantidade ?? j2?.data?.qtd;
-      if(qtdEst !== undefined){
-        const idx = (ESTOQUE||[]).findIndex(e => String(e && e.id || '') === String(chapaId));
-        if(idx >= 0){
-          if(ESTOQUE[idx].qtd_estoque != null) ESTOQUE[idx].qtd_estoque = qtdEst;
-          if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = qtdEst;
-          if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = qtdEst;
-        }
+      const movPayload = {};
+      movPayload.tipo = 'saida';
+      movPayload.delta = qtdCh;
+      movPayload.quantidade = qtdCh;
+      movPayload.qtd = qtdCh;
+      movPayload.obs = 'Baixa automatica OF ' + ofId;
+
+      const respMov = await apiFetch('/api/chapas_estoque/' + encodeURIComponent(chapaId) + '/movimento', { method:'POST', body: movPayload });
+      const dadosMov = respMov ? await respMov.json().catch(()=>null) : null;
+
+      if(dadosMov && typeof dadosMov.qtd_estoque === 'number'){
+        const idxE = (ESTOQUE || []).findIndex(e => String(e.id) === String(chapaId));
+        if(idxE >= 0) ESTOQUE[idxE].qtd_estoque = dadosMov.qtd_estoque;
       }
-      toast('✅ Chapa vinculada! Estoque: ' + (qtdEst ?? '?') + ' un.','var(--green)');
+
+      toast('✅ Chapa vinculada! Estoque: ' + (dadosMov ? dadosMov.qtd_estoque : '?') + ' un.','var(--green)');
     } else {
       toast('✅ Informações salvas!','var(--green)');
     }
 
-    const idx = (OFs||[]).findIndex(o => String(o && o.id || '') === String(sid));
-    if(idx >= 0) OFs[idx] = { ...OFs[idx], ...payloadOf, chapa_id: chapaId };
-    const idxH = (OFS_HIST||[]).findIndex(o => String(o && o.id || '') === String(sid));
-    if(idxH >= 0) OFS_HIST[idxH] = { ...OFS_HIST[idxH], ...payloadOf, chapa_id: chapaId };
+    const idxOf = (OFs || []).findIndex(o => String(o.id) === String(ofId));
+    if(idxOf >= 0){
+      OFs[idxOf] = Object.assign({}, OFs[idxOf], ofUpdate);
+      if(chapaId) OFs[idxOf].chapa_id = chapaId;
+    }
 
-    const infoEl = document.getElementById('sc-retalho-info-'+sid);
+    const infoEl = document.getElementById('sc-retalho-info-' + ofId);
     if(infoEl) infoEl.textContent = '✅ Salvo';
-    showSaveIndicator('✓ salvo','var(--green)');
-  }catch(e){
-    showSaveIndicator('✖ erro','var(--red)');
-    toast('Erro: '+(e?.message||e),'var(--red)');
-    try{ console.error('[SC SALVAR]', e); }catch(_){}
+
+    scAtualizarTotais();
+  }catch(err){
+    toast('Erro: ' + (err?.message || err),'var(--red)');
+    try{ console.error('[SC SALVAR]', err); }catch(_){}
   }
+}
+
+function scAtualizarTotais(){
+  let totQtd = 0;
+  let totValor = 0;
+  let totChapas = 0;
+  let totOfs = 0;
+
+  document.querySelectorAll('#sc-tbody .sc-linha').forEach(tr=>{
+    if(tr.style.display === 'none') return;
+    const ofId = tr.getAttribute('data-of-id');
+    const of = (OFs || []).find(o => String(o.id) === String(ofId));
+    if(!of) return;
+    totOfs += 1;
+    totQtd += Number(of.qtd || of.quantidade || 0);
+    totValor += Number(of.valor_total || of.valor_venda || 0);
+    const elQtdCh = document.getElementById('sc-qtdch-' + ofId);
+    totChapas += elQtdCh ? Number(elQtdCh.value || 0) : 0;
+  });
+
+  const elTotOfs = document.getElementById('sc-tot-ofs');
+  const elTotQtd = document.getElementById('sc-tot-qtd');
+  const elTotValor = document.getElementById('sc-tot-valor');
+  const elTotChapas = document.getElementById('sc-tot-chapas');
+
+  if(elTotOfs) elTotOfs.textContent = totOfs.toLocaleString('pt-BR');
+  if(elTotQtd) elTotQtd.textContent = totQtd.toLocaleString('pt-BR');
+  if(elTotValor) elTotValor.textContent = 'R$ ' + totValor.toLocaleString('pt-BR',{ minimumFractionDigits: 2 });
+  if(elTotChapas) elTotChapas.textContent = totChapas.toLocaleString('pt-BR');
 }
 
 async function scExcluirOF(ofId, ofNumero){
