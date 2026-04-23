@@ -4567,6 +4567,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
     const canonCur = _chapasCanonicalFromAny(cur, table);
     const oldQtd = Number(canonCur.quantidade || 0) || 0;
+    const updatedAt = new Date().toISOString();
     let newQtd = oldQtd;
     let deltaAbs = 0;
 
@@ -4592,7 +4593,13 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
     if (table === 'chapas_estoque_v2') {
       if (tipo === 'ajuste' && Math.trunc(Number(deltaAbs) || 0) === 0) {
-        return ok(res, { ...canonCur, _movimento: { tipo, oldQtd, newQtd: oldQtd, delta: 0 } });
+        return res.json({
+          ok: true,
+          data: { ...canonCur, _movimento: { tipo, oldQtd, newQtd: oldQtd, delta: 0 } },
+          qtd_estoque: Math.trunc(Number(oldQtd) || 0),
+          qtd_anterior: Math.trunc(Number(oldQtd) || 0),
+          mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${Math.trunc(Number(oldQtd) || 0)}`,
+        });
       }
 
       const tipoRpc = tipo === 'ajuste' ? (deltaAbs > 0 ? 'entrada' : 'saida') : tipo;
@@ -4620,6 +4627,26 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
         return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
       }
 
+      try {
+        let patch = {
+          qtd_estoque: Math.trunc(Number(newQtd) || 0),
+          quantidade: Math.trunc(Number(newQtd) || 0),
+          updated_at: updatedAt,
+          atualizado_por: req?.usuario?.nome || 'sistema',
+        };
+        for (let i = 0; i < 3; i++) {
+          const r = await supabase.from('chapas_estoque_v2').update(patch).eq('id', id);
+          if (!r?.error) break;
+          const msg = String(r.error.message || '');
+          const m = msg.match(/Could not find the '([^']+)' column/);
+          if (m && m[1] && patch[m[1]] !== undefined) {
+            delete patch[m[1]];
+            continue;
+          }
+          break;
+        }
+      } catch (_) {}
+
       if (b.nf != null && String(b.nf).trim() !== '') {
         try {
           await supabase.from('chapas_estoque_v2').update({ nf: String(b.nf).trim(), atualizado_por: req?.usuario?.nome || 'sistema' }).eq('id', id);
@@ -4639,7 +4666,14 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
       await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
-      return ok(res, { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } });
+      const qtdOut = Math.trunc(Number(canonUpd.quantidade || newQtd) || 0);
+      return res.json({
+        ok: true,
+        data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } },
+        qtd_estoque: qtdOut,
+        qtd_anterior: Math.trunc(Number(oldQtd) || 0),
+        mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${qtdOut}`,
+      });
     }
 
     const patch = table === 'chapas_estoque_v2'
@@ -4651,7 +4685,32 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       else patch.nf = String(b.nf).trim();
     }
 
-    const { data: upd, error: updErr } = await supabase.from(table).update(patch).eq('id', id).select().single();
+    if (table === 'chapas_estoque_v2') {
+      patch.qtd_estoque = Math.trunc(Number(newQtd) || 0);
+      patch.updated_at = updatedAt;
+    } else {
+      patch.qtd_estoque = Math.trunc(Number(newQtd) || 0);
+      patch.updated_at = updatedAt;
+    }
+
+    let upd = null;
+    let updErr = null;
+    {
+      let p2 = { ...patch };
+      for (let i = 0; i < 3; i++) {
+        const r = await supabase.from(table).update(p2).eq('id', id).select().maybeSingle();
+        upd = r?.data || null;
+        updErr = r?.error || null;
+        if (!updErr) break;
+        const msg = String(updErr.message || '');
+        const m = msg.match(/Could not find the '([^']+)' column/);
+        if (m && m[1] && p2[m[1]] !== undefined) {
+          delete p2[m[1]];
+          continue;
+        }
+        break;
+      }
+    }
     if (updErr) return res.status(500).json({ ok: false, error: updErr.message });
     cacheClearPrefix('chapas_estoque:');
 
@@ -4680,7 +4739,14 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       } catch (_) {}
     }
 
-    return ok(res, { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } });
+    const qtdOut = Math.trunc(Number(canonUpd.quantidade || canonUpd.qtd || newQtd) || 0);
+    return res.json({
+      ok: true,
+      data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } },
+      qtd_estoque: qtdOut,
+      qtd_anterior: Math.trunc(Number(oldQtd) || 0),
+      mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${qtdOut}`,
+    });
   } catch (e) { err(res, e); }
 });
 

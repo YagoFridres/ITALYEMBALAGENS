@@ -5807,13 +5807,14 @@ function renderHistoricoMovimentosChapas(lista){
         <th style="${thS};min-width:110px">OF vinculada</th>
         <th style="${thS};min-width:140px">Usuário</th>
       </tr></thead>
-      <tbody>
+      <tbody id="historico-movimentacoes-tbody">
         ${rows.map((h,i)=>{
           const parsed = parseDesc(h.descricao || '');
           const tipoRaw = String(h.tipo||parsed.tipo||h.tipo_acao||'').trim().toLowerCase();
           const cor = tipoRaw.includes('saida') ? 'var(--red)' : tipoRaw.includes('entrada') ? 'var(--green)' : tipoRaw.includes('ajuste') ? 'var(--yellow)' : 'var(--text2)';
           const deltaAbs = (h.delta!=null && Number.isFinite(Number(h.delta))) ? Math.abs(Number(h.delta)) : (parsed.qtd!=null ? Number(parsed.qtd) : 0);
           const when = fmtDataBR(String(h.created_at||h.data_hora||'')) || '';
+          const isoDay = String(h.created_at||h.data_hora||'').slice(0,10);
           const user = String(h.usuario||'').trim();
           const ofNum = String(h.of_numero || parsed.of || '').trim();
           const ch = (h.chapa_id && Array.isArray(ESTOQUE)) ? (ESTOQUE||[]).find(c=>String(c.id||'')===String(h.chapa_id)) : null;
@@ -5821,7 +5822,7 @@ function renderHistoricoMovimentosChapas(lista){
             ? `${String(ch.fornecedor||ch.forn||'').trim()} · ${String(ch.nomenclatura||ch.nom||'').trim()} · ${String(ch.tamanho||ch.tam||'').trim()}`
             : (parsed.chapa || (h.chapa_id||'—'));
           const delBtn = (!h.reverted && h.id) ? `<button class="btn-icon btn-sm" onclick="excluirMovimentoChapas('${escAttr(h.id)}')" title="Excluir e reverter" style="color:var(--red);margin-left:8px">🗑</button>` : '';
-          return `<tr style="${trS(i)}">
+          return `<tr class="historico-mov-linha" data-mov-linha="1" data-mov-date="${escAttr(isoDay)}" style="${trS(i)}">
             <td style="${tdS};font-family:var(--mono);color:var(--text2)">${escH(when||'')}</td>
             <td style="${tdS};font-family:var(--mono);font-weight:900;color:${cor}">${escH(String(tipoRaw||'').toUpperCase())}</td>
             <td style="${tdS};color:var(--text2)">${escH(lblCh||'—')}</td>
@@ -5833,6 +5834,105 @@ function renderHistoricoMovimentosChapas(lista){
       </tbody>
     </table>
   </div>` : `<div style="padding:14px;color:var(--text3);text-align:center">Sem histórico</div>`;
+  try { filtrarHistoricoMovimentacoesChapas(); } catch(e) {}
+}
+
+function filtrarHistoricoMovimentacoesChapas(){
+  const de = String(document.getElementById('mov-chp-de')?.value || '').trim();
+  const ate = String(document.getElementById('mov-chp-ate')?.value || '').trim();
+  const seen = new Set();
+  document.querySelectorAll('#historico-movimentacoes-tbody tr, .historico-mov-linha, [data-mov-linha]').forEach(tr=>{
+    if(seen.has(tr)) return;
+    seen.add(tr);
+    const d = String(tr.getAttribute('data-mov-date') || '').trim();
+    let ok = true;
+    if(de && d && d < de) ok = false;
+    if(ate && d && d > ate) ok = false;
+    tr.style.display = ok ? '' : 'none';
+  });
+}
+
+function imprimirRelatorioMovimentacoes(){
+  const linhas = [];
+  const seen = new Set();
+  document.querySelectorAll('#historico-movimentacoes-tbody tr, .historico-mov-linha, [data-mov-linha]').forEach(tr=>{
+    if(seen.has(tr)) return;
+    seen.add(tr);
+    if(tr.style.display === 'none') return;
+    const cells = tr.querySelectorAll('td');
+    if(cells.length < 4) return;
+    linhas.push({
+      data: (cells[0]?.textContent || '').trim(),
+      tipo: (cells[1]?.textContent || '').trim(),
+      chapa: (cells[2]?.textContent || '').trim(),
+      quantidade: (cells[3]?.textContent || '').trim(),
+      of: (cells[4]?.textContent || '').trim(),
+      usuario: (cells[5]?.textContent || '').trim(),
+    });
+  });
+
+  let totalEntradas = 0;
+  let totalSaidas = 0;
+  linhas.forEach(l=>{
+    const qtd = Number(String(l.quantidade||'').replace(/\D/g,'')) || 0;
+    const t = String(l.tipo||'').toUpperCase();
+    if(t.includes('ENTRADA')) totalEntradas += qtd;
+    if(t.includes('SAIDA') || t.includes('SAÍDA')) totalSaidas += qtd;
+  });
+
+  const de = String(document.getElementById('mov-chp-de')?.value || '').trim();
+  const ate = String(document.getElementById('mov-chp-ate')?.value || '').trim();
+  const periodoTxt = (de || ate)
+    ? `Período: ${de ? de.split('-').reverse().join('/') : '—'} até ${ate ? ate.split('-').reverse().join('/') : '—'}`
+    : 'Período: —';
+
+  const html = `
+    <h2 style="margin-bottom:8px">📦 Relatório de Movimentações — Estoque Chapas</h2>
+    <p style="color:#666;margin-bottom:6px">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+    <p style="color:#666;margin-bottom:16px">${periodoTxt}</p>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+      <tr style="background:#f0f0f0">
+        <th style="padding:10px;border:1px solid #ccc;text-align:left">ENTRADAS</th>
+        <th style="padding:10px;border:1px solid #ccc;text-align:left">SAÍDAS</th>
+        <th style="padding:10px;border:1px solid #ccc;text-align:left">SALDO LÍQUIDO</th>
+        <th style="padding:10px;border:1px solid #ccc;text-align:left">TOTAL MOVIMENTAÇÕES</th>
+      </tr>
+      <tr>
+        <td style="padding:10px;border:1px solid #ccc;color:green;font-weight:bold">+${totalEntradas.toLocaleString('pt-BR')} un.</td>
+        <td style="padding:10px;border:1px solid #ccc;color:red;font-weight:bold">-${totalSaidas.toLocaleString('pt-BR')} un.</td>
+        <td style="padding:10px;border:1px solid #ccc;font-weight:bold">${(totalEntradas - totalSaidas).toLocaleString('pt-BR')} un.</td>
+        <td style="padding:10px;border:1px solid #ccc">${linhas.length} registros</td>
+      </tr>
+    </table>
+
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#f0f0f0">
+          <th style="padding:6px 8px;border:1px solid #ccc">DATA</th>
+          <th style="padding:6px 8px;border:1px solid #ccc">TIPO</th>
+          <th style="padding:6px 8px;border:1px solid #ccc">CHAPA</th>
+          <th style="padding:6px 8px;border:1px solid #ccc">QTD</th>
+          <th style="padding:6px 8px;border:1px solid #ccc">OF VINCULADA</th>
+          <th style="padding:6px 8px;border:1px solid #ccc">USUÁRIO</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linhas.map(l => `
+          <tr>
+            <td style="padding:5px 8px;border:1px solid #ccc">${escH(l.data)}</td>
+            <td style="padding:5px 8px;border:1px solid #ccc;color:${String(l.tipo).toUpperCase().includes('ENTRADA')?'green':'red'};font-weight:bold">${escH(l.tipo)}</td>
+            <td style="padding:5px 8px;border:1px solid #ccc">${escH(l.chapa)}</td>
+            <td style="padding:5px 8px;border:1px solid #ccc;text-align:center">${escH(l.quantidade)}</td>
+            <td style="padding:5px 8px;border:1px solid #ccc">${escH(l.of)}</td>
+            <td style="padding:5px 8px;border:1px solid #ccc">${escH(l.usuario)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  imprimirRelatorio('Relatório Movimentações Chapas', html);
 }
 
 function renderHistoricoEstoque(lista){
@@ -17505,7 +17605,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
     <!-- Histórico -->
     <div class="sbox">
-      <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>📜 Histórico de Movimentações</span><button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Nova movimentação</button></div>
+      <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span>📜 Histórico de Movimentações</span>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <input id="mov-chp-de" type="date" onchange="filtrarHistoricoMovimentacoesChapas()" title="Data início"
+            style="padding:5px 10px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border);font-size:.74rem">
+          <input id="mov-chp-ate" type="date" onchange="filtrarHistoricoMovimentacoesChapas()" title="Data fim"
+            style="padding:5px 10px;border-radius:8px;background:var(--s2);color:var(--text);border:1px solid var(--border);font-size:.74rem">
+          <button class="btn btn-accent btn-sm" onclick="imprimirRelatorioMovimentacoes()">🖨️ Imprimir Relatório</button>
+          <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Nova movimentação</button>
+        </div>
+      </div>
       <div class="sbox-b" id="est-hist" style="max-height:260px;overflow-y:auto;"></div>
     </div>
 
