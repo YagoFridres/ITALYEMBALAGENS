@@ -1961,7 +1961,10 @@ function ofFluxoGetNames(o){
   let fm=o?.fluxo_maquinas;
   if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
   const f=Array.isArray(fm)?fm:[];
-  if(f && f.length) return f.map(x=>String(x||'').trim()).filter(Boolean);
+  if(f && f.length) return f.map(x=>{
+    if(x && typeof x==='object' && !Array.isArray(x)) return String(x.nome||x.maquina||x.name||x.id||'').trim();
+    return String(x||'').trim();
+  }).filter(Boolean);
   if(typeof ofFluxoNamesFromIds==='function') return ofFluxoNamesFromIds(o?.maq||[]);
   return (o?.maq||[]).map(x=>String(x||'').trim()).filter(Boolean);
 }
@@ -2142,7 +2145,7 @@ async function renderOFsPorMaquina(){
 
     const ofsAtivas = (lista||[]).filter(of => {
       const st = String(of.status || '').toLowerCase().trim();
-      return st !== 'pedido pronto' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
+      return st !== 'pedido pronto' && st !== 'concluido' && st !== 'concluído' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
     });
     lista = ofsAtivas;
     if(busca){
@@ -10991,9 +10994,12 @@ async function syncOFs(force=false){
   const todos = (rows||[]).map(normalizeOF);
   const ativos = todos.filter(of => {
     const st = String(of.status || '').toLowerCase().trim();
-    return st !== 'pedido pronto' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
+    return st !== 'pedido pronto' && st !== 'concluido' && st !== 'concluído' && st !== 'cancelada' && st !== 'cancelado' && !of.deleted_at;
   });
-  const prontasPrev = (Array.isArray(window.OFS_HIST) ? window.OFS_HIST : []).filter(o => String(o.status||'').toLowerCase().trim() === 'pedido pronto');
+  const prontasPrev = (Array.isArray(window.OFS_HIST) ? window.OFS_HIST : []).filter(o => {
+    const st = String(o.status||'').toLowerCase().trim();
+    return st === 'pedido pronto' || st === 'concluido' || st === 'concluído';
+  });
   const histIds = new Set(todos.map(o=>String(o.id||'')));
   const hist = [...todos, ...prontasPrev.filter(o=>!histIds.has(String(o.id||'')))];
   OFs = ativos;
@@ -11081,7 +11087,7 @@ function _aplicarResultadoBaixaOF(id, before, baixaBody, r){
   if(baixaBody && baixaBody.qtd_real!=null) patch.qtd = Number(baixaBody.qtd_real)||0;
   const updated = _atualizarOFLocal(sid, patch) || normalizeOF({ ...(before||{ id:sid }), ...(row||{}), ...(patch||{}) });
   const st = String(updated?.status || status || '').toLowerCase().trim();
-  const pronto = (r && r.concluida===true) || st === 'pedido pronto';
+  const pronto = (r && r.concluida===true) || st === 'pedido pronto' || st === 'concluido' || st === 'concluído';
   _upsertOFHistLocal(updated);
   if(pronto) _removerOFAtivaLocal(sid);
   return updated;

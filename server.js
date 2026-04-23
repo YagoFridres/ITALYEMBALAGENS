@@ -2112,44 +2112,49 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return bad(res, 'id obrigatório');
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
-    console.log('[BAIXA] body recebido:', JSON.stringify(req.body || {}));
+    const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+    if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
-    const { data: rowsAtual, error: e0 } = await supabase
-      .from('ofs')
-      .select('qtd,valor_total,valor_venda')
-      .eq('id', id)
-      .limit(1);
-    if (e0) throw e0;
-    const ofAtual = rowsAtual && rowsAtual[0] ? rowsAtual[0] : null;
-    const qtdOriginal = Number(ofAtual?.qtd || 0);
-    const valorOriginal = Number(ofAtual?.valor_total || ofAtual?.valor_venda || 0);
+    const qtdOriginal = Number(of?.qtd || of?.quantidade || 0);
+    const valorOriginal = Number(of?.valor_total || of?.valor_venda || 0);
 
-    const { data: rows, error: e1 } = await supabase.from('ofs').select('*').eq('id', id).limit(1);
-    if (e1) throw e1;
-    const of = rows && rows[0] ? rows[0] : null;
-    if (!of) return bad(res, 'OF não encontrada');
+    const concluirTudo = !!(req.body?.concluir_tudo || req.body?.concluirTudo);
+    const idx0 = Number(of?.maquina_atual_index != null ? of.maquina_atual_index : 0);
+    const idx = Number.isFinite(idx0) && idx0 >= 0 ? idx0 : 0;
+    const maqBody = String(req.body?.maquina || req.body?.maq || '').trim();
 
-    let fluxo = parseFluxo(of.fluxo_maquinas);
-    if (!Array.isArray(fluxo) || fluxo.length === 0) {
+    let fluxoRaw = of.fluxo_maquinas;
+    if (typeof fluxoRaw === 'string') {
+      try { fluxoRaw = JSON.parse(fluxoRaw || '[]'); } catch (_) { fluxoRaw = []; }
+    }
+    const fluxoArr = Array.isArray(fluxoRaw) ? fluxoRaw : [];
+    const fluxoNamesFromRaw = (arr) => (arr || []).map((x) => {
+      if (x && typeof x === 'object' && !Array.isArray(x)) return String(x.nome || x.maquina || x.name || x.id || '').trim();
+      return String(x || '').trim();
+    }).filter(Boolean);
+    let fluxo = fluxoNamesFromRaw(fluxoArr);
+    if (!fluxo.length) {
       const maq = parseFluxo(of.maq);
       fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
     }
 
-    const concluirTudo = !!(req.body?.concluir_tudo || req.body?.concluirTudo);
-    const idx0 = Number(of.maquina_atual_index != null ? of.maquina_atual_index : 0);
-    const idx = Number.isFinite(idx0) && idx0 >= 0 ? idx0 : 0;
     const atual0 = fluxo[idx] != null ? String(fluxo[idx]) : '';
     const nextIdx = concluirTudo ? Math.max(fluxo.length, idx + 1) : (idx + 1);
     const proxima = (!concluirTudo && nextIdx < fluxo.length) ? String(fluxo[nextIdx]) : '';
     const concluida = concluirTudo ? true : (fluxo.length === 0 || nextIdx >= fluxo.length);
     const atual = concluirTudo ? (fluxo.length ? String(fluxo[fluxo.length - 1]) : atual0) : atual0;
+    const maquinaRef = maqBody || atual0;
 
     const nowIso = new Date().toISOString();
-    let payload = { maquina_atual_index: nextIdx };
-    payload = { ...payload, status: concluida ? 'Pedido Pronto' : 'Em Produção' };
-    if (concluida) payload = { ...payload, data_conclusao: nowIso };
+    const payload = {
+      maquina_atual_index: nextIdx,
+      status: concluida ? 'Pedido Pronto' : 'Em Produção',
+      data_conclusao: concluida ? nowIso : undefined,
+    };
+
     const qtdReal = req.body?.qtd_real != null ? Number(req.body.qtd_real) : null;
     if (qtdReal != null && Number.isFinite(qtdReal) && qtdReal > 0) {
       payload.qtd = qtdReal;
@@ -2158,23 +2163,27 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
         payload.valor_venda = payload.valor_total;
       }
     }
-    console.log('[BAIXA FINAL] payload update:', JSON.stringify(payload));
-    let upd = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
-    console.log('[BAIXA FINAL] upd.error:', upd.error);
-    if (upd.error) {
-      const msg = String(upd.error.message || upd.error);
-      const missingQtd = msg.toLowerCase().includes('qtd') && (msg.toLowerCase().includes('column') || msg.toLowerCase().includes('could not find'));
-      if (missingQtd) {
-        const { qtd, valor_total, valor_venda, ...payloadSemQtd } = payload || {};
-        upd = await supabase.from('ofs').update(payloadSemQtd).eq('id', id).select('*').single();
-        console.log('[BAIXA] retry sem qtd:', { ok: !upd.error, error: upd.error ? String(upd.error.message || upd.error) : null });
-      } else if (msg.includes('column') || msg.includes('Could not find')) {
-        const fallbackPayload = { status: concluida ? 'Pedido Pronto' : 'Em Produção' };
-        upd = await supabase.from('ofs').update(fallbackPayload).eq('id', id).select('*').single();
-        console.log('[BAIXA] fallback upd.data:', upd.data, 'upd.error:', upd.error);
-      }
+
+    const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
+    if (isFluxoObj) {
+      const markOne = (row) => {
+        if (!(row && typeof row === 'object' && !Array.isArray(row))) return row;
+        const nome = String(row.nome || row.maquina || row.name || '').trim();
+        if (!nome) return row;
+        const ok = maquinaRef ? (nome === maquinaRef) : false;
+        if (!ok) return row;
+        return { ...row, concluido: true, data_baixa: nowIso };
+      };
+      const fluxoAtualizado = concluirTudo
+        ? fluxoArr.map((row) => (row && typeof row === 'object' && !Array.isArray(row)) ? ({ ...row, concluido: true, data_baixa: nowIso }) : row)
+        : fluxoArr.map(markOne);
+      payload.fluxo_maquinas = fluxoAtualizado;
     }
-    if (upd.error) throw upd.error;
+
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+    const upd = await ofsUpdateWithRetry(id, payload);
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+
     if (concluida) {
       try {
         const row = upd && upd.data ? upd.data : of;
@@ -2255,55 +2264,74 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     } catch (e) {}
 
     const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
-    res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
-  } catch (e) { err(res, e); }
+    return res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
+  } catch (e) {
+    const msg = String(e?.message || e);
+    return res.status(500).json({ ok: false, error: msg });
+  }
 });
 
 app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   try {
-    const id = String(req.params.id || '').trim();
-    if (!id) return bad(res, 'id obrigatório');
+    const { id } = req.params;
+    const sid = String(id || '').trim();
+    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
-    const { data: rows, error: e1 } = await supabase.from('ofs').select('*').eq('id', id).limit(1);
-    if (e1) throw e1;
-    const of = rows && rows[0] ? rows[0] : null;
-    if (!of) return bad(res, 'OF não encontrada');
+    const body = req.body || {};
+    const qtdProduzida = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
+    const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
+    if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
+    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida inválida' });
 
-    const qtdOriginal = Number(of?.qtd || 0);
-    const valorOriginal = Number(of?.valor_total || of?.valor_venda || 0);
+    const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
+    if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
-    const qtdProduzidaRaw = req.body?.qtd_produzida ?? req.body?.qtd_real ?? req.body?.qtdProduzida ?? null;
-    const qtdProduzida = qtdProduzidaRaw != null ? Number(qtdProduzidaRaw) : null;
-    const qtdPerdida = Math.trunc(Number(req.body?.qtd_perdida ?? req.body?.qtdPerdida ?? 0) || 0);
-    if (qtdProduzida == null || !Number.isFinite(qtdProduzida) || qtdProduzida < 0) return bad(res, 'qtd_produzida inválida');
-    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return bad(res, 'qtd_perdida inválida');
+    const qtdPedida = Number(of.qtd_pedida || of.quantidade || of.qtd || 0);
+    const valorTotalOriginal = Number(of.valor_total || of.valor_venda || 0);
+    const excedente = Math.max(0, Math.trunc(qtdProduzida) - Math.trunc(qtdPedida || 0));
+    let novoValor = valorTotalOriginal;
+    if (qtdPedida > 0 && qtdProduzida > 0) {
+      novoValor = (valorTotalOriginal / qtdPedida) * qtdProduzida;
+      novoValor = Math.round(novoValor * 100) / 100;
+    }
 
-    let fluxo = parseFluxo(of.fluxo_maquinas);
-    if (!Array.isArray(fluxo) || fluxo.length === 0) {
+    let fluxoRaw = of.fluxo_maquinas;
+    if (typeof fluxoRaw === 'string') {
+      try { fluxoRaw = JSON.parse(fluxoRaw || '[]'); } catch (_) { fluxoRaw = []; }
+    }
+    const fluxoArr = Array.isArray(fluxoRaw) ? fluxoRaw : [];
+    const fluxoNamesFromRaw = (arr) => (arr || []).map((x) => {
+      if (x && typeof x === 'object' && !Array.isArray(x)) return String(x.nome || x.maquina || x.name || x.id || '').trim();
+      return String(x || '').trim();
+    }).filter(Boolean);
+    let fluxo = fluxoNamesFromRaw(fluxoArr);
+    if (!fluxo.length) {
       const maq = parseFluxo(of.maq);
       fluxo = Array.isArray(maq) ? maq.map((x) => String(x || '').trim()).filter(Boolean) : [];
     }
 
     const nowIso = new Date().toISOString();
-    const valorUnit = (qtdOriginal > 0) ? (valorOriginal / qtdOriginal) : 0;
-    const novoTotal = Math.round((qtdProduzida * valorUnit) * 100) / 100;
-    const excedente = Math.max(0, Math.trunc(qtdProduzida) - Math.trunc(qtdOriginal || 0));
-
-    const payload = {
+    const updateData = {
       status: 'Pedido Pronto',
-      data_conclusao: nowIso,
-      maquina_atual_index: Math.max(fluxo.length, Number(of?.maquina_atual_index || 0) || 0),
-      qtd: qtdProduzida,
-      valor_total: novoTotal,
-      valor_venda: novoTotal,
-      qtd_pedida: qtdOriginal,
-      qtd_produzida: qtdProduzida,
+      qtd_produzida: qtdProduzida || qtdPedida,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
+      valor_total: novoValor,
+      valor_venda: novoValor,
+      data_conclusao: nowIso,
+      updated_at: nowIso,
+      maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
 
-    const upd = await ofsUpdateWithRetry(id, payload);
-    if (upd.error) throw upd.error;
+    const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
+    if (isFluxoObj) {
+      updateData.fluxo_maquinas = fluxoArr.map((row) => (row && typeof row === 'object' && !Array.isArray(row)) ? ({ ...row, concluido: true, data_baixa: nowIso }) : row);
+    }
+
+    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
+    const upd = await ofsUpdateWithRetry(sid, updateData);
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
 
     try {
       const row = upd && upd.data ? upd.data : of;
@@ -2377,9 +2405,21 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       }]);
     } catch (e) {}
 
-    const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
-    return res.json({ ok: true, data: dataOut, concluida: true, proxima: null, status: 'Pedido Pronto' });
-  } catch (e) { err(res, e); }
+    const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
+    return res.json({
+      ok: true,
+      data: dataOut,
+      concluida: true,
+      proxima: null,
+      status: 'Pedido Pronto',
+      excedente,
+      novo_valor_total: novoValor,
+      mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
+    });
+  } catch (e) {
+    const msg = String(e?.message || e);
+    return res.status(500).json({ ok: false, error: msg });
+  }
 });
 
 app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
