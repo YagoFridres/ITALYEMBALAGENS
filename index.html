@@ -2897,7 +2897,7 @@ async function abrirModalOF(id){
           maquinas_fluxo: Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : []),
           maquinas_fluxo_ids: ofFluxoIdsFromNames(Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : [])),
         }))
-      : [{desc:oEdit.obs||'Item único',ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
+      : [{desc:(oEdit.descricao||oEdit.prodDesc||oEdit.obs||''),ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
     renderOfItens();
     try{ restaurarItensNoModal(oEdit); }catch(e){}
     try{ ofCliChange(); }catch(e){}
@@ -3491,184 +3491,153 @@ function sanitizeDateInput(v){
 }
 function getOfItensFromModal(){
   const itens = [];
-  const toNum = (v) => Number(String(v ?? '').replace(',', '.')) || 0;
-  const toInt = (v) => Math.trunc(toNum(v) || 0);
   const s = (v) => String(v ?? '').trim();
+  const toNum = (v) => Number(String(v ?? '').replace(',', '.')) || 0;
 
-  const getCheckedFluxoNames = (idx, root) => {
-    try {
-      const scope = root || document;
-      const cbs = scope.querySelectorAll('input[type="checkbox"]:checked');
-      const ids = [];
-      const names = [];
-      cbs.forEach((cb) => {
-        const v = s(cb.value || cb.dataset.maquina || cb.dataset.fluxoMaq || '');
-        if (v) ids.push(v);
-      });
+  try{
+    console.log('[DEBUG] inputs no modal:',
+      Array.from(document.querySelectorAll('#modal-of input, #modal-of select'))
+        .map(el => ({ id: el.id, name: el.name, class: el.className, val: el.value }))
+    );
+  }catch(e){}
+
+  const maquinasFluxoFromScope = (scope) => {
+    try{
+      const ids = Array.from(scope.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => s(cb.value || cb.dataset.maquina || cb.dataset.fluxoMaq || ''))
+        .filter(Boolean);
       if (ids.length && typeof ofFluxoNamesFromIds === 'function') {
-        const mapped = ofFluxoNamesFromIds(ids) || [];
-        mapped.forEach((m) => {
-          const n = s(m);
-          if (n) names.push(n);
-        });
+        const names = (ofFluxoNamesFromIds(ids) || []).map(s).filter(Boolean);
+        return [...new Set(names)];
       }
-      if (!names.length) {
-        cbs.forEach((cb) => {
-          const lbl = cb.closest('label');
-          const txt = s(cb.dataset.maquina || cb.value || (lbl ? lbl.textContent : ''));
-          if (txt) names.push(txt);
-        });
-      }
-      return [...new Set(names.map((x) => s(x)).filter(Boolean))];
-    } catch (e) {
+      return [...new Set(ids)];
+    }catch(e){
       return [];
     }
   };
 
-  const pushItem = (idx, descRaw, refRaw, qtdRaw, vunitRaw, maqRaw, fluxoRaw) => {
-    const qtd = toNum(qtdRaw);
-    const vunit = toNum(vunitRaw);
-    const total = qtd * vunit;
-    const desc = s(descRaw);
-    const ref = s(refRaw);
-    const maquina = s(maqRaw);
-    const refTemp = (ofItensTemp && ofItensTemp[idx]) ? ofItensTemp[idx] : {};
-    const fluxo = Array.isArray(fluxoRaw) ? fluxoRaw : [];
-    if (!desc && !ref && !(qtd > 0) && !(vunit > 0) && !maquina && fluxo.length === 0) return;
-    itens.push({
-      desc,
-      descricao: desc,
-      ref,
-      qtd,
-      quantidade: qtd,
-      vunit,
-      valor_unitario: vunit,
-      valor_total: total,
-      maquina: maquina || s(refTemp?.maquina || ''),
-      maquinas_fluxo: fluxo.length ? fluxo : (() => {
-        const ids = Array.isArray(refTemp?.maquinas_fluxo_ids) ? refTemp.maquinas_fluxo_ids : [];
-        let names = [];
-        if (ids.length && typeof ofFluxoNamesFromIds === 'function') names = ofFluxoNamesFromIds(ids) || [];
-        if (!names.length && Array.isArray(refTemp?.maquinas_fluxo)) names = parseFluxo(refTemp.maquinas_fluxo);
-        return [...new Set((names || []).map((m) => s(m)).filter(Boolean))];
-      })(),
-      img: refTemp && refTemp.img ? refTemp.img : null,
-    });
-  };
-
-  const tbody = document.getElementById('of-itens-body');
-  const linhas = tbody
-    ? tbody.querySelectorAll('.of-item-row, tr.of-item-row, tr')
-    : document.querySelectorAll('.of-item-row, [data-of-item], .item-row, tr[data-item-idx], .item-linha, [id^="item-row-"]');
-
-  if (linhas && linhas.length) {
-    Array.from(linhas).forEach((linha, idx) => {
-      const q = (sel) => linha.querySelector(sel);
-      const descEl = q('input[name="item-descricao"], input[name="desc"], .item-desc, .desc, [data-desc]') || null;
-      const refEl = q('input[name="item-ref"], input[name="ref"], .item-ref, .ref, [data-ref]') || null;
-      const qtdEl = q('input[name="item-qtd"], input[name="qtd"], .item-qtd, .qtd, [data-qtd], input[type="number"]') || null;
-      const vEl = q('input[name="item-vunit"], input[name="vunit"], .item-vunit, .vunit, .item-preco, [data-vunit]') || null;
-      const maqEl =
-        q('#item-maq-' + idx) ||
-        q('[data-item-maquina]') ||
-        q('select.item-maquina') ||
-        q('select.item-maq') ||
-        q('.item-maq') ||
-        null;
-      const maquinasFluxo = (() => {
-        const container =
-          q('[data-item-checkboxes="' + idx + '"],#item-maquinas-' + idx + ',.item-' + idx + '-maquinas,.item-maq-checkboxes') ||
-          linha;
-        return getCheckedFluxoNames(idx, container);
-      })();
-      pushItem(
-        idx,
-        descEl ? descEl.value : '',
-        refEl ? refEl.value : '',
-        qtdEl ? qtdEl.value : '',
-        vEl ? vEl.value : '',
-        maqEl ? maqEl.value : '',
-        maquinasFluxo
-      );
-    });
-    return itens;
-  }
-
-  let idx = 0;
-  while (true) {
+  for (let idx = 0; idx < 20; idx++) {
     const descEl =
       document.getElementById('item-desc-' + idx) ||
       document.getElementById('f-item-desc-' + idx) ||
-      document.querySelector('[data-item-desc="' + idx + '"]');
+      document.querySelector('[name="item-desc"][data-idx="' + idx + '"]') ||
+      document.querySelector('#of-itens-body tr:nth-child(' + (idx + 1) + ') input[name="item-descricao"]');
+
     if (!descEl && idx > 0) break;
-    if (!descEl) { idx++; if (idx > 50) break; continue; }
+    if (!descEl) continue;
 
     const refEl =
       document.getElementById('item-ref-' + idx) ||
       document.getElementById('f-item-ref-' + idx) ||
-      document.querySelector('[data-item-ref="' + idx + '"]');
+      document.querySelector('#of-itens-body tr:nth-child(' + (idx + 1) + ') input[name="item-ref"]');
     const qtdEl =
       document.getElementById('item-qtd-' + idx) ||
       document.getElementById('f-item-qtd-' + idx) ||
-      document.querySelector('[data-item-qtd="' + idx + '"]');
+      document.querySelector('#of-itens-body tr:nth-child(' + (idx + 1) + ') input[name="item-qtd"]');
     const vunitEl =
       document.getElementById('item-vunit-' + idx) ||
       document.getElementById('f-item-vunit-' + idx) ||
       document.getElementById('item-preco-' + idx) ||
-      document.querySelector('[data-item-vunit="' + idx + '"]');
-    const maqSelEl =
+      document.querySelector('#of-itens-body tr:nth-child(' + (idx + 1) + ') input[name="item-vunit"]');
+    const maqEl =
       document.getElementById('item-maq-' + idx) ||
       document.querySelector('[data-item-maquina="' + idx + '"]') ||
       document.querySelector('[data-item-idx="' + idx + '"] select.item-maquina');
-    const maqSel = maqSelEl ? s(maqSelEl.value || '') : '';
 
-    const maquinasFluxo = (() => {
-      const container =
-        document.querySelector('[data-item-checkboxes="' + idx + '"],#item-maquinas-' + idx + ',.item-' + idx + '-maquinas') ||
-        document.querySelector('[data-item-idx="' + idx + '"]') ||
-        document;
-      return getCheckedFluxoNames(idx, container);
-    })();
+    const scope =
+      document.querySelector('[data-item-idx="' + idx + '"]') ||
+      document.getElementById('of-item-' + idx) ||
+      (document.querySelector('#of-itens-body tr:nth-child(' + (idx + 1) + ')') || document);
 
-    pushItem(
-      idx,
-      descEl ? descEl.value : '',
-      refEl ? refEl.value : '',
-      qtdEl ? qtdEl.value : '',
-      vunitEl ? vunitEl.value : '',
-      maqSel,
-      maquinasFluxo
-    );
-    idx++;
-    if (idx > 50) break;
+    const maquinasFluxo = maquinasFluxoFromScope(scope);
+
+    const qtdVal = toNum((qtdEl || {}).value || 0);
+    const vunitVal = toNum((vunitEl || {}).value || 0);
+    const descVal = s((descEl || {}).value || '');
+    const refVal = s((refEl || {}).value || '');
+    const maqVal = s((maqEl || {}).value || '');
+    const tmp = (ofItensTemp && ofItensTemp[idx]) ? ofItensTemp[idx] : {};
+
+    if (descVal || qtdVal > 0) {
+      itens.push({
+        desc: descVal,
+        descricao: descVal,
+        ref: refVal,
+        qtd: qtdVal,
+        quantidade: qtdVal,
+        vunit: vunitVal,
+        valor_unitario: vunitVal,
+        valor_total: qtdVal * vunitVal,
+        maquina: maqVal,
+        maquinas_fluxo: maquinasFluxo,
+        img: tmp && tmp.img ? tmp.img : null,
+      });
+    }
   }
 
+  if (itens.length === 0) {
+    const linhas = document.querySelectorAll('#of-itens-body tr, #of-itens-body .of-item-row, .of-itens-tabela tr[data-item], [data-of-item-row]');
+    linhas.forEach((linha) => {
+      const descI = linha.querySelector('input[name="item-descricao"]') || linha.querySelector('input[type="text"]');
+      const refI = linha.querySelector('input[name="item-ref"]');
+      const qtdI = linha.querySelector('input[name="item-qtd"]') || linha.querySelector('input[type="number"]');
+      const vunitI = linha.querySelector('input[name="item-vunit"]');
+      const maqSel = linha.querySelector('select[data-item-maquina], select.item-maquina');
+      const maquinasFluxo = maquinasFluxoFromScope(linha);
+
+      const qtdVal = toNum((qtdI || {}).value || 0);
+      const vunitVal = toNum((vunitI || {}).value || 0);
+      const descVal = s((descI || {}).value || '');
+      const refVal = s((refI || {}).value || '');
+      const maqVal = s((maqSel || {}).value || '');
+
+      if (descVal || qtdVal > 0) {
+        itens.push({
+          desc: descVal,
+          descricao: descVal,
+          ref: refVal,
+          qtd: qtdVal,
+          quantidade: qtdVal,
+          vunit: vunitVal,
+          valor_unitario: vunitVal,
+          valor_total: qtdVal * vunitVal,
+          maquina: maqVal,
+          maquinas_fluxo: maquinasFluxo,
+        });
+      }
+    });
+  }
+
+  console.log('[getOfItensFromModal] itens coletados:', itens.length, itens);
   if (itens.length) return itens;
-  return (ofItensTemp || []).map((it, i) => {
-    const qtd = toNum(it.qtd);
-    const vunit = toNum(it.vunit);
-    const total = qtd * vunit;
-    const desc = s(it.desc || it.descricao || '');
-    const maquina = s(it.maquina || '');
-    let fluxo = [];
-    if (Array.isArray(it.maquinas_fluxo)) fluxo = parseFluxo(it.maquinas_fluxo);
-    if ((!fluxo || !fluxo.length) && Array.isArray(it.maquinas_fluxo_ids) && typeof ofFluxoNamesFromIds === 'function') {
-      fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids) || [];
-    }
-    return {
-      desc,
-      descricao: desc,
-      ref: s(it.ref || ''),
-      qtd,
-      quantidade: qtd,
-      vunit,
-      valor_unitario: vunit,
-      valor_total: total,
-      maquina,
-      maquinas_fluxo: [...new Set((fluxo || []).map((m) => s(m)).filter(Boolean))],
-      img: it.img || null,
-    };
-  }).filter((it) => s(it.desc) || Number(it.qtd || 0) > 0);
+
+  return (ofItensTemp || [])
+    .map((it) => {
+      const desc = s(it.desc || it.descricao || '');
+      const ref = s(it.ref || '');
+      const qtdVal = toNum(it.qtd);
+      const vunitVal = toNum(it.vunit);
+      const maqVal = s(it.maquina || '');
+      let fluxo = [];
+      if (Array.isArray(it.maquinas_fluxo)) fluxo = parseFluxo(it.maquinas_fluxo);
+      if ((!fluxo || !fluxo.length) && Array.isArray(it.maquinas_fluxo_ids) && typeof ofFluxoNamesFromIds === 'function') {
+        fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids) || [];
+      }
+      return {
+        desc,
+        descricao: desc,
+        ref,
+        qtd: qtdVal,
+        quantidade: qtdVal,
+        vunit: vunitVal,
+        valor_unitario: vunitVal,
+        valor_total: qtdVal * vunitVal,
+        maquina: maqVal,
+        maquinas_fluxo: [...new Set((fluxo || []).map(s).filter(Boolean))],
+        img: it.img || null,
+      };
+    })
+    .filter((it) => s(it.desc) || Number(it.qtd || 0) > 0);
 }
 
 function restaurarItensNoModal(of){
@@ -20646,6 +20615,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   function collectModalOfPayload(){
     const cliId=typeof ofResolveCliIdFromModal==='function' ? ofResolveCliIdFromModal() : seguro('f-cli','');
     const itens=getOfItensFromModal();
+    console.log('[collectModalOfPayload] itens:', itens.length, itens);
     const qtdTotal=itens.reduce((s,it)=>s+(parseFloat(it.qtd)||0),0);
     const valTotal=itens.reduce((s,it)=>s+((parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0)),0);
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return null;}
@@ -20657,6 +20627,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     }
     const pagto=seguro('f-pagto','');
     if(pagto && typeof adicionarFormaPagamento==='function') adicionarFormaPagamento(pagto);
+    const descricao = String((itens[0]?.desc || itens[0]?.descricao || seguro('f-prod-desc','')) || '').trim();
     return {
       cliId, itens, qtdTotal, valTotal, chpId, qchp, pagto,
       empId:seguro('f-emp','')||EMP_FILTRO||'',
@@ -20668,7 +20639,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       status:seguro('f-st',''),
       urg:seguro('f-urg','')==='1',
       obs:seguro('f-obs',''),
-      prodDesc:seguro('f-prod-desc',''),
+      prodDesc:descricao,
       ofSeed:seguro('f-of','Nº 001')
     };
   }
@@ -20731,6 +20702,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   window.salvarOF = async function(){
     const p=collectModalOfPayload();
     if(!p) return;
+    console.log('[salvarOF] itens:', p.itens.length, p.itens);
     const multi=p.itens.length>1;
     const seqStart=(OFs.length?Math.max(...OFs.map(o=>o.seq||0)):0)+1;
     const startNum=Math.max(parseFirstNumber(p.ofSeed), maxOfNumeric()+1);
