@@ -3782,16 +3782,17 @@ async function salvarOF(){
   const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+  const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
   const _estoqueJaBaixadoCriacao = false;
-  const pagto=(document.getElementById('f-pagto')||{}).value||'';
+  const pagto=seguro('f-pagto','');
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'E1');
   const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
-  const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
-  const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
-  const data_pedido = document.getElementById('f-dia').value;
+  const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
+  const dia_programacao = seguro('f-dia-prog','') || '';
+  const data_pedido = seguro('f-dia','');
   const dia = dia_programacao || data_pedido;
   const cliObj = getCli(cliId) || {};
   const cidade_entrega = cliObj.cidade || '';
@@ -3799,7 +3800,7 @@ async function salvarOF(){
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
-  const vendIdSel=document.getElementById('f-vend').value;
+  const vendIdSel=seguro('f-vend','');
   const maquina_por_item = {};
   itens.forEach((it, i) => {
     const m = String(it?.maquina || '').trim();
@@ -3819,7 +3820,7 @@ async function salvarOF(){
     if (m) todasMaquinas.add(m);
   });
   const fluxo_maquinas = Array.from(todasMaquinas);
-  const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(seguro('f-ent','')),data_entrega:sanitizeDateInput(seguro('f-ent','')),fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   payloadLocal.quantidade = qtdTotal;
   payloadLocal.valor_venda = valTotal;
   payloadLocal.valor_total = valTotal;
@@ -3840,12 +3841,13 @@ async function salvarOF(){
     if(!OFs.find(x=>x.seq===payloadLocal.seq && x.of===payloadLocal.of)) OFs.push(payloadLocal);
   }
   fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
-  logAction('Nova OF criada', document.getElementById('f-of').value);
+  logAction('Nova OF criada', seguro('f-of',''));
 }
 
 async function salvarEdicaoOFId(id){
   try{
     const o=OFs.find(x=>x.id===id);if(!o){toast('OF não encontrada','var(--red)');return;}
+    const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
     const cliId=ofResolveCliIdFromModal();
     const itens=getOfItensFromModal();
     const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
@@ -3855,12 +3857,12 @@ async function salvarEdicaoOFId(id){
     const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-    const modo_programacao = (document.getElementById('f-modo-prog')||{}).value || 'manual';
-    const dia_programacao = (document.getElementById('f-dia-prog')||{}).value || '';
-    const data_pedido = document.getElementById('f-dia').value;
+    const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
+    const dia_programacao = seguro('f-dia-prog','') || '';
+    const data_pedido = seguro('f-dia','');
     const dia = dia_programacao || data_pedido;
     const cliObj = getCli(cliId) || {};
-    const cidadeManual = (document.getElementById('f-cidade-of')||{}).value ? String(document.getElementById('f-cidade-of').value).trim() : '';
+    const cidadeManual = seguro('f-cidade-of','') ? String(seguro('f-cidade-of','')).trim() : '';
     const cidade_entrega = cidadeManual || cliObj.cidade || '';
     const itemImgs=itens.map(it=>it.img||null);
     const firstImg=itemImgs.find(img=>img!==null);
@@ -3887,15 +3889,15 @@ async function salvarEdicaoOFId(id){
     });
     const fluxo_maquinas = Array.from(todasMaquinas);
     const payload={
-    of:document.getElementById('f-of').value,
+    of:seguro('f-of',''),
     prodDesc:titulo,
     descricao:titulo,
     cliId,
     cli_id:cliId,
     cliente_id:cliId,
-    vendId:document.getElementById('f-vend').value,
-    vend_id:document.getElementById('f-vend').value,
-    vendedor_id:document.getElementById('f-vend').value,
+    vendId:seguro('f-vend',''),
+    vend_id:seguro('f-vend',''),
+    vendedor_id:seguro('f-vend',''),
     itens,
     qtd:qtdTotal,
     quantidade:qtdTotal,
@@ -3904,13 +3906,13 @@ async function salvarEdicaoOFId(id){
     dia:sanitizeDateInput(dia),
     data_pedido:sanitizeDateInput(data_pedido),
     data_producao:sanitizeDateInput(dia),
-    ent:sanitizeDateInput(document.getElementById('f-ent').value),
-    data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),
-    fluxo:document.getElementById('f-fl').value,
+    ent:sanitizeDateInput(seguro('f-ent','')),
+    data_entrega:sanitizeDateInput(seguro('f-ent','')),
+    fluxo:seguro('f-fl',''),
     maq:getMaqSel(),
-    status:document.getElementById('f-st').value,
-    urg:document.getElementById('f-urg').value==='1',
-    obs:document.getElementById('f-obs').value,
+    status:seguro('f-st',''),
+    urg:seguro('f-urg','')==='1',
+    obs:seguro('f-obs',''),
     imgs,
     imagem_url:imgs.length?imgs[0]:null,
     empId:empCode,
@@ -16776,6 +16778,7 @@ try{
 // ── OFs ──────────────────────────────────────────────────────
 const _salvarOF_orig = salvarOF;
 salvarOF = async function(){
+  const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
   const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
   const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
@@ -16785,15 +16788,15 @@ salvarOF = async function(){
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
-  const ofNum=document.getElementById('f-of').value;
-  const vendId=document.getElementById('f-vend').value;
+  const ofNum=seguro('f-of','');
+  const vendId=seguro('f-vend','');
   const vendNome=(getV(vendId)||{}).nome||'';
   const empSel=(document.getElementById('f-emp')||null);
   const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||'');
   const empName=(empSel && empSel.options && empSel.selectedIndex>=0) ? empSel.options[empSel.selectedIndex].text : '';
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
-  const pagto=(document.getElementById('f-pagto')||{}).value||'';
-  const descMain=((document.getElementById('f-prod-desc')||{}).value||'').trim() || (itens[0]&&itens[0].desc?itens[0].desc:'');
+  const pagto=seguro('f-pagto','');
+  const descMain=(seguro('f-prod-desc','')||'').trim() || (itens[0]&&itens[0].desc?itens[0].desc:'');
   const maquina_por_item = {};
   itens.forEach((it, i) => {
     const m = String(it?.maquina || '').trim();
@@ -16831,15 +16834,15 @@ salvarOF = async function(){
     qtd: qtdTotal,
     quantidade: qtdTotal,
     itens: itens,
-    dia: document.getElementById('f-dia').value,
-    data_producao: document.getElementById('f-dia').value,
-    ent: document.getElementById('f-ent').value,
-    data_entrega: document.getElementById('f-ent').value,
-    fluxo: document.getElementById('f-fl').value,
+    dia: seguro('f-dia',''),
+    data_producao: seguro('f-dia',''),
+    ent: seguro('f-ent',''),
+    data_entrega: seguro('f-ent',''),
+    fluxo: seguro('f-fl',''),
     maq: getMaqSel(),
-    status: document.getElementById('f-st').value,
-    urg: document.getElementById('f-urg').value==='1',
-    urgente: document.getElementById('f-urg').value==='1',
+    status: seguro('f-st',''),
+    urg: seguro('f-urg','')==='1',
+    urgente: seguro('f-urg','')==='1',
     maquina_por_item,
     fluxo_maquinas,
     valor_total: valTotal,
@@ -16847,7 +16850,7 @@ salvarOF = async function(){
     total: valTotal,
     cond_pagamento: pagto,
     pagto: pagto,
-    obs: document.getElementById('f-obs').value,
+    obs: seguro('f-obs',''),
     descricao: descMain,
     imgs: firstImg?[firstImg]:[],
     imagem_url: firstImg||null
@@ -20623,6 +20626,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <script>
 (function(){
   function byId(id){ return document.getElementById(id); }
+  function seguro(id, fallback = ''){ const el = byId(id); return el ? (el.value || fallback) : fallback; }
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function parseFirstNumber(str){ const m=String(str||'').match(/(\d+)/); return m?parseInt(m[1],10):0; }
   function buildOfLike(seed, inc){
@@ -20640,32 +20644,32 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     return String(v).trim();
   }
   function collectModalOfPayload(){
-    const cliId=typeof ofResolveCliIdFromModal==='function' ? ofResolveCliIdFromModal() : byId('f-cli').value;
+    const cliId=typeof ofResolveCliIdFromModal==='function' ? ofResolveCliIdFromModal() : seguro('f-cli','');
     const itens=getOfItensFromModal();
     const qtdTotal=itens.reduce((s,it)=>s+(parseFloat(it.qtd)||0),0);
     const valTotal=itens.reduce((s,it)=>s+((parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0)),0);
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return null;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return null;}
-    const chpId=byId('f-chp').value, qchp=parseInt(byId('f-qchp').value)||0;
+    const chpId=seguro('f-chp',''), qchp=parseInt(seguro('f-qchp','0'))||0;
     if(chpId&&qchp>0){
       const ch=getCh(chpId);
       if(ch&&qchp>ch.qtd){toast('⚠ Saldo insuficiente!','var(--red)');return null;}
     }
-    const pagto=(byId('f-pagto')||{}).value||'';
+    const pagto=seguro('f-pagto','');
     if(pagto && typeof adicionarFormaPagamento==='function') adicionarFormaPagamento(pagto);
     return {
       cliId, itens, qtdTotal, valTotal, chpId, qchp, pagto,
-      empId:(byId('f-emp')||{}).value||EMP_FILTRO||'',
-      vendId:byId('f-vend').value,
-      dia:sanitizeDate(byId('f-dia').value),
-      ent:sanitizeDate(byId('f-ent').value),
-      fluxo:byId('f-fl').value,
+      empId:seguro('f-emp','')||EMP_FILTRO||'',
+      vendId:seguro('f-vend',''),
+      dia:sanitizeDate(seguro('f-dia','')),
+      ent:sanitizeDate(seguro('f-ent','')),
+      fluxo:seguro('f-fl',''),
       maq:getMaqSel(),
-      status:byId('f-st').value,
-      urg:byId('f-urg').value==='1',
-      obs:byId('f-obs').value,
-      prodDesc:(byId('f-prod-desc')||{}).value||'',
-      ofSeed:byId('f-of').value||'Nº 001'
+      status:seguro('f-st',''),
+      urg:seguro('f-urg','')==='1',
+      obs:seguro('f-obs',''),
+      prodDesc:seguro('f-prod-desc',''),
+      ofSeed:seguro('f-of','Nº 001')
     };
   }
 
@@ -20787,7 +20791,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   window.salvarAlteracaoOF = async function(ofNum){
     const o=OFs.find(x=>x.of===ofNum); if(!o) return;
     const p=collectModalOfPayload(); if(!p) return;
-    const novoOf=(byId('f-of').value||'').trim()||ofNum;
+    const novoOf=(seguro('f-of','')||'').trim()||ofNum;
     if(novoOf!==ofNum && OFs.some(x=>x.of===novoOf && x!==o)){ toast('Já existe uma OF com esse número','var(--red)'); return; }
     try{
       const shape = await inferOfShape();
