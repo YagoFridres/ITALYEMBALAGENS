@@ -3196,10 +3196,14 @@ function ofFluxoIdsFromNames(names){
   }).filter(Boolean);
 }
 function verificarSaldo(){
-  const chId=document.getElementById('f-chp').value,qc=parseInt(document.getElementById('f-qchp').value)||0;
-  if(!chId||!qc){document.getElementById('saldo-msg').innerHTML='';return;}
+  const chEl=document.getElementById('f-chp');
+  const qEl=document.getElementById('f-qchp');
+  const msgEl=document.getElementById('saldo-msg');
+  if(!chEl || !qEl || !msgEl) return;
+  const chId=String(chEl.value||'').trim(),qc=parseInt(String(qEl.value||''),10)||0;
+  if(!chId||!qc){msgEl.innerHTML='';return;}
   const ch=getCh(chId);
-  document.getElementById('saldo-msg').innerHTML=ch&&qc>ch.qtd
+  msgEl.innerHTML=ch&&qc>ch.qtd
     ?`<span style="color:var(--red);font-weight:700;font-size:.75rem">⚠ Saldo insuficiente! Atual: ${ch.qtd.toLocaleString()}</span>`
     :`<span style="color:var(--green);font-size:.75rem">✓ Saldo disponível: ${(ch?ch.qtd:0).toLocaleString()}</span>`;
 }
@@ -16559,7 +16563,6 @@ salvarOF = async function(){
   const valTotal=calcularValorTotalOF();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
   if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
-  const chpId=document.getElementById('f-chp').value,qchp=parseInt(document.getElementById('f-qchp').value)||0;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const itemImgs=itens.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
@@ -16572,6 +16575,29 @@ salvarOF = async function(){
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const pagto=(document.getElementById('f-pagto')||{}).value||'';
   const descMain=((document.getElementById('f-prod-desc')||{}).value||'').trim() || (itens[0]&&itens[0].desc?itens[0].desc:'');
+  const maquina_por_item = {};
+  itens.forEach((it, i) => {
+    const m = String(it?.maquina || '').trim();
+    if (m) maquina_por_item[String(i)] = m;
+  });
+  const todasMaquinas = new Set();
+  itens.forEach((it) => {
+    const m = String(it?.maquina || '').trim();
+    if (m) todasMaquinas.add(m);
+    (it?.maquinas_fluxo || []).forEach((x) => {
+      const n = String(x || '').trim();
+      if (n) todasMaquinas.add(n);
+    });
+  });
+  try{
+    const ids = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+    const names = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(ids) || []) : ids;
+    (names || []).forEach((x) => {
+      const n = String(x || '').trim();
+      if (n) todasMaquinas.add(n);
+    });
+  }catch(e){}
+  const fluxo_maquinas = Array.from(todasMaquinas);
   const payload=filtrarPayloadOF({
     seq: ms+1,
     numero: ofNum,
@@ -16595,8 +16621,8 @@ salvarOF = async function(){
     status: document.getElementById('f-st').value,
     urg: document.getElementById('f-urg').value==='1',
     urgente: document.getElementById('f-urg').value==='1',
-    chp: chpId,
-    qtd_chapas: qchp,
+    maquina_por_item,
+    fluxo_maquinas,
     valor_total: valTotal,
     valor_venda: valTotal,
     total: valTotal,
@@ -16604,7 +16630,8 @@ salvarOF = async function(){
     pagto: pagto,
     obs: document.getElementById('f-obs').value,
     descricao: descMain,
-    imgs: firstImg?[firstImg]:[]
+    imgs: firstImg?[firstImg]:[],
+    imagem_url: firstImg||null
   });
   console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
 
