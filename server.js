@@ -2077,6 +2077,99 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) => {
+  try {
+    const dataInicio = String(req.query.dataInicio || '').trim();
+    const dataFim = String(req.query.dataFim || '').trim();
+    const empId = String(req.query.empId || '').trim();
+
+    let q = supabase
+      .from('ofs')
+      .select([
+        'id',
+        'empresa_id',
+        'emp_id',
+        'valor_total',
+        'valor_venda',
+        'qtd',
+        'quantidade',
+        'qtd_produzida',
+        'qtd_perdida',
+        'qtd_chapas',
+        'chapa_id',
+        'status',
+        'data_conclusao',
+        'deleted_at',
+      ].join(','))
+      .eq('status', 'Concluído')
+      .is('deleted_at', null);
+
+    if (dataInicio) q = q.gte('data_conclusao', dataInicio);
+    if (dataFim) q = q.lte('data_conclusao', dataFim + 'T23:59:59');
+    if (empId) q = q.eq('emp_id', empId);
+
+    const { data: ofs, error } = await q.limit(5000);
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+
+    const chapaIds = Array.from(new Set((ofs || [])
+      .map((o) => String(o?.chapa_id || '').trim())
+      .filter(Boolean)));
+
+    const precoChapa = {};
+    if (chapaIds.length > 0) {
+      const tableCh = await _chapasPreferV2Table();
+      const cols = tableCh === 'chapas_estoque_v2' ? 'id,valor_unitario' : 'id,val,valor_unitario';
+      const r = await supabase.from(tableCh).select(cols).in('id', chapaIds);
+      if (!r.error) {
+        (r.data || []).forEach((row) => {
+          const v = tableCh === 'chapas_estoque_v2'
+            ? Number(row.valor_unitario || 0)
+            : Number((row.valor_unitario ?? row.val) || 0);
+          precoChapa[String(row.id)] = Number.isFinite(v) ? v : 0;
+        });
+      }
+    }
+
+    const empresas = {};
+    (ofs || []).forEach((of) => {
+      const emp = String(of.emp_id || of.empresa_id || 'SEM EMPRESA');
+      if (!empresas[emp]) {
+        empresas[emp] = {
+          emp_id: emp,
+          total_ofs: 0,
+          valor_faturado: 0,
+          caixas_produzidas: 0,
+          caixas_perdidas: 0,
+          total_chapas: 0,
+          valor_chapas: 0,
+          lucro_estimado: 0,
+        };
+      }
+
+      const valor = Number(of.valor_total ?? of.valor_venda ?? 0) || 0;
+      const caixasProd = Number(of.qtd_produzida ?? of.qtd ?? of.quantidade ?? 0) || 0;
+      const caixasPerd = Number(of.qtd_perdida ?? 0) || 0;
+      const qtdCh = Number(of.qtd_chapas ?? 0) || 0;
+      const chapaId = String(of.chapa_id || '').trim();
+      const vUnitCh = chapaId ? (Number(precoChapa[chapaId] || 0) || 0) : 0;
+      const custoCh = qtdCh * vUnitCh;
+
+      empresas[emp].total_ofs += 1;
+      empresas[emp].valor_faturado += valor;
+      empresas[emp].caixas_produzidas += caixasProd;
+      empresas[emp].caixas_perdidas += caixasPerd;
+      empresas[emp].total_chapas += qtdCh;
+      empresas[emp].valor_chapas += custoCh;
+      empresas[emp].lucro_estimado += (valor - custoCh);
+    });
+
+    const out = Object.values(empresas).sort((a, b) => String(a.emp_id).localeCompare(String(b.emp_id)));
+    return res.json({ ok: true, data: out });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
+
 app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
