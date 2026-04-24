@@ -1981,15 +1981,55 @@ function renderPCP(){
 }
 
 function ofFluxoGetNames(o){
-  let fm=o?.fluxo_maquinas;
-  if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
-  const f=Array.isArray(fm)?fm:[];
-  if(f && f.length) return f.map(x=>{
-    if(x && typeof x==='object' && !Array.isArray(x)) return String(x.nome||x.maquina||x.name||x.id||'').trim();
-    return String(x||'').trim();
-  }).filter(Boolean);
-  if(typeof ofFluxoNamesFromIds==='function') return ofFluxoNamesFromIds(o?.maq||[]);
-  return (o?.maq||[]).map(x=>String(x||'').trim()).filter(Boolean);
+  const tryParse = (v, fb) => {
+    if (v == null) return fb;
+    if (typeof v === 'string') {
+      try { return JSON.parse(v); } catch (e) { return fb; }
+    }
+    return v;
+  };
+
+  let fluxo = o?.fluxo_maquinas || o?.maquinas_fluxo || o?.maq || [];
+  fluxo = tryParse(fluxo, []);
+  if (typeof fluxo === 'string') fluxo = tryParse(fluxo, []);
+
+  if (Array.isArray(fluxo) && fluxo.length) {
+    return fluxo.map((m) => {
+      if (m && typeof m === 'object') return String(m.nome || m.maquina || m.name || m.id || m.value || m.label || m);
+      return String(m || '');
+    }).map((x) => String(x || '').trim()).filter(Boolean);
+  }
+
+  let itens = o?.itens || [];
+  itens = tryParse(itens, []);
+  if (typeof itens === 'string') itens = tryParse(itens, []);
+  if (!Array.isArray(itens)) itens = [];
+
+  const maquinas = new Set();
+  itens.forEach((it) => {
+    if (!it || typeof it !== 'object') return;
+    const m = String(it.maquina || '').trim();
+    if (m) maquinas.add(m);
+    const f = Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : tryParse(it.maquinas_fluxo, []);
+    (Array.isArray(f) ? f : []).forEach((x) => {
+      const n = String(x && typeof x === 'object' ? (x.nome || x.maquina || x.name || x.id || x) : x).trim();
+      if (n) maquinas.add(n);
+    });
+  });
+
+  let mpi = o?.maquina_por_item || {};
+  mpi = tryParse(mpi, {});
+  if (mpi && typeof mpi === 'object' && !Array.isArray(mpi)) {
+    Object.values(mpi).forEach((m) => {
+      const n = String(m || '').trim();
+      if (n) maquinas.add(n);
+    });
+  }
+
+  const arr = Array.from(maquinas);
+  if (arr.length) return arr;
+  if (typeof ofFluxoNamesFromIds === 'function') return ofFluxoNamesFromIds(o?.maq || []);
+  return (o?.maq || []).map((x) => String(x || '').trim()).filter(Boolean);
 }
 function ofFluxoGetIndex(o){
   const n=Number(o?.maquina_atual_index!=null?o.maquina_atual_index:0);
@@ -3200,7 +3240,7 @@ function rmImg(i){ofImgsTemp.splice(i,1);renderImgsTemp();}
 // ===================== OF ITENS =====================
 let ofItensTemp = [];
 function ofAddItem(item){
-  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]};
+  item = item || {desc:'',ref:'',qtd:'',vunit:'',img:null,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]};
   ofItensTemp.push(item);
   renderOfItens();
 }
@@ -3286,13 +3326,9 @@ function ofChapaLabelOption(c){
 function renderOfItens(){
   const tbody=document.getElementById('of-itens-body');
   if(!tbody)return;
-  const chapas = Array.isArray(ESTOQUE) ? ESTOQUE : [];
   const maqOrdenadas = _maqListaFluxoUI();
   const domId=(id)=>String(id).replace(/[^a-zA-Z0-9_-]/g,'_');
   const posIcon=_posIcon;
-  const chapaOptions = (selId)=>`<option value="">Sem vínculo</option>${
-    chapas.map(c=>`<option value="${escAttr(c.id||'')}" ${String(selId||'')===String(c.id||'')?'selected':''}>${escH(ofChapaLabelOption(c))}</option>`).join('')
-  }`;
   const itemMaqUI = (it, itemIdx) => {
     _ofItemFluxoEnsure(itemIdx);
     const ids = (it.maquinas_fluxo_ids||[]).map(v=>String(v));
@@ -3346,12 +3382,6 @@ function renderOfItens(){
     <td style="vertical-align:middle"><input name="item-qtd" type="number" value="${it.qtd||''}" placeholder="0" oninput="ofItemChange(${i},'qtd',this.value)" style="text-align:right"></td>
     <td style="vertical-align:middle"><input name="item-vunit" type="number" step="0.0001" value="${it.vunit||''}" placeholder="0,0000" oninput="ofItemChange(${i},'vunit',this.value)" style="text-align:right"></td>
     <td id="of-item-total-${i}" style="text-align:right;font-family:var(--mono);color:var(--green);font-size:.75rem;font-weight:700;padding:4px 8px;vertical-align:middle">${fmtR((it.qtd||0)*(it.vunit||0))}</td>
-    <td style="vertical-align:middle;min-width:220px">
-      <select name="item-chapa" onchange="(function(v){const c=(ESTOQUE||[]).find(x=>String(x.id||'')===String(v));ofItensTemp[${i}].chapa_id=v||'';ofItensTemp[${i}].chapa_nome=c?(c.nomenclatura||c.nom||c.nome||''):'';})(this.value)">${chapaOptions(it.chapa_id)}</select>
-    </td>
-    <td style="vertical-align:middle;min-width:110px">
-      <input name="item-qtd-chapas" type="number" min="0" step="1" value="${it.qtd_chapas||0}" oninput="ofItensTemp[${i}].qtd_chapas=Math.trunc(Number(this.value)||0)">
-    </td>
     <td style="vertical-align:middle;min-width:200px">
       ${itemMaqSelUI(it,i)}${itemMaqUI(it,i)}
     </td>
@@ -3417,146 +3447,184 @@ function sanitizeDateInput(v){
 }
 function getOfItensFromModal(){
   const itens = [];
+  const toNum = (v) => Number(String(v ?? '').replace(',', '.')) || 0;
+  const toInt = (v) => Math.trunc(toNum(v) || 0);
+  const s = (v) => String(v ?? '').trim();
 
-  const coerceItem = (idx, desc, ref, qtdRaw, vunitRaw, chapaId, qtdChapasRaw, maquinaRaw) => {
-    const qtd = Number(String(qtdRaw ?? '').replace(',', '.')) || 0;
-    const vunit = Number(String(vunitRaw ?? '').replace(',', '.')) || 0;
+  const getCheckedFluxoNames = (idx, root) => {
+    try {
+      const scope = root || document;
+      const cbs = scope.querySelectorAll('input[type="checkbox"]:checked');
+      const ids = [];
+      const names = [];
+      cbs.forEach((cb) => {
+        const v = s(cb.value || cb.dataset.maquina || cb.dataset.fluxoMaq || '');
+        if (v) ids.push(v);
+      });
+      if (ids.length && typeof ofFluxoNamesFromIds === 'function') {
+        const mapped = ofFluxoNamesFromIds(ids) || [];
+        mapped.forEach((m) => {
+          const n = s(m);
+          if (n) names.push(n);
+        });
+      }
+      if (!names.length) {
+        cbs.forEach((cb) => {
+          const lbl = cb.closest('label');
+          const txt = s(cb.dataset.maquina || cb.value || (lbl ? lbl.textContent : ''));
+          if (txt) names.push(txt);
+        });
+      }
+      return [...new Set(names.map((x) => s(x)).filter(Boolean))];
+    } catch (e) {
+      return [];
+    }
+  };
+
+  const pushItem = (idx, descRaw, refRaw, qtdRaw, vunitRaw, maqRaw, fluxoRaw) => {
+    const qtd = toNum(qtdRaw);
+    const vunit = toNum(vunitRaw);
     const total = qtd * vunit;
-    const d = String(desc || '').trim();
-    const r = String(ref || '').trim();
-    const chapa_id = String(chapaId || '').trim();
-    const qtd_chapas = Math.trunc(Number(String(qtdChapasRaw ?? '').replace(',', '.')) || 0);
-    const maquina = String(maquinaRaw || '').trim();
+    const desc = s(descRaw);
+    const ref = s(refRaw);
+    const maquina = s(maqRaw);
     const refTemp = (ofItensTemp && ofItensTemp[idx]) ? ofItensTemp[idx] : {};
-    if(!d && !(qtd > 0) && !(vunit > 0) && !r && !chapa_id && !(qtd_chapas > 0) && !maquina) return;
+    const fluxo = Array.isArray(fluxoRaw) ? fluxoRaw : [];
+    if (!desc && !ref && !(qtd > 0) && !(vunit > 0) && !maquina && fluxo.length === 0) return;
     itens.push({
-      desc: d,
-      descricao: d,
-      ref: r,
+      desc,
+      descricao: desc,
+      ref,
       qtd,
       quantidade: qtd,
       vunit,
       valor_unitario: vunit,
       valor_total: total,
-      img: refTemp && refTemp.img ? refTemp.img : null,
-      chapa_id,
-      chapa_nome: refTemp && refTemp.chapa_nome ? String(refTemp.chapa_nome || '') : '',
-      qtd_chapas,
-      maquina: maquina || (refTemp && refTemp.maquina ? String(refTemp.maquina || '') : ''),
-      maquinas_fluxo: (() => {
-        const ids = refTemp && Array.isArray(refTemp.maquinas_fluxo_ids) ? refTemp.maquinas_fluxo_ids : [];
-        let names = ofFluxoNamesFromIds(ids);
-        if(!names.length && (refTemp && refTemp.maquina)){
-          const n = ofFluxoNamesFromIds([refTemp.maquina])[0];
-          if(n) names = [n];
-        }
-        if(!names.length && refTemp && Array.isArray(refTemp.maquinas_fluxo)) names = parseFluxo(refTemp.maquinas_fluxo);
-        return names;
+      maquina: maquina || s(refTemp?.maquina || ''),
+      maquinas_fluxo: fluxo.length ? fluxo : (() => {
+        const ids = Array.isArray(refTemp?.maquinas_fluxo_ids) ? refTemp.maquinas_fluxo_ids : [];
+        let names = [];
+        if (ids.length && typeof ofFluxoNamesFromIds === 'function') names = ofFluxoNamesFromIds(ids) || [];
+        if (!names.length && Array.isArray(refTemp?.maquinas_fluxo)) names = parseFluxo(refTemp.maquinas_fluxo);
+        return [...new Set((names || []).map((m) => s(m)).filter(Boolean))];
       })(),
+      img: refTemp && refTemp.img ? refTemp.img : null,
     });
   };
 
   const tbody = document.getElementById('of-itens-body');
-  const linhas = tbody ? tbody.querySelectorAll('.of-item-row, tr.of-item-row, tr') : document.querySelectorAll('.of-item-row, [data-of-item], .item-row, tr[data-item-idx], .item-linha, [id^="item-row-"]');
+  const linhas = tbody
+    ? tbody.querySelectorAll('.of-item-row, tr.of-item-row, tr')
+    : document.querySelectorAll('.of-item-row, [data-of-item], .item-row, tr[data-item-idx], .item-linha, [id^="item-row-"]');
 
-  if(linhas && linhas.length){
-    Array.from(linhas).forEach((linha, idx)=>{
+  if (linhas && linhas.length) {
+    Array.from(linhas).forEach((linha, idx) => {
       const q = (sel) => linha.querySelector(sel);
       const descEl = q('input[name="item-descricao"], input[name="desc"], .item-desc, .desc, [data-desc]') || null;
-      const refEl  = q('input[name="item-ref"], input[name="ref"], .item-ref, .ref, [data-ref]') || null;
-      const qtdEl  = q('input[name="item-qtd"], input[name="qtd"], .item-qtd, .qtd, [data-qtd], input[type="number"]') || null;
-      const vEl    = q('input[name="item-vunit"], input[name="vunit"], .item-vunit, .vunit, .item-preco, [data-vunit]') || null;
-      const chapaEl = q('select[name="item-chapa"], select.item-chapa, .chapa-sel, [data-item-chapa]') || null;
-      const qtdChEl = q('input[name="item-qtd-chapas"], input.qtd-chapa, .qtd-chapa, [data-qtd-chapa]') || null;
-      const maqEl = q('[data-item-maquina], select.item-maq, .item-maq, [data-maquina]') || null;
-      coerceItem(
+      const refEl = q('input[name="item-ref"], input[name="ref"], .item-ref, .ref, [data-ref]') || null;
+      const qtdEl = q('input[name="item-qtd"], input[name="qtd"], .item-qtd, .qtd, [data-qtd], input[type="number"]') || null;
+      const vEl = q('input[name="item-vunit"], input[name="vunit"], .item-vunit, .vunit, .item-preco, [data-vunit]') || null;
+      const maqEl =
+        q('#item-maq-' + idx) ||
+        q('[data-item-maquina]') ||
+        q('select.item-maquina') ||
+        q('select.item-maq') ||
+        q('.item-maq') ||
+        null;
+      const maquinasFluxo = (() => {
+        const container =
+          q('[data-item-checkboxes="' + idx + '"],#item-maquinas-' + idx + ',.item-' + idx + '-maquinas,.item-maq-checkboxes') ||
+          linha;
+        return getCheckedFluxoNames(idx, container);
+      })();
+      pushItem(
         idx,
         descEl ? descEl.value : '',
         refEl ? refEl.value : '',
         qtdEl ? qtdEl.value : '',
         vEl ? vEl.value : '',
-        chapaEl ? chapaEl.value : '',
-        qtdChEl ? qtdChEl.value : '',
-        maqEl ? maqEl.value : ''
+        maqEl ? maqEl.value : '',
+        maquinasFluxo
       );
     });
     return itens;
   }
 
   let idx = 0;
-  while(true){
-    const desc =
-      document.getElementById('item-desc-'+idx) ||
-      document.getElementById('f-item-desc-'+idx) ||
-      document.querySelector('[data-item-desc="'+idx+'"]');
-    if(!desc) break;
-    const ref =
-      document.getElementById('item-ref-'+idx) ||
-      document.getElementById('f-item-ref-'+idx) ||
-      document.querySelector('[data-item-ref="'+idx+'"]');
-    const qtd =
-      document.getElementById('item-qtd-'+idx) ||
-      document.getElementById('f-item-qtd-'+idx) ||
-      document.querySelector('[data-item-qtd="'+idx+'"]');
-    const vunit =
-      document.getElementById('item-vunit-'+idx) ||
-      document.getElementById('f-item-vunit-'+idx) ||
-      document.getElementById('item-preco-'+idx) ||
-      document.querySelector('[data-item-vunit="'+idx+'"]');
-    const chapa =
-      document.getElementById('item-chapa-'+idx) ||
-      document.querySelector('[data-item-chapa="'+idx+'"]');
-    const qtdChapa =
-      document.getElementById('item-qtd-chapa-'+idx) ||
-      document.querySelector('[data-item-qtd-chapa="'+idx+'"]');
-    const maq =
-      document.getElementById('item-maq-'+idx) ||
-      document.querySelector('[data-item-maquina="'+idx+'"]');
-    coerceItem(
+  while (true) {
+    const descEl =
+      document.getElementById('item-desc-' + idx) ||
+      document.getElementById('f-item-desc-' + idx) ||
+      document.querySelector('[data-item-desc="' + idx + '"]');
+    if (!descEl && idx > 0) break;
+    if (!descEl) { idx++; if (idx > 50) break; continue; }
+
+    const refEl =
+      document.getElementById('item-ref-' + idx) ||
+      document.getElementById('f-item-ref-' + idx) ||
+      document.querySelector('[data-item-ref="' + idx + '"]');
+    const qtdEl =
+      document.getElementById('item-qtd-' + idx) ||
+      document.getElementById('f-item-qtd-' + idx) ||
+      document.querySelector('[data-item-qtd="' + idx + '"]');
+    const vunitEl =
+      document.getElementById('item-vunit-' + idx) ||
+      document.getElementById('f-item-vunit-' + idx) ||
+      document.getElementById('item-preco-' + idx) ||
+      document.querySelector('[data-item-vunit="' + idx + '"]');
+    const maqSelEl =
+      document.getElementById('item-maq-' + idx) ||
+      document.querySelector('[data-item-maquina="' + idx + '"]') ||
+      document.querySelector('[data-item-idx="' + idx + '"] select.item-maquina');
+    const maqSel = maqSelEl ? s(maqSelEl.value || '') : '';
+
+    const maquinasFluxo = (() => {
+      const container =
+        document.querySelector('[data-item-checkboxes="' + idx + '"],#item-maquinas-' + idx + ',.item-' + idx + '-maquinas') ||
+        document.querySelector('[data-item-idx="' + idx + '"]') ||
+        document;
+      return getCheckedFluxoNames(idx, container);
+    })();
+
+    pushItem(
       idx,
-      desc.value,
-      ref ? ref.value : '',
-      qtd ? qtd.value : '',
-      vunit ? vunit.value : '',
-      chapa ? chapa.value : '',
-      qtdChapa ? qtdChapa.value : '',
-      maq ? maq.value : ''
+      descEl ? descEl.value : '',
+      refEl ? refEl.value : '',
+      qtdEl ? qtdEl.value : '',
+      vunitEl ? vunitEl.value : '',
+      maqSel,
+      maquinasFluxo
     );
     idx++;
+    if (idx > 50) break;
   }
 
-  if(itens.length) return itens;
-  return (ofItensTemp || []).map((it, i)=>{
-    const qtd = Number(String(it.qtd ?? '').replace(',', '.')) || 0;
-    const vunit = Number(String(it.vunit ?? '').replace(',', '.')) || 0;
+  if (itens.length) return itens;
+  return (ofItensTemp || []).map((it, i) => {
+    const qtd = toNum(it.qtd);
+    const vunit = toNum(it.vunit);
     const total = qtd * vunit;
-    const desc = String(it.desc || it.descricao || '').trim();
+    const desc = s(it.desc || it.descricao || '');
+    const maquina = s(it.maquina || '');
+    let fluxo = [];
+    if (Array.isArray(it.maquinas_fluxo)) fluxo = parseFluxo(it.maquinas_fluxo);
+    if ((!fluxo || !fluxo.length) && Array.isArray(it.maquinas_fluxo_ids) && typeof ofFluxoNamesFromIds === 'function') {
+      fluxo = ofFluxoNamesFromIds(it.maquinas_fluxo_ids) || [];
+    }
     return {
       desc,
       descricao: desc,
-      ref: String(it.ref || '').trim(),
+      ref: s(it.ref || ''),
       qtd,
       quantidade: qtd,
       vunit,
       valor_unitario: vunit,
       valor_total: total,
+      maquina,
+      maquinas_fluxo: [...new Set((fluxo || []).map((m) => s(m)).filter(Boolean))],
       img: it.img || null,
-      chapa_id: String(it.chapa_id || '').trim(),
-      chapa_nome: String(it.chapa_nome || '').trim(),
-      qtd_chapas: Math.trunc(Number(it.qtd_chapas || 0) || 0),
-      maquina: String(it.maquina || '').trim(),
-      maquinas_fluxo: (() => {
-        const ids = Array.isArray(it.maquinas_fluxo_ids) ? it.maquinas_fluxo_ids : [];
-        let names = ofFluxoNamesFromIds(ids);
-        if(!names.length && it.maquina){
-          const n = ofFluxoNamesFromIds([it.maquina])[0];
-          if(n) names = [n];
-        }
-        if(!names.length && Array.isArray(it.maquinas_fluxo)) names = parseFluxo(it.maquinas_fluxo);
-        return names;
-      })(),
     };
-  }).filter(it => String(it.desc||'').trim() || Number(it.qtd||0)>0);
+  }).filter((it) => s(it.desc) || Number(it.qtd || 0) > 0);
 }
 
 function restaurarItensNoModal(of){
@@ -3688,9 +3756,35 @@ async function salvarOF(){
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const vendIdSel=document.getElementById('f-vend').value;
-  const maquina_por_item = getMaquinaPorItemDoModal();
-  aplicarMaquinaPorItemNosItens(itens, maquina_por_item);
+  const maquina_por_item = {};
+  itens.forEach((it, i) => {
+    const m = String(it?.maquina || '').trim();
+    if (m) maquina_por_item[String(i)] = m;
+  });
+  const todasMaquinas = new Set();
+  itens.forEach((it) => {
+    const m = String(it?.maquina || '').trim();
+    if (m) todasMaquinas.add(m);
+    (it?.maquinas_fluxo || []).forEach((x) => {
+      const n = String(x || '').trim();
+      if (n) todasMaquinas.add(n);
+    });
+  });
+  document.querySelectorAll('.of-fluxo-checkbox:checked, [data-fluxo-maq]:checked').forEach((cb) => {
+    const m = String(cb.value || cb.dataset.fluxoMaq || '').trim();
+    if (m) todasMaquinas.add(m);
+  });
+  const fluxo_maquinas = Array.from(todasMaquinas);
   const payloadLocal={seq:ms+1,of:document.getElementById('f-of').value,prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(document.getElementById('f-ent').value),data_entrega:sanitizeDateInput(document.getElementById('f-ent').value),fluxo:document.getElementById('f-fl').value,maq:getMaqSel(),status:document.getElementById('f-st').value,urg:document.getElementById('f-urg').value==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:document.getElementById('f-obs').value,imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  payloadLocal.quantidade = qtdTotal;
+  payloadLocal.valor_venda = valTotal;
+  payloadLocal.valor_total = valTotal;
+  payloadLocal.cli_id = cliId;
+  payloadLocal.cliente_id = cliId;
+  payloadLocal.emp_id = empCode;
+  payloadLocal.empresa_id = empUuid || empCode;
+  payloadLocal.vendId = vendIdSel;
+  payloadLocal.fluxo_maquinas = fluxo_maquinas;
   const r = await salvarViaApiOuLocal('ofs',
     ()=>api('POST','/ofs', payloadLocal),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
@@ -3729,18 +3823,38 @@ async function salvarEdicaoOFId(id){
     const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
     const empSel=(document.getElementById('f-emp')||null);
     const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
-    const maquina_por_item = getMaquinaPorItemDoModal();
-    aplicarMaquinaPorItemNosItens(itens, maquina_por_item);
+    const maquina_por_item = {};
+    itens.forEach((it, i) => {
+      const m = String(it?.maquina || '').trim();
+      if (m) maquina_por_item[String(i)] = m;
+    });
+    const todasMaquinas = new Set();
+    itens.forEach((it) => {
+      const m = String(it?.maquina || '').trim();
+      if (m) todasMaquinas.add(m);
+      (it?.maquinas_fluxo || []).forEach((x) => {
+        const n = String(x || '').trim();
+        if (n) todasMaquinas.add(n);
+      });
+    });
+    document.querySelectorAll('.of-fluxo-checkbox:checked, [data-fluxo-maq]:checked').forEach((cb) => {
+      const m = String(cb.value || cb.dataset.fluxoMaq || '').trim();
+      if (m) todasMaquinas.add(m);
+    });
+    const fluxo_maquinas = Array.from(todasMaquinas);
     const payload={
     of:document.getElementById('f-of').value,
     prodDesc:titulo,
     descricao:titulo,
     cliId,
+    cli_id:cliId,
+    cliente_id:cliId,
     vendId:document.getElementById('f-vend').value,
     vend_id:document.getElementById('f-vend').value,
     vendedor_id:document.getElementById('f-vend').value,
     itens,
     qtd:qtdTotal,
+    quantidade:qtdTotal,
     valor_total: valTotal,
     valor_venda: valTotal,
     dia:sanitizeDateInput(dia),
@@ -3756,10 +3870,12 @@ async function salvarEdicaoOFId(id){
     imgs,
     imagem_url:imgs.length?imgs[0]:null,
     empId:empCode,
+    emp_id:empCode,
     modo_programacao,
     dia_programacao:sanitizeDateInput(dia_programacao),
     cidade_entrega,
     maquina_por_item,
+    fluxo_maquinas,
     };
     console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
     const r = await api('PUT','/ofs/'+encodeURIComponent(id), { ...payload, id });
@@ -18707,8 +18823,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>VENDEDOR</label><select id="f-vend"><option value="">Sem vendedor</option></select></div>
     <div class="mf"><label>URGENTE?</label><select id="f-urg"><option value="0">Não</option><option value="1">Sim — URGENTE</option></select></div>
     <div class="mf"><label>FLUXO</label><select id="f-fl" onchange="preencherMaq()"><option value="">Selecionar fluxo...</option></select></div>
-    <div class="mf"><label>MODELO CHAPA</label><select id="f-chp" onchange="verificarSaldo()"><option value="">Sem vínculo</option></select></div>
-    <div class="mf"><label>QTD CHAPAS</label><input id="f-qchp" type="number" placeholder="0" oninput="verificarSaldo()"></div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="f-obs" rows="2"></textarea></div>
     <div class="mf fgf" style="grid-column:1/-1">
       <label>IMAGEM DA OF</label>
@@ -18728,8 +18842,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="width:90px">QUANTIDADE</th>
               <th style="width:110px">VL. UNIT. (R$)</th>
               <th style="width:110px">TOTAL (R$)</th>
-              <th style="min-width:220px">CHAPA VINCULADA</th>
-              <th style="width:110px">QTD CHAPAS</th>
               <th style="min-width:320px">SEQUÊNCIA DE MÁQUINAS</th>
               <th style="width:60px" title="Imagem do item">📷</th>
               <th style="width:28px">✕</th>
