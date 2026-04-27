@@ -2576,6 +2576,114 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sid = String(id || '').trim();
+    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const body = req.body || {};
+    const maquinaConcluida = String(body.maquina_concluida || body.maquina || body.maquinaConcluida || '').trim();
+    const qtdProduzida = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
+    const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
+    if (!maquinaConcluida) return res.status(400).json({ ok: false, error: 'maquina_concluida obrigatória' });
+    if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
+    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida inválida' });
+
+    const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
+    if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    let fluxoRaw = of.fluxo_maquinas;
+    if (typeof fluxoRaw === 'string') {
+      try { fluxoRaw = JSON.parse(fluxoRaw || '[]'); } catch (_) { fluxoRaw = []; }
+    }
+    const fluxoArr = Array.isArray(fluxoRaw) ? fluxoRaw : [];
+    let fluxo = fluxoArr.map((m) => {
+      if (m && typeof m === 'object' && !Array.isArray(m)) {
+        return {
+          ...m,
+          nome: String(m.nome || m.maquina || m.name || m.id || '').trim(),
+          concluido: m.concluido === true,
+        };
+      }
+      return { nome: String(m || '').trim(), concluido: false };
+    }).filter((m) => m && m.nome);
+
+    if (!fluxo.length) {
+      const maq = parseFluxo(of.maq);
+      const nomes = (Array.isArray(maq) ? maq : []).map((x) => String(x || '').trim()).filter(Boolean);
+      fluxo = nomes.map((n) => ({ nome: n, concluido: false }));
+    }
+
+    const nowIso = new Date().toISOString();
+    const targetKey = maquinaConcluida.trim().toUpperCase();
+    let found = false;
+    fluxo = fluxo.map((m) => {
+      const nomeKey = String(m.nome || '').trim().toUpperCase();
+      if (nomeKey && nomeKey === targetKey) {
+        found = true;
+        return { ...m, concluido: true, data_baixa: nowIso };
+      }
+      return m;
+    });
+    if (!found) return res.status(400).json({ ok: false, error: 'Máquina não encontrada no fluxo' });
+
+    const todasConcluidas = fluxo.length > 0 && fluxo.every((m) => m && m.concluido === true);
+    const updateData = {
+      fluxo_maquinas: fluxo,
+      updated_at: nowIso,
+    };
+
+    if (todasConcluidas) {
+      updateData.status = 'Concluído';
+      updateData.data_conclusao = nowIso;
+
+      if (qtdProduzida > 0) {
+        updateData.qtd_produzida = Number(qtdProduzida);
+        const qtdOriginal = Number(of.qtd || of.quantidade || of.qtd_pedida || 1);
+        const valorOriginal = Number(of.valor_total || of.valor_venda || 0);
+        if (qtdOriginal > 0) {
+          let novoValor = (valorOriginal / qtdOriginal) * Number(qtdProduzida);
+          novoValor = Math.round(novoValor * 100) / 100;
+          updateData.valor_total = novoValor;
+          updateData.valor_venda = novoValor;
+        }
+      }
+    }
+
+    if (todasConcluidas && qtdPerdida > 0) {
+      try {
+        await supabase.from('caixas_perdidas').insert([{
+          of_id: sid,
+          of_numero: of.numero || of.of_num || of.of || '',
+          quantidade: Number(qtdPerdida),
+          motivo: 'Perda na produção',
+          data: nowIso,
+          usuario_id: req.usuario?.id || null,
+          usuario_nome: req.usuario?.nome || req.usuario?.email || null,
+        }]);
+      } catch (_) {}
+    }
+
+    Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
+    const upd = await ofsUpdateWithRetry(sid, updateData);
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+
+    const maqsRestantes = (fluxo || []).filter((m) => !m.concluido).map((m) => m.nome);
+    return res.json({
+      ok: true,
+      concluida: todasConcluidas,
+      maquinas_restantes: maqsRestantes,
+      mensagem: todasConcluidas
+        ? '✅ OF concluída! Todas as etapas finalizadas.'
+        : `✅ ${maquinaConcluida} concluída! Faltam: ${maqsRestantes.join(', ')}`,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e?.message });
+  }
+});
+
 app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
