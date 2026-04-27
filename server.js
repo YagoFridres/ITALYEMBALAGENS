@@ -771,12 +771,24 @@ async function selectAll(table, orderBy) {
 
 app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
   try {
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 200));
+    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const dataInicioRaw = String(req.query.dataInicio || req.query.data_inicio || '').trim();
+    const dataFimRaw = String(req.query.dataFim || req.query.data_fim || '').trim();
+    const dataInicio = dataInicioRaw ? dataInicioRaw : (() => {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - 30);
+      return dt.toISOString();
+    })();
+
     let q = supabase
       .from('historico_acoes')
       .select('*')
       .order('data_hora', { ascending: false })
-      .limit(100);
+      .range(offset, offset + limit - 1);
     if (req.query?.tipo) q = q.ilike('tipo_acao', `%${String(req.query.tipo)}%`);
+    if (dataInicio) q = q.gte('data_hora', dataInicio);
+    if (dataFimRaw) q = q.lte('data_hora', dataFimRaw);
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);
@@ -1485,12 +1497,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,prioridade,prioridade_producao,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,imgs,imagem_url,imagens,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
+    const withImages = String(req.query.withImages || req.query.with_images || '') === '1';
+    const selectSlimNoImg = "id,of,seq,prioridade,prioridade_producao,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
+    const selectSlim = withImages ? (selectSlimNoImg + ",imgs,imagem_url,imagens") : selectSlimNoImg;
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
-    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
+    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(withImages ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
     const cached = cacheGet(cacheKey);
     if (cached) return ok(res, cached);
 
@@ -1516,7 +1530,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           const msg = String(error.message || error);
           const isMissingColumn = msg.toLowerCase().includes('does not exist') || msg.includes('Could not find');
           if (isMissingColumn) {
-            let q3 = supabase.from('ofs').select('*').order('seq', { ascending: true });
+            const m1 = msg.match(/Could not find the '([^']+)' column/i);
+            const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+            const missingCol = (m1 && m1[1]) || (m2 && m2[1]) || null;
+            let sel3 = selectSlim;
+            if (missingCol) {
+              const parts = sel3.split(',').map(s => s.trim()).filter(Boolean);
+              const next = parts.filter(p => p !== missingCol);
+              if (next.length > 0) sel3 = next.join(',');
+            }
+
+            let q3 = supabase.from('ofs').select(sel3).order('seq', { ascending: true });
             if (empCol) q3 = q3.eq(empCol, empId);
             if (status) q3 = q3.eq('status', status);
             if (excluirCanceladas) q3 = q3.neq('status', 'Cancelada').neq('status', 'Cancelado');
@@ -1537,7 +1561,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (error) {
           const msg = String(error.message || error);
           if (!incluirExcluidas && msg.toLowerCase().includes("deleted_at") && (msg.includes('column') || msg.includes('Could not find'))) {
-            let q2 = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
+            const selectNoDeletedAt = selectSlim.split(',').map(s => s.trim()).filter(Boolean).filter(s => s !== 'deleted_at').join(',');
+            let q2 = supabase.from('ofs').select(selectNoDeletedAt || selectSlim).order('seq', { ascending: true });
             if (empCol) q2 = q2.eq(empCol, empId);
             if (status) q2 = q2.eq('status', status);
             if (excluirCanceladas) q2 = q2.neq('status', 'Cancelada').neq('status', 'Cancelado');
@@ -4467,6 +4492,8 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     };
     const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
     const hasFiltros = qEntries.length > 0;
+    const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
+    const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const cacheKey = hasFiltros
       ? ('chapas_estoque:auto:q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
       : ('chapas_estoque:auto:all');
@@ -4539,14 +4566,22 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       let sel = (table === 'chapas_estoque_v2') ? selectV2Base.join(',') : '*';
       let data = null;
       let error = null;
+      let orderCreatedAt = true;
 
       for (let tentativa = 0; tentativa < 5; tentativa++) {
-        const r = await supabase.from(table).select(sel);
+        let q = supabase.from(table).select(sel);
+        if (orderCreatedAt) q = q.order('created_at', { ascending: false });
+        q = q.range(offsetDb, offsetDb + limitDb - 1);
+        const r = await q;
         data = r.data;
         error = r.error;
         if (!error) break;
 
         const msg = String(error.message || error);
+        if (orderCreatedAt && msg.toLowerCase().includes('created_at') && (msg.includes('does not exist') || msg.includes('Could not find'))) {
+          orderCreatedAt = false;
+          continue;
+        }
         const col = msg.match(/Could not find the '([^']+)' column/)?.[1];
         if (col && table === 'chapas_estoque_v2' && sel !== '*') {
           const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
@@ -5813,11 +5848,24 @@ app.get('/api/relatorio/estoque_inventario', authMiddleware, async (req, res) =>
 
 app.get('/api/hist_estoque', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('historico_acoes')
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 200));
+    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const dataInicioRaw = String(req.query.dataInicio || req.query.data_inicio || '').trim();
+    const dataFimRaw = String(req.query.dataFim || req.query.data_fim || '').trim();
+    const dataInicio = dataInicioRaw ? dataInicioRaw : (() => {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - 30);
+      return dt.toISOString();
+    })();
+
+    let q = supabase.from('historico_acoes')
       .select('*')
       .ilike('tipo_acao', '%estoque%')
       .order('data_hora', { ascending: false })
-      .limit(500);
+      .range(offset, offset + limit - 1);
+    if (dataInicio) q = q.gte('data_hora', dataInicio);
+    if (dataFimRaw) q = q.lte('data_hora', dataFimRaw);
+    const { data, error } = await q;
     if (error) throw error;
     ok(res, data || []);
   } catch (e) { err(res, e); }
