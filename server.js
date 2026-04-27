@@ -860,6 +860,14 @@ function ofIn(p) {
     out.valor_venda = out.valor_total;
   }
   const has = (k) => Object.prototype.hasOwnProperty.call(p || {}, k);
+  if (has('prioridade')) {
+    const n = Math.trunc(Number(p.prioridade));
+    out.prioridade = Number.isFinite(n) ? n : null;
+  }
+  if (has('prioridade_producao')) {
+    const n = Math.trunc(Number(p.prioridade_producao));
+    out.prioridade_producao = Number.isFinite(n) ? n : null;
+  }
   if (has('maq')) {
     out.maq = Array.isArray(p.maq) ? JSON.stringify(p.maq) : (typeof p.maq === 'string' ? p.maq : '[]');
   }
@@ -972,6 +980,7 @@ function ofPayloadFiltrado(body) {
   const campos = [
     'id',
     'numero', 'of', 'of_num', 'of_numero', 'seq',
+    'prioridade', 'prioridade_producao',
     'cliente_id', 'cli_id', 'cliId',
     'vendedor', 'vend_id', 'vendedor_id', 'vendId',
     'empresa_id', 'emp_id', 'empId',
@@ -1476,7 +1485,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const selectSlim = "id,of,seq,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,imgs,imagem_url,imagens,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
+    const selectSlim = "id,of,seq,prioridade,prioridade_producao,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,imgs,imagem_url,imagens,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
@@ -1552,7 +1561,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           }
           const trimmed = rows.map((r) => ({
             id: r.id,
-            seq: r.seq ?? r.prioridade ?? null,
+            seq: r.seq ?? r.prioridade_producao ?? r.prioridade ?? null,
+            prioridade: r.prioridade ?? null,
+            prioridade_producao: r.prioridade_producao ?? null,
             of: r.of ?? r.numero ?? r.of_num ?? r.ofNum ?? null,
             numero: r.numero ?? null,
             of_num: r.of_num ?? null,
