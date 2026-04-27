@@ -770,31 +770,7 @@ async function selectAll(table, orderBy) {
 }
 
 app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
-  try {
-    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 200));
-    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
-    const dataInicioRaw = String(req.query.dataInicio || req.query.data_inicio || '').trim();
-    const dataFimRaw = String(req.query.dataFim || req.query.data_fim || '').trim();
-    const dataInicio = dataInicioRaw ? dataInicioRaw : (() => {
-      const dt = new Date();
-      dt.setDate(dt.getDate() - 30);
-      return dt.toISOString();
-    })();
-
-    let q = supabase
-      .from('historico_acoes')
-      .select('*')
-      .order('data_hora', { ascending: false })
-      .range(offset, offset + limit - 1);
-    if (req.query?.tipo) q = q.ilike('tipo_acao', `%${String(req.query.tipo)}%`);
-    if (dataInicio) q = q.gte('data_hora', dataInicio);
-    if (dataFimRaw) q = q.lte('data_hora', dataFimRaw);
-    const { data, error } = await q;
-    if (error) throw error;
-    return ok(res, data || []);
-  } catch (e) {
-    return err(res, e);
-  }
+  return ok(res, []);
 });
 async function insertOne(table, row) {
   if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
@@ -1489,147 +1465,16 @@ async function comprasUpdateCompat(id, payload) {
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
-    const from = req.query.from ? String(req.query.from) : '';
-    const to = req.query.to ? String(req.query.to) : '';
-    const empId = req.query.empId ? String(req.query.empId) : '';
-    const statusRaw = req.query.status ? String(req.query.status) : '';
-    const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
-    const hasPaging = req.query.limit != null || req.query.offset != null;
-    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
-    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
-    const lite = String(req.query.lite || '') === '1';
-    const selectSlim = [
-      'id','numero','of_num','seq','of_seq',
-      'cliente_id','cli_id','cli_nome','clinome','cliente_nome',
-      'vendedor_id','vend_id','vendedor',
-      'empresa_id','emp_id',
-      'descricao',
-      'quantidade','qtd',
-      'valor_total','valor_venda',
-      'status','urgente','urg',
-      'dia','data_producao',
-      'ent','data_entrega',
-      'fluxo_maquinas','maquina_por_item','maquina_atual_index',
-      'itens',
-      'obs','cond_pagamento',
-      'created_at','updated_at',
-      'data_conclusao','qtd_produzida','qtd_perdida',
-      'chapa_id','chp','qtd_chapas',
-      'modo_programacao',
-      'imagem_url',
-      'imgs',
-    ].join(',');
-    const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
-    const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
-    const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
-    const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
-    const cacheKey = 'ofs:v3:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
-    const cached = cacheGet(cacheKey);
-    if (cached) return ok(res, cached);
-
-    let lastError = null;
-    for (const empCol of empCols) {
-      for (const field of fields) {
-        const CAMPOS_CRITICOS = ['id','itens','status','numero','cliente_id','cli_id','valor_total','fluxo_maquinas'];
-        const execComRetry = async (buildQuery, selectAtual) => {
-          let sel = String(selectAtual || '').trim();
-          for (let i = 0; i < 10; i++) {
-            const r = await buildQuery(sel);
-            if (!r?.error) return { data: r?.data, error: null, selectUsed: sel };
-            const msg = String(r.error.message || r.error);
-            const m1 = msg.match(/column\s+ofs\.(\w+)\s+does not exist/i);
-            const m2 = msg.match(/Could not find the '([^']+)' column/i);
-            const m3 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
-            const colProb = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
-            if (!colProb) return { data: r?.data, error: r?.error, selectUsed: sel };
-            if (CAMPOS_CRITICOS.includes(colProb)) return { data: null, error: r?.error, selectUsed: sel };
-            const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
-            const next = parts.filter(c => c !== colProb);
-            if (next.length === parts.length || next.length === 0) return { data: r?.data, error: r?.error, selectUsed: sel };
-            sel = next.join(',');
-          }
-          const rLast = await buildQuery(sel);
-          return { data: rLast?.data, error: rLast?.error, selectUsed: sel };
-        };
-
-        const buildQuery = (sel) => {
-          let q = supabase.from('ofs').select(sel).order('seq', { ascending: true });
-          if (empCol) q = q.eq(empCol, empId);
-          if (status) q = q.eq('status', status);
-          if (excluirCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-          if (field) {
-            if (from) q = q.gte(field, from);
-            if (to) q = q.lte(field, to);
-          }
-          if (!incluirExcluidas) {
-            try { q = q.is('deleted_at', null); } catch (_) {}
-          }
-          if (hasPaging) q = q.range(offset, offset + limit - 1);
-          else q = q.limit(200);
-          return q;
-        };
-
-        let { data, error } = await execComRetry(buildQuery, selectSlim);
-
-        if (!error) {
-          const rows = data || [];
-          console.log('[OFS] primeiro item:', JSON.stringify(data?.[0]?.itens?.slice?.(0,1)));
-          if (!lite) {
-            cacheSet(cacheKey, rows, 3 * 60 * 1000);
-            return ok(res, rows);
-          }
-          const trimmed = rows.map((r) => ({
-            id: r.id,
-            seq: r.seq ?? r.of_seq ?? null,
-            of: r.of ?? r.numero ?? r.of_num ?? r.ofNum ?? null,
-            numero: r.numero ?? null,
-            of_num: r.of_num ?? null,
-            cli_id: r.cli_id ?? r.cliente_id ?? r.cliId ?? r.clienteId ?? null,
-            cliente_id: r.cliente_id ?? null,
-            clinome: r.clinome ?? r.cli_nome ?? null,
-            cliente_nome: r.cliente_nome ?? r.cliente ?? r.clinome ?? r.cli_nome ?? null,
-            vendId: r.vendId ?? r.vendedor_id ?? r.vendedorId ?? null,
-            vendedor_id: r.vendedor_id ?? null,
-            vendedor_nome: r.vendedor_nome ?? r.vendedor ?? null,
-            status: r.status ?? null,
-            urg: r.urg ?? r.urgente ?? null,
-            urgente: r.urgente ?? null,
-            qtd: r.qtd ?? r.quantidade ?? null,
-            quantidade: r.quantidade ?? null,
-            qtd_pedida: r.qtd_pedida ?? null,
-            qtd_produzida: r.qtd_produzida ?? null,
-            qtd_perdida: r.qtd_perdida ?? null,
-            caixas_excedentes: r.caixas_excedentes ?? null,
-            data_conclusao: r.data_conclusao ?? null,
-            dia: r.dia ?? r.data_producao ?? null,
-            data_producao: r.data_producao ?? null,
-            ent: r.ent ?? r.data_entrega ?? null,
-            data_entrega: r.data_entrega ?? null,
-            fluxo: r.fluxo ?? null,
-            maq: r.maq ?? null,
-            fluxo_maquinas: r.fluxo_maquinas ?? null,
-            maquina_por_item: r.maquina_por_item ?? null,
-            maquina_atual_index: r.maquina_atual_index ?? null,
-            imagem_url: r.imagem_url ?? null,
-            imgs: r.imgs ?? null,
-            descricao: r.descricao ?? r.prod_desc ?? null,
-            obs: r.obs ?? r.obs2 ?? null,
-            emp_id: r.emp_id ?? r.empId ?? null,
-            created_at: r.created_at ?? null,
-            itens: r.itens ?? null,
-          }));
-          cacheSet(cacheKey, trimmed, 3 * 60 * 1000);
-          return ok(res, trimmed);
-        }
-        lastError = error;
-        const msg = String(error.message || error);
-        if (empCol && (msg.includes('column') || msg.includes('Could not find'))) continue;
-        if (field && (msg.includes('column') || msg.includes('Could not find'))) continue;
-        throw error;
-      }
-    }
-    throw lastError;
-  } catch (e) { bad(res, e.message); }
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    return ok(res, data || []);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
