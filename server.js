@@ -1500,7 +1500,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const lite = String(req.query.lite || '') === '1';
     const selectSlim = [
       'id','numero','of_num','seq','of_seq',
-      'cliente_id','cli_id','clinome','cliente_nome',
+      'cliente_id','cli_id','cli_nome','clinome','cliente_nome',
       'vendedor_id','vend_id','vendedor',
       'empresa_id','emp_id',
       'descricao',
@@ -1523,13 +1523,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
-    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
+    const cacheKey = 'ofs:v3:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
     const cached = cacheGet(cacheKey);
     if (cached) return ok(res, cached);
 
     let lastError = null;
     for (const empCol of empCols) {
       for (const field of fields) {
+        const CAMPOS_CRITICOS = ['id','itens','status','numero','cliente_id','cli_id','valor_total','fluxo_maquinas'];
         const execComRetry = async (buildQuery, selectAtual) => {
           let sel = String(selectAtual || '').trim();
           for (let i = 0; i < 10; i++) {
@@ -1541,6 +1542,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             const m3 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
             const colProb = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
             if (!colProb) return { data: r?.data, error: r?.error, selectUsed: sel };
+            if (CAMPOS_CRITICOS.includes(colProb)) return { data: null, error: r?.error, selectUsed: sel };
             const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
             const next = parts.filter(c => c !== colProb);
             if (next.length === parts.length || next.length === 0) return { data: r?.data, error: r?.error, selectUsed: sel };
@@ -1571,6 +1573,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
         if (!error) {
           const rows = data || [];
+          console.log('[OFS] primeiro item:', JSON.stringify(data?.[0]?.itens?.slice?.(0,1)));
           if (!lite) {
             cacheSet(cacheKey, rows, 3 * 60 * 1000);
             return ok(res, rows);
@@ -1583,7 +1586,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             of_num: r.of_num ?? null,
             cli_id: r.cli_id ?? r.cliente_id ?? r.cliId ?? r.clienteId ?? null,
             cliente_id: r.cliente_id ?? null,
-            cliente_nome: r.cliente_nome ?? r.cliente ?? r.cli_nome ?? null,
+            clinome: r.clinome ?? r.cli_nome ?? null,
+            cliente_nome: r.cliente_nome ?? r.cliente ?? r.clinome ?? r.cli_nome ?? null,
             vendId: r.vendId ?? r.vendedor_id ?? r.vendedorId ?? null,
             vendedor_id: r.vendedor_id ?? null,
             vendedor_nome: r.vendedor_nome ?? r.vendedor ?? null,
@@ -1612,6 +1616,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.obs2 ?? null,
             emp_id: r.emp_id ?? r.empId ?? null,
             created_at: r.created_at ?? null,
+            itens: r.itens ?? null,
           }));
           cacheSet(cacheKey, trimmed, 3 * 60 * 1000);
           return ok(res, trimmed);
