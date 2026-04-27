@@ -992,7 +992,6 @@ function ofPayloadFiltrado(body) {
   const campos = [
     'id',
     'numero', 'of', 'of_num', 'of_numero', 'seq',
-    'prioridade', 'prioridade_producao',
     'cliente_id', 'cli_id', 'cliId',
     'vendedor', 'vend_id', 'vendedor_id', 'vendId',
     'empresa_id', 'emp_id', 'empId',
@@ -1020,6 +1019,8 @@ function ofPayloadFiltrado(body) {
   ];
   const p = {};
   campos.forEach(k => { if (b[k] !== undefined) p[k] = b[k]; });
+  delete p.prioridade;
+  delete p.prioridade_producao;
   p.updated_at = new Date().toISOString();
   return p;
 }
@@ -1497,86 +1498,76 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const withImages = String(req.query.withImages || req.query.with_images || '') === '1';
-    const selectSlimNoImg = "id,of,seq,prioridade,prioridade_producao,status,dia,ent,cli_id,cliId,cliente_id,prodDesc,qtd,quantidade,qtd_pedida,qtd_produzida,qtd_perdida,caixas_excedentes,data_conclusao,maq,fluxo,fluxo_maquinas,maquinas_fluxo,maquina_por_item,maquina_atual_index,emp_id,empId,empresa_id,vendedor,vend_id,vendedor_id,valor_total,valor_venda,total,cond_pagamento,pagto,obs,itens,deleted_at,of_numero,numero,of_num,descricao,created_at,updated_at,data_producao,data_entrega,chapa_id,qtd_chapas";
-    const selectSlim = withImages ? (selectSlimNoImg + ",imgs,imagem_url,imagens") : selectSlimNoImg;
+    const selectSlim = [
+      'id','numero','of_num','seq','of_seq',
+      'cliente_id','cli_id','clinome','cliente_nome',
+      'vendedor_id','vend_id','vendedor',
+      'empresa_id','emp_id',
+      'descricao',
+      'quantidade','qtd',
+      'valor_total','valor_venda',
+      'status','urgente','urg',
+      'dia','data_producao',
+      'ent','data_entrega',
+      'fluxo_maquinas','maquina_por_item','maquina_atual_index',
+      'itens',
+      'obs','cond_pagamento',
+      'created_at','updated_at',
+      'data_conclusao','qtd_produzida','qtd_perdida',
+      'chapa_id','chp','qtd_chapas',
+      'modo_programacao',
+      'imagem_url',
+      'imgs',
+    ].join(',');
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || '') === '1';
     const empCols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     const fields = (from || to) ? ['data_producao', 'dia', 'created_at'] : [null];
-    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(withImages ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
+    const cacheKey = 'ofs:' + empId + ':' + status + ':' + from + ':' + to + ':' + String(incluirExcluidas ? '1' : '0') + ':' + String(lite ? '1' : '0') + ':' + String(req.query.limit || '') + ':' + String(req.query.offset || '');
     const cached = cacheGet(cacheKey);
     if (cached) return ok(res, cached);
 
     let lastError = null;
     for (const empCol of empCols) {
       for (const field of fields) {
-        let q = supabase.from('ofs').select(selectSlim).order('seq', { ascending: true });
-        if (empCol) q = q.eq(empCol, empId);
-        if (status) q = q.eq('status', status);
-        if (excluirCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-        if (field) {
-          if (from) q = q.gte(field, from);
-          if (to) q = q.lte(field, to);
-        }
-        if (!incluirExcluidas) {
-          try { q = q.is('deleted_at', null); } catch (_) {}
-        }
-        if (hasPaging) q = q.range(offset, offset + limit - 1);
-        else q = q.limit(200);
-
-        let { data, error } = await q;
-        if (error) {
-          const msg = String(error.message || error);
-          const isMissingColumn = msg.toLowerCase().includes('does not exist') || msg.includes('Could not find');
-          if (isMissingColumn) {
-            const m1 = msg.match(/Could not find the '([^']+)' column/i);
-            const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
-            const missingCol = (m1 && m1[1]) || (m2 && m2[1]) || null;
-            let sel3 = selectSlim;
-            if (missingCol) {
-              const parts = sel3.split(',').map(s => s.trim()).filter(Boolean);
-              const next = parts.filter(p => p !== missingCol);
-              if (next.length > 0) sel3 = next.join(',');
-            }
-
-            let q3 = supabase.from('ofs').select(sel3).order('seq', { ascending: true });
-            if (empCol) q3 = q3.eq(empCol, empId);
-            if (status) q3 = q3.eq('status', status);
-            if (excluirCanceladas) q3 = q3.neq('status', 'Cancelada').neq('status', 'Cancelado');
-            if (field) {
-              if (from) q3 = q3.gte(field, from);
-              if (to) q3 = q3.lte(field, to);
-            }
-            if (!incluirExcluidas) {
-              try { q3 = q3.is('deleted_at', null); } catch (_) {}
-            }
-            if (hasPaging) q3 = q3.range(offset, offset + limit - 1);
-            else q3 = q3.limit(200);
-            const r3 = await q3;
-            data = r3.data;
-            error = r3.error;
+        const execComRetry = async (buildQuery, selectAtual) => {
+          let sel = String(selectAtual || '').trim();
+          for (let i = 0; i < 10; i++) {
+            const r = await buildQuery(sel);
+            if (!r?.error) return { data: r?.data, error: null, selectUsed: sel };
+            const msg = String(r.error.message || r.error);
+            const m1 = msg.match(/column\s+ofs\.(\w+)\s+does not exist/i);
+            const m2 = msg.match(/Could not find the '([^']+)' column/i);
+            const m3 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
+            const colProb = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
+            if (!colProb) return { data: r?.data, error: r?.error, selectUsed: sel };
+            const parts = sel.split(',').map(s => s.trim()).filter(Boolean);
+            const next = parts.filter(c => c !== colProb);
+            if (next.length === parts.length || next.length === 0) return { data: r?.data, error: r?.error, selectUsed: sel };
+            sel = next.join(',');
           }
-        }
-        if (error) {
-          const msg = String(error.message || error);
-          if (!incluirExcluidas && msg.toLowerCase().includes("deleted_at") && (msg.includes('column') || msg.includes('Could not find'))) {
-            const selectNoDeletedAt = selectSlim.split(',').map(s => s.trim()).filter(Boolean).filter(s => s !== 'deleted_at').join(',');
-            let q2 = supabase.from('ofs').select(selectNoDeletedAt || selectSlim).order('seq', { ascending: true });
-            if (empCol) q2 = q2.eq(empCol, empId);
-            if (status) q2 = q2.eq('status', status);
-            if (excluirCanceladas) q2 = q2.neq('status', 'Cancelada').neq('status', 'Cancelado');
-            if (field) {
-              if (from) q2 = q2.gte(field, from);
-              if (to) q2 = q2.lte(field, to);
-            }
-            if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
-            else q2 = q2.limit(200);
-            const r2 = await q2;
-            data = r2.data;
-            error = r2.error;
+          const rLast = await buildQuery(sel);
+          return { data: rLast?.data, error: rLast?.error, selectUsed: sel };
+        };
+
+        const buildQuery = (sel) => {
+          let q = supabase.from('ofs').select(sel).order('seq', { ascending: true });
+          if (empCol) q = q.eq(empCol, empId);
+          if (status) q = q.eq('status', status);
+          if (excluirCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
+          if (field) {
+            if (from) q = q.gte(field, from);
+            if (to) q = q.lte(field, to);
           }
-        }
+          if (!incluirExcluidas) {
+            try { q = q.is('deleted_at', null); } catch (_) {}
+          }
+          if (hasPaging) q = q.range(offset, offset + limit - 1);
+          else q = q.limit(200);
+          return q;
+        };
+
+        let { data, error } = await execComRetry(buildQuery, selectSlim);
 
         if (!error) {
           const rows = data || [];
@@ -1586,9 +1577,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           }
           const trimmed = rows.map((r) => ({
             id: r.id,
-            seq: r.seq ?? r.prioridade_producao ?? r.prioridade ?? null,
-            prioridade: r.prioridade ?? null,
-            prioridade_producao: r.prioridade_producao ?? null,
+            seq: r.seq ?? r.of_seq ?? null,
             of: r.of ?? r.numero ?? r.of_num ?? r.ofNum ?? null,
             numero: r.numero ?? null,
             of_num: r.of_num ?? null,
@@ -1622,7 +1611,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
             descricao: r.descricao ?? r.prod_desc ?? null,
             obs: r.obs ?? r.obs2 ?? null,
             emp_id: r.emp_id ?? r.empId ?? null,
-            deleted_at: r.deleted_at ?? null,
             created_at: r.created_at ?? null,
           }));
           cacheSet(cacheKey, trimmed, 3 * 60 * 1000);
