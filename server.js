@@ -1465,15 +1465,65 @@ async function comprasUpdateCompat(id, payload) {
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('ofs')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(500);
-    if (error) return res.status(500).json({ ok: false, error: error.message });
-    return ok(res, data || []);
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 300));
+    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
+    const empId = req.query.empId ? String(req.query.empId).trim() : '';
+    const statusRaw = req.query.status ? String(req.query.status).trim() : '';
+    const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
+
+    const selectBaseCols = [
+      'id','of','numero','status','dia','ent','created_at','updated_at','deleted_at',
+      'cli_id','vendedor_id','emp_id','qtd','descricao','prodDesc',
+      'valor_total','valor_venda','fluxo_maquinas','maquina_atual_index','maq',
+      'chapa_id','qtd_chapas','urg','urgente','data_producao','data_entrega',
+      'data_conclusao','prioridade','prioridade_producao','modo_programacao',
+      'dia_programacao','cidade_entrega','qtd_pedida','qtd_produzida',
+      'qtd_perdida','caixas_excedentes'
+    ];
+
+    const buildQuery = (sel) => {
+      let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+      if (!incluirExcluidas) q = q.is('deleted_at', null);
+      if (status) q = q.eq('status', status);
+      if (empId) q = q.eq('emp_id', empId);
+      return q;
+    };
+
+    const isMissingColumnErr = (err) => {
+      const msg = String(err?.message || err || '');
+      return (
+        msg.includes('Could not find the') ||
+        msg.toLowerCase().includes('does not exist')
+      );
+    };
+    const extractMissingCol = (err) => {
+      const msg = String(err?.message || err || '');
+      const m1 = msg.match(/column\s+ofs\.(\w+)\s+does not exist/i);
+      const m2 = msg.match(/Could not find the '([^']+)' column/i);
+      const m3 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
+      return (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
+    };
+
+    let selectAtual = selectBaseCols.join(',');
+    for (let tentativa = 0; tentativa < 10; tentativa++) {
+      const { data, error } = await buildQuery(selectAtual);
+      if (!error) return ok(res, data || []);
+      if (!isMissingColumnErr(error)) return res.status(500).json({ ok: false, error: String(error.message || error) });
+
+      const colProb = extractMissingCol(error);
+      if (!colProb) break;
+      const parts = selectAtual.split(',').map(s => s.trim()).filter(Boolean);
+      const next = parts.filter(c => c !== colProb);
+      if (next.length === parts.length || next.length === 0) break;
+      selectAtual = next.join(',');
+    }
+
+    const { data: dataAll, error: errorAll } = await buildQuery('*');
+    if (errorAll) return res.status(500).json({ ok: false, error: String(errorAll.message || errorAll) });
+    return ok(res, dataAll || []);
   } catch (e) {
-    return res.status(500).json({ ok: false, error: e.message });
+    return res.status(500).json({ ok: false, error: String(e.message || e) });
   }
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
