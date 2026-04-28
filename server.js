@@ -696,6 +696,129 @@ app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.get('/api/admin/maquinas_validas_ofs', requireAdmin, async (req, res) => {
+  try {
+    const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+
+    const selectCompat = async (table, cols) => {
+      let cur = String(cols || '*');
+      for (let tentativa = 0; tentativa < 10; tentativa++) {
+        const { data, error } = await supabase.from(table).select(cur);
+        if (!error) return { data: data || [], error: null };
+        const msg = String(error.message || error);
+        const m1 = msg.match(/Could not find the '([^']+)' column/i);
+        const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+        const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+        if (!col) return { data: null, error };
+        const parts = cur.split(',').map(s => s.trim()).filter(Boolean);
+        const next = parts.filter(c => c !== col);
+        if (!next.length || next.length === parts.length) return { data: null, error };
+        cur = next.join(',');
+      }
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) return { data: null, error };
+      return { data: data || [], error: null };
+    };
+
+    const { data: maquinasRaw, error: maqErr } = await selectCompat('maquinas', 'id,nome,col,ativo');
+    if (maqErr) return res.status(500).json({ ok: false, error: String(maqErr.message || maqErr) });
+    const validSet = new Set();
+    (maquinasRaw || []).forEach((m) => {
+      if (m && m.ativo === false) return;
+      const a = norm(m?.nome);
+      const b = norm(m?.col);
+      if (a) validSet.add(a);
+      if (b) validSet.add(b);
+    });
+
+    const countBy = new Map();
+    const rawBy = new Map();
+    const addNome = (nome, ofId, seenInOf) => {
+      const n = norm(nome);
+      if (!n) return;
+      if (!rawBy.has(n)) rawBy.set(n, String(nome || '').trim() || n);
+      if (seenInOf.has(n)) return;
+      seenInOf.add(n);
+      countBy.set(n, (countBy.get(n) || 0) + 1);
+    };
+
+    const parseFluxo = (v) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try {
+          const p = JSON.parse(v || '[]');
+          return Array.isArray(p) ? p : [];
+        } catch (e) { return []; }
+      }
+      return [];
+    };
+
+    const parseMaq = (v) => {
+      if (!v) return [];
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        const s = v.trim();
+        if (!s) return [];
+        if (s.startsWith('[') || s.startsWith('{')) {
+          try {
+            const p = JSON.parse(s);
+            if (Array.isArray(p)) return p;
+            if (p && typeof p === 'object') return [p];
+          } catch (e) {}
+        }
+        return [s];
+      }
+      if (v && typeof v === 'object') return [v];
+      return [];
+    };
+
+    let offset = 0;
+    const limit = 1000;
+    for (let page = 0; page < 200; page++) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,fluxo_maquinas,maq')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+      const rows = data || [];
+      rows.forEach((of) => {
+        const seenInOf = new Set();
+        const fluxo = parseFluxo(of?.fluxo_maquinas);
+        fluxo.forEach((it) => {
+          if (it && typeof it === 'object' && !Array.isArray(it)) {
+            addNome(it.nome || it.maquina || it.name || it.id || '', of?.id, seenInOf);
+          } else {
+            addNome(it, of?.id, seenInOf);
+          }
+        });
+        const maqArr = parseMaq(of?.maq);
+        maqArr.forEach((it) => {
+          if (it && typeof it === 'object' && !Array.isArray(it)) {
+            addNome(it.nome || it.maquina || it.name || it.id || '', of?.id, seenInOf);
+          } else {
+            addNome(it, of?.id, seenInOf);
+          }
+        });
+      });
+      if (rows.length < limit) break;
+      offset += limit;
+    }
+
+    const invalid = Array.from(countBy.entries())
+      .filter(([k]) => !validSet.has(k))
+      .map(([k, count]) => ({ nome: rawBy.get(k) || k, count }))
+      .sort((a, b) => (b.count || 0) - (a.count || 0));
+
+    return ok(res, {
+      invalidas: invalid,
+      total_invalidas: invalid.length,
+      total_maquinas_cadastro: validSet.size,
+      total_maquinas_encontradas_nas_ofs: countBy.size,
+    });
+  } catch (e) { return err(res, e); }
+});
+
 const chatUploadDir = path.join(__dirname, 'uploads', 'chat');
 try { fs.mkdirSync(chatUploadDir, { recursive: true }); } catch (e) {}
 
