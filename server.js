@@ -1474,12 +1474,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const selectBaseCols = [
       'id','of','numero','status','dia','ent','created_at','updated_at','deleted_at',
-      'cli_id','vendedor_id','emp_id','qtd','descricao','prodDesc',
+      'of_num','seq','numero_of',
+      'cli_id','cliente_id','cliId','cliente','vendedor_id','emp_id','qtd','descricao','prodDesc','prod','produto',
       'valor_total','valor_venda','fluxo_maquinas','maquina_atual_index','maq',
       'chapa_id','qtd_chapas','urg','urgente','data_producao','data_entrega',
       'data_conclusao','prioridade','prioridade_producao','modo_programacao',
       'dia_programacao','cidade_entrega','qtd_pedida','qtd_produzida',
-      'qtd_perdida','caixas_excedentes'
+      'qtd_perdida','caixas_excedentes',
+      'imgs','imagens','imagem_url','foto'
     ];
 
     const buildQuery = (sel) => {
