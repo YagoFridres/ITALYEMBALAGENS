@@ -1473,7 +1473,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
 
     const selectBaseCols = [
-      'id','of','numero','status','dia','ent','created_at','updated_at','deleted_at',
+      'id','of','numero','status','dia','ent','created_at','updated_at',
       'of_num','seq','numero_of',
       'cli_id','cliente_id','cliId','cliente','vendedor_id','emp_id','qtd','descricao','prodDesc','prod','produto',
       'valor_total','valor_venda','fluxo_maquinas','maquina_atual_index','maq',
@@ -1486,7 +1486,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const buildQuery = (sel) => {
       let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
-      if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (status) q = q.eq('status', status);
       if (empId) q = q.eq('emp_id', empId);
       return q;
