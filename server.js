@@ -2621,10 +2621,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
-    if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda')) {
-      const mp = body.maquina_perda == null ? null : String(body.maquina_perda || '').trim();
-      updateData.maquina_perda = mp || null;
-    }
+    if (body.maquina_perda) updateData.maquina_perda = String(body.maquina_perda).trim();
     if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) {
       const mid = body.maquina_perda_id == null ? null : String(body.maquina_perda_id || '').trim();
       updateData.maquina_perda_id = mid || null;
