@@ -345,15 +345,37 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !senha)
       return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
+    console.log('[LOGIN] chamado', String(email).trim().toLowerCase());
     console.log('[LOGIN DEBUG] email tentado:', String(email).trim().toLowerCase());
     console.log('[LOGIN DEBUG] senha recebida length:', (senha == null ? 0 : String(senha).length));
 
-    const { data: rows, error: e1 } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('email', String(email).trim().toLowerCase())
-      .eq('ativo', true)
-      .limit(1);
+    const emailNorm = String(email).trim().toLowerCase();
+    let rows = null;
+    let e1 = null;
+    try {
+      const r1 = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('email', emailNorm)
+        .eq('ativo', true)
+        .limit(1);
+      rows = r1.data;
+      e1 = r1.error;
+    } catch (e) {
+      e1 = e;
+    }
+    if (e1) {
+      const msg = String(e1.message || e1);
+      if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('ativo') && msg.toLowerCase().includes('does not exist')) {
+        const r2 = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('email', emailNorm)
+          .limit(1);
+        rows = r2.data;
+        e1 = r2.error;
+      }
+    }
 
     if (e1) {
       console.error('Erro busca usuario:', e1);
@@ -361,7 +383,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
     if (!rows || rows.length === 0) {
       console.error('Usuário não encontrado (ou acesso bloqueado por RLS).', {
-        email: String(email).trim().toLowerCase(),
+        email: emailNorm,
         keySource: supabaseKeySource,
       });
       if (supabaseKeySource === 'SUPABASE_ANON_KEY' || supabaseKeySource === 'index.html:SUPABASE_KEY') {
@@ -465,16 +487,38 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const { data: usuario, error } = await supabase
       .from('usuarios')
-      .select('id, nome, email, perfil, permissoes, canais_chat, avatar_iniciais, avatar_cor')
+      .select('*')
       .eq('id', req.usuario.id)
-      .single();
-    if (error || !usuario) return res.status(404).json({ error: 'Usuário não encontrado' });
+      .maybeSingle();
+    if (error || !usuario) {
+      const msg = String(error?.message || error || '');
+      console.warn('[AUTH/ME] não encontrou no banco, usando JWT. err:', msg);
+      return res.json({
+        id: req.usuario?.id,
+        nome: req.usuario?.nome,
+        email: req.usuario?.email,
+        perfil: req.usuario?.perfil,
+        permissoes: req.usuario?.permissoes || [],
+        canais_chat: req.usuario?.canais_chat,
+        avatar_iniciais: req.usuario?.avatar_iniciais,
+        avatar_cor: req.usuario?.avatar_cor,
+      });
+    }
     let perms = usuario.permissoes != null ? usuario.permissoes : [];
     if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
     if (!Array.isArray(perms)) perms = [];
     const perfilNorm = String(usuario.perfil || '').trim().toLowerCase();
     if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
-    res.json({ ...usuario, permissoes: perms });
+    res.json({
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      perfil: usuario.perfil,
+      permissoes: perms,
+      canais_chat: usuario.canais_chat,
+      avatar_iniciais: usuario.avatar_iniciais || 'AD',
+      avatar_cor: usuario.avatar_cor || '#4A90D9',
+    });
   } catch(err) {
     res.status(500).json({ error: err.message });
   }
