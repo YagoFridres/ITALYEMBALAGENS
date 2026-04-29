@@ -2248,6 +2248,8 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       of_numero: String(b.of_numero || ''),
       produto: String(b.produto || ''),
       cliente: String(b.cliente || ''),
+      maquina: b.maquina != null ? String(b.maquina || '') : undefined,
+      maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
       valor_unitario: Number(b.valor_unitario || 0),
       qtd_perdida: Math.trunc(Number(b.qtd_perdida || 0)),
       valor_perdido: Number(b.valor_perdido || 0),
@@ -2257,12 +2259,29 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       usuario: b.usuario || req.usuario?.nome || 'sistema',
       obs: b.obs || ''
     };
-    const { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
+    if (!payload.maquina) delete payload.maquina;
+    if (!payload.maquina_id) delete payload.maquina_id;
+    let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
     if (error) {
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
       if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
         return ok(res, { skipped: true, reason: 'table_missing' });
+      }
+      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
+        const payload2 = { ...payload };
+        delete payload2.maquina;
+        delete payload2.maquina_id;
+        const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
+        if (r2.error) {
+          const msg2 = String(r2.error.message || r2.error);
+          const m2 = msg2.toLowerCase();
+          if (m2.includes('does not exist') || m2.includes('not exist') || m2.includes('not find') || m2.includes('not found')) {
+            return ok(res, { skipped: true, reason: 'table_missing' });
+          }
+          throw r2.error;
+        }
+        return ok(res, r2.data);
       }
       throw error;
     }
