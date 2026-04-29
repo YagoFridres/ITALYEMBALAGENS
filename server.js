@@ -2289,6 +2289,42 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+async function updateCaixasPerdidasMaquina(req, res) {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const b = req.body || {};
+
+    const payload = {};
+    if (Object.prototype.hasOwnProperty.call(b, 'maquina')) {
+      const nome = b.maquina == null ? null : String(b.maquina || '').trim();
+      payload.maquina = nome || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(b, 'maquina_id')) {
+      const mid = b.maquina_id == null ? null : String(b.maquina_id || '').trim();
+      payload.maquina_id = mid || null;
+    }
+    if (Object.keys(payload).length === 0) return res.status(400).json({ ok: false, error: 'payload vazio' });
+
+    const { data, error } = await supabase.from('caixas_perdidas').update(payload).eq('id', id).select().single();
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, { skipped: true, reason: 'table_missing' });
+      }
+      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
+        return ok(res, { skipped: true, reason: 'columns_missing' });
+      }
+      throw error;
+    }
+    return ok(res, data);
+  } catch (e) { err(res, e); }
+}
+
+app.put('/api/caixas_perdidas/:id', authMiddleware, updateCaixasPerdidasMaquina);
+app.patch('/api/caixas_perdidas/:id', authMiddleware, updateCaixasPerdidasMaquina);
+
 app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('caixas_perdidas').delete().eq('id', req.params.id);
