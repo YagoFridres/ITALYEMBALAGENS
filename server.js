@@ -2336,41 +2336,35 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-async function updateCaixasPerdidasMaquina(req, res) {
+app.put('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
-    const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const b = req.body || {};
-
-    const payload = {};
-    if (Object.prototype.hasOwnProperty.call(b, 'maquina')) {
-      const nome = b.maquina == null ? null : String(b.maquina || '').trim();
-      payload.maquina = nome || null;
-    }
-    if (Object.prototype.hasOwnProperty.call(b, 'maquina_id')) {
-      const mid = b.maquina_id == null ? null : String(b.maquina_id || '').trim();
-      payload.maquina_id = mid || null;
-    }
-    if (Object.keys(payload).length === 0) return res.status(400).json({ ok: false, error: 'payload vazio' });
-
-    const { data, error } = await supabase.from('caixas_perdidas').update(payload).eq('id', id).select().single();
-    if (error) {
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
-        return res.status(400).json({ ok: false, error: 'table_missing' });
-      }
-      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
-        return res.status(400).json({ ok: false, error: 'columns_missing' });
-      }
-      throw error;
-    }
+    const payload = { ...req.body };
+    delete payload.id;
+    const { data, error } = await supabase
+      .from('caixas_perdidas')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
     return ok(res, data);
-  } catch (e) { err(res, e); }
-}
+  } catch (e) { return err(res, e); }
+});
 
-app.put('/api/caixas_perdidas/:id', authMiddleware, updateCaixasPerdidasMaquina);
-app.patch('/api/caixas_perdidas/:id', authMiddleware, updateCaixasPerdidasMaquina);
+app.patch('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...req.body };
+    delete payload.id;
+    const { data, error } = await supabase
+      .from('caixas_perdidas')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
 
 app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   try {
@@ -2627,6 +2621,14 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
+    if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda')) {
+      const mp = body.maquina_perda == null ? null : String(body.maquina_perda || '').trim();
+      updateData.maquina_perda = mp || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) {
+      const mid = body.maquina_perda_id == null ? null : String(body.maquina_perda_id || '').trim();
+      updateData.maquina_perda_id = mid || null;
+    }
 
     const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
     if (isFluxoObj) {
@@ -6037,9 +6039,21 @@ app.get('/api/recebimento_insumos', authMiddleware, async (req, res) => {
 
 app.post('/api/recebimento_insumos', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('recebimento_insumos').insert([req.body]).select();
-    if (error) throw error;
-    ok(res, data[0]);
+    let payload = { ...(req.body || {}) };
+    for (let tentativa = 0; tentativa < 10; tentativa++) {
+      const { data, error } = await supabase.from('recebimento_insumos').insert([payload]).select();
+      if (!error) return ok(res, data && data[0] ? data[0] : null);
+      const msg = String(error.message || error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+        delete payload[col];
+        continue;
+      }
+      throw error;
+    }
+    return res.status(400).json({ ok: false, error: 'Falha ao inserir recebimento' });
   } catch (e) { err(res, e); }
 });
 
