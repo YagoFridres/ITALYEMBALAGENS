@@ -2311,10 +2311,10 @@ async function updateCaixasPerdidasMaquina(req, res) {
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
       if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
-        return ok(res, { skipped: true, reason: 'table_missing' });
+        return res.status(400).json({ ok: false, error: 'table_missing' });
       }
       if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
-        return ok(res, { skipped: true, reason: 'columns_missing' });
+        return res.status(400).json({ ok: false, error: 'columns_missing' });
       }
       throw error;
     }
