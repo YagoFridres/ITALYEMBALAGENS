@@ -2620,6 +2620,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       valor_total: novoValor,
       valor_venda: novoValor,
       data_conclusao: nowIso,
+      usuario_conclusao: req.usuario?.nome || 'sistema',
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
