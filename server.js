@@ -1679,7 +1679,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let selectAtual = selectBaseCols.join(',');
     for (let tentativa = 0; tentativa < 10; tentativa++) {
       const { data, error } = await buildQuery(selectAtual);
-      if (!error) return ok(res, data || []);
+      if (!error) {
+        return ok(res, data || []);
+      }
       if (!isMissingColumnErr(error)) return res.status(500).json({ ok: false, error: String(error.message || error) });
 
       const colProb = extractMissingCol(error);
