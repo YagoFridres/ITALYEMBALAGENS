@@ -1112,8 +1112,10 @@ function ofPayloadFiltrado(body) {
     'modo_programacao', 'dia_programacao',
     'cidade_entrega',
     'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
+    'maquina_perda', 'maquina_perda_id',
     'caixas_excedentes',
     'data_conclusao',
+    'usuario_conclusao',
     'updated_at'
   ];
   const p = {};
@@ -1604,6 +1606,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'data_conclusao','prioridade','prioridade_producao','modo_programacao',
       'dia_programacao','cidade_entrega','qtd_pedida','qtd_produzida',
       'qtd_perdida','caixas_excedentes',
+      'maquina_perda','maquina_perda_id','usuario_conclusao',
       'imgs','imagens','imagem_url','foto'
     ];
 
