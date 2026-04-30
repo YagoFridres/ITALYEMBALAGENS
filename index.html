@@ -1521,7 +1521,16 @@ let FLUXOS = [
   {id:'F5',nome:'Fluxo E — Rotativa',          etapas:['CVR','IMP03']},
 ];
 
-const RAMOS = ['Agro','E-commerce','Farmácia','Indústria','Lanchonete','Mercado','Pizzaria','Outro'];
+let RAMOS = (function(){
+  const iniciais = ['Alimentício','Moveleiro','Calçados','Laticínios','Agronegócio','Comércio','Indústria','Serviços'];
+  try{
+    const raw = localStorage.getItem('ramos_atividade');
+    const arr = JSON.parse(raw || 'null');
+    if(Array.isArray(arr) && arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean);
+  }catch(e){}
+  try{ localStorage.setItem('ramos_atividade', JSON.stringify(iniciais)); }catch(e){}
+  return iniciais.slice();
+})();
 
 const CLIENTES_FALLBACK = [
   {id:'C001',nome:'MOVEIS RUIZ',rs:'RUIZ INDUSTRIA E COMERCIO DE MOVEIS LTDA',cnpj:'24.287.808/0001-60',tel:'(49) 3197-1717',email:'simone@drdmoveis.com.br',cidade:'SAO JOSE DO CEDRO',uf:'SC',end:'',ramo:'MOVELEIRO',pagto:'28 42 56 DD',rep:'RONI (MEIA VENDA)',ie:'257894705',obs:'',empId:''},
@@ -4290,10 +4299,25 @@ async function concluirOFComBaixa(ofId){
     if(!(qtdProd >= 0) || !(qtdPerd >= 0)){ toast('Valores inválidos','var(--red)'); return; }
 
     showSaveIndicator('Concluindo OF...','var(--yellow)');
-    const concluirBody = { qtd_produzida: qtdProd, qtd_perdida: qtdPerd };
+    let nomeMaquinaAtual = '';
+    let idMaquinaAtual = '';
+    try{
+      const esc = (window.CSS && typeof window.CSS.escape === 'function') ? window.CSS.escape(id) : id.replace(/["\\]/g,'\\$&');
+      const card = document.querySelector(`.ofmaq-card[data-of-id="${esc}"]`);
+      nomeMaquinaAtual = String(card?.getAttribute('data-ofmaq-maq') || '').trim();
+    }catch(e){}
+    if(nomeMaquinaAtual){
+      try{
+        const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+        const alvo = (typeof _normMaqNome === 'function') ? _normMaqNome(nomeMaquinaAtual) : String(nomeMaquinaAtual||'').toLowerCase().trim();
+        const it = src.find(m => ((typeof _normMaqNome === 'function') ? _normMaqNome(m?.col || m?.nome || m?.name || '') : String(m?.col || m?.nome || m?.name || '').toLowerCase().trim()) === alvo) || null;
+        idMaquinaAtual = String(it?.id || '').trim();
+      }catch(e){}
+    }
+    const concluirBody = { qtd_produzida: qtdProd, qtd_perdida: qtdPerd, maquina_perda: nomeMaquinaAtual || null, maquina_perda_id: idMaquinaAtual || null };
     if(qtdPerd > 0){
-      concluirBody.maquina_perda = maqPerdaNome || null;
-      concluirBody.maquina_perda_id = maqPerdaId || null;
+      concluirBody.maquina_perda = (maqPerdaNome || nomeMaquinaAtual || null);
+      concluirBody.maquina_perda_id = (maqPerdaId || idMaquinaAtual || null);
     }
     const rConc = await apiFetch('/api/ofs/' + encodeURIComponent(id) + '/concluir', {
       method: 'POST',
@@ -7093,6 +7117,31 @@ function initCaixasPerdidasUI(){
     maq._loaded = true;
   }
   if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'', maquina_id:'' };
+  if(window._cpFiltro && window._cpFiltro.mes_ref === undefined) window._cpFiltro.mes_ref = '';
+  const mesSel = document.getElementById('cp-mesref');
+  if(mesSel && !mesSel._loaded){
+    const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const startY = 2026;
+    const startM = 0;
+    const now = new Date();
+    const endY = now.getFullYear();
+    const endM = now.getMonth();
+    const opts = ['<option value="">Todos os meses</option>'];
+    let y = startY, m = startM;
+    while(y < endY || (y === endY && m <= endM)){
+      const v = `${y}-${String(m+1).padStart(2,'0')}`;
+      const lbl = `${nomes[m]} ${y}`;
+      opts.push(`<option value="${escAttr(v)}">${escH(lbl)}</option>`);
+      m++;
+      if(m > 11){ m = 0; y++; }
+    }
+    mesSel.innerHTML = opts.join('');
+    mesSel._loaded = true;
+  }
+  if(mesSel){
+    const curMes = String(window._cpFiltro?.mes_ref || '').trim();
+    if(curMes) mesSel.value = curMes;
+  }
   if(maq){
     const curMaq = String(window._cpFiltro?.maquina_id || '').trim();
     if(curMaq) maq.value = curMaq;
@@ -7122,7 +7171,8 @@ function cpSetRange(tipo, silent){
     ate = d2.toISOString().slice(0,10);
   }
   const maqId = String(window._cpFiltro?.maquina_id || '').trim();
-  window._cpFiltro = { tipo: t, de, ate, maquina_id: maqId };
+  const mesRef = String(window._cpFiltro?.mes_ref || '').trim();
+  window._cpFiltro = { tipo: t, de, ate, maquina_id: maqId, mes_ref: mesRef };
   if(!silent) carregarCaixasPerdidas();
 }
 
@@ -7130,8 +7180,18 @@ function cpAplicarFiltroMaq(){
   try{
     const maq = document.getElementById('cp-maq');
     const sel = String(maq?.value || '').trim();
-    if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'', maquina_id:'' };
+    if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'', maquina_id:'', mes_ref:'' };
     window._cpFiltro.maquina_id = sel;
+    cpRender(Array.isArray(window._cpRows) ? window._cpRows : []);
+  }catch(e){}
+}
+
+function cpAplicarFiltroMes(){
+  try{
+    const sel = document.getElementById('cp-mesref');
+    const v = String(sel?.value || '').trim();
+    if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'', maquina_id:'', mes_ref:'' };
+    window._cpFiltro.mes_ref = v;
     cpRender(Array.isArray(window._cpRows) ? window._cpRows : []);
   }catch(e){}
 }
@@ -7296,7 +7356,14 @@ async function carregarCaixasPerdidas(){
 function cpRender(rows){
   const listaBase = Array.isArray(rows) ? rows : [];
   const maqSel = String((document.getElementById('cp-maq')||{}).value || (window._cpFiltro?.maquina_id || '') || '').trim();
+  const mesSel = String((document.getElementById('cp-mesref')||{}).value || (window._cpFiltro?.mes_ref || '') || '').trim();
   let lista = listaBase;
+  if(mesSel){
+    lista = lista.filter(r=>{
+      const mr = String(r?.mes_referencia || '').trim() || String(r?.data || r?.created_at || '').slice(0,7);
+      return mr === mesSel;
+    });
+  }
   if(maqSel){
     const norm = (s)=> (typeof _normMaqNome === 'function' ? _normMaqNome(s) : String(s||'').toLowerCase().trim());
     let maqNomeSel = '';
@@ -7343,14 +7410,14 @@ function cpRender(rows){
       }
       if(!maqNome) maqNome = '—';
       const maqHtml = (maqNome === '—')
-        ? `<span style="color:#888">—</span>`
-        : `<span>${escH(String(maqNome))}</span>`;
+        ? `<span data-cp-maq="${escAttr(id)}" style="color:#888">—</span>`
+        : `<span data-cp-maq="${escAttr(id)}">${escH(String(maqNome))}</span>`;
       const cli = r.cliente || '—';
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
       const usu = r.usuario || '—';
-      return `<tr>
+      return `<tr data-cp-id="${escAttr(id)}">
         <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escH(fmtD(data))}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">${escH(String(ofNum))}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(prod))}</td>
@@ -7441,7 +7508,7 @@ async function salvarMaquinaCaixaPerdida(){
   }
   const payload = (mode === 'db')
     ? { maquina: maqId ? (maqNome || null) : null, maquina_id: maqId || null }
-    : { maquina_perda: maqId ? (maqNome || null) : null, maquina_perda_id: maqId || null };
+    : { maquina_perda: maqId ? (maqNome || null) : null };
   let token = '';
   try{ token = String(localStorage.getItem('token') || '').trim(); }catch(e){ token = ''; }
   if(!token){
@@ -7484,7 +7551,7 @@ async function salvarMaquinaCaixaPerdida(){
       const key = ofId || cid;
       const ixOf = (Array.isArray(OFs) ? OFs : []).findIndex(o=>String(o?.id||'')===key);
       if(ixOf >= 0){
-        OFs[ixOf] = { ...OFs[ixOf], maquina_perda: payload.maquina_perda, maquina_perda_id: payload.maquina_perda_id };
+        OFs[ixOf] = { ...OFs[ixOf], maquina_perda: payload.maquina_perda, maquina_perda_id: maqId || null };
       }
     }
   }catch(e){}
@@ -7494,13 +7561,51 @@ async function salvarMaquinaCaixaPerdida(){
     if(mode === 'db'){
       rows[ix] = { ...rows[ix], maquina_id: payload.maquina_id, maquina: payload.maquina };
     } else {
-      rows[ix] = { ...rows[ix], maquina_id: payload.maquina_perda_id, maquina: payload.maquina_perda };
+      rows[ix] = { ...rows[ix], maquina_id: maqId || null, maquina: payload.maquina_perda };
     }
     window._cpRows = rows;
   }
   fecharModalEditarMaqCp();
-  cpRender(Array.isArray(window._cpRows) ? window._cpRows : []);
+  try{
+    const sel = `[data-cp-maq="${(window.CSS && window.CSS.escape) ? window.CSS.escape(cid) : String(cid).replace(/["\\]/g,'\\$&')}"]`;
+    const el = document.querySelector(sel);
+    if(el){
+      const novoNome = (mode === 'db') ? payload.maquina : payload.maquina_perda;
+      const txt = novoNome ? String(novoNome) : '—';
+      el.textContent = txt;
+      el.style.color = novoNome ? '' : '#888';
+    }
+  }catch(e){}
   toast('✅ Máquina atualizada!','var(--green)');
+}
+
+function adicionarRamoAtividade(){
+  const nome = String(prompt('Novo ramo de atividade:', '') || '').trim();
+  if(!nome) return;
+  let ramos = [];
+  try{
+    const raw = localStorage.getItem('ramos_atividade');
+    const arr = JSON.parse(raw || 'null');
+    ramos = Array.isArray(arr) ? arr : [];
+  }catch(e){ ramos = []; }
+  const norm = (s)=>String(s||'').trim().toLowerCase();
+  if(ramos.some(x=>norm(x)===norm(nome))){
+    const sel = document.getElementById('cliente-ramo');
+    if(sel) sel.value = ramos.find(x=>norm(x)===norm(nome)) || nome;
+    return;
+  }
+  ramos.push(nome);
+  ramos = ramos.map(x=>String(x||'').trim()).filter(Boolean);
+  try{ ramos.sort((a,b)=>String(a).localeCompare(String(b),'pt-BR',{sensitivity:'base'})); }catch(e){}
+  try{ localStorage.setItem('ramos_atividade', JSON.stringify(ramos)); }catch(e){}
+  RAMOS = ramos;
+  try{ renderClientes(); }catch(e){}
+  const sel = document.getElementById('cliente-ramo');
+  if(sel){
+    const cur = sel.value || '';
+    sel.innerHTML = '<option value="">—</option>' + (RAMOS||[]).map(r=>`<option value="${escAttr(String(r||''))}">${escH(String(r||''))}</option>`).join('');
+    sel.value = cur || nome;
+  }
 }
 
 async function cpExcluir(id){
@@ -7522,7 +7627,12 @@ function renderClientes(){
   const ramo=(document.getElementById('cli-ramo')||{}).value||'';
   const empFil=(document.getElementById('cli-emp-fil')||{}).value||'';
   const rs=document.getElementById('cli-ramo');
-  if(rs&&rs.options.length<=1)RAMOS.forEach(r=>{const o=document.createElement('option');o.textContent=r;rs.appendChild(o);});
+  try{ RAMOS = (function(){ try{ const raw=localStorage.getItem('ramos_atividade'); const arr=JSON.parse(raw||'null'); if(Array.isArray(arr)&&arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean); }catch(e){} return RAMOS; })(); }catch(e){}
+  if(rs){
+    const cur = rs.value || '';
+    rs.innerHTML = '<option value="">Todos os ramos</option>' + (RAMOS||[]).map(r=>`<option value="${escAttr(String(r||''))}">${escH(String(r||''))}</option>`).join('');
+    rs.value = cur;
+  }
   let lista=CLIENTES;
   if(busca)lista=lista.filter(c=>c.nome.toLowerCase().includes(busca.toLowerCase())||(c.cnpj||'').includes(busca));
   if(ramo)lista=lista.filter(c=>c.ramo===ramo);
@@ -7570,7 +7680,13 @@ function abrirModalCliente(id){
   const hid=document.getElementById('cli-id'); if(hid) hid.value = CLIENTE_ATUAL_ID;
   console.log('[CLIENTE] abrirModalCliente', { passed: id, resolvedId: CLIENTE_ATUAL_ID, hasObj: !!c });
   ['cl-nome','cl-rs','cl-cnpj','cl-tel','cl-email','cl-cidade','cl-uf','cl-end','cl-obs'].forEach(fid=>{const e=document.getElementById(fid);if(e)e.value=c?c[fid.replace('cl-','')]||'':'';});
-  const ramoEl=document.getElementById('cliente-ramo'); if(ramoEl) ramoEl.value = c ? (c.ramo || '') : '';
+  const ramoEl=document.getElementById('cliente-ramo');
+  if(ramoEl){
+    try{ RAMOS = (function(){ try{ const raw=localStorage.getItem('ramos_atividade'); const arr=JSON.parse(raw||'null'); if(Array.isArray(arr)&&arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean); }catch(e){} return RAMOS; })(); }catch(e){}
+    const cur = String(c ? (c.ramo || '') : '').trim();
+    ramoEl.innerHTML = '<option value="">—</option>' + (RAMOS||[]).map(r=>`<option value="${escAttr(String(r||''))}">${escH(String(r||''))}</option>`).join('');
+    ramoEl.value = cur;
+  }
   const empSel=document.getElementById('cl-emp');if(empSel)empSel.value=c?(c.empId||''):(EMP_FILTRO||'E1');
   const vsel=document.getElementById('cl-vend');
   if(vsel){
@@ -8161,16 +8277,6 @@ async function salvarReconcluirOF(){
   const valorBase = Number(document.getElementById('rec-valor-base')?.value || 0) || 0;
   const qtdProd = Math.trunc(Number(String(document.getElementById('rec-qtd-prod')?.value || '0').replace(',','.')) || 0);
   const qtdPerd = Math.trunc(Number(String(document.getElementById('rec-qtd-perd')?.value || '0').replace(',','.')) || 0);
-  const nomeMaquinaTmp = document.getElementById('reconcluir-maquina-nome')?.value
-    || document.getElementById('reconcluir-maquina')?.value
-    || document.querySelector('#modal-reconcluir-of select')?.value
-    || '';
-  try{
-    console.log('[RECONCLUIR] nomeMaquina capturado:', nomeMaquinaTmp);
-    console.log('[RECONCLUIR] todos selects no modal:',
-      [...document.querySelectorAll('#modal-reconcluir-of select')].map(s => s.id + '=' + s.value));
-  }catch(e){}
-
   const selectMaq = document.getElementById('rec-maq');
   const maqNomeSel = selectMaq ? String(selectMaq.value || '').trim() : '';
   let maqId = '';
@@ -8181,6 +8287,7 @@ async function salvarReconcluirOF(){
       : '';
   }catch(e){ maqId = ''; }
   const maqNome = maqNomeSel;
+  try{ console.log('[RECONCLUIR] maquina_perda:', maqNome); }catch(e){}
   if(qtdPerd > 0){
     if(!maqNome){ alert('Selecione a máquina onde ocorreu a perda'); return; }
   }
@@ -8218,8 +8325,8 @@ async function salvarReconcluirOF(){
       body: JSON.stringify({
         qtd_produzida: Number(qtdProd),
         qtd_perdida: Number(qtdPerd),
-        maquina_perda: (qtdPerd > 0) ? (maqNome || null) : null,
-        maquina_perda_id: (qtdPerd > 0) ? (maqId || null) : null
+        maquina_perda: maqNome || null,
+        maquina_perda_id: maqId || null
       })
     });
     const data = await r.json().catch(()=>null);
@@ -8251,7 +8358,8 @@ async function salvarReconcluirOF(){
       window._caixasFiltroAtivo = 'tudo';
       if(window._cpFiltro && typeof window._cpFiltro === 'object'){
         const maqIdCur = String(window._cpFiltro.maquina_id || '').trim();
-        window._cpFiltro = { tipo: 'tudo', de: '', ate: '', maquina_id: maqIdCur };
+        const mesRefCur = String(window._cpFiltro.mes_ref || '').trim();
+        window._cpFiltro = { tipo: 'tudo', de: '', ate: '', maquina_id: maqIdCur, mes_ref: mesRefCur };
       }
     }catch(e){}
     try{ if(typeof carregarCaixasPerdidas === 'function') await carregarCaixasPerdidas(); }catch(e){}
@@ -15424,6 +15532,69 @@ setInterval(async ()=>{
   } catch(e){ /* silencioso — já tratado dentro de api() */ }
 }, 300000);
 
+function proximoDiaUtil(base){
+  const d = base instanceof Date ? new Date(base) : new Date();
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 1);
+  while(d.getDay() === 0 || d.getDay() === 6){
+    d.setDate(d.getDate() + 1);
+  }
+  return d.toISOString().slice(0,10);
+}
+
+async function moverOFsParaProximoDia(){
+  if(!window.CURRENT_USER) return;
+  const hoje = new Date().toISOString().slice(0,10);
+  const key = 'job_mover_ofs_18h_last';
+  let last = '';
+  try{ last = String(localStorage.getItem(key) || '').slice(0,10); }catch(e){ last = ''; }
+  if(last === hoje) return;
+  const novaData = proximoDiaUtil(new Date());
+  let rows = [];
+  try{
+    const qs = new URLSearchParams();
+    qs.set('status', 'Em aberto');
+    qs.set('limit', '500');
+    const r = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    rows = Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []);
+  }catch(e){ rows = []; }
+
+  const bloqueados = new Set(['concluído','concluida','concluída','cancelado','cancelada']);
+  const pendentes = (rows||[]).filter(o=>{
+    const st = String(o?.status || '').trim().toLowerCase();
+    return st && !bloqueados.has(st);
+  });
+
+  let ok = 0;
+  for(const of of pendentes){
+    const id = String(of?.id || '').trim();
+    if(!id) continue;
+    try{
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body:{ data_entrega: novaData } });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(r && r.ok && (!j || j.ok !== false)) ok++;
+    }catch(e){}
+  }
+
+  try{ localStorage.setItem(key, hoje); }catch(e){}
+  toast(`${ok} OFs movidas para amanhã`, 'var(--green)');
+}
+
+setInterval(() => {
+  const agora = new Date();
+  const hoje = agora.toISOString().slice(0,10);
+  const key = 'job_mover_ofs_18h_last';
+  let last = '';
+  try{ last = String(localStorage.getItem(key) || '').slice(0,10); }catch(e){ last = ''; }
+  if(agora.getHours() === 18 && agora.getMinutes() === 0 && last !== hoje){
+    moverOFsParaProximoDia();
+  }
+  if(agora.getHours() > 18 && last !== hoje){
+    moverOFsParaProximoDia();
+  }
+}, 60000);
+
 // ===================== MÁQUINAS CRUD =====================
 function renderMaquinasConf(){
   const toolbar=document.querySelector('#page-maquinas .ptoolbar');
@@ -21933,6 +22104,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="cpSetRange('hoje')">Hoje</button>
     <button class="btn btn-ghost btn-sm" onclick="cpSetRange('semana')">Esta Semana</button>
     <button class="btn btn-ghost btn-sm" onclick="cpSetRange('mes')">Este Mês</button>
+    <select id="cp-mesref" style="width:180px" onchange="cpAplicarFiltroMes()">
+      <option value="">Todos os meses</option>
+    </select>
     <select id="cp-emp" style="width:200px">
       <option value="">Todas empresas</option>
     </select>
@@ -22422,7 +22596,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>CIDADE</label><input id="cl-cidade" type="text" list="cidades-roteiro-list" placeholder="Cidade..." autocomplete="off"></div>
     <div class="mf"><label>ESTADO</label><input id="cl-uf" placeholder="SC"></div>
     <div class="mf fgf"><label>ENDEREÇO</label><input id="cl-end"></div>
-    <div class="mf"><label>RAMO DE ATIVIDADE</label><input id="cliente-ramo" placeholder="Ex: Alimentício, Moveleiro, Gráfica..."></div>
+    <div class="mf"><label>RAMO DE ATIVIDADE</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <select id="cliente-ramo" style="flex:1"><option value="">—</option></select>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="adicionarRamoAtividade()" style="padding:6px 10px">＋</button>
+      </div>
+    </div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="cl-obs" rows="2"></textarea></div>
   </div>
   <div class="modal-footer">
