@@ -4498,26 +4498,25 @@ async function moverOFNaFila(ofId, direcao, nomeMaquina){
   novaOrdem[idxAtual] = novaOrdem[idxAlvo];
   novaOrdem[idxAlvo] = tmp;
 
-  const ofA = novaOrdem[idxAtual];
-  const ofB = novaOrdem[idxAlvo];
-  if(!ofA?.id || !ofB?.id) return;
-
-  const novoPrioA = idxAtual * 10;
-  const novoPrioB = idxAlvo * 10;
+  const updates = [];
+  for(let i=0;i<novaOrdem.length;i++){
+    const of = novaOrdem[i];
+    const oid = String(of?.id || '').trim();
+    if(!oid) continue;
+    const curNum = Number(of?.prioridade_producao);
+    const cur = Number.isFinite(curNum) ? curNum : null;
+    const next = i + 1;
+    if(cur !== next) updates.push({ id: oid, prioridade_producao: next });
+  }
 
   try{
     showSaveIndicator('Salvando ordem...','var(--yellow)');
-
-    const r1 = await apiFetch('/api/ofs/' + encodeURIComponent(ofA.id), { method:'PUT', body:{ prioridade_producao: novoPrioA } });
-    const j1 = r1 ? await r1.json().catch(()=>null) : null;
-    if(!r1?.ok || (j1 && j1.ok === false)) throw new Error(j1?.error || j1?.message || 'Falha ao salvar');
-
-    const r2 = await apiFetch('/api/ofs/' + encodeURIComponent(ofB.id), { method:'PUT', body:{ prioridade_producao: novoPrioB } });
-    const j2 = r2 ? await r2.json().catch(()=>null) : null;
-    if(!r2?.ok || (j2 && j2.ok === false)) throw new Error(j2?.error || j2?.message || 'Falha ao salvar');
-
-    ofmaqAtualizarOfLocal(String(ofA.id), { prioridade_producao: novoPrioA });
-    ofmaqAtualizarOfLocal(String(ofB.id), { prioridade_producao: novoPrioB });
+    for(const u of updates){
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(u.id), { method:'PUT', body:{ prioridade_producao: u.prioridade_producao } });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao salvar');
+      ofmaqAtualizarOfLocal(String(u.id), { prioridade_producao: u.prioridade_producao });
+    }
 
     showSaveIndicator('✓ ordem salva','var(--green)');
     ofmaqRerenderGrupoDia(maq);
@@ -4875,6 +4874,58 @@ async function abrirEdicaoOf(id){
   return abrirModalOF(String(id||''));
 }
 var OF_ATUAL_ID = '';
+
+function ofEntregaModoGet(){
+  try{
+    const v = String(localStorage.getItem('of_entrega_modo') || '').trim().toLowerCase();
+    return (v === 'exata' || v === '3dias') ? v : '3dias';
+  }catch(e){
+    return '3dias';
+  }
+}
+
+function ofEntregaModoSet(modo){
+  const v = (modo === 'exata') ? 'exata' : '3dias';
+  try{ localStorage.setItem('of_entrega_modo', v); }catch(e){}
+}
+
+function ofEntregaModoSyncRadios(){
+  const modo = ofEntregaModoGet();
+  const ex = document.getElementById('of-entrega-modo-exata');
+  const d3 = document.getElementById('of-entrega-modo-3dias');
+  if(ex) ex.checked = (modo === 'exata');
+  if(d3) d3.checked = (modo === '3dias');
+}
+
+function ofEntregaModoAplicar(force){
+  const entrega = String(document.getElementById('f-ent')?.value || '').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(entrega)) return;
+  const modo = ofEntregaModoGet();
+  const diaProgEl = document.getElementById('f-dia-prog');
+  const alvo = (modo === 'exata') ? entrega : subtrairDiasUteis(entrega, 3);
+  if(!alvo) return;
+  if(diaProgEl) diaProgEl.value = alvo;
+}
+
+function ofEntregaModoChange(){
+  const ex = document.getElementById('of-entrega-modo-exata');
+  const modo = ex && ex.checked ? 'exata' : '3dias';
+  ofEntregaModoSet(modo);
+  ofEntregaModoAplicar(true);
+}
+
+function ofEntregaModoInit(){
+  ofEntregaModoSyncRadios();
+  try{
+    const campoEntrega = document.getElementById('f-ent');
+    if(campoEntrega && !campoEntrega.dataset.entModoBound){
+      campoEntrega.dataset.entModoBound = '1';
+      campoEntrega.addEventListener('change', function(){ ofEntregaModoAplicar(false); });
+    }
+  }catch(e){}
+  ofEntregaModoAplicar(false);
+}
+
 async function abrirModalOF(id){
   try{ if(typeof popularDatalistCidades === 'function') popularDatalistCidades(); }catch(e){}
   OF_ATUAL_ID = String(id||'');
@@ -4924,23 +4975,11 @@ async function abrirModalOF(id){
   setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
   setVal('f-obs', oEdit ? (oEdit.obs||oEdit.observacao||'') : '');
   setVal('f-prod-desc', oEdit ? (oEdit.prodDesc||oEdit.produto||oEdit.prod||oEdit.descricao||'') : '');
-  try{
-    const campoEntrega = document.getElementById('f-ent');
-    const campoDia = document.getElementById('f-dia');
-    if(campoEntrega && campoDia && !campoEntrega.dataset.prodBound){
-      campoEntrega.dataset.prodBound = '1';
-      campoEntrega.addEventListener('change', function(){
-        if(this.value){
-          const diaProd = subtrairDiasUteis(this.value, 3);
-          if(diaProd) campoDia.value = diaProd;
-        }
-      });
-    }
-  }catch(e){}
   setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
   setVal('f-st', oEdit ? (oEdit.status||'Em aberto') : 'Em aberto');
   setVal('f-modo-prog', oEdit ? (oEdit.modo_programacao||'manual') : 'automatico');
   setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
+  ofEntregaModoInit();
   const progInfo=document.getElementById('f-prog-info'); if(progInfo) progInfo.innerHTML='';
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
   const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.emp_id||oEdit.empresa||EMP_FILTRO||'E1'):(EMP_FILTRO||'E1');
@@ -5965,8 +6004,14 @@ async function salvarOF(){
   const empUuid=empresaUuidBy(empCode)||empresaUuidBy(empName)||null;
   const ms=OFs.length?Math.max(...OFs.map(o=>o.seq)):0;
   const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
-  const dia_programacao = seguro('f-dia-prog','') || '';
+  let dia_programacao = seguro('f-dia-prog','') || '';
   const data_pedido = seguro('f-dia','');
+  const entregaSel = sanitizeDateInput(seguro('f-ent',''));
+  if(entregaSel){
+    const modoEntrega = (typeof ofEntregaModoGet === 'function') ? ofEntregaModoGet() : '3dias';
+    const diaDerivado = (modoEntrega === 'exata') ? entregaSel : subtrairDiasUteis(entregaSel, 3);
+    if(diaDerivado) dia_programacao = diaDerivado;
+  }
   const dia = dia_programacao || data_pedido;
   const cliObj = getCli(cliId) || {};
   const cidade_entrega = cliObj.cidade || '';
@@ -5997,7 +6042,7 @@ async function salvarOF(){
       (it?.maquinas_fluxo || []).forEach((m) => addFluxo(fluxo_maquinas, m));
     });
   }
-  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:sanitizeDateInput(seguro('f-ent','')),data_entrega:sanitizeDateInput(seguro('f-ent','')),fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   payloadLocal.quantidade = qtdTotal;
   payloadLocal.valor_venda = valTotal;
   payloadLocal.valor_total = valTotal;
@@ -6041,8 +6086,14 @@ async function salvarEdicaoOFId(id){
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
     if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
     const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
-    const dia_programacao = seguro('f-dia-prog','') || '';
+    let dia_programacao = seguro('f-dia-prog','') || '';
     const data_pedido = seguro('f-dia','');
+    const entregaSel = sanitizeDateInput(seguro('f-ent',''));
+    if(entregaSel){
+      const modoEntrega = (typeof ofEntregaModoGet === 'function') ? ofEntregaModoGet() : '3dias';
+      const diaDerivado = (modoEntrega === 'exata') ? entregaSel : subtrairDiasUteis(entregaSel, 3);
+      if(diaDerivado) dia_programacao = diaDerivado;
+    }
     const dia = dia_programacao || data_pedido;
     const cliObj = getCli(cliId) || {};
     const cidadeManual = seguro('f-cidade-of','') ? String(seguro('f-cidade-of','')).trim() : '';
@@ -6092,8 +6143,8 @@ async function salvarEdicaoOFId(id){
     dia:sanitizeDateInput(dia),
     data_pedido:sanitizeDateInput(data_pedido),
     data_producao:sanitizeDateInput(dia),
-    ent:sanitizeDateInput(seguro('f-ent','')),
-    data_entrega:sanitizeDateInput(seguro('f-ent','')),
+    ent:entregaSel,
+    data_entrega:entregaSel,
     fluxo:seguro('f-fl',''),
     maq:Array.isArray(idsSel) ? idsSel.slice() : getMaqSel(),
     status:seguro('f-st',''),
@@ -15549,36 +15600,46 @@ async function moverOFsParaProximoDia(){
   let last = '';
   try{ last = String(localStorage.getItem(key) || '').slice(0,10); }catch(e){ last = ''; }
   if(last === hoje) return;
-  const novaData = proximoDiaUtil(new Date());
+  const proximo = proximoDiaUtil(new Date());
   let rows = [];
   try{
     const qs = new URLSearchParams();
-    qs.set('status', 'Em aberto');
     qs.set('limit', '500');
     const r = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
     const j = r ? await r.json().catch(()=>null) : null;
     rows = Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []);
   }catch(e){ rows = []; }
 
-  const bloqueados = new Set(['concluído','concluida','concluída','cancelado','cancelada']);
-  const pendentes = (rows||[]).filter(o=>{
-    const st = String(o?.status || '').trim().toLowerCase();
-    return st && !bloqueados.has(st);
+  const norm = (s)=>{
+    const raw = String(s || '').trim().toLowerCase();
+    if(!raw) return '';
+    try{ return raw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }catch(_){ return raw; }
+  };
+  const atrasadas = (rows||[]).filter(of=>{
+    const st = norm(of?.status);
+    const entrega = String(of?.data_entrega || of?.ent || '').slice(0,10);
+    if(!entrega) return false;
+    const concluida = st.includes('conclu') || st.includes('cancelad');
+    const emAberto = st.includes('em aberto');
+    return !concluida && emAberto && entrega <= hoje;
   });
 
-  let ok = 0;
-  for(const of of pendentes){
+  let movidas = 0;
+  for(const of of atrasadas){
     const id = String(of?.id || '').trim();
     if(!id) continue;
     try{
-      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body:{ data_entrega: novaData } });
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body:{ data_entrega: proximo, ent: proximo } });
       const j = r ? await r.json().catch(()=>null) : null;
-      if(r && r.ok && (!j || j.ok !== false)) ok++;
+      if(r && r.ok && (!j || j.ok !== false)) movidas++;
     }catch(e){}
   }
 
   try{ localStorage.setItem(key, hoje); }catch(e){}
-  toast(`${ok} OFs movidas para amanhã`, 'var(--green)');
+  if(movidas > 0){
+    try{ window.OFS = null; }catch(e){}
+    toast(movidas + ' OFs movidas para ' + proximo, 'var(--green)');
+  }
 }
 
 setInterval(() => {
@@ -22439,7 +22500,19 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>Status</label><select id="f-st"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
     <div class="mf"><label>EMPRESA *</label><select id="f-emp" onchange="ofAtualizaChapas()"><option value="">Selecionar empresa...</option></select></div>
     <div class="mf"><label>DIA PEDIDO</label><input id="f-dia" type="date"></div>
-    <div class="mf"><label>ENTREGA</label><input id="f-ent" type="date"></div>
+    <div class="mf"><label>ENTREGA</label>
+      <input id="f-ent" type="date">
+      <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+          <input type="radio" name="of_entrega_modo" id="of-entrega-modo-exata" value="exata" onchange="ofEntregaModoChange()">
+          Entregar na data selecionada
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+          <input type="radio" name="of_entrega_modo" id="of-entrega-modo-3dias" value="3dias" onchange="ofEntregaModoChange()">
+          Para 3 dias úteis antes da data (padrão)
+        </label>
+      </div>
+    </div>
     <div class="mf"><label>CLIENTE</label>
       <div class="ac-wrap">
         <input id="f-cli-search" type="text" placeholder="Digite nome, razão social, cidade, telefone, CNPJ..." autocomplete="off">
