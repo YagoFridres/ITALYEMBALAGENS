@@ -5083,6 +5083,7 @@ function escolherMaquinaAutomatica(comprimento, largura, altura){
   const altIn = Number(altura || 0) || 0;
   const src = (Array.isArray(MAQUINAS) && MAQUINAS.length) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
   if(!compIn || !largIn || !src.length) return { validas: [], invalidas: [] };
+  const getVel = (m)=> Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || 0) || 0;
   const comp = Math.max(compIn, largIn);
   const larg = Math.min(compIn, largIn);
   const todas = src.slice();
@@ -5111,7 +5112,7 @@ function escolherMaquinaAutomatica(comprimento, largura, altura){
     }
     validas.push(m);
   }
-  validas.sort((a,b)=> Number(b.phora||b.producao||0) - Number(a.phora||a.producao||0));
+  validas.sort((a,b)=> getVel(b) - getVel(a));
   invalidas.sort((a,b)=> String(a.m?.col||'').localeCompare(String(b.m?.col||''),'pt-BR',{sensitivity:'base'}));
   return { validas, invalidas };
 }
@@ -5151,6 +5152,14 @@ function ofGetTipoCaixaObj(){
 }
 
 function ofGetPrimeiraMaquinaNoFluxo(){
+  try{
+    const ids = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : (OF_FLUXO_IDS || []);
+    if(Array.isArray(ids) && ids.length){
+      const names = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(ids) || []) : ids;
+      const n = String(names[0] || '').trim();
+      if(n) return n;
+    }
+  }catch(e){}
   const itens = Array.isArray(ofItensTemp) ? ofItensTemp : [];
   for(const it0 of itens){
     const it = it0 && typeof it0 === 'object' ? it0 : {};
@@ -5162,25 +5171,69 @@ function ofGetPrimeiraMaquinaNoFluxo(){
   return '';
 }
 
-function ofUsarMaquinaSugerida(nomeMaquina){
-  const nome = String(nomeMaquina||'').trim();
-  if(!nome) return;
+function usarMaquinaSugerida(maquinaId){
+  const mid = String(maquinaId || '').trim();
+  if(!mid) return;
+  const maq = (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : Array.isArray(MAQUINAS) ? MAQUINAS : []).find(m => String(m?.id) === mid) || null;
+  if(!maq) return;
+
+  OF_FLUXO_IDS = Array.isArray(OF_FLUXO_IDS) ? OF_FLUXO_IDS.map(v=>String(v)) : [];
+  if(!OF_FLUXO_IDS.includes(mid)) OF_FLUXO_IDS.push(mid);
+  try{ renderMaqChks(); }catch(e){}
+
+  try{
+    const domId = (id)=>String(id).replace(/[^a-zA-Z0-9_-]/g,'_');
+    const cb = document.getElementById('mc-' + domId(mid));
+    if(cb) cb.checked = true;
+  }catch(e){}
+
+  try{
+    document.querySelectorAll('.btn-usar-maquina').forEach(btn=>{
+      if(String(btn?.dataset?.maqId||'') === mid){
+        btn.textContent = '✅ Selecionada';
+        btn.style.background = '#198754';
+        btn.style.borderColor = '#198754';
+        btn.style.color = '#fff';
+      }else{
+        btn.textContent = 'Usar';
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }
+    });
+  }catch(e){}
+
   const itens = Array.isArray(ofItensTemp) ? ofItensTemp : [];
-  for(const it of itens){
-    if(!it || typeof it !== 'object') continue;
-    it.maquina = nome;
-    it.maquinas_fluxo_ids = [];
-    it.maquinas_fluxo = [];
-  }
-  try{ document.getElementById('f-fl') && (document.getElementById('f-fl').value = ''); }catch(e){}
-  renderOfItens();
-  ofAtualizarSugestaoMaquinas();
-  ofAtualizarTempoEstimado();
+  const qtd = itens.reduce((s,it)=> s + (Number(it?.qtd || 0) || 0), 0);
+  const tipoCaixaId = String(document.getElementById('of-tipo-caixa')?.value || '').trim();
+  const tipoCaixa = tipoCaixaId ? ((window.TIPOS_CAIXA || TIPOS_CAIXA || []).find(t => String(t?.id) === tipoCaixaId) || null) : null;
+
+  const setupMin = (Number(tipoCaixa?.setup_min) > 0) ? Number(tipoCaixa.setup_min) : (Number(maq?.setup_medio || maq?.setup) > 0) ? Number(maq.setup_medio || maq.setup) : 35;
+  const velocidade = (Number(tipoCaixa?.producao_hora) > 0) ? Number(tipoCaixa.producao_hora) : Number(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || 0) || 1000;
+  const prodMin = qtd > 0 ? (qtd / velocidade * 60) : 42;
+  const totalMin = setupMin + prodMin;
+  const horas = Math.floor(totalMin / 60);
+  const minutos = Math.round(totalMin % 60);
+  const tempoTexto = horas > 0 ? `${horas}h ${minutos}min` : `${minutos}min`;
+
+  try{
+    const tempoEl = document.getElementById('tempo-estimado-sugestao');
+    if(tempoEl){
+      tempoEl.innerHTML = `⏱ <strong>Tempo estimado com ${escH(String(maq.nome||maq.col||''))}:</strong> ${escH(tempoTexto)} (Setup: ${escH(String(Math.round(setupMin)))}min + Produção: ${escH(String(Math.round(prodMin)))}min)`;
+      tempoEl.style.display = 'block';
+    }
+  }catch(e){}
+
+  try{ ofAtualizarTempoEstimado(); }catch(e){}
 }
 
 function ofAtualizarSugestaoMaquinas(){
   const box = document.getElementById('sugestao-maquinas');
   if(!box) return;
+  try{
+    const tempoEl = document.getElementById('tempo-estimado-sugestao');
+    if(tempoEl){ tempoEl.style.display = 'none'; tempoEl.innerHTML = ''; }
+  }catch(e){}
   const dims = ofDimensoesGet();
   const comp = dims.comprimento;
   const larg = dims.largura;
@@ -5194,13 +5247,14 @@ function ofAtualizarSugestaoMaquinas(){
   const linhasOk = validas.length
     ? validas.map((m, idx)=>{
         const nome = String(m.col || m.nome || '').trim() || '—';
-        const ph = Number(m.phora || m.producao || 0) || 0;
+        const mid = String(m?.id || '').trim();
+        const velocidade = Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || 0) || 0;
         const rec = idx === 0;
         const cor = rec ? 'var(--green)' : 'var(--yellow)';
-        const tag = rec ? ' (recomendada)' : '';
+        const label = rec ? `${nome} (recomendada - ${velocidade} cx/h)` : `${nome} - ${velocidade} cx/h`;
         return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span style="color:${cor};font-weight:900">${rec?'🟢':'🟡'} ${escH(nome)}${escH(tag)} - ${escH(String(ph))} cx/h</span>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="ofUsarMaquinaSugerida('${escAttr(nome)}')" style="padding:4px 10px">Usar</button>
+          <span style="color:${cor};font-weight:900">${rec?'🟢':'🟡'} ${escH(label)}</span>
+          <button type="button" class="btn btn-ghost btn-sm btn-usar-maquina" data-maq-id="${escAttr(mid)}" onclick="usarMaquinaSugerida('${escAttr(mid)}')" style="padding:4px 10px">Usar</button>
         </div>`;
       }).join('')
     : `<div style="color:var(--red);font-weight:900">Nenhuma máquina compatível.</div>`;
@@ -23341,6 +23395,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
         </div>
         <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+        <div id="tempo-estimado-sugestao" style="margin-top:10px;font-size:12px;color:var(--text2);display:none"></div>
         <div id="of-tempo-estimado" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
       </div>
     </div>
@@ -24185,7 +24240,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>☕ INTERVALO MANHÃ (min)</label><input id="maq-e-intm" type="number" value="15" min="0" step="1"></div>
     <div class="mf"><label>🍽 INÍCIO ALMOÇO</label><input id="maq-e-almoco-inicio" type="time" value="12:00"></div>
     <div class="mf"><label>🍽 DURAÇÃO ALMOÇO (min)</label><input id="maq-e-almoco-min" type="number" value="60" min="0" step="1"></div>
-    <div class="mf"><label>⏰ INÍCIO TARDE</label><input id="maq-e-hit" type="time" value="13:00" disabled></div>
+    <div class="mf"><label>⏰ INÍCIO TARDE</label><input id="maq-e-hit" type="time" value="13:00"></div>
     <div class="mf"><label>☕ INTERVALO TARDE (min)</label><input id="maq-e-intt" type="number" value="15" min="0" step="1"></div>
     <div class="mf"><label>🔧 SETUP MANHÃ (min)</label><input id="maq-e-setupm" type="number" value="20" min="0" step="1"></div>
     <div class="mf"><label>🔧 SETUP TARDE (min)</label><input id="maq-e-setupt" type="number" value="10" min="0" step="1"></div>
