@@ -16227,6 +16227,10 @@ function abrirModalMaquina(mi){
     return null;
   };
   document.getElementById('maq-edit-idx').value=mi!==undefined?mi:'';
+  try{
+    const idEl = document.getElementById('maq-id');
+    if(idEl) idEl.value = m && m.id ? String(m.id) : '';
+  }catch(e){}
   document.getElementById('maq-e-col').value=m?m.col:'';
   document.getElementById('maq-e-ico').value=m?m.ico:'⚙';
   const def = defaultsDim(m?.col || m?.nome || '');
@@ -16313,6 +16317,7 @@ async function excluirMaquina(mi){
 }
 async function salvarMaquina(){
   const mi=document.getElementById('maq-edit-idx').value;
+  const idCapturado = String(document.getElementById('maq-id')?.value || '').trim();
   const col=document.getElementById('maq-e-col').value.trim();
   if(!col){toast('Informe o nome da máquina','var(--red)');return;}
   const dados={
@@ -16341,16 +16346,65 @@ async function salvarMaquina(){
       const idx = parseInt(mi);
       const m = MAQUINAS[idx];
       if(!m){toast('Máquina não encontrada','var(--red)');return;}
-      const payload = {...m, ...dados, id: m.id};
-      console.log('[SALVAR MAQUINA] id:', m.id);
+      const id = idCapturado || String(m.id || '').trim();
+      console.log('[SALVAR MAQUINA] id capturado:', id);
+      const payload = {
+        id,
+        nome: dados.col,
+        col: dados.col,
+        producao: dados.phora,
+        phora: dados.phora,
+        setup_medio: dados.setup,
+        setup: dados.setup,
+        passagem_media: dados.passagem,
+        passagem: dados.passagem,
+        setor: dados.setor,
+        descricao: dados.desc,
+        desc: dados.desc,
+        icone: dados.ico,
+        ico: dados.ico,
+        horario_inicio: dados.horario_inicio,
+        horario_fim: dados.horario_fim,
+        puxada_min: dados.puxada_min,
+        puxada_max: dados.puxada_max,
+        boca_max: dados.boca_max,
+        altura_max: dados.altura_max,
+        intervalo_manha_min: dados.intervalo_manha_min,
+        almoco_inicio: dados.almoco_inicio,
+        almoco_min: dados.almoco_min,
+        intervalo_tarde_min: dados.intervalo_tarde_min,
+        setup_manha_min: dados.setup_manha_min,
+        setup_tarde_min: dados.setup_tarde_min,
+      };
+      Object.keys(payload).forEach((k)=>{
+        const v = payload[k];
+        if(v === undefined || v === null || (typeof v === 'number' && !Number.isFinite(v))) delete payload[k];
+      });
+      console.log('[SALVAR MAQUINA] PUT para id:', id);
       console.log('[SALVAR MAQUINA] payload:', JSON.stringify(payload));
-      const r = await salvarViaApiOuLocal('maquina',
-        ()=>api('PUT','/maquinas/'+encodeURIComponent(m.id), payload),
-        ()=>{ Object.assign(m, dados); return {ok:true, local:true}; }
-      );
-      if(!r || !r.ok){toast('Erro ao salvar máquina','var(--red)');return;}
-      if(!r.local){ try{ await carregarMaquinas(); MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){} }catch(e){} }
-      else Object.assign(m, dados);
+
+      if(_apiConectado && CURRENT_USER){
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        const resp = await fetch('/api/maquinas/' + encodeURIComponent(String(id)), {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json().catch(()=>null);
+        console.log('[SALVAR MAQUINA] resposta:', JSON.stringify(data));
+        if(!resp.ok || (data && data.ok === false)){
+          toast('Erro ao salvar máquina','var(--red)');
+          return;
+        }
+      } else {
+        Object.assign(m, dados);
+      }
+
+      try{ await carregarMaquinas(true); }catch(e){}
+      MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
     } else {
       dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
       const payload = {...dados};
@@ -24093,6 +24147,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <button class="close-btn" onclick="fechar('modal-maquina')">✕</button>
   <h2>⚙ Cadastrar / Editar Máquina</h2>
   <input type="hidden" id="maq-edit-idx">
+  <input type="hidden" id="maq-id">
   <div class="fg">
     <div class="mf fgf"><label>NOME DA MÁQUINA *</label><input id="maq-e-col" placeholder="Ex: RISCADOR 03, IMPRESSORA 06..."></div>
     <div class="mf"><label>ÍCONE</label><input id="maq-e-ico" placeholder="⚙" style="font-size:1.2rem;text-align:center;width:60px"></div>

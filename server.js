@@ -2583,6 +2583,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
     const body = req.body || {};
+    console.log('[CONCLUIR OF] body:', JSON.stringify(body));
     const qtdProduzida = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
     if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
@@ -2629,10 +2630,13 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
-    if (body.maquina_perda) updateData.maquina_perda = String(body.maquina_perda).trim();
+    const mpRaw = body.maquina_perda != null ? String(body.maquina_perda).trim() : '';
+    updateData.maquina_perda = mpRaw ? mpRaw : (of.maquina_perda ?? null);
     if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) {
       const mid = body.maquina_perda_id == null ? null : String(body.maquina_perda_id || '').trim();
       updateData.maquina_perda_id = mid || null;
+    } else {
+      updateData.maquina_perda_id = of.maquina_perda_id ?? null;
     }
 
     const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
@@ -2641,6 +2645,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
+    console.log('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
 
@@ -3623,6 +3628,8 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
 
 app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
   try {
+    console.log('[PUT MAQUINA] body recebido:', JSON.stringify(req.body));
+    console.log('[PUT MAQUINA] id:', req.params.id);
     const b = req.body || {};
     const payload = {
       nome: b.nome !== undefined || b.col !== undefined || b.name !== undefined ? String(b.nome ?? b.col ?? b.name ?? '').trim() : undefined,
