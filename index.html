@@ -5081,10 +5081,11 @@ function escolherMaquinaAutomatica(comprimento, largura, altura){
   const compIn = Number(comprimento || 0) || 0;
   const largIn = Number(largura || 0) || 0;
   const altIn = Number(altura || 0) || 0;
-  if(!compIn || !largIn || !Array.isArray(window.MAQUINAS)) return { validas: [], invalidas: [] };
+  const src = (Array.isArray(MAQUINAS) && MAQUINAS.length) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
+  if(!compIn || !largIn || !src.length) return { validas: [], invalidas: [] };
   const comp = Math.max(compIn, largIn);
   const larg = Math.min(compIn, largIn);
-  const todas = (window.MAQUINAS || []).slice();
+  const todas = src.slice();
   const validas = [];
   const invalidas = [];
   for(const m of todas){
@@ -5127,6 +5128,11 @@ function ofDimensoesGet(){
 }
 
 function ofDimensoesChange(){
+  try{
+    const dims = ofDimensoesGet();
+    console.log('[SUGESTAO] comprimento:', dims.comprimento);
+    console.log('[SUGESTAO] MAQUINAS disponíveis:', (Array.isArray(MAQUINAS) ? MAQUINAS.length : 0));
+  }catch(e){}
   try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
   try{ ofAtualizarTempoEstimado(); }catch(e){}
 }
@@ -15072,8 +15078,8 @@ function normalizeEst(c) {
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
 function normalizeMaq(r){
   const ativo = r.ativo===undefined ? true : !!r.ativo;
-  const phora = r.phora ?? r.por_hora ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
-  const setup = r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
+  const phora = r.phora ?? r.por_hora ?? r.producao ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
+  const setup = r.setup ?? r.setup_medio ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
   const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
   const horario_fim = r.horario_fim ?? r.hf ?? r.fim ?? '18:00';
   const puxada_min = r.puxada_min ?? 0;
@@ -15091,10 +15097,10 @@ function normalizeMaq(r){
     col:r.col||r.nome||r.name||'',
     nome:r.nome||r.col||r.name||'',
     ordem:(r.ordem!=null?Number(r.ordem):null),
-    ico:r.ico||r.icon||'⚙',
+    ico:r.ico||r.icon||r.icone||'⚙',
     phora:Number(phora)||0,
     setup:Number(setup)||0,
-    passagem:r.passagem!=null?Number(r.passagem)||0:0,
+    passagem:r.passagem!=null?Number(r.passagem)||0:(r.passagem_media!=null?Number(r.passagem_media)||0:0),
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
     horario_inicio: String(horario_inicio || '07:00').trim() || '07:00',
@@ -15412,6 +15418,7 @@ async function carregarMaquinas(forcar=false){
   try{
     if(!forcar && Array.isArray(window._MAQUINAS) && window._MAQUINAS.length > 0){
       MAQUINAS = window._MAQUINAS;
+      try{ window.MAQUINAS = MAQUINAS; }catch(e){}
       return { ok:true, cached:true, data:MAQUINAS };
     }
   }catch(e){}
@@ -15460,6 +15467,7 @@ async function carregarMaquinas(forcar=false){
   }
   if(r && r.ok) _ultimaCargaMaquinas = Date.now();
   try{ window._MAQUINAS = MAQUINAS; }catch(e){}
+  try{ window.MAQUINAS = MAQUINAS; }catch(e){}
   return r;
 }
 
@@ -16399,6 +16407,20 @@ async function salvarMaquina(){
           toast('Erro ao salvar máquina','var(--red)');
           return;
         }
+        try{
+          const row = (data && (data.data || data.id)) ? (data.data || data) : null;
+          if(row && row.id){
+            const nm = normalizeMaq ? normalizeMaq(row) : row;
+            const j = (MAQUINAS||[]).findIndex(x=>String(x.id||'')===String(nm.id||''));
+            if(j >= 0) MAQUINAS[j] = { ...MAQUINAS[j], ...nm };
+          }
+        }catch(e){}
+        try{
+          if(typeof cacheClear === 'function') cacheClear('maquinas');
+        }catch(e){}
+        try{ window._MAQUINAS = null; }catch(e){}
+        try{ window.MAQUINAS = null; }catch(e){}
+        try{ _ultimaCargaMaquinas = 0; }catch(e){}
       } else {
         Object.assign(m, dados);
       }
