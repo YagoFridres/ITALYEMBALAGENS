@@ -1196,6 +1196,7 @@ const MODULOS_SISTEMA = [
   { key:'compras',        label:'Compras MP',          grupo:'Produção',  menuId:'menu-compras',         paginaId:'compras' },
   { key:'fluxos',         label:'Fluxos',              grupo:'Máquinas',  menuId:'menu-fluxos',          paginaId:'fluxos' },
   { key:'maquinas',       label:'Máquinas',            grupo:'Máquinas',  menuId:'menu-maquinas',        paginaId:'maquinas' },
+  { key:'tipos_caixa',    label:'Tipos de Caixa',      grupo:'Máquinas',  menuId:'menu-tipos-caixa',     paginaId:'tipos-caixa' },
   { key:'clientes',       label:'Clientes',            grupo:'Cadastros', menuId:'menu-clientes',        paginaId:'clientes' },
   { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
@@ -2158,7 +2159,10 @@ function _goBase(id){
       renderPCP();
     }
   }
-  if(id==='ofmaq')iniciarPollingOFsMaquina();
+  if(id==='ofmaq'){
+    try{ if(_apiConectado && CURRENT_USER) carregarTiposCaixa(false).catch(()=>null); }catch(e){}
+    iniciarPollingOFsMaquina();
+  }
   if(id==='lancamento'){
     if(_apiConectado && CURRENT_USER){
       Promise.resolve().then(()=>lancCarregarHistorico()).catch(()=>renderLancamento());
@@ -2199,6 +2203,10 @@ function _goBase(id){
   if(id==='maquinas'){
     if(_apiConectado && CURRENT_USER) carregarMaquinas(false).then(()=>renderMaquinasConf()).catch(()=>renderMaquinasConf());
     else renderMaquinasConf();
+  }
+  if(id==='tipos-caixa'){
+    if(_apiConectado && CURRENT_USER) carregarTiposCaixa(false).then(()=>renderTiposCaixa()).catch(()=>renderTiposCaixa());
+    else renderTiposCaixa();
   }
   if(id==='vendedores'){
     if(_apiConectado && CURRENT_USER){
@@ -3550,14 +3558,93 @@ function ofmaqSlug(v){
 function ofmaqGroupId(nomeMaquina){
   return 'ofmaq-grp-' + ofmaqSlug(nomeMaquina);
 }
+
+function ofmaqGetMaquinaObj(nomeMaquina){
+  const nome = String(nomeMaquina||'').trim();
+  if(!nome) return null;
+  const norm = (s)=> (typeof _normMaqNome === 'function' ? _normMaqNome(s) : String(s||'').toLowerCase().trim());
+  const alvo = norm(nome);
+  const src = Array.isArray(MAQUINAS) ? MAQUINAS : [];
+  return src.find(m => norm(m?.col || m?.nome || '') === alvo) || null;
+}
+
+function ofGetQtdTotal(of){
+  const itens = Array.isArray(of?.itens) ? of.itens : [];
+  const qtdItens = itens.reduce((s,it)=> s + (Number(it?.qtd ?? it?.quantidade ?? 0) || 0), 0);
+  const qtd = Number(of?.qtd ?? of?.quantidade ?? 0) || 0;
+  return Math.trunc(qtdItens || qtd || 0);
+}
+
+function calcularCapacidadeDia(maquina, ofsNoDia){
+  const inicio = String(maquina?.horario_inicio || '07:00').trim() || '07:00';
+  const fim = String(maquina?.horario_fim || '18:00').trim() || '18:00';
+  const intervalo = Number.isFinite(Number(maquina?.intervalo_min)) ? Number(maquina.intervalo_min) : 60;
+  const parse = (t)=>{
+    const m = String(t||'').match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return null;
+    const h = Math.max(0, Math.min(23, Number(m[1])));
+    const mm = Math.max(0, Math.min(59, Number(m[2])));
+    return h*60 + mm;
+  };
+  const a = parse(inicio);
+  const b = parse(fim);
+  const totalMin = (a!=null && b!=null) ? ((b - a) - Math.max(0, intervalo)) : 0;
+  const totalMinOk = Math.max(0, totalMin);
+  let minOcupados = 0;
+  const tipos = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
+  for(const of of (ofsNoDia||[])){
+    const tipoId = String(of?.tipo_caixa_id || '').trim();
+    const tipoNome = String(of?.tipo_caixa || '').trim();
+    const tipo = tipoId
+      ? (tipos.find(t=>String(t.id)===tipoId) || null)
+      : (tipoNome ? (tipos.find(t=>String(t.nome||'').toLowerCase().trim()===tipoNome.toLowerCase().trim()) || null) : null);
+    const setupMin = Number(tipo?.setup_min) || Number(maquina?.setup) || 30;
+    const prodHora = Number(tipo?.producao_hora) || Number(maquina?.phora) || 500;
+    const prodMinRate = (prodHora > 0) ? (prodHora / 60) : 0;
+    const qtd = ofGetQtdTotal(of);
+    const prodMin = prodMinRate > 0 ? (qtd / prodMinRate) : 0;
+    minOcupados += (Number(setupMin) || 0) + (Number(prodMin) || 0);
+  }
+  const minLivres = totalMinOk - minOcupados;
+  const setupMedio = Number(maquina?.setup) || 30;
+  const setupsCabem = setupMedio > 0 ? Math.floor(Math.max(0, minLivres) / setupMedio) : 0;
+  const ocupacaoPct = totalMinOk > 0 ? Math.round((minOcupados / totalMinOk) * 100) : 0;
+  return {
+    totalMin: totalMinOk,
+    minOcupados: Math.round(minOcupados),
+    minLivres: Math.max(0, Math.round(minLivres)),
+    setupsCabem: Math.max(0, setupsCabem),
+    ocupacaoPct: Math.max(0, ocupacaoPct),
+  };
+}
+
 function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
   const maq = String(nomeMaquina||'').trim() || 'Sem Máquina';
   const gid = ofmaqGroupId(maq);
   const cards = (ofsGrupo||[]).map(of => renderCardOfDia(of, maq)).join('');
+  const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
+  let capHtml = '';
+  if(maqObj){
+    const cap = calcularCapacidadeDia(maqObj, ofsGrupo||[]);
+    const pct = Number.isFinite(Number(cap.ocupacaoPct)) ? Number(cap.ocupacaoPct) : 0;
+    const pctShow = Math.max(0, Math.round(pct));
+    const pctBar = Math.min(100, pctShow);
+    const cor = pctShow > 100 ? 'var(--red)' : (pctShow >= 85 ? 'var(--yellow)' : 'var(--green)');
+    capHtml = `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto">
+      <div style="min-width:160px">
+        <div style="height:8px;background:var(--s2);border:1px solid var(--border);border-radius:999px;overflow:hidden">
+          <div style="height:100%;width:${pctBar}%;background:${cor}"></div>
+        </div>
+        <div style="font-size:.68rem;color:var(--text3);margin-top:4px;font-family:var(--mono)">${escH(String(pctShow))}% · livres ${escH(String(cap.setupsCabem))} setups</div>
+      </div>
+      ${pctShow > 100 ? `<span style="color:var(--red);font-weight:900;font-size:.78rem">SOBRECARREGADA</span>` : ''}
+    </div>`;
+  }
   return `<div class="ofmaq-grupo" id="${escAttr(gid)}" data-ofmaq-maq="${escAttr(maq)}" style="margin:16px;background:var(--s2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
     <div class="ofmaq-grupo-head ofmaq-grupo-header" style="background:var(--s3);padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span class="ofmaq-grupo-title" style="font-size:1.1rem;font-weight:900;color:var(--accent)">🖨️ ${escH(maq)}</span>
       <span class="ofmaq-grupo-count" style="font-size:.78rem;color:var(--text3)">${escH(String((ofsGrupo||[]).length))} OF(s)</span>
+      ${capHtml}
     </div>
     <div class="ofmaq-grupo-body" style="padding:10px 12px">
       ${cards}
@@ -4891,10 +4978,15 @@ function ofEntregaModoSet(modo){
 
 function ofEntregaModoSyncRadios(){
   const modo = ofEntregaModoGet();
-  const ex = document.getElementById('of-entrega-modo-exata');
-  const d3 = document.getElementById('of-entrega-modo-3dias');
-  if(ex) ex.checked = (modo === 'exata');
-  if(d3) d3.checked = (modo === '3dias');
+  const ex = document.getElementById('btn-entrega-exata');
+  const d3 = document.getElementById('btn-entrega-3dias');
+  const set = (btn, ativo)=>{
+    if(!btn) return;
+    btn.style.background = ativo ? '#0d6efd' : 'transparent';
+    btn.style.color = ativo ? '#fff' : '#0d6efd';
+  };
+  set(ex, modo === 'exata');
+  set(d3, modo === '3dias');
 }
 
 function ofEntregaModoAplicar(force){
@@ -4907,10 +4999,9 @@ function ofEntregaModoAplicar(force){
   if(diaProgEl) diaProgEl.value = alvo;
 }
 
-function ofEntregaModoChange(){
-  const ex = document.getElementById('of-entrega-modo-exata');
-  const modo = ex && ex.checked ? 'exata' : '3dias';
+function ofEntregaModoEscolher(modo){
   ofEntregaModoSet(modo);
+  ofEntregaModoSyncRadios();
   ofEntregaModoAplicar(true);
 }
 
@@ -4923,6 +5014,39 @@ function ofEntregaModoInit(){
       campoEntrega.addEventListener('change', function(){ ofEntregaModoAplicar(false); });
     }
   }catch(e){}
+  ofEntregaModoAplicar(false);
+}
+
+function ofRenderTiposCaixaSelect(selIdOrNome){
+  const sel = document.getElementById('of-tipo-caixa');
+  if(!sel) return;
+  const cur = String(sel.value || '').trim();
+  const want = String(selIdOrNome || cur || '').trim();
+  const rows = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
+  const opts = ['<option value="">Selecionar tipo...</option>']
+    .concat(rows.map(t => `<option value="${escAttr(String(t.id))}">${escH(String(t.nome||''))}</option>`));
+  sel.innerHTML = opts.join('');
+  if(want){
+    const exists = rows.some(t => String(t.id) === want);
+    if(exists){
+      sel.value = want;
+    } else {
+      const nWant = want.toLowerCase().trim();
+      const found = rows.find(t => String(t.nome||'').toLowerCase().trim() === nWant) || null;
+      if(found) sel.value = String(found.id);
+    }
+  }
+}
+
+function ofGetTipoCaixaSelecionado(){
+  const sel = document.getElementById('of-tipo-caixa');
+  const id = String(sel?.value || '').trim();
+  if(!id) return { id: null, nome: null };
+  const t = (TIPOS_CAIXA||[]).find(x => String(x.id) === id) || null;
+  return { id, nome: t ? String(t.nome||'').trim() : null };
+}
+
+function ofTipoCaixaChange(){
   ofEntregaModoAplicar(false);
 }
 
@@ -4943,7 +5067,8 @@ async function abrirModalOF(id){
       (needsApi && (!Array.isArray(CLIENTES) || CLIENTES.length===0)) ? carregarClientes(false).catch(()=>null) : Promise.resolve(),
       (needsApi && (!Array.isArray(VENDEDORES) || VENDEDORES.length===0)) ? carregarVendedores(false).catch(()=>null) : Promise.resolve(),
       (needsApi && (!Array.isArray(FLUXOS) || FLUXOS.length===0)) ? carregarFluxos(false).catch(()=>null) : Promise.resolve(),
-      (needsApi && (!Array.isArray(ESTOQUE) || ESTOQUE.length===0)) ? carregarChapas(false).catch(()=>null) : Promise.resolve()
+      (needsApi && (!Array.isArray(ESTOQUE) || ESTOQUE.length===0)) ? carregarChapas(false).catch(()=>null) : Promise.resolve(),
+      (needsApi ? carregarTiposCaixa(false).catch(()=>null) : Promise.resolve())
     ]);
   }catch(e){}
   if(id && !oEdit && _apiConectado && CURRENT_USER){
@@ -4980,6 +5105,7 @@ async function abrirModalOF(id){
   setVal('f-modo-prog', oEdit ? (oEdit.modo_programacao||'manual') : 'automatico');
   setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
   ofEntregaModoInit();
+  ofRenderTiposCaixaSelect(oEdit ? (oEdit.tipo_caixa_id || oEdit.tipo_caixa || '') : '');
   const progInfo=document.getElementById('f-prog-info'); if(progInfo) progInfo.innerHTML='';
   const saldo=document.getElementById('saldo-msg'); if(saldo) saldo.innerHTML='';
   const empSel=document.getElementById('f-emp'); if(empSel) empSel.value=oEdit?(oEdit.empId||oEdit.emp_id||oEdit.empresa||EMP_FILTRO||'E1'):(EMP_FILTRO||'E1');
@@ -6042,7 +6168,8 @@ async function salvarOF(){
       (it?.maquinas_fluxo || []).forEach((m) => addFluxo(fluxo_maquinas, m));
     });
   }
-  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  const tcSel = (typeof ofGetTipoCaixaSelecionado === 'function') ? ofGetTipoCaixaSelecionado() : { id:null, nome:null };
+  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,tipo_caixa_id:tcSel.id,tipo_caixa:tcSel.nome,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
   payloadLocal.quantidade = qtdTotal;
   payloadLocal.valor_venda = valTotal;
   payloadLocal.valor_total = valTotal;
@@ -6053,6 +6180,64 @@ async function salvarOF(){
   payloadLocal.vendId = vendIdSel;
   payloadLocal.fluxo_maquinas = fluxo_maquinas;
   payloadLocal.maq = Array.isArray(idsSel) ? idsSel.slice() : getMaqSel();
+
+  try{
+    const diaProd = String(payloadLocal.dia || payloadLocal.data_producao || '').slice(0,10);
+    const maqNomeRaw = (Array.isArray(payloadLocal.fluxo_maquinas) && payloadLocal.fluxo_maquinas.length) ? String(payloadLocal.fluxo_maquinas[0] || '').trim() : '';
+    const maqNome = (typeof maqAtivaFromNome === 'function') ? (maqAtivaFromNome(maqNomeRaw) || maqNomeRaw) : maqNomeRaw;
+    const maqObj = (maqNome && typeof ofmaqGetMaquinaObj === 'function') ? ofmaqGetMaquinaObj(maqNome) : null;
+    const tipo = tcSel && tcSel.id ? (TIPOS_CAIXA||[]).find(t=>String(t.id)===String(tcSel.id)) : null;
+    if(diaProd && maqObj && tipo){
+      const setupMin = Number(tipo?.setup_min) || Number(maqObj?.setup) || 30;
+      const prodHora = Number(tipo?.producao_hora) || Number(maqObj?.phora) || 500;
+      const prodMinRate = (prodHora > 0) ? (prodHora / 60) : 0;
+      const qtd = Math.trunc(Number(payloadLocal.qtd || payloadLocal.quantidade || 0) || 0);
+      const prodMin = prodMinRate > 0 ? (qtd / prodMinRate) : 0;
+      const minNec = (Number(setupMin) || 0) + (Number(prodMin) || 0);
+      const base = Array.isArray(OFs) ? OFs : [];
+      const ofsNoDia = base.filter(o=>{
+        const d = String(o?.dia || o?.data_producao || '').slice(0,10);
+        if(d !== diaProd) return false;
+        if(typeof ofDeveAparecerNaMaquina === 'function') return ofDeveAparecerNaMaquina(o, maqNome);
+        return true;
+      });
+      const cap = (typeof calcularCapacidadeDia === 'function') ? calcularCapacidadeDia(maqObj, ofsNoDia) : null;
+      const livres = Number(cap?.minLivres ?? 0) || 0;
+      if(minNec > 0 && livres < minNec){
+        const nextBiz = (s)=>{
+          const d = new Date(String(s||'').slice(0,10));
+          if(!Number.isFinite(d.getTime())) return '';
+          d.setHours(0,0,0,0);
+          d.setDate(d.getDate() + 1);
+          while(d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+          return d.toISOString().slice(0,10);
+        };
+        let sugestao = nextBiz(diaProd);
+        for(let i=0;i<30 && sugestao;i++){
+          const ofsDia2 = base.filter(o=>{
+            const d = String(o?.dia || o?.data_producao || '').slice(0,10);
+            if(d !== sugestao) return false;
+            if(typeof ofDeveAparecerNaMaquina === 'function') return ofDeveAparecerNaMaquina(o, maqNome);
+            return true;
+          });
+          const cap2 = (typeof calcularCapacidadeDia === 'function') ? calcularCapacidadeDia(maqObj, ofsDia2) : null;
+          const livres2 = Number(cap2?.minLivres ?? 0) || 0;
+          if(livres2 >= minNec) break;
+          sugestao = nextBiz(sugestao);
+        }
+        if(sugestao){
+          const msg = `${maqNome} está cheia neste dia.\nSugestão: ${sugestao}\n\nAceitar sugestão?`;
+          if(confirm(msg)){
+            payloadLocal.dia = sugestao;
+            payloadLocal.data_producao = sugestao;
+            payloadLocal.dia_programacao = sugestao;
+            const inp = document.getElementById('f-dia-prog');
+            if(inp) inp.value = sugestao;
+          }
+        }
+      }
+    }
+  }catch(e){}
   const errosObrig = validarCamposObrigatoriosOF(payloadLocal, itens);
   if (errosObrig.length > 0) {
     toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
@@ -6125,6 +6310,7 @@ async function salvarEdicaoOFId(id){
         (it?.maquinas_fluxo || []).forEach((m) => addFluxo(fluxo_maquinas, m));
       });
     }
+    const tcSel = (typeof ofGetTipoCaixaSelecionado === 'function') ? ofGetTipoCaixaSelecionado() : { id:null, nome:null };
     const payload={
     of:seguro('f-of',''),
     prodDesc:titulo,
@@ -6135,6 +6321,8 @@ async function salvarEdicaoOFId(id){
     vendId:seguro('f-vend',''),
     vend_id:seguro('f-vend',''),
     vendedor_id:seguro('f-vend',''),
+    tipo_caixa_id: tcSel.id,
+    tipo_caixa: tcSel.nome,
     itens,
     qtd:qtdTotal,
     quantidade:qtdTotal,
@@ -13910,6 +14098,7 @@ function temPermPagina(paginaId){
     cliches: ['estoque','estoque_cliches'],
     maquinas: ['pcp'],
     fluxos: ['pcp'],
+    'tipos-caixa': ['pcp'],
     clientes: ['cadastros','clientes'],
     fornecedores: ['cadastros','fornecedores'],
     vendedores: ['cadastros','vendedores'],
@@ -14640,6 +14829,9 @@ function normalizeMaq(r){
   const ativo = r.ativo===undefined ? true : !!r.ativo;
   const phora = r.phora ?? r.por_hora ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
   const setup = r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
+  const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
+  const horario_fim = r.horario_fim ?? r.hf ?? r.fim ?? '18:00';
+  const intervalo_min = r.intervalo_min ?? r.intervalo ?? r.almoco_min ?? 60;
   return {
     id:r.id,
     col:r.col||r.nome||r.name||'',
@@ -14651,6 +14843,9 @@ function normalizeMaq(r){
     passagem:r.passagem!=null?Number(r.passagem)||0:0,
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
+    horario_inicio: String(horario_inicio || '07:00').trim() || '07:00',
+    horario_fim: String(horario_fim || '18:00').trim() || '18:00',
+    intervalo_min: Number.isFinite(Number(intervalo_min)) ? Number(intervalo_min) : 60,
     ativo
   };
 }
@@ -15664,6 +15859,10 @@ function renderMaquinasConf(){
     const aps=APONTAMENTOS.filter(a=>a.maqId===m.id&&a.tempReal);
     const med=aps.length?Math.round(aps.reduce((s,a)=>s+a.tempReal,0)/aps.length):null;
     const eff=efic(m.id);
+    const hi = String(m.horario_inicio || '07:00').trim() || '07:00';
+    const hf = String(m.horario_fim || '18:00').trim() || '18:00';
+    const intervalo = Number.isFinite(Number(m.intervalo_min)) ? Number(m.intervalo_min) : 60;
+    const disp = calcMaquinaDisponibilidade(hi, hf, intervalo, Number(m.setup||30));
     return '<div class="maq-conf-card" style="'+(m.ativo===false?'opacity:.5':'')+'">'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
       '<div class="maq-conf-nome">'+m.ico+' '+m.col+'</div>'+
@@ -15676,12 +15875,47 @@ function renderMaquinasConf(){
       '<div>Produção: <b>'+m.phora.toLocaleString()+' un/h</b></div>'+
       '<div>Setup: <b>'+m.setup+' min</b></div>'+
       '<div>Passagem média: <b>'+(m.passagem||'—')+' min</b></div>'+
+      '<div>Horário: <b>'+escH(hi)+' às '+escH(hf)+' ('+escH(disp.horasTxt)+')</b></div>'+
+      '<div>Setups possíveis/dia: <b>'+escH(String(disp.setupsDia))+'</b></div>'+
       (m.setor?'<div>Setor: <b>'+m.setor+'</b></div>':'')+
       (med!==null?'<div>Tempo médio real: <b style="color:var(--green)">'+fmtMin(med)+'</b></div>':'')+
       (eff!==null?'<div>Eficiência: <b style="color:'+(eff>=100?'var(--green)':eff>=80?'var(--yellow)':'var(--red)')+'">'+eff+'%</b></div>':'')+
       '<div style="color:var(--text3)">'+aps.length+' apontamentos</div>'+
       '</div></div>';
   }).join('');
+}
+
+function calcMaquinaDisponibilidade(horarioInicio, horarioFim, intervaloMin, setupMedioMin){
+  const hi = String(horarioInicio || '07:00').trim() || '07:00';
+  const hf = String(horarioFim || '18:00').trim() || '18:00';
+  const intervalo = Number.isFinite(Number(intervaloMin)) ? Number(intervaloMin) : 60;
+  const setup = Math.max(1, Number.isFinite(Number(setupMedioMin)) ? Number(setupMedioMin) : 30);
+  const parse = (t)=>{
+    const m = String(t||'').match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return null;
+    const h = Math.max(0, Math.min(23, Number(m[1])));
+    const mm = Math.max(0, Math.min(59, Number(m[2])));
+    return h*60 + mm;
+  };
+  const a = parse(hi);
+  const b = parse(hf);
+  const totalMin = (a!=null && b!=null) ? Math.max(0, (b - a) - Math.max(0, intervalo)) : 0;
+  const horas = totalMin / 60;
+  const horasTxt = (Number.isFinite(horas) ? horas.toFixed(1).replace('.',',') : '0') + 'h disponíveis';
+  const setupsDia = totalMin > 0 ? Math.max(0, Math.floor(totalMin / setup)) : 0;
+  return { totalMin, horas, horasTxt, setupsDia };
+}
+
+function maqEditRecalc(){
+  const hi = String(document.getElementById('maq-e-hi')?.value || '07:00').trim() || '07:00';
+  const hf = String(document.getElementById('maq-e-hf')?.value || '18:00').trim() || '18:00';
+  const intervalo = parseInt(document.getElementById('maq-e-int')?.value || '60', 10);
+  const setup = parseInt(document.getElementById('maq-e-setup')?.value || '30', 10);
+  const r = calcMaquinaDisponibilidade(hi, hf, Number.isFinite(intervalo) ? intervalo : 60, Number.isFinite(setup) ? setup : 30);
+  const horasEl = document.getElementById('maq-e-horas');
+  const setupsEl = document.getElementById('maq-e-setups');
+  if(horasEl) horasEl.textContent = r.horasTxt;
+  if(setupsEl) setupsEl.textContent = String(r.setupsDia);
 }
 function abrirModalMaquina(mi){
   const m=mi!==undefined?MAQUINAS[mi]:null;
@@ -15693,6 +15927,23 @@ function abrirModalMaquina(mi){
   document.getElementById('maq-e-passagem').value=m?(m.passagem||''):'';
   document.getElementById('maq-e-setor').value=m?(m.setor||''):'';
   document.getElementById('maq-e-desc').value=m?(m.desc||''):'';
+  const hiEl = document.getElementById('maq-e-hi');
+  const hfEl = document.getElementById('maq-e-hf');
+  const intEl = document.getElementById('maq-e-int');
+  if(hiEl) hiEl.value = (m && m.horario_inicio) ? String(m.horario_inicio).trim() : '07:00';
+  if(hfEl) hfEl.value = (m && m.horario_fim) ? String(m.horario_fim).trim() : '18:00';
+  if(intEl) intEl.value = (m && m.intervalo_min != null) ? String(m.intervalo_min) : '60';
+  try{
+    ['maq-e-hi','maq-e-hf','maq-e-int','maq-e-setup'].forEach((id)=>{
+      const el = document.getElementById(id);
+      if(el && !el.dataset.boundCalc){
+        el.dataset.boundCalc = '1';
+        el.addEventListener('input', maqEditRecalc);
+        el.addEventListener('change', maqEditRecalc);
+      }
+    });
+  }catch(e){}
+  maqEditRecalc();
   abrir('modal-maquina');
 }
 function editarMaquina(mi){abrirModalMaquina(mi);}
@@ -15739,6 +15990,9 @@ async function salvarMaquina(){
     passagem:parseInt(document.getElementById('maq-e-passagem').value)||0,
     setor:document.getElementById('maq-e-setor').value,
     desc:document.getElementById('maq-e-desc').value,
+    horario_inicio: String(document.getElementById('maq-e-hi')?.value || '07:00').trim() || '07:00',
+    horario_fim: String(document.getElementById('maq-e-hf')?.value || '18:00').trim() || '18:00',
+    intervalo_min: parseInt(document.getElementById('maq-e-int')?.value || '60', 10) || 60,
     ativo:true
   };
   try{
@@ -15773,6 +16027,134 @@ async function salvarMaquina(){
     toast('✓ Máquina salva!');
   }catch(e){
     toast('Erro ao salvar: '+(e.message||e),'var(--red)');
+  }
+}
+
+// ===================== TIPOS DE CAIXA (CRUD) =====================
+let TIPOS_CAIXA = [];
+
+function normalizeTipoCaixa(r){
+  const setup = r.setup_min ?? r.setup ?? 30;
+  const prod = r.producao_hora ?? r.producao ?? 500;
+  return {
+    id: r.id,
+    nome: String(r.nome || '').trim(),
+    setup_min: Math.trunc(Number(setup) || 0),
+    producao_hora: Math.trunc(Number(prod) || 0),
+    observacoes: String(r.observacoes ?? r.obs ?? '').trim(),
+    emp_id: String(r.emp_id ?? r.empId ?? '').trim() || 'E1',
+  };
+}
+
+async function carregarTiposCaixa(force){
+  if(!force && Array.isArray(TIPOS_CAIXA) && TIPOS_CAIXA.length) return TIPOS_CAIXA;
+  if(!_apiConectado || !CURRENT_USER) { TIPOS_CAIXA = []; return TIPOS_CAIXA; }
+  const qs = new URLSearchParams();
+  if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+  qs.set('limit', '500');
+  const r = await apiFetch('/api/tipos_caixa' + (qs.toString() ? ('?' + qs.toString()) : ''), { method:'GET' });
+  const j = r ? await r.json().catch(()=>null) : null;
+  const rows = Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []);
+  TIPOS_CAIXA = (rows || []).map(normalizeTipoCaixa).filter(t=>t && t.id && t.nome);
+  try{ TIPOS_CAIXA.sort((a,b)=> String(a.nome).localeCompare(String(b.nome),'pt-BR',{sensitivity:'base'})); }catch(e){}
+  return TIPOS_CAIXA;
+}
+
+function renderTiposCaixa(){
+  const tbody = document.getElementById('tc-body');
+  if(!tbody) return;
+  const rows = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="5" style="padding:12px;border:1px solid var(--border);text-align:center;color:var(--text2)">Nenhum tipo cadastrado.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(t=>{
+    return `<tr>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-weight:900">${escH(String(t.nome||''))}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(t.setup_min||0))}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(t.producao_hora||0))}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2)">${escH(String(t.observacoes||''))}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalTipoCaixa('${escAttr(String(t.id))}')" style="padding:6px 10px">✏️</button>
+        <button class="btn btn-ghost btn-sm" onclick="excluirTipoCaixa('${escAttr(String(t.id))}')" style="padding:6px 10px;color:var(--red)">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalTipoCaixa(id){
+  const tid = String(id || '').trim();
+  const t = tid ? (TIPOS_CAIXA||[]).find(x=>String(x.id)===tid) : null;
+  const title = document.getElementById('tc-title');
+  const idEl = document.getElementById('tc-id');
+  const nomeEl = document.getElementById('tc-nome');
+  const setupEl = document.getElementById('tc-setup');
+  const prodEl = document.getElementById('tc-producao');
+  const obsEl = document.getElementById('tc-obs');
+  if(title) title.textContent = t ? '📦 Editar Tipo de Caixa' : '📦 Novo Tipo de Caixa';
+  if(idEl) idEl.value = t ? String(t.id) : '';
+  if(nomeEl) nomeEl.value = t ? String(t.nome||'') : '';
+  if(setupEl) setupEl.value = t ? String(t.setup_min||0) : '30';
+  if(prodEl) prodEl.value = t ? String(t.producao_hora||0) : '500';
+  if(obsEl) obsEl.value = t ? String(t.observacoes||'') : '';
+  abrir('modal-tipo-caixa');
+  try{ nomeEl?.focus(); }catch(e){}
+}
+
+async function salvarTipoCaixa(){
+  const id = String(document.getElementById('tc-id')?.value || '').trim();
+  const nome = String(document.getElementById('tc-nome')?.value || '').trim();
+  const setup_min = Math.trunc(Number(document.getElementById('tc-setup')?.value || 0) || 0);
+  const producao_hora = Math.trunc(Number(document.getElementById('tc-producao')?.value || 0) || 0);
+  const observacoes = String(document.getElementById('tc-obs')?.value || '').trim();
+  if(!nome){ toast('Informe o nome do tipo','var(--red)'); return; }
+  const payload = { nome, setup_min, producao_hora, observacoes, emp_id: EMP_FILTRO || 'E1' };
+  try{
+    showSaveIndicator('Salvando tipo...','var(--yellow)');
+    const url = id ? ('/api/tipos_caixa/' + encodeURIComponent(id)) : '/api/tipos_caixa';
+    const method = id ? 'PUT' : 'POST';
+    const r = await apiFetch(url, { method, body: payload });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!(r && r.ok) || (j && j.ok === false)){
+      showSaveIndicator('✖ erro','var(--red)');
+      toast('Erro ao salvar tipo','var(--red)');
+      return;
+    }
+    await carregarTiposCaixa(true);
+    renderTiposCaixa();
+    try{ ofRenderTiposCaixaSelect?.(); }catch(e){}
+    fechar('modal-tipo-caixa');
+    showSaveIndicator('✓ salvo','var(--green)');
+    toast('✓ Tipo salvo','var(--green)');
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao salvar tipo','var(--red)');
+  }
+}
+
+async function excluirTipoCaixa(id){
+  const tid = String(id||'').trim();
+  if(!tid) return;
+  const t = (TIPOS_CAIXA||[]).find(x=>String(x.id)===tid) || null;
+  const nome = t ? String(t.nome||'') : tid;
+  if(!confirm('Excluir tipo "'+nome+'"?')) return;
+  try{
+    showSaveIndicator('Excluindo...','var(--yellow)');
+    const r = await apiFetch('/api/tipos_caixa/' + encodeURIComponent(tid), { method:'DELETE' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!(r && r.ok) || (j && j.ok === false)){
+      showSaveIndicator('✖ erro','var(--red)');
+      toast('Erro ao excluir','var(--red)');
+      return;
+    }
+    await carregarTiposCaixa(true);
+    renderTiposCaixa();
+    try{ ofRenderTiposCaixaSelect?.(); }catch(e){}
+    showSaveIndicator('✓','var(--green)');
+    toast('🗑 Excluído','var(--orange)');
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao excluir','var(--red)');
   }
 }
 
@@ -21028,6 +21410,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-fluxos" class="nav-item" onclick="go('fluxos');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🔀</span>Fluxos</div>
       <div id="menu-maquinas" class="nav-item" onclick="go('maquinas');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⚙</span>Máquinas</div>
+      <div id="menu-tipos-caixa" class="nav-item" onclick="go('tipos-caixa');closeNavGroupsExcept('ng-maquinas')"><span class="ico">📦</span>Tipos de Caixa</div>
     </div>
   </div>
 
@@ -21509,6 +21892,35 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="page-body">
     <div class="maq-conf-grid" id="maq-conf-grid"></div>
+  </div>
+</div>
+
+<!-- ========== 6A. TIPOS DE CAIXA ========== -->
+<div id="page-tipos-caixa" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <span style="font-size:.78rem;color:var(--text2)">📦 Tipos de Caixa</span>
+    <div style="flex:1"></div>
+    <button class="btn btn-accent btn-sm" onclick="abrirModalTipoCaixa()">＋ Novo Tipo</button>
+    <button class="btn btn-ghost btn-sm" onclick="renderTiposCaixa()">↻ Atualizar</button>
+  </div>
+  <div class="page-body">
+    <div class="sbox">
+      <div class="sbox-h">Cadastro de Tipos</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:720px" id="tc-table">
+          <thead>
+            <tr style="background:var(--s2)">
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">NOME</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--yellow);text-align:right">SETUP (min)</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--green);text-align:right">PRODUÇÃO (un/h)</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OBS</th>
+              <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center;width:140px">AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody id="tc-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -22497,20 +22909,19 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="fg">
     <div class="mf"><label>Nº OF <span style="font-size:.65rem;color:var(--text3);font-weight:400">(editável)</span></label><input id="f-of" style="color:var(--accent);font-weight:800;font-family:var(--mono);" placeholder="Ex: Nº 001" title="Você pode editar o número da OF"></div>
     <div class="mf fgf" style="grid-column:1/-1"><label>PRODUTO / DESCRIÇÃO PRINCIPAL</label><input id="f-prod-desc" placeholder="Ex: Caixa 200 — 300×200×150mm — Onda B" style="font-weight:600"></div>
+    <div class="mf fgf" style="grid-column:1/-1"><label>TIPO DE CAIXA</label>
+      <select id="of-tipo-caixa" onchange="ofTipoCaixaChange()">
+        <option value="">Selecionar tipo...</option>
+      </select>
+    </div>
     <div class="mf"><label>Status</label><select id="f-st"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
     <div class="mf"><label>EMPRESA *</label><select id="f-emp" onchange="ofAtualizaChapas()"><option value="">Selecionar empresa...</option></select></div>
     <div class="mf"><label>DIA PEDIDO</label><input id="f-dia" type="date"></div>
     <div class="mf"><label>ENTREGA</label>
       <input id="f-ent" type="date">
-      <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text2)">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
-          <input type="radio" name="of_entrega_modo" id="of-entrega-modo-exata" value="exata" onchange="ofEntregaModoChange()">
-          Entregar na data selecionada
-        </label>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
-          <input type="radio" name="of_entrega_modo" id="of-entrega-modo-3dias" value="3dias" onchange="ofEntregaModoChange()">
-          Para 3 dias úteis antes da data (padrão)
-        </label>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button type="button" id="btn-entrega-exata" onclick="ofEntregaModoEscolher('exata')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:transparent;color:#0d6efd;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">📅 Data exata</button>
+        <button type="button" id="btn-entrega-3dias" onclick="ofEntregaModoEscolher('3dias')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:#0d6efd;color:#fff;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">⏰ 3 dias antes (padrão)</button>
       </div>
     </div>
     <div class="mf"><label>CLIENTE</label>
@@ -23335,11 +23746,40 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>PRODUÇÃO (un/hora)</label><input id="maq-e-phora" type="number" placeholder="1000"></div>
     <div class="mf"><label>SETUP MÉDIO (min)</label><input id="maq-e-setup" type="number" placeholder="30"></div>
     <div class="mf"><label>PASSAGEM MÉDIA (min)</label><input id="maq-e-passagem" type="number" placeholder="60"></div>
+    <div class="mf"><label>HORÁRIO INÍCIO</label><input id="maq-e-hi" type="time" value="07:00"></div>
+    <div class="mf"><label>HORÁRIO FIM</label><input id="maq-e-hf" type="time" value="18:00"></div>
+    <div class="mf"><label>INTERVALO/ALMOÇO (min)</label><input id="maq-e-int" type="number" value="60" min="0" step="1"></div>
+    <div class="mf fgf">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">
+          <div style="color:var(--text2);font-size:.8rem">Horas disponíveis/dia: <b id="maq-e-horas">—</b></div>
+          <div style="color:var(--text2);font-size:.8rem">Setups possíveis/dia: <b id="maq-e-setups">—</b></div>
+        </div>
+      </div>
+    </div>
     <div class="mf fgf"><label>DESCRIÇÃO</label><textarea id="maq-e-desc" rows="2" placeholder="Observações sobre a máquina..."></textarea></div>
   </div>
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-maquina')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarMaquina()">Salvar Máquina</button>
+  </div>
+</div></div>
+
+<!-- Modal Tipo de Caixa -->
+<div class="modal-overlay" id="modal-tipo-caixa">
+<div class="modal" style="width:min(560px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-tipo-caixa')">✕</button>
+  <h2 id="tc-title">📦 Tipo de Caixa</h2>
+  <input type="hidden" id="tc-id">
+  <div class="fg">
+    <div class="mf fgf"><label>NOME *</label><input id="tc-nome" placeholder="Ex: Caixa Simples, Pizza, Salgado..."></div>
+    <div class="mf"><label>SETUP (min)</label><input id="tc-setup" type="number" value="30" min="0" step="1"></div>
+    <div class="mf"><label>PRODUÇÃO (un/h)</label><input id="tc-producao" type="number" value="500" min="0" step="1"></div>
+    <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="tc-obs" rows="2" placeholder="Opcional"></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-tipo-caixa')">Cancelar</button>
+    <button class="btn btn-accent" onclick="salvarTipoCaixa()">Salvar</button>
   </div>
 </div></div>
 

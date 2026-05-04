@@ -1138,6 +1138,7 @@ function ofPayloadFiltrado(body) {
     'cliente_id', 'cli_id', 'cliId',
     'vendedor', 'vend_id', 'vendedor_id', 'vendId',
     'empresa_id', 'emp_id', 'empId',
+    'tipo_caixa_id', 'tipo_caixa',
     'qtd', 'quantidade',
     'itens',
     'dia', 'data_pedido', 'data_producao',
@@ -3591,6 +3592,9 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       passagem_media: b.passagem_media != null ? Number(b.passagem_media) : (b.passagem != null ? Number(b.passagem) : 0),
       descricao: String(b.descricao ?? b.desc ?? '').trim() || null,
       icone: String(b.icone ?? b.ico ?? '').trim() || null,
+      horario_inicio: String(b.horario_inicio ?? '').trim() || undefined,
+      horario_fim: String(b.horario_fim ?? '').trim() || undefined,
+      intervalo_min: b.intervalo_min != null ? Math.trunc(Number(b.intervalo_min) || 0) : undefined,
       ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -3615,6 +3619,9 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
       passagem_media: b.passagem_media !== undefined || b.passagem !== undefined ? Number(b.passagem_media ?? b.passagem ?? 0) : undefined,
       descricao: b.descricao !== undefined || b.desc !== undefined ? (String(b.descricao ?? b.desc ?? '').trim() || null) : undefined,
       icone: b.icone !== undefined || b.ico !== undefined ? (String(b.icone ?? b.ico ?? '').trim() || null) : undefined,
+      horario_inicio: b.horario_inicio !== undefined ? (String(b.horario_inicio ?? '').trim() || null) : undefined,
+      horario_fim: b.horario_fim !== undefined ? (String(b.horario_fim ?? '').trim() || null) : undefined,
+      intervalo_min: b.intervalo_min !== undefined ? Math.trunc(Number(b.intervalo_min) || 0) : undefined,
       ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -3646,6 +3653,75 @@ app.get('/api/fluxos', async (req, res) => {
     if (error) throw error;
     cacheSet('fluxos', data || []);
     ok(res, data);
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// TIPOS DE CAIXA
+// ══════════════════════════════════════════════════════════════
+app.get('/api/tipos_caixa', authMiddleware, async (req, res) => {
+  try {
+    const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    const cacheKey = emp ? `tipos_caixa:${emp}` : 'tipos_caixa:all';
+    const cached = cacheGet(cacheKey);
+    if (cached) return ok(res, cached);
+    let q = supabase.from('tipos_caixa').select('*').order('nome', { ascending: true });
+    if (emp) q = q.eq('emp_id', emp);
+    const { data, error } = await q;
+    if (error) throw error;
+    cacheSet(cacheKey, data || []);
+    ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/tipos_caixa', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const emp = String(b.emp_id ?? b.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? 'E1').trim() || 'E1';
+    const payload = {
+      nome: String(b.nome ?? '').trim(),
+      setup_min: b.setup_min != null ? Math.trunc(Number(b.setup_min) || 0) : (b.setup != null ? Math.trunc(Number(b.setup) || 0) : undefined),
+      producao_hora: b.producao_hora != null ? Math.trunc(Number(b.producao_hora) || 0) : (b.producao != null ? Math.trunc(Number(b.producao) || 0) : undefined),
+      observacoes: String(b.observacoes ?? b.obs ?? '').trim() || null,
+      emp_id: emp,
+    };
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'nome_obrigatorio' });
+    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+    const { data, error } = await supabase.from('tipos_caixa').insert([payload]).select();
+    if (error) throw error;
+    cacheClearPrefix('tipos_caixa:');
+    ok(res, data && data[0] ? data[0] : payload);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/tipos_caixa/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id_obrigatorio' });
+    const b = req.body || {};
+    const payload = {
+      nome: b.nome !== undefined ? String(b.nome ?? '').trim() : undefined,
+      setup_min: b.setup_min !== undefined || b.setup !== undefined ? Math.trunc(Number(b.setup_min ?? b.setup ?? 0) || 0) : undefined,
+      producao_hora: b.producao_hora !== undefined || b.producao !== undefined ? Math.trunc(Number(b.producao_hora ?? b.producao ?? 0) || 0) : undefined,
+      observacoes: b.observacoes !== undefined || b.obs !== undefined ? (String(b.observacoes ?? b.obs ?? '').trim() || null) : undefined,
+      emp_id: b.emp_id !== undefined || b.empId !== undefined ? (String(b.emp_id ?? b.empId ?? '').trim() || null) : undefined,
+    };
+    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+    const { data, error } = await supabase.from('tipos_caixa').update(payload).eq('id', id).select();
+    if (error) throw error;
+    cacheClearPrefix('tipos_caixa:');
+    ok(res, data && data[0] ? data[0] : { id, ...payload });
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/tipos_caixa/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id_obrigatorio' });
+    const { error } = await supabase.from('tipos_caixa').delete().eq('id', id);
+    if (error) throw error;
+    cacheClearPrefix('tipos_caixa:');
+    ok(res, { ok: true });
   } catch (e) { err(res, e); }
 });
 
