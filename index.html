@@ -3576,20 +3576,8 @@ function ofGetQtdTotal(of){
 }
 
 function calcularCapacidadeDia(maquina, ofsNoDia){
-  const inicio = String(maquina?.horario_inicio || '07:00').trim() || '07:00';
-  const fim = String(maquina?.horario_fim || '18:00').trim() || '18:00';
-  const intervalo = Number.isFinite(Number(maquina?.intervalo_min)) ? Number(maquina.intervalo_min) : 60;
-  const parse = (t)=>{
-    const m = String(t||'').match(/^(\d{1,2}):(\d{2})$/);
-    if(!m) return null;
-    const h = Math.max(0, Math.min(23, Number(m[1])));
-    const mm = Math.max(0, Math.min(59, Number(m[2])));
-    return h*60 + mm;
-  };
-  const a = parse(inicio);
-  const b = parse(fim);
-  const totalMin = (a!=null && b!=null) ? ((b - a) - Math.max(0, intervalo)) : 0;
-  const totalMinOk = Math.max(0, totalMin);
+  const disp = (typeof calcMaquinaDisponibilidade === 'function') ? calcMaquinaDisponibilidade(maquina || {}) : { tempoProdMin: 0 };
+  const totalMinOk = Math.max(0, Math.trunc(Number(disp?.tempoProdMin ?? 0) || 0));
   let minOcupados = 0;
   const tipos = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
   for(const of of (ofsNoDia||[])){
@@ -4433,8 +4421,9 @@ async function concluirOFComBaixa(ofId){
       status: 'Concluído',
       qtd_produzida: qtdProd,
       qtd_perdida: qtdPerd,
-      maquina_perda: (qtdPerd > 0) ? (maqPerdaNome || null) : null,
-      maquina_perda_id: (qtdPerd > 0) ? (maqPerdaId || null) : null,
+      maquina_perda: concluirBody.maquina_perda || null,
+      maquina_perda_id: concluirBody.maquina_perda_id || null,
+      usuario_conclusao: (concData && concData.usuario_conclusao) ? concData.usuario_conclusao : ((CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : undefined),
       data_conclusao: (concData && concData.data_conclusao) ? concData.data_conclusao : new Date().toISOString()
     };
     if(Number.isFinite(novoValor)) {
@@ -4462,7 +4451,7 @@ async function concluirOFComBaixa(ofId){
       await carregarOFs({ forcar: true });
     }catch(e){}
     try{
-      if(window._PAGE_ATUAL === 'caixas-perdidas' && typeof carregarCaixasPerdidas === 'function') carregarCaixasPerdidas();
+      if(typeof carregarCaixasPerdidas === 'function') await carregarCaixasPerdidas();
       if(window._PAGE_ATUAL === 'relatorios' && typeof renderRelatorio === 'function') renderRelatorio();
       if(window._PAGE_ATUAL === 'comissoes' && typeof calcularComissoes === 'function') calcularComissoes();
     }catch(e){}
@@ -6348,13 +6337,26 @@ async function salvarEdicaoOFId(id){
     maquina_por_item,
     fluxo_maquinas,
     };
+    try{
+      console.log('[EDITAR OF] payload:', JSON.stringify(payload));
+      console.log('[EDITAR OF] id:', id);
+    }catch(e){}
+    try{
+      if(payload.tipo_caixa_id === '' || payload.tipo_caixa_id === null) delete payload.tipo_caixa_id;
+      const isUuid = v => /^[0-9a-f-]{36}$/i.test(String(v||''));
+      if(payload.tipo_caixa_id && !isUuid(payload.tipo_caixa_id)) delete payload.tipo_caixa_id;
+    }catch(e){}
     const errosObrig = validarCamposObrigatoriosOF(payload, itens);
     if (errosObrig.length > 0) {
       toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
       return;
     }
-    console.log('[OF SALVAR] payload completo:', JSON.stringify(payload));
     const payloadPut = stripCamposImutaveisOFPayload({ ...payload });
+    try{
+      if(payloadPut.tipo_caixa_id === '' || payloadPut.tipo_caixa_id === null) delete payloadPut.tipo_caixa_id;
+      const isUuid = v => /^[0-9a-f-]{36}$/i.test(String(v||''));
+      if(payloadPut.tipo_caixa_id && !isUuid(payloadPut.tipo_caixa_id)) delete payloadPut.tipo_caixa_id;
+    }catch(e){}
     const r = await api('PUT','/ofs/'+encodeURIComponent(id), payloadPut);
     if(!r || r.ok===false || r.error) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
     const dadosAtualizados = r.data || r;
@@ -14831,7 +14833,12 @@ function normalizeMaq(r){
   const setup = r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
   const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
   const horario_fim = r.horario_fim ?? r.hf ?? r.fim ?? '18:00';
-  const intervalo_min = r.intervalo_min ?? r.intervalo ?? r.almoco_min ?? 60;
+  const intervalo_manha_min = r.intervalo_manha_min ?? 15;
+  const almoco_inicio = r.almoco_inicio ?? '12:00';
+  const almoco_min = r.almoco_min ?? 60;
+  const intervalo_tarde_min = r.intervalo_tarde_min ?? 15;
+  const setup_manha_min = r.setup_manha_min ?? 20;
+  const setup_tarde_min = r.setup_tarde_min ?? 10;
   return {
     id:r.id,
     col:r.col||r.nome||r.name||'',
@@ -14845,7 +14852,12 @@ function normalizeMaq(r){
     desc:r.desc||r.descricao||'',
     horario_inicio: String(horario_inicio || '07:00').trim() || '07:00',
     horario_fim: String(horario_fim || '18:00').trim() || '18:00',
-    intervalo_min: Number.isFinite(Number(intervalo_min)) ? Number(intervalo_min) : 60,
+    intervalo_manha_min: Number.isFinite(Number(intervalo_manha_min)) ? Number(intervalo_manha_min) : 15,
+    almoco_inicio: String(almoco_inicio || '12:00').trim() || '12:00',
+    almoco_min: Number.isFinite(Number(almoco_min)) ? Number(almoco_min) : 60,
+    intervalo_tarde_min: Number.isFinite(Number(intervalo_tarde_min)) ? Number(intervalo_tarde_min) : 15,
+    setup_manha_min: Number.isFinite(Number(setup_manha_min)) ? Number(setup_manha_min) : 20,
+    setup_tarde_min: Number.isFinite(Number(setup_tarde_min)) ? Number(setup_tarde_min) : 10,
     ativo
   };
 }
@@ -15861,8 +15873,7 @@ function renderMaquinasConf(){
     const eff=efic(m.id);
     const hi = String(m.horario_inicio || '07:00').trim() || '07:00';
     const hf = String(m.horario_fim || '18:00').trim() || '18:00';
-    const intervalo = Number.isFinite(Number(m.intervalo_min)) ? Number(m.intervalo_min) : 60;
-    const disp = calcMaquinaDisponibilidade(hi, hf, intervalo, Number(m.setup||30));
+    const disp = calcMaquinaDisponibilidade(m);
     return '<div class="maq-conf-card" style="'+(m.ativo===false?'opacity:.5':'')+'">'+
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
       '<div class="maq-conf-nome">'+m.ico+' '+m.col+'</div>'+
@@ -15875,8 +15886,9 @@ function renderMaquinasConf(){
       '<div>Produção: <b>'+m.phora.toLocaleString()+' un/h</b></div>'+
       '<div>Setup: <b>'+m.setup+' min</b></div>'+
       '<div>Passagem média: <b>'+(m.passagem||'—')+' min</b></div>'+
-      '<div>Horário: <b>'+escH(hi)+' às '+escH(hf)+' ('+escH(disp.horasTxt)+')</b></div>'+
-      '<div>Setups possíveis/dia: <b>'+escH(String(disp.setupsDia))+'</b></div>'+
+      '<div>Horário: <b>'+escH(hi)+' às '+escH(hf)+'</b></div>'+
+      '<div>Tempo produtivo: <b>'+escH(disp.tempoTxt)+'</b></div>'+
+      '<div>Setups possíveis: <b>'+escH(String(disp.setupsDia))+'</b></div>'+
       (m.setor?'<div>Setor: <b>'+m.setor+'</b></div>':'')+
       (med!==null?'<div>Tempo médio real: <b style="color:var(--green)">'+fmtMin(med)+'</b></div>':'')+
       (eff!==null?'<div>Eficiência: <b style="color:'+(eff>=100?'var(--green)':eff>=80?'var(--yellow)':'var(--red)')+'">'+eff+'%</b></div>':'')+
@@ -15885,11 +15897,17 @@ function renderMaquinasConf(){
   }).join('');
 }
 
-function calcMaquinaDisponibilidade(horarioInicio, horarioFim, intervaloMin, setupMedioMin){
-  const hi = String(horarioInicio || '07:00').trim() || '07:00';
-  const hf = String(horarioFim || '18:00').trim() || '18:00';
-  const intervalo = Number.isFinite(Number(intervaloMin)) ? Number(intervaloMin) : 60;
-  const setup = Math.max(1, Number.isFinite(Number(setupMedioMin)) ? Number(setupMedioMin) : 30);
+function calcMaquinaDisponibilidade(maquina){
+  const m = maquina && typeof maquina === 'object' ? maquina : {};
+  const hi = String(m.horario_inicio || '07:00').trim() || '07:00';
+  const hf = String(m.horario_fim || '18:00').trim() || '18:00';
+  const intervalo_manha_min = Math.max(0, Math.trunc(Number(m.intervalo_manha_min ?? 15) || 0));
+  const almoco_inicio = String(m.almoco_inicio || '12:00').trim() || '12:00';
+  const almoco_min = Math.max(0, Math.trunc(Number(m.almoco_min ?? 60) || 0));
+  const intervalo_tarde_min = Math.max(0, Math.trunc(Number(m.intervalo_tarde_min ?? 15) || 0));
+  const setup_manha_min = Math.max(0, Math.trunc(Number(m.setup_manha_min ?? 20) || 0));
+  const setup_tarde_min = Math.max(0, Math.trunc(Number(m.setup_tarde_min ?? 10) || 0));
+  const setupMedio = Math.max(1, Math.trunc(Number(m.setup ?? 30) || 30));
   const parse = (t)=>{
     const m = String(t||'').match(/^(\d{1,2}):(\d{2})$/);
     if(!m) return null;
@@ -15899,23 +15917,51 @@ function calcMaquinaDisponibilidade(horarioInicio, horarioFim, intervaloMin, set
   };
   const a = parse(hi);
   const b = parse(hf);
-  const totalMin = (a!=null && b!=null) ? Math.max(0, (b - a) - Math.max(0, intervalo)) : 0;
-  const horas = totalMin / 60;
-  const horasTxt = (Number.isFinite(horas) ? horas.toFixed(1).replace('.',',') : '0') + 'h disponíveis';
-  const setupsDia = totalMin > 0 ? Math.max(0, Math.floor(totalMin / setup)) : 0;
-  return { totalMin, horas, horasTxt, setupsDia };
+  const totalJanelaMin = (a!=null && b!=null) ? Math.max(0, (b - a)) : 0;
+  const tempoProdMin = Math.max(0, totalJanelaMin - intervalo_manha_min - almoco_min - intervalo_tarde_min - setup_manha_min - setup_tarde_min);
+  const h = Math.floor(tempoProdMin / 60);
+  const mm = tempoProdMin % 60;
+  const tempoTxt = `${h}h ${String(mm).padStart(2,'0')}min/dia`;
+  const setupsDia = tempoProdMin > 0 ? Math.max(0, Math.floor(tempoProdMin / setupMedio)) : 0;
+  const almIniMin = parse(almoco_inicio);
+  const iniTardeTxt = (almIniMin!=null)
+    ? (function(){
+        const v = almIniMin + almoco_min;
+        const hh = Math.floor((v % (24*60)) / 60);
+        const mm = v % 60;
+        return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+      })()
+    : '';
+  return { totalJanelaMin, tempoProdMin, tempoTxt, setupsDia, iniTardeTxt };
 }
 
 function maqEditRecalc(){
   const hi = String(document.getElementById('maq-e-hi')?.value || '07:00').trim() || '07:00';
   const hf = String(document.getElementById('maq-e-hf')?.value || '18:00').trim() || '18:00';
-  const intervalo = parseInt(document.getElementById('maq-e-int')?.value || '60', 10);
+  const intervalo_manha_min = parseInt(document.getElementById('maq-e-intm')?.value || '15', 10);
+  const almoco_inicio = String(document.getElementById('maq-e-almoco-inicio')?.value || '12:00').trim() || '12:00';
+  const almoco_min = parseInt(document.getElementById('maq-e-almoco-min')?.value || '60', 10);
+  const intervalo_tarde_min = parseInt(document.getElementById('maq-e-intt')?.value || '15', 10);
+  const setup_manha_min = parseInt(document.getElementById('maq-e-setupm')?.value || '20', 10);
+  const setup_tarde_min = parseInt(document.getElementById('maq-e-setupt')?.value || '10', 10);
   const setup = parseInt(document.getElementById('maq-e-setup')?.value || '30', 10);
-  const r = calcMaquinaDisponibilidade(hi, hf, Number.isFinite(intervalo) ? intervalo : 60, Number.isFinite(setup) ? setup : 30);
+  const r = calcMaquinaDisponibilidade({
+    horario_inicio: hi,
+    horario_fim: hf,
+    intervalo_manha_min: Number.isFinite(intervalo_manha_min) ? intervalo_manha_min : 15,
+    almoco_inicio,
+    almoco_min: Number.isFinite(almoco_min) ? almoco_min : 60,
+    intervalo_tarde_min: Number.isFinite(intervalo_tarde_min) ? intervalo_tarde_min : 15,
+    setup_manha_min: Number.isFinite(setup_manha_min) ? setup_manha_min : 20,
+    setup_tarde_min: Number.isFinite(setup_tarde_min) ? setup_tarde_min : 10,
+    setup: Number.isFinite(setup) ? setup : 30,
+  });
   const horasEl = document.getElementById('maq-e-horas');
   const setupsEl = document.getElementById('maq-e-setups');
-  if(horasEl) horasEl.textContent = r.horasTxt;
+  if(horasEl) horasEl.textContent = r.tempoTxt;
   if(setupsEl) setupsEl.textContent = String(r.setupsDia);
+  const hitEl = document.getElementById('maq-e-hit');
+  if(hitEl && r.iniTardeTxt) hitEl.value = r.iniTardeTxt;
 }
 function abrirModalMaquina(mi){
   const m=mi!==undefined?MAQUINAS[mi]:null;
@@ -15929,12 +15975,27 @@ function abrirModalMaquina(mi){
   document.getElementById('maq-e-desc').value=m?(m.desc||''):'';
   const hiEl = document.getElementById('maq-e-hi');
   const hfEl = document.getElementById('maq-e-hf');
-  const intEl = document.getElementById('maq-e-int');
   if(hiEl) hiEl.value = (m && m.horario_inicio) ? String(m.horario_inicio).trim() : '07:00';
   if(hfEl) hfEl.value = (m && m.horario_fim) ? String(m.horario_fim).trim() : '18:00';
-  if(intEl) intEl.value = (m && m.intervalo_min != null) ? String(m.intervalo_min) : '60';
+  const intmEl = document.getElementById('maq-e-intm');
+  const almIniEl = document.getElementById('maq-e-almoco-inicio');
+  const almMinEl = document.getElementById('maq-e-almoco-min');
+  const inttEl = document.getElementById('maq-e-intt');
+  const setupmEl = document.getElementById('maq-e-setupm');
+  const setuptEl = document.getElementById('maq-e-setupt');
+  const hitEl = document.getElementById('maq-e-hit');
+  if(intmEl) intmEl.value = (m && m.intervalo_manha_min != null) ? String(m.intervalo_manha_min) : '15';
+  if(almIniEl) almIniEl.value = (m && m.almoco_inicio) ? String(m.almoco_inicio).trim() : '12:00';
+  if(almMinEl) almMinEl.value = (m && m.almoco_min != null) ? String(m.almoco_min) : '60';
+  if(inttEl) inttEl.value = (m && m.intervalo_tarde_min != null) ? String(m.intervalo_tarde_min) : '15';
+  if(setupmEl) setupmEl.value = (m && m.setup_manha_min != null) ? String(m.setup_manha_min) : '20';
+  if(setuptEl) setuptEl.value = (m && m.setup_tarde_min != null) ? String(m.setup_tarde_min) : '10';
+  if(hitEl){
+    const r = calcMaquinaDisponibilidade(m || {});
+    hitEl.value = r.iniTardeTxt || '13:00';
+  }
   try{
-    ['maq-e-hi','maq-e-hf','maq-e-int','maq-e-setup'].forEach((id)=>{
+    ['maq-e-hi','maq-e-hf','maq-e-intm','maq-e-almoco-inicio','maq-e-almoco-min','maq-e-intt','maq-e-setupm','maq-e-setupt','maq-e-setup'].forEach((id)=>{
       const el = document.getElementById(id);
       if(el && !el.dataset.boundCalc){
         el.dataset.boundCalc = '1';
@@ -15992,7 +16053,12 @@ async function salvarMaquina(){
     desc:document.getElementById('maq-e-desc').value,
     horario_inicio: String(document.getElementById('maq-e-hi')?.value || '07:00').trim() || '07:00',
     horario_fim: String(document.getElementById('maq-e-hf')?.value || '18:00').trim() || '18:00',
-    intervalo_min: parseInt(document.getElementById('maq-e-int')?.value || '60', 10) || 60,
+    intervalo_manha_min: parseInt(document.getElementById('maq-e-intm')?.value || '15', 10) || 15,
+    almoco_inicio: String(document.getElementById('maq-e-almoco-inicio')?.value || '12:00').trim() || '12:00',
+    almoco_min: parseInt(document.getElementById('maq-e-almoco-min')?.value || '60', 10) || 60,
+    intervalo_tarde_min: parseInt(document.getElementById('maq-e-intt')?.value || '15', 10) || 15,
+    setup_manha_min: parseInt(document.getElementById('maq-e-setupm')?.value || '20', 10) || 20,
+    setup_tarde_min: parseInt(document.getElementById('maq-e-setupt')?.value || '10', 10) || 10,
     ativo:true
   };
   try{
@@ -23746,14 +23812,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>PRODUÇÃO (un/hora)</label><input id="maq-e-phora" type="number" placeholder="1000"></div>
     <div class="mf"><label>SETUP MÉDIO (min)</label><input id="maq-e-setup" type="number" placeholder="30"></div>
     <div class="mf"><label>PASSAGEM MÉDIA (min)</label><input id="maq-e-passagem" type="number" placeholder="60"></div>
-    <div class="mf"><label>HORÁRIO INÍCIO</label><input id="maq-e-hi" type="time" value="07:00"></div>
-    <div class="mf"><label>HORÁRIO FIM</label><input id="maq-e-hf" type="time" value="18:00"></div>
-    <div class="mf"><label>INTERVALO/ALMOÇO (min)</label><input id="maq-e-int" type="number" value="60" min="0" step="1"></div>
+    <div class="mf"><label>⏰ INÍCIO MANHÃ</label><input id="maq-e-hi" type="time" value="07:00"></div>
+    <div class="mf"><label>☕ INTERVALO MANHÃ (min)</label><input id="maq-e-intm" type="number" value="15" min="0" step="1"></div>
+    <div class="mf"><label>🍽 INÍCIO ALMOÇO</label><input id="maq-e-almoco-inicio" type="time" value="12:00"></div>
+    <div class="mf"><label>🍽 DURAÇÃO ALMOÇO (min)</label><input id="maq-e-almoco-min" type="number" value="60" min="0" step="1"></div>
+    <div class="mf"><label>⏰ INÍCIO TARDE</label><input id="maq-e-hit" type="time" value="13:00" disabled></div>
+    <div class="mf"><label>☕ INTERVALO TARDE (min)</label><input id="maq-e-intt" type="number" value="15" min="0" step="1"></div>
+    <div class="mf"><label>🔧 SETUP MANHÃ (min)</label><input id="maq-e-setupm" type="number" value="20" min="0" step="1"></div>
+    <div class="mf"><label>🔧 SETUP TARDE (min)</label><input id="maq-e-setupt" type="number" value="10" min="0" step="1"></div>
+    <div class="mf"><label>⏰ FIM EXPEDIENTE</label><input id="maq-e-hf" type="time" value="18:00"></div>
     <div class="mf fgf">
       <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
         <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:baseline">
-          <div style="color:var(--text2);font-size:.8rem">Horas disponíveis/dia: <b id="maq-e-horas">—</b></div>
-          <div style="color:var(--text2);font-size:.8rem">Setups possíveis/dia: <b id="maq-e-setups">—</b></div>
+          <div style="color:var(--text2);font-size:.8rem">Tempo produtivo: <b id="maq-e-horas">—</b></div>
+          <div style="color:var(--text2);font-size:.8rem">Setups possíveis: <b id="maq-e-setups">—</b></div>
         </div>
       </div>
     </div>

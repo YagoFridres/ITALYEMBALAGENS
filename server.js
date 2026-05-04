@@ -1200,6 +1200,9 @@ async function ofsUpdateWithRetry(id, row) {
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').update(p).eq('id', id).select('*').single();
     if (!r.error) return r;
+    try {
+      console.error('[OFS UPDATE] tentativa', tentativa, 'erro:', r.error?.message, 'payload keys:', Object.keys(p || {}).join(','));
+    } catch (_) {}
     const msg = String(r.error.message || r.error);
     const m1 = msg.match(/Could not find the '([^']+)' column/i);
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
@@ -3595,6 +3598,12 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       horario_inicio: String(b.horario_inicio ?? '').trim() || undefined,
       horario_fim: String(b.horario_fim ?? '').trim() || undefined,
       intervalo_min: b.intervalo_min != null ? Math.trunc(Number(b.intervalo_min) || 0) : undefined,
+      intervalo_manha_min: b.intervalo_manha_min != null ? Math.trunc(Number(b.intervalo_manha_min) || 0) : undefined,
+      almoco_inicio: String(b.almoco_inicio ?? '').trim() || undefined,
+      almoco_min: b.almoco_min != null ? Math.trunc(Number(b.almoco_min) || 0) : undefined,
+      intervalo_tarde_min: b.intervalo_tarde_min != null ? Math.trunc(Number(b.intervalo_tarde_min) || 0) : undefined,
+      setup_manha_min: b.setup_manha_min != null ? Math.trunc(Number(b.setup_manha_min) || 0) : undefined,
+      setup_tarde_min: b.setup_tarde_min != null ? Math.trunc(Number(b.setup_tarde_min) || 0) : undefined,
       ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -3622,6 +3631,12 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
       horario_inicio: b.horario_inicio !== undefined ? (String(b.horario_inicio ?? '').trim() || null) : undefined,
       horario_fim: b.horario_fim !== undefined ? (String(b.horario_fim ?? '').trim() || null) : undefined,
       intervalo_min: b.intervalo_min !== undefined ? Math.trunc(Number(b.intervalo_min) || 0) : undefined,
+      intervalo_manha_min: b.intervalo_manha_min !== undefined ? Math.trunc(Number(b.intervalo_manha_min) || 0) : undefined,
+      almoco_inicio: b.almoco_inicio !== undefined ? (String(b.almoco_inicio ?? '').trim() || null) : undefined,
+      almoco_min: b.almoco_min !== undefined ? Math.trunc(Number(b.almoco_min) || 0) : undefined,
+      intervalo_tarde_min: b.intervalo_tarde_min !== undefined ? Math.trunc(Number(b.intervalo_tarde_min) || 0) : undefined,
+      setup_manha_min: b.setup_manha_min !== undefined ? Math.trunc(Number(b.setup_manha_min) || 0) : undefined,
+      setup_tarde_min: b.setup_tarde_min !== undefined ? Math.trunc(Number(b.setup_tarde_min) || 0) : undefined,
       ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
