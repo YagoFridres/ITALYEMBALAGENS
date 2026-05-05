@@ -2245,15 +2245,42 @@ function _goBase(id){
 function updateBadges(){
   document.getElementById('bdg-at').textContent=OFs.filter(o=>o.status==='Atrasado').length+' ATRASADOS';
   document.getElementById('bdg-ug').textContent=OFs.filter(o=>o.urg).length+' URGENTES';
-  const hoje = new Date().toISOString().slice(0,10);
-  const concluidas = (OFs||[]).filter(o=>{
-    const st = String(o.status || '').trim();
-    const okSt = st === 'Concluído' || st === 'Concluido' || st === 'Pedido Pronto';
-    if(!okSt) return false;
-    const dc = String(o.data_conclusao || '');
-    return dc.startsWith(hoje);
-  }).length;
-  document.getElementById('bdg-ok').textContent=concluidas+' CONCLUÍDOS';
+  try{ atualizarContadorConcluidas(); }catch(e){}
+}
+
+async function atualizarContadorConcluidas() {
+  try {
+    if (window._atualizandoConcluidas) return window._concluidasHoje || 0;
+    window._atualizandoConcluidas = true;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const token = localStorage.getItem('token') ||
+                  sessionStorage.getItem('token') || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const resp = await fetch(
+      base + `/api/ofs?status=Concluído&limit=500&t=${Date.now()}`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const data = await resp.json().catch(()=>null);
+    const ofs = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    const concluidasHoje = (ofs || []).filter(of => {
+      const dc = String(of?.data_conclusao || of?.updated_at || '').slice(0, 10);
+      return dc === hoje;
+    });
+    const total = concluidasHoje.length;
+    const badge = document.querySelector(
+      '#bdg-ok, #badge-concluidas, .badge-concluidas, [data-badge="concluidas"]'
+    );
+    if (badge) {
+      if (badge.id === 'bdg-ok') badge.textContent = total + ' CONCLUÍDOS';
+      else badge.textContent = String(total);
+    }
+    window._concluidasHoje = total;
+    return total;
+  } catch(e) {
+    return window._concluidasHoje || 0;
+  } finally {
+    window._atualizandoConcluidas = false;
+  }
 }
 
 // ===================== PCP POR DIA =====================
@@ -8728,7 +8755,7 @@ function cpRender(rows){
       const maqHtml = (maqNome === '—')
         ? `<span data-cp-maq="${escAttr(id)}" style="color:#888">—</span>`
         : `<span data-cp-maq="${escAttr(id)}">${escH(String(maqNome))}</span>`;
-      const cli = r.cliente || '—';
+      const cli = String(r?.cliente || r?.cliente_nome || r?.cli_nome || r?.clienteNome || '').trim() || '—';
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);

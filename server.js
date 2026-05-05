@@ -2731,6 +2731,68 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
 
+    if (qtdPerdida > 0) {
+      try {
+        let cliNome = '';
+        const cliId = String(
+          of.cli_id || of.cliente_id || of.cliId || ''
+        ).trim();
+        if (cliId) {
+          try {
+            const { data: cliData } = await supabase
+              .from('clientes')
+              .select('nome')
+              .eq('id', cliId)
+              .maybeSingle();
+            cliNome = String(cliData?.nome || '').trim();
+          } catch (_) {}
+        }
+
+        let maquinaNome = String(body.maquina_perda || '').trim();
+        if (!maquinaNome) {
+          const fluxoArr2 = parseFluxo(of.fluxo_maquinas || of.maq);
+          const idx = Number(of.maquina_atual_index || 0);
+          const maqRaw = (Array.isArray(fluxoArr2) && fluxoArr2.length)
+            ? (fluxoArr2[idx] || fluxoArr2[fluxoArr2.length - 1] || '')
+            : '';
+          maquinaNome = (maqRaw && typeof maqRaw === 'object' && !Array.isArray(maqRaw))
+            ? String(maqRaw.nome || maqRaw.name || maqRaw.maquina || '').trim()
+            : String(maqRaw || '').trim();
+        }
+
+        const valorUnit = qtdPedida > 0 ? (valorTotalOriginal / qtdPedida) : 0;
+        const payloadPerda = {
+          of_id: sid,
+          of_numero: String(of.of || of.numero || ''),
+          produto: String(of.prodDesc || of.descricao || ''),
+          cliente: cliNome || cliId || '',
+          maquina: maquinaNome || null,
+          valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
+          qtd_perdida: qtdPerdida,
+          valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
+          data: nowIso.slice(0, 10),
+          mes_referencia: nowIso.slice(0, 7),
+          emp_id: String(of.emp_id || ''),
+          usuario: req.usuario?.nome || 'sistema',
+          obs: '',
+        };
+
+        let { error: perdaErr } = await supabase
+          .from('caixas_perdidas')
+          .insert([payloadPerda])
+          .select()
+          .single();
+
+        if (perdaErr) {
+          const msg = String(perdaErr.message || '').toLowerCase();
+          if (msg.includes('maquina') && msg.includes('column')) {
+            const { maquina, ...semMaquina } = payloadPerda;
+            await supabase.from('caixas_perdidas').insert([semMaquina]);
+          }
+        }
+      } catch (_) {}
+    }
+
     try {
       const row = upd && upd.data ? upd.data : of;
       await _maybeRegistrarComissaoOF(req, {
