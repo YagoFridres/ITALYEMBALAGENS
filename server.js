@@ -2374,6 +2374,33 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, res) => {
+  try {
+    const { data: ofs, error } = await supabase
+      .from('ofs')
+      .select('id,qtd,qtd_pedida,qtd_produzida,status')
+      .in('status', ['Concluído', 'Concluido', 'Pedido Pronto'])
+      .or('qtd.eq.0,qtd.is.null');
+    if (error) return res.status(500).json({ ok: false, error: error.message || String(error) });
+
+    let corrigidas = 0;
+    for (const of of (ofs || [])) {
+      const qtdAtual = Number(of?.qtd || 0) || 0;
+      const qtdCorreta = Number(of?.qtd_pedida || of?.qtd_produzida || 0) || 0;
+      if (qtdAtual === 0 && qtdCorreta > 0) {
+        const { error: upErr } = await supabase
+          .from('ofs')
+          .update({ qtd: Math.trunc(qtdCorreta), qtd_produzida: Math.trunc(qtdCorreta) })
+          .eq('id', of.id);
+        if (!upErr) corrigidas++;
+      }
+    }
+    return res.json({ ok: true, corrigidas });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
+});
+
 app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
@@ -2666,9 +2693,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
     const body = req.body || {};
     console.log('[CONCLUIR OF] body:', JSON.stringify(body));
-    const qtdProduzida = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
+    const qtdProduzidaRaw = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
-    if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
+    if (!Number.isFinite(qtdProduzidaRaw) || qtdProduzidaRaw < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
     if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida inválida' });
 
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
@@ -2676,11 +2703,13 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
     const qtdPedida = Number(of.qtd_pedida || of.quantidade || of.qtd || 0);
+    const qtdProduzida = (Number(qtdProduzidaRaw) || 0) || (Number(qtdPedida) || 0);
+    const qtdFinal = (qtdProduzida > 0) ? Math.trunc(qtdProduzida) : Math.trunc(qtdPedida || 0);
     const valorTotalOriginal = Number(of.valor_total || of.valor_venda || 0);
-    const excedente = Math.max(0, Math.trunc(qtdProduzida) - Math.trunc(qtdPedida || 0));
+    const excedente = Math.max(0, Math.trunc(qtdFinal) - Math.trunc(qtdPedida || 0));
     let novoValor = valorTotalOriginal;
-    if (qtdPedida > 0 && qtdProduzida > 0) {
-      novoValor = (valorTotalOriginal / qtdPedida) * qtdProduzida;
+    if (qtdPedida > 0 && qtdFinal > 0) {
+      novoValor = (valorTotalOriginal / qtdPedida) * qtdFinal;
       novoValor = Math.round(novoValor * 100) / 100;
     }
 
@@ -2702,7 +2731,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const nowIso = new Date().toISOString();
     const updateData = {
       status: 'Concluído',
-      qtd_produzida: qtdProduzida || qtdPedida,
+      qtd_produzida: qtdFinal,
+      qtd: qtdFinal,
       qtd_perdida: qtdPerdida,
       caixas_excedentes: excedente,
       valor_total: novoValor,
@@ -2730,6 +2760,15 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     console.log('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+
+    try {
+      const { data: ofVerif } = await supabase
+        .from('ofs')
+        .select('maquina_perda,qtd_perdida,qtd_produzida')
+        .eq('id', sid)
+        .maybeSingle();
+      console.log('[CONCLUIR VERIFICACAO]', ofVerif);
+    } catch (_) {}
 
     if (qtdPerdida > 0) {
       try {

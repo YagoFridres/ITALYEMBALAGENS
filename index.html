@@ -2272,9 +2272,12 @@ async function getConcluidasHoje() {
     const concluidasHoje = (ofs || []).filter(of => {
       let st = String(of?.status || '').toLowerCase();
       try{ st = st.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
-      const concluida = st.includes('conclu');
-      const dc = String(of?.data_conclusao || of?.updated_at || '').slice(0, 10);
-      return concluida && dc === hoje;
+      if(!st.includes('conclu')) return false;
+      const dc = String(of?.data_conclusao || '').slice(0,10);
+      const upd = String(of?.updated_at || '').slice(0,10);
+      if(dc) return dc === hoje;
+      if(upd) return upd === hoje;
+      return true;
     });
     window._concluidasHojeArr = concluidasHoje;
     window._concluidasHoje = concluidasHoje.length;
@@ -4741,6 +4744,15 @@ async function concluirOFComBaixa(ofId){
       const card = document.querySelector(`.ofmaq-card[data-of-id="${esc}"]`);
       nomeMaquinaAtual = String(card?.getAttribute('data-ofmaq-maq') || '').trim();
     }catch(e){}
+    if(!nomeMaquinaAtual){
+      try{
+        nomeMaquinaAtual = String(
+          window._maquinaAtualConcluindo ||
+          document.querySelector('.maquina-col-ativa .maquina-nome')?.textContent ||
+          ''
+        ).trim();
+      }catch(e){}
+    }
     if(nomeMaquinaAtual){
       try{
         const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
@@ -4754,6 +4766,13 @@ async function concluirOFComBaixa(ofId){
       concluirBody.maquina_perda = (maqPerdaNome || nomeMaquinaAtual || null);
       concluirBody.maquina_perda_id = (maqPerdaId || idMaquinaAtual || null);
     }
+    try{
+      console.log('[CONCLUIR] body enviado:', {
+        qtd_produzida: qtdProd,
+        qtd_perdida: qtdPerd,
+        maquina_perda: concluirBody.maquina_perda
+      });
+    }catch(e){}
     const rConc = await apiFetch('/api/ofs/' + encodeURIComponent(id) + '/concluir', {
       method: 'POST',
       body: concluirBody
@@ -4772,6 +4791,8 @@ async function concluirOFComBaixa(ofId){
     concluiuOk = true;
 
     const concData = (jConc && jConc.data) ? jConc.data : null;
+    const qtdSalva = Math.trunc(Number(concData?.qtd_produzida ?? qtdProd ?? qtdOriginal ?? 0) || 0);
+    const qtdPerdSalva = Math.trunc(Number(concData?.qtd_perdida ?? qtdPerd ?? 0) || 0);
     const novoValor = Number(
       (concData && (concData.valor_total ?? concData.valor_venda)) ??
       (jConc && jConc.novo_valor_total) ??
@@ -4779,8 +4800,8 @@ async function concluirOFComBaixa(ofId){
     );
     const patch = {
       status: 'Concluído',
-      qtd_produzida: qtdProd,
-      qtd_perdida: qtdPerd,
+      qtd_produzida: qtdSalva,
+      qtd_perdida: qtdPerdSalva,
       maquina_perda: concluirBody.maquina_perda || null,
       maquina_perda_id: concluirBody.maquina_perda_id || null,
       usuario_conclusao: (concData && concData.usuario_conclusao) ? concData.usuario_conclusao : ((CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : undefined),
@@ -17077,63 +17098,70 @@ function proximoDiaUtil(base){
 async function moverOFsParaProximoDia(){
   if(!window.CURRENT_USER) return;
   const hoje = new Date().toISOString().slice(0,10);
-  const key = 'job_mover_ofs_18h_last';
-  let last = '';
-  try{ last = String(localStorage.getItem(key) || '').slice(0,10); }catch(e){ last = ''; }
-  if(last === hoje) return;
-  const proximo = proximoDiaUtil(new Date());
-  let rows = [];
-  try{
-    const qs = new URLSearchParams();
-    qs.set('limit', '500');
-    const r = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
-    const j = r ? await r.json().catch(()=>null) : null;
-    rows = Array.isArray(j?.data) ? j.data : (Array.isArray(j) ? j : []);
-  }catch(e){ rows = []; }
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  if(!token) return;
+
+  const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  const r = await fetch(base + '/api/ofs?limit=500&t=' + Date.now(), {
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const d = await r.json().catch(()=>null);
+  const todas = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
 
   const norm = (s)=>{
-    const raw = String(s || '').trim().toLowerCase();
+    let raw = String(s || '').trim().toLowerCase();
     if(!raw) return '';
-    try{ return raw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }catch(_){ return raw; }
+    try{ raw = raw.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+    return raw;
   };
-  const atrasadas = (rows||[]).filter(of=>{
+
+  const paraHoje = (todas || []).filter(of => {
     const st = norm(of?.status);
-    const entrega = String(of?.data_entrega || of?.ent || '').slice(0,10);
-    if(!entrega) return false;
-    const concluida = st.includes('conclu') || st.includes('cancelad');
-    const emAberto = st.includes('em aberto');
-    return !concluida && emAberto && entrega <= hoje;
+    if(st.includes('conclu') || st.includes('cancelad')) return false;
+    const dia = String(of?.data_producao || of?.dia || '').slice(0,10);
+    return dia && dia <= hoje;
   });
 
+  if(!paraHoje.length) return 0;
+  const proximo = proximoDiaUtil(new Date());
   let movidas = 0;
-  for(const of of atrasadas){
+
+  for(const of of paraHoje){
     const id = String(of?.id || '').trim();
     if(!id) continue;
     try{
-      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body:{ data_entrega: proximo, ent: proximo } });
-      const j = r ? await r.json().catch(()=>null) : null;
-      if(r && r.ok && (!j || j.ok !== false)) movidas++;
+      await fetch(base + '/api/ofs/' + encodeURIComponent(id), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          data_producao: proximo,
+          dia: proximo,
+          ent: of?.ent || proximo
+        })
+      });
+      movidas++;
     }catch(e){}
   }
 
-  try{ localStorage.setItem(key, hoje); }catch(e){}
-  if(movidas > 0){
-    try{ window.OFS = null; }catch(e){}
-    toast(movidas + ' OFs movidas para ' + proximo, 'var(--green)');
-  }
+  try{ window.OFS = null; }catch(e){}
+  try{ await carregarOFs({ forcar: true }); }catch(e){}
+  try{ toast('📅 ' + movidas + ' OFs movidas para ' + proximo, 'var(--green)'); }catch(e){}
+  return movidas;
 }
 
-setInterval(() => {
+let _jobMovidoHoje = null;
+setInterval(async () => {
   const agora = new Date();
   const hoje = agora.toISOString().slice(0,10);
-  const key = 'job_mover_ofs_18h_last';
-  let last = '';
-  try{ last = String(localStorage.getItem(key) || '').slice(0,10); }catch(e){ last = ''; }
-  if(agora.getHours() === 18 && agora.getMinutes() === 0 && last !== hoje){
-    moverOFsParaProximoDia();
-  }
-  if(agora.getHours() > 18 && last !== hoje){
-    moverOFsParaProximoDia();
+  if(agora.getHours() === 18 && agora.getMinutes() === 0){
+    if(_jobMovidoHoje === hoje) return;
+    _jobMovidoHoje = hoje;
+    try{ console.log('[JOB 18H] Iniciando movimento de OFs...'); }catch(e){}
+    const movidas = await moverOFsParaProximoDia();
+    try{ console.log('[JOB 18H] Movidas:', movidas); }catch(e){}
   }
 }, 60000);
 
