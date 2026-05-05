@@ -1098,6 +1098,7 @@ function ofIn(p) {
   if (has('data_producao')) out.data_producao = sanitizeDate(p.data_producao);
   if (has('data_entrega')) out.data_entrega = sanitizeDate(p.data_entrega);
   if (has('data_conclusao')) out.data_conclusao = sanitizeDate(p.data_conclusao);
+  if (has('data_faturamento')) out.data_faturamento = sanitizeDate(p.data_faturamento);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
   if (out.empresa_id && !isUuid(out.empresa_id)) {
     if (!out.emp_id) out.emp_id = out.empresa_id;
@@ -1161,6 +1162,7 @@ function ofPayloadFiltrado(body) {
     'maquina_perda', 'maquina_perda_id',
     'caixas_excedentes',
     'data_conclusao',
+    'data_faturamento',
     'usuario_conclusao',
     'updated_at'
   ];
@@ -1734,7 +1736,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'cli_id','cliente_id','cliId','cliente','vendedor_id','emp_id','qtd','descricao','prodDesc','prod','produto',
       'valor_total','valor_venda','fluxo_maquinas','maquina_atual_index','maq',
       'chapa_id','qtd_chapas','urg','urgente','data_producao','data_entrega',
-      'data_conclusao','prioridade','prioridade_producao','modo_programacao',
+      'data_conclusao','data_faturamento','prioridade','prioridade_producao','modo_programacao',
       'dia_programacao','cidade_entrega','qtd_pedida','qtd_produzida',
       'qtd_perdida','caixas_excedentes',
       'maquina_perda','maquina_perda_id','usuario_conclusao',
@@ -2497,6 +2499,64 @@ app.delete('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/amostras', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('amostras').select('*').order('created_at', { ascending: false });
+    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    if (req.query.status) q = q.eq('status', req.query.status);
+    if (req.query.cliente_id) q = q.eq('cliente_id', req.query.cliente_id);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/amostras', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const payload = {
+      cliente_id: b.cliente_id || null,
+      cliente_nome: String(b.cliente_nome || b.cliente || ''),
+      produto: String(b.produto || ''),
+      descricao: String(b.descricao || ''),
+      observacoes: String(b.observacoes || b.obs || ''),
+      status: String(b.status || 'Pendente'),
+      data_pedido: b.data_pedido || null,
+      data_entrega: b.data_entrega || null,
+      data_aprovacao: b.data_aprovacao || null,
+      imagem_url: String(b.imagem_url || b.foto || ''),
+      emp_id: String(b.emp_id || b.empId || 'E1'),
+      criado_por: req.usuario?.nome || 'sistema',
+    };
+    const { data, error } = await supabase
+      .from('amostras').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/amostras/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    payload.updated_at = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('amostras').update(payload)
+      .eq('id', req.params.id).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase
+      .from('amostras').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
@@ -2749,6 +2809,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updateData.maquina_perda_id = mid || null;
     } else {
       updateData.maquina_perda_id = of.maquina_perda_id ?? null;
+    }
+    if (body.data_faturamento) {
+      updateData.data_faturamento = String(body.data_faturamento).trim();
     }
 
     const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
