@@ -6832,13 +6832,29 @@ function validarCamposObrigatoriosOF(payload, itens){
 async function salvarOF(){
   const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
-  const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-  const valTotal=calcularValorTotalOF();
+  const toInt = (v)=>{
+    const n = Math.round(Number(String(v ?? 0).replace(',','.')));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const toDec = (v)=>{
+    const n = parseFloat(String(v ?? 0).replace(',','.'));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
+    ...item,
+    qtd: toInt(String(item?.qtd ?? 0).replace(',','.')),
+    quantidade: toInt(String(item?.quantidade ?? item?.qtd ?? 0).replace(',','.')),
+    vunit: toDec(String(item?.vunit ?? 0).replace(',','.')),
+    valor_unitario: toDec(String(item?.valor_unitario ?? item?.vunit ?? 0).replace(',','.')),
+    valor_total: toDec(String(item?.valor_total ?? item?.valorTotal ?? item?.total ?? 0).replace(',','.')),
+  }));
+  const qtdTotal=itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
+  const valTotal=toDec(calcularValorTotalOF());
   const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
-  const descricaoPrincipal = itens.length > 0 ? String(itens[0].desc || itens[0].descricao || '').trim() : '';
+  const descricaoPrincipal = itensSan.length > 0 ? String(itensSan[0].desc || itensSan[0].descricao || '').trim() : '';
   const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
-  if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+  if(itensSan.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
   const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
   const _estoqueJaBaixadoCriacao = false;
   const pagto=seguro('f-pagto','');
@@ -6860,12 +6876,12 @@ async function salvarOF(){
   const cliObj = getCli(cliId) || {};
   const cidade_entrega = cliObj.cidade || '';
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
-  const itemImgs=itens.map(it=>it.img||null);
+  const itemImgs=itensSan.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
   const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
   const vendIdSel=seguro('f-vend','');
   const maquina_por_item = {};
-  itens.forEach((it, i) => {
+  itensSan.forEach((it, i) => {
     const m = String(it?.maquina || '').trim();
     if (m) maquina_por_item[String(i)] = m;
   });
@@ -6881,17 +6897,17 @@ async function salvarOF(){
       if (!n) return;
       if (!arr.includes(n)) arr.push(n);
     };
-    itens.forEach((it) => {
+    itensSan.forEach((it) => {
       addFluxo(fluxo_maquinas, it?.maquina);
       (it?.maquinas_fluxo || []).forEach((m) => addFluxo(fluxo_maquinas, m));
     });
   }
   const tcSel = (typeof ofGetTipoCaixaSelecionado === 'function') ? ofGetTipoCaixaSelecionado() : { id:null, nome:null };
   const dims = (typeof ofDimensoesGet === 'function') ? ofDimensoesGet() : { comprimento:null, largura:null, altura:null };
-  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,tipo_caixa_id:tcSel.id,tipo_caixa:tcSel.nome,caixa_comprimento:dims.comprimento,caixa_largura:dims.largura,caixa_altura:dims.altura,qtd:qtdTotal,itens,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:valTotal,valor_total:valTotal,pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
-  payloadLocal.quantidade = qtdTotal;
-  payloadLocal.valor_venda = valTotal;
-  payloadLocal.valor_total = valTotal;
+  const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,tipo_caixa_id:tcSel.id,tipo_caixa:tcSel.nome,caixa_comprimento:dims.comprimento,caixa_largura:dims.largura,caixa_altura:dims.altura,qtd:toInt(qtdTotal),itens:itensSan,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:toDec(valTotal),valor_total:toDec(valTotal),pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  payloadLocal.quantidade = toInt(qtdTotal);
+  payloadLocal.valor_venda = toDec(valTotal);
+  payloadLocal.valor_total = toDec(valTotal);
   payloadLocal.cli_id = cliId;
   payloadLocal.cliente_id = cliId;
   payloadLocal.emp_id = empCode;
@@ -6957,7 +6973,7 @@ async function salvarOF(){
       }
     }
   }catch(e){}
-  const errosObrig = validarCamposObrigatoriosOF(payloadLocal, itens);
+  const errosObrig = validarCamposObrigatoriosOF(payloadLocal, itensSan);
   if (errosObrig.length > 0) {
     toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
     return;
@@ -6972,7 +6988,7 @@ async function salvarOF(){
   } else {
     if(!OFs.find(x=>x.seq===payloadLocal.seq && x.of===payloadLocal.of)) OFs.push(payloadLocal);
   }
-  fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itens.length+' item(ns)!');updateBadges();
+  fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itensSan.length+' item(ns)!');updateBadges();
   logAction('Nova OF criada', seguro('f-of',''));
 }
 
@@ -6982,13 +6998,29 @@ async function salvarEdicaoOFId(id){
     const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
     const cliId=ofResolveCliIdFromModal();
     const itens=getOfItensFromModal();
-    const qtdTotal=itens.reduce((s,it)=>s+it.qtd,0);
-    const valTotal=calcularValorTotalOF();
+    const toInt = (v)=>{
+      const n = Math.round(Number(String(v ?? 0).replace(',','.')));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const toDec = (v)=>{
+      const n = parseFloat(String(v ?? 0).replace(',','.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
+      ...item,
+      qtd: toInt(String(item?.qtd ?? 0).replace(',','.')),
+      quantidade: toInt(String(item?.quantidade ?? item?.qtd ?? 0).replace(',','.')),
+      vunit: toDec(String(item?.vunit ?? 0).replace(',','.')),
+      valor_unitario: toDec(String(item?.valor_unitario ?? item?.vunit ?? 0).replace(',','.')),
+      valor_total: toDec(String(item?.valor_total ?? item?.valorTotal ?? item?.total ?? 0).replace(',','.')),
+    }));
+    const qtdTotal=itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
+    const valTotal=toDec(calcularValorTotalOF());
     const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
-    const descricaoPrincipal = itens.length > 0 ? String(itens[0].desc || itens[0].descricao || '').trim() : '';
+    const descricaoPrincipal = itensSan.length > 0 ? String(itensSan[0].desc || itensSan[0].descricao || '').trim() : '';
     const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
-    if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+    if(itensSan.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
     const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
     let dia_programacao = seguro('f-dia-prog','') || '';
     const data_pedido = seguro('f-dia','');
@@ -7002,13 +7034,13 @@ async function salvarEdicaoOFId(id){
     const cliObj = getCli(cliId) || {};
     const cidadeManual = seguro('f-cidade-of','') ? String(seguro('f-cidade-of','')).trim() : '';
     const cidade_entrega = cidadeManual || cliObj.cidade || '';
-    const itemImgs=itens.map(it=>it.img||null);
+    const itemImgs=itensSan.map(it=>it.img||null);
     const firstImg=itemImgs.find(img=>img!==null);
     const imgs = [...new Set([...(ofImgsTemp||[]).filter(Boolean), firstImg].filter(Boolean))];
     const empSel=(document.getElementById('f-emp')||null);
     const empCode=(empSel && empSel.value) ? empSel.value : (EMP_FILTRO||o.empId||'E1');
     const maquina_por_item = {};
-    itens.forEach((it, i) => {
+    itensSan.forEach((it, i) => {
       const m = String(it?.maquina || '').trim();
       if (m) maquina_por_item[String(i)] = m;
     });
@@ -7024,7 +7056,7 @@ async function salvarEdicaoOFId(id){
         if (!n) return;
         if (!arr.includes(n)) arr.push(n);
       };
-      itens.forEach((it) => {
+      itensSan.forEach((it) => {
         addFluxo(fluxo_maquinas, it?.maquina);
         (it?.maquinas_fluxo || []).forEach((m) => addFluxo(fluxo_maquinas, m));
       });
@@ -7046,11 +7078,11 @@ async function salvarEdicaoOFId(id){
     caixa_comprimento: dims.comprimento,
     caixa_largura: dims.largura,
     caixa_altura: dims.altura,
-    itens,
-    qtd:qtdTotal,
-    quantidade:qtdTotal,
-    valor_total: valTotal,
-    valor_venda: valTotal,
+    itens: itensSan,
+    qtd: toInt(qtdTotal),
+    quantidade: toInt(qtdTotal),
+    valor_total: toDec(valTotal),
+    valor_venda: toDec(valTotal),
     dia:sanitizeDateInput(dia),
     data_pedido:sanitizeDateInput(data_pedido),
     data_producao:sanitizeDateInput(dia),
@@ -7080,7 +7112,7 @@ async function salvarEdicaoOFId(id){
       const isUuid = v => /^[0-9a-f-]{36}$/i.test(String(v||''));
       if(payload.tipo_caixa_id && !isUuid(payload.tipo_caixa_id)) delete payload.tipo_caixa_id;
     }catch(e){}
-    const errosObrig = validarCamposObrigatoriosOF(payload, itens);
+    const errosObrig = validarCamposObrigatoriosOF(payload, itensSan);
     if (errosObrig.length > 0) {
       toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
       return;

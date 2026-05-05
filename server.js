@@ -1035,7 +1035,7 @@ function ofIn(p) {
         if (!item || typeof item !== 'object') return item;
         const desc = String(item.desc ?? item.descricao ?? item.nome ?? item.item ?? '').trim();
         const ref = String(item.ref ?? item.referencia ?? item.cod ?? '').trim();
-        const qtd = toNum(item.qtd ?? item.quantidade ?? 0, 0);
+        const qtd = Math.round(toNum(item.qtd ?? item.quantidade ?? 0, 0));
         const vunit = toNum(item.vunit ?? item.valor_unitario ?? item.valorUnitario ?? 0, 0);
         const valor_total = toNum(
           item.valor_total ?? item.total ?? item.valorTotal ?? (qtd * vunit),
@@ -1052,7 +1052,7 @@ function ofIn(p) {
           descricao: item.descricao ?? desc,
           ref,
           qtd,
-          quantidade: item.quantidade ?? qtd,
+          quantidade: Math.round(toNum(item.quantidade ?? qtd, qtd)),
           vunit,
           valor_unitario: item.valor_unitario ?? vunit,
           valor_total,
@@ -1173,7 +1173,48 @@ function ofPayloadFiltrado(body) {
 }
 
 async function ofsInsertWithRetry(row) {
-  let p = { ...(row || {}) };
+  function sanitizarPayloadOF(payload) {
+    const inteiros = [
+      'qtd', 'quantidade', 'qtd_pedida',
+      'qtd_produzida', 'qtd_perdida', 'caixas_excedentes',
+      'maquina_atual_index', 'prioridade', 'prioridade_producao'
+    ];
+    const decimais = [
+      'valor_total', 'valor_venda', 'valor_unitario',
+      'caixa_comprimento', 'caixa_largura', 'caixa_altura'
+    ];
+    const out = { ...(payload || {}) };
+    const toInt = (v) => {
+      const n = Math.round(Number(String(v ?? 0).replace(',', '.')));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const toDec = (v) => {
+      const n = parseFloat(String(v ?? 0).replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    inteiros.forEach((k) => {
+      if (out[k] !== undefined && out[k] !== null) out[k] = toInt(out[k]);
+    });
+    decimais.forEach((k) => {
+      if (out[k] !== undefined && out[k] !== null) out[k] = toDec(out[k]);
+    });
+    if (Array.isArray(out.itens)) {
+      out.itens = out.itens.map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        return {
+          ...item,
+          qtd: toInt(item.qtd ?? item.quantidade ?? 0),
+          quantidade: toInt(item.quantidade ?? item.qtd ?? 0),
+          vunit: toDec(item.vunit ?? item.valor_unitario ?? 0),
+          valor_unitario: toDec(item.valor_unitario ?? item.vunit ?? 0),
+          valor_total: toDec(item.valor_total ?? item.total ?? 0),
+        };
+      }).filter(Boolean);
+    }
+    return out;
+  }
+
+  let p = sanitizarPayloadOF({ ...(row || {}) });
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
@@ -1191,7 +1232,48 @@ async function ofsInsertWithRetry(row) {
 }
 
 async function ofsUpdateWithRetry(id, row) {
-  let p = { ...(row || {}) };
+  function sanitizarPayloadOF(payload) {
+    const inteiros = [
+      'qtd', 'quantidade', 'qtd_pedida',
+      'qtd_produzida', 'qtd_perdida', 'caixas_excedentes',
+      'maquina_atual_index', 'prioridade', 'prioridade_producao'
+    ];
+    const decimais = [
+      'valor_total', 'valor_venda', 'valor_unitario',
+      'caixa_comprimento', 'caixa_largura', 'caixa_altura'
+    ];
+    const out = { ...(payload || {}) };
+    const toInt = (v) => {
+      const n = Math.round(Number(String(v ?? 0).replace(',', '.')));
+      return Number.isFinite(n) ? n : 0;
+    };
+    const toDec = (v) => {
+      const n = parseFloat(String(v ?? 0).replace(',', '.'));
+      return Number.isFinite(n) ? n : 0;
+    };
+    inteiros.forEach((k) => {
+      if (out[k] !== undefined && out[k] !== null) out[k] = toInt(out[k]);
+    });
+    decimais.forEach((k) => {
+      if (out[k] !== undefined && out[k] !== null) out[k] = toDec(out[k]);
+    });
+    if (Array.isArray(out.itens)) {
+      out.itens = out.itens.map((item) => {
+        if (!item || typeof item !== 'object') return item;
+        return {
+          ...item,
+          qtd: toInt(item.qtd ?? item.quantidade ?? 0),
+          quantidade: toInt(item.quantidade ?? item.qtd ?? 0),
+          vunit: toDec(item.vunit ?? item.valor_unitario ?? 0),
+          valor_unitario: toDec(item.valor_unitario ?? item.vunit ?? 0),
+          valor_total: toDec(item.valor_total ?? item.total ?? 0),
+        };
+      }).filter(Boolean);
+    }
+    return out;
+  }
+
+  let p = sanitizarPayloadOF({ ...(row || {}) });
   delete p.id;
   delete p.numero;
   delete p.of;
