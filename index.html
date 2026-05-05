@@ -17118,162 +17118,127 @@ async function excluirMaquina(mi){
   toast('🗑 Máquina excluída','var(--orange)');
 }
 async function salvarMaquina(){
-  const mi=document.getElementById('maq-edit-idx').value;
-  const idCapturado = String(document.getElementById('maq-id')?.value || '').trim();
-  const col=document.getElementById('maq-e-col').value.trim();
-  if(!col){toast('Informe o nome da máquina','var(--red)');return;}
-  const dados={
-    col,ico:document.getElementById('maq-e-ico').value||'⚙',
-    phora:parseInt(document.getElementById('maq-e-phora').value)||1000,
-    setup:parseInt(document.getElementById('maq-e-setup').value)||30,
-    passagem:parseInt(document.getElementById('maq-e-passagem').value)||0,
-    setor:document.getElementById('maq-e-setor').value,
-    desc:document.getElementById('maq-e-desc').value,
-    horario_inicio: String(document.getElementById('maq-e-hi')?.value || '07:00').trim() || '07:00',
-    horario_fim: String(document.getElementById('maq-e-hf')?.value || '18:00').trim() || '18:00',
-    puxada_min: parseFloat(document.getElementById('maq-e-puxmin')?.value || '0') || 0,
-    puxada_max: parseFloat(document.getElementById('maq-e-puxmax')?.value || '9999') || 9999,
-    boca_max: parseFloat(document.getElementById('maq-e-bocamax')?.value || '9999') || 9999,
-    altura_max: parseFloat(document.getElementById('maq-altura-max')?.value || '9999') || 9999,
-    intervalo_manha_min: parseInt(document.getElementById('maq-e-intm')?.value || '15', 10) || 15,
-    almoco_inicio: String(document.getElementById('maq-e-almoco-inicio')?.value || '12:00').trim() || '12:00',
-    almoco_min: parseInt(document.getElementById('maq-e-almoco-min')?.value || '60', 10) || 60,
-    intervalo_tarde_min: parseInt(document.getElementById('maq-e-intt')?.value || '15', 10) || 15,
-    setup_manha_min: parseInt(document.getElementById('maq-e-setupm')?.value || '20', 10) || 20,
-    setup_tarde_min: parseInt(document.getElementById('maq-e-setupt')?.value || '10', 10) || 10,
-    ativo:true
-  };
-  try{
-    if(mi!==''){
-      const idx = parseInt(mi);
-      const m = MAQUINAS[idx];
-      if(!m){toast('Máquina não encontrada','var(--red)');return;}
-      const id = idCapturado || String(m.id || '').trim();
-      console.log('[SALVAR MAQUINA] id capturado:', id);
-      const payload = {
-        id,
-        nome: dados.col,
-        col: dados.col,
-        producao: dados.phora,
-        phora: dados.phora,
-        setup_medio: dados.setup,
-        setup: dados.setup,
-        passagem_media: dados.passagem,
-        passagem: dados.passagem,
-        setor: dados.setor,
-        descricao: dados.desc,
-        desc: dados.desc,
-        icone: dados.ico,
-        ico: dados.ico,
-        horario_inicio: dados.horario_inicio,
-        horario_fim: dados.horario_fim,
-        puxada_min: dados.puxada_min,
-        puxada_max: dados.puxada_max,
-        boca_max: dados.boca_max,
-        altura_max: dados.altura_max,
-        intervalo_manha_min: dados.intervalo_manha_min,
-        almoco_inicio: dados.almoco_inicio,
-        almoco_min: dados.almoco_min,
-        intervalo_tarde_min: dados.intervalo_tarde_min,
-        setup_manha_min: dados.setup_manha_min,
-        setup_tarde_min: dados.setup_tarde_min,
-      };
-      Object.keys(payload).forEach((k)=>{
-        const v = payload[k];
-        if(v === undefined || v === null || (typeof v === 'number' && !Number.isFinite(v))) delete payload[k];
-      });
-      console.log('[SALVAR MAQUINA] PUT para id:', id);
-      console.log('[SALVAR MAQUINA] payload:', JSON.stringify(payload));
-
-      if(_apiConectado && CURRENT_USER){
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-        const resp = await fetch('/api/maquinas/' + encodeURIComponent(String(id)), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await resp.json().catch(()=>null);
-        console.log('[SALVAR MAQUINA] resposta:', JSON.stringify(data));
-        if(!resp.ok || (data && data.ok === false)){
-          toast('Erro ao salvar máquina','var(--red)');
-          return;
-        }
-        try{
-          const row = (data && (data.data || data.id)) ? (data.data || data) : null;
-          if(row && row.id){
-            const nm = normalizeMaq ? normalizeMaq(row) : row;
-            const j = (MAQUINAS||[]).findIndex(x=>String(x.id||'')===String(nm.id||''));
-            if(j >= 0) MAQUINAS[j] = { ...MAQUINAS[j], ...nm };
-          }
-        }catch(e){}
-        try{
-          if(typeof cacheClear === 'function') cacheClear('maquinas');
-        }catch(e){}
-        try{ window._MAQUINAS = null; }catch(e){}
-        try{ window.MAQUINAS = null; }catch(e){}
-        try{ window._listaMaquinas = null; }catch(e){}
-        try{ _ultimaCargaMaquinas = 0; }catch(e){}
-      } else {
-        Object.assign(m, dados);
+  const lerInput = (...seletores)=>{
+    for(const sel of seletores){
+      if(!sel) continue;
+      let el = null;
+      if(typeof sel === 'string' && (sel.startsWith('#') || sel.startsWith('.') || sel.startsWith('['))){
+        el = document.querySelector(sel);
+      }else{
+        el = document.getElementById(sel) || document.querySelector(`[name="${sel}"]`);
       }
+      if(el && el.value !== undefined) return el.value;
+    }
+    return '';
+  };
+  const toInt = (v, fb = 0)=>{
+    const n = Math.round(Number(String(v ?? '').replace(',','.')));
+    return Number.isFinite(n) ? n : fb;
+  };
+  const toFloat = (v, fb = null)=>{
+    const s = String(v ?? '').trim();
+    if(s === '') return fb;
+    const n = parseFloat(s.replace(',','.'));
+    return Number.isFinite(n) ? n : fb;
+  };
 
+  const id = String(lerInput('maq-id', 'id') || '').trim();
+  const nome = String(lerInput('maq-e-col', 'maq-nome', 'nome') || '').trim();
+  if(!nome){ toast('Informe o nome da máquina','var(--red)'); return; }
+
+  const payload = {
+    nome,
+    ordem: (()=>{
+      const v = lerInput('maq-ordem','ordem');
+      return v === '' ? undefined : (toInt(v, 0));
+    })(),
+    setor: String(lerInput('maq-e-setor','maq-setor','setor') || '').trim() || null,
+    icone: String(lerInput('maq-e-ico','maq-icone','icone') || '').trim() || null,
+    producao: toInt(lerInput('maq-e-phora','maq-producao','producao','phora','prod','producao_hora','caixas_hora'), 0),
+    setup_medio: toInt(lerInput('maq-e-setup','maq-setup','setup_medio','setup','tempo_setup_padrao_min'), 0),
+    passagem_media: toInt(lerInput('maq-e-passagem','maq-passagem','passagem_media','passagem'), 0),
+    descricao: String(lerInput('maq-e-desc','maq-descricao','descricao','desc') || '').trim() || null,
+    horario_inicio: String(lerInput('maq-e-hi','maq-horario-inicio','horario_inicio') || '07:00').trim() || '07:00',
+    horario_fim: String(lerInput('maq-e-hf','maq-horario-fim','horario_fim','fim_expediente') || '18:00').trim() || '18:00',
+    almoco_inicio: String(lerInput('maq-e-almoco-inicio','maq-almoco-inicio','almoco_inicio') || '12:00').trim() || '12:00',
+    almoco_min: toInt(lerInput('maq-e-almoco-min','maq-almoco-min','almoco_min','duracao_almoco'), 60),
+    intervalo_manha_min: toInt(lerInput('maq-e-intm','maq-intervalo-manha','intervalo_manha_min'), 10),
+    intervalo_tarde_min: toInt(lerInput('maq-e-intt','maq-intervalo-tarde','intervalo_tarde_min'), 10),
+    setup_manha_min: toInt(lerInput('maq-e-setupm','maq-setup-manha','setup_manha_min'), 20),
+    setup_tarde_min: toInt(lerInput('maq-e-setupt','maq-setup-tarde','setup_tarde_min'), 20),
+    puxada_min: toFloat(lerInput('maq-e-puxmin','maq-puxada-min','puxada_min'), null),
+    puxada_max: toFloat(lerInput('maq-e-puxmax','maq-puxada-max','puxada_max'), null),
+    boca_max: toFloat(lerInput('maq-e-bocamax','maq-boca-max','boca_max'), null),
+    altura_max: toFloat(lerInput('maq-altura-max','maq-altura-max','altura_max'), null),
+    ativo: true,
+  };
+  Object.keys(payload).forEach((k)=>{
+    if(payload[k] === undefined || payload[k] === null) delete payload[k];
+  });
+
+  console.log('[MAQUINA SAVE] payload final:', JSON.stringify(payload));
+  console.log('[MAQUINA SAVE] producao:', payload.producao, typeof payload.producao);
+  console.log('[MAQUINA SAVE] passagem_media:', payload.passagem_media, typeof payload.passagem_media);
+  console.log('[MAQUINA SAVE] setup_medio:', payload.setup_medio, typeof payload.setup_medio);
+
+  try{
+    showSaveIndicator('Salvando...','var(--yellow)');
+  }catch(e){}
+  try{
+    if(_apiConectado && CURRENT_USER){
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? ('/api/maquinas/' + encodeURIComponent(id)) : '/api/maquinas';
+      const resp = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await resp.json().catch(()=>null);
+      console.log('[MAQUINA SAVE] resposta servidor:', JSON.stringify(json));
+      if(!resp.ok || (json && json.ok === false)){
+        try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
+        toast('Erro ao salvar máquina: ' + ((json && (json.error || json.message)) ? (json.error || json.message) : ''),'var(--red)');
+        return;
+      }
+      const row = (json && json.data) ? json.data : json;
+      if(row && row.id){
+        const nm = (typeof normalizeMaq === 'function') ? normalizeMaq(row) : row;
+        const j = (MAQUINAS||[]).findIndex(x=>String(x.id||'')===String(nm.id||''));
+        if(j >= 0) MAQUINAS[j] = { ...MAQUINAS[j], ...nm };
+        else MAQUINAS.push(nm);
+      }
+      try{ if(typeof cacheClear === 'function') cacheClear('maquinas'); }catch(e){}
+      try{ window._MAQUINAS = null; }catch(e){}
+      try{ window.MAQUINAS = null; }catch(e){}
+      try{ window._listaMaquinas = null; }catch(e){}
+      try{ _ultimaCargaMaquinas = 0; }catch(e){}
       try{ await carregarMaquinas(true); }catch(e){}
       MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
-    } else {
-      dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
-      const payload = {
-        nome: dados.col,
-        col: dados.col,
-        producao: dados.phora,
-        setup_medio: dados.setup,
-        passagem_media: dados.passagem,
-        setor: dados.setor,
-        descricao: dados.desc,
-        icone: dados.ico,
-        horario_inicio: dados.horario_inicio,
-        horario_fim: dados.horario_fim,
-        almoco_inicio: dados.almoco_inicio,
-        almoco_min: dados.almoco_min,
-        intervalo_manha_min: dados.intervalo_manha_min,
-        intervalo_tarde_min: dados.intervalo_tarde_min,
-        setup_manha_min: dados.setup_manha_min,
-        setup_tarde_min: dados.setup_tarde_min,
-        puxada_min: dados.puxada_min,
-        puxada_max: dados.puxada_max,
-        boca_max: dados.boca_max,
-        altura_max: dados.altura_max,
-        ativo: true
-      };
-      Object.keys(payload).forEach((k)=>{
-        const v = payload[k];
-        if(v === undefined || v === null || (typeof v === 'number' && !Number.isFinite(v))) delete payload[k];
-      });
-      console.log('[MAQ] payload enviado:', JSON.stringify(payload));
-      const r = await salvarViaApiOuLocal('maquina',
-        ()=>api('POST','/maquinas', payload),
-        ()=>{ MAQUINAS.push({ ...dados }); return {ok:true, local:true}; }
-      );
-      if(!r || !r.ok){toast('Erro ao criar máquina','var(--red)');return;}
-      if(!r.local){
-        try{
-          if(typeof cacheClear === 'function') cacheClear('maquinas');
-        }catch(e){}
-        try{ window._MAQUINAS = null; }catch(e){}
-        try{ window.MAQUINAS = null; }catch(e){}
-        try{ window._listaMaquinas = null; }catch(e){}
-        try{ _ultimaCargaMaquinas = 0; }catch(e){}
-        try{ await carregarMaquinas(true); }catch(e){}
-        MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
-      } else if(!MAQUINAS.find(x=>x.id===dados.id)) MAQUINAS.push({ ...dados });
+    }else{
+      const localRow = normalizeMaq ? normalizeMaq({
+        id: id || ('MAQ' + String(MAQUINAS.length+1).padStart(2,'0')),
+        nome,
+        producao: payload.producao ?? 0,
+        setup_medio: payload.setup_medio ?? 0,
+        passagem_media: payload.passagem_media ?? 0,
+        ...payload
+      }) : ({ id, ...payload });
+      const j = (MAQUINAS||[]).findIndex(x=>String(x.id||'')===String(localRow.id||''));
+      if(j >= 0) MAQUINAS[j] = { ...MAQUINAS[j], ...localRow };
+      else MAQUINAS.push(localRow);
     }
     fechar('modal-maquina');
     renderMaquinasConf();
+    try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
     autoSaveTrigger();
-    toast('✓ Máquina salva!');
+    try{ showSaveIndicator('✓ salvo','var(--green)'); }catch(e){}
+    toast('✓ Máquina salva!','var(--green)');
   }catch(e){
+    try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
     toast('Erro ao salvar: '+(e.message||e),'var(--red)');
   }
 }
