@@ -3504,8 +3504,8 @@ function renderCardOfDia(of, nomeMaquina, opts){
     const urgente = !!(of.urg || of.urgente);
     const atrasada = ofEstaAtrasadaNaProducao(of);
     const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
-    const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
     const qtdEst = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : qtd;
+    const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, (maq && maq !== 'Sem Máquina') ? maq : '');
     const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
     const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
     const tempoTotalMin = (prodHora > 0) ? (setupMedio + ((Number(qtdEst || 0) || 0) / prodHora * 60)) : 0;
@@ -3580,9 +3580,36 @@ function ofmaqGetMaquinaObj(nomeMaquina){
   const nome = String(nomeMaquina||'').trim();
   if(!nome) return null;
   const norm = (s)=> (typeof _normMaqNome === 'function' ? _normMaqNome(s) : String(s||'').toLowerCase().trim());
-  const alvo = norm(nome);
-  const src = Array.isArray(MAQUINAS) ? MAQUINAS : [];
-  return src.find(m => norm(m?.col || m?.nome || '') === alvo) || null;
+  const alvo = norm(maqAtivaFromNome(nome) || nome);
+  const src = Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
+  const eq = (a,b)=> norm(maqAtivaFromNome(a) || a) === norm(maqAtivaFromNome(b) || b);
+  return src.find(m => eq((m?.col || m?.nome || ''), alvo)) || src.find(m => norm(m?.col || m?.nome || '').includes(alvo) || alvo.includes(norm(m?.col || m?.nome || ''))) || null;
+}
+
+function getMaquinaFromFluxo(fluxoMaquinas, listaMaquinas, maquinaAtualIndex, nomeFallback){
+  let fluxo = fluxoMaquinas;
+  if(typeof fluxo === 'string'){
+    try{ fluxo = JSON.parse(fluxo); }catch(e){ fluxo = []; }
+  }
+  if(!Array.isArray(fluxo)) fluxo = [];
+  const idx = Number(maquinaAtualIndex || 0);
+  const pick = (typeof nomeFallback === 'string' && nomeFallback.trim())
+    ? nomeFallback
+    : (fluxo[idx] ?? fluxo[0]);
+  const nomeRaw = (pick && typeof pick === 'object')
+    ? (pick.nome || pick.name || pick.maquina || pick.col || '')
+    : String(pick || '');
+  const nomeStr = String(nomeRaw||'').trim();
+  if(!nomeStr) return null;
+
+  const list = Array.isArray(listaMaquinas) ? listaMaquinas : (Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []));
+  const norm = (s)=> (typeof _normMaqNome === 'function' ? _normMaqNome(s) : String(s||'').toLowerCase().trim());
+  const alvo = norm(maqAtivaFromNome(nomeStr) || nomeStr);
+  const eq = (a)=> norm(maqAtivaFromNome(a) || a) === alvo;
+  return list.find(m=> eq(String(m?.nome || m?.col || ''))) || list.find(m=>{
+    const n = norm(String(m?.nome || m?.col || ''));
+    return n.includes(alvo) || alvo.includes(n);
+  }) || null;
 }
 
 function ofGetQtdTotal(of){
@@ -3991,7 +4018,7 @@ function cardOFMaquina(of, maquinaAtual){
   const numeroLabel = numeroDigits ? ('Nº ' + numeroDigits.padStart(3,'0')) : 'Nº —';
   const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
   const maqNomeCalc = String(maquinaAtual||atual||'').trim();
-  const maqObj = maqNomeCalc ? ofmaqGetMaquinaObj(maqNomeCalc) : null;
+  const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, maqNomeCalc);
   const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
   const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
   const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
@@ -4081,6 +4108,8 @@ async function renderOFsPorMaquina(){
       if(Array.isArray(OFs) && OFs.length === 0) OFs = lista.map(normalizeOF);
     }
     lista = (lista||[]).map(normalizeOF);
+    try{ await carregarMaquinas(false); }catch(e){}
+    try{ window._listaMaquinas = Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []); }catch(e){}
 
     const modo = window._filtroOFsMaqData || (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
     const hoje = new Date().toISOString().slice(0,10);
@@ -17306,18 +17335,11 @@ async function excluirTipoCaixa(id){
 }
 
 // ===================== DADOS NOVOS =====================
-let ORCAMENTOS = [
-  {id:'ORC-001',data:'2025-06-01',cliId:'C01',vendId:'V01',prod:'Caixa TP 300x200x150',qtd:5000,vunit:0.76,vtot:3800,status:'Aprovado',obs:'Cliente aprovado via WhatsApp'},
-  {id:'ORC-002',data:'2025-06-03',cliId:'C03',vendId:'V02',prod:'Display PDV 6 divisões',qtd:1200,vunit:0.75,vtot:900,status:'Em aberto',obs:''},
-  {id:'ORC-003',data:'2025-06-04',cliId:'C05',vendId:'V01',prod:'Caixa Pizza 35cm kraft',qtd:2000,vunit:0.28,vtot:560,status:'Enviado',obs:'Aguardando retorno'},
-];
-let ORC_SEQ = 4;
+let ORCAMENTOS = [];
+let ORC_SEQ = 1;
 
-let COMPRAS = [
-  {id:'CMP-001',data:'2025-05-18',forn:'Papel Sul',cnpj:'00.000.000/0001-00',nom:'TP',tam:'1200x800',nome:'Chapa TP 1200x800 Papel Sul',nf:'NF-5431',qtd:20000,vunit:0.85,vtot:17000,prev:'2025-05-20',status:'Recebida',obs:''},
-  {id:'CMP-002',data:'2025-06-02',forn:'Cartão Norte',cnpj:'11.111.111/0001-11',nom:'BC',tam:'1000x700',nome:'Chapa BC 1000x700 Cartão Norte',nf:'',qtd:5000,vunit:1.10,vtot:5500,prev:'2025-06-06',status:'Comprada',obs:''},
-];
-let CMP_SEQ = 3;
+let COMPRAS = [];
+let CMP_SEQ = 1;
 // CIDADES BR com coordenadas no SVG (viewport 800x560)
 // Lat/Lng mapeadas para SVG: lng→x, lat→y (invertido)
 // Brasil: ~-34° a -5° lat, -74° a -35° lng
@@ -20498,13 +20520,14 @@ async function salvarEdicaoCompra(id){
 }
 
 async function excluirCompra(id){
+  console.log('deletando compra id:', id);
   const cmp=COMPRAS.find(x=>x.id===id);if(!cmp)return;
   if(!confirm(`Excluir compra ${id}?\n\nEsta ação não pode ser desfeita.`))return;
   const r=await salvarViaApiOuLocal('compra',
     ()=>api('DELETE','/compras/'+encodeURIComponent(id)),
     ()=>({ok:true, local:true})
   );
-  if(!r || !r.ok){toast('Erro ao excluir compra','var(--red)');return;}
+  if(!r || !r.ok){toast('Erro ao excluir compra: '+(r && r.error ? r.error : ''),'var(--red)');return;}
   COMPRAS=COMPRAS.filter(x=>x.id!==id);
   if(!r.local){ try{ await carregarCompras(); }catch(e){} }
   autoSaveTrigger();renderCompras();toast('🗑 Compra excluída','var(--orange)');
@@ -21960,13 +21983,14 @@ async function salvarEdicaoOrcamento(id){
 }
 
 async function excluirOrcamento(id){
+  console.log('deletando orçamento id:', id);
   const orc=ORCAMENTOS.find(x=>x.id===id);if(!orc)return;
   if(!confirm(`Excluir orçamento ${id}?\n\nEsta ação não pode ser desfeita.`))return;
   const r=await salvarViaApiOuLocal('orçamento',
     ()=>api('DELETE','/orcamentos/'+encodeURIComponent(id)),
     ()=>({ok:true, local:true})
   );
-  if(!r || !r.ok){toast('Erro ao excluir orçamento','var(--red)');return;}
+  if(!r || !r.ok){toast('Erro ao excluir orçamento: '+(r && r.error ? r.error : ''),'var(--red)');return;}
   if(!r.local){ try{ await carregarOrcamentos(); }catch(e){} }
   else ORCAMENTOS=ORCAMENTOS.filter(x=>x.id!==id);
   renderOrcamentos();toast('🗑 Orçamento excluído','var(--orange)');gerarNotificacoes();renderNotificacoes();
