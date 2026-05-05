@@ -2243,41 +2243,44 @@ function _goBase(id){
 }
 
 function updateBadges(){
-  document.getElementById('bdg-at').textContent=OFs.filter(o=>o.status==='Atrasado').length+' ATRASADOS';
-  document.getElementById('bdg-ug').textContent=OFs.filter(o=>o.urg).length+' URGENTES';
-  try{ atualizarContadorConcluidas(); }catch(e){}
+  const base = Array.isArray(OFs) ? OFs : [];
+  document.getElementById('bdg-at').textContent=base.filter(o=>o.status==='Atrasado').length+' ATRASADOS';
+  document.getElementById('bdg-ug').textContent=base.filter(o=>o.urg).length+' URGENTES';
+  try{
+    getConcluidasHoje().then(arr=>{
+      const total = Array.isArray(arr) ? arr.length : (Number(window._concluidasHoje) || 0);
+      const badge = document.getElementById('bdg-ok');
+      if(badge) badge.textContent = total + ' CONCLUÍDOS';
+    }).catch(()=>null);
+  }catch(e){}
 }
 
-async function atualizarContadorConcluidas() {
+async function getConcluidasHoje() {
   try {
-    if (window._atualizandoConcluidas) return window._concluidasHoje || 0;
+    if (window._atualizandoConcluidas) return Array.isArray(window._concluidasHojeArr) ? window._concluidasHojeArr : [];
     window._atualizandoConcluidas = true;
     const hoje = new Date().toISOString().slice(0, 10);
     const token = localStorage.getItem('token') ||
                   sessionStorage.getItem('token') || '';
     const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
     const resp = await fetch(
-      base + `/api/ofs?status=Concluído&limit=500&t=${Date.now()}`,
+      base + `/api/ofs?limit=500&t=${Date.now()}`,
       { headers: { 'Authorization': 'Bearer ' + token } }
     );
     const data = await resp.json().catch(()=>null);
     const ofs = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
     const concluidasHoje = (ofs || []).filter(of => {
+      let st = String(of?.status || '').toLowerCase();
+      try{ st = st.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+      const concluida = st.includes('conclu');
       const dc = String(of?.data_conclusao || of?.updated_at || '').slice(0, 10);
-      return dc === hoje;
+      return concluida && dc === hoje;
     });
-    const total = concluidasHoje.length;
-    const badge = document.querySelector(
-      '#bdg-ok, #badge-concluidas, .badge-concluidas, [data-badge="concluidas"]'
-    );
-    if (badge) {
-      if (badge.id === 'bdg-ok') badge.textContent = total + ' CONCLUÍDOS';
-      else badge.textContent = String(total);
-    }
-    window._concluidasHoje = total;
-    return total;
+    window._concluidasHojeArr = concluidasHoje;
+    window._concluidasHoje = concluidasHoje.length;
+    return concluidasHoje;
   } catch(e) {
-    return window._concluidasHoje || 0;
+    return Array.isArray(window._concluidasHojeArr) ? window._concluidasHojeArr : [];
   } finally {
     window._atualizandoConcluidas = false;
   }
@@ -4261,6 +4264,7 @@ async function renderOFsPorMaquina(){
     const dbg = !!window._debugOfmaq;
     container = document.getElementById('ofs-por-maquina-container')||document.getElementById('ofsmaq-container')||document.getElementById('ofmaq-body');
     if(!container){_ofsMaqRenderizando=false;return;}
+    try{ await carregarOFsFresh(); }catch(e){}
     let lista = Array.isArray(window.OFS) && window.OFS.length > 0 ? window.OFS : (Array.isArray(OFs) && OFs.length > 0 ? OFs : null);
     if(!lista){
       container.innerHTML = `<div style="padding:18px 16px;color:var(--text2)">
@@ -7683,6 +7687,7 @@ function renderLancamento(){
   if(!host || !resumo) return;
 
   try{ console.log('[LANCAMENTO] renderLancamento()'); }catch(e){}
+  try{ carregarOFsFresh().catch(()=>null); }catch(e){}
   if(!LANC_UI.mes) LANC_UI.mes = today().slice(0,7);
 
   if(!Array.isArray(OFS_HIST)){
@@ -7755,6 +7760,7 @@ function renderLancamento(){
     ${btn('canceladas','Canceladas',cancel.length)}
     ${btn('excluidas','Excluídas',excl.length)}
     <div style="flex:1"></div>
+    <div id="lanc-conc-hoje" style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Concluídas hoje: —</div>
     <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨️ Imprimir Lista</button>
     <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar</button>
   </div>
@@ -7768,6 +7774,12 @@ function renderLancamento(){
     </select>
     <input id="lanc-mes" type="month" value="${escAttr(LANC_UI.mes||'')}" onchange="LANC_UI.mes=this.value;renderLancamento()" style="width:160px">
   </div>`;
+  try{
+    getConcluidasHoje().then(arr=>{
+      const el = document.getElementById('lanc-conc-hoje');
+      if(el) el.textContent = 'Concluídas hoje: ' + String((Array.isArray(arr) ? arr.length : (Number(window._concluidasHoje)||0)));
+    }).catch(()=>null);
+  }catch(e){}
 
   const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
   const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
@@ -7902,6 +7914,15 @@ function comFmtMoney(v){
 function comFmtDate(v){
   const s = String(v || '').slice(0,10);
   return s ? fmtD(s) : '—';
+}
+function comFmtDataConclusao(of){
+  try{
+    const dc = String(of?.data_conclusao || '').slice(0,10);
+    if(dc) return new Date(dc + 'T12:00:00').toLocaleDateString('pt-BR');
+    const up = String(of?.updated_at || '').trim();
+    if(up) return new Date(up).toLocaleDateString('pt-BR');
+  }catch(e){}
+  return '—';
 }
 function initComissoesUI(){
   const mes = document.getElementById('com-mes');
@@ -8112,6 +8133,7 @@ async function renderComissoes(){
               <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem;text-align:right">%</th>
               <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem;text-align:right">Comissão</th>
               <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Data</th>
+              <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Data Conclusão</th>
               <th style="padding:6px;border:1px solid var(--s3);font-size:.68rem">Status</th>
             </tr></thead>
             <tbody>
@@ -8122,6 +8144,7 @@ async function renderComissoes(){
                 <td style="padding:6px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
                 <td style="padding:6px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
                 <td style="padding:6px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
+                <td style="padding:6px;border:1px solid var(--s3)">${escH(comFmtDataConclusao(of))}</td>
                 <td style="padding:6px;border:1px solid var(--s3)">${escH(of.status||'—')}</td>
               </tr>`).join('')}
             </tbody>
@@ -8152,11 +8175,12 @@ async function renderComissoes(){
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">%</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão R$</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data Conclusão</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Status</th>
     </tr>`;
     const rows = [];
     if(semOfsComVendedor){
-      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
       return;
     }
     (d.vendedores || []).forEach(v=>{
@@ -8175,11 +8199,12 @@ async function renderComissoes(){
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${Number(of.comissaoPct||0).toFixed(2)}%</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${comFmtMoney(of.comissaoValor)}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">${escH(comFmtDataConclusao(of))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(st||'—')}</td>
         </tr>`);
       });
     });
-    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
+    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
   }
 }
 function comToggleVend(key){
@@ -8541,6 +8566,7 @@ function cpAplicarFiltroMes(){
 
 async function carregarCaixasPerdidas(){
   initCaixasPerdidasUI();
+  try{ await carregarOFsFresh(); }catch(e){}
   const empSel = String((document.getElementById('cp-emp')||{}).value || (EMP_FILTRO||'') || '').trim();
   const f = window._cpFiltro || {};
   const de = String(f.de || '').slice(0,10);
@@ -8572,7 +8598,18 @@ async function carregarCaixasPerdidas(){
   }
   try{
     const memHasPerda = Array.isArray(ofsMem) && ofsMem.some(o => o && (o.qtd_perdida != null || o.qtdPerdida != null));
-    if(memHasPerda) ofs = ofsMem;
+    if((!Array.isArray(ofs) || ofs.length === 0) && memHasPerda) ofs = ofsMem;
+  }catch(e){}
+  try{
+    const primPerda = (ofs || []).find(o => Number(o?.qtd_perdida || o?.qtdPerdida || 0) > 0);
+    console.log('[CP DEBUG] primeiro com perda:', JSON.stringify({
+      id: primPerda?.id,
+      of: primPerda?.of,
+      maquina_perda: primPerda?.maquina_perda,
+      maquina: primPerda?.maquina,
+      qtd_perdida: primPerda?.qtd_perdida,
+      status: primPerda?.status
+    }));
   }catch(e){}
   const clientes = (Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(CLIENTES) ? CLIENTES : []));
   const normSt = (s)=>{
@@ -8641,7 +8678,13 @@ async function carregarCaixasPerdidas(){
       const data0 = String(of?.data_conclusao || of?.updated_at || '').slice(0,10);
       const empId = String(of?.emp_id || '').trim();
       try{ console.log('[CP MAQUINA]', (of?.of || of?.numero || ''), 'maquina_perda:', of?.maquina_perda, 'maquina:', of?.maquina); }catch(e){}
-      const maqNome = String(of?.maquina_perda || of?.maquina || '').trim();
+      const maqNome = String(
+        of?.maquina_perda ||
+        of?.maquina ||
+        of?.maquina_nome ||
+        of?.maquinaPerda ||
+        ''
+      ).trim();
       const maqId = String(of?.maquina_perda_id || '').trim();
       return {
         id: String(of?.id || ''),
@@ -8717,10 +8760,17 @@ function cpRender(rows){
     }catch(e){}
     const maqNomeSelNorm = norm(maqNomeSel || '');
     lista = listaBase.filter(r=>{
-      const rid = String(r?.maquina_id || r?.maq_id || '').trim();
+      const rid = String(r?.maquina_id || r?.maquina_perda_id || r?.maq_id || '').trim();
       if(rid && rid === maqSel) return true;
       if(!maqNomeSelNorm) return false;
-      const rn = norm(String(r?.maquina || r?.maquina_nome || r?.maq || '').trim());
+      const rn = norm(String(
+        r?.maquina_perda ||
+        r?.maquina ||
+        r?.maquina_nome ||
+        r?.maquinaPerda ||
+        r?.maq ||
+        ''
+      ).trim());
       return rn && rn === maqNomeSelNorm;
     });
   }
@@ -8742,8 +8792,15 @@ function cpRender(rows){
       const data = String(r.data||r.created_at||'').slice(0,10);
       const ofNum = r.of_numero || r.of || r.numero || '—';
       const prod = r.produto || '—';
-      const maqId = String(r?.maquina_id || '').trim();
-      let maqNome = String(r?.maquina || r?.maquina_nome || r?.maq || '').trim();
+      const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
+      let maqNome = String(
+        r?.maquina_perda ||
+        r?.maquina ||
+        r?.maquina_nome ||
+        r?.maquinaPerda ||
+        r?.maq ||
+        ''
+      ).trim();
       if(!maqNome && maqId){
         try{
           const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
@@ -8805,7 +8862,14 @@ function editarMaquinaCaixaPerdida(id){
       return `<option value="${escAttr(mid)}">${escH(lbl || mid)}</option>`;
     }).filter(Boolean).join('');
     const curId = String(row?.maquina_id || '').trim();
-    const curNome = String(row?.maquina || '').trim();
+    const curNome = String(
+      row?.maquina_perda ||
+      row?.maquina ||
+      row?.maquina_nome ||
+      row?.maquinaPerda ||
+      row?.maq ||
+      ''
+    ).trim();
     if(curId){
       sel.value = curId;
     } else if(curNome){
@@ -16145,6 +16209,7 @@ async function carregarApontamentos(){
 }
 
 const CACHE_TTL = 5 * 60 * 1000;
+const OFS_CACHE_TTL = 2 * 60 * 1000;
 let _ultimaCargaOFs = 0;
 let _ultimaCargaClientes = 0;
 let _ultimaCargaFornecedores = 0;
@@ -16161,7 +16226,7 @@ async function carregarOFs(opts){
   const to = opts.to ? String(opts.to) : '';
   const status = opts.status ? String(opts.status) : '';
   const now = Date.now();
-  if(!forcar && (now - _ultimaCargaOFs) < CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
+  if(!forcar && (now - _ultimaCargaOFs) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
   const qs = new URLSearchParams();
   if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
   if(from) qs.set('from', from);
@@ -16180,12 +16245,25 @@ async function carregarOFs(opts){
     try{ window.OFS_HIST = OFS_HIST; }catch(e){}
   }
   if(r && r.ok) _ultimaCargaOFs = Date.now();
+  try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
   return r;
+}
+
+async function carregarOFsFresh(){
+  const agora = Date.now();
+  const ultima = Number(window._ofsUltimaCarga || _ultimaCargaOFs || 0) || 0;
+  if(agora - ultima > OFS_CACHE_TTL){
+    try{ window.OFS = null; }catch(e){}
+    try{ if(!Array.isArray(OFs)) OFs = []; else OFs.length = 0; }catch(e){}
+    _ultimaCargaOFs = 0;
+    try{ window._ofsUltimaCarga = 0; }catch(e){}
+    try{ await carregarOFs({ forcar: true }); }catch(e){}
+  }
 }
 async function syncOFs(force=false){
   if(force) window._ofsCarregadasEm = null;
   const now = Date.now();
-  if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < 3 * 60 * 1000 && Array.isArray(OFs) && OFs.length > 0){
+  if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0){
     return OFs;
   }
   const qs = new URLSearchParams();
@@ -16207,6 +16285,7 @@ async function syncOFs(force=false){
   try{ window.OFS_HIST = hist; }catch(e){}
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
+  try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
   return todos;
 }
 function _inserirOFLocal(nova){
