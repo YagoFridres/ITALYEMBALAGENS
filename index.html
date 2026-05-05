@@ -3472,8 +3472,10 @@ async function salvarAlterarEntrega(){
   toast(`✅ Entrega da OF #${numeroLabel} alterada para ${fmtD(ent)}`, 'var(--green)');
 }
 
-function renderCardOfDia(of, nomeMaquina){
+function renderCardOfDia(of, nomeMaquina, opts){
   try{
+    opts = (opts && typeof opts === 'object') ? opts : {};
+    const isOverflow = !!opts.overflow;
     const itens = Array.isArray(of.itens) ? of.itens : [];
     const item0 = itens[0] || {};
     const produto = (String(item0.desc || item0.descricao || of.prodDesc || of.descricao || '—')).trim() || '—';
@@ -3503,19 +3505,15 @@ function renderCardOfDia(of, nomeMaquina){
     const atrasada = ofEstaAtrasadaNaProducao(of);
     const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
     const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
-    const tipos = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
-    const tipoId = String(of?.tipo_caixa_id || '').trim();
-    const tipoNome = String(of?.tipo_caixa || '').trim();
-    const tipoObj = tipoId
-      ? (tipos.find(t=>String(t.id)===tipoId) || null)
-      : (tipoNome ? (tipos.find(t=>String(t.nome||'').toLowerCase().trim()===tipoNome.toLowerCase().trim()) || null) : null);
     const qtdEst = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : qtd;
-    const tempo = (maqObj && typeof calcularTempoEstimado === 'function')
-      ? calcularTempoEstimado(maqObj, (tipoObj || { nome: (tipoNome || (tipoObj?.nome||'')) }), qtdEst)
-      : null;
-    const tempoTxt = tempo?.texto ? String(tempo.texto) : '';
+    const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+    const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+    const tempoTotalMin = (prodHora > 0) ? (setupMedio + ((Number(qtdEst || 0) || 0) / prodHora * 60)) : 0;
+    const tempoMinShow = (prodHora > 0) ? Math.max(0, Math.round(tempoTotalMin)) : null;
+    const velocidadeTxt = (prodHora > 0) ? `${Math.round(prodHora)} cx/h` : '— cx/h';
+    const tempoTxt = (tempoMinShow != null) ? `${tempoMinShow} min estimado` : '— min estimado';
     return `
-      <div class="ofmaq-card" data-of-id="${escAttr(of.id||'')}" data-ofmaq-maq="${escAttr(maq)}" onclick="ofmaqSelecionarOF('${escAttr(ofSelNum)}')" style="display:flex;gap:16px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--border);background:var(--s3);border-radius:10px;margin-bottom:10px">
+      <div class="ofmaq-card" data-of-id="${escAttr(of.id||'')}" data-ofmaq-maq="${escAttr(maq)}" onclick="ofmaqSelecionarOF('${escAttr(ofSelNum)}')" style="display:flex;gap:16px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--border);background:${isOverflow?'#e5393512':'var(--s3)'};border-radius:10px;margin-bottom:10px;${isOverflow?'border-left:4px solid #e53935;':''}">
         ${imgUrl
           ? `<div style="cursor:pointer;flex-shrink:0" title="Clique para ampliar" onclick="event.stopPropagation();abrirFotoModal('${escAttr(imgUrlSafe)}','${escAttr(numeroLabel)}')">
               <img class="ofmaq-img" src="${escAttr(imgUrl)}" style="width:88px;height:88px;object-fit:cover;border-radius:8px;border:2px solid var(--border)" onerror="this.parentElement.innerHTML='<div class=\\'ofmaq-img\\' style=\\'width:80px;height:80px;background:var(--s2);border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem\\'>📦</div>'">
@@ -3528,6 +3526,7 @@ function renderCardOfDia(of, nomeMaquina){
             ${urgente
               ? `<span style="background:var(--red);color:#fff;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap">🔴 URGENTE</span>`
               : ''}
+            ${isOverflow ? `<span style="background:#e53935;color:#fff;font-size:.75rem;font-weight:800;padding:3px 10px;border-radius:10px;white-space:nowrap">PASSA DE DIA</span>` : ''}
             ${atrasada
               ? `<span style="background:#f90;color:#000;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap">⚠️ PASSOU DO DIA</span>`
               : ''}
@@ -3542,7 +3541,8 @@ function renderCardOfDia(of, nomeMaquina){
             <span>💰 Unit: <strong>R$ ${escH(vunit.toFixed(2))}</strong></span>
             <span style="color:var(--green)">💰 Total: <strong>R$ ${escH(vtotal.toFixed(2))}</strong></span>
             <span>🚚 <strong style="color:${atrasadaEntrega?'var(--red)':'var(--text)'}">${escH(String(entregaBR))}</strong></span>
-            ${tempoTxt ? `<span style="color:var(--text2);font-family:var(--mono)">⏱ <strong>${escH(tempoTxt)}</strong> estimado</span>` : ''}
+            <span style="color:var(--text2);font-family:var(--mono)">⏱ <strong>${escH(tempoTxt)}</strong></span>
+            <span style="color:var(--text2);font-family:var(--mono)">⚡ <strong>${escH(velocidadeTxt)}</strong></span>
           </div>
           <div style="margin-top:8px">${renderEtapasFluxo(of)}</div>
         </div>
@@ -3551,6 +3551,10 @@ function renderCardOfDia(of, nomeMaquina){
             <button class="ofmaq-btn-sem-papelao" onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal('${escAttr(of.id||'')}','${escAttr(numeroDigits)}')" style="flex:1;padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📦 Sem Papelão</button>
             <button onclick="event.stopPropagation();abrirModalAlterarEntrega('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📅 Alterar Entrega</button>
           </div>
+          ${isOverflow ? `<div style="display:flex;gap:7px;align-items:center">
+            <button onclick="event.stopPropagation();ofmaqAbrirReagendar('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">🔁 Reagendar</button>
+            <input type="date" id="ofmaq-reag-${escAttr(of.id||'')}" onchange="event.stopPropagation();ofmaqReagendarOF('${escAttr(of.id||'')}', this.value)" style="width:160px;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:none">
+          </div>` : ''}
           ${podeConcluir ? `<button class="ofmaq-btn-concluir" onclick="event.stopPropagation();concluirOFComBaixa('${escAttr(of.id||'')}')" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;white-space:nowrap">✓ Concluir</button>` : ''}
           <div class="ofmaq-arrows" style="display:flex;gap:5px">
             <button class="ofmaq-btn-arrow" onclick="event.stopPropagation();moverOFNaFila('${escAttr(of.id||'')}','up')" style="flex:1;padding:7px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.9rem;font-weight:700">↑</button>
@@ -3619,11 +3623,115 @@ function calcularCapacidadeDia(maquina, ofsNoDia){
   };
 }
 
+function ofmaqAbrirReagendar(ofId){
+  const id = String(ofId||'').trim();
+  if(!id) return;
+  const el = document.getElementById('ofmaq-reag-' + id);
+  if(!el) return;
+  el.style.display = (el.style.display === 'none' || !el.style.display) ? '' : 'none';
+  if(el.style.display !== 'none'){
+    if(!el.value) el.value = new Date().toISOString().slice(0,10);
+    try{ if(typeof el.showPicker === 'function') el.showPicker(); }catch(e){}
+    try{ el.focus(); }catch(e){}
+  }
+}
+
+async function ofmaqReagendarOF(ofId, novaData){
+  const id = String(ofId||'').trim();
+  const d = String(novaData||'').slice(0,10);
+  if(!id) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+  try{ showSaveIndicator('Reagendando...','var(--yellow)'); }catch(e){}
+  try{
+    const r = await api('PATCH','/ofs/'+encodeURIComponent(id), { dia:d, data_producao:d });
+    if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'falha');
+    const data = r.data || r;
+    const patch = { ...(data||{}), dia:d, data_producao:d };
+    try{ _atualizarOFLocal(id, patch); }catch(e){}
+    try{
+      const ix = (Array.isArray(OFs) ? OFs : []).findIndex(o=>String(o?.id||'').trim()===id);
+      if(ix >= 0) OFs[ix] = normalizeOF ? normalizeOF({ ...OFs[ix], ...patch }) : ({ ...OFs[ix], ...patch });
+    }catch(e){}
+    try{
+      const wx = (Array.isArray(window.OFS) ? window.OFS : []).findIndex(o=>String(o?.id||'').trim()===id);
+      if(wx >= 0) window.OFS[wx] = normalizeOF ? normalizeOF({ ...window.OFS[wx], ...patch }) : ({ ...window.OFS[wx], ...patch });
+    }catch(e){}
+    try{ _upsertOFHistLocal && _upsertOFHistLocal(normalizeOF ? normalizeOF({ id, ...patch }) : ({ id, ...patch })); }catch(e){}
+    try{ _rerenderOFViews && _rerenderOFViews(); }catch(e){}
+    try{ document.getElementById('ofmaq-reag-' + id).style.display = 'none'; }catch(e){}
+    try{ showSaveIndicator('✓ salvo','var(--green)'); }catch(e){}
+    toast('✓ OF reagendada','var(--green)');
+  }catch(e){
+    try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
+    toast('Erro ao reagendar OF: '+(e.message||e),'var(--red)');
+  }
+}
+
 function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
   const maq = String(nomeMaquina||'').trim() || 'Sem Máquina';
   const gid = ofmaqGroupId(maq);
-  const cards = (ofsGrupo||[]).map(of => renderCardOfDia(of, maq)).join('');
   const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
+
+  const ordenar = (ofs)=>{
+    return [...(ofs||[])].sort((a,b)=>{
+      const urgA=!!(a && (a.urg===true||a.urg===1||a.urg==='1'||a.urgente===true||a.urgente===1||a.urgente==='1'));
+      const urgB=!!(b && (b.urg===true||b.urg===1||b.urg==='1'||b.urgente===true||b.urgente===1||b.urgente==='1'));
+      if(urgA && !urgB) return -1;
+      if(!urgA && urgB) return 1;
+      const prA0 = Number(a?.prioridade_producao ?? a?.prioridade);
+      const prB0 = Number(b?.prioridade_producao ?? b?.prioridade);
+      const prA = Number.isFinite(prA0) ? prA0 : 999;
+      const prB = Number.isFinite(prB0) ? prB0 : 999;
+      if(prA !== prB) return prA - prB;
+      const ca = String(a?.created_at || a?.createdAt || a?.criado_em || '').trim();
+      const cb = String(b?.created_at || b?.createdAt || b?.criado_em || '').trim();
+      if(ca && cb && ca !== cb) return ca < cb ? -1 : 1;
+      return String(a?.of || a?.numero || '').localeCompare(String(b?.of || b?.numero || ''));
+    });
+  };
+
+  const hhmmToMin = (s, fallback)=>{
+    const v = String(s || '').trim();
+    const m = v.match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return fallback;
+    const h = Number(m[1] || 0);
+    const mi = Number(m[2] || 0);
+    return (h * 60) + mi;
+  };
+  const minDisponiveisSimples = (m)=>{
+    const hi = hhmmToMin(m?.horario_inicio || '07:00', 7*60);
+    const hf = hhmmToMin(m?.horario_fim || '17:00', 17*60);
+    const alm = Number(m?.almoco_min ?? 60) || 60;
+    const intM = Number(m?.intervalo_manha_min ?? 15) || 15;
+    const intT = Number(m?.intervalo_tarde_min ?? 15) || 15;
+    const tot = (hf - hi) - alm - intM - intT;
+    return Math.max(0, Math.round(Number(tot||0) || 0));
+  };
+
+  const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+  const minDisp = maqObj ? minDisponiveisSimples(maqObj) : 0;
+  const ofsOrd = ordenar(ofsGrupo || []);
+  let ofsOk = ofsOrd;
+  let ofsOver = [];
+  if(prodHora > 0 && minDisp > 0){
+    let acc = 0;
+    ofsOk = [];
+    ofsOver = [];
+    for(const of of ofsOrd){
+      const qtd = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
+      const tempoOf = setupMedio + ((Number(qtd||0)||0) / prodHora * 60);
+      if(ofsOver.length === 0 && (acc + tempoOf) <= minDisp){
+        ofsOk.push(of);
+      }else{
+        ofsOver.push(of);
+      }
+      acc += tempoOf;
+    }
+  }
+
+  const divider = ofsOver.length ? `<div style="margin:10px 0 14px;border-top:2px dashed #e53935;color:#e53935;font-weight:900;font-size:.8rem;text-align:center;padding-top:8px">— capacidade máxima atingida —</div>` : '';
+  const cards = ofsOk.map(of => renderCardOfDia(of, maq, { overflow:false })).join('') + divider + ofsOver.map(of => renderCardOfDia(of, maq, { overflow:true })).join('');
   let capHtml = '';
   if(maqObj){
     const cap = calcularCapacidadeDia(maqObj, ofsGrupo||[]);
@@ -3794,12 +3902,21 @@ function renderOfmaqCalendario(lista, filtroMaq){
                 const entrega = String(of.ent || of.data_entrega || '—').slice(0,10) || '—';
                 const cliObj = (typeof getCli === 'function') ? (getCli(of.cliId||of.cli_id||of.cliente_id) || {}) : {};
                 const cliNome = cliObj.nome || cliObj.razao_social || of.cliNome || of.clinome || of.cliente_nome || '—';
+                const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
+                const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+                const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+                const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
+                const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
+                const tempoTxt = tempoMin != null ? `⏱ ${tempoMin} min` : '⏱ —';
+                const velTxt = prodHora > 0 ? `⚡ ${Math.round(prodHora)} cx/h` : '⚡ — cx/h';
                 return `<div style="display:flex;gap:8px;align-items:center;padding:8px;border:1px solid var(--border);background:var(--surface);border-radius:10px;margin-bottom:6px">
                   <div style="flex:1">
                     <div style="font-weight:900;font-size:.85rem">${escH(numeroLabel)} — ${escH(produto)}</div>
                     <div style="font-size:.72rem;color:var(--text2);display:flex;gap:10px;flex-wrap:wrap;margin-top:3px">
                       <span>👤 ${escH(cliNome)}</span>
                       <span>🚚 ${escH(entrega)}</span>
+                      <span style="font-family:var(--mono)">${escH(tempoTxt)}</span>
+                      <span style="font-family:var(--mono)">${escH(velTxt)}</span>
                     </div>
                   </div>
                   <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
@@ -3873,6 +3990,14 @@ function cardOFMaquina(of, maquinaAtual){
   const numeroDigits = String(numeroBase || '').replace(/\D/g,'');
   const numeroLabel = numeroDigits ? ('Nº ' + numeroDigits.padStart(3,'0')) : 'Nº —';
   const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
+  const maqNomeCalc = String(maquinaAtual||atual||'').trim();
+  const maqObj = maqNomeCalc ? ofmaqGetMaquinaObj(maqNomeCalc) : null;
+  const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+  const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
+  const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
+  const tempoInfo = tempoMin != null ? (`⏱ ${tempoMin} min`) : '⏱ —';
+  const velInfo = prodHora > 0 ? (`⚡ ${Math.round(prodHora)} cx/h`) : '⚡ — cx/h';
   const imgHtml = temImagem
     ? '<div onclick="verImagemOF(\''+escAttr(urlImagem)+'\')" title="Ver imagem da OF" style="float:right;width:80px;height:80px;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid var(--accent);margin:0 0 8px 12px;background:var(--bg3);flex-shrink:0">'
       +'<img src="'+escH(urlImagem)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=font-size:24px;display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3)>📄</span>\'">'
@@ -3894,6 +4019,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'<span style="font-size:13px;color:#4A90D9"><b>'+escH(numeroLabel)+'</b></span>'
     +'<span style="font-size:13px"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
     +'<span style="font-size:13px"><b>Qtd:</b> '+fmtN(of.qtd||of.quantidade||0)+'</span>'
+    +'<span style="font-size:13px;color:var(--text2);font-family:var(--mono)">'+escH(tempoInfo)+' | '+escH(velInfo)+'</span>'
     +'</div>'
     +'<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">'
     +'<span style="font-size:13px">📅 <b>Pedido:</b> '+fmtD(of.dia||of.data_pedido||'')+'</span>'
@@ -6314,6 +6440,10 @@ function ofItemChange(idx, campo, val){
   recalcularTotaisOF();
   const totalEl=document.getElementById('of-item-total-'+idx);
   if(totalEl) totalEl.textContent = fmtR((ofItensTemp[idx].qtd||0)*(ofItensTemp[idx].vunit||0));
+  if(campo==='qtd'){
+    try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
+    try{ ofAtualizarTempoEstimado(); }catch(e){}
+  }
 }
 function _ofItemFluxoEnsure(idx){
   const it = ofItensTemp[idx];
@@ -13049,6 +13179,68 @@ function _renderDashboardBase(){
 
   const ofs = ofsAll.filter(o=>!isCanceledOrDeleted(o)).filter(inEmpresa).filter(inRange);
 
+  const tiposMes = (()=>{
+    const tipos = Array.isArray(TIPOS_CAIXA) ? TIPOS_CAIXA : [];
+    const mesIni = startOfMonth(now);
+    const mesFim = startOfMonth(addMonths(now, 1));
+    const ofsMes = ofsAll
+      .filter(o=>!isCanceledOrDeleted(o))
+      .filter(inEmpresa)
+      .filter(o=>{
+        const dt = parseDate(o?.dia || o?.data_producao || o?.data || o?.created_at || '');
+        if(!dt) return false;
+        return dt >= mesIni && dt < mesFim;
+      });
+    const byTipo = {};
+    const qtdOf = (o)=>{
+      try{ if(typeof ofGetQtdTotal === 'function') return ofGetQtdTotal(o); }catch(e){}
+      return Math.round(Number(o?.qtd ?? o?.quantidade ?? 0) || 0);
+    };
+    ofsMes.forEach(o=>{
+      const id = String(o?.tipo_caixa_id || '').trim();
+      const nomeTxt = String(o?.tipo_caixa || '').trim();
+      const key = id || (nomeTxt ? ('N:' + nomeTxt) : 'N:—');
+      if(!byTipo[key]) byTipo[key] = { key, id: id || null, nome: nomeTxt || '—', total: 0 };
+      byTipo[key].total += qtdOf(o);
+    });
+    Object.values(byTipo).forEach(r=>{
+      if(r.id){
+        const t = tipos.find(x=>String(x?.id||'')===String(r.id)) || null;
+        if(t && t.nome) r.nome = String(t.nome).trim();
+      }
+    });
+    const rows = Object.values(byTipo).filter(r=>(Number(r.total)||0) > 0).sort((a,b)=> (b.total||0) - (a.total||0));
+    const totalMes = rows.reduce((s,r)=> s + (Number(r.total)||0), 0);
+    const top = rows.slice(0,8).map(r=>({ ...r, pct: totalMes>0 ? ((r.total/totalMes)*100) : 0 }));
+    const max = top.reduce((m,r)=>Math.max(m, Number(r.total)||0), 0) || 0;
+    const mesLabel = new Date(now.getFullYear(), now.getMonth(), 1, 12, 0, 0, 0).toLocaleDateString('pt-BR',{month:'long', year:'numeric'});
+    const lista = top.map(r=>{
+      const w = max>0 ? Math.round((Number(r.total||0)/max)*100) : 0;
+      return `<div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:0">
+          <div style="font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(r.nome)}</div>
+          <div style="margin-top:6px;background:var(--s3);border:1px solid var(--border);border-radius:999px;overflow:hidden;height:10px">
+            <div style="height:100%;width:${w}%;background:var(--accent)"></div>
+          </div>
+          <div style="margin-top:6px;color:var(--text3);font-size:.72rem;font-family:var(--mono)">${escH(String(r.pct.toFixed(1)))}% do mês</div>
+        </div>
+        <div style="text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtN(r.total||0)}</div>
+      </div>`;
+    }).join('') || `<div style="color:var(--text3)">Sem OFs no mês atual.</div>`;
+    return {
+      html: `<div class="sbox">
+        <div class="sbox-h">Tipos de Caixa — Mês Atual <span style="font-size:.72rem;color:var(--text3);margin-left:8px">${escH(mesLabel)}${empSel ? ' · ' + escH((getEmp(empSel)||{}).nome || empSel) : ''}</span></div>
+        <div class="sbox-b">
+          ${lista}
+          <div style="margin-top:10px;color:var(--text2);font-size:.78rem;font-family:var(--mono);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span>Total do mês:</span>
+            <span style="font-weight:900">${fmtN(totalMes)} caixas</span>
+          </div>
+        </div>
+      </div>`
+    };
+  })();
+
   const byCli = {};
   const addCli = (cliId)=>{
     const key = String(cliId||'').trim();
@@ -13173,6 +13365,7 @@ function _renderDashboardBase(){
       </select>
     </div>
     <div style="display:grid;gap:12px">
+      ${tiposMes.html}
       <div class="sbox">
         <div class="sbox-h">Top 10 Maiores Compradores <span style="font-size:.72rem;color:var(--text3);margin-left:8px">${escH(range.label)}${empSel ? ' · ' + escH((getEmp(empSel)||{}).nome || empSel) : ''}</span></div>
         <div class="sbox-b">
@@ -15632,7 +15825,9 @@ function normalizeMaq(r){
     ordem:(r.ordem!=null?Number(r.ordem):null),
     ico:r.ico||r.icon||r.icone||'⚙',
     phora:toNum(phora),
+    producao:toNum(phora),
     setup:toNum(setup),
+    setup_medio:toNum(setup),
     passagem:r.passagem!=null?Number(r.passagem)||0:(r.passagem_media!=null?Number(r.passagem_media)||0:0),
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
