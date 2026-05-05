@@ -5077,44 +5077,143 @@ const TEMPOS_PADRAO = {
   'default':       { setup: 35, producao_hora: 1000 }
 };
 
-function escolherMaquinaAutomatica(comprimento, largura, altura){
+async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd){
+  console.log('[MAQUINAS] primeira maquina:', JSON.stringify(window.MAQUINAS?.[0]));
   const compIn = Number(comprimento || 0) || 0;
   const largIn = Number(largura || 0) || 0;
   const altIn = Number(altura || 0) || 0;
   const src = (Array.isArray(MAQUINAS) && MAQUINAS.length) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
-  if(!compIn || !largIn || !src.length) return { validas: [], invalidas: [] };
-  const getVel = (m)=> Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || 0) || 0;
+  if(!compIn || !largIn || !src.length) return [];
+  const getVel = (m)=> Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0) || 0;
   const comp = Math.max(compIn, largIn);
   const larg = Math.min(compIn, largIn);
-  const todas = src.slice();
-  const validas = [];
-  const invalidas = [];
-  for(const m of todas){
-    const bocaMax = Number(m.boca_max ?? 9999) || 9999;
-    const puxMin = Number(m.puxada_min ?? 0) || 0;
-    const puxMax = Number(m.puxada_max ?? 9999) || 9999;
-    const altMax = Number(m.altura_max ?? 9999) || 9999;
-    if(larg > bocaMax){
-      invalidas.push({ m, motivo: `boca muito pequena (${bocaMax}mm < ${larg}mm)` });
+  const calcularMotivo = (m, comp, larg, alt)=>{
+    const bocaMax = Number(m?.boca_max ?? 9999) || 9999;
+    const puxMin = Number(m?.puxada_min ?? 0) || 0;
+    const puxMax = Number(m?.puxada_max ?? 9999) || 9999;
+    const altMax = Number(m?.altura_max ?? 9999) || 9999;
+    if(larg > bocaMax) return `boca muito pequena (${bocaMax}mm < ${larg}mm)`;
+    if(comp < puxMin) return `comprimento fora do range (${puxMin}mm > ${comp}mm)`;
+    if(comp > puxMax) return `comprimento fora do range (${puxMax}mm < ${comp}mm)`;
+    if(alt > 0 && alt > altMax) return `altura excede limite (${alt}mm > ${altMax}mm)`;
+    return 'dimensões incompatíveis';
+  };
+  const hhmmToMin = (s, fallback)=>{
+    const v = String(s || '').trim();
+    const m = v.match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return fallback;
+    const h = Number(m[1] || 0);
+    const mi = Number(m[2] || 0);
+    return (h * 60) + mi;
+  };
+  const calcTempoOfMin = (m, qtd)=>{
+    const setup = Number(m?.setup_medio || m?.setup || 35) || 35;
+    const vel = getVel(m) || 1000;
+    const prodMin = (qtd > 0) ? (qtd / vel * 60) : 42;
+    return { setupMin: setup, vel, prodMin, totalMin: setup + prodMin };
+  };
+  const totalMinDisponiveis = (m)=>{
+    const ini = hhmmToMin(m?.horario_inicio || m?.horarioIni || m?.hi || '07:00', 7*60);
+    const fim = hhmmToMin(m?.horario_fim || m?.horarioFim || m?.hf || '18:00', 18*60);
+    const bruto = (fim - ini);
+    const alm = Number(m?.almoco_min ?? 60) || 60;
+    const intM = Number(m?.intervalo_manha_min ?? 15) || 15;
+    const intT = Number(m?.intervalo_tarde_min ?? 15) || 15;
+    const setupM = Number(m?.setup_manha_min ?? 20) || 20;
+    const setupT = Number(m?.setup_tarde_min ?? 10) || 10;
+    const liquido = bruto - alm - intM - intT - setupM - setupT;
+    return Math.max(0, Math.trunc(liquido));
+  };
+
+  const data = String(
+    dataProd ||
+    document.getElementById('f-dia-prog')?.value ||
+    document.getElementById('of-data-producao')?.value ||
+    document.getElementById('of-dia')?.value ||
+    document.getElementById('f-dia')?.value ||
+    new Date().toISOString().slice(0,10)
+  ).slice(0,10);
+  const baseOfs = (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
+  const ofsNoDia = baseOfs.filter(of=>{
+    const st = String(of?.status || '').toLowerCase();
+    if(st.includes('conclu') || st.includes('cancelad')) return false;
+    const diaProd = String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10);
+    return diaProd === data;
+  });
+  const fluxoNomes = (of)=>{
+    const a = Array.isArray(of?.fluxo_maquinas) ? of.fluxo_maquinas : parseFluxo(of?.fluxo_maquinas || []);
+    if(a && a.length) return a.map(x=>String(x||'').trim()).filter(Boolean);
+    const ids = Array.isArray(of?.maq) ? of.maq : parseFluxo(of?.maq || []);
+    if(ids && ids.length){
+      try{
+        const names = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(ids) || []) : ids;
+        return (names || []).map(x=>String(x||'').trim()).filter(Boolean);
+      }catch(e){
+        return (ids || []).map(x=>String(x||'').trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  const resultado = [];
+  const qtdOf = (()=>{ try{ return Math.max(0, Number(ofItensTemp?.reduce?.((s,it)=> s + (Number(it?.qtd||0)||0), 0) || 0) || 0); }catch(e){ return 0; }})();
+
+  for(const m of src.slice()){
+    const bocaMax = Number(m?.boca_max ?? 9999) || 9999;
+    const puxMin = Number(m?.puxada_min ?? 0) || 0;
+    const puxMax = Number(m?.puxada_max ?? 9999) || 9999;
+    const altMax = Number(m?.altura_max ?? 9999) || 9999;
+    const velocidade = getVel(m);
+
+    const passaDimensao = (larg <= bocaMax) && (comp >= puxMin) && (comp <= puxMax) && (altIn === 0 || altIn <= altMax);
+    if(!passaDimensao){
+      resultado.push({ maquina: m, compativel: false, motivo: calcularMotivo(m, comp, larg, altIn) });
       continue;
     }
-    if(comp < puxMin){
-      invalidas.push({ m, motivo: `comprimento fora do range (${puxMin}mm > ${comp}mm)` });
-      continue;
-    }
-    if(comp > puxMax){
-      invalidas.push({ m, motivo: `comprimento fora do range (${puxMax}mm < ${comp}mm)` });
-      continue;
-    }
-    if(altIn > 0 && altIn > altMax){
-      invalidas.push({ m, motivo: `altura excede limite (${altIn}mm > ${altMax}mm)` });
-      continue;
-    }
-    validas.push(m);
+
+    const mNome = String(m?.col || m?.nome || m?.name || '').trim();
+    const mNorm = (typeof _normMaqNome === 'function') ? _normMaqNome(mNome) : String(mNome||'').toLowerCase().trim();
+    const ofsDestaMaquina = ofsNoDia.filter(of=>{
+      const fl = fluxoNomes(of);
+      return fl.some(f=>{
+        const fn = (typeof _normMaqNome === 'function') ? _normMaqNome(f) : String(f||'').toLowerCase().trim();
+        return fn === mNorm || fn.includes(mNorm) || mNorm.includes(fn);
+      });
+    });
+    const minutosOcupados = ofsDestaMaquina.reduce((sum, of)=>{
+      const qtd = Number(of?.qtd || of?.quantidade || 0) || 0;
+      const { totalMin } = calcTempoOfMin(m, qtd);
+      return sum + totalMin;
+    }, 0);
+
+    const totalMin = totalMinDisponiveis(m);
+    const minutosLivresRaw = totalMin - minutosOcupados;
+    const ocupacaoPct = (totalMin > 0) ? Math.round((minutosOcupados / totalMin) * 100) : 100;
+    const sobrecarregada = minutosLivresRaw < 0;
+    const minutosLivres = Math.max(0, Math.trunc(minutosLivresRaw));
+    const tempoOf = calcTempoOfMin(m, qtdOf);
+
+    resultado.push({
+      maquina: m,
+      compativel: true,
+      velocidade,
+      minutosLivres,
+      ocupacaoPct: Math.min(100, Math.max(0, ocupacaoPct)),
+      sobrecarregada,
+      ofsNoDia: ofsDestaMaquina.length,
+      data,
+      tempoOf
+    });
   }
-  validas.sort((a,b)=> getVel(b) - getVel(a));
-  invalidas.sort((a,b)=> String(a.m?.col||'').localeCompare(String(b.m?.col||''),'pt-BR',{sensitivity:'base'}));
-  return { validas, invalidas };
+
+  resultado.sort((a, b)=>{
+    if(a.compativel && !b.compativel) return -1;
+    if(!a.compativel && b.compativel) return 1;
+    if(a.sobrecarregada && !b.sobrecarregada) return 1;
+    if(!a.sobrecarregada && b.sobrecarregada) return -1;
+    return (b.velocidade || 0) - (a.velocidade || 0);
+  });
+  return resultado;
 }
 
 function ofDimensoesGet(){
@@ -5177,6 +5276,17 @@ function usarMaquinaSugerida(maquinaId){
   const maq = (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : Array.isArray(MAQUINAS) ? MAQUINAS : []).find(m => String(m?.id) === mid) || null;
   if(!maq) return;
 
+  try{
+    const info = window._SUGESTAO_MAQ_MAP && window._SUGESTAO_MAQ_MAP[mid] ? window._SUGESTAO_MAQ_MAP[mid] : null;
+    const pct = Number(info?.ocupacaoPct ?? 0) || 0;
+    if(pct > 85){
+      const nome = String(maq?.nome || maq?.col || '').trim() || 'Máquina';
+      const data = String(info?.data || '').slice(0,10);
+      const msg = `${nome} está com ${pct}% de ocupação neste dia${data ? ' ('+data+')' : ''}. Deseja adicionar mesmo assim?`;
+      if(!confirm(msg)) return;
+    }
+  }catch(e){}
+
   OF_FLUXO_IDS = Array.isArray(OF_FLUXO_IDS) ? OF_FLUXO_IDS.map(v=>String(v)) : [];
   if(!OF_FLUXO_IDS.includes(mid)) OF_FLUXO_IDS.push(mid);
   try{ renderMaqChks(); }catch(e){}
@@ -5203,13 +5313,28 @@ function usarMaquinaSugerida(maquinaId){
     });
   }catch(e){}
 
-  const itens = Array.isArray(ofItensTemp) ? ofItensTemp : [];
-  const qtd = itens.reduce((s,it)=> s + (Number(it?.qtd || 0) || 0), 0);
-  const tipoCaixaId = String(document.getElementById('of-tipo-caixa')?.value || '').trim();
-  const tipoCaixa = tipoCaixaId ? ((window.TIPOS_CAIXA || TIPOS_CAIXA || []).find(t => String(t?.id) === tipoCaixaId) || null) : null;
-
-  const setupMin = (Number(tipoCaixa?.setup_min) > 0) ? Number(tipoCaixa.setup_min) : (Number(maq?.setup_medio || maq?.setup) > 0) ? Number(maq.setup_medio || maq.setup) : 35;
-  const velocidade = (Number(tipoCaixa?.producao_hora) > 0) ? Number(tipoCaixa.producao_hora) : Number(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || 0) || 1000;
+  const qtd = (()=>{
+    const v = Number(
+      document.getElementById('of-qtd')?.value ||
+      document.querySelector('input[name="qtd"]')?.value ||
+      document.querySelector('.item-qtd')?.value ||
+      0
+    );
+    if(Number.isFinite(v) && v > 0) return v;
+    try{
+      const itens = Array.isArray(ofItensTemp) ? ofItensTemp : [];
+      const s = itens.reduce((acc,it)=> acc + (Number(it?.qtd || 0) || 0), 0);
+      if(s > 0) return s;
+    }catch(e){}
+    try{
+      const els = [...document.querySelectorAll('input[name="item-qtd"]')];
+      const s2 = els.reduce((acc,el)=> acc + (Number(el?.value || 0) || 0), 0);
+      return s2;
+    }catch(e){}
+    return 0;
+  })();
+  const setupMin = Number(maq?.setup_medio || maq?.setup || 35) || 35;
+  const velocidade = Number(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || maq?.producao_media || maq?.prod || 0) || 1000;
   const prodMin = qtd > 0 ? (qtd / velocidade * 60) : 42;
   const totalMin = setupMin + prodMin;
   const horas = Math.floor(totalMin / 60);
@@ -5219,7 +5344,8 @@ function usarMaquinaSugerida(maquinaId){
   try{
     const tempoEl = document.getElementById('tempo-estimado-sugestao');
     if(tempoEl){
-      tempoEl.innerHTML = `⏱ <strong>Tempo estimado com ${escH(String(maq.nome||maq.col||''))}:</strong> ${escH(tempoTexto)} (Setup: ${escH(String(Math.round(setupMin)))}min + Produção: ${escH(String(Math.round(prodMin)))}min)`;
+      const nome = String(maq.nome||maq.col||'').trim() || 'Máquina';
+      tempoEl.innerHTML = `⏱ <strong>${escH(nome)}:</strong> ${escH(tempoTexto)} (Setup: ${escH(String(Math.round(setupMin)))}min + Produção de ${escH(String(Math.trunc(qtd)))} cx a ${escH(String(Math.round(velocidade)))}cx/h = ${escH(String(Math.round(prodMin)))}min)`;
       tempoEl.style.display = 'block';
     }
   }catch(e){}
@@ -5227,7 +5353,7 @@ function usarMaquinaSugerida(maquinaId){
   try{ ofAtualizarTempoEstimado(); }catch(e){}
 }
 
-function ofAtualizarSugestaoMaquinas(){
+async function ofAtualizarSugestaoMaquinas(){
   const box = document.getElementById('sugestao-maquinas');
   if(!box) return;
   try{
@@ -5241,28 +5367,67 @@ function ofAtualizarSugestaoMaquinas(){
     box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento e largura para sugerir máquinas.</span>`;
     return;
   }
-  const r = escolherMaquinaAutomatica(comp, larg, dims.altura);
-  const validas = r.validas || [];
-  const invalidas = r.invalidas || [];
-  const linhasOk = validas.length
-    ? validas.map((m, idx)=>{
+  let r = [];
+  try{
+    r = await escolherMaquinaAutomatica(comp, larg, dims.altura);
+  }catch(e){
+    box.innerHTML = `<span style="color:var(--red);font-weight:900">Erro ao sugerir máquinas.</span>`;
+    return;
+  }
+  const itens = Array.isArray(r) ? r : [];
+  const compativeis = itens.filter(x=>x && x.compativel);
+  const incompativeis = itens.filter(x=>x && !x.compativel);
+  window._SUGESTAO_MAQ_MAP = {};
+  compativeis.forEach(x=>{
+    const id = String(x?.maquina?.id || '').trim();
+    if(id) window._SUGESTAO_MAQ_MAP[id] = x;
+  });
+
+  const fmtMin = (min)=>{
+    const t = Math.max(0, Math.trunc(Number(min)||0));
+    const h = Math.floor(t/60);
+    const m = Math.round(t%60);
+    return h > 0 ? `${h}h ${m}min` : `${m}min`;
+  };
+
+  const linhaComp = compativeis.length
+    ? compativeis.map((x, idx)=>{
+        const m = x.maquina || {};
         const nome = String(m.col || m.nome || '').trim() || '—';
         const mid = String(m?.id || '').trim();
-        const velocidade = Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || 0) || 0;
-        const rec = idx === 0;
-        const cor = rec ? 'var(--green)' : 'var(--yellow)';
-        const label = rec ? `${nome} (recomendada - ${velocidade} cx/h)` : `${nome} - ${velocidade} cx/h`;
-        return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span style="color:${cor};font-weight:900">${rec?'🟢':'🟡'} ${escH(label)}</span>
-          <button type="button" class="btn btn-ghost btn-sm btn-usar-maquina" data-maq-id="${escAttr(mid)}" onclick="usarMaquinaSugerida('${escAttr(mid)}')" style="padding:4px 10px">Usar</button>
+        const velocidade = Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0) || 0;
+        const pct = Number(x?.ocupacaoPct ?? 0) || 0;
+        const ofsNoDia = Number(x?.ofsNoDia ?? 0) || 0;
+        const livres = Number(x?.minutosLivres ?? 0) || 0;
+        const cheia = pct > 85;
+        const rec = idx === 0 && !cheia;
+        const cor = rec ? 'var(--green)' : cheia ? 'var(--yellow)' : 'var(--yellow)';
+        const label = rec ? `${nome} (recomendada - ${velocidade} cx/h)` : `${nome} (${velocidade} cx/h)${cheia ? ' — CHEIA ('+pct+'%)' : ''}`;
+        const tempoEstaOf = x?.tempoOf ? fmtMin(x.tempoOf.totalMin) : '—';
+        const btnTxt = cheia ? 'Usar mesmo assim' : 'Usar';
+        const warn = cheia ? `<div style="color:var(--text3);margin-left:18px">⚠️ Máquina quase cheia. Adicionar mesmo assim?</div>` : '';
+        const dataStr = String(x?.data || '').slice(0,10);
+        const hoje = new Date().toISOString().slice(0,10);
+        const dataLabel = dataStr && dataStr !== hoje ? (typeof fmtDataBR === 'function' ? fmtDataBR(dataStr) : dataStr) : 'hoje';
+        return `<div style="margin:6px 0">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="color:${cor};font-weight:900">${rec?'🟢':'🟡'} ${escH(label)}</span>
+            <button type="button" class="btn btn-ghost btn-sm btn-usar-maquina" data-maq-id="${escAttr(mid)}" onclick="usarMaquinaSugerida('${escAttr(mid)}')" style="padding:4px 10px">${escH(btnTxt)}</button>
+          </div>
+          <div style="color:var(--text3);margin-left:18px">📊 Ocupação ${escH(dataLabel)}: ${escH(String(pct))}% (${escH(String(ofsNoDia))} OFs) | ${escH(fmtMin(livres))} livres</div>
+          <div style="color:var(--text3);margin-left:18px">⏱ Esta OF levaria: ${escH(tempoEstaOf)}</div>
+          ${warn}
         </div>`;
       }).join('')
     : `<div style="color:var(--red);font-weight:900">Nenhuma máquina compatível.</div>`;
-  const linhasBad = invalidas.slice(0, 12).map(({m, motivo})=>{
+
+  const linhaInc = incompativeis.slice(0, 12).map(x=>{
+    const m = x?.maquina || {};
     const nome = String(m?.col || m?.nome || '').trim() || '—';
+    const motivo = String(x?.motivo || '').trim() || 'incompatível';
     return `<div style="color:var(--text3)">${escH('🔴 ' + nome + ' - ' + motivo)}</div>`;
   }).join('');
-  box.innerHTML = `<div style="font-weight:900;margin-bottom:6px">✅ Máquinas compatíveis:</div>${linhasOk}${linhasBad?`<div style="margin-top:8px;font-weight:900;color:var(--text3)">Incompatíveis:</div>${linhasBad}`:''}`;
+  box.innerHTML = `<div style="font-weight:900;margin-bottom:6px">✅ Máquinas compatíveis:</div>${linhaComp}${linhaInc?`<div style="margin-top:8px;font-weight:900;color:var(--text3)">Incompatíveis:</div>${linhaInc}`:''}`;
 }
 
 function temposPadraoPorNome(nomeTipo){
