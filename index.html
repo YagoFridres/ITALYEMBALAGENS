@@ -3650,6 +3650,60 @@ function calcularCapacidadeDia(maquina, ofsNoDia){
   };
 }
 
+function calcularCapacidadeDiaOverflow(maquina){
+  const parseMin = (hora)=>{
+    if(!hora) return 0;
+    const parts = String(hora).split(':');
+    return Number(parts[0] || 0) * 60 + Number(parts[1] || 0);
+  };
+  const inicio = parseMin(maquina?.horario_inicio || '07:00');
+  const fim = parseMin(maquina?.horario_fim || '18:00');
+  const almoco = Number(maquina?.almoco_min ?? 60);
+  const intManha = Number(maquina?.intervalo_manha_min ?? 10);
+  const intTarde = Number(maquina?.intervalo_tarde_min ?? 10);
+  return Math.max(0, (fim - inicio) - almoco - intManha - intTarde);
+}
+
+function calcularTempoOFOverflow(of, maquina){
+  const producao = Number(maquina?.producao || maquina?.phora || 0);
+  const setup = Number(maquina?.setup_medio || maquina?.setup || 30);
+  const qtd = ofGetQtdTotal(of);
+  if(producao <= 0) return setup;
+  return setup + Math.ceil((qtd / producao) * 60);
+}
+
+function separarOFsOverflow(ofs, maquina){
+  const capacidade = calcularCapacidadeDiaOverflow(maquina);
+  const producao = Number(maquina?.producao || maquina?.phora || 0);
+  if(producao <= 0){
+    return { normais: (ofs || []), overflow: [], capacidade, acumulado: 0 };
+  }
+  const ordenadas = [...(ofs || [])].sort((a,b)=>{
+    const urgA = (a?.urg || a?.urgente) ? 0 : 1;
+    const urgB = (b?.urg || b?.urgente) ? 0 : 1;
+    if(urgA !== urgB) return urgA - urgB;
+    const priA = Number(a?.prioridade ?? a?.prioridade_producao ?? 999);
+    const priB = Number(b?.prioridade ?? b?.prioridade_producao ?? 999);
+    if(priA !== priB) return priA - priB;
+    const da = new Date(a?.created_at || 0).getTime();
+    const db = new Date(b?.created_at || 0).getTime();
+    return da - db;
+  });
+  let acumulado = 0;
+  const normais = [];
+  const overflow = [];
+  for(const of of ordenadas){
+    const tempo = calcularTempoOFOverflow(of, maquina);
+    if(acumulado + tempo <= capacidade){
+      acumulado += tempo;
+      normais.push(of);
+    }else{
+      overflow.push(of);
+    }
+  }
+  return { normais, overflow, capacidade, acumulado };
+}
+
 function ofmaqAbrirReagendar(ofId){
   const id = String(ofId||'').trim();
   if(!id) return;
@@ -3735,28 +3789,10 @@ function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
     return Math.max(0, Math.round(Number(tot||0) || 0));
   };
 
-  const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
-  const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
-  const minDisp = maqObj ? minDisponiveisSimples(maqObj) : 0;
-  const ofsOrd = ordenar(ofsGrupo || []);
-  let ofsOk = ofsOrd;
-  let ofsOver = [];
-  if(prodHora > 0 && minDisp > 0){
-    let acc = 0;
-    ofsOk = [];
-    ofsOver = [];
-    for(const of of ofsOrd){
-      const qtd = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
-      const tempoOf = setupMedio + ((Number(qtd||0)||0) / prodHora * 60);
-      if(ofsOver.length === 0 && (acc + tempoOf) <= minDisp){
-        ofsOk.push(of);
-      }else{
-        ofsOver.push(of);
-      }
-      acc += tempoOf;
-    }
-  }
-
+  const baseOrd = ordenar(ofsGrupo || []);
+  const sep = maqObj ? separarOFsOverflow(baseOrd, maqObj) : { normais: baseOrd, overflow: [], capacidade: 0, acumulado: 0 };
+  const ofsOk = sep.normais || [];
+  const ofsOver = sep.overflow || [];
   const divider = ofsOver.length ? `<div style="margin:10px 0 14px;border-top:2px dashed #e53935;color:#e53935;font-weight:900;font-size:.8rem;text-align:center;padding-top:8px">— capacidade máxima atingida —</div>` : '';
   const cards = ofsOk.map(of => renderCardOfDia(of, maq, { overflow:false })).join('') + divider + ofsOver.map(of => renderCardOfDia(of, maq, { overflow:true })).join('');
   let capHtml = '';
@@ -17178,6 +17214,7 @@ async function salvarMaquina(){
         }catch(e){}
         try{ window._MAQUINAS = null; }catch(e){}
         try{ window.MAQUINAS = null; }catch(e){}
+        try{ window._listaMaquinas = null; }catch(e){}
         try{ _ultimaCargaMaquinas = 0; }catch(e){}
       } else {
         Object.assign(m, dados);
@@ -17187,15 +17224,50 @@ async function salvarMaquina(){
       MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
     } else {
       dados.id='MAQ'+String(MAQUINAS.length+1).padStart(2,'0');
-      const payload = {...dados};
+      const payload = {
+        nome: dados.col,
+        col: dados.col,
+        producao: dados.phora,
+        setup_medio: dados.setup,
+        passagem_media: dados.passagem,
+        setor: dados.setor,
+        descricao: dados.desc,
+        icone: dados.ico,
+        horario_inicio: dados.horario_inicio,
+        horario_fim: dados.horario_fim,
+        almoco_inicio: dados.almoco_inicio,
+        almoco_min: dados.almoco_min,
+        intervalo_manha_min: dados.intervalo_manha_min,
+        intervalo_tarde_min: dados.intervalo_tarde_min,
+        setup_manha_min: dados.setup_manha_min,
+        setup_tarde_min: dados.setup_tarde_min,
+        puxada_min: dados.puxada_min,
+        puxada_max: dados.puxada_max,
+        boca_max: dados.boca_max,
+        altura_max: dados.altura_max,
+        ativo: true
+      };
+      Object.keys(payload).forEach((k)=>{
+        const v = payload[k];
+        if(v === undefined || v === null || (typeof v === 'number' && !Number.isFinite(v))) delete payload[k];
+      });
       console.log('[MAQ] payload enviado:', JSON.stringify(payload));
       const r = await salvarViaApiOuLocal('maquina',
         ()=>api('POST','/maquinas', payload),
-        ()=>{ MAQUINAS.push(payload); return {ok:true, local:true}; }
+        ()=>{ MAQUINAS.push({ ...dados }); return {ok:true, local:true}; }
       );
       if(!r || !r.ok){toast('Erro ao criar máquina','var(--red)');return;}
-      if(!r.local){ try{ await carregarMaquinas(); MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){} }catch(e){} }
-      else if(!MAQUINAS.find(x=>x.id===payload.id)) MAQUINAS.push(payload);
+      if(!r.local){
+        try{
+          if(typeof cacheClear === 'function') cacheClear('maquinas');
+        }catch(e){}
+        try{ window._MAQUINAS = null; }catch(e){}
+        try{ window.MAQUINAS = null; }catch(e){}
+        try{ window._listaMaquinas = null; }catch(e){}
+        try{ _ultimaCargaMaquinas = 0; }catch(e){}
+        try{ await carregarMaquinas(true); }catch(e){}
+        MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
+      } else if(!MAQUINAS.find(x=>x.id===dados.id)) MAQUINAS.push({ ...dados });
     }
     fechar('modal-maquina');
     renderMaquinasConf();
