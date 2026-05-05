@@ -5084,7 +5084,18 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
   const altIn = Number(altura || 0) || 0;
   const src = (Array.isArray(MAQUINAS) && MAQUINAS.length) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
   if(!compIn || !largIn || !src.length) return [];
-  const getVel = (m)=> Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0) || 0;
+  const num = (v)=>{
+    if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    if(v == null) return 0;
+    const s = String(v).trim();
+    if(!s) return 0;
+    const cleaned = s
+      .replace(/[^\d,.-]/g,'')
+      .replace(/\.(?=\d{3}(\D|$))/g,'')
+      .replace(',', '.');
+    return Number(cleaned) || 0;
+  };
+  const getVel = (m)=> num(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0);
   const comp = Math.max(compIn, largIn);
   const larg = Math.min(compIn, largIn);
   const calcularMotivo = (m, comp, larg, alt)=>{
@@ -5107,7 +5118,7 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
     return (h * 60) + mi;
   };
   const calcTempoOfMin = (m, qtd)=>{
-    const setup = Number(m?.setup_medio || m?.setup || 35) || 35;
+    const setup = num(m?.setup_medio || m?.setup || 35) || 35;
     const vel = getVel(m) || 1000;
     const prodMin = (qtd > 0) ? (qtd / vel * 60) : 42;
     return { setupMin: setup, vel, prodMin, totalMin: setup + prodMin };
@@ -5333,8 +5344,19 @@ function usarMaquinaSugerida(maquinaId){
     }catch(e){}
     return 0;
   })();
-  const setupMin = Number(maq?.setup_medio || maq?.setup || 35) || 35;
-  const velocidade = Number(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || maq?.producao_media || maq?.prod || 0) || 1000;
+  const num = (v)=>{
+    if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    if(v == null) return 0;
+    const s = String(v).trim();
+    if(!s) return 0;
+    const cleaned = s
+      .replace(/[^\d,.-]/g,'')
+      .replace(/\.(?=\d{3}(\D|$))/g,'')
+      .replace(',', '.');
+    return Number(cleaned) || 0;
+  };
+  const setupMin = num(maq?.setup_medio || maq?.setup || 35) || 35;
+  const velocidade = num(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || maq?.producao_media || maq?.prod || 0) || 1000;
   const prodMin = qtd > 0 ? (qtd / velocidade * 60) : 42;
   const totalMin = setupMin + prodMin;
   const horas = Math.floor(totalMin / 60);
@@ -5360,11 +5382,34 @@ async function ofAtualizarSugestaoMaquinas(){
     const tempoEl = document.getElementById('tempo-estimado-sugestao');
     if(tempoEl){ tempoEl.style.display = 'none'; tempoEl.innerHTML = ''; }
   }catch(e){}
+  const ocup = window._OCUPACAO_DATA && window._OCUPACAO_DATA.data ? window._OCUPACAO_DATA : null;
+  const ocupHtml = (()=>{
+    if(!ocup || !Array.isArray(ocup.items)) return '';
+    const blocks = (pct)=>{
+      const p = Math.max(0, Math.min(100, Math.round(Number(pct)||0)));
+      const filled = Math.max(0, Math.min(10, Math.round(p/10)));
+      return '█'.repeat(filled) + '░'.repeat(10-filled);
+    };
+    const data = String(ocup.data||'').slice(0,10);
+    const hoje = new Date().toISOString().slice(0,10);
+    const dataLabel = data && data !== hoje ? (typeof fmtDataBR === 'function' ? fmtDataBR(data) : data) : 'hoje';
+    const linhas = ocup.items.map(it=>{
+      const nome = String(it?.nome || '').trim() || '—';
+      const pct = Math.max(0, Math.min(100, Math.round(Number(it?.pct)||0)));
+      const ofsNoDia = Number(it?.ofsNoDia||0) || 0;
+      const cheia = pct >= 85;
+      return `<div style="font-family:var(--mono);font-size:12px;color:${cheia?'var(--yellow)':'var(--text3)'}">${escH(nome)}: ${escH(blocks(pct))} ${escH(String(pct))}% (${escH(String(ofsNoDia))} OFs)${cheia?' ⚠️ CHEIA':''}</div>`;
+    }).join('');
+    return `<div style="margin:8px 0 10px 0">
+      <div style="font-weight:900;margin-bottom:6px">📊 Ocupação para ${escH(dataLabel)}:</div>
+      ${linhas}
+    </div>`;
+  })();
   const dims = ofDimensoesGet();
   const comp = dims.comprimento;
   const larg = dims.largura;
   if(!comp || !larg){
-    box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento e largura para sugerir máquinas.</span>`;
+    box.innerHTML = `${ocupHtml}<span style="color:var(--text3)">Preencha comprimento e largura para sugerir máquinas.</span>`;
     return;
   }
   let r = [];
@@ -5427,8 +5472,234 @@ async function ofAtualizarSugestaoMaquinas(){
     const motivo = String(x?.motivo || '').trim() || 'incompatível';
     return `<div style="color:var(--text3)">${escH('🔴 ' + nome + ' - ' + motivo)}</div>`;
   }).join('');
-  box.innerHTML = `<div style="font-weight:900;margin-bottom:6px">✅ Máquinas compatíveis:</div>${linhaComp}${linhaInc?`<div style="margin-top:8px;font-weight:900;color:var(--text3)">Incompatíveis:</div>${linhaInc}`:''}`;
+  box.innerHTML = `${ocupHtml}<div style="font-weight:900;margin-bottom:6px">✅ Máquinas compatíveis:</div>${linhaComp}${linhaInc?`<div style="margin-top:8px;font-weight:900;color:var(--text3)">Incompatíveis:</div>${linhaInc}`:''}`;
 }
+
+async function verificarSobrecargaData(data){
+  const dt = String(data || '').slice(0,10);
+  if(!dt) return;
+  try{ await carregarMaquinas(false); }catch(e){}
+  if(!Array.isArray(window.MAQUINAS) || !window.MAQUINAS.length) return;
+
+  const num = (v)=>{
+    if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    if(v == null) return 0;
+    const s = String(v).trim();
+    if(!s) return 0;
+    const cleaned = s
+      .replace(/[^\d,.-]/g,'')
+      .replace(/\.(?=\d{3}(\D|$))/g,'')
+      .replace(',', '.');
+    return Number(cleaned) || 0;
+  };
+  const hhmmToMin = (s, fallback)=>{
+    const v = String(s || '').trim();
+    const m = v.match(/^(\d{1,2}):(\d{2})$/);
+    if(!m) return fallback;
+    const h = Number(m[1] || 0);
+    const mi = Number(m[2] || 0);
+    return (h * 60) + mi;
+  };
+  const getVel = (m)=> num(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0) || 1000;
+  const getSetup = (m)=> num(m?.setup_medio || m?.setup || 35) || 35;
+  const totalMinDisponiveis = (m)=>{
+    const ini = hhmmToMin(m?.horario_inicio || m?.hi || '07:00', 7*60);
+    const fim = hhmmToMin(m?.horario_fim || m?.hf || '18:00', 18*60);
+    const bruto = (fim - ini);
+    const alm = num(m?.almoco_min ?? 60) || 60;
+    const intM = num(m?.intervalo_manha_min ?? 15) || 15;
+    const intT = num(m?.intervalo_tarde_min ?? 15) || 15;
+    const setupM = num(m?.setup_manha_min ?? 20) || 20;
+    const setupT = num(m?.setup_tarde_min ?? 10) || 10;
+    const liquido = bruto - alm - intM - intT - setupM - setupT;
+    return Math.max(0, Math.trunc(liquido));
+  };
+
+  const baseOfs = (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
+  const ofsNoDia = baseOfs.filter(of=>{
+    const st = String(of?.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(st.includes('conclu') || st.includes('cancelad')) return false;
+    return String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10) === dt;
+  });
+
+  const idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : (OF_FLUXO_IDS || []);
+  const nomesFluxoSel = (()=>{
+    try{
+      const names = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(idsSel) || []) : idsSel;
+      return (names || []).map(x=>String(x||'').trim()).filter(Boolean);
+    }catch(e){
+      return (idsSel || []).map(x=>String(x||'').trim()).filter(Boolean);
+    }
+  })();
+  const setFluxoNorm = new Set(nomesFluxoSel.map(n=> (typeof _normMaqNome === 'function') ? _normMaqNome(n) : String(n||'').toLowerCase().trim()));
+
+  const fluxoNomes = (of)=>{
+    const a = Array.isArray(of?.fluxo_maquinas) ? of.fluxo_maquinas : tryParse(of?.fluxo_maquinas, []);
+    if(a && a.length) return a.map(x=>String(x?.nome||x||'').trim()).filter(Boolean);
+    const ids = Array.isArray(of?.maq) ? of.maq : tryParse(of?.maq, []);
+    if(ids && ids.length){
+      try{
+        const names = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(ids) || []) : ids;
+        return (names || []).map(x=>String(x||'').trim()).filter(Boolean);
+      }catch(e){
+        return (ids || []).map(x=>String(x||'').trim()).filter(Boolean);
+      }
+    }
+    return [];
+  };
+
+  const alertas = [];
+  const ocupacoes = [];
+
+  for(const m of window.MAQUINAS){
+    const nome = String(m?.nome || m?.col || '').trim();
+    const nomeNorm = (typeof _normMaqNome === 'function') ? _normMaqNome(nome) : String(nome||'').toLowerCase().trim();
+    const ofsDestaMaq = ofsNoDia.filter(of=>{
+      const fl = fluxoNomes(of);
+      return fl.some(f=>{
+        const fn = (typeof _normMaqNome === 'function') ? _normMaqNome(f) : String(f||'').toLowerCase().trim();
+        return fn === nomeNorm || fn.includes(nomeNorm) || nomeNorm.includes(fn);
+      });
+    });
+
+    const vel = getVel(m);
+    const setup = getSetup(m);
+    const totalMin = totalMinDisponiveis(m);
+    let minOcupados = 0;
+    for(const ofi of ofsDestaMaq){
+      const qtd = num(ofi?.qtd || ofi?.quantidade || 0);
+      minOcupados += setup + (qtd / vel * 60);
+    }
+    const pct = totalMin > 0 ? Math.round((minOcupados / totalMin) * 100) : 100;
+    const minLivres = totalMin - minOcupados;
+
+    ocupacoes.push({ nome, pct: Math.min(100, Math.max(0, pct)), ofsNoDia: ofsDestaMaq.length });
+
+    const deveAlertar = setFluxoNorm.size ? setFluxoNorm.has(nomeNorm) : true;
+    if(!deveAlertar) continue;
+    if(!ofsDestaMaq.length) continue;
+    if(pct >= 80){
+      const minParaMover = minOcupados - (totalMin * 0.8);
+      const qtdMediaOF = ofsDestaMaq.length ? (ofsDestaMaq.reduce((s,o)=> s + num(o?.qtd||o?.quantidade||0), 0) / ofsDestaMaq.length) : 0;
+      const minPorOF = setup + (qtdMediaOF/vel*60);
+      const ofsMover = Math.ceil(minParaMover / (minPorOF || 1));
+      alertas.push({
+        maquina: nome,
+        pct: Math.min(100, Math.max(0, pct)),
+        ofsNoDia: ofsDestaMaq.length,
+        minLivres: Math.max(0, minLivres),
+        ofsMover: Math.max(1, ofsMover),
+        ofs: ofsDestaMaq
+      });
+    }
+  }
+
+  ocupacoes.sort((a,b)=> (b.pct||0) - (a.pct||0));
+  window._OCUPACAO_DATA = { data: dt, items: ocupacoes };
+  try{ await ofAtualizarSugestaoMaquinas(); }catch(e){}
+  mostrarAlertasSobrecarga(alertas, dt);
+}
+
+function mostrarAlertasSobrecarga(alertas, data){
+  try{ document.getElementById('alerta-sobrecarga-data')?.remove(); }catch(e){}
+  if(!Array.isArray(alertas) || !alertas.length) return;
+
+  const dataFmt = new Date(String(data||'').slice(0,10) + 'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long', day:'2-digit', month:'long'});
+  const html = `
+    <div id="alerta-sobrecarga-data" style="
+      background:#7c2d12;border:1px solid #dc2626;
+      border-radius:8px;padding:12px;margin:8px 0;
+      color:#fecaca;">
+      <strong>⚠️ Sobrecarga em ${escH(dataFmt)}:</strong>
+      ${alertas.map(a=>`
+        <div style="margin-top:8px;padding:8px;background:rgba(0,0,0,0.3);border-radius:6px;">
+          🏭 <strong>${escH(a.maquina)}</strong> —
+          ${escH(String(a.pct))}% ocupada (${escH(String(a.ofsNoDia))} OFs)
+          <br>
+          ⚡ Recomendado: mover <strong>${escH(String(a.ofsMover))} OF(s)</strong> para outro dia
+          <br>
+          ⏱ Tempo livre restante: ${escH(String(Math.floor((a.minLivres||0)/60)))}h ${escH(String(Math.round((a.minLivres||0)%60)))}min
+          <br>
+          <button onclick="sugerirMoverOFs('${escAttr(a.maquina)}','${escAttr(String(data||'').slice(0,10))}',${Number(a.ofsMover)||1})"
+            style="margin-top:6px;padding:4px 10px;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.8rem;">
+            📋 Ver OFs para mover
+          </button>
+        </div>
+      `).join('')}
+    </div>`;
+
+  const campoData = document.getElementById('f-dia') || document.getElementById('of-dia') || document.getElementById('f-dia-prog');
+  if(!campoData) return;
+  const anchor = campoData.closest('.mf') || campoData.parentElement || campoData;
+  try{ anchor.insertAdjacentHTML('afterend', html); }catch(e){}
+}
+
+function sugerirMoverOFs(nomeMaquina, data, qtdMover){
+  const nomeM = String(nomeMaquina||'').trim();
+  const dt = String(data||'').slice(0,10);
+  const qtd = Math.max(1, Math.trunc(Number(qtdMover)||1));
+  if(!nomeM || !dt) return;
+
+  const baseOfs = (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
+  const ofsNoDia = baseOfs.filter(of=>{
+    const st = String(of?.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(st.includes('conclu') || st.includes('cancelad')) return false;
+    const d = String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10);
+    if(d !== dt) return false;
+    const fluxo = Array.isArray(of?.fluxo_maquinas) ? of.fluxo_maquinas : tryParse(of?.fluxo_maquinas, []);
+    const nomes = (fluxo || []).map(f=>String(f?.nome||f||'').toLowerCase());
+    return nomes.some(n=> n.includes(nomeM.toLowerCase()));
+  }).slice(0, qtd + 2);
+
+  if(!ofsNoDia.length){ alert('Nenhuma OF encontrada para esta máquina neste dia.'); return; }
+
+  const lista = ofsNoDia.map(of=>`OF #${of?.of||of?.numero||''} — ${of?.descricao||of?.prodDesc||''} — ${of?.qtd||of?.quantidade||0} cx`).join('\n');
+  const msg = `OFs da ${nomeM} em ${dt}:\n\n${lista}\n\nRecomendado mover ${qtd} OF(s) para o próximo dia útil.\nDeseja mover as primeiras ${qtd}?`;
+  if(!confirm(msg)) return;
+
+  const prox = (typeof formatarData === 'function')
+    ? formatarData(proximoDiaUtil(new Date(dt + 'T12:00:00')))
+    : new Date(dt + 'T12:00:00').toISOString().slice(0,10);
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const ofsParaMover = ofsNoDia.slice(0, qtd);
+
+  Promise.all(ofsParaMover.map(of=>
+    fetch('/api/ofs/' + encodeURIComponent(String(of?.id||'')), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ data_producao: prox, dia: prox })
+    })
+  )).then(async ()=>{
+    try{ window.OFS = null; }catch(e){}
+    try{ await carregarOFs({ forcar: true }); }catch(e){}
+    try{ toast('✅ ' + qtd + ' OF(s) movidas para ' + prox,'var(--green)'); }catch(e){}
+    try{ document.getElementById('alerta-sobrecarga-data')?.remove(); }catch(e){}
+    try{ await verificarSobrecargaData(dt); }catch(e){}
+  });
+}
+
+(function(){
+  function bind(){
+    ['f-dia','of-dia','f-dia-prog'].forEach((id)=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(el.dataset && el.dataset.sobrecargaBound) return;
+      if(el.dataset) el.dataset.sobrecargaBound = '1';
+      el.addEventListener('change', async (e)=>{
+        try{ await verificarSobrecargaData(e.target.value); }catch(_){}
+      });
+    });
+  }
+  try{
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', bind);
+    else bind();
+    const mo = new MutationObserver(()=>bind());
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  }catch(e){}
+})();
 
 function temposPadraoPorNome(nomeTipo){
   const n = String(nomeTipo||'').toLowerCase().trim();
@@ -15297,6 +15568,17 @@ function normalizeEst(c) {
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
 function normalizeMaq(r){
   const ativo = r.ativo===undefined ? true : !!r.ativo;
+  const toNum = (v)=>{
+    if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    if(v == null) return 0;
+    const s = String(v).trim();
+    if(!s) return 0;
+    const cleaned = s
+      .replace(/[^\d,.-]/g,'')
+      .replace(/\.(?=\d{3}(\D|$))/g,'')
+      .replace(',', '.');
+    return Number(cleaned) || 0;
+  };
   const phora = r.phora ?? r.por_hora ?? r.producao ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
   const setup = r.setup ?? r.setup_medio ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
   const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
@@ -15317,8 +15599,8 @@ function normalizeMaq(r){
     nome:r.nome||r.col||r.name||'',
     ordem:(r.ordem!=null?Number(r.ordem):null),
     ico:r.ico||r.icon||r.icone||'⚙',
-    phora:Number(phora)||0,
-    setup:Number(setup)||0,
+    phora:toNum(phora),
+    setup:toNum(setup),
     passagem:r.passagem!=null?Number(r.passagem)||0:(r.passagem_media!=null?Number(r.passagem_media)||0:0),
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
@@ -15643,6 +15925,7 @@ async function carregarMaquinas(forcar=false){
   }catch(e){}
   if(!forcar && (now - _ultimaCargaMaquinas) < CACHE_TTL && Array.isArray(MAQUINAS) && MAQUINAS.length > 0) return { ok:true, cached:true, data:MAQUINAS };
   const r = await api('GET','/maquinas');
+  try{ console.log('[MAQUINAS RAW] primeira:', JSON.stringify(((r && r.data) || [])[0])); }catch(e){}
   if(r && r.ok && r.data && r.data.length) {
     MAQUINAS = r.data.map(normalizeMaq);
     MAQUINAS.sort((a,b)=>{
