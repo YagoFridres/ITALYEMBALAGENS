@@ -3649,15 +3649,15 @@ function calcularCapacidadeDia(maquina, ofsNoDia){
     const tipo = tipoId
       ? (tipos.find(t=>String(t.id)===tipoId) || null)
       : (tipoNome ? (tipos.find(t=>String(t.nome||'').toLowerCase().trim()===tipoNome.toLowerCase().trim()) || null) : null);
-    const setupMin = Number(tipo?.setup_min) || Number(maquina?.setup) || 30;
-    const prodHora = Number(tipo?.producao_hora) || Number(maquina?.phora) || 500;
+    const setupMin = Number(tipo?.setup_min) || Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min) || 30;
+    const prodHora = Number(tipo?.producao_hora) || Number(maquina?.producao || maquina?.phora || maquina?.caixas_hora) || 500;
     const prodMinRate = (prodHora > 0) ? (prodHora / 60) : 0;
     const qtd = ofGetQtdTotal(of);
     const prodMin = prodMinRate > 0 ? (qtd / prodMinRate) : 0;
     minOcupados += (Number(setupMin) || 0) + (Number(prodMin) || 0);
   }
   const minLivres = totalMinOk - minOcupados;
-  const setupMedio = Number(maquina?.setup) || 30;
+  const setupMedio = Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min) || 30;
   const setupsCabem = setupMedio > 0 ? Math.floor(Math.max(0, minLivres) / setupMedio) : 0;
   const ocupacaoPct = totalMinOk > 0 ? Math.round((minOcupados / totalMinOk) * 100) : 0;
   return {
@@ -3684,16 +3684,16 @@ function calcularCapacidadeDiaOverflow(maquina){
 }
 
 function calcularTempoOFOverflow(of, maquina){
-  const producao = Number(maquina?.producao || maquina?.phora || 0);
-  const setup = Number(maquina?.setup_medio || maquina?.setup || 30);
+  const producao = Number(maquina?.producao || maquina?.phora || maquina?.caixas_hora || 0);
+  const setup = Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min || 30);
   const qtd = ofGetQtdTotal(of);
   if(producao <= 0) return setup;
   return setup + Math.ceil((qtd / producao) * 60);
 }
 
 function calcularOFsExcedentes(maquina, ofsNoDia){
-  const vel = Number(maquina?.producao || maquina?.phora || 0) || 0;
-  const setup = Number(maquina?.setup_medio || maquina?.setup || 35) || 35;
+  const vel = Number(maquina?.producao || maquina?.phora || maquina?.caixas_hora || 0) || 0;
+  const setup = Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min || 35) || 35;
   const parseMin = (hora)=>{
     const s = String(hora || '').trim();
     const p = s.split(':');
@@ -6024,11 +6024,11 @@ function calcularTempoEstimado(maquina, tipoCaixa, quantidade){
   const setupMin = (Number(tipoCaixa?.setup_min) > 0) ? Number(tipoCaixa.setup_min)
     : (Number(tipoCaixa?.setup) > 0) ? Number(tipoCaixa.setup)
     : (Number(padrao?.setup) > 0) ? Number(padrao.setup)
-    : (Number(maquina?.setup) > 0) ? Number(maquina.setup)
+    : (Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min) > 0) ? Number(maquina?.setup_medio || maquina?.setup || maquina?.tempo_setup_padrao_min)
     : 35;
   const velocidade = (Number(tipoCaixa?.producao_hora) > 0) ? Number(tipoCaixa.producao_hora)
     : (Number(padrao?.producao_hora) > 0) ? Number(padrao.producao_hora)
-    : (Number(maquina?.phora) > 0) ? Number(maquina.phora)
+    : (Number(maquina?.producao || maquina?.phora || maquina?.caixas_hora) > 0) ? Number(maquina?.producao || maquina?.phora || maquina?.caixas_hora)
     : 1000;
   const tempoProducaoMin = velocidade > 0 ? (qtd / velocidade) * 60 : 0;
   const totalMin = (Number(setupMin) || 0) + (Number(tempoProducaoMin) || 0);
@@ -15983,8 +15983,8 @@ function normalizeMaq(r){
       .replace(',', '.');
     return Number(cleaned) || 0;
   };
-  const phora = r.phora ?? r.por_hora ?? r.producao ?? r.producao_hora ?? r.producao_por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
-  const setup = r.setup ?? r.setup_medio ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
+  const producaoBase = r.producao ?? r.caixas_hora ?? r.producao_hora ?? r.producao_por_hora ?? r.phora ?? r.por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
+  const setupBase = r.setup_medio ?? r.tempo_setup_padrao_min ?? r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
   const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
   const horario_fim = r.horario_fim ?? r.hf ?? r.fim ?? '18:00';
   const puxada_min = r.puxada_min ?? 0;
@@ -16003,11 +16003,12 @@ function normalizeMaq(r){
     nome:r.nome||r.col||r.name||'',
     ordem:(r.ordem!=null?Number(r.ordem):null),
     ico:r.ico||r.icon||r.icone||'⚙',
-    phora:toNum(phora),
-    producao:toNum(phora),
-    setup:toNum(setup),
-    setup_medio:toNum(setup),
-    passagem:r.passagem!=null?Number(r.passagem)||0:(r.passagem_media!=null?Number(r.passagem_media)||0:0),
+    phora:toNum(producaoBase),
+    producao:toNum(producaoBase),
+    setup:toNum(setupBase),
+    setup_medio:toNum(setupBase),
+    passagem:toNum(r.passagem_media ?? r.passagem ?? 0),
+    passagem_media:toNum(r.passagem_media ?? r.passagem ?? 0),
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
     horario_inicio: String(horario_inicio || '07:00').trim() || '07:00',
