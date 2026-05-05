@@ -3512,6 +3512,18 @@ function renderCardOfDia(of, nomeMaquina, opts){
     const tempoMinShow = (prodHora > 0) ? Math.max(0, Math.round(tempoTotalMin)) : null;
     const velocidadeTxt = (prodHora > 0) ? `${Math.round(prodHora)} cx/h` : '— cx/h';
     const tempoTxt = (tempoMinShow != null) ? `${tempoMinShow} min estimado` : '— min estimado';
+    const tempoMini = (()=>{
+      if(tempoMinShow == null) return '—';
+      const m = Math.max(0, Math.round(Number(tempoMinShow)||0));
+      if(m >= 60) return `${Math.floor(m/60)}h${Math.round(m%60)}min`;
+      return `${m}min`;
+    })();
+    const qtdMini = Math.max(0, Math.round(Number(qtdEst||0)||0));
+    const miniInfo = `<div style="display:flex;gap:12px;font-size:0.75rem;color:#94a3b8;margin-top:8px;border-top:1px solid #334155;padding-top:4px;font-family:var(--mono)">
+      <span>⏱ ${escH(tempoMini)}</span>
+      <span>📦 ${escH(String(qtdMini))} cx</span>
+      <span>⚡ ${escH(velocidadeTxt)}</span>
+    </div>`;
     return `
       <div class="ofmaq-card" data-of-id="${escAttr(of.id||'')}" data-ofmaq-maq="${escAttr(maq)}" onclick="ofmaqSelecionarOF('${escAttr(ofSelNum)}')" style="display:flex;gap:16px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--border);background:${isOverflow?'#e5393512':'var(--s3)'};border-radius:10px;margin-bottom:10px;${isOverflow?'border-left:4px solid #e53935;':''}">
         ${imgUrl
@@ -3520,6 +3532,12 @@ function renderCardOfDia(of, nomeMaquina, opts){
             </div>`
           : `<div class="ofmaq-img" style="width:88px;height:88px;background:var(--s2);border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:2.2rem;flex-shrink:0">📦</div>`}
         <div style="flex:1;min-width:0">
+          ${isOverflow ? `<div style="border:2px solid #dc2626;border-radius:8px;margin-bottom:10px;overflow:hidden">
+            <div style="background:#dc2626;color:#fff;padding:4px 8px;font-size:0.75rem;font-weight:900">
+              ⚠️ FORA DA CAPACIDADE — Realocar para outro dia
+              <button onclick="event.stopPropagation();realocarOF('${escAttr(of.id||'')}')" style="float:right;background:#fff;color:#dc2626;border:none;border-radius:3px;padding:2px 6px;cursor:pointer;font-size:0.7rem;font-weight:900">📅 Mover</button>
+            </div>
+          </div>` : ''}
           <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
             <span class="ofmaq-num" style="font-size:1rem;font-weight:700;color:var(--accent);white-space:nowrap">${escH(String(numeroLabel))}</span>
             <span class="ofmaq-title" style="font-size:1.3rem;font-weight:800;color:var(--text);line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis">${escH(String(produto))}</span>
@@ -3544,6 +3562,7 @@ function renderCardOfDia(of, nomeMaquina, opts){
             <span style="color:var(--text2);font-family:var(--mono)">⏱ <strong>${escH(tempoTxt)}</strong></span>
             <span style="color:var(--text2);font-family:var(--mono)">⚡ <strong>${escH(velocidadeTxt)}</strong></span>
           </div>
+          ${miniInfo}
           <div style="margin-top:8px">${renderEtapasFluxo(of)}</div>
         </div>
         <div class="ofmaq-actions" style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
@@ -3672,6 +3691,57 @@ function calcularTempoOFOverflow(of, maquina){
   return setup + Math.ceil((qtd / producao) * 60);
 }
 
+function calcularOFsExcedentes(maquina, ofsNoDia){
+  const vel = Number(maquina?.producao || maquina?.phora || 0) || 0;
+  const setup = Number(maquina?.setup_medio || maquina?.setup || 35) || 35;
+  const parseMin = (hora)=>{
+    const s = String(hora || '').trim();
+    const p = s.split(':');
+    const h = Number(p[0] || 0);
+    const m = Number(p[1] || 0);
+    return (h * 60) + m;
+  };
+  const ini = parseMin(maquina?.horario_inicio || '07:00');
+  const fim = parseMin(maquina?.horario_fim || '18:00');
+  const totalMin = (fim - ini)
+    - (Number(maquina?.almoco_min) || 60)
+    - (Number(maquina?.intervalo_manha_min) || 15)
+    - (Number(maquina?.intervalo_tarde_min) || 15)
+    - (Number(maquina?.setup_manha_min) || 20)
+    - (Number(maquina?.setup_tarde_min) || 10);
+  let minAcumulado = 0;
+  const totalCaixas = (ofsNoDia || []).reduce((s, of)=> s + ofGetQtdTotal(of), 0);
+  const ofsOrdenadas = [...(ofsNoDia || [])].sort((a,b)=>{
+    const pa = Number(a?.prioridade_producao);
+    const pb = Number(b?.prioridade_producao);
+    const aPri = Number.isFinite(pa) ? pa : 999;
+    const bPri = Number.isFinite(pb) ? pb : 999;
+    if(aPri !== bPri) return aPri - bPri;
+    const da = new Date(a?.created_at || 0).getTime();
+    const db = new Date(b?.created_at || 0).getTime();
+    return da - db;
+  });
+  const resultado = [];
+  for(const of of ofsOrdenadas){
+    const qtd = ofGetQtdTotal(of);
+    const minEsta = setup + ((vel > 0) ? (qtd / vel * 60) : 0);
+    minAcumulado += minEsta;
+    const tempoTexto = minEsta >= 60
+      ? `${Math.floor(minEsta/60)}h${Math.round(minEsta%60)}min`
+      : `${Math.round(minEsta)}min`;
+    resultado.push({
+      of,
+      minEsta: Math.round(minEsta),
+      minAcumulado: Math.round(minAcumulado),
+      excede: minAcumulado > totalMin,
+      tempoTexto
+    });
+  }
+  const dentro = resultado.filter(r=>!r.excede).length;
+  const fora = resultado.filter(r=>r.excede).length;
+  return { resultado, totalMin, minAcumulado: Math.round(minAcumulado), dentro, fora, totalCaixas, vel, setup };
+}
+
 function separarOFsOverflow(ofs, maquina){
   const capacidade = calcularCapacidadeDiaOverflow(maquina);
   const producao = Number(maquina?.producao || maquina?.phora || 0);
@@ -3702,6 +3772,42 @@ function separarOFsOverflow(ofs, maquina){
     }
   }
   return { normais, overflow, capacidade, acumulado };
+}
+
+async function realocarOF(ofId){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const d0 = new Date();
+  let prox = null;
+  try{
+    const p = (typeof proximoDiaUtil === 'function') ? proximoDiaUtil(d0) : null;
+    if(p instanceof Date) prox = p.toISOString().slice(0,10);
+    else if(typeof p === 'string') prox = String(p).slice(0,10);
+  }catch(e){}
+  if(!prox) prox = new Date(d0.getTime() + (24*60*60*1000)).toISOString().slice(0,10);
+  if(!confirm('Mover esta OF para ' + prox + '?')) return;
+  try{
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const resp = await fetch('/api/ofs/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ data_producao: prox, dia: prox })
+    });
+    const j = await resp.json().catch(()=>null);
+    if(!resp.ok || (j && j.ok === false)){
+      const r2 = await api('PATCH','/ofs/' + encodeURIComponent(id), { data_producao: prox, dia: prox });
+      if(!r2 || !r2.ok) throw new Error((r2 && r2.error) ? r2.error : 'falha');
+    }
+    try{ window.OFS = null; }catch(e){}
+    try{ await carregarOFs({ forcar: true }); }catch(e){}
+    try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
+    toast('✅ OF movida para ' + prox,'var(--green)');
+  }catch(e){
+    toast('Erro ao mover OF: ' + (e.message||e),'var(--red)');
+  }
 }
 
 function ofmaqAbrirReagendar(ofId){
@@ -3771,28 +3877,16 @@ function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
     });
   };
 
-  const hhmmToMin = (s, fallback)=>{
-    const v = String(s || '').trim();
-    const m = v.match(/^(\d{1,2}):(\d{2})$/);
-    if(!m) return fallback;
-    const h = Number(m[1] || 0);
-    const mi = Number(m[2] || 0);
-    return (h * 60) + mi;
-  };
-  const minDisponiveisSimples = (m)=>{
-    const hi = hhmmToMin(m?.horario_inicio || '07:00', 7*60);
-    const hf = hhmmToMin(m?.horario_fim || '17:00', 17*60);
-    const alm = Number(m?.almoco_min ?? 60) || 60;
-    const intM = Number(m?.intervalo_manha_min ?? 15) || 15;
-    const intT = Number(m?.intervalo_tarde_min ?? 15) || 15;
-    const tot = (hf - hi) - alm - intM - intT;
-    return Math.max(0, Math.round(Number(tot||0) || 0));
-  };
-
   const baseOrd = ordenar(ofsGrupo || []);
-  const sep = maqObj ? separarOFsOverflow(baseOrd, maqObj) : { normais: baseOrd, overflow: [], capacidade: 0, acumulado: 0 };
-  const ofsOk = sep.normais || [];
-  const ofsOver = sep.overflow || [];
+  const calc = maqObj ? calcularOFsExcedentes(maqObj, baseOrd) : { resultado: baseOrd.map(of=>({of, excede:false})), totalMin:0, minAcumulado:0, dentro: baseOrd.length, fora:0, totalCaixas:0, vel:0 };
+  const ofsOk = [];
+  const ofsOver = [];
+  (calc.resultado || []).forEach(r=>{
+    if(r && r.of){
+      if(r.excede) ofsOver.push(r.of);
+      else ofsOk.push(r.of);
+    }
+  });
   const divider = ofsOver.length ? `<div style="margin:10px 0 14px;border-top:2px dashed #e53935;color:#e53935;font-weight:900;font-size:.8rem;text-align:center;padding-top:8px">— capacidade máxima atingida —</div>` : '';
   const cards = ofsOk.map(of => renderCardOfDia(of, maq, { overflow:false })).join('') + divider + ofsOver.map(of => renderCardOfDia(of, maq, { overflow:true })).join('');
   let capHtml = '';
@@ -3808,7 +3902,26 @@ function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
       const mm = m % 60;
       return h > 0 ? `${h}h${String(mm).padStart(2,'0')}min` : `${mm}min`;
     };
+    const badgeCap = (()=>{
+      const total = (baseOrd || []).length;
+      const dentro = Number(calc.dentro||0) || 0;
+      const fora = Number(calc.fora||0) || 0;
+      if(!total) return '';
+      if(fora > 0){
+        return `<span style="background:#dc2626;color:#fff;border-radius:4px;padding:2px 8px;font-size:0.75rem;font-weight:900">⚠️ ${escH(String(total))}/${escH(String(dentro))} — ${escH(String(fora))} para realocar</span>`;
+      }
+      return `<span style="background:#198754;color:#fff;border-radius:4px;padding:2px 8px;font-size:0.75rem;font-weight:900">✅ ${escH(String(dentro))}/${escH(String(total))} OFs (dentro da capacidade)</span>`;
+    })();
+    const totalDiaTxt = (()=>{
+      const m = Math.max(0, Math.round(Number(calc.minAcumulado||0) || 0));
+      const h = Math.floor(m / 60);
+      const mm = m % 60;
+      const vel = Number(calc.vel||0) || 0;
+      const velTxt = vel > 0 ? `${Math.round(vel)} cx/h` : '— cx/h';
+      return `⏱ Total do dia: ${h}h ${mm}min | 📦 ${fmtN(calc.totalCaixas||0)} cx | ⚡ ${velTxt}`;
+    })();
     capHtml = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-left:auto">
+      ${badgeCap}
       <div style="min-width:220px">
         <div style="height:8px;background:var(--s2);border:1px solid var(--border);border-radius:999px;overflow:hidden">
           <div style="height:100%;width:${pctBar}%;background:${cor}"></div>
@@ -3819,6 +3932,7 @@ function renderOfmaqGrupoDia(nomeMaquina, ofsGrupo){
         <div style="font-size:.68rem;color:var(--text3);margin-top:2px;font-family:var(--mono)">
           ${escH(String((ofsGrupo||[]).length))} OFs programadas | ${escH(String(cap.setupsCabem))} setups livres
         </div>
+        <div style="font-size:.8rem;color:#94a3b8;margin-top:4px;font-family:var(--mono)">${escH(totalDiaTxt)}</div>
       </div>
       ${pctShow > 100 ? `<span style="color:var(--red);font-weight:900;font-size:.78rem">SOBRECARREGADA</span>` : ''}
     </div>`;
@@ -17205,6 +17319,7 @@ async function salvarMaquina(){
         return;
       }
       const row = (json && json.data) ? json.data : json;
+      const savedId = String((row && row.id) ? row.id : id).trim();
       if(row && row.id){
         const nm = (typeof normalizeMaq === 'function') ? normalizeMaq(row) : row;
         const j = (MAQUINAS||[]).findIndex(x=>String(x.id||'')===String(nm.id||''));
@@ -17217,6 +17332,11 @@ async function salvarMaquina(){
       try{ window._listaMaquinas = null; }catch(e){}
       try{ _ultimaCargaMaquinas = 0; }catch(e){}
       try{ await carregarMaquinas(true); }catch(e){}
+      try{
+        const src = (Array.isArray(window.MAQUINAS) && window.MAQUINAS.length) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+        const maqAtualizada = src.find(m=>String(m?.id||'').trim()===savedId) || null;
+        console.log('[VERIFICAR SAVE] maq após reload:', JSON.stringify(maqAtualizada));
+      }catch(e){}
       MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
     }else{
       const localRow = normalizeMaq ? normalizeMaq({
