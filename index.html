@@ -1386,6 +1386,7 @@ const MODULOS_SISTEMA = [
   { key:'fluxos',         label:'Fluxos',              grupo:'Máquinas',  menuId:'menu-fluxos',          paginaId:'fluxos' },
   { key:'maquinas',       label:'Máquinas',            grupo:'Máquinas',  menuId:'menu-maquinas',        paginaId:'maquinas' },
   { key:'tipos_caixa',    label:'Tipos de Caixa',      grupo:'Máquinas',  menuId:'menu-tipos-caixa',     paginaId:'tipos-caixa' },
+  { key:'tempos_reais',   label:'Tempos Reais',        grupo:'Máquinas',  menuId:'menu-tempos-reais',    paginaId:'tempos-reais' },
   { key:'clientes',       label:'Clientes',            grupo:'Cadastros', menuId:'menu-clientes',        paginaId:'clientes' },
   { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
@@ -2399,6 +2400,9 @@ function _goBase(id){
   if(id==='tipos-caixa'){
     if(_apiConectado && CURRENT_USER) carregarTiposCaixa(false).then(()=>renderTiposCaixa()).catch(()=>renderTiposCaixa());
     else renderTiposCaixa();
+  }
+  if(id==='tempos-reais'){
+    renderTemposReais();
   }
   if(id==='vendedores'){
     if(_apiConectado && CURRENT_USER){
@@ -3732,7 +3736,9 @@ function renderCardOfDia(of, nomeMaquina, opts){
     const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
     const qtdEst = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : qtd;
     const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, (maq && maq !== 'Sem Máquina') ? maq : '');
-    const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+    const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+    const tipoTR = String(of?.tipo_caixa || '').trim();
+    const prodHora = maqObj ? trVelocidadePreferidaSync(String(maqObj?.id || maqObj?.maquina_id || ''), tipoTR, prodHoraBase) : prodHoraBase;
     const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
     const tempoTotalMin = (prodHora > 0) ? (setupMedio + ((Number(qtdEst || 0) || 0) / prodHora * 60)) : 0;
     const tempoMinShow = (prodHora > 0) ? Math.max(0, Math.round(tempoTotalMin)) : null;
@@ -4306,7 +4312,9 @@ function renderOfmaqCalendario(lista, filtroMaq){
                 const cliObj = (typeof getCli === 'function') ? (getCli(of.cliId||of.cli_id||of.cliente_id) || {}) : {};
                 const cliNome = cliObj.nome || cliObj.razao_social || of.cliNome || of.clinome || of.cliente_nome || '—';
                 const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
-                const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+                const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+                const tipoTR = String(of?.tipo_caixa || '').trim();
+                const prodHora = maqObj ? trVelocidadePreferidaSync(String(maqObj?.id || maqObj?.maquina_id || ''), tipoTR, prodHoraBase) : prodHoraBase;
                 const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
                 const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
                 const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
@@ -4395,7 +4403,9 @@ function cardOFMaquina(of, maquinaAtual){
   const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
   const maqNomeCalc = String(maquinaAtual||atual||'').trim();
   const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, maqNomeCalc);
-  const prodHora = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const tipoTR = String(of?.tipo_caixa || '').trim();
+  const prodHora = maqObj ? trVelocidadePreferidaSync(String(maqObj?.id || maqObj?.maquina_id || ''), tipoTR, prodHoraBase) : prodHoraBase;
   const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
   const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
   const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
@@ -5654,6 +5664,9 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
   const altIn = Number(altura || 0) || 0;
   const src = (Array.isArray(MAQUINAS) && MAQUINAS.length) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
   if(!compIn || !largIn || !src.length) return [];
+  const tipoSel = (()=>{
+    try{ return String(ofGetTipoCaixaSelecionado?.().nome || '').trim(); }catch(e){ return ''; }
+  })();
   const num = (v)=>{
     if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
     if(v == null) return 0;
@@ -5687,9 +5700,10 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
     const mi = Number(m[2] || 0);
     return (h * 60) + mi;
   };
-  const calcTempoOfMin = (m, qtd)=>{
+  const calcTempoOfMin = (m, qtd, velOverride)=>{
     const setup = num(m?.setup_medio || m?.setup || 35) || 35;
-    const vel = getVel(m) || 1000;
+    const vIn = Number(velOverride || 0) || 0;
+    const vel = (vIn > 0) ? vIn : (getVel(m) || 1000);
     const prodMin = (qtd > 0) ? (qtd / vel * 60) : 42;
     return { setupMin: setup, vel, prodMin, totalMin: setup + prodMin };
   };
@@ -5744,7 +5758,8 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
     const puxMin = Number(m?.puxada_min ?? 0) || 0;
     const puxMax = Number(m?.puxada_max ?? 9999) || 9999;
     const altMax = Number(m?.altura_max ?? 9999) || 9999;
-    const velocidade = getVel(m);
+    const velocidadeBase = getVel(m);
+    const velocidade = (tipoSel && m?.id) ? await trVelocidadePreferida(String(m.id), tipoSel, velocidadeBase) : velocidadeBase;
 
     const passaDimensao = (larg <= bocaMax) && (comp >= puxMin) && (comp <= puxMax) && (altIn === 0 || altIn <= altMax);
     if(!passaDimensao){
@@ -5763,7 +5778,9 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
     });
     const minutosOcupados = ofsDestaMaquina.reduce((sum, of)=>{
       const qtd = Number(of?.qtd || of?.quantidade || 0) || 0;
-      const { totalMin } = calcTempoOfMin(m, qtd);
+      const tipoOf = String(of?.tipo_caixa || tipoSel || '').trim();
+      const velOf = (tipoOf && m?.id) ? trVelocidadePreferidaSync(String(m.id), tipoOf, velocidadeBase) : (velocidadeBase || 1000);
+      const { totalMin } = calcTempoOfMin(m, qtd, velOf);
       return sum + totalMin;
     }, 0);
 
@@ -5772,7 +5789,7 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
     const ocupacaoPct = (totalMin > 0) ? Math.round((minutosOcupados / totalMin) * 100) : 100;
     const sobrecarregada = minutosLivresRaw < 0;
     const minutosLivres = Math.max(0, Math.trunc(minutosLivresRaw));
-    const tempoOf = calcTempoOfMin(m, qtdOf);
+    const tempoOf = calcTempoOfMin(m, qtdOf, velocidade);
 
     resultado.push({
       maquina: m,
@@ -5926,7 +5943,11 @@ function usarMaquinaSugerida(maquinaId){
     return Number(cleaned) || 0;
   };
   const setupMin = num(maq?.setup_medio || maq?.setup || 35) || 35;
-  const velocidade = num(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || maq?.producao_media || maq?.prod || 0) || 1000;
+  const tipoSel = (()=>{
+    try{ return String(ofGetTipoCaixaSelecionado?.().nome || '').trim(); }catch(e){ return ''; }
+  })();
+  const velocidadeBase = num(maq?.producao || maq?.phora || maq?.producao_hora || maq?.velocidade || maq?.cxhora || maq?.producao_media || maq?.prod || 0) || 1000;
+  const velocidade = trVelocidadePreferidaSync(mid, tipoSel, velocidadeBase) || velocidadeBase || 1000;
   const prodMin = qtd > 0 ? (qtd / velocidade * 60) : 42;
   const totalMin = setupMin + prodMin;
   const horas = Math.floor(totalMin / 60);
@@ -5941,6 +5962,28 @@ function usarMaquinaSugerida(maquinaId){
       tempoEl.style.display = 'block';
     }
   }catch(e){}
+
+  if(tipoSel){
+    try{
+      trEnsureVelocidade(mid, tipoSel).then((v)=>{
+        const velOk = Number(v || 0);
+        if(!(velOk > 0) || Math.round(velOk) === Math.round(velocidade)) return;
+        const selAtual = String(document.querySelector('.btn-usar-maquina[style*=\"198754\"]')?.dataset?.maqId || '').trim();
+        if(selAtual && selAtual !== mid) return;
+        const prodMin2 = qtd > 0 ? (qtd / velOk * 60) : 42;
+        const totalMin2 = setupMin + prodMin2;
+        const h2 = Math.floor(totalMin2 / 60);
+        const m2 = Math.round(totalMin2 % 60);
+        const tempoTexto2 = h2 > 0 ? `${h2}h ${m2}min` : `${m2}min`;
+        const tempoEl2 = document.getElementById('tempo-estimado-sugestao');
+        if(tempoEl2){
+          const nome = String(maq.nome||maq.col||'').trim() || 'Máquina';
+          tempoEl2.innerHTML = `⏱ <strong>${escH(nome)}:</strong> ${escH(tempoTexto2)} (Setup: ${escH(String(Math.round(setupMin)))}min + Produção de ${escH(String(Math.trunc(qtd)))} cx a ${escH(String(Math.round(velOk)))}cx/h = ${escH(String(Math.round(prodMin2)))}min)`;
+          tempoEl2.style.display = 'block';
+        }
+      }).catch(()=>{});
+    }catch(e){}
+  }
 
   try{ ofAtualizarTempoEstimado(); }catch(e){}
 }
@@ -18671,6 +18714,456 @@ async function excluirTipoCaixa(id){
   }
 }
 
+var TEMPOS_REAIS = Array.isArray(window.TEMPOS_REAIS) ? window.TEMPOS_REAIS : [];
+var _TR_OFS = Array.isArray(window._TR_OFS) ? window._TR_OFS : [];
+var _TR_OFS_TS = Number(window._TR_OFS_TS || 0) || 0;
+var _TR_OF_MAP = (window._TR_OF_MAP && typeof window._TR_OF_MAP === 'object') ? window._TR_OF_MAP : {};
+var _TR_VEL_CACHE = (window._TR_VEL_CACHE && typeof window._TR_VEL_CACHE === 'object') ? window._TR_VEL_CACHE : {};
+var _TR_VEL_REQ = (window._TR_VEL_REQ && typeof window._TR_VEL_REQ === 'object') ? window._TR_VEL_REQ : {};
+
+function trNormTipo(s){
+  return String(s||'').trim().toLowerCase();
+}
+function trKey(maquinaId, tipo){
+  return String(maquinaId||'').trim() + '|' + trNormTipo(tipo);
+}
+function trCacheGet(maquinaId, tipo){
+  if(!_TR_VEL_CACHE || typeof _TR_VEL_CACHE !== 'object') _TR_VEL_CACHE = {};
+  const k = trKey(maquinaId, tipo);
+  const v = _TR_VEL_CACHE[k];
+  const media = v && Number(v.media || 0);
+  return media > 0 ? media : null;
+}
+function trCacheAddRow(row){
+  if(!_TR_VEL_CACHE || typeof _TR_VEL_CACHE !== 'object') _TR_VEL_CACHE = {};
+  const mid = String(row?.maquina_id || row?.maquinaId || '').trim();
+  const tipo = String(row?.tipo_caixa || row?.tipoCaixa || '').trim();
+  const vel = Math.trunc(Number(row?.velocidade_cxh ?? row?.velocidade ?? 0) || 0);
+  const qtd = Math.trunc(Number(row?.quantidade ?? row?.qtd ?? 0) || 0);
+  if(!mid || !tipo || vel <= 0) return;
+  const k = trKey(mid, tipo);
+  const cur = _TR_VEL_CACHE[k] || { sumVelQtd: 0, sumQtd: 0, media: 0, updatedAt: 0 };
+  const w = Math.max(1, qtd);
+  cur.sumVelQtd = Number(cur.sumVelQtd || 0) + (vel * w);
+  cur.sumQtd = Number(cur.sumQtd || 0) + w;
+  cur.media = cur.sumQtd > 0 ? (cur.sumVelQtd / cur.sumQtd) : 0;
+  cur.updatedAt = Date.now();
+  _TR_VEL_CACHE[k] = cur;
+}
+async function trEnsureVelocidade(maquinaId, tipo){
+  if(!_TR_VEL_CACHE || typeof _TR_VEL_CACHE !== 'object') _TR_VEL_CACHE = {};
+  if(!_TR_VEL_REQ || typeof _TR_VEL_REQ !== 'object') _TR_VEL_REQ = {};
+  const mid = String(maquinaId||'').trim();
+  const tp = String(tipo||'').trim();
+  if(!mid || !tp) return null;
+  const cached = trCacheGet(mid, tp);
+  if(cached) return cached;
+  const k = trKey(mid, tp);
+  const now = Date.now();
+  const inflight = _TR_VEL_REQ[k];
+  if(inflight && (now - inflight) < 20000) return null;
+  _TR_VEL_REQ[k] = now;
+  try{
+    const ate = new Date().toISOString().slice(0,10);
+    const deDt = new Date(); deDt.setDate(deDt.getDate() - 180);
+    const de = deDt.toISOString().slice(0,10);
+    const qs = new URLSearchParams({ maquina_id: mid, de, ate });
+    const r = await apiFetch('/api/tempos_reais?' + qs.toString(), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    const rows = (j && j.ok && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
+    const norm = trNormTipo(tp);
+    let sumVelQtd = 0;
+    let sumQtd = 0;
+    for(const row of (rows||[])){
+      const t = trNormTipo(row?.tipo_caixa || '');
+      if(t !== norm) continue;
+      const vel = Math.trunc(Number(row?.velocidade_cxh ?? 0) || 0);
+      if(vel <= 0) continue;
+      const qtd = Math.trunc(Number(row?.quantidade ?? 0) || 0);
+      const w = Math.max(1, qtd);
+      sumVelQtd += vel * w;
+      sumQtd += w;
+    }
+    if(sumQtd > 0){
+      _TR_VEL_CACHE[k] = { sumVelQtd, sumQtd, media: (sumVelQtd / sumQtd), updatedAt: Date.now() };
+      return _TR_VEL_CACHE[k].media;
+    }
+    return null;
+  }catch(e){
+    return null;
+  }finally{
+    _TR_VEL_REQ[k] = 0;
+  }
+}
+
+function trVelocidadePreferidaSync(maquinaId, tipo, fallback){
+  const mid = String(maquinaId || '').trim();
+  const tp = String(tipo || '').trim();
+  const base = Number(fallback || 0) || 0;
+  if(!mid || !tp) return base;
+  const cached = trCacheGet(mid, tp);
+  if(cached) return cached;
+  try{ trEnsureVelocidade(mid, tp); }catch(e){}
+  return base;
+}
+
+async function trVelocidadePreferida(maquinaId, tipo, fallback){
+  const mid = String(maquinaId || '').trim();
+  const tp = String(tipo || '').trim();
+  const base = Number(fallback || 0) || 0;
+  if(!mid || !tp) return base;
+  const v = await trEnsureVelocidade(mid, tp);
+  return Number(v || 0) > 0 ? Number(v) : (trCacheGet(mid, tp) || base);
+}
+
+function trFmtData(d){
+  const s = String(d||'').slice(0,10);
+  if(!s) return '—';
+  try{ return new Date(s + 'T12:00:00').toLocaleDateString('pt-BR'); }catch(e){ return s; }
+}
+function trGetMaquinas(){
+  return (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : [])) || [];
+}
+function trGetMaquinaNomeById(id){
+  const mid = String(id||'').trim();
+  if(!mid) return '';
+  const m = trGetMaquinas().find(x=>String(x?.id||'')===mid) || null;
+  return m ? String(m.nome || m.col || '').trim() : '';
+}
+function trSyncTotalModal(){
+  const s = Math.trunc(Number(document.getElementById('tr-setup')?.value || 0) || 0);
+  const p = Math.trunc(Number(document.getElementById('tr-prod')?.value || 0) || 0);
+  const t = Math.max(0, s + p);
+  const out = document.getElementById('tr-total');
+  if(out) out.textContent = String(t) + ' min';
+}
+async function trCarregarOFs(){
+  const now = Date.now();
+  if(_TR_OFS_TS && (now - _TR_OFS_TS) < 120000 && Array.isArray(_TR_OFS) && _TR_OFS.length) return _TR_OFS;
+  try{
+    const qs = new URLSearchParams();
+    if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+    const r = await apiFetch('/api/ofs' + (qs.toString()?('?'+qs.toString()):''), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    const rows = (j && j.ok && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
+    _TR_OFS = rows || [];
+    _TR_OFS_TS = now;
+    _TR_OF_MAP = {};
+    const dl = document.getElementById('tr-of-list');
+    if(dl){
+      dl.innerHTML = '';
+      for(const of of _TR_OFS){
+        const id = String(of?.id||'').trim();
+        const num = String(of?.of || of?.numero || '').trim();
+        const cli = String(of?.cliente_nome || of?.cli_nome || '').trim();
+        const prod = String(of?.prodDesc || of?.produto || of?.descricao || '').trim();
+        if(!id) continue;
+        const label = `OF ${num || '—'} — ${cli || '—'} — ${prod || '—'}`.slice(0, 160);
+        _TR_OF_MAP[label] = id;
+        const opt = document.createElement('option');
+        opt.value = label;
+        dl.appendChild(opt);
+      }
+    }
+    return _TR_OFS;
+  }catch(e){
+    return [];
+  }
+}
+function trAplicarOFSelecionada(label){
+  const key = String(label||'').trim();
+  const id = _TR_OF_MAP[key] || '';
+  const hid = document.getElementById('tr-of-id');
+  if(hid) hid.value = id;
+  if(!id) return;
+  const of = (_TR_OFS||[]).find(x=>String(x?.id||'')===id) || null;
+  if(!of) return;
+  const tipo = String(of?.tipo_caixa || of?.tipo_caixa_nome || of?.tipo_caixa_id || '').trim();
+  const qtd = Math.trunc(Number(of?.qtd ?? of?.quantidade ?? 0) || 0);
+  const tipoEl = document.getElementById('tr-tipo');
+  const qtdEl = document.getElementById('tr-qtd');
+  if(tipoEl && tipo && !String(tipoEl.value||'').trim()) tipoEl.value = tipo;
+  if(qtdEl && qtd > 0 && !(Number(qtdEl.value||0)>0)) qtdEl.value = String(qtd);
+}
+
+function renderTemposReais(){
+  const selMaq = document.getElementById('tr-filtro-maquina');
+  const deEl = document.getElementById('tr-filtro-de');
+  const ateEl = document.getElementById('tr-filtro-ate');
+  if(!selMaq || !deEl || !ateEl) return;
+
+  const maq = trGetMaquinas();
+  const cur = String(selMaq.value||'').trim();
+  selMaq.innerHTML = '<option value="">Todas máquinas</option>' + maq.map(m=>{
+    const id = String(m?.id||'').trim();
+    const nm = String(m?.nome || m?.col || '').trim();
+    return `<option value="${escAttr(id)}">${escH(nm||id)}</option>`;
+  }).join('');
+  if(cur) selMaq.value = cur;
+
+  if(!deEl.value){
+    const d = new Date(); d.setDate(d.getDate() - 30);
+    deEl.value = d.toISOString().slice(0,10);
+  }
+  if(!ateEl.value) ateEl.value = new Date().toISOString().slice(0,10);
+
+  if(!selMaq.dataset.bound){
+    selMaq.dataset.bound = '1';
+    selMaq.addEventListener('change', carregarTemposReais);
+    deEl.addEventListener('change', carregarTemposReais);
+    ateEl.addEventListener('change', carregarTemposReais);
+  }
+
+  carregarTemposReais();
+}
+
+async function carregarTemposReais(){
+  const body = document.getElementById('tr-body');
+  const selMaq = document.getElementById('tr-filtro-maquina');
+  const deEl = document.getElementById('tr-filtro-de');
+  const ateEl = document.getElementById('tr-filtro-ate');
+  if(!body || !selMaq || !deEl || !ateEl) return;
+  try{
+    const qs = new URLSearchParams();
+    const mid = String(selMaq.value||'').trim();
+    const de = String(deEl.value||'').slice(0,10);
+    const ate = String(ateEl.value||'').slice(0,10);
+    if(mid) qs.set('maquina_id', mid);
+    if(de) qs.set('de', de);
+    if(ate) qs.set('ate', ate);
+    const r = await apiFetch('/api/tempos_reais' + (qs.toString()?('?'+qs.toString()):''), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    TEMPOS_REAIS = (j && j.ok && Array.isArray(j.data)) ? (j.data||[]) : (Array.isArray(j) ? j : []);
+  }catch(e){
+    TEMPOS_REAIS = [];
+  }
+
+  const rows = (TEMPOS_REAIS||[]).slice().sort((a,b)=>{
+    const da = String(a?.data||'').slice(0,10);
+    const db = String(b?.data||'').slice(0,10);
+    if(da !== db) return db.localeCompare(da);
+    const ma = String(a?.maquina_nome||'').toLowerCase();
+    const mb = String(b?.maquina_nome||'').toLowerCase();
+    if(ma !== mb) return ma.localeCompare(mb);
+    return String(b?.created_at||'').localeCompare(String(a?.created_at||''));
+  });
+
+  const out = [];
+  const groups = {};
+  for(const r of rows){
+    const d = String(r?.data||'').slice(0,10);
+    const mid = String(r?.maquina_id||'').trim();
+    const key = d + '|' + mid;
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  }
+  const groupKeys = Object.keys(groups).sort((a,b)=>{
+    const da = a.split('|')[0] || '';
+    const db = b.split('|')[0] || '';
+    if(da !== db) return db.localeCompare(da);
+    return a.localeCompare(b);
+  });
+
+  for(const gk of groupKeys){
+    const list = groups[gk] || [];
+    for(const r of list){
+      const id = String(r?.id||'');
+      const maq = String(r?.maquina_nome || trGetMaquinaNomeById(r?.maquina_id) || '—');
+      const ofNum = String(r?.of_numero || '').trim();
+      const tipo = String(r?.tipo_caixa || '').trim();
+      const vel = Math.trunc(Number(r?.velocidade_cxh ?? 0) || 0);
+      const qtd = Math.trunc(Number(r?.quantidade ?? 0) || 0);
+      const setup = Math.trunc(Number(r?.setup_min ?? 0) || 0);
+      const prod = Math.trunc(Number(r?.producao_min ?? 0) || 0);
+      const total = Math.trunc(Number(r?.tempo_total_min ?? (setup + prod) ?? 0) || 0);
+      const data = String(r?.data || '').slice(0,10);
+      out.push(`<tr>
+        <td style="padding:8px 10px;border:1px solid var(--border);font-weight:800">${escH(maq)}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2)">${escH(ofNum ? ('OF ' + ofNum) : '—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2)">${escH(tipo || '—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);color:var(--green);font-weight:800">${escH(String(vel||0))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(qtd||0))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(setup||0))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(prod||0))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:900;color:var(--accent)">${escH(String(total||0))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--text2)">${escH(trFmtData(data))}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalTempoReal('${escAttr(id)}')" style="padding:6px 10px">✏️</button>
+          <button class="btn btn-ghost btn-sm" onclick="excluirTempoReal('${escAttr(id)}')" style="padding:6px 10px;color:var(--red)">🗑</button>
+        </td>
+      </tr>`);
+    }
+
+    const qtdTot = list.reduce((s,r)=> s + (Math.trunc(Number(r?.quantidade ?? 0) || 0)), 0);
+    const minTot = list.reduce((s,r)=> s + (Math.trunc(Number(r?.tempo_total_min ?? (Number(r?.setup_min||0)+Number(r?.producao_min||0)) ?? 0) || 0)), 0);
+    let sumVelQtd = 0;
+    let sumQtd = 0;
+    for(const r of list){
+      const vel = Math.trunc(Number(r?.velocidade_cxh ?? 0) || 0);
+      if(vel <= 0) continue;
+      const q = Math.trunc(Number(r?.quantidade ?? 0) || 0);
+      const w = Math.max(1, q);
+      sumVelQtd += vel * w;
+      sumQtd += w;
+    }
+    const velMed = sumQtd > 0 ? Math.round(sumVelQtd / sumQtd) : 0;
+    out.push(`<tr style="background:rgba(255,255,255,0.03)">
+      <td colspan="10" style="padding:10px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">
+        <b>Resumo:</b> ${escH(String(qtdTot||0))} cx • ${escH(String(minTot||0))} min • Vel. média ponderada: ${escH(String(velMed||0))} cx/h
+      </td>
+    </tr>`);
+  }
+
+  body.innerHTML = out.join('') || `<tr><td colspan="10" style="padding:12px;border:1px solid var(--border);text-align:center;color:var(--text2)">Nenhum registro.</td></tr>`;
+}
+
+async function abrirModalTempoReal(id){
+  try{ await carregarMaquinas(false); }catch(e){}
+  try{ await trCarregarOFs(); }catch(e){}
+
+  const tid = String(id||'').trim();
+  const row = tid ? (TEMPOS_REAIS||[]).find(x=>String(x?.id||'')===tid) : null;
+
+  const idEl = document.getElementById('tr-id');
+  const maqEl = document.getElementById('tr-maquina');
+  const ofLbl = document.getElementById('tr-of-label');
+  const ofId = document.getElementById('tr-of-id');
+  const tipoEl = document.getElementById('tr-tipo');
+  const velEl = document.getElementById('tr-vel');
+  const qtdEl = document.getElementById('tr-qtd');
+  const setupEl = document.getElementById('tr-setup');
+  const prodEl = document.getElementById('tr-prod');
+  const dataEl = document.getElementById('tr-data');
+  const obsEl = document.getElementById('tr-obs');
+
+  if(idEl) idEl.value = row ? String(row.id||'') : '';
+  if(maqEl){
+    const maq = trGetMaquinas();
+    const cur = row ? String(row.maquina_id||'') : String(maqEl.value||'');
+    maqEl.innerHTML = '<option value="">Selecionar máquina...</option>' + maq.map(m=>{
+      const mid = String(m?.id||'').trim();
+      const nm = String(m?.nome || m?.col || '').trim();
+      return `<option value="${escAttr(mid)}">${escH(nm||mid)}</option>`;
+    }).join('');
+    if(cur) maqEl.value = cur;
+  }
+  if(ofLbl) ofLbl.value = '';
+  if(ofId) ofId.value = row ? String(row.of_id||'') : '';
+  if(tipoEl) tipoEl.value = row ? String(row.tipo_caixa||'') : '';
+  if(velEl) velEl.value = row ? String(row.velocidade_cxh ?? '') : '';
+  if(qtdEl) qtdEl.value = row ? String(row.quantidade ?? '') : '';
+  if(setupEl) setupEl.value = row ? String(row.setup_min ?? '') : '';
+  if(prodEl) prodEl.value = row ? String(row.producao_min ?? '') : '';
+  if(dataEl) dataEl.value = row ? String(row.data||'').slice(0,10) : new Date().toISOString().slice(0,10);
+  if(obsEl) obsEl.value = row ? String(row.obs||'') : '';
+
+  trSyncTotalModal();
+  if(!ofLbl.dataset.bound){
+    ofLbl.dataset.bound = '1';
+    ofLbl.addEventListener('change', (e)=> trAplicarOFSelecionada(e.target.value));
+  }
+  if(setupEl && !setupEl.dataset.bound){
+    setupEl.dataset.bound = '1';
+    setupEl.addEventListener('input', trSyncTotalModal);
+  }
+  if(prodEl && !prodEl.dataset.bound){
+    prodEl.dataset.bound = '1';
+    prodEl.addEventListener('input', trSyncTotalModal);
+  }
+  abrir('modal-tempos-reais');
+}
+
+async function salvarTempoReal(){
+  const id = String(document.getElementById('tr-id')?.value || '').trim();
+  const maquina_id = String(document.getElementById('tr-maquina')?.value || '').trim();
+  const maquina_nome = trGetMaquinaNomeById(maquina_id) || String(document.getElementById('tr-maquina')?.selectedOptions?.[0]?.textContent || '').trim();
+  const of_label = String(document.getElementById('tr-of-label')?.value || '').trim();
+  const of_id = String(document.getElementById('tr-of-id')?.value || (_TR_OF_MAP[of_label]||'')).trim() || null;
+  const tipo_caixa = String(document.getElementById('tr-tipo')?.value || '').trim();
+  const velocidade_cxh = Math.trunc(Number(document.getElementById('tr-vel')?.value || 0) || 0);
+  const quantidade = Math.trunc(Number(document.getElementById('tr-qtd')?.value || 0) || 0);
+  const setup_min = Math.trunc(Number(document.getElementById('tr-setup')?.value || 0) || 0);
+  const producao_min = Math.trunc(Number(document.getElementById('tr-prod')?.value || 0) || 0);
+  const data = String(document.getElementById('tr-data')?.value || '').slice(0,10);
+  const obs = String(document.getElementById('tr-obs')?.value || '').trim();
+
+  if(!maquina_id){ toast('Selecione a máquina','var(--red)'); return; }
+  if(!data){ toast('Informe a data','var(--red)'); return; }
+
+  let of_numero = '';
+  if(of_id){
+    const of = (_TR_OFS||[]).find(x=>String(x?.id||'')===String(of_id)) || null;
+    of_numero = String(of?.of || of?.numero || '').trim();
+  }
+
+  const payload = {
+    maquina_id,
+    maquina_nome,
+    of_id,
+    of_numero,
+    tipo_caixa,
+    velocidade_cxh: velocidade_cxh || null,
+    quantidade: quantidade || null,
+    setup_min: setup_min || null,
+    producao_min: producao_min || null,
+    data,
+    obs
+  };
+
+  try{
+    const url = id ? ('/api/tempos_reais/' + encodeURIComponent(id)) : '/api/tempos_reais';
+    const method = id ? 'PUT' : 'POST';
+    const r = await apiFetch(url, { method, body: payload });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!(r && r.ok) || (j && j.ok === false)){
+      toast('Erro ao salvar','var(--red)');
+      return;
+    }
+    const row = (j && j.data) ? j.data : j;
+    const tipoK = String(row?.tipo_caixa || tipo_caixa || '').trim();
+    if(tipoK){
+      try{
+        const k = trKey(maquina_id, tipoK);
+        if(_TR_VEL_CACHE && typeof _TR_VEL_CACHE === 'object') delete _TR_VEL_CACHE[k];
+        await trEnsureVelocidade(maquina_id, tipoK);
+      }catch(e){}
+    }
+    fechar('modal-tempos-reais');
+    toast('✓ Registro salvo','var(--green)');
+    carregarTemposReais();
+  }catch(e){
+    toast('Erro ao salvar','var(--red)');
+  }
+}
+
+async function excluirTempoReal(id){
+  const tid = String(id||'').trim();
+  if(!tid) return;
+  if(!confirm('Excluir este registro?')) return;
+  try{
+    const row0 = (TEMPOS_REAIS||[]).find(x=>String(x?.id||'')===tid) || null;
+    const r = await apiFetch('/api/tempos_reais/' + encodeURIComponent(tid), { method:'DELETE' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!(r && r.ok) || (j && j.ok === false)){
+      toast('Erro ao excluir','var(--red)'); return;
+    }
+    TEMPOS_REAIS = (TEMPOS_REAIS||[]).filter(x=>String(x?.id||'')!==tid);
+    const mid0 = String(row0?.maquina_id || '').trim();
+    const tipo0 = String(row0?.tipo_caixa || '').trim();
+    if(mid0 && tipo0){
+      try{
+        const k = trKey(mid0, tipo0);
+        if(_TR_VEL_CACHE && typeof _TR_VEL_CACHE === 'object') delete _TR_VEL_CACHE[k];
+        trEnsureVelocidade(mid0, tipo0);
+      }catch(e){}
+    }
+    toast('🗑 Excluído','var(--orange)');
+    carregarTemposReais();
+  }catch(e){
+    toast('Erro ao excluir','var(--red)');
+  }
+}
+
 // ===================== DADOS NOVOS =====================
 let ORCAMENTOS = [];
 let ORC_SEQ = 1;
@@ -24254,6 +24747,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-fluxos" class="nav-item" onclick="go('fluxos');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🔀</span>Fluxos</div>
       <div id="menu-maquinas" class="nav-item" onclick="go('maquinas');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⚙</span>Máquinas</div>
       <div id="menu-tipos-caixa" class="nav-item" onclick="go('tipos-caixa');closeNavGroupsExcept('ng-maquinas')"><span class="ico">📦</span>Tipos de Caixa</div>
+      <div id="menu-tempos-reais" class="nav-item" onclick="go('tempos-reais');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⏱</span>Tempos Reais</div>
     </div>
   </div>
 
@@ -24764,6 +25258,39 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="page-body">
     <div class="maq-conf-grid" id="maq-conf-grid"></div>
+  </div>
+</div>
+
+<!-- ========== 6A. TEMPOS REAIS ========== -->
+<div id="page-tempos-reais" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <select id="tr-filtro-maquina" style="min-width:220px"></select>
+    <input id="tr-filtro-de" type="date">
+    <input id="tr-filtro-ate" type="date">
+    <button class="btn btn-ghost btn-sm" onclick="carregarTemposReais()">↻ Atualizar</button>
+    <div style="flex:1"></div>
+    <button class="btn btn-accent btn-sm" onclick="abrirModalTempoReal()">＋ Novo Registro</button>
+  </div>
+  <div class="page-body">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1160px">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">MÁQUINA</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OF</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">TIPO DE CAIXA</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--green);text-align:right">VELOCIDADE (cx/h)</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">QTD</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--yellow);text-align:right">SETUP (min)</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--yellow);text-align:right">PRODUÇÃO (min)</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);text-align:right">TOTAL (min)</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">DATA</th>
+            <th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center;width:140px">AÇÕES</th>
+          </tr>
+        </thead>
+        <tbody id="tr-body"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -26512,6 +27039,31 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
     <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
     <button onclick="enviarOrcamentoPorEmail()" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-tempos-reais">
+<div class="modal" style="width:min(980px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-tempos-reais')">✕</button>
+  <h2>⏱ Tempos Reais</h2>
+  <input type="hidden" id="tr-id">
+  <input type="hidden" id="tr-of-id">
+  <datalist id="tr-of-list"></datalist>
+  <div class="fg" style="margin-bottom:12px">
+    <div class="mf"><label>MÁQUINA *</label><select id="tr-maquina"><option value="">Selecionar máquina...</option></select></div>
+    <div class="mf fgf"><label>OF (buscar)</label><input id="tr-of-label" list="tr-of-list" placeholder="OF 123 — Cliente — Produto"></div>
+    <div class="mf"><label>TIPO DE CAIXA</label><input id="tr-tipo" placeholder="Ex: 201 — Normal 8 Tampas"></div>
+    <div class="mf"><label>VELOCIDADE (cx/h)</label><input id="tr-vel" type="number" placeholder="Ex: 1200"></div>
+    <div class="mf"><label>QUANTIDADE</label><input id="tr-qtd" type="number" placeholder="Ex: 500"></div>
+    <div class="mf"><label>SETUP (min)</label><input id="tr-setup" type="number" placeholder="Ex: 30"></div>
+    <div class="mf"><label>PRODUÇÃO (min)</label><input id="tr-prod" type="number" placeholder="Ex: 45"></div>
+    <div class="mf"><label>TOTAL</label><div id="tr-total" style="height:42px;display:flex;align-items:center;padding:0 10px;border-radius:10px;background:var(--s2);border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:var(--accent)">0 min</div></div>
+    <div class="mf"><label>DATA</label><input id="tr-data" type="date"></div>
+    <div class="mf fgf"><label>OBS</label><textarea id="tr-obs" rows="2"></textarea></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-tempos-reais')">Cancelar</button>
+    <button class="btn btn-accent" onclick="salvarTempoReal()">💾 Salvar</button>
   </div>
 </div></div>
 

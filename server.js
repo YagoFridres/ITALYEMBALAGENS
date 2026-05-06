@@ -2557,6 +2557,78 @@ app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('tempos_reais').select('*')
+      .order('data', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (req.query.maquina_id) q = q.eq('maquina_id', req.query.maquina_id);
+    if (req.query.de) q = q.gte('data', req.query.de);
+    if (req.query.ate) q = q.lte('data', req.query.ate);
+    const { data, error } = await q;
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const maquina_id = String(b.maquina_id || '').trim();
+    if (!maquina_id) return res.status(400).json({ ok: false, error: 'maquina_id obrigatório' });
+
+    let maquina_nome = String(b.maquina_nome || '').trim();
+    if (!maquina_nome) {
+      try {
+        const { data: m, error: em } = await supabase.from('maquinas').select('nome,col').eq('id', maquina_id).maybeSingle();
+        if (!em && m) maquina_nome = String(m.nome || m.col || '').trim();
+      } catch (_) {}
+    }
+
+    const payload = {
+      maquina_id,
+      maquina_nome: maquina_nome || null,
+      of_id: b.of_id || null,
+      of_numero: String(b.of_numero || '').trim() || null,
+      tipo_caixa: String(b.tipo_caixa || '').trim() || null,
+      velocidade_cxh: Number.isFinite(Number(b.velocidade_cxh)) ? Math.trunc(Number(b.velocidade_cxh)) : null,
+      quantidade: Number.isFinite(Number(b.quantidade)) ? Math.trunc(Number(b.quantidade)) : null,
+      setup_min: Number.isFinite(Number(b.setup_min)) ? Math.trunc(Number(b.setup_min)) : null,
+      producao_min: Number.isFinite(Number(b.producao_min)) ? Math.trunc(Number(b.producao_min)) : null,
+      data: b.data || null,
+      obs: String(b.obs || '').trim() || null,
+    };
+
+    const { data, error } = await supabase.from('tempos_reais').insert([payload]).select('*').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    delete payload.tempo_total_min;
+    delete payload.created_at;
+    const { data, error } = await supabase
+      .from('tempos_reais').update(payload)
+      .eq('id', id).select('*').single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('tempos_reais').delete().eq('id', req.params.id);
+    if (error) throw error;
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
