@@ -8171,7 +8171,8 @@ function abrirModalAmostra(id){
   const st = document.getElementById('am-status'); if(st) st.value = row ? (row.status || 'Pendente') : 'Pendente';
   const emp = document.getElementById('am-emp'); if(emp) emp.value = String(row?.emp_id || EMP_FILTRO || emp.value || 'E1');
   const obs = document.getElementById('am-obs'); if(obs) obs.value = row ? (row.observacoes || '') : '';
-  const imgUrlEl = document.getElementById('am-img-url'); if(imgUrlEl) imgUrlEl.value = row ? (row.imagem_url || '') : '';
+  const imgUrlEl = document.getElementById('amostra-imagem-url'); if(imgUrlEl) imgUrlEl.value = row ? (row.imagem_url || '') : '';
+  window._amostraImagemUrl = row ? String(row.imagem_url || '').trim() : null;
   _amostraSyncPreview();
 
   const title = document.getElementById('am-title');
@@ -8189,6 +8190,63 @@ function abrirModalAmostra(id){
       }
     });
   }
+  const inpImg = document.getElementById('amostra-imagem-input');
+  if(inpImg && !inpImg._attached){
+    inpImg._attached = true;
+    inpImg.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const okTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+      if (!okTypes.includes(file.type)) {
+        alert('Apenas imagens: JPG, PNG, GIF ou WEBP');
+        e.target.value = '';
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Imagem muito grande. Máximo: 5MB');
+        e.target.value = '';
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+        const r = await fetch(base + '/api/ofs/upload', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData
+        });
+
+        const data = await r.json().catch(()=>null);
+        console.log('[UPLOAD AMOSTRA]', data);
+
+        const url = String(data?.data?.url || data?.url || '').trim();
+        if ((data && data.ok) && url) {
+          window._amostraImagemUrl = url;
+          const urlEl = document.getElementById('amostra-imagem-url');
+          if(urlEl) urlEl.value = url;
+          const preview = document.getElementById('amostra-img-preview');
+          if (preview) {
+            preview.src = url;
+            preview.style.display = 'block';
+          }
+          mostrarToast('✅ Imagem carregada!');
+        } else {
+          alert('Erro: ' + String((data && (data.error || data.message)) ? (data.error || data.message) : 'Upload falhou'));
+        }
+      } catch(err) {
+        console.error('[UPLOAD AMOSTRA] erro:', err);
+        alert('Erro ao fazer upload: ' + String(err?.message || err));
+      } finally {
+        try{ e.target.value = ''; }catch(_){}
+      }
+    });
+  }
   abrir('modal-amostra');
 }
 
@@ -8197,16 +8255,15 @@ function fecharModalAmostra(){
 }
 
 function _amostraSyncPreview(){
-  const url = String(document.getElementById('am-img-url')?.value || '').trim();
-  const wrap = document.getElementById('am-img-prev-wrap');
-  const img = document.getElementById('am-img-prev');
-  if(!wrap || !img) return;
+  const url = String(window._amostraImagemUrl || document.getElementById('amostra-imagem-url')?.value || '').trim();
+  const img = document.getElementById('amostra-img-preview');
+  if(!img) return;
   if(url){
     img.src = url;
-    wrap.style.display = 'flex';
+    img.style.display = 'block';
   } else {
     img.src = '';
-    wrap.style.display = 'none';
+    img.style.display = 'none';
   }
 }
 
@@ -8281,7 +8338,8 @@ async function amostraUploadImagem(e){
 }
 
 function amostraRemoverImagem(){
-  const urlEl = document.getElementById('am-img-url');
+  window._amostraImagemUrl = null;
+  const urlEl = document.getElementById('amostra-imagem-url');
   if(urlEl) urlEl.value = '';
   _amostraSyncPreview();
 }
@@ -8297,7 +8355,7 @@ async function salvarAmostra(){
   const data_pedido = String(document.getElementById('am-data-pedido')?.value || '').trim() || null;
   const data_entrega = String(document.getElementById('am-data-entrega')?.value || '').trim() || null;
   const data_aprovacao = String(document.getElementById('am-data-aprovacao')?.value || '').trim() || null;
-  const imagem_url = String(window._amostraImagemUrl || document.getElementById('am-img-url')?.value || '').trim() || null;
+  const imagem_url = String(window._amostraImagemUrl || '').trim() || '';
   const emp_id = String(document.getElementById('am-emp')?.value || EMP_FILTRO || 'E1').trim() || 'E1';
 
   if(!cliente_nome){ toast('Cliente é obrigatório','var(--red)'); return; }
@@ -8327,7 +8385,7 @@ async function salvarAmostra(){
       return;
     }
     fecharModalAmostra();
-    try{ window._amostraImagemUrl = null; }catch(_){}
+    window._amostraImagemUrl = null;
     await carregarAmostras({ forcar:true });
     renderAmostras();
     showSaveIndicator('✓ salvo','var(--green)');
@@ -12962,7 +13020,10 @@ function renderFornecedores(){
       +(f.obs?'<div style="font-size:.68rem;color:var(--text3);margin-top:4px;font-style:italic">'+f.obs+'</div>':'')
       +'<div style="display:flex;gap:6px;margin-top:8px">'
       +'<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarFornecedor(\''+f.id+'\')" style="font-size:.65rem">✏ Editar</button>'
-      +'<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirFornecedor(\''+f.id+'\')" style="font-size:.65rem;color:var(--red)">✕ Excluir</button>'
+      +`<button onclick="event.stopPropagation();excluirFornecedor('${escAttr(f.id)}','${escAttr(f.nome)}')"
+        style="background:#c62828;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;">
+        🗑 Excluir
+      </button>`
       +'</div></div>';
   }).join('')||'<div style="color:var(--text3);padding:20px">Nenhum fornecedor cadastrado.</div>';
 }
@@ -13038,14 +13099,27 @@ function atualizarFornecedorNoEstoque(nome,forn){
   ESTOQUE.forEach(function(c){if(c.forn===nome){c.cnpj=forn.cnpj||c.cnpj;}});
 }
 
-async function excluirFornecedor(id){
-  if(!confirm('Excluir fornecedor? Isso não remove chapas do estoque vinculadas a ele.'))return;
-  const r=await api('DELETE','/fornecedores/'+encodeURIComponent(id));
-  if(!r || r.error || r.ok===false){toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)');return;}
-  await carregarFornecedores();
-  renderFornecedores();
-  autoSaveTrigger();
-  toast('Fornecedor excluído','var(--orange)');
+async function excluirFornecedor(id, nome) {
+  const nm = String(nome || '').trim();
+  if (!confirm('Excluir fornecedor "' + (nm || id) + '"?\nEsta ação não pode ser desfeita.')) return;
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/fornecedores/' + encodeURIComponent(String(id || '').trim()), {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const d = await r.json().catch(()=>null);
+    if (d && d.ok) {
+      mostrarToast('✅ Fornecedor excluído!');
+      if (typeof carregarFornecedores === 'function') await carregarFornecedores(true);
+      renderFornecedores?.();
+    } else {
+      alert('Erro: ' + String((d && (d.error || d.message)) ? (d.error || d.message) : 'falha'));
+    }
+  } catch (e) {
+    alert('Erro: ' + String(e?.message || e));
+  }
 }
 
 function getFornNomes(){return FORNECEDORES.map(function(f){return f.nome;});}
@@ -13657,25 +13731,25 @@ function cmpRenderItems(){
   const tbody = document.getElementById('cp-items-body');
   if(!tbody) return;
   const tdS='padding:3px;border:1px solid var(--border);vertical-align:middle;';
-  const inpS='background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:3px 5px;font-size:.72rem;width:100%;font-family:var(--font)';
+  const inpS='background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:4px;padding:6px;font-size:.72rem;width:100%;font-family:var(--font)';
   tbody.innerHTML = CMP_ITEMS.map((it,i)=>`
     <tr>
       <td style="${tdS}text-align:center;color:var(--text3);font-family:var(--mono);font-size:.7rem;min-width:20px">${i+1}</td>
       <td style="${tdS}min-width:90px"><input id="ci-pedcli-${i}" value="${it.pedCli||''}" placeholder="Nº OF/Pedido" style="${inpS};color:var(--yellow)" oninput="cmpItemSave(${i})"></td>
       <td style="${tdS}min-width:90px"><input id="ci-dataent-${i}" type="date" value="${it.dataEnt||''}" style="${inpS}" oninput="cmpItemSave(${i})"></td>
       <td style="${tdS}min-width:140px"><div id="ci-nom-wrap-${i}"><input id="ci-nom-${i}" value="${it.nom||''}" placeholder="TP / BC / DW..." style="${inpS}" oninput="cmpItemSave(${i});cmpNomAc(${i})" autocomplete="off"></div></td>
-      <td style="${tdS}min-width:70px"><input id="ci-larg-${i}" type="number" value="${it.larg||''}" placeholder="mm" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-larg-${i}" type="number" value="${it.larg||''}" placeholder="mm" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
       <td style="${tdS}text-align:center;color:var(--text3);font-size:.7rem;padding:3px 6px">×</td>
-      <td style="${tdS}min-width:70px"><input id="ci-comp-${i}" type="number" value="${it.comp||''}" placeholder="mm" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
-      <td style="${tdS}min-width:90px"><input id="ci-vincos-${i}" value="${it.vincos||''}" placeholder="ex: 300/200/150" style="${inpS};color:var(--purple)" oninput="cmpItemSave(${i})"></td>
-      <td style="${tdS}min-width:70px"><input id="ci-qtd-${i}" type="number" value="${it.qtd||''}" placeholder="0" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
-      <td style="${tdS}min-width:70px"><input id="ci-lotemin-${i}" type="number" value="${it.loteMin||''}" placeholder="0" style="${inpS};color:var(--orange)" oninput="cmpItemSave(${i})"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-comp-${i}" type="number" value="${it.comp||''}" placeholder="mm" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
+      <td style="${tdS}min-width:80px"><input id="ci-vincos-${i}" value="${it.vincos||''}" placeholder="ex: 300/200/150" style="${inpS};color:var(--purple)" oninput="cmpItemSave(${i})"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-qtd-${i}" type="number" value="${it.qtd||''}" placeholder="0" style="${inpS}" oninput="cmpItemCalc(${i})"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-lotemin-${i}" type="number" value="${it.loteMin||''}" placeholder="0" style="${inpS};color:var(--orange)" oninput="cmpItemSave(${i})"></td>
       <td style="${tdS}min-width:80px"><input id="ci-m2-${i}" value="${it.m2?it.m2.toFixed(4):''}" readonly style="${inpS}color:var(--teal);font-weight:700;text-align:right"></td>
-      <td style="${tdS}min-width:80px"><input id="ci-vlm2-${i}" type="number" step="0.0001" value="${it.vlm2||''}" placeholder="0.0000" style="${inpS}" oninput="cmpItemCalcPreco(${i})"></td>
-      <td style="${tdS}min-width:80px"><input id="ci-vlmil-${i}" value="${it.vlmil?fmtR(it.vlmil):''}" readonly style="${inpS}color:var(--text2);font-weight:700;text-align:right"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-vlm2-${i}" type="number" step="0.0001" value="${it.vlm2||''}" placeholder="0.0000" style="${inpS}" oninput="cmpItemCalcPreco(${i})"></td>
+      <td style="${tdS}min-width:90px"><input id="ci-vlmil-${i}" value="${it.vlmil?fmtR(it.vlmil):''}" readonly style="${inpS}color:var(--text2);font-weight:700;text-align:right"></td>
       <td style="${tdS}min-width:90px"><input id="ci-vtot-${i}" value="${it.vtot?fmtR(it.vtot):''}" readonly style="${inpS}color:var(--green);font-weight:700;text-align:right"></td>
-      <td style="${tdS}min-width:100px"><input id="ci-obsitem-${i}" value="${it.obsItem||''}" placeholder="obs..." style="${inpS}" oninput="cmpItemSave(${i})"></td>
-      <td style="${tdS}min-width:80px"><input id="ci-pedforn-${i}" value="${it.pedForn||''}" placeholder="Cód.Forn." style="${inpS};color:var(--accent)" oninput="cmpItemSave(${i})"></td>
+      <td style="${tdS}min-width:120px"><input id="ci-obsitem-${i}" value="${it.obsItem||''}" placeholder="obs..." style="${inpS}" oninput="cmpItemSave(${i})"></td>
+      <td style="${tdS}min-width:110px"><input id="ci-pedforn-${i}" value="${it.pedForn||''}" placeholder="Cód.Forn." style="${inpS};color:var(--accent)" oninput="cmpItemSave(${i})"></td>
       <td style="${tdS}text-align:center;min-width:26px"><button onclick="cmpRemoveItem(${i})" style="background:var(--red);border:none;color:#fff;border-radius:3px;width:20px;height:20px;cursor:pointer;font-size:.75rem">✕</button></td>
     </tr>`).join('');
   cmpUpdateTotal();
@@ -13802,7 +13876,46 @@ function cmpFornChange(){
     if(f){const cn=document.getElementById('cp-cnpj');if(cn)cn.value=f.cnpj||'';}
   }
 }
-function abrirModalCompra(){
+
+async function carregarEmpresasSelectCompra() {
+  const sel =
+    document.getElementById('cp-emp') ||
+    document.getElementById('compra-empresa-id') ||
+    document.querySelector('#compra-empresa, .select-empresa-compra');
+  if (!sel) return;
+
+  const FALLBACK = [
+    { id: 'E1', nome: 'Italy Embalagens' },
+    { id: 'E2', nome: 'Cartoeste' },
+    { id: 'E3', nome: 'Oestepack' },
+  ];
+
+  let empresas = [];
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/empresas', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const d = await r.json().catch(()=>null);
+    empresas = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+  } catch (e) {}
+
+  if (!empresas.length) empresas = FALLBACK;
+
+  const cur = String(sel.value || '').trim();
+  sel.innerHTML = '<option value="">Selecionar empresa...</option>';
+  empresas.forEach(emp => {
+    const o = document.createElement('option');
+    o.value = String(emp.id || emp.emp_id || '').trim();
+    o.textContent = String(emp.nome || emp.name || '').trim();
+    sel.appendChild(o);
+  });
+  if (cur) sel.value = cur;
+}
+
+async function abrirModalCompra(){
+  try{ await carregarEmpresasSelectCompra(); }catch(e){}
   CMP_ITEMS = [];
   document.getElementById('cp-num').value='CMP-'+String(CMP_SEQ).padStart(3,'0');
   document.getElementById('cp-data').value=today();
@@ -21113,6 +21226,7 @@ function imprimirOrc(){
 
 // ===================== COMPRAS =====================
 function renderCompras(){
+  try{ carregarEmpresasSelectCompra(); }catch(e){}
   const fil=(document.getElementById('cmp-fil-st')||{}).value||'';
   const empFil=(document.getElementById('cmp-fil-emp')||{}).value||EMP_FILTRO||'';
   let lista=[...COMPRAS].sort((a,b)=>b.id.localeCompare(a.id));
@@ -25382,7 +25496,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <h2 id="am-title">🧪 Nova Amostra</h2>
   <input type="hidden" id="am-id">
   <input type="hidden" id="am-cliente-id">
-  <input type="hidden" id="am-img-url">
+  <input type="hidden" id="amostra-imagem-url">
   <div class="fg" style="grid-template-columns:1fr 1fr">
     <div class="mf fgf" style="grid-column:1/-1"><label>CLIENTE</label><input id="am-cliente-nome" type="text" placeholder="Digite para buscar..." autocomplete="off"></div>
     <div class="mf fgf"><label>PRODUTO</label><input id="am-produto" type="text"></div>
@@ -25404,12 +25518,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf fgf" style="grid-column:1/-1">
       <label>📷 IMAGEM</label>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('am-img-file').click()">Upload</button>
-        <input id="am-img-file" type="file" accept="image/*" style="display:none" onchange="amostraUploadImagem(event)">
-        <div id="am-img-prev-wrap" style="display:none;gap:8px;align-items:center">
-          <img id="am-img-prev" src="" style="width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="abrirFotoModal(document.getElementById('am-img-prev').src,'Amostra')">
-          <button class="btn btn-ghost btn-sm" onclick="amostraRemoverImagem()">Remover</button>
-        </div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('amostra-imagem-input').click()">Upload</button>
+        <input id="amostra-imagem-input" type="file" accept="image/*" style="display:none">
+        <img id="amostra-img-preview" src="" style="display:none;width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="abrirFotoModal(document.getElementById('amostra-img-preview').src,'Amostra')">
+        <button class="btn btn-ghost btn-sm" onclick="amostraRemoverImagem()">Remover</button>
       </div>
     </div>
     <div class="mf fgf" style="grid-column:1/-1"><label>📝 OBSERVAÇÕES</label><textarea id="am-obs" rows="4" style="resize:vertical"></textarea></div>
@@ -25608,7 +25720,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- Modal Amostra -->
 <!-- Modal Calculadora de Caixas -->
 <div class="modal-overlay" id="modal-calc">
-<div class="modal" style="width:95vw;max-width:1200px;height:90vh;overflow-y:auto;padding:18px">
+<div class="modal" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
   <button class="close-btn" onclick="fechar('modal-calc')">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
   <!-- CLIENTE do orçamento -->
@@ -25621,9 +25733,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Usado ao gerar orçamento</span>
   </div>
 
-  <!-- Header row: inputs left, percents right — identical to Excel -->
-  <div style="display:grid;grid-template-columns:1fr auto;gap:16px;margin-bottom:12px">
-    <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end">
+  <div style="display:flex;gap:20px;flex:1;overflow-y:auto;align-items:flex-start">
+    <div style="flex:6;min-width:0">
+    <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end;margin-bottom:12px">
       <div class="mf">
         <label style="font-size:.6rem">TIPO</label>
         <select id="calc-tipo" onchange="calcTipoChange()" style="font-size:.72rem;padding:4px 6px">
@@ -25665,21 +25777,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="mf" style="flex:0;min-width:0"><label style="font-size:.6rem">VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="syncVb()" style="width:72px;font-family:var(--mono);font-size:.78rem;color:var(--accent)"></div>
       <div class="mf"><label style="font-size:.6rem">QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="calcRecalc()" style="font-size:.82rem;font-family:var(--mono);color:var(--accent);font-weight:700"></div>
     </div>
-    <!-- Percentages block — right side like Excel -->
-    <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px;min-width:280px">
-      <div style="font-size:.6rem;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:6px">PARÂMETROS COMERCIAIS &nbsp;<span id="calc-w3-display" style="color:var(--green)"></span></div>
-      <div style="display:grid;grid-template-columns:1fr 80px;gap:4px 8px;font-size:12px;align-items:center">
-        <span style="color:var(--text2)">Custo Mercadoria (%)</span><input id="calc-cm" type="number" value="49" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Custo Fixo (%)</span><input id="calc-cf" type="number" value="15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Margem (%)</span><input id="calc-mg" type="number" value="25" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Comissão Vendedor (%)</span><input id="calc-cv" type="number" value="1" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Impostos (%)</span><input id="calc-imp" type="number" value="10" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Vl. KM Frete (R$)</span><input id="calc-vkm" type="number" step="0.01" value="1.15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">KM Entrega</span><input id="calc-km" type="number" value="50" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--green);font-weight:700">Frete Total (R$)</span><span id="calc-frete-display" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;color:var(--green);font-weight:700;padding-right:6px">—</span>
-      </div>
-    </div>
-  </div>
 
   <!-- Valores de onda + extras -->
   <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
@@ -25713,8 +25810,26 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </tbody>
     </table>
   </div>
+  </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)">
+  <div style="flex:4;min-width:260px">
+    <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px;min-width:280px">
+      <div style="font-size:.6rem;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:6px">PARÂMETROS COMERCIAIS &nbsp;<span id="calc-w3-display" style="color:var(--green)"></span></div>
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:4px 8px;font-size:12px;align-items:center">
+        <span style="color:var(--text2)">Custo Mercadoria (%)</span><input id="calc-cm" type="number" value="49" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">Custo Fixo (%)</span><input id="calc-cf" type="number" value="15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">Margem (%)</span><input id="calc-mg" type="number" value="25" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">Comissão Vendedor (%)</span><input id="calc-cv" type="number" value="1" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">Impostos (%)</span><input id="calc-imp" type="number" value="10" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">Vl. KM Frete (R$)</span><input id="calc-vkm" type="number" step="0.01" value="1.15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--text2)">KM Entrega</span><input id="calc-km" type="number" value="50" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
+        <span style="color:var(--green);font-weight:700">Frete Total (R$)</span><span id="calc-frete-display" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;color:var(--green);font-weight:700;padding-right:6px">—</span>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #333">
     <div style="display:flex;gap:6px;align-items:center;margin-right:auto">
       <input id="orc-busca-num" type="text" placeholder="Nº ou cliente..." style="padding:6px 10px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);width:160px" onkeydown="if(event.key==='Enter') buscarOrcamento()">
       <button onclick="buscarOrcamento()" style="padding:6px 12px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🔍</button>
