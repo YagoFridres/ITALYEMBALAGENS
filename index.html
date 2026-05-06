@@ -1017,29 +1017,79 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
   flex-direction: column !important;
 }
 
-#modal-calculadora .modal-corpo,
 #modal-calculadora .modal-body,
-#modal-calculadora .corpo,
-.modal-calculadora .corpo {
-  display: flex !important;
-  gap: 20px !important;
-  flex: 1 !important;
-  overflow: hidden !important;
-  min-height: 0 !important;
-  align-items: flex-start !important;
-  flex-wrap: nowrap !important;
+#modal-calculadora .calc-body{
+  display:flex !important;
+  gap:0 !important;
+  align-items:stretch !important;
+  flex:1 !important;
+  min-height:0 !important;
+  overflow:hidden !important;
 }
 
-#modal-calculadora .col-esquerda,
-.modal-calculadora .col-esquerda {
-  flex: 6 !important;
-  min-width: 0 !important;
+#modal-calculadora .calc-col-esq{
+  flex:1 !important;
+  min-width:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:14px !important;
+  padding:16px !important;
+  overflow-y:auto !important;
 }
 
-#modal-calculadora .col-direita,
-.modal-calculadora .col-direita {
-  flex: 4 !important;
-  min-width: 260px !important;
+#modal-calculadora .calc-col-dir{
+  width:240px !important;
+  flex-shrink:0 !important;
+  border-left:1px solid rgba(255,255,255,0.08) !important;
+  padding:16px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:8px !important;
+  overflow-y:auto !important;
+  background:rgba(255,255,255,0.02) !important;
+}
+
+#modal-calculadora label{
+  font-size:12px !important;
+  font-weight:600 !important;
+  letter-spacing:0.05em !important;
+  color:rgba(255,255,255,0.6) !important;
+  margin-bottom:4px !important;
+}
+
+#modal-calculadora #calc-comp,
+#modal-calculadora #calc-larg,
+#modal-calculadora #calc-alt,
+#modal-calculadora #calc-qtd{
+  font-size:18px !important;
+  font-weight:700 !important;
+  padding:10px 12px !important;
+  border-radius:8px !important;
+  text-align:center !important;
+  color:#4fc3f7 !important;
+  background:rgba(255,255,255,0.06) !important;
+  border:1px solid rgba(255,255,255,0.15) !important;
+  width:100% !important;
+}
+
+#modal-calculadora #calc-vb2,
+#modal-calculadora #calc-vb,
+#modal-calculadora #calc-vc,
+#modal-calculadora #calc-vbc{
+  font-size:16px !important;
+  font-weight:600 !important;
+  padding:10px 12px !important;
+  border-radius:8px !important;
+  color:#81c784 !important;
+  background:rgba(255,255,255,0.06) !important;
+  border:1px solid rgba(255,255,255,0.15) !important;
+}
+
+#modal-calculadora #calc-tipo{
+  font-size:15px !important;
+  padding:10px 12px !important;
+  border-radius:8px !important;
+  min-width:160px !important;
 }
 
 #modal-calculadora .modal-footer,
@@ -1049,6 +1099,84 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
   border-top: 1px solid #334155 !important;
   padding-top: 12px !important;
   margin-top: 8px !important;
+}
+
+#modal-calculadora #calc-sheet thead th{
+  font-size:11px !important;
+  font-weight:700 !important;
+  letter-spacing:0.06em !important;
+  color:rgba(255,255,255,0.5) !important;
+  padding:8px 10px !important;
+  border-bottom:2px solid rgba(255,255,255,0.1) !important;
+  white-space:nowrap !important;
+  text-transform:uppercase !important;
+}
+
+#modal-calculadora #calc-sheet tbody td{
+  font-size:13px !important;
+  padding:10px 10px !important;
+  border-bottom:1px solid rgba(255,255,255,0.05) !important;
+  white-space:nowrap !important;
+}
+
+#modal-calculadora #calc-sheet tbody td:first-child{
+  font-weight:700 !important;
+  font-size:14px !important;
+}
+
+#modal-calculadora #calc-sheet tbody tr:hover td{
+  background:rgba(255,255,255,0.04) !important;
+}
+
+#modal-calculadora #calc-sheet tbody td.calc-comfrete{
+  font-size:14px !important;
+  font-weight:700 !important;
+  color:#81c784 !important;
+}
+
+#modal-calculadora #calc-sheet tbody td.calc-vunit{
+  font-size:15px !important;
+  font-weight:700 !important;
+  color:#4fc3f7 !important;
+}
+
+#modal-calculadora .param-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  padding:4px 0;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+
+#modal-calculadora .param-label{
+  font-size:12px;
+  color:rgba(255,255,255,0.55);
+  flex:1;
+}
+
+#modal-calculadora .param-input{
+  width:64px;
+  text-align:right;
+  font-size:13px;
+  font-weight:600;
+  padding:4px 8px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.12);
+  color:#fff;
+}
+
+#modal-calculadora .param-frete-total{
+  margin-top:8px;
+  padding-top:8px;
+  border-top:2px solid rgba(255,255,255,0.15);
+  font-size:14px;
+  font-weight:700;
+  color:#4fc3f7;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
 }
 
 </style>
@@ -20650,48 +20778,38 @@ function abrirCalculadora(){
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
 
-    const corpo = modal.querySelector(
-      '.modal-body, .modal-content, .calc-corpo, .modal-corpo, #calc-corpo, .corpo, .content'
-    );
+    const corpo = modal.querySelector('.modal-body') || modal.querySelector('.calc-body');
     if (corpo) {
-      corpo.style.padding = '16px';
       corpo.style.display = 'flex';
-      corpo.style.gap = '20px';
+      corpo.style.gap = '0';
+      corpo.style.alignItems = 'stretch';
       corpo.style.flex = '1';
-      corpo.style.overflow = 'hidden';
       corpo.style.minHeight = '0';
-      corpo.style.alignItems = 'flex-start';
-      corpo.style.flexWrap = 'nowrap';
+      corpo.style.overflow = 'hidden';
+    }
 
-      const colEsq = corpo.querySelector('.col-esquerda') || corpo.firstElementChild;
-      const colDir = corpo.querySelector('.col-direita') || (corpo.children && corpo.children.length > 1 ? corpo.children[1] : null);
+    const colEsq = modal.querySelector('.calc-col-esq');
+    if (colEsq) {
+      colEsq.style.flex = '1';
+      colEsq.style.minWidth = '0';
+      colEsq.style.display = 'flex';
+      colEsq.style.flexDirection = 'column';
+      colEsq.style.gap = '14px';
+      colEsq.style.padding = '16px';
+      colEsq.style.overflowY = 'auto';
+    }
 
-      if (colEsq) {
-        colEsq.style.flex = '1';
-        colEsq.style.minWidth = '0';
-        colEsq.style.display = 'flex';
-        colEsq.style.flexDirection = 'column';
-        colEsq.style.gap = '12px';
-        colEsq.style.overflow = 'hidden';
-      }
-
-      if (colDir) {
-        colDir.style.width = '260px';
-        colDir.style.flex = '0 0 260px';
-        colDir.style.flexShrink = '0';
-        colDir.style.minWidth = '260px';
-        colDir.style.overflowY = 'auto';
-      }
-
-      const tabela = corpo.querySelector('#calc-sheet') || corpo.querySelector('table');
-      if (tabela) {
-        const wrap = tabela.closest('div');
-        if (wrap) {
-          wrap.style.overflowX = 'auto';
-          wrap.style.flex = '1';
-          wrap.style.minHeight = '0';
-        }
-      }
+    const colDir = modal.querySelector('.calc-col-dir');
+    if (colDir) {
+      colDir.style.width = '240px';
+      colDir.style.flexShrink = '0';
+      colDir.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
+      colDir.style.padding = '16px';
+      colDir.style.display = 'flex';
+      colDir.style.flexDirection = 'column';
+      colDir.style.gap = '8px';
+      colDir.style.overflowY = 'auto';
+      colDir.style.background = 'rgba(255,255,255,0.02)';
     }
 
     const footer = modal.querySelector('.modal-footer, .rodape, .calc-footer, #calc-footer');
@@ -20759,7 +20877,7 @@ function calcRecalc(){
   var tbody=document.getElementById('calc-tbody');
   if(!tbody)return;
   if(!compensacoes||compensacoes.length===0){
-    tbody.innerHTML='<tr><td colspan="12" style="padding:20px;text-align:center;color:var(--text3)">Tipo sem fórmulas disponíveis</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Tipo sem fórmulas disponíveis</td></tr>';
     return;
   }
 
@@ -20775,7 +20893,7 @@ function calcRecalc(){
     var isBest=i===1;
     var bg=rowColors[i];
     var bold=isBest?'font-weight:800;':'';
-    var td='padding:5px 8px;border:1px solid var(--s3);white-space:nowrap;';
+    var td='padding:10px 10px;white-space:nowrap;';
     var rowOutline=isBest?';outline:2px solid var(--green)':'';
 
     var od=ondasNomes[i]||'B';
@@ -20791,11 +20909,8 @@ function calcRecalc(){
     rows+='<td style="'+td+bold+'text-align:right;font-family:var(--mono);color:var(--teal)">'+opt.area.toFixed(6)+'</td>';
     rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--yellow)">'+fmtR(preco.bruto)+'</td>';
     rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(preco.liquida)+'</td>';
-    rows+='<td style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
-    rows+='<td style="'+td+'text-align:right;font-family:var(--mono);color:var(--green)">'+fmtR(vUnit)+'</td>';
-    rows+='<td style="'+td+'text-align:center">'
-      +'<button onclick="calcUsarOpcao('+i+',&quot;'+od+'&quot;)" style="font-size:.62rem;padding:3px 8px;background:var(--green);color:#fff;border:none;border-radius:5px;cursor:pointer;font-family:var(--mono)">+Orc</button>'
-      +'</td>';
+    rows+='<td class="calc-comfrete" style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(preco.comFrete)+'</td>';
+    rows+='<td class="calc-vunit" style="'+td+'text-align:right;font-family:var(--mono)">'+fmtR(vUnit)+'</td>';
     rows+='</tr>';
     allResults.push({compLabel:rowLabels[i],compTitle:compTitle,compIdx:i,onda:od,largura:opt.largura,comprimento:opt.comprimento,area:opt.area,bruto:preco.bruto,liquida:preco.liquida,comFrete:preco.comFrete,vunit:vUnit});
   });
@@ -25853,22 +25968,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
   <button class="close-btn" onclick="fechar('modal-calc')">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
-  <!-- CLIENTE do orçamento -->
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
-    <label style="font-size:.65rem;font-weight:700;color:var(--text2);font-family:var(--mono);white-space:nowrap">CLIENTE DO ORÇAMENTO</label>
-    <select id="calc-cli" style="flex:1;font-size:.82rem;padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+    <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO</label>
+    <select id="calc-cli" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px">
       <option value="">— Selecione o cliente —</option>
     </select>
     <span id="orc-numero-display" style="font-size:.65rem;color:var(--accent);font-family:var(--mono);font-weight:800"></span>
-    <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Usado ao gerar orçamento</span>
   </div>
 
-  <div class="modal-corpo modal-body corpo content" style="display:flex;gap:20px;flex:1;overflow-y:auto;align-items:flex-start;min-height:0">
-    <div class="col-esquerda" style="flex:6;min-width:0">
-    <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end;margin-bottom:12px">
+  <div class="modal-body calc-body">
+    <div class="calc-col-esq">
+    <div style="display:grid;grid-template-columns:160px 1fr 1fr 1fr 1fr 1fr;gap:10px;align-items:end">
       <div class="mf">
-        <label style="font-size:.6rem">TIPO</label>
-        <select id="calc-tipo" onchange="calcTipoChange()" style="font-size:.72rem;padding:4px 6px">
+        <label>TIPO</label>
+        <select id="calc-tipo" onchange="calcTipoChange()">
           <optgroup label="Normal">
             <option value="200">200 — Meia Caixa</option>
             <option value="201">201 — Normal 8 Tampas</option>
@@ -25896,79 +26009,68 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </optgroup>
         </select>
       </div>
-      <div class="mf"><label style="font-size:.6rem">COMPRIMENTO (mm)</label><input id="calc-comp" type="number" value="300" oninput="calcRecalc()" style="font-size:.82rem;font-family:var(--mono);color:var(--accent);font-weight:700"></div>
-      <div class="mf"><label style="font-size:.6rem">LARGURA (mm)</label><input id="calc-larg" type="number" value="200" oninput="calcRecalc()" style="font-size:.82rem;font-family:var(--mono);color:var(--accent);font-weight:700"></div>
-      <div class="mf"><label style="font-size:.6rem">ALTURA (mm)</label><input id="calc-alt" type="number" value="100" oninput="calcRecalc()" style="font-size:.82rem;font-family:var(--mono);color:var(--accent);font-weight:700"></div>
+      <div class="mf"><label>COMPRIMENTO (mm)</label><input id="calc-comp" type="number" value="300" oninput="calcRecalc()"></div>
+      <div class="mf"><label>LARGURA (mm)</label><input id="calc-larg" type="number" value="200" oninput="calcRecalc()"></div>
+      <div class="mf"><label>ALTURA (mm)</label><input id="calc-alt" type="number" value="100" oninput="calcRecalc()"></div>
       <div class="mf" style="display:none"><label style="font-size:.6rem">ONDA</label>
         <select id="calc-onda" onchange="calcRecalc()" style="font-size:.82rem">
           <option value="B">B</option><option value="C">C</option><option value="BC">BC</option>
         </select>
       </div>
-      <div class="mf" style="flex:0;min-width:0"><label style="font-size:.6rem">VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="syncVb()" style="width:72px;font-family:var(--mono);font-size:.78rem;color:var(--accent)"></div>
-      <div class="mf"><label style="font-size:.6rem">QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="calcRecalc()" style="font-size:.82rem;font-family:var(--mono);color:var(--accent);font-weight:700"></div>
+      <div class="mf" style="flex:0;min-width:0"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="syncVb()"></div>
+      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="calcRecalc()"></div>
     </div>
 
-  <!-- Valores de onda + extras -->
-  <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
-    <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="syncVb();calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
-    <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
-    <div class="mf" style="flex:0"><label style="font-size:.6rem">VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()" style="width:90px;font-family:var(--mono);font-size:.82rem"></div>
+  <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
+    <div class="mf" style="flex:0"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="syncVb();calcRecalc()"></div>
+    <div class="mf" style="flex:0"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()"></div>
+    <div class="mf" style="flex:0"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()"></div>
     <div id="calc-extra-fields" style="display:flex;gap:10px"></div>
-    <span style="font-size:.7rem;color:var(--accent);font-family:var(--mono);padding:4px 10px;background:var(--asoft,#2563eb22);border-radius:6px">Exibindo: Onda B · Onda C · Onda BC</span>
   </div>
 
-  <!-- Spreadsheet Table — exact copy of Excel layout -->
-  <div style="overflow-x:auto;margin-bottom:12px">
-    <table id="calc-sheet" style="border-collapse:collapse;font-size:.72rem;width:100%;min-width:900px">
+  <div style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
+    <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px">
       <thead>
-        <tr style="background:var(--s3)">
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:left;font-family:var(--mono);color:var(--text2);white-space:nowrap;min-width:90px">TABELA PARA COMPENSAÇÃO DE EMBALAGENS</th>
-          <th colspan="2" style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label">—</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">LARGURA (mm)</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">COMPRIMENTO (mm)</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">TOTAL (mm)</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--teal)">m²</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--yellow);min-width:90px">VAL.TOTAL BRUTO</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">VL. VENDA LÍQUIDA</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">c/ FRETE</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--green);min-width:90px">VL. UNIT. (R$/un)</th>
-          <th style="padding:5px 8px;border:1px solid var(--border);text-align:center;font-family:var(--mono);color:var(--accent)">USAR NO ORC.</th>
+        <tr>
+          <th style="text-align:left;font-family:var(--mono)" >Tabela para compensação</th>
+          <th colspan="2" style="text-align:center;font-family:var(--mono);color:var(--accent)" id="calc-tipo-label">—</th>
+          <th style="text-align:center;font-family:var(--mono)">Largura (mm)</th>
+          <th style="text-align:center;font-family:var(--mono)">Comprimento (mm)</th>
+          <th style="text-align:center;font-family:var(--mono)">Total (mm)</th>
+          <th style="text-align:center;font-family:var(--mono)">m²</th>
+          <th style="text-align:center;font-family:var(--mono)">Val. total bruto</th>
+          <th style="text-align:center;font-family:var(--mono)">Vl. venda líquida</th>
+          <th style="text-align:center;font-family:var(--mono)">c/ frete</th>
+          <th style="text-align:center;font-family:var(--mono)">Vl. unit. (R$/un)</th>
         </tr>
       </thead>
       <tbody id="calc-tbody">
-        <tr><td colspan="12" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr>
+        <tr><td colspan="11" style="padding:20px;text-align:center;color:var(--text3)">Preencha os dados acima para calcular</td></tr>
       </tbody>
     </table>
   </div>
   </div>
 
-  <div class="col-direita" style="flex:4;min-width:260px">
-    <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px;min-width:280px">
-      <div style="font-size:.6rem;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:6px">PARÂMETROS COMERCIAIS &nbsp;<span id="calc-w3-display" style="color:var(--green)"></span></div>
-      <div style="display:grid;grid-template-columns:1fr 80px;gap:4px 8px;font-size:12px;align-items:center">
-        <span style="color:var(--text2)">Custo Mercadoria (%)</span><input id="calc-cm" type="number" value="49" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Custo Fixo (%)</span><input id="calc-cf" type="number" value="15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Margem (%)</span><input id="calc-mg" type="number" value="25" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Comissão Vendedor (%)</span><input id="calc-cv" type="number" value="1" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Impostos (%)</span><input id="calc-imp" type="number" value="10" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">Vl. KM Frete (R$)</span><input id="calc-vkm" type="number" step="0.01" value="1.15" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--text2)">KM Entrega</span><input id="calc-km" type="number" value="50" oninput="calcRecalc()" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;padding:2px 6px">
-        <span style="color:var(--green);font-weight:700">Frete Total (R$)</span><span id="calc-frete-display" style="width:60px;text-align:right;font-family:var(--mono);font-size:.75rem;color:var(--green);font-weight:700;padding-right:6px">—</span>
-      </div>
+  <div class="calc-col-dir">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,0.65);text-transform:uppercase">
+      Parâmetros Comerciais <span id="calc-w3-display" style="color:#81c784"></span>
     </div>
-  </div>
+    <div class="param-row"><span class="param-label">Custo Merc. (%)</span><input id="calc-cm" class="param-input" type="number" value="49" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">Custo Fixo (%)</span><input id="calc-cf" class="param-input" type="number" value="15" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">Margem (%)</span><input id="calc-mg" class="param-input" type="number" value="25" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">Comissão (%)</span><input id="calc-cv" class="param-input" type="number" value="1" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">Impostos (%)</span><input id="calc-imp" class="param-input" type="number" value="10" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">Vl. KM Frete (R$)</span><input id="calc-vkm" class="param-input" type="number" step="0.01" value="1.15" oninput="calcRecalc()"></div>
+    <div class="param-row"><span class="param-label">KM Entrega</span><input id="calc-km" class="param-input" type="number" value="50" oninput="calcRecalc()"></div>
+    <div class="param-frete-total"><span>Frete Total</span><span id="calc-frete-display">—</span></div>
+</div>
   </div>
 
-  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #333">
-    <div style="display:flex;gap:6px;align-items:center;margin-right:auto">
-      <input id="orc-busca-num" type="text" placeholder="Nº ou cliente..." style="padding:6px 10px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);width:160px" onkeydown="if(event.key==='Enter') buscarOrcamento()">
-      <button onclick="buscarOrcamento()" style="padding:6px 12px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🔍</button>
-    </div>
-    <button onclick="fecharCalc()" style="padding:8px 16px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">Fechar</button>
-    <button onclick="calcImprimir()" style="padding:8px 16px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🖨 Imprimir</button>
-    <button onclick="salvarOrcamentoCalc()" style="padding:8px 16px;border-radius:6px;background:#4A90D9;color:#fff;border:none;cursor:pointer">💾 Salvar Orçamento</button>
-    <button onclick="enviarOrcamentoPorEmail()" style="padding:8px 16px;border-radius:6px;background:#7B68EE;color:#fff;border:none;cursor:pointer">📧 Enviar por Email</button>
-    <button onclick="calcUsarOpcaoSelecionada()" style="padding:8px 16px;border-radius:6px;background:#4CAF50;color:#fff;border:none;cursor:pointer">+ Usar no Orçamento</button>
+  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #334155">
+    <button onclick="fecharCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
+    <button onclick="calcImprimir()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
+    <button onclick="salvarOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
+    <button onclick="enviarOrcamentoPorEmail()" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>
   </div>
 </div></div>
 
