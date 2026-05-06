@@ -1008,10 +1008,10 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
 .modal-calculadora,
 [id*="calculadora"],
 [id*="calc-orcamento"] {
-  width: calc(100vw - 24px) !important;
-  max-width: 1400px !important;
-  height: calc(100vh - 24px) !important;
-  max-height: calc(100vh - 24px) !important;
+  width: calc(100vw - 32px) !important;
+  max-width: 1300px !important;
+  height: auto !important;
+  max-height: 92vh !important;
   margin: 12px auto !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1024,8 +1024,10 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
   display: flex !important;
   gap: 20px !important;
   flex: 1 !important;
-  overflow-y: auto !important;
+  overflow: hidden !important;
   min-height: 0 !important;
+  align-items: flex-start !important;
+  flex-wrap: nowrap !important;
 }
 
 #modal-calculadora .col-esquerda,
@@ -1038,13 +1040,6 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
 .modal-calculadora .col-direita {
   flex: 4 !important;
   min-width: 260px !important;
-}
-
-#modal-calculadora table,
-.modal-calculadora table {
-  overflow-x: auto !important;
-  display: block !important;
-  width: 100% !important;
 }
 
 #modal-calculadora .modal-footer,
@@ -13994,7 +13989,7 @@ async function abrirModalCompra(){
   populateFornecedorSelect('cp-forn','');
   cmpAddItem();
   abrir('modal-compra');
-  setTimeout(() => { preencherEmpresasCompra(); }, 100);
+  setTimeout(() => { preencherEmpresasCompra(); }, 150);
   // Autocomplete no fornecedor manual
   setTimeout(()=>{
     const fmanEl=document.getElementById('cp-forn-manual');
@@ -20648,22 +20643,65 @@ function abrirCalculadora(){
     );
     if (!modal) return;
 
-    modal.style.width = 'calc(100vw - 24px)';
-    modal.style.maxWidth = '1400px';
-    modal.style.height = 'calc(100vh - 24px)';
-    modal.style.maxHeight = 'calc(100vh - 24px)';
+    modal.style.width = 'calc(100vw - 32px)';
+    modal.style.maxWidth = '1300px';
+    modal.style.height = 'auto';
+    modal.style.maxHeight = '92vh';
     modal.style.display = 'flex';
     modal.style.flexDirection = 'column';
 
     const corpo = modal.querySelector(
-      '.modal-corpo, .modal-body, .corpo, .content'
+      '.modal-body, .modal-content, .calc-corpo, .modal-corpo, #calc-corpo, .corpo, .content'
     );
     if (corpo) {
+      corpo.style.padding = '16px';
       corpo.style.display = 'flex';
       corpo.style.gap = '20px';
       corpo.style.flex = '1';
-      corpo.style.overflowY = 'auto';
+      corpo.style.overflow = 'hidden';
       corpo.style.minHeight = '0';
+      corpo.style.alignItems = 'flex-start';
+      corpo.style.flexWrap = 'nowrap';
+
+      const colEsq = corpo.querySelector('.col-esquerda') || corpo.firstElementChild;
+      const colDir = corpo.querySelector('.col-direita') || (corpo.children && corpo.children.length > 1 ? corpo.children[1] : null);
+
+      if (colEsq) {
+        colEsq.style.flex = '1';
+        colEsq.style.minWidth = '0';
+        colEsq.style.display = 'flex';
+        colEsq.style.flexDirection = 'column';
+        colEsq.style.gap = '12px';
+        colEsq.style.overflow = 'hidden';
+      }
+
+      if (colDir) {
+        colDir.style.width = '260px';
+        colDir.style.flex = '0 0 260px';
+        colDir.style.flexShrink = '0';
+        colDir.style.minWidth = '260px';
+        colDir.style.overflowY = 'auto';
+      }
+
+      const tabela = corpo.querySelector('#calc-sheet') || corpo.querySelector('table');
+      if (tabela) {
+        const wrap = tabela.closest('div');
+        if (wrap) {
+          wrap.style.overflowX = 'auto';
+          wrap.style.flex = '1';
+          wrap.style.minHeight = '0';
+        }
+      }
+    }
+
+    const footer = modal.querySelector('.modal-footer, .rodape, .calc-footer, #calc-footer');
+    if (footer) {
+      footer.style.flexShrink = '0';
+      footer.style.borderTop = '1px solid #334155';
+      footer.style.paddingTop = '12px';
+      footer.style.display = 'flex';
+      footer.style.gap = '8px';
+      footer.style.justifyContent = 'flex-end';
     }
   }, 50);
 }
@@ -21318,7 +21356,7 @@ function imprimirOrc(){
 
 // ===================== COMPRAS =====================
 function renderCompras(){
-  setTimeout(() => { try{ preencherEmpresasCompra(); }catch(e){} }, 100);
+  setTimeout(() => { try{ preencherEmpresasCompra(); }catch(e){} }, 150);
   const fil=(document.getElementById('cmp-fil-st')||{}).value||'';
   const empFil=(document.getElementById('cmp-fil-emp')||{}).value||EMP_FILTRO||'';
   let lista=[...COMPRAS].sort((a,b)=>b.id.localeCompare(a.id));
