@@ -5572,7 +5572,14 @@ function ofEntregaModoAplicar(force){
   const diaProgEl = document.getElementById('f-dia-prog');
   const alvo = (modo === 'exata') ? entrega : subtrairDiasUteis(entrega, 3);
   if(!alvo) return;
-  if(diaProgEl) diaProgEl.value = alvo;
+  if(diaProgEl){
+    const prev = String(diaProgEl.value || '').slice(0,10);
+    diaProgEl.value = alvo;
+    if(force || prev !== alvo){
+      try{ diaProgEl.dispatchEvent(new Event('change', { bubbles:true })); }catch(e){}
+      try{ if(typeof verificarSobrecargaData === 'function') verificarSobrecargaData(alvo); }catch(e){}
+    }
+  }
 }
 
 function ofEntregaModoEscolher(modo){
@@ -5977,7 +5984,21 @@ async function ofAtualizarSugestaoMaquinas(){
   }
   let r = [];
   try{
-    r = await escolherMaquinaAutomatica(comp, larg, dims.altura);
+    let dataProd = '';
+    try{
+      const ent = String(document.getElementById('f-ent')?.value || '').slice(0,10);
+      if(/^\d{4}-\d{2}-\d{2}$/.test(ent)){
+        const modo = (typeof ofEntregaModoGet === 'function') ? ofEntregaModoGet() : '3dias';
+        dataProd = (modo === 'exata') ? ent : subtrairDiasUteis(ent, 3);
+      }
+    }catch(e){}
+    if(!dataProd){
+      dataProd = String(
+        document.getElementById('f-dia-prog')?.value ||
+        new Date().toISOString().slice(0,10)
+      ).slice(0,10);
+    }
+    r = await escolherMaquinaAutomatica(comp, larg, dims.altura, dataProd);
   }catch(e){
     box.innerHTML = `<span style="color:var(--red);font-weight:900">Erro ao sugerir máquinas.</span>`;
     return;
@@ -20835,7 +20856,12 @@ async function salvarOrcamentoCalc(){
 async function imprimirOrcamentoCalc(){
   const ok = await salvarOrcamentoCalc();
   if(!ok) return;
-  imprimirCalculadora();
+  const ondas = [];
+  try{ if(document.getElementById('calc-print-b')?.checked) ondas.push('B'); }catch(e){}
+  try{ if(document.getElementById('calc-print-c')?.checked) ondas.push('C'); }catch(e){}
+  try{ if(document.getElementById('calc-print-bc')?.checked) ondas.push('BC'); }catch(e){}
+  if(!ondas.length){ toast('Selecione ao menos uma onda para imprimir','var(--yellow)'); return; }
+  imprimirCalculadora(ondas);
 }
 
 async function buscarOrcamento(){
@@ -21268,7 +21294,7 @@ function calcImprimir(){
   setTimeout(() => win.print(), 600);
 }
 
-function imprimirCalculadora() {
+function imprimirCalculadora(ondasSelecionadas) {
   if (!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length === 0) {
     toast('Calcule primeiro', 'var(--yellow)'); return;
   }
@@ -21291,7 +21317,15 @@ function imprimirCalculadora() {
   const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
   const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 
-  const resultados = (calcLastResult.allResults||[]).map(r => {
+  const setOndas = (Array.isArray(ondasSelecionadas) && ondasSelecionadas.length)
+    ? new Set(ondasSelecionadas.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean))
+    : null;
+
+  const resultados = (calcLastResult.allResults||[]).filter(r=>{
+    if(!setOndas) return true;
+    const o = String(r?.onda || '').trim().toUpperCase();
+    return setOndas.has(o);
+  }).map(r => {
     const q = Number(qtd || calcLastResult.qtd || 0) || 0;
     const vLiq = q ? (Number(r.liquida||0) / q) : 0;
     const vFre = q ? (Number(r.comFrete||0) / q) : 0;
@@ -21383,6 +21417,10 @@ function imprimirCalculadora() {
       </tr></thead>
       <tbody>${linhasHtml || '<tr><td colspan="5">—</td></tr>'}</tbody>
     </table>
+  </div>
+
+  <div style="margin-top:10px;font-size:11px;color:#333;font-style:italic">
+    A quantidade pode variar 5% pra mais ou menos, devido ao acerto de máquina.
   </div>
 
   <div class="footer">
@@ -21800,6 +21838,10 @@ function imprimirOrcData(orc) {
         <td style="text-align:right">${fmtR(valorTotal)}</td>
       </tr></tfoot>
     </table>
+  </div>
+
+  <div style="margin-top:10px;font-size:11px;color:#333;font-style:italic">
+    A quantidade pode variar 5% pra mais ou menos, devido ao acerto de máquina.
   </div>
 
   ${orc.observacoes ? `<div style="margin-top:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px"><div class="lbl">Observações</div><div class="val" style="font-size:12px;font-weight:700">${escH(orc.observacoes)}</div></div>` : ''}
@@ -26454,7 +26496,18 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </div>
   </div>
 
-  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #334155">
+  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;padding-top:12px;border-top:1px solid #334155">
+    <div style="display:flex;gap:12px;align-items:center;margin-right:auto;flex-wrap:wrap">
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700">
+        <input type="checkbox" id="calc-print-b" checked style="width:16px;height:16px"> Onda B
+      </label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700">
+        <input type="checkbox" id="calc-print-c" checked style="width:16px;height:16px"> Onda C
+      </label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:rgba(255,255,255,0.75);font-weight:700">
+        <input type="checkbox" id="calc-print-bc" checked style="width:16px;height:16px"> Onda BC
+      </label>
+    </div>
     <button onclick="fecharCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
     <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
     <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
