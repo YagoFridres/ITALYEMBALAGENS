@@ -1242,6 +1242,8 @@ window.addEventListener('unhandledrejection', function(e) {
 });
 console.log('sistema carregado v2');
 
+const ITALY_LOGO_B64 = 'data:image/jpeg;base64,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';
+
 let OFs = [];
 
 function escolherDispositivo(tipo){
@@ -14069,7 +14071,9 @@ async function carregarEmpresasSelectCompra() {
 }
 
 async function preencherEmpresasCompra() {
+  const modal = document.getElementById('modal-compra');
   const sel =
+    (modal ? modal.querySelector('#cp-emp, #compra-empresa-id, #compra-empresa, select[name*="empresa"]') : null) ||
     document.getElementById('compra-empresa-id') ||
     document.getElementById('compra-empresa') ||
     document.querySelector('select[name="empresa_id"]') ||
@@ -14129,6 +14133,19 @@ async function abrirModalCompra(){
   cmpAddItem();
   abrir('modal-compra');
   setTimeout(() => { preencherEmpresasCompra(); }, 150);
+  try{
+    window._compraAtual = {
+      id: (document.getElementById('cp-num')||{}).value || '',
+      data: (document.getElementById('cp-data')||{}).value || '',
+      prev: (document.getElementById('cp-prev')||{}).value || '',
+      forn: '',
+      cnpj: (document.getElementById('cp-cnpj')||{}).value || '',
+      status: (document.getElementById('cp-st')||{}).value || '',
+      obs: (document.getElementById('cp-obs')||{}).value || '',
+      empId: (document.getElementById('cp-emp')||{}).value || '',
+      itens: []
+    };
+  }catch(e){}
   // Autocomplete no fornecedor manual
   setTimeout(()=>{
     const fmanEl=document.getElementById('cp-forn-manual');
@@ -14208,51 +14225,154 @@ async function salvarCompra(){
 
 function cmpGerarPDF(){
   CMP_ITEMS.forEach((_,i)=>cmpItemCalc(i));
-  const forn=(document.getElementById('cp-forn')||{}).value||(document.getElementById('cp-forn-manual')||{}).value||'—';
+  const selV=(document.getElementById('cp-forn')||{}).value||'';
+  const manV=((document.getElementById('cp-forn-manual')||{}).value||'').trim();
+  const forn=(selV||manV).trim() || '—';
   const num=document.getElementById('cp-num').value;
   const data=document.getElementById('cp-data').value;
   const prev=document.getElementById('cp-prev').value;
-  const total=CMP_ITEMS.reduce((s,it)=>s+(it.vtot||0),0);
-  const rows=CMP_ITEMS.map((it,i)=>`
+  const status=document.getElementById('cp-st').value;
+  const cnpj=document.getElementById('cp-cnpj').value||'—';
+  const obs=document.getElementById('cp-obs').value||'';
+  const empId=(document.getElementById('cp-emp')||{}).value||EMP_FILTRO||'';
+  const empNome=(getEmp(empId)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
+
+  const itens=CMP_ITEMS.filter(it=>it.nom||it.qtd||it.vtot).map(it=>({
+    nom: String(it.nom||it.nome||'').trim(),
+    larg: Number(it.larg||0)||0,
+    comp: Number(it.comp||0)||0,
+    vincos: String(it.vincos||'').trim(),
+    qtd: Number(it.qtd||0)||0,
+    loteMin: Number(it.loteMin||0)||0,
+    vlm2: Number(it.vlm2||0)||0,
+    vtot: Number(it.vtot||0)||0,
+    obsItem: String(it.obsItem||'').trim(),
+    pedForn: String(it.pedForn||'').trim(),
+    pedCli: String(it.pedCli||'').trim()
+  }));
+
+  const total=itens.reduce((s,it)=>s+(it.vtot||0),0);
+
+  window._compraAtual = { id:num, data, prev, forn, cnpj, status, obs, empId, empNome, itens, vtot: total };
+
+  const rows = itens.map((it,i)=>`
     <tr>
-      <td>${i+1}</td><td>${it.nom}</td>
-      <td>${it.comp}</td><td>${it.larg}</td>
-      <td>${it.m2?it.m2.toFixed(4):''}</td>
-      <td>${it.qtd?it.qtd.toLocaleString():''}</td>
-      <td>${it.vincos||'—'}</td>
-      <td>R$ ${(it.vunit||0).toFixed(4)}</td>
-      <td><b>R$ ${(it.vtot||0).toFixed(2).replace('.',',')}</b></td>
-    </tr>`).join('');
-  const pa=document.getElementById('print-area');
-  const empNomePDF=(getEmp((document.getElementById('cp-emp')||{}).value)||{nome:'Italy Embalagens'}).nome;
-  pa.innerHTML=`<div class="rp" style="font-family:Arial,sans-serif">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2d8fa5">
-      <img src="${LOGO_ITALY}" style="height:55px;object-fit:contain" alt="Italy Embalagens">
-      <div style="text-align:right">
-        <div style="font-size:16px;font-weight:700;color:#2d8fa5">PEDIDO DE COMPRA — ${num}</div>
-        <div style="font-size:10px;color:#888">${empNomePDF}</div>
+      <td style="text-align:center">${i+1}</td>
+      <td>${escH(it.nom||'—')}</td>
+      <td style="text-align:right">${it.larg?escH(String(it.larg)):'—'}</td>
+      <td style="text-align:right">${it.comp?escH(String(it.comp)):'—'}</td>
+      <td>${escH(it.vincos||'—')}</td>
+      <td style="text-align:right">${it.qtd?it.qtd.toLocaleString('pt-BR'):'—'}</td>
+      <td style="text-align:right">${it.loteMin?it.loteMin.toLocaleString('pt-BR'):'—'}</td>
+      <td style="text-align:right">R$ ${Number(it.vlm2||0).toFixed(4)}</td>
+      <td style="text-align:right"><b>R$ ${Number(it.vtot||0).toFixed(2).replace('.',',')}</b></td>
+      <td>${escH(it.obsItem||'—')}</td>
+      <td>${escH(it.pedForn||'—')}</td>
+    </tr>`).join('') || `<tr><td colspan="11">—</td></tr>`;
+
+  const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Pedido de Compra — ${escH(num)}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:18px;padding-bottom:108px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px;border-bottom:3px solid #2a7a5e;margin-bottom:14px}
+  .logo{display:flex;gap:10px;align-items:center}
+  .logo img{height:50px;object-fit:contain}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand .nome{font-size:16px;font-weight:900;color:#2a7a5e;letter-spacing:.4px}
+  .brand .sub{font-size:10px;color:#444}
+  .addr{font-size:10px;color:#333;text-align:right;line-height:1.35}
+  .doc{font-size:14px;font-weight:900;color:#2a7a5e;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+  .box{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff}
+  .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+  .val{font-size:12px;font-weight:800;color:#111}
+  .wide{grid-column:1 / -1}
+  .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:10.5px}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}
+  tbody tr:nth-child(even) td{background:#f9fafb}
+  .tot{margin-top:10px;text-align:right;font-size:14px;font-weight:900;color:#2a7a5e}
+  .ass{display:flex;gap:18px;margin-top:18px}
+  .ass .col{flex:1;text-align:center}
+  .ass .line{border-top:1px solid #333;margin-top:34px;padding-top:6px;font-size:10px;color:#444}
+  .footer{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #2a7a5e;padding:10px 16px;font-size:10px;color:#333}
+  .footer .line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .footer b{color:#2a7a5e}
+  @media print{body{padding:12px;padding-bottom:108px}}
+</style></head><body>
+  <div class="top">
+    <div class="logo">
+      <img src="${ITALY_LOGO_B64}" alt="Italy Embalagens">
+      <div class="brand">
+        <div class="nome">${escH(empNome)}</div>
+        <div class="sub">Pedido de Compra — ${escH(num)}</div>
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:12px;font-size:11px">
-      <div>
-        <div><b>Fornecedor:</b> ${forn}</div>
-        <div><b>CNPJ:</b> ${document.getElementById('cp-cnpj').value||'—'}</div>
-      </div>
-      <div style="text-align:right">
-        <div><b>Data:</b> ${data}</div>
-        <div><b>Prev. chegada:</b> ${prev||'—'}</div>
-        <div><b>Status:</b> ${document.getElementById('cp-st').value}</div>
-      </div>
+    <div class="addr">
+      <div class="doc">PEDIDO DE COMPRA</div>
+      <div>Data: ${escH(dataHoje)} &nbsp;•&nbsp; Hora: ${escH(horaAgora)}</div>
+      <div>Italy Embalagens — Rua Geovani Barrichello, 200</div>
+      <div>São Miguel do Oeste — SC</div>
     </div>
+  </div>
+
+  <div class="grid">
+    <div class="box"><div class="lbl">Número</div><div class="val">${escH(num||'—')}</div></div>
+    <div class="box"><div class="lbl">Empresa compradora</div><div class="val">${escH(empNome||'—')}</div></div>
+    <div class="box"><div class="lbl">Status</div><div class="val">${escH(status||'—')}</div></div>
+    <div class="box wide"><div class="lbl">Fornecedor</div><div class="val">${escH(forn||'—')}</div></div>
+    <div class="box"><div class="lbl">CNPJ</div><div class="val">${escH(cnpj||'—')}</div></div>
+    <div class="box"><div class="lbl">Data do pedido</div><div class="val">${escH(data||'—')}</div></div>
+    <div class="box"><div class="lbl">Previsão de chegada</div><div class="val">${escH(prev||'—')}</div></div>
+    <div class="box"><div class="lbl">NF</div><div class="val">—</div></div>
+  </div>
+
+  <div class="tblwrap">
     <table>
-      <thead><tr><th>#</th><th>Nomenclatura</th><th>Compr.(mm)</th><th>Larg.(mm)</th><th>m²</th><th>Qtd</th><th>Vincos</th><th>Vl.Unit.</th><th>Total</th></tr></thead>
+      <thead><tr>
+        <th>#</th>
+        <th>Nomenclatura</th>
+        <th>Larg (mm)</th>
+        <th>Comp (mm)</th>
+        <th>Vincos</th>
+        <th>Qtd</th>
+        <th>Lote mín</th>
+        <th>Valor m²</th>
+        <th>Total</th>
+        <th>Obs</th>
+        <th>Ped. Forn.</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div style="text-align:right;margin-top:12px;font-size:14px;font-weight:700;color:#2d8fa5">TOTAL GERAL: R$ ${total.toFixed(2).replace('.',',')}</div>
-    ${document.getElementById('cp-obs').value?`<div style="margin-top:8px;font-size:11px;padding:6px;background:#f5f5f5"><b>Obs:</b> ${document.getElementById('cp-obs').value}</div>`:''}
-    <div style="margin-top:16px;font-size:9px;color:#999;border-top:1px solid #eee;padding-top:6px;display:flex;justify-content:space-between"><span>${empNomePDF}</span><span>Gerado em ${new Date().toLocaleString('pt-BR')}</span></div>
-  </div>`;
-  pa.style.display='block';window.print();setTimeout(()=>{pa.style.display='none';},1500);
+  </div>
+
+  <div class="tot">TOTAL GERAL: R$ ${Number(total||0).toFixed(2).replace('.',',')}</div>
+
+  ${obs ? `<div style="margin-top:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px"><div class="lbl">Observações</div><div class="val" style="font-size:12px;font-weight:700">${escH(obs)}</div></div>` : ''}
+
+  <div class="ass">
+    <div class="col"><div class="line">Solicitante</div></div>
+    <div class="col"><div class="line">Aprovação</div></div>
+    <div class="col"><div class="line">Fornecedor</div></div>
+  </div>
+
+  <div class="footer">
+    <div class="line">
+      <span><b>Eleomar Fridres</b> | (49) 99998-0203 | (49) 3622-8512 | atendimento@italyembalagens.com.br</span>
+      <span><b>Italy Embalagens</b> — Rua Geovani Barrichello, 200 — São Miguel do Oeste — SC</span>
+    </div>
+  </div>
+</body></html>`;
+
+  const w = window.open('','_blank','width=980,height=760');
+  if(!w){ toast('Permita pop-up para imprimir','var(--yellow)'); return; }
+  w.document.write(html); w.document.close(); w.focus();
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 
 function cmpEnviarEmail(){
@@ -20637,7 +20757,7 @@ function calcUsarOpcaoSelecionada(){
 
 async function salvarOrcamentoCalc(){
   if(!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length===0){
-    toast('Calcule primeiro antes de salvar','var(--red)');return;
+    toast('Calcule primeiro antes de salvar','var(--red)');return false;
   }
   const calcCli=document.getElementById('calc-cli');
   const clienteId=String((calcCli||{}).value||'');
@@ -20694,7 +20814,7 @@ async function salvarOrcamentoCalc(){
   const metodo=_orcIdAtual ? 'PUT' : 'POST';
   const url=_orcIdAtual ? ('/orcamentos/'+encodeURIComponent(_orcIdAtual)) : '/orcamentos';
   const r = await api(metodo, url, payload);
-  if(!r || r.ok===false || r.error){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return; }
+  if(!r || r.ok===false || r.error){ toast('Erro: '+(r && (r.error||r.message) ? (r.error||r.message) : 'falha'),'var(--red)'); return false; }
   const row=r.data || r;
   _orcIdAtual = row.id;
   _orcNumeroAtual = row.numero_orcamento || row.numero || (row.id ? String(row.id).substring(0, 8) : null);
@@ -20709,6 +20829,13 @@ async function salvarOrcamentoCalc(){
   toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓','var(--green)');
   const numEl=document.getElementById('orc-numero-display');
   if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
+  return true;
+}
+
+async function imprimirOrcamentoCalc(){
+  const ok = await salvarOrcamentoCalc();
+  if(!ok) return;
+  imprimirCalculadora();
 }
 
 async function buscarOrcamento(){
@@ -21142,14 +21269,8 @@ function calcImprimir(){
 }
 
 function imprimirCalculadora() {
-  const modal =
-    document.getElementById('modal-calculadora') ||
-    document.getElementById('modal-orcamento-calc') ||
-    document.querySelector('[id*="calculadora"]:not(input):not(select)');
-
-  if (!modal) {
-    window.print();
-    return;
+  if (!calcLastResult || !Array.isArray(calcLastResult.allResults) || calcLastResult.allResults.length === 0) {
+    toast('Calcule primeiro', 'var(--yellow)'); return;
   }
 
   const calcCli = document.getElementById('calc-cli');
@@ -21157,213 +21278,127 @@ function imprimirCalculadora() {
     ? String(calcCli.options[calcCli.selectedIndex].textContent || '').trim()
     : '';
 
+  const tipoEl = document.getElementById('calc-tipo');
+  const tipo = (tipoEl && tipoEl.options && tipoEl.selectedIndex >= 0)
+    ? String(tipoEl.options[tipoEl.selectedIndex].textContent || '').trim()
+    : String((tipoEl||{}).value || '').trim();
+
+  const comp = String((document.getElementById('calc-c')||document.getElementById('calc-comp')||{}).value || '').trim();
+  const larg = String((document.getElementById('calc-l')||document.getElementById('calc-larg')||{}).value || '').trim();
+  const alt  = String((document.getElementById('calc-a')||document.getElementById('calc-alt')||{}).value || '').trim();
+  const qtd  = parseInt(String((document.getElementById('calc-qtd')||{}).value||'0'),10) || 0;
+
   const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
   const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
 
-  let estilos = '';
-  try {
-    estilos = Array.from(document.styleSheets).map(sheet => {
-      try {
-        return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
-      } catch(e) { return ''; }
-    }).join('\n');
-  } catch(e) {}
+  const resultados = (calcLastResult.allResults||[]).map(r => {
+    const q = Number(qtd || calcLastResult.qtd || 0) || 0;
+    const vLiq = q ? (Number(r.liquida||0) / q) : 0;
+    const vFre = q ? (Number(r.comFrete||0) / q) : 0;
+    const tot  = Number(r.comFrete||0) || 0;
+    return {
+      label: String(r.compTitle||r.compLabel||'').trim(),
+      onda: String(r.onda||'').trim(),
+      vLiq,
+      vFre,
+      tot
+    };
+  });
 
-  const conteudoModal = modal.cloneNode(true);
+  const linhasHtml = resultados.map(r => `
+    <tr>
+      <td style="font-weight:800">${escH(r.label || '—')}</td>
+      <td style="text-align:center">${escH(r.onda || '—')}</td>
+      <td style="text-align:right">R$ ${Number(r.vLiq||0).toFixed(4)}</td>
+      <td style="text-align:right"><b>R$ ${Number(r.vFre||0).toFixed(4)}</b></td>
+      <td style="text-align:right"><b>R$ ${Number(r.tot||0).toFixed(2).replace('.',',')}</b></td>
+    </tr>
+  `).join('');
 
-  try {
-    conteudoModal.querySelectorAll('input, textarea, select').forEach(el => {
-      const tag = String(el.tagName || '').toLowerCase();
-      let txt = '';
-      if (tag === 'select') {
-        const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
-        txt = opt ? String(opt.textContent || '').trim() : String(el.value || '').trim();
-      } else if (tag === 'textarea') {
-        txt = String(el.value || el.textContent || '').trim();
-      } else {
-        txt = String(el.value || '').trim();
-      }
-      const span = document.createElement('span');
-      span.textContent = txt || '—';
-      span.style.fontWeight = '700';
-      span.style.color = '#111';
-      span.style.fontFamily = 'Arial, sans-serif';
-      span.style.fontSize = '12px';
-      el.replaceWith(span);
-    });
-  } catch(e) {}
-
-  conteudoModal.querySelectorAll(
-    'button, .modal-footer, .rodape, .btn-fechar, ' +
-    '[onclick*="fechar"], [onclick*="Fechar"], ' +
-    '.no-print, .nao-imprimir, .close-btn'
-  ).forEach(el => el.remove());
-
-  conteudoModal.style.display = 'block';
-  conteudoModal.style.position = 'static';
-  conteudoModal.style.maxHeight = 'none';
-  conteudoModal.style.overflow = 'visible';
-
-  const htmlConteudo = conteudoModal.innerHTML;
-
-  const janela = window.open('', '_blank', 'width=900,height=700');
-  if (!janela) {
-    toast('Permita pop-up para imprimir', 'var(--yellow)');
-    return;
-  }
-
-  janela.document.write(`<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Orçamento — Italy Embalagens</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 12px;
-      color: #000;
-      background: #fff;
-      padding: 20px;
-    }
-    ${estilos}
-    .cabecalho-impressao {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 3px solid #1a56db;
-      padding-bottom: 12px;
-      margin-bottom: 16px;
-    }
-    .cabecalho-impressao .empresa { flex: 1; }
-    .cabecalho-impressao .empresa h1 {
-      font-size: 20px;
-      font-weight: 900;
-      color: #1a56db;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .cabecalho-impressao .empresa p { font-size: 11px; color: #555; margin-top: 2px; }
-    .cabecalho-impressao .info-doc { text-align: right; font-size: 11px; color: #333; }
-    .cabecalho-impressao .info-doc .titulo-doc { font-size: 16px; font-weight: 700; color: #1a56db; display: block; margin-bottom: 4px; }
-    .dados-cliente {
-      background: #f0f4ff;
-      border: 1px solid #c7d2fe;
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 14px;
-      font-size: 12px;
-    }
-    .dados-cliente strong { color: #1a56db; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 12px;
-      font-size: 11px;
-    }
-    th {
-      background: #1a56db;
-      color: #fff;
-      padding: 6px 8px;
-      text-align: left;
-      font-weight: 700;
-      font-size: 10px;
-      text-transform: uppercase;
-    }
-    td {
-      padding: 5px 8px;
-      border-bottom: 1px solid #e5e7eb;
-      color: #111;
-    }
-    tr:nth-child(even) td { background: #f9fafb; }
-    tr:last-child td { border-bottom: none; }
-    .secao { margin-bottom: 14px; }
-    .secao h3 {
-      font-size: 12px;
-      font-weight: 700;
-      color: #1a56db;
-      text-transform: uppercase;
-      border-bottom: 1px solid #c7d2fe;
-      padding-bottom: 4px;
-      margin-bottom: 8px;
-    }
-    .rodape-impressao {
-      margin-top: 24px;
-      padding-top: 12px;
-      border-top: 2px solid #1a56db;
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      color: #777;
-      gap: 12px;
-    }
-    .rodape-impressao .assinatura { text-align: center; flex: 1; }
-    .assinatura-linha { border-top: 1px solid #333; width: 200px; margin: 30px auto 6px; }
-    .obs-impressao {
-      background: #fffbeb;
-      border: 1px solid #fbbf24;
-      border-radius: 6px;
-      padding: 10px;
-      font-size: 11px;
-      margin-top: 12px;
-      font-style: italic;
-      color: #555;
-    }
-    .conteudo-calc * { color: #000 !important; }
-    @media print {
-      body { padding: 10px; }
-      .rodape-impressao { page-break-inside: avoid; }
-    }
-  </style>
-</head>
-<body>
-  <div class="cabecalho-impressao">
-    <div class="empresa">
-      <h1>Italy Embalagens</h1>
-      <p>Embalagens de papelão sob medida</p>
-      <p>Qualidade • Agilidade • Confiança</p>
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Orçamento — Italy Embalagens</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:18px;padding-bottom:84px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px;border-bottom:3px solid #2a7a5e;margin-bottom:14px}
+  .logo{display:flex;gap:10px;align-items:center}
+  .logo img{height:50px;object-fit:contain}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand .nome{font-size:16px;font-weight:900;color:#2a7a5e;letter-spacing:.4px}
+  .brand .sub{font-size:10px;color:#444}
+  .addr{font-size:10px;color:#333;text-align:right;line-height:1.35}
+  .doc{font-size:14px;font-weight:900;color:#2a7a5e;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+  .box{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff}
+  .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+  .val{font-size:13px;font-weight:800;color:#111}
+  .cliente{grid-column:1 / -1}
+  .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;white-space:nowrap}
+  tbody tr:nth-child(even) td{background:#f9fafb}
+  .footer{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #2a7a5e;padding:10px 16px;font-size:10px;color:#333}
+  .footer .line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .footer b{color:#2a7a5e}
+  @media print{body{padding:12px;padding-bottom:84px}}
+</style></head><body>
+  <div class="top">
+    <div class="logo">
+      <img src="${ITALY_LOGO_B64}" alt="Italy Embalagens">
+      <div class="brand">
+        <div class="nome">ITALY EMBALAGENS</div>
+        <div class="sub">Orçamento gerado pela calculadora</div>
+      </div>
     </div>
-    <div class="info-doc">
-      <span class="titulo-doc">ORÇAMENTO</span>
-      <div>Data: ${dataHoje}</div>
-      <div>Hora: ${horaAgora}</div>
-      ${clienteNome && !clienteNome.includes('Selecione') ? `<div style="margin-top:6px;font-weight:700;">Cliente: ${clienteNome}</div>` : ''}
+    <div class="addr">
+      <div class="doc">ORÇAMENTO</div>
+      <div>Data: ${dataHoje} &nbsp;•&nbsp; Hora: ${horaAgora}</div>
+      <div>Italy Embalagens — Rua Geovani Barrichello, 200</div>
+      <div>São Miguel do Oeste — SC</div>
     </div>
   </div>
 
-  <div class="conteudo-calc">
-    ${htmlConteudo}
+  <div class="grid">
+    <div class="box cliente">
+      <div class="lbl">Cliente do orçamento</div>
+      <div class="val">${escH(clienteNome || '—')}</div>
+    </div>
+    <div class="box"><div class="lbl">Tipo</div><div class="val">${escH(tipo || '—')}</div></div>
+    <div class="box"><div class="lbl">Comprimento (mm)</div><div class="val">${escH(comp || '—')}</div></div>
+    <div class="box"><div class="lbl">Largura (mm)</div><div class="val">${escH(larg || '—')}</div></div>
+    <div class="box"><div class="lbl">Altura (mm)</div><div class="val">${escH(alt || '—')}</div></div>
+    <div class="box"><div class="lbl">Quantidade</div><div class="val">${escH(String(qtd || '—'))}</div></div>
+    <div class="box"><div class="lbl">Data</div><div class="val">${dataHoje}</div></div>
   </div>
 
-  <div class="obs-impressao">
-    💡 Orçamento sujeito a alterações sem aviso prévio. Válido por 15 dias. Entre em contato para confirmar disponibilidade e prazo de entrega.
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>Comp.</th>
+        <th style="text-align:center">Onda</th>
+        <th style="text-align:right">VL Unit. Líquido</th>
+        <th style="text-align:right">VL Unit. c/ Frete</th>
+        <th style="text-align:right">Total</th>
+      </tr></thead>
+      <tbody>${linhasHtml || '<tr><td colspan="5">—</td></tr>'}</tbody>
+    </table>
   </div>
 
-  <div class="rodape-impressao">
-    <div>
-      <div>Italy Embalagens</div>
-      <div>Gerado em ${dataHoje} às ${horaAgora}</div>
-    </div>
-    <div class="assinatura">
-      <div class="assinatura-linha"></div>
-      <div>Assinatura do Responsável</div>
-    </div>
-    <div style="text-align:right;">
-      <div>Documento gerado pelo</div>
-      <div style="font-weight:700;color:#1a56db;">Italy PCP Pro</div>
+  <div class="footer">
+    <div class="line">
+      <span><b>Eleomar Fridres</b> | (49) 99998-0203 | (49) 3622-8512 | atendimento@italyembalagens.com.br</span>
+      <span><b>Italy Embalagens</b> — Rua Geovani Barrichello, 200 — São Miguel do Oeste — SC</span>
     </div>
   </div>
-</body>
-</html>`);
+</body></html>`;
 
-  janela.document.close();
-  janela.onload = () => {
-    setTimeout(() => {
-      try { janela.focus(); } catch(e) {}
-      try { janela.print(); } catch(e) {}
-      try { janela.onafterprint = () => janela.close(); } catch(e) {}
-    }, 500);
-  };
+  const win = window.open('', '_blank', 'width=980,height=760');
+  if(!win){ toast('Permita pop-up para imprimir', 'var(--yellow)'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { try{ win.print(); }catch(e){} }, 600);
 }
 
 function renderOrcamentos(){
@@ -21662,93 +21697,125 @@ function imprimirOrcData(orc) {
   const data = fmtD(orc.criado_em || orc.data || new Date().toISOString());
   const tipo = orc.parametros?.tipo || orc.onda || '—';
 
-  const linhas = resultados.map(r => `
-    <tr>
-      <td>${escH(r.compTitle||r.compLabel||r.onda||'')}</td>
-      <td>${escH(medidas)}</td>
-      <td style="text-align:center">${qtd}</td>
-      <td style="text-align:right">R$ ${Number(r.vLiq||r.valor_unitario||0).toFixed(4)}</td>
-      <td style="text-align:right"><b>R$ ${Number(r.vUnit||r.vLiq||0).toFixed(4)}</b></td>
-      <td style="text-align:right"><b>R$ ${Number((r.vUnit||0)*Number(qtd||0)).toFixed(2)}</b></td>
-    </tr>`).join('') || `<tr>
-      <td>${escH(orc.onda||'—')}</td>
-      <td>${escH(medidas)}</td>
-      <td style="text-align:center">${qtd}</td>
-      <td style="text-align:right">${fmtR(orc.valor_unitario)}</td>
-      <td style="text-align:right"><b>${fmtR(orc.valor_unitario)}</b></td>
-      <td style="text-align:right"><b>${fmtR(orc.valor_total)}</b></td>
-    </tr>`;
+  const linhas = resultados.map(r => {
+    const vl = Number(r.vLiq ?? r.valor_unitario ?? 0) || 0;
+    const vf = Number(r.vUnit ?? r.vLiq ?? 0) || 0;
+    const qt = Number(qtd || 0) || 0;
+    const tt = Number(r.total ?? (vf * qt) ?? 0) || 0;
+    return `
+      <tr>
+        <td style="font-weight:800">${escH(String(r.compTitle||r.compLabel||r.onda||'—'))}</td>
+        <td style="text-align:center">${escH(String(r.onda||orc.onda||tipo||'—'))}</td>
+        <td style="text-align:right">R$ ${vl.toFixed(4)}</td>
+        <td style="text-align:right"><b>R$ ${vf.toFixed(4)}</b></td>
+        <td style="text-align:right"><b>R$ ${tt.toFixed(2).replace('.',',')}</b></td>
+      </tr>`;
+  }).join('') || `<tr>
+    <td style="font-weight:800">${escH(String(tipo||'—'))}</td>
+    <td style="text-align:center">${escH(String(orc.onda||tipo||'—'))}</td>
+    <td style="text-align:right">${fmtR(orc.valor_unitario)}</td>
+    <td style="text-align:right"><b>${fmtR(orc.valor_unitario)}</b></td>
+    <td style="text-align:right"><b>${fmtR(orc.valor_total)}</b></td>
+  </tr>`;
 
   const valorTotal = (orc.valor_total != null && String(orc.valor_total).trim() !== '') ? orc.valor_total : (
     resultados && resultados.length ? Number(resultados[0].total || ((resultados[0].vUnit||0)*Number(qtd||0))) : 0
   );
 
   const empNome = (getEmp(orc.empId||orc.emp_id||EMP_FILTRO)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
+  const comp = String(orc.comp || orc.parametros?.comp || '').trim();
+  const larg = String(orc.larg || orc.parametros?.larg || '').trim();
+  const alt  = String(orc.alt  || orc.parametros?.alt  || '').trim();
+
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
-<title>Orçamento Nº ${numOrc} — Italy Embalagens</title>
+<title>Orçamento Nº ${escH(numOrc)} — Italy Embalagens</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}
-  .header{display:flex;justify-content:space-between;border-bottom:2px solid #333;padding-bottom:12px;margin-bottom:16px}
-  .header h1{font-size:20px;color:#333}
-  .header .num{font-size:15px;font-weight:bold;color:#1a5276;margin-top:4px}
-  .info{background:#f5f5f5;padding:10px 14px;border-radius:4px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  .info p{font-size:12px}
-  table{width:100%;border-collapse:collapse;margin-bottom:16px}
-  th{background:#2c3e50;color:#fff;padding:8px 10px;text-align:left;font-size:11px}
-  td{padding:8px 10px;border-bottom:1px solid #ddd}
-  tr:nth-child(even) td{background:#f9f9f9}
-  .total-row td{background:#eaf2ff;font-weight:bold;border-top:2px solid #2c3e50}
-  .rodape{margin-top:20px;padding-top:14px;border-top:1px solid #ccc;font-size:11px;line-height:1.9;color:#333}
-  .rodape b{font-size:12px}
-  @media print{body{padding:10px}}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:18px;padding-bottom:84px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px;border-bottom:3px solid #2a7a5e;margin-bottom:14px}
+  .logo{display:flex;gap:10px;align-items:center}
+  .logo img{height:50px;object-fit:contain}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand .nome{font-size:16px;font-weight:900;color:#2a7a5e;letter-spacing:.4px}
+  .brand .sub{font-size:10px;color:#444}
+  .addr{font-size:10px;color:#333;text-align:right;line-height:1.35}
+  .doc{font-size:14px;font-weight:900;color:#2a7a5e;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+  .box{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff}
+  .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+  .val{font-size:13px;font-weight:800;color:#111}
+  .cliente{grid-column:1 / -1}
+  .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:11px}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;white-space:nowrap}
+  tbody tr:nth-child(even) td{background:#f9fafb}
+  tfoot td{padding:10px;border-top:2px solid #2a7a5e;background:#f0fdf4;font-weight:900}
+  .footer{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #2a7a5e;padding:10px 16px;font-size:10px;color:#333}
+  .footer .line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .footer b{color:#2a7a5e}
+  @media print{body{padding:12px;padding-bottom:84px}}
 </style></head><body>
-<div class="header">
-  <div>
-    <h1>${escH(empNome)}</h1>
-    <div class="num">Orçamento Nº ${numOrc}</div>
+  <div class="top">
+    <div class="logo">
+      <img src="${ITALY_LOGO_B64}" alt="Italy Embalagens">
+      <div class="brand">
+        <div class="nome">${escH(empNome)}</div>
+        <div class="sub">Orçamento Nº ${escH(numOrc)}</div>
+      </div>
+    </div>
+    <div class="addr">
+      <div class="doc">ORÇAMENTO</div>
+      <div>Data: ${escH(data)}</div>
+      <div>Italy Embalagens — Rua Geovani Barrichello, 200</div>
+      <div>São Miguel do Oeste — SC</div>
+    </div>
   </div>
-  <div style="text-align:right;font-size:11px;color:#666">
-    <div>Data: ${data}</div>
-    <div>Tipo: ${escH(tipo)}</div>
-    <div>Validade: 30 dias</div>
+
+  <div class="grid">
+    <div class="box cliente">
+      <div class="lbl">Cliente do orçamento</div>
+      <div class="val">${escH(cliente || '—')}</div>
+    </div>
+    <div class="box"><div class="lbl">Tipo</div><div class="val">${escH(String(tipo || '—'))}</div></div>
+    <div class="box"><div class="lbl">Comprimento (mm)</div><div class="val">${escH(comp || '—')}</div></div>
+    <div class="box"><div class="lbl">Largura (mm)</div><div class="val">${escH(larg || '—')}</div></div>
+    <div class="box"><div class="lbl">Altura (mm)</div><div class="val">${escH(alt || '—')}</div></div>
+    <div class="box"><div class="lbl">Quantidade</div><div class="val">${escH(String(qtd || '—'))}</div></div>
+    <div class="box"><div class="lbl">Medidas</div><div class="val">${escH(String(medidas || '—'))}</div></div>
   </div>
-</div>
-<div class="info">
-  <p><b>Cliente:</b> ${escH(cliente)}</p>
-  <p><b>Medidas:</b> ${escH(medidas)}</p>
-  <p><b>Quantidade:</b> ${qtd} unidades</p>
-  <p><b>Onda:</b> ${escH(orc.onda||tipo)}</p>
-</div>
-<table>
-  <thead><tr>
-    <th>TIPO DE ONDA</th><th>MEDIDAS (mm)</th><th>QUANTIDADE</th>
-    <th>VL. UNIT. LÍQUIDO</th><th>VL. UNIT. C/FRETE</th><th>VALOR TOTAL</th>
-  </tr></thead>
-  <tbody>${linhas}</tbody>
-  <tfoot><tr class="total-row">
-    <td colspan="5" style="text-align:right">VALOR TOTAL DO PEDIDO:</td>
-    <td style="text-align:right">${fmtR(valorTotal)}</td>
-  </tr></tfoot>
-</table>
-${orc.observacoes ? '<p style="margin-bottom:16px"><b>Obs:</b> '+escH(orc.observacoes)+'</p>' : ''}
-<div class="rodape">
-  <p>FATURAMENTO PELA EMPRESA NO LUCRO REAL</p>
-  <p>CRÉDITO DE ICMS 12% &nbsp;|&nbsp; IPI - 15% OU COM CARTA DE ISENÇÃO</p>
-  <p>FATURAMENTO PELO SIMPLES</p>
-  <p>CRÉDITO DE ICMS - BASE GOVERNO DO ESTADO &nbsp;|&nbsp; SEM IPI</p>
-  <br>
-  <p>ATENCIOSAMENTE</p>
-  <p><b>ELEOMAR FRIDRES</b></p>
-  <p>(49) 99998 0203 (WHATSAPP) &nbsp;&nbsp; (49) 3622 8512</p>
-  <p>atendimento@italyembalagens.com.br</p>
-  <p>RUA GEOVANI BARRICHELLO, 200 - BAIRRO SANTA RITA - SÃO MIGUEL DO OESTE</p>
-</div>
+
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>Comp.</th>
+        <th style="text-align:center">Onda</th>
+        <th style="text-align:right">VL Unit. Líquido</th>
+        <th style="text-align:right">VL Unit. c/ Frete</th>
+        <th style="text-align:right">Total</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+      <tfoot><tr>
+        <td colspan="4" style="text-align:right">Total Geral</td>
+        <td style="text-align:right">${fmtR(valorTotal)}</td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  ${orc.observacoes ? `<div style="margin-top:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px"><div class="lbl">Observações</div><div class="val" style="font-size:12px;font-weight:700">${escH(orc.observacoes)}</div></div>` : ''}
+
+  <div class="footer">
+    <div class="line">
+      <span><b>Eleomar Fridres</b> | (49) 99998-0203 | (49) 3622-8512 | atendimento@italyembalagens.com.br</span>
+      <span><b>Italy Embalagens</b> — Rua Geovani Barrichello, 200 — São Miguel do Oeste — SC</span>
+    </div>
+  </div>
 </body></html>`;
 
   const w = window.open('','_blank','width=900,height=750');
+  if(!w){ toast('Permita pop-up para imprimir','var(--yellow)'); return; }
   w.document.write(html); w.document.close(); w.focus();
-  setTimeout(()=>w.print(), 600);
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 function imprimirOrcId(id) {
   const orc = (ORCAMENTOS||[]).find(o=>o.id===id);
@@ -21852,116 +21919,145 @@ async function setCmpStatus(id,st){
 function imprimirCompraId(id){
   const cmp=COMPRAS.find(x=>x.id===id);
   if(!cmp){toast('Compra não encontrada','var(--red)');return;}
-  const emp=getEmp(cmp.empId)||{nome:'Italy Embalagens'};
-  const itens=cmp.itens&&cmp.itens.length>0?cmp.itens:[{nom:cmp.nome||cmp.nom||'—',qtd:cmp.qtd||0,vunit:cmp.vunit||0,vtot:cmp.vtot||0,comp:0,larg:0,m2:0,vincos:''}];
-  const stCor={'Solicitada':'#2563eb','Comprada':'#ca8a04','Recebida':'#16a34a','Recebida parcialmente':'#ea580c','Cancelada':'#dc2626'};
-  const cor=stCor[cmp.status]||'#555';
-
-  const rows=itens.map((it,i)=>`
-    <tr style="background:${i%2?'#f9f9f9':'#fff'}">
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${i+1}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;font-weight:600">${it.nom||'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${it.comp||'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${it.larg||'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:center">${it.m2?it.m2.toFixed(4):'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${(it.qtd||0).toLocaleString('pt-BR')}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;color:#7c3aed">${it.vincos||'—'}</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right">${fmtR(it.vlm2||it.vunit||0)}/m²</td>
-      <td style="padding:6px 8px;border:1px solid #ddd;text-align:right;font-weight:700;color:#16a34a">${fmtR(it.vtot||0)}</td>
-    </tr>`).join('');
+  const empNome=(getEmp(cmp.empId)||{nome:'Italy Embalagens'}).nome||'Italy Embalagens';
+  const itens=(cmp.itens&&cmp.itens.length>0?cmp.itens:[{nom:cmp.nome||cmp.nom||'—',qtd:cmp.qtd||0,vtot:cmp.vtot||0,comp:0,larg:0,vincos:'',vlm2:cmp.vunit||0,obsItem:'',pedForn:''}]).map(it=>({
+    nom: String(it.nom||it.nome||'—').trim(),
+    larg: Number(it.larg||0)||0,
+    comp: Number(it.comp||0)||0,
+    vincos: String(it.vincos||'').trim(),
+    qtd: Number(it.qtd||0)||0,
+    loteMin: Number(it.loteMin||0)||0,
+    vlm2: Number(it.vlm2||it.vunit||0)||0,
+    vtot: Number(it.vtot||0)||0,
+    obsItem: String(it.obsItem||'').trim(),
+    pedForn: String(it.pedForn||'').trim(),
+  }));
 
   const total=itens.reduce((s,it)=>s+(it.vtot||0),0);
+  const rows = itens.map((it,i)=>`
+    <tr>
+      <td style="text-align:center">${i+1}</td>
+      <td>${escH(it.nom||'—')}</td>
+      <td style="text-align:right">${it.larg?escH(String(it.larg)):'—'}</td>
+      <td style="text-align:right">${it.comp?escH(String(it.comp)):'—'}</td>
+      <td>${escH(it.vincos||'—')}</td>
+      <td style="text-align:right">${it.qtd?it.qtd.toLocaleString('pt-BR'):'—'}</td>
+      <td style="text-align:right">${it.loteMin?it.loteMin.toLocaleString('pt-BR'):'—'}</td>
+      <td style="text-align:right">R$ ${Number(it.vlm2||0).toFixed(4)}</td>
+      <td style="text-align:right"><b>R$ ${Number(it.vtot||0).toFixed(2).replace('.',',')}</b></td>
+      <td>${escH(it.obsItem||'—')}</td>
+      <td>${escH(it.pedForn||'—')}</td>
+    </tr>`).join('') || `<tr><td colspan="11">—</td></tr>`;
 
-  const pa=document.getElementById('print-area');
-  pa.innerHTML=`<div style="font-family:Arial,sans-serif;color:#222;padding:0">
-    <!-- Cabeçalho com logo -->
-    <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;margin-bottom:18px;border-bottom:3px solid #2d8fa5">
-      <img src="${LOGO_ITALY}" style="height:70px;object-fit:contain" alt="Italy Embalagens">
-      <div style="text-align:right">
-        <div style="font-size:20px;font-weight:900;color:#2d8fa5;letter-spacing:-.5px">PEDIDO DE COMPRA</div>
-        <div style="font-size:15px;font-weight:700;color:#444;margin-top:2px">${cmp.id}</div>
-        <div style="margin-top:4px;display:inline-block;background:${cor};color:#fff;border-radius:4px;padding:2px 10px;font-size:11px;font-weight:700">${cmp.status}</div>
+  const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Pedido de Compra — ${escH(cmp.id)}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#111;background:#fff;padding:18px;padding-bottom:108px}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:12px;border-bottom:3px solid #2a7a5e;margin-bottom:14px}
+  .logo{display:flex;gap:10px;align-items:center}
+  .logo img{height:50px;object-fit:contain}
+  .brand{display:flex;flex-direction:column;gap:2px}
+  .brand .nome{font-size:16px;font-weight:900;color:#2a7a5e;letter-spacing:.4px}
+  .brand .sub{font-size:10px;color:#444}
+  .addr{font-size:10px;color:#333;text-align:right;line-height:1.35}
+  .doc{font-size:14px;font-weight:900;color:#2a7a5e;letter-spacing:.6px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+  .box{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff}
+  .lbl{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.08em;font-weight:800;margin-bottom:4px}
+  .val{font-size:12px;font-weight:800;color:#111}
+  .wide{grid-column:1 / -1}
+  .tblwrap{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:10.5px}
+  thead th{background:#2a7a5e;color:#fff;padding:8px 10px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+  tbody td{padding:8px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}
+  tbody tr:nth-child(even) td{background:#f9fafb}
+  .tot{margin-top:10px;text-align:right;font-size:14px;font-weight:900;color:#2a7a5e}
+  .ass{display:flex;gap:18px;margin-top:18px}
+  .ass .col{flex:1;text-align:center}
+  .ass .line{border-top:1px solid #333;margin-top:34px;padding-top:6px;font-size:10px;color:#444}
+  .footer{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:2px solid #2a7a5e;padding:10px 16px;font-size:10px;color:#333}
+  .footer .line{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .footer b{color:#2a7a5e}
+  @media print{body{padding:12px;padding-bottom:108px}}
+</style></head><body>
+  <div class="top">
+    <div class="logo">
+      <img src="${ITALY_LOGO_B64}" alt="Italy Embalagens">
+      <div class="brand">
+        <div class="nome">${escH(empNome)}</div>
+        <div class="sub">Pedido de Compra — ${escH(cmp.id)}</div>
       </div>
     </div>
+    <div class="addr">
+      <div class="doc">PEDIDO DE COMPRA</div>
+      <div>Data: ${escH(dataHoje)} &nbsp;•&nbsp; Hora: ${escH(horaAgora)}</div>
+      <div>Italy Embalagens — Rua Geovani Barrichello, 200</div>
+      <div>São Miguel do Oeste — SC</div>
+    </div>
+  </div>
 
-    <!-- Dados gerais -->
-    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px">
-      <tr>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa;width:20%"><b>Empresa</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd;width:30%;font-weight:600;color:#2d8fa5">${emp.nome}</td>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa;width:20%"><b>Nº Pedido</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd;width:30%;font-weight:700">${cmp.id}</td>
-      </tr>
-      <tr>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>Fornecedor</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd;font-weight:600">${cmp.forn||'—'}</td>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>Data</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd">${cmp.data||'—'}</td>
-      </tr>
-      <tr>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>CNPJ Fornecedor</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd">${cmp.cnpj||'—'}</td>
-        <td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>Prev. Chegada</b></td>
-        <td style="padding:7px 10px;border:1px solid #ddd">${cmp.prev||'—'}</td>
-      </tr>
-      ${cmp.nf?`<tr><td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>Nota Fiscal</b></td><td colspan="3" style="padding:7px 10px;border:1px solid #ddd">${cmp.nf}</td></tr>`:''}
-      ${cmp.obs?`<tr><td style="padding:7px 10px;border:1px solid #ddd;background:#f0f8fa"><b>Observações</b></td><td colspan="3" style="padding:7px 10px;border:1px solid #ddd;font-style:italic">${cmp.obs}</td></tr>`:''}
-    </table>
+  <div class="grid">
+    <div class="box"><div class="lbl">Número</div><div class="val">${escH(cmp.id||'—')}</div></div>
+    <div class="box"><div class="lbl">Empresa compradora</div><div class="val">${escH(empNome||'—')}</div></div>
+    <div class="box"><div class="lbl">Status</div><div class="val">${escH(cmp.status||'—')}</div></div>
+    <div class="box wide"><div class="lbl">Fornecedor</div><div class="val">${escH(cmp.forn||'—')}</div></div>
+    <div class="box"><div class="lbl">CNPJ</div><div class="val">${escH(cmp.cnpj||'—')}</div></div>
+    <div class="box"><div class="lbl">Data do pedido</div><div class="val">${escH(cmp.data||'—')}</div></div>
+    <div class="box"><div class="lbl">Previsão de chegada</div><div class="val">${escH(cmp.prev||'—')}</div></div>
+    <div class="box"><div class="lbl">NF</div><div class="val">${escH(cmp.nf||'—')}</div></div>
+  </div>
 
-    <!-- Tabela de itens -->
-    <div style="font-size:12px;font-weight:700;color:#2d8fa5;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Itens do Pedido</div>
-    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px">
-      <thead>
-        <tr style="background:#2d8fa5;color:#fff">
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:center;width:28px">#</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:left">Nomenclatura</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:center">Comp.(mm)</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:center">Larg.(mm)</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:center">m²</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:right">Qtd</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:left">Vincos</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:right">Vl/m²</th>
-          <th style="padding:7px 8px;border:1px solid #2d8fa5;text-align:right">Total</th>
-        </tr>
-      </thead>
+  <div class="tblwrap">
+    <table>
+      <thead><tr>
+        <th>#</th>
+        <th>Nomenclatura</th>
+        <th>Larg (mm)</th>
+        <th>Comp (mm)</th>
+        <th>Vincos</th>
+        <th>Qtd</th>
+        <th>Lote mín</th>
+        <th>Valor m²</th>
+        <th>Total</th>
+        <th>Obs</th>
+        <th>Ped. Forn.</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table>
+  </div>
 
-    <!-- Total -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
-      <div style="background:#f0f8fa;border:2px solid #2d8fa5;border-radius:6px;padding:10px 20px;text-align:right">
-        <div style="font-size:11px;color:#666;margin-bottom:2px">VALOR TOTAL DO PEDIDO</div>
-        <div style="font-size:20px;font-weight:900;color:#2d8fa5">${fmtR(total)}</div>
-      </div>
+  <div class="tot">TOTAL GERAL: R$ ${Number(total||0).toFixed(2).replace('.',',')}</div>
+
+  ${cmp.obs ? `<div style="margin-top:10px;border:1px solid #e5e7eb;border-radius:10px;padding:10px"><div class="lbl">Observações</div><div class="val" style="font-size:12px;font-weight:700">${escH(cmp.obs)}</div></div>` : ''}
+
+  <div class="ass">
+    <div class="col"><div class="line">Solicitante</div></div>
+    <div class="col"><div class="line">Aprovação</div></div>
+    <div class="col"><div class="line">Fornecedor</div></div>
+  </div>
+
+  <div class="footer">
+    <div class="line">
+      <span><b>Eleomar Fridres</b> | (49) 99998-0203 | (49) 3622-8512 | atendimento@italyembalagens.com.br</span>
+      <span><b>Italy Embalagens</b> — Rua Geovani Barrichello, 200 — São Miguel do Oeste — SC</span>
     </div>
+  </div>
+</body></html>`;
 
-    <!-- Assinaturas -->
-    <div style="display:flex;gap:40px;margin-top:30px;padding-top:16px;border-top:1px solid #ddd">
-      <div style="flex:1;text-align:center">
-        <div style="border-top:1px solid #555;padding-top:6px;font-size:10px;color:#555">Responsável pela Compra</div>
-        <div style="font-size:10px;color:#888;margin-top:2px">${emp.nome}</div>
-      </div>
-      <div style="flex:1;text-align:center">
-        <div style="border-top:1px solid #555;padding-top:6px;font-size:10px;color:#555">Fornecedor</div>
-        <div style="font-size:10px;color:#888;margin-top:2px">${cmp.forn||'—'}</div>
-      </div>
-    </div>
-
-    <!-- Rodapé -->
-    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:9px;color:#aaa">
-      <span>${emp.nome} — ${cmp.id}</span>
-      <span>Gerado em ${new Date().toLocaleString('pt-BR')}</span>
-    </div>
-  </div>`;
-
-  pa.style.display='block';
-  window.print();
-  setTimeout(()=>{ pa.style.display='none'; }, 1500);
+  const w = window.open('','_blank','width=980,height=760');
+  if(!w){ toast('Permita pop-up para imprimir','var(--yellow)'); return; }
+  w.document.write(html); w.document.close(); w.focus();
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 
 function editarCompra(id){
   const cmp=COMPRAS.find(x=>x.id===id);
   if(!cmp){toast('Compra não encontrada','var(--red)');return;}
+  try{ window._compraAtual = cmp; }catch(e){}
   // Reutiliza abrirModalCompra mas carrega dados existentes
   CMP_ITEMS = (cmp.itens&&cmp.itens.length>0) ? cmp.itens.map(it=>({...it})) : [{nom:cmp.nome||cmp.nom||'',qtd:cmp.qtd||0,vunit:cmp.vunit||0,vtot:cmp.vtot||0,comp:cmp.comp||0,larg:cmp.larg||0,m2:cmp.m2||0,vincos:'',pedCli:'',dataEnt:'',loteMin:0,vlm2:cmp.vunit||0,vlmil:0,obsItem:'',pedForn:''}];
   document.getElementById('cp-num').value=cmp.id;
@@ -21978,13 +22074,14 @@ function editarCompra(id){
   if(fsel){const opt=[...fsel.options].find(o=>o.text===cmp.forn);if(opt){fsel.value=opt.value;}else{fsel.value='';if(fman)fman.value=cmp.forn||'';}}
   cmpRenderItems();
   abrir('modal-compra');
+  setTimeout(() => { try{ preencherEmpresasCompra(); }catch(e){} }, 150);
   // Swap save button to update
   setTimeout(()=>{
     const footer=document.querySelector('#modal-compra .modal-footer');
     if(footer){
       footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-compra')">Cancelar</button>
         <button class="btn btn-purple" onclick="cmpEnviarEmail()">✉ Email</button>
-        <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 PDF</button>
+        <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 Imprimir</button>
         <button class="btn btn-red" onclick="excluirCompra('${id}')">🗑 Excluir</button>
         <button class="btn btn-accent" onclick="salvarEdicaoCompra('${id}')">✏ Salvar Alterações</button>`;
     }
@@ -22041,7 +22138,7 @@ async function salvarEdicaoCompra(id){
     const footer=document.querySelector('#modal-compra .modal-footer');
     if(footer) footer.innerHTML=`<button class="btn btn-ghost" onclick="fechar('modal-compra')">Cancelar</button>
       <button class="btn btn-purple" onclick="cmpEnviarEmail()">✉ Email (Outlook)</button>
-      <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 PDF</button>
+      <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 Imprimir</button>
       <button class="btn btn-accent" onclick="salvarCompra()">Salvar</button>`;
     const h2=document.querySelector('#modal-compra h2');
     if(h2) h2.textContent='🛒 Pedido de Compra de Papelão';
@@ -26359,8 +26456,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
   <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #334155">
     <button onclick="fecharCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
-    <button onclick="imprimirCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
-    <button onclick="salvarOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
+    <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
+    <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
     <button onclick="enviarOrcamentoPorEmail()" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>
   </div>
 </div></div>
@@ -26732,7 +26829,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-compra')">Cancelar</button>
     <button class="btn btn-purple" onclick="cmpEnviarEmail()">✉ Email (Outlook)</button>
-    <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 PDF</button>
+    <button class="btn btn-ghost" onclick="cmpGerarPDF()">🖨 Imprimir</button>
     <button class="btn btn-accent" onclick="salvarCompra()">Salvar</button>
   </div>
 </div></div>
