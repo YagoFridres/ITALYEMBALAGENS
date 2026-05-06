@@ -13172,7 +13172,7 @@ function imprimirTempoProducao(){
   const periodo=((document.getElementById('ap-fil-de')||{}).value||'—')+' até '+((document.getElementById('ap-fil-ate')||{}).value||'—');
   pa.innerHTML=`<div class="rp" style="font-family:Arial,sans-serif">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #2d8fa5">
-      <img src="${LOGO_ITALY}" style="height:58px;object-fit:contain" alt="Italy Embalagens">
+      <img src="${ITALY_LOGO_B64}" style="height:58px;object-fit:contain" alt="Italy Embalagens">
       <div style="text-align:right">
         <div style="font-size:18px;font-weight:900;color:#2d8fa5">RELATÓRIO — TEMPO DE PRODUÇÃO</div>
         <div style="font-size:11px;color:#666">${empNome}</div>
@@ -16027,10 +16027,10 @@ document.addEventListener('DOMContentLoaded', function(){
     // Set logo images from base64 constant
     try{
       const sLogo=document.getElementById('sidebar-logo');
-      if(sLogo) sLogo.src=LOGO_ITALY;
+      if(sLogo) sLogo.src=ITALY_LOGO_B64;
       try{document.title='Italy Embalagens — PCP Pro ERP';}catch(e){}
       const licoEl=document.querySelector('.logo-icon');
-      if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${LOGO_ITALY}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
+      if(licoEl){licoEl.style.background='transparent';licoEl.innerHTML=`<img src="${ITALY_LOGO_B64}" style="width:24px;height:24px;object-fit:contain;border-radius:4px">`;}
     }catch(e){}
     // try{ setupEstoqueInlineDelegation(); }catch(e){}
     bootAuthAndData();
