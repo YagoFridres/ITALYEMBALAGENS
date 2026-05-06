@@ -2251,6 +2251,109 @@ function verImagemOF(url){
   zoomImg(url);
 }
 
+function ofParseImgArray(v){
+  if(Array.isArray(v)) return v;
+  if(typeof v === 'string'){
+    const a = tryParse(v, []);
+    return Array.isArray(a) ? a : [];
+  }
+  return [];
+}
+function ofGetImagemUrl(of){
+  const imgs = ofParseImgArray(of?.imgs);
+  const u1 = String(imgs?.[0] || '').trim();
+  if(u1) return u1;
+  const u2 = String(of?.imagem_url || '').trim();
+  if(u2) return u2;
+  const ims = ofParseImgArray(of?.imagens);
+  const u3 = String(ims?.[0] || '').trim();
+  if(u3) return u3;
+  return '';
+}
+function imprimirImagemOF(idOrNum){
+  const key = String(idOrNum || '').trim();
+  if(!key) return;
+  const findIn = (arr, by) => {
+    if(!Array.isArray(arr) || !arr.length) return null;
+    return arr.find(by) || null;
+  };
+  const byId = (x) => String(x?.id || '').trim() === key;
+  const byNum = (x) => String(x?.of || x?.numero || x?.of_num || x?.numero_of || '').trim() === key;
+
+  const of =
+    findIn(OFs, byId) || findIn(window.OFS, byId) || findIn(OFS_HIST, byId) ||
+    findIn(OFs, byNum) || findIn(window.OFS, byNum) || findIn(OFS_HIST, byNum) ||
+    null;
+
+  const imgUrl = ofGetImagemUrl(of || {});
+  if(!imgUrl){
+    toast('Sem imagem cadastrada','var(--orange)');
+    return;
+  }
+
+  const numeroBase = (of?.of ?? of?.numero ?? of?.of_num ?? of?.numero_of ?? key);
+  const numeroDigits = String(numeroBase || '').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+  const numeroLabel = numeroDigits || String(numeroBase || '').trim() || key;
+
+  const itens = Array.isArray(of?.itens) ? of.itens : (typeof of?.itens === 'string' ? tryParse(of.itens, []) : []);
+  const item0 = (Array.isArray(itens) ? itens[0] : null) || {};
+  const produto = String(item0.desc || item0.descricao || of?.prodDesc || of?.descricao || of?.produto || '').trim();
+  const cliId = String(of?.cliId || of?.cli_id || of?.cliente_id || '').trim();
+  const cliObj = (typeof getCli === 'function' && cliId) ? (getCli(cliId) || null) : null;
+  const cliente = String((cliObj && (cliObj.nome || cliObj.razao_social)) || of?.cliNome || of?.cliente_nome || of?.cli_nome || of?.clinome || '').trim();
+
+  const now = new Date();
+  const dataImp = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const subtitulo = [produto, cliente].filter(Boolean).join(' — ');
+
+  const w = window.open('', '_blank');
+  if(!w){
+    toast('Popup bloqueado pelo navegador','var(--orange)');
+    return;
+  }
+  const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OF Nº ${escH(String(numeroLabel))}</title>
+  <style>
+    @page { size: A4; margin: 10mm; }
+    html, body { height: 100%; }
+    body { margin: 0; background: #fff; color: #000; font-family: Arial, Helvetica, sans-serif; }
+    .wrap { min-height: 100%; display: flex; flex-direction: column; }
+    header { padding: 0 0 8mm 0; border-bottom: 1px solid #ddd; }
+    .n { font-size: 28px; font-weight: 800; letter-spacing: .3px; }
+    .s { margin-top: 6px; font-size: 14px; font-weight: 600; color: #333; }
+    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 8mm 0; }
+    img { max-width: 100%; max-height: 85vh; object-fit: contain; }
+    footer { padding: 6mm 0 0 0; border-top: 1px solid #ddd; font-size: 11px; color: #444; display:flex; justify-content: space-between; gap: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="n">OF Nº ${escH(String(numeroLabel))}</div>
+      <div class="s">${escH(subtitulo || '')}</div>
+    </header>
+    <main>
+      <img src="${escAttr(String(imgUrl))}" alt="Imagem OF ${escAttr(String(numeroLabel))}">
+    </main>
+    <footer>
+      <div>OF Nº ${escH(String(numeroLabel))}</div>
+      <div>Impresso em ${escH(dataImp)}</div>
+    </footer>
+  </div>
+  <script>
+    window.onload = function(){ window.print(); };
+  </script>
+</body>
+</html>`;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
 function estimativaMedia(maqId,qtd){
   const aps=APONTAMENTOS.filter(a=>a.maqId===maqId&&a.tempReal>0);
   if(!aps.length){const m=getM(maqId);return m?(qtd/m.phora)*60+m.setup:0;}
@@ -2622,7 +2725,7 @@ function renderPCP(){
       const ativa = fluxoAtivas.includes(mNome) || (Array.isArray(o.maq) && mId && o.maq.map(x=>String(x)).includes(mId));
       return `<td class="tc" onclick="event.stopPropagation();return false;"><span class="mq ${ativa?'mq-on':'mq-off'}">${ativa?'✓':'—'}</span></td>`;
     }).join('');
-    const hasImg=o.imgs&&o.imgs.length>0;
+    const imgPrintUrl = ofGetImagemUrl(o);
     // Build imgs from item images too
     const allImgs=[...(o.imgs||[]),...((o.itens||[]).map(it=>it.img).filter(Boolean))];
     const firstImg=allImgs[0];
@@ -2656,6 +2759,7 @@ function renderPCP(){
         <button class="btn-icon" onclick="event.stopPropagation();nextStatus('${o.of}')" title="Próx. status">▶</button>
         <button class="btn-icon" onclick="event.stopPropagation();togUrg('${o.of}')" style="color:${o.urg?'var(--red)':'var(--text3)'}" title="Urgente">🔴</button>
         ${isConcluida(o) ? `<button class="btn-icon" onclick="event.stopPropagation();abrirModalReconcluirOF('${escAttr(String(o.id||''))}')" title="Reconcluir">🔄</button>` : ''}
+        ${imgPrintUrl ? `<button class="btn-icon" onclick="event.stopPropagation();imprimirImagemOF('${escAttr(String(o.id||o.of||''))}')" title="🖼 Imprimir Imagem">🖼</button>` : ''}
       </div></td>
     </tr>`;
     }).join('');
@@ -3802,6 +3906,7 @@ function renderCardOfDia(of, nomeMaquina, opts){
             <button class="ofmaq-btn-sem-papelao" onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal('${escAttr(of.id||'')}','${escAttr(numeroDigits)}')" style="flex:1;padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📦 Sem Papelão</button>
             <button onclick="event.stopPropagation();abrirModalAlterarEntrega('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📅 Alterar Entrega</button>
           </div>
+          ${imgUrl ? `<button onclick="event.stopPropagation();imprimirImagemOF('${escAttr(of.id||ofSelNum||'')}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-weight:800;cursor:pointer;white-space:nowrap">🖼 Imprimir Imagem</button>` : ''}
           ${isOverflow ? `<div style="display:flex;gap:7px;align-items:center">
             <button onclick="event.stopPropagation();ofmaqAbrirReagendar('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">🔁 Reagendar</button>
             <input type="date" id="ofmaq-reag-${escAttr(of.id||'')}" onchange="event.stopPropagation();ofmaqReagendarOF('${escAttr(of.id||'')}', this.value)" style="width:160px;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:none">
@@ -4311,6 +4416,7 @@ function renderOfmaqCalendario(lista, filtroMaq){
                 const entrega = String(of.ent || of.data_entrega || '—').slice(0,10) || '—';
                 const cliObj = (typeof getCli === 'function') ? (getCli(of.cliId||of.cli_id||of.cliente_id) || {}) : {};
                 const cliNome = cliObj.nome || cliObj.razao_social || of.cliNome || of.clinome || of.cliente_nome || '—';
+                const imgUrl = ofGetImagemUrl(of);
                 const maqObj = (maq && maq !== 'Sem Máquina') ? ofmaqGetMaquinaObj(maq) : null;
                 const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
                 const tipoTR = String(of?.tipo_caixa || '').trim();
@@ -4331,6 +4437,7 @@ function renderOfmaqCalendario(lista, filtroMaq){
                     </div>
                   </div>
                   <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+                    ${imgUrl ? `<button onclick="imprimirImagemOF('${escAttr(String(of.id||of.of||''))}')" style="padding:5px 10px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:.72rem;font-weight:800;cursor:pointer">🖼 Imprimir Imagem</button>` : ''}
                     <button onclick="concluirOFComBaixa('${escAttr(of.id||'')}')" style="padding:5px 10px;background:#2a7a2a;color:#fff;border:none;border-radius:6px;font-size:.72rem;font-weight:800;cursor:pointer">✓ Concluir</button>
                   </div>
                 </div>`;
@@ -4442,6 +4549,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
     +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
+    +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
     +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maquinaAtual||atual||'')+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
     +'</div></div>';
 }
@@ -6516,8 +6624,9 @@ async function abrirModalOF(id){
   }
   try{ ocultarCamposChapaModalOF(); }catch(e){}
   const footer=document.querySelector('#modal-of .modal-footer');
+  const imgUrlPrint = oEdit ? ofGetImagemUrl(oEdit) : '';
   footer.innerHTML=oEdit
-    ? `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-purple" onclick="salvarEdicaoOFId('${escAttr(oEdit.id||'')}')">✏ Salvar Alteração</button>`
+    ? `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>${imgUrlPrint?`<button class="btn btn-ghost" onclick="imprimirImagemOF('${escAttr(String(oEdit.id||oEdit.of||''))}')">🖼 Imprimir Imagem</button>`:''}<button class="btn btn-purple" onclick="salvarEdicaoOFId('${escAttr(oEdit.id||'')}')">✏ Salvar Alteração</button>`
     : `<button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>`;
   const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
