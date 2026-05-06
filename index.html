@@ -995,64 +995,15 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
 }
 
 @media print {
-  body:not([data-printing-calc]) * { visibility: hidden; }
-  body:not([data-printing-calc]) #modal-roteiro-visita,
-  body:not([data-printing-calc]) #modal-roteiro-visita * { visibility: visible; }
-  body:not([data-printing-calc]) #modal-roteiro-visitas-vendedor,
-  body:not([data-printing-calc]) #modal-roteiro-visitas-vendedor * { visibility: visible; }
-  body:not([data-printing-calc]) #print-agenda,
-  body:not([data-printing-calc]) #print-agenda * { visibility: visible; }
-  body:not([data-printing-calc]) #modal-roteiro-visita,
-  body:not([data-printing-calc]) #modal-roteiro-visitas-vendedor,
-  body:not([data-printing-calc]) #print-agenda {
-    display: block !important;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-  }
-  body:not([data-printing-calc]) .no-print { display: none !important; }
-
-  body[data-printing-calc] > * { display: none !important; }
-  body[data-printing-calc] #modal-calc {
-    display: flex !important;
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-    background: #fff !important;
-    z-index: 99999 !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-  body[data-printing-calc] #modal-calculadora {
-    display: flex !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    background: #fff !important;
-    color: #000 !important;
-    border: none !important;
-    box-shadow: none !important;
-  }
-  body[data-printing-calc] #modal-calculadora button,
-  body[data-printing-calc] #modal-calculadora .modal-footer,
-  body[data-printing-calc] #modal-calculadora .rodape,
-  body[data-printing-calc] #modal-calculadora .close-btn {
+  #sidebar, .sidebar, nav, .navbar,
+  .menu-lateral, #menu-lateral,
+  .topbar, #topbar, header {
     display: none !important;
   }
-  body[data-printing-calc] #modal-calculadora table {
-    width: 100% !important;
-    font-size: 11px !important;
-  }
-  body[data-printing-calc] #modal-calculadora .modal-body,
-  body[data-printing-calc] #modal-calculadora .calc-body {
-    display: flex !important;
-    gap: 16px !important;
-    flex: 1 !important;
+
+  .page-content, .content, main {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 
@@ -20651,7 +20602,33 @@ let _orcNumeroAtual = null;
 let _orcIdAtual = null;
 let _calcOpcaoSelecionada = { compIdx: 0, onda: 'B' };
 
-function fecharCalc(){ fechar('modal-calc'); }
+function fecharCalculadora() {
+  const modal =
+    document.getElementById('modal-calculadora') ||
+    document.getElementById('modal-orcamento-calc') ||
+    document.querySelector('[id*="calculadora"]:not(input)');
+  const overlay =
+    document.getElementById('modal-calc') ||
+    document.getElementById('overlay-calculadora') ||
+    document.getElementById('modal-bg-calculadora') ||
+    document.querySelector('.modal-bg, .modal-overlay');
+
+  try{ document.body.removeAttribute('data-printing-calc'); }catch(e){}
+  try{ modal?.removeAttribute('data-printing'); }catch(e){}
+
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('active','show','visible','open');
+  }
+  if (overlay) {
+    overlay.style.display = 'none';
+    overlay.classList.remove('active','show','visible','open');
+  }
+
+  try{ if(typeof fechar === 'function') fechar('modal-calc'); }catch(e){}
+}
+
+function fecharCalc(){ fecharCalculadora(); }
 
 function calcUsarOpcaoSelecionada(){
   if(!_calcOpcaoSelecionada) return calcUsarNoOrcamento();
@@ -20901,6 +20878,15 @@ function abrirCalculadora(){
       footer.style.gap = '8px';
       footer.style.justifyContent = 'flex-end';
     }
+
+    try{
+      modal.querySelectorAll(
+        '#modal-calculadora .btn-fechar, ' +
+        '#modal-calculadora [data-fechar], ' +
+        '#modal-calculadora .modal-close, ' +
+        '#modal-calculadora button[onclick*="fechar"]'
+      ).forEach(btn => { btn.onclick = fecharCalculadora; });
+    }catch(e){}
   }, 50);
 }
 
@@ -21156,44 +21142,7 @@ function calcImprimir(){
 }
 
 function imprimirCalculadora() {
-  const overlay = document.getElementById('modal-calc');
-  const modal =
-    document.getElementById('modal-calculadora') ||
-    document.getElementById('modal-orcamento-calc') ||
-    document.querySelector('[id*="calculadora"]');
-
-  if (!modal) {
-    window.print();
-    return;
-  }
-
-  try{ if(overlay) overlay.style.display = 'flex'; }catch(e){}
-  try{ modal.style.display = 'flex'; }catch(e){}
-
-  modal.setAttribute('data-printing', 'true');
-  document.body.setAttribute('data-printing-calc', 'true');
-
   window.print();
-
-  setTimeout(() => {
-    try{ modal.removeAttribute('data-printing'); }catch(e){}
-    try{ document.body.removeAttribute('data-printing-calc'); }catch(e){}
-  }, 1000);
-}
-
-if(!window._calcPrintKeyHook){
-  window._calcPrintKeyHook = true;
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'p') {
-      const overlay = document.getElementById('modal-calc');
-      const modal = document.getElementById('modal-calculadora') || document.querySelector('[id*="calculadora"]');
-      const modalAberto = !!(overlay && overlay.style.display !== 'none' && overlay.offsetParent !== null && modal);
-      if (modalAberto) {
-        e.preventDefault();
-        imprimirCalculadora();
-      }
-    }
-  });
 }
 
 function renderOrcamentos(){
@@ -26087,7 +26036,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- Modal Calculadora de Caixas -->
 <div class="modal-overlay" id="modal-calc">
 <div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
-  <button class="close-btn" onclick="fechar('modal-calc')">✕</button>
+  <button class="close-btn" onclick="fecharCalculadora()">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
     <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO</label>
@@ -26188,7 +26137,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 
   <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #334155">
-    <button onclick="fecharCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
+    <button onclick="fecharCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
     <button onclick="imprimirCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
     <button onclick="salvarOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
     <button onclick="enviarOrcamentoPorEmail()" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>
