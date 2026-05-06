@@ -2330,7 +2330,7 @@ function imprimirImagemOF(idOrNum){
     footer { padding: 6mm 0 0 0; border-top: 1px solid #ddd; font-size: 11px; color: #444; display:flex; justify-content: space-between; gap: 12px; }
   </style>
 </head>
-<body>
+<body onload="window.print()">
   <div class="wrap">
     <header>
       <div class="n">OF Nº ${escH(String(numeroLabel))}</div>
@@ -2344,9 +2344,6 @@ function imprimirImagemOF(idOrNum){
       <div>Impresso em ${escH(dataImp)}</div>
     </footer>
   </div>
-  <script>
-    window.onload = function(){ window.print(); };
-  </script>
 </body>
 </html>`;
   w.document.open();
