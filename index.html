@@ -1003,6 +1003,59 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
   .no-print { display: none !important; }
 }
 
+#modal-calculadora,
+#modal-orcamento-calc,
+.modal-calculadora,
+[id*="calculadora"],
+[id*="calc-orcamento"] {
+  width: calc(100vw - 24px) !important;
+  max-width: 1400px !important;
+  height: calc(100vh - 24px) !important;
+  max-height: calc(100vh - 24px) !important;
+  margin: 12px auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#modal-calculadora .modal-corpo,
+#modal-calculadora .modal-body,
+#modal-calculadora .corpo,
+.modal-calculadora .corpo {
+  display: flex !important;
+  gap: 20px !important;
+  flex: 1 !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+#modal-calculadora .col-esquerda,
+.modal-calculadora .col-esquerda {
+  flex: 6 !important;
+  min-width: 0 !important;
+}
+
+#modal-calculadora .col-direita,
+.modal-calculadora .col-direita {
+  flex: 4 !important;
+  min-width: 260px !important;
+}
+
+#modal-calculadora table,
+.modal-calculadora table {
+  overflow-x: auto !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+#modal-calculadora .modal-footer,
+#modal-calculadora .rodape,
+.modal-calculadora .rodape {
+  flex-shrink: 0 !important;
+  border-top: 1px solid #334155 !important;
+  padding-top: 12px !important;
+  margin-top: 8px !important;
+}
+
 </style>
 </head>
 <body data-device="desktop">
@@ -13878,13 +13931,25 @@ function cmpFornChange(){
 }
 
 async function carregarEmpresasSelectCompra() {
-  const sel =
-    document.getElementById('cp-emp') ||
-    document.getElementById('compra-empresa-id') ||
-    document.querySelector('#compra-empresa, .select-empresa-compra');
-  if (!sel) return;
+  return preencherEmpresasCompra();
+}
 
-  const FALLBACK = [
+async function preencherEmpresasCompra() {
+  const sel =
+    document.getElementById('compra-empresa-id') ||
+    document.getElementById('compra-empresa') ||
+    document.querySelector('select[name="empresa_id"]') ||
+    document.querySelector('.select-empresa-compra') ||
+    document.getElementById('cp-emp') ||
+    document.querySelector('#modal-compra select') ||
+    [...document.querySelectorAll('select')].find(s => s.closest('#modal-compra, .modal-compra'));
+
+  if (!sel) {
+    console.warn('[EMPRESAS COMPRA] select não encontrado');
+    return;
+  }
+
+  const EMPRESAS_FIXAS = [
     { id: 'E1', nome: 'Italy Embalagens' },
     { id: 'E2', nome: 'Cartoeste' },
     { id: 'E3', nome: 'Oestepack' },
@@ -13901,21 +13966,22 @@ async function carregarEmpresasSelectCompra() {
     empresas = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
   } catch (e) {}
 
-  if (!empresas.length) empresas = FALLBACK;
+  if (!empresas.length) empresas = EMPRESAS_FIXAS;
 
   const cur = String(sel.value || '').trim();
   sel.innerHTML = '<option value="">Selecionar empresa...</option>';
   empresas.forEach(emp => {
     const o = document.createElement('option');
-    o.value = String(emp.id || emp.emp_id || '').trim();
-    o.textContent = String(emp.nome || emp.name || '').trim();
+    o.value = emp.id || emp.emp_id || '';
+    o.textContent = emp.nome || emp.name || '';
     sel.appendChild(o);
   });
   if (cur) sel.value = cur;
+
+  console.log('[EMPRESAS COMPRA] preenchido:', empresas.length);
 }
 
 async function abrirModalCompra(){
-  try{ await carregarEmpresasSelectCompra(); }catch(e){}
   CMP_ITEMS = [];
   document.getElementById('cp-num').value='CMP-'+String(CMP_SEQ).padStart(3,'0');
   document.getElementById('cp-data').value=today();
@@ -13928,6 +13994,7 @@ async function abrirModalCompra(){
   populateFornecedorSelect('cp-forn','');
   cmpAddItem();
   abrir('modal-compra');
+  setTimeout(() => { preencherEmpresasCompra(); }, 100);
   // Autocomplete no fornecedor manual
   setTimeout(()=>{
     const fmanEl=document.getElementById('cp-forn-manual');
@@ -20574,6 +20641,31 @@ function abrirCalculadora(){
   }
   calcRecalc();
   abrir('modal-calc');
+  setTimeout(() => {
+    const modal = document.querySelector(
+      '#modal-calculadora, #modal-orcamento-calc, ' +
+      '.modal-calculadora, [id*="calculadora"]'
+    );
+    if (!modal) return;
+
+    modal.style.width = 'calc(100vw - 24px)';
+    modal.style.maxWidth = '1400px';
+    modal.style.height = 'calc(100vh - 24px)';
+    modal.style.maxHeight = 'calc(100vh - 24px)';
+    modal.style.display = 'flex';
+    modal.style.flexDirection = 'column';
+
+    const corpo = modal.querySelector(
+      '.modal-corpo, .modal-body, .corpo, .content'
+    );
+    if (corpo) {
+      corpo.style.display = 'flex';
+      corpo.style.gap = '20px';
+      corpo.style.flex = '1';
+      corpo.style.overflowY = 'auto';
+      corpo.style.minHeight = '0';
+    }
+  }, 50);
 }
 
 function calcTipoChange(){
@@ -21226,7 +21318,7 @@ function imprimirOrc(){
 
 // ===================== COMPRAS =====================
 function renderCompras(){
-  try{ carregarEmpresasSelectCompra(); }catch(e){}
+  setTimeout(() => { try{ preencherEmpresasCompra(); }catch(e){} }, 100);
   const fil=(document.getElementById('cmp-fil-st')||{}).value||'';
   const empFil=(document.getElementById('cmp-fil-emp')||{}).value||EMP_FILTRO||'';
   let lista=[...COMPRAS].sort((a,b)=>b.id.localeCompare(a.id));
@@ -25720,7 +25812,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- Modal Amostra -->
 <!-- Modal Calculadora de Caixas -->
 <div class="modal-overlay" id="modal-calc">
-<div class="modal" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
+<div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
   <button class="close-btn" onclick="fechar('modal-calc')">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
   <!-- CLIENTE do orçamento -->
@@ -25733,8 +25825,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">Usado ao gerar orçamento</span>
   </div>
 
-  <div style="display:flex;gap:20px;flex:1;overflow-y:auto;align-items:flex-start">
-    <div style="flex:6;min-width:0">
+  <div class="modal-corpo modal-body corpo content" style="display:flex;gap:20px;flex:1;overflow-y:auto;align-items:flex-start;min-height:0">
+    <div class="col-esquerda" style="flex:6;min-width:0">
     <div style="display:grid;grid-template-columns:120px 1fr 1fr 1fr 1fr 1fr;gap:8px;align-items:end;margin-bottom:12px">
       <div class="mf">
         <label style="font-size:.6rem">TIPO</label>
@@ -25812,7 +25904,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   </div>
 
-  <div style="flex:4;min-width:260px">
+  <div class="col-direita" style="flex:4;min-width:260px">
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:10px;min-width:280px">
       <div style="font-size:.6rem;font-weight:700;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:6px">PARÂMETROS COMERCIAIS &nbsp;<span id="calc-w3-display" style="color:var(--green)"></span></div>
       <div style="display:grid;grid-template-columns:1fr 80px;gap:4px 8px;font-size:12px;align-items:center">
@@ -25829,7 +25921,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   </div>
 
-  <div style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #333">
+  <div class="modal-footer rodape" style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;padding-top:12px;border-top:1px solid #333">
     <div style="display:flex;gap:6px;align-items:center;margin-right:auto">
       <input id="orc-busca-num" type="text" placeholder="Nº ou cliente..." style="padding:6px 10px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);width:160px" onkeydown="if(event.key==='Enter') buscarOrcamento()">
       <button onclick="buscarOrcamento()" style="padding:6px 12px;border-radius:6px;background:var(--s3);color:var(--text);border:1px solid var(--border);cursor:pointer">🔍</button>
