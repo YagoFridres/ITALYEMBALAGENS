@@ -8210,22 +8210,71 @@ function _amostraSyncPreview(){
   }
 }
 
+window._amostraImagemUrl = window._amostraImagemUrl || null;
+
+async function uploadImagemAmostra(file) {
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  console.log('[UPLOAD AMOSTRA] arquivo:', file?.name, 'size:', file?.size, 'type:', file?.type);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  const r = await fetch(base + '/api/ofs/upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token
+    },
+    body: formData
+  });
+
+  console.log('[UPLOAD AMOSTRA] status HTTP:', r.status);
+
+  const data = await r.json().catch(()=>null);
+  console.log('[UPLOAD AMOSTRA] resposta:', JSON.stringify(data));
+
+  const url = String(
+    data?.data?.url ??
+    data?.url ??
+    data?.data?.publicUrl ??
+    data?.publicUrl ??
+    ''
+  ).trim();
+
+  if(!(data && data.ok) || !url) {
+    throw new Error((data && (data.error || data.message)) ? (data.error || data.message) : 'Erro ao fazer upload');
+  }
+
+  return url;
+}
+
 async function amostraUploadImagem(e){
   const f = e?.target?.files?.[0];
   if(!f) return;
+  const okTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+  if(!okTypes.includes(String(f.type || '').toLowerCase())){
+    alert('Apenas imagens: JPG, PNG, GIF ou WEBP');
+    try{ e.target.value=''; }catch(_){}
+    return;
+  }
+  if((Number(f.size || 0) || 0) > 5 * 1024 * 1024){
+    alert('Imagem muito grande. Máximo: 5MB');
+    try{ e.target.value=''; }catch(_){}
+    return;
+  }
   try{
     showSaveIndicator('Upload...','var(--yellow)');
-    const fd = new FormData();
-    fd.append('file', f);
-    const j = await apiUpload('/ofs/upload', fd);
-    if(!j || !j.ok || !j.url) throw new Error(j?.error || 'upload falhou');
+    const url = await uploadImagemAmostra(f);
     const urlEl = document.getElementById('am-img-url');
-    if(urlEl) urlEl.value = String(j.url || '').trim();
+    if(urlEl) urlEl.value = String(url || '').trim();
+    window._amostraImagemUrl = String(url || '').trim();
     _amostraSyncPreview();
     showSaveIndicator('✓ upload','var(--green)');
+    try{ mostrarToast('✅ Imagem carregada!'); }catch(_){}
   }catch(e2){
     showSaveIndicator('✖ erro','var(--red)');
-    toast('Erro no upload da imagem','var(--red)');
+    try{ console.error('[UPLOAD AMOSTRA] erro:', e2); }catch(_){}
+    alert('Erro ao fazer upload: ' + String(e2?.message || e2));
   }finally{
     try{ e.target.value=''; }catch(_){}
   }
@@ -8248,7 +8297,7 @@ async function salvarAmostra(){
   const data_pedido = String(document.getElementById('am-data-pedido')?.value || '').trim() || null;
   const data_entrega = String(document.getElementById('am-data-entrega')?.value || '').trim() || null;
   const data_aprovacao = String(document.getElementById('am-data-aprovacao')?.value || '').trim() || null;
-  const imagem_url = String(document.getElementById('am-img-url')?.value || '').trim() || null;
+  const imagem_url = String(window._amostraImagemUrl || document.getElementById('am-img-url')?.value || '').trim() || null;
   const emp_id = String(document.getElementById('am-emp')?.value || EMP_FILTRO || 'E1').trim() || 'E1';
 
   if(!cliente_nome){ toast('Cliente é obrigatório','var(--red)'); return; }
@@ -8278,6 +8327,7 @@ async function salvarAmostra(){
       return;
     }
     fecharModalAmostra();
+    try{ window._amostraImagemUrl = null; }catch(_){}
     await carregarAmostras({ forcar:true });
     renderAmostras();
     showSaveIndicator('✓ salvo','var(--green)');
