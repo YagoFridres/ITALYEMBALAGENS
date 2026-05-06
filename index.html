@@ -21142,7 +21142,228 @@ function calcImprimir(){
 }
 
 function imprimirCalculadora() {
-  window.print();
+  const modal =
+    document.getElementById('modal-calculadora') ||
+    document.getElementById('modal-orcamento-calc') ||
+    document.querySelector('[id*="calculadora"]:not(input):not(select)');
+
+  if (!modal) {
+    window.print();
+    return;
+  }
+
+  const calcCli = document.getElementById('calc-cli');
+  const clienteNome = (calcCli && calcCli.options && calcCli.selectedIndex >= 0)
+    ? String(calcCli.options[calcCli.selectedIndex].textContent || '').trim()
+    : '';
+
+  const dataHoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  let estilos = '';
+  try {
+    estilos = Array.from(document.styleSheets).map(sheet => {
+      try {
+        return Array.from(sheet.cssRules).map(rule => rule.cssText).join('\n');
+      } catch(e) { return ''; }
+    }).join('\n');
+  } catch(e) {}
+
+  const conteudoModal = modal.cloneNode(true);
+
+  try {
+    conteudoModal.querySelectorAll('input, textarea, select').forEach(el => {
+      const tag = String(el.tagName || '').toLowerCase();
+      let txt = '';
+      if (tag === 'select') {
+        const opt = el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex] : null;
+        txt = opt ? String(opt.textContent || '').trim() : String(el.value || '').trim();
+      } else if (tag === 'textarea') {
+        txt = String(el.value || el.textContent || '').trim();
+      } else {
+        txt = String(el.value || '').trim();
+      }
+      const span = document.createElement('span');
+      span.textContent = txt || '—';
+      span.style.fontWeight = '700';
+      span.style.color = '#111';
+      span.style.fontFamily = 'Arial, sans-serif';
+      span.style.fontSize = '12px';
+      el.replaceWith(span);
+    });
+  } catch(e) {}
+
+  conteudoModal.querySelectorAll(
+    'button, .modal-footer, .rodape, .btn-fechar, ' +
+    '[onclick*="fechar"], [onclick*="Fechar"], ' +
+    '.no-print, .nao-imprimir, .close-btn'
+  ).forEach(el => el.remove());
+
+  conteudoModal.style.display = 'block';
+  conteudoModal.style.position = 'static';
+  conteudoModal.style.maxHeight = 'none';
+  conteudoModal.style.overflow = 'visible';
+
+  const htmlConteudo = conteudoModal.innerHTML;
+
+  const janela = window.open('', '_blank', 'width=900,height=700');
+  if (!janela) {
+    toast('Permita pop-up para imprimir', 'var(--yellow)');
+    return;
+  }
+
+  janela.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Orçamento — Italy Embalagens</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      color: #000;
+      background: #fff;
+      padding: 20px;
+    }
+    ${estilos}
+    .cabecalho-impressao {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 3px solid #1a56db;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .cabecalho-impressao .empresa { flex: 1; }
+    .cabecalho-impressao .empresa h1 {
+      font-size: 20px;
+      font-weight: 900;
+      color: #1a56db;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .cabecalho-impressao .empresa p { font-size: 11px; color: #555; margin-top: 2px; }
+    .cabecalho-impressao .info-doc { text-align: right; font-size: 11px; color: #333; }
+    .cabecalho-impressao .info-doc .titulo-doc { font-size: 16px; font-weight: 700; color: #1a56db; display: block; margin-bottom: 4px; }
+    .dados-cliente {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 12px;
+    }
+    .dados-cliente strong { color: #1a56db; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+      font-size: 11px;
+    }
+    th {
+      background: #1a56db;
+      color: #fff;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #111;
+    }
+    tr:nth-child(even) td { background: #f9fafb; }
+    tr:last-child td { border-bottom: none; }
+    .secao { margin-bottom: 14px; }
+    .secao h3 {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a56db;
+      text-transform: uppercase;
+      border-bottom: 1px solid #c7d2fe;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+    .rodape-impressao {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 2px solid #1a56db;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #777;
+      gap: 12px;
+    }
+    .rodape-impressao .assinatura { text-align: center; flex: 1; }
+    .assinatura-linha { border-top: 1px solid #333; width: 200px; margin: 30px auto 6px; }
+    .obs-impressao {
+      background: #fffbeb;
+      border: 1px solid #fbbf24;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 11px;
+      margin-top: 12px;
+      font-style: italic;
+      color: #555;
+    }
+    .conteudo-calc * { color: #000 !important; }
+    @media print {
+      body { padding: 10px; }
+      .rodape-impressao { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="cabecalho-impressao">
+    <div class="empresa">
+      <h1>Italy Embalagens</h1>
+      <p>Embalagens de papelão sob medida</p>
+      <p>Qualidade • Agilidade • Confiança</p>
+    </div>
+    <div class="info-doc">
+      <span class="titulo-doc">ORÇAMENTO</span>
+      <div>Data: ${dataHoje}</div>
+      <div>Hora: ${horaAgora}</div>
+      ${clienteNome && !clienteNome.includes('Selecione') ? `<div style="margin-top:6px;font-weight:700;">Cliente: ${clienteNome}</div>` : ''}
+    </div>
+  </div>
+
+  <div class="conteudo-calc">
+    ${htmlConteudo}
+  </div>
+
+  <div class="obs-impressao">
+    💡 Orçamento sujeito a alterações sem aviso prévio. Válido por 15 dias. Entre em contato para confirmar disponibilidade e prazo de entrega.
+  </div>
+
+  <div class="rodape-impressao">
+    <div>
+      <div>Italy Embalagens</div>
+      <div>Gerado em ${dataHoje} às ${horaAgora}</div>
+    </div>
+    <div class="assinatura">
+      <div class="assinatura-linha"></div>
+      <div>Assinatura do Responsável</div>
+    </div>
+    <div style="text-align:right;">
+      <div>Documento gerado pelo</div>
+      <div style="font-weight:700;color:#1a56db;">Italy PCP Pro</div>
+    </div>
+  </div>
+</body>
+</html>`);
+
+  janela.document.close();
+  janela.onload = () => {
+    setTimeout(() => {
+      try { janela.focus(); } catch(e) {}
+      try { janela.print(); } catch(e) {}
+      try { janela.onafterprint = () => janela.close(); } catch(e) {}
+    }, 500);
+  };
 }
 
 function renderOrcamentos(){
