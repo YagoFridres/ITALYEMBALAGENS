@@ -4647,13 +4647,17 @@ function _chapasCanonicalFromAny(row, table) {
     const vunit = Number(row.valor_unitario || 0) || 0;
     const vtot = Number(row.valor_total || 0) || (qtd * vunit);
     const empId = row.emp_id || 'E1';
+    const empresaVinculada =
+      (row.empresa_vinculada != null && String(row.empresa_vinculada).trim() !== '') ? String(row.empresa_vinculada).trim()
+      : ((row.qual_cnpj != null && String(row.qual_cnpj).trim() !== '') ? String(row.qual_cnpj).trim()
+      : _chapasEmpresaFromEmpId(empId));
     return {
       id: row.id,
       fornecedor: row.fornecedor || '',
       nomenclatura: row.nomenclatura || '',
       tamanho: row.tamanho || '',
       nome: row.nome_uso || row.nome || '',
-      empresa_vinculada: row.empresa_vinculada || _chapasEmpresaFromEmpId(empId),
+      empresa_vinculada: empresaVinculada,
       qual_cnpj: row.qual_cnpj || row.fabricante || '',
       nf: row.nf || '',
       quantidade: qtd,
