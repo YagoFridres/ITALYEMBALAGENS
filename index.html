@@ -1191,22 +1191,58 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
 }
 
 @media (max-width:768px){
+  #modal-calculadora{
+    width:100vw !important;
+    max-width:100vw !important;
+    height:100dvh !important;
+    max-height:100dvh !important;
+    margin:0 !important;
+    border-radius:0 !important;
+    padding:12px !important;
+  }
   #modal-calculadora .modal-body,
   #modal-calculadora .calc-body{
     flex-direction:column !important;
-    overflow:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  #modal-calculadora .calc-col-esq{
+    order:1 !important;
+    flex:0 0 auto !important;
+    overflow:visible !important;
+    padding:12px !important;
+    gap:12px !important;
   }
   #modal-calculadora .calc-col-dir{
-    width:auto !important;
+    order:2 !important;
+    width:100% !important;
+    flex:0 0 auto !important;
+    overflow:visible !important;
     border-left:none !important;
     border-top:1px solid rgba(255,255,255,0.08) !important;
+    background:transparent !important;
+    padding:12px !important;
+    display:grid !important;
+    grid-template-columns:1fr 1fr !important;
+    gap:10px !important;
   }
-  #modal-calculadora .param-input,
-  #modal-calculadora #calc-tipo,
+  #modal-calculadora .calc-col-dir > div:first-child{
+    grid-column:1 / -1 !important;
+  }
+  #modal-calculadora .param-frete-total{
+    grid-column:1 / -1 !important;
+  }
+  #modal-calculadora .param-row{
+    border-bottom:none !important;
+    padding:0 !important;
+  }
   #modal-calculadora select,
   #modal-calculadora input,
   #modal-calculadora textarea{
     font-size:16px !important;
+  }
+  #modal-calculadora #calc-sheet{
+    min-width:900px !important;
   }
 }
 
@@ -10159,7 +10195,7 @@ function abrirModalCliente(id){
   const ramoEl=document.getElementById('cliente-ramo');
   if(ramoEl){
     try{ RAMOS = (function(){ try{ const raw=localStorage.getItem('ramos_atividade'); const arr=JSON.parse(raw||'null'); if(Array.isArray(arr)&&arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean); }catch(e){} return RAMOS; })(); }catch(e){}
-    const cur = String(c ? (c.ramo || '') : '').trim();
+    const cur = String(c ? (c.ramo_atividade || c.ramo || '') : '').trim();
     ramoEl.innerHTML = '<option value="">—</option>' + (RAMOS||[]).map(r=>`<option value="${escAttr(String(r||''))}">${escH(String(r||''))}</option>`).join('');
     ramoEl.value = cur;
   }
@@ -10188,7 +10224,7 @@ async function salvarCliente() {
   const nome = nomeEl ? nomeEl.value.trim() : '';
   if (!nome) { toast('Informe o nome', 'var(--red)'); return; }
   const g = k => (document.getElementById(k)||{}).value||'';
-  const ramoAtv = g('cliente-ramo')||g('cli-ramo')||g('cl-ramo');
+  const ramoAtv = String(g('cliente-ramo')||g('cli-ramo')||g('cl-ramo')||'').trim();
   const payload = {
     nome,
     razao_social: g('cli-razao')||g('cl-razao')||g('cl-rs'),
@@ -10206,6 +10242,7 @@ async function salvarCliente() {
     ramo: ramoAtv,
   };
   Object.keys(payload).forEach(k=>{if(!payload[k])delete payload[k];});
+  console.log('[CLIENTE] payload completo antes do envio:', payload);
   console.log('[CLIENTE] salvarCliente', { idDom: (idEl?idEl.value:''), idVar: CLIENTE_ATUAL_ID, idUsado: id, nome, payload });
   const resp = id
     ? await apiFetch('/api/clientes/'+encodeURIComponent(id), { method:'PUT', body: payload })
@@ -21606,18 +21643,30 @@ function abrirCalculadora(){
   calcRecalc();
   abrir('modal-calc');
   setTimeout(() => {
+    const isMobile = !!(window.matchMedia && window.matchMedia('(max-width:768px)').matches);
     const modal = document.querySelector(
       '#modal-calculadora, #modal-orcamento-calc, ' +
       '.modal-calculadora, [id*="calculadora"]'
     );
     if (!modal) return;
 
-    modal.style.width = 'calc(100vw - 32px)';
-    modal.style.maxWidth = '1300px';
-    modal.style.height = 'auto';
-    modal.style.maxHeight = '92vh';
-    modal.style.display = 'flex';
-    modal.style.flexDirection = 'column';
+    if(isMobile){
+      modal.style.width = '100vw';
+      modal.style.maxWidth = '100vw';
+      modal.style.height = '100dvh';
+      modal.style.maxHeight = '100dvh';
+      modal.style.margin = '0';
+      modal.style.borderRadius = '0';
+      modal.style.display = 'flex';
+      modal.style.flexDirection = 'column';
+    } else {
+      modal.style.width = 'calc(100vw - 32px)';
+      modal.style.maxWidth = '1300px';
+      modal.style.height = 'auto';
+      modal.style.maxHeight = '92vh';
+      modal.style.display = 'flex';
+      modal.style.flexDirection = 'column';
+    }
 
     const corpo = modal.querySelector('.modal-body') || modal.querySelector('.calc-body');
     if (corpo) {
@@ -21626,31 +21675,47 @@ function abrirCalculadora(){
       corpo.style.alignItems = 'stretch';
       corpo.style.flex = '1';
       corpo.style.minHeight = '0';
-      corpo.style.overflow = 'hidden';
+      corpo.style.overflowY = isMobile ? 'auto' : 'hidden';
+      corpo.style.overflowX = 'hidden';
+      try{ corpo.scrollTop = 0; }catch(e){}
     }
 
     const colEsq = modal.querySelector('.calc-col-esq');
     if (colEsq) {
-      colEsq.style.flex = '1';
+      colEsq.style.order = '1';
+      colEsq.style.flex = isMobile ? '0 0 auto' : '1';
       colEsq.style.minWidth = '0';
       colEsq.style.display = 'flex';
       colEsq.style.flexDirection = 'column';
-      colEsq.style.gap = '14px';
-      colEsq.style.padding = '16px';
-      colEsq.style.overflowY = 'auto';
+      colEsq.style.gap = isMobile ? '12px' : '14px';
+      colEsq.style.padding = isMobile ? '12px' : '16px';
+      colEsq.style.overflowY = isMobile ? 'visible' : 'auto';
     }
 
     const colDir = modal.querySelector('.calc-col-dir');
     if (colDir) {
-      colDir.style.width = '240px';
+      colDir.style.order = '2';
       colDir.style.flexShrink = '0';
-      colDir.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
-      colDir.style.padding = '16px';
-      colDir.style.display = 'flex';
-      colDir.style.flexDirection = 'column';
-      colDir.style.gap = '8px';
-      colDir.style.overflowY = 'auto';
-      colDir.style.background = 'rgba(255,255,255,0.02)';
+      colDir.style.padding = isMobile ? '12px' : '16px';
+      if(isMobile){
+        colDir.style.width = '100%';
+        colDir.style.borderLeft = 'none';
+        colDir.style.borderTop = '1px solid rgba(255,255,255,0.08)';
+        colDir.style.display = 'grid';
+        colDir.style.gridTemplateColumns = '1fr 1fr';
+        colDir.style.gap = '10px';
+        colDir.style.overflowY = 'visible';
+        colDir.style.background = 'transparent';
+      } else {
+        colDir.style.width = '240px';
+        colDir.style.borderLeft = '1px solid rgba(255,255,255,0.08)';
+        colDir.style.borderTop = 'none';
+        colDir.style.display = 'flex';
+        colDir.style.flexDirection = 'column';
+        colDir.style.gap = '8px';
+        colDir.style.overflowY = 'auto';
+        colDir.style.background = 'rgba(255,255,255,0.02)';
+      }
     }
 
     const inputsOnda = modal.querySelectorAll(
@@ -21661,9 +21726,9 @@ function abrirCalculadora(){
     );
     inputsOnda.forEach(input => {
       try{
-        input.style.fontSize = '20px';
-        input.style.padding = '12px';
-        input.style.minWidth = '120px';
+        input.style.fontSize = isMobile ? '16px' : '20px';
+        input.style.padding = isMobile ? '10px' : '12px';
+        input.style.minWidth = isMobile ? '0' : '120px';
         input.style.color = '#10b981';
         input.style.fontWeight = '700';
         input.style.border = '2px solid #10b981';
@@ -27092,7 +27157,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
   <div class="modal-body calc-body">
     <div class="calc-col-esq">
-    <div style="display:grid;grid-template-columns:160px 1fr 1fr 1fr 1fr 1fr;gap:10px;align-items:end">
+    <div class="calc-row-top" style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;align-items:end">
       <div class="mf">
         <label>TIPO</label>
         <select id="calc-tipo" onchange="calcTipoChange()">
@@ -27123,6 +27188,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </optgroup>
         </select>
       </div>
+      <div class="mf"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="syncVb()"></div>
+      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="calcRecalc()"></div>
+    </div>
+
+    <div class="calc-row-dims" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">
       <div class="mf"><label>COMPRIMENTO (mm)</label><input id="calc-comp" type="number" value="300" oninput="calcRecalc()"></div>
       <div class="mf"><label>LARGURA (mm)</label><input id="calc-larg" type="number" value="200" oninput="calcRecalc()"></div>
       <div class="mf"><label>ALTURA (mm)</label><input id="calc-alt" type="number" value="100" oninput="calcRecalc()"></div>
@@ -27131,16 +27201,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <option value="B">B</option><option value="C">C</option><option value="BC">BC</option>
         </select>
       </div>
-      <div class="mf" style="flex:0;min-width:0"><label>VL. ONDA B (R$/m²)</label><input id="calc-vb2" type="number" step="0.0001" value="2.47" oninput="syncVb()"></div>
-      <div class="mf"><label>QUANTIDADE</label><input id="calc-qtd" type="number" value="1000" oninput="calcRecalc()"></div>
     </div>
 
-  <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">
-    <div class="mf" style="flex:0"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="syncVb();calcRecalc()"></div>
-    <div class="mf" style="flex:0"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()"></div>
-    <div class="mf" style="flex:0"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()"></div>
-    <div id="calc-extra-fields" style="display:flex;gap:10px"></div>
+  <div class="calc-row-valores" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">
+    <div class="mf"><label>VALOR ONDA B (R$/m²)</label><input id="calc-vb" type="number" step="0.0001" value="2.47" oninput="syncVb();calcRecalc()"></div>
+    <div class="mf"><label>VALOR ONDA C (R$/m²)</label><input id="calc-vc" type="number" step="0.0001" value="3.29" oninput="calcRecalc()"></div>
+    <div class="mf"><label>VALOR ONDA BC (R$/m²)</label><input id="calc-vbc" type="number" step="0.0001" value="4.46" oninput="calcRecalc()"></div>
   </div>
+  <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>
 
   <div style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
     <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px">
