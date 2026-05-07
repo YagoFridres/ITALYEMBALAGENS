@@ -4596,18 +4596,11 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 async function _chapasPreferV2Table() {
   const tables = ['chapas_estoque_v2', 'chapas_estoque'];
-  let firstOk = null;
   for (const t of tables) {
-    const { data, error } = await supabase.from(t).select('id').limit(1);
-    if (error) {
-      const msg = String(error.message || error);
-      if (msg.includes('does not exist') || msg.includes('relation') || msg.includes('not find')) continue;
-      continue;
-    }
-    if (!firstOk) firstOk = t;
-    if (Array.isArray(data) && data.length > 0) return t;
+    const { error } = await supabase.from(t).select('id').limit(1);
+    if (!error) return t;
   }
-  return firstOk || 'chapas_estoque';
+  return 'chapas_estoque';
 }
 
 function _chapasNormKey(s) {
