@@ -7995,11 +7995,21 @@ async function salvarEdicaoOFId(id){
     }
     const payloadPut = stripCamposImutaveisOFPayload({ ...payload });
     try{
+      const exp = String(o && o.updated_at || '').trim();
+      if(exp) payloadPut._expected_updated_at = exp;
+    }catch(e){}
+    try{
       if(payloadPut.tipo_caixa_id === '' || payloadPut.tipo_caixa_id === null) delete payloadPut.tipo_caixa_id;
       const isUuid = v => /^[0-9a-f-]{36}$/i.test(String(v||''));
       if(payloadPut.tipo_caixa_id && !isUuid(payloadPut.tipo_caixa_id)) delete payloadPut.tipo_caixa_id;
     }catch(e){}
     const r = await api('PUT','/ofs/'+encodeURIComponent(id), payloadPut);
+    if(r && r.ok===false && String(r.error||'')==='concurrency_conflict'){
+      try{ await carregarOFs({ forcar: true }); }catch(e){}
+      _rerenderOFViews();
+      toast('OF alterada por outro usuário. Recarreguei os dados; tente salvar novamente.','var(--yellow)');
+      return;
+    }
     if(!r || r.ok===false || r.error) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
     const dadosAtualizados = r.data || r;
     const idx = OFs.findIndex(x=>x.id===id);
@@ -17694,11 +17704,25 @@ async function carregarOFsFresh(){
   const agora = Date.now();
   const ultima = Number(window._ofsUltimaCarga || _ultimaCargaOFs || 0) || 0;
   if(agora - ultima > OFS_CACHE_TTL){
-    try{ window.OFS = null; }catch(e){}
-    try{ if(!Array.isArray(OFs)) OFs = []; else OFs.length = 0; }catch(e){}
-    _ultimaCargaOFs = 0;
-    try{ window._ofsUltimaCarga = 0; }catch(e){}
-    try{ await carregarOFs({ forcar: true }); }catch(e){}
+    if(window._ofsFreshPromise) return window._ofsFreshPromise;
+    const snapOFs = Array.isArray(OFs) ? OFs.slice() : null;
+    const snapWin = Array.isArray(window.OFS) ? window.OFS.slice() : null;
+    const snapHist = Array.isArray(window.OFS_HIST) ? window.OFS_HIST.slice() : (Array.isArray(OFS_HIST) ? OFS_HIST.slice() : null);
+    const snapUlt = Number(window._ofsUltimaCarga || _ultimaCargaOFs || 0) || 0;
+    window._ofsFreshPromise = (async ()=>{
+      try{
+        const r = await carregarOFs({ forcar: true });
+        if(!r || r.ok === false) throw new Error((r && r.error) ? r.error : 'Falha ao carregar OFs');
+      }catch(e){
+        try{ if(snapOFs) OFs = snapOFs; }catch(_){}
+        try{ if(snapWin) window.OFS = snapWin; else if(snapOFs) window.OFS = snapOFs; }catch(_){}
+        try{ if(snapHist){ OFS_HIST = snapHist; window.OFS_HIST = snapHist; } }catch(_){}
+        try{ _ultimaCargaOFs = snapUlt; window._ofsUltimaCarga = snapUlt; }catch(_){}
+      }finally{
+        try{ window._ofsFreshPromise = null; }catch(_){}
+      }
+    })();
+    return window._ofsFreshPromise;
   }
 }
 async function syncOFs(force=false){
@@ -17713,7 +17737,12 @@ async function syncOFs(force=false){
   qs.set('lite','1');
   qs.set('excluir_canceladas','1');
   const r = await api('GET','/ofs?'+qs.toString());
-  const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+  if(!(r && r.ok && Array.isArray(r.data))){
+    try{ window._ofsCarregadasEm = now; }catch(e){}
+    const fallback = (Array.isArray(OFs) && OFs.length) ? OFs : (Array.isArray(window.OFS) ? window.OFS : []);
+    return fallback;
+  }
+  const rows = r.data;
   const todos = (rows||[]).map(normalizeOF);
   const prevHist = Array.isArray(window.OFS_HIST) ? window.OFS_HIST : (Array.isArray(OFS_HIST) ? OFS_HIST : []);
   const byId = new Map();

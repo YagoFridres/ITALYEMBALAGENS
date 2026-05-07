@@ -12,10 +12,21 @@ const crypto = require('crypto');
 function parseFluxo(v) {
   if (Array.isArray(v)) return v;
   if (typeof v === 'string') {
+    const raw = String(v || '').trim();
+    if (!raw) return [];
     try {
-      const p = JSON.parse(v);
-      return Array.isArray(p) ? p : [];
-    } catch (e) { return []; }
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return p;
+      if (p && typeof p === 'object') {
+        const maybe = p.etapas ?? p.maquinas ?? p.sequencia ?? p.maquinas_sequencia ?? p.fluxo ?? p.maq ?? null;
+        if (Array.isArray(maybe)) return maybe;
+        if (typeof maybe === 'string') return parseFluxo(maybe);
+      }
+      return [];
+    } catch (e) {
+      const parts = raw.split(/[,\n;\t|]+/g).map(s => String(s || '').trim()).filter(Boolean);
+      return parts.length ? parts : [];
+    }
   }
   return [];
 }
@@ -123,6 +134,40 @@ app.use(compression());
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+function _newRid() {
+  try { return crypto.randomBytes(8).toString('hex'); } catch (_) {}
+  return String(Date.now()) + '-' + Math.random().toString(16).slice(2);
+}
+function _safeJson(v) {
+  try { return JSON.stringify(v); } catch (_) { return '"[unserializable]"'; }
+}
+function _reqUserRef(req) {
+  try {
+    const u = req?.usuario || null;
+    const id = u?.id != null ? String(u.id) : '';
+    const email = u?.email != null ? String(u.email) : '';
+    const nome = u?.nome != null ? String(u.nome) : '';
+    return { id, email, nome };
+  } catch (_) { return { id: '', email: '', nome: '' }; }
+}
+function _logApiError(tag, req, err, extra) {
+  try {
+    const rid = req?._rid || '';
+    const user = _reqUserRef(req);
+    const line = [
+      `[${tag}]`,
+      rid ? `rid=${rid}` : '',
+      req?.method ? `m=${req.method}` : '',
+      req?.originalUrl ? `url=${req.originalUrl}` : '',
+      (user.id || user.email || user.nome) ? `user=${_safeJson(user)}` : '',
+    ].filter(Boolean).join(' ');
+    console.error(line);
+    if (extra) console.error(`[${tag}] extra:`, extra);
+    if (err instanceof Error) console.error(`[${tag}] err:`, { name: err.name, message: err.message, stack: err.stack });
+    else console.error(`[${tag}] err:`, err);
+  } catch (_) {}
+}
+
 const _serverCache = {};
 const _serverCacheTTL = {};
 const SERVER_CACHE_TTL = 10 * 60 * 1000;
@@ -164,6 +209,14 @@ function setNoCache(res) {
 
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) setNoCache(res);
+  next();
+});
+
+app.use((req, res, next) => {
+  try {
+    req._rid = _newRid();
+    res.setHeader('x-request-id', String(req._rid));
+  } catch (_) {}
   next();
 });
 
@@ -947,6 +1000,7 @@ async function insertOne(table, row) {
     return (data && data[0]) || null;
   }
   let payload = { ...(row || {}) };
+  const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const { data, error } = await supabase.from(table).insert([payload]).select('*').limit(1);
     if (!error) return (data && data[0]) || null;
@@ -955,6 +1009,8 @@ async function insertOne(table, row) {
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+      try { ignoredColumns.push(col); } catch (_) {}
+      try { console.warn('[OFS INSERT] ignorando coluna inexistente:', col); } catch (_) {}
       delete payload[col];
       continue;
     }
@@ -971,6 +1027,7 @@ async function updateOne(table, id, row) {
     return (data && data[0]) || null;
   }
   let payload = { ...(row || {}) };
+  const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const { data, error } = await supabase.from(table).update(payload).eq('id', id).select('*').limit(1);
     if (!error) return (data && data[0]) || null;
@@ -979,6 +1036,8 @@ async function updateOne(table, id, row) {
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+      try { ignoredColumns.push(col); } catch (_) {}
+      try { console.warn('[OFS UPDATE] ignorando coluna inexistente:', col); } catch (_) {}
       delete payload[col];
       continue;
     }
@@ -1186,30 +1245,47 @@ async function ofsInsertWithRetry(row) {
       'caixa_comprimento', 'caixa_largura', 'caixa_altura'
     ];
     const out = { ...(payload || {}) };
-    const toInt = (v) => {
-      const n = Math.round(Number(String(v ?? 0).replace(',', '.')));
-      return Number.isFinite(n) ? n : 0;
+    const toIntOr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Math.round(Number(s.replace(',', '.')));
+      return Number.isFinite(n) ? n : null;
     };
-    const toDec = (v) => {
-      const n = parseFloat(String(v ?? 0).replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
+    const toDecOr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = parseFloat(s.replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
     };
     inteiros.forEach((k) => {
-      if (out[k] !== undefined && out[k] !== null) out[k] = toInt(out[k]);
+      if (out[k] === undefined) return;
+      const n = toIntOr(out[k]);
+      if (n === null) delete out[k];
+      else out[k] = n;
     });
     decimais.forEach((k) => {
-      if (out[k] !== undefined && out[k] !== null) out[k] = toDec(out[k]);
+      if (out[k] === undefined) return;
+      const n = toDecOr(out[k]);
+      if (n === null) delete out[k];
+      else out[k] = n;
     });
     if (Array.isArray(out.itens)) {
       out.itens = out.itens.map((item) => {
         if (!item || typeof item !== 'object') return item;
+        const qtd = toIntOr(item.qtd ?? item.quantidade ?? 0);
+        const quantidade = toIntOr(item.quantidade ?? item.qtd ?? 0);
+        const vunit = toDecOr(item.vunit ?? item.valor_unitario ?? 0);
+        const valor_unitario = toDecOr(item.valor_unitario ?? item.vunit ?? 0);
+        const valor_total = toDecOr(item.valor_total ?? item.total ?? 0);
         return {
           ...item,
-          qtd: toInt(item.qtd ?? item.quantidade ?? 0),
-          quantidade: toInt(item.quantidade ?? item.qtd ?? 0),
-          vunit: toDec(item.vunit ?? item.valor_unitario ?? 0),
-          valor_unitario: toDec(item.valor_unitario ?? item.vunit ?? 0),
-          valor_total: toDec(item.valor_total ?? item.total ?? 0),
+          ...(qtd === null ? {} : { qtd }),
+          ...(quantidade === null ? {} : { quantidade }),
+          ...(vunit === null ? {} : { vunit }),
+          ...(valor_unitario === null ? {} : { valor_unitario }),
+          ...(valor_total === null ? {} : { valor_total }),
         };
       }).filter(Boolean);
     }
@@ -1217,6 +1293,7 @@ async function ofsInsertWithRetry(row) {
   }
 
   let p = sanitizarPayloadOF({ ...(row || {}) });
+  const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').insert([p]).select('*').single();
     if (!r.error) return r;
@@ -1225,12 +1302,15 @@ async function ofsInsertWithRetry(row) {
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      try { ignoredColumns.push(col); } catch (_) {}
+      try { console.warn('[OFS INSERT] ignorando coluna inexistente:', col); } catch (_) {}
       delete p[col];
       continue;
     }
+    r.ignoredColumns = ignoredColumns;
     return r;
   }
-  return { data: null, error: { message: 'Falha ao inserir OF após tentativas' } };
+  return { data: null, error: { message: 'Falha ao inserir OF após tentativas' }, ignoredColumns };
 }
 
 async function ofsUpdateWithRetry(id, row) {
@@ -1245,30 +1325,47 @@ async function ofsUpdateWithRetry(id, row) {
       'caixa_comprimento', 'caixa_largura', 'caixa_altura'
     ];
     const out = { ...(payload || {}) };
-    const toInt = (v) => {
-      const n = Math.round(Number(String(v ?? 0).replace(',', '.')));
-      return Number.isFinite(n) ? n : 0;
+    const toIntOr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = Math.round(Number(s.replace(',', '.')));
+      return Number.isFinite(n) ? n : null;
     };
-    const toDec = (v) => {
-      const n = parseFloat(String(v ?? 0).replace(',', '.'));
-      return Number.isFinite(n) ? n : 0;
+    const toDecOr = (v) => {
+      if (v === undefined || v === null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const n = parseFloat(s.replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
     };
     inteiros.forEach((k) => {
-      if (out[k] !== undefined && out[k] !== null) out[k] = toInt(out[k]);
+      if (out[k] === undefined) return;
+      const n = toIntOr(out[k]);
+      if (n === null) delete out[k];
+      else out[k] = n;
     });
     decimais.forEach((k) => {
-      if (out[k] !== undefined && out[k] !== null) out[k] = toDec(out[k]);
+      if (out[k] === undefined) return;
+      const n = toDecOr(out[k]);
+      if (n === null) delete out[k];
+      else out[k] = n;
     });
     if (Array.isArray(out.itens)) {
       out.itens = out.itens.map((item) => {
         if (!item || typeof item !== 'object') return item;
+        const qtd = toIntOr(item.qtd ?? item.quantidade ?? 0);
+        const quantidade = toIntOr(item.quantidade ?? item.qtd ?? 0);
+        const vunit = toDecOr(item.vunit ?? item.valor_unitario ?? 0);
+        const valor_unitario = toDecOr(item.valor_unitario ?? item.vunit ?? 0);
+        const valor_total = toDecOr(item.valor_total ?? item.total ?? 0);
         return {
           ...item,
-          qtd: toInt(item.qtd ?? item.quantidade ?? 0),
-          quantidade: toInt(item.quantidade ?? item.qtd ?? 0),
-          vunit: toDec(item.vunit ?? item.valor_unitario ?? 0),
-          valor_unitario: toDec(item.valor_unitario ?? item.vunit ?? 0),
-          valor_total: toDec(item.valor_total ?? item.total ?? 0),
+          ...(qtd === null ? {} : { qtd }),
+          ...(quantidade === null ? {} : { quantidade }),
+          ...(vunit === null ? {} : { vunit }),
+          ...(valor_unitario === null ? {} : { valor_unitario }),
+          ...(valor_total === null ? {} : { valor_total }),
         };
       }).filter(Boolean);
     }
@@ -1282,6 +1379,7 @@ async function ofsUpdateWithRetry(id, row) {
   delete p.of_num;
   delete p.of_numero;
   delete p.seq;
+  const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
     const r = await supabase.from('ofs').update(p).eq('id', id).select('*').single();
     if (!r.error) return r;
@@ -1293,12 +1391,15 @@ async function ofsUpdateWithRetry(id, row) {
     const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
     const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
     if (col && Object.prototype.hasOwnProperty.call(p, col)) {
+      try { ignoredColumns.push(col); } catch (_) {}
+      try { console.warn('[OFS UPDATE] ignorando coluna inexistente:', col); } catch (_) {}
       delete p[col];
       continue;
     }
+    r.ignoredColumns = ignoredColumns;
     return r;
   }
-  return { data: null, error: { message: 'Falha ao atualizar OF após tentativas' } };
+  return { data: null, error: { message: 'Falha ao atualizar OF após tentativas' }, ignoredColumns };
 }
 
 function clientesIn(p) {
@@ -1723,12 +1824,18 @@ async function comprasUpdateCompat(id, payload) {
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
     const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 300));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
+    const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
+    const excluirCanceladas = String(req.query.excluir_canceladas || req.query.excluirCanceladas || '') === '1';
     const empId = req.query.empId ? String(req.query.empId).trim() : '';
     const statusRaw = req.query.status ? String(req.query.status).trim() : '';
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
+    const lite = String(req.query.lite || '') === '1';
+    const from = String(req.query.from || req.query.de || '').trim();
+    const to = String(req.query.to || req.query.ate || '').trim();
 
     const selectBaseCols = [
       'id','of','numero','status','dia','ent','created_at','updated_at',
@@ -1742,11 +1849,28 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'maquina_perda','maquina_perda_id','usuario_conclusao',
       'imgs','imagens','imagem_url','foto'
     ];
+    const selectLiteCols = [
+      'id','of','numero','status','created_at','updated_at',
+      'cli_id','cliente_id','cliId','emp_id',
+      'qtd','quantidade','descricao','prodDesc',
+      'urg','urgente',
+      'dia','data_producao','ent','data_entrega',
+      'fluxo_maquinas','maquina_atual_index','maq',
+      'imgs','imagem_url','imagens'
+    ];
+    const selectCols = (lite ? selectLiteCols : selectBaseCols).slice();
 
-    const buildQuery = (sel) => {
+    const buildQuery = (sel, dateCol) => {
       let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
       if (status) q = q.eq('status', status);
       if (empId) q = q.eq('emp_id', empId);
+      const shouldExcludeCanceladas = (excluirCanceladas || (!incluirCanceladas && !incluirExcluidas && String(req.query.excluir_canceladas || '') === '1'));
+      if (shouldExcludeCanceladas) {
+        q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
+      }
+      if (from && to && dateCol) {
+        q = q.gte(dateCol, from).lte(dateCol, to);
+      }
       return q;
     };
 
@@ -1765,27 +1889,53 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
     };
 
-    let selectAtual = selectBaseCols.join(',');
-    for (let tentativa = 0; tentativa < 10; tentativa++) {
-      const { data, error } = await buildQuery(selectAtual);
-      if (!error) {
-        return ok(res, data || []);
-      }
-      if (!isMissingColumnErr(error)) return res.status(500).json({ ok: false, error: String(error.message || error) });
+    const dateColsToTry = (from && to) ? ['data_producao', 'dia', 'created_at'] : [null];
+    for (const dateCol of dateColsToTry) {
+      let selectAtual = selectCols.join(',');
+      for (let tentativa = 0; tentativa < 10; tentativa++) {
+        const { data, error } = await buildQuery(selectAtual, dateCol);
+        if (!error) {
+          return ok(res, data || []);
+        }
+        if (!isMissingColumnErr(error)) {
+          _logApiError('OFS GET', req, error, { selectAtual, limit, offset, empId, status, from, to, dateCol, lite });
+          return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
+        }
 
-      const colProb = extractMissingCol(error);
-      if (!colProb) break;
-      const parts = selectAtual.split(',').map(s => s.trim()).filter(Boolean);
-      const next = parts.filter(c => c !== colProb);
-      if (next.length === parts.length || next.length === 0) break;
-      selectAtual = next.join(',');
+        const colProb = extractMissingCol(error);
+        if (!colProb) break;
+        if (dateCol && String(colProb) === String(dateCol)) {
+          try { console.warn('[OFS GET] coluna de data inexistente:', colProb, 'rid:', req._rid); } catch (_) {}
+          break;
+        }
+        const parts = selectAtual.split(',').map(s => s.trim()).filter(Boolean);
+        const next = parts.filter(c => c !== colProb);
+        if (next.length === parts.length || next.length === 0) break;
+        selectAtual = next.join(',');
+        try { console.warn('[OFS GET] removendo coluna inexistente do select:', colProb, 'rid:', req._rid); } catch (_) {}
+      }
     }
 
-    const { data: dataAll, error: errorAll } = await buildQuery('*');
-    if (errorAll) return res.status(500).json({ ok: false, error: String(errorAll.message || errorAll) });
-    return ok(res, dataAll || []);
+    const minimalCols = ['id','of','numero','status','created_at','updated_at','emp_id','cli_id','descricao','prodDesc','qtd','quantidade','urg','urgente'];
+    let selectMin = minimalCols.join(',');
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
+      const { data, error } = await buildQuery(selectMin, null);
+      if (!error) return ok(res, data || []);
+      if (!isMissingColumnErr(error)) {
+        _logApiError('OFS GET MIN', req, error, { selectMin, limit, offset, empId, status, lite });
+        return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
+      }
+      const colProb = extractMissingCol(error);
+      if (!colProb) break;
+      const parts = selectMin.split(',').map(s => s.trim()).filter(Boolean);
+      const next = parts.filter(c => c !== colProb);
+      if (next.length === parts.length || next.length === 0) break;
+      selectMin = next.join(',');
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao carregar OFs', rid: req._rid || null });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e.message || e) });
+    _logApiError('OFS GET', req, e, { query: req.query });
+    return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
   }
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
@@ -1865,6 +2015,7 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
 
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
     const body = req.body || {};
     const filtered = ofPayloadFiltrado(body);
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
@@ -1890,8 +2041,14 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         }, created);
       }
     } catch (_) {}
-    return ok(res, created);
-  } catch (e) { bad(res, e.message); }
+    const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
+      ? { ignored_columns: createdRes.ignoredColumns.slice() }
+      : null;
+    return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
+  } catch (e) {
+    _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
 });
 
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
@@ -1907,6 +2064,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
+    setNoCache(res);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = req.body || {};
@@ -1919,6 +2077,15 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .eq('id', id)
       .maybeSingle();
     if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    const expectedUpdatedAt = String(
+      body?._expected_updated_at ?? body?.expected_updated_at ?? body?.if_match_updated_at
+      ?? req.headers['if-match'] ?? req.headers['x-of-updated-at'] ?? ''
+    ).trim();
+    const currentUpdatedAt = String(ofAtual?.updated_at || '').trim();
+    if (expectedUpdatedAt && currentUpdatedAt && expectedUpdatedAt !== currentUpdatedAt) {
+      return res.status(409).json({ ok: false, error: 'concurrency_conflict', current: ofAtual, rid: req._rid || null });
+    }
 
     ['numero', 'of', 'of_num', 'of_numero', 'seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
     if (!Object.prototype.hasOwnProperty.call(body, 'itens')) delete cleanBody.itens;
@@ -2026,8 +2193,14 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     } catch (errCaixas) {
       console.error('[OF PUT] erro ao registrar caixas perdidas:', errCaixas?.message);
     }
-    return ok(res, updated);
-  } catch (e) { bad(res, e.message); }
+    const warnings = (updRes && Array.isArray(updRes.ignoredColumns) && updRes.ignoredColumns.length)
+      ? { ignored_columns: updRes.ignoredColumns.slice() }
+      : null;
+    return res.json({ ok: true, data: updated, ...(warnings ? { warnings } : {}) });
+  } catch (e) {
+    _logApiError('OFS PUT', req, e, { id: req.params?.id, bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
