@@ -1860,10 +1860,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_TABLE_COLS_SET.has(c));
     const selectColsCsv = (selectCols && selectCols.length) ? selectCols.join(',') : 'id,of,numero,status,created_at,updated_at';
 
-    const buildQuery = (sel, dateCol) => {
+    const buildQueryBase = (sel, dateCol) => {
       let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
       if (status) q = q.eq('status', status);
       if (empId) q = q.eq('emp_id', empId);
+      if (!incluirExcluidas) q = q.is('deleted_at', null);
       const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
       if (shouldExcludeCanceladas) {
         q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
@@ -1872,6 +1873,56 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         q = q.gte(dateCol, from).lte(dateCol, to);
       }
       return q;
+    };
+    const isRelationshipErr = (err) => {
+      const msg = String(err?.message || err || '').toLowerCase();
+      return (
+        msg.includes('could not find a relationship') ||
+        msg.includes('no relationship') ||
+        msg.includes('schema cache') ||
+        msg.includes('relationship') && msg.includes('not found')
+      );
+    };
+    const buildQueryWithJoin = async (colsArr, dateCol) => {
+      const colsCsv = (Array.isArray(colsArr) && colsArr.length) ? colsArr.join(',') : 'id';
+      const joinKeysToTry = ['cli_id', 'cliente_id', 'cliId'];
+      const joinFrag = (key) => `cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`;
+      for (const key of joinKeysToTry) {
+        const sel = `${colsCsv},${joinFrag(key)}`;
+        const r = await buildQueryBase(sel, dateCol);
+        if (!r.error) return { data: r.data, error: null, join: true };
+        if (isRelationshipErr(r.error)) continue;
+        return { data: null, error: r.error, join: true };
+      }
+      const r0 = await buildQueryBase(colsCsv, dateCol);
+      return { data: r0.data, error: r0.error, join: false };
+    };
+    const enrichJoinClientVend = async (rows) => {
+      const arr = Array.isArray(rows) ? rows : [];
+      const cliIds = Array.from(new Set(arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)));
+      if (!cliIds.length) return arr;
+      const { data: cls, error: e1 } = await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds);
+      if (e1 || !Array.isArray(cls)) return arr;
+      const byCliId = new Map();
+      cls.forEach((c) => { if (c && c.id) byCliId.set(String(c.id), c); });
+      const vendIds = Array.from(new Set(cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)));
+      const byVendId = new Map();
+      if (vendIds.length) {
+        const { data: vds } = await supabase.from('vendedores').select('id,nome').in('id', vendIds);
+        (Array.isArray(vds) ? vds : []).forEach((v) => { if (v && v.id) byVendId.set(String(v.id), v); });
+      }
+      return arr.map((o) => {
+        const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
+        const c = cid ? (byCliId.get(cid) || null) : null;
+        const vid = String(c?.vendedor_id || '').trim();
+        const v = vid ? (byVendId.get(vid) || null) : null;
+        return {
+          ...o,
+          cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || '—'),
+          vendNome: (v?.nome || o?.vendNome || o?.vendedor_nome || o?.vendedor || '—'),
+          vendedor_id: (c?.vendedor_id || o?.vendedor_id || o?.vendId || o?.vend_id || null),
+        };
+      });
     };
 
     const isMissingColumnErr = (err) => {
@@ -1893,20 +1944,27 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       ? ['data_producao', 'dia', 'created_at'].filter((c) => OFS_TABLE_COLS_SET.has(c))
       : [null];
     for (const dateCol of dateColsToTry) {
-      let selectAtual = selectColsCsv;
+      let colsArr = selectCols.slice();
       for (let tentativa = 0; tentativa < 10; tentativa++) {
-        const { data, error } = await buildQuery(selectAtual, dateCol);
+        const { data, error, join } = await buildQueryWithJoin(colsArr, dateCol);
         if (!error) {
-          const rows = (data || []).map((row) => {
+          const baseRows = (data || []).map((row) => {
             if (!row || typeof row !== 'object') return row;
+            const clienteObj = row.cliente && typeof row.cliente === 'object' ? row.cliente : null;
+            const vendNested = clienteObj?.vendedor && typeof clienteObj.vendedor === 'object' ? clienteObj.vendedor : null;
+            const cliNome = clienteObj?.nome || row.cliNome || row.clinome || row.cliente_nome || '—';
+            const vendNome = vendNested?.nome || row.vendNome || row.vendedor_nome || row.vendedor || '—';
+            const vendedor_id = clienteObj?.vendedor_id || row.vendedor_id || row.vendId || row.vend_id || null;
             const vendedor_nome =
-              row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
-            return { ...row, vendedor_nome };
+              vendNome || row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
+            const { cliente, ...rest } = row;
+            return { ...rest, cliNome, vendNome, vendedor_id, vendedor_nome };
           });
+          const rows = join ? baseRows : await enrichJoinClientVend(baseRows);
           return ok(res, rows);
         }
         if (!isMissingColumnErr(error)) {
-          _logApiError('OFS GET', req, error, { selectAtual, limit, offset, empId, status, from, to, dateCol, lite });
+          _logApiError('OFS GET', req, error, { selectCols: colsArr, limit, offset, empId, status, from, to, dateCol, lite });
           return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
         }
 
@@ -1916,38 +1974,43 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           try { console.warn('[OFS GET] coluna de data inexistente:', colProb, 'rid:', req._rid); } catch (_) {}
           break;
         }
-        const parts = selectAtual.split(',').map(s => s.trim()).filter(Boolean);
-        const next = parts.filter(c => c !== colProb);
-        if (next.length === parts.length || next.length === 0) break;
-        selectAtual = next.join(',');
+        const next = colsArr.filter((c) => c !== colProb);
+        if (next.length === colsArr.length || next.length === 0) break;
+        colsArr = next;
         try { console.warn('[OFS GET] removendo coluna inexistente do select:', colProb, 'rid:', req._rid); } catch (_) {}
       }
     }
 
     const minimalCols = ['id', 'of', 'numero', 'status', 'created_at', 'updated_at', 'emp_id', 'cli_id', 'descricao', 'prodDesc', 'qtd', 'quantidade', 'urg', 'urgente']
       .filter((c) => OFS_TABLE_COLS_SET.has(c));
-    let selectMin = minimalCols.length ? minimalCols.join(',') : 'id';
+    let colsMinArr = minimalCols.length ? minimalCols.slice() : ['id'];
     for (let tentativa = 0; tentativa < 8; tentativa++) {
-      const { data, error } = await buildQuery(selectMin, null);
+      const { data, error, join } = await buildQueryWithJoin(colsMinArr, null);
       if (!error) {
-        const rows = (data || []).map((row) => {
+        const baseRows = (data || []).map((row) => {
           if (!row || typeof row !== 'object') return row;
+          const clienteObj = row.cliente && typeof row.cliente === 'object' ? row.cliente : null;
+          const vendNested = clienteObj?.vendedor && typeof clienteObj.vendedor === 'object' ? clienteObj.vendedor : null;
+          const cliNome = clienteObj?.nome || row.cliNome || row.clinome || row.cliente_nome || '—';
+          const vendNome = vendNested?.nome || row.vendNome || row.vendedor_nome || row.vendedor || '—';
+          const vendedor_id = clienteObj?.vendedor_id || row.vendedor_id || row.vendId || row.vend_id || null;
           const vendedor_nome =
-            row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
-          return { ...row, vendedor_nome };
+            vendNome || row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
+          const { cliente, ...rest } = row;
+          return { ...rest, cliNome, vendNome, vendedor_id, vendedor_nome };
         });
+        const rows = join ? baseRows : await enrichJoinClientVend(baseRows);
         return ok(res, rows);
       }
       if (!isMissingColumnErr(error)) {
-        _logApiError('OFS GET MIN', req, error, { selectMin, limit, offset, empId, status, lite });
+        _logApiError('OFS GET MIN', req, error, { selectMin: colsMinArr, limit, offset, empId, status, lite });
         return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
       }
       const colProb = extractMissingCol(error);
       if (!colProb) break;
-      const parts = selectMin.split(',').map(s => s.trim()).filter(Boolean);
-      const next = parts.filter(c => c !== colProb);
-      if (next.length === parts.length || next.length === 0) break;
-      selectMin = next.join(',');
+      const next = colsMinArr.filter((c) => c !== colProb);
+      if (next.length === colsMinArr.length || next.length === 0) break;
+      colsMinArr = next;
     }
     return res.status(500).json({ ok: false, error: 'Falha ao carregar OFs', rid: req._rid || null });
   } catch (e) {
