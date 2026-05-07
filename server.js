@@ -4986,6 +4986,7 @@ function _chapasParseCsv(text) {
     const riscada = get(r, ['riscada', 'riscado', 'ja_vem_riscada', 'já vem riscada']);
     const riscaDesc = get(r, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
     const estoqueMin = get(r, ['estoque_minimo', 'estoque minimo', 'min']);
+    const empId = get(r, ['emp_id', 'emp id', 'empresa_id', 'empresa id', 'empid']);
     const dataEntrada = get(r, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados']);
 
     const item = {
@@ -5005,6 +5006,7 @@ function _chapasParseCsv(text) {
       riscada,
       risca_desc: riscaDesc,
       estoque_minimo: estoqueMin,
+      emp_id: empId,
       data_entrada: dataEntrada,
     };
 

@@ -20320,6 +20320,7 @@ function filtrarSelecaoChapas(){
 }
 
 function triggerImportChapas(){
+  window._estImportChapasMode = 'replace';
   const inp = document.getElementById('est-import-file');
   if(inp) inp.click();
 }
@@ -20330,9 +20331,14 @@ async function handleImportChapasFile(file){
   const isCsv = name.endsWith('.csv');
   if(isCsv){
     try{
+      const mode = String(window._estImportChapasMode || 'replace').toLowerCase().trim();
+      if(mode === 'replace'){
+        const ok = confirm('Isso vai SUBSTITUIR todo o estoque de chapas (apagar tudo e importar do CSV). Confirmar?');
+        if(!ok) return;
+      }
       const fd = new FormData();
       fd.append('file', file, file.name || 'chapas.csv');
-      const r = await apiUpload('/chapas_estoque/import_csv?mode=append', fd);
+      const r = await apiUpload('/chapas_estoque/import_csv?mode=' + encodeURIComponent(mode), fd);
       if(!r || r.ok===false){ toast('Erro ao importar: '+(r.error||'falha'), 'var(--red)'); return; }
       toast(`Importação concluída: ${r.data?.inserted ?? 0} itens`, 'var(--green)');
       await carregarChapas();
@@ -25270,6 +25276,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar CSV</button>
     <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
   </div>
