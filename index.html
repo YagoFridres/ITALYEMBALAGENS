@@ -4012,8 +4012,6 @@ function renderCardOfDia(of, nomeMaquina, opts){
               <span style="font-size:.9rem"> cx</span>
             </span>
             <span>🏷️ Ref: <strong>${escH(String(ref))}</strong></span>
-            <span>💰 Unit: <strong>R$ ${escH(vunit.toFixed(2))}</strong></span>
-            <span style="color:var(--green)">💰 Total: <strong>R$ ${escH(vtotal.toFixed(2))}</strong></span>
             <span>🚚 <strong style="color:${atrasadaEntrega?'var(--red)':'var(--text)'}">${escH(String(entregaBR))}</strong></span>
             <span style="color:var(--text2);font-family:var(--mono)">⏱ <strong>${escH(tempoTxt)}</strong></span>
             <span style="color:var(--text2);font-family:var(--mono)">⚡ <strong>${escH(velocidadeTxt)}</strong></span>
@@ -17330,11 +17328,11 @@ function normalizeOF(r){
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
   const qtdNorm = (Number(qtd || 0) > 0) ? Number(qtd || 0) : itensQtdTotal;
   const itensValTotal = itens.reduce((s, it)=>s + (Number(it.valor_total || 0) || 0), 0);
-  const valorTotalRaw = Number(r.valor_total ?? r.valorTotal ?? 0) || 0;
+  const valorTotalRaw = Number(r.valor_total ?? r.valorTotal ?? r.total ?? 0) || 0;
   const valorVendaRaw = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
   const val = Number(valorTotalRaw || valorVendaRaw || itensValTotal || 0) || 0;
   const vunitCalc = (qtdNorm && Number(qtdNorm) > 0) ? (val / Number(qtdNorm)) : 0;
-  const valorUnitario = Number(item0.vunit || item0.valor_unitario || item0.preco || 0) || vunitCalc || 0;
+  const valorUnitario = Number(item0.vunit || item0.valor_unitario || item0.preco || r.vunit || r.valor_unitario || r.valorUnitario || r.preco || 0) || vunitCalc || 0;
   const qtdPedida = Number(r.qtd_pedida ?? r.qtdPedida ?? r.quantidade_pedida ?? r.quantidadePedida ?? NaN);
   const qtdProduzida = Number(r.qtd_produzida ?? r.qtdProduzida ?? NaN);
   const qtdPerdida = Number(r.qtd_perdida ?? r.qtdPerdida ?? NaN);
