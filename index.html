@@ -17263,9 +17263,12 @@ function normalizeOF(r){
   };
 
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
+  const clienteJoin = r.cliente && typeof r.cliente === 'object' ? r.cliente : null;
+  const vendedorJoin = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
+  const cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.nome_cliente || '';
+  const vendNome = vendedorJoin?.nome || r.vendNome || r.vendedor_nome || r.vendedor || r.vendedorNome || '';
+  let vendId = clienteJoin?.vendedor_id || r.vendedor_id || r.vend_id || r.vendedorId || r.vendId || '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
-  const vendNome = r.vendNome ?? r.vendedor_nome ?? r.vendedor ?? r.vendedorNome ?? '';
-  let vendId = r.vendedor_id ?? r.vend_id ?? r.vendedorId ?? r.vendId ?? '';
   if(vendNome && (!vendId || vendId.length>12)){
     const found = (VENDEDORES||[]).find(x=>(x.nome||'')===vendNome);
     if(found) vendId = found.id;
@@ -17348,7 +17351,7 @@ function normalizeOF(r){
     seq:r.seq ?? r.of_seq ?? r.ofSeq ?? 0,
     of,
     cliId,
-    cliNome: r.cliNome ?? r.clinome ?? r.cliente_nome ?? r.nome_cliente ?? '',
+    cliNome: cliNomeResolved,
     vendId,
     vendedor: String(vendNome || '').trim(),
     vendNome: String(vendNome || '').trim(),
