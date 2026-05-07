@@ -5958,7 +5958,7 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
   const ofsNoDia = baseOfs.filter(of=>{
     const st = String(of?.status || '').toLowerCase();
     if(st.includes('conclu') || st.includes('cancelad')) return false;
-    const diaProd = String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10);
+    const diaProd = String(of?.dia_programacao || of?.data_producao || of?.dia || of?.ent || of?.data_entrega || of?.created_at || '').slice(0,10);
     return diaProd === data;
   });
   const fluxoNomes = (of)=>{
@@ -6389,7 +6389,7 @@ async function verificarSobrecargaData(data){
   const ofsNoDia = baseOfs.filter(of=>{
     const st = String(of?.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     if(st.includes('conclu') || st.includes('cancelad')) return false;
-    return String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10) === dt;
+    return String(of?.dia_programacao || of?.data_producao || of?.dia || of?.ent || of?.data_entrega || of?.created_at || '').slice(0,10) === dt;
   });
 
   const idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : (OF_FLUXO_IDS || []);
@@ -6514,7 +6514,7 @@ function sugerirMoverOFs(nomeMaquina, data, qtdMover){
   const ofsNoDia = baseOfs.filter(of=>{
     const st = String(of?.status||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     if(st.includes('conclu') || st.includes('cancelad')) return false;
-    const d = String(of?.data_producao || of?.dia || of?.dia_programacao || '').slice(0,10);
+    const d = String(of?.dia_programacao || of?.data_producao || of?.dia || of?.ent || of?.data_entrega || of?.created_at || '').slice(0,10);
     if(d !== dt) return false;
     const fluxo = Array.isArray(of?.fluxo_maquinas) ? of.fluxo_maquinas : tryParse(of?.fluxo_maquinas, []);
     const nomes = (fluxo || []).map(f=>String(f?.nome||f||'').toLowerCase());
@@ -17278,7 +17278,7 @@ function normalizeOF(r){
   const diaPedidoRaw = r.dia ?? r.dia_pedido ?? r.data_pedido ?? r.diaPedido ?? r.dataPedido ?? '';
   const diaPedido = diaPedidoRaw ? String(diaPedidoRaw).slice(0,10) : createdDay;
   const dia = diaPedido || (r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '');
-  const entRaw = r.data_entrega ?? r.ent ?? r.dataEntrega ?? '';
+  const entRaw = r.ent ?? r.data_entrega ?? r.dataEntrega ?? '';
   const ent = entRaw ? String(entRaw).slice(0,10) : '';
   const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
