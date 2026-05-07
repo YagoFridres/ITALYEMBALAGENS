@@ -126,6 +126,20 @@ if (!_supabaseEnvOk) {
     globalThis.__pendingCacheClearPrefixes = ['chapas_estoque:', 'chapas_'];
   }
   console.log('✅ Supabase key:', supabaseKeySource, 'len:', (supabaseKey ? String(supabaseKey).length : 0), 'tipo provável:', (supabaseKey && String(supabaseKey).length > 200 ? 'SERVICE ROLE' : 'ANON/curta'));
+  try {
+    setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.from('ofs').select('*').limit(1);
+        if (error) {
+          console.warn('[OFS COLS] erro:', String(error.message || error));
+          return;
+        }
+        console.log('[OFS COLS]', data?.[0] ? Object.keys(data[0]) : 'vazio');
+      } catch (e) {
+        console.warn('[OFS COLS] erro:', String(e?.message || e));
+      }
+    }, 500);
+  } catch (_) {}
 }
 
 const app = express();
@@ -1190,45 +1204,35 @@ function ofIn(p) {
   return out;
 }
 
+const OFS_TABLE_COLS = [
+  'id', 'numero', 'cliente_id', 'cli_id', 'cliId', 'clinome', 'vendedor', 'vendId',
+  'vendNome', 'empId', 'emp_id', 'empresa_id', 'status', 'data_entrega', 'ent',
+  'quantidade', 'qtd', 'qtd_chapas', 'preco', 'total', 'valor_total', 'valor_venda',
+  'itens', 'imgs', 'imagem_url', 'fluxo', 'fluxo_maquinas', 'maq', 'obs', 'obs2',
+  'descricao', 'of', 'of_num', 'urg', 'urgente', 'dia', 'data_producao', 'ramo', 'pagto',
+  'cond_pagamento', 'smp_id', 'vendedor_id', 'cliente_nome', 'of_seq', 'empNome',
+  'maquina_atual_index', 'data_conclusao', 'cidade_entrega', 'modo_programacao',
+  'dia_programacao', 'deleted_at', 'chapa_id', 'maquina_perda', 'qtd_perdida',
+  'qtd_produzida', 'qtd_pedida', 'caixas_excedentes', 'usuario_conclusao',
+  'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+  'data_faturamento', 'seq', 'chp', 'created_at', 'updated_at',
+  'vendedor_nome', 'referencia', 'imp_01', 'imp_02', 'imp_03', 'imp_04', 'imp_05',
+  'vend_id', 'data_pedido', 'maquina_por_item', 'prodDesc', 'tipo_caixa_id',
+];
+const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
+function _filterOfsPayloadKnownCols(input, keepMeta = true) {
+  const src = input && typeof input === 'object' ? input : {};
+  const out = {};
+  Object.keys(src).forEach((k) => {
+    if (keepMeta && String(k || '').startsWith('_')) { out[k] = src[k]; return; }
+    if (OFS_TABLE_COLS_SET.has(k)) out[k] = src[k];
+  });
+  return out;
+}
+
 function ofPayloadFiltrado(body) {
-  const b = body || {};
-  const campos = [
-    'id',
-    'numero', 'of', 'of_num', 'of_numero', 'seq',
-    'cliente_id', 'cli_id', 'cliId',
-    'vendedor', 'vend_id', 'vendedor_id', 'vendId',
-    'empresa_id', 'emp_id', 'empId',
-    'tipo_caixa_id', 'tipo_caixa',
-    'caixa_comprimento', 'caixa_largura', 'caixa_altura',
-    'qtd', 'quantidade',
-    'itens',
-    'dia', 'data_pedido', 'data_producao',
-    'ent', 'data_entrega',
-    'fluxo',
-    'maq',
-    'status',
-    'urg', 'urgente',
-    'chp', 'qtd_chapas', 'chapa_id',
-    'valor_total', 'valor_venda', 'total',
-    'cond_pagamento', 'pagto',
-    'obs', 'descricao', 'prodDesc', 'produto',
-    'imgs', 'imagem_url', 'imagens',
-    'fluxo_maquinas', 'maquinas_fluxo',
-    'maquina_por_item', 'maquina_atual_index',
-    'modo_programacao', 'dia_programacao',
-    'cidade_entrega',
-    'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
-    'maquina_perda', 'maquina_perda_id',
-    'caixas_excedentes',
-    'data_conclusao',
-    'data_faturamento',
-    'usuario_conclusao',
-    'updated_at'
-  ];
-  const p = {};
-  campos.forEach(k => { if (b[k] !== undefined) p[k] = b[k]; });
-  delete p.prioridade;
-  delete p.prioridade_producao;
+  const b = _filterOfsPayloadKnownCols(body || {}, true);
+  const p = _filterOfsPayloadKnownCols(b || {}, false);
   p.updated_at = new Date().toISOString();
   return p;
 }
@@ -1837,34 +1841,28 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = String(req.query.from || req.query.de || '').trim();
     const to = String(req.query.to || req.query.ate || '').trim();
 
-    const selectBaseCols = [
-      'id','of','numero','status','dia','ent','created_at','updated_at',
-      'of_num','seq','numero_of',
-      'cli_id','cliente_id','cliId','cliente','vendedor_id','emp_id','qtd','descricao','prodDesc','prod','produto',
-      'valor_total','valor_venda','fluxo_maquinas','maquina_atual_index','maq',
-      'chapa_id','qtd_chapas','urg','urgente','data_producao','data_entrega',
-      'data_conclusao','data_faturamento','prioridade','prioridade_producao','modo_programacao',
-      'dia_programacao','cidade_entrega','qtd_pedida','qtd_produzida',
-      'qtd_perdida','caixas_excedentes',
-      'maquina_perda','maquina_perda_id','usuario_conclusao',
-      'imgs','imagens','imagem_url','foto'
+    const selectBaseCols = OFS_TABLE_COLS.slice();
+    const selectLitePref = [
+      'id', 'of', 'numero', 'status',
+      'created_at', 'updated_at', 'deleted_at',
+      'emp_id', 'empId', 'empresa_id',
+      'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'clinome',
+      'qtd', 'quantidade',
+      'descricao', 'prodDesc',
+      'urg', 'urgente',
+      'dia', 'data_producao',
+      'ent', 'data_entrega',
+      'maq', 'fluxo_maquinas', 'maquina_atual_index',
+      'imgs', 'imagem_url',
     ];
-    const selectLiteCols = [
-      'id','of','numero','status','created_at','updated_at',
-      'cli_id','cliente_id','cliId','emp_id',
-      'qtd','quantidade','descricao','prodDesc',
-      'urg','urgente',
-      'dia','data_producao','ent','data_entrega',
-      'fluxo_maquinas','maquina_atual_index','maq',
-      'imgs','imagem_url','imagens'
-    ];
-    const selectCols = (lite ? selectLiteCols : selectBaseCols).slice();
+    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_TABLE_COLS_SET.has(c));
+    const selectColsCsv = (selectCols && selectCols.length) ? selectCols.join(',') : 'id,of,numero,status,created_at,updated_at';
 
     const buildQuery = (sel, dateCol) => {
       let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
       if (status) q = q.eq('status', status);
       if (empId) q = q.eq('emp_id', empId);
-      const shouldExcludeCanceladas = (excluirCanceladas || (!incluirCanceladas && !incluirExcluidas && String(req.query.excluir_canceladas || '') === '1'));
+      const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
       if (shouldExcludeCanceladas) {
         q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       }
@@ -1889,9 +1887,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
     };
 
-    const dateColsToTry = (from && to) ? ['data_producao', 'dia', 'created_at'] : [null];
+    const dateColsToTry = (from && to)
+      ? ['data_producao', 'dia', 'created_at'].filter((c) => OFS_TABLE_COLS_SET.has(c))
+      : [null];
     for (const dateCol of dateColsToTry) {
-      let selectAtual = selectCols.join(',');
+      let selectAtual = selectColsCsv;
       for (let tentativa = 0; tentativa < 10; tentativa++) {
         const { data, error } = await buildQuery(selectAtual, dateCol);
         if (!error) {
@@ -1916,8 +1916,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     }
 
-    const minimalCols = ['id','of','numero','status','created_at','updated_at','emp_id','cli_id','descricao','prodDesc','qtd','quantidade','urg','urgente'];
-    let selectMin = minimalCols.join(',');
+    const minimalCols = ['id', 'of', 'numero', 'status', 'created_at', 'updated_at', 'emp_id', 'cli_id', 'descricao', 'prodDesc', 'qtd', 'quantidade', 'urg', 'urgente']
+      .filter((c) => OFS_TABLE_COLS_SET.has(c));
+    let selectMin = minimalCols.length ? minimalCols.join(',') : 'id';
     for (let tentativa = 0; tentativa < 8; tentativa++) {
       const { data, error } = await buildQuery(selectMin, null);
       if (!error) return ok(res, data || []);
@@ -2067,7 +2068,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     setNoCache(res);
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const body = req.body || {};
+    const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
     console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
@@ -2741,7 +2742,19 @@ app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    const msg = String(e?.message || e || '').toLowerCase();
+    const code = String(e?.code || e?.details?.code || '');
+    const isMissing = code === '42P01' || msg.includes('relation') && msg.includes('tempos_reais') && msg.includes('does not exist');
+    if (isMissing) {
+      if (!globalThis.__temposReaisMissingLogged) {
+        globalThis.__temposReaisMissingLogged = true;
+        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+      }
+      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+    }
+    return err(res, e);
+  }
 });
 
 app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
@@ -2775,7 +2788,19 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('tempos_reais').insert([payload]).select('*').single();
     if (error) throw error;
     return ok(res, data);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    const msg = String(e?.message || e || '').toLowerCase();
+    const code = String(e?.code || e?.details?.code || '');
+    const isMissing = code === '42P01' || msg.includes('relation') && msg.includes('tempos_reais') && msg.includes('does not exist');
+    if (isMissing) {
+      if (!globalThis.__temposReaisMissingLogged) {
+        globalThis.__temposReaisMissingLogged = true;
+        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+      }
+      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+    }
+    return err(res, e);
+  }
 });
 
 app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
@@ -2791,7 +2816,19 @@ app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
       .eq('id', id).select('*').single();
     if (error) throw error;
     return ok(res, data);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    const msg = String(e?.message || e || '').toLowerCase();
+    const code = String(e?.code || e?.details?.code || '');
+    const isMissing = code === '42P01' || msg.includes('relation') && msg.includes('tempos_reais') && msg.includes('does not exist');
+    if (isMissing) {
+      if (!globalThis.__temposReaisMissingLogged) {
+        globalThis.__temposReaisMissingLogged = true;
+        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+      }
+      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+    }
+    return err(res, e);
+  }
 });
 
 app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
@@ -2799,7 +2836,19 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
     const { error } = await supabase.from('tempos_reais').delete().eq('id', req.params.id);
     if (error) throw error;
     return ok(res, true);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    const msg = String(e?.message || e || '').toLowerCase();
+    const code = String(e?.code || e?.details?.code || '');
+    const isMissing = code === '42P01' || msg.includes('relation') && msg.includes('tempos_reais') && msg.includes('does not exist');
+    if (isMissing) {
+      if (!globalThis.__temposReaisMissingLogged) {
+        globalThis.__temposReaisMissingLogged = true;
+        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+      }
+      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+    }
+    return err(res, e);
+  }
 });
 
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
