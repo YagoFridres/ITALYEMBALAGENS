@@ -4594,6 +4594,7 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // CHAPAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
+let _chapasCacheClearedOnBoot = false;
 async function _chapasPreferV2Table() {
   const tables = ['chapas_estoque_v2', 'chapas_estoque'];
   for (const t of tables) {
@@ -5016,6 +5017,11 @@ function _chapasParseCsv(text) {
 
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    if (!_chapasCacheClearedOnBoot || String(req.query.flush_cache || '') === '1') {
+      cacheClearPrefix('chapas_');
+      cacheClearPrefix('chapas_estoque:');
+      _chapasCacheClearedOnBoot = true;
+    }
     const _isFiltroVazioChapas = (v) => {
       const s = String(v ?? '').trim().toLowerCase();
       return (
