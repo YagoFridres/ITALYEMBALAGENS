@@ -5665,6 +5665,11 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     const limit = Math.max(1, Math.min(500, Math.trunc(_chapasToNum(req.query.limit, 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
     const empId = String(req.query.empId || '').trim();
+    const de = String(req.query.de || '').trim();
+    const ate = String(req.query.ate || '').trim();
+    const isIsoDate = (s) => /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(s || '').trim());
+    const deIso = isIsoDate(de) ? `${de}T00:00:00.000Z` : '';
+    const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
 
     let movs = null;
     let movErr = null;
@@ -5672,6 +5677,8 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
       let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
       if (chapaId) q = q.eq('chapa_id', chapaId);
       if (empId) q = q.eq('emp_id', empId);
+      if (deIso) q = q.gte('created_at', deIso);
+      if (ateIso) q = q.lte('created_at', ateIso);
       const r = await q;
       movs = r?.data || [];
       movErr = r?.error || null;
@@ -5682,12 +5689,15 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
 
     if (movErr || !Array.isArray(movs) || movs.length === 0) {
       const tipos = ['estoque_entrada', 'estoque_saida', 'estoque_ajuste', 'estoque_manual', 'estoque_chapas_patch', 'baixa_of'];
-      const { data: hist, error: histErr } = await supabase
+      let qh = supabase
         .from('historico_acoes')
         .select('*')
         .in('tipo_acao', tipos)
         .order('data_hora', { ascending: false })
         .limit(limit);
+      if (deIso) qh = qh.gte('data_hora', deIso);
+      if (ateIso) qh = qh.lte('data_hora', ateIso);
+      const { data: hist, error: histErr } = await qh;
 
       if (histErr) {
         const msg = String(histErr.message || histErr);
@@ -5707,6 +5717,24 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     }
 
     return ok(res, movs || []);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/chapas_estoque_movimentos', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+
+    const delFilter = '00000000-0000-0000-0000-000000000000';
+    const { data, error } = await supabase
+      .from('chapas_estoque_movimentos_v2')
+      .delete()
+      .neq('id', delFilter)
+      .select('id');
+    if (error) throw error;
+
+    await logAuditoria('chapas_estoque_movimentos_v2', 'DELETE_ALL', 'all', {}, { deleted: (data || []).length }, req);
+    return res.json({ ok: true, deleted: (data || []).length });
   } catch (e) { err(res, e); }
 });
 
