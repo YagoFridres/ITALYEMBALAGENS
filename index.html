@@ -2833,17 +2833,18 @@ function renderPCP(){
     ?`<tr><td colspan="18" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF para ${pcpDiaLabel(PCP_DIA_ATUAL)} — <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="abrirModalOF()">＋ Nova OF</button></td></tr>`
     :lista.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
-    const vend=getV(o.vendId)||{nome:'—'};
     const vendTxt = (o.vendedor || o.vendNome || o.vendedor_nome || '—');
+    const valor = Number(o.total || o.valor_total || o.valor_venda || 0) || 0;
     const rc=[o.urg?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
     const fluxoAtivas = (fluxoNames||[]).map(maqAtivaFromNome).filter(Boolean);
+    const maqArr = Array.isArray(o.maq) ? o.maq : (typeof o.maq === 'string' ? tryParse(o.maq, []) : []);
     const mCells=MAQUINAS.map(m=>{
-      const mId = String(m.id||'').trim();
-      const mNome = String(m.nome||m.col||mId).trim();
-      const ativa = fluxoAtivas.includes(mNome) || (Array.isArray(o.maq) && mId && o.maq.map(x=>String(x)).includes(mId));
-      return `<td class="tc" onclick="event.stopPropagation();return false;"><span class="mq ${ativa?'mq-on':'mq-off'}">${ativa?'✓':'—'}</span></td>`;
+      const idx = MAQUINAS.indexOf(m);
+      const v = (idx >= 0 && idx < (maqArr||[]).length) ? maqArr[idx] : '';
+      const txt = String(v || '').trim() || '—';
+      return `<td class="tc" onclick="event.stopPropagation();return false;">${escH(txt)}</td>`;
     }).join('');
     const imgPrintUrl = ofGetImagemUrl(o);
     // Build imgs from item images too
@@ -2855,6 +2856,7 @@ function renderPCP(){
     const fluxoLinha = ofFluxoLinha(o);
     // Status row background highlight
     const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':isConcluida(o)?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&!isConcluida(o)?'background:rgba(220,38,38,.05);':'';
+    const prodTxt = (o.descricao || o.prodDesc || o.obs || '—');
     return `<tr class="${rc}" style="${rowBg}" onclick="selecionarOF('${o.of}')">
       <td class="tc" style="width:32px;padding:4px 8px" onclick="event.stopPropagation()">
         <input type="checkbox" class="of-seletor" data-of-num="${escAttr(o.of)}" data-of-id="${escAttr(o.id||'')}" ${selMulti?'checked':''} onclick="event.stopPropagation()" onchange="pcpToggleSelecao(this)">
@@ -2862,11 +2864,11 @@ function renderPCP(){
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="tc" style="${(!isTodas && !isSemana && o.dia===PCP_DIA_ATUAL)?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
       <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
-      <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
+      <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${prodTxt?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${escAttr(prodTxt)}">${escH(prodTxt)}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
       <td class="tc">${imgC}</td>
       <td>${cli.nome} ${empBadge(o.empId)}</td>
-      <td style="color:var(--text2)">${vendTxt}</td>
-      <td class="tc">${(o.qtd||0).toLocaleString()}${(o.itens&&o.itens.length>1)?`<br><span style="font-size:.6rem;color:var(--purple);font-family:var(--mono)">${o.itens.length} itens</span>`:''}</td>
+      <td style="color:var(--text2)">${escH(vendTxt)}</td>
+      <td class="tc">${(o.qtd||0).toLocaleString()}<br><span style="font-size:.62rem;color:var(--green);font-family:var(--mono)">${fmtR(valor)}</span></td>
       ${mCells}
       <td class="tc">${stTag(o.status)}</td>
       <td class="tc"><div style="display:flex;gap:3px;justify-content:center;">
@@ -17333,6 +17335,8 @@ function normalizeOF(r){
   const valorTotalRaw = Number(r.valor_total ?? r.valorTotal ?? 0) || 0;
   const valorVendaRaw = Number(r.valor_venda ?? r.valorVenda ?? 0) || 0;
   const val = Number(valorTotalRaw || valorVendaRaw || itensValTotal || 0) || 0;
+  const totalRaw = Number(r.total ?? r.valor_total ?? r.valor_venda ?? r.valorTotal ?? r.valorVenda ?? NaN);
+  const total = Number.isFinite(totalRaw) ? totalRaw : val;
   const vunitCalc = (qtdNorm && Number(qtdNorm) > 0) ? (val / Number(qtdNorm)) : 0;
   const valorUnitario = Number(item0.vunit || item0.valor_unitario || item0.preco || 0) || vunitCalc || 0;
   const qtdPedida = Number(r.qtd_pedida ?? r.qtdPedida ?? r.quantidade_pedida ?? r.quantidadePedida ?? NaN);
@@ -17348,6 +17352,9 @@ function normalizeOF(r){
     cliId,
     cliNome: r.cliNome ?? r.cliente_nome ?? r.clinome ?? r.nome_cliente ?? '',
     vendId,
+    vendedor: String(vendNome || '').trim(),
+    vendNome: String(vendNome || '').trim(),
+    vendedor_nome: String(vendNome || '').trim(),
     qtd: qtdNorm,
     quantidade: qtdNorm,
     dia,
@@ -17358,6 +17365,7 @@ function normalizeOF(r){
     urg:!!urg,
     chp,
     qchp,
+    total,
     valor_total: val,
     valorTotal: val,
     valor_venda: val,
