@@ -2834,6 +2834,7 @@ function renderPCP(){
     :lista.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
     const vend=getV(o.vendId)||{nome:'—'};
+    const vendTxt = (o.vendedor || o.vendNome || o.vendedor_nome || '—');
     const rc=[o.urg?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
@@ -2864,7 +2865,7 @@ function renderPCP(){
       <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
       <td class="tc">${imgC}</td>
       <td>${cli.nome} ${empBadge(o.empId)}</td>
-      <td style="color:var(--text2)">${vend.nome}</td>
+      <td style="color:var(--text2)">${vendTxt}</td>
       <td class="tc">${(o.qtd||0).toLocaleString()}${(o.itens&&o.itens.length>1)?`<br><span style="font-size:.6rem;color:var(--purple);font-family:var(--mono)">${o.itens.length} itens</span>`:''}</td>
       ${mCells}
       <td class="tc">${stTag(o.status)}</td>
@@ -15174,22 +15175,23 @@ function _renderRelatorioBase(){
     const ss=tipo==='pedidos-aberto'?['Em aberto','Em produção','Atrasado']:['Concluído'];
     const lista=ofsAll.filter(o=>ss.includes(o.status)).sort((a,b)=>a.seq-b.seq);
     if(tipo==='pedidos-aberto'){
-      html+=tbl(['SEQ','Nº OF','CLIENTE','VENDEDOR','QTD','VL.UNIT','PEDIDO','ENTREGA','PAGTO','STATUS','VALOR'],lista.map((o,i)=>{const c=getCli(o.cliId)||{nome:'—'};const v=getV(o.vendId)||{nome:'—'};return `<tr style="${trStyle(i)}"><td style="${tdStyle};text-align:center">${o.seq}</td><td style="${tdStyle};font-family:var(--mono);font-weight:700;color:var(--accent)">${o.of}</td><td style="${tdStyle}">${c.nome}</td><td style="${tdStyle};color:var(--text2)">${v.nome}</td><td style="${tdStyle};text-align:right">${(o.qtd||0).toLocaleString()}</td><td style="${tdStyle};text-align:right;color:var(--teal)">${o.vunit?fmtR(o.vunit):'—'}</td><td style="${tdStyle}">${o.dia||'—'}</td><td style="${tdStyle}">${o.ent||'—'}</td><td style="${tdStyle};color:var(--text2)">${o.pagto||'—'}</td><td style="${tdStyle}">${o.status}</td><td style="${tdStyle};text-align:right;color:var(--green)">${fmtR(o.val)}</td></tr>`;}));
+      html+=tbl(['SEQ','Nº OF','CLIENTE','VENDEDOR','QTD','VL.UNIT','PEDIDO','ENTREGA','PAGTO','STATUS','VALOR'],lista.map((o,i)=>{const c=getCli(o.cliId)||{nome:'—'};const v=getV(o.vendId)||{nome:'—'};const vendTxt=(o.vendedor||o.vendNome||o.vendedor_nome||'—');const valor=(o.total||o.valor_total||o.valor_venda||0);return `<tr style="${trStyle(i)}"><td style="${tdStyle};text-align:center">${o.seq}</td><td style="${tdStyle};font-family:var(--mono);font-weight:700;color:var(--accent)">${o.of}</td><td style="${tdStyle}">${c.nome}</td><td style="${tdStyle};color:var(--text2)">${vendTxt}</td><td style="${tdStyle};text-align:right">${(o.qtd||0).toLocaleString()}</td><td style="${tdStyle};text-align:right;color:var(--teal)">${o.vunit?fmtR(o.vunit):'—'}</td><td style="${tdStyle}">${o.dia||'—'}</td><td style="${tdStyle}">${o.ent||'—'}</td><td style="${tdStyle};color:var(--text2)">${o.pagto||'—'}</td><td style="${tdStyle}">${o.status}</td><td style="${tdStyle};text-align:right;color:var(--green)">${fmtR(valor)}</td></tr>`;}));
     } else {
       html+=tbl(['SEQ','Nº OF','CLIENTE','VENDEDOR','QTD PED','QTD PROD','QTD PERD','MÁQ PERDA','CONCLUSÃO','VALOR FINAL'],lista.map((o,i)=>{
         const c=getCli(o.cliId)||{nome:'—'};
         const v=getV(o.vendId)||{nome:'—'};
+        const vendTxt = (o.vendedor || o.vendNome || o.vendedor_nome || '—');
         const qtdPed = Number(o.qtd_pedida ?? o.qtd ?? 0) || 0;
         const qtdProd = Number(o.qtd_produzida ?? 0) || 0;
         const qtdPerd = Number(o.qtd_perdida ?? 0) || 0;
         const maq = String(o.maquina_perda || '—');
         const dc = String(o.data_conclusao || '').slice(0,10) || '—';
-        const valor = Number(o.val ?? o.valor_total ?? o.valor_venda ?? 0) || 0;
+        const valor = Number(o.total ?? o.valor_total ?? o.valor_venda ?? 0) || 0;
         return `<tr style="${trStyle(i)}">
           <td style="${tdStyle};text-align:center">${o.seq}</td>
           <td style="${tdStyle};font-family:var(--mono);font-weight:700;color:var(--accent)">${o.of}</td>
           <td style="${tdStyle}">${c.nome}</td>
-          <td style="${tdStyle};color:var(--text2)">${v.nome}</td>
+          <td style="${tdStyle};color:var(--text2)">${vendTxt}</td>
           <td style="${tdStyle};text-align:right">${fmtN(qtdPed)}</td>
           <td style="${tdStyle};text-align:right">${fmtN(qtdProd)}</td>
           <td style="${tdStyle};text-align:right;color:var(--red);font-weight:700">${fmtN(qtdPerd)}</td>

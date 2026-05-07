@@ -1847,8 +1847,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'created_at', 'updated_at', 'deleted_at',
       'emp_id', 'empId', 'empresa_id',
       'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'clinome',
+      'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id', 'vendId', 'vend_id',
       'qtd', 'quantidade',
       'descricao', 'prodDesc',
+      'total', 'valor_total', 'valor_venda',
       'urg', 'urgente',
       'dia', 'data_producao',
       'ent', 'data_entrega',
@@ -1895,7 +1897,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       for (let tentativa = 0; tentativa < 10; tentativa++) {
         const { data, error } = await buildQuery(selectAtual, dateCol);
         if (!error) {
-          return ok(res, data || []);
+          const rows = (data || []).map((row) => {
+            if (!row || typeof row !== 'object') return row;
+            const vendedor_nome =
+              row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
+            return { ...row, vendedor_nome };
+          });
+          return ok(res, rows);
         }
         if (!isMissingColumnErr(error)) {
           _logApiError('OFS GET', req, error, { selectAtual, limit, offset, empId, status, from, to, dateCol, lite });
@@ -1921,7 +1929,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let selectMin = minimalCols.length ? minimalCols.join(',') : 'id';
     for (let tentativa = 0; tentativa < 8; tentativa++) {
       const { data, error } = await buildQuery(selectMin, null);
-      if (!error) return ok(res, data || []);
+      if (!error) {
+        const rows = (data || []).map((row) => {
+          if (!row || typeof row !== 'object') return row;
+          const vendedor_nome =
+            row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
+          return { ...row, vendedor_nome };
+        });
+        return ok(res, rows);
+      }
       if (!isMissingColumnErr(error)) {
         _logApiError('OFS GET MIN', req, error, { selectMin, limit, offset, empId, status, lite });
         return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
@@ -2078,6 +2094,13 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .eq('id', id)
       .maybeSingle();
     if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    try {
+      const vn = String(cleanBody?.vendedor_nome || '').trim();
+      const v2 = String(cleanBody?.vendNome || '').trim();
+      if (vn) cleanBody.vendedor = vn;
+      else if (v2) cleanBody.vendedor = v2;
+    } catch (_) {}
 
     const expectedUpdatedAt = String(
       body?._expected_updated_at ?? body?.expected_updated_at ?? body?.if_match_updated_at
