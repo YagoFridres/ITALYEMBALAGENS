@@ -17264,14 +17264,19 @@ function normalizeOF(r){
 
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
-  const vendNome = r.vendedor ?? r.vendedor_nome ?? r.vendedorNome ?? '';
+  const vendNome = r.vendedor_nome ?? r.vendNome ?? r.vendedor ?? r.vendedorNome ?? '';
   let vendId = r.vendedor_id ?? r.vend_id ?? r.vendedorId ?? r.vendId ?? '';
   if(vendNome && (!vendId || vendId.length>12)){
     const found = (VENDEDORES||[]).find(x=>(x.nome||'')===vendNome);
     if(found) vendId = found.id;
   }
-  const dia = r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '';
-  const ent = r.data_entrega ?? r.ent ?? r.dataEntrega ?? '';
+  const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
+  const createdDay = (createdAt && String(createdAt).length >= 10) ? String(createdAt).slice(0,10) : '';
+  const diaPedidoRaw = r.dia_pedido ?? r.data_pedido ?? r.diaPedido ?? r.dataPedido ?? '';
+  const diaPedido = diaPedidoRaw ? String(diaPedidoRaw).slice(0,10) : createdDay;
+  const dia = diaPedido || (r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '');
+  const entRaw = r.data_entrega ?? r.ent ?? r.dataEntrega ?? '';
+  const ent = entRaw ? String(entRaw).slice(0,10) : '';
   const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
   const maqArr = Array.isArray(r.maq)
@@ -17323,7 +17328,6 @@ function normalizeOF(r){
   const imgUrl = r.imagem_url ?? null;
   const imgUrlNorm = imgUrl || (Array.isArray(imgs) ? imgs[0] : '') || '';
   const dataConc = r.data_conclusao ?? null;
-  const createdAt = r.created_at ?? r.criado_em ?? r.criadoEm ?? r.data_criacao ?? r.dataCriacao ?? null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
   const qtdNorm = (Number(qtd || 0) > 0) ? Number(qtd || 0) : itensQtdTotal;
@@ -17346,10 +17350,15 @@ function normalizeOF(r){
     cliId,
     cliNome: r.cliNome ?? r.cliente_nome ?? r.clinome ?? r.nome_cliente ?? '',
     vendId,
+    vendedor: String(vendNome || '').trim(),
+    vendNome: String(vendNome || '').trim(),
+    vendedor_nome: String(vendNome || '').trim(),
     qtd: qtdNorm,
     quantidade: qtdNorm,
     dia,
+    dia_pedido: diaPedido || null,
     ent,
+    data_entrega: ent || null,
     fluxo,
     maq:maqArr,
     status:r.status ?? 'Em aberto',
