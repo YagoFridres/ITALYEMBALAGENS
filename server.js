@@ -1481,6 +1481,16 @@ async function clientesInsertCompat(payload) {
       const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
       if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        if (col === 'ramo_atividade' && cur.ramo_atividade !== undefined && cur.ramo === undefined) {
+          cur.ramo = cur.ramo_atividade;
+          delete cur.ramo_atividade;
+          continue;
+        }
+        if (col === 'ramo' && cur.ramo !== undefined && cur.ramo_atividade === undefined) {
+          cur.ramo_atividade = cur.ramo;
+          delete cur.ramo;
+          continue;
+        }
         delete cur[col];
         continue;
       }
@@ -1514,6 +1524,16 @@ async function clientesUpdateCompat(id, payload) {
       const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
       if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+        if (col === 'ramo_atividade' && cur.ramo_atividade !== undefined && cur.ramo === undefined) {
+          cur.ramo = cur.ramo_atividade;
+          delete cur.ramo_atividade;
+          continue;
+        }
+        if (col === 'ramo' && cur.ramo !== undefined && cur.ramo_atividade === undefined) {
+          cur.ramo_atividade = cur.ramo;
+          delete cur.ramo;
+          continue;
+        }
         delete cur[col];
         continue;
       }

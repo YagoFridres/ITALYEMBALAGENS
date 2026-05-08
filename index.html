@@ -17368,8 +17368,10 @@ function normalizeOF(r){
   const diaPedidoRaw = r.dia ?? r.dia_pedido ?? r.data_pedido ?? r.diaPedido ?? r.dataPedido ?? '';
   const diaPedido = diaPedidoRaw ? String(diaPedidoRaw).slice(0,10) : createdDay;
   const dia = diaPedido || (r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '');
-  const entRaw = r.ent ?? r.data_entrega ?? r.dataEntrega ?? '';
-  const ent = entRaw ? String(entRaw).slice(0,10) : '';
+  const entRaw = (r.ent && String(r.ent).trim().length >= 8 ? r.ent : '')
+              || (r.data_entrega && String(r.data_entrega).trim().length >= 8 ? r.data_entrega : '')
+              || '';
+  const ent = entRaw ? String(entRaw).slice(0, 10) : '';
   const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
   const maqArr = Array.isArray(r.maq)
@@ -17420,7 +17422,7 @@ function normalizeOF(r){
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrl = r.imagem_url ?? null;
   const imgUrlNorm = imgUrl || (Array.isArray(imgs) ? imgs[0] : '') || '';
-  const dataConc = r.data_conclusao ?? null;
+  const dataConc = r.data_conclusao || r.dataConclusao || null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
   const qtdNorm = (Number(qtd || 0) > 0) ? Number(qtd || 0) : itensQtdTotal;
@@ -17485,7 +17487,7 @@ function normalizeOF(r){
     maquina_por_item: maquinaPorItem,
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
     imagem_url: imgUrl,
-    data_conclusao: dataConc,
+    data_conclusao: dataConc || null,
     usuario_conclusao: r.usuario_conclusao || r.usuarioConclusao || '',
     created_at: createdAt,
     empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? '',
@@ -17780,6 +17782,7 @@ async function carregarOFs(opts){
   const to = opts.to ? String(opts.to) : '';
   const status = opts.status ? String(opts.status) : '';
   const now = Date.now();
+  try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
   if(!forcar && (now - _ultimaCargaOFs) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
   const qs = new URLSearchParams();
   if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
@@ -17793,6 +17796,7 @@ async function carregarOFs(opts){
     if(!Array.isArray(fm)) fm=[];
     return normalizeOF({ ...o, fluxo_maquinas: fm });
   });
+  try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
   if(r && r.ok && Array.isArray(OFs)) {
     OFS_HIST = OFs.slice();
     try{ window.OFS = OFs; }catch(e){}
@@ -17831,6 +17835,7 @@ async function carregarOFsFresh(){
 async function syncOFs(force=false){
   if(force) window._ofsCarregadasEm = null;
   const now = Date.now();
+  try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
   if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0){
     return OFs;
   }
@@ -17859,6 +17864,7 @@ async function syncOFs(force=false){
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
   try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
+  try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
   return todos;
 }
 function _inserirOFLocal(nova){
@@ -18625,11 +18631,13 @@ setInterval(async ()=>{
   if(!window.CURRENT_USER) return;
   if(document.hidden) return;
   try {
+    try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
     const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
     const [ofs,orcs,aps] = await Promise.all([
       api('GET','/ofs'+empParam), api('GET','/orcamentos'+empParam), api('GET','/apontamentos')
     ]);
     if(ofs.ok && ofs.data)  { OFs=ofs.data.map(normalizeOF); try{renderPCP();}catch(e){} }
+    try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
     if(orcs.ok && orcs.data && orcs.data.length){ ORCAMENTOS=orcs.data.map(normalizeOrc); }
     if(aps.ok && aps.data)  { APONTAMENTOS=aps.data.map(normalizeAp); }
     if(ofs.ok){ _apiConectado=true; showSaveIndicator('✓ sync','var(--green)'); }
