@@ -1847,6 +1847,7 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
+  console.log('[OFS GET START] query:', JSON.stringify(req.query));
   try {
     setNoCache(res);
     const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 300));
@@ -1991,6 +1992,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     });
     return ok(res, rows);
   } catch (e) {
+    console.error('[OFS GET FATAL]', e?.message, String(e?.stack || '').split('\n')[0]);
     _logApiError('OFS GET', req, e, { query: req.query });
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
   }
