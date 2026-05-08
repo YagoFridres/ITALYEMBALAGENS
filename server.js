@@ -1835,7 +1835,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || req.query.excluirCanceladas || '') === '1';
     const empId = req.query.empId ? String(req.query.empId).trim() : '';
-    const statusRaw = req.query.status ? String(req.query.status).trim() : '';
+    let statusRaw = req.query.status ? String(req.query.status).trim() : '';
+    try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
     const lite = String(req.query.lite || '') === '1';
     const from = String(req.query.from || req.query.de || '').trim();
@@ -2106,6 +2107,21 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     await _maybeRegistrarComissaoOF(req, body, created);
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
     try {
+      const cliId = String(body?.cli_id || body?.cliId || created?.cli_id || created?.cliId || created?.cliente_id || '').trim();
+      const vendId = String(
+        body?.vendedor_id || body?.vendId || body?.vend_id ||
+        created?.vendedor_id || created?.vendId || created?.vend_id || ''
+      ).trim();
+      if (cliId && vendId) {
+        await supabase
+          .from('clientes')
+          .update({ vendedor_id: vendId })
+          .eq('id', cliId)
+          .is('vendedor_id', null);
+        cacheClearPrefix('clientes_');
+      }
+    } catch (_) {}
+    try {
       const itens = Array.isArray(body?.itens) ? body.itens : [];
       for (const item of itens) {
         const itemChapaId = String(item?.chapa_id ?? item?.chapaId ?? '').trim();
@@ -2135,10 +2151,51 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    const { data, error } = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
-    if (error) return res.status(500).json({ ok: false, error: error.message });
+    const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
+    let data = null;
+    for (const key of joinKeys) {
+      const r = await supabase
+        .from('ofs')
+        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .eq('id', id)
+        .maybeSingle();
+      if (!r.error) { data = r.data; break; }
+      const msg = String(r.error?.message || '');
+      if (msg.includes('relationship') || msg.includes('schema cache') || msg.includes('Could not find a relationship')) continue;
+      break;
+    }
+    if (!data) {
+      const r = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
+      if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
+      data = r.data;
+    }
     if (!data) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
-    return ok(res, data);
+
+    const clienteJoin = data.cliente && typeof data.cliente === 'object' ? data.cliente : null;
+    const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
+    const { cliente, ...rest } = data;
+
+    let cliNome = clienteJoin?.nome || data.cliNome || data.clinome || '';
+    let vendNome = vendNested?.nome || data.vendNome || data.vendedor_nome || data.vendedor || '';
+    let vendedorId = clienteJoin?.vendedor_id || data.vendedor_id || data.vendId || null;
+
+    if (!cliNome || !vendNome) {
+      const cliId = String(data.cli_id || data.cliId || data.cliente_id || '').trim();
+      if (cliId) {
+        const { data: cli } = await supabase
+          .from('clientes')
+          .select('nome,vendedor_id,vendedor:vendedores!vendedor_id(nome)')
+          .eq('id', cliId)
+          .maybeSingle();
+        if (cli) {
+          cliNome = cliNome || cli.nome || '';
+          vendedorId = vendedorId || cli.vendedor_id || null;
+          const v = cli.vendedor && typeof cli.vendedor === 'object' ? cli.vendedor : null;
+          vendNome = vendNome || v?.nome || '';
+        }
+      }
+    }
+    return ok(res, { ...rest, cliNome, vendNome, vendedor_id: vendedorId, vendedor_nome: vendNome });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
@@ -2203,6 +2260,21 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const updated = updRes.data;
     await _maybeRegistrarComissaoOF(req, body, updated);
     await logAuditoria('ofs', 'UPDATE', id, ofAtual, updated, req);
+    try {
+      const cliId = String(body?.cli_id || body?.cliId || ofAtual?.cli_id || ofAtual?.cliId || ofAtual?.cliente_id || '').trim();
+      const vendId = String(
+        filtered?.vendedor_id || body?.vendedor_id || body?.vendId ||
+        body?.vend_id || ofAtual?.vendedor_id || ofAtual?.vendId || ''
+      ).trim();
+      if (cliId && vendId) {
+        await supabase
+          .from('clientes')
+          .update({ vendedor_id: vendId })
+          .eq('id', cliId)
+          .is('vendedor_id', null);
+        cacheClearPrefix('clientes_');
+      }
+    } catch (_) {}
 
     try {
       const hasQtd = Object.prototype.hasOwnProperty.call(body, 'qtd') || Object.prototype.hasOwnProperty.call(body, 'quantidade');
@@ -2941,8 +3013,18 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
-    const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').single();
-    if (error) throw error;
+    delete payload.id; delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
+    const upd = await ofsUpdateWithRetry(id, payload);
+    if (upd.error) throw upd.error;
+    const data = upd.data;
+    try {
+      const cliId = String(req.body?.cli_id || req.body?.cliId || '').trim();
+      const vendId = String(req.body?.vendedor_id || req.body?.vendId || req.body?.vend_id || '').trim();
+      if (cliId && vendId) {
+        await supabase.from('clientes').update({ vendedor_id: vendId }).eq('id', cliId).is('vendedor_id', null);
+        cacheClearPrefix('clientes_');
+      }
+    } catch (_) {}
     try {
       const st = String(payload?.status || '').trim().toLowerCase();
       if (st === 'cancelada' || st === 'cancelado') {
@@ -2961,6 +3043,19 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.get('/api/admin/ofs_sem_valor', requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('id,numero,valor_total,valor_venda,qtd,status')
+      .or('valor_total.eq.0,valor_total.is.null')
+      .is('deleted_at', null)
+      .limit(10);
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
 });
 
 app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
@@ -3554,7 +3649,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (!error) {
           const rows = data || [];
           if (!lite) {
-            if (cacheKey) cacheSet(cacheKey, rows);
+            if (cacheKey) cacheSet(cacheKey, rows, 60 * 1000);
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -3577,7 +3672,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
-          if (cacheKey) cacheSet(cacheKey, trimmed);
+          if (cacheKey) cacheSet(cacheKey, trimmed, 60 * 1000);
           return ok(res, trimmed);
         }
 
@@ -3615,7 +3710,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (!all.error) {
           const rows = all.data || [];
           if (!lite) {
-            if (cacheKey) cacheSet(cacheKey, rows);
+            if (cacheKey) cacheSet(cacheKey, rows, 60 * 1000);
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -3638,7 +3733,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
-          if (cacheKey) cacheSet(cacheKey, trimmed);
+          if (cacheKey) cacheSet(cacheKey, trimmed, 60 * 1000);
           return ok(res, trimmed);
         }
         lastErr = all.error;
@@ -3918,7 +4013,7 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
       const { data, error } = await q;
       if (!error) {
         const rows = data || [];
-        cacheSet(cacheKey, rows);
+        cacheSet(cacheKey, rows, 60 * 1000);
         return ok(res, rows);
       }
       lastErr = error;

@@ -9875,7 +9875,7 @@ async function carregarCaixasPerdidas(){
   try{ console.log('[CP] perdas encontradas:', perdasBase.length); }catch(e){}
 
   const dentroPeriodo = (r)=>{
-    const d = String(r?.data || '').slice(0,10);
+    const d = String(r?.data || r?.created_at || r?.updated_at || '').slice(0,10);
     if(!d) return false;
     if(de && d < de) return false;
     if(ate && d > ate) return false;
@@ -9885,23 +9885,27 @@ async function carregarCaixasPerdidas(){
     .filter(r=>dentroPeriodo(r))
     .filter(r=>!empSel || String(r?.emp_id||'').trim() === empSel);
 
-  if(!rows.length){
-    try{
-      const j = await api('GET', '/caixas_perdidas');
-      const db = (j && j.ok && Array.isArray(j.data)) ? j.data : [];
-      if(db.length){
-        const seen = new Set(rows.map(r=>String(r?.id||r?.of_id||'').trim()).filter(Boolean));
-        const add = db.filter(r=>{
-          const k = String(r?.id || r?.of_id || '').trim();
-          if(!k) return true;
-          if(seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        });
-        rows = rows.concat(add);
-      }
-    }catch(e){}
-  }
+  try{
+    const qs = new URLSearchParams();
+    if(empSel) qs.set('empId', empSel);
+    if(de) qs.set('de', de);
+    if(ate) qs.set('ate', ate);
+    qs.set('limit', '500');
+    const j = await api('GET', '/caixas_perdidas?' + qs.toString());
+    const db0 = (j && j.ok && Array.isArray(j.data)) ? j.data : [];
+    const db = db0.filter(r=>dentroPeriodo(r)).filter(r=>!empSel || String(r?.emp_id||'').trim() === empSel);
+    if(db.length){
+      const seen = new Set(rows.map(r=>String(r?.of_numero || r?.of || r?.numero || '').trim()).filter(Boolean));
+      const add = db.filter(r=>{
+        const k = String(r?.of_numero || r?.of || r?.numero || '').trim();
+        if(!k) return true;
+        if(seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      rows = rows.concat(add);
+    }
+  }catch(e){}
 
   window._cpRows = rows;
   cpRender(rows);
