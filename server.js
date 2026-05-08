@@ -1856,6 +1856,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'dia', 'data_producao',
       'ent', 'data_entrega',
       'data_conclusao', 'usuario_conclusao',
+      'qtd_produzida', 'qtd_perdida', 'maquina_perda',
       'maq', 'fluxo_maquinas', 'maquina_atual_index',
       'imgs', 'imagem_url',
     ];
@@ -3636,11 +3637,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const cacheKey = !hasPaging ? ('clientes_' + (empId || 'all') + ':' + (lite ? 'lite' : 'full')) : '';
-    if (cacheKey) {
-      const cached = cacheGet(cacheKey);
-      if (cached) return ok(res, cached);
-    }
+    const cacheKey = '';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
@@ -3655,7 +3652,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (!error) {
           const rows = data || [];
           if (!lite) {
-            if (cacheKey) cacheSet(cacheKey, rows, 60 * 1000);
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -3678,7 +3674,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
-          if (cacheKey) cacheSet(cacheKey, trimmed, 60 * 1000);
           return ok(res, trimmed);
         }
 
@@ -3716,7 +3711,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (!all.error) {
           const rows = all.data || [];
           if (!lite) {
-            if (cacheKey) cacheSet(cacheKey, rows, 60 * 1000);
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -3739,7 +3733,6 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
-          if (cacheKey) cacheSet(cacheKey, trimmed, 60 * 1000);
           return ok(res, trimmed);
         }
         lastErr = all.error;
@@ -4008,9 +4001,7 @@ app.get('/api/chapas_estoque/alertas_reposicao', authMiddleware, async (req, res
 app.get('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
-    const cacheKey = 'vendedores_' + empId;
-    const cached = cacheGet(cacheKey);
-    if (cached) return ok(res, cached);
+    const cacheKey = '';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
@@ -4019,7 +4010,6 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
       const { data, error } = await q;
       if (!error) {
         const rows = data || [];
-        cacheSet(cacheKey, rows, 60 * 1000);
         return ok(res, rows);
       }
       lastErr = error;

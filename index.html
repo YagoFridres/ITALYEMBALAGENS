@@ -3064,25 +3064,28 @@ function ofsParaDia(diaProd){
     diaUtil.setDate(diaUtil.getDate() + 1);
     seg++;
   }
+  const diaProdStr = diaProd.toISOString().slice(0,10);
   return (base || []).filter(of=>{
     try{
       const st = String(of?.status || '').trim();
       if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada') return false;
 
-      const hojeStr = hoje.toISOString().slice(0,10);
-      const diaStr = String(of?.dia || of?.data_producao || of?.dataProducao || '').slice(0,10);
-      const entStr0 = String(of?.ent || of?.data_entrega || of?.dataEntrega || '').slice(0,10);
-      const diaBase = diaStr || entStr0;
-      if(diaBase && diaBase <= hojeStr && diaBase < hojeStr && mesmoDia(diaProd, diaUtil)) return true;
+      const hoje = new Date().toISOString().slice(0,10);
+      // Para cada OF, calcular o dia de exibição:
+      const statusOf = String(of.status || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const concluida = statusOf.includes('conclu') || statusOf === 'pedido pronto';
+      const diaOf = of.dia_programacao || of.dia || of.ent || of.data_entrega || '';
+      const diaExibicao = (!concluida && diaOf && diaOf < hoje) ? hoje : diaOf;
+      if(diaExibicao && String(diaExibicao).slice(0,10) === diaProdStr) return true;
 
-      const prodRaw = diaStr;
+      const prodRaw = String(of?.data_producao || of?.dataProducao || of?.dia || '').slice(0,10);
       let dtProg = null;
       if(/^\d{4}-\d{2}-\d{2}$/.test(prodRaw)){
         const dtP = new Date(prodRaw + 'T00:00:00');
         if(!isNaN(dtP.getTime())) dtProg = dtP;
       }
       if(!dtProg){
-        const strEntrega = entStr0;
+        const strEntrega = String(of?.ent || of?.data_entrega || of?.dataEntrega || '').slice(0,10);
         if(!strEntrega) return false;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(strEntrega)) return false;
         const dtProgStr = subtrairDiasUteis(strEntrega, 3);
@@ -3093,8 +3096,9 @@ function ofsParaDia(diaProd){
       }
       dtProg.setHours(0,0,0,0);
 
-      if(mesmoDia(dtProg, diaProd)) return true;
-      if(dtProg < hoje && mesmoDia(diaProd, diaUtil)) return true;
+      const dtProgStr2 = dtProg.toISOString().slice(0,10);
+      const diaExibicao2 = (!concluida && dtProgStr2 && dtProgStr2 < hoje) ? hoje : dtProgStr2;
+      if(diaExibicao2 && diaExibicao2 === diaProdStr) return true;
       return false;
     }catch(e){
       try{ console.warn('[ofsParaDia] erro na OF:', of?.numero, e?.message); }catch(_){}
@@ -17458,7 +17462,7 @@ function normalizeOF(r){
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
     imagem_url: imgUrl,
     data_conclusao: dataConc,
-    usuario_conclusao: r.usuario_conclusao ?? r.usuarioConclusao ?? '',
+    usuario_conclusao: r.usuario_conclusao || r.usuarioConclusao || '',
     created_at: createdAt,
     empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? '',
     deleted_at: deletedAt
