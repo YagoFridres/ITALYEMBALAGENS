@@ -2537,7 +2537,7 @@ function iniciarPollingOFsMaquina() {
   _ofsMaqAtiva = true;
   if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
   Promise.resolve()
-    .then(()=>syncOFs(false))
+    .then(()=>carregarOFsUnico(true))
     .then(()=>renderOFsPorMaquina())
     .catch(()=>renderOFsPorMaquina());
   _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 300000);
@@ -2565,7 +2565,7 @@ function _goBase(id){
     if(_apiConectado && CURRENT_USER){
       Promise.all([
         carregarVendedores(false),
-        syncOFs(false)
+        carregarOFsUnico(true)
       ]).then(()=>renderPCP()).catch(()=>renderPCP());
     } else {
       renderPCP();
@@ -2606,7 +2606,7 @@ function _goBase(id){
   if(id==='sel-chapas'){
     const doRender = ()=>{ try{ renderSelecaoChapas(); }catch(e){} };
     if(_apiConectado && CURRENT_USER){
-      Promise.all([carregarChapas(false).catch(()=>null), syncOFs(false).catch(()=>null)]).then(doRender).catch(doRender);
+      Promise.all([carregarChapas(false).catch(()=>null), carregarOFsUnico(true).catch(()=>null)]).then(doRender).catch(doRender);
     } else {
       doRender();
     }
@@ -2644,7 +2644,7 @@ function _goBase(id){
   if(id==='relmensal')renderRelatorioMensal();
   if(id==='caixas-perdidas'){
     initCaixasPerdidasUI();
-    carregarCaixasPerdidas();
+    Promise.resolve().then(()=>carregarOFsUnico(true)).then(()=>carregarCaixasPerdidas()).catch(()=>carregarCaixasPerdidas());
   }
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
@@ -9779,7 +9779,7 @@ function cpAplicarFiltroMes(){
 
 async function carregarCaixasPerdidas(){
   initCaixasPerdidasUI();
-  try{ await carregarOFsFresh(); }catch(e){}
+  try{ await carregarOFsUnico(false); }catch(e){}
   const empSel = String((document.getElementById('cp-emp')||{}).value || '').trim();
   const f = window._cpFiltro || {};
   let de = String(f.de || '').slice(0,10);
@@ -9793,31 +9793,8 @@ async function carregarCaixasPerdidas(){
       ate = new Date(ano, mm, 0).toISOString().slice(0,10);
     }
   }
-  let ofs = [];
-  const ofsMem = (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : (Array.isArray(OFs) ? OFs : [])));
-  try{
-    let token = '';
-    try{ token = String(localStorage.getItem('token') || '').trim(); }catch(e){ token = ''; }
-    if(!token){
-      try{ token = String(sessionStorage.getItem('token') || '').trim(); }catch(e){ token = ''; }
-    }
-    if(!token){
-      try{ token = (typeof getStoredToken==='function' ? String(getStoredToken() || '').trim() : ''); }catch(e){ token = ''; }
-    }
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const qs = new URLSearchParams();
-    qs.set('limit', '500');
-    if(empSel) qs.set('empId', String(empSel));
-    const r = await fetch(base + '/api/ofs?' + qs.toString(), {
-      headers: { 'Authorization': 'Bearer ' + (token || '') }
-    });
-    const resp = await r.json().catch(()=>null);
-    const data = (resp && resp.data) ? resp.data : resp;
-    ofs = Array.isArray(data) ? data : [];
-    console.log('[CP] ofs fresh:', ofs.length);
-  }catch(e){
-    ofs = [];
-  }
+  let ofs = Array.isArray(OFs) ? OFs : [];
+  const ofsMem = (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : ofs));
   try{
     const memHasPerda = Array.isArray(ofsMem) && ofsMem.some(o => o && (o.qtd_perdida != null || o.qtdPerdida != null));
     if((!Array.isArray(ofs) || ofs.length === 0) && memHasPerda) ofs = ofsMem;
@@ -10069,6 +10046,21 @@ function cpRender(rows){
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
       const usu = r.usuario || '—';
+      let imgUrl = '';
+      try{
+        const base = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
+        const key = String(ofNum || '').trim();
+        const ofRel = key ? (base.find(o => String(o?.of || o?.numero || '').trim() === key) || null) : null;
+        imgUrl = String(
+          ofRel?.imgUrl ||
+          ofRel?.imagem_url ||
+          (Array.isArray(ofRel?.imgs) ? ofRel.imgs[0] : '') ||
+          ''
+        ).trim();
+      }catch(e){ imgUrl = ''; }
+      const imgCell = imgUrl
+        ? `<img src="${escAttr(imgUrl)}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(String(ofNum||''))}')" onerror="this.style.display='none'">`
+        : '—';
       return `<tr data-cp-id="${escAttr(id)}">
         <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escH(fmtD(data))}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">${escH(String(ofNum))}</td>
@@ -10082,7 +10074,7 @@ function cpRender(rows){
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${vu > 0 ? fmtR(vu) : '—'}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${vt > 0 ? fmtR(vt) : '—'}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(usu))}</td>
-        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">—</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">${imgCell}</td>
       </tr>`;
     }).join('') || `<tr><td colspan="10" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>`;
   }
@@ -17775,6 +17767,60 @@ let _ultimaCargaVendedores = 0;
 let _ultimaCargaChapas = 0;
 let _clientesCarregados = false;
 
+let _ofsLoading = false;
+let _ofsLastLoad = 0;
+const _OFS_MIN_INTERVAL = 30000;
+let _ofsLastHash = '';
+
+async function carregarOFsUnico(force = false){
+  const agora = Date.now();
+  if(_ofsLoading){
+    try{ console.log('[OFS] já carregando, ignorando chamada duplicada'); }catch(e){}
+    return { ok:true, skipped:'loading', data: Array.isArray(OFs) ? OFs : [] };
+  }
+  if(!force && (agora - _ofsLastLoad) < _OFS_MIN_INTERVAL){
+    try{ console.log('[OFS] carregado há menos de 30s, ignorando'); }catch(e){}
+    return { ok:true, skipped:'recent', data: Array.isArray(OFs) ? OFs : [] };
+  }
+  _ofsLoading = true;
+  _ofsLastLoad = agora;
+  try{
+    try{ console.log('[OFS] carregamento único iniciado:', new Date().toISOString()); }catch(e){}
+    const qs = new URLSearchParams();
+    if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+    qs.set('limit', '500');
+    const r = await api('GET', '/ofs?' + qs.toString());
+    const lista = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    const nova = (lista || []).map((o)=>{
+      let fm = o && o.fluxo_maquinas;
+      if(typeof fm === 'string'){ try{ fm = JSON.parse(fm); }catch(e){ fm = []; } }
+      if(!Array.isArray(fm)) fm = [];
+      return normalizeOF({ ...(o||{}), fluxo_maquinas: fm });
+    });
+    let hash = '';
+    try{
+      hash = JSON.stringify(nova.map(o => [o?.id||'', o?.of||'', o?.status||'', o?.seq||0, o?.qtd||0, o?.updated_at||o?.updatedAt||o?.ts||'']));
+    }catch(e){
+      hash = String(Date.now());
+    }
+    if(hash !== _ofsLastHash){
+      OFs = nova;
+      try{ window.OFs = OFs; }catch(e){}
+      try{ window.OFS = OFs; }catch(e){}
+      _ofsLastHash = hash;
+    }
+    _ultimaCargaOFs = Date.now();
+    try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
+    try{ console.log('[OFS] carregados:', (Array.isArray(OFs)?OFs.length:0), 'primeira entrega:', OFs?.[0]?.ent); }catch(e){}
+    return { ok:true, data: Array.isArray(OFs) ? OFs : [] };
+  } catch(e){
+    try{ console.error('[OFS] erro no carregamento único:', e && e.message ? e.message : e); }catch(_){}
+    return { ok:false, error: String(e && e.message ? e.message : e) };
+  } finally {
+    _ofsLoading = false;
+  }
+}
+
 async function carregarOFs(opts){
   opts = opts || {};
   const forcar = !!opts.forcar;
@@ -17783,28 +17829,25 @@ async function carregarOFs(opts){
   const status = opts.status ? String(opts.status) : '';
   const now = Date.now();
   try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
-  if(!forcar && (now - _ultimaCargaOFs) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
+  if(!from && !to && !status){
+    if(!forcar && (now - _ultimaCargaOFs) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0) return { ok:true, cached:true, data:OFs };
+    return carregarOFsUnico(!!forcar);
+  }
   const qs = new URLSearchParams();
   if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
   if(from) qs.set('from', from);
   if(to) qs.set('to', to);
   if(status && status !== 'todos') qs.set('status', status);
   const r = await api('GET','/ofs' + (qs.toString()?('?'+qs.toString()):''));
-  if(r && r.ok && r.data) OFs = r.data.map(o=>{
+  let lista = [];
+  if(r && r.ok && r.data) lista = r.data.map(o=>{
     let fm=o && o.fluxo_maquinas;
     if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
     if(!Array.isArray(fm)) fm=[];
     return normalizeOF({ ...o, fluxo_maquinas: fm });
   });
-  try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
-  if(r && r.ok && Array.isArray(OFs)) {
-    OFS_HIST = OFs.slice();
-    try{ window.OFS = OFs; }catch(e){}
-    try{ window.OFS_HIST = OFS_HIST; }catch(e){}
-  }
-  if(r && r.ok) _ultimaCargaOFs = Date.now();
-  try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
-  return r;
+  try{ console.log('[OFS] recebidas:', (Array.isArray(lista)?lista.length:0), 'primeira:', lista?.[0]?.cliNome, lista?.[0]?.ent); }catch(e){}
+  return { ...(r||{}), data: lista };
 }
 
 async function carregarOFsFresh(){
@@ -17812,19 +17855,9 @@ async function carregarOFsFresh(){
   const ultima = Number(window._ofsUltimaCarga || _ultimaCargaOFs || 0) || 0;
   if(agora - ultima > OFS_CACHE_TTL){
     if(window._ofsFreshPromise) return window._ofsFreshPromise;
-    const snapOFs = Array.isArray(OFs) ? OFs.slice() : null;
-    const snapWin = Array.isArray(window.OFS) ? window.OFS.slice() : null;
-    const snapHist = Array.isArray(window.OFS_HIST) ? window.OFS_HIST.slice() : (Array.isArray(OFS_HIST) ? OFS_HIST.slice() : null);
-    const snapUlt = Number(window._ofsUltimaCarga || _ultimaCargaOFs || 0) || 0;
     window._ofsFreshPromise = (async ()=>{
       try{
-        const r = await carregarOFs({ forcar: true });
-        if(!r || r.ok === false) throw new Error((r && r.error) ? r.error : 'Falha ao carregar OFs');
-      }catch(e){
-        try{ if(snapOFs) OFs = snapOFs; }catch(_){}
-        try{ if(snapWin) window.OFS = snapWin; else if(snapOFs) window.OFS = snapOFs; }catch(_){}
-        try{ if(snapHist){ OFS_HIST = snapHist; window.OFS_HIST = snapHist; } }catch(_){}
-        try{ _ultimaCargaOFs = snapUlt; window._ofsUltimaCarga = snapUlt; }catch(_){}
+        await carregarOFsUnico(false);
       }finally{
         try{ window._ofsFreshPromise = null; }catch(_){}
       }
@@ -17834,38 +17867,12 @@ async function carregarOFsFresh(){
 }
 async function syncOFs(force=false){
   if(force) window._ofsCarregadasEm = null;
+  await carregarOFsUnico(!!force);
   const now = Date.now();
-  try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
-  if(!force && window._ofsCarregadasEm && (now - window._ofsCarregadasEm) < OFS_CACHE_TTL && Array.isArray(OFs) && OFs.length > 0){
-    return OFs;
-  }
-  const qs = new URLSearchParams();
-  if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-  qs.set('limit','200');
-  qs.set('lite','1');
-  qs.set('excluir_canceladas','1');
-  const r = await api('GET','/ofs?'+qs.toString());
-  if(!(r && r.ok && Array.isArray(r.data))){
-    try{ window._ofsCarregadasEm = now; }catch(e){}
-    const fallback = (Array.isArray(OFs) && OFs.length) ? OFs : (Array.isArray(window.OFS) ? window.OFS : []);
-    return fallback;
-  }
-  const rows = r.data;
-  const todos = (rows||[]).map(normalizeOF);
-  const prevHist = Array.isArray(window.OFS_HIST) ? window.OFS_HIST : (Array.isArray(OFS_HIST) ? OFS_HIST : []);
-  const byId = new Map();
-  todos.forEach(o=>{ const id=String(o && o.id || '').trim(); if(id) byId.set(id, o); });
-  (prevHist||[]).forEach(o=>{ const id=String(o && o.id || '').trim(); if(id && !byId.has(id)) byId.set(id, o); });
-  const hist = Array.from(byId.values());
-  OFs = todos;
-  try{ window.OFS = todos; }catch(e){}
-  try{ OFS_HIST = hist; }catch(e){}
-  try{ window.OFS_HIST = hist; }catch(e){}
   window._ofsCarregadasEm = now;
   _ultimaCargaOFs = now;
   try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
-  try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
-  return todos;
+  return Array.isArray(OFs) ? OFs : [];
 }
 function _inserirOFLocal(nova){
   const o = normalizeOF(nova);
@@ -18482,27 +18489,18 @@ async function syncFromServerSilent(){
     const ping = await api('GET', '/ofs'+empParam);
     if(!ping.ok){ _apiConectado = false; return; }
     _apiConectado = true;
-    const [ofs, clis, est, aps, cmp, orcs, forn, vends, ops0, nfs, inc0] = await Promise.all([
-      api('GET','/ofs'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/clientes'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
+    await carregarOFsUnico(false);
+    const [clis, est, aps, cmp, orcs, forn, vends, ops0, nfs, inc0] = await Promise.all([
+      api('GET','/clientes'+empParam+(empParam?'&':'?')+'lite=1'), api('GET','/chapas_estoque'+empParam), api('GET','/apontamentos'),
       api('GET','/compras'), api('GET','/orcamentos'+empParam), api('GET','/fornecedores'+empParam), api('GET','/vendedores'+empParam),
       api('GET','/operadores'+empParam), api('GET','/notas_fiscais'), api('GET','/inconformidades')
     ]);
     const ops = (ops0 && ops0.ok && Array.isArray(ops0.data)) ? ops0 : { ok:true, data:[] };
     const inc = (inc0 && inc0.ok && Array.isArray(inc0.data)) ? inc0 : { ok:true, data:[] };
-    const hashOFs = (arr)=> (arr||[]).map(o=>String(o.id||'')+'|'+String(o.status||'')+'|'+String(o.maquina_atual_index||0)+'|'+String(o.ent||o.data_entrega||'')).join(',');
     let mudouAlgo = false;
     let mudouOFs = false;
 
-    if(ofs.ok && ofs.data){
-      const novos = ofs.data.map(normalizeOF);
-      const hNovo = hashOFs(novos);
-      const hAtual = hashOFs(OFs);
-      if(hNovo !== hAtual){
-        OFs = novos;
-        mudouAlgo = true;
-        mudouOFs = true;
-      }
-    }
+    mudouOFs = true;
     if(clis.ok && clis.data){ CLIENTES = clis.data.map(normalizeCli); mudouAlgo = true; }
     {
       const rows = (est && est.ok && Array.isArray(est.data)) ? est.data : (Array.isArray(est) ? est : null);
@@ -18530,43 +18528,8 @@ async function syncFromServerSilent(){
 }
 
 function setupRealtimeSync(){
-  try{
-    if('BroadcastChannel' in window){
-      _syncBC = new BroadcastChannel(SYNC_CHANNEL_NAME);
-      _syncBC.onmessage = (ev)=>{
-        try{
-          if(!ev.data || ev.data.type !== 'snapshot' || !ev.data.raw) return;
-          const d = JSON.parse(ev.data.raw);
-          if(applyDataSnapshot(d)) showSaveIndicator('↻ sincronizado','var(--teal)');
-        }catch(e){}
-      };
-    }
-  }catch(e){}
-
-  window.addEventListener('storage', (ev)=>{
-    if(ev.key !== LS_KEY || !ev.newValue) return;
-    try{
-      const d = JSON.parse(ev.newValue);
-      if(applyDataSnapshot(d)) showSaveIndicator('↻ sincronizado','var(--teal)');
-    }catch(e){}
-  });
-
   clearInterval(_syncInterval);
-  _syncInterval = setInterval(async ()=>{
-    if(document.hidden) return;
-    if(_apiConectado){
-      await syncFromServerSilent();
-      return;
-    }
-    try{
-      const raw = localStorage.getItem(LS_KEY);
-      if(!raw) return;
-      const d = JSON.parse(raw);
-      if(Number(d.ts||0) > _lastSyncTs){
-        if(applyDataSnapshot(d)) showSaveIndicator('↻ sincronizado','var(--teal)');
-      }
-    }catch(e){}
-  }, 15 * 60 * 1000);
+  _syncInterval = null;
 }
 
 
@@ -18620,7 +18583,7 @@ async function _tentarCarregarServidor(){
     const ping = await api('GET', '/ofs');
     if(!ping.ok) return;
     _apiConectado = true;
-    await syncFromServerSilent();
+    await carregarOFsUnico(true);
     showSaveIndicator('✓ servidor','var(--green)');
   } catch(e){ /* servidor indisponível — usa localStorage */ }
 }
@@ -18631,17 +18594,17 @@ setInterval(async ()=>{
   if(!window.CURRENT_USER) return;
   if(document.hidden) return;
   try {
-    try{ console.log('[OFS] início carregamento:', new Date().toISOString()); }catch(e){}
     const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-    const [ofs,orcs,aps] = await Promise.all([
-      api('GET','/ofs'+empParam), api('GET','/orcamentos'+empParam), api('GET','/apontamentos')
+    await carregarOFsUnico(false);
+    const [orcs,aps] = await Promise.all([
+      api('GET','/orcamentos'+empParam), api('GET','/apontamentos')
     ]);
-    if(ofs.ok && ofs.data)  { OFs=ofs.data.map(normalizeOF); try{renderPCP();}catch(e){} }
-    try{ console.log('[OFS] recebidas:', (Array.isArray(OFs)?OFs.length:0), 'primeira:', OFs?.[0]?.cliNome, OFs?.[0]?.ent); }catch(e){}
     if(orcs.ok && orcs.data && orcs.data.length){ ORCAMENTOS=orcs.data.map(normalizeOrc); }
     if(aps.ok && aps.data)  { APONTAMENTOS=aps.data.map(normalizeAp); }
-    if(ofs.ok){ _apiConectado=true; showSaveIndicator('✓ sync','var(--green)'); }
+    _apiConectado = true;
+    showSaveIndicator('✓ sync','var(--green)');
     try{ updateBadges(); }catch(e){}
+    if(window._PAGE_ATUAL === 'pcp'){ try{ renderPCP(); }catch(e){} }
   } catch(e){ /* silencioso — já tratado dentro de api() */ }
 }, 300000);
 
@@ -28164,19 +28127,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     }
 
     softDeleteLocal(o);
-    try{ await syncFromServerSilent(); }catch(e){}
+    try{ await carregarOFsUnico(true); }catch(e){}
     showSaveIndicator('✓ excluído','var(--green)');
     toast('🗑 OF excluída','var(--green)');
   };
 
   // Real time mais agressivo para novas OFs entre usuários via backend/API.
-  let _rtLastHash = '';
   let _rtBusy = false;
-  function buildOFHash(lista){
-    try{
-      return JSON.stringify((lista||[]).map(o => [o.id||'', o.of||'', o.status||'', o.seq||0, o.qtd||0, o.updated_at||o.updatedAt||o.ts||'']));
-    }catch(e){ return String(Date.now()); }
-  }
 
   window.syncRealtimeOFSilent = async function(force){
     if(_rtBusy || !window.CURRENT_USER) return;
@@ -28187,53 +28144,23 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     }
     _rtBusy = true;
     try{
-      if(window._apiConectado && typeof api === 'function'){
-        const r = await api('GET','/ofs');
-        if(r && r.ok && Array.isArray(r.data)){
-          const novaLista = r.data.map(x => typeof normalizeOF==='function' ? normalizeOF(x) : x);
-          const novoHash = buildOFHash(novaLista);
-          if(force || novoHash !== _rtLastHash){
-            const qtdAnterior = Array.isArray(window.OFs) ? window.OFs.length : 0;
-            const qtdNova = novaLista.length;
-            window.OFs = novaLista;
-            _rtLastHash = novoHash;
-            try{ renderPCP(); }catch(e){}
-            try{ renderLancamento(); }catch(e){}
-            try{ updateBadges(); }catch(e){}
-            try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
-            if(!force && qtdNova > qtdAnterior){
-              showSaveIndicator('↻ nova OF em tempo real','var(--teal)');
-              toast('🔄 Nova OF detectada em tempo real','var(--teal)');
-            }
-          }
-          return;
-        }
+      const before = String(_ofsLastHash || '');
+      await carregarOFsUnico(!!force);
+      const after = String(_ofsLastHash || '');
+      if(force || after !== before){
+        try{ updateBadges(); }catch(e){}
+        try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
+        const pg = window._PAGE_ATUAL || '';
+        if(pg === 'pcp'){ try{ renderPCP(); }catch(e){} }
+        if(pg === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
+        if(pg === 'ofmaq'){ try{ renderOFsPorMaquina(); }catch(e){} }
       }
-
-      // fallback local para outras abas no mesmo navegador
-      try{
-        const raw = localStorage.getItem(typeof LS_KEY!=='undefined' ? LS_KEY : 'PCP_ERP_DATA');
-        if(raw){
-          const d = JSON.parse(raw);
-          if(d && Array.isArray(d.OFs)){
-            const novoHash = buildOFHash(d.OFs);
-            if(force || novoHash !== _rtLastHash){
-              if(typeof applyDataSnapshot==='function') applyDataSnapshot(d, {force:true, silent:true});
-              _rtLastHash = novoHash;
-              try{ renderPCP(); }catch(e){}
-              try{ renderLancamento(); }catch(e){}
-              try{ updateBadges(); }catch(e){}
-            }
-          }
-        }
-      }catch(e){}
     }catch(e){}
     finally{ _rtBusy = false; }
   };
 
   function startRealtimePatch(){
     injectDeleteButton();
-    try{ _rtLastHash = buildOFHash(window.OFs || []); }catch(e){}
     // sincronização mais rápida para ver OF nova quase em tempo real
     setInterval(function(){ window.syncRealtimeOFSilent(false); }, 600000);
     // força atualização ao abrir PCP/Lançamento
