@@ -10023,9 +10023,10 @@ function cpRender(rows){
       const prod = r.produto || '—';
       const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
       let maqNome = String(
-        r?.maquina_perda ||
         r?.maquina ||
         r?.maquina_nome ||
+        r?.maquina_id ||
+        r?.maquina_perda ||
         r?.maquinaPerda ||
         r?.maq ||
         ''
@@ -14913,8 +14914,27 @@ function _renderDashboardBase(){
   const addMonths = (d, n)=> new Date(d.getFullYear(), d.getMonth()+n, d.getDate(), 12, 0, 0, 0);
 
   const now = new Date();
+  const startOfWeek = (d)=>{
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+    const dow = x.getDay();
+    const diff = (dow === 0) ? 6 : (dow - 1);
+    x.setDate(x.getDate() - diff);
+    return x;
+  };
   const range = (()=>{
     if(period === 'tudo') return { de: null, ate: null, label: 'Tudo' };
+    if(period === 'hoje') {
+      const de = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      return { de, ate: now, label: 'Hoje' };
+    }
+    if(period === 'semana') {
+      const de = startOfWeek(now);
+      return { de, ate: now, label: 'Esta semana' };
+    }
+    if(period === 'mes') {
+      const de = startOfMonth(now);
+      return { de, ate: now, label: 'Este mês' };
+    }
     if(period === 'ano') {
       const de = new Date(now.getFullYear(), 0, 1, 12, 0, 0, 0);
       return { de, ate: now, label: 'Este ano' };
@@ -15096,6 +15116,7 @@ function _renderDashboardBase(){
       <td style="${td}width:80px;font-weight:900;color:var(--accent)">${medal(i)}</td>
       <td style="${td}font-weight:800">${escH(name)}</td>
       <td style="${td}text-align:center;font-family:var(--mono)">${fmtN(r.ofs||0)}</td>
+      <td style="${td}text-align:right;font-family:var(--mono);font-weight:900">${fmtN(r.qtd||0)} cx</td>
       <td style="${td}text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${escH(exibir)}</td>
       <td style="${td}text-align:right;color:var(--text2)">${last}</td>
     </tr>`;
@@ -15124,6 +15145,9 @@ function _renderDashboardBase(){
     }).join('');
 
   const periodOpts = [
+    { v:'hoje', t:'Hoje' },
+    { v:'semana', t:'Esta Semana' },
+    { v:'mes', t:'Este Mês' },
     { v:'mes_atual', t:'Mês atual' },
     { v:'m3', t:'Últimos 3 meses' },
     { v:'m6', t:'Últimos 6 meses' },
@@ -15155,6 +15179,7 @@ function _renderDashboardBase(){
             { label:'Posição' },
             { label:'Cliente' },
             { label:'Total OFs', align:'center' },
+            { label:'Total caixas', align:'right' },
             { label:'Total vendido (R$)', align:'right' },
             { label:'Última compra', align:'right' },
           ], rowsCompr)}
