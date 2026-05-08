@@ -1216,8 +1216,7 @@ const OFS_TABLE_COLS = [
   'qtd_produzida', 'qtd_pedida', 'caixas_excedentes', 'usuario_conclusao',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
   'data_faturamento', 'seq', 'chp', 'created_at', 'updated_at',
-  'vendedor_nome', 'referencia', 'imp_01', 'imp_02', 'imp_03', 'imp_04', 'imp_05',
-  'vend_id', 'data_pedido', 'maquina_por_item', 'prodDesc', 'tipo_caixa_id',
+  'tipo_caixa_id',
 ];
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
 function _filterOfsPayloadKnownCols(input, keepMeta = true) {

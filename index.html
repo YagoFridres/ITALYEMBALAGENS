@@ -17412,8 +17412,8 @@ function normalizeOF(r){
     : parseAny(r.maquina_por_item, {});
   if(!maquinaPorItem || typeof maquinaPorItem !== 'object' || Array.isArray(maquinaPorItem)) maquinaPorItem = {};
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
-  const imgUrl = r.imagem_url ?? null;
-  const imgUrlNorm = imgUrl || (Array.isArray(imgs) ? imgs[0] : '') || '';
+  const imgUrl = r.imagem_url || null;
+  const imgUrlNorm = imgUrl || '';
   const dataConc = r.data_conclusao || r.dataConclusao || null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
