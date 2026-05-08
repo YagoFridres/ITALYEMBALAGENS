@@ -19211,6 +19211,7 @@ function trCacheAddRow(row){
   _TR_VEL_CACHE[k] = cur;
 }
 async function trEnsureVelocidade(maquinaId, tipo){
+  if(window._temposReaisIndisponivel) return null;
   if(!_TR_VEL_CACHE || typeof _TR_VEL_CACHE !== 'object') _TR_VEL_CACHE = {};
   if(!_TR_VEL_REQ || typeof _TR_VEL_REQ !== 'object') _TR_VEL_REQ = {};
   const mid = String(maquinaId||'').trim();
@@ -19229,6 +19230,10 @@ async function trEnsureVelocidade(maquinaId, tipo){
     const de = deDt.toISOString().slice(0,10);
     const qs = new URLSearchParams({ maquina_id: mid, de, ate });
     const r = await apiFetch('/api/tempos_reais?' + qs.toString(), { method:'GET' });
+    if(r && r.status === 503){
+      window._temposReaisIndisponivel = true;
+      return null;
+    }
     const j = r ? await r.json().catch(()=>null) : null;
     const rows = (j && j.ok && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
     const norm = trNormTipo(tp);
@@ -19383,6 +19388,10 @@ async function carregarTemposReais(){
   const deEl = document.getElementById('tr-filtro-de');
   const ateEl = document.getElementById('tr-filtro-ate');
   if(!body || !selMaq || !deEl || !ateEl) return;
+  if(window._temposReaisIndisponivel){
+    body.innerHTML = `<tr><td colspan="10" style="padding:12px;border:1px solid var(--border);text-align:center;color:var(--text2)">Tempos Reais indisponível (tabela não existe).</td></tr>`;
+    return;
+  }
   try{
     const qs = new URLSearchParams();
     const mid = String(selMaq.value||'').trim();
@@ -19392,6 +19401,11 @@ async function carregarTemposReais(){
     if(de) qs.set('de', de);
     if(ate) qs.set('ate', ate);
     const r = await apiFetch('/api/tempos_reais' + (qs.toString()?('?'+qs.toString()):''), { method:'GET' });
+    if(r && r.status === 503){
+      window._temposReaisIndisponivel = true;
+      body.innerHTML = `<tr><td colspan="10" style="padding:12px;border:1px solid var(--border);text-align:center;color:var(--text2)">Tempos Reais indisponível (tabela não existe).</td></tr>`;
+      return;
+    }
     const j = r ? await r.json().catch(()=>null) : null;
     TEMPOS_REAIS = (j && j.ok && Array.isArray(j.data)) ? (j.data||[]) : (Array.isArray(j) ? j : []);
   }catch(e){
@@ -19534,6 +19548,10 @@ async function abrirModalTempoReal(id){
 }
 
 async function salvarTempoReal(){
+  if(window._temposReaisIndisponivel){
+    toast('Tempos Reais indisponível','var(--orange)');
+    return;
+  }
   const id = String(document.getElementById('tr-id')?.value || '').trim();
   const maquina_id = String(document.getElementById('tr-maquina')?.value || '').trim();
   const maquina_nome = trGetMaquinaNomeById(maquina_id) || String(document.getElementById('tr-maquina')?.selectedOptions?.[0]?.textContent || '').trim();
@@ -19574,6 +19592,11 @@ async function salvarTempoReal(){
     const url = id ? ('/api/tempos_reais/' + encodeURIComponent(id)) : '/api/tempos_reais';
     const method = id ? 'PUT' : 'POST';
     const r = await apiFetch(url, { method, body: payload });
+    if(r && r.status === 503){
+      window._temposReaisIndisponivel = true;
+      toast('Tempos Reais indisponível','var(--orange)');
+      return;
+    }
     const j = r ? await r.json().catch(()=>null) : null;
     if(!(r && r.ok) || (j && j.ok === false)){
       toast('Erro ao salvar','var(--red)');
@@ -19597,12 +19620,21 @@ async function salvarTempoReal(){
 }
 
 async function excluirTempoReal(id){
+  if(window._temposReaisIndisponivel){
+    toast('Tempos Reais indisponível','var(--orange)');
+    return;
+  }
   const tid = String(id||'').trim();
   if(!tid) return;
   if(!confirm('Excluir este registro?')) return;
   try{
     const row0 = (TEMPOS_REAIS||[]).find(x=>String(x?.id||'')===tid) || null;
     const r = await apiFetch('/api/tempos_reais/' + encodeURIComponent(tid), { method:'DELETE' });
+    if(r && r.status === 503){
+      window._temposReaisIndisponivel = true;
+      toast('Tempos Reais indisponível','var(--orange)');
+      return;
+    }
     const j = r ? await r.json().catch(()=>null) : null;
     if(!(r && r.ok) || (j && j.ok === false)){
       toast('Erro ao excluir','var(--red)'); return;

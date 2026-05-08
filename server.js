@@ -1881,24 +1881,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'imgs', 'imagem_url',
     ];
     const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
-    const selectColsCsv = (selectCols && selectCols.length) ? selectCols.join(',') : 'id,of,numero,status,created_at,updated_at';
-
     const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
-    const buildQuerySimples = (colsArr, dateCol) => {
-      const validCols = (Array.isArray(colsArr) ? colsArr : []).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
-      const sel = validCols.length ? validCols.join(',') : 'id,of,numero,status,created_at,updated_at';
-      let q = supabase
-        .from('ofs')
-        .select(sel)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-      if (status) q = q.eq('status', status);
-      if (empId) q = q.eq('emp_id', empId);
-      if (!incluirExcluidas) q = q.is('deleted_at', null);
-      if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
-      return q;
-    };
     const enrichJoinClientVend = async (rows) => {
       const arr = Array.isArray(rows) ? rows : [];
       if (!arr.length) return arr;
@@ -1958,86 +1941,55 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       });
     };
 
-    const isMissingColumnErr = (err) => {
-      const msg = String(err?.message || err || '');
-      return (
-        msg.includes('Could not find the') ||
-        msg.toLowerCase().includes('does not exist')
+    const colsValidas = selectCols.filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
+    let data = null;
+    let rawErr = null;
+    let colsArr = colsValidas.slice();
+    const dateCol = (from && to)
+      ? (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at')
+      : '';
+
+    for (let t = 0; t < 5; t++) {
+      const sel = colsArr.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
+      let q = supabase
+        .from('ofs')
+        .select(sel)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (status) q = q.eq('status', status);
+      if (empId) q = q.eq('emp_id', empId);
+      if (!incluirExcluidas) q = q.is('deleted_at', null);
+      if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
+      if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
+      const r = await q;
+      if (!r.error) { data = r.data; break; }
+      rawErr = r.error;
+      const msg = String(r.error?.message || '');
+      const m = msg.match(/Could not find the '([^']+)' column/i)
+        || msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
+      const colProb = m?.[1];
+      if (colProb) {
+        colsArr = colsArr.filter((c) => c !== colProb);
+        try { console.warn('[OFS GET] removendo coluna:', colProb, 'rid:', req._rid); } catch (_) {}
+        continue;
+      }
+      break;
+    }
+
+    if (!data && rawErr) {
+      _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit, offset, empId, status, from, to, lite });
+      return res.status(500).json({ ok: false, error: String(rawErr.message || rawErr), rid: req._rid || null });
+    }
+
+    const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);
+    const rows = (enriched || []).map((row) => {
+      if (!row || typeof row !== 'object') return row;
+      const vendedor_nome = String(
+        row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
       );
-    };
-    const extractMissingCol = (err) => {
-      const msg = String(err?.message || err || '');
-      const m1 = msg.match(/column\s+ofs\.(\w+)\s+does not exist/i);
-      const m2 = msg.match(/Could not find the '([^']+)' column/i);
-      const m3 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
-      return (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || null;
-    };
-
-    const dateColsToTry = (from && to)
-      ? ['data_producao', 'dia', 'created_at'].filter((c) => OFS_SELECTABLE_COLS_SET.has(c))
-      : [null];
-    for (const dateCol of dateColsToTry) {
-      let colsArr = selectCols.slice();
-      for (let tentativa = 0; tentativa < 10; tentativa++) {
-        const { data, error } = await buildQuerySimples(colsArr, dateCol);
-        if (!error) {
-          const baseRows = Array.isArray(data) ? data : [];
-          const enriched = await enrichJoinClientVend(baseRows);
-          const rows = (enriched || []).map((row) => {
-            if (!row || typeof row !== 'object') return row;
-            const vendedor_nome = String(
-              row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
-            );
-            return { ...row, vendedor_nome };
-          });
-          return ok(res, rows);
-        }
-        if (!isMissingColumnErr(error)) {
-          _logApiError('OFS GET', req, error, { selectCols: colsArr, limit, offset, empId, status, from, to, dateCol, lite });
-          return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
-        }
-
-        const colProb = extractMissingCol(error);
-        if (!colProb) break;
-        if (dateCol && String(colProb) === String(dateCol)) {
-          try { console.warn('[OFS GET] coluna de data inexistente:', colProb, 'rid:', req._rid); } catch (_) {}
-          break;
-        }
-        const next = colsArr.filter((c) => c !== colProb);
-        if (next.length === colsArr.length || next.length === 0) break;
-        colsArr = next;
-        try { console.warn('[OFS GET] removendo coluna inexistente do select:', colProb, 'rid:', req._rid); } catch (_) {}
-      }
-    }
-
-    const minimalCols = ['id', 'of', 'numero', 'status', 'created_at', 'updated_at', 'emp_id', 'cli_id', 'descricao', 'prodDesc', 'qtd', 'quantidade', 'urg', 'urgente']
-      .filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
-    let colsMinArr = minimalCols.length ? minimalCols.slice() : ['id'];
-    for (let tentativa = 0; tentativa < 8; tentativa++) {
-      const { data, error } = await buildQuerySimples(colsMinArr, null);
-      if (!error) {
-        const baseRows = Array.isArray(data) ? data : [];
-        const enriched = await enrichJoinClientVend(baseRows);
-        const rows = (enriched || []).map((row) => {
-          if (!row || typeof row !== 'object') return row;
-          const vendedor_nome = String(
-            row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
-          );
-          return { ...row, vendedor_nome };
-        });
-        return ok(res, rows);
-      }
-      if (!isMissingColumnErr(error)) {
-        _logApiError('OFS GET MIN', req, error, { selectMin: colsMinArr, limit, offset, empId, status, lite });
-        return res.status(500).json({ ok: false, error: String(error.message || error), rid: req._rid || null });
-      }
-      const colProb = extractMissingCol(error);
-      if (!colProb) break;
-      const next = colsMinArr.filter((c) => c !== colProb);
-      if (next.length === colsMinArr.length || next.length === 0) break;
-      colsMinArr = next;
-    }
-    return res.status(500).json({ ok: false, error: 'Falha ao carregar OFs', rid: req._rid || null });
+      return { ...row, vendedor_nome };
+    });
+    return ok(res, rows);
   } catch (e) {
     _logApiError('OFS GET', req, e, { query: req.query });
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
