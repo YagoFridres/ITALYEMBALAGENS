@@ -1890,56 +1890,41 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
       )).slice(0, 100);
       if (!cliIds.length) return arr;
-      let cls = null;
       try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 5000);
-        const r1 = await supabase
+        const { data: cls, error: e1 } = await supabase
           .from('clientes')
           .select('id,nome,vendedor_id')
-          .in('id', cliIds)
-          .abortSignal(ctrl.signal);
-        clearTimeout(timer);
-        cls = r1?.data;
-        if (r1?.error || !Array.isArray(cls)) return arr;
-      } catch (_) {
-        try { console.warn('[enrich] timeout ou erro, retornando sem enriquecer'); } catch (_) {}
-        return arr;
-      }
-      const byCliId = new Map();
-      cls.forEach((c) => { if (c && c.id) byCliId.set(String(c.id), c); });
-      const vendIds = Array.from(new Set(
-        cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
-      ));
-      const byVendId = new Map();
-      if (vendIds.length) {
-        try {
-          const ctrl2 = new AbortController();
-          const timer2 = setTimeout(() => ctrl2.abort(), 5000);
-          const r2 = await supabase
+          .in('id', cliIds);
+        if (e1 || !Array.isArray(cls)) return arr;
+        const byCliId = new Map();
+        cls.forEach((c) => { if (c?.id) byCliId.set(String(c.id), c); });
+        const vendIds = Array.from(new Set(
+          cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
+        ));
+        const byVendId = new Map();
+        if (vendIds.length) {
+          const { data: vds } = await supabase
             .from('vendedores')
             .select('id,nome')
-            .in('id', vendIds)
-            .abortSignal(ctrl2.signal);
-          clearTimeout(timer2);
-          const vds = r2?.data;
-          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v && v.id) byVendId.set(String(v.id), v); });
-        } catch (_) {
-          try { console.warn('[enrich] timeout vendedores, retornando sem enriquecer vendedor'); } catch (_) {}
+            .in('id', vendIds);
+          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v?.id) byVendId.set(String(v.id), v); });
         }
+        return arr.map((o) => {
+          const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
+          const c = cid ? (byCliId.get(cid) || null) : null;
+          const vid = String(c?.vendedor_id || '').trim();
+          const v = vid ? (byVendId.get(vid) || null) : null;
+          return {
+            ...o,
+            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || '—'),
+            vendNome: (v?.nome || o?.vendNome || o?.vendedor_nome || o?.vendedor || '—'),
+            vendedor_id: (c?.vendedor_id || o?.vendedor_id || o?.vendId || null),
+          };
+        });
+      } catch (e) {
+        try { console.warn('[enrich] erro:', e?.message); } catch (_) {}
+        return arr;
       }
-      return arr.map((o) => {
-        const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
-        const c = cid ? (byCliId.get(cid) || null) : null;
-        const vid = String(c?.vendedor_id || '').trim();
-        const v = vid ? (byVendId.get(vid) || null) : null;
-        return {
-          ...o,
-          cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || '—'),
-          vendNome: (v?.nome || o?.vendNome || o?.vendedor_nome || o?.vendedor || '—'),
-          vendedor_id: (c?.vendedor_id || o?.vendedor_id || o?.vendId || o?.vend_id || null),
-        };
-      });
     };
 
     const colsValidas = selectCols.filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
