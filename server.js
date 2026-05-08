@@ -1883,63 +1883,43 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
     const selectColsCsv = (selectCols && selectCols.length) ? selectCols.join(',') : 'id,of,numero,status,created_at,updated_at';
 
-    const buildQueryBase = (sel, dateCol) => {
-      let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
+    const buildQuerySimples = (colsArr, dateCol) => {
+      const validCols = (Array.isArray(colsArr) ? colsArr : []).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
+      const sel = validCols.length ? validCols.join(',') : 'id,of,numero,status,created_at,updated_at';
+      let q = supabase
+        .from('ofs')
+        .select(sel)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
       if (status) q = q.eq('status', status);
       if (empId) q = q.eq('emp_id', empId);
       if (!incluirExcluidas) q = q.is('deleted_at', null);
-      const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
-      if (shouldExcludeCanceladas) {
-        q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      }
-      if (from && to && dateCol) {
-        q = q.gte(dateCol, from).lte(dateCol, to);
-      }
+      if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
+      if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
       return q;
-    };
-    const isRelationshipErr = (err) => {
-      const msg = String(err?.message || err || '').toLowerCase();
-      return (
-        msg.includes('could not find a relationship') ||
-        msg.includes('no relationship') ||
-        msg.includes('schema cache') ||
-        msg.includes('relationship') && msg.includes('not found')
-      );
-    };
-    const buildQueryWithJoin = async (colsArr, dateCol) => {
-      const colsCsv = (Array.isArray(colsArr) && colsArr.length) ? colsArr.join(',') : 'id';
-      const joinKeysToTry = ['cli_id', 'cliente_id', 'cliId'];
-      const joinFrag = (key) => `cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`;
-      for (const key of joinKeysToTry) {
-        const sel = `${colsCsv},${joinFrag(key)}`;
-        const r = await buildQueryBase(sel, dateCol);
-        if (!r.error) return { data: r.data, error: null, join: true };
-        if (isRelationshipErr(r.error)) continue;
-        return { data: null, error: r.error, join: true };
-      }
-      const r0 = await buildQueryBase(colsCsv, dateCol);
-      return { data: r0.data, error: r0.error, join: false };
     };
     const enrichJoinClientVend = async (rows) => {
       const arr = Array.isArray(rows) ? rows : [];
       if (!arr.length) return arr;
-      const withTimeout = (p, ms) => Promise.race([
-        p,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
-      ]);
       const cliIds = Array.from(new Set(
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
       )).slice(0, 100);
       if (!cliIds.length) return arr;
       let cls = null;
       try {
-        const r1 = await withTimeout(
-          supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds),
-          4000
-        );
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const r1 = await supabase
+          .from('clientes')
+          .select('id,nome,vendedor_id')
+          .in('id', cliIds)
+          .abortSignal(ctrl.signal);
+        clearTimeout(timer);
         cls = r1?.data;
         if (r1?.error || !Array.isArray(cls)) return arr;
       } catch (_) {
+        try { console.warn('[enrich] timeout ou erro, retornando sem enriquecer'); } catch (_) {}
         return arr;
       }
       const byCliId = new Map();
@@ -1950,13 +1930,19 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const byVendId = new Map();
       if (vendIds.length) {
         try {
-          const r2 = await withTimeout(
-            supabase.from('vendedores').select('id,nome').in('id', vendIds),
-            4000
-          );
+          const ctrl2 = new AbortController();
+          const timer2 = setTimeout(() => ctrl2.abort(), 5000);
+          const r2 = await supabase
+            .from('vendedores')
+            .select('id,nome')
+            .in('id', vendIds)
+            .abortSignal(ctrl2.signal);
+          clearTimeout(timer2);
           const vds = r2?.data;
           (Array.isArray(vds) ? vds : []).forEach((v) => { if (v && v.id) byVendId.set(String(v.id), v); });
-        } catch (_) {}
+        } catch (_) {
+          try { console.warn('[enrich] timeout vendedores, retornando sem enriquecer vendedor'); } catch (_) {}
+        }
       }
       return arr.map((o) => {
         const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
@@ -1993,21 +1979,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     for (const dateCol of dateColsToTry) {
       let colsArr = selectCols.slice();
       for (let tentativa = 0; tentativa < 10; tentativa++) {
-        const { data, error, join } = await buildQueryWithJoin(colsArr, dateCol);
+        const { data, error } = await buildQuerySimples(colsArr, dateCol);
         if (!error) {
-          const baseRows = (data || []).map((row) => {
+          const baseRows = Array.isArray(data) ? data : [];
+          const enriched = await enrichJoinClientVend(baseRows);
+          const rows = (enriched || []).map((row) => {
             if (!row || typeof row !== 'object') return row;
-            const clienteObj = row.cliente && typeof row.cliente === 'object' ? row.cliente : null;
-            const vendNested = clienteObj?.vendedor && typeof clienteObj.vendedor === 'object' ? clienteObj.vendedor : null;
-            const cliNome = clienteObj?.nome || row.cliNome || row.clinome || row.cliente_nome || '—';
-            const vendNome = vendNested?.nome || row.vendNome || row.vendedor_nome || row.vendedor || '—';
-            const vendedor_id = clienteObj?.vendedor_id || row.vendedor_id || row.vendId || row.vend_id || null;
-            const vendedor_nome =
-              vendNome || row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
-            const { cliente, ...rest } = row;
-            return { ...rest, cliNome, vendNome, vendedor_id, vendedor_nome };
+            const vendedor_nome = String(
+              row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
+            );
+            return { ...row, vendedor_nome };
           });
-          const rows = join ? baseRows : await enrichJoinClientVend(baseRows);
           return ok(res, rows);
         }
         if (!isMissingColumnErr(error)) {
@@ -2032,21 +2014,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       .filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
     let colsMinArr = minimalCols.length ? minimalCols.slice() : ['id'];
     for (let tentativa = 0; tentativa < 8; tentativa++) {
-      const { data, error, join } = await buildQueryWithJoin(colsMinArr, null);
+      const { data, error } = await buildQuerySimples(colsMinArr, null);
       if (!error) {
-        const baseRows = (data || []).map((row) => {
+        const baseRows = Array.isArray(data) ? data : [];
+        const enriched = await enrichJoinClientVend(baseRows);
+        const rows = (enriched || []).map((row) => {
           if (!row || typeof row !== 'object') return row;
-          const clienteObj = row.cliente && typeof row.cliente === 'object' ? row.cliente : null;
-          const vendNested = clienteObj?.vendedor && typeof clienteObj.vendedor === 'object' ? clienteObj.vendedor : null;
-          const cliNome = clienteObj?.nome || row.cliNome || row.clinome || row.cliente_nome || '—';
-          const vendNome = vendNested?.nome || row.vendNome || row.vendedor_nome || row.vendedor || '—';
-          const vendedor_id = clienteObj?.vendedor_id || row.vendedor_id || row.vendId || row.vend_id || null;
-          const vendedor_nome =
-            vendNome || row.vendNome || row.vendedor || row.vendedor_nome || row.vendedor_id || row.vendId || row.vend_id || '';
-          const { cliente, ...rest } = row;
-          return { ...rest, cliNome, vendNome, vendedor_id, vendedor_nome };
+          const vendedor_nome = String(
+            row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
+          );
+          return { ...row, vendedor_nome };
         });
-        const rows = join ? baseRows : await enrichJoinClientVend(baseRows);
         return ok(res, rows);
       }
       if (!isMissingColumnErr(error)) {
