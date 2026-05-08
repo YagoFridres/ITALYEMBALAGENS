@@ -1902,17 +1902,41 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     };
     const enrichJoinClientVend = async (rows) => {
       const arr = Array.isArray(rows) ? rows : [];
-      const cliIds = Array.from(new Set(arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)));
+      if (!arr.length) return arr;
+      const withTimeout = (p, ms) => Promise.race([
+        p,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+      ]);
+      const cliIds = Array.from(new Set(
+        arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
+      )).slice(0, 100);
       if (!cliIds.length) return arr;
-      const { data: cls, error: e1 } = await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds);
-      if (e1 || !Array.isArray(cls)) return arr;
+      let cls = null;
+      try {
+        const r1 = await withTimeout(
+          supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds),
+          4000
+        );
+        cls = r1?.data;
+        if (r1?.error || !Array.isArray(cls)) return arr;
+      } catch (_) {
+        return arr;
+      }
       const byCliId = new Map();
       cls.forEach((c) => { if (c && c.id) byCliId.set(String(c.id), c); });
-      const vendIds = Array.from(new Set(cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)));
+      const vendIds = Array.from(new Set(
+        cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
+      ));
       const byVendId = new Map();
       if (vendIds.length) {
-        const { data: vds } = await supabase.from('vendedores').select('id,nome').in('id', vendIds);
-        (Array.isArray(vds) ? vds : []).forEach((v) => { if (v && v.id) byVendId.set(String(v.id), v); });
+        try {
+          const r2 = await withTimeout(
+            supabase.from('vendedores').select('id,nome').in('id', vendIds),
+            4000
+          );
+          const vds = r2?.data;
+          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v && v.id) byVendId.set(String(v.id), v); });
+        } catch (_) {}
       }
       return arr.map((o) => {
         const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
@@ -2694,21 +2718,38 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
     if (req.query.empId) q = q.eq('emp_id', req.query.empId);
-    if (req.query.mes) {
-      const mes = String(req.query.mes || '').trim();
-      if (mes) {
-        q = q.or(`mes_referencia.eq.${mes},and(mes_referencia.is.null,data.gte.${mes}-01,data.lte.${mes}-31)`);
+    const mes = String(req.query.mes || '').trim();
+    if (mes && mes !== 'undefined' && mes !== 'null' && mes.length >= 7) {
+      const [ano, mm] = mes.split('-').map(Number);
+      if (ano > 2000 && mm >= 1 && mm <= 12) {
+        const dtIni = `${mes}-01`;
+        const dtFim = new Date(ano, mm, 0).toISOString().slice(0, 10);
+        const { data: d1 } = await supabase.from('caixas_perdidas')
+          .select('*').eq('mes_referencia', mes)
+          .order('data', { ascending: false });
+        const { data: d2 } = await supabase.from('caixas_perdidas')
+          .select('*').is('mes_referencia', null)
+          .gte('data', dtIni).lte('data', dtFim)
+          .order('data', { ascending: false });
+        const todos = [...(d1 || []), ...(d2 || [])];
+        const vistos = new Set();
+        const result = todos.filter((r) => {
+          if (vistos.has(r.id)) return false;
+          vistos.add(r.id);
+          return true;
+        });
+        if (req.query.empId) {
+          return ok(res, result.filter((r) => r.emp_id === req.query.empId));
+        }
+        return ok(res, result);
       }
     }
     if (req.query.de) q = q.gte('data', req.query.de);
     if (req.query.ate) q = q.lte('data', req.query.ate);
-    const { data, error } = await q;
+    const { data, error } = await q.limit(1000);
     if (error) {
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
-        return ok(res, []);
-      }
+      const msg = String(error.message || error).toLowerCase();
+      if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
       throw error;
     }
     return ok(res, data || []);
