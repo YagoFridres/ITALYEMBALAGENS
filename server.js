@@ -1855,6 +1855,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'urg', 'urgente',
       'dia', 'data_producao',
       'ent', 'data_entrega',
+      'data_conclusao', 'usuario_conclusao',
       'maq', 'fluxo_maquinas', 'maquina_atual_index',
       'imgs', 'imagem_url',
     ];

@@ -3069,16 +3069,21 @@ function ofsParaDia(diaProd){
       const st = String(of?.status || '').trim();
       if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada') return false;
 
-      const prodRaw = String(of?.data_producao || of?.dataProducao || of?.dia || '').slice(0,10);
+      const hojeStr = hoje.toISOString().slice(0,10);
+      const diaStr = String(of?.dia || of?.data_producao || of?.dataProducao || '').slice(0,10);
+      const entStr0 = String(of?.ent || of?.data_entrega || of?.dataEntrega || '').slice(0,10);
+      const diaBase = diaStr || entStr0;
+      if(diaBase && diaBase <= hojeStr && diaBase < hojeStr && mesmoDia(diaProd, diaUtil)) return true;
+
+      const prodRaw = diaStr;
       let dtProg = null;
       if(/^\d{4}-\d{2}-\d{2}$/.test(prodRaw)){
         const dtP = new Date(prodRaw + 'T00:00:00');
         if(!isNaN(dtP.getTime())) dtProg = dtP;
       }
       if(!dtProg){
-        const entrega = of?.ent || of?.data_entrega || '';
-        if(!entrega) return false;
-        const strEntrega = String(entrega).slice(0,10);
+        const strEntrega = entStr0;
+        if(!strEntrega) return false;
         if(!/^\d{4}-\d{2}-\d{2}$/.test(strEntrega)) return false;
         const dtProgStr = subtrairDiasUteis(strEntrega, 3);
         if(!dtProgStr) return false;
@@ -4730,9 +4735,22 @@ async function renderOFsPorMaquina(){
     if(inp && !inp.value) inp.value = hoje;
     const dataSel = String(inp?.value || '').slice(0,10);
 
-    const diaOf = (o) => String((o.dia || o.data_producao || o.dataProducao || o.created_at || '') || '').slice(0,10);
+    const isConcluidaOF = (o) => {
+      let s = String(o?.status || '').toLowerCase();
+      try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+      s = s.trim();
+      return s.includes('conclu') || s === 'pedido pronto';
+    };
+    const diaOf = (o) => String((o.dia || o.data_producao || o.dataProducao || '') || '').slice(0,10);
     const entOf = (o) => String((o.ent || o.data_entrega || o.dataEntrega || '') || '').slice(0,10);
-    const dataRef = (o) => diaOf(o) || entOf(o);
+    const diaBaseOf = (o) => String((o.dia_programacao || o.diaProgramacao || '') || '').slice(0,10) || diaOf(o) || entOf(o) || String(o.created_at || '').slice(0,10);
+    const diaExibicaoOF = (o) => {
+      const d = diaBaseOf(o);
+      if(!d) return '';
+      if(!isConcluidaOF(o) && d < hoje) return hoje;
+      return d;
+    };
+    const dataRef = (o) => diaExibicaoOF(o) || entOf(o);
 
     const selMaqEl = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
     const filtroMaq = selMaqEl?.value||'';
@@ -4741,9 +4759,9 @@ async function renderOFsPorMaquina(){
 
     if(window._ofmaqView === 'lista'){
       if(modo === 'hoje'){
-        lista = lista.filter(o => diaOf(o) === hoje || entOf(o) === hoje);
+        lista = lista.filter(o => diaExibicaoOF(o) === hoje);
       } else if(modo === 'data'){
-        if(dataSel) lista = lista.filter(o => diaOf(o) === dataSel || entOf(o) === dataSel);
+        if(dataSel) lista = lista.filter(o => diaExibicaoOF(o) === dataSel);
       } else if(modo === 'semana'){
         const now = new Date();
         const mon = new Date(now);
@@ -8306,6 +8324,7 @@ function renderLancamento(){
     ${btn('excluidas','Excluídas',excl.length)}
     <div style="flex:1"></div>
     <div id="lanc-conc-hoje" style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Concluídas hoje: —</div>
+    <button class="btn btn-ghost btn-sm" onclick="lancVerTodasConcluidas()">Ver todas concluídas</button>
     <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨️ Imprimir Lista</button>
     <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar</button>
   </div>
@@ -8353,6 +8372,8 @@ function renderLancamento(){
     const statusHtml = isConcluida
       ? `<div>${statusHtmlBase}<div style="margin-top:4px;font-size:.68rem;color:var(--text3);font-family:var(--mono)">Fat: ${escH(dataFatPref ? fmtD(dataFatPref) : '—')}</div></div>`
       : statusHtmlBase;
+    const concEm = String(o?.data_conclusao || o?.dataConclusao || '').slice(0,10);
+    const concPor = String(o?.usuario_conclusao || o?.usuarioConclusao || '').trim();
     return `
           <tr style="background:var(--surface)">
             <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
@@ -8373,6 +8394,8 @@ function renderLancamento(){
             <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
             <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
             <td style="${td}">${statusHtml}</td>
+            <td style="${td};font-family:var(--mono)">${escH(concEm ? fmtD(concEm) : '—')}</td>
+            <td style="${td}">${escH(concPor || '—')}</td>
             <td style="${td}">${escH(ofFluxoGetMaquinaAtual(o)||'—')}</td>
             <td style="${td}">${escH(lancVendNome(o))}</td>
             <td style="${td};text-align:center">
@@ -8391,14 +8414,24 @@ function renderLancamento(){
       <thead><tr>
         <th style="${th}">OF</th><th style="${th}">📷</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Ref</th>
         <th style="${th}">Vl.Unit</th><th style="${th}">Total</th><th style="${th}">Chapa</th><th style="${th}">Qtd</th>
-        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
+        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Concluído em</th><th style="${th}">Concluído por</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
       </tr></thead>
       <tbody>
-        ${rows.length?rows.map(renderRow).join(''):`<tr><td colspan="15" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
+        ${rows.length?rows.map(renderRow).join(''):`<tr><td colspan="17" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
       </tbody>
     </table>
   </div>`;
   LANC_LAST_ROWS = rows.slice();
+}
+
+function lancVerTodasConcluidas(){
+  try{
+    LANC_UI.tab = 'prontas';
+    LANC_UI.mes = '';
+    const el = document.getElementById('lanc-mes');
+    if(el) el.value = '';
+    renderLancamento();
+  }catch(e){}
 }
 
 async function editarDataFaturamento(ofId, dataAtual){
@@ -9632,7 +9665,7 @@ async function imprimirRelatorioComissoes(){
   }
 }
 
-window._cpFiltro = window._cpFiltro || { tipo:'mes', de:'', ate:'', maquina_id:'' };
+window._cpFiltro = window._cpFiltro || { tipo:'tudo', de:'', ate:'', maquina_id:'', mes_ref:'' };
 
 function initCaixasPerdidasUI(){
   const emp = document.getElementById('cp-emp');
@@ -9652,8 +9685,12 @@ function initCaixasPerdidasUI(){
     }).filter(Boolean).join('');
     maq._loaded = true;
   }
-  if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'mes', de:'', ate:'', maquina_id:'' };
+  if(!window._cpFiltro || typeof window._cpFiltro !== 'object') window._cpFiltro = { tipo:'tudo', de:'', ate:'', maquina_id:'', mes_ref:'' };
   if(window._cpFiltro && window._cpFiltro.mes_ref === undefined) window._cpFiltro.mes_ref = '';
+  if(!window._cpFiltro.__defaultAllMonths){
+    const maqIdCur = String(window._cpFiltro.maquina_id || '').trim();
+    window._cpFiltro = { tipo:'tudo', de:'', ate:'', maquina_id: maqIdCur, mes_ref:'', __defaultAllMonths: 1 };
+  }
   const mesSel = document.getElementById('cp-mesref');
   if(mesSel && !mesSel._loaded){
     const nomes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -9682,7 +9719,8 @@ function initCaixasPerdidasUI(){
     const curMaq = String(window._cpFiltro?.maquina_id || '').trim();
     if(curMaq) maq.value = curMaq;
   }
-  if(!window._cpFiltro.de || !window._cpFiltro.ate) cpSetRange('mes', true);
+  const tipo = String(window._cpFiltro?.tipo || 'tudo');
+  if(tipo !== 'tudo' && (!window._cpFiltro.de || !window._cpFiltro.ate)) cpSetRange('mes', true);
 }
 
 function cpSetRange(tipo, silent){
@@ -10019,8 +10057,8 @@ function cpRender(rows){
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(cli))}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">${fmtN(qtd)}</td>
-        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${fmtR(vu)}</td>
-        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${fmtR(vt)}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${vu > 0 ? fmtR(vu) : '—'}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${vt > 0 ? fmtR(vt) : '—'}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(usu))}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">—</td>
       </tr>`;
@@ -17420,6 +17458,7 @@ function normalizeOF(r){
     maquina_atual_index: Number.isFinite(maqIdx) ? maqIdx : 0,
     imagem_url: imgUrl,
     data_conclusao: dataConc,
+    usuario_conclusao: r.usuario_conclusao ?? r.usuarioConclusao ?? '',
     created_at: createdAt,
     empId:r.emp_id ?? r.empId ?? r.empresa_id ?? r.empresaId ?? '',
     deleted_at: deletedAt
