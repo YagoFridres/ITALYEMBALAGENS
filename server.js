@@ -1209,16 +1209,17 @@ const OFS_TABLE_COLS = [
   'vendNome', 'empId', 'emp_id', 'empresa_id', 'status', 'data_entrega', 'ent',
   'quantidade', 'qtd', 'qtd_chapas', 'preco', 'total', 'valor_total', 'valor_venda',
   'itens', 'imgs', 'imagem_url', 'fluxo', 'fluxo_maquinas', 'maq', 'obs', 'obs2',
-  'descricao', 'of', 'of_num', 'urg', 'urgente', 'dia', 'data_producao', 'ramo', 'pagto',
+  'descricao', 'prodDesc', 'of', 'of_num', 'urg', 'urgente', 'dia', 'data_producao', 'ramo', 'pagto',
   'cond_pagamento', 'smp_id', 'vendedor_id', 'cliente_nome', 'of_seq', 'empNome',
   'maquina_atual_index', 'data_conclusao', 'cidade_entrega', 'modo_programacao',
   'dia_programacao', 'deleted_at', 'chapa_id', 'maquina_perda', 'qtd_perdida',
   'qtd_produzida', 'qtd_pedida', 'caixas_excedentes', 'usuario_conclusao',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
   'data_faturamento', 'seq', 'chp', 'created_at', 'updated_at',
-  'tipo_caixa_id',
 ];
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
+const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
+const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
 function _filterOfsPayloadKnownCols(input, keepMeta = true) {
   const src = input && typeof input === 'object' ? input : {};
   const out = {};
@@ -1879,7 +1880,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'maq', 'fluxo_maquinas', 'maquina_atual_index',
       'imgs', 'imagem_url',
     ];
-    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_TABLE_COLS_SET.has(c));
+    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
     const selectColsCsv = (selectCols && selectCols.length) ? selectCols.join(',') : 'id,of,numero,status,created_at,updated_at';
 
     const buildQueryBase = (sel, dateCol) => {
@@ -1987,7 +1988,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     };
 
     const dateColsToTry = (from && to)
-      ? ['data_producao', 'dia', 'created_at'].filter((c) => OFS_TABLE_COLS_SET.has(c))
+      ? ['data_producao', 'dia', 'created_at'].filter((c) => OFS_SELECTABLE_COLS_SET.has(c))
       : [null];
     for (const dateCol of dateColsToTry) {
       let colsArr = selectCols.slice();
@@ -2028,7 +2029,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const minimalCols = ['id', 'of', 'numero', 'status', 'created_at', 'updated_at', 'emp_id', 'cli_id', 'descricao', 'prodDesc', 'qtd', 'quantidade', 'urg', 'urgente']
-      .filter((c) => OFS_TABLE_COLS_SET.has(c));
+      .filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
     let colsMinArr = minimalCols.length ? minimalCols.slice() : ['id'];
     for (let tentativa = 0; tentativa < 8; tentativa++) {
       const { data, error, join } = await buildQueryWithJoin(colsMinArr, null);
