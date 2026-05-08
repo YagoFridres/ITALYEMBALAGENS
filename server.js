@@ -2692,7 +2692,12 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
     if (req.query.empId) q = q.eq('emp_id', req.query.empId);
-    if (req.query.mes) q = q.eq('mes_referencia', req.query.mes);
+    if (req.query.mes) {
+      const mes = String(req.query.mes || '').trim();
+      if (mes) {
+        q = q.or(`mes_referencia.eq.${mes},and(mes_referencia.is.null,data.gte.${mes}-01,data.lte.${mes}-31)`);
+      }
+    }
     if (req.query.de) q = q.gte('data', req.query.de);
     if (req.query.ate) q = q.lte('data', req.query.ate);
     const { data, error } = await q;

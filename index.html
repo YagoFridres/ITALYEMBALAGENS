@@ -9883,7 +9883,7 @@ async function carregarCaixasPerdidas(){
   };
   let rows = perdasBase
     .filter(r=>dentroPeriodo(r))
-    .filter(r=>!empSel || String(r?.emp_id||'').trim() === empSel);
+    .filter(r=>!empSel || String(r?.emp_id||r?.empresa_id||'').trim() === empSel);
 
   try{
     const qs = new URLSearchParams();
@@ -9893,7 +9893,13 @@ async function carregarCaixasPerdidas(){
     qs.set('limit', '500');
     const j = await api('GET', '/caixas_perdidas?' + qs.toString());
     const db0 = (j && j.ok && Array.isArray(j.data)) ? j.data : [];
-    const db = db0.filter(r=>dentroPeriodo(r)).filter(r=>!empSel || String(r?.emp_id||'').trim() === empSel);
+    if(!window.__cpPerdasLogged){
+      window.__cpPerdasLogged = true;
+      try{ console.log('[PERDAS]', j); }catch(e){}
+    }
+    const db = db0
+      .filter(r=>dentroPeriodo(r))
+      .filter(r=>!empSel || String(r?.emp_id||r?.empresa_id||'').trim() === empSel);
     if(db.length){
       const seen = new Set(rows.map(r=>String(r?.of_numero || r?.of || r?.numero || '').trim()).filter(Boolean));
       const add = db.filter(r=>{
@@ -9909,6 +9915,20 @@ async function carregarCaixasPerdidas(){
 
   window._cpRows = rows;
   cpRender(rows);
+}
+
+async function ofVendChange(){
+  try{
+    const cliId = String(document.getElementById('f-cli')?.value || document.getElementById('f-cli-id')?.value || '').trim();
+    const vendId = String(document.getElementById('f-vend')?.value || '').trim();
+    if(!cliId || !vendId) return;
+    await api('PUT', '/clientes/' + encodeURIComponent(cliId), { vendedor_id: vendId });
+    try{
+      const arr = Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(CLIENTES) ? CLIENTES : []);
+      const ix = arr.findIndex(c=>String(c?.id||'').trim()===cliId);
+      if(ix >= 0) arr[ix] = { ...arr[ix], vendedor_id: vendId, vendId };
+    }catch(e){}
+  }catch(e){}
 }
 
 function cpRender(rows){
@@ -26774,7 +26794,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </div>
       </div>
     </div>
-    <div class="mf"><label>VENDEDOR</label><select id="f-vend"><option value="">Sem vendedor</option></select></div>
+    <div class="mf"><label>VENDEDOR</label><select id="f-vend" onchange="ofVendChange()"><option value="">Sem vendedor</option></select></div>
     <div class="mf"><label>URGENTE?</label><select id="f-urg"><option value="0">Não</option><option value="1">Sim — URGENTE</option></select></div>
     <div class="mf"><label>FLUXO</label><select id="f-fl" onchange="preencherMaq()"><option value="">Selecionar fluxo...</option></select></div>
     <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="f-obs" rows="2"></textarea></div>
