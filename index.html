@@ -10022,15 +10022,18 @@ function cpRender(rows){
       const ofNum = r.of_numero || r.of || r.numero || '—';
       const prod = r.produto || '—';
       const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
-      let maqNome = String(
-        r?.maquina ||
-        r?.maquina_nome ||
-        r?.maquina_id ||
-        r?.maquina_perda ||
-        r?.maquinaPerda ||
-        r?.maq ||
-        ''
-      ).trim();
+      let maqNome = String(r?.maquina || r?.maquina_nome || r?.maquina_id || '').trim();
+      if(!maqNome){
+        try{
+          const ofsBase = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
+          const key = String(r?.of_numero || r?.of || r?.numero || '').trim();
+          const ofRel = key ? (ofsBase.find(o => String(o?.of || o?.numero || '').trim() === key) || null) : null;
+          maqNome = String(ofRel?.maquina_perda || '').trim();
+        }catch(e){}
+      }
+      if(!maqNome){
+        maqNome = String(r?.maquina_perda || r?.maquinaPerda || r?.maq || '').trim();
+      }
       if(!maqNome && maqId){
         try{
           const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
@@ -17460,7 +17463,8 @@ function normalizeOF(r){
     seq:r.seq ?? r.of_seq ?? r.ofSeq ?? 0,
     of,
     cliId,
-    cliNome: cliNomeResolved,
+    cliente: (cliNomeResolved || r.cliente_nome || r.clinome || r.cliNome || ''),
+    cliNome: (cliNomeResolved || r.cliente_nome || r.clinome || ''),
     vendId,
     vendedor: String(vendNome || '').trim(),
     vendNome: String(vendNome || '').trim(),
