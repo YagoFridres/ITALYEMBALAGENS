@@ -1860,7 +1860,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
   console.log('[OFS GET START] query:', JSON.stringify(req.query));
   try {
     setNoCache(res);
-    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 300));
+    const limit = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
@@ -1872,6 +1872,23 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const lite = String(req.query.lite || '') === '1';
     const from = String(req.query.from || req.query.de || '').trim();
     const to = String(req.query.to || req.query.ate || '').trim();
+
+    const cacheKey = [
+      'ofs',
+      String(req?.usuario?.id || ''),
+      empId,
+      status,
+      lite ? 'lite1' : 'lite0',
+      from,
+      to,
+      incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
+      incluirCanceladas ? 'incl_can1' : 'incl_can0',
+      excluirCanceladas ? 'exc_can1' : 'exc_can0',
+      String(limit),
+      String(offset),
+    ].join('|');
+    const cached = cacheGet(cacheKey);
+    if (cached != null) return ok(res, cached);
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
     const selectLitePref = [
@@ -1985,6 +2002,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       );
       return { ...row, vendedor_nome };
     });
+    cacheSet(cacheKey, rows, 30 * 1000);
     return ok(res, rows);
   } catch (e) {
     console.error('[OFS GET FATAL]', e?.message, String(e?.stack || '').split('\n')[0]);
@@ -2428,7 +2446,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       let useCols = cols.slice();
       for (let tentativa = 0; tentativa < 5; tentativa++) {
         const q = build(supabase.from(table).select(useCols.join(',')));
-        const r = await q.limit(500);
+        const r = await q.limit(150);
         if (!r.error) return { data: r.data || [], usedCols: useCols };
         const msg = String(r.error.message || r.error);
         console.error('[RELATORIO VENDEDOR] erro query:', msg);
@@ -4286,10 +4304,10 @@ app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
     const cached = cacheGet('maquinas');
-    if (cached) return ok(res, cached);
+    if (cached != null) return ok(res, cached);
     const { data, error } = await supabase.from('maquinas').select('*').order('ordem', { ascending: true });
     if (error) throw error;
-    cacheSet('maquinas', data || []);
+    cacheSet('maquinas', data || [], 60 * 1000);
     ok(res, data);
   } catch (e) { err(res, e); }
 });
@@ -5425,7 +5443,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     };
     const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
     const hasFiltros = qEntries.length > 0;
-    const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
+    const limitDb = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const cacheKey = hasFiltros
       ? ('chapas_estoque:auto:q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
@@ -6049,7 +6067,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(500, Math.trunc(_chapasToNum(req.query.limit, 120))));
+    const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
     const empId = String(req.query.empId || '').trim();
     const de = String(req.query.de || '').trim();
@@ -6809,7 +6827,7 @@ app.get('/api/relatorio/estoque_inventario', authMiddleware, async (req, res) =>
 
 app.get('/api/hist_estoque', authMiddleware, async (req, res) => {
   try {
-    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 200));
+    const limit = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const dataInicioRaw = String(req.query.dataInicio || req.query.data_inicio || '').trim();
     const dataFimRaw = String(req.query.dataFim || req.query.data_fim || '').trim();

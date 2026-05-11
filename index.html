@@ -17798,7 +17798,7 @@ let _clientesCarregados = false;
 
 let _ofsLoading = false;
 let _ofsLastLoad = 0;
-const _OFS_MIN_INTERVAL = 30000;
+const _OFS_MIN_INTERVAL = 60000;
 let _ofsLastHash = '';
 
 async function carregarOFsUnico(force = false){
@@ -17808,7 +17808,7 @@ async function carregarOFsUnico(force = false){
     return { ok:true, skipped:'loading', data: Array.isArray(OFs) ? OFs : [] };
   }
   if(!force && (agora - _ofsLastLoad) < _OFS_MIN_INTERVAL){
-    try{ console.log('[OFS] carregado há menos de 30s, ignorando'); }catch(e){}
+    try{ console.log('[OFS] carregado há menos de 60s, ignorando'); }catch(e){}
     return { ok:true, skipped:'recent', data: Array.isArray(OFs) ? OFs : [] };
   }
   _ofsLoading = true;
