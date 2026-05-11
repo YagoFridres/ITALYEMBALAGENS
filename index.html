@@ -4685,11 +4685,10 @@ async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
     const of = (OFs||[]).find(x=>String(x?.id||'')===id) || (window._ofmaqListaCompleta||[]).find(x=>String(x?.id||'')===id) || null;
     if(!of){ toast('OF não encontrada (recarregue)','var(--red)'); return; }
     await carregarMaquinas(false).catch(()=>null);
-    await carregarFluxos(false).catch(()=>null);
     window._ofmaqMoverCtx = { id, of: normalizeOF ? normalizeOF(of) : of, origem: String(maquinaOrigem||'').trim() };
 
     const mSel = document.getElementById('mm-maquina');
-    const fSel = document.getElementById('mm-fluxo');
+    const numInp = document.getElementById('mm-of-num');
     const sub = document.getElementById('mm-sub');
     const hid = document.getElementById('mm-of-id');
     if(hid) hid.value = id;
@@ -4698,43 +4697,26 @@ async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
       const cli = String(of.cliNome || of.cliente || of.cliente_nome || '').trim();
       sub.textContent = `OF ${num || '—'} · ${cli || '—'}`.trim();
     }
+    if(numInp){
+      const raw = String(of.of || of.numero || '').trim();
+      const digits = raw.replace(/\D/g,'');
+      numInp.value = digits ? digits : raw;
+    }
     if(mSel){
       const maqs = Array.isArray(MAQUINAS) ? MAQUINAS : [];
       mSel.innerHTML = '<option value="">Selecionar máquina...</option>' + maqs.map(m=>{
-        const mid = String(m.id||'').trim();
-        const nome = String(m.col||m.nome||mid||'').trim();
-        return `<option value="${escAttr(mid)}">${escH(nome)}</option>`;
+        const nome = String(m.col||m.nome||'').trim();
+        if(!nome) return '';
+        return `<option value="${escAttr(nome)}">${escH(nome)}</option>`;
       }).join('');
       const cur = (ofFluxoGetMaquinaAtualAtiva && window._ofmaqMoverCtx?.of) ? ofFluxoGetMaquinaAtualAtiva(window._ofmaqMoverCtx.of) : '';
-      const curObj = (MAQUINAS||[]).find(x=>String(x.col||x.nome||'').trim()===String(cur||'').trim()) || null;
-      const curId = String(curObj?.id || '').trim();
       const origem = String(maquinaOrigem||'').trim();
-      const origemObj = (MAQUINAS||[]).find(x=>String(x.col||x.nome||'').trim()===origem) || null;
-      const origemId = String(origemObj?.id || '').trim();
-      mSel.value = origemId || curId || '';
+      mSel.value = origem || String(cur||'').trim() || '';
     }
-    if(fSel){
-      const fluxos = Array.isArray(FLUXOS) ? FLUXOS : [];
-      fSel.innerHTML = '<option value="">Selecionar fluxo...</option>' + fluxos.map(fl=>{
-        const fid = String(fl.id||'').trim();
-        const nome = String(fl.nome||'').trim();
-        return `<option value="${escAttr(fid)}">${escH(nome || fid)}</option>`;
-      }).join('');
-      fSel.value = fluxos.length ? String(fluxos[0].id||'') : '';
-    }
-    const keep = document.getElementById('mm-mode-keep');
-    if(keep) keep.checked = true;
-    ofmaqMoverToggleMode();
     abrir('modal-mover-ofmaq');
   }catch(e){
     toast('Erro ao abrir mover: '+(e?.message||e),'var(--red)');
   }
-}
-
-function ofmaqMoverToggleMode(){
-  const keep = !!document.getElementById('mm-mode-keep')?.checked;
-  const box = document.getElementById('mm-fluxo-wrap');
-  if(box) box.style.display = keep ? 'none' : '';
 }
 
 async function confirmarMoverOFMaq(){
@@ -4743,33 +4725,36 @@ async function confirmarMoverOFMaq(){
   if(!id){ toast('OF inválida','var(--red)'); return; }
   const of = ctx?.of || (OFs||[]).find(x=>String(x?.id||'')===id) || null;
   if(!of){ toast('OF não encontrada','var(--red)'); return; }
-  const maqId = String(document.getElementById('mm-maquina')?.value || '').trim();
-  if(!maqId){ toast('Selecione a máquina','var(--red)'); return; }
-  const keep = !!document.getElementById('mm-mode-keep')?.checked;
-  const fluxoId = String(document.getElementById('mm-fluxo')?.value || '').trim();
-  if(!keep && !fluxoId){ toast('Selecione o fluxo','var(--red)'); return; }
+  const maqNome = String(document.getElementById('mm-maquina')?.value || '').trim();
+  if(!maqNome){ toast('Selecione a máquina','var(--red)'); return; }
+  const novoNumRaw = String(document.getElementById('mm-of-num')?.value || '').trim();
+  const novoNum = novoNumRaw ? (novoNumRaw.replace(/\D/g,'') || novoNumRaw) : '';
 
   const normFluxArr = (arr)=> (Array.isArray(arr)?arr:[])
     .map(x=> (x && typeof x==='object') ? (x.id||x.nome||x.name||x.maquina||x.value||x.label||'') : String(x||''))
     .map(s=>String(s||'').trim()).filter(Boolean);
 
-  let novoFluxo = [];
-  if(keep){
-    let fluxo = normFluxArr(parseFluxo(of.fluxo_maquinas));
-    if(!fluxo.length) fluxo = normFluxArr(parseFluxo(of.maq));
-    const idx = fluxo.findIndex(x=>String(x)===maqId);
-    if(idx >= 0) novoFluxo = fluxo.slice(idx);
-    else novoFluxo = [maqId, ...fluxo.filter(x=>String(x)!==maqId)];
-  } else {
-    const fl = (FLUXOS||[]).find(x=>String(x?.id||'').trim()===fluxoId) || null;
-    const etapas = normFluxArr(fl?.etapas || fl?.maquinas || fl?.sequencia || []);
-    novoFluxo = [maqId, ...etapas.filter(x=>String(x)!==maqId)];
+  const canon = (s)=> String(maqAtivaFromNome(String(s||'').trim()) || String(s||'').trim()).trim();
+  const alvo = canon(maqNome);
+  let fluxo = normFluxArr(parseFluxo(of.fluxo_maquinas));
+  if(!fluxo.length) fluxo = normFluxArr(parseFluxo(of.maq));
+  const resto = [];
+  const seen = new Set();
+  for(const x of fluxo){
+    const c = canon(x);
+    if(!c) continue;
+    if(c === alvo) continue;
+    if(seen.has(c)) continue;
+    seen.add(c);
+    resto.push(c);
   }
-  if(!novoFluxo.length) novoFluxo = [maqId];
+  const novoFluxo = [alvo, ...resto].filter(Boolean);
 
   try{
     showSaveIndicator('Movendo OF...','var(--yellow)');
-    const r = await api('PUT','/ofs/'+encodeURIComponent(id), { fluxo_maquinas: novoFluxo, maquina_atual_index: 0 });
+    const payload = { fluxo_maquinas: novoFluxo, maquina_atual_index: 0 };
+    if(novoNum) payload.of = novoNum;
+    const r = await api('PUT','/ofs/'+encodeURIComponent(id), payload);
     if(!r || r.ok === false) throw new Error((r && r.error) ? r.error : 'Falha ao mover');
     const row = r.data || r;
     try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
@@ -9892,6 +9877,7 @@ function cpAplicarFiltroMes(){
 }
 
 async function carregarCaixasPerdidas(){
+  try{ await carregarMaquinas(false); }catch(e){}
   initCaixasPerdidasUI();
   try{ await carregarOFsUnico(false); }catch(e){}
   const empSel = String((document.getElementById('cp-emp')||{}).value || '').trim();
@@ -9991,14 +9977,16 @@ async function carregarCaixasPerdidas(){
       const data0 = String(of?.data_conclusao || of?.updated_at || '').slice(0,10);
       const empId = String(of?.emp_id || '').trim();
       try{ console.log('[CP MAQUINA]', (of?.of || of?.numero || ''), 'maquina_perda:', of?.maquina_perda, 'maquina:', of?.maquina); }catch(e){}
+      const maqId = String(of?.maquina_perda_id || of?.maquina_id || '').trim();
+      const maqObj = maqId ? (MAQUINAS||[]).find(m=>String(m?.id||'').trim()===maqId) : null;
       const maqNome = String(
+        (maqObj?.col || maqObj?.nome) ||
         of?.maquina_perda ||
         of?.maquina ||
         of?.maquina_nome ||
         of?.maquinaPerda ||
         ''
       ).trim();
-      const maqId = String(of?.maquina_perda_id || '').trim();
       return {
         id: String(of?.id || ''),
         of_id: String(of?.id || ''),
@@ -17494,14 +17482,25 @@ function normalizeOF(r){
   let vendId = clienteJoin?.vendedor_id || r.vendedor_id || r.vend_id || r.vendedorId || r.vendId || '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
   if((!cliNomeResolved || String(cliNomeResolved).trim() === '') && cliId){
-    const cFound = (CLIENTES||[]).find(x=>String(x?.id||'').trim()===String(cliId).trim()) || null;
+    const src = (Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window._CLIENTES) ? window._CLIENTES : (Array.isArray(CLIENTES) ? CLIENTES : [])));
+    const cFound = src.find(x=>String(x?.id||'').trim()===String(cliId).trim()) || null;
     if(cFound && (cFound.nome || cFound.rs)) cliNomeResolved = String(cFound.nome || cFound.rs || '').trim();
+    if((!cliNomeResolved || String(cliNomeResolved).trim() === '') && !_clientesCarregados){
+      _onListLoaded('clientes', function clientesLoadedRerender(){
+        _rerenderAfterListLoaded();
+      });
+    }
   }
   const vendNomeTrim = String(vendNome || '').trim();
   if((!vendId || !isUuid(vendId)) && vendNomeTrim && isUuid(vendNomeTrim)) vendId = vendNomeTrim;
   if((!vendNomeTrim || isUuid(vendNomeTrim)) && vendId && isUuid(vendId)){
     const vFound = (VENDEDORES||[]).find(x=>String(x?.id||'').trim()===String(vendId).trim()) || null;
     if(vFound && vFound.nome) vendNome = String(vFound.nome).trim();
+    if((!vendNome || String(vendNome).trim() === '') && !(Array.isArray(VENDEDORES) && VENDEDORES.length)){
+      _onListLoaded('vendedores', function vendedoresLoadedRerender(){
+        _rerenderAfterListLoaded();
+      });
+    }
   }
   if(vendNome && isUuid(String(vendNome).trim())) vendNome = '';
   if(vendNome && (!vendId || vendId.length>12)){
@@ -17861,6 +17860,38 @@ function isUuid(v){
   const s = String(v || '').trim();
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
+function _onListLoaded(kind, fn){
+  const k = String(kind || '').trim();
+  if(!k || typeof fn !== 'function') return;
+  const prop = k === 'clientes' ? '_onClientesLoadedCbs' : (k === 'vendedores' ? '_onVendedoresLoadedCbs' : '');
+  if(!prop) return;
+  try{
+    if(!Array.isArray(window[prop])) window[prop] = [];
+    const key = String(fn._key || fn.name || '') || null;
+    if(key && window[prop].some(x=>x && x._key === key)) return;
+    if(key) fn._key = key;
+    window[prop].push(fn);
+  }catch(e){}
+}
+function _fireListLoaded(kind){
+  const k = String(kind || '').trim();
+  const prop = k === 'clientes' ? '_onClientesLoadedCbs' : (k === 'vendedores' ? '_onVendedoresLoadedCbs' : '');
+  if(!prop) return;
+  const arr = Array.isArray(window[prop]) ? window[prop].slice() : [];
+  try{ window[prop] = []; }catch(e){}
+  for(const fn of arr){
+    try{ if(typeof fn === 'function') fn(); }catch(e){}
+  }
+}
+function _rerenderAfterListLoaded(){
+  try{ if(Array.isArray(OFs) && typeof normalizeOF === 'function') OFs = OFs.map(normalizeOF); }catch(e){}
+  try{ if(Array.isArray(window.OFS) && typeof normalizeOF === 'function') window.OFS = window.OFS.map(normalizeOF); }catch(e){}
+  try{ if(Array.isArray(window.OFs) && typeof normalizeOF === 'function') window.OFs = window.OFs.map(normalizeOF); }catch(e){}
+  try{ if(typeof renderPCP === 'function') renderPCP(); }catch(e){}
+  try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
+  try{ if(typeof renderLancamento === 'function') renderLancamento(); }catch(e){}
+  try{ if(typeof updateBadges === 'function') updateBadges(); }catch(e){}
+}
 function dedupeById(arr){
   if(!Array.isArray(arr)) return [];
   const seen = new Set();
@@ -18151,6 +18182,7 @@ async function carregarClientes(forcar=false){
       arr.findIndex(x => String(x.id||'') === String(c.id||'')) === idx
     );
     _clientesCarregados = true;
+    try{ _fireListLoaded('clientes'); }catch(e){}
   }
   if(r && r.ok) _ultimaCargaClientes = Date.now();
   try{ window._CLIENTES = CLIENTES; }catch(e){}
@@ -18306,7 +18338,10 @@ async function carregarVendedores(forcar=false){
   if(!forcar && (now - _ultimaCargaVendedores) < CACHE_TTL && Array.isArray(VENDEDORES) && VENDEDORES.length > 0) return { ok:true, cached:true, data:VENDEDORES };
   const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
   const r = await api('GET','/vendedores'+empParam);
-  if(r && r.ok && r.data && r.data.length) VENDEDORES = r.data.map(normalizeVend);
+  if(r && r.ok && r.data && r.data.length) {
+    VENDEDORES = r.data.map(normalizeVend);
+    try{ _fireListLoaded('vendedores'); }catch(e){}
+  }
   if(r && r.ok) _ultimaCargaVendedores = Date.now();
   return r;
 }
@@ -20755,22 +20790,20 @@ function filtrarSelecaoChapas(){
   });
 }
 
-function triggerImportChapas(){
+function triggerImportAtualizarEstoqueChapas(){
   const inp = document.getElementById('est-import-file');
   if(inp) inp.click();
 }
+function triggerImportChapas(){ return triggerImportAtualizarEstoqueChapas(); }
+function triggerUpsertEstoqueChapas(){ return triggerImportAtualizarEstoqueChapas(); }
 
-function triggerUpsertEstoqueChapas(){
-  const inp = document.getElementById('est-upsert-file');
-  if(inp) inp.click();
-}
-
-async function handleUpsertEstoqueChapasFile(file){
+async function handleImportAtualizarEstoqueChapasFile(file){
   if(!file) return;
   const name = String(file.name||'').toLowerCase();
+  const isCsv = name.endsWith('.csv');
   const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls');
-  if(!isXlsx){
-    toast('Formato não suportado. Use .xlsx ou .xls', 'var(--red)');
+  if(!isCsv && !isXlsx){
+    toast('Formato não suportado. Use .csv, .xlsx ou .xls', 'var(--red)');
     return;
   }
   if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
@@ -20782,7 +20815,8 @@ async function handleUpsertEstoqueChapasFile(file){
     const fr = new FileReader();
     fr.onerror = () => reject(fr.error||new Error('read_error'));
     fr.onload = () => resolve(fr.result);
-    fr.readAsArrayBuffer(file);
+    if(isCsv) fr.readAsText(file);
+    else fr.readAsArrayBuffer(file);
   });
 
   const normalizeHeader = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
@@ -20798,7 +20832,7 @@ async function handleUpsertEstoqueChapasFile(file){
   try{
     showSaveIndicator('⏳ lendo arquivo...','var(--yellow)');
     const raw = await readFile();
-    const wb = XLSX.read(raw, { type:'array' });
+    const wb = isCsv ? XLSX.read(raw, { type:'string' }) : XLSX.read(raw, { type:'array' });
     const sheetName = (wb.SheetNames||[])[0];
     const ws = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
@@ -20807,6 +20841,7 @@ async function handleUpsertEstoqueChapasFile(file){
       toast('Arquivo sem linhas','var(--orange)');
       return;
     }
+
     const headerMap = {};
     Object.keys(rows[0]||{}).forEach(h=>{ headerMap[normalizeHeader(h)] = h; });
     const pick = (row, keys) => {
@@ -20818,32 +20853,31 @@ async function handleUpsertEstoqueChapasFile(file){
     };
 
     const keys = {
-      fornecedor: ['FORNECEDOR'],
-      nomenclatura: ['NOMENCLATURA'],
-      tamanho: ['TAMANHO'],
-      nome: ['NOME'],
+      forn: ['FORNECEDOR','FORN'],
+      nom: ['NOMENCLATURA','NOM'],
+      tam: ['TAMANHO','TAM'],
+      nome: ['NOME','NOME_USO','NOME USO'],
       qual_cnpj: ['QUAL CNPJ','QUAL_CNPJ','QUAL'],
       nf: ['NF'],
-      quantidade: ['QUANTIDADE','QTD'],
-      valor_unitario: ['R$','R$ (UN)','VALOR','VALOR UNITARIO','VALOR_UNITARIO'],
+      qtd: ['QUANTIDADE','QTD'],
+      val: ['R$','R$ (UN)','VAL','VALOR','VALOR UNITARIO','VALOR_UNITARIO'],
     };
 
     const payloadRows = [];
     for(let i=0;i<rows.length;i++){
       const r = rows[i];
-      const fornecedor = String(pick(r, keys.fornecedor) || '').trim();
-      const nomenclatura = String(pick(r, keys.nomenclatura) || '').trim();
-      const tamanho = String(pick(r, keys.tamanho) || '').trim();
-      if(!nomenclatura || !tamanho) continue;
+      const nom = String(pick(r, keys.nom) || '').trim();
+      const tam = String(pick(r, keys.tam) || '').trim();
+      if(!nom || !tam) continue;
       payloadRows.push({
-        fornecedor,
-        nomenclatura,
-        tamanho,
+        forn: String(pick(r, keys.forn) || '').trim(),
+        nom,
+        tam,
         nome: String(pick(r, keys.nome) || '').trim(),
         qual_cnpj: String(pick(r, keys.qual_cnpj) || '').trim(),
         nf: String(pick(r, keys.nf) || '').trim(),
-        quantidade: toInt(pick(r, keys.quantidade)),
-        valor_unitario: toNum(pick(r, keys.valor_unitario)),
+        qtd: toInt(pick(r, keys.qtd)),
+        val: toNum(pick(r, keys.val)),
       });
     }
     if(!payloadRows.length){
@@ -20887,182 +20921,10 @@ async function handleUpsertEstoqueChapasFile(file){
   }
 }
 
+async function handleUpsertEstoqueChapasFile(file){ return handleImportAtualizarEstoqueChapasFile(file); }
+
 async function handleImportChapasFile(file){
-  if(!file) return;
-  const name = (file.name||'').toLowerCase();
-  const isCsv = name.endsWith('.csv');
-  const isXlsx = name.endsWith('.xlsx');
-  const isXls = name.endsWith('.xls');
-  if(!isCsv && !isXlsx && !isXls){
-    toast('Formato não suportado. Use .csv, .xlsx ou .xls', 'var(--red)');
-    return;
-  }
-  if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
-    toast('SheetJS (XLSX) não carregado', 'var(--red)');
-    return;
-  }
-
-  const readFile = () => new Promise((resolve, reject)=>{
-    const fr = new FileReader();
-    fr.onerror = () => reject(fr.error||new Error('read_error'));
-    fr.onload = () => resolve(fr.result);
-    if(isCsv) fr.readAsText(file);
-    else fr.readAsArrayBuffer(file);
-  });
-
-  const normalizeHeader = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
-  let headerMap = {};
-  const toNum = (v) => {
-    if(v==null) return null;
-    if(typeof v === 'number') return Number.isFinite(v) ? v : null;
-    const s = String(v).trim()
-      .replace(/R\$/gi,'')
-      .replace(/\s+/g,'')
-      .replace(/\./g,'')
-      .replace(',', '.');
-    const n = Number(s);
-    return Number.isFinite(n) ? n : null;
-  };
-  const pick = (row, keys) => {
-    for(const k of keys){
-      const kk = headerMap[k] || k;
-      if(row[kk] != null && String(row[kk]).trim() !== '') return row[kk];
-    }
-    return null;
-  };
-
-  try{
-    showSaveIndicator('⏳ lendo arquivo...','var(--yellow)');
-    const raw = await readFile();
-    const wb = isCsv ? XLSX.read(raw, { type:'string' }) : XLSX.read(raw, { type:'array' });
-    const targetSheetName = (wb.SheetNames||[]).find(n=>normalizeHeader(n)==='CONTROLE ESTOQUE') || (wb.SheetNames||[])[0];
-    const ws = wb.Sheets[targetSheetName];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
-    if(!rows.length){
-      showSaveIndicator('⚠ arquivo vazio','var(--orange)');
-      toast('Arquivo sem linhas','var(--orange)');
-      return;
-    }
-
-    headerMap = {};
-    Object.keys(rows[0]||{}).forEach(h=>{ headerMap[normalizeHeader(h)] = h; });
-    const keys = {
-      fornecedor: ['FORNECEDOR','FORN'],
-      nomenclatura: ['NOMENCLATURA','CODIGO','CÓDIGO'],
-      tamanho: ['TAMANHO','TAM'],
-      nome_uso: ['NOME_USO','NOME USO','NOME'],
-      qual_cnpj: ['QUAL_CNPJ','QUAL CNPJ','QUAL','CNPJ'],
-      nf: ['NF','NFE','NOTA','NOTA FISCAL'],
-      quantidade: ['QUANTIDADE','QTD','SALDO'],
-      valor_unitario: ['VALOR_UNITARIO','VALOR UNITARIO','VALOR','R$','R$ (UN)'],
-      categoria: ['CATEGORIA'],
-      empresa_vinculada: ['EMPRESA_VINCULADA','EMPRESA VINCULADA','EMPRESA','EMPRESA/CNPJ'],
-      estoque_minimo: ['ESTOQUE_MINIMO','ESTOQUE MINIMO','MINIMO','MÍNIMO'],
-      emp_id: ['EMP_ID','EMP ID','EMPID','EMPRESA_ID','EMPRESA ID']
-    };
-
-    let okCount = 0;
-    let failCount = 0;
-    let updCount = 0;
-    let insCount = 0;
-    let ignCount = 0;
-    const fails = [];
-
-    toast(`⏳ Importando 0/${rows.length}...`,'var(--orange)');
-    showSaveIndicator(`⏳ importando 0/${rows.length}`,'var(--yellow)');
-
-    const normStr = (v)=>String(v||'').trim().toUpperCase();
-    const normTam = (v)=>String(v||'').trim().toUpperCase().replace(/\s+/g,'').replace(/MM/g,'').replace(/×/g,'X');
-    const keyNorm = (forn, nom, tam) => `${normStr(forn)}|${normStr(nom)}|${normTam(tam)}`;
-    const existingMap = new Map();
-    (ESTOQUE||[]).forEach(c=>{
-      const forn = c.fornecedor ?? c.forn ?? '';
-      const nom = c.nomenclatura ?? c.nom ?? '';
-      const tam = c.tamanho ?? c.tam ?? '';
-      const k = keyNorm(forn, nom, tam);
-      if(forn && nom && tam && c.id && !existingMap.has(k)) existingMap.set(k, c);
-    });
-
-    for(let i=0;i<rows.length;i++){
-      const r = rows[i];
-      const fornecedor = String(pick(r, keys.fornecedor) || '').trim();
-      if(/^[A-Za-z]$/.test(fornecedor)){ ignCount++; continue; }
-      const nomenclatura = String(pick(r, keys.nomenclatura) || '').trim();
-      const tamanho = String(pick(r, keys.tamanho) || '').trim();
-      if(!fornecedor || !nomenclatura || !tamanho){ ignCount++; continue; }
-
-      const nome_uso = String(pick(r, keys.nome_uso) || '').trim();
-      const qual_cnpj = String(pick(r, keys.qual_cnpj) || '').trim();
-      const nf = String(pick(r, keys.nf) || '').trim();
-      const quantidade = Math.trunc(toNum(pick(r, keys.quantidade)) ?? 0);
-      const valor_unitario = toNum(pick(r, keys.valor_unitario)) ?? 0;
-      const categoria = String(pick(r, keys.categoria) || '').trim();
-      const empresa_vinculada = String(pick(r, keys.empresa_vinculada) || '').trim();
-      const estoqueMinRaw = toNum(pick(r, keys.estoque_minimo));
-      const estoque_minimo = (estoqueMinRaw == null) ? null : Math.trunc(estoqueMinRaw);
-      const emp_id = String(pick(r, keys.emp_id) || '').trim();
-
-      const uniqKey = keyNorm(fornecedor, nomenclatura, tamanho);
-      const existing = existingMap.get(uniqKey);
-
-      let resp = null;
-      if(existing && existing.id){
-        const curQtd = Math.trunc(Number(existing.quantidade ?? existing.qtd ?? 0) || 0);
-        const curV = Number(existing.valor_unitario ?? existing.val ?? 0) || 0;
-        if(curQtd === quantidade && Number(curV.toFixed(6)) === Number(Number(valor_unitario).toFixed(6))){
-          ignCount++;
-          continue;
-        }
-        resp = await api('PUT','/chapas_estoque/'+encodeURIComponent(existing.id), { quantidade, valor_unitario });
-        if(resp && resp.ok){ updCount++; }
-      } else {
-        const payloadInsert = {
-          fornecedor,
-          nomenclatura,
-          tamanho,
-          nome_uso: nome_uso || nomenclatura,
-          qual_cnpj,
-          nf,
-          quantidade,
-          valor_unitario,
-          categoria: categoria || undefined,
-          empresa_vinculada,
-          estoque_minimo: (estoque_minimo == null) ? undefined : estoque_minimo,
-          emp_id: emp_id || undefined,
-        };
-        resp = await api('POST','/chapas_estoque', payloadInsert);
-        if(resp && resp.ok){
-          insCount++;
-          const createdId = resp?.data?.id || resp?.data?.data?.id || resp?.data?.row?.id || resp?.data?.[0]?.id || null;
-          if(createdId) existingMap.set(uniqKey, { id: createdId, fornecedor, nomenclatura, tamanho, quantidade, valor_unitario });
-        }
-      }
-
-      if(resp && resp.ok) okCount++;
-      else {
-        failCount++;
-        if(fails.length < 10) fails.push({ linha: i+2, nome: nomenclatura || fornecedor || 'linha', erro: resp && resp.error ? resp.error : 'erro' });
-      }
-      if((i+1)%25===0 || i===rows.length-1){
-        showSaveIndicator(`⏳ importando ${i+1}/${rows.length}`,'var(--yellow)');
-        toast(`⏳ ${i+1}/${rows.length}... (${updCount} atualizados, ${insCount} inseridos, ${ignCount} ignorados, ${failCount} falhas)`,'var(--orange)');
-      }
-    }
-
-    if(failCount===0){
-      showSaveIndicator('✓ importação concluída','var(--green)');
-      toast(`✓ Importação: ${updCount} atualizados, ${insCount} inseridos, ${ignCount} ignorados`,'var(--green)');
-    } else {
-      showSaveIndicator('⚠ importação parcial','var(--orange)');
-      toast(`⚠ Importação: ${updCount} atualizados, ${insCount} inseridos, ${ignCount} ignorados, ${failCount} falhas (console)`,'var(--orange)');
-      console.warn('Falhas importação (até 10):', fails);
-    }
-
-    try{ await carregarChapas(); renderEstoque(); }catch(e){}
-  }catch(e){
-    showSaveIndicator('✖ erro','var(--red)');
-    toast('Erro ao importar: '+(e.message||e),'var(--red)');
-  }
+  return handleImportAtualizarEstoqueChapasFile(file);
 }
 
 function abrirModalResetChapas(){
@@ -25827,11 +25689,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
-    <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar CSV/Excel</button>
-    <button class="btn btn-ghost btn-sm" onclick="triggerUpsertEstoqueChapas()">🧾 Importar/Atualizar Estoque</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerImportAtualizarEstoqueChapas()">📥 Importar/Atualizar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
-    <input id="est-import-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
-    <input id="est-upsert-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="handleUpsertEstoqueChapasFile(this.files[0]); this.value='';">
+    <input id="est-import-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportAtualizarEstoqueChapasFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body">
     <!-- Alertas -->
@@ -27939,17 +27799,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <input type="hidden" id="mm-of-id">
   <div class="fg">
     <div class="mf fgf"><label>Nova máquina *</label><select id="mm-maquina"><option value="">Selecionar máquina...</option></select></div>
-    <div class="mf fgf" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-        <input type="radio" name="mm-mode" id="mm-mode-keep" checked onchange="ofmaqMoverToggleMode()" style="width:auto">
-        Manter fluxo atual
-      </label>
-      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-        <input type="radio" name="mm-mode" id="mm-mode-new" onchange="ofmaqMoverToggleMode()" style="width:auto">
-        Escolher novo fluxo
-      </label>
-    </div>
-    <div class="mf fgf" id="mm-fluxo-wrap" style="display:none"><label>Novo fluxo *</label><select id="mm-fluxo"><option value="">Selecionar fluxo...</option></select></div>
+    <div class="mf fgf"><label>Nº OF</label><input id="mm-of-num" placeholder="Ex: 297" style="font-family:var(--mono)"></div>
   </div>
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-mover-ofmaq')">Cancelar</button>

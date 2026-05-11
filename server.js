@@ -2262,7 +2262,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       return res.status(409).json({ ok: false, error: 'concurrency_conflict', current: ofAtual, rid: req._rid || null });
     }
 
-    ['numero', 'of', 'of_num', 'of_numero', 'seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
+    ['of_num', 'of_numero', 'seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
     if (!Object.prototype.hasOwnProperty.call(body, 'itens')) delete cleanBody.itens;
 
     const valorAtual = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);
@@ -2278,8 +2278,6 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
 
     const filtered = ofPayloadFiltrado(cleanBody);
     delete filtered.id;
-    delete filtered.numero;
-    delete filtered.of;
     delete filtered.of_num;
     delete filtered.of_numero;
     delete filtered.seq;
