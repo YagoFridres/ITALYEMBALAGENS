@@ -118,28 +118,8 @@ if (!_supabaseEnvOk) {
   process.exit(1);
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
+  // Conexão Supabase verificada no startup sem query ao banco
   console.log('✅ Supabase conectado:', supabaseUrl);
-  try {
-    cacheClearPrefix('chapas_estoque:');
-    cacheClearPrefix('chapas_');
-  } catch (_) {
-    globalThis.__pendingCacheClearPrefixes = ['chapas_estoque:', 'chapas_'];
-  }
-  console.log('✅ Supabase key:', supabaseKeySource, 'len:', (supabaseKey ? String(supabaseKey).length : 0), 'tipo provável:', (supabaseKey && String(supabaseKey).length > 200 ? 'SERVICE ROLE' : 'ANON/curta'));
-  try {
-    setTimeout(async () => {
-      try {
-        const { data, error } = await supabase.from('ofs').select('*').limit(1);
-        if (error) {
-          console.warn('[OFS COLS] erro:', String(error.message || error));
-          return;
-        }
-        console.log('[OFS COLS]', data?.[0] ? Object.keys(data[0]) : 'vazio');
-      } catch (e) {
-        console.warn('[OFS COLS] erro:', String(e?.message || e));
-      }
-    }, 500);
-  } catch (_) {}
 }
 
 const app = express();
