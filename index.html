@@ -15218,20 +15218,130 @@ function cmpGerarPDF(){
   setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 
+function emailAbrirModal(opts){
+  const o = (opts && typeof opts === 'object') ? opts : {};
+  window._emailDraft = {
+    para: String(o.para || '').trim(),
+    assunto: String(o.assunto || '').trim(),
+    corpo: String(o.corpo || o.corpoHtml || '').trim(),
+    anexos: Array.isArray(o.anexos) ? o.anexos.slice() : [],
+  };
+  const sub = document.getElementById('eml-sub');
+  if(sub) sub.textContent = String(o.sub || '').trim();
+  const para = document.getElementById('eml-para'); if(para) para.value = window._emailDraft.para;
+  const ass = document.getElementById('eml-assunto'); if(ass) ass.value = window._emailDraft.assunto;
+  const corpo = document.getElementById('eml-corpo'); if(corpo) corpo.value = window._emailDraft.corpo;
+  emailRenderAnexos();
+  abrir('modal-email-enviar');
+}
+function emailPickAnexos(){
+  const inp = document.getElementById('eml-file');
+  if(inp) inp.click();
+}
+function emailRenderAnexos(){
+  const box = document.getElementById('eml-anexos');
+  if(!box) return;
+  const arr = Array.isArray(window._emailDraft?.anexos) ? window._emailDraft.anexos : [];
+  if(!arr.length){ box.textContent = 'Nenhum anexo'; return; }
+  const nomes = arr.map(a=>String(a?.nome||'anexo')).slice(0,6);
+  const rest = Math.max(0, arr.length - nomes.length);
+  box.textContent = nomes.join(', ') + (rest ? ` +${rest}` : '');
+}
+async function emailHandleFiles(fileList){
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  if(!window._emailDraft) window._emailDraft = { para:'', assunto:'', corpo:'', anexos:[] };
+  const readAsDataUrl = (f)=> new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onerror = ()=> reject(fr.error || new Error('read_error'));
+    fr.onload = ()=> resolve(String(fr.result || ''));
+    fr.readAsDataURL(f);
+  });
+  try{
+    showSaveIndicator(`⏳ anexando 0/${files.length}`,'var(--yellow)');
+    for(let i=0;i<files.length;i++){
+      const f = files[i];
+      const nome = String(f?.name || 'anexo').trim() || 'anexo';
+      const tipo = String(f?.type || 'application/octet-stream').trim() || 'application/octet-stream';
+      const dataUrl = await readAsDataUrl(f);
+      const comma = dataUrl.indexOf(',');
+      let b64 = comma >= 0 ? dataUrl.slice(comma+1) : dataUrl;
+      b64 = String(b64 || '').replace(/\s+/g,'');
+      if(!b64) continue;
+      window._emailDraft.anexos.push({ nome, tipo, base64: b64 });
+      showSaveIndicator(`⏳ anexando ${i+1}/${files.length}`,'var(--yellow)');
+    }
+    showSaveIndicator('✓ anexos prontos','var(--green)');
+    emailRenderAnexos();
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao anexar: '+(e?.message||e),'var(--red)');
+  }
+}
+async function emailEnviarModal(){
+  try{
+    const para = String(document.getElementById('eml-para')?.value || '').trim();
+    const assunto = String(document.getElementById('eml-assunto')?.value || '').trim();
+    const corpo = String(document.getElementById('eml-corpo')?.value || '').trim();
+    const anexos = Array.isArray(window._emailDraft?.anexos) ? window._emailDraft.anexos : [];
+    if(!para || !para.includes('@')){ toast('E-mail do destinatário inválido','var(--red)'); return; }
+    if(!assunto){ toast('Assunto obrigatório','var(--red)'); return; }
+    if(!corpo){ toast('Corpo obrigatório','var(--red)'); return; }
+    showSaveIndicator('⏳ enviando e-mail...','var(--yellow)');
+    const r = await api('POST','/email/enviar', { para, assunto, corpo, anexos });
+    if(!r || r.ok === false) throw new Error((r && (r.error || r.msg)) ? (r.error || r.msg) : 'Falha ao enviar');
+    fechar('modal-email-enviar');
+    showSaveIndicator('✓ enviado','var(--green)');
+    toast('✅ Email enviado para ' + para,'var(--green)');
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('❌ Erro ao enviar email','var(--red)');
+  }
+}
+
 function cmpEnviarEmail(){
   CMP_ITEMS.forEach((_,i)=>cmpItemCalc(i));
   const forn=(document.getElementById('cp-forn')||{}).value||(document.getElementById('cp-forn-manual')||{}).value||'Fornecedor';
   const num=document.getElementById('cp-num').value;
   const data=document.getElementById('cp-data').value;
   const total=CMP_ITEMS.reduce((s,it)=>s+(it.vtot||0),0);
-  const linhas=CMP_ITEMS.filter(it=>it.nom||it.qtd).map((it,i)=>`${i+1}. ${it.nom} | ${it.comp}x${it.larg}mm | Qtd: ${it.qtd} un | Vincos: ${it.vincos||'—'} | R$ ${(it.vunit||0).toFixed(4)}/un | Total: R$ ${(it.vtot||0).toFixed(2)}`).join('%0A');
   const empNome=(getEmp((document.getElementById('cp-emp')||{}).value)||{nome:'Italy Embalagens'}).nome;
-  const subject=encodeURIComponent(`Pedido de Compra ${num} — ${empNome}`);
-  const body=encodeURIComponent(`Bom dia,\n\nSegue pedido de compra ${num} (${data}):\n\n`)
-    +linhas
-    +'%0A%0A'
-    +encodeURIComponent(`TOTAL GERAL: R$ ${total.toFixed(2)}\n\nAtenciosamente,\n${empNome}`);
-  window.location.href=`mailto:?subject=${subject}&body=${body}`;
+  const assunto = `Pedido de Compra ${num} — ${empNome}`;
+  const linhasHtml = CMP_ITEMS.filter(it=>it.nom||it.qtd).map((it,i)=>`
+    <tr>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace;text-align:center">${i+1}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd">${escH(it.nom||'')}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace">${escH(String(it.comp||''))}x${escH(String(it.larg||''))}mm</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace;text-align:right">${escH(String(it.qtd||0))}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd">${escH(String(it.vincos||'—'))}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace;text-align:right">R$ ${escH((Number(it.vunit||0)||0).toFixed(4))}</td>
+      <td style="padding:6px 8px;border:1px solid #ddd;font-family:monospace;text-align:right">R$ ${escH((Number(it.vtot||0)||0).toFixed(2))}</td>
+    </tr>
+  `).join('');
+  const corpo = `
+    <div style="font-family:Arial,sans-serif">
+      <p>Bom dia,</p>
+      <p>Segue pedido de compra <b>${escH(String(num||''))}</b> (${escH(String(data||''))})</p>
+      <p><b>Fornecedor:</b> ${escH(String(forn||''))}</p>
+      <table style="border-collapse:collapse;width:100%;font-size:12px">
+        <thead>
+          <tr style="background:#f5f5f5">
+            <th style="padding:6px 8px;border:1px solid #ddd">#</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:left">Nomenclatura</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:left">Tamanho</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:right">Qtd</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:left">Vincos</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:right">Valor un</th>
+            <th style="padding:6px 8px;border:1px solid #ddd;text-align:right">Total</th>
+          </tr>
+        </thead>
+        <tbody>${linhasHtml}</tbody>
+      </table>
+      <p style="margin-top:10px"><b>TOTAL GERAL:</b> R$ ${(Number(total||0)||0).toFixed(2)}</p>
+      <p>Atenciosamente,<br>${escH(empNome)}</p>
+    </div>
+  `;
+  emailAbrirModal({ sub:'Pedido de Compra (Papelão)', assunto, corpo, para:'' });
 }
 
 // ===================== CALC OF TOTAL =====================
@@ -22390,17 +22500,29 @@ async function enviarOrcamentoPorEmail(){
   const calcCli=document.getElementById('calc-cli');
   const clienteNome=(calcCli && calcCli.options && calcCli.selectedIndex>=0) ? (calcCli.options[calcCli.selectedIndex].textContent||'').trim() : 'Cliente';
   const medidas=(document.getElementById('calc-comp')?.value||'')+'x'+(document.getElementById('calc-larg')?.value||'')+'x'+(document.getElementById('calc-alt')?.value||'');
-  const assunto=encodeURIComponent('Orçamento Italy Embalagens'+(_orcNumeroAtual?' Nº '+_orcNumeroAtual:''));
-  const corpo=encodeURIComponent(
-    'Prezado(a) '+clienteNome+',\n\n'
-    +'Segue orçamento de embalagens:\n'
-    +'Medidas: '+medidas+'\n'
-    +'Quantidade: '+(document.getElementById('calc-qtd')?.value||'')+'\n\n'
-    +'Em anexo o orçamento detalhado.\n\n'
-    +'Atenciosamente,\nEleomar Fridres\n(49) 99998-0203\natendimento@italyembalagens.com.br\nRUA GEOVANI BARRICHELLO, 200 - BAIRRO SANTA RITA - SÃO MIGUEL DO OESTE'
-  );
-  window.open('mailto:'+String(email).trim()+'?subject='+assunto+'&body='+corpo);
-  toast('Cliente de e-mail aberto ✓','var(--green)');
+  const assunto='Orçamento Italy Embalagens'+(_orcNumeroAtual?' Nº '+_orcNumeroAtual:'');
+  const qtd = String(document.getElementById('calc-qtd')?.value||'').trim();
+  const vunit = String(document.getElementById('calc-vunit')?.value||'').trim();
+  const total = String(document.getElementById('calc-total')?.value||'').trim();
+  const corpo = `
+    <div style="font-family:Arial,sans-serif">
+      <p>Prezado(a) ${escH(clienteNome)},</p>
+      <p>Segue orçamento de embalagens.</p>
+      <table style="border-collapse:collapse;width:100%;font-size:12px">
+        <tbody>
+          <tr><td style="padding:6px 8px;border:1px solid #ddd;background:#f5f5f5"><b>Nº</b></td><td style="padding:6px 8px;border:1px solid #ddd">${escH(String(_orcNumeroAtual||'—'))}</td></tr>
+          <tr><td style="padding:6px 8px;border:1px solid #ddd;background:#f5f5f5"><b>Medidas</b></td><td style="padding:6px 8px;border:1px solid #ddd">${escH(medidas||'—')}</td></tr>
+          <tr><td style="padding:6px 8px;border:1px solid #ddd;background:#f5f5f5"><b>Quantidade</b></td><td style="padding:6px 8px;border:1px solid #ddd">${escH(qtd||'—')}</td></tr>
+          ${vunit ? `<tr><td style="padding:6px 8px;border:1px solid #ddd;background:#f5f5f5"><b>Valor un</b></td><td style="padding:6px 8px;border:1px solid #ddd">${escH(vunit)}</td></tr>` : ''}
+          ${total ? `<tr><td style="padding:6px 8px;border:1px solid #ddd;background:#f5f5f5"><b>Total</b></td><td style="padding:6px 8px;border:1px solid #ddd">${escH(total)}</td></tr>` : ''}
+        </tbody>
+      </table>
+      <p style="margin-top:10px">Você pode responder este e-mail para dar sequência.</p>
+      <p>Atenciosamente,<br>Italy Embalagens<br>(49) 3622-8512<br>atendimento@italyembalagens.com.br</p>
+      <p style="color:#444;font-size:11px">Rua Geovani Barrichello, 200 — São Miguel do Oeste — SC</p>
+    </div>
+  `;
+  emailAbrirModal({ sub:'Orçamento', para:String(email).trim(), assunto, corpo });
 }
 
 function abrirCalculadora(){
@@ -28176,6 +28298,30 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent" onclick="oqsImprimir()">🖨 Imprimir</button>
   </div>
   <div id="oqs-wrap" style="max-height:min(70vh,720px);overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)"></div>
+</div></div>
+
+<div class="modal-overlay" id="modal-email-enviar">
+<div class="modal" style="width:min(860px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-email-enviar')">✕</button>
+  <h2>✉️ Enviar e-mail</h2>
+  <div id="eml-sub" style="color:var(--text2);font-weight:800;margin:6px 0 14px"></div>
+  <div class="fg">
+    <div class="mf fgf"><label>Para *</label><input id="eml-para" placeholder="destinatario@empresa.com"></div>
+    <div class="mf fgf"><label>Assunto *</label><input id="eml-assunto"></div>
+    <div class="mf fgf"><label>Corpo (HTML) *</label><textarea id="eml-corpo" rows="10" style="font-family:var(--mono);font-size:.72rem"></textarea></div>
+    <div class="mf fgf no-print">
+      <label>Anexos</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="emailPickAnexos()">📎 Anexar arquivos</button>
+        <div id="eml-anexos" style="color:var(--text3);font-size:.78rem"></div>
+      </div>
+      <input id="eml-file" type="file" multiple style="display:none" onchange="emailHandleFiles(this.files); this.value='';">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-email-enviar')">Cancelar</button>
+    <button class="btn btn-accent" onclick="emailEnviarModal()">Enviar</button>
+  </div>
 </div></div>
 
 <!-- Modal Vendedor -->

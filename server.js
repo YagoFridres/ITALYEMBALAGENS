@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 function parseFluxo(v) {
   if (Array.isArray(v)) return v;
@@ -120,6 +121,29 @@ if (!_supabaseEnvOk) {
   supabase = createClient(supabaseUrl, supabaseKey);
   // Conexão Supabase verificada no startup sem query ao banco
   console.log('✅ Supabase conectado:', supabaseUrl);
+}
+
+let transporter = null;
+try {
+  const emailUser = String(process.env.EMAIL_USER || '').trim();
+  const emailPass = String(process.env.EMAIL_PASS || '').trim();
+  if (emailUser && emailPass) {
+    transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'mail.italyembalagens.com.br',
+      port: 587,
+      secure: false,
+      auth: { user: emailUser, pass: emailPass },
+      tls: { rejectUnauthorized: false },
+    });
+    transporter.verify((err) => {
+      if (err) console.error('[EMAIL] SMTP erro:', String(err?.message || err));
+      else console.log('[EMAIL] SMTP Hostgator conectado ✅');
+    });
+  } else {
+    console.log('[EMAIL] SMTP não configurado (EMAIL_USER/EMAIL_PASS ausentes)');
+  }
+} catch (e) {
+  console.error('[EMAIL] erro ao configurar SMTP:', String(e?.message || e));
 }
 
 const app = express();
@@ -657,6 +681,46 @@ app.post('/api/auth/refresh', async (req, res) => {
   } catch (e) {
     console.error('Erro refresh token:', e);
     return res.status(500).json({ ok: false, error: 'Erro interno' });
+  }
+});
+
+app.post('/api/email/enviar', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    if (!transporter) return res.status(500).json({ ok: false, error: 'smtp_not_configured' });
+    const para = String(req.body?.para || req.body?.to || '').trim();
+    const assunto = String(req.body?.assunto || req.body?.subject || '').trim();
+    const corpo = String(req.body?.corpo || req.body?.html || '').trim();
+    const anexosRaw = Array.isArray(req.body?.anexos) ? req.body.anexos : [];
+    if (!para || !para.includes('@')) return res.status(400).json({ ok: false, error: 'para_invalido' });
+    if (!assunto) return res.status(400).json({ ok: false, error: 'assunto_obrigatorio' });
+    if (!corpo) return res.status(400).json({ ok: false, error: 'corpo_obrigatorio' });
+
+    const attachments = [];
+    for (const a of anexosRaw.slice(0, 10)) {
+      if (!a || typeof a !== 'object') continue;
+      const filename = String(a.nome || a.filename || 'anexo').trim() || 'anexo';
+      const contentType = String(a.tipo || a.contentType || 'application/octet-stream').trim() || 'application/octet-stream';
+      let base64 = String(a.base64 || a.content || '').trim();
+      if (!base64) continue;
+      const comma = base64.indexOf(',');
+      if (comma >= 0 && base64.slice(0, comma).toLowerCase().includes('base64')) base64 = base64.slice(comma + 1);
+      base64 = base64.replace(/\s+/g, '');
+      if (!base64) continue;
+      attachments.push({ filename, content: base64, encoding: 'base64', contentType });
+    }
+
+    await transporter.sendMail({
+      from: `"Italy Embalagens" <${String(process.env.EMAIL_USER || '').trim()}>`,
+      to: para,
+      subject: assunto,
+      html: corpo,
+      attachments,
+    });
+    return res.json({ ok: true, msg: 'Email enviado com sucesso' });
+  } catch (e) {
+    console.error('[EMAIL ERROR]', String(e?.message || e));
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
