@@ -429,28 +429,50 @@ app.post('/api/auth/login', async (req, res) => {
     const emailNorm = String(email).trim().toLowerCase();
     let rows = null;
     let e1 = null;
-    try {
-      const r1 = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('email', emailNorm)
-        .eq('ativo', true)
-        .limit(1);
-      rows = r1.data;
-      e1 = r1.error;
-    } catch (e) {
-      e1 = e;
-    }
-    if (e1) {
-      const msg = String(e1.message || e1);
-      if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('ativo') && msg.toLowerCase().includes('does not exist')) {
-        const r2 = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('email', emailNorm)
-          .limit(1);
-        rows = r2.data;
-        e1 = r2.error;
+    const isMissingColumnErr = (err) => {
+      const msg = String(err?.message || err || '').toLowerCase();
+      return msg.includes('could not find the') || msg.includes('does not exist');
+    };
+    const extractMissingCol = (err) => {
+      const msg = String(err?.message || err || '');
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
+      return (m1 && m1[1]) || (m2 && m2[1]) || null;
+    };
+    const findUser = async (colName, value) => {
+      let q = supabase.from('usuarios').select('*').eq(colName, value).limit(1);
+      const r1 = await q;
+      if (!r1?.error) return r1;
+      if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
+        const r2 = await supabase.from('usuarios').select('*').eq(colName, value).limit(1);
+        return r2;
+      }
+      return r1;
+    };
+    const idCandidates = [
+      { col: 'email', val: emailNorm },
+      { col: 'usuario', val: emailNorm },
+      { col: 'login', val: emailNorm },
+      { col: 'user', val: emailNorm },
+      { col: 'email', val: String(email).trim() },
+      { col: 'usuario', val: String(email).trim() },
+      { col: 'login', val: String(email).trim() },
+    ];
+    for (const c of idCandidates) {
+      try {
+        const r = await findUser(c.col, c.val);
+        if (r?.error) {
+          if (isMissingColumnErr(r.error)) continue;
+          rows = r.data;
+          e1 = r.error;
+          break;
+        }
+        rows = r.data;
+        e1 = null;
+        if (Array.isArray(rows) && rows.length) break;
+      } catch (e) {
+        e1 = e;
+        break;
       }
     }
 
