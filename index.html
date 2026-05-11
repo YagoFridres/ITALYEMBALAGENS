@@ -2537,7 +2537,7 @@ function iniciarPollingOFsMaquina() {
   _ofsMaqAtiva = true;
   if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
   Promise.resolve()
-    .then(()=>carregarOFsUnico(true))
+    .then(()=>carregarOFsUnico(false))
     .then(()=>renderOFsPorMaquina())
     .catch(()=>renderOFsPorMaquina());
   _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 300000);
@@ -2565,7 +2565,7 @@ function _goBase(id){
     if(_apiConectado && CURRENT_USER){
       Promise.all([
         carregarVendedores(false),
-        carregarOFsUnico(true)
+        carregarOFsUnico(false)
       ]).then(()=>renderPCP()).catch(()=>renderPCP());
     } else {
       renderPCP();
@@ -2606,7 +2606,7 @@ function _goBase(id){
   if(id==='sel-chapas'){
     const doRender = ()=>{ try{ renderSelecaoChapas(); }catch(e){} };
     if(_apiConectado && CURRENT_USER){
-      Promise.all([carregarChapas(false).catch(()=>null), carregarOFsUnico(true).catch(()=>null)]).then(doRender).catch(doRender);
+      Promise.all([carregarChapas(false).catch(()=>null), carregarOFsUnico(false).catch(()=>null)]).then(doRender).catch(doRender);
     } else {
       doRender();
     }
@@ -2644,7 +2644,7 @@ function _goBase(id){
   if(id==='relmensal')renderRelatorioMensal();
   if(id==='caixas-perdidas'){
     initCaixasPerdidasUI();
-    Promise.resolve().then(()=>carregarOFsUnico(true)).then(()=>carregarCaixasPerdidas()).catch(()=>carregarCaixasPerdidas());
+    Promise.resolve().then(()=>carregarOFsUnico(false)).then(()=>carregarCaixasPerdidas()).catch(()=>carregarCaixasPerdidas());
   }
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
@@ -2679,15 +2679,11 @@ async function getConcluidasHoje() {
     if (window._atualizandoConcluidas) return Array.isArray(window._concluidasHojeArr) ? window._concluidasHojeArr : [];
     window._atualizandoConcluidas = true;
     const hoje = new Date().toISOString().slice(0, 10);
-    const token = localStorage.getItem('token') ||
-                  sessionStorage.getItem('token') || '';
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const resp = await fetch(
-      base + `/api/ofs?limit=500&t=${Date.now()}`,
-      { headers: { 'Authorization': 'Bearer ' + token } }
-    );
-    const data = await resp.json().catch(()=>null);
-    const ofs = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+    let ofs = Array.isArray(OFs) ? OFs : [];
+    if(!ofs.length){
+      try{ await carregarOFsUnico(false); }catch(e){}
+      ofs = Array.isArray(OFs) ? OFs : [];
+    }
     const concluidasHoje = (ofs || []).filter(of => {
       let st = String(of?.status || '').toLowerCase();
       try{ st = st.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
@@ -3313,7 +3309,7 @@ async function carregarModalTodasOFs(force){
     try{
       const qs = new URLSearchParams();
       if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-      qs.set('limit','5000');
+      qs.set('limit','150');
       qs.set('offset','0');
       qs.set('lite','1');
       qs.set('excluir_canceladas','1');
@@ -4827,7 +4823,7 @@ async function renderOFsPorMaquina(){
       </div>`;
       const qs = new URLSearchParams();
       if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-      qs.set('limit','200');
+      qs.set('limit','150');
       qs.set('offset','0');
       qs.set('lite','1');
       qs.set('excluir_canceladas','1');
@@ -9563,12 +9559,18 @@ async function calcularComissoes(){
   }
   const qsOfs = new URLSearchParams();
   if(emp) qsOfs.set('empId', emp);
-  qsOfs.set('limit','2000');
   qsOfs.set('lite','1');
   qsOfs.set('excluir_canceladas','1');
-  const r = await api('GET','/ofs?'+qsOfs.toString());
-  if(!r || !r.ok || !Array.isArray(r.data)){ toast('Erro ao carregar OFs para comissões','var(--red)'); return; }
-  const rows = r.data || [];
+  const rows = [];
+  for(let page=0; page<30; page++){
+    qsOfs.set('limit','150');
+    qsOfs.set('offset', String(page * 150));
+    const r = await api('GET','/ofs?'+qsOfs.toString());
+    if(!r || !r.ok || !Array.isArray(r.data)){ toast('Erro ao carregar OFs para comissões','var(--red)'); return; }
+    const chunk = r.data || [];
+    if(chunk.length) rows.push(...chunk);
+    if(chunk.length < 150) break;
+  }
   const vendedoresRef = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
   const normNome = (nome) => String(nome || '').trim().toLowerCase();
   const vendFind = (id) => {
@@ -17944,7 +17946,7 @@ async function carregarOFsUnico(force = false){
     try{ console.log('[OFS] carregamento único iniciado:', new Date().toISOString()); }catch(e){}
     const qs = new URLSearchParams();
     if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-    qs.set('limit', '500');
+    qs.set('limit', '150');
     const r = await api('GET', '/ofs?' + qs.toString());
     const lista = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
     const nova = (lista || []).map((o)=>{
@@ -18781,11 +18783,17 @@ async function moverOFsParaProximoDia(){
   if(!token) return;
 
   const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-  const r = await fetch(base + '/api/ofs?limit=500&t=' + Date.now(), {
-    headers: { 'Authorization': 'Bearer ' + token }
-  });
-  const d = await r.json().catch(()=>null);
-  const todas = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+  const todas = [];
+  for(let page=0; page<30; page++){
+    const offset = page * 150;
+    const r = await fetch(base + `/api/ofs?limit=150&offset=${offset}&t=` + Date.now(), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const d = await r.json().catch(()=>null);
+    const chunk = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+    if(chunk && chunk.length) todas.push(...chunk);
+    if(!chunk || chunk.length < 150) break;
+  }
 
   const norm = (s)=>{
     let raw = String(s || '').trim().toLowerCase();
@@ -28507,9 +28515,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     // sincronização mais rápida para ver OF nova quase em tempo real
     setInterval(function(){ window.syncRealtimeOFSilent(false); }, 600000);
     // força atualização ao abrir PCP/Lançamento
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden) window.syncRealtimeOFSilent(true); });
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) window.syncRealtimeOFSilent(false); });
     ['click','focus'].forEach(evt => window.addEventListener(evt, function(){ injectDeleteButton(); }, {passive:true}));
-    setTimeout(function(){ window.syncRealtimeOFSilent(true); }, 1200);
+    setTimeout(function(){ window.syncRealtimeOFSilent(false); }, 1200);
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startRealtimePatch);

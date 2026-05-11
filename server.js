@@ -1910,6 +1910,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       String(offset),
     ].join('|');
     const cached = cacheGet(cacheKey);
+    try {
+      const cacheHit = cached != null;
+      console.log('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
+    } catch (_) {}
     if (cached != null) return ok(res, cached);
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
