@@ -1874,6 +1874,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const lite = String(req.query.lite || '') === '1';
     const from = String(req.query.from || req.query.de || '').trim();
     const to = String(req.query.to || req.query.ate || '').trim();
+    const dateFieldRaw = String(req.query.date_field || req.query.dateField || '').trim().toLowerCase();
 
     const cacheKey = [
       'ofs',
@@ -1883,6 +1884,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       lite ? 'lite1' : 'lite0',
       from,
       to,
+      dateFieldRaw || 'date_default',
       incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
       incluirCanceladas ? 'incl_can1' : 'incl_can0',
       excluirCanceladas ? 'exc_can1' : 'exc_can0',
@@ -1988,9 +1990,18 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let data = null;
     let rawErr = null;
     let colsArr = colsValidas.slice();
-    const dateCol = (from && to)
-      ? (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at')
-      : '';
+    let dateCol = '';
+    if (from && to) {
+      const fallback = (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at');
+      const wantsEntrega = (dateFieldRaw === 'entrega' || dateFieldRaw === 'data_entrega' || dateFieldRaw === 'ent');
+      if (wantsEntrega) {
+        if (OFS_SELECTABLE_COLS_SET.has('data_entrega')) dateCol = 'data_entrega';
+        else if (OFS_SELECTABLE_COLS_SET.has('ent')) dateCol = 'ent';
+        else dateCol = fallback;
+      } else {
+        dateCol = fallback;
+      }
+    }
 
     for (let t = 0; t < 5; t++) {
       const sel = colsArr.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
@@ -2334,11 +2345,36 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
 
         const hoje = new Date().toISOString().slice(0, 10);
         const mes = new Date().toISOString().slice(0, 7);
+        const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+
+        let maquinaPerda = String(
+          body?.maquina_perda ?? body?.maquinaPerda ?? body?.maquina ?? updated?.maquina_perda ?? updated?.maquina ?? updated?.maquina_nome ?? ''
+        ).trim();
+        let maquinaPerdaId = String(
+          body?.maquina_perda_id ?? body?.maquinaPerdaId ?? body?.maquina_id ?? body?.maquinaId ?? ''
+        ).trim();
+        try {
+          if (!maquinaPerda || !maquinaPerdaId) {
+            const fluxo = parseFluxo(updated?.fluxo_maquinas ?? updated?.maq ?? ofAtual?.fluxo_maquinas ?? ofAtual?.maq);
+            const idx = Number(updated?.maquina_atual_index ?? ofAtual?.maquina_atual_index ?? 0) || 0;
+            const pick = fluxo[idx] ?? fluxo[0] ?? null;
+            const raw = (pick && typeof pick === 'object')
+              ? String(pick.nome || pick.name || pick.maquina || pick.col || pick.id || '').trim()
+              : String(pick || '').trim();
+            if (raw) {
+              if (isUuid(raw)) { if (!maquinaPerdaId) maquinaPerdaId = raw; }
+              else if (!maquinaPerda) maquinaPerda = raw;
+            }
+          }
+        } catch (_) {}
+
         const payload = {
           of_id: id,
           of_numero: String(updated?.of ?? updated?.numero ?? body?.of ?? body?.numero ?? ''),
           produto: String(updated?.prodDesc ?? updated?.descricao ?? body?.prodDesc ?? body?.descricao ?? ''),
-          cliente: String(cliNome || cliId || ''),
+          cliente: String(cliNome || ''),
+          maquina_perda: maquinaPerda || null,
+          maquina_perda_id: maquinaPerdaId || null,
           valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
           qtd_perdida: qtdPerdida,
           valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
