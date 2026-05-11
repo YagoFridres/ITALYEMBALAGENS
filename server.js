@@ -2263,6 +2263,12 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (vn) cleanBody.vendedor = vn;
       else if (v2) cleanBody.vendedor = v2;
     } catch (_) {}
+    try {
+      const ofNum = cleanBody?.of != null ? String(cleanBody.of || '').trim() : '';
+      const num = cleanBody?.numero != null ? String(cleanBody.numero || '').trim() : '';
+      if (ofNum && !num) cleanBody.numero = ofNum;
+      else if (num && !ofNum) cleanBody.of = num;
+    } catch (_) {}
 
     const expectedUpdatedAt = String(
       body?._expected_updated_at ?? body?.expected_updated_at ?? body?.if_match_updated_at

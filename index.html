@@ -5913,39 +5913,50 @@ async function abrirRelatorioOQueVaiSemana(){
       return !!(e && e >= de && e <= ate);
     });
 
-    const prioNum = (v)=> {
-      const n = Number(v ?? NaN);
-      return Number.isFinite(n) ? n : 0;
+    const normNome = (s)=> String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const cliKey = (of)=>{
+      const id = String(of?.cliId || of?.cli_id || of?.cliente_id || '').trim();
+      if(id) return 'id:' + id;
+      const nome = String(of?.cliNome || of?.cliente || of?.cliente_nome || of?.clinome || '').trim();
+      if(nome) return 'nome:' + normNome(nome);
+      return 'unk:' + _oqsKey(of);
     };
-    const sortInDay = (a,b)=>{
-      const ua = !!(a?.urg || a?.urgente);
-      const ub = !!(b?.urg || b?.urgente);
-      if(ua !== ub) return ua ? -1 : 1;
-      const pa = prioNum(a?.prioridade_producao ?? a?.prioridade ?? 0);
-      const pb = prioNum(b?.prioridade_producao ?? b?.prioridade ?? 0);
-      if(pa !== pb) return pb - pa;
-      const sa = prioNum(a?.seq ?? a?.of_seq ?? 0);
-      const sb = prioNum(b?.seq ?? b?.of_seq ?? 0);
-      if(sa !== sb) return sa - sb;
-      const ca = String(a?.created_at || '');
-      const cb = String(b?.created_at || '');
-      return ca.localeCompare(cb);
-    };
+    const cliNome = (of)=> String(of?.cliNome || of?.cliente || of?.cliente_nome || of?.clinome || '').trim() || '—';
 
-    const groups = {};
+    const byClient = {};
     for(const of of only){
+      const key = cliKey(of);
+      if(!byClient[key]) byClient[key] = { key, cliente: cliNome(of), cidade: _oqsGetCidade(of), entregaMin: '', ofs: [], ofNums: new Set(), ofIds: new Set() };
       const ent = String(of?.data_entrega || of?.ent || '').slice(0,10);
-      if(!ent) continue;
-      if(!groups[ent]) groups[ent] = [];
-      groups[ent].push(of);
+      if(ent && (!byClient[key].entregaMin || ent < byClient[key].entregaMin)) byClient[key].entregaMin = ent;
+      byClient[key].ofs.push(of);
+      const oid = String(of?.id || '').trim();
+      if(oid) byClient[key].ofIds.add(oid);
+      const on = String(of?.of || of?.numero || of?.of_num || '').trim();
+      if(on) byClient[key].ofNums.add(on);
     }
-    Object.keys(groups).forEach(k=>{ groups[k].sort(sortInDay); });
+    const clients = Object.values(byClient).map(r=>({
+      key: r.key,
+      cliente: r.cliente,
+      cidade: r.cidade || '—',
+      entregaMin: r.entregaMin || '',
+      modelos: r.ofIds.size || r.ofNums.size || r.ofs.length,
+      pedidos: Array.from(r.ofNums),
+    }));
+    clients.sort((a,b)=>{
+      const da = String(a.entregaMin||'9999-12-31');
+      const db = String(b.entregaMin||'9999-12-31');
+      if(da !== db) return da.localeCompare(db);
+      return String(a.cliente||'').localeCompare(String(b.cliente||''),'pt-BR');
+    });
 
     const selection = {};
-    for(const of of only){
-      selection[_oqsKey(of)] = true;
+    const prevista = {};
+    for(const c of clients){
+      selection[c.key] = true;
+      prevista[c.key] = '';
     }
-    window._oqsCtx = { de, ate, mon, fri, groups, selection, rows: only };
+    window._oqsCtx = { de, ate, mon, fri, clients, selection, prevista };
 
     oqsRender();
     abrir('modal-oque-vai-semana');
@@ -5966,116 +5977,89 @@ function oqsMarcarTodos(v){
   Object.keys(ctx.selection||{}).forEach(k=>{ ctx.selection[k] = !!v; });
   document.querySelectorAll('#oqs-wrap input[type="checkbox"][data-oqs]').forEach(ch=>{ ch.checked = !!v; });
 }
+function oqsSetPrevista(key, v){
+  const ctx = window._oqsCtx || null;
+  if(!ctx) return;
+  ctx.prevista[String(key||'')] = String(v||'').slice(0,10);
+}
 function oqsRender(){
   const wrap = document.getElementById('oqs-wrap');
   const ctx = window._oqsCtx || null;
   if(!wrap || !ctx) return;
-  const dias = Object.keys(ctx.groups||{}).sort((a,b)=>String(a).localeCompare(String(b)));
-  if(!dias.length){
+  const clients = Array.isArray(ctx.clients) ? ctx.clients : [];
+  if(!clients.length){
     wrap.innerHTML = `<div style="padding:14px;color:var(--text2);text-align:center">Nenhuma OF com entrega entre ${_oqsFmtBR(ctx.de)} e ${_oqsFmtBR(ctx.ate)}</div>`;
     return;
   }
-  const getPrevista = (of)=>{
-    const d = String(of?.dia_pedido || of?.diaPedido || of?.dia || '').slice(0,10);
-    if(d) return d;
-    const c = String(of?.created_at || '').slice(0,10);
-    return c || '';
+  const pedidosFmt = (arr)=>{
+    const list = Array.isArray(arr) ? arr.filter(Boolean) : [];
+    const show = list.slice(0, 8);
+    const rest = Math.max(0, list.length - show.length);
+    const base = show.join(', ');
+    return rest ? (base + ` +${rest}`) : base;
   };
-  const getNumero = (of)=> String(of?.of || of?.numero || of?.of_num || '').trim();
-  const getQtd = (of)=> {
-    if(typeof ofGetQtdTotal === 'function') return Math.trunc(Number(ofGetQtdTotal(of) || 0) || 0);
-    return Math.trunc(Number(of?.qtd || of?.quantidade || 0) || 0);
-  };
-  const getCliente = (of)=> String(of?.cliNome || of?.cliente || of?.cliente_nome || of?.clinome || '').trim() || '—';
-
-  let html = '';
-  for(const entIso of dias){
-    const arr = ctx.groups[entIso] || [];
-    const dt = new Date(entIso + 'T12:00:00');
-    const tituloDia = `${_oqsWeekdayPt(dt)} — ${_oqsFmtBR(entIso)}`;
-    html += `<div style="padding:12px 14px;border-bottom:1px solid var(--border);background:var(--s2);font-weight:900">${escH(tituloDia)}</div>`;
-    html += `<table style="width:100%;border-collapse:collapse;font-size:.78rem">
-      <thead>
-        <tr style="background:var(--s3);color:var(--text2);font-family:var(--mono);font-size:.68rem">
-          <th class="no-print" style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;width:42px">OK</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left">CLIENTE</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;width:90px">MODELOS</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:110px">Nº PEDIDO</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:120px">DATA PREVISTA</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:120px">DATA DE ENTREGA</th>
-          <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left">CIDADE</th>
-        </tr>
-      </thead><tbody>`;
-    for(let i=0;i<arr.length;i++){
-      const of = arr[i];
-      const key = _oqsKey(of);
+  const html = `<table style="width:100%;border-collapse:collapse;font-size:.78rem">
+    <thead>
+      <tr style="background:var(--s3);color:var(--text2);font-family:var(--mono);font-size:.68rem">
+        <th class="no-print" style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center;width:42px">OK</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left">CLIENTE</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;width:90px">MODELOS</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:190px">Nº PEDIDO</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:160px">DATA PREVISTA</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;width:140px">DATA DE ENTREGA</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:left">CIDADE</th>
+      </tr>
+    </thead><tbody>
+    ${clients.map((c,i)=>{
+      const key = String(c.key||'');
       const checked = !!ctx.selection[key];
       const zebra = (i%2===0) ? 'background:transparent' : 'background:rgba(148,163,184,.06)';
-      html += `<tr style="${zebra}">
+      const prev = String(ctx.prevista?.[key] || '').slice(0,10);
+      return `<tr style="${zebra}">
         <td class="no-print" style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center">
           <input data-oqs="1" type="checkbox" ${checked?'checked':''} onchange="oqsToggle('${escAttr(key)}', this.checked)">
         </td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${escH(getCliente(of))}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(getQtd(of)))}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--accent)">${escH(getNumero(of) || '—')}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono)">${escH(_oqsFmtBR(getPrevista(of)))}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono)">${escH(_oqsFmtBR(entIso))}</td>
-        <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${escH(_oqsGetCidade(of))}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${escH(String(c.cliente||'—'))}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;font-family:var(--mono)">${escH(String(c.modelos||0))}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--accent)">${escH(pedidosFmt(c.pedidos||[]) || '—')}</td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
+          <input class="no-print" type="date" value="${escAttr(prev)}" onchange="oqsSetPrevista('${escAttr(key)}', this.value)" style="padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-family:var(--mono);width:160px">
+          <span class="print-only" style="display:none;font-family:monospace">${escH(_oqsFmtBR(prev))}</span>
+        </td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border);font-family:var(--mono)"></td>
+        <td style="padding:8px 10px;border-bottom:1px solid var(--border)">${escH(String(c.cidade||'—'))}</td>
       </tr>`;
-    }
-    html += `</tbody></table>`;
-  }
+    }).join('')}
+    </tbody></table>`;
   wrap.innerHTML = html;
 }
 function oqsImprimir(){
   const ctx = window._oqsCtx || null;
   if(!ctx) return;
-  const dias = Object.keys(ctx.groups||{}).sort((a,b)=>String(a).localeCompare(String(b)));
-  const getPrevista = (of)=>{
-    const d = String(of?.dia_pedido || of?.diaPedido || of?.dia || '').slice(0,10);
-    if(d) return d;
-    const c = String(of?.created_at || '').slice(0,10);
-    return c || '';
-  };
-  const getNumero = (of)=> String(of?.of || of?.numero || of?.of_num || '').trim();
-  const getQtd = (of)=> {
-    if(typeof ofGetQtdTotal === 'function') return Math.trunc(Number(ofGetQtdTotal(of) || 0) || 0);
-    return Math.trunc(Number(of?.qtd || of?.quantidade || 0) || 0);
-  };
-  const getCliente = (of)=> String(of?.cliNome || of?.cliente || of?.cliente_nome || of?.clinome || '').trim() || '—';
+  const clients = Array.isArray(ctx.clients) ? ctx.clients : [];
   const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
 
-  let body = '';
-  for(const entIso of dias){
-    const arrAll = ctx.groups[entIso] || [];
-    const arr = arrAll.filter(of=> !!ctx.selection[_oqsKey(of)]);
-    if(!arr.length) continue;
-    const dt = new Date(entIso + 'T12:00:00');
-    const tituloDia = `${_oqsWeekdayPt(dt)} — ${_oqsFmtBR(entIso)}`;
-    body += `<div class="day-h">${escH(tituloDia)}</div>`;
-    body += `<table class="t"><thead><tr>
-      <th>CLIENTE</th>
-      <th style="width:90px;text-align:right">MODELOS</th>
-      <th style="width:110px">Nº PEDIDO</th>
-      <th style="width:120px">DATA PREVISTA</th>
-      <th style="width:120px">DATA DE ENTREGA</th>
-      <th>CIDADE</th>
-    </tr></thead><tbody>`;
-    for(let i=0;i<arr.length;i++){
-      const of = arr[i];
-      body += `<tr class="${i%2===0?'even':'odd'}">
-        <td>${escH(getCliente(of))}</td>
-        <td style="text-align:right;font-family:monospace">${escH(String(getQtd(of)))}</td>
-        <td style="font-family:monospace">${escH(getNumero(of) || '—')}</td>
-        <td style="font-family:monospace">${escH(_oqsFmtBR(getPrevista(of)))}</td>
-        <td style="font-family:monospace">${escH(_oqsFmtBR(entIso))}</td>
-        <td>${escH(_oqsGetCidade(of))}</td>
-      </tr>`;
-    }
-    body += `</tbody></table>`;
-  }
+  const pedidosFmt = (arr)=>{
+    const list = Array.isArray(arr) ? arr.filter(Boolean) : [];
+    const show = list.slice(0, 8);
+    const rest = Math.max(0, list.length - show.length);
+    const base = show.join(', ');
+    return rest ? (base + ` +${rest}`) : base;
+  };
+  const rows = clients.filter(c=> !!ctx.selection[String(c.key||'')]).map((c,i)=>{
+    const key = String(c.key||'');
+    const prev = String(ctx.prevista?.[key] || '').slice(0,10);
+    return `<tr class="${i%2===0?'even':'odd'}">
+      <td>${escH(String(c.cliente||'—'))}</td>
+      <td style="text-align:right;font-family:monospace">${escH(String(c.modelos||0))}</td>
+      <td style="font-family:monospace">${escH(pedidosFmt(c.pedidos||[]) || '—')}</td>
+      <td style="font-family:monospace">${escH(_oqsFmtBR(prev))}</td>
+      <td style="font-family:monospace"></td>
+      <td>${escH(String(c.cidade||'—'))}</td>
+    </tr>`;
+  }).join('');
 
-  if(!body){
+  if(!rows){
     toast('Nenhuma OF marcada para imprimir','var(--orange)');
     return;
   }
@@ -6090,7 +6074,6 @@ function oqsImprimir(){
     .hdr img{height:52px;object-fit:contain}
     .hdr h1{margin:0;font-size:18px;letter-spacing:.6px}
     .sub{margin:0 0 10px;color:#444;font-size:12px}
-    .day-h{margin-top:14px;background:var(--g);border:1px solid var(--b);padding:7px 10px;font-weight:800}
     .t{width:100%;border-collapse:collapse;font-size:11px}
     .t th,.t td{border:1px solid var(--b);padding:6px 8px}
     .t th{background:#fafafa;text-align:left}
@@ -6110,7 +6093,14 @@ function oqsImprimir(){
         <h1>O QUE VAI ESSA SEMANA</h1>
       </div>
       <p class="sub">Gerado em ${escH(new Date().toLocaleString('pt-BR'))}</p>
-      ${body}
+      <table class="t"><thead><tr>
+        <th>CLIENTE</th>
+        <th style="width:90px;text-align:right">MODELOS</th>
+        <th style="width:200px">Nº PEDIDO</th>
+        <th style="width:120px">DATA PREVISTA</th>
+        <th style="width:120px">DATA DE ENTREGA</th>
+        <th>CIDADE</th>
+      </tr></thead><tbody>${rows}</tbody></table>
       <div class="ft">Semana: ${escH(_oqsFmtBR(ctx.de))} a ${escH(_oqsFmtBR(ctx.ate))}</div>
     </div>
     <script>setTimeout(()=>{ try{ window.focus(); window.print(); }catch(e){} }, 50);<\/script>
@@ -15535,6 +15525,59 @@ function _renderDashboardBase(){
       </tr>`;
     }).join('');
 
+  const prodPorMaquina = (()=>{
+    const maqs = (Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []))
+      .filter(m=>m && m.ativo !== false)
+      .map(m=>({ nome: String(m.col || m.nome || '').trim(), id: String(m.id || '').trim() }))
+      .filter(m=>m.nome);
+    const by = {};
+    maqs.forEach(m=>{ by[m.nome] = { nome:m.nome, ofs:0, caixas:0 }; });
+    const stOk = (o)=>{
+      const st = String(o?.status || '').toLowerCase().trim();
+      if(!st) return false;
+      if(st.includes('produc')) return true;
+      if(st.includes('conclu')) return true;
+      if(st.includes('pedido pronto')) return true;
+      return false;
+    };
+    const qtdOf = (o)=>{
+      try{ if(typeof ofGetQtdTotal === 'function') return Math.round(Number(ofGetQtdTotal(o) || 0) || 0); }catch(e){}
+      return Math.round(Number(o?.qtd ?? o?.quantidade ?? 0) || 0);
+    };
+    ofs.forEach(o=>{
+      if(!stOk(o)) return;
+      let nomes = [];
+      try{ if(typeof ofFluxoGetNamesAtivas === 'function') nomes = ofFluxoGetNamesAtivas(o) || []; }catch(e){ nomes = []; }
+      if(!nomes.length){ try{ if(typeof ofFluxoGetNames === 'function') nomes = ofFluxoGetNames(o) || []; }catch(e){ nomes = []; } }
+      const canon = (s)=> String(maqAtivaFromNome(String(s||'').trim()) || String(s||'').trim()).trim();
+      const set = new Set(nomes.map(canon).filter(Boolean));
+      const qtd = qtdOf(o);
+      set.forEach(n=>{
+        if(!by[n]) by[n] = { nome:n, ofs:0, caixas:0 };
+        by[n].ofs += 1;
+        by[n].caixas += qtd;
+      });
+    });
+    const rows = Object.values(by).filter(r=> (r.ofs||0) > 0).sort((a,b)=> (b.ofs||0)-(a.ofs||0) || String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+    const rowsHtml = rows.map(r=>`<tr>
+      <td style="${td}font-weight:800">${escH(r.nome)}</td>
+      <td style="${td}text-align:center;font-family:var(--mono);font-weight:900">${fmtN(r.ofs||0)}</td>
+      <td style="${td}text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtN(r.caixas||0)}</td>
+    </tr>`).join('');
+    return {
+      html: `<div class="sbox">
+        <div class="sbox-h">Produção por Máquina <span style="font-size:.72rem;color:var(--text3);margin-left:8px">${escH(range.label)}${empSel ? ' · ' + escH((getEmp(empSel)||{}).nome || empSel) : ''}</span></div>
+        <div class="sbox-b">
+          ${renderTable([
+            { label:'Máquina' },
+            { label:'Total de OFs', align:'center' },
+            { label:'Total de Caixas', align:'right' },
+          ], rowsHtml)}
+        </div>
+      </div>`
+    };
+  })();
+
   const periodOpts = [
     { v:'hoje', t:'Hoje' },
     { v:'semana', t:'Esta Semana' },
@@ -15563,6 +15606,7 @@ function _renderDashboardBase(){
     </div>
     <div style="display:grid;gap:12px">
       ${tiposMes.html}
+      ${prodPorMaquina.html}
       <div class="sbox">
         <div class="sbox-h">Top 10 Maiores Compradores <span style="font-size:.72rem;color:var(--text3);margin-left:8px">${escH(range.label)}${empSel ? ' · ' + escH((getEmp(empSel)||{}).nome || empSel) : ''}</span></div>
         <div class="sbox-b">
@@ -17811,6 +17855,8 @@ function normalizeOF(r){
   let prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';
   const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
+  let imagens = parseAny(r.imagens, []);
+  if(!Array.isArray(imagens)) imagens = [];
   let itens = parseAny(r.itens, []);
   if(!Array.isArray(itens)) itens = [];
   itens = itens.map((it0)=>{
@@ -17850,8 +17896,14 @@ function normalizeOF(r){
     : parseAny(r.maquina_por_item, {});
   if(!maquinaPorItem || typeof maquinaPorItem !== 'object' || Array.isArray(maquinaPorItem)) maquinaPorItem = {};
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
-  const imgUrl = r.imagem_url || null;
-  const imgUrlNorm = imgUrl || '';
+  const imgUrlPick = String(
+    (r.imagem_url != null ? r.imagem_url : '') ||
+    (Array.isArray(imgs) && imgs.length ? imgs[0] : '') ||
+    (Array.isArray(imagens) && imagens.length ? imagens[0] : '') ||
+    ''
+  ).trim();
+  const imgUrl = imgUrlPick || null;
+  const imgUrlNorm = imgUrlPick || '';
   const dataConc = r.data_conclusao || r.dataConclusao || null;
   const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
@@ -17908,6 +17960,7 @@ function normalizeOF(r){
     ref: refOf || (r.ref ? String(r.ref).trim() : ''),
     itens,
     imgs,
+    imagens,
     imgUrl: imgUrlNorm,
     fluxo_maquinas: fluxoMaq,
     tipo_caixa_id: r.tipo_caixa_id ?? r.tipoCaixaId ?? null,
@@ -21107,9 +21160,26 @@ async function handleImportAtualizarEstoqueChapasFile(file){
 
   const normalizeHeader = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   const toNum = (v) => {
-    if(v==null) return 0;
+    if(v == null) return 0;
     if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
-    const s = String(v).trim().replace(/R\$/gi,'').replace(/\s+/g,'').replace(/\./g,'').replace(',', '.');
+    let s = String(v).trim();
+    if(!s) return 0;
+    s = s.replace(/R\$/gi,'').replace(/\s+/g,'');
+    const hasDot = s.includes('.');
+    const hasComma = s.includes(',');
+    if(hasDot && hasComma){
+      const lastDot = s.lastIndexOf('.');
+      const lastComma = s.lastIndexOf(',');
+      if(lastComma > lastDot){
+        s = s.replace(/\./g,'').replace(',', '.');
+      } else {
+        s = s.replace(/,/g,'').trim();
+      }
+    } else if(hasComma){
+      s = s.replace(/\./g,'').replace(',', '.');
+    } else {
+      s = s.replace(/,/g,'');
+    }
     const n = Number(s);
     return Number.isFinite(n) ? n : 0;
   };
