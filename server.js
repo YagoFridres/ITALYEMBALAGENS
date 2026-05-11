@@ -1935,21 +1935,36 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const enrichJoinClientVend = async (rows) => {
       const arr = Array.isArray(rows) ? rows : [];
       if (!arr.length) return arr;
+      const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const cliIds = Array.from(new Set(
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
       )).slice(0, 100);
-      if (!cliIds.length) return arr;
+      const vendIdsFromRows = Array.from(new Set(
+        arr.map((o) => String(
+          o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? o?.vendId ?? ''
+        ).trim()).filter(Boolean)
+      ));
+      const vendIdsFromVendedorField = Array.from(new Set(
+        arr.map((o) => String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim())
+          .filter((v) => isUuid(v))
+      ));
+      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 150);
+      if (!cliIds.length && !preVendIds.length) return arr;
       try {
-        const { data: cls, error: e1 } = await supabase
-          .from('clientes')
-          .select('id,nome,vendedor_id')
-          .in('id', cliIds);
-        if (e1 || !Array.isArray(cls)) return arr;
+        let cls = [];
+        if (cliIds.length) {
+          const r1 = await supabase
+            .from('clientes')
+            .select('id,nome,vendedor_id')
+            .in('id', cliIds);
+          if (!r1.error && Array.isArray(r1.data)) cls = r1.data;
+        }
         const byCliId = new Map();
         cls.forEach((c) => { if (c?.id) byCliId.set(String(c.id), c); });
-        const vendIds = Array.from(new Set(
+        const vendIdsFromClients = Array.from(new Set(
           cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
         ));
+        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 150);
         const byVendId = new Map();
         if (vendIds.length) {
           const { data: vds } = await supabase
@@ -1961,13 +1976,22 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         return arr.map((o) => {
           const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
           const c = cid ? (byCliId.get(cid) || null) : null;
-          const vid = String(c?.vendedor_id || '').trim();
-          const v = vid ? (byVendId.get(vid) || null) : null;
+          let vid = String(
+            o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? ''
+          ).trim();
+          if (!vid || !isUuid(vid)) vid = String(c?.vendedor_id || '').trim();
+          if ((!vid || !isUuid(vid))) {
+            const maybe = String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim();
+            if (isUuid(maybe)) vid = maybe;
+          }
+          const v = (vid && isUuid(vid)) ? (byVendId.get(vid) || null) : null;
+          const vendNomeExisting = String(o?.vendNome || o?.vendedor_nome || o?.vendedor || '').trim();
+          const vendNomeSafe = (vendNomeExisting && !isUuid(vendNomeExisting)) ? vendNomeExisting : '';
           return {
             ...o,
-            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || '—'),
-            vendNome: (v?.nome || o?.vendNome || o?.vendedor_nome || o?.vendedor || '—'),
-            vendedor_id: (c?.vendedor_id || o?.vendedor_id || o?.vendId || null),
+            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || ''),
+            vendNome: (v?.nome || vendNomeSafe || ''),
+            vendedor_id: (vid && isUuid(vid)) ? vid : (c?.vendedor_id || o?.vendedor_id || o?.vendId || null),
           };
         });
       } catch (e) {
@@ -2019,9 +2043,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);
     const rows = (enriched || []).map((row) => {
       if (!row || typeof row !== 'object') return row;
-      const vendedor_nome = String(
-        row.vendNome || row.vendedor_nome || row.vendedor || row.vendedor_id || row.vendId || row.vend_id || ''
-      );
+      const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+      const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
+      const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
       return { ...row, vendedor_nome };
     });
     cacheSet(cacheKey, rows, 30 * 1000);
@@ -2191,6 +2215,9 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
     let cliNome = clienteJoin?.nome || data.cliNome || data.clinome || '';
     let vendNome = vendNested?.nome || data.vendNome || data.vendedor_nome || data.vendedor || '';
     let vendedorId = clienteJoin?.vendedor_id || data.vendedor_id || data.vendId || null;
+    const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+    if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
+    if (!vendedorId && vendNome && isUuid(String(vendNome).trim())) vendedorId = String(vendNome).trim();
 
     if (!cliNome || !vendNome) {
       const cliId = String(data.cli_id || data.cliId || data.cliente_id || '').trim();
@@ -2208,6 +2235,13 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     }
+    if ((!vendNome || isUuid(String(vendNome || '').trim())) && vendedorId && isUuid(String(vendedorId || '').trim())) {
+      try {
+        const { data: vend } = await supabase.from('vendedores').select('nome').eq('id', String(vendedorId)).maybeSingle();
+        if (vend?.nome) vendNome = String(vend.nome).trim();
+      } catch (_) {}
+    }
+    if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
     return ok(res, { ...rest, cliNome, vendNome, vendedor_id: vendedorId, vendedor_nome: vendNome });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -6240,6 +6274,139 @@ app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res
 
     return ok(res, { chapa: canonUpd });
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    const table = preferred === 'chapas_estoque_v2' ? 'chapas_estoque_v2' : 'chapas_estoque';
+    const inRows = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.rows) ? req.body.rows : []);
+    const rowsRaw = Array.isArray(inRows) ? inRows : [];
+    if (!rowsRaw.length) return res.status(400).json({ ok: false, error: 'rows vazio' });
+
+    const normNom = (v) => String(v || '').trim().toUpperCase();
+    const normTam = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/MM/g, '').replace(/×/g, 'X');
+    const toInt = (v) => Math.trunc(Number(String(v ?? '').toString().replace(/\./g, '').replace(',', '.')) || 0);
+    const toNum = (v) => Number(String(v ?? '').toString().replace(/R\$/gi, '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+
+    const byKey = new Map();
+    const errors = [];
+    rowsRaw.forEach((r, idx) => {
+      const row = r && typeof r === 'object' ? r : {};
+      const fornecedor = String(row.fornecedor ?? row.forn ?? row.FORNECEDOR ?? '').trim();
+      const nomenclatura = String(row.nomenclatura ?? row.nom ?? row.NOMENCLATURA ?? '').trim();
+      const tamanho = String(row.tamanho ?? row.tam ?? row.TAMANHO ?? '').trim();
+      const nome = String(row.nome ?? row.nome_uso ?? row.NOME ?? '').trim();
+      const qualCnpj = String(row.qual_cnpj ?? row.qual ?? row['QUAL CNPJ'] ?? row.QUAL_CNPJ ?? '').trim();
+      const nf = String(row.nf ?? row.NF ?? '').trim();
+      const quantidade = toInt(row.quantidade ?? row.qtd ?? row.QUANTIDADE ?? 0);
+      const valorUnitario = toNum(row.valor_unitario ?? row.val ?? row.VALOR ?? row['R$'] ?? row['R$ (UN)'] ?? row['R$ (UNIDADE)'] ?? 0);
+
+      const key = `${normNom(nomenclatura)}|${normTam(tamanho)}`;
+      if (!nomenclatura || !tamanho) {
+        errors.push({ idx, error: 'nomenclatura/tamanho obrigatórios' });
+        return;
+      }
+      byKey.set(key, { idx, fornecedor, nomenclatura, tamanho, nome, qual_cnpj: qualCnpj, nf, quantidade, valor_unitario: valorUnitario });
+    });
+
+    const rows = Array.from(byKey.values());
+    const nomCol = table === 'chapas_estoque_v2' ? 'nomenclatura' : 'nom';
+    const tamCol = table === 'chapas_estoque_v2' ? 'tamanho' : 'tam';
+
+    const noms = Array.from(new Set(rows.map((r) => normNom(r.nomenclatura)))).slice(0, 500);
+    const tams = Array.from(new Set(rows.map((r) => normTam(r.tamanho)))).slice(0, 500);
+
+    let existing = [];
+    if (noms.length && tams.length) {
+      const r0 = await supabase.from(table).select(`id,${nomCol},${tamCol}`).in(nomCol, noms).in(tamCol, tams);
+      if (r0.error) throw r0.error;
+      existing = Array.isArray(r0.data) ? r0.data : [];
+    }
+    const existingKeys = new Set(existing.map((e) => `${normNom(e?.[nomCol])}|${normTam(e?.[tamCol])}`));
+
+    const updPayload = [];
+    const insPayload = [];
+    rows.forEach((r) => {
+      const key = `${normNom(r.nomenclatura)}|${normTam(r.tamanho)}`;
+      const isUpd = existingKeys.has(key);
+
+      if (table === 'chapas_estoque_v2') {
+        const base = {
+          fornecedor: r.fornecedor,
+          nomenclatura: r.nomenclatura,
+          tamanho: String(r.tamanho || '').trim().toUpperCase(),
+          qual_cnpj: r.qual_cnpj || null,
+          nf: r.nf || null,
+          quantidade: Math.max(0, Math.trunc(Number(r.quantidade || 0) || 0)),
+          valor_unitario: Math.max(0, Number(r.valor_unitario || 0) || 0),
+        };
+        if (isUpd) updPayload.push(base);
+        else insPayload.push({
+          ...base,
+          nome_uso: r.nome || r.nomenclatura,
+          categoria: 'Estoque Simples',
+        });
+        return;
+      }
+
+      const base = {
+        forn: r.fornecedor,
+        nom: r.nomenclatura,
+        tam: String(r.tamanho || '').trim().toUpperCase(),
+        qual_cnpj: r.qual_cnpj || null,
+        qual: r.qual_cnpj || null,
+        nf: r.nf || null,
+        qtd: Math.max(0, Math.trunc(Number(r.quantidade || 0) || 0)),
+        val: Math.max(0, Number(r.valor_unitario || 0) || 0),
+      };
+      if (isUpd) updPayload.push(base);
+      else insPayload.push({ ...base, nome: r.nome || r.nomenclatura, nome_uso: r.nome || r.nomenclatura });
+    });
+
+    let updated = 0;
+    let inserted = 0;
+    const onConflict = `${nomCol},${tamCol}`;
+
+    const runUpsert = async (payload, kind) => {
+      if (!payload.length) return;
+      const r = await supabase.from(table).upsert(payload, { onConflict, ignoreDuplicates: false });
+      if (!r.error) {
+        if (kind === 'upd') updated += payload.length;
+        if (kind === 'ins') inserted += payload.length;
+        return;
+      }
+      const msg = String(r.error?.message || r.error);
+      const noConstraint = msg.toLowerCase().includes('no unique') || msg.toLowerCase().includes('no unique or exclusion') || msg.toLowerCase().includes('on conflict');
+      if (!noConstraint) throw r.error;
+
+      for (let i = 0; i < payload.length; i++) {
+        const p = payload[i];
+        try {
+          if (kind === 'upd') {
+            const u = await supabase.from(table).update(p).eq(nomCol, p[nomCol]).eq(tamCol, p[tamCol]);
+            if (u.error) throw u.error;
+            updated += 1;
+          } else {
+            const ins = await supabase.from(table).insert([p]);
+            if (ins.error) throw ins.error;
+            inserted += 1;
+          }
+        } catch (e) {
+          errors.push({ idx: null, error: String(e?.message || e), key: `${p[nomCol]}|${p[tamCol]}` });
+        }
+      }
+    };
+
+    await runUpsert(updPayload, 'upd');
+    await runUpsert(insPayload, 'ins');
+
+    cacheClearPrefix('chapas_estoque:');
+    return res.json({ ok: true, updated, inserted, errors });
+  } catch (e) {
+    _logApiError('CHAPAS UPSERT SEM HIST', req, e, { bodyKeys: Object.keys(req.body || {}) });
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
 });
 
 app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.single('file'), async (req, res) => {

@@ -2834,7 +2834,11 @@ function renderPCP(){
     :lista.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
     const vend=getV(o.vendId)||{nome:'—'};
-    const vendTxt = (o.vendedor || o.vendNome || o.vendedor_nome || '—');
+    const cliTxt = String(cli.nome || '').trim() && String(cli.nome || '').trim() !== '—'
+      ? String(cli.nome || '').trim()
+      : (String(o.cliNome || o.cliente || o.cliente_nome || o.clinome || '').trim() || '—');
+    const vendRaw = String(o.vendNome || o.vendedor_nome || o.vendedor || '').trim();
+    const vendTxt = (vendRaw && !isUuid(vendRaw)) ? vendRaw : (String(vend.nome || '').trim() || '—');
     const rc=[o.urg?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
@@ -2864,8 +2868,8 @@ function renderPCP(){
       <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
       <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
       <td class="tc">${imgC}</td>
-      <td>${cli.nome} ${empBadge(o.empId)}</td>
-      <td style="color:var(--text2)">${vendTxt}</td>
+      <td>${escH(cliTxt)} ${empBadge(o.empId)}</td>
+      <td style="color:var(--text2)">${escH(vendTxt)}</td>
       <td class="tc">${(o.qtd||0).toLocaleString()}${(o.itens&&o.itens.length>1)?`<br><span style="font-size:.6rem;color:var(--purple);font-family:var(--mono)">${o.itens.length} itens</span>`:''}</td>
       ${mCells}
       <td class="tc">${stTag(o.status)}</td>
@@ -4619,7 +4623,7 @@ function cardOFMaquina(of, maquinaAtual){
     const c = arr.find(x => String(x.id || '').trim() === id);
     return (c && (c.nome || c.razao_social)) ? (c.nome || c.razao_social) : '';
   }
-  const nomeCliente = getNomeCliente(of) || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '—';
+  const nomeCliente = getNomeCliente(of) || of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '—';
   const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
   const isUrg = !!(of.urg||of.urgente);
   const hoje = new Date().toISOString().slice(0,10);
@@ -4672,9 +4676,117 @@ function cardOFMaquina(of, maquinaAtual){
     +'<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
     +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
     +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
+    +'<button onclick="event.stopPropagation();abrirModalMoverOFMaq(\''+escAttr(of.id)+'\',\''+escAttr(maquinaAtual||atual||'')+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:900">↔ Mover</button>'
     +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
     +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maquinaAtual||atual||'')+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
     +'</div></div>';
+}
+
+async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
+  try{
+    const id = String(ofId||'').trim();
+    if(!id){ toast('OF inválida','var(--red)'); return; }
+    const of = (OFs||[]).find(x=>String(x?.id||'')===id) || (window._ofmaqListaCompleta||[]).find(x=>String(x?.id||'')===id) || null;
+    if(!of){ toast('OF não encontrada (recarregue)','var(--red)'); return; }
+    await carregarMaquinas(false).catch(()=>null);
+    await carregarFluxos(false).catch(()=>null);
+    window._ofmaqMoverCtx = { id, of: normalizeOF ? normalizeOF(of) : of, origem: String(maquinaOrigem||'').trim() };
+
+    const mSel = document.getElementById('mm-maquina');
+    const fSel = document.getElementById('mm-fluxo');
+    const sub = document.getElementById('mm-sub');
+    const hid = document.getElementById('mm-of-id');
+    if(hid) hid.value = id;
+    if(sub){
+      const num = String(of.of || of.numero || '').trim();
+      const cli = String(of.cliNome || of.cliente || of.cliente_nome || '').trim();
+      sub.textContent = `OF ${num || '—'} · ${cli || '—'}`.trim();
+    }
+    if(mSel){
+      const maqs = Array.isArray(MAQUINAS) ? MAQUINAS : [];
+      mSel.innerHTML = '<option value="">Selecionar máquina...</option>' + maqs.map(m=>{
+        const mid = String(m.id||'').trim();
+        const nome = String(m.col||m.nome||mid||'').trim();
+        return `<option value="${escAttr(mid)}">${escH(nome)}</option>`;
+      }).join('');
+      const cur = (ofFluxoGetMaquinaAtualAtiva && window._ofmaqMoverCtx?.of) ? ofFluxoGetMaquinaAtualAtiva(window._ofmaqMoverCtx.of) : '';
+      const curObj = (MAQUINAS||[]).find(x=>String(x.col||x.nome||'').trim()===String(cur||'').trim()) || null;
+      const curId = String(curObj?.id || '').trim();
+      const origem = String(maquinaOrigem||'').trim();
+      const origemObj = (MAQUINAS||[]).find(x=>String(x.col||x.nome||'').trim()===origem) || null;
+      const origemId = String(origemObj?.id || '').trim();
+      mSel.value = origemId || curId || '';
+    }
+    if(fSel){
+      const fluxos = Array.isArray(FLUXOS) ? FLUXOS : [];
+      fSel.innerHTML = '<option value="">Selecionar fluxo...</option>' + fluxos.map(fl=>{
+        const fid = String(fl.id||'').trim();
+        const nome = String(fl.nome||'').trim();
+        return `<option value="${escAttr(fid)}">${escH(nome || fid)}</option>`;
+      }).join('');
+      fSel.value = fluxos.length ? String(fluxos[0].id||'') : '';
+    }
+    const keep = document.getElementById('mm-mode-keep');
+    if(keep) keep.checked = true;
+    ofmaqMoverToggleMode();
+    abrir('modal-mover-ofmaq');
+  }catch(e){
+    toast('Erro ao abrir mover: '+(e?.message||e),'var(--red)');
+  }
+}
+
+function ofmaqMoverToggleMode(){
+  const keep = !!document.getElementById('mm-mode-keep')?.checked;
+  const box = document.getElementById('mm-fluxo-wrap');
+  if(box) box.style.display = keep ? 'none' : '';
+}
+
+async function confirmarMoverOFMaq(){
+  const ctx = window._ofmaqMoverCtx || null;
+  const id = String(document.getElementById('mm-of-id')?.value || ctx?.id || '').trim();
+  if(!id){ toast('OF inválida','var(--red)'); return; }
+  const of = ctx?.of || (OFs||[]).find(x=>String(x?.id||'')===id) || null;
+  if(!of){ toast('OF não encontrada','var(--red)'); return; }
+  const maqId = String(document.getElementById('mm-maquina')?.value || '').trim();
+  if(!maqId){ toast('Selecione a máquina','var(--red)'); return; }
+  const keep = !!document.getElementById('mm-mode-keep')?.checked;
+  const fluxoId = String(document.getElementById('mm-fluxo')?.value || '').trim();
+  if(!keep && !fluxoId){ toast('Selecione o fluxo','var(--red)'); return; }
+
+  const normFluxArr = (arr)=> (Array.isArray(arr)?arr:[])
+    .map(x=> (x && typeof x==='object') ? (x.id||x.nome||x.name||x.maquina||x.value||x.label||'') : String(x||''))
+    .map(s=>String(s||'').trim()).filter(Boolean);
+
+  let novoFluxo = [];
+  if(keep){
+    let fluxo = normFluxArr(parseFluxo(of.fluxo_maquinas));
+    if(!fluxo.length) fluxo = normFluxArr(parseFluxo(of.maq));
+    const idx = fluxo.findIndex(x=>String(x)===maqId);
+    if(idx >= 0) novoFluxo = fluxo.slice(idx);
+    else novoFluxo = [maqId, ...fluxo.filter(x=>String(x)!==maqId)];
+  } else {
+    const fl = (FLUXOS||[]).find(x=>String(x?.id||'').trim()===fluxoId) || null;
+    const etapas = normFluxArr(fl?.etapas || fl?.maquinas || fl?.sequencia || []);
+    novoFluxo = [maqId, ...etapas.filter(x=>String(x)!==maqId)];
+  }
+  if(!novoFluxo.length) novoFluxo = [maqId];
+
+  try{
+    showSaveIndicator('Movendo OF...','var(--yellow)');
+    const r = await api('PUT','/ofs/'+encodeURIComponent(id), { fluxo_maquinas: novoFluxo, maquina_atual_index: 0 });
+    if(!r || r.ok === false) throw new Error((r && r.error) ? r.error : 'Falha ao mover');
+    const row = r.data || r;
+    try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
+    try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
+    fechar('modal-mover-ofmaq');
+    showSaveIndicator('✓ movida','var(--green)');
+    toast('✓ OF movida','var(--green)');
+    try{ renderOFsPorMaquina(); }catch(_){}
+    try{ renderPCP(); }catch(_){}
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro ao mover: '+(e?.message||e),'var(--red)');
+  }
 }
 
 async function renderOFsPorMaquina(){
@@ -17375,10 +17487,21 @@ function normalizeOF(r){
   const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const clienteJoin = r.cliente && typeof r.cliente === 'object' ? r.cliente : null;
   const vendedorJoin = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
-  const cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.nome_cliente || '';
-  const vendNome = vendedorJoin?.nome || r.vendNome || r.vendedor_nome || r.vendedor || r.vendedorNome || '';
+  let cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.nome_cliente || '';
+  let vendNome = vendedorJoin?.nome || r.vendNome || r.vendedor_nome || r.vendedor || r.vendedorNome || '';
   let vendId = clienteJoin?.vendedor_id || r.vendedor_id || r.vend_id || r.vendedorId || r.vendId || '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
+  if((!cliNomeResolved || String(cliNomeResolved).trim() === '') && cliId){
+    const cFound = (CLIENTES||[]).find(x=>String(x?.id||'').trim()===String(cliId).trim()) || null;
+    if(cFound && (cFound.nome || cFound.rs)) cliNomeResolved = String(cFound.nome || cFound.rs || '').trim();
+  }
+  const vendNomeTrim = String(vendNome || '').trim();
+  if((!vendId || !isUuid(vendId)) && vendNomeTrim && isUuid(vendNomeTrim)) vendId = vendNomeTrim;
+  if((!vendNomeTrim || isUuid(vendNomeTrim)) && vendId && isUuid(vendId)){
+    const vFound = (VENDEDORES||[]).find(x=>String(x?.id||'').trim()===String(vendId).trim()) || null;
+    if(vFound && vFound.nome) vendNome = String(vFound.nome).trim();
+  }
+  if(vendNome && isUuid(String(vendNome).trim())) vendNome = '';
   if(vendNome && (!vendId || vendId.length>12)){
     const found = (VENDEDORES||[]).find(x=>(x.nome||'')===vendNome);
     if(found) vendId = found.id;
@@ -17732,6 +17855,10 @@ function normalizeForn(r){
 }
 function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
+function isUuid(v){
+  const s = String(v || '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+}
 function dedupeById(arr){
   if(!Array.isArray(arr)) return [];
   const seen = new Set();
@@ -20623,6 +20750,133 @@ function filtrarSelecaoChapas(){
 function triggerImportChapas(){
   const inp = document.getElementById('est-import-file');
   if(inp) inp.click();
+}
+
+function triggerUpsertEstoqueChapas(){
+  const inp = document.getElementById('est-upsert-file');
+  if(inp) inp.click();
+}
+
+async function handleUpsertEstoqueChapasFile(file){
+  if(!file) return;
+  const name = String(file.name||'').toLowerCase();
+  const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls');
+  if(!isXlsx){
+    toast('Formato não suportado. Use .xlsx ou .xls', 'var(--red)');
+    return;
+  }
+  if(typeof XLSX === 'undefined' || !XLSX || !XLSX.utils){
+    toast('SheetJS (XLSX) não carregado', 'var(--red)');
+    return;
+  }
+
+  const readFile = () => new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onerror = () => reject(fr.error||new Error('read_error'));
+    fr.onload = () => resolve(fr.result);
+    fr.readAsArrayBuffer(file);
+  });
+
+  const normalizeHeader = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
+  const toNum = (v) => {
+    if(v==null) return 0;
+    if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    const s = String(v).trim().replace(/R\$/gi,'').replace(/\s+/g,'').replace(/\./g,'').replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const toInt = (v) => Math.trunc(toNum(v) || 0);
+
+  try{
+    showSaveIndicator('⏳ lendo arquivo...','var(--yellow)');
+    const raw = await readFile();
+    const wb = XLSX.read(raw, { type:'array' });
+    const sheetName = (wb.SheetNames||[])[0];
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+    if(!rows.length){
+      showSaveIndicator('⚠ arquivo vazio','var(--orange)');
+      toast('Arquivo sem linhas','var(--orange)');
+      return;
+    }
+    const headerMap = {};
+    Object.keys(rows[0]||{}).forEach(h=>{ headerMap[normalizeHeader(h)] = h; });
+    const pick = (row, keys) => {
+      for(const k of keys){
+        const kk = headerMap[k] || k;
+        if(row[kk] != null && String(row[kk]).trim() !== '') return row[kk];
+      }
+      return null;
+    };
+
+    const keys = {
+      fornecedor: ['FORNECEDOR'],
+      nomenclatura: ['NOMENCLATURA'],
+      tamanho: ['TAMANHO'],
+      nome: ['NOME'],
+      qual_cnpj: ['QUAL CNPJ','QUAL_CNPJ','QUAL'],
+      nf: ['NF'],
+      quantidade: ['QUANTIDADE','QTD'],
+      valor_unitario: ['R$','R$ (UN)','VALOR','VALOR UNITARIO','VALOR_UNITARIO'],
+    };
+
+    const payloadRows = [];
+    for(let i=0;i<rows.length;i++){
+      const r = rows[i];
+      const fornecedor = String(pick(r, keys.fornecedor) || '').trim();
+      const nomenclatura = String(pick(r, keys.nomenclatura) || '').trim();
+      const tamanho = String(pick(r, keys.tamanho) || '').trim();
+      if(!nomenclatura || !tamanho) continue;
+      payloadRows.push({
+        fornecedor,
+        nomenclatura,
+        tamanho,
+        nome: String(pick(r, keys.nome) || '').trim(),
+        qual_cnpj: String(pick(r, keys.qual_cnpj) || '').trim(),
+        nf: String(pick(r, keys.nf) || '').trim(),
+        quantidade: toInt(pick(r, keys.quantidade)),
+        valor_unitario: toNum(pick(r, keys.valor_unitario)),
+      });
+    }
+    if(!payloadRows.length){
+      showSaveIndicator('⚠ nada para importar','var(--orange)');
+      toast('Nenhuma linha válida (NOMENCLATURA + TAMANHO obrigatórios)','var(--orange)');
+      return;
+    }
+
+    let updated = 0;
+    let inserted = 0;
+    let errCount = 0;
+    const errs = [];
+    const chunkSize = 200;
+
+    toast(`⏳ Processando 0/${payloadRows.length}...`,'var(--orange)');
+    showSaveIndicator(`⏳ processando 0/${payloadRows.length}`,'var(--yellow)');
+
+    for(let off=0; off<payloadRows.length; off+=chunkSize){
+      const chunk = payloadRows.slice(off, off + chunkSize);
+      const r = await api('POST','/chapas_estoque/upsert_sem_historico', { rows: chunk });
+      if(!r || r.ok === false) throw new Error((r && r.error) ? r.error : 'Falha ao importar');
+      updated += Number(r.updated || 0) || 0;
+      inserted += Number(r.inserted || 0) || 0;
+      const earr = Array.isArray(r.errors) ? r.errors : [];
+      if(earr.length){
+        errCount += earr.length;
+        errs.push(...earr.slice(0, 10));
+      }
+      const done = Math.min(payloadRows.length, off + chunk.length);
+      showSaveIndicator(`⏳ processando ${done}/${payloadRows.length}`,'var(--yellow)');
+    }
+
+    await carregarChapas(true).catch(()=>null);
+    renderEstoque();
+    showSaveIndicator(`✓ atualizados=${updated} · inseridos=${inserted} · erros=${errCount}`,'var(--green)');
+    toast(`✓ Estoque atualizado: ${updated} atualizados, ${inserted} inseridos, ${errCount} erros`,'var(--green)');
+    if(errs.length) console.warn('[UPSERT ESTOQUE] erros (amostra):', errs);
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: '+(e?.message||e),'var(--red)');
+  }
 }
 
 async function handleImportChapasFile(file){
@@ -25566,8 +25820,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>
     <button class="btn btn-orange btn-sm" onclick="abrirModalRefeito()" style="background:var(--orange)">♻ Registrar Refeito</button>
     <button class="btn btn-ghost btn-sm" onclick="triggerImportChapas()">📥 Importar CSV/Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="triggerUpsertEstoqueChapas()">🧾 Importar/Atualizar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportChapasFile(this.files[0]); this.value='';">
+    <input id="est-upsert-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="handleUpsertEstoqueChapasFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body">
     <!-- Alertas -->
@@ -27664,6 +27920,32 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-alterar-entrega')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarAlterarEntrega()">💾 Salvar</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-mover-ofmaq">
+<div class="modal" style="width:min(560px,96vw)">
+  <button class="close-btn" onclick="fechar('modal-mover-ofmaq')">✕</button>
+  <h2>↔ Mover OF</h2>
+  <div id="mm-sub" style="color:var(--text2);font-weight:800;margin:6px 0 14px"></div>
+  <input type="hidden" id="mm-of-id">
+  <div class="fg">
+    <div class="mf fgf"><label>Nova máquina *</label><select id="mm-maquina"><option value="">Selecionar máquina...</option></select></div>
+    <div class="mf fgf" style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="radio" name="mm-mode" id="mm-mode-keep" checked onchange="ofmaqMoverToggleMode()" style="width:auto">
+        Manter fluxo atual
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="radio" name="mm-mode" id="mm-mode-new" onchange="ofmaqMoverToggleMode()" style="width:auto">
+        Escolher novo fluxo
+      </label>
+    </div>
+    <div class="mf fgf" id="mm-fluxo-wrap" style="display:none"><label>Novo fluxo *</label><select id="mm-fluxo"><option value="">Selecionar fluxo...</option></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-mover-ofmaq')">Cancelar</button>
+    <button class="btn btn-accent" onclick="confirmarMoverOFMaq()">Confirmar</button>
   </div>
 </div></div>
 
