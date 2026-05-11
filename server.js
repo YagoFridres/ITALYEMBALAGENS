@@ -3364,14 +3364,38 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
+    const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+    const fluxoPickMaquina = () => {
+      try {
+        const fluxoArr2 = parseFluxo(of.fluxo_maquinas || of.maq);
+        const idx0 = Number(of.maquina_atual_index || 0);
+        const idx = Number.isFinite(idx0) && idx0 >= 0 ? idx0 : 0;
+        const pick = (Array.isArray(fluxoArr2) && fluxoArr2.length)
+          ? (fluxoArr2[Math.min(idx, fluxoArr2.length - 1)] ?? fluxoArr2[0] ?? null)
+          : null;
+        if (!pick) return { nome: '', id: '' };
+        if (pick && typeof pick === 'object' && !Array.isArray(pick)) {
+          const nome = String(pick.nome || pick.col || pick.name || pick.maquina || '').trim();
+          const id = String(pick.id || '').trim();
+          return { nome, id };
+        }
+        const s = String(pick || '').trim();
+        return isUuid(s) ? { nome: '', id: s } : { nome: s, id: '' };
+      } catch (_) {
+        return { nome: '', id: '' };
+      }
+    };
+
     const mpRaw = body.maquina_perda != null ? String(body.maquina_perda).trim() : '';
-    updateData.maquina_perda = mpRaw ? mpRaw : (of.maquina_perda ?? null);
-    if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) {
-      const mid = body.maquina_perda_id == null ? null : String(body.maquina_perda_id || '').trim();
-      updateData.maquina_perda_id = mid || null;
-    } else {
-      updateData.maquina_perda_id = of.maquina_perda_id ?? null;
-    }
+    const midRaw = Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')
+      ? (body.maquina_perda_id == null ? '' : String(body.maquina_perda_id || '').trim())
+      : '';
+    const pickMaq = fluxoPickMaquina();
+    const maquinaPerdaNome = mpRaw || (qtdPerdida > 0 ? (pickMaq.nome || '') : '') || String(of.maquina_perda || '').trim();
+    const maquinaPerdaId = (midRaw && isUuid(midRaw)) ? midRaw : (qtdPerdida > 0 ? (isUuid(pickMaq.id) ? pickMaq.id : '') : '') || String(of.maquina_perda_id || '').trim();
+    updateData.maquina_perda = maquinaPerdaNome || (of.maquina_perda ?? null);
+    if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) updateData.maquina_perda_id = (maquinaPerdaId && isUuid(maquinaPerdaId)) ? maquinaPerdaId : null;
+    else updateData.maquina_perda_id = (maquinaPerdaId && isUuid(maquinaPerdaId)) ? maquinaPerdaId : (of.maquina_perda_id ?? null);
     if (body.data_faturamento) {
       updateData.data_faturamento = String(body.data_faturamento).trim();
     }
@@ -3413,15 +3437,12 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         }
 
         let maquinaNome = String(body.maquina_perda || '').trim();
-        if (!maquinaNome) {
-          const fluxoArr2 = parseFluxo(of.fluxo_maquinas || of.maq);
-          const idx = Number(of.maquina_atual_index || 0);
-          const maqRaw = (Array.isArray(fluxoArr2) && fluxoArr2.length)
-            ? (fluxoArr2[idx] || fluxoArr2[fluxoArr2.length - 1] || '')
-            : '';
-          maquinaNome = (maqRaw && typeof maqRaw === 'object' && !Array.isArray(maqRaw))
-            ? String(maqRaw.nome || maqRaw.name || maqRaw.maquina || '').trim()
-            : String(maqRaw || '').trim();
+        let maquinaPerdaId = '';
+        if (Object.prototype.hasOwnProperty.call(body, 'maquina_perda_id')) maquinaPerdaId = String(body.maquina_perda_id || '').trim();
+        if (!maquinaNome || (!maquinaPerdaId || !isUuid(maquinaPerdaId))) {
+          const picked = fluxoPickMaquina();
+          if (!maquinaNome) maquinaNome = String(picked.nome || '').trim();
+          if ((!maquinaPerdaId || !isUuid(maquinaPerdaId)) && isUuid(picked.id)) maquinaPerdaId = picked.id;
         }
 
         const valorUnit = qtdPedida > 0 ? (valorTotalOriginal / qtdPedida) : 0;
@@ -3429,8 +3450,9 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           of_id: sid,
           of_numero: String(of.of || of.numero || ''),
           produto: String(of.prodDesc || of.descricao || ''),
-          cliente: cliNome || cliId || '',
-          maquina: maquinaNome || null,
+          cliente: cliNome || '',
+          maquina_perda: maquinaNome || null,
+          maquina_perda_id: (maquinaPerdaId && isUuid(maquinaPerdaId)) ? maquinaPerdaId : null,
           valor_unitario: Number.isFinite(valorUnit) ? valorUnit : 0,
           qtd_perdida: qtdPerdida,
           valor_perdido: qtdPerdida * (Number.isFinite(valorUnit) ? valorUnit : 0),
@@ -3441,18 +3463,16 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           obs: '',
         };
 
-        let { error: perdaErr } = await supabase
-          .from('caixas_perdidas')
-          .insert([payloadPerda])
-          .select()
-          .single();
-
-        if (perdaErr) {
+        let tentativa = payloadPerda;
+        for (let t = 0; t < 3; t++) {
+          const ins = await supabase.from('caixas_perdidas').insert([tentativa]).select().single();
+          const perdaErr = ins?.error || null;
+          if (!perdaErr) break;
           const msg = String(perdaErr.message || '').toLowerCase();
-          if (msg.includes('maquina') && msg.includes('column')) {
-            const { maquina, ...semMaquina } = payloadPerda;
-            await supabase.from('caixas_perdidas').insert([semMaquina]);
-          }
+          if (msg.includes('maquina_perda_id') && msg.includes('column')) { delete tentativa.maquina_perda_id; continue; }
+          if (msg.includes('maquina_perda') && msg.includes('column')) { delete tentativa.maquina_perda; continue; }
+          if (msg.includes('maquina') && msg.includes('column')) { delete tentativa.maquina_perda; delete tentativa.maquina_perda_id; continue; }
+          break;
         }
       } catch (_) {}
     }
