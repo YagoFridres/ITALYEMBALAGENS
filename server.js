@@ -408,7 +408,17 @@ function avatarColorFromText(s) {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, senha } = req.body;
+    const body = (req && req.body && typeof req.body === 'object') ? req.body : {};
+    const email = body.email ?? body.usuario ?? body.login ?? body.user ?? '';
+    const senha = body.senha ?? body.password ?? body.pass ?? '';
+    try {
+      console.log('[LOGIN DEBUG] body recebido:', JSON.stringify({
+        hasBody: !!req.body,
+        keys: Object.keys(body || {}),
+        email: (email == null ? '' : String(email)).trim().toLowerCase(),
+        senhaLen: (senha == null ? 0 : String(senha).length),
+      }));
+    } catch (_) {}
     if (!email || !senha)
       return res.status(400).json({ error: 'Email e senha obrigatórios' });
 
@@ -545,8 +555,8 @@ app.post('/api/auth/login', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Erro geral no login:', err);
-    res.status(500).json({ error: 'Erro interno: ' + err.message });
+    try { console.error('[LOGIN ERROR]', err?.message, err?.stack); } catch (_) {}
+    res.status(500).json({ error: 'Erro interno: ' + String(err?.message || err) });
   }
 });
 
