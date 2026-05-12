@@ -1952,7 +1952,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
   console.log('[OFS GET START] query:', JSON.stringify(req.query));
   try {
     setNoCache(res);
-    const limit = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 150));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
@@ -2101,7 +2101,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .select(sel)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
-      if (status) q = q.eq('status', status);
+      if (status) {
+        let sk = String(status || '').toLowerCase().trim();
+        try { sk = sk.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+        if (sk.includes('conclu') || sk === 'pedido pronto') {
+          q = q.in('status', ['Concluído', 'Concluido', 'Pedido Pronto', 'Pedido pronto']);
+        } else if (sk.includes('cancelad')) {
+          q = q.in('status', ['Cancelada', 'Cancelado']);
+        } else {
+          q = q.eq('status', status);
+        }
+      }
       if (empId) q = q.eq('emp_id', empId);
       if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
@@ -6585,6 +6595,66 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
     return res.json({ ok: true, updated, inserted, errors });
   } catch (e) {
     _logApiError('CHAPAS UPSERT SEM HIST', req, e, { bodyKeys: Object.keys(req.body || {}) });
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
+});
+
+app.post('/api/chapas_estoque/importar_sql', authMiddleware, async (req, res) => {
+  try {
+    const preferred = await _chapasPreferV2Table();
+    const table = preferred === 'chapas_estoque_v2' ? 'chapas_estoque_v2' : 'chapas_estoque';
+    const inRows = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.rows) ? req.body.rows : []);
+    const rowsRaw = Array.isArray(inRows) ? inRows : [];
+    if (!rowsRaw.length) return res.status(400).json({ ok: false, error: 'rows vazio' });
+
+    const payload = rowsRaw.map((r) => (r && typeof r === 'object') ? r : {}).map((row) => {
+      if (table === 'chapas_estoque_v2') {
+        return {
+          fornecedor: row.fornecedor ?? row.forn ?? null,
+          nomenclatura: row.nomenclatura ?? row.nom ?? null,
+          tamanho: row.tamanho ?? row.tam ?? null,
+          nome_uso: row.nome_uso ?? row.nome ?? row.nomenclatura ?? row.nom ?? null,
+          qual_cnpj: row.qual_cnpj ?? row.qual ?? row['QUAL CNPJ'] ?? null,
+          nf: row.nf ?? null,
+          quantidade: row.quantidade ?? row.qtd ?? row.QUANTIDADE ?? null,
+          valor_unitario: row.valor_unitario ?? row.val ?? row.VALOR ?? null,
+        };
+      }
+      return {
+        forn: row.forn ?? row.fornecedor ?? null,
+        nom: row.nom ?? row.nomenclatura ?? null,
+        tam: row.tam ?? row.tamanho ?? null,
+        nome: row.nome ?? row.nome_uso ?? row.nom ?? row.nomenclatura ?? null,
+        qual_cnpj: row.qual_cnpj ?? row.qual ?? row['QUAL CNPJ'] ?? null,
+        nf: row.nf ?? null,
+        qtd: row.qtd ?? row.quantidade ?? row.QUANTIDADE ?? null,
+        val: row.val ?? row.valor_unitario ?? row.VALOR ?? null,
+      };
+    });
+
+    try { console.log('[IMPORTAR SQL CHAPAS]', table, 'itens:', payload.length); } catch (_) {}
+    const onConflict = table === 'chapas_estoque_v2' ? 'nomenclatura,tamanho' : 'nom,tam';
+    const r = await supabase.from(table).upsert(payload, { onConflict, ignoreDuplicates: false });
+    if (r.error) {
+      const msg = String(r.error?.message || r.error);
+      const noConstraint = msg.toLowerCase().includes('no unique') || msg.toLowerCase().includes('no unique or exclusion') || msg.toLowerCase().includes('on conflict');
+      if (noConstraint) {
+        return res.status(400).json({
+          ok: false,
+          error: 'missing_unique_constraint_nom_tam',
+          message: msg,
+          suggested_sql: table === 'chapas_estoque_v2'
+            ? 'ALTER TABLE chapas_estoque_v2 ADD CONSTRAINT chapas_estoque_v2_nomenclatura_tamanho_unique UNIQUE (nomenclatura, tamanho);'
+            : 'ALTER TABLE chapas_estoque ADD CONSTRAINT chapas_estoque_nom_tam_unique UNIQUE (nom, tam);',
+        });
+      }
+      throw r.error;
+    }
+
+    cacheClearPrefix('chapas_estoque:');
+    return ok(res, { table, upserted: payload.length });
+  } catch (e) {
+    _logApiError('CHAPAS IMPORTAR SQL', req, e, { bodyType: Array.isArray(req.body) ? 'array' : typeof req.body });
     return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
   }
 });

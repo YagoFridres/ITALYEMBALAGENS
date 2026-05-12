@@ -8853,13 +8853,26 @@ function renderLancamento(){
 }
 
 function lancVerTodasConcluidas(){
-  try{
-    LANC_UI.tab = 'prontas';
-    LANC_UI.mes = '';
-    const el = document.getElementById('lanc-mes');
-    if(el) el.value = '';
-    renderLancamento();
-  }catch(e){}
+  (async function(){
+    try{
+      LANC_UI.tab = 'prontas';
+      LANC_UI.mes = '';
+      const el = document.getElementById('lanc-mes');
+      if(el) el.value = '';
+      showSaveIndicator('Carregando todas concluídas...','var(--yellow)');
+      const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
+      const url = '/ofs?incluir_excluidas=0&status=concluido&limit=500&lite=1' + (empParam?('&'+empParam.slice(1)):'');
+      const r = await api('GET', url);
+      if(!r || !r.ok){ throw new Error((r && r.error) ? r.error : 'falha'); }
+      OFS_HIST = (Array.isArray(r.data) ? r.data : []).map(normalizeOF);
+      showSaveIndicator('✓ carregado','var(--green)');
+      renderLancamento();
+    }catch(e){
+      try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
+      toast('Erro ao carregar concluídas: '+String(e?.message || e),'var(--red)');
+      try{ renderLancamento(); }catch(_){}
+    }
+  })();
 }
 
 async function editarDataFaturamento(ofId, dataAtual){
@@ -10453,6 +10466,7 @@ function cpRender(rows){
       const prod = r.produto || '—';
       const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
       let maqNome = String(r?.maquina_perda || r?.maquina || r?.maquina_nome || r?.maquina_id || '').trim();
+      const isUuid = (v)=> typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const ofKey = String(r?.of_numero || r?.of || r?.numero || '').trim();
       let ofRel = null;
       if(!maqNome){
@@ -10487,6 +10501,14 @@ function cpRender(rows){
           const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
           const it = src.find(m=>String(m?.id||'').trim()===maqId) || null;
           maqNome = String(it?.col || it?.nome || it?.name || '').trim();
+        }catch(e){}
+      }
+      if(maqNome && isUuid(maqNome)){
+        try{
+          const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+          const it = src.find(m=>String(m?.id||'').trim()===maqNome) || null;
+          const nm = String(it?.col || it?.nome || it?.name || '').trim();
+          if(nm) maqNome = nm;
         }catch(e){}
       }
       if(!maqNome) maqNome = '—';
@@ -20752,11 +20774,30 @@ async function renderSelecaoChapas(){
     el.innerHTML = `<div style="padding:16px;color:var(--text2)">Sem permissão.</div>`;
     return;
   }
-  if(!Array.isArray(OFs) || OFs.length === 0) await carregarOFs().catch(()=>null);
+  let ofsSrc = Array.isArray(OFs) ? OFs : [];
+  try{
+    const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
+    const rAll = await api('GET', '/ofs?incluir_excluidas=0&limit=500&lite=1' + (empParam?('&'+empParam.slice(1)):''));
+    if(rAll && rAll.ok && Array.isArray(rAll.data) && rAll.data.length){
+      ofsSrc = rAll.data.map(normalizeOF);
+    } else if(!Array.isArray(ofsSrc) || ofsSrc.length === 0){
+      await carregarOFs().catch(()=>null);
+      ofsSrc = Array.isArray(OFs) ? OFs : [];
+    }
+  }catch(e){
+    if(!Array.isArray(ofsSrc) || ofsSrc.length === 0) await carregarOFs().catch(()=>null);
+    ofsSrc = Array.isArray(OFs) ? OFs : [];
+  }
   if(!Array.isArray(ESTOQUE) || ESTOQUE.length === 0) await carregarChapas(false).catch(()=>null);
 
-  const todasOFs = (Array.isArray(OFs) ? OFs : [])
+  const todasOFs = (Array.isArray(ofsSrc) ? ofsSrc : [])
     .filter(o => o && o.id && !o.deleted_at)
+    .filter(of=>{
+      const st = String(of.status || '').toLowerCase().trim();
+      if(st === 'pedido pronto' || st === 'concluido' || st === 'concluído') return false;
+      if(st === 'cancelada' || st === 'cancelado') return false;
+      return true;
+    })
     .map(normalizeOF)
     .sort((a,b)=>Number(b.seq||0)-Number(a.seq||0));
 
