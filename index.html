@@ -18547,44 +18547,44 @@ function normalizeOrc(r){
     vendId: r.vendedor_id ?? r.vend_id ?? r.vendId ?? '',
   };
 }
-function normalizeEst(c) {
-  const categoriaRaw = c.categoria ?? c.categoria_nome ?? c.categoriaNome ?? c.categoria_chapa ?? c.cat ?? c.grupo ?? c.tipo_estoque ?? c.tipoEstoque ?? '';
+function normalizeEst(r) {
+  const qtd = Number(r.qtd || r.quantidade_atual || r.quantidade || r.ver_real || 0) || 0;
+  const val = Number(r.val || r.valor_unitario || r['valor_unitário'] || r.preco || 0) || 0;
+  const forn = r.forn || r.fornecedor || '';
+  const nom = r.nom || r.nomenclatura || '';
+  const tam = r.tam || r.tamanho || '';
+  const nome = r.nome || r.nome_uso || r.nomeUso || r.name || '';
+  const nf = r.nf || r.numero_nf || '';
+  const qual_cnpj = r.qual_cnpj || r.qual || r.cnpj || '';
+  const emp_id = r.emp_id || r.empId || '';
+  const categoriaRaw = r.categoria ?? r.categoria_nome ?? r.categoriaNome ?? r.categoria_chapa ?? r.cat ?? r.grupo ?? r.tipo_estoque ?? r.tipoEstoque ?? '';
   const categoria = (categoriaRaw != null && String(categoriaRaw).trim() !== '') ? String(categoriaRaw).trim() : 'Estoque Simples';
-  const nome = c.nome_uso || c.nomeUso || c.nome || c.name || c.nome_comercial || c.nom || '';
-  const nomenclatura = c.nom || c.nomenclatura || c.cod || c.codigo || c.tipo_papel || '';
-  const fornecedor = c.forn || c.fornecedor || '';
-  const emp_id = c.emp_id || c.empId || '';
-  const empresa_vinculada = c.empresa_vinculada || c.empresaVinculada || c.empresa || estEmpresaFromAny(c.qual_cnpj||c.qual||'', emp_id);
-  const qual_cnpj = c.qual_cnpj || c.qual || c.fabricante || c.cnpj || '';
-  const tamanho = c.tam || c.tamanho || '';
-  const nf = c.nf || c.nf_entrada || c.nota || c.numero_nf || '';
-  const quantidade = Number(c.qtd ?? c.quantidade ?? 0) || 0;
-  const valor_unitario = Number(c.val ?? c.valor_unitario ?? c.vunit ?? 0) || 0;
-  const valor_total = Number(c.valor_total ?? c.vtot ?? (quantidade * valor_unitario) ?? 0) || 0;
-  const vincos = c.vincos || '';
-  const observacao = c.observacao || c.observacoes || '';
-  const data_entrada = c.entrada_de_dados || c.entrada_de_dados || c.data_entrada || '';
-  const comp = c.comp ?? c.comprimento_mm ?? c.Comprimento_mm ?? c.comprimento ?? null;
-  const larg = c.larg ?? c.largura_mm ?? c.largura_mm ?? c.largura ?? null;
-  const estoque_minimo = c.estoque_minimo ?? c.min ?? c.quantidade_minima ?? null;
-  const min = estoque_minimo != null ? (Number(estoque_minimo) || 0) : null;
-  const cliente = c.cliente_nome || c.clienteNome || c.cliente || '';
-  const cliente_id = c.cliente_id || c.clienteId || null;
-  const riscada = (c.riscada === true) || String(c.riscada || '').toLowerCase() === 'true' || String(c.riscada || '').toLowerCase() === 'sim' || String(c.riscada || '') === '1';
-  const risca_desc = c.risca_desc || c.descricao_risca || '';
-  const criado_por = c.criado_por || c.usuario || '';
-  const atualizado_por = c.atualizado_por || '';
+  const empresa_vinculada = r.empresa_vinculada || r.empresaVinculada || r.empresa || estEmpresaFromAny(qual_cnpj, emp_id);
+  const estoque_minimo = r.estoque_minimo ?? r.min ?? r.quantidade_minima ?? 200;
+  const cliente = r.cliente_nome || r.clienteNome || r.cliente || '';
+  const cliente_id = r.cliente_id || r.clienteId || null;
+  const riscada = (r.riscada === true) || String(r.riscada || '').toLowerCase() === 'true' || String(r.riscada || '').toLowerCase() === 'sim' || String(r.riscada || '') === '1';
+  const risca_desc = r.risca_desc || r.descricao_risca || '';
+  const vincos = r.vincos || '';
+  const observacao = r.observacao || r.observacoes || '';
+  const data_entrada = r.entrada_de_dados || r.data_entrada || '';
+  const comp = r.comp ?? r.comprimento_mm ?? r.Comprimento_mm ?? r.comprimento ?? null;
+  const larg = r.larg ?? r.largura_mm ?? r.Largura_mm ?? r.largura ?? null;
+  const valor_total = Number(r.valor_total ?? r.vtot ?? (qtd * val) ?? 0) || 0;
+  const criado_por = r.criado_por || r.usuario || '';
+  const atualizado_por = r.atualizado_por || '';
   return {
-    id: c.id,
+    ...r,
+    id: r.id,
     nome,
-    nomenclatura,
-    fornecedor,
+    nomenclatura: nom,
+    fornecedor: forn,
     empresa_vinculada,
     qual_cnpj,
-    tamanho,
+    tamanho: tam,
     nf,
-    quantidade,
-    valor_unitario,
+    quantidade: qtd,
+    valor_unitario: val,
     valor_total,
     vincos,
     observacao,
@@ -18595,19 +18595,19 @@ function normalizeEst(c) {
     cliente_id,
     riscada,
     risca_desc,
-    estoque_minimo: (min != null ? min : 200),
+    estoque_minimo: Number(estoque_minimo || 0) || 200,
     criado_por,
     atualizado_por,
-    forn: fornecedor,
-    nom: nomenclatura,
-    tam: tamanho,
+    forn,
+    nom,
+    tam,
     qual: qual_cnpj,
-    qtd: quantidade,
-    val: valor_unitario,
+    qtd,
+    val,
     empId: emp_id,
     comp,
     larg,
-    min,
+    min: Number(estoque_minimo || 0) || 200,
   };
 }
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
@@ -19252,16 +19252,25 @@ async function carregarChapas(forcar=false){
     try{ _renderEstoqueBase(ESTOQUE); }catch(e){}
     return { ok:true, cached:true, data:ESTOQUE };
   }
-  const empParam = EMP_FILTRO ? ('?empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const r = await api('GET','/chapas_estoque'+empParam);
-  const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
-  const dados = (rows||[]).map(normalizeEst);
+  const all = [];
+  for(let page=0; page<200; page++){
+    const qs = new URLSearchParams();
+    if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
+    qs.set('limit', '500');
+    qs.set('offset', String(page * 500));
+    if(forcar) qs.set('flush_cache', '1');
+    const r = await api('GET','/chapas_estoque?' + qs.toString());
+    const chunk = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+    if(chunk && chunk.length) all.push(...chunk);
+    if(!chunk || chunk.length < 500) break;
+  }
+  const dados = (all||[]).map(normalizeEst);
   ESTOQUE = dados;
   _estoqueBase = dados;
   try{ popularFiltrosEstoque(dados); }catch(e){}
   try{ _renderEstoqueBase(dados); }catch(e){}
-  if(r && r.ok) _ultimaCargaChapas = Date.now();
-  return r;
+  _ultimaCargaChapas = Date.now();
+  return { ok:true, data:dados };
 }
 
 function fluxoEtapasAtivas(etapas){

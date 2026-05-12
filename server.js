@@ -5711,7 +5711,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     };
     const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
     const hasFiltros = qEntries.length > 0;
-    const limitDb = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
+    const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const CACHE_VERSION = 'chapas_v2';
     const cacheKey = hasFiltros
