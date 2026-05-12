@@ -5317,22 +5317,23 @@ function _chapasEmpresaFromEmpId(empId) {
 
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
-    const qtd = Number(row.quantidade || 0) || 0;
-    const vunit = Number(row.valor_unitario || 0) || 0;
-    const vtot = Number(row.valor_total || 0) || (qtd * vunit);
+    const qtd = Math.trunc(_chapasToNum(row.quantidade ?? row.qtd ?? row.quantidade_atual ?? 0, 0));
+    const vunit = _chapasToNum(row.valor_unitario ?? row.val ?? row['valor_unitário'] ?? 0, 0);
+    const vtot = _chapasToNum(row.valor_total ?? row.vtot ?? 0, 0) || (qtd * vunit);
     const empId = row.emp_id || 'E1';
     const empresaVinculada =
       (row.empresa_vinculada != null && String(row.empresa_vinculada).trim() !== '') ? String(row.empresa_vinculada).trim()
       : ((row.qual_cnpj != null && String(row.qual_cnpj).trim() !== '') ? String(row.qual_cnpj).trim()
-      : _chapasEmpresaFromEmpId(empId));
-    return {
+      : ((row.qual != null && String(row.qual).trim() !== '') ? String(row.qual).trim()
+      : _chapasEmpresaFromEmpId(empId)));
+    const canon = {
       id: row.id,
       fornecedor: row.fornecedor || '',
       nomenclatura: row.nomenclatura || '',
       tamanho: row.tamanho || '',
       nome: row.nome_uso || row.nome || '',
       empresa_vinculada: empresaVinculada,
-      qual_cnpj: row.qual_cnpj || row.fabricante || '',
+      qual_cnpj: row.qual_cnpj || row.qual || row.fabricante || '',
       nf: row.nf || '',
       quantidade: qtd,
       valor_unitario: vunit,
@@ -5352,6 +5353,13 @@ function _chapasCanonicalFromAny(row, table) {
       criado_em: row.created_at || row.criado_em || null,
       atualizado_em: row.updated_at || row.atualizado_em || null,
     };
+    canon.qtd = canon.quantidade;
+    canon.val = canon.valor_unitario;
+    canon.forn = canon.fornecedor;
+    canon.nom = canon.nomenclatura;
+    canon.tam = canon.tamanho;
+    canon.qual = canon.qual_cnpj;
+    return canon;
   }
 
   const km = _chapasKeyMap(row);
@@ -5379,7 +5387,7 @@ function _chapasCanonicalFromAny(row, table) {
   const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
   const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
 
-  return {
+  const canon = {
     id,
     fornecedor,
     nomenclatura,
@@ -5406,6 +5414,13 @@ function _chapasCanonicalFromAny(row, table) {
     criado_em: row.criado_em || row.created_at || null,
     atualizado_em: row.atualizado_em || row.updated_at || null,
   };
+  canon.qtd = canon.quantidade;
+  canon.val = canon.valor_unitario;
+  canon.forn = canon.fornecedor;
+  canon.nom = canon.nomenclatura;
+  canon.tam = canon.tamanho;
+  canon.qual = canon.qual_cnpj;
+  return canon;
 }
 
 function _chapasBool(v) {
@@ -5720,9 +5735,12 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const cached = cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
     const selectV2Base = [
-      'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria','quantidade',
-      'valor_unitario','valor_total','estoque_minimo','emp_id','empresa_vinculada',
-      'riscada','cliente_nome','cliente_id','qual_cnpj','qual','nf','vincos','observacao','risca_desc'
+      'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria',
+      'quantidade','quantidade_atual','qtd',
+      'valor_unitario','valor_total','val',
+      'estoque_minimo','emp_id','empresa_vinculada',
+      'riscada','cliente_nome','cliente_id',
+      'qual_cnpj','qual','nf','vincos','observacao','risca_desc'
     ];
     const applyFilters = (inRows) => {
       let rows = Array.isArray(inRows) ? inRows : [];
@@ -5788,13 +5806,19 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       let error = null;
       let orderCreatedAt = true;
 
-      for (let tentativa = 0; tentativa < 5; tentativa++) {
+      for (let tentativa = 0; tentativa < 8; tentativa++) {
         let q = supabase.from(table).select(sel);
         if (orderCreatedAt) q = q.order('created_at', { ascending: false });
         q = q.range(offsetDb, offsetDb + limitDb - 1);
         const r = await q;
         data = r.data;
         error = r.error;
+        try{
+          if (!error && !globalThis.__chapasSampleLogged) {
+            globalThis.__chapasSampleLogged = true;
+            console.log('[CHAPAS SAMPLE]', JSON.stringify((data || [])[0]));
+          }
+        }catch(_){}
         if (!error) break;
 
         const msg = String(error.message || error);
