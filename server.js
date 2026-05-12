@@ -5713,9 +5713,10 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const hasFiltros = qEntries.length > 0;
     const limitDb = Math.max(1, Math.min(150, parseInt(String(req.query.limit || ''), 10) || 150));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const CACHE_VERSION = 'chapas_v2';
     const cacheKey = hasFiltros
-      ? ('chapas_estoque:auto:q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
-      : ('chapas_estoque:auto:all');
+      ? ('chapas_estoque:' + CACHE_VERSION + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
+      : ('chapas_estoque:' + CACHE_VERSION + ':all:limit=' + String(limitDb) + ':offset=' + String(offsetDb));
     const cached = cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
     const selectV2Base = [
@@ -5849,7 +5850,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     });
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros', '| table:', usedTable);
-    if (rows.length > 0) cacheSet(cacheKey, rows);
+    if (rows.length > 0) cacheSet(cacheKey, rows, 10 * 1000);
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
