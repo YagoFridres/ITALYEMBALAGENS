@@ -1448,7 +1448,7 @@ function escH(str) {
 const MODULOS_SISTEMA = [
   { key:'pcp',            label:'PCP / Programação',   grupo:'Produção',  menuId:'menu-pcp',             paginaId:'pcp' },
   { key:'ofs_maquina',    label:'OFs por Máquina',     grupo:'Produção',  menuId:'menu-ofs-maquina',     paginaId:'ofs-maquina' },
-  { key:'lancar_pedido',  label:'Lançar Pedido',       grupo:'Produção',  menuId:'menu-pedidos',         paginaId:'lancar-pedido' },
+  { key:'lancar_pedido',  label:'Armazenamento de OFs',grupo:'Produção',  menuId:'menu-pedidos',         paginaId:'lancar-pedido' },
   { key:'orcamentos',     label:'Orçamentos',          grupo:'Produção',  menuId:'menu-orcamentos',      paginaId:'orcamentos' },
   { key:'compras',        label:'Compras MP',          grupo:'Produção',  menuId:'menu-compras',         paginaId:'compras' },
   { key:'fluxos',         label:'Fluxos',              grupo:'Máquinas',  menuId:'menu-fluxos',          paginaId:'fluxos' },
@@ -1479,7 +1479,7 @@ const PERMISSOES_SISTEMA = {
     itens: {
       baixa_of: 'Dar Baixa em OFs',
       ofs_maquina: 'OFs por Máquina',
-      lancar_pedido: 'Lançar Pedido',
+      lancar_pedido: 'Armazenamento de OFs',
       pcp: 'PCP / Programação',
       orcamentos: 'Orçamentos',
       compras: 'Compras MP',
@@ -8473,7 +8473,7 @@ async function salvarEdicaoOFId(id){
 
 // ===================== LANÇAMENTO =====================
 var OFS_HIST = null;
-var LANC_UI = { tab:'prontas', busca:'', emp:'', mes:'' };
+var LANC_UI = { tab:'todas', view:'tabela', busca:'', emp:'', vendedor:'', maquina:'', status:'', de:'', ate:'', sortKey:'created_at', sortDir:'desc', page:1 };
 var LANC_LAST_ROWS = [];
 
 function lancEmpNome(o){
@@ -8482,10 +8482,14 @@ function lancEmpNome(o){
   return String(nome||'').trim();
 }
 function lancCliNome(o){
+  const direct = String(o.cliNome || o.cliente_nome || o.cli_nome || o.clinome || o.cliente || '').trim();
+  if(direct) return direct;
   const cli = getCli(o.cliId)||null;
   return String((cli && cli.nome) ? cli.nome : (o.cliente||o.cliente_nome||'')).trim() || '—';
 }
 function lancVendNome(o){
+  const direct = String(o.vendNome || o.vendedor_nome || o.vendedor || '').trim();
+  if(direct && !direct.includes('-')) return direct;
   const v = getV(o.vendId)||null;
   return String((v && v.nome) ? v.nome : (o.vendedor||o.vendedor_nome||'')).trim() || '—';
 }
@@ -8537,18 +8541,41 @@ async function lancSalvarQtdOF(id, novaQtdRaw){
 }
 
 async function lancCarregarHistorico(){
-  const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
-  const st = (LANC_UI.tab === 'canceladas') ? '&status=Cancelada' : '';
-  const url = '/ofs?incluir_excluidas=1'+(empParam?('&'+empParam.slice(1)):'')+st;
-  const r = await api('GET', url);
-  if(!r || !r.ok){ toast('Erro ao carregar histórico: '+(r && r.error ? r.error : 'falha'),'var(--red)'); return; }
-  OFS_HIST = (Array.isArray(r.data)?r.data:[]).map(normalizeOF);
+  try{
+    showSaveIndicator('Carregando arquivo...','var(--yellow)');
+  }catch(e){}
+  const r = await carregarOFSArquivo(true);
+  if(!r || r.ok===false){
+    try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
+    toast('Erro ao carregar arquivo: '+String((r && r.error) ? r.error : 'falha'),'var(--red)');
+    return;
+  }
+  OFS_HIST = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
+  try{ showSaveIndicator('✓ carregado','var(--green)'); }catch(_){}
   renderLancamento();
 }
 
 function lancSetTab(t){
   LANC_UI.tab = t;
-  lancCarregarHistorico();
+  LANC_UI.page = 1;
+  renderLancamento();
+}
+
+function lancSetView(v){
+  LANC_UI.view = v;
+  LANC_UI.page = 1;
+  renderLancamento();
+}
+function lancSetSort(key){
+  const k = String(key || '').trim();
+  if(!k) return;
+  if(LANC_UI.sortKey === k) LANC_UI.sortDir = (LANC_UI.sortDir === 'asc') ? 'desc' : 'asc';
+  else { LANC_UI.sortKey = k; LANC_UI.sortDir = 'desc'; }
+  renderLancamento();
+}
+function lancCarregarMais(){
+  LANC_UI.page = Math.max(1, Number(LANC_UI.page||1) + 1);
+  renderLancamento();
 }
 
 async function lancReativar(id){
@@ -8677,178 +8704,382 @@ function renderLancamento(){
   const resumo = document.getElementById('lanc-resumo');
   if(!host || !resumo) return;
 
-  try{ console.log('[LANCAMENTO] renderLancamento()'); }catch(e){}
   try{ carregarOFsFresh().catch(()=>null); }catch(e){}
-  if(!LANC_UI.mes) LANC_UI.mes = today().slice(0,7);
 
-  if(!Array.isArray(OFS_HIST)){
-    host.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando histórico...</div>`;
+  if(!Array.isArray(window.OFS_ARQUIVO)){
+    host.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando arquivo...</div>`;
     resumo.innerHTML = `<div style="padding:14px;color:var(--text3)">—</div>`;
     lancCarregarHistorico();
     return;
   }
 
+  OFS_HIST = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
+  const all = OFS_HIST.slice();
+
+  const normSt = (st)=>{
+    let s = String(st || '').toLowerCase();
+    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+    return s.trim();
+  };
+  const isConcluida = (st)=>{ const s = normSt(st); return s.includes('conclu') || s === 'pedido pronto'; };
+  const isCancelada = (st)=>{ const s = normSt(st); return s.includes('cancelad'); };
+  const isEmProducao = (st)=>{ const s = normSt(st); return s.includes('produc'); };
+  const isEmAberto = (st)=>{ const s = normSt(st); return s.includes('abert') || s.includes('aguard'); };
+  const getValor = (o)=> Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || 0;
+  const getQtd = (o)=> Number(o.qtd || o.quantidade || 0) || 0;
+  const getPedido = (o)=> String(lancDia(o) || String(o.created_at||'').slice(0,10) || '').slice(0,10);
+  const getConc = (o)=> String(o.data_conclusao || o.dataConclusao || '').slice(0,10);
+  const getMaquina = (o)=> String(ofFluxoGetMaquinaAtual(o) || o.maq || '').trim();
+
   const q = String(LANC_UI.busca||'').trim().toLowerCase();
   const emp = String(LANC_UI.emp||'').trim();
-  const mes = String(LANC_UI.mes||'').trim();
+  const vend = String(LANC_UI.vendedor||'').trim();
+  const maq = String(LANC_UI.maquina||'').trim();
+  const de = String(LANC_UI.de||'').trim();
+  const ate = String(LANC_UI.ate||'').trim();
+  const statusFil = String(LANC_UI.status||'').trim();
 
-  const base = (OFS_HIST||[]).filter(o=>{
+  const dentroPeriodo = (o)=>{
+    if(!de && !ate) return true;
+    const d = getPedido(o) || '';
+    if(!d) return true;
+    if(de && d < de) return false;
+    if(ate && d > ate) return false;
+    return true;
+  };
+
+  const base = all.filter(o=>{
+    if(!o) return false;
     const empNome = lancEmpNome(o);
-    const okEmp = !emp || empNome === emp;
-    if(!okEmp) return false;
-    if(mes){
-      const d = lancDia(o);
-      if(d && !String(d).startsWith(mes)) return false;
+    const vendNome = lancVendNome(o);
+    const maqNome = getMaquina(o);
+    if(emp && empNome !== emp) return false;
+    if(vend && vendNome !== vend) return false;
+    if(maq && maqNome !== maq) return false;
+    if(!dentroPeriodo(o)) return false;
+    if(statusFil){
+      const st = String(o.status||'');
+      if(statusFil === 'excluido') { if(!o.deleted_at) return false; }
+      else if(statusFil === 'cancelado') { if(o.deleted_at || !isCancelada(st)) return false; }
+      else if(statusFil === 'concluido') { if(o.deleted_at || !isConcluida(st)) return false; }
+      else if(statusFil === 'em_producao') { if(o.deleted_at || !isEmProducao(st)) return false; }
+      else if(statusFil === 'em_aberto') { if(o.deleted_at || !(isEmAberto(st) || (!isConcluida(st) && !isCancelada(st)))) return false; }
     }
     if(q){
       const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
       const arr = Array.isArray(itens) ? itens : [];
       const item0 = arr[0] || {};
-      const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || '').trim();
+      const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '').trim();
       const ref0 = String(item0.ref || o.ref || '').trim();
-      const txt = [o.of, lancCliNome(o), nomeProduto, ref0, lancVendNome(o), o.status, empNome].join(' ').toLowerCase();
+      const txt = [
+        o.of, o.numero,
+        lancCliNome(o),
+        nomeProduto,
+        ref0,
+        vendNome,
+        String(o.status||''),
+        empNome,
+        maqNome
+      ].join(' ').toLowerCase();
       if(!txt.includes(q)) return false;
     }
     return true;
   });
 
-  const isConcluidaStatus = (st) => {
-    let s = String(st || '').toLowerCase();
-    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
-    s = s.trim();
-    return s.includes('conclu') || s === 'pedido pronto';
-  };
-  const prontas = base.filter(o=>isConcluidaStatus(o.status) && !o.deleted_at);
-  const cancel = base.filter(o=>['Cancelada','Cancelado'].includes(String(o.status||'').trim()) && !o.deleted_at);
-  const excl = base.filter(o=>!!o.deleted_at);
-  const emAberto = base.filter(o=>{
-    const st = String(o.status||'').trim();
-    return !isConcluidaStatus(st) && !['Cancelada','Cancelado'].includes(st) && !o.deleted_at;
-  }).sort((a,b)=>{
-    const da = lancEnt(a) || '';
-    const db = lancEnt(b) || '';
-    const oa = !!(da && da < today());
-    const ob = !!(db && db < today());
-    if(oa !== ob) return oa ? -1 : 1;
-    if(da !== db) return da > db ? 1 : -1;
-    return String(a.of||'').localeCompare(String(b.of||''));
-  });
+  const totalOfs = base.length;
+  const totalValor = base.reduce((s,o)=>s + getValor(o), 0);
+  const cntConcl = base.filter(o=>!o.deleted_at && isConcluida(o.status)).length;
+  const cntCancel = base.filter(o=>!o.deleted_at && isCancelada(o.status)).length;
+  const cntExcl = base.filter(o=>!!o.deleted_at).length;
+  const cntProd = base.filter(o=>!o.deleted_at && isEmProducao(o.status)).length;
+  const cntAberto = base.filter(o=>!o.deleted_at && !isConcluida(o.status) && !isCancelada(o.status)).length;
 
-  const tab = LANC_UI.tab || 'prontas';
-  let rows = tab==='canceladas' ? cancel : tab==='excluidas' ? excl : tab==='abertas' ? emAberto : prontas;
+  const tab = String(LANC_UI.tab||'todas');
+  let rows = base;
+  if(tab === 'em_aberto') rows = base.filter(o=>!o.deleted_at && !isConcluida(o.status) && !isCancelada(o.status));
+  else if(tab === 'em_producao') rows = base.filter(o=>!o.deleted_at && isEmProducao(o.status));
+  else if(tab === 'concluidas') rows = base.filter(o=>!o.deleted_at && isConcluida(o.status));
+  else if(tab === 'canceladas') rows = base.filter(o=>!o.deleted_at && isCancelada(o.status));
+  else if(tab === 'excluidas') rows = base.filter(o=>!!o.deleted_at);
+  else if(tab === 'canceladas_excluidas') rows = base.filter(o=>!!o.deleted_at || isCancelada(o.status));
+
+  const sortKey = String(LANC_UI.sortKey||'created_at');
+  const sortDir = String(LANC_UI.sortDir||'desc') === 'asc' ? 'asc' : 'desc';
+  const dirMul = sortDir === 'asc' ? 1 : -1;
+  const sortVal = (o)=>{
+    if(sortKey === 'of') return String(o.of||o.numero||'');
+    if(sortKey === 'cliente') return String(lancCliNome(o)||'');
+    if(sortKey === 'produto') return String(o.prodDesc||o.descricao||o.produto||'');
+    if(sortKey === 'qtd') return getQtd(o);
+    if(sortKey === 'valor') return getValor(o);
+    if(sortKey === 'vendedor') return String(lancVendNome(o)||'');
+    if(sortKey === 'maq') return String(getMaquina(o)||'');
+    if(sortKey === 'pedido') return getPedido(o) || '';
+    if(sortKey === 'entrega') return String(lancEnt(o)||'');
+    if(sortKey === 'conclusao') return getConc(o) || '';
+    if(sortKey === 'status') return String(o.status||'');
+    return String(o.created_at||'');
+  };
   rows = rows.slice().sort((a,b)=>{
-    const fa = tab==='excluidas' ? lancTs(a,'deleted_at') : tab==='canceladas' ? lancTs(a,'updated_at') : lancTs(a,'data_conclusao');
-    const fb = tab==='excluidas' ? lancTs(b,'deleted_at') : tab==='canceladas' ? lancTs(b,'updated_at') : lancTs(b,'data_conclusao');
-    if(fb && fa && fb!==fa) return fb.localeCompare(fa);
-    return String(b.of||'').localeCompare(String(a.of||''));
+    const va = sortVal(a);
+    const vb = sortVal(b);
+    if(typeof va === 'number' && typeof vb === 'number') return (va - vb) * dirMul;
+    const sa = String(va||'');
+    const sb = String(vb||'');
+    if(sa === sb) return 0;
+    return sa.localeCompare(sb) * dirMul;
   });
 
-  const btn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${LANC_UI.tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
+  const pageSize = 50;
+  const page = Math.max(1, Number(LANC_UI.page||1) || 1);
+  const shown = rows.slice(0, page * pageSize);
+  const hasMore = shown.length < rows.length;
 
-  resumo.innerHTML = `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-    ${btn('prontas','Concluídos',prontas.length)}
-    ${btn('abertas','Em Aberto',emAberto.length)}
-    ${btn('canceladas','Canceladas',cancel.length)}
-    ${btn('excluidas','Excluídas',excl.length)}
-    <div style="flex:1"></div>
-    <div id="lanc-conc-hoje" style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Concluídas hoje: —</div>
-    <button class="btn btn-ghost btn-sm" onclick="lancVerTodasConcluidas()">Ver todas concluídas</button>
-    <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨️ Imprimir Lista</button>
-    <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar</button>
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
-    <input id="lanc-busca" placeholder="🔍 Cliente / Nº OF / Produto" value="${escAttr(LANC_UI.busca||'')}" oninput="LANC_UI.busca=this.value;renderLancamento()" style="width:230px">
-    <select id="lanc-emp" onchange="LANC_UI.emp=this.value;renderLancamento()" style="width:190px">
-      <option value="">Todas empresas</option>
-      <option value="Italy Embalagens" ${LANC_UI.emp==='Italy Embalagens'?'selected':''}>Italy Embalagens</option>
-      <option value="Cartoeste" ${LANC_UI.emp==='Cartoeste'?'selected':''}>Cartoeste</option>
-      <option value="Oestepack" ${LANC_UI.emp==='Oestepack'?'selected':''}>Oestepack</option>
-    </select>
-    <input id="lanc-mes" type="month" value="${escAttr(LANC_UI.mes||'')}" onchange="LANC_UI.mes=this.value;renderLancamento()" style="width:160px">
-  </div>`;
-  try{
-    getConcluidasHoje().then(arr=>{
-      const el = document.getElementById('lanc-conc-hoje');
-      if(el) el.textContent = 'Concluídas hoje: ' + String((Array.isArray(arr) ? arr.length : (Number(window._concluidasHoje)||0)));
-    }).catch(()=>null);
-  }catch(e){}
+  const empOpts = Array.from(new Set(base.map(o=>lancEmpNome(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  const vendOpts = Array.from(new Set(base.map(o=>lancVendNome(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  const maqOpts = Array.from(new Set(base.map(o=>getMaquina(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
 
-  const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
-  const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
-  const renderRow = (o) => {
-    const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
-    const arr = Array.isArray(itens) ? itens : [];
-    const item0 = arr[0] || {};
-    const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '—').trim() || '—';
-    const ref0 = String(item0.ref || o.ref || '—').trim() || '—';
-    const qtd = Number(o.qtd || 0) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
-    const total = Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
-    const vunit = Number(item0.vunit || item0.valor_unitario || o.vunit || o.valorUnitario || 0) || (qtd > 0 ? (total / qtd) : 0);
-    const chapa = String(item0.chapa_nome || '').trim() || (()=>{
-      const id0 = String(item0.chapa_id || item0.chapaId || '').trim();
-      if(!id0) return '';
-      const ch = (typeof getCh === 'function') ? getCh(id0) : null;
-      return ch ? String(ch.nomenclatura || ch.nom || ch.nome || '').trim() : '';
-    })();
-    const imgUrl = o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : null) || (Array.isArray(o.imagens) ? o.imagens[0] : null) || '';
-    const statusRaw = String(o.status || '').trim();
-    const isConcluida = isConcluidaStatus(statusRaw);
-    const dataFatPref = String(o?.data_faturamento || '').slice(0,10) || String(o?.data_conclusao || '').slice(0,10) || '';
-    const statusHtmlBase = isConcluida
-      ? `<span style="display:inline-block;background:rgba(22,163,74,.12);border:1px solid rgba(22,163,74,.45);color:var(--green);padding:2px 8px;border-radius:999px;font-weight:900;font-size:.7rem">Concluído</span>`
-      : escH(statusRaw || '—');
-    const statusHtml = isConcluida
-      ? `<div>${statusHtmlBase}<div style="margin-top:4px;font-size:.68rem;color:var(--text3);font-family:var(--mono)">Fat: ${escH(dataFatPref ? fmtD(dataFatPref) : '—')}</div></div>`
-      : statusHtmlBase;
-    const concEm = String(o?.data_conclusao || o?.dataConclusao || '').slice(0,10);
-    const concPor = String(o?.usuario_conclusao || o?.usuarioConclusao || '').trim();
-    return `
-          <tr style="background:var(--surface)">
-            <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||'')}</td>
-            <td style="${td};text-align:center">${imgUrl
-              ? `<img src="${escAttr(imgUrl)}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(o.of||o.numero||'')}')" onerror="this.style.display='none'">`
-              : ''}</td>
-            <td style="${td}">${escH(lancCliNome(o))}</td>
-            <td style="${td};max-width:260px;overflow:hidden;text-overflow:ellipsis"><div style="font-weight:900">${escH(nomeProduto)}</div></td>
-            <td style="${td};max-width:160px;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)">${escH(ref0)}</td>
-            <td style="${td};text-align:right;font-family:var(--mono)">${fmtR(vunit)}</td>
-            <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(total)}</td>
-            <td style="${td};max-width:220px;overflow:hidden;text-overflow:ellipsis">${escH(chapa||'—')}</td>
-            <td style="${td};text-align:right;font-family:var(--mono)">${
-              o.id
-                ? `<input type="number" min="0" value="${escAttr(qtd)}" style="width:86px;text-align:right;font-family:var(--mono);padding:4px 6px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px" onkeydown="if(event.key==='Enter'){this.blur();}" onchange="lancSalvarQtdOF('${escAttr(o.id)}', this.value)">`
-                : fmtN(qtd)
-            }</td>
-            <td style="${td};font-family:var(--mono)">${fmtD(lancDia(o))}</td>
-            <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
-            <td style="${td}">${statusHtml}</td>
-            <td style="${td};font-family:var(--mono)">${escH(concEm ? fmtD(concEm) : '—')}</td>
-            <td style="${td}">${escH(concPor || '—')}</td>
-            <td style="${td}">${escH(ofFluxoGetMaquinaAtual(o)||'—')}</td>
-            <td style="${td}">${escH(lancVendNome(o))}</td>
-            <td style="${td};text-align:center">
-              <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver detalhes</button>
-              ${(!o.deleted_at && isConcluida)?`<button onclick="abrirModalReconcluir('${escAttr(o.id)}')" title="Atualizar conclusão" style="background:#0d6efd;color:#fff;border:none;border-radius:4px;padding:4px 8px;cursor:pointer;margin-right:4px;font-size:0.8rem;">🔄</button>`:''}
-              ${(!o.deleted_at && isConcluida && o.id)?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarDataFaturamento('${escAttr(o.id)}','${escAttr(String(o?.data_faturamento||'').slice(0,10))}')" title="Editar data de faturamento">📅</button>`:''}
-              ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
-              ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancExcluirOF('${escAttr(o.id)}')" title="Excluir" style="color:var(--red)">🗑️</button>`:''}
-              ${(tab==='canceladas')?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
-              ${(tab==='excluidas')?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
-            </td>
-          </tr>`;
+  const tabBtn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
+  const viewBtn = (id, label) => `<button class="btn btn-ghost btn-sm ${String(LANC_UI.view||'tabela')===id?'ativo':''}" onclick="lancSetView('${id}')" style="border:1px solid var(--border)">${label}</button>`;
+
+  resumo.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="font-weight:900;color:var(--accent)">🗃️ Armazenamento de OFs</div>
+      <div style="flex:1"></div>
+      ${viewBtn('tabela','Tabela')}
+      ${viewBtn('timeline','Timeline')}
+      ${viewBtn('cliente','Por Cliente')}
+      ${viewBtn('comparativo','Comparativo')}
+      <button class="btn btn-ghost btn-sm" onclick="lancExportarExcel()">📥 Exportar Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨 Imprimir Lista</button>
+      <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar Arquivo</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Total: <b style="color:var(--text)">${fmtN(totalOfs)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Em Aberto: <b style="color:var(--text)">${fmtN(cntAberto)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Em Produção: <b style="color:var(--text)">${fmtN(cntProd)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Concluídas: <b style="color:var(--text)">${fmtN(cntConcl)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Canceladas: <b style="color:var(--text)">${fmtN(cntCancel)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Excluídas: <b style="color:var(--text)">${fmtN(cntExcl)}</b></span>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Valor do período: <b style="color:var(--green)">${fmtR(totalValor)}</b></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      ${tabBtn('todas','Todas',base.length)}
+      ${tabBtn('em_aberto','Em Aberto',cntAberto)}
+      ${tabBtn('em_producao','Em Produção',cntProd)}
+      ${tabBtn('concluidas','Concluídas',cntConcl)}
+      ${tabBtn('canceladas_excluidas','Canceladas/Excluídas',cntCancel+cntExcl)}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
+      <input id="lanc-busca" placeholder="🔍 Cliente / Produto / Nº OF" value="${escAttr(LANC_UI.busca||'')}" oninput="LANC_UI.busca=this.value;LANC_UI.page=1;renderLancamento()" style="width:240px">
+      <select id="lanc-status" onchange="LANC_UI.status=this.value;LANC_UI.page=1;renderLancamento()" style="width:170px">
+        <option value="">Todos status</option>
+        <option value="em_aberto" ${statusFil==='em_aberto'?'selected':''}>Em Aberto</option>
+        <option value="em_producao" ${statusFil==='em_producao'?'selected':''}>Em Produção</option>
+        <option value="concluido" ${statusFil==='concluido'?'selected':''}>Concluído</option>
+        <option value="cancelado" ${statusFil==='cancelado'?'selected':''}>Cancelado</option>
+        <option value="excluido" ${statusFil==='excluido'?'selected':''}>Excluído</option>
+      </select>
+      <select id="lanc-emp" onchange="LANC_UI.emp=this.value;LANC_UI.page=1;renderLancamento()" style="width:190px">
+        <option value="">Todas empresas</option>
+        ${empOpts.map(n=>`<option value="${escAttr(n)}"${emp===n?' selected':''}>${escH(n)}</option>`).join('')}
+      </select>
+      <select id="lanc-vend" onchange="LANC_UI.vendedor=this.value;LANC_UI.page=1;renderLancamento()" style="width:210px">
+        <option value="">Todos vendedores</option>
+        ${vendOpts.map(n=>`<option value="${escAttr(n)}"${vend===n?' selected':''}>${escH(n)}</option>`).join('')}
+      </select>
+      <select id="lanc-maq" onchange="LANC_UI.maquina=this.value;LANC_UI.page=1;renderLancamento()" style="width:220px">
+        <option value="">Todas máquinas</option>
+        ${maqOpts.map(n=>`<option value="${escAttr(n)}"${maq===n?' selected':''}>${escH(n)}</option>`).join('')}
+      </select>
+      <input type="date" id="lanc-de" value="${escAttr(de||'')}" onchange="LANC_UI.de=this.value;LANC_UI.page=1;renderLancamento()" style="width:140px">
+      <input type="date" id="lanc-ate" value="${escAttr(ate||'')}" onchange="LANC_UI.ate=this.value;LANC_UI.page=1;renderLancamento()" style="width:140px">
+      <button class="btn btn-ghost btn-sm" onclick="LANC_UI.busca='';LANC_UI.emp='';LANC_UI.vendedor='';LANC_UI.maquina='';LANC_UI.status='';LANC_UI.de='';LANC_UI.ate='';LANC_UI.page=1;renderLancamento()">Limpar</button>
+    </div>
+  `;
+
+  const th = 'padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;cursor:pointer;';
+  const td = 'padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  const thSort = (key, label) => `<th style="${th}" onclick="lancSetSort('${escAttr(key)}')">${escH(label)}${LANC_UI.sortKey===key?(' ' + (LANC_UI.sortDir==='asc'?'▲':'▼')):''}</th>`;
+
+  const renderTabela = ()=>{
+    const renderRow = (o) => {
+      const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      const item0 = arr[0] || {};
+      const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '—').trim() || '—';
+      const ref0 = String(item0.ref || o.ref || '—').trim() || '—';
+      const qtd = getQtd(o) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+      const total = getValor(o) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+      const imgUrl = String(o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : '') || '').trim();
+      const stRaw = String(o.status || '').trim();
+      const atraso = !o.deleted_at && !isConcluida(stRaw) && !isCancelada(stRaw) && (lancEnt(o) && lancEnt(o) < today());
+      const bg = atraso ? 'background:rgba(239,68,68,.08);' : 'background:var(--surface);';
+      return `<tr style="${bg}">
+        <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||o.numero||'')}</td>
+        <td style="${td};text-align:center">${imgUrl
+          ? `<img src="${escAttr(imgUrl)}" style="width:42px;height:42px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(o.of||o.numero||'')}')" onerror="this.style.display='none'">`
+          : '—'}</td>
+        <td style="${td}">${escH(lancCliNome(o))}</td>
+        <td style="${td};max-width:260px;overflow:hidden;text-overflow:ellipsis"><div style="font-weight:900">${escH(nomeProduto)}</div></td>
+        <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(qtd)}</td>
+        <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(total)}</td>
+        <td style="${td}">${escH(lancVendNome(o))}</td>
+        <td style="${td}">${escH(getMaquina(o)||'—')}</td>
+        <td style="${td};font-family:var(--mono)">${fmtD(getPedido(o))}</td>
+        <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
+        <td style="${td};font-family:var(--mono)">${escH(getConc(o) ? fmtD(getConc(o)) : '—')}</td>
+        <td style="${td}">${escH(stRaw || '—')}${o.deleted_at?` <span style="color:var(--red);font-family:var(--mono);font-weight:900">[EXC]</span>`:''}</td>
+        <td style="${td};text-align:center">
+          <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver</button>
+          ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
+          ${(o.deleted_at)?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
+          ${(!o.deleted_at && isCancelada(stRaw))?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
+        </td>
+      </tr>`;
+    };
+    const tbody = shown.length ? shown.map(renderRow).join('') : `<tr><td colspan="13" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`;
+    const moreBtn = hasMore ? `<div style="padding:12px;text-align:center"><button class="btn btn-ghost" onclick="lancCarregarMais()">Carregar mais (${shown.length}/${rows.length})</button></div>` : '';
+    return `<div style="max-height:66vh;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:1320px">
+        <thead><tr>
+          ${thSort('of','Nº OF')}
+          <th style="${th.replace('cursor:pointer;','')}">IMG</th>
+          ${thSort('cliente','Cliente')}
+          ${thSort('produto','Produto')}
+          ${thSort('qtd','Qtd')}
+          ${thSort('valor','Valor')}
+          ${thSort('vendedor','Vendedor')}
+          ${thSort('maq','Máquina Atual')}
+          ${thSort('pedido','Dia Pedido')}
+          ${thSort('entrega','Entrega')}
+          ${thSort('conclusao','Conclusão')}
+          ${thSort('status','Status')}
+          <th style="${th.replace('cursor:pointer;','')}">Ações</th>
+        </tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+      ${moreBtn}
+    </div>`;
   };
-  host.innerHTML = `<div style="max-height:66vh;overflow:auto">
-    <table style="width:100%;border-collapse:collapse;min-width:1480px">
-      <thead><tr>
-        <th style="${th}">OF</th><th style="${th}">📷</th><th style="${th}">Cliente</th><th style="${th}">Produto</th><th style="${th}">Ref</th>
-        <th style="${th}">Vl.Unit</th><th style="${th}">Total</th><th style="${th}">Chapa</th><th style="${th}">Qtd</th>
-        <th style="${th}">Pedido</th><th style="${th}">Entrega</th><th style="${th}">Status</th><th style="${th}">Concluído em</th><th style="${th}">Concluído por</th><th style="${th}">Máquina Atual</th><th style="${th}">Vendedor</th><th style="${th}">Ações</th>
-      </tr></thead>
-      <tbody>
-        ${rows.length?rows.map(renderRow).join(''):`<tr><td colspan="17" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`}
-      </tbody>
-    </table>
-  </div>`;
+
+  const renderTimeline = ()=>{
+    const bucket = {};
+    base.forEach(o=>{
+      const d = getPedido(o);
+      if(!d) return;
+      const k = String(d).slice(0,7);
+      if(!bucket[k]) bucket[k] = { mes:k, criadas:0, concluidas:0 };
+      bucket[k].criadas += 1;
+      if(!o.deleted_at && isConcluida(o.status)) bucket[k].concluidas += 1;
+    });
+    const meses = Object.keys(bucket).sort();
+    const rowsTl = meses.map(k=>bucket[k]);
+    const max = rowsTl.reduce((m,r)=>Math.max(m, r.criadas, r.concluidas), 1);
+    const bar = (n, cor)=>`<div style="height:10px;width:${Math.max(2, Math.round((n/max)*220))}px;background:${cor};border-radius:999px"></div>`;
+    return `<div style="padding:14px">
+      <div style="display:flex;gap:10px;align-items:center;color:var(--text2);font-family:var(--mono);font-size:.75rem;margin-bottom:10px">
+        <span>Criadas</span><span style="width:10px;height:10px;background:var(--accent);border-radius:999px;display:inline-block"></span>
+        <span>Concluídas</span><span style="width:10px;height:10px;background:var(--green);border-radius:999px;display:inline-block"></span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;max-width:680px">
+        <thead><tr>
+          <th style="text-align:left;padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-family:var(--mono);font-size:.7rem">MÊS</th>
+          <th style="text-align:left;padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-family:var(--mono);font-size:.7rem">CRIADAS</th>
+          <th style="text-align:left;padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-family:var(--mono);font-size:.7rem">CONCLUÍDAS</th>
+        </tr></thead>
+        <tbody>
+          ${rowsTl.map(r=>`<tr>
+            <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">${escH(r.mes)}</td>
+            <td style="padding:8px 10px;border:1px solid var(--border)"><div style="display:flex;gap:10px;align-items:center">${bar(r.criadas,'var(--accent)')}<span style="font-family:var(--mono)">${fmtN(r.criadas)}</span></div></td>
+            <td style="padding:8px 10px;border:1px solid var(--border)"><div style="display:flex;gap:10px;align-items:center">${bar(r.concluidas,'var(--green)')}<span style="font-family:var(--mono)">${fmtN(r.concluidas)}</span></div></td>
+          </tr>`).join('') || `<tr><td colspan="3" style="padding:10px;border:1px solid var(--border);color:var(--text3);text-align:center">Sem dados</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+  };
+
+  const renderPorCliente = ()=>{
+    const map = {};
+    base.forEach(o=>{
+      const cli = lancCliNome(o);
+      const k = String(cli||'—').trim() || '—';
+      if(!map[k]) map[k] = { cliente:k, total_ofs:0, caixas:0, valor:0, ultima:'' };
+      map[k].total_ofs += 1;
+      map[k].caixas += getQtd(o);
+      map[k].valor += getValor(o);
+      const u = getConc(o) || getPedido(o) || '';
+      if(u && (!map[k].ultima || u > map[k].ultima)) map[k].ultima = u;
+    });
+    const arr = Object.values(map).sort((a,b)=>b.valor - a.valor);
+    return `<div style="max-height:66vh;overflow:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:920px">
+        <thead><tr>
+          <th style="${th.replace('cursor:pointer;','')}">Cliente</th>
+          <th style="${th.replace('cursor:pointer;','')}">Total OFs</th>
+          <th style="${th.replace('cursor:pointer;','')}">Caixas</th>
+          <th style="${th.replace('cursor:pointer;','')}">Valor</th>
+          <th style="${th.replace('cursor:pointer;','')}">Última</th>
+        </tr></thead>
+        <tbody>
+          ${arr.map(r=>`<tr style="background:var(--surface)">
+            <td style="${td};font-weight:900">${escH(r.cliente)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(r.total_ofs)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(r.caixas)}</td>
+            <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(r.valor)}</td>
+            <td style="${td};font-family:var(--mono)">${escH(r.ultima ? fmtD(r.ultima) : '—')}</td>
+          </tr>`).join('') || `<tr><td colspan="5" style="${td};text-align:center;color:var(--text3)">Sem dados</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+  };
+
+  const renderComparativo = ()=>{
+    const mesAtual = today().slice(0,7);
+    const [y, m] = mesAtual.split('-').map(n=>Number(n||0));
+    const prev = m === 1 ? `${String(y-1)}-12` : `${String(y)}-${String(m-1).padStart(2,'0')}`;
+    const calc = (mes)=>{
+      const xs = base.filter(o=>{
+        if(o.deleted_at) return false;
+        if(!isConcluida(o.status)) return false;
+        const d = getConc(o) || '';
+        return d && String(d).startsWith(mes);
+      });
+      return { mes, total_ofs: xs.length, valor: xs.reduce((s,o)=>s + getValor(o), 0), caixas: xs.reduce((s,o)=>s + getQtd(o), 0) };
+    };
+    const a = calc(mesAtual);
+    const b = calc(prev);
+    const diff = (x,y)=> (x - y);
+    return `<div style="padding:14px;max-width:680px">
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-family:var(--mono);color:var(--text3);font-size:.72rem">${escH(a.mes)}</div>
+          <div style="margin-top:8px;font-weight:900">OFs: <span style="font-family:var(--mono)">${fmtN(a.total_ofs)}</span></div>
+          <div style="margin-top:6px;font-weight:900">Caixas: <span style="font-family:var(--mono)">${fmtN(a.caixas)}</span></div>
+          <div style="margin-top:6px;font-weight:900;color:var(--green)">Valor: <span style="font-family:var(--mono)">${fmtR(a.valor)}</span></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-family:var(--mono);color:var(--text3);font-size:.72rem">${escH(b.mes)}</div>
+          <div style="margin-top:8px;font-weight:900">OFs: <span style="font-family:var(--mono)">${fmtN(b.total_ofs)}</span></div>
+          <div style="margin-top:6px;font-weight:900">Caixas: <span style="font-family:var(--mono)">${fmtN(b.caixas)}</span></div>
+          <div style="margin-top:6px;font-weight:900;color:var(--green)">Valor: <span style="font-family:var(--mono)">${fmtR(b.valor)}</span></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:14px">
+        <div style="font-family:var(--mono);color:var(--text3);font-size:.72rem">Diferença (Atual - Anterior)</div>
+        <div style="margin-top:8px;font-weight:900">OFs: <span style="font-family:var(--mono)">${fmtN(diff(a.total_ofs,b.total_ofs))}</span></div>
+        <div style="margin-top:6px;font-weight:900">Caixas: <span style="font-family:var(--mono)">${fmtN(diff(a.caixas,b.caixas))}</span></div>
+        <div style="margin-top:6px;font-weight:900;color:var(--green)">Valor: <span style="font-family:var(--mono)">${fmtR(diff(a.valor,b.valor))}</span></div>
+      </div>
+    </div>`;
+  };
+
+  const view = String(LANC_UI.view||'tabela');
+  if(view === 'timeline') host.innerHTML = renderTimeline();
+  else if(view === 'cliente') host.innerHTML = renderPorCliente();
+  else if(view === 'comparativo') host.innerHTML = renderComparativo();
+  else host.innerHTML = renderTabela();
+
   LANC_LAST_ROWS = rows.slice();
 }
 
@@ -8922,10 +9153,59 @@ async function editarDataFaturamento(ofId, dataAtual){
   }
 }
 
+function lancExportarExcel(){
+  try{
+    if(typeof XLSX === 'undefined' || !XLSX?.utils){ toast('SheetJS (XLSX) não carregado','var(--red)'); return; }
+  }catch(e){ toast('SheetJS (XLSX) não carregado','var(--red)'); return; }
+  const rows = Array.isArray(LANC_LAST_ROWS) ? LANC_LAST_ROWS : [];
+  if(!rows.length){ toast('Nenhum registro para exportar','var(--yellow)'); return; }
+  const aoa = [[
+    'Nº OF','Cliente','Produto','Qtd','Valor','Vendedor','Máquina Atual','Dia Pedido','Entrega','Conclusão','Status','Excluída'
+  ]];
+  rows.forEach((o)=>{
+    const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+    const arr = Array.isArray(itens) ? itens : [];
+    const item0 = arr[0] || {};
+    const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '').trim();
+    const qtd = Number(o.qtd || o.quantidade || 0) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+    const total = Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+    const maq = String(ofFluxoGetMaquinaAtual(o) || o.maq || '').trim();
+    const pedido = String((o.dia || o.data_pedido || o.dataPedido || o.created_at || '')).slice(0,10);
+    const conc = String(o.data_conclusao || o.dataConclusao || '').slice(0,10);
+    aoa.push([
+      String(o.of || o.numero || ''),
+      String(lancCliNome(o) || ''),
+      String(nomeProduto || ''),
+      qtd,
+      total,
+      String(lancVendNome(o) || ''),
+      String(maq || ''),
+      pedido,
+      String(lancEnt(o) || ''),
+      conc,
+      String(o.status || ''),
+      o.deleted_at ? 'SIM' : ''
+    ]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'OFs');
+  const name = `armazenamento_ofs_${today()}.xlsx`;
+  XLSX.writeFile(wb, name);
+}
+
 function lancImprimirLista(){
   const rows = Array.isArray(LANC_LAST_ROWS) ? LANC_LAST_ROWS : [];
-  const tab = String(LANC_UI.tab||'prontas');
-  const titulo = `Lista de Pedidos — ${tab==='abertas'?'Em Aberto':tab==='canceladas'?'Canceladas':tab==='excluidas'?'Excluídas':'Concluídos'}`;
+  const tab = String(LANC_UI.tab||'todas');
+  const titulo = `Armazenamento de OFs — ${
+    tab==='em_aberto'?'Em Aberto':
+    tab==='em_producao'?'Em Produção':
+    tab==='concluidas'?'Concluídas':
+    tab==='canceladas'?'Canceladas':
+    tab==='excluidas'?'Excluídas':
+    tab==='canceladas_excluidas'?'Canceladas/Excluídas':
+    'Todas'
+  }`;
   if(!rows.length){
     toast('Nenhum registro para imprimir','var(--yellow)');
     return;
@@ -8942,16 +9222,20 @@ function lancImprimirLista(){
     const ref0 = String(item0.ref || o.ref || '—').trim() || '—';
     const qtd = Number(o.qtd || 0) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
     const total = Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+    const maq = String(ofFluxoGetMaquinaAtual(o) || o.maq || '').trim();
+    const conc = String(o.data_conclusao || o.dataConclusao || '').slice(0,10);
     return tr([
-      `<td style="${td};font-family:monospace;font-weight:700">#${escH(o.of||'')}</td>`,
+      `<td style="${td};font-family:monospace;font-weight:700">#${escH(o.of||o.numero||'')}</td>`,
       `<td style="${td}">${escH(lancCliNome(o))}</td>`,
       `<td style="${td}">${escH(nomeProduto)}</td>`,
-      `<td style="${td};font-family:monospace">${escH(ref0)}</td>`,
       `<td style="${td};text-align:right;font-family:monospace">${fmtN2(qtd)}</td>`,
       `<td style="${td};text-align:right;font-family:monospace">${fmtR(total)}</td>`,
-      `<td style="${td};font-family:monospace">${escH(lancDia(o)||'')}</td>`,
+      `<td style="${td}">${escH(lancVendNome(o))}</td>`,
+      `<td style="${td}">${escH(maq||'—')}</td>`,
+      `<td style="${td};font-family:monospace">${escH(lancDia(o)||String(o.created_at||'').slice(0,10)||'')}</td>`,
       `<td style="${td};font-family:monospace">${escH(lancEnt(o)||'')}</td>`,
-      `<td style="${td}">${escH(String(o.status||''))}</td>`,
+      `<td style="${td};font-family:monospace">${escH(conc||'')}</td>`,
+      `<td style="${td}">${escH(String(o.status||''))}${o.deleted_at?' [EXC]':''}</td>`,
       `<td style="${td}">${escH(lancEmpNome(o)||'')}</td>`,
     ]);
   }).join('');
@@ -8961,11 +9245,13 @@ function lancImprimirLista(){
         `<th style="${th}">OF</th>`,
         `<th style="${th}">Cliente</th>`,
         `<th style="${th}">Produto</th>`,
-        `<th style="${th}">Ref</th>`,
         `<th style="${th};text-align:right">Qtd</th>`,
-        `<th style="${th};text-align:right">Total</th>`,
+        `<th style="${th};text-align:right">Valor</th>`,
+        `<th style="${th}">Vendedor</th>`,
+        `<th style="${th}">Máquina</th>`,
         `<th style="${th}">Pedido</th>`,
         `<th style="${th}">Entrega</th>`,
+        `<th style="${th}">Conclusão</th>`,
         `<th style="${th}">Status</th>`,
         `<th style="${th}">Empresa</th>`,
       ])}</thead>
@@ -18525,6 +18811,93 @@ let _ofsLastLoad = 0;
 const _OFS_MIN_INTERVAL = 60000;
 let _ofsLastHash = '';
 
+let _ofsArquivoLoading = false;
+let _ofsArquivoLastLoad = 0;
+const _OFS_ARQUIVO_LIMIT = 500;
+
+function _normalizeOFRowFromApi(o){
+  let fm = o && o.fluxo_maquinas;
+  if(typeof fm === 'string'){ try{ fm = JSON.parse(fm); }catch(e){ fm = []; } }
+  if(!Array.isArray(fm)) fm = [];
+  return normalizeOF({ ...(o||{}), fluxo_maquinas: fm });
+}
+function _dispatchOfsAtualizadas(){
+  try{ window.dispatchEvent(new Event('ofs_atualizadas')); }catch(e){}
+}
+function _setOFSArquivoGlobal(all){
+  const arr = Array.isArray(all) ? all : [];
+  const norm = arr.map(_normalizeOFRowFromApi);
+  try{ window.OFS_ARQUIVO = norm; }catch(e){}
+  const ativas = norm.filter(o => !o.deleted_at);
+  try{ window.OFS = ativas; }catch(e){}
+  try{ window.OFs = ativas; }catch(e){}
+  try{ OFs = ativas; }catch(e){}
+  _dispatchOfsAtualizadas();
+}
+function _upsertOFSArquivoLocal(ofRow){
+  const o = _normalizeOFRowFromApi(ofRow);
+  const sid = String(o?.id || '').trim();
+  if(!sid) return null;
+  let changed = false;
+  const arr = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : null;
+  if(arr){
+    const i = arr.findIndex(x => String(x?.id||'').trim() === sid);
+    if(i >= 0){ arr[i] = o; changed = true; }
+    else { arr.unshift(o); changed = true; }
+  }
+  if(changed){
+    const ativas = (Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : []).filter(x => x && !x.deleted_at);
+    try{ window.OFS = ativas; }catch(e){}
+    try{ window.OFs = ativas; }catch(e){}
+    try{ OFs = ativas; }catch(e){}
+    _dispatchOfsAtualizadas();
+  }
+  return o;
+}
+async function carregarOFSArquivo(force=false){
+  const now = Date.now();
+  if(_ofsArquivoLoading){
+    if(window._ofsArquivoPromise) return window._ofsArquivoPromise;
+    return { ok:true, skipped:'loading', data: Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [] };
+  }
+  if(!force && Array.isArray(window.OFS_ARQUIVO) && window.OFS_ARQUIVO.length > 0 && (now - _ofsArquivoLastLoad) < (2 * 60 * 1000)){
+    return { ok:true, cached:true, data: window.OFS_ARQUIVO };
+  }
+  _ofsArquivoLoading = true;
+  window._ofsArquivoPromise = (async ()=>{
+    try{
+      const all = [];
+      let offset = 0;
+      let total = null;
+      for(let guard=0; guard<2000; guard++){
+        const qs = new URLSearchParams();
+        qs.set('incluir_excluidas','1');
+        qs.set('limit', String(_OFS_ARQUIVO_LIMIT));
+        qs.set('offset', String(offset));
+        qs.set('lite','1');
+        qs.set('order_by','created_at');
+        qs.set('order','asc');
+        const r = await api('GET', '/ofs?' + qs.toString());
+        const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        if(typeof r?.total === 'number') total = r.total;
+        all.push(...chunk);
+        if(total != null && all.length >= total) break;
+        if(chunk.length < _OFS_ARQUIVO_LIMIT) break;
+        offset += _OFS_ARQUIVO_LIMIT;
+      }
+      _setOFSArquivoGlobal(all);
+      _ofsArquivoLastLoad = Date.now();
+      return { ok:true, data: Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [] };
+    }catch(e){
+      return { ok:false, error: String(e?.message || e) };
+    }finally{
+      _ofsArquivoLoading = false;
+      try{ window._ofsArquivoPromise = null; }catch(_){}
+    }
+  })();
+  return window._ofsArquivoPromise;
+}
+
 async function carregarOFsUnico(force = false){
   const agora = Date.now();
   if(_ofsLoading){
@@ -18539,25 +18912,16 @@ async function carregarOFsUnico(force = false){
   _ofsLastLoad = agora;
   try{
     try{ console.log('[OFS] carregamento único iniciado:', new Date().toISOString()); }catch(e){}
-    const qs = new URLSearchParams();
-    if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-    qs.set('limit', '150');
-    const r = await api('GET', '/ofs?' + qs.toString());
-    const lista = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
-    const nova = (lista || []).map((o)=>{
-      let fm = o && o.fluxo_maquinas;
-      if(typeof fm === 'string'){ try{ fm = JSON.parse(fm); }catch(e){ fm = []; } }
-      if(!Array.isArray(fm)) fm = [];
-      return normalizeOF({ ...(o||{}), fluxo_maquinas: fm });
-    });
+    await carregarOFSArquivo(!!force);
+    const ativas = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []);
     let hash = '';
     try{
-      hash = JSON.stringify(nova.map(o => [o?.id||'', o?.of||'', o?.status||'', o?.seq||0, o?.qtd||0, o?.updated_at||o?.updatedAt||o?.ts||'']));
+      hash = JSON.stringify((ativas||[]).map(o => [o?.id||'', o?.of||'', o?.status||'', o?.seq||0, o?.qtd||0, o?.updated_at||o?.updatedAt||o?.ts||'']));
     }catch(e){
       hash = String(Date.now());
     }
     if(hash !== _ofsLastHash){
-      OFs = nova;
+      OFs = ativas;
       try{ window.OFs = OFs; }catch(e){}
       try{ window.OFS = OFs; }catch(e){}
       _ofsLastHash = hash;
@@ -18642,6 +19006,7 @@ function _inserirOFLocal(nova){
   try{ if(!Array.isArray(window.OFS)) window.OFS=[]; apply(window.OFS); }catch(e){}
   try{ if(!Array.isArray(OFS_HIST)) OFS_HIST=[]; apply(OFS_HIST); }catch(e){}
   try{ if(!Array.isArray(window.OFS_HIST)) window.OFS_HIST=[]; apply(window.OFS_HIST); }catch(e){}
+  try{ if(Array.isArray(window.OFS_ARQUIVO)) _upsertOFSArquivoLocal(o); }catch(e){}
   window._ofsCarregadasEm = null;
   _ultimaCargaOFs = 0;
   return o;
@@ -18662,6 +19027,7 @@ function _atualizarOFLocal(id, patch){
   try{ applyArr(OFS_HIST); }catch(e){}
   try{ applyArr(window.OFS); }catch(e){}
   try{ applyArr(window.OFS_HIST); }catch(e){}
+  try{ if(updated && Array.isArray(window.OFS_ARQUIVO)) _upsertOFSArquivoLocal(updated); }catch(e){}
   window._ofsCarregadasEm = Date.now();
   _ultimaCargaOFs = window._ofsCarregadasEm;
   return updated;
@@ -18689,6 +19055,7 @@ function _upsertOFHistLocal(ofRow){
   };
   try{ if(!Array.isArray(OFS_HIST)) OFS_HIST=[]; up(OFS_HIST); }catch(e){}
   try{ if(!Array.isArray(window.OFS_HIST)) window.OFS_HIST=[]; up(window.OFS_HIST); }catch(e){}
+  try{ if(Array.isArray(window.OFS_ARQUIVO)) _upsertOFSArquivoLocal(o); }catch(e){}
   return o;
 }
 function _aplicarResultadoBaixaOF(id, before, baixaBody, r){
@@ -18722,7 +19089,18 @@ function _rerenderOFViews(){
   if(window._PAGE_ATUAL === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
   if(window._PAGE_ATUAL === 'ofmaq'){ try{ renderOFsPorMaquina(); }catch(e){} }
   if(window._PAGE_ATUAL === 'comissoes'){ try{ calcularComissoes(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'relatorios'){ try{ renderRelatorio(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'relmensal'){ try{ renderRelatorioMensal(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'caixas-perdidas'){ try{ if(typeof carregarCaixasPerdidas === 'function') carregarCaixasPerdidas(); }catch(e){} }
+  if(window._PAGE_ATUAL === 'sel-chapas'){ try{ renderSelecaoChapas(); }catch(e){} }
 }
+try{
+  if(!window.__ofsAtualizadasListenerBound){
+    window.__ofsAtualizadasListenerBound = true;
+    window.addEventListener('ofs_atualizadas', function(){ try{ _rerenderOFViews(); }catch(e){} });
+  }
+}catch(e){}
 async function carregarClientes(forcar=false){
   const now = Date.now();
   if(!forcar && _clientesCarregados && Array.isArray(CLIENTES) && CLIENTES.length > 0) return { ok:true, cached:true, data:CLIENTES };
@@ -20774,20 +21152,8 @@ async function renderSelecaoChapas(){
     el.innerHTML = `<div style="padding:16px;color:var(--text2)">Sem permissão.</div>`;
     return;
   }
-  let ofsSrc = Array.isArray(OFs) ? OFs : [];
-  try{
-    const empParam = EMP_FILTRO ? ('&empId='+encodeURIComponent(EMP_FILTRO)) : '';
-    const rAll = await api('GET', '/ofs?incluir_excluidas=0&limit=500&lite=1' + (empParam?('&'+empParam.slice(1)):''));
-    if(rAll && rAll.ok && Array.isArray(rAll.data) && rAll.data.length){
-      ofsSrc = rAll.data.map(normalizeOF);
-    } else if(!Array.isArray(ofsSrc) || ofsSrc.length === 0){
-      await carregarOFs().catch(()=>null);
-      ofsSrc = Array.isArray(OFs) ? OFs : [];
-    }
-  }catch(e){
-    if(!Array.isArray(ofsSrc) || ofsSrc.length === 0) await carregarOFs().catch(()=>null);
-    ofsSrc = Array.isArray(OFs) ? OFs : [];
-  }
+  try{ await carregarOFsUnico(false); }catch(e){}
+  const ofsSrc = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []);
   if(!Array.isArray(ESTOQUE) || ESTOQUE.length === 0) await carregarChapas(false).catch(()=>null);
 
   const todasOFs = (Array.isArray(ofsSrc) ? ofsSrc : [])
@@ -26002,7 +26368,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="sidebar-section">Produção</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
-  <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">📝</span>Lançar Pedido</div>
+  <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
 <div id="menu-amostras" class="nav-item" onclick="go('amostras')"><span class="ico">🧪</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
   <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
   <div id="menu-compras" class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
@@ -26270,18 +26636,18 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- ========== 2. LANÇAMENTO ========== -->
 <div id="page-lancamento" class="page">
   <div class="ptoolbar">
-    <span style="font-size:.78rem;color:var(--text2)">Lançamento rápido de pedidos pelo vendedor</span>
+    <span style="font-size:.78rem;color:var(--text2)">Armazenamento de OFs (histórico completo)</span>
     <div style="flex:1"></div>
-    <button class="btn btn-accent" onclick="abrirModalOF()">＋ Novo Pedido</button>
+    <button class="btn btn-accent" onclick="abrirModalOF()">＋ Nova OF</button>
   </div>
   <div class="page-body">
     <div class="g2">
       <div class="sbox">
-        <div class="sbox-h">📝 Pedidos recentes lançados</div>
+        <div class="sbox-h">📋 Lista completa de OFs</div>
         <div class="sbox-b" id="lanc-lista"></div>
       </div>
       <div class="sbox">
-        <div class="sbox-h">📊 Resumo do Dia</div>
+        <div class="sbox-h">⚙️ Filtros e indicadores</div>
         <div class="sbox-b" id="lanc-resumo"></div>
       </div>
     </div>

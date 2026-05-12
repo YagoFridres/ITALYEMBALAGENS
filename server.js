@@ -1965,6 +1965,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const from = String(req.query.from || req.query.de || '').trim();
     const to = String(req.query.to || req.query.ate || '').trim();
     const dateFieldRaw = String(req.query.date_field || req.query.dateField || '').trim().toLowerCase();
+    const orderByRaw = String(req.query.order_by || req.query.orderBy || '').trim();
+    const orderRaw = String(req.query.order || '').trim().toLowerCase();
+    const orderAsc = orderRaw === 'asc';
+    const orderDir = orderAsc ? 'asc' : 'desc';
+    let orderBy = orderByRaw || 'created_at';
+    if (!OFS_SELECTABLE_COLS_SET.has(orderBy)) orderBy = 'created_at';
 
     const CACHE_VERSION = 'ofs_v4';
     const cacheKey = [
@@ -1976,6 +1982,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       from,
       to,
       dateFieldRaw || 'date_default',
+      orderBy,
+      orderDir,
       incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
       incluirCanceladas ? 'incl_can1' : 'incl_can0',
       excluirCanceladas ? 'exc_can1' : 'exc_can0',
@@ -1987,7 +1995,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const cacheHit = cached != null;
       console.log('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
     } catch (_) {}
-    if (cached != null) return ok(res, cached);
+    if (cached != null) {
+      if (Array.isArray(cached)) return ok(res, cached);
+      if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
+        return res.json({ ok: true, data: cached.data, total: Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length });
+      }
+      return ok(res, cached);
+    }
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
     const selectLitePref = [
@@ -2082,6 +2096,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let data = null;
     let rawErr = null;
     let colsArr = colsValidas.slice();
+    let total = null;
     let dateCol = '';
     if (from && to) {
       const fallback = (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at');
@@ -2096,11 +2111,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     for (let t = 0; t < 5; t++) {
-      const sel = colsArr.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
+      let colsSel = colsArr.slice();
+      if (orderBy && OFS_SELECTABLE_COLS_SET.has(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
+      const sel = colsSel.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
       let q = supabase
         .from('ofs')
-        .select(sel)
-        .order('created_at', { ascending: false })
+        .select(sel, { count: 'exact' })
+        .order(orderBy, { ascending: orderAsc })
         .range(offset, offset + limit - 1);
       if (status) {
         let sk = String(status || '').toLowerCase().trim();
@@ -2118,7 +2135,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
       const r = await q;
-      if (!r.error) { data = r.data; break; }
+      if (!r.error) {
+        data = r.data;
+        if (typeof r.count === 'number') total = r.count;
+        break;
+      }
       rawErr = r.error;
       const msg = String(r.error?.message || '');
       const m = msg.match(/Could not find the '([^']+)' column/i)
@@ -2192,8 +2213,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
-    cacheSet(cacheKey, rows, 10 * 1000);
-    return ok(res, rows);
+    const payload = { data: rows, total: Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0) };
+    cacheSet(cacheKey, payload, 10 * 1000);
+    return res.json({ ok: true, ...payload });
   } catch (e) {
     console.error('[OFS GET FATAL]', e?.message, String(e?.stack || '').split('\n')[0]);
     _logApiError('OFS GET', req, e, { query: req.query });
