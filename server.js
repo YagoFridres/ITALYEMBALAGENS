@@ -1285,6 +1285,7 @@ const OFS_TABLE_COLS = [
   'numero',
   'of',
   'cli_id',
+  'cliente_id',
   'vendedor_id',
   'emp_id',
   'status',
@@ -1966,7 +1967,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const dateFieldRaw = String(req.query.date_field || req.query.dateField || '').trim().toLowerCase();
 
     const cacheKey = [
-      'ofs',
+      'ofs_v2',
       String(req?.usuario?.id || ''),
       empId,
       status,
@@ -1993,6 +1994,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'created_at', 'updated_at', 'deleted_at',
       'emp_id',
       'cli_id',
+      'cliente_id',
       'vendedor_id',
       'qtd',
       'descricao',
@@ -2181,7 +2183,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
-    cacheSet(cacheKey, rows, 30 * 1000);
+    cacheSet(cacheKey, rows, 10 * 1000);
     return ok(res, rows);
   } catch (e) {
     console.error('[OFS GET FATAL]', e?.message, String(e?.stack || '').split('\n')[0]);
