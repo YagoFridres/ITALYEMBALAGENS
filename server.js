@@ -2135,37 +2135,20 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return { ...row, vendedor_nome };
     });
     try {
-      const cliIds = Array.from(new Set(
-        (rows || []).map((r) => String(r?.cli_id || r?.cliente_id || '').trim()).filter(Boolean)
-      )).slice(0, 300);
-      try {
-        console.log('[ENRICH DEBUG] cliIds:', cliIds.slice(0, 3));
-      } catch (_) {}
-      const { data: cls } = cliIds.length
-        ? await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds)
-        : { data: [] };
-      try {
-        console.log('[ENRICH DEBUG] clientes encontrados:', (cls || []).length);
-        console.log('[ENRICH DEBUG] primeiro cli_id OF:', rows?.[0]?.cli_id);
-      } catch (_) {}
+      const { data: todosClientes } = await supabase
+        .from('clientes')
+        .select('id,nome,vendedor_id');
       const cliMap = new Map(
-        (Array.isArray(cls) ? cls : [])
+        (Array.isArray(todosClientes) ? todosClientes : [])
           .filter((c) => c && c.id)
           .map((c) => [String(c.id), c])
       );
-      try {
-        console.log('[ENRICH DEBUG] primeiro cliente map keys:', Array.from(cliMap.keys()).slice(0, 3));
-      } catch (_) {}
 
-      const vendIds = Array.from(new Set([
-        ...(Array.isArray(cls) ? cls : []).map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean),
-        ...(rows || []).map((r) => String(r?.vendedor_id || '').trim()).filter(Boolean),
-      ])).slice(0, 300);
-      const { data: vends } = vendIds.length
-        ? await supabase.from('vendedores').select('id,nome').in('id', vendIds)
-        : { data: [] };
+      const { data: todosVendedores } = await supabase
+        .from('vendedores')
+        .select('id,nome');
       const vendMap = new Map(
-        (Array.isArray(vends) ? vends : [])
+        (Array.isArray(todosVendedores) ? todosVendedores : [])
           .filter((v) => v && v.id)
           .map((v) => [String(v.id), String(v.nome || '').trim()])
       );
