@@ -2138,14 +2138,24 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const cliIds = Array.from(new Set(
         (rows || []).map((r) => String(r?.cli_id || r?.cliente_id || '').trim()).filter(Boolean)
       )).slice(0, 300);
+      try {
+        console.log('[ENRICH DEBUG] cliIds:', cliIds.slice(0, 3));
+      } catch (_) {}
       const { data: cls } = cliIds.length
         ? await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds)
         : { data: [] };
+      try {
+        console.log('[ENRICH DEBUG] clientes encontrados:', (cls || []).length);
+        console.log('[ENRICH DEBUG] primeiro cli_id OF:', rows?.[0]?.cli_id);
+      } catch (_) {}
       const cliMap = new Map(
         (Array.isArray(cls) ? cls : [])
           .filter((c) => c && c.id)
           .map((c) => [String(c.id), c])
       );
+      try {
+        console.log('[ENRICH DEBUG] primeiro cliente map keys:', Array.from(cliMap.keys()).slice(0, 3));
+      } catch (_) {}
 
       const vendIds = Array.from(new Set([
         ...(Array.isArray(cls) ? cls : []).map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean),
