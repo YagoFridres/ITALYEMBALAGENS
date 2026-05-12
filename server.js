@@ -2134,7 +2134,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     });
     try {
       const cliIds = Array.from(new Set(
-        (rows || []).map((r) => String(r?.cli_id || '').trim()).filter(Boolean)
+        (rows || []).map((r) => String(r?.cli_id || r?.cliente_id || '').trim()).filter(Boolean)
       )).slice(0, 300);
       const { data: cls } = cliIds.length
         ? await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds)
@@ -2160,7 +2160,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       rows = (rows || []).map((r) => {
         if (!r || typeof r !== 'object') return r;
-        const cid = String(r.cli_id || '').trim();
+        const cid = String(r.cli_id || r.cliente_id || '').trim();
         const cli = cid ? (cliMap.get(cid) || null) : null;
         const vid = String(r.vendedor_id || cli?.vendedor_id || '').trim();
         const cliNome = String(cli?.nome || r.cliNome || '').trim();
@@ -3138,9 +3138,9 @@ app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+        console.warn('[TEMPOS_REAIS] tabela não existe (retornando [])');
       }
-      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+      return ok(res, []);
     }
     return err(res, e);
   }
@@ -3183,9 +3183,9 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
       }
-      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+      return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
     return err(res, e);
   }
@@ -3211,9 +3211,9 @@ app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
       }
-      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+      return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
     return err(res, e);
   }
@@ -3231,9 +3231,9 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (retornando 503)');
+        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
       }
-      return res.status(503).json({ ok: false, error: 'tempos_reais_unavailable' });
+      return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
     return err(res, e);
   }
