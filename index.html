@@ -10463,8 +10463,24 @@ function cpRender(rows){
           maqNome = String(ofRel?.maquina_perda || maqCur || '').trim();
         }catch(e){}
       }
+      if(!maqNome && ofRel){
+        try{
+          const idx = (ofRel?.maquina_atual_index != null) ? Number(ofRel.maquina_atual_index) : 0;
+          const fluxo = Array.isArray(ofRel?.fluxo_maquinas) ? ofRel.fluxo_maquinas : [];
+          const step = fluxo[idx];
+          const picked = (step && typeof step === 'object' && !Array.isArray(step))
+            ? String(step.nome || step.col || '').trim()
+            : String(step || '').trim();
+          maqNome = picked || '';
+        }catch(e){}
+      }
       if(!maqNome){
         maqNome = String(r?.maquina_perda || r?.maquinaPerda || r?.maq || '').trim();
+      }
+      if(!maqNome && ofRel){
+        const m = ofRel?.maq;
+        if(Array.isArray(m) && m.length) maqNome = String(m[0] || '').trim();
+        else maqNome = String(m || '').trim();
       }
       if(!maqNome && maqId){
         try{
@@ -10487,7 +10503,7 @@ function cpRender(rows){
         r.cliente = String(ofRel?.cliNome || '').trim() || '—';
       }
       if((!r.imgUrl || String(r.imgUrl).trim() === '') && ofRel){
-        r.imgUrl = String(
+        r.imgUrl = String(r?.imagem_url || '') || String(
           ofRel?.imgUrl ||
           ofRel?.imagem_url ||
           (Array.isArray(ofRel?.imgs) ? ofRel.imgs[0] : '') ||
@@ -10501,7 +10517,12 @@ function cpRender(rows){
       const usu = r.usuario || '—';
       let imgUrl = '';
       try{
-        imgUrl = String(r?.imgUrl || '').trim();
+        imgUrl = String(
+          r?.imagem_url ||
+          r?.imgUrl ||
+          (ofRel?.imgUrl || ofRel?.imagem_url || (Array.isArray(ofRel?.imgs) ? ofRel.imgs[0] : '') || '') ||
+          ''
+        ).trim();
       }catch(e){ imgUrl = ''; }
       const imgCell = imgUrl
         ? `<img src="${escAttr(imgUrl)}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(String(ofNum||''))}')" onerror="this.style.display='none'">`
@@ -15454,6 +15475,13 @@ function _renderDashboardBase(){
     if(!id) return;
     cliById[id] = c;
   });
+  const cliNomeFromOf = {};
+  ofsAll.forEach(o=>{
+    const cid = String(o?.cliId || o?.cli_id || o?.cliente_id || o?.cliID || '').trim();
+    if(!cid || cliNomeFromOf[cid]) return;
+    const nm = String(o?.cliNome || o?.cliente || o?.cliente_nome || o?.clinome || '').trim();
+    if(nm) cliNomeFromOf[cid] = nm;
+  });
 
   const parseDate = (v)=>{
     const s = String(v||'').trim();
@@ -15618,7 +15646,8 @@ function _renderDashboardBase(){
   const cliNome = (cliId)=>{
     const c = cliById[String(cliId||'').trim()];
     const n = c ? (c.nome || c.razao_social || c.fantasia || '') : '';
-    return String(n||'').trim() || '—';
+    const fallback = cliNomeFromOf[String(cliId||'').trim()] || '';
+    return String(n||'').trim() || String(fallback||'').trim() || '—';
   };
   const cliRamo = (cliId)=>{
     const c = cliById[String(cliId||'').trim()];

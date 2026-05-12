@@ -2135,6 +2135,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return { ...row, vendedor_nome };
     });
     try {
+      const VENDEDOR_PADRAO_ID = '0c4852da-ffff-4c1b-bfc4-38e169d6d580';
+      const VENDEDOR_PADRAO_NOME = 'RONI MEIA VENDA';
       const { data: todosClientes } = await supabase
         .from('clientes')
         .select('id,nome,vendedor_id');
@@ -2157,10 +2159,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (!r || typeof r !== 'object') return r;
         const cid = String(r.cli_id || r.cliente_id || '').trim();
         const cli = cid ? (cliMap.get(cid) || null) : null;
-        const vid = String(r.vendedor_id || cli?.vendedor_id || '').trim();
+        const vidRaw = String(r.vendedor_id || cli?.vendedor_id || '').trim();
+        const vid = vidRaw || VENDEDOR_PADRAO_ID;
         const cliNome = String(cli?.nome || r.cliNome || '').trim();
-        const vendNome = String((vid ? (vendMap.get(vid) || '') : '') || r.vendNome || '').trim();
-        return { ...r, cliNome, vendNome };
+        let vendNome = String((vid ? (vendMap.get(vid) || '') : '') || r.vendNome || '').trim();
+        if (!vendNome && !vidRaw) vendNome = VENDEDOR_PADRAO_NOME;
+        const vendedor_nome = String(r.vendedor_nome || '').trim() || vendNome;
+        return { ...r, cliNome, vendNome, vendedor_id: vid, vendedor_nome };
       });
     } catch (_) {}
     try {
@@ -2191,14 +2196,18 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
     console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
-    const perc = Number(vend?.comissao_pct ?? vend?.comissao ?? vend?.comissaoPct ?? 0);
+    const VENDEDOR_PADRAO_ID = '0c4852da-ffff-4c1b-bfc4-38e169d6d580';
+    const VENDEDOR_PADRAO_NOME = 'RONI MEIA VENDA';
+    let perc = Number(vend?.comissao_pct ?? vend?.comissao ?? vend?.comissaoPct ?? 0);
+    if (vendedorId === VENDEDOR_PADRAO_ID) perc = 0.5;
     console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf, 'comissao%:', perc);
     if (!(perc > 0)) return;
     const valorComissao = valorOf * (perc / 100);
+    const vendNome = String(vend?.nome || '').trim() || (vendedorId === VENDEDOR_PADRAO_ID ? VENDEDOR_PADRAO_NOME : '');
     const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';
     await supabase.from('historico_acoes').insert([{
       tipo_acao: 'comissao_of',
-      descricao: `Comissão OF #${numero || ''}: ${vend?.nome || ''} — R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
+      descricao: `Comissão OF #${numero || ''}: ${vendNome || ''} — R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
       usuario: req.usuario?.nome || 'sistema',
       data_hora: new Date().toISOString()
     }]);
@@ -6452,6 +6461,7 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
     const table = preferred === 'chapas_estoque_v2' ? 'chapas_estoque_v2' : 'chapas_estoque';
     const inRows = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.rows) ? req.body.rows : []);
     const rowsRaw = Array.isArray(inRows) ? inRows : [];
+    try { console.log('[UPSERT CHAPAS]', rowsRaw.length, 'itens recebidos'); } catch (_) {}
     if (!rowsRaw.length) return res.status(400).json({ ok: false, error: 'rows vazio' });
 
     const normNom = (v) => String(v || '').trim().toUpperCase();
