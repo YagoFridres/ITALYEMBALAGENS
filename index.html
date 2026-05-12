@@ -15038,6 +15038,7 @@ async function abrirModalCompra(){
   const prev=document.getElementById('cp-prev'); if(prev) prev.value='';
   document.getElementById('cp-st').value='Solicitada';
   const esel=document.getElementById('cp-emp');if(esel)esel.value=EMP_FILTRO||'';
+  try{ if(typeof carregarFornecedores==='function') await carregarFornecedores(true); }catch(e){}
   populateFornecedorSelect('cp-forn','');
   cmpAddItem();
   abrir('modal-compra');
@@ -23794,7 +23795,7 @@ function imprimirCompraId(id){
   setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 
-function editarCompra(id){
+async function editarCompra(id){
   const cmp=COMPRAS.find(x=>x.id===id);
   if(!cmp){toast('Compra não encontrada','var(--red)');return;}
   try{ window._compraAtual = cmp; }catch(e){}
@@ -23808,6 +23809,7 @@ function editarCompra(id){
   const cpSt=document.getElementById('cp-st');if(cpSt)cpSt.value=cmp.status||'Solicitada';
   const cpEmp=document.getElementById('cp-emp');if(cpEmp)cpEmp.value=cmp.empId||'';
   // Set fornecedor
+  try{ if(typeof carregarFornecedores==='function') await carregarFornecedores(true); }catch(e){}
   populateFornecedorSelect('cp-forn','');
   const fsel=document.getElementById('cp-forn');
   const fman=document.getElementById('cp-forn-manual');
