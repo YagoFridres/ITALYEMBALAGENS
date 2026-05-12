@@ -1966,8 +1966,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const to = String(req.query.to || req.query.ate || '').trim();
     const dateFieldRaw = String(req.query.date_field || req.query.dateField || '').trim().toLowerCase();
 
+    const CACHE_VERSION = 'ofs_v4';
     const cacheKey = [
-      'ofs_v2',
+      CACHE_VERSION,
       String(req?.usuario?.id || ''),
       empId,
       status,
