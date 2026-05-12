@@ -1281,11 +1281,11 @@ function ofIn(p) {
 }
 
 const OFS_TABLE_COLS = [
-  'id', 'numero', 'cliente_id', 'cli_id', 'cliId', 'clinome', 'vendedor', 'vendId',
+  'id', 'numero', 'of', 'of_num', 'of_numero', 'cliente', 'cliente_id', 'cli_id', 'cliId', 'cli_nome', 'clinome', 'vendedor', 'vendId',
   'vendNome', 'empId', 'emp_id', 'empresa_id', 'status', 'data_entrega', 'ent',
   'quantidade', 'qtd', 'qtd_chapas', 'preco', 'total', 'valor_total', 'valor_venda',
-  'itens', 'imgs', 'imagem_url', 'fluxo', 'fluxo_maquinas', 'maq', 'obs', 'obs2',
-  'descricao', 'prodDesc', 'of', 'of_num', 'urg', 'urgente', 'dia', 'data_producao', 'ramo', 'pagto',
+  'itens', 'imgs', 'imagens', 'foto', 'image', 'imagem', 'imagem_url', 'fluxo', 'fluxo_maquinas', 'maq', 'obs', 'obs2',
+  'descricao', 'prodDesc', 'urg', 'urgente', 'dia', 'data_producao', 'ramo', 'pagto',
   'cond_pagamento', 'smp_id', 'vendedor_id', 'cliente_nome', 'of_seq', 'empNome',
   'maquina_atual_index', 'data_conclusao', 'cidade_entrega', 'modo_programacao',
   'dia_programacao', 'deleted_at', 'chapa_id', 'maquina_perda', 'qtd_perdida',
@@ -1964,10 +1964,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
     const selectLitePref = [
-      'id', 'of', 'numero', 'status',
+      'id', 'of', 'numero', 'of_num', 'of_numero', 'status',
       'created_at', 'updated_at', 'deleted_at',
       'emp_id', 'empId', 'empresa_id',
-      'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'clinome',
+      'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'clinome', 'cli_nome', 'cliente',
       'vendedor', 'vendNome', 'vendedor_nome', 'vendedor_id', 'vendId', 'vend_id',
       'qtd', 'quantidade',
       'descricao', 'prodDesc',
@@ -1978,7 +1978,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'data_conclusao', 'usuario_conclusao',
       'qtd_produzida', 'qtd_perdida', 'maquina_perda',
       'maq', 'fluxo_maquinas', 'maquina_atual_index',
-      'imgs', 'imagem_url',
+      'imgs', 'imagens', 'foto', 'image', 'imagem', 'imagem_url',
     ];
     const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
     const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
@@ -1988,7 +1988,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const cliIds = Array.from(new Set(
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
-      )).slice(0, 100);
+      )).slice(0, 150);
       const vendIdsFromRows = Array.from(new Set(
         arr.map((o) => String(
           o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? o?.vendId ?? ''
@@ -2039,7 +2039,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           const vendNomeSafe = (vendNomeExisting && !isUuid(vendNomeExisting)) ? vendNomeExisting : '';
           return {
             ...o,
-            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || ''),
+            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || o?.cli_nome || o?.cliente || ''),
             vendNome: (v?.nome || vendNomeSafe || ''),
             vendedor_id: (vid && isUuid(vid)) ? vid : (c?.vendedor_id || o?.vendedor_id || o?.vendId || null),
           };
@@ -2330,8 +2330,13 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     try {
       const ofNum = cleanBody?.of != null ? String(cleanBody.of || '').trim() : '';
       const num = cleanBody?.numero != null ? String(cleanBody.numero || '').trim() : '';
-      if (ofNum && !num) cleanBody.numero = ofNum;
-      else if (num && !ofNum) cleanBody.of = num;
+      const ofNumero = cleanBody?.of_numero != null ? String(cleanBody.of_numero || '').trim() : '';
+      const val = ofNum || num || ofNumero || '';
+      if (val) {
+        if (!ofNum) cleanBody.of = val;
+        if (!num) cleanBody.numero = val;
+        if (!ofNumero) cleanBody.of_numero = val;
+      }
     } catch (_) {}
 
     const expectedUpdatedAt = String(
@@ -2343,7 +2348,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       return res.status(409).json({ ok: false, error: 'concurrency_conflict', current: ofAtual, rid: req._rid || null });
     }
 
-    ['of_num', 'of_numero', 'seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
+    ['seq', 'id', 'created_at'].forEach((k) => delete cleanBody[k]);
     if (!Object.prototype.hasOwnProperty.call(body, 'itens')) delete cleanBody.itens;
 
     const valorAtual = Number(ofAtual?.valor_total ?? ofAtual?.valor_venda ?? 0);

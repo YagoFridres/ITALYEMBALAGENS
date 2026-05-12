@@ -17914,10 +17914,11 @@ function normalizeOF(r){
     }catch(_){ return def; }
   };
 
-  const of = r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
+  const of = r.of_numero ?? r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
   const clienteJoin = r.cliente && typeof r.cliente === 'object' ? r.cliente : null;
   const vendedorJoin = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
-  let cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.nome_cliente || '';
+  const clienteTexto = (typeof r.cliente === 'string') ? r.cliente : '';
+  let cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.cli_nome || r.nome_cliente || clienteTexto || '';
   let vendNome = vendedorJoin?.nome || r.vendNome || r.vendedor_nome || r.vendedor || r.vendedorNome || '';
   let vendId = clienteJoin?.vendedor_id || r.vendedor_id || r.vend_id || r.vendedorId || r.vendId || '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
@@ -18010,6 +18011,9 @@ function normalizeOF(r){
     (r.imagem_url != null ? r.imagem_url : '') ||
     (Array.isArray(imgs) && imgs.length ? imgs[0] : '') ||
     (Array.isArray(imagens) && imagens.length ? imagens[0] : '') ||
+    (r.foto != null ? r.foto : '') ||
+    (r.image != null ? r.image : '') ||
+    (r.imagem != null ? r.imagem : '') ||
     ''
   ).trim();
   const imgUrl = imgUrlPick || null;
