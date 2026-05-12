@@ -3578,6 +3578,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updateData.data_faturamento = String(body.data_faturamento).trim();
     }
 
+    const mprodRaw =
+      body.maquina_producao != null ? String(body.maquina_producao).trim()
+      : (body.maquina_produzida != null ? String(body.maquina_produzida).trim()
+      : (body.maquina != null ? String(body.maquina).trim() : ''));
+
     const isFluxoObj = fluxoArr.some((x) => x && typeof x === 'object' && !Array.isArray(x));
     if (isFluxoObj) {
       updateData.fluxo_maquinas = fluxoArr.map((row) => (row && typeof row === 'object' && !Array.isArray(row)) ? ({ ...row, concluido: true, data_baixa: nowIso }) : row);
@@ -3698,7 +3703,8 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const atual = (Array.isArray(fluxo) && fluxo.length) ? String(fluxo[fluxo.length - 1]) : '';
-    const msg = `OF #${numero} baixada em ${atual || '—'} — CONCLUÍDO ✓`;
+    const maquinaProducaoOut = mprodRaw || atual || '';
+    const msg = `OF #${numero} baixada em ${maquinaProducaoOut || '—'} — CONCLUÍDO ✓`;
 
     try {
       const ofRel = (upd && upd.data) ? upd.data : of;
@@ -3710,7 +3716,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
         quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
         valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
-        maquina: atual || '',
+        maquina: maquinaProducaoOut || '',
         status: 'Concluído',
       }]);
     } catch (e) {}
@@ -3727,7 +3733,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
     return res.json({
       ok: true,
-      data: dataOut,
+      data: { ...dataOut, maquina_producao: maquinaProducaoOut || null },
       concluida: true,
       proxima: null,
       status: 'Concluído',
@@ -5791,17 +5797,14 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       return rows;
     };
 
-    const preferred = await _chapasPreferV2Table();
-    const tablesToTry = preferred === 'chapas_estoque_v2'
-      ? ['chapas_estoque_v2', 'chapas_estoque']
-      : ['chapas_estoque', 'chapas_estoque_v2'];
+    const tablesToTry = ['chapas_estoque'];
 
-    let usedTable = preferred;
+    let usedTable = 'chapas_estoque';
     let rows = [];
     let lastError = null;
 
     for (const table of tablesToTry) {
-      let sel = (table === 'chapas_estoque_v2') ? selectV2Base.join(',') : '*';
+      let sel = '*';
       let data = null;
       let error = null;
       let orderCreatedAt = true;

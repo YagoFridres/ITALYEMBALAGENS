@@ -5083,7 +5083,7 @@ async function ofmaqDarBaixa(id){
   if(vaiConcluir){
     const qtdPadrao = Number(o?.qtd || 0) || 0;
     const valorTotalOriginal = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${o.of||o.numero||''}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: atual || null });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
@@ -5125,7 +5125,7 @@ async function darBaixaOFId(id, numero, maquinaAtual){
   if(vaiConcluir){
     const qtdPadrao = Number(it?.qtd || 0) || 0;
     const valorTotalOriginal = Number(it?.valor_total ?? it?.valor_venda ?? it?.val ?? 0) || 0;
-    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal });
+    const resp = await abrirModalBaixaConclusao({ titulo: `Concluir OF #${numero||id}`, qtdPadrao, qtdPedida:qtdPadrao, valorTotalOriginal, maquina_producao: maquinaAtual || null });
     if(!resp) return;
     baixaBody.qtd_real = resp.qtd_real;
     qtdPerdida = resp.qtd_perdida != null ? Math.trunc(Number(resp.qtd_perdida||0)) : 0;
@@ -5156,6 +5156,7 @@ function abrirModalBaixaConclusao(opts){
   const qtdEl = document.getElementById('baixa-conc-qtd');
   const perdEl = document.getElementById('qtd-perdida');
   const fatEl = document.getElementById('baixa-conc-fat');
+  const prodSel = document.getElementById('modal-maq-producao');
   const maqWrap = document.getElementById('modal-maq-perda-wrap');
   const maqSel = document.getElementById('modal-maq-perda');
   const sub = document.getElementById('baixa-conc-sub');
@@ -5173,6 +5174,28 @@ function abrirModalBaixaConclusao(opts){
       return `<option value="${escAttr(mid)}">${escH(lbl || mid)}</option>`;
     }).filter(Boolean).join('');
     maqSel.value = '';
+  }
+  if(prodSel){
+    const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+    prodSel.innerHTML = '<option value="">(Opcional) Selecionar máquina...</option>' + src.map(m=>{
+      const mid = String(m?.id || '').trim();
+      const lbl = String(m?.col || m?.nome || m?.name || m?.id || '').trim();
+      if(!mid) return '';
+      return `<option value="${escAttr(mid)}">${escH(lbl || mid)}</option>`;
+    }).filter(Boolean).join('');
+    const preferId = String(opts?.maquina_producao_id || '').trim();
+    const preferNome = String(opts?.maquina_producao || '').trim();
+    if(preferId){
+      prodSel.value = preferId;
+    }else if(preferNome){
+      try{
+        const alvo = (typeof _normMaqNome === 'function') ? _normMaqNome(preferNome) : preferNome.toLowerCase();
+        const it = src.find(m => ((typeof _normMaqNome === 'function') ? _normMaqNome(m?.col || m?.nome || m?.name || '') : String(m?.col || m?.nome || m?.name || '').toLowerCase()) === alvo) || null;
+        prodSel.value = String(it?.id || '').trim();
+      }catch(e){ prodSel.value = ''; }
+    }else{
+      prodSel.value = '';
+    }
   }
   const qtdPedida = Number(opts?.qtdPedida ?? opts?.qtdPadrao ?? 0) || 0;
   const valorTotalOriginal = Number(opts?.valorTotalOriginal ?? 0) || 0;
@@ -5224,6 +5247,7 @@ function confirmarModalBaixaConclusao(){
   const perdEl = document.getElementById('qtd-perdida');
   const maqSel = document.getElementById('modal-maq-perda');
   const fatEl = document.getElementById('baixa-conc-fat');
+  const prodSel = document.getElementById('modal-maq-producao');
   const qtdReal = Number(String(qtdEl?.value||'').replace(',', '.'));
   const qtdPerdida = Math.trunc(Number(String(perdEl?.value||'').replace(',', '.')));
   if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
@@ -5250,11 +5274,31 @@ function confirmarModalBaixaConclusao(){
     }
   }
   const dataFaturamento = String(fatEl?.value || '').trim();
+  let prodId = String(prodSel?.value || '').trim();
+  let prodNome = '';
+  if(prodId){
+    try{
+      const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+      const it = src.find(m=>String(m?.id||'').trim()===prodId) || null;
+      prodNome = String(it?.col || it?.nome || it?.name || '').trim();
+    }catch(e){}
+    if(!prodNome){
+      try{
+        const ix = Number(prodSel?.selectedIndex ?? -1);
+        const txt = (ix >= 0 && prodSel?.options && prodSel.options[ix]) ? String(prodSel.options[ix].textContent || '') : '';
+        prodNome = txt.trim();
+      }catch(e){}
+    }
+  } else {
+    prodId = '';
+  }
   fecharModalBaixaConclusao({
     qtd_real: qtdReal,
     qtd_perdida: qtdPerdida,
     maquina_id: maquinaId || null,
     maquina: maquinaNome || null,
+    maquina_producao_id: prodId || null,
+    maquina_producao: prodNome || null,
     data_faturamento: dataFaturamento ? dataFaturamento : null
   });
 }
@@ -5339,6 +5383,8 @@ async function concluirOFComBaixa(ofId){
     const dataFaturamento = String(respModal.data_faturamento || '').trim();
     const maqPerdaId = String(respModal.maquina_id || '').trim();
     const maqPerdaNome = String(respModal.maquina || '').trim();
+    const maqProdId = String(respModal.maquina_producao_id || '').trim();
+    const maqProdNome = String(respModal.maquina_producao || '').trim();
     if(!(qtdProd >= 0) || !(qtdPerd >= 0)){ toast('Valores inválidos','var(--red)'); return; }
 
     showSaveIndicator('Concluindo OF...','var(--yellow)');
@@ -5366,7 +5412,14 @@ async function concluirOFComBaixa(ofId){
         idMaquinaAtual = String(it?.id || '').trim();
       }catch(e){}
     }
-    const concluirBody = { qtd_produzida: qtdProd, qtd_perdida: qtdPerd, maquina_perda: nomeMaquinaAtual || null, maquina_perda_id: idMaquinaAtual || null };
+    const concluirBody = {
+      qtd_produzida: qtdProd,
+      qtd_perdida: qtdPerd,
+      maquina_producao: (maqProdNome || nomeMaquinaAtual || null),
+      maquina_perda: nomeMaquinaAtual || null,
+      maquina_perda_id: idMaquinaAtual || null
+    };
+    if(maqProdId) concluirBody.maquina_producao_id = maqProdId;
     if(qtdPerd > 0){
       concluirBody.maquina_perda = (maqPerdaNome || nomeMaquinaAtual || null);
       concluirBody.maquina_perda_id = (maqPerdaId || idMaquinaAtual || null);
@@ -5376,6 +5429,7 @@ async function concluirOFComBaixa(ofId){
       console.log('[CONCLUIR] body enviado:', {
         qtd_produzida: qtdProd,
         qtd_perdida: qtdPerd,
+        maquina_producao: concluirBody.maquina_producao,
         maquina_perda: concluirBody.maquina_perda
       });
     }catch(e){}
@@ -8933,6 +8987,7 @@ function renderLancamento(){
         <td style="${td};text-align:center">
           <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver</button>
           ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
+          ${(!o.deleted_at && !isConcluida(stRaw) && !isCancelada(stRaw))?`<button class="btn btn-accent btn-sm" onclick="concluirOFComBaixa('${escAttr(o.id)}')">✓ Concluir</button>`:''}
           ${(o.deleted_at)?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
           ${(!o.deleted_at && isCancelada(stRaw))?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
         </td>
@@ -28289,6 +28344,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div style="display:flex;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text3);text-transform:uppercase">📅 Data de Faturamento</label>
         <input id="baixa-conc-fat" type="date" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🏭 Máquina produzida (opcional)</label>
+        <select id="modal-maq-producao" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
+          <option value="">(Opcional) Selecionar máquina...</option>
+        </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🗑 Caixas perdidas</label>
