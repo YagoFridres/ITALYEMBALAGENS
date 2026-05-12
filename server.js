@@ -1281,7 +1281,7 @@ function ofIn(p) {
 }
 
 const OFS_TABLE_COLS = [
-  'id', 'numero', 'of', 'of_num', 'of_numero', 'cliente', 'cliente_id', 'cli_id', 'cliId', 'cli_nome', 'clinome', 'vendedor', 'vendId',
+  'id', 'numero', 'of', 'of_num', 'cliente', 'cliente_id', 'cli_id', 'cliId', 'cli_nome', 'clinome', 'vendedor', 'vendId',
   'vendNome', 'empId', 'emp_id', 'empresa_id', 'status', 'data_entrega', 'ent',
   'quantidade', 'qtd', 'qtd_chapas', 'preco', 'total', 'valor_total', 'valor_venda',
   'itens', 'imgs', 'imagens', 'foto', 'image', 'imagem', 'imagem_url', 'fluxo', 'fluxo_maquinas', 'maq', 'obs', 'obs2',
@@ -1457,7 +1457,6 @@ async function ofsUpdateWithRetry(id, row) {
   delete p.numero;
   delete p.of;
   delete p.of_num;
-  delete p.of_numero;
   delete p.seq;
   const ignoredColumns = [];
   for (let tentativa = 0; tentativa < 5; tentativa++) {
@@ -1964,7 +1963,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
     const selectLitePref = [
-      'id', 'of', 'numero', 'of_num', 'of_numero', 'status',
+      'id', 'of', 'numero', 'of_num', 'status',
       'created_at', 'updated_at', 'deleted_at',
       'emp_id', 'empId', 'empresa_id',
       'cli_id', 'cliId', 'cliente_id', 'cliente_nome', 'clinome', 'cli_nome', 'cliente',
@@ -2330,12 +2329,10 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     try {
       const ofNum = cleanBody?.of != null ? String(cleanBody.of || '').trim() : '';
       const num = cleanBody?.numero != null ? String(cleanBody.numero || '').trim() : '';
-      const ofNumero = cleanBody?.of_numero != null ? String(cleanBody.of_numero || '').trim() : '';
-      const val = ofNum || num || ofNumero || '';
+      const val = ofNum || num || '';
       if (val) {
         if (!ofNum) cleanBody.of = val;
         if (!num) cleanBody.numero = val;
-        if (!ofNumero) cleanBody.of_numero = val;
       }
     } catch (_) {}
 
@@ -2365,7 +2362,6 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const filtered = ofPayloadFiltrado(cleanBody);
     delete filtered.id;
     delete filtered.of_num;
-    delete filtered.of_numero;
     delete filtered.seq;
     delete filtered.created_at;
     filtered.updated_at = new Date().toISOString();
@@ -2445,7 +2441,6 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
 
         const payload = {
           of_id: id,
-          of_numero: String(updated?.of ?? updated?.numero ?? body?.of ?? body?.numero ?? ''),
           produto: String(updated?.prodDesc ?? updated?.descricao ?? body?.prodDesc ?? body?.descricao ?? ''),
           cliente: String(cliNome || ''),
           maquina_perda: maquinaPerda || null,
@@ -2904,7 +2899,6 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     const mes = new Date().toISOString().slice(0, 7);
     const payload = {
       of_id: b.of_id || null,
-      of_numero: String(b.of_numero || ''),
       produto: String(b.produto || ''),
       cliente: String(b.cliente || ''),
       maquina: b.maquina != null ? String(b.maquina || '') : undefined,
@@ -3095,7 +3089,6 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
       maquina_id,
       maquina_nome: maquina_nome || null,
       of_id: b.of_id || null,
-      of_numero: String(b.of_numero || '').trim() || null,
       tipo_caixa: String(b.tipo_caixa || '').trim() || null,
       velocidade_cxh: Number.isFinite(Number(b.velocidade_cxh)) ? Math.trunc(Number(b.velocidade_cxh)) : null,
       quantidade: Number.isFinite(Number(b.quantidade)) ? Math.trunc(Number(b.quantidade)) : null,
@@ -3321,7 +3314,6 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
         await supabase.from('relatorio_producao').insert([{
           mes_referencia: mesRef,
           data: nowIso.slice(0, 10),
-          of_numero: numero || '',
           cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
           produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
           quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
@@ -3344,7 +3336,6 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
             .from('chapas_estoque_movimentos_v2')
             .select('id')
             .eq('chapa_id', chapaId)
-            .eq('of_numero', ofNumRef)
             .eq('tipo', 'saida')
             .limit(1)
             .maybeSingle();
@@ -3523,7 +3514,6 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         const valorUnit = qtdPedida > 0 ? (valorTotalOriginal / qtdPedida) : 0;
         const payloadPerda = {
           of_id: sid,
-          of_numero: String(of.of || of.numero || ''),
           produto: String(of.prodDesc || of.descricao || ''),
           cliente: cliNome || '',
           maquina_perda: maquinaNome || null,
@@ -3574,7 +3564,6 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
           .from('chapas_estoque_movimentos_v2')
           .select('id')
           .eq('chapa_id', chapaId)
-          .eq('of_numero', ofNumRef)
           .eq('tipo', 'saida')
           .limit(1)
           .maybeSingle();
@@ -3605,7 +3594,6 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       await supabase.from('relatorio_producao').insert([{
         mes_referencia: mesRef,
         data: nowIso.slice(0, 10),
-        of_numero: numero || '',
         cliente: of.cli_id ?? of.cliente_id ?? of.cliId ?? '',
         produto: of.prodDesc ?? of.prod_desc ?? of.prod ?? of.descricao ?? '',
         quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
@@ -3721,7 +3709,6 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
       try {
         await supabase.from('caixas_perdidas').insert([{
           of_id: sid,
-          of_numero: of.numero || of.of_num || of.of || '',
           quantidade: Number(qtdPerdida),
           motivo: 'Perda na produção',
           data: nowIso,
