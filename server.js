@@ -2159,7 +2159,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (!r || typeof r !== 'object') return r;
         const cid = String(r.cli_id || r.cliente_id || '').trim();
         const cli = cid ? (cliMap.get(cid) || null) : null;
-        const vidRaw = String(r.vendedor_id || cli?.vendedor_id || '').trim();
+        const vidRaw = String(r.vendedor_id || '').trim();
         const vid = vidRaw || VENDEDOR_PADRAO_ID;
         const cliNome = String(cli?.nome || r.cliNome || '').trim();
         let vendNome = String((vid ? (vendMap.get(vid) || '') : '') || r.vendNome || '').trim();
