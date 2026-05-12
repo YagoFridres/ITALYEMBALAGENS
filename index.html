@@ -21298,6 +21298,18 @@ async function handleImportAtualizarEstoqueChapasFile(file){
     return Number.isFinite(n) ? n : 0;
   };
   const toInt = (v) => Math.trunc(toNum(v) || 0);
+  const toNF = (v) => {
+    if(v == null) return '';
+    if(typeof v === 'number'){
+      if(!Number.isFinite(v)) return '';
+      const i = Math.trunc(v);
+      if(Math.abs(v - i) < 1e-9) return String(i);
+      return String(v).replace(/[^\d]/g,'');
+    }
+    const s = String(v || '').trim();
+    if(!s) return '';
+    return s.replace(/[^\d]/g,'');
+  };
 
   try{
     showSaveIndicator('⏳ lendo arquivo...','var(--yellow)');
@@ -21339,14 +21351,16 @@ async function handleImportAtualizarEstoqueChapasFile(file){
       const nom = String(pick(r, keys.nom) || '').trim();
       const tam = String(pick(r, keys.tam) || '').trim();
       if(!nom || !tam) continue;
+      const qtd = toInt(pick(r, keys.qtd));
+      if(!(qtd > 0)) continue;
       payloadRows.push({
         forn: String(pick(r, keys.forn) || '').trim(),
         nom,
         tam,
         nome: String(pick(r, keys.nome) || '').trim(),
         qual_cnpj: String(pick(r, keys.qual_cnpj) || '').trim(),
-        nf: String(pick(r, keys.nf) || '').trim(),
-        qtd: toInt(pick(r, keys.qtd)),
+        nf: toNF(pick(r, keys.nf)),
+        qtd,
         val: toNum(pick(r, keys.val)),
       });
     }
