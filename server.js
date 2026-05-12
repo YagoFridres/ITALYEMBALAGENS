@@ -2136,21 +2136,50 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const cliIds = Array.from(new Set(
         (rows || []).map((r) => String(r?.cli_id || '').trim()).filter(Boolean)
       )).slice(0, 300);
-      if (cliIds.length) {
-        const { data: cls } = await supabase
-          .from('clientes')
-          .select('id,nome')
-          .in('id', cliIds);
-        const map = Object.fromEntries((Array.isArray(cls) ? cls : [])
+      const { data: cls } = cliIds.length
+        ? await supabase.from('clientes').select('id,nome,vendedor_id').in('id', cliIds)
+        : { data: [] };
+      const cliMap = new Map(
+        (Array.isArray(cls) ? cls : [])
           .filter((c) => c && c.id)
-          .map((c) => [String(c.id), String(c.nome || '').trim()]));
-        rows = (rows || []).map((r) => {
-          if (!r || typeof r !== 'object') return r;
-          const cid = String(r.cli_id || '').trim();
-          const nm = cid ? (map[cid] || '') : '';
-          return { ...r, cliNome: nm || r.cliNome || '' };
-        });
-      }
+          .map((c) => [String(c.id), c])
+      );
+
+      const vendIds = Array.from(new Set([
+        ...(Array.isArray(cls) ? cls : []).map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean),
+        ...(rows || []).map((r) => String(r?.vendedor_id || '').trim()).filter(Boolean),
+      ])).slice(0, 300);
+      const { data: vends } = vendIds.length
+        ? await supabase.from('vendedores').select('id,nome').in('id', vendIds)
+        : { data: [] };
+      const vendMap = new Map(
+        (Array.isArray(vends) ? vends : [])
+          .filter((v) => v && v.id)
+          .map((v) => [String(v.id), String(v.nome || '').trim()])
+      );
+
+      rows = (rows || []).map((r) => {
+        if (!r || typeof r !== 'object') return r;
+        const cid = String(r.cli_id || '').trim();
+        const cli = cid ? (cliMap.get(cid) || null) : null;
+        const vid = String(r.vendedor_id || cli?.vendedor_id || '').trim();
+        const cliNome = String(cli?.nome || r.cliNome || '').trim();
+        const vendNome = String((vid ? (vendMap.get(vid) || '') : '') || r.vendNome || '').trim();
+        return { ...r, cliNome, vendNome };
+      });
+    } catch (_) {}
+    try {
+      const sample = rows && rows[0] ? rows[0] : null;
+      console.log('[OFS SAMPLE]', JSON.stringify({
+        id: sample?.id,
+        of: sample?.of,
+        cli_id: sample?.cli_id,
+        cliNome: sample?.cliNome,
+        vendedor_id: sample?.vendedor_id,
+        vendNome: sample?.vendNome,
+        imagem_url: sample?.imagem_url,
+        imgs: sample?.imgs,
+      }));
     } catch (_) {}
     cacheSet(cacheKey, rows, 30 * 1000);
     return ok(res, rows);

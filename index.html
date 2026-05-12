@@ -10456,11 +10456,12 @@ function cpRender(rows){
       const prod = r.produto || '—';
       const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
       let maqNome = String(r?.maquina_perda || r?.maquina || r?.maquina_nome || r?.maquina_id || '').trim();
+      const ofKey = String(r?.of_numero || r?.of || r?.numero || '').trim();
+      let ofRel = null;
       if(!maqNome){
         try{
           const ofsBase = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
-          const key = String(r?.of_numero || r?.of || r?.numero || '').trim();
-          const ofRel = key ? (ofsBase.find(o => String(o?.of || o?.numero || '').trim() === key) || null) : null;
+          ofRel = ofKey ? (ofsBase.find(o => String(o?.of || o?.numero || '').trim() === ofKey) || null) : null;
           const maqCur = (ofRel && typeof ofFluxoGetMaquinaAtual === 'function') ? String(ofFluxoGetMaquinaAtual(ofRel) || '').trim() : '';
           maqNome = String(ofRel?.maquina_perda || maqCur || '').trim();
         }catch(e){}
@@ -10479,6 +10480,23 @@ function cpRender(rows){
       const maqHtml = (maqNome === '—')
         ? `<span data-cp-maq="${escAttr(id)}" style="color:#888">—</span>`
         : `<span data-cp-maq="${escAttr(id)}">${escH(String(maqNome))}</span>`;
+      if(!ofRel && ofKey){
+        try{
+          const base = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
+          ofRel = base.find(o => String(o?.of || o?.numero || '').trim() === ofKey) || null;
+        }catch(e){}
+      }
+      if((!r.cliente || String(r.cliente).trim() === '') && ofRel){
+        r.cliente = String(ofRel?.cliNome || '').trim() || '—';
+      }
+      if((!r.imgUrl || String(r.imgUrl).trim() === '') && ofRel){
+        r.imgUrl = String(
+          ofRel?.imgUrl ||
+          ofRel?.imagem_url ||
+          (Array.isArray(ofRel?.imgs) ? ofRel.imgs[0] : '') ||
+          ''
+        ).trim();
+      }
       const cli = String(r?.cliente || r?.cliNome || '').trim() || '—';
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
@@ -10486,15 +10504,7 @@ function cpRender(rows){
       const usu = r.usuario || '—';
       let imgUrl = '';
       try{
-        const base = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
-        const key = String(ofNum || '').trim();
-        const ofRel = key ? (base.find(o => String(o?.of || o?.numero || '').trim() === key) || null) : null;
-        imgUrl = String(
-          ofRel?.imgUrl ||
-          ofRel?.imagem_url ||
-          (Array.isArray(ofRel?.imgs) ? ofRel.imgs[0] : '') ||
-          ''
-        ).trim();
+        imgUrl = String(r?.imgUrl || '').trim();
       }catch(e){ imgUrl = ''; }
       const imgCell = imgUrl
         ? `<img src="${escAttr(imgUrl)}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(String(ofNum||''))}')" onerror="this.style.display='none'">`
@@ -18065,11 +18075,7 @@ function normalizeOF(r){
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrlPick = String(
     (r.imagem_url != null ? r.imagem_url : '') ||
-    (Array.isArray(imgs) && imgs.length ? imgs[0] : '') ||
-    (Array.isArray(imagens) && imagens.length ? imagens[0] : '') ||
-    (r.foto != null ? r.foto : '') ||
-    (r.image != null ? r.image : '') ||
-    (r.imagem != null ? r.imagem : '') ||
+    (Array.isArray(imgs) && imgs.length ? imgs[0] : (imgs || '')) ||
     ''
   ).trim();
   const imgUrl = imgUrlPick || null;
