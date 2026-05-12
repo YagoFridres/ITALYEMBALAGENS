@@ -2125,13 +2125,33 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);
-    const rows = (enriched || []).map((row) => {
+    let rows = (enriched || []).map((row) => {
       if (!row || typeof row !== 'object') return row;
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
       const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
       return { ...row, vendedor_nome };
     });
+    try {
+      const cliIds = Array.from(new Set(
+        (rows || []).map((r) => String(r?.cli_id || '').trim()).filter(Boolean)
+      )).slice(0, 300);
+      if (cliIds.length) {
+        const { data: cls } = await supabase
+          .from('clientes')
+          .select('id,nome')
+          .in('id', cliIds);
+        const map = Object.fromEntries((Array.isArray(cls) ? cls : [])
+          .filter((c) => c && c.id)
+          .map((c) => [String(c.id), String(c.nome || '').trim()]));
+        rows = (rows || []).map((r) => {
+          if (!r || typeof r !== 'object') return r;
+          const cid = String(r.cli_id || '').trim();
+          const nm = cid ? (map[cid] || '') : '';
+          return { ...r, cliNome: nm || r.cliNome || '' };
+        });
+      }
+    } catch (_) {}
     cacheSet(cacheKey, rows, 30 * 1000);
     return ok(res, rows);
   } catch (e) {

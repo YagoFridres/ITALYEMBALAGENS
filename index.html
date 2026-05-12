@@ -2855,6 +2855,14 @@ function renderPCP(){
     const fluxoLinha = ofFluxoLinha(o);
     // Status row background highlight
     const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':isConcluida(o)?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&!isConcluida(o)?'background:rgba(220,38,38,.05);':'';
+    const isEditNumero = String(window._pcpEditNumeroId || '') === String(o.id || '');
+    const editInpId = `pcp-edit-num-${String(o.id || '')}`;
+    const numHtml = isEditNumero
+      ? `<span style="display:inline-flex;gap:6px;align-items:center">
+          <input id="${escAttr(editInpId)}" value="${escAttr(String(window._pcpEditNumeroValue || o.of || ''))}" style="width:96px;padding:5px 8px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text);font-family:var(--mono);font-size:.75rem" onclick="event.stopPropagation()" onkeydown="pcpEditarNumeroKey(event,'${escAttr(String(o.id||''))}')">
+          <button class="btn-icon" onclick="event.stopPropagation();pcpEditarNumeroSalvar('${escAttr(String(o.id||''))}')" title="Salvar">✓</button>
+        </span>`
+      : `<span class="of-num" style="cursor:pointer;text-decoration:underline" onclick="event.stopPropagation();pcpEditarNumeroStart('${escAttr(String(o.id||''))}','${escAttr(String(o.of||''))}')">${escH(String(o.of||''))}</span>`;
     return `<tr class="${rc}" style="${rowBg}" onclick="selecionarOF('${o.of}')">
       <td class="tc" style="width:32px;padding:4px 8px" onclick="event.stopPropagation()">
         <input type="checkbox" class="of-seletor" data-of-num="${escAttr(o.of)}" data-of-id="${escAttr(o.id||'')}" ${selMulti?'checked':''} onclick="event.stopPropagation()" onchange="pcpToggleSelecao(this)">
@@ -2862,7 +2870,7 @@ function renderPCP(){
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="tc" style="${(!isTodas && !isSemana && o.dia===PCP_DIA_ATUAL)?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
       <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
-      <td class="tc"><span class="of-num">${o.of}</span>${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
+      <td class="tc">${numHtml}${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
       <td class="tc">${imgC}</td>
       <td>${escH(cliTxt)} ${empBadge(o.empId)}</td>
       <td style="color:var(--text2)">${escH(vendTxt)}</td>
@@ -2882,6 +2890,53 @@ function renderPCP(){
   } finally {
     _pcpRenderizando = false;
   }
+}
+
+window._pcpEditNumeroId = window._pcpEditNumeroId || '';
+window._pcpEditNumeroValue = window._pcpEditNumeroValue || '';
+function pcpEditarNumeroStart(id, atual){
+  window._pcpEditNumeroId = String(id || '');
+  window._pcpEditNumeroValue = String(atual || '');
+  renderPCP();
+  setTimeout(()=>{
+    try{
+      const el = document.getElementById(`pcp-edit-num-${String(id || '')}`);
+      if(el) { el.focus(); el.select(); }
+    }catch(e){}
+  }, 30);
+}
+function pcpEditarNumeroCancelar(){
+  window._pcpEditNumeroId = '';
+  window._pcpEditNumeroValue = '';
+  renderPCP();
+}
+function pcpEditarNumeroKey(ev, id){
+  if(!ev) return;
+  if(ev.key === 'Enter'){ ev.preventDefault(); pcpEditarNumeroSalvar(id); return; }
+  if(ev.key === 'Escape'){ ev.preventDefault(); pcpEditarNumeroCancelar(); return; }
+}
+async function pcpEditarNumeroSalvar(id){
+  const sid = String(id || '').trim();
+  if(!sid) return;
+  const el = document.getElementById(`pcp-edit-num-${sid}`);
+  const novoNumero = String(el ? el.value : (window._pcpEditNumeroValue || '')).trim();
+  if(!novoNumero) { try{ toast('Número inválido','var(--orange)'); }catch(e){} return; }
+  const ofObj = (Array.isArray(OFs) ? OFs : []).find(o=>String(o?.id||'')===sid) || null;
+  const antigo = ofObj ? String(ofObj.of || ofObj.numero || '') : '';
+  const r = await api('PUT', '/ofs/' + encodeURIComponent(sid), { of: novoNumero, numero: novoNumero });
+  if(r && r.ok === false){ try{ toast('Erro ao salvar nº OF','var(--orange)'); }catch(e){} return; }
+  if(ofObj){
+    ofObj.of = novoNumero;
+    ofObj.numero = novoNumero;
+  }
+  try{
+    if(typeof window.ofSel !== 'undefined' && String(window.ofSel || '') === antigo) window.ofSel = novoNumero;
+    if(Array.isArray(window.OF_MULTI_SEL) && antigo) window.OF_MULTI_SEL = window.OF_MULTI_SEL.map(x=>String(x)===antigo?novoNumero:x);
+  }catch(e){}
+  window._pcpEditNumeroId = '';
+  window._pcpEditNumeroValue = '';
+  try{ toast('✓ Nº OF atualizado','var(--green)'); }catch(e){}
+  renderPCP();
 }
 
 function ofFluxoGetNames(o){
@@ -10406,7 +10461,8 @@ function cpRender(rows){
           const ofsBase = Array.isArray(OFs) ? OFs : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window.OFs) ? window.OFs : []));
           const key = String(r?.of_numero || r?.of || r?.numero || '').trim();
           const ofRel = key ? (ofsBase.find(o => String(o?.of || o?.numero || '').trim() === key) || null) : null;
-          maqNome = String(ofRel?.maquina_perda || '').trim();
+          const maqCur = (ofRel && typeof ofFluxoGetMaquinaAtual === 'function') ? String(ofFluxoGetMaquinaAtual(ofRel) || '').trim() : '';
+          maqNome = String(ofRel?.maquina_perda || maqCur || '').trim();
         }catch(e){}
       }
       if(!maqNome){
@@ -10423,7 +10479,7 @@ function cpRender(rows){
       const maqHtml = (maqNome === '—')
         ? `<span data-cp-maq="${escAttr(id)}" style="color:#888">—</span>`
         : `<span data-cp-maq="${escAttr(id)}">${escH(String(maqNome))}</span>`;
-      const cli = String(r?.cliente || r?.cliNome || r?.cliente_nome || r?.cli_nome || r?.clienteNome || '').trim() || '—';
+      const cli = String(r?.cliente || r?.cliNome || '').trim() || '—';
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
