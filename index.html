@@ -18548,6 +18548,7 @@ function normalizeOrc(r){
   };
 }
 function normalizeEst(r) {
+  try{ console.log('[NORM EST]', r?.qtd, r?.val, r?.quantidade_atual); }catch(e){}
   const qtd = Number(r.qtd || r.quantidade_atual || r.quantidade || r.ver_real || 0) || 0;
   const val = Number(r.val || r.valor_unitario || r['valor_unitário'] || r.preco || 0) || 0;
   const forn = r.forn || r.fornecedor || '';
