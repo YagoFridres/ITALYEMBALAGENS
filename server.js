@@ -9079,6 +9079,152 @@ async function _assistLoadClientesByIds(ids) {
   }
 }
 
+function _jarvisFirstName(full) {
+  const s = String(full || '').trim();
+  const parts = s.split(/\s+/).filter(Boolean);
+  return parts[0] || s || 'Olá';
+}
+
+function _jarvisHasAny(norm, ...words) {
+  return words.some((w) => norm.includes(_assistNorm(w)));
+}
+
+async function _jarvisBuildContext({ norm, hoje, month, year }) {
+  const ctx = { now: new Date().toISOString(), hoje, mes: month || (new Date().getMonth() + 1), ano: year };
+  const wantsOF = norm.includes('of') || norm.includes('ordem');
+  const wantsEstoque = _jarvisHasAny(norm, 'estoque', 'chapa', 'chapas');
+  const wantsCliente = _jarvisHasAny(norm, 'cliente', 'clientes');
+  const wantsFatur = _jarvisHasAny(norm, 'faturamento', 'fatur', 'venda', 'vendas');
+  const wantsPerda = _jarvisHasAny(norm, 'perda', 'perdas', 'caixa perdida', 'caixas perdidas', 'aparra');
+  const wantsMaq = _jarvisHasAny(norm, 'maquina', 'máquina', 'maquinas', 'máquinas');
+  const wantsResumo = _jarvisHasAny(norm, 'resumo do dia', '/resumo');
+
+  const cap = (arr, n) => (Array.isArray(arr) ? arr.slice(0, n) : []);
+  const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+  if (wantsResumo || wantsOF) {
+    const { data } = await supabase
+      .from('ofs')
+      .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,descricao,produto,valor_total,valor_venda,val,qtd_pedida,quantidade,qtd,urg,urgente,maq,fluxo_maquinas,imagem_url,imgs')
+      .order('created_at', { ascending: false })
+      .limit(60);
+    ctx.ofs_recentes = cap(data, 60);
+  }
+
+  if (wantsResumo || wantsCliente) {
+    const { data } = await supabase
+      .from('clientes')
+      .select('id,nome,telefone,ativo,created_at')
+      .order('created_at', { ascending: false })
+      .limit(40);
+    ctx.clientes_recentes = cap(data, 40);
+  }
+
+  if (wantsResumo || wantsEstoque) {
+    const { data } = await supabase
+      .from('chapas_estoque')
+      .select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo,valor_total,valor_unitario')
+      .order('nomenclatura', { ascending: true })
+      .limit(300);
+    const rows = Array.isArray(data) ? data : [];
+    const crit = rows.filter((c) => {
+      const qtd = safeNum(c.quantidade_atual ?? c.quantidade ?? c.qtd);
+      const min = safeNum(c.estoque_minimo);
+      return min > 0 && qtd < min;
+    });
+    ctx.chapas_criticas = cap(crit, 30);
+    ctx.chapas_amostra = cap(rows, 80);
+  }
+
+  if (wantsResumo || wantsMaq) {
+    const { data } = await supabase
+      .from('maquinas')
+      .select('id,nome,ativo,meta_perda_pct')
+      .order('nome', { ascending: true })
+      .limit(200);
+    ctx.maquinas = cap(data, 200);
+  }
+
+  if (wantsResumo || wantsPerda) {
+    try {
+      const m = month || (new Date().getMonth() + 1);
+      const { de, ate } = _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,data_conclusao,qtd_perdida,valor_perdido,maquina_perda,deleted_at')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(2000);
+      ctx.perdas_mes = cap(data, 2000);
+    } catch (_) {}
+  }
+
+  if (wantsResumo || wantsFatur) {
+    const m = month || (new Date().getMonth() + 1);
+    const { de, ate } = _assistMonthRange(year, m);
+    const { data } = await supabase
+      .from('ofs')
+      .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,emp_id')
+      .gte('data_conclusao', de)
+      .lte('data_conclusao', ate)
+      .limit(5000);
+    ctx.faturamento_mes = cap(data, 5000);
+    ctx.periodo_faturamento = { de, ate };
+  }
+
+  return ctx;
+}
+
+async function _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, historico }) {
+  const key = String(process.env.ANTHROPIC_API_KEY || '').trim();
+  if (!key) return { ok: false, error: 'missing_key' };
+  const now = new Date();
+  const firstName = _jarvisFirstName(nomeUsuario);
+  const sys = `Você é o JARVIS, assistente inteligente da Italy Embalagens (fábrica de caixas de papelão).
+Data/hora atual: ${now.toLocaleString('pt-BR')}
+O usuário logado se chama: ${firstName}.
+Sempre responda em português brasileiro.
+Sempre chame o usuário pelo primeiro nome.
+Seja direto, profissional e objetivo nas respostas.
+Formate números como moeda brasileira quando relevante.
+Formate datas no padrão brasileiro DD/MM/AAAA.
+Quando listar itens, use emojis relevantes.
+Dados atuais do sistema (JSON): ${JSON.stringify(dadosContexto || {})}`;
+
+  const msgs = [];
+  const hist = Array.isArray(historico) ? historico : [];
+  for (const m of hist.slice(-5)) {
+    const role = String(m?.role || m?.tipo || '').toLowerCase() === 'user' ? 'user' : 'assistant';
+    const content = String(m?.content || m?.texto || m?.text || '').trim();
+    if (!content) continue;
+    msgs.push({ role, content });
+  }
+  msgs.push({ role: 'user', content: String(pergunta || '').trim() });
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: sys,
+      messages: msgs,
+    }),
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) {
+    return { ok: false, error: String(j?.error?.message || j?.error || r.status) };
+  }
+  const txt = Array.isArray(j?.content)
+    ? j.content.map((c) => (c && c.type === 'text' ? String(c.text || '') : '')).join('\n').trim()
+    : String(j?.content || j?.text || '').trim();
+  return { ok: true, text: txt };
+}
+
 app.post('/api/assistente', authMiddleware, async (req, res) => {
   try {
     const { nome, email, perfil } = await _assistUser(req);
@@ -9086,6 +9232,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (!pergunta) return res.status(400).json({ ok: false, error: 'pergunta_obrigatoria' });
     const norm = _assistNorm(pergunta);
     const hoje = _assistTodayIso();
+    const month = _assistMonthFromText(norm);
+    const year = new Date().getFullYear();
 
     const respond = (txt) => res.json({ ok: true, resposta: String(txt || '').trim() });
     const naoEntendi = () => respond(`Desculpe ${nome}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`);
@@ -9095,8 +9243,18 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
     const ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
-    const month = _assistMonthFromText(norm);
-    const year = new Date().getFullYear();
+
+    const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
+    if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
+      try {
+        const dadosContexto = await _jarvisBuildContext({ norm, hoje, month, year });
+        const hist = req.body?.historico || req.body?.history || null;
+        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico: hist });
+        if (cla?.ok && String(cla.text || '').trim()) {
+          return respond(String(cla.text || '').trim());
+        }
+      } catch (_) {}
+    }
 
     if (ofNum && norm.includes('of') && hasAny('imagem', 'foto', 'mostrar', 'ver')) {
       const { data } = await supabase
