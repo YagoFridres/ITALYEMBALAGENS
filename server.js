@@ -9225,6 +9225,144 @@ Dados atuais do sistema (JSON): ${JSON.stringify(dadosContexto || {})}`;
   return { ok: true, text: txt };
 }
 
+const _jarvisPendingActions = new Map();
+function _jarvisNewActionId() {
+  return 'act_' + Date.now().toString(36) + '_' + Math.random().toString(16).slice(2);
+}
+function _jarvisStoreAction(userId, action) {
+  const id = _jarvisNewActionId();
+  _jarvisPendingActions.set(id, { id, userId: String(userId || ''), createdAt: Date.now(), action });
+  return id;
+}
+function _jarvisGetAction(id, userId) {
+  const a = _jarvisPendingActions.get(String(id || '')) || null;
+  if (!a) return null;
+  if (String(a.userId || '') !== String(userId || '')) return null;
+  if ((Date.now() - Number(a.createdAt || 0)) > 15 * 60 * 1000) {
+    _jarvisPendingActions.delete(String(id || ''));
+    return null;
+  }
+  return a;
+}
+
+function _jarvisParseDateBrToIso(s, fallbackYear) {
+  const raw = String(s || '').trim();
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  if (!m) return '';
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  let yy = m[3] ? Number(m[3]) : Number(fallbackYear || new Date().getFullYear());
+  if (yy < 100) yy = 2000 + yy;
+  if (!(yy > 1900 && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31)) return '';
+  const dt = new Date(yy, mm - 1, dd);
+  if (!Number.isFinite(dt.getTime())) return '';
+  return dt.toISOString().slice(0, 10);
+}
+
+async function _jarvisFindOFByNumero(ofNum) {
+  const n = String(ofNum || '').replace(/\D/g, '');
+  if (!n) return null;
+  const { data } = await supabase.from('ofs').select('*').or(`numero.eq.${n},of.ilike.%${n}%`).limit(1);
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+
+async function _jarvisFindClienteByNome(nome) {
+  const termo = String(nome || '').trim();
+  if (!termo) return null;
+  const { data } = await supabase.from('clientes').select('id,nome,telefone').ilike('nome', '%' + termo.replace(/%/g, '') + '%').limit(1);
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+
+async function _jarvisFindChapaByNome(nome) {
+  const termo = String(nome || '').trim();
+  if (!termo) return null;
+  const { data } = await supabase
+    .from('chapas_estoque')
+    .select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo')
+    .ilike('nomenclatura', '%' + termo.replace(/%/g, '') + '%')
+    .limit(1);
+  return Array.isArray(data) && data[0] ? data[0] : null;
+}
+
+function _jarvisInternalBase(req) {
+  const host = String(req.get('host') || '').trim();
+  if (!host) return '';
+  return `http://${host}`;
+}
+
+async function _jarvisCallInternal(req, path, { method, body } = {}) {
+  const base = _jarvisInternalBase(req);
+  if (!base) throw new Error('internal_base_missing');
+  const auth = req.headers.authorization || req.headers.Authorization || '';
+  const url = base + path;
+  const r = await fetch(url, {
+    method: method || 'GET',
+    headers: {
+      Authorization: String(auth || ''),
+      'Content-Type': 'application/json',
+    },
+    body: body != null ? JSON.stringify(body) : undefined,
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(String(j?.error || j?.message || r.status));
+  return j;
+}
+
+async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
+  const p = String(pergunta || '').trim();
+  if (!p) return null;
+
+  if (ofNum && _jarvisHasAny(norm, 'cancele', 'cancelar', 'cancela')) {
+    return { type: 'of_cancel', ofNum };
+  }
+  if (ofNum && _jarvisHasAny(norm, 'data de entrega', 'entrega') && _jarvisHasAny(norm, 'altere', 'alterar', 'mude', 'mudar', 'troque', 'trocar', 'para')) {
+    const m = p.match(/(?:entrega|data de entrega)[^0-9]*([0-9]{1,2}\/[0-9]{1,2}(?:\/[0-9]{2,4})?)/i);
+    const dt = _jarvisParseDateBrToIso(m ? m[1] : '', year);
+    if (dt) return { type: 'of_set_entrega', ofNum, data: dt };
+  }
+  if (ofNum && _jarvisHasAny(norm, 'quantidade', 'qtd', 'caixas') && _jarvisHasAny(norm, 'altere', 'alterar', 'mude', 'mudar', 'para')) {
+    const m = p.match(/(?:quantidade|qtd|caixas)[^0-9]*([0-9]{1,9})/i) || p.match(/para\s+([0-9]{1,9})\b/i);
+    const q = m ? Math.trunc(Number(m[1])) : 0;
+    if (q > 0) return { type: 'of_set_qtd', ofNum, qtd: q };
+  }
+  if (ofNum && _jarvisHasAny(norm, 'urgencia', 'urgência', 'urgente') && _jarvisHasAny(norm, 'adicione', 'adicionar', 'coloque', 'marque', 'set')) {
+    return { type: 'of_set_urgente', ofNum };
+  }
+  if (ofNum && _jarvisHasAny(norm, 'cliente') && _jarvisHasAny(norm, 'mude', 'mudar', 'troque', 'alterar', 'altere', 'para')) {
+    const m = p.match(/cliente\s+da\s+of\s+[0-9]{1,8}\s+para\s+(.+)$/i) || p.match(/cliente\s+para\s+(.+)$/i);
+    const cliNome = m ? String(m[1] || '').trim() : '';
+    if (cliNome) return { type: 'of_set_cliente', ofNum, clienteNome: cliNome };
+  }
+  if (ofNum && _jarvisHasAny(norm, 'status') && _jarvisHasAny(norm, 'concluida', 'concluída', 'concluido', 'concluído', 'concluir')) {
+    return { type: 'of_concluir', ofNum };
+  }
+  if (_jarvisHasAny(norm, 'entrada') && _jarvisHasAny(norm, 'chapa')) {
+    const m = p.match(/entrada\s+de\s+([0-9]{1,9})\s+(?:unidades\s+)?na\s+chapa\s+(.+)$/i);
+    const qtd = m ? Math.trunc(Number(m[1])) : 0;
+    const chapaNome = m ? String(m[2] || '').trim() : '';
+    if (qtd > 0 && chapaNome) return { type: 'chapa_entrada', qtd, chapaNome };
+  }
+  if (_jarvisHasAny(norm, 'estoque minimo', 'estoque mínimo') && _jarvisHasAny(norm, 'chapa') && _jarvisHasAny(norm, 'para')) {
+    const m = p.match(/estoque\s+m[ií]nimo\s+da\s+chapa\s+(.+?)\s+para\s+([0-9]{1,9})\b/i);
+    const chapaNome = m ? String(m[1] || '').trim() : '';
+    const min = m ? Math.trunc(Number(m[2])) : 0;
+    if (chapaNome && min >= 0) return { type: 'chapa_set_min', chapaNome, min };
+  }
+  if (_jarvisHasAny(norm, 'cadastre o cliente') && _jarvisHasAny(norm, 'telefone')) {
+    const m = p.match(/cadastre\s+o\s+cliente\s+(.+?)\s+com\s+telefone\s+(.+)$/i);
+    const cliNome = m ? String(m[1] || '').trim() : '';
+    const tel = m ? String(m[2] || '').trim() : '';
+    if (cliNome && tel) return { type: 'cliente_create', clienteNome: cliNome, telefone: tel };
+  }
+  if (_jarvisHasAny(norm, 'atualize o telefone') && _jarvisHasAny(norm, 'cliente') && _jarvisHasAny(norm, 'para')) {
+    const m = p.match(/telefone\s+do\s+cliente\s+(.+?)\s+para\s+(.+)$/i);
+    const cliNome = m ? String(m[1] || '').trim() : '';
+    const tel = m ? String(m[2] || '').trim() : '';
+    if (cliNome && tel) return { type: 'cliente_set_tel', clienteNome: cliNome, telefone: tel };
+  }
+  return null;
+}
+
 app.post('/api/assistente', authMiddleware, async (req, res) => {
   try {
     const { nome, email, perfil } = await _assistUser(req);
@@ -9243,6 +9381,54 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
     const ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
+
+    const act = await _jarvisDetectAction({ norm, pergunta, ofNum, year });
+    if (act) {
+      const uid = String(req?.usuario?.id || '');
+      let resumo = '';
+      try {
+        if (act.type.startsWith('of_')) {
+          const of = await _jarvisFindOFByNumero(act.ofNum);
+          if (!of) return respond(`${_jarvisFirstName(nome)}, não encontrei a OF #${act.ofNum}.`);
+          const cid = _assistPickOfClienteId(of);
+          const cliMap = await _assistLoadClientesByIds([cid]);
+          const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+          const nOf = _assistPickOfNumber(of);
+          const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
+          if (act.type === 'of_cancel') resumo = `⚠️ Confirmar cancelamento da OF #${nOf} — ${cNome} — ${qtd} caixas?`;
+          else if (act.type === 'of_set_entrega') resumo = `⚠️ Confirmar alteração da entrega da OF #${nOf} — ${cNome} para ${_assistFmtDateBr(act.data)}?`;
+          else if (act.type === 'of_set_qtd') resumo = `⚠️ Confirmar alteração da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
+          else if (act.type === 'of_set_urgente') resumo = `⚠️ Confirmar marcar urgência na OF #${nOf} — ${cNome}?`;
+          else if (act.type === 'of_set_cliente') resumo = `⚠️ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
+          else if (act.type === 'of_concluir') resumo = `⚠️ Confirmar concluir a OF #${nOf} — ${cNome}?`;
+          else resumo = `⚠️ Confirmar ação na OF #${nOf}?`;
+          act.ofId = String(of.id || '');
+        } else if (act.type.startsWith('chapa_')) {
+          const ch = await _jarvisFindChapaByNome(act.chapaNome);
+          if (!ch) return respond(`${_jarvisFirstName(nome)}, não encontrei a chapa "${act.chapaNome}".`);
+          const nomeCh = String(ch.nomenclatura || ch.nome_uso || ch.nome || '—').trim() || '—';
+          if (act.type === 'chapa_entrada') resumo = `⚠️ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
+          else if (act.type === 'chapa_set_min') resumo = `⚠️ Confirmar ajuste do estoque mínimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
+          act.chapaId = String(ch.id || '');
+        } else if (act.type.startsWith('cliente_')) {
+          if (act.type === 'cliente_create') resumo = `⚠️ Confirmar cadastro do cliente "${act.clienteNome}" com telefone "${act.telefone}"?`;
+          if (act.type === 'cliente_set_tel') resumo = `⚠️ Confirmar atualizar telefone do cliente "${act.clienteNome}" para "${act.telefone}"?`;
+        } else {
+          resumo = `⚠️ Confirmar ação?`;
+        }
+      } catch (_) {
+        resumo = `⚠️ Confirmar ação?`;
+      }
+      const actionId = _jarvisStoreAction(uid, act);
+      return res.json({
+        ok: true,
+        resposta: resumo,
+        actions: [
+          { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
+          { id: actionId, label: '❌ Cancelar', decision: 'cancel' },
+        ],
+      });
+    }
 
     const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
     if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
@@ -9773,6 +9959,96 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     return naoEntendi();
+  } catch (e) {
+    return err(res, e);
+  }
+});
+
+app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
+  try {
+    const uid = String(req?.usuario?.id || '');
+    const id = String(req.body?.id || '').trim();
+    const decisao = String(req.body?.decisao || req.body?.decision || 'confirm').trim().toLowerCase();
+    const pending = _jarvisGetAction(id, uid);
+    const nome = (await _assistUser(req)).nome;
+    const first = _jarvisFirstName(nome);
+    if (!pending) return res.status(404).json({ ok: false, error: 'acao_expirada' });
+    if (decisao === 'cancel') {
+      _jarvisPendingActions.delete(id);
+      return res.json({ ok: true, resposta: `${first}, ação cancelada.` });
+    }
+    const act = pending.action || {};
+    _jarvisPendingActions.delete(id);
+
+    if (act.type === 'of_cancel') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { status: 'Cancelada', deleted_at: new Date().toISOString() } });
+      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} cancelada com sucesso.` });
+    }
+
+    if (act.type === 'of_set_entrega') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { ent: act.data, data_entrega: act.data } });
+      return res.json({ ok: true, resposta: `✅ ${first}, entrega da OF #${act.ofNum} atualizada para ${_assistFmtDateBr(act.data)}.` });
+    }
+
+    if (act.type === 'of_set_qtd') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { qtd_pedida: act.qtd, quantidade: act.qtd, qtd: act.qtd } });
+      return res.json({ ok: true, resposta: `✅ ${first}, quantidade da OF #${act.ofNum} atualizada para ${Number(act.qtd).toLocaleString('pt-BR')} caixas.` });
+    }
+
+    if (act.type === 'of_set_urgente') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { urg: true, urgente: true } });
+      return res.json({ ok: true, resposta: `✅ ${first}, urgência adicionada na OF #${act.ofNum}.` });
+    }
+
+    if (act.type === 'of_set_cliente') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      const cli = await _jarvisFindClienteByNome(act.clienteNome);
+      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, não encontrei o cliente "${act.clienteNome}".` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { cli_id: cli.id, cliente_id: cli.id, cliNome: cli.nome, cliente_nome: cli.nome } });
+      return res.json({ ok: true, resposta: `✅ ${first}, cliente da OF #${act.ofNum} atualizado para ${cli.nome}.` });
+    }
+
+    if (act.type === 'of_concluir') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}/concluir`, { method: 'POST', body: { qtd_produzida: 0, qtd_perdida: 0 } });
+      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída.` });
+    }
+
+    if (act.type === 'chapa_entrada') {
+      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
+      await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}/movimento`, { method: 'POST', body: { tipo: 'entrada', delta: act.qtd, obs: 'Entrada via JARVIS' } });
+      return res.json({ ok: true, resposta: `✅ ${first}, entrada registrada no estoque.` });
+    }
+
+    if (act.type === 'chapa_set_min') {
+      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
+      await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}`, { method: 'PATCH', body: { estoque_minimo: act.min } });
+      return res.json({ ok: true, resposta: `✅ ${first}, estoque mínimo atualizado.` });
+    }
+
+    if (act.type === 'cliente_create') {
+      await _jarvisCallInternal(req, '/api/clientes', { method: 'POST', body: { nome: act.clienteNome, telefone: act.telefone, ativo: true } });
+      return res.json({ ok: true, resposta: `✅ ${first}, cliente cadastrado com sucesso.` });
+    }
+
+    if (act.type === 'cliente_set_tel') {
+      const cli = await _jarvisFindClienteByNome(act.clienteNome);
+      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, não encontrei o cliente "${act.clienteNome}".` });
+      await _jarvisCallInternal(req, `/api/clientes/${String(cli.id)}`, { method: 'PUT', body: { telefone: act.telefone } });
+      return res.json({ ok: true, resposta: `✅ ${first}, telefone atualizado para ${act.telefone}.` });
+    }
+
+    return res.json({ ok: true, resposta: `${first}, ação executada.` });
   } catch (e) {
     return err(res, e);
   }

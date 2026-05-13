@@ -37424,6 +37424,8 @@ window.atualizarChapas = async function(){
       .assist-bubble-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .assist-tts{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:10px;padding:4px 8px;cursor:pointer;font-weight:900;font-family:var(--mono);font-size:.75rem;line-height:1}
       .assist-img{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border);display:block}
+      .jarvis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+      .jarvis-action{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:900;font-family:var(--mono)}
       .assist-meta{margin-top:6px;font-size:.65rem;color:var(--text3);font-family:var(--mono)}
       #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg-card,#1a1a2e);display:flex;gap:8px;align-items:flex-end}
       #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
@@ -37514,6 +37516,15 @@ window.atualizarChapas = async function(){
         ev.preventDefault();
         ev.stopPropagation();
         speakToggle(Number(i));
+        return;
+      }
+      const act = t.getAttribute && t.getAttribute('data-act');
+      const dec = t.getAttribute && t.getAttribute('data-dec');
+      if(act){
+        ev.preventDefault();
+        ev.stopPropagation();
+        runAction(String(act||''), String(dec||'confirm'));
+        return;
       }
     });
 
@@ -37536,6 +37547,8 @@ window.atualizarChapas = async function(){
     const msg = { role, text: String(text || '').trim(), ts: nowIso() };
     if(extra && typeof extra === 'object'){
       if(Array.isArray(extra.images)) msg.images = extra.images.map(x=>String(x||'').trim()).filter(Boolean).slice(0, 3);
+      if(Array.isArray(extra.actions)) msg.actions = extra.actions;
+      if(Array.isArray(extra.suggestions)) msg.suggestions = extra.suggestions;
     }
     hist.push(msg);
     saveHist(hist);
@@ -37644,16 +37657,34 @@ window.atualizarChapas = async function(){
       const txtHtml = `<div>${esc(m.text || '')}</div>`;
       const imgs = Array.isArray(m.images) ? m.images.map((u)=>String(u||'').trim()).filter(Boolean).slice(0, 3) : [];
       const imgsHtml = imgs.length ? imgs.map((u)=>`<img class="assist-img" src="${escAttr(u)}" alt="Imagem OF">`).join('') : '';
+      const actions = Array.isArray(m.actions) ? m.actions : [];
+      const actionsHtml = actions.length ? `<div class="jarvis-actions">${actions.map((a)=>`<button type="button" class="jarvis-action" data-act="${escAttr(a.id||'')}" data-dec="${escAttr(a.decision||'confirm')}">${esc(a.label||'')}</button>`).join('')}</div>` : '';
       if(role === 'assistant'){
         const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
         const speakIcon = isSpeaking ? '🔇' : '🔊';
         const top = `<div class="assist-bubble-top"><div></div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
-        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
       const bubble = `<div class="assist-bubble">${txtHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
       return `<div class="assist-row user">${bubble}</div>`;
     }).join('');
+  };
+
+  const runAction = async (id, decision)=>{
+    const actionId = String(id||'').trim();
+    if(!actionId) return;
+    try{
+      const resp = await apiFetch('/api/assistente/acao', { method:'POST', body:{ id: actionId, decisao: decision } });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(!resp || !resp.ok || !j || !j.ok){
+        addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui executar essa ação.`);
+        return;
+      }
+      addMsg('assistant', String(j.resposta || '✅ Feito.').trim(), { images: j.images || [], suggestions: j.suggestions || [] });
+    }catch(e){
+      addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro ao executar a ação.`);
+    }
   };
 
   const send = async (raw)=>{
@@ -37680,14 +37711,14 @@ window.atualizarChapas = async function(){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
       if(!resp || !resp.ok){
-        addMsg('assistant', `Desculpe ${getUserName()}, não consegui responder agora.`);
+        addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images });
+      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images, actions: j.actions || [], suggestions: j.suggestions || [] });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
-      addMsg('assistant', `Desculpe ${getUserName()}, ocorreu um erro ao consultar o assistente.`);
+      addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro ao consultar o assistente.`);
     }
   };
 
