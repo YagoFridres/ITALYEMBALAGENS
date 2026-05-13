@@ -5256,21 +5256,19 @@ function confirmarModalBaixaConclusao(){
   let maquinaNome = '';
   if(qtdPerdida > 0){
     maquinaId = String(maqSel?.value || '').trim();
-    if(!maquinaId){
-      alert('Selecione a máquina onde ocorreu a perda');
-      return;
-    }
-    try{
-      const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
-      const it = src.find(m=>String(m?.id||'').trim()===maquinaId) || null;
-      maquinaNome = String(it?.col || it?.nome || it?.name || '').trim();
-    }catch(e){}
-    if(!maquinaNome){
+    if(maquinaId){
       try{
-        const ix = Number(maqSel?.selectedIndex ?? -1);
-        const txt = (ix >= 0 && maqSel?.options && maqSel.options[ix]) ? String(maqSel.options[ix].textContent || '') : '';
-        maquinaNome = txt.trim();
+        const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
+        const it = src.find(m=>String(m?.id||'').trim()===maquinaId) || null;
+        maquinaNome = String(it?.col || it?.nome || it?.name || '').trim();
       }catch(e){}
+      if(!maquinaNome){
+        try{
+          const ix = Number(maqSel?.selectedIndex ?? -1);
+          const txt = (ix >= 0 && maqSel?.options && maqSel.options[ix]) ? String(maqSel.options[ix].textContent || '') : '';
+          maquinaNome = txt.trim();
+        }catch(e){}
+      }
     }
   }
   const dataFaturamento = String(fatEl?.value || '').trim();
@@ -18178,6 +18176,43 @@ function _renderDashboardBase(){
     return `<option value="${escAttr(id)}"${id===empSel?' selected':''}>${escH(e.nome||id)}</option>`;
   }).join('');
 
+  const mom = (()=>{
+    const sumVal = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? o?.vtot ?? o?.total ?? 0) || 0;
+    const mesIni = startOfMonth(now);
+    const mesFim = startOfMonth(addMonths(now, 1));
+    const prevIni = startOfMonth(addMonths(now, -1));
+    const prevFim = mesIni;
+    const inEmp = (o)=>{
+      if(!empSel) return true;
+      const empId = String(o?.empId || o?.emp_id || o?.empresa_id || o?.empresa || '').trim();
+      return empId === empSel;
+    };
+    const ofsCur = ofsAll.filter(o=>!isCanceledOrDeleted(o)).filter(inEmp).filter(o=>{
+      const dt = parseDate(o?.dia || o?.data_producao || o?.data || o?.created_at || '');
+      return dt && dt >= mesIni && dt < mesFim;
+    });
+    const ofsPrev = ofsAll.filter(o=>!isCanceledOrDeleted(o)).filter(inEmp).filter(o=>{
+      const dt = parseDate(o?.dia || o?.data_producao || o?.data || o?.created_at || '');
+      return dt && dt >= prevIni && dt < prevFim;
+    });
+    const vCur = ofsCur.reduce((s,o)=>s+sumVal(o),0);
+    const vPrev = ofsPrev.reduce((s,o)=>s+sumVal(o),0);
+    const dAbs = vCur - vPrev;
+    const dPct = (vPrev > 0) ? ((dAbs / vPrev) * 100) : (vCur > 0 ? 100 : 0);
+    const cor = dAbs >= 0 ? 'var(--green)' : 'var(--red)';
+    const badge = `<span style="font-family:var(--mono);font-weight:900;color:${cor}">${dAbs>=0?'+':''}${dPct.toFixed(1)}%</span>`;
+    const mesLab = `${String(mesIni.getMonth()+1).padStart(2,'0')}/${mesIni.getFullYear()}`;
+    const prevLab = `${String(prevIni.getMonth()+1).padStart(2,'0')}/${prevIni.getFullYear()}`;
+    return {
+      html: `<div class="cards-row" style="margin-bottom:12px">
+        <div class="card"><div class="card-lbl">Vendas (mês)</div><div class="card-val cv-g" style="font-size:1.1rem">${fmtR(vCur)}</div><div class="card-sub">${escH(mesLab)}</div></div>
+        <div class="card"><div class="card-lbl">Vendas (mês anterior)</div><div class="card-val" style="font-size:1.1rem;color:var(--text)">${fmtR(vPrev)}</div><div class="card-sub">${escH(prevLab)}</div></div>
+        <div class="card"><div class="card-lbl">Δ M/M</div><div class="card-val" style="font-size:1.1rem">${badge}</div><div class="card-sub">${dAbs>=0?'crescimento':'queda'} (${fmtR(dAbs)})</div></div>
+        <div class="card"><div class="card-lbl">Pedidos (mês)</div><div class="card-val cv-a">${fmtN(ofsCur.length)}</div><div class="card-sub">${fmtN(ofsPrev.length)} no mês anterior</div></div>
+      </div>`
+    };
+  })();
+
   root.innerHTML = `
     <div class="ptoolbar" style="flex-wrap:wrap;gap:10px;align-items:center">
       <div style="font-weight:950;color:var(--accent);font-size:1.05rem">🏆 Top Clientes</div>
@@ -18190,6 +18225,7 @@ function _renderDashboardBase(){
       </select>
     </div>
     <div style="display:grid;gap:12px">
+      ${mom.html}
       ${tiposMes.html}
       ${prodPorMaquina.html}
       <div class="sbox">
@@ -18275,7 +18311,594 @@ function _renderRelatorioBase(){
 
   let html=filterLabel;
 
-  if(tipo==='estoque-atual'){
+  if(tipo==='dre'){
+    const range = getRelDateRange();
+    const inR = (dtStr)=>{
+      if(!range || !range.de || !range.ate) return true;
+      const s = String(dtStr||'').slice(0,10);
+      if(!s) return false;
+      return s >= String(range.de) && s <= String(range.ate);
+    };
+    const empOk = (x)=>{
+      if(!empFil) return true;
+      const e = String(x?.empId || x?.emp_id || '').trim();
+      return e === empFil;
+    };
+    const receb = (CONTAS_RECEBER||[]).filter(empOk).filter(c=>{
+      const st = String(c.status||'').toLowerCase();
+      if(!(st.includes('recebid'))) return false;
+      const dt = c.dataRecebimento || c.emissao || c.venc || '';
+      return inR(dt);
+    });
+    const pagos = (CONTAS_PAGAR||[]).filter(empOk).filter(c=>{
+      const st = String(c.status||'').toLowerCase();
+      if(!(st.includes('pago'))) return false;
+      const dt = c.dataPagamento || c.emissao || c.venc || '';
+      return inR(dt);
+    });
+    const receita = receb.reduce((s,c)=>s+(Number(c.valorRecebido||0)||0),0);
+    const despesa = pagos.reduce((s,c)=>s+(Number(c.valorPago||0)||0),0);
+    const resultado = receita - despesa;
+    const margem = receita > 0 ? (resultado/receita)*100 : 0;
+
+    const byCatR = {};
+    receb.forEach(c=>{
+      const cat = String(c.cat||'Outros').trim() || 'Outros';
+      byCatR[cat] = (byCatR[cat]||0) + (Number(c.valorRecebido||0)||0);
+    });
+    const byCatD = {};
+    pagos.forEach(c=>{
+      const cat = String(c.cat||'Outros').trim() || 'Outros';
+      byCatD[cat] = (byCatD[cat]||0) + (Number(c.valorPago||0)||0);
+    });
+    const card = (t,v,cls,sub)=>`<div class="card"><div class="card-lbl">${escH(t)}</div><div class="card-val ${cls||''}" style="font-size:1.2rem">${escH(v)}</div>${sub?`<div class="card-sub">${sub}</div>`:''}</div>`;
+    const rowsR = Object.entries(byCatR).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr style="${trStyle(i)}"><td style="${tdStyle};font-weight:700">${escH(k)}</td><td style="${tdStyle};text-align:right;color:var(--green);font-weight:800;font-family:var(--mono)">${fmtR(v)}</td></tr>`).join('');
+    const rowsD = Object.entries(byCatD).sort((a,b)=>b[1]-a[1]).map(([k,v],i)=>`<tr style="${trStyle(i)}"><td style="${tdStyle};font-weight:700">${escH(k)}</td><td style="${tdStyle};text-align:right;color:var(--red);font-weight:800;font-family:var(--mono)">${fmtR(v)}</td></tr>`).join('');
+
+    html += `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:10px 0 14px">
+        ${card('Receita (Recebido)', fmtR(receita), 'cv-g')}
+        ${card('Despesas (Pago)', fmtR(despesa), 'cv-r')}
+        ${card('Resultado', fmtR(resultado), resultado>=0?'cv-g':'cv-r', receita>0?`${margem.toFixed(1)}%`:null)}
+        ${card('Registros', String(receb.length + pagos.length), 'cv-a', `${receb.length} recebimentos · ${pagos.length} pagamentos`)}
+      </div>
+      <div class="g2">
+        <div class="sbox">
+          <div class="sbox-h">📥 Receitas por Categoria</div>
+          <div class="sbox-b">
+            ${tbl(['CATEGORIA','VALOR'], rowsR || `<tr><td style="${tdStyle}" colspan="2">—</td></tr>`)}
+          </div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-h">📤 Despesas por Categoria</div>
+          <div class="sbox-b">
+            ${tbl(['CATEGORIA','VALOR'], rowsD || `<tr><td style="${tdStyle}" colspan="2">—</td></tr>`)}
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;color:var(--text3);font-size:.74rem">
+        Base: Contas a Receber (status Recebido/Recebido Parcial) + Contas a Pagar (status Pago/Pago Parcial) dentro do período.
+      </div>
+    `;
+  } else if(tipo==='eficiencia-maquina'){
+    const concl = ofsAll.filter(o=>{
+      const st = String(o.status||'').toLowerCase();
+      return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado';
+    });
+    const by = {};
+    concl.forEach(o=>{
+      const maqId = String(o.maquina_perda_id || o.maquina_id || '').trim();
+      const maqNome = String(o.maquina_perda || o.maquina || o.maquina_nome || '').trim();
+      const key = maqId || (maqNome ? ('N:' + maqNome) : 'N:—');
+      if(!by[key]) by[key] = { maqId: maqId || null, maq: maqNome || maqId || '—', qtdPed:0, qtdProd:0, qtdPerd:0, ofs:0 };
+      const qtdPed = Number(o.qtd_pedida ?? o.qtd ?? o.quantidade ?? 0) || 0;
+      const qtdProd = Number(o.qtd_produzida ?? 0) || 0;
+      const qtdPerd = Number(o.qtd_perdida ?? 0) || 0;
+      by[key].ofs += 1;
+      by[key].qtdPed += qtdPed;
+      by[key].qtdProd += qtdProd;
+      by[key].qtdPerd += qtdPerd;
+    });
+    const rows = Object.values(by).sort((a,b)=> (b.qtdPerd||0) - (a.qtdPerd||0));
+    const totalProd = rows.reduce((s,r)=>s+(r.qtdProd||0),0);
+    const totalPerd = rows.reduce((s,r)=>s+(r.qtdPerd||0),0);
+    const perdaPct = (totalProd+totalPerd)>0 ? (totalPerd/(totalProd+totalPerd))*100 : 0;
+    html += `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:10px 0 14px">
+        <div class="card"><div class="card-lbl">Produzido</div><div class="card-val cv-g">${fmtN(totalProd)}</div></div>
+        <div class="card"><div class="card-lbl">Perdido</div><div class="card-val cv-r">${fmtN(totalPerd)}</div><div class="card-sub">${perdaPct.toFixed(1)}% (perda)</div></div>
+        <div class="card"><div class="card-lbl">OFs (Concluídas)</div><div class="card-val cv-a">${fmtN(concl.length)}</div></div>
+      </div>
+    `;
+    html += tbl(['MÁQUINA','OFs','QTD PED','QTD PROD','QTD PERD','PERDA %','EFICIÊNCIA %'], rows.map((r,i)=>{
+      const base = (Number(r.qtdProd||0)+Number(r.qtdPerd||0)) || 0;
+      const pp = base>0 ? (Number(r.qtdPerd||0)/base)*100 : 0;
+      const ef = base>0 ? (Number(r.qtdProd||0)/base)*100 : 0;
+      const cor = ef>=98?'var(--green)':ef>=95?'var(--yellow)':'var(--red)';
+      return `<tr style="${trStyle(i)}">
+        <td style="${tdStyle};font-weight:800">${escH(r.maq)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.ofs)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${fmtN(r.qtdPed)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--green);font-weight:900">${fmtN(r.qtdProd)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--red);font-weight:900">${fmtN(r.qtdPerd)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${pp.toFixed(1)}%</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);font-weight:900;color:${cor}">${ef.toFixed(1)}%</td>
+      </tr>`;
+    }).join('') || `<tr><td style="${tdStyle}" colspan="7">—</td></tr>`);
+  } else if(tipo==='tendencia-perdas'){
+    const concl = ofsAll.filter(o=>{
+      const st = String(o.status||'').toLowerCase();
+      return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado';
+    });
+    const mesKey = (o)=>{
+      const d = String(o.data_conclusao || o.dataConclusao || o.updated_at || o.dia || '').slice(0,10);
+      return d ? d.slice(0,7) : '';
+    };
+    const byMes = {};
+    concl.forEach((o)=>{
+      const m = mesKey(o);
+      if(!m) return;
+      if(!byMes[m]) byMes[m] = { mes: m, prod: 0, perd: 0, ofs: 0 };
+      const prod = Number(o.qtd_produzida ?? 0) || 0;
+      const perd = Number(o.qtd_perdida ?? 0) || 0;
+      byMes[m].prod += prod;
+      byMes[m].perd += perd;
+      byMes[m].ofs += 1;
+    });
+    const meses = Object.keys(byMes).sort();
+    const rows = meses.map(m=>byMes[m]);
+    const totalProd = rows.reduce((s,r)=>s+(r.prod||0),0);
+    const totalPerd = rows.reduce((s,r)=>s+(r.perd||0),0);
+    const perdaPct = (totalProd+totalPerd)>0 ? (totalPerd/(totalProd+totalPerd))*100 : 0;
+    html += `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:10px 0 14px">
+        <div class="card"><div class="card-lbl">Produzido</div><div class="card-val cv-g">${fmtN(totalProd)}</div></div>
+        <div class="card"><div class="card-lbl">Perdido</div><div class="card-val cv-r">${fmtN(totalPerd)}</div><div class="card-sub">${perdaPct.toFixed(1)}% (perda)</div></div>
+        <div class="card"><div class="card-lbl">OFs (Concluídas)</div><div class="card-val cv-a">${fmtN(concl.length)}</div></div>
+      </div>
+      <div class="sbox">
+        <div class="sbox-h">📈 Tendência de Perdas (mês)</div>
+        <div class="sbox-b">
+          <canvas id="rel-chart-perdas-mes" height="120"></canvas>
+        </div>
+      </div>
+    `;
+    html += `<div style="margin-top:10px">${tbl(['MÊS','OFs','PROD','PERD','PERDA %'], rows.map((r,i)=>{
+      const base = (Number(r.prod||0)+Number(r.perd||0)) || 0;
+      const pp = base>0 ? (Number(r.perd||0)/base)*100 : 0;
+      return `<tr style="${trStyle(i)}">
+        <td style="${tdStyle};font-family:var(--mono);font-weight:900">${escH(r.mes)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.ofs)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--green);font-weight:900">${fmtN(r.prod)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--red);font-weight:900">${fmtN(r.perd)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${pp.toFixed(1)}%</td>
+      </tr>`;
+    }).join('') || `<tr><td style="${tdStyle}" colspan="5">—</td></tr>`)}</div>`;
+    setTimeout(()=>{ Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+      if(!ok || typeof Chart === 'undefined') return;
+      const canvas = document.getElementById('rel-chart-perdas-mes');
+      if(!canvas) return;
+      try{ if(window._relPerdasMesChart && typeof window._relPerdasMesChart.destroy === 'function'){ window._relPerdasMesChart.destroy(); } }catch(e){}
+      const labels = rows.map(r=>r.mes);
+      const prod = rows.map(r=>Number(r.prod||0));
+      const perd = rows.map(r=>Number(r.perd||0));
+      const perdaPct = rows.map(r=>{
+        const base = (Number(r.prod||0)+Number(r.perd||0)) || 0;
+        return base>0 ? (Number(r.perd||0)/base)*100 : 0;
+      });
+      window._relPerdasMesChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Perdido', data: perd, backgroundColor: 'rgba(239,68,68,0.55)', borderRadius: 4, yAxisID: 'y' },
+            { label: 'Produzido', data: prod, backgroundColor: 'rgba(16,185,129,0.50)', borderRadius: 4, yAxisID: 'y' },
+            { label: 'Perda %', data: perdaPct, type: 'line', borderColor: 'rgba(245,158,11,0.95)', backgroundColor: 'rgba(245,158,11,0.15)', tension: 0.25, yAxisID: 'y1' },
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            y: { beginAtZero: true, stacked: true, ticks: { color: '#9ca3af' } },
+            y1: { beginAtZero: true, position: 'right', ticks: { callback: (v)=>String(v)+'%', color: '#9ca3af' }, grid: { drawOnChartArea: false } },
+            x: { ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }); }, 0);
+  } else if(tipo==='meta-perda-maquina'){
+    const concl = ofsAll.filter(o=>{
+      const st = String(o.status||'').toLowerCase();
+      return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado';
+    });
+    const by = {};
+    concl.forEach(o=>{
+      const maqId = String(o.maquina_perda_id || o.maquina_producao_id || o.maquina_id || '').trim();
+      const maqNome = String(o.maquina_perda || o.maquina_producao || o.maquina || '').trim();
+      const key = maqId || (maqNome ? ('N:' + maqNome) : 'N:—');
+      if(!by[key]) by[key] = { maqId: maqId || null, maq: maqNome || maqId || '—', prod: 0, perd: 0, ofs: 0, meta: null };
+      by[key].prod += Number(o.qtd_produzida ?? 0) || 0;
+      by[key].perd += Number(o.qtd_perdida ?? 0) || 0;
+      by[key].ofs += 1;
+    });
+    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS : [];
+    Object.values(by).forEach((r)=>{
+      const m = r.maqId ? (maqList.find(x=>String(x?.id||'').trim()===String(r.maqId)) || null) : (maqList.find(x=>String(x?.col||x?.nome||'').trim()===String(r.maq)) || null);
+      const meta = m && m.meta_perda_pct !== undefined && m.meta_perda_pct !== null ? Number(m.meta_perda_pct) : null;
+      r.meta = Number.isFinite(meta) ? meta : null;
+    });
+    const rows = Object.values(by).sort((a,b)=>((b.perd||0)-(a.perd||0)));
+    html += `
+      <div class="sbox">
+        <div class="sbox-h">🎯 Meta de Perdas por Máquina</div>
+        <div class="sbox-b">
+          <canvas id="rel-chart-meta-perda" height="120"></canvas>
+        </div>
+      </div>
+    `;
+    html += tbl(['MÁQUINA','OFs','PROD','PERD','PERDA %','META %','STATUS'], rows.map((r,i)=>{
+      const base = (Number(r.prod||0)+Number(r.perd||0)) || 0;
+      const pp = base>0 ? (Number(r.perd||0)/base)*100 : 0;
+      const meta = (r.meta != null && Number.isFinite(Number(r.meta))) ? Number(r.meta) : null;
+      const ok = meta == null ? null : (pp <= meta);
+      const cor = ok==null ? 'var(--text3)' : (ok ? 'var(--green)' : 'var(--red)');
+      const st = ok==null ? '—' : (ok ? 'OK' : 'ACIMA');
+      return `<tr style="${trStyle(i)}">
+        <td style="${tdStyle};font-weight:900">${escH(r.maq)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.ofs)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--green);font-weight:900">${fmtN(r.prod)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--red);font-weight:900">${fmtN(r.perd)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${pp.toFixed(1)}%</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${meta==null?'—':meta.toFixed(1)+'%'}</td>
+        <td style="${tdStyle};text-align:center;font-family:var(--mono);font-weight:900;color:${cor}">${st}</td>
+      </tr>`;
+    }).join('') || `<tr><td style="${tdStyle}" colspan="7">—</td></tr>`);
+    setTimeout(()=>{ Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+      if(!ok || typeof Chart === 'undefined') return;
+      const canvas = document.getElementById('rel-chart-meta-perda');
+      if(!canvas) return;
+      try{ if(window._relMetaPerdaChart && typeof window._relMetaPerdaChart.destroy === 'function'){ window._relMetaPerdaChart.destroy(); } }catch(e){}
+      const top = rows.slice(0, 12);
+      const labels = top.map(r=>r.maq);
+      const perdaPct = top.map(r=>{
+        const base = (Number(r.prod||0)+Number(r.perd||0)) || 0;
+        return base>0 ? (Number(r.perd||0)/base)*100 : 0;
+      });
+      const metas = top.map(r=> (r.meta!=null && Number.isFinite(Number(r.meta))) ? Number(r.meta) : null);
+      window._relMetaPerdaChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Perda %', data: perdaPct, backgroundColor: 'rgba(245,158,11,0.55)', borderRadius: 4 },
+            { label: 'Meta %', data: metas, type: 'line', borderColor: 'rgba(59,130,246,0.95)', backgroundColor: 'rgba(59,130,246,0.15)', tension: 0.25 },
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: (v)=>String(v)+'%', color: '#9ca3af' } },
+            x: { ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }); }, 0);
+  } else if(tipo==='comparativo-empresas-grafico'){
+    const grupos = {};
+    (ofsAll||[]).forEach((o)=>{
+      const emp = String(o.empId || o.emp_id || '').trim() || '—';
+      if(!grupos[emp]) grupos[emp] = { emp, ofs: 0, valor: 0, prod: 0, perd: 0, concl: 0 };
+      grupos[emp].ofs += 1;
+      grupos[emp].valor += Number(o.val ?? o.valor_total ?? o.valor_venda ?? 0) || 0;
+      const st = String(o.status||'').toLowerCase();
+      const isConc = st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado';
+      if(isConc){
+        grupos[emp].concl += 1;
+        grupos[emp].prod += Number(o.qtd_produzida ?? 0) || 0;
+        grupos[emp].perd += Number(o.qtd_perdida ?? 0) || 0;
+      }
+    });
+    const rows = Object.values(grupos).sort((a,b)=>b.valor-a.valor);
+    html += `
+      <div class="sbox">
+        <div class="sbox-h">🏢 Comparativo de Empresas</div>
+        <div class="sbox-b">
+          <canvas id="rel-chart-empresas" height="120"></canvas>
+        </div>
+      </div>
+    `;
+    html += tbl(['EMPRESA','OFs','CONCLUÍDAS','VALOR','PROD','PERD','PERDA %'], rows.map((r,i)=>{
+      const base = (Number(r.prod||0)+Number(r.perd||0)) || 0;
+      const pp = base>0 ? (Number(r.perd||0)/base)*100 : 0;
+      const e = getEmp(r.emp);
+      const nome = e ? e.nome : r.emp;
+      return `<tr style="${trStyle(i)}">
+        <td style="${tdStyle};font-weight:900">${escH(nome)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.ofs)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.concl)}</td>
+        <td style="${tdStyle};text-align:right;color:var(--green);font-weight:900;font-family:var(--mono)">${fmtR(r.valor)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${fmtN(r.prod)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);color:var(--red);font-weight:900">${fmtN(r.perd)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${pp.toFixed(1)}%</td>
+      </tr>`;
+    }).join('') || `<tr><td style="${tdStyle}" colspan="7">—</td></tr>`);
+    setTimeout(()=>{ Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+      if(!ok || typeof Chart === 'undefined') return;
+      const canvas = document.getElementById('rel-chart-empresas');
+      if(!canvas) return;
+      try{ if(window._relEmpresasChart && typeof window._relEmpresasChart.destroy === 'function'){ window._relEmpresasChart.destroy(); } }catch(e){}
+      const labels = rows.map(r=> (getEmp(r.emp)?.nome || r.emp));
+      const valores = rows.map(r=>Number(r.valor||0));
+      window._relEmpresasChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Valor (R$)', data: valores, backgroundColor: 'rgba(16,185,129,0.55)', borderRadius: 4 }] },
+        options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { color: '#9ca3af' } }, x: { ticks: { color: '#9ca3af' } } } }
+      });
+    }); }, 0);
+  } else if(tipo==='producao-empilhada'){
+    const concl = ofsAll.filter(o=>{
+      const st = String(o.status||'').toLowerCase();
+      return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado';
+    });
+    const mesKey = (o)=>{
+      const d = String(o.data_conclusao || o.dataConclusao || o.updated_at || o.dia || '').slice(0,10);
+      return d ? d.slice(0,7) : '';
+    };
+    const maqKey = (o)=>{
+      const n = String(o.maquina_producao || o.maquina_perda || o.maquina || '').trim();
+      return n || '—';
+    };
+    const mesesSet = new Set();
+    const maqSet = new Set();
+    const by = {};
+    concl.forEach((o)=>{
+      const m = mesKey(o);
+      if(!m) return;
+      const maq = maqKey(o);
+      mesesSet.add(m);
+      maqSet.add(maq);
+      const k = m + '|' + maq;
+      if(!by[k]) by[k] = 0;
+      by[k] += Number(o.qtd_produzida ?? 0) || 0;
+    });
+    const meses = Array.from(mesesSet).sort();
+    const maqAll = Array.from(maqSet);
+    const totalByMaq = maqAll.map(n=>({ n, total: meses.reduce((s,mes)=>s+(Number(by[mes+'|'+n]||0)),0) })).sort((a,b)=>b.total-a.total);
+    const topMaq = totalByMaq.slice(0, 8).map(x=>x.n);
+    html += `
+      <div class="sbox">
+        <div class="sbox-h">📊 Produção Empilhada por Máquina (mês)</div>
+        <div class="sbox-b">
+          <canvas id="rel-chart-producao-emp" height="140"></canvas>
+        </div>
+      </div>
+    `;
+    setTimeout(()=>{ Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+      if(!ok || typeof Chart === 'undefined') return;
+      const canvas = document.getElementById('rel-chart-producao-emp');
+      if(!canvas) return;
+      try{ if(window._relProducaoEmpChart && typeof window._relProducaoEmpChart.destroy === 'function'){ window._relProducaoEmpChart.destroy(); } }catch(e){}
+      const palette = [
+        'rgba(59,130,246,0.55)','rgba(16,185,129,0.55)','rgba(245,158,11,0.55)','rgba(236,72,153,0.55)',
+        'rgba(168,85,247,0.55)','rgba(34,211,238,0.55)','rgba(244,63,94,0.55)','rgba(234,179,8,0.55)'
+      ];
+      const datasets = topMaq.map((maq,idx)=>({
+        label: maq,
+        data: meses.map(m=>Number(by[m+'|'+maq]||0)),
+        backgroundColor: palette[idx % palette.length],
+        borderRadius: 3,
+        stack: 'stack1'
+      }));
+      window._relProducaoEmpChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: meses, datasets },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' } },
+          scales: {
+            x: { stacked: true, ticks: { color: '#9ca3af' } },
+            y: { stacked: true, beginAtZero: true, ticks: { color: '#9ca3af' } }
+          }
+        }
+      });
+    }); }, 0);
+  } else if(tipo==='capacidade-semanal'){
+    const range = getRelDateRange();
+    const mkDate = (s)=>{ try{ return new Date(String(s).slice(0,10)+'T00:00:00'); }catch(_){ return null; } };
+    const startOfWeek = (d)=>{
+      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+      const dow = x.getDay();
+      const diff = (dow === 0) ? 6 : (dow - 1);
+      x.setDate(x.getDate() - diff);
+      return x;
+    };
+    const endOfWeek = (d)=>{
+      const x = startOfWeek(d);
+      x.setDate(x.getDate() + 4);
+      return x;
+    };
+    const baseDate = (range && range.de) ? mkDate(range.de) : new Date();
+    const de = baseDate ? startOfWeek(baseDate) : startOfWeek(new Date());
+    const ate = baseDate ? endOfWeek(baseDate) : endOfWeek(new Date());
+    const deIso = de.toISOString().slice(0,10);
+    const ateIso = ate.toISOString().slice(0,10);
+    const dias = 5;
+    const maquinas = (Array.isArray(MAQUINAS) ? MAQUINAS : []).filter(m=>m && m.ativo !== false);
+    const concl = (o)=>{
+      const st = String(o.status||'').toLowerCase();
+      return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado' || st.includes('cancel');
+    };
+    const ofsSemana = (OFs||[]).filter(o=>{
+      if(!o || concl(o)) return false;
+      const d = String(o.dia || o.data_producao || o.dataProducao || '').slice(0,10);
+      if(!d) return false;
+      return d >= deIso && d <= ateIso;
+    });
+    const norm = (s)=>String(s||'').trim().toLowerCase();
+    const maqNomeDeOF = (o)=>String(ofFluxoGetMaquinaAtual(o) || o.maquina || o.maquina_producao || '').trim();
+    const rows = maquinas.map((m)=>{
+      const disp = calcMaquinaDisponibilidade(m || {});
+      const horasDia = (Number(disp.tempoProdMin||0) || 0) / 60;
+      const capHoras = horasDia * dias;
+      const capUn = capHoras * (Number(m.phora || m.producao || 0) || 0);
+      const lista = ofsSemana.filter(o=> norm(maqNomeDeOF(o)) === norm(m.col || m.nome || ''));
+      const cargaHoras = lista.reduce((s,o)=>{
+        const qtd = Number(o.qtd || o.quantidade || 0) || 0;
+        const ph = Number(m.phora || m.producao || 0) || 0;
+        const setupMin = Number(m.setup || m.setup_medio || 0) || 0;
+        const hProd = ph > 0 ? (qtd / ph) : 0;
+        const hSetup = setupMin > 0 ? (setupMin/60) : 0;
+        return s + hProd + hSetup;
+      }, 0);
+      const usoPct = capHoras > 0 ? (cargaHoras / capHoras) * 100 : 0;
+      return { maq: m.col || m.nome || '—', capHoras, cargaHoras, usoPct, capUn, ofs: lista.length };
+    }).filter(r=>r.ofs>0 || r.capHoras>0).sort((a,b)=>b.usoPct-a.usoPct);
+    html += `<div style="margin:10px 0 12px;color:var(--text3);font-family:var(--mono);font-size:.72rem">Semana: <b style="color:var(--text2)">${escH(deIso)} → ${escH(ateIso)}</b></div>`;
+    html += tbl(['MÁQUINA','OFs','CAPACIDADE (h)','CARGA (h)','USO %','CAPACIDADE (un)'], rows.map((r,i)=>{
+      const cor = r.usoPct<=85?'var(--green)':r.usoPct<=100?'var(--yellow)':'var(--red)';
+      return `<tr style="${trStyle(i)}">
+        <td style="${tdStyle};font-weight:900">${escH(r.maq)}</td>
+        <td style="${tdStyle};text-align:center">${fmtN(r.ofs)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${r.capHoras.toFixed(1)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${r.cargaHoras.toFixed(1)}</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono);font-weight:900;color:${cor}">${r.usoPct.toFixed(0)}%</td>
+        <td style="${tdStyle};text-align:right;font-family:var(--mono)">${fmtN(Math.round(r.capUn||0))}</td>
+      </tr>`;
+    }).join('') || `<tr><td style="${tdStyle}" colspan="6">—</td></tr>`);
+  } else if(tipo==='nfe-importar'){
+    html += `
+      <div class="sbox">
+        <div class="sbox-h">📄 Importar XML NF-e</div>
+        <div class="sbox-b">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+            <div style="min-width:240px;flex:1">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">ARQUIVO XML</div>
+              <input id="nfe-xml-file" type="file" accept=".xml" style="width:100%">
+            </div>
+            <div style="min-width:180px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">TIPO</div>
+              <select id="nfe-xml-tipo" style="width:100%">
+                <option value="entrada">Entrada</option>
+                <option value="saida">Saída</option>
+              </select>
+            </div>
+            <button class="btn btn-accent btn-sm" onclick="nfeImportarXml()">Importar</button>
+          </div>
+          <div id="nfe-xml-status" style="margin-top:10px;color:var(--text3);font-size:.74rem">—</div>
+        </div>
+      </div>
+    `;
+  } else if(tipo==='whatsapp-zapi'){
+    html += `
+      <div class="sbox">
+        <div class="sbox-h">💬 WhatsApp (Z-API)</div>
+        <div class="sbox-b">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+            <div>
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">PHONE (DDI+DDD+NÚMERO)</div>
+              <input id="wa-phone" placeholder="5511999999999" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem">
+            </div>
+            <div style="grid-column:1/-1">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">MENSAGEM</div>
+              <textarea id="wa-msg" rows="4" placeholder="Mensagem..." style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem"></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+            <button class="btn btn-accent btn-sm" onclick="waEnviarTeste()">Enviar</button>
+          </div>
+          <div id="wa-status" style="margin-top:10px;color:var(--text3);font-size:.74rem">—</div>
+        </div>
+      </div>
+    `;
+  } else if(tipo==='google-calendar'){
+    html += `
+      <div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>📅 Google Calendar (OAuth)</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="googleCalStatus()">Recarregar</button>
+            <button class="btn btn-accent btn-sm" onclick="googleCalAbrirAuth()">Conectar</button>
+          </div>
+        </div>
+        <div class="sbox-b">
+          <div id="gcal-status" style="color:var(--text3);font-size:.74rem;margin-bottom:10px">Carregando…</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+            <div>
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">TÍTULO</div>
+              <input id="gcal-summary" placeholder="Entrega / Reunião" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem">
+            </div>
+            <div>
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">DATA</div>
+              <input id="gcal-date" type="date" style="width:100%">
+            </div>
+            <div>
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">INÍCIO</div>
+              <input id="gcal-start" type="time" value="08:00" style="width:100%">
+            </div>
+            <div>
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">FIM</div>
+              <input id="gcal-end" type="time" value="09:00" style="width:100%">
+            </div>
+            <div style="grid-column:1/-1">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">DESCRIÇÃO</div>
+              <textarea id="gcal-desc" rows="3" placeholder="Opcional" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem"></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+            <button class="btn btn-green btn-sm" onclick="googleCalCriarEvento()">Criar evento</button>
+          </div>
+          <div id="gcal-create-status" style="margin-top:10px;color:var(--text3);font-size:.74rem">—</div>
+        </div>
+      </div>
+    `;
+    setTimeout(()=>{ try{ googleCalStatus(); }catch(e){} }, 0);
+  } else if(tipo==='email-relatorio'){
+    html += `
+      <div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>📧 Relatório por Email</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="relEmailCarregar()">Recarregar</button>
+            <button class="btn btn-accent btn-sm" onclick="relEmailSalvar()">Salvar</button>
+            <button class="btn btn-green btn-sm" onclick="relEmailEnviarAgora()">Enviar agora</button>
+          </div>
+        </div>
+        <div class="sbox-b">
+          <div id="rel-email-status" style="color:var(--text3);font-size:.74rem;margin-bottom:10px">Carregando…</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">ATIVO</div>
+              <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="rel-email-enabled"> <span style="color:var(--text2);font-weight:800">Habilitar envio</span></label>
+            </div>
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">CRON</div>
+              <input id="rel-email-cron" placeholder="0 7 * * 1" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem">
+              <div style="margin-top:6px;color:var(--text3);font-size:.72rem;font-family:var(--mono)">ex: 0 7 * * 1 (seg 07:00)</div>
+            </div>
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">PERÍODO</div>
+              <select id="rel-email-period" style="width:100%">
+                <option value="ontem">Ontem</option>
+                <option value="semana">Semana</option>
+                <option value="mes">Mês</option>
+              </select>
+            </div>
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">EMPRESA</div>
+              <select id="rel-email-emp" style="width:100%"><option value="">Todas</option>${(EMPRESAS||[]).map(e=>`<option value="${escAttr(e.id)}">${escH(e.nome)}</option>`).join('')}</select>
+            </div>
+          </div>
+          <div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:12px">
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">DESTINATÁRIOS (um por linha)</div>
+            <textarea id="rel-email-to" placeholder="financeiro@empresa.com.br" style="width:100%;min-height:110px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem"></textarea>
+          </div>
+        </div>
+      </div>
+    `;
+    setTimeout(()=>{ try{ relEmailCarregar(); }catch(e){} }, 0);
+  } else if(tipo==='estoque-atual'){
     const relContent = document.getElementById('rel-content');
     if(relContent){
       relContent.innerHTML = `<div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text2)">Carregando inventário de estoque...</div>`;
@@ -18715,6 +19338,249 @@ function exportarRelCSV(){
   const a=document.createElement('a');a.href=url;a.download='pcpro_'+tipo+'_'+today()+'.csv';a.click();
   URL.revokeObjectURL(url);
   toast('✓ CSV exportado!','var(--green)');
+}
+
+function exportarRelExcel(){
+  const tipo=(document.getElementById('rel-tipo')||{}).value||'relatorio';
+  const table=document.querySelector('#rel-content table');
+  if(!table){toast('Nenhuma tabela para exportar','var(--yellow)');return;}
+  exportarTabelaExcel(table, 'pcpro_'+tipo+'_'+today()+'.xlsx', 'Relatorio');
+}
+
+function exportarTabelaExcel(tableEl, filename, sheetName){
+  if(typeof XLSX === 'undefined' || !XLSX.utils){ toast('SheetJS não disponível','var(--red)'); return; }
+  try{
+    const ws = (XLSX.utils.table_to_sheet ? XLSX.utils.table_to_sheet(tableEl, { raw:true }) : null);
+    const ws2 = ws || (function(){
+      const rows = [];
+      tableEl.querySelectorAll('tr').forEach(tr=>{
+        const cells = Array.from(tr.querySelectorAll('th,td')).map(td=>String(td.textContent||'').trim());
+        if(cells.length) rows.push(cells);
+      });
+      return XLSX.utils.aoa_to_sheet(rows);
+    })();
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws2, sheetName || 'Dados');
+    XLSX.writeFile(wb, filename || ('export_'+today()+'.xlsx'));
+    toast('✓ Excel exportado!','var(--green)');
+  }catch(e){
+    toast('Erro ao exportar Excel','var(--red)');
+  }
+}
+
+var _excelObs = null;
+var _excelObsTimer = null;
+function _injectExcelButtons(){
+  try{
+    const page = document.querySelector('.page.active') || document;
+    const tables = page.querySelectorAll('table');
+    tables.forEach((tableEl)=>{
+      if(!tableEl || tableEl.dataset.excelInjected==='1') return;
+      const wrapper = tableEl.parentElement;
+      const container = wrapper ? wrapper.parentElement : null;
+      if(!wrapper || !container) return;
+      if(container.querySelector(`.excel-export-bar[data-for="${tableEl.dataset.excelId||''}"]`)) return;
+      const id = tableEl.dataset.excelId || ('t'+Math.random().toString(16).slice(2));
+      tableEl.dataset.excelId = id;
+      tableEl.dataset.excelInjected = '1';
+      const bar = document.createElement('div');
+      bar.className = 'excel-export-bar';
+      bar.dataset.for = id;
+      bar.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin:6px 0';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.textContent = '📥 Excel';
+      btn.onclick = function(){
+        const pid = String((document.querySelector('.page.active')||{}).id || 'tabela').replace(/^page-/, '');
+        exportarTabelaExcel(tableEl, `pcpro_${pid}_${today()}.xlsx`, 'Dados');
+      };
+      bar.appendChild(btn);
+      container.insertBefore(bar, wrapper);
+    });
+  }catch(e){}
+}
+
+function initExcelExportButtons(){
+  if(_excelObs) return;
+  _injectExcelButtons();
+  _excelObs = new MutationObserver(()=>{
+    if(_excelObsTimer) clearTimeout(_excelObsTimer);
+    _excelObsTimer = setTimeout(_injectExcelButtons, 120);
+  });
+  _excelObs.observe(document.documentElement, { childList:true, subtree:true });
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initExcelExportButtons);
+else initExcelExportButtons();
+
+async function relEmailCarregar(){
+  const stEl = document.getElementById('rel-email-status');
+  if(stEl) stEl.textContent = 'Carregando…';
+  const cfgResp = await apiFetch('/api/relatorios/email/config', { method:'GET' });
+  const cfgJ = cfgResp ? await cfgResp.json().catch(()=>null) : null;
+  const cfg = (cfgJ && cfgJ.data) ? cfgJ.data : (cfgJ && typeof cfgJ === 'object' ? cfgJ : null);
+  const stResp = await apiFetch('/api/relatorios/email/status', { method:'GET' });
+  const stJ = stResp ? await stResp.json().catch(()=>null) : null;
+  const st = (stJ && stJ.data) ? stJ.data : (stJ && typeof stJ === 'object' ? stJ : null);
+
+  if(cfg){
+    const enEl = document.getElementById('rel-email-enabled'); if(enEl) enEl.checked = !!cfg.enabled;
+    const cEl = document.getElementById('rel-email-cron'); if(cEl) cEl.value = String(cfg.cron || '0 7 * * 1');
+    const pEl = document.getElementById('rel-email-period'); if(pEl) pEl.value = String(cfg.period || 'ontem');
+    const eEl = document.getElementById('rel-email-emp'); if(eEl) eEl.value = String(cfg.emp_id || '');
+    const toEl = document.getElementById('rel-email-to'); if(toEl) toEl.value = Array.isArray(cfg.to) ? cfg.to.join('\n') : '';
+  }
+  if(stEl){
+    const last = st?.lastRunAt ? fmtDataBR(String(st.lastRunAt).slice(0,10))+' '+String(st.lastRunAt).slice(11,16) : '—';
+    const ok = st?.lastOk;
+    const okTxt = (ok===true) ? 'OK' : (ok===false ? 'ERRO' : '—');
+    const errTxt = st?.lastError ? (' · ' + String(st.lastError)) : '';
+    stEl.textContent = `Status: ${okTxt}${errTxt} · Último envio: ${last}`;
+    stEl.style.color = (ok===false) ? 'var(--red)' : (ok===true ? 'var(--green)' : 'var(--text3)');
+  }
+}
+
+async function relEmailSalvar(){
+  const cfg = {
+    enabled: !!document.getElementById('rel-email-enabled')?.checked,
+    cron: String(document.getElementById('rel-email-cron')?.value || '').trim(),
+    period: String(document.getElementById('rel-email-period')?.value || 'ontem').trim(),
+    emp_id: String(document.getElementById('rel-email-emp')?.value || '').trim(),
+    to: String(document.getElementById('rel-email-to')?.value || '').split(/\r?\n/).map(s=>String(s||'').trim()).filter(Boolean),
+  };
+  const resp = await apiFetch('/api/relatorios/email/config', { method:'PUT', body: cfg });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){ toast('Erro ao salvar','var(--red)'); return; }
+  toast('✓ Configuração salva','var(--green)');
+  await relEmailCarregar();
+}
+
+async function relEmailEnviarAgora(){
+  const resp = await apiFetch('/api/relatorios/email/enviar_agora', { method:'POST', body:{} });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){
+    const err = (j && (j.error || j.message)) ? (j.error || j.message) : 'falha';
+    toast('Erro ao enviar: '+String(err),'var(--red)');
+    try{ await relEmailCarregar(); }catch(e){}
+    return;
+  }
+  toast('✓ Email enviado','var(--green)');
+  await relEmailCarregar();
+}
+
+async function waEnviarTeste(){
+  const st = document.getElementById('wa-status');
+  if(st) st.textContent = 'Enviando…';
+  try{
+    const phone = String(document.getElementById('wa-phone')?.value || '').trim();
+    const message = String(document.getElementById('wa-msg')?.value || '').trim();
+    const resp = await apiFetch('/api/integracoes/whatsapp/enviar', { method:'POST', body:{ phone, message } });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (j && j.ok===false)){
+      const err = (j && (j.error || j.message)) ? (j.error || j.message) : 'falha';
+      if(st) st.textContent = 'Erro: ' + String(err);
+      if(st) st.style.color = 'var(--red)';
+      return;
+    }
+    if(st) st.textContent = 'Enviado ✓';
+    if(st) st.style.color = 'var(--green)';
+  }catch(e){
+    if(st) st.textContent = 'Erro: ' + String(e?.message || e);
+    if(st) st.style.color = 'var(--red)';
+  }
+}
+
+async function nfeImportarXml(){
+  const st = document.getElementById('nfe-xml-status');
+  if(st) st.textContent = 'Importando…';
+  try{
+    const file = document.getElementById('nfe-xml-file')?.files?.[0] || null;
+    if(!file){ if(st) st.textContent = 'Selecione um arquivo XML.'; return; }
+    const tipo = String(document.getElementById('nfe-xml-tipo')?.value || 'entrada').trim();
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('tipo', tipo);
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const resp = await fetch('/api/notas_fiscais/import_xml', { method:'POST', headers:{ 'Authorization':'Bearer '+token }, body: fd });
+    const j = await resp.json().catch(()=>null);
+    if(!resp.ok || (j && j.ok===false)){
+      const err = (j && (j.error || j.message)) ? (j.error || j.message) : 'falha';
+      if(st) st.textContent = 'Erro: ' + String(err);
+      if(st) st.style.color = 'var(--red)';
+      return;
+    }
+    if(st) st.textContent = 'Importado ✓';
+    if(st) st.style.color = 'var(--green)';
+    try{
+      const r2 = await apiFetch('/api/notas_fiscais', { method:'GET' });
+      const j2 = r2 ? await r2.json().catch(()=>null) : null;
+      const data = (j2 && j2.data) ? j2.data : (Array.isArray(j2) ? j2 : []);
+      if(r2 && r2.ok && Array.isArray(data)) NOTAS_FISCAIS = data;
+    }catch(e){}
+    try{ renderRelatorio(); }catch(e){}
+  }catch(e){
+    if(st) st.textContent = 'Erro: ' + String(e?.message || e);
+    if(st) st.style.color = 'var(--red)';
+  }
+}
+
+async function googleCalStatus(){
+  const st = document.getElementById('gcal-status');
+  if(st) st.textContent = 'Carregando…';
+  try{
+    const resp = await apiFetch('/api/integracoes/google/status', { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const d = (j && j.data) ? j.data : null;
+    if(!resp || !resp.ok || (j && j.ok===false)){
+      const err = (j && (j.error || j.message)) ? (j.error || j.message) : 'falha';
+      if(st) st.textContent = 'Erro: ' + String(err);
+      if(st) st.style.color = 'var(--red)';
+      return;
+    }
+    const ok = !!d?.configured;
+    if(st) st.textContent = ok ? `Conectado ✓ · Calendário: ${String(d.calendar_id||'primary')}` : 'Não conectado';
+    if(st) st.style.color = ok ? 'var(--green)' : 'var(--text3)';
+  }catch(e){
+    if(st) st.textContent = 'Erro: ' + String(e?.message || e);
+    if(st) st.style.color = 'var(--red)';
+  }
+}
+
+async function googleCalAbrirAuth(){
+  try{
+    const resp = await apiFetch('/api/integracoes/google/auth_url', { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const url = j && j.url ? String(j.url) : '';
+    if(!resp || !resp.ok || !url){ toast('Erro ao gerar link','var(--red)'); return; }
+    window.open(url, '_blank', 'noopener,noreferrer');
+    toast('Abra a aba e conclua o login. Depois clique em Recarregar.','var(--yellow)');
+  }catch(e){
+    toast('Erro: '+String(e?.message || e),'var(--red)');
+  }
+}
+
+async function googleCalCriarEvento(){
+  const st = document.getElementById('gcal-create-status');
+  if(st) st.textContent = 'Criando…';
+  try{
+    const summary = String(document.getElementById('gcal-summary')?.value || '').trim();
+    const date = String(document.getElementById('gcal-date')?.value || '').slice(0,10);
+    const start_time = String(document.getElementById('gcal-start')?.value || '08:00').trim();
+    const end_time = String(document.getElementById('gcal-end')?.value || '09:00').trim();
+    const description = String(document.getElementById('gcal-desc')?.value || '').trim();
+    const resp = await apiFetch('/api/integracoes/google/evento', { method:'POST', body:{ summary, date, start_time, end_time, description } });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || (j && j.ok===false)){
+      const err = (j && (j.error || j.message)) ? (j.error || j.message) : 'falha';
+      if(st) st.textContent = 'Erro: ' + String(err);
+      if(st) st.style.color = 'var(--red)';
+      return;
+    }
+    if(st) st.textContent = 'Criado ✓';
+    if(st) st.style.color = 'var(--green)';
+  }catch(e){
+    if(st) st.textContent = 'Erro: ' + String(e?.message || e);
+    if(st) st.style.color = 'var(--red)';
+  }
 }
 
 function importarDados(){
@@ -20731,6 +21597,7 @@ function normalizeMaq(r){
     setup_medio:toNum(setupBase),
     passagem:toNum(r.passagem_media ?? r.passagem ?? 0),
     passagem_media:toNum(r.passagem_media ?? r.passagem ?? 0),
+    meta_perda_pct: (r.meta_perda_pct != null && String(r.meta_perda_pct).trim() !== '') ? toNum(r.meta_perda_pct) : null,
     setor:r.setor||'',
     desc:r.desc||r.descricao||'',
     horario_inicio: String(horario_inicio || '07:00').trim() || '07:00',
@@ -22045,6 +22912,8 @@ function abrirModalMaquina(mi){
   if(phoraEl) phoraEl.value = m ? (m.phora || def?.phora || '') : '';
   document.getElementById('maq-e-setup').value=m?m.setup:'';
   document.getElementById('maq-e-passagem').value=m?(m.passagem||''):'';
+  const metaEl = document.getElementById('maq-e-meta-perda');
+  if(metaEl) metaEl.value = (m && m.meta_perda_pct !== undefined && m.meta_perda_pct !== null) ? String(m.meta_perda_pct) : '';
   document.getElementById('maq-e-setor').value=m?(m.setor||''):'';
   document.getElementById('maq-e-desc').value=m?(m.desc||''):'';
   const puxMinEl = document.getElementById('maq-e-puxmin');
@@ -22162,6 +23031,14 @@ async function salvarMaquina(){
     producao: toInt(lerInput('maq-e-phora','maq-producao','producao','phora','prod','producao_hora','caixas_hora'), 0),
     setup_medio: toInt(lerInput('maq-e-setup','maq-setup','setup_medio','setup','tempo_setup_padrao_min'), 0),
     passagem_media: toInt(lerInput('maq-e-passagem','maq-passagem','passagem_media','passagem'), 0),
+    meta_perda_pct: (()=>{
+      const raw = lerInput('maq-e-meta-perda','meta_perda_pct');
+      const s = String(raw ?? '').trim();
+      if(s === '') return id ? null : undefined;
+      const n = toFloat(s, null);
+      if(n == null) return id ? null : undefined;
+      return Math.max(0, Math.min(100, n));
+    })(),
     descricao: String(lerInput('maq-e-desc','maq-descricao','descricao','desc') || '').trim() || null,
     horario_inicio: String(lerInput('maq-e-hi','maq-horario-inicio','horario_inicio') || '07:00').trim() || '07:00',
     horario_fim: String(lerInput('maq-e-hf','maq-horario-fim','horario_fim','fim_expediente') || '18:00').trim() || '18:00',
@@ -22178,7 +23055,8 @@ async function salvarMaquina(){
     ativo: true,
   };
   Object.keys(payload).forEach((k)=>{
-    if(payload[k] === undefined || payload[k] === null) delete payload[k];
+    if(payload[k] === undefined) delete payload[k];
+    else if(payload[k] === null && k !== 'meta_perda_pct') delete payload[k];
   });
 
   console.log('[MAQUINA SAVE] payload final:', JSON.stringify(payload));
@@ -30347,6 +31225,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <select id="rel-tipo" onchange="renderRelatorio()">
       <option value="vendas-cliente">Vendas por Cliente</option>
       <option value="vendas-ramo">Vendas por Ramo</option>
+      <option value="dre">📒 DRE (Financeiro)</option>
+      <option value="tendencia-perdas">📈 Tendência de Perdas</option>
+      <option value="meta-perda-maquina">🎯 Meta de Perdas por Máquina</option>
+      <option value="comparativo-empresas-grafico">🏢 Comparativo de Empresas (Gráfico)</option>
+      <option value="producao-empilhada">📊 Produção Empilhada (por Máquina)</option>
       <option value="resultado-empresas">📊 Resultado por Empresa</option>
       <option value="vendas-por-vendedor">📊 Vendas por Vendedor no Mês</option>
       <option value="vendas-mensal-comissao">Vendas Mensais + Comissão</option>
@@ -30355,7 +31238,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="estoque-atual">Estoque Atual</option>
       <option value="estoque">Estoque de Chapas</option>
       <option value="maquinas">Produção por Máquina</option>
+      <option value="eficiencia-maquina">⚙ Eficiência por Máquina (Perdas)</option>
       <option value="compras">Compras de MP</option>
+      <option value="capacidade-semanal">🗓 Capacidade Semanal</option>
+      <option value="nfe-importar">📄 Importar XML NF-e</option>
+      <option value="whatsapp-zapi">💬 WhatsApp (Z-API)</option>
+      <option value="google-calendar">📅 Google Calendar (OAuth)</option>
+      <option value="email-relatorio">📧 Relatório por Email</option>
     </select>
     <select id="rel-vendedor-fil" onchange="renderRelatorio()" style="display:none;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;font-family:var(--font)">
       <option value="">Todos os vendedores</option>
@@ -30376,6 +31265,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <input type="date" id="rel-ate" onchange="renderRelatorio()" placeholder="Até" style="display:none;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 8px;font-size:.75rem;width:130px">
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="exportarRelCSV()">📊 Exportar CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportarRelExcel()">📥 Exportar Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="exportarDadosCompletos()">💾 Salvar Dados</button>
     <button class="btn btn-purple" onclick="imprimirRel()">🖨 Imprimir</button>
   </div>
@@ -31128,9 +32018,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="qtd-perdida" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:700">
       </div>
       <div id="modal-maq-perda-wrap" style="display:none;flex-direction:column;gap:6px">
-        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🏭 Máquina da perda</label>
+        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🏭 Máquina da perda (opcional)</label>
         <select id="modal-maq-perda" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
-          <option value="">Selecione a máquina...</option>
+          <option value="">(Opcional) Selecionar máquina...</option>
         </select>
       </div>
     </div>
@@ -31777,6 +32667,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="mf"><label>PRODUÇÃO (un/hora)</label><input id="maq-e-phora" type="number" placeholder="1000"></div>
     <div class="mf"><label>SETUP MÉDIO (min)</label><input id="maq-e-setup" type="number" placeholder="30"></div>
     <div class="mf"><label>PASSAGEM MÉDIA (min)</label><input id="maq-e-passagem" type="number" placeholder="60"></div>
+    <div class="mf"><label>🎯 META PERDA (%)</label><input id="maq-e-meta-perda" type="number" step="0.1" min="0" max="100" placeholder="Ex: 2.5"></div>
     <div class="mf"><label>📏 PUXADA MÍNIMA (mm)</label><input id="maq-e-puxmin" type="number" step="0.1" value="0" min="0"></div>
     <div class="mf"><label>📏 PUXADA MÁXIMA (mm)</label><input id="maq-e-puxmax" type="number" step="0.1" value="9999" min="0"></div>
     <div class="mf"><label>📐 BOCA MÁXIMA (mm)</label><input id="maq-e-bocamax" type="number" step="0.1" value="9999" min="0"></div>

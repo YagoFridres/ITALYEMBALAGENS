@@ -9,6 +9,9 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { XMLParser } = require('fast-xml-parser');
+let cron = null;
+try { cron = require('node-cron'); } catch (_) { cron = null; }
 
 function parseFluxo(v) {
   if (Array.isArray(v)) return v;
@@ -1676,7 +1679,6 @@ function clientesPayload(p) {
     obs: 'observacoes',
     emp_id: 'emp_id',
     empId: 'emp_id',
-    ramo_atividade: 'ramo',
     ramo: 'ramo',
     vendedor_id: 'vendedor_id',
     vendId: 'vendedor_id',
@@ -1698,7 +1700,6 @@ async function clientesInsertCompat(payload) {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
-      if (p.ramo !== undefined) { p.ramo_atividade = p.ramo; delete p.ramo; }
       return p;
     })(),
   ];
@@ -1714,16 +1715,6 @@ async function clientesInsertCompat(payload) {
       const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
       if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
-        if (col === 'ramo_atividade' && cur.ramo_atividade !== undefined && cur.ramo === undefined) {
-          cur.ramo = cur.ramo_atividade;
-          delete cur.ramo_atividade;
-          continue;
-        }
-        if (col === 'ramo' && cur.ramo !== undefined && cur.ramo_atividade === undefined) {
-          cur.ramo_atividade = cur.ramo;
-          delete cur.ramo;
-          continue;
-        }
         delete cur[col];
         continue;
       }
@@ -1741,7 +1732,6 @@ async function clientesUpdateCompat(id, payload) {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
-      if (p.ramo !== undefined) { p.ramo_atividade = p.ramo; delete p.ramo; }
       return p;
     })(),
   ];
@@ -1757,16 +1747,6 @@ async function clientesUpdateCompat(id, payload) {
       const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
       if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
-        if (col === 'ramo_atividade' && cur.ramo_atividade !== undefined && cur.ramo === undefined) {
-          cur.ramo = cur.ramo_atividade;
-          delete cur.ramo_atividade;
-          continue;
-        }
-        if (col === 'ramo' && cur.ramo !== undefined && cur.ramo_atividade === undefined) {
-          cur.ramo_atividade = cur.ramo;
-          delete cur.ramo;
-          continue;
-        }
         delete cur[col];
         continue;
       }
@@ -5157,6 +5137,7 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       producao: b.producao != null ? Number(b.producao) : (b.phora != null ? Number(b.phora) : 0),
       setup_medio: b.setup_medio != null ? Number(b.setup_medio) : (b.setup != null ? Number(b.setup) : 0),
       passagem_media: b.passagem_media != null ? Number(b.passagem_media) : (b.passagem != null ? Number(b.passagem) : 0),
+      meta_perda_pct: b.meta_perda_pct != null ? Number(b.meta_perda_pct) : undefined,
       descricao: String(b.descricao ?? b.desc ?? '').trim() || null,
       icone: String(b.icone ?? b.ico ?? '').trim() || null,
       horario_inicio: String(b.horario_inicio ?? '').trim() || undefined,
@@ -5196,6 +5177,7 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
       producao: b.producao !== undefined || b.phora !== undefined ? Number(b.producao ?? b.phora ?? 0) : undefined,
       setup_medio: b.setup_medio !== undefined || b.setup !== undefined ? Number(b.setup_medio ?? b.setup ?? 0) : undefined,
       passagem_media: b.passagem_media !== undefined || b.passagem !== undefined ? Number(b.passagem_media ?? b.passagem ?? 0) : undefined,
+      meta_perda_pct: b.meta_perda_pct !== undefined ? (b.meta_perda_pct === null ? null : Number(b.meta_perda_pct)) : undefined,
       descricao: b.descricao !== undefined || b.desc !== undefined ? (String(b.descricao ?? b.desc ?? '').trim() || null) : undefined,
       icone: b.icone !== undefined || b.ico !== undefined ? (String(b.icone ?? b.ico ?? '').trim() || null) : undefined,
       horario_inicio: b.horario_inicio !== undefined ? (String(b.horario_inicio ?? '').trim() || null) : undefined,
@@ -5724,6 +5706,286 @@ app.delete('/api/notas_fiscais/:id', async (req, res) => {
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) { err(res, e); }
+});
+
+const nfeXmlUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 },
+});
+
+function _asArray(v) {
+  if (Array.isArray(v)) return v;
+  if (v == null) return [];
+  return [v];
+}
+
+function _pick(obj, path, fallback = '') {
+  try {
+    const parts = String(path || '').split('.');
+    let cur = obj;
+    for (const p of parts) {
+      if (!cur || typeof cur !== 'object') return fallback;
+      cur = cur[p];
+    }
+    if (cur == null) return fallback;
+    return cur;
+  } catch (_) { return fallback; }
+}
+
+function _nfeStr(v) {
+  return String(v ?? '').trim();
+}
+
+function _nfeNum(v) {
+  const s = String(v ?? '').trim().replace(/\./g, '').replace(',', '.');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function _parseNfeXml(xml) {
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    removeNSPrefix: true,
+    trimValues: true,
+  });
+  const j = parser.parse(xml);
+  const proc = j?.nfeProc || j?.NfeProc || j?.procNFe || null;
+  const NFe = proc?.NFe || j?.NFe || j?.nfe?.NFe || j?.nfe || null;
+  const prot = proc?.protNFe || proc?.protNfe || null;
+  const infProt = prot?.infProt || prot?.infprot || null;
+  const infNFe = NFe?.infNFe || NFe?.infNfe || NFe?.NFe?.infNFe || null;
+
+  const chave =
+    _nfeStr(_pick(infProt, 'chNFe', '')) ||
+    _nfeStr(_pick(infNFe, '@_Id', '')).replace(/^NFe/i, '');
+
+  const ide = infNFe?.ide || null;
+  const emit = infNFe?.emit || null;
+  const dest = infNFe?.dest || null;
+  const total = infNFe?.total || null;
+  const icmsTot = total?.ICMSTot || total?.icmsTot || null;
+
+  const itens = _asArray(infNFe?.det).map((d) => {
+    const prod = d?.prod || null;
+    return {
+      descricao: _nfeStr(prod?.xProd || prod?.xprod || ''),
+      quantidade: _nfeNum(prod?.qCom || prod?.qcom || prod?.qTrib || prod?.qtrib || 0),
+      valor_unitario: _nfeNum(prod?.vUnCom || prod?.vuncom || prod?.vUnTrib || prod?.vuntrib || 0),
+      valor_total: _nfeNum(prod?.vProd || prod?.vprod || 0),
+      ncm: _nfeStr(prod?.NCM || prod?.ncm || ''),
+      cfop: _nfeStr(prod?.CFOP || prod?.cfop || ''),
+    };
+  }).filter((x) => x.descricao || x.ncm || x.cfop);
+
+  const dhEmi = _nfeStr(ide?.dhEmi || ide?.dEmi || ide?.demi || '');
+  const dataEmissao = dhEmi ? dhEmi.slice(0, 10) : '';
+
+  return {
+    chave: chave || '',
+    numero: _nfeStr(ide?.nNF || ide?.nnf || ''),
+    serie: _nfeStr(ide?.serie || ''),
+    data_emissao: dataEmissao || '',
+    nome_emitente: _nfeStr(emit?.xNome || emit?.xnome || ''),
+    nome_destinatario: _nfeStr(dest?.xNome || dest?.xnome || ''),
+    valor_total: _nfeNum(icmsTot?.vNF || icmsTot?.vnf || 0),
+    itens,
+  };
+}
+
+app.post('/api/notas_fiscais/import_xml', authMiddleware, nfeXmlUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo XML obrigatório' });
+    const tipo = String(req.body?.tipo || 'entrada').trim().toLowerCase() === 'saida' ? 'saida' : 'entrada';
+    const xml = req.file.buffer.toString('utf8');
+    const d = _parseNfeXml(xml);
+    if (!d.chave && !d.numero) return res.status(400).json({ ok: false, error: 'XML inválido ou NF-e não encontrada' });
+
+    const payload = {
+      chave: d.chave || null,
+      num: d.numero || null,
+      serie: d.serie || null,
+      tipo,
+      emit: d.nome_emitente || null,
+      dest: d.nome_destinatario || null,
+      data: d.data_emissao || null,
+      valor: d.valor_total || 0,
+      status: 'Importada XML',
+      itens: d.itens,
+      obs: `Importada via XML em ${new Date().toISOString().slice(0, 10)}`,
+    };
+    const { data, error } = await supabase.from('notas_fiscais').insert([payload]).select();
+    if (error) throw error;
+    return ok(res, data?.[0] || null);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/integracoes/whatsapp/enviar', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const instanceId = String(process.env.ZAPI_INSTANCE_ID || process.env.ZAPI_INSTANCE || '').trim();
+    const instanceToken = String(process.env.ZAPI_INSTANCE_TOKEN || process.env.ZAPI_TOKEN || '').trim();
+    const clientToken = String(process.env.ZAPI_CLIENT_TOKEN || process.env.ZAPI_SECURITY_TOKEN || '').trim();
+    if (!instanceId || !instanceToken) {
+      return res.status(400).json({ ok: false, error: 'Z-API não configurado (ZAPI_INSTANCE_ID e ZAPI_INSTANCE_TOKEN)' });
+    }
+    const phone = String(req.body?.phone || req.body?.to || '').replace(/\D/g, '');
+    const message = String(req.body?.message || '').trim();
+    if (!phone) return res.status(400).json({ ok: false, error: 'phone obrigatório (somente números, ex: 5511999999999)' });
+    if (!message) return res.status(400).json({ ok: false, error: 'message obrigatório' });
+
+    const url = `https://api.z-api.io/instances/${encodeURIComponent(instanceId)}/token/${encodeURIComponent(instanceToken)}/send-text`;
+    const headers = { 'Content-Type': 'application/json' };
+    if (clientToken) headers['client-token'] = clientToken;
+
+    const r = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ phone, message }) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) {
+      return res.status(400).json({ ok: false, error: j?.message || j?.error || r.statusText || 'zapi_failed', details: j || null });
+    }
+    return res.json({ ok: true, data: j });
+  } catch (e) { return err(res, e); }
+});
+
+let _googleOauthState = null;
+let _googleOauthStateExp = 0;
+
+function _googleNewState() {
+  _googleOauthState = crypto.randomBytes(18).toString('hex');
+  _googleOauthStateExp = Date.now() + 10 * 60 * 1000;
+  return _googleOauthState;
+}
+
+function _googleEnv() {
+  const clientId = String(process.env.GOOGLE_CLIENT_ID || '').trim();
+  const clientSecret = String(process.env.GOOGLE_CLIENT_SECRET || '').trim();
+  const redirectUri = String(process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_OAUTH_REDIRECT_URI || '').trim();
+  const calendarId = String(process.env.GOOGLE_CALENDAR_ID || 'primary').trim() || 'primary';
+  return { clientId, clientSecret, redirectUri, calendarId };
+}
+
+async function _googleGetTokensByCode(code) {
+  const { clientId, clientSecret, redirectUri } = _googleEnv();
+  if (!clientId || !clientSecret || !redirectUri) throw new Error('google_oauth_env_missing');
+  const body = new URLSearchParams({
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    grant_type: 'authorization_code',
+  });
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(j?.error_description || j?.error || 'google_token_exchange_failed');
+  return j;
+}
+
+async function _googleAccessTokenByRefresh(refreshToken) {
+  const { clientId, clientSecret } = _googleEnv();
+  if (!clientId || !clientSecret) throw new Error('google_oauth_env_missing');
+  const body = new URLSearchParams({
+    refresh_token: refreshToken,
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'refresh_token',
+  });
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(j?.error_description || j?.error || 'google_refresh_failed');
+  return j?.access_token || '';
+}
+
+app.get('/api/integracoes/google/auth_url', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { clientId, redirectUri } = _googleEnv();
+    if (!clientId || !redirectUri) return res.status(400).json({ ok: false, error: 'GOOGLE_CLIENT_ID/GOOGLE_REDIRECT_URI não configurado' });
+    const state = _googleNewState();
+    const qs = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/calendar.events',
+      access_type: 'offline',
+      prompt: 'consent',
+      state,
+    });
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?${qs.toString()}`;
+    return res.json({ ok: true, url });
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/integracoes/google/callback', async (req, res) => {
+  try {
+    const code = String(req.query?.code || '').trim();
+    const state = String(req.query?.state || '').trim();
+    if (!code) return res.status(400).send('Missing code');
+    if (!state || !_googleOauthState || state !== _googleOauthState || Date.now() > _googleOauthStateExp) {
+      return res.status(400).send('Invalid state');
+    }
+    const tok = await _googleGetTokensByCode(code);
+    if (!tok.refresh_token) return res.status(400).send('No refresh_token returned (try prompt=consent)');
+    await _saveConfigJson('google_calendar', { refresh_token: tok.refresh_token, updated_at: new Date().toISOString() }, null);
+    _googleOauthState = null;
+    _googleOauthStateExp = 0;
+    return res.send('<html><body style="font-family:system-ui;padding:18px"><h2>Conectado ✓</h2><p>Você pode fechar esta aba e voltar para o sistema.</p></body></html>');
+  } catch (e) {
+    return res.status(500).send(`<html><body style="font-family:system-ui;padding:18px"><h2>Erro</h2><pre>${String(e?.message || e)}</pre></body></html>`);
+  }
+});
+
+app.get('/api/integracoes/google/status', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const cfg = await _loadConfigJson('google_calendar', null);
+    const has = !!(cfg && cfg.refresh_token);
+    const { calendarId, redirectUri } = _googleEnv();
+    return res.json({ ok: true, data: { configured: has, calendar_id: calendarId || 'primary', redirect_uri: redirectUri || null } });
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const cfg = await _loadConfigJson('google_calendar', null);
+    const refreshToken = String(cfg?.refresh_token || '').trim();
+    if (!refreshToken) return res.status(400).json({ ok: false, error: 'Google Calendar não configurado' });
+    const { calendarId } = _googleEnv();
+
+    const summary = String(req.body?.summary || '').trim();
+    const date = String(req.body?.date || '').slice(0, 10);
+    const startTime = String(req.body?.start_time || '08:00').trim() || '08:00';
+    const endTime = String(req.body?.end_time || '09:00').trim() || '09:00';
+    const description = String(req.body?.description || '').trim() || null;
+    if (!summary) return res.status(400).json({ ok: false, error: 'summary obrigatório' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date inválida (YYYY-MM-DD)' });
+
+    const accessToken = await _googleAccessTokenByRefresh(refreshToken);
+    if (!accessToken) return res.status(500).json({ ok: false, error: 'google_access_token_failed' });
+
+    const tz = String(process.env.REPORT_TZ || 'America/Sao_Paulo').trim() || 'America/Sao_Paulo';
+    const start = `${date}T${startTime}:00`;
+    const end = `${date}T${endTime}:00`;
+    const payload = {
+      summary,
+      description,
+      start: { dateTime: start, timeZone: tz },
+      end: { dateTime: end, timeZone: tz },
+    };
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId || 'primary')}/events`;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(payload),
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok) return res.status(400).json({ ok: false, error: j?.error?.message || 'google_calendar_event_failed', details: j || null });
+    return res.json({ ok: true, data: j });
+  } catch (e) { return err(res, e); }
 });
 
 app.get('/api/estoque', async (req, res) => {
@@ -6469,20 +6731,12 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const hasFiltros = qEntries.length > 0;
     const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
-    const CACHE_VERSION = 'chapas_v2';
+    const CACHE_VERSION = 'chapas_v1';
     const cacheKey = hasFiltros
       ? ('chapas_estoque:' + CACHE_VERSION + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
       : ('chapas_estoque:' + CACHE_VERSION + ':all:limit=' + String(limitDb) + ':offset=' + String(offsetDb));
     const cached = cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
-    const selectV2Base = [
-      'id','fornecedor','nomenclatura','tamanho','nome_uso','categoria',
-      'quantidade','quantidade_atual','qtd',
-      'valor_unitario','valor_total','val',
-      'estoque_minimo','emp_id','empresa_vinculada',
-      'riscada','cliente_nome','cliente_id',
-      'qual_cnpj','qual','nf','vincos','observacao','risca_desc'
-    ];
     const applyFilters = (inRows) => {
       let rows = Array.isArray(inRows) ? inRows : [];
       if (!_isFiltroVazioChapas(req.query.empId)) {
@@ -8421,6 +8675,270 @@ app.delete('/api/chapas_categorias/:id', authMiddleware, async (req, res) => {
     res.json({ ok: true });
   } catch (e) { err(res, e); }
 });
+
+let _relEmailTask = null;
+let _relEmailState = { enabled: false, cron: null, to: [], empId: null, lastRunAt: null, lastOk: null, lastError: null };
+
+async function _loadConfigJson(chave, fallback) {
+  try {
+    const { data, error } = await supabase.from('configuracoes').select('valor').eq('chave', chave).maybeSingle();
+    if (error) return fallback;
+    if (!data || data.valor == null) return fallback;
+    return data.valor;
+  } catch (_) { return fallback; }
+}
+
+async function _saveConfigJson(chave, valor, req) {
+  const payload = {
+    chave,
+    valor,
+    atualizado_por: req?.usuario?.nome || 'sistema',
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('configuracoes').upsert(payload, { onConflict: 'chave' });
+  if (error) throw error;
+}
+
+function _smtpTransport() {
+  const host = String(process.env.SMTP_HOST || '').trim();
+  const port = Math.trunc(Number(process.env.SMTP_PORT || 587) || 587);
+  const user = String(process.env.SMTP_USER || '').trim();
+  const pass = String(process.env.SMTP_PASS || '').trim();
+  const secure = String(process.env.SMTP_SECURE || '').trim().toLowerCase() === 'true' || port === 465;
+  if (!host || !user || !pass) return null;
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+  });
+}
+
+function _isoDay(d) {
+  try { return new Date(d).toISOString().slice(0, 10); } catch (_) { return ''; }
+}
+
+function _range(period) {
+  const now = new Date();
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  if (period === 'semana') {
+    const x = startOfDay(now);
+    const dow = x.getDay();
+    const diff = (dow === 0) ? 6 : (dow - 1);
+    x.setDate(x.getDate() - diff);
+    return { de: x, ate: endOfDay(now), label: `Semana ${_isoDay(x)} → ${_isoDay(now)}` };
+  }
+  if (period === 'mes') {
+    const de = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    return { de, ate: endOfDay(now), label: `Mês ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}` };
+  }
+  const y = startOfDay(now);
+  y.setDate(y.getDate() - 1);
+  return { de: y, ate: endOfDay(y), label: `Ontem ${_isoDay(y)}` };
+}
+
+async function _fetchResumoEmail({ empId, period }) {
+  const { de, ate, label } = _range(period || 'ontem');
+  const deIso = de.toISOString();
+  const ateIso = ate.toISOString();
+
+  let qOf = supabase.from('ofs').select('id,numero,of,status,valor_total,valor_venda,val,emp_id,created_at,data_conclusao,updated_at').gte('created_at', deIso).lte('created_at', ateIso).limit(5000);
+  if (empId) qOf = qOf.eq('emp_id', empId);
+  const ofsR = await qOf;
+  const ofs = Array.isArray(ofsR.data) ? ofsR.data : [];
+
+  let qCmp = supabase.from('compras').select('id,status,valor,vtot,emp_id,created_at').gte('created_at', deIso).lte('created_at', ateIso).limit(5000);
+  if (empId) qCmp = qCmp.eq('emp_id', empId);
+  const cmpR = await qCmp;
+  const compras = Array.isArray(cmpR.data) ? cmpR.data : [];
+
+  const sumOf = (o) => Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+  const sumCmp = (c) => Number(c?.valor ?? c?.vtot ?? 0) || 0;
+
+  const totalVendas = ofs.reduce((s, o) => s + sumOf(o), 0);
+  const totalCompras = compras.reduce((s, c) => s + sumCmp(c), 0);
+  const stCount = {};
+  ofs.forEach((o) => {
+    const st = String(o?.status || '—').trim() || '—';
+    stCount[st] = (stCount[st] || 0) + 1;
+  });
+
+  return {
+    label,
+    ofsCount: ofs.length,
+    comprasCount: compras.length,
+    totalVendas,
+    totalCompras,
+    status: stCount,
+    sampleOfs: ofs.slice(0, 12).map((o) => ({
+      numero: o?.numero ?? o?.of ?? '—',
+      status: o?.status ?? '—',
+      valor: sumOf(o),
+      created_at: String(o?.created_at || '').slice(0, 10),
+      emp_id: o?.emp_id ?? '',
+    })),
+  };
+}
+
+function _renderResumoEmailHtml(resumo) {
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtMoney = (v) => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const statusRows = Object.entries(resumo.status || {}).sort((a, b) => (b[1] || 0) - (a[1] || 0))
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td style="text-align:right;font-family:monospace">${esc(v)}</td></tr>`).join('');
+  const ofsRows = (resumo.sampleOfs || []).map((o) => `
+    <tr>
+      <td style="font-family:monospace">${esc(o.numero)}</td>
+      <td>${esc(o.status)}</td>
+      <td style="text-align:right">${fmtMoney(o.valor)}</td>
+      <td style="text-align:center">${esc(o.created_at || '—')}</td>
+    </tr>`).join('');
+
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Relatório</title>
+  </head><body style="margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif">
+  <div style="max-width:920px;margin:0 auto;padding:18px">
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+        <div>
+          <div style="font-size:18px;font-weight:900">Relatório (ERP)</div>
+          <div style="margin-top:6px;color:rgba(229,231,235,0.70);font-size:12px">${esc(resumo.label || '')}</div>
+        </div>
+        <div style="color:rgba(229,231,235,0.70);font-size:12px">Italy Embalagens</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:14px">
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-size:11px;color:rgba(229,231,235,0.70);font-family:monospace">OFs</div>
+          <div style="font-size:20px;font-weight:900">${esc(resumo.ofsCount)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-size:11px;color:rgba(229,231,235,0.70);font-family:monospace">Vendas (R$)</div>
+          <div style="font-size:20px;font-weight:900;color:#10b981">${fmtMoney(resumo.totalVendas)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-size:11px;color:rgba(229,231,235,0.70);font-family:monospace">Compras</div>
+          <div style="font-size:20px;font-weight:900">${esc(resumo.comprasCount)}</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-size:11px;color:rgba(229,231,235,0.70);font-family:monospace">Compras (R$)</div>
+          <div style="font-size:20px;font-weight:900;color:#f59e0b">${fmtMoney(resumo.totalCompras)}</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:14px">
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-weight:900;margin-bottom:8px">Status das OFs</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr><th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Status</th><th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Qtd</th></tr></thead>
+            <tbody>${statusRows || '<tr><td colspan="2" style="padding:6px 8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
+          <div style="font-weight:900;margin-bottom:8px">Amostra de OFs</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr>
+              <th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">OF</th>
+              <th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Status</th>
+              <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Valor</th>
+              <th style="text-align:center;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Data</th>
+            </tr></thead>
+            <tbody>${ofsRows || '<tr><td colspan="4" style="padding:6px 8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  </body></html>`;
+}
+
+async function _sendResumoEmail({ to, subject, html }) {
+  const transport = _smtpTransport();
+  if (!transport) throw new Error('smtp_not_configured');
+  const from = String(process.env.SMTP_FROM || process.env.SMTP_USER || '').trim();
+  if (!from) throw new Error('smtp_from_missing');
+  const info = await transport.sendMail({ from, to, subject, html });
+  return info;
+}
+
+async function _reloadRelEmailSchedule() {
+  if (_relEmailTask) {
+    try { _relEmailTask.stop(); } catch (_) {}
+    _relEmailTask = null;
+  }
+  const cfg = await _loadConfigJson('relatorio_email', null);
+  const enabled = !!cfg?.enabled;
+  const cronExpr = String(cfg?.cron || '').trim() || '0 7 * * 1';
+  const to = Array.isArray(cfg?.to) ? cfg.to.map((x) => String(x || '').trim()).filter(Boolean) : [];
+  const empId = String(cfg?.emp_id || cfg?.empId || '').trim() || null;
+  _relEmailState = { ..._relEmailState, enabled, cron: cronExpr, to, empId };
+
+  if (!enabled) return;
+  if (!cron || !cron.validate(cronExpr)) {
+    _relEmailState = { ..._relEmailState, lastOk: false, lastError: 'cron_invalid' };
+    return;
+  }
+  if (!to.length) {
+    _relEmailState = { ..._relEmailState, lastOk: false, lastError: 'no_recipients' };
+    return;
+  }
+  _relEmailTask = cron.schedule(cronExpr, async () => {
+    try {
+      const resumo = await _fetchResumoEmail({ empId, period: cfg?.period || 'ontem' });
+      const html = _renderResumoEmailHtml(resumo);
+      const subject = `Relatório ERP — ${resumo.label}`;
+      await _sendResumoEmail({ to, subject, html });
+      _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: true, lastError: null };
+    } catch (e) {
+      _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: false, lastError: String(e?.message || e) };
+    }
+  }, { scheduled: true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
+}
+
+app.get('/api/relatorios/email/status', authMiddleware, requireAdmin, async (req, res) => {
+  return ok(res, _relEmailState);
+});
+
+app.get('/api/relatorios/email/config', authMiddleware, requireAdmin, async (req, res) => {
+  const cfg = await _loadConfigJson('relatorio_email', { enabled: false, cron: '0 7 * * 1', period: 'ontem', to: [], emp_id: '' });
+  return ok(res, cfg);
+});
+
+app.put('/api/relatorios/email/config', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cfg = {
+      enabled: !!b.enabled,
+      cron: String(b.cron || '').trim() || '0 7 * * 1',
+      period: String(b.period || 'ontem').trim(),
+      to: Array.isArray(b.to) ? b.to.map((x) => String(x || '').trim()).filter(Boolean) : [],
+      emp_id: String(b.emp_id || b.empId || '').trim(),
+    };
+    await _saveConfigJson('relatorio_email', cfg, req);
+    await _reloadRelEmailSchedule();
+    return ok(res, cfg);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/relatorios/email/enviar_agora', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const cfg = await _loadConfigJson('relatorio_email', null);
+    const to = Array.isArray(cfg?.to) ? cfg.to.map((x) => String(x || '').trim()).filter(Boolean) : [];
+    if (!to.length) return res.status(400).json({ ok: false, error: 'no_recipients' });
+    const empId = String(cfg?.emp_id || cfg?.empId || '').trim() || null;
+    const resumo = await _fetchResumoEmail({ empId, period: cfg?.period || 'ontem' });
+    const html = _renderResumoEmailHtml(resumo);
+    const subject = `Relatório ERP — ${resumo.label}`;
+    await _sendResumoEmail({ to, subject, html });
+    _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: true, lastError: null };
+    return ok(res, true);
+  } catch (e) {
+    _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: false, lastError: String(e?.message || e) };
+    return err(res, e);
+  }
+});
+
+setTimeout(() => { _reloadRelEmailSchedule().catch(() => {}); }, 500);
 
 app.use((e, req, res, next) => {
   if (!e) return next();

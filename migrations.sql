@@ -76,3 +76,19 @@ create index if not exists orcamentos_versoes_orcamento_id_idx on public.orcamen
 alter table if exists public.amostras add column if not exists of_id uuid;
 alter table if exists public.amostras add column if not exists of_numero text;
 alter table if exists public.amostras add column if not exists of_criada_em timestamptz;
+
+alter table if exists public.clientes add column if not exists ramo text;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'clientes'
+      and column_name = 'ramo_atividade'
+  ) then
+    execute 'update public.clientes set ramo = ramo_atividade where ramo is null and ramo_atividade is not null';
+  end if;
+end $$;
+
+alter table if exists public.maquinas add column if not exists meta_perda_pct numeric;
