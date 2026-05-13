@@ -4696,31 +4696,85 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
       criado_em: new Date().toISOString(),
       status: 'Rascunho',
     };
+    payload.public_token = crypto.randomBytes(24).toString('hex');
     if (b.cliente_id && String(b.cliente_id).match(/^[0-9a-f-]{36}$/i)) payload.cliente_id = b.cliente_id;
 
-    const { data, error } = await supabase.from('orcamentos').insert([payload]).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    return ok(res, data);
+    let inserted = await supabase.from('orcamentos').insert([payload]).select().single();
+    if (inserted.error) {
+      const msg = String(inserted.error.message || inserted.error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+        delete payload[col];
+        inserted = await supabase.from('orcamentos').insert([payload]).select().single();
+      }
+    }
+    if (inserted.error) return res.status(500).json({ error: inserted.error.message });
+    return ok(res, inserted.data);
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
 app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (atual.error) return res.status(500).json({ error: atual.error.message });
+    if (atual.data) {
+      try {
+        const last = await supabase.from('orcamentos_versoes')
+          .select('versao')
+          .eq('orcamento_id', id)
+          .order('versao', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const lastV = Math.trunc(Number(last?.data?.versao || 0) || 0);
+        const verRow = {
+          orcamento_id: id,
+          versao: lastV + 1,
+          snapshot: atual.data,
+          criado_por: req.usuario?.nome || 'sistema',
+        };
+        const ins = await supabase.from('orcamentos_versoes').insert([verRow]);
+        if (ins.error) {
+          const msg = String(ins.error.message || ins.error);
+          const m = msg.toLowerCase();
+          if (!(m.includes('does not exist') || m.includes('relation') || m.includes('schema cache'))) {
+            throw ins.error;
+          }
+        }
+      } catch (_) {}
+    }
     const b = req.body || {};
-    const updates = {
-      titulo: b.medidas || b.titulo || '',
-      descricao: b.cliente_nome || b.descricao || '',
-      cliente_nome: b.cliente_nome || '',
-      medidas: b.medidas || '',
-      quantidade: b.quantidade || 0,
-      onda: b.onda || '',
-      valor_unitario: b.valor_unitario || 0,
-      valor_total: b.valor_total || 0,
-      parametros: b.parametros || {},
-      resultados: b.resultados || [],
-    };
-    const { data, error } = await supabase.from('orcamentos').update(updates).eq('id', req.params.id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    return ok(res, data);
+    const updates = {};
+    const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+    if (has('medidas') || has('titulo')) updates.titulo = b.medidas ?? b.titulo ?? '';
+    if (has('cliente_nome') || has('descricao')) {
+      updates.descricao = b.cliente_nome ?? b.descricao ?? '';
+      updates.cliente_nome = b.cliente_nome ?? '';
+    }
+    if (has('medidas')) updates.medidas = b.medidas ?? '';
+    if (has('quantidade')) updates.quantidade = b.quantidade ?? 0;
+    if (has('onda')) updates.onda = b.onda ?? '';
+    if (has('valor_unitario')) updates.valor_unitario = b.valor_unitario ?? 0;
+    if (has('valor_total')) updates.valor_total = b.valor_total ?? 0;
+    if (has('parametros')) updates.parametros = b.parametros ?? {};
+    if (has('resultados')) updates.resultados = b.resultados ?? [];
+    if (has('status')) updates.status = b.status ?? atual.data?.status ?? 'Rascunho';
+    if (!Object.keys(updates).length) return ok(res, atual.data || null);
+    let upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
+    if (upd.error) {
+      const msg = String(upd.error.message || upd.error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(updates, col)) {
+        delete updates[col];
+        upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
+      }
+    }
+    if (upd.error) return res.status(500).json({ error: upd.error.message });
+    return ok(res, upd.data);
   } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
 });
 app.delete('/api/orcamentos/:id', async (req, res) => {
@@ -4729,6 +4783,261 @@ app.delete('/api/orcamentos/:id', async (req, res) => {
     if (error) throw error;
     return ok(res, true);
   } catch (e) { return err(res, e); }
+});
+
+app.post('/api/orcamentos/:id/token', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const cur = await supabase.from('orcamentos').select('id,public_token').eq('id', id).maybeSingle();
+    if (cur.error) return res.status(500).json({ ok: false, error: cur.error.message });
+    const existing = String(cur.data?.public_token || '').trim();
+    if (existing) return ok(res, { token: existing });
+    const token = crypto.randomBytes(24).toString('hex');
+    let upd = await supabase.from('orcamentos').update({ public_token: token }).eq('id', id).select('id,public_token').single();
+    if (upd.error) {
+      const msg = String(upd.error.message || upd.error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col === 'public_token') return res.status(400).json({ ok: false, error: 'public_token não disponível' });
+      return res.status(500).json({ ok: false, error: upd.error.message });
+    }
+    return ok(res, { token: String(upd.data?.public_token || token) });
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/orcamentos/:id/versoes', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const r = await supabase.from('orcamentos_versoes')
+      .select('*')
+      .eq('orcamento_id', id)
+      .order('versao', { ascending: false })
+      .limit(50);
+    if (r.error) {
+      const msg = String(r.error.message || r.error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('schema cache')) return ok(res, []);
+      return res.status(500).json({ ok: false, error: r.error.message });
+    }
+    return ok(res, r.data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const versao = Math.trunc(Number(req.body?.versao ?? 0) || 0);
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!(versao > 0)) return res.status(400).json({ ok: false, error: 'versao obrigatória' });
+
+    const cur = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (cur.error) return res.status(500).json({ ok: false, error: cur.error.message });
+    if (!cur.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+
+    const v = await supabase.from('orcamentos_versoes').select('*').eq('orcamento_id', id).eq('versao', versao).maybeSingle();
+    if (v.error) return res.status(500).json({ ok: false, error: v.error.message });
+    if (!v.data) return res.status(404).json({ ok: false, error: 'Versão não encontrada' });
+
+    try {
+      const last = await supabase.from('orcamentos_versoes')
+        .select('versao')
+        .eq('orcamento_id', id)
+        .order('versao', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastV = Math.trunc(Number(last?.data?.versao || 0) || 0);
+      await supabase.from('orcamentos_versoes').insert([{
+        orcamento_id: id,
+        versao: lastV + 1,
+        snapshot: cur.data,
+        criado_por: req.usuario?.nome || 'sistema',
+      }]);
+    } catch (_) {}
+
+    const s = (v.data.snapshot && typeof v.data.snapshot === 'object') ? v.data.snapshot : {};
+    const updates = {
+      titulo: s.titulo ?? '',
+      descricao: s.descricao ?? '',
+      cliente_nome: s.cliente_nome ?? '',
+      medidas: s.medidas ?? '',
+      quantidade: s.quantidade ?? 0,
+      onda: s.onda ?? '',
+      valor_unitario: s.valor_unitario ?? 0,
+      valor_total: s.valor_total ?? 0,
+      parametros: s.parametros ?? {},
+      resultados: s.resultados ?? [],
+      status: s.status ?? cur.data.status ?? 'Rascunho',
+    };
+    const upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
+    return ok(res, upd.data);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/public/orcamentos/:id', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const token = String(req.query.token || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatório' });
+    const r = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
+    if (!r.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    const curTok = String(r.data.public_token || '').trim();
+    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token inválido' });
+    const o = r.data;
+    return res.json({
+      ok: true,
+      data: {
+        id: o.id,
+        numero_orcamento: o.numero_orcamento,
+        cliente_nome: o.cliente_nome,
+        medidas: o.medidas,
+        quantidade: o.quantidade,
+        onda: o.onda,
+        valor_unitario: o.valor_unitario,
+        valor_total: o.valor_total,
+        resultados: o.resultados,
+        emp_id: o.emp_id,
+        status: o.status,
+        criado_em: o.criado_em,
+      },
+    });
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/public/orcamentos/:id/resposta', async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const token = String(req.query.token || '').trim();
+    const acao = String(req.body?.acao || '').trim().toLowerCase();
+    const obs = String(req.body?.obs || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatório' });
+    if (acao !== 'aprovar' && acao !== 'reprovar') return res.status(400).json({ ok: false, error: 'acao inválida' });
+
+    const r = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
+    if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
+    if (!r.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    const curTok = String(r.data.public_token || '').trim();
+    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token inválido' });
+
+    const status = acao === 'aprovar' ? 'Aprovado' : 'Reprovado';
+    const updates = {
+      status,
+      public_aprovacao: acao,
+      public_aprovacao_em: new Date().toISOString(),
+      public_aprovacao_obs: obs || null,
+    };
+    let upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
+    if (upd.error) {
+      const msg = String(upd.error.message || upd.error);
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(updates, col)) {
+        delete updates[col];
+        upd = await supabase.from('orcamentos').update(updates).eq('id', id).select().single();
+      }
+    }
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
+    return ok(res, true);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/orcamento-publico/:id', async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const token = String(req.query.token || '').trim();
+  const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.end(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orçamento</title>
+<style>
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b1220;color:#e5e7eb}
+  .wrap{max-width:880px;margin:0 auto;padding:22px}
+  .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .muted{color:rgba(229,231,235,0.70);font-size:12px}
+  .btn{appearance:none;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:#e5e7eb;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+  .btn-ok{background:#10b98122;border-color:#10b98166}
+  .btn-bad{background:#ef444422;border-color:#ef444466}
+  input,textarea{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:10px;color:#e5e7eb;padding:10px 12px}
+  textarea{min-height:88px;resize:vertical}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid rgba(255,255,255,0.12);padding:7px 10px}
+  th{background:rgba(255,255,255,0.06);text-align:left}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div style="font-size:18px;font-weight:900">Orçamento</div>
+        <div class="muted" id="sub">Carregando…</div>
+      </div>
+      <div class="muted">Italy Embalagens</div>
+    </div>
+    <div style="height:12px"></div>
+    <div id="body"></div>
+    <div style="height:14px"></div>
+    <div class="row">
+      <button class="btn btn-ok" id="btnAprovar">Aprovar</button>
+      <button class="btn btn-bad" id="btnReprovar">Reprovar</button>
+      <span class="muted" id="msg"></span>
+    </div>
+    <div style="height:10px"></div>
+    <div>
+      <div class="muted" style="margin-bottom:6px">Observações (opcional)</div>
+      <textarea id="obs" placeholder="Escreva aqui…"></textarea>
+    </div>
+  </div>
+</div>
+<script>
+  const ORC_ID=${JSON.stringify(id)};
+  const TOKEN=${JSON.stringify(token)};
+  const $=(id)=>document.getElementById(id);
+  function fmtR(v){ try{ return 'R$ '+Number(v||0).toFixed(2).replace('.',','); }catch(e){ return 'R$ 0,00'; } }
+  function fmtD(s){ if(!s) return '—'; try{ return String(s).slice(0,10).split('-').reverse().join('/'); }catch(e){ return String(s); } }
+  async function load(){
+    const r = await fetch('/api/public/orcamentos/'+encodeURIComponent(ORC_ID)+'?token='+encodeURIComponent(TOKEN));
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || !j || j.ok===false){ $('sub').textContent = 'Falha ao carregar'; $('body').innerHTML = '<div class=\"muted\">Token inválido ou orçamento não encontrado.</div>'; return; }
+    const o = j.data || {};
+    $('sub').textContent = 'Nº '+(o.numero_orcamento||'—')+' · '+(o.cliente_nome||'—')+' · '+fmtD(o.criado_em);
+    const linhas = Array.isArray(o.resultados) ? o.resultados : [];
+    const tab = linhas.length ? ('<table><thead><tr><th>Onda</th><th>VL Unit.</th><th>Total</th></tr></thead><tbody>'+
+      linhas.map(x=>'<tr><td>'+String(x.onda||'—')+'</td><td style=\"text-align:right\">'+fmtR(x.vUnit||x.v_unit||0)+'</td><td style=\"text-align:right\">'+fmtR(x.total||0)+'</td></tr>').join('')+
+      '</tbody></table>') : '';
+    $('body').innerHTML =
+      '<div class=\"row\"><div style=\"flex:1\"><div class=\"muted\">Medidas</div><div style=\"font-weight:900\">'+String(o.medidas||'—')+'</div></div>'+
+      '<div><div class=\"muted\">Qtd</div><div style=\"font-weight:900\">'+String(o.quantidade==null?'—':o.quantidade)+'</div></div>'+
+      '<div><div class=\"muted\">Onda</div><div style=\"font-weight:900\">'+String(o.onda||'—')+'</div></div></div>'+
+      '<div style=\"height:10px\"></div>'+
+      '<div class=\"row\"><div><div class=\"muted\">Valor total</div><div style=\"font-size:18px;font-weight:900;color:#10b981\">'+fmtR(o.valor_total||0)+'</div></div>'+
+      '<div class=\"muted\">Status: '+String(o.status||'—')+'</div></div>'+
+      (tab?('<div style=\"height:12px\"></div>'+tab):'');
+  }
+  async function send(acao){
+    $('msg').textContent = 'Enviando…';
+    const r = await fetch('/api/public/orcamentos/'+encodeURIComponent(ORC_ID)+'/resposta?token='+encodeURIComponent(TOKEN), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ acao, obs: $('obs').value || '' })
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || !j || j.ok===false){ $('msg').textContent = 'Erro ao enviar'; return; }
+    $('msg').textContent = 'Resposta registrada';
+    await load();
+  }
+  $('btnAprovar').onclick = ()=>send('aprovar');
+  $('btnReprovar').onclick = ()=>send('reprovar');
+  load().catch(()=>{ $('sub').textContent='Falha ao carregar'; });
+</script>
+</body></html>`);
 });
 
 // ══════════════════════════════════════════════════════════════

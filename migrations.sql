@@ -54,3 +54,25 @@ create table if not exists public.avaliacoes_fornecedor (
 );
 
 create index if not exists avaliacoes_fornecedor_fornecedor_id_idx on public.avaliacoes_fornecedor (fornecedor_id, created_at desc);
+
+alter table if exists public.orcamentos add column if not exists public_token text;
+alter table if exists public.orcamentos add column if not exists public_aprovacao text;
+alter table if exists public.orcamentos add column if not exists public_aprovacao_em timestamptz;
+alter table if exists public.orcamentos add column if not exists public_aprovacao_obs text;
+
+create index if not exists orcamentos_public_token_idx on public.orcamentos (public_token);
+
+create table if not exists public.orcamentos_versoes (
+  id uuid primary key default gen_random_uuid(),
+  orcamento_id uuid not null,
+  versao integer not null,
+  snapshot jsonb,
+  criado_por text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists orcamentos_versoes_orcamento_id_idx on public.orcamentos_versoes (orcamento_id, versao desc);
+
+alter table if exists public.amostras add column if not exists of_id uuid;
+alter table if exists public.amostras add column if not exists of_numero text;
+alter table if exists public.amostras add column if not exists of_criada_em timestamptz;
