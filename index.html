@@ -11163,7 +11163,7 @@ function abrirModalCliente(id){
   const ramoEl=document.getElementById('cliente-ramo');
   if(ramoEl){
     try{ RAMOS = (function(){ try{ const raw=localStorage.getItem('ramos_atividade'); const arr=JSON.parse(raw||'null'); if(Array.isArray(arr)&&arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean); }catch(e){} return RAMOS; })(); }catch(e){}
-    const cur = String(c ? (c.ramo_atividade || c.ramo || '') : '').trim();
+    const cur = String(c ? (c.ramo || '') : '').trim();
     ramoEl.innerHTML = '<option value="">—</option>' + (RAMOS||[]).map(r=>`<option value="${escAttr(String(r||''))}">${escH(String(r||''))}</option>`).join('');
     ramoEl.value = cur;
   }
@@ -11206,7 +11206,6 @@ async function salvarCliente() {
     obs: g('cli-obs')||g('cl-obs'),
     vendedor_id: g('cli-vendedor')||g('cl-vend')||g('cli-vend'),
     emp_id: g('cli-empresa')||g('cl-empresa')||g('cl-emp')||EMP_FILTRO||'E1',
-    ramo_atividade: ramoAtv,
     ramo: ramoAtv,
   };
   Object.keys(payload).forEach(k=>{if(!payload[k])delete payload[k];});
@@ -16014,7 +16013,7 @@ function _renderDashboardBase(){
   };
   const cliRamo = (cliId)=>{
     const c = cliById[String(cliId||'').trim()];
-    const r = c ? (c.ramo_atividade || c.ramo || c.ramoAtividade || '') : '';
+    const r = c ? (c.ramo || '') : '';
     return String(r||'').trim();
   };
 
@@ -18556,7 +18555,7 @@ function normalizeCli(r){
     cidade:r.cidade||'',
     uf:r.uf||'',
     end:r.end||r.endereco||'',
-    ramo:r.ramo_atividade||r.ramo||'',
+    ramo:r.ramo||'',
     pagto:r.pagto||r.pagamento||'',
     rep:r.rep||r.representante||'',
     obs:r.obs||'',

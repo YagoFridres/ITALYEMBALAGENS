@@ -1545,8 +1545,8 @@ function clientesPayload(p) {
     obs: 'observacoes',
     emp_id: 'emp_id',
     empId: 'emp_id',
-    ramo_atividade: 'ramo_atividade',
-    ramo: 'ramo_atividade',
+    ramo_atividade: 'ramo',
+    ramo: 'ramo',
     vendedor_id: 'vendedor_id',
     vendId: 'vendedor_id',
     ativo: 'ativo',
@@ -1567,7 +1567,7 @@ async function clientesInsertCompat(payload) {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
-      if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
+      if (p.ramo !== undefined) { p.ramo_atividade = p.ramo; delete p.ramo; }
       return p;
     })(),
   ];
@@ -1610,7 +1610,7 @@ async function clientesUpdateCompat(id, payload) {
       const p = { ...payload };
       if (p.observacoes !== undefined) { p.obs = p.observacoes; delete p.observacoes; }
       if (p.razao_social !== undefined) { p.rs = p.razao_social; delete p.razao_social; }
-      if (p.ramo_atividade !== undefined) { p.ramo = p.ramo_atividade; delete p.ramo_atividade; }
+      if (p.ramo !== undefined) { p.ramo_atividade = p.ramo; delete p.ramo; }
       return p;
     })(),
   ];
@@ -3920,7 +3920,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const cacheKey = '';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
-    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,ramo_atividade,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
+    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
