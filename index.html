@@ -37769,8 +37769,10 @@ window.atualizarChapas = async function(){
     const text = String(raw || '').trim();
     const ta = document.getElementById('assist-text');
     if(!text){ try{ ta?.focus(); }catch(e){}; return; }
+    const histBefore = loadHist();
     if(ta) ta.value = '';
     addMsg('user', text);
+    const historico = histBefore.slice(-5).map((m)=>({ role: m.role === 'user' ? 'user' : 'assistant', content: String(m.text||'').trim() })).filter((m)=>m.content);
     const typingId = 'typing-' + Math.random().toString(16).slice(2);
     const body = document.getElementById('assist-body');
     if(body){
@@ -37782,7 +37784,7 @@ window.atualizarChapas = async function(){
       scrollBottom();
     }
     try{
-      const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text } });
+      const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text, historico } });
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
       const images = (j && (j.images || j.imagens)) ? (Array.isArray(j.images || j.imagens) ? (j.images || j.imagens) : []) : [];

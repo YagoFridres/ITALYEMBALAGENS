@@ -9089,6 +9089,20 @@ function _jarvisHasAny(norm, ...words) {
   return words.some((w) => norm.includes(_assistNorm(w)));
 }
 
+function _jarvisLastOfNumFromHistory(historico) {
+  const hist = Array.isArray(historico) ? historico : [];
+  const scan = hist.slice(-10).reverse();
+  for (const m of scan) {
+    const txt = String(m?.content || m?.texto || m?.text || '').trim();
+    if (!txt) continue;
+    const mm = _assistNorm(txt).match(/\bof\s*#?\s*([0-9]{1,8})\b/);
+    if (mm) return String(mm[1]);
+    const mh = txt.match(/\B#\s*([0-9]{1,8})\b/);
+    if (mh) return String(mh[1]);
+  }
+  return '';
+}
+
 async function _jarvisBuildContext({ norm, hoje, month, year }) {
   const ctx = { now: new Date().toISOString(), hoje, mes: month || (new Date().getMonth() + 1), ano: year };
   const wantsOF = norm.includes('of') || norm.includes('ordem');
@@ -9383,7 +9397,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
 
     const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
-    const ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
+    let ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
+    const historico = req.body?.historico || req.body?.history || null;
+    if (!ofNum && historico && (_jarvisHasAny(norm, 'ela', 'anterior', 'anterior?', 'da anterior') || (norm.includes('of') && _jarvisHasAny(norm, 'anterior')))) {
+      ofNum = _jarvisLastOfNumFromHistory(historico);
+    }
 
     const act = await _jarvisDetectAction({ norm, pergunta, ofNum, year });
     if (act) {
@@ -9488,15 +9506,64 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
       try {
         const dadosContexto = await _jarvisBuildContext({ norm, hoje, month, year });
-        const hist = req.body?.historico || req.body?.history || null;
-        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico: hist });
+        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico });
         if (cla?.ok && String(cla.text || '').trim()) {
           return respond(String(cla.text || '').trim());
         }
       } catch (_) {}
     }
 
-    if (ofNum && norm.includes('of') && hasAny('imagem', 'foto', 'mostrar', 'ver')) {
+    let _ofCtx = null;
+    const loadOfCtx = async () => {
+      if (_ofCtx) return _ofCtx;
+      const of = await _jarvisFindOFByNumero(ofNum);
+      if (!of) return null;
+      const cid = _assistPickOfClienteId(of);
+      const cliMap = await _assistLoadClientesByIds([cid]);
+      _ofCtx = {
+        of,
+        numero: _assistPickOfNumber(of),
+        clienteId: cid || '',
+        clienteNome: String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—',
+        entrega: _assistPickOfEntrega(of),
+        status: String(of.status || '—').trim() || '—',
+        qtd: Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0),
+        urgente: !!(of.urg || of.urgente),
+      };
+      return _ofCtx;
+    };
+
+    if (ofNum && norm.includes('status') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'concluir', 'concluida', 'concluída', 'concluido', 'concluído')) {
+      const ctx = await loadOfCtx();
+      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} está com status "${ctx.status}"${ctx.entrega ? ` e entrega em ${_assistFmtDateBr(ctx.entrega)}` : ''}.`);
+    }
+
+    if (ofNum && hasAny('cliente') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
+      const ctx = await loadOfCtx();
+      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} é do cliente ${ctx.clienteNome}${ctx.entrega ? ` (entrega ${_assistFmtDateBr(ctx.entrega)})` : ''}.`);
+    }
+
+    if (ofNum && hasAny('entrega', 'data de entrega') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
+      const ctx = await loadOfCtx();
+      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a entrega da OF #${ctx.numero} é ${ctx.entrega ? _assistFmtDateBr(ctx.entrega) : '—'}.`);
+    }
+
+    if (ofNum && hasAny('quantidade', 'qtd', 'caixas') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
+      const ctx = await loadOfCtx();
+      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} está com ${Number(ctx.qtd || 0).toLocaleString('pt-BR')} caixa(s) no pedido.`);
+    }
+
+    if (ofNum && hasAny('urgente', 'urgência', 'urgencia') && !hasAny('adicione', 'adicionar', 'coloque', 'marque', 'set')) {
+      const ctx = await loadOfCtx();
+      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} está ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcação de urgência'}.`);
+    }
+
+    if (ofNum && hasAny('imagem', 'foto') && (hasAny('mostrar', 'ver') || norm.includes('imagem') || norm.includes('foto'))) {
       const { data } = await supabase
         .from('ofs')
         .select('id,of,numero,imagem_url,imgs')
