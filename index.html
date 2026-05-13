@@ -37358,7 +37358,7 @@ window.atualizarChapas = async function(){
 
 <script>
 (function(){
-  const LS_KEY = 'italy_assistente_history_v1';
+  const LS_KEY = 'italy_jarvis_history_v1';
   const MAX_MSG = 20;
   const qs = (s)=>document.querySelector(s);
   const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -37374,6 +37374,12 @@ window.atualizarChapas = async function(){
       if(e) return e;
     }catch(e){}
     return 'Olá';
+  };
+
+  const getUserFirstName = ()=>{
+    const full = String(getUserName() || '').trim();
+    const first = full.split(/\s+/).filter(Boolean)[0] || full;
+    return first || 'Olá';
   };
 
   const loadHist = ()=>{
@@ -37399,6 +37405,8 @@ window.atualizarChapas = async function(){
       #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid var(--border);background:var(--bg-card,#1a1a2e)}
       #assist-title{display:flex;align-items:center;gap:10px;font-weight:900}
       #assist-title img{width:28px;height:28px;border-radius:10px;object-fit:contain;background:#fff;padding:3px}
+      #jarvis-online{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-weight:900;font-size:.72rem;color:rgba(34,197,94,.95)}
+      #jarvis-online .dot{width:8px;height:8px;border-radius:999px;background:rgba(34,197,94,.95);box-shadow:0 0 10px rgba(34,197,94,.55)}
       #assist-actions{display:flex;gap:8px;align-items:center}
       #assist-actions button{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
       #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:var(--bg-card,#1a1a2e)}
@@ -37409,6 +37417,7 @@ window.atualizarChapas = async function(){
       .assist-row.assistant{justify-content:flex-start}
       .assist-avatar{width:30px;height:30px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);overflow:hidden}
       .assist-avatar img{width:100%;height:100%;object-fit:contain;padding:3px}
+      .assist-avatar.jarvis{background:linear-gradient(135deg,#0ea5e9,#1d4ed8);color:#eaf6ff;border-color:rgba(59,130,246,.55);font-family:var(--mono);font-weight:900}
       .assist-bubble{max-width:82%;border-radius:14px;padding:10px 12px;border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;line-height:1.28}
       .assist-row.user .assist-bubble{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.35)}
       .assist-row.assistant .assist-bubble{background:var(--bg3)}
@@ -37427,7 +37436,7 @@ window.atualizarChapas = async function(){
 
     const fab = document.createElement('div');
     fab.id = 'assist-fab';
-    fab.innerHTML = `<button type="button" title="Assistente">🤖</button>`;
+    fab.innerHTML = `<button type="button" title="JARVIS">⚙️</button>`;
     document.body.appendChild(fab);
 
     const overlay = document.createElement('div');
@@ -37440,7 +37449,7 @@ window.atualizarChapas = async function(){
     const logoImg = logo ? `<img src="${esc(logo)}" alt="Italy">` : '';
     panel.innerHTML = `
       <div id="assist-header">
-        <div id="assist-title">${logoImg}<span>Assistente</span></div>
+        <div id="assist-title">${logoImg}<span>⚙️ JARVIS</span> <span id="jarvis-online"><span class="dot"></span>online</span></div>
         <div id="assist-actions">
           <button type="button" id="assist-clear">Limpar</button>
           <button type="button" id="assist-close">✕</button>
@@ -37623,12 +37632,12 @@ window.atualizarChapas = async function(){
     let hist = loadHist();
     if(forceGreet) hist = [];
     if(hist.length === 0){
-      const nm = getUserName();
-      hist = [{ role:'assistant', text:`Olá ${nm}! Sou o assistente da Italy Embalagens. Como posso ajudar você hoje?`, ts: nowIso() }];
+      const nm = getUserFirstName();
+      hist = [{ role:'assistant', text:`Olá ${nm}! Sou o JARVIS, assistente inteligente da Italy Embalagens. Posso consultar informações, fazer alterações e te ajudar com qualquer coisa no sistema. O que precisa?`, ts: nowIso() }];
       saveHist(hist);
     }
     const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
-    const avatar = logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar">I</div>`;
+    const avatar = logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar jarvis">J</div>`;
     const escAttr = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     body.innerHTML = hist.map((m, idx)=>{
       const role = m.role === 'user' ? 'user' : 'assistant';
@@ -37659,7 +37668,7 @@ window.atualizarChapas = async function(){
       const row = document.createElement('div');
       row.className = 'assist-row assistant';
       const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
-      row.innerHTML = `${logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar">I</div>`}<div class="assist-bubble" id="${typingId}">Digitando…</div>`;
+      row.innerHTML = `${logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar jarvis">J</div>`}<div class="assist-bubble" id="${typingId}">Digitando…</div>`;
       body.appendChild(row);
       scrollBottom();
     }
