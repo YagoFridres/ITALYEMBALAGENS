@@ -8938,6 +8938,666 @@ app.post('/api/relatorios/email/enviar_agora', authMiddleware, requireAdmin, asy
   }
 });
 
+function _assistNorm(s) {
+  return String(s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _assistTodayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function _assistFmtDateBr(iso) {
+  const s = String(iso || '').slice(0, 10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return s || '';
+  return `${m[3]}/${m[2]}/${m[1]}`;
+}
+
+const _assistBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+function _assistFmtBRL(v) {
+  const n = Number(v);
+  const ok = Number.isFinite(n) ? n : 0;
+  return _assistBRL.format(ok);
+}
+
+function _assistDaysDiff(aIso, bIso) {
+  const a = new Date(String(aIso).slice(0, 10) + 'T00:00:00');
+  const b = new Date(String(bIso).slice(0, 10) + 'T00:00:00');
+  const da = a.getTime();
+  const db = b.getTime();
+  if (!Number.isFinite(da) || !Number.isFinite(db)) return 0;
+  return Math.floor((da - db) / 86400000);
+}
+
+function _assistMonthFromText(norm) {
+  const map = {
+    janeiro: 1, fevereiro: 2, marco: 3, março: 3, abril: 4, maio: 5, junho: 6,
+    julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+  };
+  for (const k of Object.keys(map)) {
+    if (norm.includes(k)) return map[k];
+  }
+  const m1 = norm.match(/\b(?:mes|mês|em)\s*(0?[1-9]|1[0-2])\b/);
+  if (m1) return Number(m1[1]);
+  const m2 = norm.match(/\b(0?[1-9]|1[0-2])\b/);
+  if (m2 && (norm.includes('fatur') || norm.includes('venda') || norm.includes('total de') || norm.includes('mes') || norm.includes('mês'))) {
+    return Number(m2[1]);
+  }
+  return null;
+}
+
+function _assistMonthRange(year, month) {
+  const y = Number(year);
+  const m = Number(month);
+  const ini = new Date(y, m - 1, 1);
+  const fim = new Date(y, m, 0);
+  return { de: ini.toISOString().slice(0, 10), ate: fim.toISOString().slice(0, 10) };
+}
+
+function _assistWeekRange(todayIso) {
+  const base = new Date(String(todayIso).slice(0, 10) + 'T12:00:00');
+  const dow = base.getDay();
+  const diffMon = (dow === 0 ? 6 : (dow - 1));
+  const mon = new Date(base);
+  mon.setDate(base.getDate() - diffMon);
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  return { de: mon.toISOString().slice(0, 10), ate: sun.toISOString().slice(0, 10) };
+}
+
+async function _assistUser(req) {
+  const u = req.usuario || {};
+  const uid = String(u.id || '').trim();
+  let nome = String(u.nome || u.name || '').trim();
+  let email = String(u.email || '').trim();
+  let perfil = String(u.perfil || '').trim();
+  if ((!nome || nome.length < 2) && uid) {
+    try {
+      const { data } = await supabase.from('usuarios').select('nome,email,perfil').eq('id', uid).maybeSingle();
+      if (data) {
+        nome = nome || String(data.nome || '').trim();
+        email = email || String(data.email || '').trim();
+        perfil = perfil || String(data.perfil || '').trim();
+      }
+    } catch (_) {}
+  }
+  const nomeSafe = nome || email || 'Olá';
+  return { id: uid || null, nome: nomeSafe, email: email || null, perfil: perfil || null };
+}
+
+function _assistPickOfNumber(o) {
+  return String(o?.of ?? o?.numero ?? '').trim() || '—';
+}
+
+function _assistPickOfEntrega(o) {
+  return String(o?.data_entrega ?? o?.ent ?? '').slice(0, 10);
+}
+
+function _assistPickOfConclusao(o) {
+  return String(o?.data_conclusao ?? '').slice(0, 10);
+}
+
+function _assistPickOfClienteId(o) {
+  return String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? o?.clienteId ?? '').trim();
+}
+
+function _assistIsConcluida(o) {
+  const st = _assistNorm(o?.status || '');
+  return st.includes('conclu') || st === 'feito' || st === 'finalizado';
+}
+
+function _assistIsCancelada(o) {
+  const st = _assistNorm(o?.status || '');
+  return st.includes('cancel');
+}
+
+function _assistPickOfValor(o) {
+  const v = Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0);
+  return Number.isFinite(v) ? v : 0;
+}
+
+async function _assistLoadClientesByIds(ids) {
+  const arr = Array.isArray(ids) ? ids.map((x) => String(x || '').trim()).filter(Boolean) : [];
+  const uniq = Array.from(new Set(arr)).slice(0, 200);
+  if (!uniq.length) return new Map();
+  try {
+    const { data } = await supabase.from('clientes').select('id,nome').in('id', uniq);
+    const m = new Map();
+    (Array.isArray(data) ? data : []).forEach((c) => { if (c?.id) m.set(String(c.id), String(c.nome || '').trim()); });
+    return m;
+  } catch (_) {
+    return new Map();
+  }
+}
+
+app.post('/api/assistente', authMiddleware, async (req, res) => {
+  try {
+    const { nome, email, perfil } = await _assistUser(req);
+    const pergunta = String(req.body?.pergunta || req.body?.texto || req.body?.q || '').trim();
+    if (!pergunta) return res.status(400).json({ ok: false, error: 'pergunta_obrigatoria' });
+    const norm = _assistNorm(pergunta);
+    const hoje = _assistTodayIso();
+
+    const respond = (txt) => res.json({ ok: true, resposta: String(txt || '').trim() });
+    const naoEntendi = () => respond(`Desculpe ${nome}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`);
+
+    const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
+    const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
+
+    const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
+    const ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
+    const month = _assistMonthFromText(norm);
+    const year = new Date().getFullYear();
+
+    if (hasAny('que horas sao', 'que horas são', 'hora', 'horas') && (norm.includes('que horas') || norm === 'hora' || norm === 'horas')) {
+      const now = new Date();
+      return respond(`${nome}, agora são ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`);
+    }
+
+    if (hasAny('quem sou eu', 'meus dados', 'meu perfil')) {
+      const parts = [
+        `${nome}, aqui estão seus dados:`,
+        `👤 Nome: ${nome}`,
+        email ? `📧 Email: ${email}` : null,
+        perfil ? `🔐 Perfil: ${perfil}` : null,
+      ].filter(Boolean).join('\n');
+      return respond(parts);
+    }
+
+    if (hasAny('resumo do dia', 'resumo hoje')) {
+      const { de: wDe, ate: wAte } = _assistWeekRange(hoje);
+      const { data: ofsAll } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,valor_total,valor_venda,val,urg,urgente,qtd_perdida,valor_perdido')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const ofs = Array.isArray(ofsAll) ? ofsAll : [];
+      const ativos = ofs.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const atrasadas = ativos.filter((o) => {
+        if (_assistIsConcluida(o)) return false;
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent < hoje;
+      });
+      const entregasHoje = ativos.filter((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return ent === hoje && !_assistIsConcluida(o);
+      });
+      const perdasHoje = ativos
+        .filter((o) => _assistPickOfConclusao(o) === hoje)
+        .reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0);
+
+      const { data: chapasAll } = await supabase.from('chapas_estoque').select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo').limit(5000);
+      const chapas = Array.isArray(chapasAll) ? chapasAll : [];
+      const crit = chapas.filter((c) => {
+        const qtd = Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0;
+        const min = Number(c.estoque_minimo ?? 0) || 0;
+        return min > 0 && qtd < min;
+      });
+
+      const texto = [
+        `${nome}, resumo de hoje (${_assistFmtDateBr(hoje)}):`,
+        `📦 OFs atrasadas: ${atrasadas.length}`,
+        `📅 Entregas de hoje: ${entregasHoje.length}`,
+        `📉 Estoque crítico (chapas): ${crit.length}`,
+        `🧯 Perdas concluídas hoje: ${Number(perdasHoje || 0).toLocaleString('pt-BR')}`,
+        `📆 Semana: ${_assistFmtDateBr(wDe)} a ${_assistFmtDateBr(wAte)}`,
+      ].join('\n');
+      return respond(texto);
+    }
+
+    if (hasAny('estoque critico', 'estoque crítico', 'chapas abaixo do minimo', 'chapas abaixo do mínimo', 'abaixo do minimo', 'abaixo do mínimo')) {
+      const { data } = await supabase.from('chapas_estoque').select('id,fornecedor,nomenclatura,nome_uso,nome,tamanho,quantidade,quantidade_atual,qtd,estoque_minimo').order('nomenclatura', { ascending: true }).limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const crit = rows.filter((c) => {
+        const qtd = Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0;
+        const min = Number(c.estoque_minimo ?? 0) || 0;
+        return min > 0 && qtd < min;
+      });
+      const top = crit.slice(0, 10);
+      const linhas = top.map((c) => {
+        const qtd = Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0;
+        const min = Number(c.estoque_minimo ?? 0) || 0;
+        const nom = String(c.nomenclatura || c.nome_uso || c.nome || '—').trim();
+        return `📦 ${nom} — saldo ${qtd} (mín ${min})`;
+      });
+      const extra = crit.length > top.length ? `\n...e mais ${crit.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${crit.length} chapas abaixo do mínimo:\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('estoque zerado', 'zerado', 'quantidade = 0')) {
+      const { data } = await supabase.from('chapas_estoque').select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd').order('nomenclatura', { ascending: true }).limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const zer = rows.filter((c) => (Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0) === 0);
+      const top = zer.slice(0, 10);
+      const linhas = top.map((c) => `📦 ${String(c.nomenclatura || c.nome_uso || c.nome || '—').trim()} — saldo 0`);
+      const extra = zer.length > top.length ? `\n...e mais ${zer.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${zer.length} chapas com estoque zerado:\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('quanto tem de', 'quanto temos de', 'quanto tem da', 'quantidade de') && hasAny('chapa', 'chapas')) {
+      const m = norm.match(/\b(?:de|da)\s+(.+)$/);
+      const termo = m ? String(m[1] || '').trim() : '';
+      if (!termo) return naoEntendi();
+      const { data } = await supabase.from('chapas_estoque').select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo').limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const t = _assistNorm(termo);
+      const found = rows.find((c) => _assistNorm(c.nomenclatura || c.nome_uso || c.nome || '').includes(t)) || null;
+      if (!found) return respond(`${nome}, não encontrei essa chapa no estoque.`);
+      const qtd = Number(found.quantidade_atual ?? found.quantidade ?? found.qtd ?? 0) || 0;
+      const min = Number(found.estoque_minimo ?? 0) || 0;
+      const nom = String(found.nomenclatura || found.nome_uso || found.nome || '—').trim();
+      return respond(`${nome}, a chapa "${nom}" está com saldo ${qtd}${(min ? ` (mín ${min})` : '')}.`);
+    }
+
+    if (hasAny('valor total do estoque', 'valor do estoque', 'total do estoque')) {
+      const { data } = await supabase.from('chapas_estoque').select('id,quantidade,quantidade_atual,qtd,valor_total,valor_unitario,val').limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const total = rows.reduce((s, c) => {
+        const vt = Number(c.valor_total ?? 0);
+        if (Number.isFinite(vt) && vt > 0) return s + vt;
+        const qtd = Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0;
+        const vu = Number(c.valor_unitario ?? c.val ?? 0) || 0;
+        return s + (qtd * vu);
+      }, 0);
+      return respond(`${nome}, o valor total estimado do estoque de chapas é ${_assistFmtBRL(total)}.`);
+    }
+
+    if (hasAny('chapas mais usadas', 'mais usadas')) {
+      const m = month || (new Date().getMonth() + 1);
+      const { de, ate } = _assistMonthRange(year, m);
+      const { data: ofsAll } = await supabase
+        .from('ofs')
+        .select('id,status,deleted_at,data_conclusao,ent,data_entrega,chp,chapa_id,qchp,qtd_chapas,emp_id,empId')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const ofs = (Array.isArray(ofsAll) ? ofsAll : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const by = new Map();
+      ofs.forEach((o) => {
+        const chp = String(o.chp || o.chapa_id || '').trim();
+        if (!chp) return;
+        const q = Number(o.qchp ?? o.qtd_chapas ?? 0) || 0;
+        by.set(chp, (by.get(chp) || 0) + q);
+      });
+      const ids = Array.from(by.keys());
+      const { data: chapasAll } = ids.length
+        ? await supabase.from('chapas_estoque').select('id,nomenclatura,nome_uso,nome').in('id', ids.slice(0, 200))
+        : { data: [] };
+      const nomById = new Map();
+      (Array.isArray(chapasAll) ? chapasAll : []).forEach((c) => { if (c?.id) nomById.set(String(c.id), String(c.nomenclatura || c.nome_uso || c.nome || '').trim()); });
+      const top = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const linhas = top.map(([id, q]) => `📦 ${nomById.get(id) || id} — ${Number(q || 0).toLocaleString('pt-BR')} saídas`);
+      return respond(`${nome}, top 5 chapas mais usadas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${linhas.join('\n') || '—'}`);
+    }
+
+    if (hasAny('ofs atrasadas', 'of atrasada', 'atrasadas', 'em atraso', 'passou da data')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o) && !_assistIsConcluida(o));
+      const atras = ativos.filter((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent < hoje;
+      }).sort((a, b) => (_assistPickOfEntrega(a) || '').localeCompare(_assistPickOfEntrega(b) || ''));
+      const cliMap = await _assistLoadClientesByIds(atras.map(_assistPickOfClienteId));
+      const top = atras.slice(0, 10);
+      const linhas = top.map((o) => {
+        const ent = _assistPickOfEntrega(o);
+        const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s) de atraso`;
+      });
+      const extra = atras.length > top.length ? `\n...e mais ${atras.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${atras.length} OF(s) atrasada(s):\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('ofs de hoje', 'entregas de hoje', 'of hoje', 'entrega hoje')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const hojeList = ativos.filter((o) => _assistPickOfEntrega(o) === hoje);
+      const cliMap = await _assistLoadClientesByIds(hojeList.map(_assistPickOfClienteId));
+      const top = hojeList.slice(0, 10);
+      const linhas = top.map((o) => {
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const st = String(o.status || '—').trim() || '—';
+        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${st}`;
+      });
+      const extra = hojeList.length > top.length ? `\n...e mais ${hojeList.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${hojeList.length} OF(s) para hoje (${_assistFmtDateBr(hoje)}):\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('ofs urgentes', 'of urgente', 'urgentes', 'urgente')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome,urg,urgente')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o) && !_assistIsConcluida(o));
+      const urg = ativos.filter((o) => !!(o.urg || o.urgente));
+      const cliMap = await _assistLoadClientesByIds(urg.map(_assistPickOfClienteId));
+      const top = urg.slice(0, 10);
+      const linhas = top.map((o) => {
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const ent = _assistPickOfEntrega(o);
+        return `🚨 OF #${_assistPickOfNumber(o)} — ${cNome}${ent ? ` — entrega ${_assistFmtDateBr(ent)}` : ''}`;
+      });
+      const extra = urg.length > top.length ? `\n...e mais ${urg.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${urg.length} OF(s) urgente(s):\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('ofs em aberto', 'em aberto') && norm.includes('of')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,emp_id,empId,deleted_at')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const ab = ativos.filter((o) => _assistNorm(o.status || '') === 'em aberto');
+      const by = new Map();
+      ab.forEach((o) => {
+        const emp = String(o.emp_id || o.empId || '—').trim() || '—';
+        by.set(emp, (by.get(emp) || 0) + 1);
+      });
+      const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, c]) => `🏢 ${emp}: ${c}`);
+      return respond(`${nome}, OFs em aberto por empresa:\n${lines.join('\n') || '—'}`);
+    }
+
+    if (hasAny('quantas ofs', 'quantas of', 'total de ofs', 'quantas ordens') && norm.includes('of')) {
+      const { data } = await supabase.from('ofs').select('id,status,deleted_at').order('created_at', { ascending: false }).limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      return respond(`${nome}, temos ${ativos.length} OF(s) ativas no sistema (amostra até 5000 registros).`);
+    }
+
+    if (hasAny('status da of', 'status of', 'situacao da of', 'situação da of') && ofNum) {
+      const { data } = await supabase.from('ofs').select('id,of,numero,status,ent,data_entrega,deleted_at').or(`of.eq.${ofNum},numero.eq.${ofNum}`).limit(10);
+      const row = Array.isArray(data) && data[0] ? data[0] : null;
+      if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      const st = String(row.status || '—').trim() || '—';
+      const ent = _assistPickOfEntrega(row);
+      return respond(`${nome}, a OF #${_assistPickOfNumber(row)} está com status "${st}"${ent ? ` e entrega em ${_assistFmtDateBr(ent)}` : ''}.`);
+    }
+
+    if (hasAny('ofs desta semana', 'of desta semana', 'essa semana', 'esta semana') && norm.includes('of')) {
+      const { de, ate } = _assistWeekRange(hoje);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const list = ativos.filter((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent >= de && ent <= ate;
+      });
+      const cliMap = await _assistLoadClientesByIds(list.map(_assistPickOfClienteId));
+      const top = list.slice(0, 10);
+      const linhas = top.map((o) => {
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const ent = _assistPickOfEntrega(o);
+        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome}${ent ? ` — ${_assistFmtDateBr(ent)}` : ''}`;
+      });
+      const extra = list.length > top.length ? `\n...e mais ${list.length - top.length} itens` : '';
+      return respond(`${nome}, OFs com entrega nesta semana (${_assistFmtDateBr(de)} a ${_assistFmtDateBr(ate)}): ${list.length}\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('ofs concluidas', 'ofs concluídas', 'concluidas hoje', 'concluídas hoje', 'concluidas este mes', 'concluídas este mês', 'concluidas no mes', 'concluídas no mês')) {
+      const perHoje = norm.includes('hoje');
+      const m = month || (new Date().getMonth() + 1);
+      const range = perHoje ? { de: hoje, ate: hoje } : _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,data_conclusao,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
+        .gte('data_conclusao', range.de)
+        .lte('data_conclusao', range.ate)
+        .order('data_conclusao', { ascending: false })
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const cliMap = await _assistLoadClientesByIds(rows.map(_assistPickOfClienteId));
+      const top = rows.slice(0, 10);
+      const linhas = top.map((o) => {
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const dt = _assistPickOfConclusao(o);
+        return `✅ OF #${_assistPickOfNumber(o)} — ${cNome}${dt ? ` — ${_assistFmtDateBr(dt)}` : ''}`;
+      });
+      const extra = rows.length > top.length ? `\n...e mais ${rows.length - top.length} itens` : '';
+      const label = perHoje ? _assistFmtDateBr(hoje) : `${String(range.de).slice(5, 7)}/${String(range.de).slice(0, 4)}`;
+      return respond(`${nome}, OFs concluídas (${label}): ${rows.length}\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('faturamento', 'quanto faturamos', 'vendas de', 'total de') && (norm.includes('fatur') || norm.includes('venda'))) {
+      const m = month || (new Date().getMonth() + 1);
+      const { de, ate } = _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,emp_id,empId')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const total = rows.reduce((s, o) => s + _assistPickOfValor(o), 0);
+      if (hasAny('por empresa', 'empresa')) {
+        const by = new Map();
+        rows.forEach((o) => {
+          const emp = String(o.emp_id || o.empId || '—').trim() || '—';
+          by.set(emp, (by.get(emp) || 0) + _assistPickOfValor(o));
+        });
+        const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, v]) => `🏢 ${emp}: ${_assistFmtBRL(v)}`);
+        return respond(`${nome}, faturamento por empresa em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${lines.join('\n') || '—'}`);
+      }
+      return respond(`${nome}, o faturamento em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)} foi ${_assistFmtBRL(total)}.`);
+    }
+
+    if (hasAny('melhor mes do ano', 'melhor mês do ano')) {
+      const y = year;
+      const sums = [];
+      for (let m = 1; m <= 12; m++) {
+        const { de, ate } = _assistMonthRange(y, m);
+        const { data } = await supabase
+          .from('ofs')
+          .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+          .gte('data_conclusao', de)
+          .lte('data_conclusao', ate)
+          .limit(5000);
+        const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+        const total = rows.reduce((s, o) => s + _assistPickOfValor(o), 0);
+        sums.push({ m, total });
+      }
+      const best = sums.sort((a, b) => b.total - a.total)[0] || { m: 1, total: 0 };
+      return respond(`${nome}, o melhor mês de ${y} foi ${String(best.m).padStart(2, '0')}/${y} com ${_assistFmtBRL(best.total)}.`);
+    }
+
+    if (hasAny('faturamento total do ano', 'total do ano', 'faturamento do ano')) {
+      const y = year;
+      const { de, ate } = { de: `${y}-01-01`, ate: `${y}-12-31` };
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const total = rows.reduce((s, o) => s + _assistPickOfValor(o), 0);
+      return respond(`${nome}, o faturamento total de ${y} é ${_assistFmtBRL(total)}.`);
+    }
+
+    if (hasAny('clientes inativos', 'cliente inativo', 'inativos')) {
+      const dt = new Date();
+      dt.setDate(dt.getDate() - 30);
+      const cut = dt.toISOString().slice(0, 10);
+      const { data: ofsAll } = await supabase.from('ofs').select('id,cli_id,cliente_id,created_at,deleted_at').gte('created_at', cut).limit(5000);
+      const ofs = (Array.isArray(ofsAll) ? ofsAll : []).filter((o) => !o.deleted_at);
+      const activeCli = new Set(ofs.map(_assistPickOfClienteId).filter(Boolean));
+      const { data: clsAll } = await supabase.from('clientes').select('id,nome,ativo,created_at').order('created_at', { ascending: false }).limit(5000);
+      const cls = Array.isArray(clsAll) ? clsAll : [];
+      const inativos = cls.filter((c) => {
+        const idc = String(c.id || '').trim();
+        const ativo = (c.ativo === undefined) ? true : !!c.ativo;
+        return ativo && idc && !activeCli.has(idc);
+      });
+      const top = inativos.slice(0, 10);
+      const linhas = top.map((c) => `👤 ${String(c.nome || '—').trim() || '—'}`);
+      const extra = inativos.length > top.length ? `\n...e mais ${inativos.length - top.length} itens` : '';
+      return respond(`${nome}, encontrei ${inativos.length} cliente(s) sem OF nos últimos 30 dias:\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('top clientes do mes', 'top clientes do mês')) {
+      const m = new Date().getMonth() + 1;
+      const { de, ate } = _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,cli_id,cliente_id')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const by = new Map();
+      rows.forEach((o) => {
+        const cid = _assistPickOfClienteId(o) || '—';
+        by.set(cid, (by.get(cid) || 0) + _assistPickOfValor(o));
+      });
+      const cliMap = await _assistLoadClientesByIds(Array.from(by.keys()).filter((x) => x !== '—'));
+      const top = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const linhas = top.map(([cid, v]) => `🏆 ${cliMap.get(cid) || cid} — ${_assistFmtBRL(v)}`);
+      return respond(`${nome}, top 5 clientes do mês (${String(de).slice(5, 7)}/${String(de).slice(0, 4)}):\n${linhas.join('\n') || '—'}`);
+    }
+
+    if (hasAny('quantos clientes temos', 'quantos clientes')) {
+      const { data } = await supabase.from('clientes').select('id,ativo').limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((c) => (c.ativo === undefined ? true : !!c.ativo));
+      return respond(`${nome}, temos ${ativos.length} cliente(s) ativo(s) (amostra até 5000 registros).`);
+    }
+
+    if (hasAny('cliente', 'existe') && norm.includes('cliente') && norm.includes('existe')) {
+      const m = norm.match(/\bcliente\s+(.+?)\s+existe\b/);
+      const termo = m ? String(m[1] || '').trim() : '';
+      if (!termo) return naoEntendi();
+      const { data } = await supabase.from('clientes').select('id,nome').ilike('nome', '%' + termo.replace(/%/g, '') + '%').limit(5);
+      const rows = Array.isArray(data) ? data : [];
+      if (!rows.length) return respond(`${nome}, não encontrei cliente com esse nome.`);
+      const linhas = rows.slice(0, 5).map((c) => `👤 ${String(c.nome || '').trim()} (id ${String(c.id || '').slice(0, 8)})`);
+      return respond(`${nome}, encontrei ${rows.length} resultado(s):\n${linhas.join('\n')}`);
+    }
+
+    if (hasAny('caixas perdidas', 'perdas') && hasAny('hoje', 'este mes', 'este mês', 'mês', 'mes')) {
+      const perHoje = norm.includes('hoje');
+      const m = month || (new Date().getMonth() + 1);
+      const range = perHoje ? { de: hoje, ate: hoje } : _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,data_conclusao,qtd_perdida,valor_perdido,deleted_at,maquina_perda')
+        .gte('data_conclusao', range.de)
+        .lte('data_conclusao', range.ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const totalPerd = rows.reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0);
+      const totalValPerd = rows.reduce((s, o) => s + (Number(o.valor_perdido || 0) || 0), 0);
+      return respond(`${nome}, perdas no período ${_assistFmtDateBr(range.de)} a ${_assistFmtDateBr(range.ate)}:\n🧯 Caixas perdidas: ${Number(totalPerd).toLocaleString('pt-BR')}\n💸 Valor perdido: ${_assistFmtBRL(totalValPerd)}`);
+    }
+
+    if (hasAny('maquina com mais perdas', 'máquina com mais perdas')) {
+      const m = month || (new Date().getMonth() + 1);
+      const { de, ate } = _assistMonthRange(year, m);
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,status,data_conclusao,qtd_perdida,deleted_at,maquina_perda')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const by = new Map();
+      rows.forEach((o) => {
+        const maq = String(o.maquina_perda || '').trim() || '—';
+        const q = Number(o.qtd_perdida || 0) || 0;
+        by.set(maq, (by.get(maq) || 0) + q);
+      });
+      const best = Array.from(by.entries()).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
+      return respond(`${nome}, a máquina com mais perdas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)} foi "${best[0]}" com ${Number(best[1] || 0).toLocaleString('pt-BR')} caixas perdidas.`);
+    }
+
+    if (hasAny('quantas maquinas temos', 'quantas máquinas temos', 'quantas maquinas', 'quantas máquinas')) {
+      const { data } = await supabase.from('maquinas').select('id,ativo,nome').limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativas = rows.filter((m) => (m.ativo === undefined ? true : !!m.ativo));
+      return respond(`${nome}, temos ${ativas.length} máquina(s) ativa(s).`);
+    }
+
+    if (hasAny('compras pendentes', 'compras pendente', 'compra pendente')) {
+      const { data } = await supabase.from('compras').select('id,fornecedor,status,valor_total,valor,data_pedido,deleted_at').order('created_at', { ascending: false }).limit(200);
+      const rows = Array.isArray(data) ? data : [];
+      const pend = rows.filter((c) => {
+        const st = _assistNorm(c.status || '');
+        if (!st) return true;
+        return !(st.includes('recebid') || st.includes('entreg'));
+      });
+      const top = pend.slice(0, 10);
+      const linhas = top.map((c) => `🧾 ${String(c.fornecedor || '—').trim() || '—'} — ${String(c.status || 'Pendente')} — ${_assistFmtBRL(c.valor_total ?? c.valor ?? 0)}`);
+      const extra = pend.length > top.length ? `\n...e mais ${pend.length - top.length} itens` : '';
+      return respond(`${nome}, compras pendentes: ${pend.length}\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('fornecedores cadastrados', 'fornecedores', 'fornecedor')) {
+      const { data } = await supabase.from('fornecedores').select('id,nome,created_at').order('created_at', { ascending: false }).limit(200);
+      const rows = Array.isArray(data) ? data : [];
+      const top = rows.slice(0, 10).map((f) => `🏭 ${String(f.nome || '—').trim() || '—'}`);
+      const extra = rows.length > top.length ? `\n...e mais ${rows.length - top.length} itens` : '';
+      return respond(`${nome}, fornecedores cadastrados: ${rows.length}\n${top.join('\n') || '—'}${extra}`);
+    }
+
+    if (hasAny('ofs do cliente', 'of do cliente') && norm.includes('cliente')) {
+      const m = norm.match(/\bcliente\s+(.+)$/);
+      const termo = m ? String(m[1] || '').trim() : '';
+      if (!termo) return naoEntendi();
+      const like = '%' + termo.replace(/%/g, '').trim() + '%';
+      const { data: clsAll } = await supabase.from('clientes').select('id,nome').ilike('nome', like).limit(10);
+      const cls = Array.isArray(clsAll) ? clsAll : [];
+      if (!cls.length) return respond(`${nome}, não encontrei o cliente "${termo}".`);
+      const cid = String(cls[0].id || '').trim();
+      const cNome = String(cls[0].nome || '').trim() || termo;
+      const { data: ofsAll } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,valor_total,valor_venda,val')
+        .or(`cli_id.eq.${cid},cliente_id.eq.${cid}`)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const ofs = (Array.isArray(ofsAll) ? ofsAll : []).filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const top = ofs.slice(0, 10);
+      const linhas = top.map((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return `📦 OF #${_assistPickOfNumber(o)} — ${String(o.status || '—').trim() || '—'}${ent ? ` — entrega ${_assistFmtDateBr(ent)}` : ''}`;
+      });
+      const extra = ofs.length > top.length ? `\n...e mais ${ofs.length - top.length} itens` : '';
+      return respond(`${nome}, OFs do cliente "${cNome}": ${ofs.length}\n${linhas.join('\n') || '—'}${extra}`);
+    }
+
+    return naoEntendi();
+  } catch (e) {
+    return err(res, e);
+  }
+});
+
 setTimeout(() => { _reloadRelEmailSchedule().catch(() => {}); }, 500);
 
 app.use((e, req, res, next) => {

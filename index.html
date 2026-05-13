@@ -37356,4 +37356,214 @@ window.atualizarChapas = async function(){
 };
 </script>
 
+<script>
+(function(){
+  const LS_KEY = 'italy_assistente_history_v1';
+  const MAX_MSG = 20;
+  const qs = (s)=>document.querySelector(s);
+  const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const nowIso = ()=>new Date().toISOString();
+  const fmtHora = (ts)=>{ try{ return new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+
+  const getUserName = ()=>{
+    try{
+      const u = window.CURRENT_USER || null;
+      const n = String(u?.nome || '').trim();
+      if(n) return n;
+      const e = String(u?.email || '').trim();
+      if(e) return e;
+    }catch(e){}
+    return 'Olá';
+  };
+
+  const loadHist = ()=>{
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.slice(-MAX_MSG) : [];
+    }catch(e){ return []; }
+  };
+  const saveHist = (arr)=>{
+    try{ localStorage.setItem(LS_KEY, JSON.stringify((arr||[]).slice(-MAX_MSG))); }catch(e){}
+  };
+
+  const ensureUI = ()=>{
+    if(document.getElementById('assist-fab')) return;
+    const st = document.createElement('style');
+    st.textContent = `
+      #assist-fab{position:fixed;right:16px;bottom:16px;z-index:10000}
+      #assist-fab button{width:56px;height:56px;border-radius:16px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+      #assist-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:10001;display:none}
+      #assist-panel{position:fixed;top:0;right:0;height:100vh;width:min(380px,92vw);background:var(--bg2);border-left:1px solid var(--border);z-index:10002;transform:translateX(110%);transition:transform .22s ease;display:flex;flex-direction:column}
+      #assist-panel.open{transform:translateX(0)}
+      #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid var(--border);background:var(--bg2)}
+      #assist-title{display:flex;align-items:center;gap:10px;font-weight:900}
+      #assist-title img{width:28px;height:28px;border-radius:10px;object-fit:contain;background:#fff;padding:3px}
+      #assist-actions{display:flex;gap:8px;align-items:center}
+      #assist-actions button{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
+      #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap}
+      .assist-chip{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:800}
+      #assist-body{flex:1;overflow:auto;padding:12px;background:linear-gradient(180deg,var(--bg2),var(--bg1))}
+      .assist-row{display:flex;gap:8px;margin:8px 0}
+      .assist-row.user{justify-content:flex-end}
+      .assist-row.assistant{justify-content:flex-start}
+      .assist-avatar{width:30px;height:30px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);overflow:hidden}
+      .assist-avatar img{width:100%;height:100%;object-fit:contain;padding:3px}
+      .assist-bubble{max-width:82%;border-radius:14px;padding:10px 12px;border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;line-height:1.28}
+      .assist-row.user .assist-bubble{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.35)}
+      .assist-row.assistant .assist-bubble{background:var(--s2)}
+      .assist-meta{margin-top:6px;font-size:.65rem;color:var(--text3);font-family:var(--mono)}
+      #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:8px;align-items:flex-end}
+      #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
+      #assist-send{border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+    `;
+    document.head.appendChild(st);
+
+    const fab = document.createElement('div');
+    fab.id = 'assist-fab';
+    fab.innerHTML = `<button type="button" title="Assistente">🤖</button>`;
+    document.body.appendChild(fab);
+
+    const overlay = document.createElement('div');
+    overlay.id = 'assist-overlay';
+    document.body.appendChild(overlay);
+
+    const panel = document.createElement('div');
+    panel.id = 'assist-panel';
+    const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
+    const logoImg = logo ? `<img src="${esc(logo)}" alt="Italy">` : '';
+    panel.innerHTML = `
+      <div id="assist-header">
+        <div id="assist-title">${logoImg}<span>Assistente</span></div>
+        <div id="assist-actions">
+          <button type="button" id="assist-clear">Limpar</button>
+          <button type="button" id="assist-close">✕</button>
+        </div>
+      </div>
+      <div id="assist-sug">
+        <div class="assist-chip" data-q="OFs atrasadas hoje">OFs atrasadas hoje</div>
+        <div class="assist-chip" data-q="Estoque crítico">Estoque crítico</div>
+        <div class="assist-chip" data-q="Faturamento do mês">Faturamento do mês</div>
+        <div class="assist-chip" data-q="Clientes inativos">Clientes inativos</div>
+      </div>
+      <div id="assist-body"></div>
+      <div id="assist-input">
+        <textarea id="assist-text" placeholder="Digite sua pergunta..."></textarea>
+        <button type="button" id="assist-send">Enviar</button>
+      </div>
+    `;
+    document.body.appendChild(panel);
+
+    const open = ()=>{
+      overlay.style.display = 'block';
+      panel.classList.add('open');
+      setTimeout(()=>{ try{ document.getElementById('assist-text')?.focus(); }catch(e){} }, 50);
+      render();
+      scrollBottom();
+    };
+    const close = ()=>{
+      overlay.style.display = 'none';
+      panel.classList.remove('open');
+    };
+    fab.querySelector('button').onclick = open;
+    overlay.onclick = close;
+    panel.querySelector('#assist-close').onclick = close;
+
+    panel.querySelector('#assist-clear').onclick = ()=>{
+      saveHist([]);
+      render(true);
+    };
+
+    panel.querySelectorAll('.assist-chip').forEach((c)=>{
+      c.onclick = ()=>{
+        const q = String(c.getAttribute('data-q') || '').trim();
+        if(q) send(q);
+      };
+    });
+
+    const ta = panel.querySelector('#assist-text');
+    ta.addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Enter' && !ev.shiftKey){
+        ev.preventDefault();
+        send(ta.value);
+      }
+    });
+    panel.querySelector('#assist-send').onclick = ()=>send(ta.value);
+  };
+
+  const scrollBottom = ()=>{
+    const body = document.getElementById('assist-body');
+    if(!body) return;
+    body.scrollTop = body.scrollHeight + 9999;
+  };
+
+  const addMsg = (role, text, ts)=>{
+    const hist = loadHist();
+    hist.push({ role, text: String(text || '').trim(), ts: ts || nowIso() });
+    saveHist(hist);
+    render();
+    scrollBottom();
+  };
+
+  const render = (forceGreet)=>{
+    const body = document.getElementById('assist-body');
+    if(!body) return;
+    let hist = loadHist();
+    if(forceGreet) hist = [];
+    if(hist.length === 0){
+      const nm = getUserName();
+      hist = [{ role:'assistant', text:`Olá ${nm}! Sou o assistente da Italy Embalagens. Como posso ajudar você hoje?`, ts: nowIso() }];
+      saveHist(hist);
+    }
+    const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
+    const avatar = logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar">I</div>`;
+    body.innerHTML = hist.map((m)=>{
+      const role = m.role === 'user' ? 'user' : 'assistant';
+      const bubble = `<div class="assist-bubble">${esc(m.text || '')}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+      if(role === 'assistant'){
+        return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
+      }
+      return `<div class="assist-row user">${bubble}</div>`;
+    }).join('');
+  };
+
+  const send = async (raw)=>{
+    const text = String(raw || '').trim();
+    const ta = document.getElementById('assist-text');
+    if(!text){ try{ ta?.focus(); }catch(e){}; return; }
+    if(ta) ta.value = '';
+    addMsg('user', text);
+    const typingId = 'typing-' + Math.random().toString(16).slice(2);
+    const body = document.getElementById('assist-body');
+    if(body){
+      const row = document.createElement('div');
+      row.className = 'assist-row assistant';
+      const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
+      row.innerHTML = `${logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar">I</div>`}<div class="assist-bubble" id="${typingId}">Digitando…</div>`;
+      body.appendChild(row);
+      scrollBottom();
+    }
+    try{
+      const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text } });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
+      const el = document.getElementById(typingId);
+      if(el && el.parentNode) el.parentNode.remove();
+      if(!resp || !resp.ok){
+        addMsg('assistant', `Desculpe ${getUserName()}, não consegui responder agora.`);
+        return;
+      }
+      addMsg('assistant', ans || `Desculpe ${getUserName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`);
+    }catch(e){
+      const el = document.getElementById(typingId);
+      if(el && el.parentNode) el.parentNode.remove();
+      addMsg('assistant', `Desculpe ${getUserName()}, ocorreu um erro ao consultar o assistente.`);
+    }
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUI);
+  else ensureUI();
+})();
+</script>
+
 </body></html>
