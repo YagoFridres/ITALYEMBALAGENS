@@ -2879,11 +2879,13 @@ function renderPCP(){
         <button class="btn-icon" onclick="event.stopPropagation();moverOF('${o.of}',1)" title="Descer">↓</button>
         <button class="btn-icon" onclick="event.stopPropagation();nextStatus('${o.of}')" title="Próx. status">▶</button>
         <button class="btn-icon" onclick="event.stopPropagation();togUrg('${o.of}')" style="color:${o.urg?'var(--red)':'var(--text3)'}" title="Urgente">🔴</button>
+        ${(!o.deleted_at && String(o.status||'').trim()!=='Cancelada' && String(o.status||'').trim()!=='Cancelado') ? `<button class="btn-icon" onclick="event.stopPropagation();pcpAbrirModalClonarOF('${escAttr(String(o.id||''))}','${escAttr(String(o.of||''))}')" title="Clonar">Clonar</button>` : ''}
         ${isConcluida(o) ? `<button class="btn-icon" onclick="event.stopPropagation();abrirModalReconcluirOF('${escAttr(String(o.id||''))}')" title="Reconcluir">🔄</button>` : ''}
         ${imgPrintUrl ? `<button class="btn-icon" onclick="event.stopPropagation();imprimirImagemOF('${escAttr(String(o.id||o.of||''))}')" title="🖼 Imprimir Imagem">🖼</button>` : ''}
       </div></td>
     </tr>`;
     }).join('');
+    try{ if(typeof window.pcpSyncCompareFab === 'function') window.pcpSyncCompareFab(); }catch(e){}
   } finally {
     _pcpRenderizando = false;
   }
@@ -5942,6 +5944,228 @@ function imprimirProgramacao(modo){
   imprimirRelatorio(titulo, html);
 }
 
+function imprimirProgramacaoRange(dataInicio, dataFim, titulo){
+  const parseDia = (d)=>{
+    if(!d) return null;
+    const s = String(d).trim();
+    if(!s) return null;
+    const dt = new Date(s.length === 10 ? (s + 'T00:00:00') : s);
+    if(isNaN(dt.getTime())) return null;
+    dt.setHours(0,0,0,0);
+    return dt;
+  };
+  const di = (dataInicio instanceof Date) ? new Date(dataInicio) : parseDia(dataInicio);
+  const df = (dataFim instanceof Date) ? new Date(dataFim) : parseDia(dataFim);
+  if(!di || !df){ toast('Período inválido','var(--red)'); return; }
+  di.setHours(0,0,0,0);
+  df.setHours(0,0,0,0);
+
+  const ofsFiltradas = (OFs || []).filter(of => {
+    const st = String(of?.status || '').trim();
+    if(st === 'Cancelada' || st === 'Cancelado') return false;
+    if(of?.deleted_at) return false;
+    const diaProd = of?.dia || of?.data_producao || '';
+    const diaEntr = of?.ent || of?.data_entrega || '';
+    const datas = [diaProd, diaEntr].filter(Boolean);
+    return datas.some(d => {
+      const dt = parseDia(d);
+      if(!dt) return false;
+      return dt >= di && dt <= df;
+    });
+  }).sort((a,b)=>(a.seq||0)-(b.seq||0));
+
+  if(ofsFiltradas.length === 0){
+    toast('Nenhuma OF no período selecionado', 'var(--red)');
+    return;
+  }
+
+  const safeJson = (v, fb)=>{
+    if(Array.isArray(v)) return v;
+    if(typeof v === 'string'){
+      try{ const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : fb; }catch(e){ return fb; }
+    }
+    return fb;
+  };
+
+  const linhas = ofsFiltradas.map(of => {
+    const itens = safeJson(of.itens, []);
+    const item0 = itens[0] || {};
+    const produto = String(item0.desc || item0.descricao || of.prodDesc || of.descricao || '—');
+    const ref = String(item0.ref || item0.referencia || '—');
+    const qtd = Number(of.qtd || of.quantidade || 0) || 0;
+    const valorTotal = Number(of.valor_total || of.valorTotal || of.val || 0) || 0;
+    const cliente = (getCli(of.cliId||of.cli_id||of.cliente_id)||{}).nome || of.cliNome || of.cliente_nome || '—';
+    const entrega = String(of.ent || of.data_entrega || '—');
+    const status = String(of.status || '—');
+    const fluxo = (typeof ofFluxoGetNames === 'function' ? (ofFluxoGetNames(of) || []) : []).join(' → ') || '—';
+    const numero = String(of.of || of.numero || of.of_num || of.of_numero || of.seq || '?');
+    return `<tr>
+      <td>${escH(numero)}</td>
+      <td>${escH(cliente)}</td>
+      <td>${escH(produto)}</td>
+      <td>${escH(ref)}</td>
+      <td style="text-align:center">${escH(String(qtd))}</td>
+      <td style="text-align:right">R$ ${escH(valorTotal.toFixed(2))}</td>
+      <td>${escH(entrega)}</td>
+      <td>${escH(status)}</td>
+      <td>${escH(fluxo)}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <h2 style="margin-bottom:8px">${escH(titulo)}</h2>
+    <p style="color:#666;margin-bottom:16px">
+      Gerado em: ${escH(new Date().toLocaleString('pt-BR'))}
+      &nbsp;|&nbsp; Total: ${escH(String(ofsFiltradas.length))} OF(s)
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead>
+        <tr style="background:#f0f0f0">
+          <th style="padding:6px;border:1px solid #ccc">Nº OF</th>
+          <th style="padding:6px;border:1px solid #ccc">Cliente</th>
+          <th style="padding:6px;border:1px solid #ccc">Produto</th>
+          <th style="padding:6px;border:1px solid #ccc">Ref</th>
+          <th style="padding:6px;border:1px solid #ccc">Qtd</th>
+          <th style="padding:6px;border:1px solid #ccc">Valor</th>
+          <th style="padding:6px;border:1px solid #ccc">Entrega</th>
+          <th style="padding:6px;border:1px solid #ccc">Status</th>
+          <th style="padding:6px;border:1px solid #ccc">Fluxo</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>
+  `;
+  imprimirRelatorio(titulo, html);
+}
+
+function abrirModalRelatorioPCP(){
+  let modal = document.getElementById('modal-pcp-relatorio');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-pcp-relatorio';
+    modal.innerHTML = `
+      <div class="modal" style="width:min(640px,98vw)">
+        <button class="close-btn" onclick="fechar('modal-pcp-relatorio')">✕</button>
+        <h2>📄 Relatório</h2>
+        <div class="page-body" style="padding:10px 0 0">
+          <div class="fg">
+            <div class="mf fgf">
+              <label>PERÍODO</label>
+              <select id="pcp-rel-tipo" onchange="pcpRelPeriodoChanged()">
+                <option value="hoje">Hoje</option>
+                <option value="data">Data específica</option>
+                <option value="semana-atual">Esta semana</option>
+                <option value="semana">Semana específica</option>
+                <option value="mes-atual">Este mês</option>
+                <option value="mes">Mês específico</option>
+              </select>
+            </div>
+            <div class="mf" id="pcp-rel-data-wrap" style="display:none">
+              <label>DATA</label>
+              <input id="pcp-rel-data" type="date">
+            </div>
+            <div class="mf" id="pcp-rel-semana-wrap" style="display:none">
+              <label>SEMANA</label>
+              <input id="pcp-rel-semana" type="week">
+            </div>
+            <div class="mf" id="pcp-rel-mes-wrap" style="display:none">
+              <label>MÊS</label>
+              <input id="pcp-rel-mes" type="month">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="fechar('modal-pcp-relatorio')">Cancelar</button>
+          <button class="btn btn-accent" onclick="pcpRelImprimir()">Imprimir</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  try{
+    const d = today();
+    const dt = document.getElementById('pcp-rel-data');
+    const wk = document.getElementById('pcp-rel-semana');
+    const mo = document.getElementById('pcp-rel-mes');
+    if(dt) dt.value = d;
+    if(mo) mo.value = d.slice(0,7);
+    if(wk){
+      const dd = new Date(d+'T12:00:00');
+      const y = dd.getFullYear();
+      const jan4 = new Date(Date.UTC(y,0,4));
+      const day = (jan4.getUTCDay() || 7);
+      const mon = new Date(jan4); mon.setUTCDate(jan4.getUTCDate() - day + 1);
+      const diff = Math.floor((dd - new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate())) / 86400000);
+      const week = 1 + Math.floor(diff/7);
+      wk.value = `${y}-W${String(week).padStart(2,'0')}`;
+    }
+  }catch(e){}
+  pcpRelPeriodoChanged();
+  abrir('modal-pcp-relatorio');
+}
+
+function pcpRelPeriodoChanged(){
+  const t = String(document.getElementById('pcp-rel-tipo')?.value || 'hoje');
+  const wData = document.getElementById('pcp-rel-data-wrap');
+  const wSem = document.getElementById('pcp-rel-semana-wrap');
+  const wMes = document.getElementById('pcp-rel-mes-wrap');
+  if(wData) wData.style.display = (t === 'data') ? '' : 'none';
+  if(wSem) wSem.style.display = (t === 'semana') ? '' : 'none';
+  if(wMes) wMes.style.display = (t === 'mes') ? '' : 'none';
+}
+
+function pcpRelImprimir(){
+  const tipo = String(document.getElementById('pcp-rel-tipo')?.value || 'hoje');
+  const hojeIso = today();
+  const hoje = new Date(hojeIso+'T12:00:00');
+  const mk = (iso)=> new Date(String(iso).slice(0,10)+'T12:00:00');
+  let di = null, df = null, titulo = '';
+  if(tipo === 'hoje'){
+    di = mk(hojeIso); df = mk(hojeIso);
+    titulo = 'Programação do Dia: ' + di.toLocaleDateString('pt-BR');
+  } else if(tipo === 'data'){
+    const d = String(document.getElementById('pcp-rel-data')?.value || '').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ toast('Selecione uma data','var(--red)'); return; }
+    di = mk(d); df = mk(d);
+    titulo = 'Programação do Dia: ' + di.toLocaleDateString('pt-BR');
+  } else if(tipo === 'semana-atual'){
+    const diaSem = hoje.getDay();
+    const diasParaSeg = diaSem === 0 ? -6 : (1 - diaSem);
+    di = new Date(hoje); di.setDate(hoje.getDate() + diasParaSeg);
+    df = new Date(di); df.setDate(di.getDate() + 6);
+    titulo = 'Programação da Semana: ' + di.toLocaleDateString('pt-BR') + ' a ' + df.toLocaleDateString('pt-BR');
+  } else if(tipo === 'semana'){
+    const w = String(document.getElementById('pcp-rel-semana')?.value || '').trim();
+    const m = w.match(/^(\d{4})-W(\d{2})$/);
+    if(!m){ toast('Selecione uma semana','var(--red)'); return; }
+    const y = Number(m[1]);
+    const wn = Number(m[2]);
+    const jan4 = new Date(Date.UTC(y,0,4));
+    const day = (jan4.getUTCDay() || 7);
+    const mon = new Date(jan4); mon.setUTCDate(jan4.getUTCDate() - day + 1 + (wn-1)*7);
+    di = new Date(mon.getUTCFullYear(), mon.getUTCMonth(), mon.getUTCDate(), 12,0,0,0);
+    df = new Date(di); df.setDate(di.getDate() + 6);
+    titulo = 'Programação da Semana: ' + di.toLocaleDateString('pt-BR') + ' a ' + df.toLocaleDateString('pt-BR');
+  } else if(tipo === 'mes-atual'){
+    di = new Date(hoje.getFullYear(), hoje.getMonth(), 1, 12,0,0,0);
+    df = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0, 12,0,0,0);
+    titulo = 'Programação do Mês: ' + di.toLocaleDateString('pt-BR') + ' a ' + df.toLocaleDateString('pt-BR');
+  } else if(tipo === 'mes'){
+    const v = String(document.getElementById('pcp-rel-mes')?.value || '').trim();
+    const m = v.match(/^(\d{4})-(\d{2})$/);
+    if(!m){ toast('Selecione um mês','var(--red)'); return; }
+    const y = Number(m[1]);
+    const mm = Number(m[2])-1;
+    di = new Date(y, mm, 1, 12,0,0,0);
+    df = new Date(y, mm+1, 0, 12,0,0,0);
+    titulo = 'Programação do Mês: ' + di.toLocaleDateString('pt-BR') + ' a ' + df.toLocaleDateString('pt-BR');
+  }
+  if(!di || !df){ toast('Período inválido','var(--red)'); return; }
+  fechar('modal-pcp-relatorio');
+  imprimirProgramacaoRange(di, df, titulo);
+}
+
 function _oqsSemanaRange(){
   const base = new Date(today() + 'T12:00:00');
   const dow = base.getDay();
@@ -6229,13 +6453,18 @@ async function cancelarOF(id, numero) {
   if (!id) { toast('OF inválida','var(--red)'); return; }
   if (!confirm('Confirmar cancelamento da OF #' + (numero || id) + '?')) return;
   try {
-    const r = await api('PATCH', '/ofs/' + encodeURIComponent(id), { status: 'Cancelada' });
+    const nowIso = new Date().toISOString();
+    const r = await api('PATCH', '/ofs/' + encodeURIComponent(id), { status: 'Cancelada', deleted_at: nowIso });
     if (r && r.error) { toast('Erro: ' + r.error,'var(--red)'); return; }
     await api('POST', '/historico_acoes', {
       tipo_acao: 'cancelar_of',
       descricao: 'OF #' + (numero || id) + ' cancelada',
       usuario: (CURRENT_USER && CURRENT_USER.nome) || 'sistema'
     });
+    try{
+      const o = (OFs||[]).find(x=>String(x?.id||'')===String(id)) || (OFs||[]).find(x=>String(x?.of||'')===String(numero)) || null;
+      if(o){ o.status = 'Cancelada'; o.deleted_at = nowIso; }
+    }catch(e){}
     toast('OF #' + (numero || id) + ' cancelada ✓','var(--green)');
     if (typeof carregarOFs === 'function') await carregarOFs();
     if (typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina();
@@ -6244,6 +6473,198 @@ async function cancelarOF(id, numero) {
     toast('Erro ao cancelar: ' + e.message,'var(--red)');
   }
 }
+
+async function pcpFetchMaxNumeroOF(){
+  let max = 0;
+  try{
+    max = Math.max(max, (typeof maxOfNumeric === 'function' ? Number(maxOfNumeric()||0) : 0) || 0);
+  }catch(e){}
+  if(!window._apiConectado || typeof api !== 'function') return max;
+  try{
+    const qs = new URLSearchParams();
+    qs.set('lite','1');
+    qs.set('incluir_excluidas','1');
+    qs.set('limit','200');
+    qs.set('order_by','created_at');
+    qs.set('order','desc');
+    const r = await api('GET','/ofs?'+qs.toString());
+    const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : [];
+    rows.forEach((o)=>{
+      const s = String(o?.of ?? o?.numero ?? o?.of_num ?? '').trim();
+      const n = parseFirstNumber(s);
+      if(Number.isFinite(n) && n > max) max = n;
+    });
+  }catch(e){}
+  return max;
+}
+
+function pcpBuildNextOfLike(origOfStr, nextNumero){
+  const base = String(origOfStr || '').trim();
+  const n = Math.trunc(Number(nextNumero || 0) || 0);
+  if(!base) return String(n);
+  const first = parseFirstNumber(base);
+  if(!(first > 0)) return String(n);
+  try{ return buildOfLike(base, n - first); }catch(e){ return String(n); }
+}
+
+async function pcpFetchOFCompleta(id, ofNum){
+  const sid = String(id || '').trim();
+  const sNum = String(ofNum || '').trim();
+  let local = null;
+  if(sid) local = (OFs||[]).find(o=>String(o?.id||'')===sid) || null;
+  if(!local && sNum) local = (OFs||[]).find(o=>String(o?.of||'')===sNum) || null;
+  if(local && local.itens) return local;
+  if(!sid) return local;
+  try{
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(sid), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    const ofFull = j && (j.data || j.id) ? (j.data || j) : null;
+    return (typeof normalizeOF === 'function' && ofFull) ? normalizeOF(ofFull) : (ofFull || local);
+  }catch(e){
+    return local;
+  }
+}
+
+async function pcpAbrirModalClonarOF(id, ofNum){
+  const base = await pcpFetchOFCompleta(id, ofNum);
+  if(!base){ toast('OF não encontrada','var(--red)'); return; }
+  const cliNome = (typeof getCli === 'function') ? ((getCli(base.cliId || base.cli_id || base.cliente_id) || {}).nome || '') : '';
+  const cliente = cliNome || base.cliNome || base.cliente_nome || base.cliente || '—';
+  const itens = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
+  const it0 = (Array.isArray(itens) ? itens : [])[0] || {};
+  const produto = String(it0.desc || it0.descricao || base.prodDesc || base.descricao || '').trim() || '—';
+  const vunit = Number(it0.vunit ?? it0.valor_unitario ?? it0.valorUnitario ?? 0) || 0;
+  const maqLinha = (typeof ofFluxoLinha === 'function' ? (ofFluxoLinha(base) || '') : '') || '—';
+  const chapaId = String(base.chp || base.chapa_id || '').trim();
+  const chapaObj = chapaId && typeof getCh === 'function' ? (getCh(chapaId) || null) : null;
+  const chapa = chapaObj ? estChapaKeyLabel(chapaObj) : (chapaId || '—');
+
+  let modal = document.getElementById('modal-pcp-clone');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-pcp-clone';
+    modal.innerHTML = `
+      <div class="modal" style="width:min(760px,98vw)">
+        <button class="close-btn" onclick="fechar('modal-pcp-clone')">✕</button>
+        <h2>⧉ Clonar OF</h2>
+        <div class="page-body" style="padding:10px 0 0">
+          <div class="fg">
+            <div class="mf fgf"><label>OF ORIGINAL</label><input id="pcp-clone-orig" disabled></div>
+            <div class="mf fgf"><label>NOVA OF (NÚMERO)</label><input id="pcp-clone-novo" disabled></div>
+            <div class="mf fgf"><label>CLIENTE</label><input id="pcp-clone-cli" disabled></div>
+            <div class="mf fgf"><label>PRODUTO</label><input id="pcp-clone-prod" disabled></div>
+            <div class="mf fgf"><label>MÁQUINAS</label><input id="pcp-clone-maq" disabled></div>
+            <div class="mf fgf"><label>CHAPA</label><input id="pcp-clone-chp" disabled></div>
+            <div class="mf"><label>VALOR UNITÁRIO</label><input id="pcp-clone-vunit" disabled></div>
+            <div class="mf"><label>DATA DE ENTREGA (editável)</label><input id="pcp-clone-ent" type="date"></div>
+            <div class="mf"><label>QUANTIDADE (editável)</label><input id="pcp-clone-qtd" type="number" min="0" step="1"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="fechar('modal-pcp-clone')">Cancelar</button>
+          <button class="btn btn-accent" onclick="pcpConfirmarClonarOF()">Salvar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const max = await pcpFetchMaxNumeroOF();
+  const nextNum = Math.max(1, max + 1);
+  const novoOf = pcpBuildNextOfLike(base.of || base.numero || '', nextNum);
+
+  modal.dataset.origId = String(base.id || id || '').trim();
+  modal.dataset.origOf = String(base.of || base.numero || ofNum || '').trim();
+  modal.dataset.novoOf = String(novoOf || '').trim();
+
+  document.getElementById('pcp-clone-orig').value = String(base.of || base.numero || '').trim();
+  document.getElementById('pcp-clone-novo').value = String(novoOf || '').trim();
+  document.getElementById('pcp-clone-cli').value = String(cliente || '').trim();
+  document.getElementById('pcp-clone-prod').value = String(produto || '').trim();
+  document.getElementById('pcp-clone-maq').value = String(maqLinha || '').trim();
+  document.getElementById('pcp-clone-chp').value = String(chapa || '').trim();
+  document.getElementById('pcp-clone-vunit').value = vunit ? fmtR(vunit) : '—';
+  document.getElementById('pcp-clone-ent').value = String(base.ent || base.data_entrega || today()).slice(0,10);
+  document.getElementById('pcp-clone-qtd').value = String(Math.trunc(Number(base.qtd || base.quantidade || 0) || 0));
+
+  window._PCP_CLONE_BASE = base;
+  abrir('modal-pcp-clone');
+}
+
+async function pcpConfirmarClonarOF(){
+  const modal = document.getElementById('modal-pcp-clone');
+  const base = window._PCP_CLONE_BASE || null;
+  if(!modal || !base){ toast('Clone inválido','var(--red)'); return; }
+  const ent = String(document.getElementById('pcp-clone-ent')?.value || '').slice(0,10);
+  const qtd = Math.trunc(Number(document.getElementById('pcp-clone-qtd')?.value || 0) || 0);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(ent)){ toast('Data de entrega inválida','var(--red)'); return; }
+  if(!(qtd > 0)){ toast('Quantidade inválida','var(--red)'); return; }
+  const novoOf = String(modal.dataset.novoOf || '').trim();
+  if(!novoOf){ toast('Número da OF inválido','var(--red)'); return; }
+
+  const itensBase = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
+  const itens = Array.isArray(itensBase) ? itensBase.map(x=>({ ...(x||{}) })) : [];
+  if(itens[0]){
+    itens[0].qtd = qtd;
+    itens[0].quantidade = qtd;
+    const vunit = Number(itens[0].vunit ?? itens[0].valor_unitario ?? 0) || 0;
+    itens[0].valor_total = (Number.isFinite(vunit) ? (qtd * vunit) : 0);
+  }
+
+  const seq = (OFs && OFs.length) ? (Math.max(...OFs.map(o=>Number(o.seq||0)||0)) + 1) : 1;
+  const dia = (typeof subtrairDiasUteis === 'function') ? (subtrairDiasUteis(ent, 3) || ent) : (base.dia || base.data_producao || ent);
+
+  const localOf = {
+    seq,
+    of: novoOf,
+    cliId: base.cliId || base.cli_id || base.cliente_id || null,
+    vendId: base.vendId || base.vendedor_id || base.vend_id || null,
+    qtd,
+    itens,
+    dia: String(dia || '').slice(0,10) || ent,
+    ent,
+    fluxo: base.fluxo || null,
+    maq: Array.isArray(base.maq) ? base.maq.slice() : (typeof base.maq === 'string' ? tryParse(base.maq, []) : []),
+    fluxo_maquinas: Array.isArray(base.fluxo_maquinas) ? base.fluxo_maquinas.slice() : (typeof base.fluxo_maquinas === 'string' ? tryParse(base.fluxo_maquinas, []) : []),
+    maquina_atual_index: 0,
+    status: 'Em aberto',
+    urg: !!(base.urg || base.urgente),
+    chp: base.chp || base.chapa_id || '',
+    qchp: Number(base.qchp || base.qtd_chapas || 0) || 0,
+    val: (()=>{
+      const it0 = itens[0] || {};
+      const v = Number(it0.valor_total ?? it0.total ?? 0) || 0;
+      return v;
+    })(),
+    prodDesc: base.prodDesc || base.descricao || '',
+    obs: base.obs || '',
+    pagto: base.pagto || base.cond_pagamento || '',
+    empId: base.empId || base.emp_id || EMP_FILTRO || '',
+    imgs: Array.isArray(base.imgs) ? base.imgs.slice() : [],
+    imagem_url: base.imagem_url || null,
+    tipo_caixa_id: base.tipo_caixa_id ?? base.tipoCaixaId ?? null,
+    tipo_caixa: base.tipo_caixa ?? base.tipoCaixa ?? null,
+    caixa_comprimento: base.caixa_comprimento ?? base.caixaComprimento ?? null,
+    caixa_largura: base.caixa_largura ?? base.caixaLargura ?? null,
+    caixa_altura: base.caixa_altura ?? base.caixaAltura ?? null,
+  };
+
+  try{
+    const shape = (typeof inferOfShape === 'function') ? await inferOfShape() : 'legacy';
+    const payload = (typeof buildOfPayload === 'function') ? buildOfPayload(shape, localOf) : filtrarPayloadOF(localOf);
+    const r = await api('POST','/ofs', payload);
+    if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
+    const row = (r && r.data) ? r.data : { ...localOf };
+    try{ if(typeof _inserirOFLocal === 'function') _inserirOFLocal(row); }catch(e){}
+    fechar('modal-pcp-clone');
+    try{ _rerenderOFViews(); }catch(e){}
+    toast('✓ OF clonada','var(--green)');
+  }catch(e){
+    toast('Erro ao clonar: ' + String(e?.message || e),'var(--red)');
+  }
+}
+
 async function alterarOFSel(){
   if(!hasPerm('editar_pedidos') && !hasPerm('tudo')){toast('Sem permissão para editar pedidos','var(--red)');return;}
   if(!ofSel){toast('Selecione uma OF para alterar','var(--yellow)');return;}
@@ -13291,15 +13712,26 @@ function estChapaKeyLabel(c){
 }
 
 async function ensureQRCodeLib(){
-  if(window.QRCode && (window.QRCode.toCanvas || window.QRCode.toDataURL)) return true;
+  if(typeof window.qrcode === 'function') return true;
   await new Promise((resolve, reject)=>{
     const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
     s.onload=()=>resolve(true);
     s.onerror=()=>reject(new Error('Falha ao carregar QRCode'));
     document.head.appendChild(s);
   });
-  return !!(window.QRCode && (window.QRCode.toCanvas || window.QRCode.toDataURL));
+  return (typeof window.qrcode === 'function');
+}
+
+function qrGenDataUrl(text, targetPx){
+  if(typeof window.qrcode !== 'function') throw new Error('QR lib não carregada');
+  const qr = window.qrcode(0, 'M');
+  qr.addData(String(text || ''));
+  qr.make();
+  const size = Math.max(120, Math.trunc(Number(targetPx || 360) || 360));
+  const count = Number(qr.getModuleCount ? qr.getModuleCount() : 0) || 0;
+  const cell = count > 0 ? Math.max(2, Math.floor(size / count)) : 6;
+  return qr.createDataURL(cell, 0);
 }
 
 function abrirModalQRCodeEstoque(tipo, id, titulo){
@@ -13307,7 +13739,7 @@ function abrirModalQRCodeEstoque(tipo, id, titulo){
   if(!itemId) return;
   const t = String(tipo||'').trim().toLowerCase();
   const nome = String(titulo||'').trim();
-  const url = `https://adm.italyembalagens.com.br/?scan=${encodeURIComponent(itemId)}`;
+  const url = `https://adm.italyembalagens.com.br/?scan=${encodeURIComponent(itemId)}.`;
 
   let modal = document.getElementById('modal-qr-estoque');
   if(!modal){
@@ -13322,7 +13754,7 @@ function abrirModalQRCodeEstoque(tipo, id, titulo){
         </div>
         <div id="qr-estoque-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
         <div style="display:flex;align-items:center;justify-content:center;margin:10px 0">
-          <canvas id="qr-estoque-canvas" width="360" height="360" style="background:#fff;border-radius:12px;padding:10px"></canvas>
+          <img id="qr-estoque-img" alt="QR Code" style="width:360px;height:360px;background:#fff;border-radius:12px;padding:10px;image-rendering:pixelated">
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
           <button class="btn btn-ghost btn-sm" onclick="qrEstoqueBaixarPng()">Baixar PNG</button>
@@ -13341,24 +13773,17 @@ function abrirModalQRCodeEstoque(tipo, id, titulo){
   if(sub) sub.textContent = [t ? t.toUpperCase() : '', nome].filter(Boolean).join(' — ');
   if(urlEl) urlEl.textContent = url;
   modal.dataset.url = url;
+  modal.dataset.dataUrl = '';
   modal.style.display = 'flex';
 
   Promise.resolve()
     .then(()=>ensureQRCodeLib())
     .then(()=>{
-      const canvas = document.getElementById('qr-estoque-canvas');
-      if(!canvas) return;
-      if(window.QRCode && window.QRCode.toCanvas){
-        return window.QRCode.toCanvas(canvas, url, { width: 360, margin: 1 });
-      }
-      if(window.QRCode && window.QRCode.toDataURL){
-        return window.QRCode.toDataURL(url, { width: 360, margin: 1 }).then((dataUrl)=>{
-          const ctx = canvas.getContext('2d');
-          const img = new Image();
-          img.onload = ()=>{ canvas.width = img.width; canvas.height = img.height; ctx.drawImage(img,0,0); };
-          img.src = dataUrl;
-        });
-      }
+      const img = document.getElementById('qr-estoque-img');
+      if(!img) return;
+      const dataUrl = qrGenDataUrl(url, 360);
+      img.src = dataUrl;
+      modal.dataset.dataUrl = dataUrl;
     })
     .catch(()=>{});
 }
@@ -13375,12 +13800,14 @@ function qrEstoqueBaixarPng(){
     a.click();
     a.remove();
   };
-  if(window.QRCode && window.QRCode.toDataURL){
-    window.QRCode.toDataURL(url, { width: 1024, margin: 1 }).then(dl).catch(()=>{});
-    return;
-  }
-  const canvas = document.getElementById('qr-estoque-canvas');
-  if(canvas) dl(canvas.toDataURL('image/png'));
+  try{
+    if(typeof window.qrcode === 'function'){
+      dl(qrGenDataUrl(url, 1024));
+      return;
+    }
+  }catch(e){}
+  const dataUrl = String(modal.dataset.dataUrl || '').trim();
+  if(dataUrl) dl(dataUrl);
 }
 
 function qrEstoqueImprimir(){
@@ -13395,12 +13822,14 @@ function qrEstoqueImprimir(){
     w.document.close();
     setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
   };
-  if(window.QRCode && window.QRCode.toDataURL){
-    window.QRCode.toDataURL(url, { width: 1024, margin: 1 }).then(openPrint).catch(()=>{});
-    return;
-  }
-  const canvas = document.getElementById('qr-estoque-canvas');
-  if(canvas) openPrint(canvas.toDataURL('image/png'));
+  try{
+    if(typeof window.qrcode === 'function'){
+      openPrint(qrGenDataUrl(url, 1024));
+      return;
+    }
+  }catch(e){}
+  const dataUrl = String(modal.dataset.dataUrl || '').trim();
+  if(dataUrl) openPrint(dataUrl);
 }
 
 async function estoqueUploadFoto(tipo, itemId, file){
@@ -26619,6 +27048,8 @@ function renderOrcamentos(){
   let lista=ORCAMENTOS;
   if(empFil)lista=lista.filter(o=>(o.empId||o.emp_id||'')===empFil);
   renderEmpBar();
+  const modoCompare = !!window._ORC_COMPARE_MODE;
+  const sel = Array.isArray(window._ORC_COMPARE_SEL) ? window._ORC_COMPARE_SEL.map(x=>String(x||'').trim()).filter(Boolean) : [];
   document.getElementById('orc-body').innerHTML=lista.map(orc=>{
     const num = orc.numero_orcamento || (orc.id ? String(orc.id).substring(0,8) : '');
     const cliente = orc.cliente_nome || orc.descricao || '—';
@@ -26627,7 +27058,12 @@ function renderOrcamentos(){
     const onda = orc.onda || '—';
     const vtot = orc.valor_total ?? orc.vtot ?? 0;
     const dt = orc.criado_em || orc.data || '';
-    return `<div class="orc-card" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:8px">
+    const id = String(orc.id||'').trim();
+    const isSel = id && sel.includes(id);
+    const border = isSel ? 'rgba(234,179,8,.55)' : 'var(--border)';
+    const bg = isSel ? 'rgba(234,179,8,.08)' : 'var(--bg2)';
+    const cursor = modoCompare ? 'cursor:pointer' : '';
+    return `<div class="orc-card" onclick="orcCompareCardClick(event,'${escAttr(id)}')" style="background:${bg};border:1px solid ${border};border-radius:8px;padding:14px;margin-bottom:8px;${cursor}">
       <div class="orc-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-weight:bold;color:var(--accent)">Orç. Nº ${escH(num)}</span>
         <span style="font-size:11px;color:var(--text2)">${fmtD(dt)}</span>
@@ -26636,14 +27072,133 @@ function renderOrcamentos(){
       <div><b>Medidas:</b> ${escH(medidas)} | <b>Qtd:</b> ${escH(String(qtd))} | <b>Onda:</b> ${escH(onda)}</div>
       <div style="color:var(--green)"><b>Valor Total:</b> ${fmtR(vtot)}</div>
       <div class="orc-actions" style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="abrirCalculadoraComOrc('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">✏️ Editar/Ver</button>
-        <button onclick="imprimirOrcamentoId('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🖨 Imprimir</button>
-        <button onclick="copiarLinkAprovacaoOrcamento('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🔗 Link</button>
-        <button onclick="abrirVersoesOrcamento('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🕘 Versões</button>
-        <button onclick="excluirOrcamento('${escAttr(orc.id||'')}')" style="padding:5px 10px;border-radius:5px;background:#f44336;color:#fff;border:none;cursor:pointer;font-size:12px">🗑</button>
+        <button onclick="event.stopPropagation();abrirCalculadoraComOrc('${escAttr(id)}')" style="padding:5px 10px;border-radius:5px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">✏️ Editar/Ver</button>
+        <button onclick="event.stopPropagation();imprimirOrcamentoId('${escAttr(id)}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🖨 Imprimir</button>
+        <button onclick="event.stopPropagation();copiarLinkAprovacaoOrcamento('${escAttr(id)}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🔗 Link</button>
+        <button onclick="event.stopPropagation();abrirVersoesOrcamento('${escAttr(id)}')" style="padding:5px 10px;border-radius:5px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:12px">🕘 Versões</button>
+        <button onclick="event.stopPropagation();excluirOrcamento('${escAttr(id)}')" style="padding:5px 10px;border-radius:5px;background:#f44336;color:#fff;border:none;cursor:pointer;font-size:12px">🗑</button>
       </div>
     </div>`;
   }).join('')||'<div style="color:var(--text3)">Nenhum orçamento</div>';
+}
+
+window._ORC_COMPARE_MODE = !!window._ORC_COMPARE_MODE;
+window._ORC_COMPARE_SEL = Array.isArray(window._ORC_COMPARE_SEL) ? window._ORC_COMPARE_SEL : [];
+
+function orcToggleCompareMode(){
+  const on = !window._ORC_COMPARE_MODE;
+  window._ORC_COMPARE_MODE = on;
+  window._ORC_COMPARE_SEL = [];
+  renderOrcamentos();
+  toast(on ? 'Selecione 2 orçamentos para comparar' : 'Comparação cancelada', on ? 'var(--yellow)' : 'var(--text3)');
+}
+
+function orcCompareCardClick(ev, id){
+  if(!window._ORC_COMPARE_MODE) return;
+  if(ev) try{ ev.preventDefault(); }catch(e){}
+  const sid = String(id||'').trim();
+  if(!sid) return;
+  let sel = Array.isArray(window._ORC_COMPARE_SEL) ? window._ORC_COMPARE_SEL.map(x=>String(x||'').trim()).filter(Boolean) : [];
+  if(sel.includes(sid)) sel = sel.filter(x=>x!==sid);
+  else {
+    if(sel.length >= 2){ toast('Selecione no máximo 2 orçamentos','var(--yellow)'); return; }
+    sel.push(sid);
+  }
+  window._ORC_COMPARE_SEL = sel;
+  renderOrcamentos();
+  if(sel.length === 2) orcAbrirComparacao(sel[0], sel[1]);
+}
+
+async function orcAbrirComparacao(aId, bId){
+  const fetchOne = async (id)=>{
+    const local = (ORCAMENTOS||[]).find(o=>String(o?.id||'')===String(id)) || null;
+    if(local && local.parametros) return local;
+    if(!_apiConectado || !CURRENT_USER) return local;
+    try{
+      const r = await apiFetch('/api/orcamentos/'+encodeURIComponent(id), { method:'GET' });
+      const j = r ? await r.json().catch(()=>null) : null;
+      const full = j && (j.data || j.id) ? (j.data || j) : null;
+      return full || local;
+    }catch(e){
+      return local;
+    }
+  };
+  const a = await fetchOne(aId);
+  const b = await fetchOne(bId);
+  if(!a || !b){ toast('Falha ao carregar orçamentos','var(--red)'); return; }
+
+  let modal = document.getElementById('modal-orc-comp');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-orc-comp';
+    modal.innerHTML = `<div class="modal" style="width:min(1120px,98vw)">
+      <button class="close-btn" onclick="orcFecharComparacao()">✕</button>
+      <h2>⚖️ Comparar Orçamentos</h2>
+      <div class="page-body" id="orc-comp-body" style="padding:12px 0"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="orcFecharComparacao()">Fechar comparação</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+
+  const fmt = (k, v)=>{
+    if(v == null) return '';
+    if(k === 'parametros' || k === 'params'){
+      try{ return typeof v === 'string' ? v : JSON.stringify(v); }catch(e){ return String(v); }
+    }
+    if(typeof v === 'string') return v;
+    if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if(Array.isArray(v)) return v.map(x=>String(x)).join('\n');
+    try{ return JSON.stringify(v); }catch(e){ return String(v); }
+  };
+
+  const derive = (o)=>({
+    cliente: String(o.cliente_nome || o.clienteNome || o.descricao || ''),
+    medidas: String(o.medidas || o.titulo || ''),
+    quantidade: String(o.quantidade ?? o.qtd ?? ''),
+    onda: String(o.onda || ''),
+    valor_unitario: String(o.valor_unitario ?? o.vunit ?? o.valorUnitario ?? ''),
+    valor_total: String(o.valor_total ?? o.vtot ?? o.valorTotal ?? ''),
+    parametros: fmt('parametros', o.parametros ?? o.params ?? o.parametro ?? o.obs ?? ''),
+  });
+
+  const pa = { ...derive(a), ...(a||{}) };
+  const pb = { ...derive(b), ...(b||{}) };
+  const keys = Array.from(new Set([...Object.keys(pa), ...Object.keys(pb)])).filter(k=>k && !String(k).startsWith('_')).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+
+  const body = document.getElementById('orc-comp-body');
+  const aNum = a.numero_orcamento || (a.id ? String(a.id).substring(0,8) : aId);
+  const bNum = b.numero_orcamento || (b.id ? String(b.id).substring(0,8) : bId);
+  body.innerHTML = `<div style="display:grid;grid-template-columns:1fr;gap:10px">
+    <div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:center">
+      <div></div>
+      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(aNum||''))}</div>
+      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(bNum||''))}</div>
+    </div>
+    ${keys.map((k)=>{
+      const va = fmt(k, pa[k]);
+      const vb = fmt(k, pb[k]);
+      const diff = String(va) !== String(vb);
+      const bg = diff ? 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);' : 'background:var(--s2);border:1px solid var(--border);';
+      return `<div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:start;padding:10px;border-radius:10px;${bg}">
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(k)}</div>
+        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(String(va||'—'))}</pre>
+        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(String(vb||'—'))}</pre>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  window._ORC_COMPARE_MODE = false;
+  abrir('modal-orc-comp');
+}
+
+function orcFecharComparacao(){
+  window._ORC_COMPARE_SEL = [];
+  window._ORC_COMPARE_MODE = false;
+  try{ fechar('modal-orc-comp'); }catch(e){ try{ const el=document.getElementById('modal-orc-comp'); if(el) el.style.display='none'; }catch(_){} }
+  renderOrcamentos();
 }
 
 function abrirCalculadoraComOrc(id){
@@ -30132,8 +30687,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="btn-cancelar-of" class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
     <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
     <button class="btn btn-ghost btn-sm" onclick="abrirRelatorioOQueVaiSemana()" title="Relatório de entregas (segunda a sexta)">📋 O que vai essa semana</button>
-    <button class="btn btn-ghost btn-sm" onclick="imprimirProgramacao('dia')" title="Imprimir programação do dia">🖨 Imprimir Dia</button>
-    <button class="btn btn-ghost btn-sm" onclick="imprimirProgramacao('semana')" title="Imprimir programação da semana">🖨 Imprimir Semana</button>
+    <button class="btn btn-ghost btn-sm" onclick="abrirModalRelatorioPCP()" title="Relatório por período">📄 Relatório</button>
     <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
   </div>
   <div class="page-body" style="padding:0;">
@@ -30357,7 +30911,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todas empresas</option>
     </select>
     <div style="flex:1"></div>
-    <button class="btn btn-green btn-sm" onclick="abrirModalEntrada()">📥 Entrada</button>
     <button class="btn btn-green btn-sm" onclick="abrirModalEntradaLoteChapas()">📥 Entrada em Lote</button>
     <button class="btn btn-ghost btn-sm" onclick="estoqueGerarInventario()">📄 Gerar Inventário</button>
     <button class="btn btn-ghost btn-sm" onclick="estoqueTriggerImportInventario()">📤 Importar Inventário</button>
@@ -31562,6 +32115,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todas empresas</option>
     </select>
     <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="orcToggleCompareMode()">⚖️ Comparar</button>
     <button class="btn btn-ghost btn-sm" onclick="abrirCalculadora()">🧮 Calculadora de Caixas</button>
   </div>
   <div class="page-body" id="orc-body"></div>
@@ -33028,117 +33582,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </div></div>
 
 <script>
-// ===== PATCH PCP: excluir OF definitiva + realtime mais rápido =====
-(function(){
-  function injectDeleteButton(){
-    try{
-      const toolbar = document.querySelector('#page-pcp .ptoolbar');
-      if(!toolbar || document.getElementById('btn-excluir-of-def')) return;
-      const refBtn = [...toolbar.querySelectorAll('button')].find(b => (b.textContent||'').includes('Cancelar OF'));
-      const btn = document.createElement('button');
-      btn.id = 'btn-excluir-of-def';
-      btn.className = 'btn btn-red btn-sm';
-      btn.textContent = '🗑 Excluir OF';
-      btn.title = 'Move a OF para a aba Excluídas';
-      btn.onclick = function(){ excluirOFDefinitivaSel(); };
-      if(refBtn && refBtn.parentNode) refBtn.parentNode.insertBefore(btn, refBtn.nextSibling);
-      else toolbar.appendChild(btn);
-    }catch(e){}
-  }
-
-  function softDeleteLocal(o){
-    if(!o) return false;
-    const ofNum = o.of;
-    o.deleted_at = new Date().toISOString();
-    if(typeof ofSel !== 'undefined' && ofSel === ofNum) ofSel = null;
-    try{ gerarNotificacoes(); }catch(e){}
-    try{ renderNotificacoes(); }catch(e){}
-    try{ renderPCP(); }catch(e){}
-    try{ renderLancamento(); }catch(e){}
-    try{ updateBadges(); }catch(e){}
-    try{ autoSaveTrigger('delete-of'); }catch(e){}
-    try{ logAction('OF excluída', ofNum); }catch(e){}
-    return true;
-  }
-
-  window.excluirOFDefinitivaSel = async function(){
-    if(!window.ofSel){ toast('Selecione uma OF primeiro','var(--yellow)'); return; }
-    const o = OFs.find(x => x.of === window.ofSel);
-    if(!o){ toast('OF não encontrada','var(--red)'); return; }
-    const cli = (typeof getCli==='function' ? (getCli(o.cliId)||{nome:'?'}) : {nome:'?'}).nome;
-    const ok = confirm(
-      'EXCLUIR a OF '+o.of+'?\n\n' +
-      'Cliente: '+cli+'\n' +
-      'Quantidade: '+((o.qtd||0).toLocaleString ? (o.qtd||0).toLocaleString('pt-BR') : (o.qtd||0))+' un\n\n' +
-      'Esta ação move a OF para a aba "Excluídas".'
-    );
-    if(!ok) return;
-
-    let deleted = false;
-    if(window._apiConectado && typeof api === 'function'){
-      const tries = [];
-      if(o.id) tries.push('/ofs/'+encodeURIComponent(o.id));
-      tries.push('/ofs/'+encodeURIComponent(o.of));
-      for(const path of tries){
-        try{
-          const r = await api('DELETE', path);
-          if(r && r.ok){ deleted = true; break; }
-        }catch(e){}
-      }
-    }
-
-    if(!deleted){
-      softDeleteLocal(o);
-      toast('🗑 OF excluída','var(--green)');
-      return;
-    }
-
-    softDeleteLocal(o);
-    try{ await carregarOFsUnico(true); }catch(e){}
-    showSaveIndicator('✓ excluído','var(--green)');
-    toast('🗑 OF excluída','var(--green)');
-  };
-
-  // Real time mais agressivo para novas OFs entre usuários via backend/API.
-  let _rtBusy = false;
-
-  window.syncRealtimeOFSilent = async function(force){
-    if(_rtBusy || !window.CURRENT_USER) return;
-    if(!force && document.hidden) return;
-    if(!force){
-      const pg = window._PAGE_ATUAL || '';
-      if(pg !== 'pcp' && pg !== 'lancamento' && pg !== 'ofmaq') return;
-    }
-    _rtBusy = true;
-    try{
-      const before = String(_ofsLastHash || '');
-      await carregarOFsUnico(!!force);
-      const after = String(_ofsLastHash || '');
-      if(force || after !== before){
-        try{ updateBadges(); }catch(e){}
-        try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
-        const pg = window._PAGE_ATUAL || '';
-        if(pg === 'pcp'){ try{ renderPCP(); }catch(e){} }
-        if(pg === 'lancamento'){ try{ renderLancamento(); }catch(e){} }
-        if(pg === 'ofmaq'){ try{ renderOFsPorMaquina(); }catch(e){} }
-      }
-    }catch(e){}
-    finally{ _rtBusy = false; }
-  };
-
-  function startRealtimePatch(){
-    injectDeleteButton();
-    // sincronização mais rápida para ver OF nova quase em tempo real
-    setInterval(function(){ window.syncRealtimeOFSilent(false); }, 600000);
-    // força atualização ao abrir PCP/Lançamento
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden) window.syncRealtimeOFSilent(false); });
-    ['click','focus'].forEach(evt => window.addEventListener(evt, function(){ injectDeleteButton(); }, {passive:true}));
-    setTimeout(function(){ window.syncRealtimeOFSilent(false); }, 1200);
-  }
-
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startRealtimePatch);
-  else startRealtimePatch();
-})();
+// (removido) Botão duplicado "Excluir OF" no PCP
 </script>
 
 
@@ -33220,7 +33664,118 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       carregarFluxosParaSelect(sel);
     }
     if(n===0) _pcpBatchWasOpen = false;
+    try{ if(typeof window.pcpSyncCompareFab === 'function') window.pcpSyncCompareFab(); }catch(e){}
   }
+
+  function pcpSyncCompareFabInner(){
+    let el = document.getElementById('pcp-compare-fab');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'pcp-compare-fab';
+      el.style.position = 'fixed';
+      el.style.right = '16px';
+      el.style.bottom = '16px';
+      el.style.zIndex = '9999';
+      el.innerHTML = `<button class="btn btn-accent" onclick="pcpCompararOFs()" style="box-shadow:0 10px 30px rgba(0,0,0,.35)">🔎 Comparar OFs</button>`;
+      document.body.appendChild(el);
+    }
+    const pg = window._PAGE_ATUAL || '';
+    const sel = getSelectedOFs();
+    el.style.display = (pg === 'pcp' && sel.length === 2) ? '' : 'none';
+  }
+  window.pcpSyncCompareFab = pcpSyncCompareFabInner;
+
+  window.pcpCompararOFs = async function(){
+    const selNums = getSelectedOFs();
+    if(selNums.length !== 2){ toast('Marque exatamente 2 OFs','var(--yellow)'); return; }
+    const [aNum, bNum] = selNums;
+    const fetchOne = async (num)=>{
+      const local = (OFs||[]).find(x=>String(x?.of||'')===String(num)) || null;
+      const id = String(local?.id || '').trim();
+      if(local && local.itens) return local;
+      if(!id) return local;
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'GET' });
+      const j = r ? await r.json().catch(()=>null) : null;
+      const ofFull = j && (j.data || j.id) ? (j.data || j) : null;
+      return (typeof normalizeOF === 'function' && ofFull) ? normalizeOF(ofFull) : (ofFull || local);
+    };
+    try{
+      const a = await fetchOne(aNum);
+      const b = await fetchOne(bNum);
+      if(!a || !b){ toast('Falha ao carregar OFs para comparar','var(--red)'); return; }
+      let modal = document.getElementById('modal-pcp-comp');
+      if(!modal){
+        modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.id = 'modal-pcp-comp';
+        modal.innerHTML = `<div class="modal" style="width:min(1120px,98vw)">
+          <button class="close-btn" onclick="fechar('modal-pcp-comp')">✕</button>
+          <h2>🔎 Comparar OFs</h2>
+          <div class="page-body" id="pcp-comp-body" style="padding:12px 0"></div>
+          <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="fechar('modal-pcp-comp')">Fechar comparação</button>
+          </div>
+        </div>`;
+        document.body.appendChild(modal);
+      }
+      const body = document.getElementById('pcp-comp-body');
+      const fmt = (k, v)=>{
+        if(v == null) return '';
+        if(k === 'itens'){
+          const arr = Array.isArray(v) ? v : (typeof v === 'string' ? tryParse(v, []) : []);
+          const it = Array.isArray(arr) ? arr : [];
+          return it.map(x=>{
+            const d = String(x?.desc || x?.descricao || '').trim();
+            const r = String(x?.ref || x?.referencia || '').trim();
+            const q = Number(x?.qtd ?? x?.quantidade ?? 0) || 0;
+            const u = Number(x?.vunit ?? x?.valor_unitario ?? 0) || 0;
+            return [d, r?('('+r+')'):'', 'x'+q, '@'+u].filter(Boolean).join(' ');
+          }).filter(Boolean).join('\n');
+        }
+        if(typeof v === 'string') return v;
+        if(typeof v === 'number' || typeof v === 'boolean') return String(v);
+        if(Array.isArray(v)){
+          if(k === 'imgs') return v.filter(Boolean).slice(0,6).map(x=>String(x)).join('\n') + (v.length>6?`\n(+${v.length-6})`:'');
+          return v.map(x=>String(x)).join('\n');
+        }
+        try{ return JSON.stringify(v); }catch(e){ return String(v); }
+      };
+      const pickAll = (o)=>{
+        const out = {};
+        Object.keys(o||{}).forEach((k)=>{
+          if(!k) return;
+          if(String(k).startsWith('_')) return;
+          out[k] = fmt(k, o[k]);
+        });
+        return out;
+      };
+      const pa = pickAll(a);
+      const pb = pickAll(b);
+      const keys = Array.from(new Set([...Object.keys(pa), ...Object.keys(pb)])).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+      const grid = keys.map((k)=>{
+        const va = String(pa[k] ?? '');
+        const vb = String(pb[k] ?? '');
+        const diff = va !== vb;
+        const bg = diff ? 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);' : 'background:var(--s2);border:1px solid var(--border);';
+        return `<div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:start;padding:10px;border-radius:10px;${bg}">
+          <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(k)}</div>
+          <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(va||'—')}</pre>
+          <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(vb||'—')}</pre>
+        </div>`;
+      }).join('');
+      body.innerHTML = `<div style="display:grid;grid-template-columns:1fr;gap:10px">
+        <div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:center">
+          <div></div>
+          <div style="font-weight:900;color:var(--accent)">OF #${escH(a.of||a.numero||aNum)}</div>
+          <div style="font-weight:900;color:var(--accent)">OF #${escH(b.of||b.numero||bNum)}</div>
+        </div>
+        ${grid}
+      </div>`;
+      abrir('modal-pcp-comp');
+    }catch(e){
+      toast('Erro ao comparar: '+String(e?.message || e),'var(--red)');
+    }
+  };
   window.clearSelectedOFs = clearSelectedOFs;
 
   window.pcpToggleSelecao = function(cb){
@@ -33466,21 +34021,30 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   }
   if(typeof cancelarOFSel==='function'){
     const _cancelar_prev = cancelarOFSel;
-    cancelarOFSel = function(){
+    cancelarOFSel = async function(){
       const sels=getSelectedOFs();
       if(sels.length<=1) return _cancelar_prev();
       if(!confirm(`Cancelar ${sels.length} OFs selecionadas?`)) return;
-      let ok=0;
-      sels.forEach(num=>{
+      const nowIso = new Date().toISOString();
+      let ok=0, erro=0;
+      for(const num of sels){
         const o=OFs.find(x=>x.of===num);
-        if(!o||o.status==='Cancelado') return;
+        if(!o) continue;
+        const st = String(o.status||'').trim();
+        if(st==='Cancelado' || st==='Cancelada') continue;
+        if(window._apiConectado && typeof api === 'function' && o.id){
+          try{
+            const r = await api('PATCH','/ofs/'+encodeURIComponent(String(o.id)), { status:'Cancelada', deleted_at: nowIso });
+            if(!r || !r.ok){ erro++; continue; }
+          }catch(e){ erro++; continue; }
+        }
         if(o.chp && o.qchp>0){ const ch=getCh(o.chp); if(ch){ ch.qtd+=o.qchp; HIST_EST.unshift({tipo:'entrada',chp:o.chp,qtd:o.qchp,of:o.of,data:today(),obs:'Estorno de cancelamento OF',empId:o.empId||getChapaEmpId(getCh(o.chp))||''}); } }
-        o.status='Cancelado'; o._cancelado=true; ok++;
-      });
+        o.status='Cancelada'; o._cancelado=true; o.deleted_at = nowIso; ok++;
+      }
       try{ autoSaveTrigger(); }catch(e){}
       try{ gerarNotificacoes(); renderNotificacoes(); }catch(e){}
       try{ renderPCP(); updateBadges(); }catch(e){}
-      toast(`✕ ${ok} OF(s) cancelada(s)`,'var(--orange)');
+      toast(`✕ ${ok} OF(s) cancelada(s)` + (erro?` · ${erro} erro(s)`:''),'var(--orange)');
     };
   }
 
