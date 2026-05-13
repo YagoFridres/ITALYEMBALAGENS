@@ -29,3 +29,28 @@ create table if not exists public.configuracoes (
   updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+create table if not exists public.cotacoes (
+  id uuid primary key default gen_random_uuid(),
+  item text not null,
+  quantidade integer,
+  emp_id text,
+  fornecedor_ids jsonb,
+  propostas jsonb,
+  escolhido_fornecedor_id uuid,
+  criado_por text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.avaliacoes_fornecedor (
+  id uuid primary key default gen_random_uuid(),
+  fornecedor_id uuid not null,
+  compra_id uuid,
+  prazo integer,
+  qualidade integer,
+  preco integer,
+  criado_por text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists avaliacoes_fornecedor_fornecedor_id_idx on public.avaliacoes_fornecedor (fornecedor_id, created_at desc);

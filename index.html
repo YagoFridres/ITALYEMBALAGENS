@@ -15962,7 +15962,398 @@ async function salvarVendedor(){
 }
 // ===================== NOTAS FISCAIS =====================
 // ===================== FORNECEDORES =====================
+var FORN_AV_RESUMO = null;
+var _fornAvBusy = false;
+
+async function carregarResumoAvaliacoesFornecedores(forcar){
+  if(_fornAvBusy) return;
+  if(!forcar && FORN_AV_RESUMO && typeof FORN_AV_RESUMO === 'object') return;
+  if(!_apiConectado || !CURRENT_USER) return;
+  try{
+    _fornAvBusy = true;
+    const resp = await apiFetch('/api/avaliacoes_fornecedor/resumo', { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const data = (j && j.data && typeof j.data === 'object') ? j.data : (j && typeof j === 'object' ? j : {});
+    if(resp && resp.ok) FORN_AV_RESUMO = data || {};
+  } catch(e) {} finally { _fornAvBusy = false; }
+}
+
+function _fornStars(avg){
+  const a = Number(avg||0) || 0;
+  const full = Math.max(0, Math.min(5, Math.round(a)));
+  const stars = Array.from({length:5}).map((_,i)=> (i<full?'★':'☆')).join('');
+  return `<span style="font-family:var(--mono);color:var(--yellow);font-weight:900">${stars}</span>`;
+}
+
+var COTACOES = null;
+var _cotBusy = false;
+var _COT_DRAFT = null;
+
+async function carregarCotacoes(forcar, empId){
+  if(_cotBusy) return;
+  if(!_apiConectado || !CURRENT_USER) return;
+  const eId = String(empId || EMP_FILTRO || '').trim();
+  if(!forcar && Array.isArray(COTACOES) && String(COTACOES._empId||'')===eId) return;
+  try{
+    _cotBusy = true;
+    const url = '/api/cotacoes' + (eId ? ('?empId='+encodeURIComponent(eId)) : '');
+    const resp = await apiFetch(url, { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const data = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
+    if(resp && resp.ok){
+      COTACOES = data || [];
+      try{ COTACOES._empId = eId; }catch(e){}
+    }
+  }catch(e){} finally { _cotBusy = false; }
+}
+
+function _cotEmpOptions(){
+  const list = (Array.isArray(window.EMPRESAS) && window.EMPRESAS.length) ? window.EMPRESAS : [
+    { id:'E1', sigla:'IT', nome:'Italy Embalagens', cor:'a' },
+    { id:'E2', sigla:'CO', nome:'Cartoeste', cor:'o' },
+    { id:'E3', sigla:'OP', nome:'Oestepack', cor:'g' },
+  ];
+  return list.map(e=>`<option value="${escAttr(e.id||'')}">${escH(e.nome||e.id||'')}</option>`).join('');
+}
+
+function _cotGetFornById(fid){
+  const id = String(fid||'').trim();
+  if(!id) return null;
+  return (FORNECEDORES||[]).find(f=>String(f.id||'').trim()===id) || null;
+}
+
+function _cotFornSelectOptions(selectedId){
+  const cur = String(selectedId||'').trim();
+  const lista = (FORNECEDORES||[]).slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+  return `<option value="">Selecionar…</option>` + lista.map(f=>`<option value="${escAttr(f.id)}" ${String(f.id)===cur?'selected':''}>${escH(f.nome||'')}</option>`).join('');
+}
+
+function abrirModalCotacao(){
+  try{ if(typeof carregarFornecedores==='function') carregarFornecedores(true); }catch(e){}
+  const empId = String((document.getElementById('cmp-fil-emp')||{}).value || EMP_FILTRO || '').trim();
+  _COT_DRAFT = {
+    empId,
+    item:'',
+    quantidade:'',
+    meta:null,
+    props:[
+      { fornecedor_id:'', vlm2:'', prazo_dias:'', obs:'' },
+      { fornecedor_id:'', vlm2:'', prazo_dias:'', obs:'' },
+      { fornecedor_id:'', vlm2:'', prazo_dias:'', obs:'' },
+    ],
+  };
+  let modal = document.getElementById('modal-cotacoes');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-cotacoes';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(1080px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Cotações</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cotacoes').style.display='none'">✕</button>
+        </div>
+        <div id="cot-body"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+  _renderCotacaoModal();
+  setTimeout(()=>{ try{ _cotAttachItemAc(); }catch(e){} }, 0);
+  carregarCotacoes(true, _COT_DRAFT.empId).then(()=>{ try{ _renderCotacaoLista(); }catch(e){} }).catch(()=>{});
+}
+
+function _cotAttachItemAc(){
+  const inp = document.getElementById('cot-item');
+  if(!inp || inp._acAttached) return;
+  inp._acAttached = true;
+  ac(inp, (q,empId)=>acNomenclaturas(q,empId), (data,lbl)=>{
+    inp.value = lbl;
+    if(_COT_DRAFT){
+      _COT_DRAFT.item = lbl;
+      _COT_DRAFT.meta = {
+        chapa_id: data?.id || data?._chapa_id || data?.chapa_id || '',
+        nom: data?.nomenclatura || data?.nom || lbl,
+        comp: Number(data?.comp||0)||0,
+        larg: Number(data?.larg||0)||0,
+        vincos: String(data?.vincos||'').trim(),
+        vlm2: Number(data?.val ?? data?.vlm2 ?? 0) || 0,
+      };
+      _renderCotacaoMeta();
+      _cotMaybePrefillVlm2();
+    }
+  }, {minLen:0, maxItems:30});
+}
+
+function _cotMaybePrefillVlm2(){
+  if(!_COT_DRAFT || !_COT_DRAFT.meta) return;
+  const base = Number(_COT_DRAFT.meta.vlm2||0)||0;
+  if(!base) return;
+  for(let i=0;i<3;i++){
+    const el = document.getElementById(`cot-vlm2-${i+1}`);
+    if(el && !String(el.value||'').trim()) el.value = String(base.toFixed(4));
+  }
+}
+
+function _renderCotacaoMeta(){
+  const host = document.getElementById('cot-meta');
+  if(!host) return;
+  const m = _COT_DRAFT?.meta;
+  if(!m){ host.textContent = '—'; return; }
+  const dims = (m.comp && m.larg) ? `${m.comp}×${m.larg}mm` : '—';
+  const v = (m.vlm2 && Number.isFinite(Number(m.vlm2))) ? `R$ ${Number(m.vlm2).toFixed(4)}/m²` : '—';
+  host.textContent = `${dims} · ${m.vincos?('Vincos '+m.vincos):'sem vincos'} · ${v}`;
+}
+
+function _renderCotacaoModal(){
+  const host = document.getElementById('cot-body');
+  if(!host) return;
+  const empId = String(_COT_DRAFT?.empId || EMP_FILTRO || '').trim();
+  host.innerHTML = `
+    <div style="display:grid;gap:12px">
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+          <div style="min-width:220px;flex:0 0 220px">
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">EMPRESA</div>
+            <select id="cot-emp" onchange="_cotDraftFromForm();_cotReloadLista()" style="width:100%">${_cotEmpOptions()}</select>
+          </div>
+          <div style="min-width:260px;flex:1">
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">ITEM (NOMENCLATURA)</div>
+            <input id="cot-item" value="${escAttr(_COT_DRAFT?.item||'')}" placeholder="Digite e selecione a nomenclatura…" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem" oninput="_cotDraftFromForm()">
+          </div>
+          <div style="min-width:140px;flex:0 0 140px">
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">QUANTIDADE</div>
+            <input id="cot-qtd" type="number" value="${escAttr(_COT_DRAFT?.quantidade||'')}" placeholder="0" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-size:.9rem" oninput="_cotDraftFromForm()">
+          </div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost btn-sm" onclick="_cotReloadLista()">Recarregar</button>
+            <button class="btn btn-accent btn-sm" onclick="salvarCotacao()">Salvar cotação</button>
+          </div>
+        </div>
+        <div style="margin-top:10px;font-size:.74rem;color:var(--text3)"><span style="font-family:var(--mono);font-weight:900;color:var(--text2)">META</span> · <span id="cot-meta">—</span></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+        ${[1,2,3].map(i=>`
+          <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <div style="font-family:var(--mono);font-weight:900;color:var(--text3)">FORN ${i}</div>
+              <select id="cot-forn-${i}" onchange="_cotDraftFromForm()" style="flex:1">${_cotFornSelectOptions(_COT_DRAFT?.props?.[i-1]?.fornecedor_id||'')}</select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div>
+                <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">R$/m²</div>
+                <input id="cot-vlm2-${i}" type="number" step="0.0001" value="${escAttr(_COT_DRAFT?.props?.[i-1]?.vlm2||'')}" placeholder="0.0000" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:.86rem" oninput="_cotDraftFromForm()">
+              </div>
+              <div>
+                <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">PRAZO (DIAS)</div>
+                <input id="cot-prazo-${i}" type="number" value="${escAttr(_COT_DRAFT?.props?.[i-1]?.prazo_dias||'')}" placeholder="0" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:.86rem" oninput="_cotDraftFromForm()">
+              </div>
+            </div>
+            <div style="margin-top:8px">
+              <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">OBS</div>
+              <input id="cot-obs-${i}" value="${escAttr(_COT_DRAFT?.props?.[i-1]?.obs||'')}" placeholder="ex: frete incluso / condição…" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font-size:.86rem" oninput="_cotDraftFromForm()">
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <div style="font-family:var(--mono);font-weight:900;color:var(--text2)">COTAÇÕES RECENTES</div>
+          <div id="cot-sub" style="color:var(--text3);font-size:.74rem"></div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="_cotReloadLista()">Atualizar</button>
+          </div>
+        </div>
+        <div id="cot-list"></div>
+      </div>
+    </div>
+  `;
+  const empSel = document.getElementById('cot-emp');
+  if(empSel) empSel.value = empId;
+  _renderCotacaoMeta();
+}
+
+function _cotDraftFromForm(){
+  if(!_COT_DRAFT) return;
+  _COT_DRAFT.empId = String((document.getElementById('cot-emp')||{}).value || '').trim();
+  _COT_DRAFT.item = String((document.getElementById('cot-item')||{}).value || '').trim();
+  _COT_DRAFT.quantidade = String((document.getElementById('cot-qtd')||{}).value || '').trim();
+  for(let i=1;i<=3;i++){
+    const fid = String((document.getElementById(`cot-forn-${i}`)||{}).value || '').trim();
+    const vlm2 = String((document.getElementById(`cot-vlm2-${i}`)||{}).value || '').trim();
+    const prazo = String((document.getElementById(`cot-prazo-${i}`)||{}).value || '').trim();
+    const obs = String((document.getElementById(`cot-obs-${i}`)||{}).value || '').trim();
+    if(_COT_DRAFT.props && _COT_DRAFT.props[i-1]){
+      _COT_DRAFT.props[i-1] = { fornecedor_id: fid, vlm2, prazo_dias: prazo, obs };
+    }
+  }
+}
+
+async function _cotReloadLista(){
+  _cotDraftFromForm();
+  await carregarCotacoes(true, _COT_DRAFT?.empId || '');
+  _renderCotacaoLista();
+}
+
+function _renderCotacaoLista(){
+  const host = document.getElementById('cot-list');
+  const sub = document.getElementById('cot-sub');
+  if(!host) return;
+  const lista = Array.isArray(COTACOES) ? COTACOES : [];
+  if(sub) sub.textContent = lista.length ? `${lista.length} registro(s)` : '—';
+  const fmtDt = (iso)=>{
+    try{ if(!iso) return '—'; return fmtDataBR(String(iso).split('T')[0]); }catch(e){ return '—'; }
+  };
+  host.innerHTML = lista.map(c=>{
+    const props = Array.isArray(c?.propostas) ? c.propostas : [];
+    const escolhido = String(c?.escolhido_fornecedor_id || '').trim();
+    const meta = (props[0] && typeof props[0]==='object' && props[0].meta && typeof props[0].meta==='object') ? props[0].meta : null;
+    const dims = meta && meta.comp && meta.larg ? `${meta.comp}×${meta.larg}mm` : '';
+    const vincos = meta && meta.vincos ? ` · Vincos ${meta.vincos}` : '';
+    const hdr = `${escH(c.item||'—')}${dims?` <span style="color:var(--text3);font-family:var(--mono);font-size:.72rem">(${escH(dims)}${escH(vincos)})</span>`:''}`;
+    const propsHtml = props.length ? `
+      <div style="overflow-x:auto;margin-top:8px">
+        <table style="border-collapse:collapse;width:100%;font-size:.72rem">
+          <thead><tr style="background:var(--s2)">${['Fornecedor','R$/m²','Prazo','Obs',''].map(h=>`<th style="padding:4px 7px;border:1px solid var(--border);color:var(--text2);font-family:var(--mono);white-space:nowrap">${h}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${props.map(p=>{
+              const fid = String(p?.fornecedor_id || '').trim();
+              const fNome = String(p?.fornecedor_nome || _cotGetFornById(fid)?.nome || fid || '—');
+              const vlm2 = Number(p?.vlm2 ?? p?.valor_m2 ?? p?.vlm2_unit ?? NaN);
+              const prazo = (p?.prazo_dias != null) ? Math.trunc(Number(p.prazo_dias)||0) : '';
+              const obs = String(p?.obs || p?.observacao || '').trim();
+              const isEsc = escolhido && fid && escolhido===fid;
+              return `<tr style="${isEsc?'background:rgba(245,158,11,0.12)':''}">
+                <td style="padding:3px 7px;border:1px solid var(--s3);font-weight:800">${escH(fNome||'—')}</td>
+                <td style="padding:3px 7px;border:1px solid var(--s3);text-align:right;font-family:var(--mono);color:var(--teal)">${Number.isFinite(vlm2)?vlm2.toFixed(4):'—'}</td>
+                <td style="padding:3px 7px;border:1px solid var(--s3);text-align:right;font-family:var(--mono)">${prazo!==''?escH(String(prazo)):'—'}</td>
+                <td style="padding:3px 7px;border:1px solid var(--s3);color:var(--text3)">${escH(obs||'—')}</td>
+                <td style="padding:3px 7px;border:1px solid var(--s3);text-align:right;white-space:nowrap">
+                  <button class="btn btn-ghost btn-sm" onclick="selecionarFornecedorCotacao('${escAttr(c.id)}','${escAttr(fid)}')" style="font-size:.62rem">${isEsc?'✓ Escolhido':'Escolher'}</button>
+                  <button class="btn btn-accent btn-sm" onclick="criarCompraDeCotacao('${escAttr(c.id)}','${escAttr(fid)}')" style="font-size:.62rem">🛒 Criar compra</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : `<div style="margin-top:8px;color:var(--text3);font-size:.74rem">Sem propostas registradas.</div>`;
+    return `
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--s2);margin-bottom:10px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <div style="font-weight:900">${hdr}</div>
+          <div style="margin-left:auto;color:var(--text3);font-size:.72rem;font-family:var(--mono)">${fmtDt(c.created_at)}</div>
+          ${c.emp_id?empBadge(c.emp_id):''}
+        </div>
+        <div style="margin-top:4px;color:var(--text3);font-size:.74rem">Qtd: <b style="color:var(--text2);font-family:var(--mono)">${c.quantidade!=null?escH(String(c.quantidade)):'—'}</b></div>
+        ${propsHtml}
+      </div>
+    `;
+  }).join('') || `<div style="color:var(--text3);padding:6px 0">Nenhuma cotação.</div>`;
+  _renderCotacaoMeta();
+}
+
+async function salvarCotacao(){
+  _cotDraftFromForm();
+  const empId = String(_COT_DRAFT?.empId || '').trim();
+  const item = String(_COT_DRAFT?.item || '').trim();
+  const qtd = String(_COT_DRAFT?.quantidade || '').trim();
+  if(!empId){ toast('Selecione a empresa','var(--red)'); return; }
+  if(!item){ toast('Informe o item','var(--red)'); return; }
+  const quantidade = (qtd===''?null:Math.trunc(Number(qtd)));
+  const meta = _COT_DRAFT?.meta;
+  const propsBase = (_COT_DRAFT?.props || []).map(p=>{
+    const fid = String(p?.fornecedor_id || '').trim();
+    if(!fid) return null;
+    const f = _cotGetFornById(fid);
+    const vlm2 = (p?.vlm2===''||p?.vlm2==null) ? null : Number(String(p.vlm2).replace(',','.'));
+    const prazo = (p?.prazo_dias===''||p?.prazo_dias==null) ? null : Math.trunc(Number(p.prazo_dias));
+    return {
+      fornecedor_id: fid,
+      fornecedor_nome: f?.nome || null,
+      vlm2: Number.isFinite(vlm2) ? vlm2 : null,
+      prazo_dias: Number.isFinite(prazo) ? prazo : null,
+      obs: String(p?.obs || '').trim() || null,
+      meta: meta ? { chapa_id: meta.chapa_id||null, comp: meta.comp||0, larg: meta.larg||0, vincos: meta.vincos||'', nom: meta.nom||item } : null,
+    };
+  }).filter(Boolean);
+  const fornecedor_ids = propsBase.map(p=>p.fornecedor_id);
+  if(!fornecedor_ids.length){ toast('Selecione ao menos 1 fornecedor','var(--yellow)'); return; }
+  const payload = { emp_id: empId, item, quantidade: Number.isFinite(quantidade)?quantidade:null, fornecedor_ids, propostas: propsBase };
+  const resp = await apiFetch('/api/cotacoes', { method:'POST', body: payload });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){ toast('Erro ao salvar cotação','var(--red)'); return; }
+  toast('✓ Cotação registrada','var(--green)');
+  await carregarCotacoes(true, empId);
+  _renderCotacaoLista();
+}
+
+async function selecionarFornecedorCotacao(cotacaoId, fornecedorId){
+  const cid = String(cotacaoId||'').trim();
+  const fid = String(fornecedorId||'').trim();
+  if(!cid || !fid) return;
+  const resp = await apiFetch('/api/cotacoes/'+encodeURIComponent(cid), { method:'PUT', body:{ escolhido_fornecedor_id: fid } });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){ toast('Erro ao escolher fornecedor','var(--red)'); return; }
+  const data = (j && j.data) ? j.data : (j && j.ok && j.data===null ? null : j);
+  if(Array.isArray(COTACOES)){
+    const ix = COTACOES.findIndex(x=>String(x.id||'')===cid);
+    if(ix>=0){
+      if(data && typeof data==='object') COTACOES[ix] = data;
+      else COTACOES[ix] = { ...COTACOES[ix], escolhido_fornecedor_id: fid };
+    }
+  }
+  _renderCotacaoLista();
+  toast('✓ Fornecedor escolhido','var(--yellow)');
+}
+
+async function criarCompraDeCotacao(cotacaoId, fornecedorId){
+  const cid = String(cotacaoId||'').trim();
+  const fid = String(fornecedorId||'').trim();
+  if(!cid || !fid) return;
+  const cot = (Array.isArray(COTACOES) ? COTACOES : []).find(x=>String(x.id||'')===cid) || null;
+  if(!cot){ toast('Cotação não encontrada','var(--red)'); return; }
+  const props = Array.isArray(cot?.propostas) ? cot.propostas : [];
+  const prop = props.find(p=>String(p?.fornecedor_id||'').trim()===fid) || null;
+  const meta = (prop && prop.meta && typeof prop.meta==='object') ? prop.meta : ((props[0] && props[0].meta && typeof props[0].meta==='object') ? props[0].meta : null);
+  const fornObj = _cotGetFornById(fid);
+  const fornNome = String(prop?.fornecedor_nome || fornObj?.nome || '').trim();
+  try{ await abrirModalCompra(); }catch(e){ toast('Não foi possível abrir a compra','var(--red)'); return; }
+  const empEl = document.getElementById('cp-emp');
+  if(empEl && cot.emp_id) empEl.value = cot.emp_id;
+  const sel = document.getElementById('cp-forn');
+  if(sel && fornNome){
+    const opt = [...sel.options].find(o=>String(o.value||'')===fornNome || String(o.textContent||'')===fornNome);
+    if(opt) sel.value = opt.value;
+  }
+  const man = document.getElementById('cp-forn-manual');
+  if(man && (!sel || !sel.value)) man.value = fornNome;
+  try{ cmpFornChange(); }catch(e){}
+  const nomEl = document.getElementById('ci-nom-0'); if(nomEl) nomEl.value = String(cot.item||'').trim();
+  const qtdEl = document.getElementById('ci-qtd-0'); if(qtdEl) qtdEl.value = (cot.quantidade!=null?String(cot.quantidade):'');
+  const largEl = document.getElementById('ci-larg-0'); if(largEl && meta && meta.larg) largEl.value = String(meta.larg);
+  const compEl = document.getElementById('ci-comp-0'); if(compEl && meta && meta.comp) compEl.value = String(meta.comp);
+  const vinEl = document.getElementById('ci-vincos-0'); if(vinEl && meta && meta.vincos) vinEl.value = String(meta.vincos);
+  const vlm2El = document.getElementById('ci-vlm2-0');
+  const vlm2 = Number(prop?.vlm2 ?? prop?.valor_m2 ?? NaN);
+  if(vlm2El && Number.isFinite(vlm2)) vlm2El.value = String(vlm2.toFixed(4));
+  try{ cmpItemCalc(0); }catch(e){}
+  const obs = document.getElementById('cp-obs');
+  if(obs){
+    const base = String(obs.value||'').trim();
+    const extra = `Cotação ${cid}`;
+    obs.value = base ? (base + ' | ' + extra) : extra;
+  }
+  toast('✓ Compra pré-preenchida','var(--green)');
+}
+
 function renderFornecedores(){
+  if(!_fornAvBusy && _apiConectado && CURRENT_USER && (!FORN_AV_RESUMO || typeof FORN_AV_RESUMO !== 'object')){
+    carregarResumoAvaliacoesFornecedores().then(()=>{ try{ renderFornecedores(); }catch(e){} }).catch(()=>{});
+  }
   const busca=((document.getElementById('forn-busca')||{}).value||'').toLowerCase();
   const fil=(document.getElementById('forn-tipo')||{}).value||'';
   const empFil=(document.getElementById('forn-emp-fil')||{}).value||EMP_FILTRO||'';
@@ -15975,18 +16366,22 @@ function renderFornecedores(){
   if(!el)return;
   el.innerHTML=lista.map(f=>{
     const emp=getEmp(f.empId);
+    const av = (FORN_AV_RESUMO && f.id && FORN_AV_RESUMO[String(f.id)]) ? FORN_AV_RESUMO[String(f.id)] : null;
+    const avHtml = av ? `<span style="display:inline-flex;align-items:center;gap:6px;margin-left:auto">${_fornStars(av.media)}<span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">(${fmtN(av.count||0)})</span></span>` : `<span style="margin-left:auto;color:var(--text3);font-family:var(--mono);font-size:.7rem">—</span>`;
     return '<div class="cli-card" onclick="abrirFornecedor(\''+f.id+'\')" style="cursor:pointer">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'
       +'<span style="font-size:1.1rem">🏭</span>'
       +'<div class="cli-name" style="flex:1">'+f.nome+'</div>'
       +'<span class="ramo-badge" style="margin:0">'+f.tipo+'</span>'
       +(emp?`<span class="emp-badge emp-${emp.cor}">${emp.sigla}</span>`:'')
+      +avHtml
       +'</div>'
       +'<div class="cli-sub">'+(f.cidade||'')+'/'+( f.uf||'')+' · '+(f.tel||'')+'</div>'
       +'<div class="cli-sub">'+(f.email||'')+'</div>'
       +(f.contato?'<div class="cli-sub" style="margin-top:4px">👤 '+f.contato+'</div>':'')
       +(f.obs?'<div style="font-size:.68rem;color:var(--text3);margin-top:4px;font-style:italic">'+f.obs+'</div>':'')
       +'<div style="display:flex;gap:6px;margin-top:8px">'
+      +'<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirModalPrecosFornecedor(\''+f.id+'\')" style="font-size:.65rem">📈 Preços</button>'
       +'<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarFornecedor(\''+f.id+'\')" style="font-size:.65rem">✏ Editar</button>'
       +`<button onclick="event.stopPropagation();excluirFornecedor('${escAttr(f.id)}','${escAttr(f.nome)}')"
         style="background:#c62828;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;">
@@ -15994,6 +16389,75 @@ function renderFornecedores(){
       </button>`
       +'</div></div>';
   }).join('')||'<div style="color:var(--text3);padding:20px">Nenhum fornecedor cadastrado.</div>';
+}
+
+async function abrirModalPrecosFornecedor(fornId){
+  const id = String(fornId||'').trim();
+  if(!id) return;
+  let modal = document.getElementById('modal-forn-precos');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-forn-precos';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(980px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 id="forn-precos-ttl" style="margin:0">Preços</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-forn-precos').style.display='none'">✕</button>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+          <select id="forn-precos-sel" onchange="renderFornPrecosChart()" style="min-width:320px"></select>
+          <div id="forn-precos-sub" style="font-size:.74rem;color:var(--text3)"></div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+          <canvas id="forn-precos-chart" height="140"></canvas>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  modal.dataset.fornId = id;
+  document.getElementById('forn-precos-ttl').textContent = 'Preços — ' + (FORNECEDORES.find(f=>String(f.id)===id)?.nome || 'Fornecedor');
+  document.getElementById('forn-precos-sub').textContent = 'Carregando…';
+  document.getElementById('forn-precos-sel').innerHTML = `<option value="">Carregando…</option>`;
+  modal.style.display = 'flex';
+  const resp = await apiFetch('/api/fornecedores/'+encodeURIComponent(id)+'/precos', { method:'GET' });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  const data = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
+  modal._data = data;
+  const sel = document.getElementById('forn-precos-sel');
+  if(sel){
+    sel.innerHTML = data.map((x,i)=>`<option value="${i}">${escH(x.item||'Item')}</option>`).join('') || `<option value="">Sem dados</option>`;
+  }
+  document.getElementById('forn-precos-sub').textContent = data.length ? `${data.length} item(ns)` : 'Sem dados';
+  renderFornPrecosChart();
+}
+
+function renderFornPrecosChart(){
+  const modal = document.getElementById('modal-forn-precos');
+  const data = modal? (modal._data || []) : [];
+  const sel = document.getElementById('forn-precos-sel');
+  const ix = sel ? Number(sel.value) : 0;
+  const row = data && data.length ? (data[ix] || data[0]) : null;
+  const canvas = document.getElementById('forn-precos-chart');
+  if(!canvas) return;
+  if(window._fornPrecosChart && typeof window._fornPrecosChart.destroy === 'function'){ try{ window._fornPrecosChart.destroy(); }catch(e){} }
+  window._fornPrecosChart = null;
+  if(!row || !Array.isArray(row.pontos) || !row.pontos.length){
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+    if(!ok || typeof Chart === 'undefined') return;
+    const labels = row.pontos.map(p=>String(p.t||'').slice(0,10));
+    const vals = row.pontos.map(p=>Number(p.v||0)||0);
+    window._fornPrecosChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: row.item, data: vals, borderColor: 'rgba(0,212,255,0.9)', backgroundColor: 'rgba(0,212,255,0.15)', tension: 0.2, fill: true, pointRadius: 2 }] },
+      options: { responsive:true, plugins:{ legend:{ display:false } }, scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>'R$ '+Number(v).toLocaleString('pt-BR') } } } }
+    });
+  }).catch(()=>{});
 }
 
 function abrirModalFornecedor(id){
@@ -25703,12 +26167,104 @@ function renderCompras(){
         <span style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">STATUS →</span>
         ${['Solicitada','Comprada','Recebida parcialmente','Recebida','Cancelada'].map(s=>`<button class="btn btn-ghost btn-sm" onclick="setCmpStatus('${c.id}','${s}')" style="font-size:.62rem;${c.status===s?'border-color:'+cor+';color:'+cor+';':''}">${stIco[s]} ${s}</button>`).join('')}
         ${(c.status==='Recebida'||c.status==='Recebida parcialmente')?`<button class="btn btn-green btn-sm" onclick="cmpDarEntrada('${c.id}')">📦 Dar Entrada no Estoque</button>`:''}
+        ${String(c.status||'').toLowerCase().includes('recebid')?`<button class="btn btn-ghost btn-sm" onclick="abrirModalAvaliacaoFornecedor('${c.id}')" style="font-size:.62rem">⭐ Avaliar recebimento</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="editarCompra('${c.id}')" style="font-size:.62rem;color:var(--accent)">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="excluirCompra('${c.id}')" style="font-size:.62rem;color:var(--red)">🗑 Excluir</button>
         <button class="btn btn-ghost btn-sm" onclick="imprimirCompraId('${c.id}')" style="font-size:.62rem">🖨 Imprimir</button>
       </div>
     </div>`;
   }).join('')||'<div style="color:var(--text3);padding:20px">Nenhuma compra registrada.</div>'}</div>`;
+}
+
+var _AV_FORN = { compraId:'', fornecedorId:'', prazo:0, qualidade:0, preco:0 };
+
+function abrirModalAvaliacaoFornecedor(compraId){
+  const cid = String(compraId||'').trim();
+  if(!cid) return;
+  const c = (COMPRAS||[]).find(x=>String(x.id||'').trim()===cid) || null;
+  const fornNome = String(c?.forn || c?.fornecedor || '').trim();
+  const norm = (s)=>String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const fObj = (FORNECEDORES||[]).find(f=>norm(f?.nome)===norm(fornNome)) || null;
+  const fornecedorId = String(c?.fornecedor_id || c?.fornecedorId || fObj?.id || '').trim();
+  _AV_FORN = { compraId: cid, fornecedorId, prazo:0, qualidade:0, preco:0, fornNome: fornNome || (fObj?.nome||'') };
+
+  let modal = document.getElementById('modal-av-forn');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-av-forn';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(640px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 id="av-forn-ttl" style="margin:0">Avaliar recebimento</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-av-forn').style.display='none'">✕</button>
+        </div>
+        <div id="av-forn-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:12px"></div>
+        <div id="av-forn-body"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-av-forn').style.display='none'">Cancelar</button>
+          <button class="btn btn-accent btn-sm" onclick="salvarAvaliacaoFornecedor()">Salvar avaliação</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  const ttl = document.getElementById('av-forn-ttl');
+  if(ttl) ttl.textContent = 'Avaliar recebimento';
+  const sub = document.getElementById('av-forn-sub');
+  if(sub) sub.textContent = `${_AV_FORN.fornNome || 'Fornecedor'} · Compra ${cid}`;
+  _renderAvaliacaoFornecedor();
+  modal.style.display = 'flex';
+}
+
+function _avStars(name, val){
+  const n = Math.max(0, Math.min(5, Math.trunc(Number(val)||0)));
+  const star = (i)=>`<button class="btn btn-ghost btn-sm" onclick="_setAvNota('${escAttr(name)}',${i})" style="padding:4px 8px;border:1px solid var(--border);font-family:var(--mono);font-weight:900;color:${i<=n?'var(--yellow)':'var(--text3)'}">${i<=n?'★':'☆'}</button>`;
+  return `<div style="display:flex;gap:6px;align-items:center">${[1,2,3,4,5].map(star).join('')}<span style="font-family:var(--mono);color:var(--text2);margin-left:6px">${n}/5</span></div>`;
+}
+
+function _setAvNota(campo, nota){
+  const k = String(campo||'').trim();
+  const n = Math.max(1, Math.min(5, Math.trunc(Number(nota)||0)));
+  if(k==='prazo') _AV_FORN.prazo = n;
+  if(k==='qualidade') _AV_FORN.qualidade = n;
+  if(k==='preco') _AV_FORN.preco = n;
+  _renderAvaliacaoFornecedor();
+}
+
+function _renderAvaliacaoFornecedor(){
+  const host = document.getElementById('av-forn-body');
+  if(!host) return;
+  host.innerHTML = `
+    <div style="display:grid;gap:10px">
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+        <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">PRAZO</div>
+        ${_avStars('prazo', _AV_FORN.prazo)}
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+        <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">QUALIDADE</div>
+        ${_avStars('qualidade', _AV_FORN.qualidade)}
+      </div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+        <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">PREÇO</div>
+        ${_avStars('preco', _AV_FORN.preco)}
+      </div>
+    </div>
+  `;
+}
+
+async function salvarAvaliacaoFornecedor(){
+  const fid = String(_AV_FORN?.fornecedorId || '').trim();
+  const cid = String(_AV_FORN?.compraId || '').trim();
+  if(!fid){ toast('Fornecedor não identificado','var(--red)'); return; }
+  const payload = { fornecedor_id: fid, compra_id: cid || null, prazo: _AV_FORN.prazo, qualidade: _AV_FORN.qualidade, preco: _AV_FORN.preco };
+  const resp = await apiFetch('/api/avaliacoes_fornecedor', { method:'POST', body: payload });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){ toast('Erro ao salvar avaliação','var(--red)'); return; }
+  toast('Avaliação salva ✓','var(--green)');
+  document.getElementById('modal-av-forn').style.display='none';
+  try{ await carregarResumoAvaliacoesFornecedores(true); }catch(e){}
+  try{ renderFornecedores(); }catch(e){}
 }
 
 async function setCmpStatus(id,st){
@@ -29938,6 +30494,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todas empresas</option>
     </select>
     <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="abrirModalCotacao()">Nova Cotação</button>
     <button class="btn btn-accent" onclick="abrirModalCompra()">＋ Nova Compra</button>
   </div>
   <div class="page-body"><div id="cmp-body"></div></div>

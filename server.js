@@ -5104,6 +5104,178 @@ app.delete('/api/compras/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/cotacoes', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('cotacoes').select('*').order('created_at', { ascending: false }).limit(100);
+    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    const { data, error } = await q;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('schema cache')) return ok(res, []);
+      throw error;
+    }
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/cotacoes', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const item = String(b.item || '').trim();
+    if (!item) return res.status(400).json({ ok: false, error: 'item obrigatório' });
+    const quantidade = (b.quantidade == null) ? null : Math.trunc(Number(b.quantidade));
+    const fornecedor_ids = Array.isArray(b.fornecedor_ids) ? b.fornecedor_ids : (Array.isArray(b.fornecedores) ? b.fornecedores : null);
+    const propostas = Array.isArray(b.propostas) ? b.propostas : null;
+    const payload = {
+      item,
+      quantidade: Number.isFinite(quantidade) ? quantidade : null,
+      emp_id: String(b.emp_id || b.empId || req.query.empId || ''),
+      fornecedor_ids: fornecedor_ids || null,
+      propostas: propostas || null,
+      escolhido_fornecedor_id: b.escolhido_fornecedor_id || null,
+      criado_por: req.usuario?.nome || 'sistema',
+    };
+    const { data, error } = await supabase.from('cotacoes').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/cotacoes/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const b = req.body || {};
+    const escolhido_fornecedor_id = b.escolhido_fornecedor_id || b.escolhidoFornecedorId || b.escolhido || null;
+    const propostas = Array.isArray(b.propostas) ? b.propostas : null;
+    const payload = {};
+    if (escolhido_fornecedor_id !== undefined) payload.escolhido_fornecedor_id = escolhido_fornecedor_id || null;
+    if (propostas !== undefined) payload.propostas = propostas || null;
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'nada para atualizar' });
+    const { data, error } = await supabase.from('cotacoes').update(payload).eq('id', id).select().single();
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('schema cache')) return ok(res, null);
+      throw error;
+    }
+    return ok(res, data || null);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/avaliacoes_fornecedor/resumo', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('avaliacoes_fornecedor').select('*').order('created_at', { ascending: false }).limit(5000);
+    const { data, error } = await q;
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('schema cache')) return ok(res, {});
+      throw error;
+    }
+    const out = {};
+    (data || []).forEach((r) => {
+      const fid = String(r?.fornecedor_id || '').trim();
+      if (!fid) return;
+      if (!out[fid]) out[fid] = { count: 0, prazo: 0, qualidade: 0, preco: 0 };
+      out[fid].count += 1;
+      out[fid].prazo += Number(r?.prazo || 0) || 0;
+      out[fid].qualidade += Number(r?.qualidade || 0) || 0;
+      out[fid].preco += Number(r?.preco || 0) || 0;
+    });
+    Object.keys(out).forEach((k) => {
+      const g = out[k];
+      const c = Number(g.count || 0) || 1;
+      g.prazo = g.prazo / c;
+      g.qualidade = g.qualidade / c;
+      g.preco = g.preco / c;
+      g.media = (g.prazo + g.qualidade + g.preco) / 3;
+    });
+    return ok(res, out);
+  } catch (e) { return err(res, e); }
+});
+
+app.post('/api/avaliacoes_fornecedor', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const fornecedor_id = String(b.fornecedor_id || '').trim();
+    if (!fornecedor_id) return res.status(400).json({ ok: false, error: 'fornecedor_id obrigatório' });
+    const clamp = (n) => Math.max(1, Math.min(5, Math.trunc(Number(n))));
+    const payload = {
+      fornecedor_id,
+      compra_id: b.compra_id || null,
+      prazo: b.prazo != null ? clamp(b.prazo) : null,
+      qualidade: b.qualidade != null ? clamp(b.qualidade) : null,
+      preco: b.preco != null ? clamp(b.preco) : null,
+      criado_por: req.usuario?.nome || 'sistema',
+    };
+    const { data, error } = await supabase.from('avaliacoes_fornecedor').insert([payload]).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
+});
+
+app.get('/api/fornecedores/:id/precos', authMiddleware, async (req, res) => {
+  try {
+    const fornId = String(req.params.id || '').trim();
+    if (!fornId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data: forn, error: ef } = await supabase.from('fornecedores').select('id,nome').eq('id', fornId).maybeSingle();
+    if (ef) throw ef;
+    if (!forn) return res.status(404).json({ ok: false, error: 'Fornecedor não encontrado' });
+    const fornNome = String(forn.nome || '').trim().toLowerCase();
+
+    const loadChapas = async (table) => {
+      try {
+        const { data, error } = await supabase.from(table).select('id,fornecedor,nomenclatura,nom,tamanho,tam,nome');
+        if (error) return null;
+        return Array.isArray(data) ? data : [];
+      } catch (_) { return null; }
+    };
+    const chapas = (await loadChapas('chapas_estoque_v2')) || (await loadChapas('chapas_estoque')) || [];
+    const byId = new Map();
+    chapas.forEach((c) => {
+      const id = String(c?.id || '').trim();
+      if (!id) return;
+      const f = String(c?.fornecedor || c?.forn || '').trim().toLowerCase();
+      if (!f || f !== fornNome) return;
+      const nom = String(c?.nomenclatura || c?.nom || '').trim();
+      const tam = String(c?.tamanho || c?.tam || '').trim();
+      const nome = String(c?.nome || '').trim();
+      const item = [nom, tam].filter(Boolean).join(' ').trim() || nome || 'Chapa';
+      byId.set(id, item);
+    });
+    if (!byId.size) return ok(res, []);
+
+    const loadMovs = async (table) => {
+      try {
+        const { data, error } = await supabase.from(table).select('chapa_id,created_at,valor_unitario,vunit,val,tipo').eq('tipo', 'entrada').order('created_at', { ascending: false }).limit(5000);
+        if (error) return null;
+        return Array.isArray(data) ? data : [];
+      } catch (_) { return null; }
+    };
+    const movs = (await loadMovs('chapas_estoque_movimentos_v2')) || (await loadMovs('chapas_estoque_movimentos')) || [];
+    const grp = new Map();
+    movs.forEach((m) => {
+      const cid = String(m?.chapa_id || '').trim();
+      if (!cid) return;
+      const item = byId.get(cid);
+      if (!item) return;
+      const vu = Number(m?.valor_unitario ?? m?.vunit ?? m?.val ?? NaN);
+      if (!Number.isFinite(vu) || vu < 0) return;
+      const t = String(m?.created_at || '').trim();
+      if (!t) return;
+      if (!grp.has(item)) grp.set(item, []);
+      grp.get(item).push({ t, v: vu });
+    });
+    const out = Array.from(grp.entries()).map(([item, pontos]) => ({
+      item,
+      pontos: (pontos || []).slice().sort((a, b) => String(a.t).localeCompare(String(b.t))),
+    })).sort((a, b) => String(a.item).localeCompare(String(b.item), 'pt-BR'));
+    return ok(res, out);
+  } catch (e) { return err(res, e); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // FORNECEDORES
 // ══════════════════════════════════════════════════════════════
