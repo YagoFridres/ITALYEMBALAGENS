@@ -2072,6 +2072,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const excluirCanceladas = String(req.query.excluir_canceladas || req.query.excluirCanceladas || '') === '1';
     const empId = req.query.empId ? String(req.query.empId).trim() : '';
     const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.cli_id || req.query.cliId || '').trim();
+    const numeroRaw = String(req.query.numero || req.query.of_num || req.query.of || '').trim();
+    const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
     let statusRaw = req.query.status ? String(req.query.status).trim() : '';
     try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
@@ -2092,6 +2094,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       String(req?.usuario?.id || ''),
       empId,
       clienteId,
+      numero ? ('num=' + numero) : '',
       status,
       lite ? 'lite1' : 'lite0',
       from,
@@ -2247,6 +2250,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
       if (empId) q = q.eq('emp_id', empId);
       if (clienteId) q = q.or(`cli_id.eq.${clienteId},cliente_id.eq.${clienteId}`);
+      if (numero) q = q.or(`numero.eq.${numero},of.ilike.%${numero}%`);
       if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
@@ -9093,6 +9097,24 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
     const month = _assistMonthFromText(norm);
     const year = new Date().getFullYear();
+
+    if (ofNum && norm.includes('of') && hasAny('imagem', 'foto', 'mostrar', 'ver')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,imagem_url,imgs')
+        .or(`numero.eq.${ofNum},of.ilike.%${ofNum}%`)
+        .limit(1);
+      const row = Array.isArray(data) && data[0] ? data[0] : null;
+      if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      const arr = Array.isArray(row.imgs)
+        ? row.imgs
+        : (typeof row.imgs === 'string'
+          ? (() => { try { const p = JSON.parse(row.imgs || '[]'); return Array.isArray(p) ? p : [row.imgs]; } catch (_) { return [row.imgs]; } })()
+          : []);
+      const urls = [String(row.imagem_url || '').trim(), ...arr.map((x) => String(x || '').trim())].filter(Boolean).slice(0, 3);
+      if (!urls.length) return respond(`${nome}, a OF #${_assistPickOfNumber(row)} não possui imagem cadastrada.`);
+      return res.json({ ok: true, resposta: `${nome}, aqui está a imagem da OF #${_assistPickOfNumber(row)}:`, images: urls });
+    }
 
     if (hasAny('que horas sao', 'que horas são', 'hora', 'horas') && (norm.includes('que horas') || norm === 'hora' || norm === 'horas')) {
       const now = new Date();

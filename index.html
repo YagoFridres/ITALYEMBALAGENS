@@ -37394,16 +37394,16 @@ window.atualizarChapas = async function(){
       #assist-fab{position:fixed;right:16px;bottom:16px;z-index:10000}
       #assist-fab button{width:56px;height:56px;border-radius:16px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
       #assist-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:10001;display:none}
-      #assist-panel{position:fixed;top:0;right:0;height:100vh;width:min(380px,92vw);background:var(--bg2);border-left:1px solid var(--border);z-index:10002;transform:translateX(110%);transition:transform .22s ease;display:flex;flex-direction:column}
+      #assist-panel{position:fixed;top:0;right:0;height:100vh;width:min(380px,92vw);background:var(--bg-card,#1a1a2e);border-left:1px solid var(--border);z-index:10002;transform:translateX(110%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.5)}
       #assist-panel.open{transform:translateX(0)}
-      #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid var(--border);background:var(--bg2)}
+      #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid var(--border);background:var(--bg-card,#1a1a2e)}
       #assist-title{display:flex;align-items:center;gap:10px;font-weight:900}
       #assist-title img{width:28px;height:28px;border-radius:10px;object-fit:contain;background:#fff;padding:3px}
       #assist-actions{display:flex;gap:8px;align-items:center}
       #assist-actions button{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
-      #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap}
+      #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:var(--bg-card,#1a1a2e)}
       .assist-chip{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:800}
-      #assist-body{flex:1;overflow:auto;padding:12px;background:linear-gradient(180deg,var(--bg2),var(--bg1))}
+      #assist-body{flex:1;overflow:auto;padding:12px;background:var(--bg-card,#1a1a2e)}
       .assist-row{display:flex;gap:8px;margin:8px 0}
       .assist-row.user{justify-content:flex-end}
       .assist-row.assistant{justify-content:flex-start}
@@ -37411,11 +37411,17 @@ window.atualizarChapas = async function(){
       .assist-avatar img{width:100%;height:100%;object-fit:contain;padding:3px}
       .assist-bubble{max-width:82%;border-radius:14px;padding:10px 12px;border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;line-height:1.28}
       .assist-row.user .assist-bubble{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.35)}
-      .assist-row.assistant .assist-bubble{background:var(--s2)}
+      .assist-row.assistant .assist-bubble{background:var(--bg3)}
+      .assist-bubble-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+      .assist-tts{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:10px;padding:4px 8px;cursor:pointer;font-weight:900;font-family:var(--mono);font-size:.75rem;line-height:1}
+      .assist-img{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border);display:block}
       .assist-meta{margin-top:6px;font-size:.65rem;color:var(--text3);font-family:var(--mono)}
-      #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:8px;align-items:flex-end}
+      #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg-card,#1a1a2e);display:flex;gap:8px;align-items:flex-end}
       #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
       #assist-send{border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+      #assist-mic{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+      #assist-mic.listening{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);animation:assistPulse 1.1s ease-in-out infinite}
+      @keyframes assistPulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
     `;
     document.head.appendChild(st);
 
@@ -37449,6 +37455,7 @@ window.atualizarChapas = async function(){
       <div id="assist-body"></div>
       <div id="assist-input">
         <textarea id="assist-text" placeholder="Digite sua pergunta..."></textarea>
+        <button type="button" id="assist-mic" title="Falar">🎤</button>
         <button type="button" id="assist-send">Enviar</button>
       </div>
     `;
@@ -37489,6 +37496,19 @@ window.atualizarChapas = async function(){
       }
     });
     panel.querySelector('#assist-send').onclick = ()=>send(ta.value);
+
+    panel.querySelector('#assist-body').addEventListener('click', (ev)=>{
+      const t = ev?.target || null;
+      if(!t) return;
+      const i = t.getAttribute && t.getAttribute('data-tts');
+      if(i != null && i !== ''){
+        ev.preventDefault();
+        ev.stopPropagation();
+        speakToggle(Number(i));
+      }
+    });
+
+    panel.querySelector('#assist-mic').onclick = ()=>toggleListen();
   };
 
   const scrollBottom = ()=>{
@@ -37497,12 +37517,104 @@ window.atualizarChapas = async function(){
     body.scrollTop = body.scrollHeight + 9999;
   };
 
-  const addMsg = (role, text, ts)=>{
+  let _speakIdx = -1;
+  let _speakUtter = null;
+  let _rec = null;
+  let _listening = false;
+
+  const addMsg = (role, text, extra)=>{
     const hist = loadHist();
-    hist.push({ role, text: String(text || '').trim(), ts: ts || nowIso() });
+    const msg = { role, text: String(text || '').trim(), ts: nowIso() };
+    if(extra && typeof extra === 'object'){
+      if(Array.isArray(extra.images)) msg.images = extra.images.map(x=>String(x||'').trim()).filter(Boolean).slice(0, 3);
+    }
+    hist.push(msg);
     saveHist(hist);
     render();
     scrollBottom();
+  };
+
+  const speakCancel = ()=>{
+    try{ if(window.speechSynthesis) window.speechSynthesis.cancel(); }catch(e){}
+    _speakIdx = -1;
+    _speakUtter = null;
+  };
+
+  const speakToggle = (idx)=>{
+    if(!(window.speechSynthesis && window.SpeechSynthesisUtterance)) return;
+    const hist = loadHist();
+    const m = hist[idx] || null;
+    const txt = String(m?.text || '').trim();
+    if(!txt) return;
+    const speakingNow = !!(window.speechSynthesis.speaking || window.speechSynthesis.pending);
+    if(_speakIdx === idx && speakingNow){
+      speakCancel();
+      render();
+      return;
+    }
+    speakCancel();
+    try{
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = 'pt-BR';
+      u.rate = 1;
+      u.pitch = 1;
+      u.onend = ()=>{ _speakIdx = -1; _speakUtter = null; try{ render(); }catch(e){} };
+      u.onerror = ()=>{ _speakIdx = -1; _speakUtter = null; try{ render(); }catch(e){} };
+      _speakUtter = u;
+      _speakIdx = idx;
+      window.speechSynthesis.speak(u);
+      render();
+    }catch(e){
+      speakCancel();
+      render();
+    }
+  };
+
+  const recEnsure = ()=>{
+    if(_rec) return _rec;
+    const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!R) return null;
+    const r = new R();
+    r.lang = 'pt-BR';
+    r.interimResults = false;
+    r.continuous = false;
+    r.maxAlternatives = 1;
+    r.onresult = (ev)=>{
+      try{
+        const t = String(ev?.results?.[0]?.[0]?.transcript || '').trim();
+        if(!t) return;
+        const ta = document.getElementById('assist-text');
+        if(ta) ta.value = t;
+        toggleListen(false);
+        send(t);
+      }catch(e){}
+    };
+    r.onerror = ()=>{ toggleListen(false); };
+    r.onend = ()=>{ toggleListen(false); };
+    _rec = r;
+    return r;
+  };
+
+  const toggleListen = (force)=>{
+    const mic = document.getElementById('assist-mic');
+    const ta = document.getElementById('assist-text');
+    const r = recEnsure();
+    if(!r){
+      try{ toast('Navegador sem suporte a voz','var(--yellow)'); }catch(e){}
+      return;
+    }
+    const on = (force === undefined) ? !_listening : !!force;
+    if(!on){
+      _listening = false;
+      try{ mic && mic.classList.remove('listening'); }catch(e){}
+      try{ if(ta) ta.placeholder = 'Digite sua pergunta...'; }catch(e){}
+      try{ r.stop(); }catch(e){}
+      return;
+    }
+    _listening = true;
+    try{ mic && mic.classList.add('listening'); }catch(e){}
+    try{ if(ta) ta.placeholder = 'Ouvindo…'; }catch(e){}
+    try{ r.start(); }catch(e){ toggleListen(false); }
   };
 
   const render = (forceGreet)=>{
@@ -37517,12 +37629,20 @@ window.atualizarChapas = async function(){
     }
     const logo = (typeof ITALY_LOGO_B64 !== 'undefined' && ITALY_LOGO_B64) ? ITALY_LOGO_B64 : ((typeof LOGO_ITALY !== 'undefined' && LOGO_ITALY) ? LOGO_ITALY : '');
     const avatar = logo ? `<div class="assist-avatar"><img src="${esc(logo)}" alt="Italy"></div>` : `<div class="assist-avatar">I</div>`;
-    body.innerHTML = hist.map((m)=>{
+    const escAttr = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    body.innerHTML = hist.map((m, idx)=>{
       const role = m.role === 'user' ? 'user' : 'assistant';
-      const bubble = `<div class="assist-bubble">${esc(m.text || '')}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+      const txtHtml = `<div>${esc(m.text || '')}</div>`;
+      const imgs = Array.isArray(m.images) ? m.images.map((u)=>String(u||'').trim()).filter(Boolean).slice(0, 3) : [];
+      const imgsHtml = imgs.length ? imgs.map((u)=>`<img class="assist-img" src="${escAttr(u)}" alt="Imagem OF">`).join('') : '';
       if(role === 'assistant'){
+        const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
+        const speakIcon = isSpeaking ? '🔇' : '🔊';
+        const top = `<div class="assist-bubble-top"><div></div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
+        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
+      const bubble = `<div class="assist-bubble">${txtHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
       return `<div class="assist-row user">${bubble}</div>`;
     }).join('');
   };
@@ -37547,13 +37667,14 @@ window.atualizarChapas = async function(){
       const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text } });
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
+      const images = (j && (j.images || j.imagens)) ? (Array.isArray(j.images || j.imagens) ? (j.images || j.imagens) : []) : [];
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
       if(!resp || !resp.ok){
         addMsg('assistant', `Desculpe ${getUserName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`);
+      addMsg('assistant', ans || `Desculpe ${getUserName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
