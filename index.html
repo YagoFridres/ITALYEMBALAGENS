@@ -6474,6 +6474,11 @@ async function cancelarOF(id, numero) {
   }
 }
 
+const parseFirstNumber = (v) => {
+  const n = parseInt(String(v || '').replace(/\D/g, ''), 10);
+  return Number.isFinite(n) ? n : 0;
+};
+
 async function pcpFetchMaxNumeroOF(){
   let max = 0;
   try{
