@@ -388,6 +388,26 @@ async function logAuditoria(tabela, operacao, registroId, dadosAntes, dadosDepoi
   }
 }
 
+app.get('/api/audit_log', authMiddleware, async (req, res) => {
+  try {
+    const tabela = req.query.tabela != null ? String(req.query.tabela).trim() : '';
+    const operacao = req.query.operacao != null ? String(req.query.operacao).trim() : '';
+    const registroId = req.query.registro_id != null ? String(req.query.registro_id).trim() : '';
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 200));
+    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+
+    let q = supabase.from('audit_log').select('*').order('created_at', { ascending: false });
+    if (tabela) q = q.eq('tabela', tabela);
+    if (operacao) q = q.eq('operacao', operacao);
+    if (registroId) q = q.eq('registro_id', registroId);
+    q = q.range(offset, offset + limit - 1);
+
+    const { data, error } = await q;
+    if (error) return res.status(500).json({ ok: false, error: error.message || String(error) });
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
 function bad(res, error) {
   err(res, error);
 }
@@ -2306,6 +2326,22 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     setNoCache(res);
     const body = req.body || {};
     const filtered = ofPayloadFiltrado(body);
+    if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
+      try {
+        const { data: last } = await supabase
+          .from('ofs')
+          .select('seq,of,numero')
+          .order('seq', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const lastSeq = Math.trunc(Number(last?.seq || 0) || 0);
+        const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
+        filtered.seq = nextSeq;
+        const numStr = String(nextSeq);
+        filtered.of = numStr;
+        filtered.numero = numStr;
+      } catch (_) {}
+    }
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
@@ -2431,6 +2467,52 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .eq('id', id)
       .maybeSingle();
     if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    try {
+      const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
+      const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
+      if (hasEntrega || hasMaq) {
+        const oldEntrega = String(ofAtual?.ent || ofAtual?.data_entrega || '').slice(0, 10);
+        const newEntrega = String((body.ent ?? body.data_entrega ?? '') || '').slice(0, 10);
+        const oldMaqRaw = ofAtual?.fluxo_maquinas ?? ofAtual?.maq ?? null;
+        const newMaqRaw = (Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') ? body.fluxo_maquinas : (Object.prototype.hasOwnProperty.call(body, 'maq') ? body.maq : undefined));
+        const normMaq = (v) => {
+          if (v == null) return '';
+          if (Array.isArray(v)) return v.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+          if (typeof v === 'string') {
+            const s = v.trim();
+            if (!s) return '';
+            try {
+              const p = JSON.parse(s);
+              if (Array.isArray(p)) return p.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+            } catch (_) {}
+            return s;
+          }
+          if (typeof v === 'object') {
+            try {
+              const p = Array.isArray(v) ? v : Object.values(v);
+              return (Array.isArray(p) ? p : []).map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+            } catch (_) { return ''; }
+          }
+          return String(v || '').trim();
+        };
+        const oldMaq = normMaq(oldMaqRaw);
+        const newMaq = newMaqRaw === undefined ? oldMaq : normMaq(newMaqRaw);
+        const motivo = String(req.body?.motivo || req.body?.motivo_reprogramacao || req.body?.obs_motivo || '').trim();
+        const changedEntrega = hasEntrega && (newEntrega !== oldEntrega);
+        const changedMaq = hasMaq && (newMaq !== oldMaq);
+        if (changedEntrega || changedMaq) {
+          await logAuditoria('ofs', 'REPROGRAMACAO', id, {
+            entrega: oldEntrega || null,
+            maquinas: oldMaq || null,
+          }, {
+            entrega: (hasEntrega ? (newEntrega || null) : oldEntrega || null),
+            maquinas: (hasMaq ? (newMaq || null) : oldMaq || null),
+            motivo: motivo || null,
+          }, req);
+        }
+      }
+    } catch (_) {}
 
     try {
       const vn = String(cleanBody?.vendedor_nome || '').trim();
@@ -3279,6 +3361,59 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    try {
+      const { data: ofAtual } = await supabase
+        .from('ofs')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      if (ofAtual) {
+        const body = req.body || {};
+        const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
+        const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
+        if (hasEntrega || hasMaq) {
+          const oldEntrega = String(ofAtual?.ent || ofAtual?.data_entrega || '').slice(0, 10);
+          const newEntrega = String((body.ent ?? body.data_entrega ?? '') || '').slice(0, 10);
+          const oldMaqRaw = ofAtual?.fluxo_maquinas ?? ofAtual?.maq ?? null;
+          const newMaqRaw = (Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') ? body.fluxo_maquinas : (Object.prototype.hasOwnProperty.call(body, 'maq') ? body.maq : undefined));
+          const normMaq = (v) => {
+            if (v == null) return '';
+            if (Array.isArray(v)) return v.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+            if (typeof v === 'string') {
+              const s = v.trim();
+              if (!s) return '';
+              try {
+                const p = JSON.parse(s);
+                if (Array.isArray(p)) return p.map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+              } catch (_) {}
+              return s;
+            }
+            if (typeof v === 'object') {
+              try {
+                const p = Array.isArray(v) ? v : Object.values(v);
+                return (Array.isArray(p) ? p : []).map(x => String(x || '').trim()).filter(Boolean).join(' | ');
+              } catch (_) { return ''; }
+            }
+            return String(v || '').trim();
+          };
+          const oldMaq = normMaq(oldMaqRaw);
+          const newMaq = newMaqRaw === undefined ? oldMaq : normMaq(newMaqRaw);
+          const motivo = String(body?.motivo || body?.motivo_reprogramacao || body?.obs_motivo || '').trim();
+          const changedEntrega = hasEntrega && (newEntrega !== oldEntrega);
+          const changedMaq = hasMaq && (newMaq !== oldMaq);
+          if (changedEntrega || changedMaq) {
+            await logAuditoria('ofs', 'REPROGRAMACAO', id, {
+              entrega: oldEntrega || null,
+              maquinas: oldMaq || null,
+            }, {
+              entrega: (hasEntrega ? (newEntrega || null) : oldEntrega || null),
+              maquinas: (hasMaq ? (newMaq || null) : oldMaq || null),
+              motivo: motivo || null,
+            }, req);
+          }
+        }
+      }
+    } catch (_) {}
     const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
     delete payload.id; delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);

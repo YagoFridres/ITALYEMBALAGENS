@@ -8198,6 +8198,7 @@ function validarCamposObrigatoriosOF(payload, itens){
 }
 
 async function salvarOF(){
+  const cloneCtx = (window._OF_CLONE_CTX && window._OF_CLONE_CTX.active) ? window._OF_CLONE_CTX : null;
   const cliId=ofResolveCliIdFromModal();
   const itens=getOfItensFromModal();
   const toInt = (v)=>{
@@ -8353,8 +8354,17 @@ async function salvarOF(){
     toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
     return;
   }
+  let payloadSend = payloadLocal;
+  if(cloneCtx){
+    payloadSend = { ...payloadLocal };
+    delete payloadSend.seq;
+    delete payloadSend.of;
+    delete payloadSend.numero;
+    delete payloadSend.of_num;
+    payloadSend._clone_of_id = String(cloneCtx.origemId || '').trim();
+  }
   const r = await salvarViaApiOuLocal('ofs',
-    ()=>api('POST','/ofs', payloadLocal),
+    ()=>api('POST','/ofs', payloadSend),
     ()=>{ OFs.push(payloadLocal); return {ok:true, local:true}; }
   );
   if(!r || !r.ok){toast('Erro ao salvar OF: '+((r&&r.error)||'falha'),'var(--red)'); console.error('[SALVAR OF]', r); return;}
@@ -8363,8 +8373,9 @@ async function salvarOF(){
   } else {
     if(!OFs.find(x=>x.seq===payloadLocal.seq && x.of===payloadLocal.of)) OFs.push(payloadLocal);
   }
-  fechar('modal-of');autoSaveTrigger();renderPCP();toast('✓ OF cadastrada com '+itensSan.length+' item(ns)!');updateBadges();
-  logAction('Nova OF criada', seguro('f-of',''));
+  try{ if(cloneCtx) window._OF_CLONE_CTX = null; }catch(e){}
+  fechar('modal-of');autoSaveTrigger();renderPCP();toast((cloneCtx?'✓ OF clonada':'✓ OF cadastrada')+' com '+itensSan.length+' item(ns)!');updateBadges();
+  logAction(cloneCtx?'OF clonada':'Nova OF criada', seguro('f-of',''));
 }
 
 async function salvarEdicaoOFId(id){
@@ -8527,7 +8538,7 @@ async function salvarEdicaoOFId(id){
 
 // ===================== LANÇAMENTO =====================
 var OFS_HIST = null;
-var LANC_UI = { tab:'todas', view:'tabela', busca:'', emp:'', vendedor:'', maquina:'', status:'', de:'', ate:'', sortKey:'created_at', sortDir:'desc', page:1 };
+var LANC_UI = { tab:'todas', view:'tabela', busca:'', cliente:'', emp:'', vendedor:'', maquina:'', status:'', de:'', ate:'', valorMin:'', valorMax:'', chapa:'', sortKey:'created_at', sortDir:'desc', page:1 };
 var LANC_LAST_ROWS = [];
 
 function lancEmpNome(o){
@@ -8647,6 +8658,383 @@ function lancEditarOF(id){
   abrirModalOF(String(id||''));
 }
 
+function lancToggleCompareOF(id, checked){
+  const sid = String(id || '').trim();
+  if(!sid) return;
+  let sel = Array.isArray(window._LANC_COMPARE_IDS) ? window._LANC_COMPARE_IDS.map(x=>String(x||'').trim()).filter(Boolean) : [];
+  if(checked){
+    if(!sel.includes(sid)){
+      if(sel.length >= 2){
+        toast('Selecione no máximo 2 OFs para comparar','var(--yellow)');
+        try{ renderLancamento(); }catch(e){}
+        return;
+      }
+      sel.push(sid);
+    }
+  } else {
+    sel = sel.filter(x=>x !== sid);
+  }
+  window._LANC_COMPARE_IDS = sel;
+  lancSyncCompareFab();
+}
+
+function lancSyncCompareFab(){
+  let el = document.getElementById('lanc-compare-fab');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'lanc-compare-fab';
+    el.style.position = 'fixed';
+    el.style.right = '16px';
+    el.style.bottom = '16px';
+    el.style.zIndex = '9999';
+    el.innerHTML = `<button class="btn btn-accent" onclick="lancCompararOFs()" style="box-shadow:0 10px 30px rgba(0,0,0,.35)">🔎 Comparar OFs</button>`;
+    document.body.appendChild(el);
+  }
+  const sel = Array.isArray(window._LANC_COMPARE_IDS) ? window._LANC_COMPARE_IDS.map(x=>String(x||'').trim()).filter(Boolean) : [];
+  el.style.display = (sel.length === 2) ? '' : 'none';
+}
+
+async function lancCompararOFs(){
+  const sel = Array.isArray(window._LANC_COMPARE_IDS) ? window._LANC_COMPARE_IDS.map(x=>String(x||'').trim()).filter(Boolean) : [];
+  if(sel.length !== 2){ toast('Marque exatamente 2 OFs','var(--yellow)'); return; }
+  const [aId, bId] = sel;
+  try{
+    const fetchOne = async (id)=>{
+      const local =
+        (Array.isArray(OFS_HIST) ? (OFS_HIST||[]).find(x=>String(x?.id||'')===id) : null)
+        || (Array.isArray(OFs) ? (OFs||[]).find(x=>String(x?.id||'')===id) : null)
+        || null;
+      if(local && local.itens) return local;
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'GET' });
+      const j = r ? await r.json().catch(()=>null) : null;
+      const ofFull = j && (j.data || j.id) ? (j.data || j) : null;
+      return (typeof normalizeOF === 'function' && ofFull) ? normalizeOF(ofFull) : (ofFull || local);
+    };
+    const a = await fetchOne(aId);
+    const b = await fetchOne(bId);
+    if(!a || !b){ toast('Falha ao carregar OFs para comparar','var(--red)'); return; }
+
+    let modal = document.getElementById('modal-lanc-comp');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'modal-lanc-comp';
+      modal.innerHTML = `<div class="modal" style="width:min(1120px,98vw)">
+        <button class="close-btn" onclick="fechar('modal-lanc-comp')">✕</button>
+        <h2>🔎 Comparar OFs</h2>
+        <div class="page-body" id="lanc-comp-body" style="padding:12px 0"></div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" onclick="fechar('modal-lanc-comp')">Fechar</button>
+        </div>
+      </div>`;
+      document.body.appendChild(modal);
+    }
+    const body = document.getElementById('lanc-comp-body');
+    const fmtVal = (v)=>{
+      if(v == null) return '';
+      if(typeof v === 'number') return String(v);
+      if(typeof v === 'string') return v;
+      try{ return JSON.stringify(v); }catch(e){ return String(v); }
+    };
+    const pick = (o)=>({
+      'Nº OF': String(o.of || o.numero || ''),
+      'Cliente': lancCliNome(o),
+      'Produto': String(o.prodDesc || o.descricao || ''),
+      'Qtd': String(o.qtd || o.quantidade || ''),
+      'Valor': String((o.valor_total ?? o.valor_venda ?? o.val) ?? ''),
+      'Entrega': String(o.ent || o.data_entrega || ''),
+      'Status': String(o.status || ''),
+      'Vendedor': lancVendNome(o),
+      'Empresa': lancEmpNome(o),
+      'Máquinas': ofFluxoLinha(o) || '',
+      'Itens': (()=>{
+        const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+        const arr = Array.isArray(itens) ? itens : [];
+        return arr.map(it=>`${String(it?.desc || it?.descricao || '').trim()} (${String(it?.ref||'').trim()}) x${Number(it?.qtd || it?.quantidade || 0) || 0} @ ${Number(it?.vunit ?? it?.valor_unitario ?? 0) || 0}`).filter(Boolean).join('\n');
+      })(),
+    });
+    const pa = pick(a);
+    const pb = pick(b);
+    const keys = Array.from(new Set([...Object.keys(pa), ...Object.keys(pb)]));
+    const grid = keys.map((k)=>{
+      const va = fmtVal(pa[k]);
+      const vb = fmtVal(pb[k]);
+      const diff = String(va) !== String(vb);
+      const bg = diff ? 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);' : 'background:var(--s2);border:1px solid var(--border);';
+      return `<div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:10px;align-items:start;padding:10px;border-radius:10px;${bg}">
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(k)}</div>
+        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(va||'—')}</pre>
+        <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(vb||'—')}</pre>
+      </div>`;
+    }).join('');
+    body.innerHTML = `<div style="display:grid;grid-template-columns:1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:10px;align-items:center">
+        <div></div>
+        <div style="font-weight:900;color:var(--accent)">OF #${escH(a.of||a.numero||aId)}</div>
+        <div style="font-weight:900;color:var(--accent)">OF #${escH(b.of||b.numero||bId)}</div>
+      </div>
+      ${grid}
+    </div>`;
+    abrir('modal-lanc-comp');
+  }catch(e){
+    toast('Erro ao comparar: '+String(e?.message || e),'var(--red)');
+  }
+}
+
+function lancExportarPDF(){
+  const rows = Array.isArray(LANC_LAST_ROWS) ? LANC_LAST_ROWS : [];
+  if(!rows.length){ toast('Nenhum registro para exportar','var(--yellow)'); return; }
+  const doExport = (jsPDF)=>{
+    const pdf = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+    const margin = 10;
+    let y = 12;
+    pdf.setFontSize(12);
+    pdf.text(`Armazenamento de OFs — ${new Date().toLocaleString('pt-BR')}`, margin, y);
+    y += 6;
+    pdf.setFontSize(9);
+    const cols = [
+      { k:'of', w:18, t:'OF' },
+      { k:'cliente', w:55, t:'Cliente' },
+      { k:'produto', w:80, t:'Produto' },
+      { k:'qtd', w:16, t:'Qtd' },
+      { k:'valor', w:22, t:'Valor' },
+      { k:'ent', w:22, t:'Entrega' },
+      { k:'status', w:34, t:'Status' },
+    ];
+    const pageW = 297;
+    const maxW = pageW - margin*2;
+    const totalW = cols.reduce((s,c)=>s+c.w,0);
+    const scale = totalW > maxW ? (maxW / totalW) : 1;
+    cols.forEach(c=>c.w = c.w * scale);
+    const lineH = 5;
+    const headBg = [25, 35, 45];
+    const headTxt = [255, 255, 255];
+    const drawRow = (cells, isHeader)=>{
+      let x = margin;
+      const h = lineH;
+      cols.forEach((c, i)=>{
+        const w = c.w;
+        if(isHeader){
+          pdf.setFillColor(...headBg);
+          pdf.rect(x, y, w, h, 'F');
+          pdf.setTextColor(...headTxt);
+          pdf.text(String(cells[i]||''), x+1.2, y+3.6, { maxWidth: w-2.4 });
+          pdf.setTextColor(20,20,20);
+        }else{
+          pdf.rect(x, y, w, h);
+          const txt = String(cells[i]||'');
+          pdf.text(txt.length>80?txt.slice(0,77)+'...':txt, x+1.2, y+3.6, { maxWidth: w-2.4 });
+        }
+        x += w;
+      });
+      y += h;
+    };
+    drawRow(cols.map(c=>c.t), true);
+    rows.forEach((o)=>{
+      if(y > 190){
+        pdf.addPage();
+        y = 12;
+        drawRow(cols.map(c=>c.t), true);
+      }
+      const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      const item0 = arr[0] || {};
+      const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '').trim();
+      const qtd = Number(o.qtd || o.quantidade || 0) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+      const total = Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
+      drawRow([
+        String(o.of || o.numero || ''),
+        String(lancCliNome(o) || ''),
+        String(nomeProduto || ''),
+        String(qtd || 0),
+        String(fmtR(total)),
+        String(lancEnt(o) || ''),
+        String(o.status || ''),
+      ], false);
+    });
+    pdf.save(`armazenamento_ofs_${today()}.pdf`);
+  };
+  if(window.jspdf && window.jspdf.jsPDF){
+    doExport(window.jspdf.jsPDF);
+    return;
+  }
+  const s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+  s.onload = ()=>{ if(window.jspdf && window.jspdf.jsPDF) doExport(window.jspdf.jsPDF); else toast('Erro ao carregar biblioteca PDF','var(--red)'); };
+  s.onerror = ()=>toast('Erro ao carregar biblioteca PDF','var(--red)');
+  document.head.appendChild(s);
+}
+
+async function lancClonarOF(id){
+  const sid = String(id || '').trim();
+  if(!sid){ toast('OF inválida','var(--red)'); return; }
+  try{
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(sid), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    const ofFull = j && (j.data || j.id) ? (j.data || j) : null;
+    if(!r?.ok || !ofFull){ toast('Erro ao carregar OF para clonar','var(--red)'); return; }
+    const base = (typeof normalizeOF === 'function') ? normalizeOF(ofFull) : ofFull;
+    window._OF_CLONE_CTX = { active:true, origemId: sid, origemOf: (base.of || base.numero || '') };
+    await abrirModalOF('');
+
+    try{ setVal('f-of',''); }catch(e){}
+    try{
+      const num = String(base.of || base.numero || sid);
+      const t = document.querySelector('#modal-of h2');
+      if(t) t.textContent = 'Clonar OF #' + num;
+    }catch(e){}
+
+    const cliId = String(base.cliId || base.cli_id || base.cliente_id || '').trim();
+    const vendId = String(base.vendId || base.vendedor_id || '').trim();
+    try{
+      const csel = document.getElementById('f-cli');
+      const hid = document.getElementById('f-cli-id');
+      if(csel && cliId) csel.value = cliId;
+      if(hid) hid.value = cliId;
+      const vsel = document.getElementById('f-vend');
+      if(vsel) vsel.value = vendId;
+    }catch(e){}
+    try{
+      setVal('f-ent', String(base.ent || base.data_entrega || '').slice(0,10));
+      setVal('f-val', String(base.valor_total ?? base.valor_venda ?? ''));
+    }catch(e){}
+
+    try{
+      ofImgsTemp = Array.isArray(base.imgs) ? base.imgs.filter(Boolean).slice() : (base.imagem_url ? [base.imagem_url] : []);
+      renderImgsTemp();
+    }catch(e){}
+    try{
+      const itens = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      ofItensTemp = arr.length ? arr.map((it)=>({
+        ...it,
+        desc: it.desc || it.descricao || '',
+        ref: it.ref || it.referencia || '',
+        qtd: it.qtd ?? it.quantidade ?? 0,
+        vunit: it.vunit ?? it.valor_unitario ?? 0,
+        img: it.img || null,
+        chapa_id: it.chapa_id || it.chapaId || '',
+        chapa_nome: it.chapa_nome || it.chapaNome || '',
+        qtd_chapas: it.qtd_chapas ?? it.qtdChapas ?? 0,
+        maquina: it.maquina || '',
+        maquinas_fluxo: Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : []),
+        maquinas_fluxo_ids: ofFluxoIdsFromNames(Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : [])),
+      })) : ofItensTemp;
+      renderOfItens();
+    }catch(e){}
+
+    try{
+      const footer = document.querySelector('#modal-of .modal-footer');
+      if(footer) footer.innerHTML = `<button class="btn btn-ghost" onclick="try{window._OF_CLONE_CTX=null;}catch(e){};fechar('modal-of')">Cancelar</button><button class="btn btn-accent" onclick="salvarOF()">Salvar Clone</button>`;
+    }catch(e){}
+
+    try{
+      const modal = document.getElementById('modal-of');
+      const lock = (sel)=>{ try{ const el = document.getElementById(sel); if(el) el.disabled = true; }catch(e){} };
+      ['f-cli','f-cli-search','f-vend','f-fl','f-emp','f-st','f-urg','f-prod-desc','f-obs','f-dia','f-modo-prog','f-dia-prog','f-chp','f-qchp','f-val'].forEach(lock);
+      if(modal){
+        modal.querySelectorAll('input[name="item-descricao"],input[name="item-ref"],input[name="item-vunit"]').forEach((el)=>{ el.disabled = true; });
+        modal.querySelectorAll('select[data-item-maquina], select[data-item-maq], select[data-item-maquina-sel]').forEach((el)=>{ el.disabled = true; });
+        modal.querySelectorAll('.btn-icon').forEach((el)=>{ el.disabled = true; });
+      }
+    }catch(e){}
+  }catch(e){
+    toast('Erro ao clonar: '+String(e?.message || e),'var(--red)');
+  }
+}
+
+function lancDetShowTab(ofId, tab, skipFetch){
+  const t = (tab === 'hist') ? 'hist' : 'det';
+  window._LANC_DET_TAB = t;
+  const det = document.getElementById('lanc-det-tab-det');
+  const hist = document.getElementById('lanc-det-tab-hist');
+  const bDet = document.getElementById('lanc-det-tabbtn-det');
+  const bHist = document.getElementById('lanc-det-tabbtn-hist');
+  if(det) det.style.display = (t === 'det') ? '' : 'none';
+  if(hist) hist.style.display = (t === 'hist') ? '' : 'none';
+  const setBtn = (btn, ativo)=>{
+    if(!btn) return;
+    btn.style.border = '1px solid var(--border)';
+    btn.style.background = ativo ? 'rgba(99,102,241,.22)' : 'transparent';
+    btn.style.color = ativo ? 'var(--text)' : 'var(--text2)';
+  };
+  setBtn(bDet, t === 'det');
+  setBtn(bHist, t === 'hist');
+  if(t === 'hist' && !skipFetch) lancDetLoadHistorico(ofId);
+}
+
+async function lancDetLoadHistorico(ofId){
+  const sid = String(ofId || '').trim();
+  const host = document.getElementById('lanc-det-tab-hist');
+  const countEl = document.getElementById('lanc-det-hist-count');
+  if(!sid || !host) return;
+  try{
+    window._LANC_DET_HIST_CACHE = window._LANC_DET_HIST_CACHE || {};
+    if(window._LANC_DET_HIST_CACHE[sid]){
+      const cached = window._LANC_DET_HIST_CACHE[sid];
+      if(countEl) countEl.textContent = String(cached.length || 0);
+      host.innerHTML = cached._html || '';
+      return;
+    }
+  }catch(e){}
+  host.innerHTML = `<div style="padding:12px;color:var(--text3)">Carregando histórico...</div>`;
+  try{
+    const qs = new URLSearchParams({ tabela:'ofs', operacao:'REPROGRAMACAO', registro_id:sid, limit:'200' });
+    const r = await apiFetch('/api/audit_log?' + qs.toString(), { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    const parseObj = (v)=>{
+      if(!v) return {};
+      if(typeof v === 'object') return v;
+      if(typeof v === 'string'){
+        const s = v.trim();
+        if(!s) return {};
+        try{ return JSON.parse(s); }catch(e){ return {}; }
+      }
+      return {};
+    };
+    const fmtWhen = (iso)=>{
+      const s = String(iso || '');
+      if(!s) return '—';
+      try{ return new Date(s).toLocaleString('pt-BR'); }catch(e){ return s; }
+    };
+    const list = (rows || []).map((row)=>{
+      const antes = parseObj(row.dados_antes);
+      const depois = parseObj(row.dados_depois);
+      const u = String(row.usuario_nome || row.usuario || row.usuario_id || '—');
+      const when = fmtWhen(row.created_at);
+      const entA = String(antes.entrega || '').slice(0,10);
+      const entD = String(depois.entrega || '').slice(0,10);
+      const maqA = String(antes.maquinas || '');
+      const maqD = String(depois.maquinas || '');
+      const motivo = String(depois.motivo || '').trim();
+      const linha1 = (entA || entD) ? `<div><span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">Entrega:</span> <span style="font-family:var(--mono)">${escH(entA||'—')}</span> → <span style="font-family:var(--mono);font-weight:900">${escH(entD||'—')}</span></div>` : '';
+      const linha2 = (maqA || maqD) ? `<div><span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">Máquinas:</span> <span style="font-family:var(--mono)">${escH(maqA||'—')}</span> → <span style="font-family:var(--mono);font-weight:900">${escH(maqD||'—')}</span></div>` : '';
+      const linha3 = motivo ? `<div style="margin-top:6px;color:var(--text2)"><span style="color:var(--text3);font-family:var(--mono);font-size:.7rem">Motivo:</span> ${escH(motivo)}</div>` : '';
+      return `<div style="padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--surface)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <div style="font-weight:900;color:var(--accent)">${escH(when)}</div>
+          <div style="color:var(--text3);font-family:var(--mono);font-size:.72rem">por ${escH(u)}</div>
+        </div>
+        <div style="margin-top:8px;display:grid;gap:6px">
+          ${linha1 || ''}
+          ${linha2 || ''}
+          ${linha3 || ''}
+        </div>
+      </div>`;
+    }).join('') || `<div style="padding:12px;color:var(--text3)">Nenhuma reprogramação registrada.</div>`;
+    if(countEl) countEl.textContent = String((rows || []).length || 0);
+    host.innerHTML = `<div style="display:grid;gap:10px">${list}</div>`;
+    try{
+      window._LANC_DET_HIST_CACHE = window._LANC_DET_HIST_CACHE || {};
+      window._LANC_DET_HIST_CACHE[sid] = rows || [];
+      window._LANC_DET_HIST_CACHE[sid]._html = host.innerHTML;
+    }catch(e){}
+  }catch(e){
+    host.innerHTML = `<div style="padding:12px;color:var(--red)">Erro ao carregar histórico</div>`;
+  }
+}
+
 async function lancExcluirOF(id){
   const of = (OFS_HIST||[]).find(x=>String(x.id||'')===String(id||'')) || null;
   const num = of ? (of.of||of.numero||'') : '';
@@ -8727,7 +9115,8 @@ function lancAbrirDetalhes(id){
       </table>
     </div>
   </div>` : '';
-  body.innerHTML = `<div class="sbox"><div class="sbox-h">OF #${escH(of.of||'')}</div><div class="sbox-b">
+  const ofId = String(of.id || '').trim();
+  const detHtml = `<div class="sbox"><div class="sbox-h">OF #${escH(of.of||'')}</div><div class="sbox-b">
     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Cliente</div><div style="font-weight:800">${escH(cliNome)}</div></div>
       <div><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono)">Vendedor</div><div style="font-weight:800">${escH(vendNome)}</div></div>
@@ -8746,6 +9135,17 @@ function lancAbrirDetalhes(id){
     ${of.obs?`<div style="margin-top:10px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:var(--text3);font-size:.68rem;font-family:var(--mono);margin-bottom:4px">Obs</div>${escH(of.obs)}</div>`:''}
     ${itensHtml}
   </div></div>`;
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <button class="btn btn-ghost btn-sm" id="lanc-det-tabbtn-det" onclick="lancDetShowTab('${escAttr(ofId)}','det')">Detalhes</button>
+      <button class="btn btn-ghost btn-sm" id="lanc-det-tabbtn-hist" onclick="lancDetShowTab('${escAttr(ofId)}','hist')">Histórico</button>
+      <div style="flex:1"></div>
+      <span style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Reprogramações: <b id="lanc-det-hist-count" style="color:var(--text)">—</b></span>
+    </div>
+    <div id="lanc-det-tab-det">${detHtml}</div>
+    <div id="lanc-det-tab-hist" style="display:none"></div>
+  `;
+  try{ lancDetShowTab(ofId, 'det', true); }catch(e){}
   act.innerHTML = `<button class="btn btn-ghost" onclick="fechar('modal-lanc-det')">Fechar</button>` +
     ((!of.deleted_at)?`<button class="btn btn-accent" onclick="lancEditarOF('${escAttr(of.id)}')">Editar itens</button>`:'') +
     ((status==='Cancelada'||status==='Cancelado') ? `<button class="btn btn-accent" onclick="lancReativar('${escAttr(of.id)}')">Reativar</button>` : '') +
@@ -8786,12 +9186,16 @@ function renderLancamento(){
   const getMaquina = (o)=> String(ofFluxoGetMaquinaAtual(o) || o.maq || '').trim();
 
   const q = String(LANC_UI.busca||'').trim().toLowerCase();
+  const cliFil = String(LANC_UI.cliente||'').trim().toLowerCase();
   const emp = String(LANC_UI.emp||'').trim();
   const vend = String(LANC_UI.vendedor||'').trim();
   const maq = String(LANC_UI.maquina||'').trim();
   const de = String(LANC_UI.de||'').trim();
   const ate = String(LANC_UI.ate||'').trim();
   const statusFil = String(LANC_UI.status||'').trim();
+  const chapaFil = String(LANC_UI.chapa||'').trim().toLowerCase();
+  const valMin = parseFloat(String(LANC_UI.valorMin ?? '').replace(',', '.'));
+  const valMax = parseFloat(String(LANC_UI.valorMax ?? '').replace(',', '.'));
 
   const dentroPeriodo = (o)=>{
     if(!de && !ate) return true;
@@ -8811,6 +9215,18 @@ function renderLancamento(){
     if(vend && vendNome !== vend) return false;
     if(maq && maqNome !== maq) return false;
     if(!dentroPeriodo(o)) return false;
+    if(cliFil){
+      const c = String(lancCliNome(o) || '').toLowerCase();
+      if(!c.includes(cliFil)) return false;
+    }
+    if(Number.isFinite(valMin)){
+      const v = getValor(o);
+      if(v < valMin) return false;
+    }
+    if(Number.isFinite(valMax)){
+      const v = getValor(o);
+      if(v > valMax) return false;
+    }
     if(statusFil){
       const st = String(o.status||'');
       if(statusFil === 'excluido') { if(!o.deleted_at) return false; }
@@ -8818,6 +9234,18 @@ function renderLancamento(){
       else if(statusFil === 'concluido') { if(o.deleted_at || !isConcluida(st)) return false; }
       else if(statusFil === 'em_producao') { if(o.deleted_at || !isEmProducao(st)) return false; }
       else if(statusFil === 'em_aberto') { if(o.deleted_at || !(isEmAberto(st) || (!isConcluida(st) && !isCancelada(st)))) return false; }
+    }
+    if(chapaFil){
+      const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      const chapaTxt = [
+        o.chapa_id, o.chp,
+        ...arr.map(it => it && typeof it === 'object'
+          ? (it.chapa_nome || it.chapaNome || it.chapa || it.chapa_id || it.chapaId || '')
+          : ''
+        )
+      ].filter(Boolean).join(' ').toLowerCase();
+      if(!chapaTxt.includes(chapaFil)) return false;
     }
     if(q){
       const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
@@ -8892,6 +9320,23 @@ function renderLancamento(){
   const empOpts = Array.from(new Set(base.map(o=>lancEmpNome(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
   const vendOpts = Array.from(new Set(base.map(o=>lancVendNome(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
   const maqOpts = Array.from(new Set(base.map(o=>getMaquina(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  const cliOpts = Array.from(new Set(base.map(o=>lancCliNome(o)).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  const chapaOpts = Array.from(new Set(base.reduce((acc, o)=>{
+    const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+    const arr = Array.isArray(itens) ? itens : [];
+    arr.forEach((it)=>{
+      if(!it || typeof it !== 'object') return;
+      const n = String(it.chapa_nome || it.chapaNome || it.chapa || '').trim();
+      if(n) acc.push(n);
+    });
+    const chId = String(o.chapa_id || o.chp || '').trim();
+    if(chId && typeof getCh === 'function'){
+      const ch = getCh(chId);
+      const nom = String(ch?.nomenclatura || ch?.nom || ch?.nome || '').trim();
+      if(nom) acc.push(nom);
+    }
+    return acc;
+  }, [])).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
 
   const tabBtn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
   const viewBtn = (id, label) => `<button class="btn btn-ghost btn-sm ${String(LANC_UI.view||'tabela')===id?'ativo':''}" onclick="lancSetView('${id}')" style="border:1px solid var(--border)">${label}</button>`;
@@ -8905,6 +9350,7 @@ function renderLancamento(){
       ${viewBtn('cliente','Por Cliente')}
       ${viewBtn('comparativo','Comparativo')}
       <button class="btn btn-ghost btn-sm" onclick="lancExportarExcel()">📥 Exportar Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="lancExportarPDF()">📄 Exportar PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨 Imprimir Lista</button>
       <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar Arquivo</button>
     </div>
@@ -8926,6 +9372,8 @@ function renderLancamento(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">
       <input id="lanc-busca" placeholder="🔍 Cliente / Produto / Nº OF" value="${escAttr(LANC_UI.busca||'')}" oninput="LANC_UI.busca=this.value;LANC_UI.page=1;renderLancamento()" style="width:240px">
+      <input id="lanc-cli" list="lanc-cli-dl" placeholder="👤 Cliente (autocomplete)" value="${escAttr(String(LANC_UI.cliente||''))}" oninput="LANC_UI.cliente=this.value;LANC_UI.page=1;" style="width:260px">
+      <datalist id="lanc-cli-dl">${cliOpts.map(n=>`<option value="${escAttr(n)}"></option>`).join('')}</datalist>
       <select id="lanc-status" onchange="LANC_UI.status=this.value;LANC_UI.page=1;renderLancamento()" style="width:170px">
         <option value="">Todos status</option>
         <option value="em_aberto" ${statusFil==='em_aberto'?'selected':''}>Em Aberto</option>
@@ -8948,7 +9396,12 @@ function renderLancamento(){
       </select>
       <input type="date" id="lanc-de" value="${escAttr(de||'')}" onchange="LANC_UI.de=this.value;LANC_UI.page=1;renderLancamento()" style="width:140px">
       <input type="date" id="lanc-ate" value="${escAttr(ate||'')}" onchange="LANC_UI.ate=this.value;LANC_UI.page=1;renderLancamento()" style="width:140px">
-      <button class="btn btn-ghost btn-sm" onclick="LANC_UI.busca='';LANC_UI.emp='';LANC_UI.vendedor='';LANC_UI.maquina='';LANC_UI.status='';LANC_UI.de='';LANC_UI.ate='';LANC_UI.page=1;renderLancamento()">Limpar</button>
+      <input id="lanc-val-min" type="number" step="0.01" placeholder="R$ mín" value="${escAttr(String(LANC_UI.valorMin||''))}" oninput="LANC_UI.valorMin=this.value;LANC_UI.page=1;" style="width:110px">
+      <input id="lanc-val-max" type="number" step="0.01" placeholder="R$ máx" value="${escAttr(String(LANC_UI.valorMax||''))}" oninput="LANC_UI.valorMax=this.value;LANC_UI.page=1;" style="width:110px">
+      <input id="lanc-chapa" list="lanc-chapa-dl" placeholder="🧻 Chapa usada" value="${escAttr(String(LANC_UI.chapa||''))}" oninput="LANC_UI.chapa=this.value;LANC_UI.page=1;" style="width:220px">
+      <datalist id="lanc-chapa-dl">${chapaOpts.map(n=>`<option value="${escAttr(n)}"></option>`).join('')}</datalist>
+      <button class="btn btn-ghost btn-sm" onclick="renderLancamento()">Aplicar filtros</button>
+      <button class="btn btn-ghost btn-sm" onclick="LANC_UI.busca='';LANC_UI.cliente='';LANC_UI.emp='';LANC_UI.vendedor='';LANC_UI.maquina='';LANC_UI.status='';LANC_UI.de='';LANC_UI.ate='';LANC_UI.valorMin='';LANC_UI.valorMax='';LANC_UI.chapa='';LANC_UI.page=1;renderLancamento()">Limpar</button>
     </div>
   `;
 
@@ -8957,6 +9410,7 @@ function renderLancamento(){
   const thSort = (key, label) => `<th style="${th}" onclick="lancSetSort('${escAttr(key)}')">${escH(label)}${LANC_UI.sortKey===key?(' ' + (LANC_UI.sortDir==='asc'?'▲':'▼')):''}</th>`;
 
   const renderTabela = ()=>{
+    const sel = Array.isArray(window._LANC_COMPARE_IDS) ? window._LANC_COMPARE_IDS.map(x=>String(x||'').trim()).filter(Boolean) : [];
     const renderRow = (o) => {
       const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
       const arr = Array.isArray(itens) ? itens : [];
@@ -8969,7 +9423,9 @@ function renderLancamento(){
       const stRaw = String(o.status || '').trim();
       const atraso = !o.deleted_at && !isConcluida(stRaw) && !isCancelada(stRaw) && (lancEnt(o) && lancEnt(o) < today());
       const bg = atraso ? 'background:rgba(239,68,68,.08);' : 'background:var(--surface);';
+      const isSel = sel.includes(String(o.id||'').trim());
       return `<tr style="${bg}">
+        <td style="${td};text-align:center"><input type="checkbox" ${isSel?'checked':''} onchange="lancToggleCompareOF('${escAttr(o.id)}', this.checked)"></td>
         <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(o.of||o.numero||'')}</td>
         <td style="${td};text-align:center">${imgUrl
           ? `<img src="${escAttr(imgUrl)}" style="width:42px;height:42px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid var(--border)" onclick="abrirFotoModal('${escAttr(imgUrl)}','OF ${escAttr(o.of||o.numero||'')}')" onerror="this.style.display='none'">`
@@ -8987,17 +9443,19 @@ function renderLancamento(){
         <td style="${td};text-align:center">
           <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver</button>
           ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
+          ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();lancClonarOF('${escAttr(o.id)}')">⧉ Clonar</button>`:''}
           ${(!o.deleted_at && !isConcluida(stRaw) && !isCancelada(stRaw))?`<button class="btn btn-accent btn-sm" onclick="concluirOFComBaixa('${escAttr(o.id)}')">✓ Concluir</button>`:''}
           ${(o.deleted_at)?`<button class="btn btn-accent btn-sm" onclick="lancRestaurar('${escAttr(o.id)}')">Restaurar</button>`:''}
           ${(!o.deleted_at && isCancelada(stRaw))?`<button class="btn btn-accent btn-sm" onclick="lancReativar('${escAttr(o.id)}')">Reativar</button>`:''}
         </td>
       </tr>`;
     };
-    const tbody = shown.length ? shown.map(renderRow).join('') : `<tr><td colspan="13" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`;
+    const tbody = shown.length ? shown.map(renderRow).join('') : `<tr><td colspan="14" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`;
     const moreBtn = hasMore ? `<div style="padding:12px;text-align:center"><button class="btn btn-ghost" onclick="lancCarregarMais()">Carregar mais (${shown.length}/${rows.length})</button></div>` : '';
     return `<div style="max-height:66vh;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:1320px">
+      <table style="width:100%;border-collapse:collapse;min-width:1380px">
         <thead><tr>
+          <th style="${th.replace('cursor:pointer;','')};text-align:center">✓</th>
           ${thSort('of','Nº OF')}
           <th style="${th.replace('cursor:pointer;','')}">IMG</th>
           ${thSort('cliente','Cliente')}
@@ -9135,7 +9593,8 @@ function renderLancamento(){
   else if(view === 'comparativo') host.innerHTML = renderComparativo();
   else host.innerHTML = renderTabela();
 
-  LANC_LAST_ROWS = rows.slice();
+  LANC_LAST_ROWS = (view === 'tabela') ? shown.slice() : rows.slice();
+  try{ lancSyncCompareFab(); }catch(e){}
 }
 
 function lancVerTodasConcluidas(){
