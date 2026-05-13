@@ -9312,6 +9312,9 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
   const p = String(pergunta || '').trim();
   if (!p) return null;
 
+  if (ofNum && _jarvisHasAny(norm, 'imagem', 'foto') && _jarvisHasAny(norm, 'troque', 'trocar', 'mude', 'mudar', 'altere', 'alterar', 'atualize', 'atualizar')) {
+    return { type: 'of_upload_image', ofNum };
+  }
   if (ofNum && _jarvisHasAny(norm, 'cancele', 'cancelar', 'cancela')) {
     return { type: 'of_cancel', ofNum };
   }
@@ -9396,6 +9399,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           const nOf = _assistPickOfNumber(of);
           const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
           if (act.type === 'of_cancel') resumo = `⚠️ Confirmar cancelamento da OF #${nOf} — ${cNome} — ${qtd} caixas?`;
+          else if (act.type === 'of_upload_image') resumo = `⚠️ Confirmar troca da imagem da OF #${nOf} — ${cNome}?`;
           else if (act.type === 'of_set_entrega') resumo = `⚠️ Confirmar alteração da entrega da OF #${nOf} — ${cNome} para ${_assistFmtDateBr(act.data)}?`;
           else if (act.type === 'of_set_qtd') resumo = `⚠️ Confirmar alteração da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
           else if (act.type === 'of_set_urgente') resumo = `⚠️ Confirmar marcar urgência na OF #${nOf} — ${cNome}?`;
@@ -10024,6 +10028,20 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída.` });
     }
 
+    if (act.type === 'of_upload_image') {
+      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      const newId = _jarvisStoreAction(uid, { type: 'of_upload_image_file', ofId: String(of.id || ''), ofNum: String(act.ofNum || '') });
+      return res.json({
+        ok: true,
+        resposta: `${first}, selecione a imagem para a OF #${act.ofNum}:`,
+        actions: [
+          { id: newId, label: '📎 Enviar imagem', decision: 'upload' },
+          { id: newId, label: '❌ Cancelar', decision: 'cancel' },
+        ],
+      });
+    }
+
     if (act.type === 'chapa_entrada') {
       if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
       await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}/movimento`, { method: 'POST', body: { tipo: 'entrada', delta: act.qtd, obs: 'Entrada via JARVIS' } });
@@ -10049,6 +10067,45 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
     }
 
     return res.json({ ok: true, resposta: `${first}, ação executada.` });
+  } catch (e) {
+    return err(res, e);
+  }
+});
+
+app.post('/api/assistente/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
+  try {
+    const uid = String(req?.usuario?.id || '');
+    const id = String(req.body?.id || '').trim();
+    const pending = _jarvisGetAction(id, uid);
+    const nome = (await _assistUser(req)).nome;
+    const first = _jarvisFirstName(nome);
+    if (!pending) return res.status(404).json({ ok: false, error: 'acao_expirada' });
+    const act = pending.action || {};
+    if (act.type !== 'of_upload_image_file') return res.status(400).json({ ok: false, error: 'acao_invalida' });
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'arquivo_obrigatorio' });
+    _jarvisPendingActions.delete(id);
+
+    const ext = path.extname(f.originalname || '').toLowerCase() || '.png';
+    const filename = `of-images/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+
+    let bucket = 'of-images';
+    let upErr = null;
+    try {
+      const r1 = await supabase.storage.from(bucket).upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+      upErr = r1?.error || null;
+    } catch (e) { upErr = e; }
+    if (upErr) {
+      bucket = 'uploads';
+      const r2 = await supabase.storage.from(bucket).upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+      if (r2?.error) throw r2.error;
+    }
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filename);
+    const url = String(urlData?.publicUrl || '').trim();
+    if (!url) throw new Error('upload_url_missing');
+
+    await _jarvisCallInternal(req, `/api/ofs/${String(act.ofId)}`, { method: 'PATCH', body: { imagem_url: url } });
+    return res.json({ ok: true, resposta: `✅ ${first}, imagem da OF #${act.ofNum || ''} atualizada com sucesso!`, images: [url] });
   } catch (e) {
     return err(res, e);
   }
