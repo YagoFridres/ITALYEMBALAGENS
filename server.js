@@ -9452,6 +9452,118 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
+    if (norm.startsWith('/ajuda')) {
+      return res.json({
+        ok: true,
+        resposta: `${_jarvisFirstName(nome)}, comandos disponíveis:\n` +
+          `• /ajuda — lista de comandos\n` +
+          `• /resumo — resumo do dia (OFs atrasadas, de hoje e urgentes)\n` +
+          `• /atrasadas — lista de OFs em atraso\n` +
+          `• /estoque — tabela de estoque de chapas\n` +
+          `• /dashboard — gráfico de faturamento do ano\n\n` +
+          `Exemplos:\n` +
+          `• "status da OF 123"\n` +
+          `• "cancele a OF 123" (vai pedir confirmação)\n` +
+          `• "mostre a imagem da OF 123"\n` +
+          `• "cliente da OF 123"`,
+        suggestions: ['/resumo', '/atrasadas', '/estoque', '/dashboard'],
+      });
+    }
+
+    if (norm.startsWith('/resumo')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,urg,urgente,cli_id,cliente_id,cliNome,cliente_nome')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
+      const abertas = ativos.filter((o) => !_assistIsConcluida(o));
+      const atras = abertas.filter((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent < hoje;
+      });
+      const hojeList = abertas.filter((o) => _assistPickOfEntrega(o) === hoje);
+      const urg = abertas.filter((o) => !!(o.urg || o.urgente));
+      const topAtras = atras.sort((a, b) => (_assistPickOfEntrega(a) || '').localeCompare(_assistPickOfEntrega(b) || '')).slice(0, 5);
+      const cliMap = await _assistLoadClientesByIds(topAtras.map(_assistPickOfClienteId));
+      const linhas = topAtras.map((o) => {
+        const ent = _assistPickOfEntrega(o);
+        const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s)`;
+      });
+      return res.json({
+        ok: true,
+        resposta:
+          `${_jarvisFirstName(nome)}, resumo do dia (${_assistFmtDateBr(hoje)}):\n` +
+          `🚨 Atrasadas: ${atras.length}\n` +
+          `📅 Entregas hoje: ${hojeList.length}\n` +
+          `⚡ Urgentes: ${urg.length}\n\n` +
+          `Top atrasadas:\n${linhas.join('\n') || '—'}`,
+        suggestions: ['/atrasadas', 'OFs de hoje', 'OFs urgentes', '/estoque'],
+      });
+    }
+
+    if (norm.startsWith('/atrasadas')) {
+      const { data } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      const rows = Array.isArray(data) ? data : [];
+      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o) && !_assistIsConcluida(o));
+      const atras = ativos.filter((o) => {
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent < hoje;
+      }).sort((a, b) => (_assistPickOfEntrega(a) || '').localeCompare(_assistPickOfEntrega(b) || ''));
+      const cliMap = await _assistLoadClientesByIds(atras.map(_assistPickOfClienteId));
+      const top = atras.slice(0, 10);
+      const linhas = top.map((o) => {
+        const ent = _assistPickOfEntrega(o);
+        const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
+        const cid = _assistPickOfClienteId(o);
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s)`;
+      });
+      const extra = atras.length > top.length ? `\n...e mais ${atras.length - top.length} itens` : '';
+      return res.json({
+        ok: true,
+        resposta: `${_jarvisFirstName(nome)}, OFs atrasadas: ${atras.length}\n${linhas.join('\n') || '—'}${extra}`,
+        suggestions: ['/resumo', 'OFs urgentes', 'Estoque crítico', '/dashboard'],
+      });
+    }
+
+    if (norm.startsWith('/dashboard')) {
+      const y = year;
+      const de = `${y}-01-01`;
+      const ate = `${y}-12-31`;
+      const { data } = await supabase
+        .from('ofs')
+        .select('status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const sums = Array.from({ length: 12 }).map(() => 0);
+      rows.forEach((o) => {
+        const dt = String(o.data_conclusao || '').slice(0, 10);
+        const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return;
+        const mm = Number(m[2]);
+        if (!(mm >= 1 && mm <= 12)) return;
+        sums[mm - 1] += _assistPickOfValor(o);
+      });
+      const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      return res.json({
+        ok: true,
+        resposta: `${_jarvisFirstName(nome)}, dashboard (${y}):`,
+        chart: { type: 'bar', title: 'Faturamento', labels, data: sums.map((v) => Math.round(Number(v || 0))) },
+        suggestions: ['/resumo', '/atrasadas', '/estoque'],
+      });
+    }
+
     if (_jarvisHasAny(norm, '/estoque') || ((hasAny('mostre', 'mostrar', 'ver') || norm.startsWith('estoque')) && hasAny('estoque') && (hasAny('chapa', 'chapas') || norm.includes('chapa')))) {
       const { data } = await supabase
         .from('chapas_estoque')
