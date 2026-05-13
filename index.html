@@ -9336,7 +9336,7 @@ function renderLancamento(){
       if(nom) acc.push(nom);
     }
     return acc;
-  }, [])).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
+  }, []).filter(Boolean))).sort((a,b)=>String(a).localeCompare(String(b)));
 
   const tabBtn = (id, label, count) => `<button class="btn btn-ghost btn-sm ${tab===id?'ativo':''}" onclick="lancSetTab('${id}')" style="border:1px solid var(--border)">${label} <span style="font-family:var(--mono);color:var(--text3)">(${count})</span></button>`;
   const viewBtn = (id, label) => `<button class="btn btn-ghost btn-sm ${String(LANC_UI.view||'tabela')===id?'ativo':''}" onclick="lancSetView('${id}')" style="border:1px solid var(--border)">${label}</button>`;
@@ -12693,12 +12693,515 @@ async function atualizarRiscadaChapa(id, riscada, cellRid){
 }
 
 // ===================== ESTOQUE =====================
+var CHAPAS_METRICAS = {};
+var _chpMetricasBusy = false;
+var _chpMetricasTs = 0;
+var _chpMetricasEmp = null;
+var CHAPAS_ULTIMO_PRECO = {};
+var _chpUltPrecoBusy = {};
+var _chpUltPrecoRerenderTimer = null;
+
+async function carregarMetricasChapas(force){
+  if(!_apiConectado || !CURRENT_USER) return;
+  if(_chpMetricasBusy) return;
+  const emp = EMP_FILTRO ? String(EMP_FILTRO) : '';
+  const ttl = 5 * 60 * 1000;
+  if(!force && _chpMetricasEmp === emp && _chpMetricasTs && (Date.now() - _chpMetricasTs) < ttl) return;
+  try{
+    _chpMetricasBusy = true;
+    const qs = new URLSearchParams();
+    qs.set('months','3');
+    if(emp) qs.set('empId', emp);
+    const resp = await apiFetch('/api/chapas_estoque/metricas?' + qs.toString(), { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const data = (j && j.data) ? j.data : (j && j.ok && typeof j.data === 'object' ? j.data : (j && typeof j === 'object' ? j : {}));
+    if(!resp || !resp.ok || (j && j.ok===false)){
+      return;
+    }
+    CHAPAS_METRICAS = data && typeof data === 'object' ? data : {};
+    _chpMetricasTs = Date.now();
+    _chpMetricasEmp = emp;
+    try{ _renderEstoqueBase(); }catch(e){}
+  } finally {
+    _chpMetricasBusy = false;
+  }
+}
+
+function _scheduleUltimoPrecoRerender(){
+  if(_chpUltPrecoRerenderTimer) return;
+  _chpUltPrecoRerenderTimer = setTimeout(()=>{
+    _chpUltPrecoRerenderTimer = null;
+    try{ _renderEstoqueBase(); }catch(e){}
+  }, 220);
+}
+
+async function carregarUltimoPrecoChapaMov(chapaId){
+  const id = String(chapaId||'').trim();
+  if(!id) return null;
+  if(Object.prototype.hasOwnProperty.call(CHAPAS_ULTIMO_PRECO, id)) return CHAPAS_ULTIMO_PRECO[id];
+  if(_chpUltPrecoBusy[id]) return null;
+  if(!_apiConectado || !CURRENT_USER) return null;
+  _chpUltPrecoBusy[id] = true;
+  try{
+    const qs = new URLSearchParams();
+    qs.set('chapa_id', id);
+    qs.set('tipo', 'entrada');
+    qs.set('limit', '1');
+    if(EMP_FILTRO) qs.set('empId', String(EMP_FILTRO));
+    const resp = await apiFetch('/api/chapas_estoque_movimentos?' + qs.toString(), { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    const rows = (j && j.data && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : (j && j.ok && Array.isArray(j.data) ? j.data : []));
+    const mov = Array.isArray(rows) ? rows[0] : null;
+    const vu = Number(mov?.valor_unitario ?? mov?.vunit ?? mov?.val ?? mov?.valor ?? NaN);
+    CHAPAS_ULTIMO_PRECO[id] = (Number.isFinite(vu) && vu >= 0) ? vu : null;
+    if(CHAPAS_METRICAS && typeof CHAPAS_METRICAS === 'object'){
+      if(!CHAPAS_METRICAS[id]) CHAPAS_METRICAS[id] = {};
+      if(!Number.isFinite(Number(CHAPAS_METRICAS[id]?.ultimo_preco))) CHAPAS_METRICAS[id].ultimo_preco = CHAPAS_ULTIMO_PRECO[id];
+    }
+    _scheduleUltimoPrecoRerender();
+    return CHAPAS_ULTIMO_PRECO[id];
+  } finally {
+    delete _chpUltPrecoBusy[id];
+  }
+}
+
+function _prefetchUltimosPrecosChapas(ids){
+  if(!_apiConectado || !CURRENT_USER) return;
+  const uniq = Array.from(new Set((ids||[]).map(x=>String(x||'').trim()).filter(Boolean)));
+  const max = 40;
+  const slice = uniq.slice(0, max);
+  let i = 0;
+  const next = ()=>{
+    if(i >= slice.length) return;
+    const id = slice[i++];
+    carregarUltimoPrecoChapaMov(id).catch(()=>{}).finally(()=>setTimeout(next, 0));
+  };
+  next();
+}
+
+function estFotoUrlFromItem(c){
+  return String(c?.foto_url || c?.foto || c?.imagem_url || c?.imagem || '').trim();
+}
+
+function estChapaKeyLabel(c){
+  const nom = String(c?.nomenclatura || c?.nom || '').trim();
+  const tam = String(c?.tamanho || c?.tam || '').trim();
+  const nome = String(c?.nome || '').trim();
+  return [nom, tam, nome].filter(Boolean).join(' · ').trim();
+}
+
+async function ensureQRCodeLib(){
+  if(window.QRCode && (window.QRCode.toCanvas || window.QRCode.toDataURL)) return true;
+  await new Promise((resolve, reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
+    s.onload=()=>resolve(true);
+    s.onerror=()=>reject(new Error('Falha ao carregar QRCode'));
+    document.head.appendChild(s);
+  });
+  return !!(window.QRCode && (window.QRCode.toCanvas || window.QRCode.toDataURL));
+}
+
+function abrirModalQRCodeEstoque(tipo, id, titulo){
+  const itemId = String(id||'').trim();
+  if(!itemId) return;
+  const t = String(tipo||'').trim().toLowerCase();
+  const nome = String(titulo||'').trim();
+  const url = `https://adm.italyembalagens.com.br/?scan=${encodeURIComponent(itemId)}`;
+
+  let modal = document.getElementById('modal-qr-estoque');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-qr-estoque';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:520px;max-width:96vw;max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 id="qr-estoque-titulo" style="margin:0">QR Code</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-qr-estoque').style.display='none'">✕</button>
+        </div>
+        <div id="qr-estoque-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
+        <div style="display:flex;align-items:center;justify-content:center;margin:10px 0">
+          <canvas id="qr-estoque-canvas" width="360" height="360" style="background:#fff;border-radius:12px;padding:10px"></canvas>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="qrEstoqueBaixarPng()">Baixar PNG</button>
+          <button class="btn btn-purple btn-sm" onclick="qrEstoqueImprimir()">Imprimir</button>
+        </div>
+        <div id="qr-estoque-url" style="margin-top:10px;font-size:.72rem;color:var(--text3);font-family:var(--mono);word-break:break-all"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const ttl = document.getElementById('qr-estoque-titulo');
+  const sub = document.getElementById('qr-estoque-sub');
+  const urlEl = document.getElementById('qr-estoque-url');
+  if(ttl) ttl.textContent = 'QR Code';
+  if(sub) sub.textContent = [t ? t.toUpperCase() : '', nome].filter(Boolean).join(' — ');
+  if(urlEl) urlEl.textContent = url;
+  modal.dataset.url = url;
+  modal.style.display = 'flex';
+
+  Promise.resolve()
+    .then(()=>ensureQRCodeLib())
+    .then(()=>{
+      const canvas = document.getElementById('qr-estoque-canvas');
+      if(!canvas) return;
+      if(window.QRCode && window.QRCode.toCanvas){
+        return window.QRCode.toCanvas(canvas, url, { width: 360, margin: 1 });
+      }
+      if(window.QRCode && window.QRCode.toDataURL){
+        return window.QRCode.toDataURL(url, { width: 360, margin: 1 }).then((dataUrl)=>{
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          img.onload = ()=>{ canvas.width = img.width; canvas.height = img.height; ctx.drawImage(img,0,0); };
+          img.src = dataUrl;
+        });
+      }
+    })
+    .catch(()=>{});
+}
+
+function qrEstoqueBaixarPng(){
+  const modal = document.getElementById('modal-qr-estoque');
+  const url = modal ? String(modal.dataset.url||'') : '';
+  if(!modal || !url) return;
+  const dl = (dataUrl)=>{
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'qr-code.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+  if(window.QRCode && window.QRCode.toDataURL){
+    window.QRCode.toDataURL(url, { width: 1024, margin: 1 }).then(dl).catch(()=>{});
+    return;
+  }
+  const canvas = document.getElementById('qr-estoque-canvas');
+  if(canvas) dl(canvas.toDataURL('image/png'));
+}
+
+function qrEstoqueImprimir(){
+  const modal = document.getElementById('modal-qr-estoque');
+  const url = modal ? String(modal.dataset.url||'') : '';
+  if(!modal || !url) return;
+  const openPrint = (dataUrl)=>{
+    const w = window.open('', '_blank');
+    if(!w) return;
+    w.document.open();
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>QR Code</title></head><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh"><img src="${dataUrl}" style="width:520px;max-width:92vw;image-rendering:pixelated"></body></html>`);
+    w.document.close();
+    setTimeout(()=>{ try{ w.print(); }catch(e){} }, 300);
+  };
+  if(window.QRCode && window.QRCode.toDataURL){
+    window.QRCode.toDataURL(url, { width: 1024, margin: 1 }).then(openPrint).catch(()=>{});
+    return;
+  }
+  const canvas = document.getElementById('qr-estoque-canvas');
+  if(canvas) openPrint(canvas.toDataURL('image/png'));
+}
+
+async function estoqueUploadFoto(tipo, itemId, file){
+  const fd = new FormData();
+  fd.append('tipo', String(tipo||''));
+  fd.append('item_id', String(itemId||''));
+  fd.append('file', file);
+  const resp = await apiFetch('/api/estoque_fotos/upload', { method:'POST', body: fd });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || !j || j.ok===false) throw new Error((j && j.error) ? j.error : 'Falha ao enviar foto');
+  const out = (j && j.data) ? j.data : j;
+  const url = String(j?.data?.url || j?.url || out?.url || '').trim();
+  return { url, raw: j };
+}
+
+function estoqueGerarInventario(){
+  const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+  const rows = (Array.isArray(lista) ? lista : []).map((c)=>({
+    ID: String(c.id||''),
+    Nome: String(c.nome||''),
+    Tamanho: String(c.tamanho||c.tam||''),
+    Fornecedor: String(c.fornecedor||c.forn||''),
+    Categoria: String(c.categoria||''),
+    'Quantidade Sistema': Number(c.quantidade??c.qtd??0)||0,
+    'Quantidade Física': '',
+    Diferença: ''
+  }));
+  if(typeof XLSX === 'undefined' || !XLSX.utils) { toast('SheetJS não disponível','var(--red)'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inventário');
+  const d = new Date();
+  const pad2 = (n)=>String(n).padStart(2,'0');
+  const fname = `inventario-chapas-${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function estoqueTriggerImportInventario(){
+  const inp = document.getElementById('est-inv-file');
+  if(inp) inp.click();
+}
+
+var _INV_IMPORT_LAST = null;
+
+async function estoqueHandleImportInventarioFile(file){
+  if(!file) return;
+  if(typeof XLSX === 'undefined' || !XLSX.read) { toast('SheetJS não disponível','var(--red)'); return; }
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const sheetName = wb.SheetNames && wb.SheetNames[0];
+    const ws = sheetName ? wb.Sheets[sheetName] : null;
+    if(!ws) { toast('Planilha inválida','var(--red)'); return; }
+    const json = XLSX.utils.sheet_to_json(ws, { defval:'' });
+    const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+    const byId = new Map((lista||[]).map(c=>[String(c.id||''), c]));
+    const diverg = [];
+    (json||[]).forEach((r)=>{
+      const id = String(r.ID||r.Id||r.id||'').trim();
+      if(!id) return;
+      const item = byId.get(id);
+      if(!item) return;
+      const sistema = Number(item.quantidade??item.qtd??0)||0;
+      const fis = Number(String(r['Quantidade Física']??r['Quantidade Fisica']??r['Qtd Física']??r['Qtd Fisica']??'').toString().replace(',','.'));
+      if(!Number.isFinite(fis)) return;
+      const diff = Math.trunc(fis) - Math.trunc(sistema);
+      if(diff === 0) return;
+      diverg.push({
+        id,
+        nome: String(item.nome||''),
+        nomenclatura: String(item.nomenclatura||item.nom||''),
+        tamanho: String(item.tamanho||item.tam||''),
+        sistema: Math.trunc(sistema),
+        fisico: Math.trunc(fis),
+        diferenca: diff
+      });
+    });
+    _INV_IMPORT_LAST = diverg;
+    estoqueAbrirModalDivergenciasInventario();
+  } catch(e){
+    toast('Erro ao importar inventário','var(--red)');
+  }
+}
+
+function estoqueAbrirModalDivergenciasInventario(){
+  let modal = document.getElementById('modal-inv-div');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-inv-div';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(980px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Divergências de Inventário</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-inv-div').style.display='none'">✕</button>
+        </div>
+        <div id="inv-div-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
+        <div id="inv-div-body" style="overflow:auto;border:1px solid var(--border);border-radius:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-inv-div').style.display='none'">Cancelar</button>
+          <button class="btn btn-accent btn-sm" onclick="estoqueAplicarAjustesInventario()">Aplicar ajustes</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  const sub = document.getElementById('inv-div-sub');
+  const body = document.getElementById('inv-div-body');
+  const rows = Array.isArray(_INV_IMPORT_LAST) ? _INV_IMPORT_LAST : [];
+  if(sub) sub.textContent = `${rows.length} divergência${rows.length!==1?'s':''}`;
+  if(body){
+    if(!rows.length){
+      body.innerHTML = `<div style="padding:18px;color:var(--text3)">Nenhuma divergência encontrada.</div>`;
+    } else {
+      const th='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);background:var(--s2);position:sticky;top:0';
+      const td='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.78rem';
+      body.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:860px">
+        <thead><tr>
+          <th style="${th}">ID</th>
+          <th style="${th}">CHAPA</th>
+          <th style="${th};text-align:right">SISTEMA</th>
+          <th style="${th};text-align:right">FÍSICO</th>
+          <th style="${th};text-align:right">DIFERENÇA</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map((r,i)=>`<tr style="background:${i%2===0?'var(--surface)':'var(--s2)'}">
+            <td style="${td};font-family:var(--mono);font-size:.72rem;color:var(--text3)">${escH(r.id)}</td>
+            <td style="${td}">${escH([r.nomenclatura,r.tamanho,r.nome].filter(Boolean).join(' · '))}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${Number(r.sistema||0).toLocaleString()}</td>
+            <td style="${td};text-align:right;font-family:var(--mono);font-weight:900">${Number(r.fisico||0).toLocaleString()}</td>
+            <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:${r.diferenca>0?'var(--green)':'var(--red)'}">${(r.diferenca>0?'+':'')+Number(r.diferenca||0).toLocaleString()}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+  }
+  modal.style.display = 'flex';
+}
+
+async function estoqueAplicarAjustesInventario(){
+  const rows = Array.isArray(_INV_IMPORT_LAST) ? _INV_IMPORT_LAST : [];
+  if(!rows.length) return;
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    for(const r of rows){
+      const id = String(r.id||'').trim();
+      const qtd = Math.trunc(Number(r.fisico||0)||0);
+      const payload = { tipo:'ajuste', quantidade: qtd, obs:'Ajuste de inventário' };
+      const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/movimento', { method:'POST', body: payload });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(!resp || !resp.ok || (j && j.ok===false)){ throw new Error((j && j.error) ? j.error : 'Falha ao aplicar ajuste'); }
+    }
+    toast('Ajustes aplicados ✓','var(--green)');
+    document.getElementById('modal-inv-div').style.display='none';
+    await carregarChapas(true);
+    try{ await carregarMetricasChapas(true); }catch(e){}
+    renderEstoque();
+  } catch(e){
+    toast('Erro: '+String(e?.message||e),'var(--red)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
+function abrirModalEntradaLoteChapas(){
+  let modal = document.getElementById('modal-entrada-lote');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-entrada-lote';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(980px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Entrada em Lote</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-entrada-lote').style.display='none'">✕</button>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">NF (lote)</label>
+            <input id="el-nf" placeholder="Número NF" style="padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;width:180px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Data</label>
+            <input id="el-data" type="date" style="padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;width:160px">
+          </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="entradaLoteAdicionarLinha()">+ Adicionar linha</button>
+        </div>
+        <datalist id="el-chapas-dl"></datalist>
+        <div id="el-rows" style="border:1px solid var(--border);border-radius:10px;overflow:auto"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-entrada-lote').style.display='none'">Cancelar</button>
+          <button class="btn btn-green btn-sm" onclick="entradaLoteConfirmar()">Confirmar entradas</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const dataEl = document.getElementById('el-data');
+  if(dataEl && !dataEl.value) dataEl.value = today();
+
+  const dl = document.getElementById('el-chapas-dl');
+  if(dl){
+    const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+    dl.innerHTML = (lista||[]).slice(0,2000).map(c=>`<option value="${escAttr(estChapaKeyLabel(c))}">`).join('');
+  }
+
+  const rowsHost = document.getElementById('el-rows');
+  if(rowsHost && !rowsHost.dataset.ready){
+    rowsHost.dataset.ready='1';
+    rowsHost.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:880px">
+      <thead><tr style="background:var(--s2)">
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2)">Chapa</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);text-align:right">Qtd</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);text-align:right">Vlr Unit</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);text-align:center">Remover</th>
+      </tr></thead>
+      <tbody id="el-tbody"></tbody>
+    </table>`;
+    entradaLoteAdicionarLinha();
+  }
+  modal.style.display='flex';
+}
+
+function entradaLoteAdicionarLinha(){
+  const tb = document.getElementById('el-tbody');
+  if(!tb) return;
+  const idx = tb.children.length;
+  const tr = document.createElement('tr');
+  tr.style.background = idx%2===0 ? 'var(--surface)' : 'var(--s2)';
+  tr.innerHTML = `
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
+      <input class="el-chapa" list="el-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+    </td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
+      <input class="el-qtd" type="number" min="1" value="1" style="width:110px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right">
+    </td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
+      <input class="el-vu" type="number" step="0.00001" min="0" value="0" style="width:140px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right">
+    </td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center">
+      <button class="btn btn-ghost btn-sm" onclick="this.closest('tr').remove()" style="color:var(--red)">🗑</button>
+    </td>
+  `;
+  tb.appendChild(tr);
+}
+
+async function entradaLoteConfirmar(){
+  const nf = String(document.getElementById('el-nf')?.value||'').trim();
+  const data = String(document.getElementById('el-data')?.value||'').trim();
+  const tb = document.getElementById('el-tbody');
+  if(!tb) return;
+  const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+  const rows = Array.from(tb.querySelectorAll('tr')).map(tr=>{
+    const label = String(tr.querySelector('.el-chapa')?.value||'').trim();
+    const qtd = Math.trunc(Number(tr.querySelector('.el-qtd')?.value||0)||0);
+    const vu = Number(String(tr.querySelector('.el-vu')?.value||'0').replace(',','.'));
+    return { label, qtd, vu };
+  }).filter(r=>r.label && r.qtd>0);
+  if(!rows.length){ toast('Adicione ao menos 1 linha válida','var(--red)'); return; }
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    for(const r of rows){
+      const parts = r.label.split(' · ').map(x=>String(x||'').trim());
+      const nom = parts[0] || '';
+      const tam = parts[1] || '';
+      const match = (lista||[]).find(c=>String(c.nomenclatura||c.nom||'').trim()===nom && String(c.tamanho||c.tam||'').trim()===tam) || null;
+      if(!match || !match.id){ throw new Error('Chapa não encontrada: '+r.label); }
+      const payload = {
+        tipo:'entrada',
+        delta: Math.trunc(r.qtd),
+        nf: nf || undefined,
+        obs: ('Entrada em lote' + (data ? (' · ' + data) : '')).trim(),
+        valor_unitario: (Number.isFinite(r.vu) && r.vu >= 0) ? r.vu : undefined
+      };
+      const resp = await apiFetch('/api/chapas_estoque/'+encodeURIComponent(match.id)+'/movimento', { method:'POST', body: payload });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(!resp || !resp.ok || (j && j.ok===false)){ throw new Error((j && j.error) ? j.error : 'Falha ao registrar entrada'); }
+    }
+    toast('Entradas registradas ✓','var(--green)');
+    document.getElementById('modal-entrada-lote').style.display='none';
+    await carregarChapas(true);
+    try{ await carregarMetricasChapas(true); }catch(e){}
+    renderEstoque();
+  } catch(e){
+    toast('Erro: '+String(e?.message||e),'var(--red)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
 function _renderEstoqueBase(chapas) {
   if (Array.isArray(chapas)) _estoqueBase = chapas;
   const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
   const bodyEl = document.getElementById('est-table-body');
   if(!bodyEl) return;
   const footEl = document.getElementById('est-table-foot');
+  const _prefetchIds = [];
 
   const catFil = String(document.getElementById('ef-categoria')?.value || '').trim();
   const fornFil = String(document.getElementById('ef-fornecedor')?.value || '').trim().toLowerCase();
@@ -12765,7 +13268,7 @@ function _renderEstoqueBase(chapas) {
     return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
 
-  const colsCount = 13;
+  const colsCount = 16;
   if(!filtrada.length){
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
@@ -12795,6 +13298,35 @@ function _renderEstoqueBase(chapas) {
       const empKey = empRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const empSel = empKey.includes('cartoeste') ? 'Cartoeste' : empKey.includes('oestepack') ? 'Oestepack' : empKey.includes('italy') ? 'Italy Embalagens' : 'Italy Embalagens';
       const cid = String(c.id||'').trim();
+      const met = (CHAPAS_METRICAS && CHAPAS_METRICAS[cid]) ? CHAPAS_METRICAS[cid] : {};
+      const hasUltMov = Object.prototype.hasOwnProperty.call(CHAPAS_ULTIMO_PRECO, cid);
+      const ultimoMov = hasUltMov ? CHAPAS_ULTIMO_PRECO[cid] : undefined;
+      const ultimo = Number.isFinite(Number(ultimoMov)) ? Number(ultimoMov) : Number(met?.ultimo_preco);
+      if(!hasUltMov && !_chpUltPrecoBusy[cid]) _prefetchIds.push(cid);
+      let ultimoHtml = (!_apiConectado || !CURRENT_USER) ? '—' : (hasUltMov ? '—' : `<span style="color:var(--text3);font-family:var(--mono)">…</span>`);
+      if(Number.isFinite(ultimo) && ultimo >= 0){
+        let badge = '';
+        if(Number.isFinite(vunit) && ultimo > 0){
+          const pct = ((vunit - ultimo) / ultimo) * 100;
+          if(Math.abs(pct) < 0.01) badge = `<span style="color:var(--text3);font-weight:900;margin-left:6px">—</span>`;
+          else if(pct > 0) badge = `<span style="color:var(--red);font-weight:900;margin-left:6px">↑ ${Math.abs(pct).toFixed(0)}%</span>`;
+          else badge = `<span style="color:var(--green);font-weight:900;margin-left:6px">↓ ${Math.abs(pct).toFixed(0)}%</span>`;
+        }
+        ultimoHtml = `<span style="font-family:var(--mono);font-weight:900">${fmtR(ultimo)}</span>${badge}`;
+      }
+      const consumoMes = Number(met?.consumo_medio_mes);
+      const consumoHtml = (Number.isFinite(consumoMes) && consumoMes > 0)
+        ? `<span style="font-family:var(--mono);font-weight:900">${Math.round(consumoMes).toLocaleString()}</span>`
+        : `<span style="color:var(--text3);font-family:var(--mono)">—</span>`;
+      let diasHtml = `<span style="color:var(--text3);font-family:var(--mono)">—</span>`;
+      if(Number.isFinite(consumoMes) && consumoMes > 0){
+        const dias = (qtd * 30) / consumoMes;
+        const d = Number.isFinite(dias) ? dias : null;
+        if(d != null){
+          const cor = d < 15 ? 'var(--red)' : d < 30 ? 'var(--yellow)' : 'var(--text1)';
+          diasHtml = `<span style="font-family:var(--mono);font-weight:900;color:${cor}">${Math.round(d).toLocaleString()}</span>`;
+        }
+      }
       const riscCls = 'risc-btn-' + cid;
       const onNo = !c.riscada;
       const onYes = !!c.riscada;
@@ -12806,8 +13338,18 @@ function _renderEstoqueBase(chapas) {
         <button type="button" class="${escAttr(riscCls)}" data-val="false" style="${btnNo}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));return;}const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].riscada=val;};update(_estoqueBase);update(ESTOQUE);document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val===String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';b.style.fontWeight=act?'700':'400';});})(false,'${escAttr(cid)}')">Não</button>
         <button type="button" class="${escAttr(riscCls)}" data-val="true" style="${btnYes}" onclick="(async function(val,id){const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({riscada:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error||'falha'));return;}const update=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].riscada=val;};update(_estoqueBase);update(ESTOQUE);document.querySelectorAll('.risc-btn-'+id).forEach(b=>{const act=(b.dataset.val===String(val));b.style.background=act?(val?'#2a7a2a':'#555'):'transparent';b.style.color=act?'white':'#888';b.style.fontWeight=act?'700':'400';});})(true,'${escAttr(cid)}')">Sim</button>
       </div>${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(risDescShort)}</div>`:''}`;
+      const fotoUrl = estFotoUrlFromItem(c);
+      const fotoHtml = fotoUrl ? `<img src="${escAttr(fotoUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)" loading="lazy">` : '';
       return `<tr style="background:${trBg}">
-        <td style="padding:8px 10px;border:1px solid var(--border);min-width:160px">${escH(c.nome||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
+          <div style="display:flex;gap:10px;align-items:center">
+            ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
+            <div style="min-width:0">
+              <div style="font-weight:700">${escH(c.nome||'—')}</div>
+              <div style="font-size:.66rem;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(estChapaKeyLabel(c))}</div>
+            </div>
+          </div>
+        </td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
@@ -12825,6 +13367,9 @@ function _renderEstoqueBase(chapas) {
           ${(zerado||baixoEst)?`<div style="font-size:.62rem;color:${zerado?'var(--red)':'var(--orange)'};font-weight:900">${zerado?'ZERADO':`BAIXO (mín ${min})`}</div>`:''}
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:150px">${ultimoHtml}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:120px">${consumoHtml}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:80px">${diasHtml}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
         <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
@@ -12836,12 +13381,14 @@ function _renderEstoqueBase(chapas) {
           <div style="display:flex;gap:4px;justify-content:center">
             <button class="btn-icon btn-sm" data-acao-chapa="saida" data-id="${escAttr(c.id)}" title="Saída" style="color:var(--red)">-</button>
             <button class="btn-icon btn-sm" data-acao-chapa="entrada" data-id="${escAttr(c.id)}" title="Entrada" style="color:var(--green)">+</button>
+            <button class="btn-icon btn-sm" onclick="abrirModalQRCodeEstoque('chapa','${escAttr(c.id)}','${escAttr(estChapaKeyLabel(c))}')" title="QR Code">🔳</button>
             <button class="btn-icon btn-sm" data-acao-chapa="editar" data-id="${escAttr(c.id)}" title="Editar">✏️</button>
             <button class="btn-icon btn-sm" data-acao-chapa="excluir" data-id="${escAttr(c.id)}" title="Excluir" style="color:var(--red)">🗑️</button>
           </div>
         </td>
       </tr>`;
     }).join('');
+    if(_prefetchIds.length) _prefetchUltimosPrecosChapas(_prefetchIds);
 
     if(footEl){
       const totalQtd = filtrada.reduce((s,c)=>s+(Number(c.quantidade??c.qtd??0)||0),0);
@@ -12852,10 +13399,10 @@ function _renderEstoqueBase(chapas) {
         return s + total;
       },0);
       footEl.innerHTML = `<tr style="background:var(--s3)">
-        <td colspan="6" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
+        <td colspan="7" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(totalValTotal)}</td>
-        <td colspan="5" style="padding:10px;border:1px solid var(--border)"></td>
+        <td colspan="7" style="padding:10px;border:1px solid var(--border)"></td>
       </tr>`;
     }
   }
@@ -13451,6 +13998,14 @@ function abrirModalNovaChapa(id) {
   if(risSel) risSel.value = c?.riscada ? '1' : '0';
   const risDesc = document.getElementById('chapa-risca-desc');
   if(risDesc) risDesc.value = c?.risca_desc || '';
+  const prev = document.getElementById('chapa-foto-prev');
+  const url = c ? estFotoUrlFromItem(c) : '';
+  if(prev){
+    prev.src = url || '';
+    prev.style.display = url ? 'block' : 'none';
+  }
+  const fInp = document.getElementById('chapa-foto-file');
+  if(fInp) fInp.value = '';
   setChapaRiscada(!!c?.riscada);
   document.getElementById('chapa-modal-titulo').textContent = c ? 'Editar Chapa' : 'Nova Chapa';
   calcTotalChapa();
@@ -13462,6 +14017,46 @@ function abrirModalNovaChapa(id) {
     nao: !!document.getElementById('chapa-riscada-nao'),
     tabs: !!document.getElementById('est-cat-tabs')
   });
+}
+
+function chapaAdicionarFoto(){
+  const id = String(CHAPA_ATUAL_ID || document.getElementById('chapa-edit-id')?.value || '').trim();
+  if(!id){ toast('Salve a chapa antes de adicionar foto','var(--orange)'); return; }
+  const inp = document.getElementById('chapa-foto-file');
+  if(inp) inp.click();
+}
+
+async function chapaHandleFotoFile(file){
+  if(!file) return;
+  const id = String(CHAPA_ATUAL_ID || document.getElementById('chapa-edit-id')?.value || '').trim();
+  if(!id){ toast('Salve a chapa antes de adicionar foto','var(--orange)'); return; }
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    const up = await estoqueUploadFoto('chapa', id, file);
+    const url = String(up?.url || '').trim();
+    if(!url) throw new Error('URL inválida');
+    const apply = (arr)=>{
+      if(!Array.isArray(arr)) return;
+      const it = arr.find(x=>String(x?.id||'')===id);
+      if(it){
+        it.foto_url = url;
+        it.foto = url;
+        it.imagem_url = url;
+        it.imagem = url;
+      }
+    };
+    apply(_estoqueBase);
+    apply(ESTOQUE);
+    const prev = document.getElementById('chapa-foto-prev');
+    if(prev){ prev.src = url; prev.style.display = 'block'; }
+    try{ _renderEstoqueBase(); }catch(e){}
+    toast('Foto salva ✓','var(--green)');
+  } catch(e){
+    toast('Erro ao enviar foto: '+String(e?.message||e),'var(--red)');
+  } finally {
+    estSetBusy(false);
+  }
 }
 
 function editarChapa(id) { abrirModalNovaChapa(id); }
@@ -19727,7 +20322,7 @@ function normalizeFaca(r){
     valor:r.valor!=null?r.valor:r.valor_unitario,
     obs:r.obs||'',
     clientes:tryParse(r.clientes, r.clientes||[]),
-    foto:r.foto||r.imagem||null,
+    foto:r.foto_url||r.foto||r.imagem_url||r.imagem||null,
     empId:r.emp_id||r.empId||''
   };
 }
@@ -19740,7 +20335,7 @@ function normalizeCliche(r){
     valor:r.valor!=null?r.valor:r.valor_unitario,
     obs:r.obs||'',
     clientes:tryParse(r.clientes, r.clientes||[]),
-    foto:r.foto||r.imagem||null,
+    foto:r.foto_url||r.foto||r.imagem_url||r.imagem||null,
     empId:r.emp_id||r.empId||''
   };
 }
@@ -19764,6 +20359,7 @@ async function carregarChapas(forcar=false){
   if(!forcar && (now - _ultimaCargaChapas) < CACHE_TTL && Array.isArray(ESTOQUE) && ESTOQUE.length > 0) {
     try{ popularFiltrosEstoque(ESTOQUE); }catch(e){}
     try{ _renderEstoqueBase(ESTOQUE); }catch(e){}
+    try{ carregarMetricasChapas(false); }catch(e){}
     return { ok:true, cached:true, data:ESTOQUE };
   }
   const all = [];
@@ -19783,6 +20379,7 @@ async function carregarChapas(forcar=false){
   _estoqueBase = dados;
   try{ popularFiltrosEstoque(dados); }catch(e){}
   try{ _renderEstoqueBase(dados); }catch(e){}
+  try{ carregarMetricasChapas(true); }catch(e){}
   _ultimaCargaChapas = Date.now();
   return { ok:true, data:dados };
 }
@@ -22878,6 +23475,26 @@ function _getChips(containerId){
   return Array.from(cont.querySelectorAll('.chip-item')).map(c=>c.dataset.val).filter(Boolean);
 }
 
+function fa1FotoChanged(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = (e)=>{
+    const p = document.getElementById('fa1-foto-prev');
+    if(p){ p.src = e.target.result; p.style.display = 'block'; }
+  };
+  r.readAsDataURL(file);
+}
+
+function cl2FotoChanged(file){
+  if(!file) return;
+  const r = new FileReader();
+  r.onload = (e)=>{
+    const p = document.getElementById('cl2-foto-prev');
+    if(p){ p.src = e.target.result; p.style.display = 'block'; }
+  };
+  r.readAsDataURL(file);
+}
+
 // ── FACAS ──
 function renderFacas1(){
   const body=document.getElementById('facas1-body');
@@ -22899,11 +23516,41 @@ function renderFacas1(){
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">${f.valor?'R$ '+Number(f.valor).toFixed(2):'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
         <button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1('${f.id}')" style="font-size:.68rem;margin-right:4px">✏</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque('faca','${f.id}','${escAttr(f.nome||'')}')" style="font-size:.68rem;margin-right:4px">🔳</button>
         <button class="btn btn-ghost btn-sm" onclick="excluirFaca1('${f.id}')" style="font-size:.68rem;color:var(--red)">🗑</button>
       </td>
     </tr>`;
   }).join('');
 }
+
+function renderFacas2(){
+  const body=document.getElementById('facas2-body');
+  const busca=((document.getElementById('facas2-busca')||{}).value||'').toLowerCase();
+  let lista=FACAS;
+  if(busca)lista=lista.filter(f=>(f.nome+f.obs+f.medidas+(f.maquinas||[]).join(' ')+(f.clientes||[]).join(' ')).toLowerCase().includes(busca));
+  if(!body)return;
+  if(!lista.length){body.innerHTML='<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';return;}
+  body.innerHTML=lista.map(f=>{
+    const cliNomes=(f.clientes||[]).map(id=>{ const c=CLIENTES.find(x=>x.id===id);return c?c.nome:id; }).join(', ');
+    const maqStr=(f.maquinas||[]).join(', ')||'—';
+    const thumb=renderFotoItem(f.foto, f.nome);
+    return `<tr>
+      <td style="padding:8px 10px;border:1px solid var(--border)">${thumb}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-weight:600">${f.nome||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">${f.medidas||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${maqStr}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">${cliNomes||'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">${f.valor?'R$ '+Number(f.valor).toFixed(2):'—'}</td>
+      <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1('${f.id}')" style="font-size:.68rem;margin-right:4px">✏</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque('faca','${f.id}','${escAttr(f.nome||'')}')" style="font-size:.68rem;margin-right:4px">🔳</button>
+        <button class="btn btn-ghost btn-sm" onclick="excluirFaca1('${f.id}')" style="font-size:.68rem;color:var(--red)">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalFaca2(id){ abrirModalFaca1(id); }
 function abrirModalFaca1(id){
   const f=id?FACAS.find(x=>x.id===id):null;
   document.getElementById('fa1-nome').value=f?f.nome||'':'';
@@ -22972,6 +23619,11 @@ async function salvarFaca1(){
   const d = r ? await r.json().catch(()=>null) : null;
   if (d && (d.ok || d.id || (d.data && d.data.id))) {
     toast('Faca salva!', 'var(--green)');
+    const newId = String((d.data && d.data.id) || d.id || '').trim();
+    const file = document.getElementById('fa1-foto')?.files?.[0] || null;
+    if(newId && file){
+      try{ await estoqueUploadFoto('faca', newId, file); }catch(e){}
+    }
     await carregarFacas();
     renderFacas1();
     fechar('modal-faca1');
@@ -22982,14 +23634,20 @@ async function salvarFaca1(){
 async function salvarEdicaoFaca1(id){
   const f=FACAS.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('fa1-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const foto = await new Promise((resolve)=>_readFoto1(resolve));
   const payload={...f,nome,medidas:document.getElementById('fa1-medidas').value,maquinas:_getChips('fa1-maquinas-chips'),valor:parseFloat(document.getElementById('fa1-valor').value)||0,obs:document.getElementById('fa1-obs').value,clientes:_getChips('fa1-clientes-chips')};
-  if(foto)payload.foto=foto;
   const r=await salvarViaApiOuLocal('faca',
     ()=>api('PUT','/facas_estoque/'+encodeURIComponent(id), payload),
     ()=>{ Object.assign(f,payload); return {ok:true, local:true}; }
   );
   if(!r || !r.ok){toast('Erro ao atualizar faca','var(--red)');return;}
+  const file = document.getElementById('fa1-foto')?.files?.[0] || null;
+  if(file){
+    try{
+      const up = await estoqueUploadFoto('faca', id, file);
+      const url = String(up?.url||'').trim();
+      if(url){ f.foto = url; f.foto_url = url; }
+    }catch(e){}
+  }
   if(!r.local){ try{ await carregarFacas(); }catch(e){} }
   fechar('modal-faca1');autoSaveTrigger();renderFacas1();toast('✓ Faca atualizada!');
 }
@@ -23015,6 +23673,7 @@ function renderCliches(){
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">${f.valor?'R$ '+Number(f.valor).toFixed(2):'—'}</td>
       <td style="padding:8px 10px;border:1px solid var(--border);text-align:center">
         <button class="btn btn-ghost btn-sm" onclick="abrirModalCliche('${f.id}')" style="font-size:.68rem;margin-right:4px">✏</button>
+        <button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque('cliche','${f.id}','${escAttr(f.nome||'')}')" style="font-size:.68rem;margin-right:4px">🔳</button>
         <button class="btn btn-ghost btn-sm" onclick="excluirCliche('${f.id}')" style="font-size:.68rem;color:var(--red)">🗑</button>
       </td>
     </tr>`;
@@ -23087,6 +23746,11 @@ async function salvarCliche(){
   const d = r ? await r.json().catch(()=>null) : null;
   if (d && (d.ok || d.id || (d.data && d.data.id))) {
     toast('Clichê salvo!', 'var(--green)');
+    const newId = String((d.data && d.data.id) || d.id || '').trim();
+    const file = document.getElementById('cl2-foto')?.files?.[0] || null;
+    if(newId && file){
+      try{ await estoqueUploadFoto('cliche', newId, file); }catch(e){}
+    }
     await carregarCliches();
     renderCliches();
     fechar('modal-cliche');
@@ -23097,14 +23761,20 @@ async function salvarCliche(){
 async function salvarEdicaoCliche(id){
   const f=CLICHES.find(x=>x.id===id);if(!f)return;
   const nome=(document.getElementById('cl2-nome').value||'').trim();if(!nome){toast('Informe o nome','var(--red)');return;}
-  const foto = await new Promise((resolve)=>_readFotoCl(resolve));
   const payload={...f,nome,medidas:document.getElementById('cl2-medidas').value,maquinas:_getChips('cl2-maquinas-chips'),valor:parseFloat(document.getElementById('cl2-valor').value)||0,obs:document.getElementById('cl2-obs').value,clientes:_getChips('cl2-clientes-chips')};
-  if(foto)payload.foto=foto;
   const r=await salvarViaApiOuLocal('cliche',
     ()=>api('PUT','/cliches_estoque/'+encodeURIComponent(id), payload),
     ()=>{ Object.assign(f,payload); return {ok:true, local:true}; }
   );
   if(!r || !r.ok){toast('Erro ao atualizar clichê','var(--red)');return;}
+  const file = document.getElementById('cl2-foto')?.files?.[0] || null;
+  if(file){
+    try{
+      const up = await estoqueUploadFoto('cliche', id, file);
+      const url = String(up?.url||'').trim();
+      if(url){ f.foto = url; f.foto_url = url; }
+    }catch(e){}
+  }
   if(!r.local){ try{ await carregarCliches(); }catch(e){} }
   fechar('modal-cliche');autoSaveTrigger();renderCliches();toast('✓ Clichê atualizado!');
 }
@@ -25062,6 +25732,68 @@ function renderLogistica(){
   setTimeout(renderRotaMapa,100);
 }
 
+var _SCAN_HANDLED = false;
+var _SCAN_HANDLING = false;
+
+function _scanParam(){
+  try{
+    const sp = new URLSearchParams(window.location.search || '');
+    return String(sp.get('scan') || '').trim();
+  }catch(e){ return ''; }
+}
+
+function _clearScanParam(){
+  try{
+    const u = new URL(window.location.href);
+    u.searchParams.delete('scan');
+    history.replaceState({}, document.title, u.pathname + u.search + u.hash);
+  }catch(e){}
+}
+
+async function tryHandleScanParam(){
+  if(_SCAN_HANDLED || _SCAN_HANDLING) return;
+  const scanId = _scanParam();
+  if(!scanId) return;
+  _SCAN_HANDLING = true;
+  try{
+    if(String(window._PAGE_ATUAL||'') !== 'estoque'){
+      go('estoque');
+      await new Promise(r=>setTimeout(r, 30));
+    }
+    if(_apiConectado && CURRENT_USER){
+      try{ await carregarChapas(true); }catch(e){}
+      const ch = (_estoqueBase||ESTOQUE||[]).find(x=>String(x?.id||'').trim()===scanId);
+      if(ch){
+        abrirModalNovaChapa(scanId);
+        _clearScanParam();
+        _SCAN_HANDLED = true;
+        return;
+      }
+      try{ await carregarFacas(true); }catch(e){}
+      const fa = (FACAS||[]).find(x=>String(x?.id||'').trim()===scanId);
+      if(fa){
+        try{ abrirModalFaca1(scanId); }catch(e){ try{ abrirModalFaca2(scanId); }catch(e2){} }
+        _clearScanParam();
+        _SCAN_HANDLED = true;
+        return;
+      }
+      try{ await carregarCliches(true); }catch(e){}
+      const cl = (CLICHES||[]).find(x=>String(x?.id||'').trim()===scanId);
+      if(cl){
+        abrirModalCliche(scanId);
+        _clearScanParam();
+        _SCAN_HANDLED = true;
+        return;
+      }
+    }
+    toast('Item não encontrado para o QR','var(--orange)');
+    _clearScanParam();
+    _SCAN_HANDLED = true;
+  } finally {
+    _SCAN_HANDLING = false;
+  }
+}
+
 // ===================== EXTEND go() =====================
 function go(id){
   if(id==='orcamento') id='orcamentos';
@@ -25099,6 +25831,7 @@ function go(id){
   if(id==='compras')renderCompras();
   if(id==='logistica')setTimeout(renderRotaMapa,200);
   try{ applyMobileAccessRules(); }catch(e){}
+  try{ setTimeout(()=>{ tryHandleScanParam(); }, 0); }catch(e){}
 }
 
 
@@ -27201,6 +27934,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </select>
     <div style="flex:1"></div>
     <button class="btn btn-green btn-sm" onclick="abrirModalEntrada()">📥 Entrada</button>
+    <button class="btn btn-green btn-sm" onclick="abrirModalEntradaLoteChapas()">📥 Entrada em Lote</button>
+    <button class="btn btn-ghost btn-sm" onclick="estoqueGerarInventario()">📄 Gerar Inventário</button>
+    <button class="btn btn-ghost btn-sm" onclick="estoqueTriggerImportInventario()">📤 Importar Inventário</button>
     <button class="btn btn-green btn-sm" onclick="abrirModalReceberPlacaChapas()">🚛 Receber por Placa</button>
     <button class="btn btn-ghost btn-sm" onclick="abrirModalAjuste()">✏ Ajuste</button>
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
@@ -27209,6 +27945,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="triggerImportAtualizarEstoqueChapas()">📥 Importar/Atualizar Estoque</button>
     <button class="btn btn-accent" onclick="abrirModalNovaChapa()">＋ Nova Chapa</button>
     <input id="est-import-file" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportAtualizarEstoqueChapasFile(this.files[0]); this.value='';">
+    <input id="est-inv-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="estoqueHandleImportInventarioFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body">
     <!-- Alertas -->
@@ -27267,6 +28004,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
                 <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
                 <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
                 <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">ÚLTIMO PREÇO</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">CONSUMO/MÊS</th>
+                <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">DIAS</th>
                 <th onclick="estOrdenar('vincos')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">VINCOS</th>
                 <th onclick="estOrdenar('riscada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--orange);white-space:nowrap;text-align:center">RISCADA?</th>
                 <th onclick="estOrdenar('categoria')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">CATEGORIA</th>
@@ -27678,7 +28418,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <div class="mf" style="grid-column:1/-1"><label>OBSERVAÇÕES</label><input id="fa1-obs" placeholder="Observações adicionais"></div>
         <div class="mf" style="grid-column:1/-1">
           <label>FOTO DA FACA</label>
-          <input id="fa1-foto" type="file" accept="image/*" onchange="(()=>{const f=this.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const p=document.getElementById('fa1-foto-prev');p.src=e.target.result;p.style.display='block'};r.readAsDataURL(f)})()" style="width:100%;padding:6px 0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('fa1-foto').click()">Adicionar foto</button>
+            <input id="fa1-foto" type="file" accept="image/*" onchange="fa1FotoChanged(this.files[0])" style="display:none">
+          </div>
           <img id="fa1-foto-prev" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:6px">
         </div>
       </div>
@@ -27718,7 +28461,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <div class="mf" style="grid-column:1/-1"><label>OBSERVAÇÕES</label><input id="cl2-obs" placeholder="Cor, tipo de clichê, etc."></div>
         <div class="mf" style="grid-column:1/-1">
           <label>FOTO DO CLICHÊ</label>
-          <input id="cl2-foto" type="file" accept="image/*" onchange="(()=>{const f=this.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const p=document.getElementById('cl2-foto-prev');p.src=e.target.result;p.style.display='block'};r.readAsDataURL(f)})()" style="width:100%;padding:6px 0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('cl2-foto').click()">Adicionar foto</button>
+            <input id="cl2-foto" type="file" accept="image/*" onchange="cl2FotoChanged(this.files[0])" style="display:none">
+          </div>
           <img id="cl2-foto-prev" style="display:none;width:100%;max-height:160px;object-fit:contain;border-radius:8px;border:1px solid var(--border);margin-top:6px">
         </div>
       </div>
@@ -28735,6 +29481,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         <input id="chapa-tamanho" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Nome/Uso *</label>
         <input id="chapa-nome" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
+      <div style="grid-column:span 2;display:flex;align-items:center;gap:10px">
+        <img id="chapa-foto-prev" style="display:none;width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="chapaAdicionarFoto()">Adicionar foto</button>
+        <input id="chapa-foto-file" type="file" accept="image/*" style="display:none" onchange="chapaHandleFotoFile(this.files[0]); this.value='';">
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="abrirModalQRCodeEstoque('chapa', document.getElementById('chapa-edit-id').value, document.getElementById('chapa-nome').value)">QR Code</button>
+      </div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">NF</label>
         <input id="chapa-nf" type="text" style="padding:8px;border-radius:6px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)"></div>
       <div style="display:flex;flex-direction:column;gap:4px"><label style="font-size:11px;color:var(--text2);text-transform:uppercase">Quantidade *</label>

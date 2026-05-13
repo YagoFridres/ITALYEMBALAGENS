@@ -1054,6 +1054,84 @@ const ofUpload = multer({
   },
 });
 
+const estoqueFotosUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: function (req, file, cb) {
+    const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    return cb(null, true);
+  },
+});
+
+app.post('/api/estoque_fotos/upload', authMiddleware, estoqueFotosUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+
+    const tipo = String(req.body?.tipo || req.query?.tipo || '').trim().toLowerCase();
+    const itemId = String(req.body?.item_id || req.body?.id || req.query?.item_id || req.query?.id || '').trim();
+    if (!['chapa', 'faca', 'cliche'].includes(tipo)) return res.status(400).json({ ok: false, error: 'tipo inválido' });
+    if (!itemId) return res.status(400).json({ ok: false, error: 'item_id obrigatório' });
+
+    const ext = path.extname(f.originalname || '').toLowerCase() || '.png';
+    const safeTipo = tipo === 'chapa' ? 'chapas' : (tipo === 'faca' ? 'facas' : 'cliches');
+    const filename = `${safeTipo}/${itemId}/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+
+    const { error: upErr } = await supabase.storage
+      .from('estoque-fotos')
+      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: true });
+    if (upErr) throw upErr;
+
+    const { data: urlData } = supabase.storage.from('estoque-fotos').getPublicUrl(filename);
+    const url = String(urlData?.publicUrl || '').trim();
+    if (!url) return res.status(500).json({ ok: false, error: 'Falha ao obter URL pública' });
+
+    const tryUpdateFotoUrl = async (table, id, extra) => {
+      const payload = { ...(extra || {}), foto_url: url };
+      for (let i = 0; i < 6; i++) {
+        const { data, error } = await supabase.from(table).update(payload).eq('id', id).select('*').maybeSingle();
+        if (!error) return { data, error: null, table };
+        const msg = String(error.message || error);
+        const m1 = msg.match(/Could not find the '([^']+)' column/i);
+        const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+        const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+        if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+          delete payload[col];
+          continue;
+        }
+        return { data: null, error, table };
+      }
+      return { data: null, error: new Error('Falha ao salvar foto_url'), table };
+    };
+
+    let upd = null;
+    if (tipo === 'chapa') {
+      const preferred = await _chapasPreferV2Table();
+      const tablesToTry = preferred === 'chapas_estoque_v2'
+        ? ['chapas_estoque_v2', 'chapas_estoque']
+        : ['chapas_estoque', 'chapas_estoque_v2'];
+      for (const t of tablesToTry) {
+        const r = await tryUpdateFotoUrl(t, itemId, t === 'chapas_estoque_v2' ? { atualizado_por: req?.usuario?.nome || 'sistema' } : {});
+        if (!r.error) { upd = r; break; }
+      }
+    } else if (tipo === 'faca') {
+      upd = await tryUpdateFotoUrl('facas_estoque', itemId, { foto: url, imagem_url: url });
+    } else {
+      upd = await tryUpdateFotoUrl('cliches_estoque', itemId, { foto: url, imagem_url: url });
+    }
+
+    cacheClearPrefix('chapas_estoque:');
+    cacheClearPrefix('chapas_');
+    return ok(res, { url, data: upd?.data || null, table: upd?.table || null });
+  } catch (e) {
+    _logApiError('ESTOQUE_FOTOS_UPLOAD', req, e, { file: req?.file ? { name: req.file.originalname, size: req.file.size, type: req.file.mimetype } : null });
+    if (e instanceof multer.MulterError) return res.status(400).json({ ok: false, error: e.message });
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
+});
+
 app.post('/api/chat/upload', authMiddleware, chatUpload.single('file'), async (req, res) => {
   try {
     const f = req.file || null;
@@ -1893,6 +1971,8 @@ function comprasIn(p) {
 }
 
 const STATUS_COMPRA_MAP = {
+  'Rascunho': 'rascunho',
+  'rascunho': 'rascunho',
   'Solicitada': 'solicitada',
   'solicitada': 'solicitada',
   'Em aberto': 'em_aberto',
@@ -6304,6 +6384,94 @@ async function _chapasAtualizarQtdEstoqueChapa(chapaId, qtdNova, req, updatedAt)
   return { data: null, error, table: r2.table || r1.table || '' };
 }
 
+async function verificarEstoqueMinimo(req, canonChapa) {
+  try {
+    const c = canonChapa && typeof canonChapa === 'object' ? canonChapa : {};
+    const chapaId = String(c.id || '').trim();
+    if (!chapaId) return;
+    const qtd = Math.trunc(Number(c.quantidade ?? c.qtd ?? 0) || 0);
+    const min = Math.trunc(Number(c.estoque_minimo ?? c.min ?? 0) || 0);
+    if (!(min > 0)) return;
+    if (qtd >= min) return;
+
+    const empId = String(c.emp_id || c.empId || '').trim() || null;
+    const fornecedorNome = String(c.fornecedor || c.forn || '').trim();
+    const nom = String(c.nomenclatura || c.nom || c.nome || '').trim();
+    const tam = String(c.tamanho || c.tam || '').trim();
+    const item = [nom, tam].filter(Boolean).join(' ').trim() || 'Chapa';
+    const qtdSug = Math.max(0, min - qtd);
+    if (!(qtdSug > 0)) return;
+
+    let fornecedorId = null;
+    if (fornecedorNome) {
+      try {
+        const { data: f1, error: ef } = await supabase.from('fornecedores').select('id,nome').ilike('nome', fornecedorNome).limit(1);
+        if (!ef && Array.isArray(f1) && f1[0]?.id) fornecedorId = String(f1[0].id);
+      } catch (_) {}
+      if (!fornecedorId) {
+        try {
+          const { data: fs } = await supabase.from('fornecedores').select('id,nome').order('nome');
+          const alvo = fornecedorNome.toLowerCase();
+          const hit = (Array.isArray(fs) ? fs : []).find((x) => String(x?.nome || '').trim().toLowerCase() === alvo) || null;
+          if (hit?.id) fornecedorId = String(hit.id);
+        } catch (_) {}
+      }
+    }
+
+    let ultimoValorPago = null;
+    try {
+      const tryTables = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
+      for (const t of tryTables) {
+        let q = supabase.from(t).select('*').eq('chapa_id', chapaId).eq('tipo', 'entrada').order('created_at', { ascending: false }).limit(1);
+        const { data, error } = await q;
+        if (error) continue;
+        const row = Array.isArray(data) ? data[0] : null;
+        const vu = Number(row?.valor_unitario ?? row?.vunit ?? row?.val ?? NaN);
+        if (Number.isFinite(vu) && vu > 0) { ultimoValorPago = vu; break; }
+      }
+    } catch (_) {}
+    if (!Number.isFinite(Number(ultimoValorPago))) {
+      const vu0 = Number(c.valor_unitario ?? c.val ?? 0);
+      ultimoValorPago = Number.isFinite(vu0) ? vu0 : 0;
+    }
+
+    try {
+      let q = supabase.from('compras').select('id,item,status,emp_id,fornecedor_id').eq('status', 'rascunho').eq('item', item).limit(1);
+      if (empId) q = q.eq('emp_id', empId);
+      if (fornecedorId) q = q.eq('fornecedor_id', fornecedorId);
+      const { data, error } = await q;
+      if (!error && Array.isArray(data) && data.length) return;
+    } catch (_) {}
+
+    const compraPayload = comprasPayload({
+      fornecedor_id: fornecedorId,
+      fornecedor: fornecedorNome || undefined,
+      item,
+      quantidade: qtdSug,
+      qtd: qtdSug,
+      valor_unitario: ultimoValorPago || 0,
+      status: 'rascunho',
+      obs: 'Criado automaticamente — estoque mínimo atingido',
+      emp_id: empId || undefined,
+      data_pedido: new Date().toISOString().slice(0, 10),
+      tipo: 'chapas',
+    });
+    const ins = await comprasInsertCompat(compraPayload);
+    if (ins?.error) return;
+
+    try {
+      const mensagem = `Rascunho de compra criado automaticamente: ${item}`;
+      await supabase.from('notificacoes').insert([{
+        mensagem,
+        tipo: 'warning',
+        lida: false,
+        data_hora: new Date().toISOString(),
+        criado_por: req?.usuario?.nome || 'sistema',
+      }]);
+    } catch (_) {}
+  } catch (_) {}
+}
+
 app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
@@ -6425,6 +6593,13 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       if (table === 'chapas_estoque_v2') patch.nf = String(b.nf).trim();
       else patch.nf = String(b.nf).trim();
     }
+    if (tipo === 'entrada' && b.valor_unitario != null) {
+      const vu = Number(String(b.valor_unitario).replace(',', '.'));
+      if (Number.isFinite(vu) && vu >= 0) {
+        if (table === 'chapas_estoque_v2') patch.valor_unitario = vu;
+        else patch.val = vu;
+      }
+    }
 
     if (table === 'chapas_estoque_v2') {
       patch.qtd_estoque = Math.trunc(Number(newQtd) || 0);
@@ -6478,14 +6653,39 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
         obs: (b.obs != null && String(b.obs).trim() !== '') ? String(b.obs).trim() : null,
         usuario: req?.usuario?.nome || 'sistema',
         emp_id: canonUpd.emp_id || null,
+        valor_unitario: (tipo === 'entrada' ? Number(String(b.valor_unitario ?? canonUpd.valor_unitario ?? canonUpd.val ?? 0).replace(',', '.')) : null),
       };
       try {
         await supabase.from('chapas_estoque_movimentos_v2').insert([mov]);
       } catch (_) {}
     }
+    if (table !== 'chapas_estoque_v2') {
+      const delta = tipo === 'entrada'
+        ? Math.abs(deltaAbs)
+        : (tipo === 'saida' ? -Math.abs(deltaAbs) : Math.trunc((Number(newQtd) || 0) - (Number(oldQtd) || 0)));
+      const mov = {
+        chapa_id: id,
+        tipo,
+        delta,
+        qtd_anterior: Math.trunc(oldQtd),
+        qtd_nova: Math.trunc(newQtd),
+        nf: (b.nf != null && String(b.nf).trim() !== '') ? String(b.nf).trim() : null,
+        obs: (b.obs != null && String(b.obs).trim() !== '') ? String(b.obs).trim() : null,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: canonUpd.emp_id || null,
+        valor_unitario: (tipo === 'entrada' ? Number(String(b.valor_unitario ?? canonUpd.valor_unitario ?? canonUpd.val ?? 0).replace(',', '.')) : null),
+      };
+      try {
+        await supabase.from('chapas_estoque_movimentos').insert([mov]);
+      } catch (_) {}
+    }
 
     const qtdOut = Math.trunc(Number(canonUpd.quantidade || canonUpd.qtd || newQtd) || 0);
     await logAuditoria(String(finalTable || table), 'MOVIMENTO', id, { qtd_anterior: oldQtd }, { qtd_nova: qtdOut, tipo, obs: String(b.obs || '').trim() }, req);
+    try {
+      const reduziu = (tipo === 'saida') || (tipo === 'ajuste' && Math.trunc(Number(newQtd) || 0) < Math.trunc(Number(oldQtd) || 0));
+      if (reduziu) await verificarEstoqueMinimo(req, canonUpd);
+    } catch (_) {}
     return res.json({
       ok: true,
       data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } },
@@ -6496,10 +6696,117 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
+  try {
+    const months = Math.max(1, Math.min(12, Math.trunc(_chapasToNum(req.query.months, 3))));
+    const empId = String(req.query.empId || '').trim();
+    const now = new Date();
+    const start = new Date(now);
+    start.setMonth(start.getMonth() - months);
+    const startIso = start.toISOString();
+
+    const sumSaidas = new Map();
+    const ultimoPreco = new Map();
+    const ultimoPrecoData = new Map();
+
+    const fetchPaged = async (table, builderFn) => {
+      const pageSize = 1000;
+      for (let page = 0; page < 30; page++) {
+        let q = builderFn(supabase.from(table).select('*'));
+        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
+        const { data, error } = await q;
+        if (error) return { ok: false, error };
+        const rows = Array.isArray(data) ? data : [];
+        if (!rows.length) return { ok: true, done: true };
+        const done = rows.length < pageSize;
+        return { ok: true, rows, done, nextPage: page + 1, pageSize };
+      }
+      return { ok: true, done: true };
+    };
+
+    const loadSaidas = async (table) => {
+      const pageSize = 1000;
+      for (let page = 0; page < 30; page++) {
+        let q = supabase.from(table).select('chapa_id,delta,tipo,created_at,emp_id').order('created_at', { ascending: false });
+        q = q.eq('tipo', 'saida').gte('created_at', startIso);
+        if (empId) q = q.eq('emp_id', empId);
+        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
+        const { data, error } = await q;
+        if (error) return { ok: false, error };
+        const rows = Array.isArray(data) ? data : [];
+        for (const r of rows) {
+          const id = String(r?.chapa_id || '').trim();
+          if (!id) continue;
+          const d = Math.abs(Math.trunc(Number(r?.delta || 0) || 0));
+          if (!(d > 0)) continue;
+          sumSaidas.set(id, (sumSaidas.get(id) || 0) + d);
+        }
+        if (rows.length < pageSize) return { ok: true };
+      }
+      return { ok: true };
+    };
+
+    const loadUltimosPrecos = async (table) => {
+      const pageSize = 1000;
+      for (let page = 0; page < 20; page++) {
+        let q = supabase.from(table).select('*').order('created_at', { ascending: false }).eq('tipo', 'entrada');
+        if (empId) q = q.eq('emp_id', empId);
+        q = q.range(page * pageSize, page * pageSize + pageSize - 1);
+        const { data, error } = await q;
+        if (error) return { ok: false, error };
+        const rows = Array.isArray(data) ? data : [];
+        for (const r of rows) {
+          const id = String(r?.chapa_id || '').trim();
+          if (!id || ultimoPreco.has(id)) continue;
+          const vu = Number(r?.valor_unitario ?? r?.valor ?? r?.vunit ?? r?.val ?? NaN);
+          if (Number.isFinite(vu) && vu >= 0) {
+            ultimoPreco.set(id, vu);
+            if (r?.created_at) ultimoPrecoData.set(id, String(r.created_at));
+          }
+        }
+        if (rows.length < pageSize) return { ok: true };
+      }
+      return { ok: true };
+    };
+
+    const tryTables = ['chapas_estoque_movimentos_v2', 'chapas_estoque_movimentos'];
+    let loadedAny = false;
+    for (const t of tryTables) {
+      try {
+        const s = await loadSaidas(t);
+        if (!s.ok) continue;
+        const p = await loadUltimosPrecos(t);
+        if (!p.ok) continue;
+        loadedAny = true;
+        break;
+      } catch (_) {}
+    }
+
+    if (!loadedAny) return ok(res, {});
+
+    const out = {};
+    const keys = new Set([...sumSaidas.keys(), ...ultimoPreco.keys()]);
+    keys.forEach((id) => {
+      const totalSaidas = Math.trunc(Number(sumSaidas.get(id) || 0) || 0);
+      out[id] = {
+        consumo_ultimos_meses: totalSaidas,
+        consumo_medio_mes: totalSaidas / months,
+        ultimo_preco: ultimoPreco.has(id) ? Number(ultimoPreco.get(id)) : null,
+        ultimo_preco_data: ultimoPrecoData.get(id) || null,
+      };
+    });
+    return ok(res, out);
+  } catch (e) {
+    _logApiError('CHAPAS_METRICAS', req, e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
+  }
+});
+
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));
     const chapaId = String(req.query.chapa_id || '').trim();
+    const tipo = String(req.query.tipo || '').trim().toLowerCase();
     const empId = String(req.query.empId || '').trim();
     const de = String(req.query.de || '').trim();
     const ate = String(req.query.ate || '').trim();
@@ -6512,6 +6819,7 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
     try {
       let q = supabase.from('chapas_estoque_movimentos_v2').select('*').order('created_at', { ascending: false }).limit(limit);
       if (chapaId) q = q.eq('chapa_id', chapaId);
+      if (tipo) q = q.eq('tipo', tipo);
       if (empId) q = q.eq('emp_id', empId);
       if (deIso) q = q.gte('created_at', deIso);
       if (ateIso) q = q.lte('created_at', ateIso);
