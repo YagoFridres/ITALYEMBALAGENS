@@ -6533,141 +6533,119 @@ async function pcpFetchOFCompleta(id, ofNum){
 async function pcpAbrirModalClonarOF(id, ofNum){
   const base = await pcpFetchOFCompleta(id, ofNum);
   if(!base){ toast('OF não encontrada','var(--red)'); return; }
-  const cliNome = (typeof getCli === 'function') ? ((getCli(base.cliId || base.cli_id || base.cliente_id) || {}).nome || '') : '';
-  const cliente = cliNome || base.cliNome || base.cliente_nome || base.cliente || '—';
-  const itens = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
-  const it0 = (Array.isArray(itens) ? itens : [])[0] || {};
-  const produto = String(it0.desc || it0.descricao || base.prodDesc || base.descricao || '').trim() || '—';
-  const vunit = Number(it0.vunit ?? it0.valor_unitario ?? it0.valorUnitario ?? 0) || 0;
-  const maqLinha = (typeof ofFluxoLinha === 'function' ? (ofFluxoLinha(base) || '') : '') || '—';
-  const chapaId = String(base.chp || base.chapa_id || '').trim();
-  const chapaObj = chapaId && typeof getCh === 'function' ? (getCh(chapaId) || null) : null;
-  const chapa = chapaObj ? estChapaKeyLabel(chapaObj) : (chapaId || '—');
-
-  let modal = document.getElementById('modal-pcp-clone');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'modal-pcp-clone';
-    modal.innerHTML = `
-      <div class="modal" style="width:min(760px,98vw)">
-        <button class="close-btn" onclick="fechar('modal-pcp-clone')">✕</button>
-        <h2>⧉ Clonar OF</h2>
-        <div class="page-body" style="padding:10px 0 0">
-          <div class="fg">
-            <div class="mf fgf"><label>OF ORIGINAL</label><input id="pcp-clone-orig" disabled></div>
-            <div class="mf fgf"><label>NOVA OF (NÚMERO)</label><input id="pcp-clone-novo" disabled></div>
-            <div class="mf fgf"><label>CLIENTE</label><input id="pcp-clone-cli" disabled></div>
-            <div class="mf fgf"><label>PRODUTO</label><input id="pcp-clone-prod" disabled></div>
-            <div class="mf fgf"><label>MÁQUINAS</label><input id="pcp-clone-maq" disabled></div>
-            <div class="mf fgf"><label>CHAPA</label><input id="pcp-clone-chp" disabled></div>
-            <div class="mf"><label>VALOR UNITÁRIO</label><input id="pcp-clone-vunit" disabled></div>
-            <div class="mf"><label>DATA DE ENTREGA (editável)</label><input id="pcp-clone-ent" type="date"></div>
-            <div class="mf"><label>QUANTIDADE (editável)</label><input id="pcp-clone-qtd" type="number" min="0" step="1"></div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" onclick="fechar('modal-pcp-clone')">Cancelar</button>
-          <button class="btn btn-accent" onclick="pcpConfirmarClonarOF()">Salvar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-  }
 
   const max = await pcpFetchMaxNumeroOF();
   const nextNum = Math.max(1, max + 1);
   const novoOf = pcpBuildNextOfLike(base.of || base.numero || '', nextNum);
 
-  modal.dataset.origId = String(base.id || id || '').trim();
-  modal.dataset.origOf = String(base.of || base.numero || ofNum || '').trim();
-  modal.dataset.novoOf = String(novoOf || '').trim();
-
-  document.getElementById('pcp-clone-orig').value = String(base.of || base.numero || '').trim();
-  document.getElementById('pcp-clone-novo').value = String(novoOf || '').trim();
-  document.getElementById('pcp-clone-cli').value = String(cliente || '').trim();
-  document.getElementById('pcp-clone-prod').value = String(produto || '').trim();
-  document.getElementById('pcp-clone-maq').value = String(maqLinha || '').trim();
-  document.getElementById('pcp-clone-chp').value = String(chapa || '').trim();
-  document.getElementById('pcp-clone-vunit').value = vunit ? fmtR(vunit) : '—';
-  document.getElementById('pcp-clone-ent').value = String(base.ent || base.data_entrega || today()).slice(0,10);
-  document.getElementById('pcp-clone-qtd').value = String(Math.trunc(Number(base.qtd || base.quantidade || 0) || 0));
-
-  window._PCP_CLONE_BASE = base;
-  abrir('modal-pcp-clone');
-}
-
-async function pcpConfirmarClonarOF(){
-  const modal = document.getElementById('modal-pcp-clone');
-  const base = window._PCP_CLONE_BASE || null;
-  if(!modal || !base){ toast('Clone inválido','var(--red)'); return; }
-  const ent = String(document.getElementById('pcp-clone-ent')?.value || '').slice(0,10);
-  const qtd = Math.trunc(Number(document.getElementById('pcp-clone-qtd')?.value || 0) || 0);
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(ent)){ toast('Data de entrega inválida','var(--red)'); return; }
-  if(!(qtd > 0)){ toast('Quantidade inválida','var(--red)'); return; }
-  const novoOf = String(modal.dataset.novoOf || '').trim();
-  if(!novoOf){ toast('Número da OF inválido','var(--red)'); return; }
-
-  const itensBase = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
-  const itens = Array.isArray(itensBase) ? itensBase.map(x=>({ ...(x||{}) })) : [];
-  if(itens[0]){
-    itens[0].qtd = qtd;
-    itens[0].quantidade = qtd;
-    const vunit = Number(itens[0].vunit ?? itens[0].valor_unitario ?? 0) || 0;
-    itens[0].valor_total = (Number.isFinite(vunit) ? (qtd * vunit) : 0);
-  }
-
-  const seq = (OFs && OFs.length) ? (Math.max(...OFs.map(o=>Number(o.seq||0)||0)) + 1) : 1;
-  const dia = (typeof subtrairDiasUteis === 'function') ? (subtrairDiasUteis(ent, 3) || ent) : (base.dia || base.data_producao || ent);
-
-  const localOf = {
-    seq,
-    of: novoOf,
-    cliId: base.cliId || base.cli_id || base.cliente_id || null,
-    vendId: base.vendId || base.vendedor_id || base.vend_id || null,
-    qtd,
-    itens,
-    dia: String(dia || '').slice(0,10) || ent,
-    ent,
-    fluxo: base.fluxo || null,
-    maq: Array.isArray(base.maq) ? base.maq.slice() : (typeof base.maq === 'string' ? tryParse(base.maq, []) : []),
-    fluxo_maquinas: Array.isArray(base.fluxo_maquinas) ? base.fluxo_maquinas.slice() : (typeof base.fluxo_maquinas === 'string' ? tryParse(base.fluxo_maquinas, []) : []),
-    maquina_atual_index: 0,
-    status: 'Em aberto',
-    urg: !!(base.urg || base.urgente),
-    chp: base.chp || base.chapa_id || '',
-    qchp: Number(base.qchp || base.qtd_chapas || 0) || 0,
-    val: (()=>{
-      const it0 = itens[0] || {};
-      const v = Number(it0.valor_total ?? it0.total ?? 0) || 0;
-      return v;
-    })(),
-    prodDesc: base.prodDesc || base.descricao || '',
-    obs: base.obs || '',
-    pagto: base.pagto || base.cond_pagamento || '',
-    empId: base.empId || base.emp_id || EMP_FILTRO || '',
-    imgs: Array.isArray(base.imgs) ? base.imgs.slice() : [],
-    imagem_url: base.imagem_url || null,
-    tipo_caixa_id: base.tipo_caixa_id ?? base.tipoCaixaId ?? null,
-    tipo_caixa: base.tipo_caixa ?? base.tipoCaixa ?? null,
-    caixa_comprimento: base.caixa_comprimento ?? base.caixaComprimento ?? null,
-    caixa_largura: base.caixa_largura ?? base.caixaLargura ?? null,
-    caixa_altura: base.caixa_altura ?? base.caixaAltura ?? null,
-  };
+  await abrirModalOF('');
 
   try{
-    const shape = (typeof inferOfShape === 'function') ? await inferOfShape() : 'legacy';
-    const payload = (typeof buildOfPayload === 'function') ? buildOfPayload(shape, localOf) : filtrarPayloadOF(localOf);
-    const r = await api('POST','/ofs', payload);
-    if(!r || !r.ok) throw new Error((r && r.error) ? r.error : 'Erro ao salvar OF');
-    const row = (r && r.data) ? r.data : { ...localOf };
-    try{ if(typeof _inserirOFLocal === 'function') _inserirOFLocal(row); }catch(e){}
-    fechar('modal-pcp-clone');
-    try{ _rerenderOFViews(); }catch(e){}
-    toast('✓ OF clonada','var(--green)');
-  }catch(e){
-    toast('Erro ao clonar: ' + String(e?.message || e),'var(--red)');
-  }
+    const stRaw = String(base.status || '').trim();
+    const stLow = stRaw.toLowerCase();
+    const st = (stLow.includes('cancel') || stLow.includes('conclu')) ? 'Em aberto' : (stRaw || 'Em aberto');
+    setVal('f-st', st);
+  }catch(e){}
+
+  try{
+    setVal('f-of', String(novoOf||'').trim());
+    const fOf = document.getElementById('f-of');
+    if(fOf){
+      fOf.readOnly = true;
+      fOf.title = 'Número gerado automaticamente';
+    }
+  }catch(e){}
+
+  try{
+    const emp = base.empId || base.emp_id || base.empresa || EMP_FILTRO || 'E1';
+    const empSel = document.getElementById('f-emp');
+    if(empSel) empSel.value = emp;
+  }catch(e){}
+
+  try{
+    setVal('f-dia', String(base.dia || base.data_pedido || base.data || today()).slice(0,10));
+    setVal('f-ent', String(base.ent || base.data_entrega || '').slice(0,10));
+    setVal('f-obs', base.obs || base.observacao || '');
+    setVal('f-prod-desc', base.prodDesc || base.produto || base.prod || base.descricao || '');
+    setVal('of-caixa-comp', base.caixa_comprimento ?? '');
+    setVal('of-caixa-larg', base.caixa_largura ?? '');
+    setVal('of-caixa-alt', base.caixa_altura ?? '');
+    setVal('f-urg', (base.urg || base.urgente) ? '1' : '0');
+    setVal('f-modo-prog', base.modo_programacao || 'manual');
+    setVal('f-dia-prog', base.dia_programacao || '');
+  }catch(e){}
+
+  try{
+    const empSel = document.getElementById('f-emp');
+    if(empSel) await ofAtualizaChapas();
+    const fCh = document.getElementById('f-chp');
+    const chpId = String(base.chp || base.chapa_id || '').trim();
+    if(fCh && chpId) fCh.value = chpId;
+    const fQ = document.getElementById('f-qchp');
+    if(fQ){
+      const q = (base.qchp != null ? base.qchp : (base.qtd_chapas != null ? base.qtd_chapas : 0));
+      fQ.value = String(q || '');
+    }
+    try{ verificarSaldo(); }catch(e){}
+  }catch(e){}
+
+  try{
+    const csel = document.getElementById('f-cli');
+    const hidCli = ofEnsureCliIdHidden();
+    const cid = String(base.cliId || base.cli_id || base.cliente_id || base.cliente || '').trim();
+    if(csel && cid) csel.value = cid;
+    if(hidCli) hidCli.value = cid;
+    try{ ofCliChange(); }catch(e){}
+  }catch(e){}
+
+  try{
+    const vsel = document.getElementById('f-vend');
+    const vid = String(base.vendId || base.vendedor_id || base.vend_id || '').trim();
+    if(vsel && vid) vsel.value = vid;
+    try{ ofVendChange(); }catch(e){}
+  }catch(e){}
+
+  try{
+    const fsel = document.getElementById('f-fl');
+    const fluxoId = String(base.fluxo || '').trim();
+    if(fsel && fluxoId) fsel.value = fluxoId;
+    const ids = (base.maq && Array.isArray(base.maq) && base.maq.length)
+      ? base.maq
+      : ofFluxoIdsFromNames(parseFluxo(base.fluxo_maquinas||[]));
+    renderMaqChks(ids);
+  }catch(e){}
+
+  try{
+    ofImgsTemp = Array.isArray(base.imgs) ? base.imgs.filter(Boolean).slice() : (base.imagem_url ? [base.imagem_url] : []);
+    renderImgsTemp();
+  }catch(e){}
+
+  try{
+    const mp0 = (base.maquina_por_item && typeof base.maquina_por_item === 'object' && !Array.isArray(base.maquina_por_item))
+      ? base.maquina_por_item
+      : tryParse(base.maquina_por_item, {});
+    const itensBase = Array.isArray(base.itens) ? base.itens : (typeof base.itens === 'string' ? tryParse(base.itens, []) : []);
+    ofItensTemp = Array.isArray(itensBase) && itensBase.length
+      ? itensBase.map((it, idx)=>({
+          ...it,
+          desc: it.desc||it.descricao||'',
+          qtd: it.qtd ?? it.quantidade ?? 0,
+          vunit: it.vunit ?? it.valor_unitario ?? 0,
+          valor_total: it.valor_total ?? it.total ?? ((Number(it.qtd ?? it.quantidade ?? 0)||0)*(Number(it.vunit ?? it.valor_unitario ?? 0)||0)),
+          qtd_chapas: it.qtd_chapas ?? 0,
+          chapa_id: it.chapa_id || '',
+          chapa_nome: it.chapa_nome || '',
+          maquina: it.maquina || mp0[idx] || mp0[String(idx)] || '',
+          maquinas_fluxo: Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : []),
+          maquinas_fluxo_ids: ofFluxoIdsFromNames(Array.isArray(it.maquinas_fluxo) ? it.maquinas_fluxo : (it.maquinas_fluxo ? parseFluxo(it.maquinas_fluxo) : [])),
+        }))
+      : [{desc:(base.descricao||base.prodDesc||base.obs||''),ref:'',qtd:base.qtd||base.quantidade||0,vunit:base.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
+    renderOfItens();
+  }catch(e){}
+
+  try{
+    document.querySelector('#modal-of h2').textContent = '⧉ Clonar OF #' + String(base.of || base.numero || ofNum || '').trim();
+  }catch(e){}
 }
 
 async function alterarOFSel(){
@@ -7596,6 +7574,10 @@ async function abrirModalOF(id){
   renderImgsTemp();
   ofItensTemp=[];
   setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
+  try{
+    const fOf = document.getElementById('f-of');
+    if(fOf){ fOf.readOnly = false; fOf.title = 'Você pode editar o número da OF'; }
+  }catch(e){}
   setVal('f-dia', oEdit ? (oEdit.dia||oEdit.data_pedido||oEdit.data||today()) : today());
   setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
   setVal('f-obs', oEdit ? (oEdit.obs||oEdit.observacao||'') : '');
@@ -27132,6 +27114,10 @@ async function orcAbrirComparacao(aId, bId){
   const b = await fetchOne(bId);
   if(!a || !b){ toast('Falha ao carregar orçamentos','var(--red)'); return; }
 
+  if(!Array.isArray(CLIENTES) || CLIENTES.length === 0){
+    try{ await carregarClientes(false); }catch(e){}
+  }
+
   let modal = document.getElementById('modal-orc-comp');
   if(!modal){
     modal = document.createElement('div');
@@ -27148,47 +27134,120 @@ async function orcAbrirComparacao(aId, bId){
     document.body.appendChild(modal);
   }
 
-  const fmt = (k, v)=>{
-    if(v == null) return '';
-    if(k === 'parametros' || k === 'params'){
-      try{ return typeof v === 'string' ? v : JSON.stringify(v); }catch(e){ return String(v); }
+  const isPlaceholderCli = (s)=>{
+    const t = String(s||'').trim().toLowerCase();
+    return !t || t.includes('selecione o cliente');
+  };
+  const cliNome = (o)=>{
+    const has = String(o.cliente_nome || o.clienteNome || o.cliente || '').trim();
+    if(has && !isPlaceholderCli(has)) return has;
+    const cid = String(o.cliente_id || o.cli_id || o.clienteId || o.cliId || '').trim();
+    const c = (typeof getCli === 'function' && cid) ? getCli(cid) : null;
+    return String((c && c.nome) ? c.nome : '').trim() || (has && !isPlaceholderCli(has) ? has : '—');
+  };
+  const fmtVal = (v)=>{
+    const n = Number(v);
+    if(Number.isFinite(n)) return fmtR(n);
+    const s = String(v||'').trim();
+    const n2 = Number(String(s).replace(/\./g,'').replace(',','.'));
+    return Number.isFinite(n2) ? fmtR(n2) : (s || '—');
+  };
+  const fmtParametros = (o)=>{
+    const raw = o.parametros ?? o.params ?? o.parametro ?? o.obs ?? '';
+    let obj = null;
+    if(raw && typeof raw === 'object') obj = raw;
+    else if(typeof raw === 'string'){
+      const p = tryParse(raw, null);
+      if(p && typeof p === 'object') obj = p;
     }
-    if(typeof v === 'string') return v;
-    if(typeof v === 'number' || typeof v === 'boolean') return String(v);
-    if(Array.isArray(v)) return v.map(x=>String(x)).join('\n');
-    try{ return JSON.stringify(v); }catch(e){ return String(v); }
+    if(obj && typeof obj === 'object' && !Array.isArray(obj)){
+      const keys = Object.keys(obj).filter(k=>k && !String(k).startsWith('_'));
+      return keys.map(k=>`${k}: ${String(obj[k] ?? '')}`).join('\n') || '—';
+    }
+    const s = String(raw||'').trim();
+    return s || '—';
+  };
+  const fmtResultados = (o)=>{
+    const raw = o.resultados ?? o.resultado ?? null;
+    let obj = null;
+    if(raw && typeof raw === 'object') obj = raw;
+    else if(typeof raw === 'string'){
+      const p = tryParse(raw, null);
+      if(p && typeof p === 'object') obj = p;
+    }
+    if(!obj) return '';
+    const lines = [];
+    const vunit = obj.valor_unitario ?? obj.vunit ?? obj.valorUnitario ?? null;
+    const vtot = obj.valor_total ?? obj.vtot ?? obj.valorTotal ?? null;
+    if(vunit != null) lines.push(`Valor unitário: ${fmtVal(vunit)}`);
+    if(vtot != null) lines.push(`Valor total: ${fmtVal(vtot)}`);
+    const qtd = obj.quantidade ?? obj.qtd ?? null;
+    if(qtd != null) lines.push(`Quantidade: ${String(qtd)}`);
+    if(Array.isArray(obj.itens)){
+      obj.itens.slice(0,6).forEach((it)=>{
+        const q = it.quantidade ?? it.qtd ?? '';
+        const t = it.valor_total ?? it.total ?? '';
+        const u = it.valor_unitario ?? it.vunit ?? '';
+        if(q!=='' || t!=='' || u!=='') lines.push(`Qtd ${q}: unit ${fmtVal(u)} · total ${fmtVal(t)}`);
+      });
+    }
+    return lines.join('\n');
   };
 
-  const derive = (o)=>({
-    cliente: String(o.cliente_nome || o.clienteNome || o.descricao || ''),
-    medidas: String(o.medidas || o.titulo || ''),
-    quantidade: String(o.quantidade ?? o.qtd ?? ''),
-    onda: String(o.onda || ''),
-    valor_unitario: String(o.valor_unitario ?? o.vunit ?? o.valorUnitario ?? ''),
-    valor_total: String(o.valor_total ?? o.vtot ?? o.valorTotal ?? ''),
-    parametros: fmt('parametros', o.parametros ?? o.params ?? o.parametro ?? o.obs ?? ''),
+  const pick = (o)=>({
+    numero_orcamento: String(o.numero_orcamento || (o.id ? String(o.id).substring(0,8) : '')).trim() || '—',
+    cliente: cliNome(o),
+    medidas: String(o.medidas || o.titulo || '').trim() || '—',
+    quantidade: String(o.quantidade ?? o.qtd ?? '').trim() || '—',
+    onda: String(o.onda || '').trim() || '—',
+    valor_unitario: (()=>{
+      const v = o.valor_unitario ?? o.vunit ?? o.valorUnitario ?? null;
+      if(v != null && String(v).trim() !== '') return fmtVal(v);
+      const qtd = Number(o.quantidade ?? o.qtd ?? 0) || 0;
+      const tot = Number(o.valor_total ?? o.vtot ?? o.valorTotal ?? 0) || 0;
+      if(qtd > 0 && tot > 0) return fmtR(tot / qtd);
+      const r = fmtResultados(o);
+      const m = r.match(/Valor unit[aá]rio:\s*(R\$\s*[0-9.,]+)/i);
+      return m ? m[1] : '—';
+    })(),
+    valor_total: fmtVal(o.valor_total ?? o.vtot ?? o.valorTotal ?? 0),
+    parametros: (()=>{
+      const p = fmtParametros(o);
+      const r = fmtResultados(o);
+      return r ? (p + '\n' + r).trim() : p;
+    })(),
+    status: String(o.status || o.situacao || '').trim() || '—',
   });
 
-  const pa = { ...derive(a), ...(a||{}) };
-  const pb = { ...derive(b), ...(b||{}) };
-  const keys = Array.from(new Set([...Object.keys(pa), ...Object.keys(pb)])).filter(k=>k && !String(k).startsWith('_')).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+  const pa = pick(a);
+  const pb = pick(b);
+  const keys = ['numero_orcamento','cliente','medidas','quantidade','onda','valor_unitario','valor_total','parametros','status'];
+  const labels = {
+    numero_orcamento: 'Nº do orçamento',
+    cliente: 'Cliente',
+    medidas: 'Medidas',
+    quantidade: 'Quantidade',
+    onda: 'Onda',
+    valor_unitario: 'Valor unitário',
+    valor_total: 'Valor total',
+    parametros: 'Parâmetros',
+    status: 'Status',
+  };
 
   const body = document.getElementById('orc-comp-body');
-  const aNum = a.numero_orcamento || (a.id ? String(a.id).substring(0,8) : aId);
-  const bNum = b.numero_orcamento || (b.id ? String(b.id).substring(0,8) : bId);
   body.innerHTML = `<div style="display:grid;grid-template-columns:1fr;gap:10px">
     <div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:center">
       <div></div>
-      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(aNum||''))}</div>
-      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(bNum||''))}</div>
+      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(pa.numero_orcamento||''))}</div>
+      <div style="font-weight:900;color:var(--accent)">Orç. ${escH(String(pb.numero_orcamento||''))}</div>
     </div>
     ${keys.map((k)=>{
-      const va = fmt(k, pa[k]);
-      const vb = fmt(k, pb[k]);
-      const diff = String(va) !== String(vb);
+      const va = String(pa[k] ?? '');
+      const vb = String(pb[k] ?? '');
+      const diff = va !== vb;
       const bg = diff ? 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);' : 'background:var(--s2);border:1px solid var(--border);';
       return `<div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:start;padding:10px;border-radius:10px;${bg}">
-        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(k)}</div>
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(labels[k] || k)}</div>
         <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(String(va||'—'))}</pre>
         <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(String(vb||'—'))}</pre>
       </div>`;
@@ -33681,7 +33740,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       el.style.right = '16px';
       el.style.bottom = '16px';
       el.style.zIndex = '9999';
-      el.innerHTML = `<button class="btn btn-accent" onclick="pcpCompararOFs()" style="box-shadow:0 10px 30px rgba(0,0,0,.35)">🔎 Comparar OFs</button>`;
+      el.innerHTML = `<button class="btn btn-accent" onclick="pcpCompararOFs()" style="box-shadow:0 10px 30px rgba(0,0,0,.35)">⚖️ Comparar OFs</button>`;
       document.body.appendChild(el);
     }
     const pg = window._PAGE_ATUAL || '';
@@ -33715,7 +33774,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         modal.id = 'modal-pcp-comp';
         modal.innerHTML = `<div class="modal" style="width:min(1120px,98vw)">
           <button class="close-btn" onclick="fechar('modal-pcp-comp')">✕</button>
-          <h2>🔎 Comparar OFs</h2>
+          <h2>⚖️ Comparar OFs</h2>
           <div class="page-body" id="pcp-comp-body" style="padding:12px 0"></div>
           <div class="modal-footer">
             <button class="btn btn-ghost" onclick="fechar('modal-pcp-comp')">Fechar comparação</button>
@@ -33724,46 +33783,62 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         document.body.appendChild(modal);
       }
       const body = document.getElementById('pcp-comp-body');
-      const fmt = (k, v)=>{
-        if(v == null) return '';
-        if(k === 'itens'){
-          const arr = Array.isArray(v) ? v : (typeof v === 'string' ? tryParse(v, []) : []);
-          const it = Array.isArray(arr) ? arr : [];
-          return it.map(x=>{
-            const d = String(x?.desc || x?.descricao || '').trim();
-            const r = String(x?.ref || x?.referencia || '').trim();
-            const q = Number(x?.qtd ?? x?.quantidade ?? 0) || 0;
-            const u = Number(x?.vunit ?? x?.valor_unitario ?? 0) || 0;
-            return [d, r?('('+r+')'):'', 'x'+q, '@'+u].filter(Boolean).join(' ');
-          }).filter(Boolean).join('\n');
-        }
-        if(typeof v === 'string') return v;
-        if(typeof v === 'number' || typeof v === 'boolean') return String(v);
-        if(Array.isArray(v)){
-          if(k === 'imgs') return v.filter(Boolean).slice(0,6).map(x=>String(x)).join('\n') + (v.length>6?`\n(+${v.length-6})`:'');
-          return v.map(x=>String(x)).join('\n');
-        }
-        try{ return JSON.stringify(v); }catch(e){ return String(v); }
+      const stripHtml = (s)=>String(s||'').replace(/<[^>]*>/g,'').trim();
+      const cliNome = (o)=>{
+        const cid = String(o.cliId || o.cli_id || o.cliente_id || o.cliente || '').trim();
+        const c = (typeof getCli === 'function' && cid) ? getCli(cid) : null;
+        return String((c && c.nome) ? c.nome : (o.cliNome || o.cliente_nome || o.clienteNome || '')).trim() || '—';
       };
-      const pickAll = (o)=>{
-        const out = {};
-        Object.keys(o||{}).forEach((k)=>{
-          if(!k) return;
-          if(String(k).startsWith('_')) return;
-          out[k] = fmt(k, o[k]);
-        });
-        return out;
+      const prodDesc = (o)=>{
+        const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+        const it0 = Array.isArray(itens) ? (itens[0] || {}) : {};
+        return String(it0.desc || it0.descricao || o.prodDesc || o.descricao || '').trim() || '—';
       };
-      const pa = pickAll(a);
-      const pb = pickAll(b);
-      const keys = Array.from(new Set([...Object.keys(pa), ...Object.keys(pb)])).sort((x,y)=>x.localeCompare(y,'pt-BR'));
+      const maquinasTxt = (o)=>{
+        const html = (typeof ofFluxoLinha === 'function') ? (ofFluxoLinha(o) || '') : '';
+        return stripHtml(html) || '—';
+      };
+      const chapaTxt = (o)=>{
+        const id = String(o.chp || o.chapa_id || '').trim();
+        if(!id) return '—';
+        const ch = (typeof getCh === 'function') ? getCh(id) : null;
+        return ch ? estChapaKeyLabel(ch) : id;
+      };
+      const pick = (o)=>({
+        numero: String(o.of || o.numero || '').trim() || '—',
+        cliente: cliNome(o),
+        produto: prodDesc(o),
+        quantidade: String(Math.trunc(Number(o.qtd || o.quantidade || 0) || 0)),
+        valor_total: (()=>{
+          const v = Number(o.val ?? o.valor_total ?? o.valorTotal ?? 0) || 0;
+          return fmtR(v);
+        })(),
+        entrega: String(o.ent || o.data_entrega || '').slice(0,10) || '—',
+        status: String(o.status || '—'),
+        maquinas: maquinasTxt(o),
+        chapa: chapaTxt(o),
+      });
+      const pa = pick(a);
+      const pb = pick(b);
+      const keys = ['numero','cliente','produto','quantidade','valor_total','entrega','status','maquinas','chapa'];
+      const labels = {
+        numero:'Nº OF',
+        cliente:'Cliente',
+        produto:'Produto',
+        quantidade:'Quantidade',
+        valor_total:'Valor Total',
+        entrega:'Entrega',
+        status:'Status',
+        maquinas:'Máquinas',
+        chapa:'Chapa',
+      };
       const grid = keys.map((k)=>{
         const va = String(pa[k] ?? '');
         const vb = String(pb[k] ?? '');
         const diff = va !== vb;
         const bg = diff ? 'background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.35);' : 'background:var(--s2);border:1px solid var(--border);';
         return `<div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:start;padding:10px;border-radius:10px;${bg}">
-          <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(k)}</div>
+          <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900;text-transform:uppercase">${escH(labels[k] || k)}</div>
           <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(va||'—')}</pre>
           <pre style="margin:0;white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:.78rem;color:var(--text);line-height:1.25">${escH(vb||'—')}</pre>
         </div>`;
@@ -33771,8 +33846,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       body.innerHTML = `<div style="display:grid;grid-template-columns:1fr;gap:10px">
         <div style="display:grid;grid-template-columns:240px 1fr 1fr;gap:10px;align-items:center">
           <div></div>
-          <div style="font-weight:900;color:var(--accent)">OF #${escH(a.of||a.numero||aNum)}</div>
-          <div style="font-weight:900;color:var(--accent)">OF #${escH(b.of||b.numero||bNum)}</div>
+          <div style="font-weight:900;color:var(--accent)">OF #${escH(pa.numero)}</div>
+          <div style="font-weight:900;color:var(--accent)">OF #${escH(pb.numero)}</div>
         </div>
         ${grid}
       </div>`;
