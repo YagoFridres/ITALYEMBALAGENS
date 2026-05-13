@@ -903,6 +903,39 @@ app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.get('/api/configuracoes/:chave', authMiddleware, async (req, res) => {
+  try {
+    const chave = String(req.params.chave || '').trim();
+    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatória' });
+    const { data, error } = await supabase.from('configuracoes').select('chave,valor,updated_at,atualizado_por').eq('chave', chave).maybeSingle();
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('schema cache')) return ok(res, null);
+      throw error;
+    }
+    return ok(res, data ? (data.valor ?? null) : null);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/configuracoes/:chave', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const chave = String(req.params.chave || '').trim();
+    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatória' });
+    const body = req.body || {};
+    const valor = (body && Object.prototype.hasOwnProperty.call(body, 'valor')) ? body.valor : body;
+    const payload = {
+      chave,
+      valor,
+      atualizado_por: req.usuario?.nome || 'sistema',
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from('configuracoes').upsert([payload], { onConflict: 'chave' }).select('chave,valor,updated_at,atualizado_por').maybeSingle();
+    if (error) throw error;
+    return ok(res, data ? (data.valor ?? null) : valor);
+  } catch (e) { return err(res, e); }
+});
+
 app.get('/api/admin/maquinas_validas_ofs', requireAdmin, async (req, res) => {
   try {
     const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
@@ -2058,6 +2091,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
     const excluirCanceladas = String(req.query.excluir_canceladas || req.query.excluirCanceladas || '') === '1';
     const empId = req.query.empId ? String(req.query.empId).trim() : '';
+    const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.cli_id || req.query.cliId || '').trim();
     let statusRaw = req.query.status ? String(req.query.status).trim() : '';
     try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
@@ -2077,6 +2111,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       CACHE_VERSION,
       String(req?.usuario?.id || ''),
       empId,
+      clienteId,
       status,
       lite ? 'lite1' : 'lite0',
       from,
@@ -2231,6 +2266,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         }
       }
       if (empId) q = q.eq('emp_id', empId);
+      if (clienteId) q = q.or(`cli_id.eq.${clienteId},cliente_id.eq.${clienteId}`);
       if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
@@ -4551,6 +4587,7 @@ app.get('/api/visitas_vendedor', authMiddleware, async (req, res) => {
   try {
     let q = supabase.from('visitas_vendedor').select('*').order('data_visita', { ascending: true });
     if (req.query.vendedor_id) q = q.eq('vendedor_id', String(req.query.vendedor_id));
+    if (req.query.cliente_id) q = q.eq('cliente_id', String(req.query.cliente_id));
     if (req.query.status) q = q.eq('status', String(req.query.status));
     if (req.query.data) q = q.eq('data_visita', String(req.query.data));
     if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
@@ -5123,10 +5160,12 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // INCONFORMIDADES
 // ══════════════════════════════════════════════════════════════
-app.get('/api/inconformidades', async (req, res) => {
+app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('inconformidades')
-      .select('*').order('created_at', { ascending: false });
+    let q = supabase.from('inconformidades').select('*').order('created_at', { ascending: false });
+    if (req.query.cliente_id) q = q.eq('cliente_id', String(req.query.cliente_id));
+    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    const { data, error } = await q;
     if (error) {
       const msg = String(error.message || error);
       const m = msg.toLowerCase();
@@ -5139,7 +5178,7 @@ app.get('/api/inconformidades', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.post('/api/inconformidades', async (req, res) => {
+app.post('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase.from('inconformidades').insert([req.body]).select();
     if (error) throw error;
@@ -5147,7 +5186,7 @@ app.post('/api/inconformidades', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/inconformidades/:id', async (req, res) => {
+app.put('/api/inconformidades/:id', authMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body }; delete payload.id;
     const { data, error } = await supabase.from('inconformidades')
@@ -5157,7 +5196,7 @@ app.put('/api/inconformidades/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-app.delete('/api/inconformidades/:id', async (req, res) => {
+app.delete('/api/inconformidades/:id', authMiddleware, async (req, res) => {
   try {
     const { error } = await supabase.from('inconformidades').delete().eq('id', req.params.id);
     if (error) throw error;

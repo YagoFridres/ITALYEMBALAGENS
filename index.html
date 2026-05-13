@@ -11561,9 +11561,69 @@ async function cpExcluir(id){
 }
 
 // ===================== CLIENTES =====================
+var CFG_SISTEMA = { dias_cliente_inativo: 30 };
+
+function cfgDiasClienteInativo(){
+  const n = Number(CFG_SISTEMA?.dias_cliente_inativo);
+  if(Number.isFinite(n) && n > 0) return Math.trunc(n);
+  return 30;
+}
+
+function _cfgLocalGet(key){
+  try{
+    const raw = localStorage.getItem('cfg_'+key);
+    if(raw == null) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function _cfgLocalSet(key, val){
+  try{ localStorage.setItem('cfg_'+key, JSON.stringify(val)); }catch(e){}
+}
+
+async function carregarCfgSistema(forcar){
+  if(!_apiConectado || !CURRENT_USER) {
+    const loc = _cfgLocalGet('dias_cliente_inativo');
+    if(loc != null) CFG_SISTEMA.dias_cliente_inativo = Number(loc) || 30;
+    return;
+  }
+  if(!forcar && CFG_SISTEMA && Number(CFG_SISTEMA.dias_cliente_inativo || 0) > 0) return;
+  try{
+    const resp = await apiFetch('/api/configuracoes/dias_cliente_inativo', { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(resp && resp.ok && j && j.ok !== false){
+      const v = (j && Object.prototype.hasOwnProperty.call(j, 'data')) ? j.data : (j && Object.prototype.hasOwnProperty.call(j, 'valor') ? j.valor : j);
+      const n = Number(v);
+      if(Number.isFinite(n) && n > 0){
+        CFG_SISTEMA.dias_cliente_inativo = Math.trunc(n);
+        _cfgLocalSet('dias_cliente_inativo', Math.trunc(n));
+      }
+    }
+  }catch(e){
+    const loc = _cfgLocalGet('dias_cliente_inativo');
+    if(loc != null) CFG_SISTEMA.dias_cliente_inativo = Number(loc) || 30;
+  }
+}
+
+async function salvarCfgDiasClienteInativo(){
+  const el = document.getElementById('cfg-dias-cli-inativo');
+  const n = Math.trunc(Number(el?.value));
+  if(!Number.isFinite(n) || n <= 0){ toast('Dias inválido','var(--red)'); return; }
+  CFG_SISTEMA.dias_cliente_inativo = n;
+  _cfgLocalSet('dias_cliente_inativo', n);
+  if(!_apiConectado || !CURRENT_USER){ toast('Configuração salva localmente','var(--green)'); return; }
+  const resp = await apiFetch('/api/configuracoes/dias_cliente_inativo', { method:'PUT', body:{ valor: n } });
+  const j = resp ? await resp.json().catch(()=>null) : null;
+  if(!resp || !resp.ok || (j && j.ok===false)){
+    toast('Configuração salva localmente','var(--yellow)');
+    return;
+  }
+  toast('Configuração salva ✓','var(--green)');
+}
+
 function renderClientes(){
   const busca=(document.getElementById('cli-busca')||{}).value||'';
   const ramo=(document.getElementById('cli-ramo')||{}).value||'';
+  const sit=(document.getElementById('cli-sit')||{}).value||'';
   const empFil=(document.getElementById('cli-emp-fil')||{}).value||'';
   const rs=document.getElementById('cli-ramo');
   try{ RAMOS = (function(){ try{ const raw=localStorage.getItem('ramos_atividade'); const arr=JSON.parse(raw||'null'); if(Array.isArray(arr)&&arr.length) return arr.map(x=>String(x||'').trim()).filter(Boolean); }catch(e){} return RAMOS; })(); }catch(e){}
@@ -11577,18 +11637,53 @@ function renderClientes(){
   if(ramo)lista=lista.filter(c=>c.ramo===ramo);
   if(empFil)lista=lista.filter(c=>(c.empId||'')===empFil);
   if(EMP_FILTRO&&!empFil)lista=lista.filter(c=>(c.empId||'')===EMP_FILTRO);
+  const diasInativo = cfgDiasClienteInativo();
+  const parseDia = (s) => {
+    const d = String(s || '').slice(0, 10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+    const dt = new Date(d + 'T00:00:00');
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  };
+  const hoje = new Date(today() + 'T00:00:00');
+  const diasEntre = (d1, d2) => Math.floor((d1.getTime() - d2.getTime()) / 86400000);
+  const ofDataPedido = (o) => String(o?.dia || o?.data_pedido || o?.created_at || '').slice(0, 10);
+  const lastByCli = new Map();
+  (OFs || []).forEach(o=>{
+    const cid = String(o?.cliId ?? o?.cli_id ?? o?.cliente_id ?? '').trim();
+    if(!cid) return;
+    const dt = parseDia(ofDataPedido(o));
+    if(!dt) return;
+    const cur = lastByCli.get(cid);
+    if(!cur || dt.getTime() > cur.getTime()) lastByCli.set(cid, dt);
+  });
+  const situacao = (cliId)=>{
+    const d = lastByCli.get(String(cliId||'').trim()) || null;
+    if(!d) return { diasSem: null, inativo: true, ultima: null };
+    const diasSem = diasEntre(hoje, d);
+    return { diasSem, inativo: diasSem > diasInativo, ultima: d };
+  };
+  if(sit === 'ativos') lista = lista.filter(c=>!situacao(c.id).inativo);
+  if(sit === 'inativos') lista = lista.filter(c=>situacao(c.id).inativo);
   renderEmpBar();
   document.getElementById('cli-grid').innerHTML=lista.map(c=>{
     const ofs=OFs.filter(o=>o.cliId===c.id);
     const total=ofs.reduce((s,o)=>s+(o.val||0),0);
     const emp=getEmp(c.empId);
+    const st = situacao(c.id);
+    const badgeInativo = (st.diasSem != null && st.inativo)
+      ? `<span style="background:rgba(245,158,11,.16);border:1px solid rgba(245,158,11,.45);color:var(--yellow);padding:4px 8px;border-radius:999px;font-size:.66rem;font-family:var(--mono);font-weight:900;white-space:nowrap">${st.diasSem} dias sem pedido</span>`
+      : '';
+    const cardStyle = st.inativo ? 'border:1px solid rgba(245,158,11,.45);background:rgba(245,158,11,.06)' : '';
     return `<div class="cli-card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:3px">
         <div>
           <div class="cli-name">${c.nome}</div>
           ${c.ramo?`<div style="font-size:.72rem;color:var(--text3);margin-top:2px">${c.ramo}</div>`:''}
         </div>
-        ${emp?`<span class="emp-badge emp-${emp.cor}">${emp.sigla}</span>`:''}
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${badgeInativo}
+          ${emp?`<span class="emp-badge emp-${emp.cor}">${emp.sigla}</span>`:''}
+        </div>
       </div>
       <div class="cli-sub">${c.cidade||''}${c.uf?'/'+c.uf:''} · ${c.tel||''}</div>
       <div class="cli-sub">${c.email||''}</div>
@@ -11602,8 +11697,349 @@ function renderClientes(){
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarCliente('${c.id}')" style="font-size:.68rem;">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirCliente('${c.id}')" style="font-size:.68rem;color:var(--red);">🗑 Excluir</button>
       </div>
-    </div>`;
+    </div>`.replace('class="cli-card"', `class="cli-card" style="${cardStyle}"`);
   }).join('');
+}
+
+var _CLI_IMPORT = null;
+
+function clientesAbrirImportExcel(){
+  const inp = document.getElementById('cli-import-file');
+  if(inp) inp.click();
+}
+
+function _cliNormCnpj(v){
+  return String(v||'').replace(/\D+/g,'').trim();
+}
+function _cliNormNome(v){
+  return String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+}
+function _cliFindVendedorIdByNome(nome){
+  const key = _cliNormNome(nome);
+  if(!key) return '';
+  const v = (VENDEDORES||[]).find(x=>_cliNormNome(x?.nome)===key) || null;
+  return v && v.id ? String(v.id) : '';
+}
+
+async function clientesHandleImportExcelFile(file){
+  if(!file) return;
+  if(typeof XLSX === 'undefined' || !XLSX.read){ toast('SheetJS não disponível','var(--red)'); return; }
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array' });
+    const sheetName = wb.SheetNames && wb.SheetNames[0];
+    const ws = sheetName ? wb.Sheets[sheetName] : null;
+    if(!ws){ toast('Planilha inválida','var(--red)'); return; }
+    const raw = XLSX.utils.sheet_to_json(ws, { defval:'' });
+    const rows = (raw||[]).map((r,idx)=>{
+      const get = (k)=> (r && (r[k] ?? r[String(k||'').toUpperCase()] ?? r[String(k||'').toLowerCase()])) ?? '';
+      const nome = String(get('nome')||'').trim();
+      const cnpj = _cliNormCnpj(get('cnpj'));
+      const tel = String(get('telefone')||get('tel')||'').trim();
+      const email = String(get('email')||'').trim();
+      const cidade = String(get('cidade')||'').trim();
+      const ramo = String(get('ramo')||'').trim();
+      const vendedorNome = String(get('vendedor')||'').trim();
+      const vendedor_id = _cliFindVendedorIdByNome(vendedorNome);
+      return { idx, selecionado: true, nome, cnpj, tel, email, cidade, ramo, vendedorNome, vendedor_id, erro:'' };
+    });
+
+    const existentes = new Set((CLIENTES||[]).map(c=>_cliNormCnpj(c?.cnpj)).filter(Boolean));
+    const inFile = new Map();
+    rows.forEach(r=>{
+      if(r.cnpj) inFile.set(r.cnpj, (inFile.get(r.cnpj)||0)+1);
+    });
+
+    rows.forEach(r=>{
+      if(!r.nome) r.erro = 'Nome obrigatório';
+      else if(r.cnpj && existentes.has(r.cnpj)) r.erro = 'CNPJ duplicado (já existe)';
+      else if(r.cnpj && (inFile.get(r.cnpj)||0) > 1) r.erro = 'CNPJ duplicado (na planilha)';
+      if(r.erro) r.selecionado = false;
+    });
+
+    _CLI_IMPORT = { rows, fileName: String(file.name||'clientes.xlsx') };
+    clientesAbrirModalImportExcel();
+  } catch(e){
+    toast('Erro ao ler Excel','var(--red)');
+  }
+}
+
+function clientesAbrirModalImportExcel(){
+  const st = _CLI_IMPORT;
+  if(!st) return;
+  let modal = document.getElementById('modal-cli-import');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-cli-import';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(1100px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Importar Clientes (Excel)</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cli-import').style.display='none'">✕</button>
+        </div>
+        <div id="cli-import-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
+        <div id="cli-import-body" style="overflow:auto;border:1px solid var(--border);border-radius:10px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cli-import').style.display='none'">Cancelar</button>
+          <button class="btn btn-accent btn-sm" onclick="clientesConfirmarImportExcel()">Confirmar importação</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  const rows = Array.isArray(st.rows) ? st.rows : [];
+  const okCount = rows.filter(r=>r.selecionado).length;
+  const sub = document.getElementById('cli-import-sub');
+  if(sub) sub.textContent = `${okCount} selecionado(s) · ${rows.length} linha(s)`;
+  const body = document.getElementById('cli-import-body');
+  if(body){
+    const th='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);background:var(--s2);position:sticky;top:0';
+    const td='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.78rem';
+    body.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:980px">
+      <thead><tr>
+        <th style="${th};text-align:center">OK</th>
+        <th style="${th}">Nome</th>
+        <th style="${th}">CNPJ</th>
+        <th style="${th}">Telefone</th>
+        <th style="${th}">Email</th>
+        <th style="${th}">Cidade</th>
+        <th style="${th}">Ramo</th>
+        <th style="${th}">Vendedor</th>
+        <th style="${th}">Status</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r,i)=>{
+          const bad = !!r.erro;
+          const bg = bad ? 'background:rgba(239,68,68,.10)' : (i%2===0?'background:var(--surface)':'background:var(--s2)');
+          const chk = `<input type="checkbox" ${r.selecionado?'checked':''} ${bad?'disabled':''} onchange="_CLI_IMPORT.rows[${i}].selecionado=this.checked;clientesAbrirModalImportExcel()">`;
+          return `<tr style="${bg}">
+            <td style="${td};text-align:center">${chk}</td>
+            <td style="${td};font-weight:900">${escH(r.nome||'')}</td>
+            <td style="${td};font-family:var(--mono)">${escH(r.cnpj||'')}</td>
+            <td style="${td};font-family:var(--mono)">${escH(r.tel||'')}</td>
+            <td style="${td}">${escH(r.email||'')}</td>
+            <td style="${td}">${escH(r.cidade||'')}</td>
+            <td style="${td}">${escH(r.ramo||'')}</td>
+            <td style="${td}">${escH(r.vendedorNome||'')}</td>
+            <td style="${td};color:${bad?'var(--red)':'var(--text3)'};font-family:var(--mono)">${escH(r.erro||'OK')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+  modal.style.display = 'flex';
+}
+
+async function clientesConfirmarImportExcel(){
+  const st = _CLI_IMPORT;
+  if(!st || !Array.isArray(st.rows)) return;
+  const rows = st.rows.filter(r=>r.selecionado);
+  if(!rows.length){ toast('Nenhuma linha selecionada','var(--yellow)'); return; }
+  if(_estBusy) return;
+  try{
+    estSetBusy(true);
+    let okc = 0;
+    for(const r of rows){
+      const payload = {
+        nome: String(r.nome||'').trim(),
+        cnpj: r.cnpj || undefined,
+        tel: r.tel || undefined,
+        email: r.email || undefined,
+        cidade: r.cidade || undefined,
+        ramo: r.ramo || undefined,
+        vendedor_id: r.vendedor_id || undefined,
+        emp_id: EMP_FILTRO || 'E1',
+      };
+      Object.keys(payload).forEach(k=>{ if(payload[k]==='' || payload[k]==null) delete payload[k]; });
+      const resp = await apiFetch('/api/clientes', { method:'POST', body: payload });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(!resp || !resp.ok || (j && j.error)){
+        throw new Error((j && (j.error||j.message)) ? (j.error||j.message) : 'Falha ao importar');
+      }
+      okc += 1;
+    }
+    toast(`Importados: ${okc}`,'var(--green)');
+    document.getElementById('modal-cli-import').style.display='none';
+    try{ await carregarClientes(true); }catch(e){ try{ await carregarClientes(false); }catch(_){} }
+    renderClientes();
+  } catch(e){
+    toast('Erro: '+String(e?.message||e),'var(--red)');
+  } finally {
+    estSetBusy(false);
+  }
+}
+
+function _cliLevenshtein(a,b){
+  const s = String(a||'');
+  const t = String(b||'');
+  const n = s.length, m = t.length;
+  if(!n) return m;
+  if(!m) return n;
+  const dp = new Array(m+1);
+  for(let j=0;j<=m;j++) dp[j]=j;
+  for(let i=1;i<=n;i++){
+    let prev = dp[0];
+    dp[0]=i;
+    for(let j=1;j<=m;j++){
+      const tmp = dp[j];
+      const cost = s.charCodeAt(i-1)===t.charCodeAt(j-1)?0:1;
+      dp[j]=Math.min(dp[j]+1, dp[j-1]+1, prev+cost);
+      prev = tmp;
+    }
+  }
+  return dp[m];
+}
+function _cliNomeSimilaridade(a,b){
+  const x = _cliNormNome(a);
+  const y = _cliNormNome(b);
+  if(!x || !y) return 0;
+  const maxLen = Math.max(x.length, y.length) || 1;
+  const d = _cliLevenshtein(x,y);
+  return (1 - (d / maxLen)) * 100;
+}
+
+async function clientesVerificarDuplicatas(){
+  const cls = Array.isArray(CLIENTES) ? CLIENTES : [];
+  if(!cls.length){ toast('Sem clientes','var(--yellow)'); return; }
+  const ids = cls.map(c=>String(c.id||'').trim());
+  const idxById = new Map(ids.map((id,i)=>[id,i]));
+  const parent = ids.map((_,i)=>i);
+  const find = (i)=>{ while(parent[i]!==i){ parent[i]=parent[parent[i]]; i=parent[i]; } return i; };
+  const union = (a,b)=>{ const ra=find(a), rb=find(b); if(ra!==rb) parent[rb]=ra; };
+
+  const byCnpj = new Map();
+  cls.forEach((c)=>{
+    const cnpj = _cliNormCnpj(c?.cnpj);
+    if(!cnpj) return;
+    if(!byCnpj.has(cnpj)) byCnpj.set(cnpj, []);
+    byCnpj.get(cnpj).push(String(c.id||'').trim());
+  });
+  byCnpj.forEach((arr)=>{
+    if(arr.length<=1) return;
+    const base = idxById.get(arr[0]);
+    for(let i=1;i<arr.length;i++){
+      const ix = idxById.get(arr[i]);
+      if(base!=null && ix!=null) union(base, ix);
+    }
+  });
+
+  const buckets = new Map();
+  cls.forEach((c)=>{
+    const nm = _cliNormNome(c?.nome);
+    if(nm.length < 6) return;
+    const key = nm.slice(0,4);
+    if(!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(c);
+  });
+  buckets.forEach((arr)=>{
+    if(arr.length<2) return;
+    for(let i=0;i<arr.length;i++){
+      for(let j=i+1;j<arr.length;j++){
+        const sim = _cliNomeSimilaridade(arr[i].nome, arr[j].nome);
+        if(sim >= 85){
+          const a = idxById.get(String(arr[i].id||'').trim());
+          const b = idxById.get(String(arr[j].id||'').trim());
+          if(a!=null && b!=null) union(a,b);
+        }
+      }
+    }
+  });
+
+  const groups = new Map();
+  cls.forEach((c)=>{
+    const id = String(c.id||'').trim();
+    const i = idxById.get(id);
+    if(i==null) return;
+    const r = find(i);
+    if(!groups.has(r)) groups.set(r, []);
+    groups.get(r).push(c);
+  });
+  const suspeitos = Array.from(groups.values()).filter(g=>g.length>1);
+  if(!suspeitos.length){ toast('Nenhuma duplicata suspeita','var(--green)'); return; }
+
+  let modal = document.getElementById('modal-cli-dup');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-cli-dup';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
+    modal.innerHTML = `
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(1100px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Duplicatas suspeitas</h3>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-cli-dup').style.display='none'">✕</button>
+        </div>
+        <div id="cli-dup-body"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  const body = document.getElementById('cli-dup-body');
+  if(body){
+    const countOfs = (id)=> (OFs||[]).filter(o=>String(o.cliId||o.cliente_id||o.cli_id||'').trim()===String(id||'').trim()).length;
+    body.innerHTML = suspeitos.map((g,gi)=>{
+      const withCounts = g.map(c=>({ c, ofs: countOfs(c.id) }));
+      withCounts.sort((a,b)=>b.ofs-a.ofs);
+      const keep = withCounts[0]?.c?.id ? String(withCounts[0].c.id) : '';
+      const th='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);background:var(--s2)';
+      const td='padding:8px 10px;border-bottom:1px solid var(--border);font-size:.78rem';
+      return `<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:var(--s2)">
+          <div style="font-weight:900">Grupo ${gi+1} · ${g.length} clientes</div>
+          <button class="btn btn-accent btn-sm" onclick="clientesMesclarDuplicatas('${escAttr(keep)}','${escAttr(withCounts.map(x=>String(x.c.id)).join(','))}')">Mesclar</button>
+        </div>
+        <div style="overflow:auto">
+          <table style="width:100%;border-collapse:collapse;min-width:980px">
+            <thead><tr>
+              <th style="${th}">ID</th>
+              <th style="${th}">Nome</th>
+              <th style="${th}">CNPJ</th>
+              <th style="${th};text-align:right">OFs</th>
+              <th style="${th}">Mantido</th>
+            </tr></thead>
+            <tbody>
+              ${withCounts.map(x=>`<tr style="background:${String(x.c.id)===keep?'rgba(75,192,100,.10)':'transparent'}">
+                <td style="${td};font-family:var(--mono);font-size:.72rem;color:var(--text3)">${escH(String(x.c.id||''))}</td>
+                <td style="${td};font-weight:900">${escH(String(x.c.nome||''))}</td>
+                <td style="${td};font-family:var(--mono)">${escH(String(x.c.cnpj||''))}</td>
+                <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(x.ofs||0)}</td>
+                <td style="${td};font-family:var(--mono);color:${String(x.c.id)===keep?'var(--green)':'var(--text3)'}">${String(x.c.id)===keep?'SIM':''}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  modal.style.display = 'flex';
+}
+
+async function clientesMesclarDuplicatas(manterId, idsCsv){
+  const keep = String(manterId||'').trim();
+  const ids = String(idsCsv||'').split(',').map(x=>String(x||'').trim()).filter(Boolean);
+  const delIds = ids.filter(id=>id && id!==keep);
+  if(!keep || !delIds.length) return;
+  try{
+    for(const id of delIds){
+      const resp = await apiFetch('/api/clientes/'+encodeURIComponent(id)+'?manter_para='+encodeURIComponent(keep), { method:'DELETE' });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(!resp || !resp.ok || (j && j.ok===false)){ throw new Error((j && (j.error||j.message)) ? (j.error||j.message) : 'Falha ao mesclar'); }
+      (OFs||[]).forEach(o=>{
+        const cur = String(o.cliId ?? o.cliente_id ?? o.cli_id ?? '').trim();
+        if(cur === id){
+          if(o.cliId !== undefined) o.cliId = keep;
+          if(o.cliente_id !== undefined) o.cliente_id = keep;
+          if(o.cli_id !== undefined) o.cli_id = keep;
+        }
+      });
+    }
+    toast('Duplicatas mescladas ✓','var(--green)');
+    document.getElementById('modal-cli-dup').style.display='none';
+    try{ await carregarClientes(true); }catch(e){ try{ await carregarClientes(false); }catch(_){} }
+    renderClientes();
+  } catch(e){
+    toast('Erro: '+String(e?.message||e),'var(--red)');
+  }
 }
 function toggleRamoCustom(){
   const sel=document.getElementById('cl-ramo');
@@ -17790,6 +18226,11 @@ function renderSistema(){
   const el=document.getElementById('sis-ts-label');
   if(el&&ts){const ago=Math.round((Date.now()-parseInt(ts))/60000);el.textContent='Último save local: '+ago+' min atrás';}
   else if(el) el.textContent='Nenhum save local encontrado.';
+  const cfgEl = document.getElementById('cfg-dias-cli-inativo');
+  if(cfgEl){
+    const n = cfgDiasClienteInativo();
+    if(!cfgEl.value) cfgEl.value = String(n);
+  }
 }
 function exportarDadosCompletos(){
   try{
@@ -18420,6 +18861,7 @@ async function loadCoreData(){
   const hoje = today();
   await Promise.all([
     carregarEmpresas?.()||Promise.resolve(),
+    carregarCfgSistema?.()||Promise.resolve(),
     carregarOFs({ from: hoje, to: hoje, forcar: true }),
     carregarVendedores(false)
   ]);
@@ -25598,33 +26040,361 @@ function cmpDarEntrada(id){
 }
 
 // ===================== HISTÓRICO CLIENTE / REPETIR PEDIDO =====================
+var _HCLI = null;
+var _hcliChart = null;
+
 function abrirHistCli(cliId){
-  const cli=getCli(cliId);if(!cli)return;
-  const ofs=OFs.filter(o=>o.cliId===cliId).sort((a,b)=>b.seq-a.seq);
-  document.getElementById('hist-cli-titulo').textContent='Histórico — '+cli.nome;
-  document.getElementById('hist-cli-body').innerHTML=ofs.length===0
-    ?'<div style="color:var(--text3)">Nenhum pedido anterior</div>'
-    :ofs.map(o=>{
-      const fl=getF(o.fluxo);const ch=getCh(o.chp);
-      const hasImg=o.imgs&&o.imgs.length>0;
-      return `<div class="hcli-of">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
-          <span class="of-num">${o.of}</span>
-          ${stTag(o.status)}
-          <span style="color:var(--text2);font-size:.72rem">${o.dia||'—'} → ${o.ent||'—'}</span>
-          <span style="color:var(--green);font-weight:800;font-family:var(--mono);margin-left:auto">${fmtR(o.val)}</span>
-        </div>
-        <div style="font-size:.78rem;color:var(--text);margin-bottom:4px"><b>${o.qtd.toLocaleString()}</b> un · Fluxo: ${fl?fl.nome:'—'} · Chapa: ${ch?ch.nome:'—'}</div>
-        ${o.obs?`<div style="font-size:.72rem;color:var(--text2)">${o.obs}</div>`:''}
-        ${hasImg?`<img src="${o.imgs[0]}" style="width:60px;height:60px;border-radius:5px;object-fit:cover;border:1px solid var(--border);cursor:pointer;margin-top:6px;" onclick="zoomImg('${o.imgs[0]}')">`:''}
-        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-          <button class="btn btn-green btn-sm" onclick="repetirPedido('${o.of}');fechar('modal-hist-cli')">🔁 Repetir Pedido</button>
-          <button class="btn btn-purple btn-sm" onclick="fechar('modal-hist-cli');editarOFDoHistorico('${o.of}')">✏ Editar</button>
-          <button class="btn btn-ghost btn-sm" onclick="imprimirOF('${o.of}')">🖨 Imprimir</button>
-        </div>
-      </div>`;
-    }).join('');
+  const cid = String(cliId||'').trim();
+  const cli = getCli(cid);
+  if(!cli) return;
+  _HCLI = { cliId: cid, cli, tab: 'ofs', loading: true, ofs: [], visitas: [], amostras: [], inconfs: [] };
+  const title = document.getElementById('hist-cli-titulo');
+  if(title) title.textContent = 'Cliente — ' + (cli.nome || '—');
+  const body = document.getElementById('hist-cli-body');
+  if(body){
+    body.innerHTML = `
+      <div id="hcli-cards" class="cards-row" style="margin-bottom:12px"></div>
+      <div id="hcli-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div id="hcli-content"></div>
+    `;
+  }
   abrir('modal-hist-cli');
+  hcliRender();
+  hcliCarregarDados().catch(()=>{});
+}
+
+function hcliSetTab(tab){
+  if(!_HCLI) return;
+  const t = String(tab||'').trim().toLowerCase();
+  _HCLI.tab = (['ofs','financeiro','visitas','amostras','inconformidades'].includes(t)) ? t : 'ofs';
+  hcliRender();
+}
+
+function _hcliOfValor(o){
+  return Number(o?.valor_total ?? o?.valor_venda ?? o?.valor ?? o?.val ?? 0) || 0;
+}
+function _hcliOfData(o){
+  const d = String(o?.dia ?? o?.data_pedido ?? o?.created_at ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '';
+}
+
+function hcliRender(){
+  const st = _HCLI;
+  if(!st) return;
+  const diasInativo = cfgDiasClienteInativo();
+  const hoje = new Date(today() + 'T00:00:00');
+  const parseDia = (s) => {
+    const d = String(s || '').slice(0, 10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+    const dt = new Date(d + 'T00:00:00');
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  };
+  const diasEntre = (d1, d2) => Math.floor((d1.getTime() - d2.getTime()) / 86400000);
+
+  const ofs = Array.isArray(st.ofs) ? st.ofs : [];
+  const totalOfs = ofs.length;
+  const totalValor = ofs.reduce((s,o)=>s+_hcliOfValor(o),0);
+  const ticket = totalOfs ? (totalValor / totalOfs) : 0;
+  const lastDateStr = ofs.map(o=>_hcliOfData(o)).filter(Boolean).sort().slice(-1)[0] || '';
+  const lastDt = parseDia(lastDateStr);
+  const diasSem = lastDt ? diasEntre(hoje, lastDt) : null;
+  const inativo = (diasSem == null) ? true : (diasSem > diasInativo);
+
+  const cards = document.getElementById('hcli-cards');
+  if(cards){
+    cards.innerHTML = `
+      <div class="card"><div class="card-lbl">Total de OFs</div><div class="card-val">${fmtN(totalOfs)}</div></div>
+      <div class="card"><div class="card-lbl">Total comprado</div><div class="card-val" style="color:var(--green)">${fmtR(totalValor)}</div></div>
+      <div class="card"><div class="card-lbl">Ticket médio</div><div class="card-val">${fmtR(ticket)}</div></div>
+      <div class="card"><div class="card-lbl">Última compra</div><div class="card-val" style="font-family:var(--mono)">${lastDateStr ? fmtD(lastDateStr) : '—'}</div><div class="card-sub" style="color:${inativo?'var(--yellow)':'var(--text3)'}">${diasSem==null?'Sem pedidos':(inativo?(`${diasSem} dias sem pedido`):'Ativo')}</div></div>
+    `;
+  }
+
+  const tabBtn = (id, label) => `<button class="btn btn-ghost btn-sm ${st.tab===id?'ativo':''}" onclick="hcliSetTab('${id}')" style="border:1px solid var(--border)">${label}</button>`;
+  const tabs = document.getElementById('hcli-tabs');
+  if(tabs){
+    tabs.innerHTML = `
+      ${tabBtn('ofs','OFs')}
+      ${tabBtn('financeiro','Financeiro')}
+      ${tabBtn('visitas','Visitas')}
+      ${tabBtn('amostras','Amostras')}
+      ${tabBtn('inconformidades','Inconformidades')}
+      <div style="flex:1"></div>
+      ${st.loading?`<span style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">Carregando…</span>`:''}
+    `;
+  }
+
+  const host = document.getElementById('hcli-content');
+  if(!host) return;
+
+  if(st.tab !== 'financeiro'){
+    if(_hcliChart && typeof _hcliChart.destroy === 'function'){ try{ _hcliChart.destroy(); }catch(e){} }
+    _hcliChart = null;
+  }
+
+  const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.65rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;';
+
+  if(st.tab === 'ofs'){
+    const rows = ofs.slice().sort((a,b)=>String(_hcliOfData(b)).localeCompare(String(_hcliOfData(a))));
+    host.innerHTML = rows.length ? `<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;min-width:920px">
+        <thead><tr>
+          <th style="${th}">Nº</th>
+          <th style="${th}">Produto</th>
+          <th style="${th}">Data</th>
+          <th style="${th};text-align:right">Valor</th>
+          <th style="${th}">Status</th>
+          <th style="${th};text-align:center">Ação</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(o=>{
+            const num = String(o.of || o.numero || '—');
+            const prod = String(o.descricao || o.produto || o.prodDesc || '—');
+            const data = _hcliOfData(o);
+            const valor = _hcliOfValor(o);
+            const stt = String(o.status || '—');
+            const id = String(o.id || '').trim();
+            const btn = id && typeof lancAbrirDetalhes === 'function'
+              ? `<button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(id)}')">Ver</button>`
+              : `<button class="btn btn-ghost btn-sm" onclick="toast('OF sem id disponível','var(--yellow)')">Ver</button>`;
+            const rep = num && typeof repetirPedido === 'function'
+              ? `<button class="btn btn-green btn-sm" onclick="repetirPedido('${escAttr(num)}')">Repetir</button>`
+              : '';
+            return `<tr>
+              <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">${escH(num)}</td>
+              <td style="${td};max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(prod)}</td>
+              <td style="${td};font-family:var(--mono)">${data?fmtD(data):'—'}</td>
+              <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(valor)}</td>
+              <td style="${td}">${escH(stt)}</td>
+              <td style="${td};text-align:center;white-space:nowrap"><div style="display:flex;gap:6px;justify-content:center">${btn}${rep}</div></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:12px;color:var(--text3)">Nenhuma OF encontrada.</div>`;
+    return;
+  }
+
+  if(st.tab === 'financeiro'){
+    const now = new Date();
+    const months = [];
+    for(let i=11;i>=0;i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+    }
+    const byMonth = new Map(months.map(m=>[m,{ mes:m, valor:0, qtd:0 }]));
+    ofs.forEach(o=>{
+      const dt = _hcliOfData(o);
+      if(!dt) return;
+      const m = dt.slice(0,7);
+      if(!byMonth.has(m)) return;
+      const v = _hcliOfValor(o);
+      const cur = byMonth.get(m);
+      cur.valor += v;
+      cur.qtd += 1;
+    });
+    const rows = months.map(m=>byMonth.get(m));
+    const media = rows.reduce((s,r)=>s+Number(r.valor||0),0) / (rows.length || 1);
+    host.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr;gap:12px">
+        <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--surface)">
+          <canvas id="hcli-chart" height="130"></canvas>
+        </div>
+        <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+          <table style="width:100%;border-collapse:collapse;min-width:720px">
+            <thead><tr>
+              <th style="${th}">Mês</th>
+              <th style="${th};text-align:right">Valor</th>
+              <th style="${th};text-align:right">OFs</th>
+              <th style="${th};text-align:right">Média</th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(r=>`<tr>
+                <td style="${td};font-family:var(--mono)">${escH(r.mes)}</td>
+                <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${fmtR(r.valor||0)}</td>
+                <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(r.qtd||0)}</td>
+                <td style="${td};text-align:right;font-family:var(--mono);color:var(--text2)">${fmtR(media||0)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    Promise.resolve()
+      .then(()=>ensureChartJsLoaded())
+      .then((okChart)=>{
+        if(!okChart || typeof Chart === 'undefined') return;
+        const canvas = document.getElementById('hcli-chart');
+        if(!canvas) return;
+        if(_hcliChart && typeof _hcliChart.destroy === 'function'){ try{ _hcliChart.destroy(); }catch(e){} }
+        _hcliChart = new Chart(canvas.getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: rows.map(r=>r.mes),
+            datasets: [
+              { label: 'Valor (R$)', data: rows.map(r=>Number(r.valor||0)), backgroundColor: 'rgba(75,192,100,0.65)', borderRadius: 6 },
+              { label: 'Média', data: rows.map(()=>media), type: 'line', borderColor: 'rgba(0,212,255,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [6,4] }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'top' },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx){
+                    const i = ctx.dataIndex;
+                    const r = rows[i] || { valor:0, qtd:0 };
+                    if(ctx.datasetIndex === 0) return `Valor: R$ ${Number(r.valor||0).toLocaleString('pt-BR')} · OFs: ${Number(r.qtd||0)}`;
+                    return `Média: R$ ${Number(media||0).toLocaleString('pt-BR')}`;
+                  }
+                }
+              }
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { callback: v => 'R$ ' + Number(v).toLocaleString('pt-BR') } }
+            }
+          }
+        });
+      })
+      .catch(()=>{});
+    return;
+  }
+
+  if(st.tab === 'visitas'){
+    const rows = Array.isArray(st.visitas) ? st.visitas : [];
+    host.innerHTML = rows.length ? `<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;min-width:820px">
+        <thead><tr>
+          <th style="${th}">Data</th>
+          <th style="${th}">Vendedor</th>
+          <th style="${th}">Status</th>
+          <th style="${th}">Obs</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td style="${td};font-family:var(--mono)">${escH(String(r.data_visita||r.data||'').slice(0,10))}</td>
+            <td style="${td}">${escH(String(r.vendedor_nome||r.vendedor||'—'))}</td>
+            <td style="${td}">${escH(String(r.status||'—'))}</td>
+            <td style="${td};color:var(--text2)">${escH(String(r.obs||r.observacao||''))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:12px;color:var(--text3)">Nenhuma visita encontrada.</div>`;
+    return;
+  }
+
+  if(st.tab === 'amostras'){
+    const rows = Array.isArray(st.amostras) ? st.amostras : [];
+    host.innerHTML = rows.length ? `<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;min-width:880px">
+        <thead><tr>
+          <th style="${th}">Status</th>
+          <th style="${th}">Produto</th>
+          <th style="${th}">Data</th>
+          <th style="${th}">Obs</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td style="${td};font-weight:900">${escH(String(r.status||'—'))}</td>
+            <td style="${td}">${escH(String(r.produto||r.descricao||'—'))}</td>
+            <td style="${td};font-family:var(--mono)">${escH(String(r.data_pedido||r.created_at||'').slice(0,10))}</td>
+            <td style="${td};color:var(--text2)">${escH(String(r.observacoes||r.obs||''))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:12px;color:var(--text3)">Nenhuma amostra encontrada.</div>`;
+    return;
+  }
+
+  if(st.tab === 'inconformidades'){
+    const rows = Array.isArray(st.inconfs) ? st.inconfs : [];
+    host.innerHTML = rows.length ? `<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse;min-width:900px">
+        <thead><tr>
+          <th style="${th}">Data</th>
+          <th style="${th}">Tipo</th>
+          <th style="${th}">Máquina</th>
+          <th style="${th}">OF</th>
+          <th style="${th};text-align:right">Perdas</th>
+          <th style="${th}">Obs</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td style="${td};font-family:var(--mono)">${escH(String(r.data||r.created_at||'').slice(0,10))}</td>
+            <td style="${td}">${escH(String(r.tipo||r.titulo||'—'))}</td>
+            <td style="${td}">${escH(String(r.maquina||r.maquina_id||'—'))}</td>
+            <td style="${td};font-family:var(--mono)">${escH(String(r.of_numero||r.of||'—'))}</td>
+            <td style="${td};text-align:right;font-family:var(--mono);color:var(--red);font-weight:900">${fmtN(Number(r.qtd_perdida||r.qtdPerd||0)||0)}</td>
+            <td style="${td};color:var(--text2)">${escH(String(r.obs||r.observacao||''))}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>` : `<div style="padding:12px;color:var(--text3)">Nenhuma inconformidade encontrada.</div>`;
+    return;
+  }
+}
+
+async function hcliCarregarDados(){
+  if(!_HCLI) return;
+  _HCLI.loading = true;
+  hcliRender();
+  const cid = String(_HCLI.cliId||'').trim();
+  const empId = String(_HCLI.cli?.empId || EMP_FILTRO || '').trim();
+  const safeJson = async (resp) => resp ? await resp.json().catch(()=>null) : null;
+  const getArr = (j) => (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : (j && j.ok && Array.isArray(j.data) ? j.data : []));
+  const qsEmp = (qs)=>{ if(empId) qs.set('empId', empId); return qs; };
+
+  const pOfs = (async ()=>{
+    try{
+      const qs = qsEmp(new URLSearchParams());
+      qs.set('cliente_id', cid);
+      qs.set('limit', '500');
+      qs.set('order_by', 'created_at');
+      qs.set('order', 'desc');
+      qs.set('lite', '1');
+      const resp = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
+      const j = await safeJson(resp);
+      return getArr(j);
+    }catch(e){ return []; }
+  })();
+  const pVis = (async ()=>{
+    try{
+      const qs = qsEmp(new URLSearchParams());
+      qs.set('cliente_id', cid);
+      const resp = await apiFetch('/api/visitas_vendedor?' + qs.toString(), { method:'GET' });
+      const j = await safeJson(resp);
+      return getArr(j);
+    }catch(e){ return []; }
+  })();
+  const pAmo = (async ()=>{
+    try{
+      const qs = qsEmp(new URLSearchParams());
+      qs.set('cliente_id', cid);
+      const resp = await apiFetch('/api/amostras?' + qs.toString(), { method:'GET' });
+      const j = await safeJson(resp);
+      return getArr(j);
+    }catch(e){ return []; }
+  })();
+  const pInc = (async ()=>{
+    try{
+      const qs = qsEmp(new URLSearchParams());
+      qs.set('cliente_id', cid);
+      const resp = await apiFetch('/api/inconformidades?' + qs.toString(), { method:'GET' });
+      const j = await safeJson(resp);
+      return getArr(j);
+    }catch(e){ return []; }
+  })();
+
+  const [ofs, visitas, amostras, inconfs] = await Promise.all([pOfs, pVis, pAmo, pInc]);
+  if(!_HCLI || String(_HCLI.cliId||'') !== cid) return;
+  _HCLI.ofs = Array.isArray(ofs) ? ofs : [];
+  _HCLI.visitas = Array.isArray(visitas) ? visitas : [];
+  _HCLI.amostras = Array.isArray(amostras) ? amostras : [];
+  _HCLI.inconfs = Array.isArray(inconfs) ? inconfs : [];
+  _HCLI.loading = false;
+  hcliRender();
 }
 
 function repetirPedido(ofNum){
@@ -27915,11 +28685,19 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="ptoolbar">
     <input id="cli-busca" placeholder="🔍 Nome, CNPJ..." oninput="renderClientes()" style="width:180px;">
     <select id="cli-ramo" onchange="renderClientes()"><option value="">Todos os ramos</option></select>
+    <select id="cli-sit" onchange="renderClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="">Situação: Todos</option>
+      <option value="ativos">Ativos</option>
+      <option value="inativos">Inativos</option>
+    </select>
     <select id="cli-emp-fil" onchange="renderClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas as empresas</option>
     </select>
     <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="clientesAbrirImportExcel()">Importar Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="clientesVerificarDuplicatas()">Verificar Duplicatas</button>
     <button class="btn btn-accent" onclick="abrirModalCliente()">＋ Novo Cliente</button>
+    <input id="cli-import-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="clientesHandleImportExcelFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body"><div class="cli-grid" id="cli-grid"></div></div>
 </div>
@@ -28984,6 +29762,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <input type="file" id="sis-import-file" accept=".json" style="background:var(--s2);border:1px dashed var(--accent);color:var(--text);border-radius:6px;padding:8px;font-size:.78rem;width:100%;cursor:pointer;margin-bottom:10px">
           <button class="btn btn-green" onclick="importarDados()">📥 Importar e Restaurar</button>
           <div id="sis-import-preview" style="margin-top:10px;font-size:.75rem;color:var(--text2)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="sbox" style="margin-top:12px">
+      <div class="sbox-h">⚙ Configurações</div>
+      <div class="sbox-b">
+        <div class="fg">
+          <div class="mf">
+            <label>Dias para considerar cliente inativo</label>
+            <input id="cfg-dias-cli-inativo" type="number" min="1" step="1" style="width:220px" placeholder="Ex: 30">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+          <button class="btn btn-accent" onclick="salvarCfgDiasClienteInativo()">Salvar Configurações</button>
         </div>
       </div>
     </div>

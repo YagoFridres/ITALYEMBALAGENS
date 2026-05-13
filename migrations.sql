@@ -20,3 +20,12 @@ create table if not exists public.chapas_estoque_movimentos (
 create index if not exists chapas_estoque_movimentos_chapa_id_idx on public.chapas_estoque_movimentos (chapa_id, created_at desc);
 
 alter table if exists public.chapas_estoque_movimentos_v2 add column if not exists valor_unitario numeric;
+
+create table if not exists public.configuracoes (
+  id uuid primary key default gen_random_uuid(),
+  chave text not null unique,
+  valor jsonb,
+  atualizado_por text,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
