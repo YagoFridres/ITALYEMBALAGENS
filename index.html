@@ -37426,6 +37426,11 @@ window.atualizarChapas = async function(){
       .assist-img{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border);display:block}
       .jarvis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
       .jarvis-action{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:900;font-family:var(--mono)}
+      .jarvis-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+      .jarvis-table th,.jarvis-table td{padding:8px 9px;border-bottom:1px solid var(--border);font-size:.78rem}
+      .jarvis-table th{background:rgba(59,130,246,.12);text-align:left;font-weight:900}
+      .jarvis-table tr:last-child td{border-bottom:none}
+      .jarvis-chart{width:100%;height:150px;max-height:150px;display:block;margin-top:10px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.15);padding:8px}
       .assist-meta{margin-top:6px;font-size:.65rem;color:var(--text3);font-family:var(--mono)}
       #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:var(--bg-card,#1a1a2e);display:flex;gap:8px;align-items:flex-end}
       #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
@@ -37549,6 +37554,8 @@ window.atualizarChapas = async function(){
       if(Array.isArray(extra.images)) msg.images = extra.images.map(x=>String(x||'').trim()).filter(Boolean).slice(0, 3);
       if(Array.isArray(extra.actions)) msg.actions = extra.actions;
       if(Array.isArray(extra.suggestions)) msg.suggestions = extra.suggestions;
+      if(extra.table && typeof extra.table === 'object') msg.table = extra.table;
+      if(extra.chart && typeof extra.chart === 'object') msg.chart = extra.chart;
     }
     hist.push(msg);
     saveHist(hist);
@@ -37659,16 +37666,59 @@ window.atualizarChapas = async function(){
       const imgsHtml = imgs.length ? imgs.map((u)=>`<img class="assist-img" src="${escAttr(u)}" alt="Imagem OF">`).join('') : '';
       const actions = Array.isArray(m.actions) ? m.actions : [];
       const actionsHtml = actions.length ? `<div class="jarvis-actions">${actions.map((a)=>`<button type="button" class="jarvis-action" data-act="${escAttr(a.id||'')}" data-dec="${escAttr(a.decision||'confirm')}">${esc(a.label||'')}</button>`).join('')}</div>` : '';
+      const tbl = m.table && typeof m.table === 'object' ? m.table : null;
+      const tableHtml = (tbl && Array.isArray(tbl.headers) && Array.isArray(tbl.rows))
+        ? `<table class="jarvis-table"><thead><tr>${tbl.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${tbl.rows.map(r=>`<tr>${(Array.isArray(r)?r:[]).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+        : '';
+      const ch = m.chart && typeof m.chart === 'object' ? m.chart : null;
+      const chartId = ch ? `jarvis-chart-${idx}` : '';
+      const chartHtml = ch ? `<canvas class="jarvis-chart" id="${escAttr(chartId)}" width="300" height="150"></canvas>` : '';
       if(role === 'assistant'){
         const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
         const speakIcon = isSpeaking ? '🔇' : '🔊';
         const top = `<div class="assist-bubble-top"><div></div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
-        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
       const bubble = `<div class="assist-bubble">${txtHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
       return `<div class="assist-row user">${bubble}</div>`;
     }).join('');
+    mountCharts(hist);
+  };
+
+  const mountCharts = (hist)=>{
+    try{
+      const arr = Array.isArray(hist) ? hist : [];
+      const list = [];
+      arr.forEach((m, idx)=>{
+        if(m && m.role === 'assistant' && m.chart && typeof m.chart === 'object') list.push({ idx, chart: m.chart });
+      });
+      if(!list.length) return;
+      setTimeout(()=>{
+        Promise.resolve().then(()=>ensureChartJsLoaded()).then((ok)=>{
+          if(!ok || !window.Chart) return;
+          if(!window._jarvisCharts) window._jarvisCharts = {};
+          list.forEach(({idx, chart})=>{
+            const id = `jarvis-chart-${idx}`;
+            const el = document.getElementById(id);
+            if(!el) return;
+            try{ if(window._jarvisCharts[id] && typeof window._jarvisCharts[id].destroy === 'function') window._jarvisCharts[id].destroy(); }catch(e){}
+            const cfg = chart && typeof chart === 'object' ? chart : {};
+            const labels = Array.isArray(cfg.labels) ? cfg.labels : [];
+            const data = Array.isArray(cfg.data) ? cfg.data : [];
+            const type = String(cfg.type || 'bar');
+            const title = String(cfg.title || 'Gráfico');
+            try{
+              window._jarvisCharts[id] = new Chart(el.getContext('2d'), {
+                type,
+                data: { labels, datasets: [{ label: title, data, backgroundColor:'rgba(59,130,246,.35)', borderColor:'rgba(59,130,246,.9)', borderWidth:1 }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } }, scales:{ y:{ ticks:{ color:'#b9c0d4' } }, x:{ ticks:{ color:'#b9c0d4' } } } }
+              });
+            }catch(e){}
+          });
+        });
+      }, 0);
+    }catch(e){}
   };
 
   const runAction = async (id, decision)=>{
@@ -37736,13 +37786,15 @@ window.atualizarChapas = async function(){
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
       const images = (j && (j.images || j.imagens)) ? (Array.isArray(j.images || j.imagens) ? (j.images || j.imagens) : []) : [];
+      const table = (j && j.table) ? j.table : null;
+      const chart = (j && j.chart) ? j.chart : null;
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
       if(!resp || !resp.ok){
         addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images, actions: j.actions || [], suggestions: j.suggestions || [] });
+      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images, table, chart, actions: j.actions || [], suggestions: j.suggestions || [] });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();

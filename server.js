@@ -9434,6 +9434,56 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
+    if (_jarvisHasAny(norm, '/estoque') || ((hasAny('mostre', 'mostrar', 'ver') || norm.startsWith('estoque')) && hasAny('estoque') && (hasAny('chapa', 'chapas') || norm.includes('chapa')))) {
+      const { data } = await supabase
+        .from('chapas_estoque')
+        .select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo')
+        .order('nomenclatura', { ascending: true })
+        .limit(400);
+      const rows = Array.isArray(data) ? data : [];
+      const toQtd = (c) => Math.trunc(Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0);
+      const toMin = (c) => Math.trunc(Number(c.estoque_minimo ?? 0) || 0);
+      const top = rows.slice(0, 40);
+      const tbl = {
+        headers: ['Chapa', 'Saldo', 'Mínimo'],
+        rows: top.map((c) => [
+          String(c.nomenclatura || c.nome_uso || c.nome || '—').trim() || '—',
+          String(toQtd(c)),
+          String(toMin(c)),
+        ]),
+      };
+      const extra = rows.length > top.length ? ` (mostrando 40 de ${rows.length})` : '';
+      return res.json({ ok: true, resposta: `${_jarvisFirstName(nome)}, aqui está o estoque de chapas${extra}:`, table: tbl });
+    }
+
+    if ((hasAny('grafico', 'gráfico') || norm.startsWith('/dashboard')) && hasAny('faturamento', 'vendas', 'venda')) {
+      const y = year;
+      const de = `${y}-01-01`;
+      const ate = `${y}-12-31`;
+      const { data } = await supabase
+        .from('ofs')
+        .select('status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', ate)
+        .limit(5000);
+      const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
+      const sums = Array.from({ length: 12 }).map(() => 0);
+      rows.forEach((o) => {
+        const dt = String(o.data_conclusao || '').slice(0, 10);
+        const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return;
+        const mm = Number(m[2]);
+        if (!(mm >= 1 && mm <= 12)) return;
+        sums[mm - 1] += _assistPickOfValor(o);
+      });
+      const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      return res.json({
+        ok: true,
+        resposta: `${_jarvisFirstName(nome)}, gráfico de faturamento (${y}) pronto:`,
+        chart: { type: 'bar', title: 'Faturamento', labels, data: sums.map((v) => Math.round(Number(v || 0))) },
+      });
+    }
+
     const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
     if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
       try {
