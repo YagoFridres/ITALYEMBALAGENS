@@ -9390,8 +9390,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const month = _assistMonthFromText(norm);
     const year = new Date().getFullYear();
 
-    const respond = (txt) => res.json({ ok: true, resposta: String(txt || '').trim() });
-    const naoEntendi = () => respond(`Desculpe ${nome}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`);
+    const respond = (txt, extra) => res.json({ ok: true, resposta: String(txt || '').trim(), ...(extra && typeof extra === 'object' ? extra : {}) });
+    const naoEntendi = () => respond(
+      `Desculpe ${nome}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`,
+      { suggestions: ['/ajuda', '/resumo', '/atrasadas', '/estoque'] }
+    );
 
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
