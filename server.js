@@ -2111,7 +2111,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       String(limit),
       String(offset),
     ].join('|');
-    const cached = cacheGet(cacheKey);
+    const forceNoCache =
+      String(req.query.nocache || req.query.no_cache || '') === '1' ||
+      String(req.query.cache || '') === '0' ||
+      String(req.query.clear_cache || req.query.clearCache || '') === '1';
+    if (forceNoCache) {
+      try { cacheClearPrefix(CACHE_VERSION); } catch (_) {}
+    }
+    const cached = forceNoCache ? null : cacheGet(cacheKey);
     try {
       const cacheHit = cached != null;
       console.log('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
@@ -2222,6 +2229,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let colsArr = colsValidas.slice();
     let total = null;
     let dateCol = '';
+    const isDeletedAt = (v) => {
+      if (v == null) return false;
+      const s = String(v).trim();
+      if (!s) return false;
+      const sl = s.toLowerCase();
+      if (sl === 'null' || sl === 'undefined' || sl === '0') return false;
+      if (s === '0000-00-00' || s.startsWith('0000-00-00')) return false;
+      return true;
+    };
     if (from && to) {
       const fallback = (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at');
       const wantsEntrega = (dateFieldRaw === 'entrega' || dateFieldRaw === 'data_entrega' || dateFieldRaw === 'ent');
@@ -2257,7 +2273,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (empId) q = q.eq('emp_id', empId);
       if (clienteId) q = q.or(`cli_id.eq.${clienteId},cliente_id.eq.${clienteId}`);
       if (numero) q = q.or(`numero.eq.${numero},of.ilike.%${numero}%`);
-      if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
       const r = await q;
@@ -2282,6 +2297,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!data && rawErr) {
       _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit, offset, empId, status, from, to, lite });
       return res.status(500).json({ ok: false, error: String(rawErr.message || rawErr), rid: req._rid || null });
+    }
+
+    try {
+      const before = Array.isArray(data) ? data : [];
+      console.log('[OFS DEBUG] total antes do filtro:', before.length);
+      console.log('[OFS DEBUG] com deleted_at:', before.filter((o) => isDeletedAt(o?.deleted_at)).length);
+    } catch (_) {}
+    if (!incluirExcluidas) {
+      data = (Array.isArray(data) ? data : []).filter((o) => !isDeletedAt(o?.deleted_at));
+      if (typeof total === 'number') total = Number(data.length);
     }
 
     const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);

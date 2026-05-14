@@ -543,6 +543,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);}
 .close-btn{position:absolute;top:14px;right:14px;background:var(--s2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:.9rem;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;transition:.1s;}
 .close-btn:hover{color:var(--text);background:var(--s3);}
+.of-progress{display:flex;gap:8px;margin-bottom:16px;padding:0 4px;align-items:center;}
+.of-line{flex:1;height:1px;background:#2a2a4a;align-self:center;}
+.of-step{display:flex;align-items:center;gap:6px;color:#888;font-size:.8rem;font-weight:700;}
+.of-dot{width:24px;height:24px;border-radius:50%;background:#2a2a4a;color:#888;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;font-family:var(--mono);border:1px solid #2a2a4a;}
+.of-step.active{color:#fff;}
+.of-step.active .of-dot{background:#4a9eff;color:#fff;border-color:#4a9eff;}
+.of-step.done{color:#cbd5e1;}
+.of-step.done .of-dot{background:rgba(68,255,136,.14);border-color:rgba(68,255,136,.35);color:#44ff88;}
+.of-modal-body{display:flex;flex-direction:column;gap:12px;}
+.of-sec{background:var(--s2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.of-sec.locked{border-color:rgba(74,158,255,.35);background:rgba(74,158,255,.06);}
+.of-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:900;font-family:var(--mono);color:var(--text2);font-size:.75rem;}
+.of-sec-body{padding:12px 14px;}
+.of-sec-hint{color:var(--text3);font-size:.7rem;font-family:var(--mono);font-weight:900;}
 
 /* ===== ARTE FINAL ===== */
 .af-tool{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.82rem;transition:.12s;font-family:inherit;flex-shrink:0;}
@@ -8190,19 +8204,7 @@ async function abrirModalOF(id){
   const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
-  try{
-    const modal = document.getElementById('modal-of');
-    if(modal){
-      modal.querySelectorAll('details.of-sec').forEach((d)=>{ try{ d.open = true; }catch(e){} });
-      const ess = modal.querySelector('#of-sec-ess');
-      const sum = ess ? ess.querySelector('summary') : null;
-      if(sum && !sum._lockEss){
-        sum._lockEss = true;
-        sum.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ ess.open = true; }catch(e){} }, true);
-      }
-      try{ ofUpdateProgress(); }catch(e){}
-    }
-  }catch(e){}
+  try{ ofUpdateProgress(); }catch(e){}
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
 }
 
@@ -8848,13 +8850,10 @@ function ofUpdateProgress(){
   const detOk = !!(String(document.getElementById('f-obs')?.value || '').trim() || (Array.isArray(ofImgsTemp) && ofImgsTemp.length));
   if(detOk) stepDet.classList.add('done');
 
-  const essDet = document.getElementById('of-sec-ess');
-  const prodDet = document.getElementById('of-sec-prod');
-  const detDet = document.getElementById('of-sec-det');
-  if(essDet && essDet.open) stepEss.classList.add('active');
-  else if(prodDet && prodDet.open) stepProd.classList.add('active');
-  else if(detDet && detDet.open) stepDet.classList.add('active');
-  else stepEss.classList.add('active');
+  if(!essOk) stepEss.classList.add('active');
+  else if(!prodOk) stepProd.classList.add('active');
+  else if(!detOk) stepDet.classList.add('active');
+  else stepDet.classList.add('active');
 }
 function calcularValorTotalOF(){
   return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
@@ -27101,11 +27100,11 @@ function fecharCalculadora() {
   try{ modal?.removeAttribute('data-printing'); }catch(e){}
 
   if (modal) {
-    modal.style.display = 'none';
+    try{ modal.style.removeProperty('display'); }catch(e){}
     modal.classList.remove('active','show','visible','open');
   }
   if (overlay) {
-    overlay.style.display = 'none';
+    try{ overlay.style.removeProperty('display'); }catch(e){}
     overlay.classList.remove('active','show','visible','open');
   }
 
@@ -33246,12 +33245,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <h2>📋 Nova Ordem de Fabricação</h2>
   <div class="of-progress" id="of-progress">
     <div class="of-step active" id="of-step-ess"><span class="of-dot">1</span><span>Essencial</span></div>
+    <div class="of-line"></div>
     <div class="of-step" id="of-step-prod"><span class="of-dot">2</span><span>Produção</span></div>
+    <div class="of-line"></div>
     <div class="of-step" id="of-step-det"><span class="of-dot">3</span><span>Detalhes</span></div>
   </div>
   <div class="of-modal-body">
-    <details class="of-sec locked" open id="of-sec-ess">
-      <summary><span>1 — Essencial</span><span class="of-sec-hint" id="of-ess-hint">Obrigatório</span></summary>
+    <div class="of-sec locked" id="of-sec-ess">
+      <div class="of-sec-head"><span>1 — Essencial</span><span class="of-sec-hint" id="of-ess-hint">Obrigatório</span></div>
       <div class="of-sec-body">
         <div class="fg">
           <div class="mf"><label>Nº OF</label><input id="f-of" class="of-required" style="color:var(--accent);font-weight:800;font-family:var(--mono);" readonly></div>
@@ -33282,10 +33283,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="mf"><label>DIA PEDIDO</label><input id="f-dia" type="date"></div>
         </div>
       </div>
-    </details>
+    </div>
 
-    <details class="of-sec" open id="of-sec-prod">
-      <summary><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></summary>
+    <div class="of-sec" id="of-sec-prod">
+      <div class="of-sec-head"><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></div>
       <div class="of-sec-body">
         <div class="fg">
           <div class="mf fgf" style="grid-column:1/-1"><label>TIPO DE CAIXA</label>
@@ -33344,10 +33345,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </div>
         </div>
       </div>
-    </details>
+    </div>
 
-    <details class="of-sec" open id="of-sec-det">
-      <summary><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></summary>
+    <div class="of-sec" id="of-sec-det">
+      <div class="of-sec-head"><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></div>
       <div class="of-sec-body">
         <div class="fg">
           <div class="mf"><label>Status</label><select id="f-st" onchange="ofUpdateProgress()"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
@@ -33396,7 +33397,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div id="saldo-msg" class="mf fgf" style="grid-column:1/-1"></div>
         </div>
       </div>
-    </details>
+    </div>
   </div>
   <div class="modal-footer" style="position:sticky;bottom:0;background:var(--surface);margin-top:0;padding:12px 18px;border-top:1px solid var(--border);z-index:2">
     <button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>
@@ -39658,11 +39659,8 @@ window.atualizarChapas = async function(){
     return String(raw).slice(0, 10);
   }
 
-  async function mobileFetchOFsMobile(dateIso, empId){
+  async function mobileFetchOFsMobile(empId){
     const out = [];
-    const sel = clampIso(dateIso);
-    const hoje = todayIso();
-    const isHoje = sel === hoje;
     let offset = 0;
     for(let guard = 0; guard < 10; guard++){
       const qs = new URLSearchParams();
@@ -39671,11 +39669,6 @@ window.atualizarChapas = async function(){
       qs.set('offset', String(offset));
       qs.set('excluir_canceladas','1');
       if(empId) qs.set('empId', String(empId));
-      if(!isHoje){
-        qs.set('from', '1900-01-01');
-        qs.set('to', sel);
-        qs.set('date_field', 'entrega');
-      }
       const r = await api('GET','/ofs?' + qs.toString());
       const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
       out.push(...chunk);
@@ -39683,18 +39676,13 @@ window.atualizarChapas = async function(){
       offset += 500;
       if(out.length >= 3000) break;
     }
-    const ativos = out.filter(isOfAtiva);
-    if(isHoje) return ativos;
-    return ativos.filter((of)=>{
-      const dt = getOfDataEntrega(of);
-      return dt && dt <= sel;
-    });
+    return out.filter(isOfAtiva);
   }
   async function mobileRefreshMaquinas(){
     const maq = await api('GET','/maquinas');
     const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
     const empId = String(mobileState.maqEmp || '').trim();
-    const ofs = await mobileFetchOFsMobile(mobileState.maqDate, empId);
+    const ofs = await mobileFetchOFsMobile(empId);
     mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
     mobileState.ofs = ofs;
   }
@@ -40036,9 +40024,9 @@ window.atualizarChapas = async function(){
       return '';
     };
     const ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((of)=>{
-      if(isHoje) return true;
       const dt = getOfDataEntrega(of);
-      return dt && dt <= iso;
+      if(isHoje) return (!dt || dt <= hoje);
+      return dt === iso;
     });
     const ofs = ofsBase.filter((of)=>{
       const mk = String(getOfMaquinaAtual(of) || '').trim();
@@ -40293,9 +40281,9 @@ window.atualizarChapas = async function(){
           const base = (mobileState.ofs || [])
             .filter(isOfAtiva)
             .filter((o)=>{
-              if(isHoje0) return true;
               const dt = getOfDataEntrega(o);
-              return dt && dt <= iso0;
+              if(isHoje0) return (!dt || dt <= todayIso());
+              return dt === iso0;
             });
           const rows = isSemGrupo
             ? base.filter((o)=>!String(getOfMaquinaAtual(o) || '').trim())
