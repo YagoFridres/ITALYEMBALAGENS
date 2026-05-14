@@ -245,6 +245,27 @@ td.tc{text-align:center;}
 .img-thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;border:1px solid var(--border);cursor:zoom-in;transition:.15s;}.img-thumb:hover{transform:scale(1.15);border-color:var(--accent);}
 .img-ph{width:30px;height:30px;border-radius:5px;background:var(--s2);border:1px dashed var(--border);display:inline-flex;align-items:center;justify-content:center;color:var(--text3);font-size:.6rem;cursor:pointer;}
 
+/* ===== ROTEIRO ENTREGAS (PCP) ===== */
+.roteiro-week{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:auto;}
+.roteiro-week table{border-collapse:collapse;min-width:100%;width:max-content;}
+.roteiro-week th,.roteiro-week td{border:1px solid var(--border);padding:8px 10px;vertical-align:top;}
+.roteiro-week thead th{background:var(--s2);color:var(--text2);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;position:sticky;top:0;z-index:5;font-family:var(--mono);}
+.roteiro-week th.city{position:sticky;left:0;z-index:6;background:var(--s2);}
+.roteiro-week td.city{position:sticky;left:0;z-index:4;background:var(--surface);font-weight:900;min-width:180px;}
+.roteiro-cell{min-width:230px;}
+.roteiro-sum{font-family:var(--mono);font-size:.72rem;color:var(--text2);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.roteiro-list{margin-top:8px;display:none;flex-direction:column;gap:6px;}
+.roteiro-list.open{display:flex;}
+.roteiro-of{border:1px solid var(--border);background:var(--s2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;}
+.roteiro-of-top{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.roteiro-of-main{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.roteiro-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:.62rem;font-weight:900;font-family:var(--mono);border:1px solid var(--border);background:var(--surface);color:var(--text2);}
+.roteiro-badge.manual{background:rgba(148,163,184,.15);border-color:rgba(148,163,184,.4);color:rgba(148,163,184,.95);}
+.roteiro-of-num{font-weight:900;color:var(--accent);font-family:var(--mono);}
+.roteiro-of-sub{font-size:.72rem;color:var(--text2);line-height:1.2;}
+.roteiro-of-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.roteiro-drop{outline:2px dashed rgba(59,130,246,.6);outline-offset:3px;}
+
 /* OF ITENS */
 .of-itens-table{width:100%;border-collapse:collapse;font-size:.75rem;}
 .of-itens-table th{background:var(--s2);color:var(--text2);padding:5px 7px;text-align:left;border:1px solid var(--border);font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);white-space:nowrap;}
@@ -639,13 +660,28 @@ body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
 #modal-of .modal{
   width:min(860px,96vw);
   max-height:92vh;
-  overflow-y:auto;
+  overflow:hidden;
   position:fixed;
   top:50%;
   left:50%;
   transform:translate(-50%,-50%);
   z-index:9999;
+  display:flex;
+  flex-direction:column;
 }
+ #modal-of .of-modal-body{overflow:auto;padding:0 18px 14px 18px}
+ #modal-of .of-progress{display:flex;align-items:center;gap:10px;margin:8px 0 10px 0}
+ #modal-of .of-step{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--text2);font-family:var(--mono);font-weight:900}
+ #modal-of .of-dot{width:18px;height:18px;border-radius:999px;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text3)}
+ #modal-of .of-step.done .of-dot{border-color:rgba(34,197,94,.9);background:rgba(34,197,94,.15);color:rgba(34,197,94,.95)}
+ #modal-of .of-step.active .of-dot{border-color:rgba(59,130,246,.9);background:rgba(59,130,246,.15);color:rgba(59,130,246,.95)}
+ #modal-of details.of-sec{border:1px solid var(--border);border-radius:12px;background:var(--s2);margin:10px 0;overflow:hidden}
+ #modal-of details.of-sec > summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;font-weight:900;color:var(--text)}
+#modal-of details.of-sec.locked > summary{cursor:default;pointer-events:none}
+ #modal-of details.of-sec > summary::-webkit-details-marker{display:none}
+ #modal-of .of-sec-body{padding:12px}
+ #modal-of .of-sec-hint{font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900}
+ #modal-of .of-required.bad{border-color:rgba(239,68,68,.8)!important;box-shadow:0 0 0 2px rgba(239,68,68,.18)!important}
 body[data-device="mobile"] #modal-of.modal-overlay{align-items:center;justify-content:center;padding:0 8px;}
 body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-height:92vh;border-radius:14px;margin:0;}
 
@@ -2708,6 +2744,11 @@ function renderPCP(){
   _pcpRenderizando = true;
   try{
     if(!PCP_DIA_ATUAL) PCP_DIA_ATUAL = PCP_DIA_PADRAO || today();
+    const view = String(window.PCP_VIEW || 'pcp');
+    if(view === 'roteiro'){
+      try{ pcpRenderRoteiroEntregas(); }catch(e){ toast('Erro ao carregar roteiro','var(--red)'); }
+      return;
+    }
     const isTodas = PCP_DIA_ATUAL === '__todas__';
     const isSemana = PCP_DIA_ATUAL === '__semana__';
     const busca=(document.getElementById('pcp-busca')||{}).value||'';
@@ -2889,6 +2930,438 @@ function renderPCP(){
   } finally {
     _pcpRenderizando = false;
   }
+}
+
+window.PCP_VIEW = window.PCP_VIEW || 'pcp';
+window._PCP_ROTEIRO_OPEN = window._PCP_ROTEIRO_OPEN || {};
+window._PCP_ROTEIRO_LAST_GROUP = window._PCP_ROTEIRO_LAST_GROUP || null;
+let _pcpRoteiroLoading = false;
+let _pcpRoteiroCacheKey = '';
+let _pcpRoteiroCacheAt = 0;
+let _pcpRoteiroCacheRows = [];
+
+function pcpAbrirRoteiroEntregas(){
+  window.PCP_VIEW = 'roteiro';
+  const tw = document.getElementById('pcp-table-wrap');
+  const rw = document.getElementById('pcp-roteiro-wrap');
+  if(tw) tw.style.display = 'none';
+  if(rw) rw.style.display = '';
+  renderPCP();
+}
+
+function pcpFecharRoteiroEntregas(){
+  window.PCP_VIEW = 'pcp';
+  const tw = document.getElementById('pcp-table-wrap');
+  const rw = document.getElementById('pcp-roteiro-wrap');
+  if(rw) rw.style.display = 'none';
+  if(tw) tw.style.display = '';
+  renderPCP();
+}
+
+function pcpRoteiroDomId(s){
+  return String(s || '').toLowerCase().replace(/[^a-z0-9_-]/g,'_').slice(0, 80) || 'x';
+}
+
+function pcpRoteiroOverridesLoad(){
+  try{
+    const raw = localStorage.getItem('PCP_ROTEIRO_OVERRIDES') || '';
+    const obj = raw ? JSON.parse(raw) : {};
+    return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+  }catch(e){ return {}; }
+}
+
+function pcpRoteiroOverridesSave(map){
+  try{ localStorage.setItem('PCP_ROTEIRO_OVERRIDES', JSON.stringify(map || {})); }catch(e){}
+}
+
+function pcpRoteiroSetOverride(ofId, patch){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const cur = pcpRoteiroOverridesLoad();
+  const old = (cur[id] && typeof cur[id] === 'object') ? cur[id] : {};
+  cur[id] = { ...old, ...(patch || {}) };
+  pcpRoteiroOverridesSave(cur);
+}
+
+function pcpRoteiroClearOverride(ofId){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const cur = pcpRoteiroOverridesLoad();
+  delete cur[id];
+  pcpRoteiroOverridesSave(cur);
+}
+
+function pcpRoteiroGetOverride(ofId){
+  const id = String(ofId || '').trim();
+  if(!id) return null;
+  const cur = pcpRoteiroOverridesLoad();
+  const ov = cur[id];
+  if(!ov || typeof ov !== 'object') return null;
+  return {
+    dia_semana: ov.dia_semana != null ? Number(ov.dia_semana) : null,
+    ignore: !!ov.ignore,
+  };
+}
+
+function pcpRoteiroToggleList(listId){
+  const id = String(listId || '').trim();
+  if(!id) return;
+  const el = document.getElementById(id);
+  if(!el) return;
+  const open = !el.classList.contains('open');
+  el.classList.toggle('open', open);
+  window._PCP_ROTEIRO_OPEN[id] = open;
+}
+
+function pcpRoteiroDragStart(ev, ofId){
+  try{
+    ev.dataTransfer.setData('text/of-id', String(ofId || ''));
+    ev.dataTransfer.effectAllowed = 'move';
+  }catch(e){}
+}
+
+function pcpRoteiroDropToDay(ofId, day){
+  const id = String(ofId || '').trim();
+  const d = Number(day);
+  if(!id) return;
+  if(d >= 1 && d <= 5){
+    pcpRoteiroSetOverride(id, { dia_semana: d, ignore: false });
+  } else {
+    pcpRoteiroSetOverride(id, { dia_semana: null, ignore: true });
+  }
+  pcpRenderRoteiroEntregas();
+}
+
+function pcpRoteiroMover(ofId){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const ov = pcpRoteiroGetOverride(id);
+  const atual = (ov && ov.ignore) ? 0 : (ov && ov.dia_semana != null ? ov.dia_semana : '');
+  const v = prompt('Mover para dia: 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 0=Sem roteiro (Manual)', String(atual));
+  if(v == null) return;
+  const n = Number(String(v).trim());
+  pcpRoteiroDropToDay(id, n);
+}
+
+function pcpRoteiroToggleIgnorar(ofId, checked){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  if(checked){
+    pcpRoteiroSetOverride(id, { ignore:true, dia_semana:null });
+  } else {
+    const ov = pcpRoteiroGetOverride(id);
+    const dia = ov && ov.dia_semana != null ? ov.dia_semana : null;
+    pcpRoteiroSetOverride(id, { ignore:false, dia_semana: dia });
+  }
+  pcpRenderRoteiroEntregas();
+}
+
+function pcpRenderRoteiroEntregas(){
+  if(_pcpRoteiroLoading) return;
+  _pcpRoteiroLoading = true;
+  pcpRenderRoteiroEntregasAsync()
+    .catch((e)=>{ toast(String(e?.message || e || 'Erro ao carregar roteiro'), 'var(--red)'); })
+    .finally(()=>{ _pcpRoteiroLoading = false; });
+}
+
+async function pcpRenderRoteiroEntregasAsync(){
+  const wrap = document.getElementById('pcp-roteiro-wrap');
+  const body = document.getElementById('pcp-roteiro-body');
+  const sub = document.getElementById('pcp-roteiro-sub');
+  const tw = document.getElementById('pcp-table-wrap');
+  if(!wrap || !body) return;
+  if(tw) tw.style.display = 'none';
+  wrap.style.display = '';
+  body.innerHTML = `<div style="padding:12px;color:var(--text2)">Carregando roteiro…</div>`;
+
+  const empId = String(document.getElementById('pcp-emp')?.value || '').trim();
+  const busca = String(document.getElementById('pcp-busca')?.value || '').trim();
+  const status = String(document.getElementById('pcp-status')?.value || '').trim();
+  const vend = String(document.getElementById('pcp-vend')?.value || '').trim();
+
+  const qs = new URLSearchParams();
+  if(empId) qs.set('emp_id', empId);
+  const cacheKey = `emp=${empId || 'all'}`;
+  const now = Date.now();
+  let rows = [];
+  if(_pcpRoteiroCacheKey === cacheKey && (now - _pcpRoteiroCacheAt) < 60_000){
+    rows = Array.isArray(_pcpRoteiroCacheRows) ? _pcpRoteiroCacheRows : [];
+  } else {
+    const url = '/api/roteiro/semana' + (qs.toString() ? ('?' + qs.toString()) : '');
+    const r = await apiFetch(url, { method:'GET' });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!r?.ok) throw new Error(String(j?.error || 'Falha ao carregar roteiro'));
+    rows = Array.isArray(j?.data) ? j.data : [];
+    _pcpRoteiroCacheKey = cacheKey;
+    _pcpRoteiroCacheAt = now;
+    _pcpRoteiroCacheRows = rows.slice();
+  }
+
+  const norm = (s)=>{
+    try{
+      return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+    }catch(e){ return String(s||'').toLowerCase().trim(); }
+  };
+  const byVend = (o)=>{
+    if(!vend) return true;
+    const vid = String(o.vendId || o.vend_id || o.vendedor_id || o.vendedorId || '').trim();
+    return vid === vend;
+  };
+  const byStatus = (o)=>{
+    if(!status) return true;
+    return String(o.status || '').trim() === status;
+  };
+  const byBusca = (o)=>{
+    if(!busca) return true;
+    const q = norm(busca);
+    const hay = [
+      o.of, o.numero,
+      o.cliente_nome,
+      o.descricao, o.prodDesc, o.produto,
+      o.cidade_entrega,
+    ].filter(Boolean).map(norm).join(' | ');
+    return hay.includes(q);
+  };
+
+  const overrides = pcpRoteiroOverridesLoad();
+  const dayCols = [1,2,3,4,5,0];
+  const dayLbl = { 1:'Seg', 2:'Ter', 3:'Qua', 4:'Qui', 5:'Sex', 0:'Sem roteiro definido' };
+
+  const pickQtd = (o)=>{
+    const v = Number(o.qtd ?? o.quantidade ?? o.qtd_pedida ?? o.qtdTotal ?? 0);
+    return Number.isFinite(v) ? v : 0;
+  };
+  const pickEmp = (o)=>{
+    const v = String(o.emp_id ?? o.empId ?? o.empresa_id ?? o.empresa ?? '').trim();
+    return v || '';
+  };
+  const empBadgeHtml = (empCode)=>{
+    const e = (Array.isArray(EMPRESAS) ? EMPRESAS : []).find(x=>String(x.id||'')===String(empCode||''));
+    const nome = e ? (e.sigla || e.nome || empCode) : (empCode || '—');
+    const cor = e ? e.cor : '';
+    const map = { italy:'rgba(59,130,246,.18)', carto:'rgba(34,197,94,.18)', oeste:'rgba(234,179,8,.18)' };
+    const bg = map[cor] || 'rgba(148,163,184,.16)';
+    const bd = map[cor] ? bg.replace('.18','.38') : 'rgba(148,163,184,.28)';
+    return `<span class="roteiro-badge" style="background:${bg};border-color:${bd}">${escH(String(nome||'').toUpperCase())}</span>`;
+  };
+
+  const effective = (o)=>{
+    const id = String(o.id || '').trim();
+    const ov = id ? overrides[id] : null;
+    const ignore = !!(ov && ov.ignore);
+    const manualDay = (ov && ov.dia_semana != null) ? Number(ov.dia_semana) : null;
+    const baseDay = (o.dia_semana != null) ? Number(o.dia_semana) : null;
+    let d = ignore ? 0 : (manualDay != null ? manualDay : baseDay);
+    if(!(d >= 1 && d <= 5)) d = 0;
+    return { dia: d, ignore, manual: ignore || manualDay != null };
+  };
+
+  const rowsFil = rows.filter((o)=>byVend(o) && byStatus(o) && byBusca(o));
+
+  const citiesSet = new Set();
+  const grid = {};
+  for(const o of rowsFil){
+    const city = String(o.cidade_entrega || '—').trim() || '—';
+    citiesSet.add(city);
+    if(!grid[city]) grid[city] = { 0:[],1:[],2:[],3:[],4:[],5:[] };
+    const eff = effective(o);
+    const item = { ...o, _roteiro: eff };
+    grid[city][eff.dia].push(item);
+  }
+  const cities = Array.from(citiesSet).sort((a,b)=>norm(a).localeCompare(norm(b)));
+  cities.forEach((c)=>{
+    for(const d of dayCols){
+      grid[c][d].sort((a,b)=>{
+        const qa = norm(a.cliente_nome || '');
+        const qb = norm(b.cliente_nome || '');
+        if(qa !== qb) return qa.localeCompare(qb);
+        return String(a.of || a.numero || '').localeCompare(String(b.of || b.numero || ''));
+      });
+    }
+  });
+
+  const totalOfs = rowsFil.length;
+  const totalCx = rowsFil.reduce((s,o)=>s + pickQtd(o), 0);
+  if(sub) sub.textContent = `${totalOfs} OFs · ${totalCx.toLocaleString('pt-BR')} cx`;
+
+  window._PCP_ROTEIRO_LAST_GROUP = { dayCols, dayLbl, cities, grid, rows: rowsFil };
+
+  if(!rowsFil.length){
+    body.innerHTML = `<div style="padding:12px;color:var(--text2)">Nenhuma OF com entrega definida para o filtro atual.</div>`;
+    return;
+  }
+
+  const ths = dayCols.map((d)=>`<th>${escH(dayLbl[d] || String(d))}</th>`).join('');
+  const rowsHtml = cities.map((city)=>{
+    const tds = dayCols.map((d)=>{
+      const list = grid[city][d] || [];
+      const qtd = list.reduce((s,o)=>s + pickQtd(o), 0);
+      const listId = `roteiro-list-${pcpRoteiroDomId(city)}-${String(d)}`;
+      const open = !!window._PCP_ROTEIRO_OPEN[listId];
+      const cellId = `roteiro-cell-${pcpRoteiroDomId(city)}-${String(d)}`;
+      const summary = `<div class="roteiro-sum">
+        <div><span style="font-weight:900">${list.length}</span> OFs · <span style="font-weight:900">${qtd.toLocaleString('pt-BR')}</span> cx</div>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="pcpRoteiroToggleList('${escAttr(listId)}')" style="padding:4px 10px">${open?'Fechar':'Ver'}</button>
+      </div>`;
+      const items = list.map((o)=>{
+        const num = String(o.of || o.numero || '—').trim();
+        const emp = pickEmp(o);
+        const qtdOf = pickQtd(o);
+        const manualBadge = o._roteiro && o._roteiro.manual ? `<span class="roteiro-badge manual">Manual</span>` : '';
+        const urg = (o.urgente || o.urg || o.urgencia) ? `<span class="tag t-ug">URG</span>` : '';
+        const cli = String(o.cliente_nome || '').trim();
+        const desc = String(o.descricao || o.prodDesc || o.produto || '').trim();
+        const cidade = String(o.cidade_entrega || '').trim();
+        const end = String(o.cliente_endereco || o.endereco_entrega || '').trim();
+        const ignore = o._roteiro && o._roteiro.ignore;
+        const chk = `<label style="display:flex;align-items:center;gap:8px;font-size:.72rem;color:var(--text2);font-family:var(--mono);">
+          <input type="checkbox" ${ignore?'checked':''} onchange="pcpRoteiroToggleIgnorar('${escAttr(String(o.id||''))}', this.checked)">
+          Ignorar roteiro
+        </label>`;
+        return `<div class="roteiro-of" draggable="true" ondragstart="pcpRoteiroDragStart(event,'${escAttr(String(o.id||''))}')">
+          <div class="roteiro-of-top">
+            <div class="roteiro-of-main">
+              <span class="roteiro-of-num">OF ${escH(num)}</span>
+              ${empBadgeHtml(emp)}
+              ${manualBadge}
+              ${urg}
+              <span class="roteiro-badge">${escH(String(qtdOf||0).toLocaleString('pt-BR'))} cx</span>
+            </div>
+            <div class="roteiro-of-actions">
+              <button class="btn btn-ghost btn-sm" type="button" onclick="pcpRoteiroMover('${escAttr(String(o.id||''))}')" style="padding:4px 10px">✏️ Mover</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="pcpRoteiroClearOverride('${escAttr(String(o.id||''))}');pcpRenderRoteiroEntregas();" style="padding:4px 10px">Limpar</button>
+            </div>
+          </div>
+          <div class="roteiro-of-sub"><b>${escH(cli)}</b>${desc?` — ${escH(desc)}`:''}</div>
+          <div class="roteiro-of-sub">${cidade?`📍 ${escH(cidade)}`:''}${end?` · ${escH(end)}`:''}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">${chk}</div>
+        </div>`;
+      }).join('');
+      const listBox = `<div class="roteiro-list ${open?'open':''}" id="${escAttr(listId)}">${items || `<div style="color:var(--text3);font-size:.72rem;font-family:var(--mono)">—</div>`}</div>`;
+      const cellCls = `roteiro-cell`;
+      return `<td class="${cellCls}" data-day="${d}" data-city="${escAttr(city)}" id="${escAttr(cellId)}">${summary}${listBox}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="city">${escH(city)}</td>
+      ${tds}
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `<div class="roteiro-week">
+    <table>
+      <thead>
+        <tr>
+          <th class="city">Cidade</th>
+          ${ths}
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>
+  </div>`;
+
+  document.querySelectorAll('#pcp-roteiro-body td.roteiro-cell').forEach((cell)=>{
+    cell.addEventListener('dragover', (e)=>{ e.preventDefault(); cell.classList.add('roteiro-drop'); });
+    cell.addEventListener('dragleave', ()=>{ cell.classList.remove('roteiro-drop'); });
+    cell.addEventListener('drop', (e)=>{
+      e.preventDefault();
+      cell.classList.remove('roteiro-drop');
+      const id = e.dataTransfer.getData('text/of-id');
+      const day = Number(cell.dataset.day);
+      if(id) pcpRoteiroDropToDay(id, day);
+    });
+  });
+}
+
+function pcpImprimirRoteiroSemana(){
+  const g = window._PCP_ROTEIRO_LAST_GROUP;
+  if(!g || !g.grid){ toast('Roteiro ainda não carregado','var(--yellow)'); return; }
+  const dayCols = g.dayCols || [1,2,3,4,5,0];
+  const dayLbl = g.dayLbl || {};
+  const cities = g.cities || [];
+  const grid = g.grid || {};
+  const rows = [];
+  for(const d of dayCols){
+    for(const city of cities){
+      const list = (grid[city] && grid[city][d]) ? grid[city][d] : [];
+      if(!list.length) continue;
+      const qtd = list.reduce((s,o)=> s + (Number(o.qtd ?? o.quantidade ?? 0) || 0), 0);
+      rows.push({ dia: dayLbl[d] || String(d), city, n: list.length, qtd });
+    }
+  }
+  const html = `
+  <html><head><meta charset="utf-8"><title>Roteiro de Entregas</title>
+  <style>
+    body{font-family:Arial, sans-serif; padding:18px;}
+    h1{font-size:16px;margin:0 0 10px 0;}
+    table{border-collapse:collapse;width:100%;}
+    th,td{border:1px solid #ccc;padding:6px 8px;font-size:12px;vertical-align:top;}
+    th{background:#f3f4f6;text-transform:uppercase;letter-spacing:.4px;font-size:11px;}
+  </style></head><body>
+    <h1>Roteiro de Entregas — ${new Date().toLocaleString('pt-BR')}</h1>
+    <table>
+      <thead><tr><th>Dia</th><th>Cidade</th><th>OFs</th><th>Total caixas</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr><td>${escH(r.dia)}</td><td>${escH(r.city)}</td><td style="text-align:center">${escH(String(r.n))}</td><td style="text-align:right">${escH(String(Number(r.qtd||0).toLocaleString('pt-BR')))}</td></tr>`).join('')}
+      </tbody>
+    </table>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ toast('Pop-up bloqueado pelo navegador','var(--yellow)'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
+}
+
+function pcpImprimirRomaneio(){
+  const g = window._PCP_ROTEIRO_LAST_GROUP;
+  if(!g || !g.grid){ toast('Roteiro ainda não carregado','var(--yellow)'); return; }
+  const dayCols = g.dayCols || [1,2,3,4,5,0];
+  const dayLbl = g.dayLbl || {};
+  const cities = g.cities || [];
+  const grid = g.grid || {};
+  const htmlBlocks = [];
+  for(const d of dayCols){
+    const parts = [];
+    for(const city of cities){
+      const list = (grid[city] && grid[city][d]) ? grid[city][d] : [];
+      if(!list.length) continue;
+      parts.push(`<h3>${escH(city)} (${list.length} OFs)</h3>`);
+      parts.push(`<table><thead><tr><th>OF</th><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Endereço</th></tr></thead><tbody>${
+        list.map(o=>{
+          const ofn = String(o.of || o.numero || '');
+          const cli = String(o.cliente_nome || '');
+          const prod = String(o.descricao || o.prodDesc || o.produto || '');
+          const qtd = Number(o.qtd ?? o.quantidade ?? 0) || 0;
+          const end = String(o.cliente_endereco || o.endereco_entrega || o.cidade_entrega || '');
+          return `<tr><td>${escH(ofn)}</td><td>${escH(cli)}</td><td>${escH(prod)}</td><td style="text-align:right">${escH(String(qtd.toLocaleString('pt-BR')))}</td><td>${escH(end)}</td></tr>`;
+        }).join('')
+      }</tbody></table>`);
+    }
+    if(parts.length) htmlBlocks.push(`<section><h2>${escH(dayLbl[d] || String(d))}</h2>${parts.join('')}</section>`);
+  }
+  const html = `
+  <html><head><meta charset="utf-8"><title>Romaneio</title>
+  <style>
+    body{font-family:Arial, sans-serif; padding:18px;}
+    h1{font-size:16px;margin:0 0 10px 0;}
+    h2{font-size:14px;margin:18px 0 8px 0;border-bottom:1px solid #ddd;padding-bottom:4px;}
+    h3{font-size:12px;margin:10px 0 6px 0;}
+    table{border-collapse:collapse;width:100%;margin-bottom:10px;}
+    th,td{border:1px solid #ccc;padding:6px 8px;font-size:11px;vertical-align:top;}
+    th{background:#f3f4f6;text-transform:uppercase;letter-spacing:.4px;font-size:10px;}
+  </style></head><body>
+    <h1>Romaneio — ${new Date().toLocaleString('pt-BR')}</h1>
+    ${htmlBlocks.join('') || '<div>Sem entregas</div>'}
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if(!w){ toast('Pop-up bloqueado pelo navegador','var(--yellow)'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  w.print();
 }
 
 window._pcpEditNumeroId = window._pcpEditNumeroId || '';
@@ -7112,132 +7585,88 @@ function usarMaquinaSugerida(maquinaId){
 async function ofAtualizarSugestaoMaquinas(){
   const box = document.getElementById('sugestao-maquinas');
   if(!box) return;
-  try{
-    const tempoEl = document.getElementById('tempo-estimado-sugestao');
-    if(tempoEl){ tempoEl.style.display = 'none'; tempoEl.innerHTML = ''; }
-  }catch(e){}
-  const ocup = window._OCUPACAO_DATA && window._OCUPACAO_DATA.data ? window._OCUPACAO_DATA : null;
-  const ocupHtml = (()=>{
-    if(!ocup || !Array.isArray(ocup.items)) return '';
-    const blocks = (pct)=>{
-      const p = Math.max(0, Math.min(100, Math.round(Number(pct)||0)));
-      const filled = Math.max(0, Math.min(10, Math.round(p/10)));
-      return '█'.repeat(filled) + '░'.repeat(10-filled);
-    };
-    const data = String(ocup.data||'').slice(0,10);
-    const hoje = new Date().toISOString().slice(0,10);
-    const dataLabel = data && data !== hoje ? (typeof fmtDataBR === 'function' ? fmtDataBR(data) : data) : 'hoje';
-    const linhas = ocup.items.map(it=>{
-      const nome = String(it?.nome || '').trim() || '—';
-      const pct = Math.max(0, Math.min(100, Math.round(Number(it?.pct)||0)));
-      const ofsNoDia = Number(it?.ofsNoDia||0) || 0;
-      const cheia = pct >= 85;
-      return `<div style="font-family:var(--mono);font-size:12px;color:${cheia?'var(--yellow)':'var(--text3)'}">${escH(nome)}: ${escH(blocks(pct))} ${escH(String(pct))}% (${escH(String(ofsNoDia))} OFs)${cheia?' ⚠️ CHEIA':''}</div>`;
-    }).join('');
-    return `<div style="margin:8px 0 10px 0">
-      <div style="font-weight:900;margin-bottom:6px">📊 Ocupação para ${escH(dataLabel)}:</div>
-      ${linhas}
-    </div>`;
-  })();
   const dims = ofDimensoesGet();
   const comp = dims.comprimento;
   const larg = dims.largura;
-  if(!comp || !larg){
-    box.innerHTML = `${ocupHtml}<span style="color:var(--text3)">Preencha comprimento e largura para sugerir máquinas.</span>`;
+  const alt = dims.altura;
+  const onda = String(document.getElementById('of-onda')?.value || '').trim();
+  if(!(comp > 0 && larg > 0 && alt > 0)){
+    box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento, largura e altura para ver a sugestão.</span>`;
     return;
   }
-  let r = [];
-  try{
-    let dataProd = '';
+  const key = `${Math.round(comp)}x${Math.round(larg)}x${Math.round(alt)}:${onda||'-'}`;
+  if(String(window._OF_SUG_IGNORE_KEY||'') === key){
+    box.innerHTML = '';
+    return;
+  }
+  const reqId = (window._OF_SUG_REQ_ID = (Number(window._OF_SUG_REQ_ID||0) + 1));
+  if(window._OF_SUG_TMR) clearTimeout(window._OF_SUG_TMR);
+  box.innerHTML = `<span style="color:var(--text3)">Calculando sugestão…</span>`;
+  window._OF_SUG_TMR = setTimeout(async ()=>{
     try{
-      const ent = String(document.getElementById('f-ent')?.value || '').slice(0,10);
-      if(/^\d{4}-\d{2}-\d{2}$/.test(ent)){
-        const modo = (typeof ofEntregaModoGet === 'function') ? ofEntregaModoGet() : '3dias';
-        dataProd = (modo === 'exata') ? ent : subtrairDiasUteis(ent, 3);
-      }
-    }catch(e){}
-    if(!dataProd){
-      dataProd = String(
-        document.getElementById('f-dia-prog')?.value ||
-        new Date().toISOString().slice(0,10)
-      ).slice(0,10);
-    }
-    r = await escolherMaquinaAutomatica(comp, larg, dims.altura, dataProd);
-  }catch(e){
-    box.innerHTML = `<span style="color:var(--red);font-weight:900">Erro ao sugerir máquinas.</span>`;
-    return;
-  }
-  const itens = Array.isArray(r) ? r : [];
-  const compativeis = itens.filter(x=>x && x.compativel);
-  const incompativeis = itens.filter(x=>x && !x.compativel);
-
-  try{
-    const tipoSel = (typeof ofGetTipoCaixaSelecionado === 'function') ? (ofGetTipoCaixaSelecionado() || {}) : {};
-    const tipoNome = String(tipoSel.nome || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-    if(tipoNome.includes('envoltoria')){
-      const normM = (s)=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-      const ix = compativeis.findIndex(x=>{
-        const m = x?.maquina || {};
-        const n = normM(m.col || m.nome || '');
-        return /\bimp\s*0?3\b/.test(n) || /\bimpress.*\s*0?3\b/.test(n) || n.includes('imp03');
-      });
-      if(ix > 0){
-        const hit = compativeis.splice(ix, 1)[0];
-        compativeis.unshift(hit);
-      }
-    }
-  }catch(e){}
-  window._SUGESTAO_MAQ_MAP = {};
-  compativeis.forEach(x=>{
-    const id = String(x?.maquina?.id || '').trim();
-    if(id) window._SUGESTAO_MAQ_MAP[id] = x;
-  });
-
-  const fmtMin = (min)=>{
-    const t = Math.max(0, Math.trunc(Number(min)||0));
-    const h = Math.floor(t/60);
-    const m = Math.round(t%60);
-    return h > 0 ? `${h}h ${m}min` : `${m}min`;
-  };
-
-  const linhaComp = compativeis.length
-    ? compativeis.map((x, idx)=>{
-        const m = x.maquina || {};
-        const nome = String(m.col || m.nome || '').trim() || '—';
-        const mid = String(m?.id || '').trim();
-        const velocidade = Number(m?.producao || m?.phora || m?.producao_hora || m?.velocidade || m?.cxhora || m?.producao_media || m?.prod || 0) || 0;
-        const pct = Number(x?.ocupacaoPct ?? 0) || 0;
-        const ofsNoDia = Number(x?.ofsNoDia ?? 0) || 0;
-        const livres = Number(x?.minutosLivres ?? 0) || 0;
-        const cheia = pct > 85;
-        const rec = idx === 0 && !cheia;
-        const cor = rec ? 'var(--green)' : cheia ? 'var(--yellow)' : 'var(--yellow)';
-        const label = rec ? `${nome} (recomendada - ${velocidade} cx/h)` : `${nome} (${velocidade} cx/h)${cheia ? ' — CHEIA ('+pct+'%)' : ''}`;
-        const tempoEstaOf = x?.tempoOf ? fmtMin(x.tempoOf.totalMin) : '—';
-        const btnTxt = cheia ? 'Usar mesmo assim' : 'Usar';
-        const warn = cheia ? `<div style="color:var(--text3);margin-left:18px">⚠️ Máquina quase cheia. Adicionar mesmo assim?</div>` : '';
-        const dataStr = String(x?.data || '').slice(0,10);
-        const hoje = new Date().toISOString().slice(0,10);
-        const dataLabel = dataStr && dataStr !== hoje ? (typeof fmtDataBR === 'function' ? fmtDataBR(dataStr) : dataStr) : 'hoje';
-        return `<div style="margin:6px 0">
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="color:${cor};font-weight:900">${rec?'🟢':'🟡'} ${escH(label)}</span>
-            <button type="button" class="btn btn-ghost btn-sm btn-usar-maquina" data-maq-id="${escAttr(mid)}" onclick="usarMaquinaSugerida('${escAttr(mid)}')" style="padding:4px 10px">${escH(btnTxt)}</button>
-          </div>
-          <div style="color:var(--text3);margin-left:18px">📊 Ocupação ${escH(dataLabel)}: ${escH(String(pct))}% (${escH(String(ofsNoDia))} OFs) | ${escH(fmtMin(livres))} livres</div>
-          <div style="color:var(--text3);margin-left:18px">⏱ Esta OF levaria: ${escH(tempoEstaOf)}</div>
-          ${warn}
+      const resp = await apiFetch('/api/maquinas/sugerir', { method:'POST', body:{ comprimento: comp, largura: larg, altura: alt, onda } });
+      const j = resp ? await resp.json().catch(()=>null) : null;
+      if(reqId !== window._OF_SUG_REQ_ID) return;
+      const rows = Array.isArray(j?.data) ? j.data : [];
+      if(!rows.length){
+        box.innerHTML = `<div style="padding:10px 12px;border-radius:10px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:var(--text2)">
+          <div style="font-weight:900">⚠️ Nenhuma máquina cadastrada suporta essas medidas</div>
         </div>`;
-      }).join('')
-    : `<div style="color:var(--red);font-weight:900">Nenhuma máquina compatível.</div>`;
+        return;
+      }
+      const compats = rows.filter(r=>r && r.compativel);
+      const incomps = rows.filter(r=>r && !r.compativel);
+      const dev = rows[0]?.desenvolvimento_necessario != null ? Number(rows[0].desenvolvimento_necessario) : null;
+      const boca = rows[0]?.boca_necessaria != null ? Number(rows[0].boca_necessaria) : null;
+      window._OF_SUG_LAST = { key, compatIds: compats.map(r=>String(r.id||'')).filter(Boolean), compatNomes: compats.map(r=>String(r.nome||'').trim()).filter(Boolean) };
+      const nomesOk = (window._OF_SUG_LAST.compatNomes || []).slice(0, 8);
+      const okLine = nomesOk.length ? nomesOk.join(', ') : '—';
+      const incLines = incomps.slice(0, 10).map(r=>{
+        const nm = String(r.nome||'—').trim() || '—';
+        const mot = String(r.motivo||'').trim();
+        return `<div style="color:var(--text3)">ℹ️ ${escH(nm)}${mot?` — ${escH(mot)}`:''}</div>`;
+      }).join('');
+      const tipLine = dev && boca ? `Desenvolvimento ${Math.round(dev)}mm · Boca ${Math.round(boca)}mm` : '';
+      box.innerHTML = `
+        <div style="padding:10px 12px;border-radius:12px;border:1px solid rgba(34,197,94,.35);background:rgba(34,197,94,.08);color:var(--text2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:900">💡 Sugestão (opcional)</div>
+            <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono);font-weight:900">${escH(tipLine)}</div>
+          </div>
+          <div style="margin-top:8px"><span style="font-weight:900;color:rgba(34,197,94,.95)">✅ Máquinas compatíveis:</span> ${escH(okLine)}</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="ofSugestaoMaquinasIgnorar()" style="padding:6px 10px">Ignorar</button>
+            <button type="button" class="btn btn-green btn-sm" onclick="ofSugestaoMaquinasAplicar()" style="padding:6px 10px">Usar sugestão</button>
+          </div>
+          ${incLines?`<div style="margin-top:10px">${incLines}</div>`:''}
+        </div>
+      `;
+    }catch(e){
+      if(reqId !== window._OF_SUG_REQ_ID) return;
+      box.innerHTML = `<span style="color:var(--text3)">Sugestão indisponível no momento.</span>`;
+    }
+  }, 250);
+}
 
-  const linhaInc = incompativeis.slice(0, 12).map(x=>{
-    const m = x?.maquina || {};
-    const nome = String(m?.col || m?.nome || '').trim() || '—';
-    const motivo = String(x?.motivo || '').trim() || 'incompatível';
-    return `<div style="color:var(--text3)">${escH('🔴 ' + nome + ' - ' + motivo)}</div>`;
-  }).join('');
-  box.innerHTML = `${ocupHtml}<div style="font-weight:900;margin-bottom:6px">✅ Máquinas compatíveis:</div>${linhaComp}${linhaInc?`<div style="margin-top:8px;font-weight:900;color:var(--text3)">Incompatíveis:</div>${linhaInc}`:''}`;
+function ofSugestaoMaquinasIgnorar(){
+  try{
+    const key = String(window._OF_SUG_LAST?.key || '');
+    if(key) window._OF_SUG_IGNORE_KEY = key;
+  }catch(e){}
+  try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
+}
+
+function ofSugestaoMaquinasAplicar(){
+  try{
+    const ids = Array.isArray(window._OF_SUG_LAST?.compatIds) ? window._OF_SUG_LAST.compatIds : [];
+    if(!ids.length){ toast('Nenhuma máquina compatível para aplicar','var(--yellow)'); return; }
+    OF_FLUXO_IDS = ids.slice(0, 10).map(x=>String(x)).filter(Boolean);
+    renderMaqChks();
+    window._OF_SUG_IGNORE_KEY = '';
+    toast('Sugestão aplicada no fluxo ✓','var(--green)');
+    try{ document.getElementById('of-sec-prod')?.setAttribute('open',''); }catch(e){}
+    try{ ofUpdateProgress(); }catch(e){}
+  }catch(e){}
 }
 
 async function verificarSobrecargaData(data){
@@ -7576,7 +8005,7 @@ async function abrirModalOF(id){
   setVal('f-of', oEdit ? (oEdit.of||oEdit.numero||'') : nextOFNum());
   try{
     const fOf = document.getElementById('f-of');
-    if(fOf){ fOf.readOnly = false; fOf.title = 'Você pode editar o número da OF'; }
+    if(fOf){ fOf.readOnly = true; fOf.title = 'Gerado automaticamente'; }
   }catch(e){}
   setVal('f-dia', oEdit ? (oEdit.dia||oEdit.data_pedido||oEdit.data||today()) : today());
   setVal('f-ent', oEdit ? (oEdit.ent||oEdit.data_entrega||'') : '');
@@ -7586,6 +8015,10 @@ async function abrirModalOF(id){
   setVal('of-caixa-larg', oEdit ? (oEdit.caixa_largura ?? '') : '');
   setVal('of-caixa-alt', oEdit ? (oEdit.caixa_altura ?? '') : '');
   setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
+  try{
+    const tg = document.getElementById('f-urg-toggle');
+    if(tg) tg.checked = (String(document.getElementById('f-urg')?.value || '') === '1');
+  }catch(e){}
   setVal('f-st', oEdit ? (oEdit.status||'Em aberto') : 'Em aberto');
   setVal('f-modo-prog', oEdit ? (oEdit.modo_programacao||'manual') : 'automatico');
   setVal('f-dia-prog', oEdit ? (oEdit.dia_programacao||'') : '');
@@ -7650,11 +8083,13 @@ async function abrirModalOF(id){
         }))
       : [{desc:(oEdit.descricao||oEdit.prodDesc||oEdit.obs||''),ref:'',qtd:oEdit.qtd||oEdit.quantidade||0,vunit:oEdit.vunit||0,img:null,chapa_id:'',chapa_nome:'',qtd_chapas:0,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
     renderOfItens();
+    try{ ofUpdateProgress(); }catch(e){}
     try{ restaurarItensNoModal(oEdit); }catch(e){}
     try{ ofCliChange(); }catch(e){}
   } else {
     renderMaqChks([]);
     ofAddItem();
+    try{ ofUpdateProgress(); }catch(e){}
   }
   try{ ocultarCamposChapaModalOF(); }catch(e){}
   const footer=document.querySelector('#modal-of .modal-footer');
@@ -8249,10 +8684,74 @@ function recalcOfItens(){
   const valTotal=ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
   const eq=document.getElementById('of-itens-qtd-total');if(eq)eq.textContent=qtdTotal.toLocaleString('pt-BR');
   const ev=document.getElementById('of-itens-val-total');if(ev)ev.textContent=fmtR(valTotal);
+  const qt=document.getElementById('of-qtd-total');
+  if(qt){
+    const many = (Array.isArray(ofItensTemp) ? ofItensTemp.length : 0) > 1;
+    qt.value = String(Math.trunc(Number(qtdTotal || 0)) || 0);
+    qt.disabled = many;
+    if(many) qt.title = 'Ajuste a quantidade nos itens (há mais de 1 item).';
+    else qt.title = '';
+  }
   // sync hidden fields for legacy compatibility
   const fq=document.getElementById('f-qtd');if(fq)fq.value=qtdTotal;
   const fv=document.getElementById('f-val');if(fv)fv.value=valTotal.toFixed(2);
   try{ ofAtualizarTempoEstimado(); }catch(e){}
+  try{ ofUpdateProgress(); }catch(e){}
+}
+function ofQtdTotalChange(){
+  const inp = document.getElementById('of-qtd-total');
+  if(!inp || inp.disabled) return;
+  const v = Math.max(0, Math.trunc(Number(inp.value || 0) || 0));
+  if(!Array.isArray(ofItensTemp) || ofItensTemp.length === 0) ofItensTemp = [{desc:'',ref:'',qtd:'',vunit:'',img:null,maquina:'',maquinas_fluxo:[],maquinas_fluxo_ids:[]}];
+  ofItensTemp[0].qtd = v;
+  ofItensTemp[0].quantidade = v;
+  renderOfItens();
+}
+
+function ofUrgToggleChange(){
+  try{
+    const tg = document.getElementById('f-urg-toggle');
+    const sel = document.getElementById('f-urg');
+    if(!sel) return;
+    sel.value = tg && tg.checked ? '1' : '0';
+  }catch(e){}
+  try{ ofUpdateProgress(); }catch(e){}
+}
+
+function ofUpdateProgress(){
+  const stepEss = document.getElementById('of-step-ess');
+  const stepProd = document.getElementById('of-step-prod');
+  const stepDet = document.getElementById('of-step-det');
+  if(!stepEss || !stepProd || !stepDet) return;
+
+  const hasVal = (id) => {
+    const el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  };
+  const cliId = (typeof ofResolveCliIdFromModal === 'function') ? String(ofResolveCliIdFromModal() || '').trim() : '';
+  const emp = hasVal('f-emp');
+  const desc = hasVal('f-prod-desc');
+  const ent = hasVal('f-ent');
+  const qtd = Number(hasVal('of-qtd-total') || 0) || 0;
+
+  const essOk = !!(cliId && emp && desc && ent && qtd > 0);
+  stepEss.classList.remove('active'); stepProd.classList.remove('active'); stepDet.classList.remove('active');
+  stepEss.classList.toggle('done', essOk);
+  stepProd.classList.toggle('done', false);
+  stepDet.classList.toggle('done', false);
+
+  const prodOk = !!(Number(document.getElementById('of-caixa-comp')?.value || 0) > 0 && Number(document.getElementById('of-caixa-larg')?.value || 0) > 0 && Number(document.getElementById('of-caixa-alt')?.value || 0) > 0);
+  if(prodOk) stepProd.classList.add('done');
+  const detOk = !!(String(document.getElementById('f-obs')?.value || '').trim() || (Array.isArray(ofImgsTemp) && ofImgsTemp.length));
+  if(detOk) stepDet.classList.add('done');
+
+  const essDet = document.getElementById('of-sec-ess');
+  const prodDet = document.getElementById('of-sec-prod');
+  const detDet = document.getElementById('of-sec-det');
+  if(essDet && essDet.open) stepEss.classList.add('active');
+  else if(prodDet && prodDet.open) stepProd.classList.add('active');
+  else if(detDet && detDet.open) stepDet.classList.add('active');
+  else stepEss.classList.add('active');
 }
 function calcularValorTotalOF(){
   return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
@@ -8584,21 +9083,17 @@ function validarCamposObrigatoriosOF(payload, itens){
   const cli = String(p.cliId || p.cli_id || p.cliente_id || '').trim();
   if (!cli) erros.push('Cliente é obrigatório');
 
-  const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
-  const desc = String(item0.desc || item0.descricao || '').trim();
-  if (!desc) erros.push('Nome do produto é obrigatório');
-  const ref = String(item0.ref || item0.referencia || '').trim();
-  if (!ref) erros.push('Referência é obrigatória');
-  const qtd = Number(item0.qtd ?? item0.quantidade ?? 0);
-  if (!(qtd > 0)) erros.push('Quantidade deve ser maior que 0');
-  const vunit = Number(item0.vunit ?? item0.valor_unitario ?? 0);
-  if (!(vunit > 0)) erros.push('Valor unitário deve ser maior que 0');
+  const titulo = String(p.prodDesc || p.descricao || p.produto || '').trim();
+  if (!titulo) erros.push('Produto/Descrição é obrigatório');
 
-  const imgUrl = String(p.imagem_url || '').trim();
-  const imgsArr = Array.isArray(p.imgs) ? p.imgs : [];
-  const imgFromArr = imgsArr.find((x)=>x && String(x).trim() !== '' && String(x).trim() !== 'null') || null;
-  const temImagem = (imgUrl && imgUrl !== 'null') || !!imgFromArr || !!item0.img;
-  if (!temImagem) erros.push('Imagem é obrigatória');
+  const dtEnt = String(p.ent || p.data_entrega || '').slice(0, 10);
+  if (!dtEnt) erros.push('Data de entrega é obrigatória');
+
+  const emp = String(p.empId || p.emp_id || '').trim();
+  if (!emp) erros.push('Empresa é obrigatória');
+
+  const qtdTotal = Number(p.qtd ?? p.quantidade ?? 0);
+  if (!(qtdTotal > 0)) erros.push('Quantidade deve ser maior que 0');
 
   return erros;
 }
@@ -8615,7 +9110,7 @@ async function salvarOF(){
     const n = parseFloat(String(v ?? 0).replace(',','.'));
     return Number.isFinite(n) ? n : 0;
   };
-  const itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
+  let itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
     ...item,
     qtd: toInt(String(item?.qtd ?? 0).replace(',','.')),
     quantidade: toInt(String(item?.quantidade ?? item?.qtd ?? 0).replace(',','.')),
@@ -8623,20 +9118,28 @@ async function salvarOF(){
     valor_unitario: toDec(String(item?.valor_unitario ?? item?.vunit ?? 0).replace(',','.')),
     valor_total: toDec(String(item?.valor_total ?? item?.valorTotal ?? item?.total ?? 0).replace(',','.')),
   }));
-  const qtdTotal=itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
+  const qtdTotalInput = toInt(document.getElementById('of-qtd-total')?.value || 0);
+  const qtdTotal = (qtdTotalInput > 0) ? qtdTotalInput : itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
   const valTotal=toDec(calcularValorTotalOF());
-  const campoValor = document.getElementById('f-val');
-  const valor = Number(campoValor?.value || valTotal || 0);
-  if (!valor || valor <= 0) {
-    alert('Informe o valor total da OF');
-    try { campoValor && campoValor.focus && campoValor.focus(); } catch(e) {}
-    return;
-  }
   const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
   const descricaoPrincipal = itensSan.length > 0 ? String(itensSan[0].desc || itensSan[0].descricao || '').trim() : '';
   const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
   if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
-  if(itensSan.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+  if(!itensSan.length && qtdTotal > 0){
+    itensSan = [{
+      desc: titulo,
+      ref: '',
+      qtd: qtdTotal,
+      quantidade: qtdTotal,
+      vunit: 0,
+      valor_unitario: 0,
+      valor_total: 0,
+      img: null,
+      maquina: '',
+      maquinas_fluxo: [],
+      maquinas_fluxo_ids: [],
+    }];
+  }
   const seguro = (id, fallback = '') => { const el = document.getElementById(id); return el ? (el.value || fallback) : fallback; };
   const _estoqueJaBaixadoCriacao = false;
   const pagto=seguro('f-pagto','');
@@ -8656,7 +9159,8 @@ async function salvarOF(){
   }
   const dia = dia_programacao || data_pedido;
   const cliObj = getCli(cliId) || {};
-  const cidade_entrega = cliObj.cidade || '';
+  const cidadeManual = seguro('f-cidade-of','') ? String(seguro('f-cidade-of','')).trim() : '';
+  const cidade_entrega = cidadeManual || cliObj.cidade || '';
   // imgs array = item images in order (null slots become empty, filtered for PCP thumbnail)
   const itemImgs=itensSan.map(it=>it.img||null);
   const firstImg=itemImgs.find(img=>img!==null);
@@ -8757,6 +9261,21 @@ async function salvarOF(){
   }catch(e){}
   const errosObrig = validarCamposObrigatoriosOF(payloadLocal, itensSan);
   if (errosObrig.length > 0) {
+    try{ document.querySelectorAll('#modal-of .of-required').forEach(el=>el.classList.remove('bad')); }catch(e){}
+    try{
+      const mark = (id, ok)=>{
+        const el = document.getElementById(id);
+        if(el) el.classList.toggle('bad', !ok);
+      };
+      mark('f-cli-search', !!cliId);
+      mark('f-emp', !!String(payloadLocal.empId || payloadLocal.emp_id || '').trim());
+      mark('f-prod-desc', !!String(titulo || '').trim());
+      mark('of-qtd-total', Number(qtdTotal || 0) > 0);
+      mark('f-ent', !!String(entregaSel || '').trim());
+      const firstBad = document.querySelector('#modal-of .of-required.bad');
+      if(firstBad && firstBad.focus) firstBad.focus();
+      try{ document.getElementById('of-sec-ess')?.setAttribute('open',''); }catch(e){}
+    }catch(e){}
     toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
     return;
   }
@@ -8798,7 +9317,7 @@ async function salvarEdicaoOFId(id){
       const n = parseFloat(String(v ?? 0).replace(',','.'));
       return Number.isFinite(n) ? n : 0;
     };
-    const itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
+    let itensSan = (Array.isArray(itens) ? itens : []).map((item)=>({
       ...item,
       qtd: toInt(String(item?.qtd ?? 0).replace(',','.')),
       quantidade: toInt(String(item?.quantidade ?? item?.qtd ?? 0).replace(',','.')),
@@ -8806,13 +9325,28 @@ async function salvarEdicaoOFId(id){
       valor_unitario: toDec(String(item?.valor_unitario ?? item?.vunit ?? 0).replace(',','.')),
       valor_total: toDec(String(item?.valor_total ?? item?.valorTotal ?? item?.total ?? 0).replace(',','.')),
     }));
-    const qtdTotal=itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
+    const qtdTotalInput = toInt(document.getElementById('of-qtd-total')?.value || 0);
+    const qtdTotal = (qtdTotalInput > 0) ? qtdTotalInput : itensSan.reduce((s,it)=>s+toInt(it.qtd),0);
     const valTotal=toDec(calcularValorTotalOF());
     const prodDescInput = ((document.getElementById('f-prod-desc')||{}).value||'');
     const descricaoPrincipal = itensSan.length > 0 ? String(itensSan[0].desc || itensSan[0].descricao || '').trim() : '';
     const titulo = String(prodDescInput || descricaoPrincipal || '').trim();
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return;}
-    if(itensSan.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return;}
+    if(!itensSan.length && qtdTotal > 0){
+      itensSan = [{
+        desc: titulo,
+        ref: '',
+        qtd: qtdTotal,
+        quantidade: qtdTotal,
+        vunit: 0,
+        valor_unitario: 0,
+        valor_total: 0,
+        img: null,
+        maquina: '',
+        maquinas_fluxo: [],
+        maquinas_fluxo_ids: [],
+      }];
+    }
     const modo_programacao = seguro('f-modo-prog','manual') || 'manual';
     let dia_programacao = seguro('f-dia-prog','') || '';
     const data_pedido = seguro('f-dia','');
@@ -8906,6 +9440,21 @@ async function salvarEdicaoOFId(id){
     }catch(e){}
     const errosObrig = validarCamposObrigatoriosOF(payload, itensSan);
     if (errosObrig.length > 0) {
+      try{ document.querySelectorAll('#modal-of .of-required').forEach(el=>el.classList.remove('bad')); }catch(e){}
+      try{
+        const mark = (id, ok)=>{
+          const el = document.getElementById(id);
+          if(el) el.classList.toggle('bad', !ok);
+        };
+        mark('f-cli-search', !!cliId);
+        mark('f-emp', !!String(payload.empId || payload.emp_id || '').trim());
+        mark('f-prod-desc', !!String(titulo || '').trim());
+        mark('of-qtd-total', Number(qtdTotal || 0) > 0);
+        mark('f-ent', !!String(entregaSel || '').trim());
+        const firstBad = document.querySelector('#modal-of .of-required.bad');
+        if(firstBad && firstBad.focus) firstBad.focus();
+        try{ document.getElementById('of-sec-ess')?.setAttribute('open',''); }catch(e){}
+      }catch(e){}
       toast('Preencha os campos obrigatórios:\n• ' + errosObrig.join('\n• '), 'var(--red)');
       return;
     }
@@ -30752,10 +31301,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
     <button class="btn btn-ghost btn-sm" onclick="abrirRelatorioOQueVaiSemana()" title="Relatório de entregas (segunda a sexta)">📋 O que vai essa semana</button>
     <button class="btn btn-ghost btn-sm" onclick="abrirModalRelatorioPCP()" title="Relatório por período">📄 Relatório</button>
+    <button class="btn btn-ghost btn-sm" onclick="pcpAbrirRoteiroEntregas()" title="Roteiro de entregas por cidade/dia (sugestão)">🚚 Roteiro de Entregas</button>
     <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
   </div>
   <div class="page-body" style="padding:0;">
-    <div class="table-wrap" style="height:100%;">
+    <div id="pcp-table-wrap" class="table-wrap" style="height:100%;">
       <table class="pcp-table">
         <thead><tr>
           <th style="width:32px;padding:4px 8px"></th>
@@ -30768,6 +31318,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </tr></thead>
         <tbody id="pcp-tbody"></tbody>
       </table>
+    </div>
+    <div id="pcp-roteiro-wrap" style="display:none;padding:10px 10px 14px 10px">
+      <div class="ptoolbar" style="margin:0 0 10px 0;gap:8px;flex-wrap:wrap;">
+        <div style="font-weight:900;color:var(--text2)">🚚 Roteiro de Entregas</div>
+        <div id="pcp-roteiro-sub" style="font-size:.72rem;color:var(--text3);font-family:var(--mono)"></div>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRoteiroSemana()">🖨 Imprimir roteiro da semana</button>
+        <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRomaneio()">🧾 Imprimir romaneio</button>
+        <button class="btn btn-ghost btn-sm" onclick="pcpFecharRoteiroEntregas()">↩ Voltar</button>
+      </div>
+      <div id="pcp-roteiro-body"></div>
     </div>
   </div>
 </div>
@@ -32288,110 +32849,160 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal" style="width:min(900px,98vw)">
   <button class="close-btn" onclick="fechar('modal-of')">✕</button>
   <h2>📋 Nova Ordem de Fabricação</h2>
-  <div class="fg">
-    <div class="mf"><label>Nº OF <span style="font-size:.65rem;color:var(--text3);font-weight:400">(editável)</span></label><input id="f-of" style="color:var(--accent);font-weight:800;font-family:var(--mono);" placeholder="Ex: Nº 001" title="Você pode editar o número da OF"></div>
-    <div class="mf fgf" style="grid-column:1/-1"><label>PRODUTO / DESCRIÇÃO PRINCIPAL</label><input id="f-prod-desc" placeholder="Ex: Caixa 200 — 300×200×150mm — Onda B" style="font-weight:600"></div>
-    <div class="mf fgf" style="grid-column:1/-1"><label>TIPO DE CAIXA</label>
-      <select id="of-tipo-caixa" onchange="ofTipoCaixaChange()">
-        <option value="">Selecionar tipo...</option>
-      </select>
-    </div>
-    <div class="mf fgf" style="grid-column:1/-1">
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📐 MEDIDAS DA CAIXA (mm)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-          <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
-          <div class="mf" style="margin:0"><label>Largura</label><input id="of-caixa-larg" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
-          <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
-        </div>
-        <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
-        <div id="tempo-estimado-sugestao" style="margin-top:10px;font-size:12px;color:var(--text2);display:none"></div>
-        <div id="of-tempo-estimado" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
-      </div>
-    </div>
-    <div class="mf"><label>Status</label><select id="f-st"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
-    <div class="mf"><label>EMPRESA *</label><select id="f-emp" onchange="ofAtualizaChapas()"><option value="">Selecionar empresa...</option></select></div>
-    <div class="mf"><label>DIA PEDIDO</label><input id="f-dia" type="date"></div>
-    <div class="mf"><label>ENTREGA</label>
-      <input id="f-ent" type="date">
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button type="button" id="btn-entrega-exata" onclick="ofEntregaModoEscolher('exata')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:transparent;color:#0d6efd;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">📅 Data exata</button>
-        <button type="button" id="btn-entrega-3dias" onclick="ofEntregaModoEscolher('3dias')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:#0d6efd;color:#fff;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">⏰ 3 dias antes (padrão)</button>
-      </div>
-    </div>
-    <div class="mf"><label>CLIENTE</label>
-      <div class="ac-wrap">
-        <input id="f-cli-search" type="text" placeholder="Digite nome, razão social, cidade, telefone, CNPJ..." autocomplete="off">
-      </div>
-      <select id="f-cli" onchange="ofCliChange()" style="display:none"></select>
-    </div>
-    <div id="f-cli-info" style="font-size:.68rem;color:var(--text2);grid-column:1/-1;margin-top:-6px;padding:4px 8px;background:var(--s2);border-radius:4px;display:none"></div>
-    <div class="mf" style="grid-column:1/-1">
-      <label style="font-size:12px;color:var(--text2)">Cidade de entrega (manual)</label>
-      <input id="f-cidade-of" type="text" list="cidades-roteiro-list" placeholder="Cidade (ou usa a do cliente)" oninput="onCidadeOFChange()" style="width:100%;padding:8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);box-sizing:border-box">
-      <datalist id="cidades-roteiro-list"></datalist>
-    </div>
-    <div class="mf fgf" style="grid-column:1/-1">
-      <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📅 PROGRAMAÇÃO DE PRODUÇÃO</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <label style="font-size:12px">Modo:</label>
-          <select id="f-modo-prog" onchange="ofModoProgChange()" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">
-            <option value="automatico">🤖 Automático (roteiro)</option>
-            <option value="manual">✏️ Manual</option>
-          </select>
-        </div>
-        <div id="f-prog-info" style="margin-top:8px;font-size:12px;color:var(--text2)"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-          <label style="font-size:12px">Data de programação:</label>
-          <input type="date" id="f-dia-prog" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)" onchange="ofDiaProgManualChange()">
-          <button type="button" onclick="aplicarProgramacaoAutomatica()" style="padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">🔄 Aplicar Roteiro</button>
-        </div>
-      </div>
-    </div>
-    <div class="mf"><label>VENDEDOR</label><select id="f-vend" onchange="ofVendChange()"><option value="">Sem vendedor</option></select></div>
-    <div class="mf"><label>URGENTE?</label><select id="f-urg"><option value="0">Não</option><option value="1">Sim — URGENTE</option></select></div>
-    <div class="mf"><label>FLUXO</label><select id="f-fl" onchange="preencherMaq()"><option value="">Selecionar fluxo...</option></select></div>
-    <div class="mf fgf"><label>OBSERVAÇÕES</label><textarea id="f-obs" rows="2"></textarea></div>
-    <div class="mf fgf" style="grid-column:1/-1">
-      <label>IMAGEM DA OF</label>
-      <div id="of-imgs" class="img-grid-upload"></div>
-      <input type="file" id="of-img-upload" accept="image/*" multiple style="display:none" onchange="handleOfImgsUpload(event)">
-    </div>
-    <!-- ITENS DA OF -->
-    <div class="fgrp">📦 ITENS DA ORDEM DE FABRICAÇÃO</div>
-    <div class="mf fgf">
-      <div style="overflow-x:auto;">
-        <table class="of-itens-table" id="of-itens-table">
-          <thead>
-            <tr>
-              <th style="width:28px">#</th>
-              <th style="min-width:200px">DESCRIÇÃO / PRODUTO</th>
-              <th style="width:80px">REFERÊNCIA</th>
-              <th style="width:90px">QUANTIDADE</th>
-              <th style="width:110px">VL. UNIT. (R$)</th>
-              <th style="width:110px">TOTAL (R$)</th>
-              <th style="min-width:320px">SEQUÊNCIA DE MÁQUINAS</th>
-              <th style="width:60px" title="Imagem do item">📷</th>
-              <th style="width:28px">✕</th>
-            </tr>
-          </thead>
-          <tbody id="of-itens-body"></tbody>
-        </table>
-      </div>
-      <div class="of-itens-total">
-        <span>QTD TOTAL: <b id="of-itens-qtd-total">0</b></span>
-        <span style="margin-left:16px">VALOR TOTAL: <b id="of-itens-val-total">R$ 0,00</b></span>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="ofAddItem()" style="margin-top:4px">＋ Adicionar Item</button>
-    </div>
-    <!-- campos legados ocultos para compatibilidade interna -->
-    <input type="hidden" id="f-qtd">
-    <input type="hidden" id="f-vunit">
-    <input type="hidden" id="f-val">
-    <div id="saldo-msg" class="mf fgf"></div>
+  <div class="of-progress" id="of-progress">
+    <div class="of-step active" id="of-step-ess"><span class="of-dot">1</span><span>Essencial</span></div>
+    <div class="of-step" id="of-step-prod"><span class="of-dot">2</span><span>Produção</span></div>
+    <div class="of-step" id="of-step-det"><span class="of-dot">3</span><span>Detalhes</span></div>
   </div>
-  <div class="modal-footer">
+  <div class="of-modal-body">
+    <details class="of-sec locked" open id="of-sec-ess">
+      <summary><span>1 — Essencial</span><span class="of-sec-hint" id="of-ess-hint">Obrigatório</span></summary>
+      <div class="of-sec-body">
+        <div class="fg">
+          <div class="mf"><label>Nº OF</label><input id="f-of" class="of-required" style="color:var(--accent);font-weight:800;font-family:var(--mono);" readonly></div>
+          <div class="mf"><label>EMPRESA *</label><select id="f-emp" class="of-required" onchange="ofAtualizaChapas()"><option value="">Selecionar empresa...</option></select></div>
+          <div class="mf fgf" style="grid-column:1/-1"><label>CLIENTE *</label>
+            <div class="ac-wrap">
+              <input id="f-cli-search" class="of-required" type="text" placeholder="Digite nome, razão social, cidade, telefone, CNPJ..." autocomplete="off">
+            </div>
+            <select id="f-cli" onchange="ofCliChange()" style="display:none"></select>
+          </div>
+          <div id="f-cli-info" style="font-size:.72rem;color:var(--text2);grid-column:1/-1;margin-top:-6px;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:10px;display:none"></div>
+          <div class="mf fgf" style="grid-column:1/-1"><label>PRODUTO / DESCRIÇÃO *</label><input id="f-prod-desc" class="of-required" placeholder="Ex: Caixa 200 — 300×200×150mm — Onda B" style="font-weight:600"></div>
+          <div class="mf"><label>QUANTIDADE (TOTAL) *</label><input id="of-qtd-total" class="of-required" type="number" min="0" step="1" placeholder="0" oninput="ofQtdTotalChange()"></div>
+          <div class="mf"><label>ENTREGA *</label>
+            <input id="f-ent" class="of-required" type="date" onchange="ofUpdateProgress()">
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button type="button" id="btn-entrega-exata" onclick="ofEntregaModoEscolher('exata')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:transparent;color:#0d6efd;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">📅 Data exata</button>
+              <button type="button" id="btn-entrega-3dias" onclick="ofEntregaModoEscolher('3dias')" style="flex:1;padding:8px 12px;border-radius:8px;border:2px solid #0d6efd;background:#0d6efd;color:#fff;cursor:pointer;font-size:0.85rem;transition:all 0.2s;">⏰ 3 dias antes (padrão)</button>
+            </div>
+          </div>
+          <div class="mf"><label>URGENTE</label>
+            <label style="display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;user-select:none;">
+              <input type="checkbox" id="f-urg-toggle" onchange="ofUrgToggleChange()" style="width:auto;padding:0;margin:0">
+              <span style="font-weight:900">Sim</span>
+            </label>
+            <select id="f-urg" style="display:none"><option value="0">Não</option><option value="1">Sim — URGENTE</option></select>
+          </div>
+          <div class="mf"><label>DIA PEDIDO</label><input id="f-dia" type="date"></div>
+        </div>
+      </div>
+    </details>
+
+    <details class="of-sec" id="of-sec-prod">
+      <summary><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></summary>
+      <div class="of-sec-body">
+        <div class="fg">
+          <div class="mf fgf" style="grid-column:1/-1"><label>TIPO DE CAIXA</label>
+            <select id="of-tipo-caixa" onchange="ofTipoCaixaChange();ofUpdateProgress()">
+              <option value="">Selecionar tipo...</option>
+            </select>
+          </div>
+          <div class="mf"><label>ONDA</label>
+            <select id="of-onda" onchange="ofDimensoesChange();ofUpdateProgress()">
+              <option value="">—</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="BC">BC</option>
+            </select>
+          </div>
+          <div class="mf" style="grid-column:1/-1">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📐 MEDIDAS DA CAIXA (mm)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+              <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+              <div class="mf" style="margin:0"><label>Largura</label><input id="of-caixa-larg" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+              <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+            </div>
+            <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+            <div id="tempo-estimado-sugestao" style="margin-top:10px;font-size:12px;color:var(--text2);display:none"></div>
+            <div id="of-tempo-estimado" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+          </div>
+
+          <div class="mf"><label>FLUXO</label><select id="f-fl"><option value="">Selecionar fluxo...</option></select></div>
+          <div class="mf"><label>VENDEDOR</label><select id="f-vend" onchange="ofVendChange()"><option value="">Sem vendedor</option></select></div>
+
+          <div class="mf fgf" style="grid-column:1/-1">
+            <label>FLUXO DE MÁQUINAS</label>
+            <div id="maq-chks" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px"></div>
+            <div id="maq-seq" style="margin-top:8px;font-size:.72rem;color:var(--text2);font-family:var(--mono)"></div>
+          </div>
+
+          <div class="mf fgf" style="grid-column:1/-1">
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:12px">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📅 PROGRAMAÇÃO DE PRODUÇÃO</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <label style="font-size:12px">Modo:</label>
+                <select id="f-modo-prog" onchange="ofModoProgChange()" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)">
+                  <option value="automatico">🤖 Automático (roteiro)</option>
+                  <option value="manual">✏️ Manual</option>
+                </select>
+              </div>
+              <div id="f-prog-info" style="margin-top:8px;font-size:12px;color:var(--text2)"></div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+                <label style="font-size:12px">Data de programação:</label>
+                <input type="date" id="f-dia-prog" style="padding:4px 8px;border-radius:6px;background:var(--surface);color:var(--text);border:1px solid var(--border)" onchange="ofDiaProgManualChange()">
+                <button type="button" onclick="aplicarProgramacaoAutomatica()" style="padding:4px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px">🔄 Aplicar Roteiro</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <details class="of-sec" id="of-sec-det">
+      <summary><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></summary>
+      <div class="of-sec-body">
+        <div class="fg">
+          <div class="mf"><label>Status</label><select id="f-st" onchange="ofUpdateProgress()"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
+          <div class="mf" style="grid-column:1/-1">
+            <label style="font-size:12px;color:var(--text2)">Cidade de entrega (manual)</label>
+            <input id="f-cidade-of" type="text" list="cidades-roteiro-list" placeholder="Cidade (ou usa a do cliente)" oninput="onCidadeOFChange();ofUpdateProgress()" style="width:100%;padding:8px;border-radius:6px;background:var(--s2);color:var(--text);border:1px solid var(--border);box-sizing:border-box">
+            <datalist id="cidades-roteiro-list"></datalist>
+          </div>
+          <div class="mf fgf" style="grid-column:1/-1"><label>OBSERVAÇÕES</label><textarea id="f-obs" rows="2"></textarea></div>
+          <div class="mf fgf" style="grid-column:1/-1">
+            <label>IMAGEM DA OF</label>
+            <div id="of-imgs" class="img-grid-upload"></div>
+            <input type="file" id="of-img-upload" accept="image/*" multiple style="display:none" onchange="handleOfImgsUpload(event)">
+          </div>
+
+          <div class="fgrp" style="grid-column:1/-1">📦 ITENS DA ORDEM DE FABRICAÇÃO</div>
+          <div class="mf fgf" style="grid-column:1/-1">
+            <div style="overflow-x:auto;">
+              <table class="of-itens-table" id="of-itens-table">
+                <thead>
+                  <tr>
+                    <th style="width:28px">#</th>
+                    <th style="min-width:200px">DESCRIÇÃO / PRODUTO</th>
+                    <th style="width:80px">REFERÊNCIA</th>
+                    <th style="width:90px">QUANTIDADE</th>
+                    <th style="width:110px">VL. UNIT. (R$)</th>
+                    <th style="width:110px">TOTAL (R$)</th>
+                    <th style="min-width:320px">SEQUÊNCIA DE MÁQUINAS</th>
+                    <th style="width:60px" title="Imagem do item">📷</th>
+                    <th style="width:28px">✕</th>
+                  </tr>
+                </thead>
+                <tbody id="of-itens-body"></tbody>
+              </table>
+            </div>
+            <div class="of-itens-total">
+              <span>QTD TOTAL: <b id="of-itens-qtd-total">0</b></span>
+              <span style="margin-left:16px">VALOR TOTAL: <b id="of-itens-val-total">R$ 0,00</b></span>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="ofAddItem()" style="margin-top:4px">＋ Adicionar Item</button>
+          </div>
+
+          <input type="hidden" id="f-qtd">
+          <input type="hidden" id="f-vunit">
+          <input type="hidden" id="f-val">
+          <div id="saldo-msg" class="mf fgf" style="grid-column:1/-1"></div>
+        </div>
+      </div>
+    </details>
+  </div>
+  <div class="modal-footer" style="position:sticky;bottom:0;background:var(--surface);margin-top:0;padding:12px 18px;border-top:1px solid var(--border);z-index:2">
     <button class="btn btn-ghost" onclick="fechar('modal-of')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarOF()">Salvar OF</button>
   </div>

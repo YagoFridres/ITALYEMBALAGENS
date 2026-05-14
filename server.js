@@ -4142,6 +4142,80 @@ app.delete('/api/roteiro_entrega/:id', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.get('/api/roteiro/semana', authMiddleware, async (req, res) => {
+  try {
+    const empId = String(req.query.emp_id ?? req.query.empId ?? '').trim();
+    const { data: roteiro, error: er } = await supabase.from('roteiro_entrega').select('*').eq('ativo', true);
+    if (er) throw er;
+    const baseQ = () => supabase
+      .from('ofs')
+      .select('*')
+      .is('deleted_at', null)
+      .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+      .order('data_entrega', { ascending: true });
+
+    let ofs = null;
+    if (empId) {
+      let lastErr = null;
+      const cols = ['emp_id', 'empId', 'empresa_id', 'empresa'];
+      for (const col of cols) {
+        const { data, error } = await baseQ().eq(col, empId);
+        if (!error) { ofs = data || []; lastErr = null; break; }
+        lastErr = error;
+        const msg = String(error.message || '');
+        const m = msg.match(/column ["\s]*([\w.]+)["\s]* does not exist/i)
+          || msg.match(/Could not find the '([\w]+)' column/i);
+        const missingCol = m && m[1] ? String(m[1]).split('.').pop() : '';
+        if (missingCol && missingCol === col) continue;
+        throw error;
+      }
+      if (lastErr && ofs == null) throw lastErr;
+    } else {
+      const { data, error: eo } = await baseQ();
+      if (eo) throw eo;
+      ofs = data || [];
+    }
+
+    const { data: clientes, error: ec } = await supabase.from('clientes').select('*').limit(5000);
+    if (ec) throw ec;
+
+    const cliMap = new Map((Array.isArray(clientes) ? clientes : []).map((c) => [String(c.id), c]));
+    const roteiroMap = new Map((Array.isArray(roteiro) ? roteiro : []).map((r) => [String(r.cidade || '').toLowerCase().trim(), r]));
+
+    const ofsEnriquecidas = (Array.isArray(ofs) ? ofs : [])
+      .filter((o) => {
+        const dt = String(o.data_entrega ?? o.ent ?? '').slice(0, 10);
+        return !!dt;
+      })
+      .map((o) => {
+        const cliId = String(o.cli_id || o.cliente_id || '').trim();
+        const cli = cliMap.get(cliId) || null;
+        const cidade = String(o.cidade_entrega || cli?.cidade || '').trim();
+        const rota = roteiroMap.get(String(cidade || '').toLowerCase().trim()) || null;
+        const rua = String(cli?.endereco || cli?.ender || cli?.end || cli?.rua || '').trim();
+        const num = String(cli?.numero || cli?.num || '').trim();
+        const bairro = String(cli?.bairro || '').trim();
+        const cep = String(cli?.cep || '').trim();
+        const uf = String(cli?.uf || cli?.estado || '').trim();
+        const endParts = [rua, num ? `nº ${num}` : '', bairro, cep, uf].filter(Boolean);
+        return {
+          ...o,
+          cli_id: cliId || o.cli_id || o.cliente_id || null,
+          cliente_nome: String(cli?.nome || '').trim(),
+          cliente_tel: String(cli?.tel || cli?.telefone || '').trim(),
+          cliente_endereco: endParts.join(' · '),
+          cidade_entrega: cidade,
+          dia_semana: rota?.dia_semana ?? null,
+          sem_roteiro: !rota,
+        };
+      });
+
+    return res.json({ ok: true, data: ofsEnriquecidas, roteiro: Array.isArray(roteiro) ? roteiro : [] });
+  } catch (e) {
+    return err(res, e);
+  }
+});
+
 // ══════════════════════════════════════════════════════════════
 // CLIENTES
 // ══════════════════════════════════════════════════════════════
@@ -5129,6 +5203,68 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     cacheSet('maquinas', data || [], 60 * 1000);
     ok(res, data);
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
+  try {
+    const comprimento = Number(req.body?.comprimento);
+    const largura = Number(req.body?.largura);
+    const altura = Number(req.body?.altura);
+    const onda = String(req.body?.onda || '').trim();
+    if (!(comprimento > 0 && largura > 0 && altura > 0)) return res.json({ ok: true, data: [] });
+
+    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true);
+    if (error) throw error;
+
+    const folgaPuxadaBase = 20;
+    const folgaBocaBase = 15;
+    const ondaNorm = onda.toLowerCase();
+    const folgaPuxada = ondaNorm.includes('bc') ? folgaPuxadaBase + 5 : folgaPuxadaBase;
+    const folgaBoca = ondaNorm.includes('bc') ? folgaBocaBase + 5 : folgaBocaBase;
+
+    const desenvolvimento = (comprimento + altura) * 2 + folgaPuxada;
+    const boca = largura + (altura * 2) + folgaBoca;
+
+    const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+
+    const resultado = (Array.isArray(maquinas) ? maquinas : []).map((m) => {
+      const puxMin = toNumOrNull(m.puxada_min);
+      const puxMax = toNumOrNull(m.puxada_max);
+      const bocaMax = toNumOrNull(m.boca_max);
+      const devOk = (puxMin == null || desenvolvimento >= puxMin) && (puxMax == null || desenvolvimento <= puxMax);
+      const bocaOk = (bocaMax == null || boca <= bocaMax);
+
+      const compativel = !!(devOk && bocaOk);
+      let motivo = null;
+      if (!devOk) {
+        motivo = `Puxada necessária ${Math.round(desenvolvimento)}mm (limite: ${puxMin != null ? Math.round(puxMin) : '—'}-${puxMax != null ? Math.round(puxMax) : '—'}mm)`;
+      } else if (!bocaOk) {
+        motivo = `Boca necessária ${Math.round(boca)}mm (máximo: ${bocaMax != null ? Math.round(bocaMax) : '—'}mm)`;
+      }
+
+      const folgaPuxadaLivre = puxMax != null ? (puxMax - desenvolvimento) : 999999;
+      const folgaBocaLivre = bocaMax != null ? (bocaMax - boca) : 999999;
+      const score = (compativel ? 0 : 1_000_000) + Math.max(0, folgaPuxadaLivre) + Math.max(0, folgaBocaLivre);
+
+      return {
+        id: m.id,
+        nome: m.nome,
+        compativel,
+        motivo,
+        desenvolvimento_necessario: Math.round(desenvolvimento),
+        boca_necessaria: Math.round(boca),
+        score,
+      };
+    }).sort((a, b) => {
+      if (a.compativel && !b.compativel) return -1;
+      if (!a.compativel && b.compativel) return 1;
+      return (Number(a.score) || 0) - (Number(b.score) || 0);
+    });
+
+    return res.json({ ok: true, data: resultado });
+  } catch (e) {
+    return err(res, e);
+  }
 });
 
 app.post('/api/maquinas', authMiddleware, async (req, res) => {
