@@ -2283,12 +2283,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
       rawErr = r.error;
       const msg = String(r.error?.message || '');
-      const m = msg.match(/Could not find the '([^']+)' column/i)
-        || msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
-      const colProb = m?.[1];
-      if (colProb) {
+      const code = String(r.error?.code || '');
+      const m =
+        msg.match(/Could not find the '([^']+)' column/i)
+        || msg.match(/column\s+(?:"?[\w]+"?\.)?"?(\w+)"?\s+does not exist/i)
+        || msg.match(/column\s+ofs\.(\w+)\s+does not exist/i);
+      const colProb = m?.[1] ? String(m[1]) : '';
+      if (colProb && (code === '42703' || msg.toLowerCase().includes('does not exist') || msg.includes('Could not find'))) {
         colsArr = colsArr.filter((c) => c !== colProb);
-        try { console.warn('[OFS GET] removendo coluna:', colProb, 'rid:', req._rid); } catch (_) {}
+        try { console.warn('[OFS GET] removendo coluna:', colProb, 'code:', code, 'rid:', req._rid); } catch (_) {}
         continue;
       }
       break;
