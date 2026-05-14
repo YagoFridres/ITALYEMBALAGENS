@@ -9080,13 +9080,26 @@ async function _assistLoadClientesByIds(ids) {
 }
 
 function _jarvisFirstName(full) {
-  const s = String(full || '').trim();
+  const s = _jarvisPrettyName(full);
   const parts = s.split(/\s+/).filter(Boolean);
-  return parts[0] || s || 'Olá';
+  return parts[0] || s || 'Usuário';
 }
 
 function _jarvisHasAny(norm, ...words) {
   return words.some((w) => norm.includes(_assistNorm(w)));
+}
+
+function _jarvisPrettyName(full) {
+  const raw = String(full || '').trim();
+  if (!raw) return '';
+  const parts = raw.split(/\s+/).filter(Boolean);
+  const safe = parts.map((p) => {
+    const s = String(p || '').trim();
+    if (!s) return '';
+    const low = s.toLowerCase();
+    return low.charAt(0).toUpperCase() + low.slice(1);
+  }).filter(Boolean);
+  return safe.join(' ').trim();
 }
 
 function _jarvisLastOfNumFromHistory(historico) {
@@ -9103,107 +9116,109 @@ function _jarvisLastOfNumFromHistory(historico) {
   return '';
 }
 
-async function _jarvisBuildContext({ norm, hoje, month, year }) {
-  const ctx = { now: new Date().toISOString(), hoje, mes: month || (new Date().getMonth() + 1), ano: year };
-  const wantsOF = norm.includes('of') || norm.includes('ordem');
-  const wantsEstoque = _jarvisHasAny(norm, 'estoque', 'chapa', 'chapas');
-  const wantsCliente = _jarvisHasAny(norm, 'cliente', 'clientes');
-  const wantsFatur = _jarvisHasAny(norm, 'faturamento', 'fatur', 'venda', 'vendas');
-  const wantsPerda = _jarvisHasAny(norm, 'perda', 'perdas', 'caixa perdida', 'caixas perdidas', 'aparra');
-  const wantsMaq = _jarvisHasAny(norm, 'maquina', 'máquina', 'maquinas', 'máquinas');
-  const wantsResumo = _jarvisHasAny(norm, 'resumo do dia', '/resumo');
-
+async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario }) {
+  const ctx = {};
   const cap = (arr, n) => (Array.isArray(arr) ? arr.slice(0, n) : []);
   const safeNum = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-  if (wantsResumo || wantsOF) {
-    const { data } = await supabase
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  ctx.data_hora_atual = new Date().toLocaleString('pt-BR');
+  ctx.usuario = _jarvisFirstName(nomeUsuario || '');
+
+  const { data: ofsAbertasRaw } = await supabase
+    .from('ofs')
+    .select('id,of,numero,status,cli_id,cliente_id,descricao,data_entrega,ent,valor_total,valor_venda,val,urg,urgente,deleted_at,imagem_url,imgs,data_conclusao')
+    .is('deleted_at', null)
+    .neq('status', 'Cancelada')
+    .limit(500);
+  const ofsAbertas = (Array.isArray(ofsAbertasRaw) ? ofsAbertasRaw : []).filter((o) => o && !_assistIsCancelada(o) && !_assistIsConcluida(o));
+  ctx.total_ofs_abertas = ofsAbertas.length;
+  ctx.ofs_atrasadas = cap(ofsAbertas.filter((o) => {
+    const ent = String(o.data_entrega ?? o.ent ?? '').slice(0, 10);
+    return ent && ent < hoje;
+  }).sort((a, b) => String(a.data_entrega ?? a.ent ?? '').localeCompare(String(b.data_entrega ?? b.ent ?? ''))), 80);
+  ctx.ofs_hoje = cap(ofsAbertas.filter((o) => String(o.data_entrega ?? o.ent ?? '').slice(0, 10) === hoje), 80);
+  ctx.ofs_urgentes = cap(ofsAbertas.filter((o) => !!(o.urg || o.urgente)), 80);
+
+  const numMatch = String(pergunta || '').match(/\b(\d{1,8})\b/);
+  if (numMatch) {
+    const n = String(numMatch[1] || '').trim();
+    const { data: ofEspecifica } = await supabase
       .from('ofs')
-      .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,descricao,produto,valor_total,valor_venda,val,qtd_pedida,quantidade,qtd,urg,urgente,maq,fluxo_maquinas,imagem_url,imgs')
-      .order('created_at', { ascending: false })
-      .limit(60);
-    ctx.ofs_recentes = cap(data, 60);
+      .select('*')
+      .or(`of.eq.${n},numero.eq.${n}`)
+      .is('deleted_at', null)
+      .limit(1);
+    if (Array.isArray(ofEspecifica) && ofEspecifica[0]) ctx.of_especifica = ofEspecifica[0];
   }
 
-  if (wantsResumo || wantsCliente) {
-    const { data } = await supabase
-      .from('clientes')
-      .select('id,nome,telefone,ativo,created_at')
-      .order('created_at', { ascending: false })
-      .limit(40);
-    ctx.clientes_recentes = cap(data, 40);
-  }
+  const { data: chapasRaw } = await supabase
+    .from('chapas_estoque')
+    .select('nome,fornecedor,nomenclatura,tamanho,quantidade_atual,quantidade,estoque_minimo,valor_unitario')
+    .limit(200);
+  const chapas = Array.isArray(chapasRaw) ? chapasRaw : [];
+  ctx.total_chapas = chapas.length;
+  ctx.estoque_critico = cap(chapas.filter((c) => {
+    const qtd = safeNum(c.quantidade_atual ?? c.quantidade ?? 0);
+    const min = safeNum(c.estoque_minimo ?? 0);
+    return qtd < (min || 200);
+  }), 80);
 
-  if (wantsResumo || wantsEstoque) {
-    const { data } = await supabase
-      .from('chapas_estoque')
-      .select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo,valor_total,valor_unitario')
-      .order('nomenclatura', { ascending: true })
-      .limit(300);
-    const rows = Array.isArray(data) ? data : [];
-    const crit = rows.filter((c) => {
-      const qtd = safeNum(c.quantidade_atual ?? c.quantidade ?? c.qtd);
-      const min = safeNum(c.estoque_minimo);
-      return min > 0 && qtd < min;
-    });
-    ctx.chapas_criticas = cap(crit, 30);
-    ctx.chapas_amostra = cap(rows, 80);
-  }
+  const { data: ofsMesRaw } = await supabase
+    .from('ofs')
+    .select('valor_total,valor_venda,val,status,data_conclusao,deleted_at')
+    .gte('data_conclusao', mesAtual + '-01')
+    .is('deleted_at', null)
+    .limit(5000);
+  const ofsMes = (Array.isArray(ofsMesRaw) ? ofsMesRaw : []).filter((o) => _assistIsConcluida(o));
+  ctx.faturamento_mes = ofsMes.reduce((s, o) => s + _assistPickOfValor(o), 0);
 
-  if (wantsResumo || wantsMaq) {
-    const { data } = await supabase
-      .from('maquinas')
-      .select('id,nome,ativo,meta_perda_pct')
-      .order('nome', { ascending: true })
-      .limit(200);
-    ctx.maquinas = cap(data, 200);
-  }
+  const { data: clientesRaw } = await supabase.from('clientes').select('id,nome,tel,telefone').limit(200);
+  const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
+  ctx.total_clientes = clientes.length;
 
-  if (wantsResumo || wantsPerda) {
-    try {
-      const m = month || (new Date().getMonth() + 1);
-      const { de, ate } = _assistMonthRange(year, m);
-      const { data } = await supabase
-        .from('ofs')
-        .select('id,of,numero,status,data_conclusao,qtd_perdida,valor_perdido,maquina_perda,deleted_at')
-        .gte('data_conclusao', de)
-        .lte('data_conclusao', ate)
-        .limit(2000);
-      ctx.perdas_mes = cap(data, 2000);
-    } catch (_) {}
-  }
-
-  if (wantsResumo || wantsFatur) {
-    const m = month || (new Date().getMonth() + 1);
-    const { de, ate } = _assistMonthRange(year, m);
-    const { data } = await supabase
-      .from('ofs')
-      .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,emp_id')
-      .gte('data_conclusao', de)
-      .lte('data_conclusao', ate)
+  try {
+    const { data: perdasRaw } = await supabase
+      .from('caixas_perdidas')
+      .select('qtd_perdida,valor_perdido,maquina,data')
+      .gte('data', mesAtual + '-01')
       .limit(5000);
-    ctx.faturamento_mes = cap(data, 5000);
-    ctx.periodo_faturamento = { de, ate };
+    const perdas = Array.isArray(perdasRaw) ? perdasRaw : [];
+    ctx.perdas_mes = {
+      total_caixas: perdas.reduce((s, p) => s + safeNum(p.qtd_perdida ?? 0), 0),
+      valor_total: perdas.reduce((s, p) => s + safeNum(p.valor_perdido ?? 0), 0),
+    };
+  } catch (_) {
+    ctx.perdas_mes = { total_caixas: 0, valor_total: 0 };
   }
 
+  ctx.hoje = hoje;
+  ctx.mes = month || (new Date().getMonth() + 1);
+  ctx.ano = year;
   return ctx;
 }
 
 async function _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, historico }) {
   const key = String(process.env.ANTHROPIC_API_KEY || '').trim();
   if (!key) return { ok: false, error: 'missing_key' };
-  const now = new Date();
   const firstName = _jarvisFirstName(nomeUsuario);
-  const sys = `Você é o JARVIS, assistente inteligente da Italy Embalagens (fábrica de caixas de papelão).
-Data/hora atual: ${now.toLocaleString('pt-BR')}
-O usuário logado se chama: ${firstName}.
-Sempre responda em português brasileiro.
-Sempre chame o usuário pelo primeiro nome.
-Seja direto, profissional e objetivo nas respostas.
-Formate números como moeda brasileira quando relevante.
-Formate datas no padrão brasileiro DD/MM/AAAA.
-Quando listar itens, use emojis relevantes.
-Dados atuais do sistema (JSON): ${JSON.stringify(dadosContexto || {})}`;
+  const systemPrompt =
+    `Você é o JARVIS, assistente inteligente da Italy Embalagens, uma fábrica de caixas de papelão.\n\n` +
+    `USUÁRIO LOGADO: ${firstName} (chame sempre pelo primeiro nome)\n` +
+    `DATA/HORA: ${new Date().toLocaleString('pt-BR')}\n\n` +
+    `DADOS DO SISTEMA:\n${JSON.stringify(dadosContexto || {}, null, 2)}\n\n` +
+    `INSTRUÇÕES:\n` +
+    `- Responda SEMPRE em português brasileiro\n` +
+    `- Seja direto e objetivo como o JARVIS do Iron Man\n` +
+    `- Use emojis relevantes nas respostas\n` +
+    `- Formate valores em R$ (ex: R$ 45.230,00)\n` +
+    `- Formate datas como DD/MM/AAAA\n` +
+    `- Quando listar OFs, mostre: número, cliente, status, data entrega\n` +
+    `- Quando não souber algo, diga o que sabe e sugira alternativas\n` +
+    `- Se perguntarem sobre OF específica e você tiver os dados, detalhe tudo\n` +
+    `- Para ações de alteração, sempre confirme antes de executar\n` +
+    `- Você tem acesso completo aos dados do sistema listados acima\n` +
+    `- Nunca diga que não tem acesso aos dados — os dados estão no contexto acima`;
 
   const msgs = [];
   const hist = Array.isArray(historico) ? historico : [];
@@ -9225,7 +9240,7 @@ Dados atuais do sistema (JSON): ${JSON.stringify(dadosContexto || {})}`;
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1000,
-      system: sys,
+      system: systemPrompt,
       messages: msgs,
     }),
   });
@@ -9276,8 +9291,20 @@ function _jarvisParseDateBrToIso(s, fallbackYear) {
 async function _jarvisFindOFByNumero(ofNum) {
   const n = String(ofNum || '').replace(/\D/g, '');
   if (!n) return null;
-  const { data } = await supabase.from('ofs').select('*').or(`numero.eq.${n},of.ilike.%${n}%`).limit(1);
-  return Array.isArray(data) && data[0] ? data[0] : null;
+  const { data: d1 } = await supabase
+    .from('ofs')
+    .select('*')
+    .or(`of.eq.${n},numero.eq.${n}`)
+    .is('deleted_at', null)
+    .limit(1);
+  if (Array.isArray(d1) && d1[0]) return d1[0];
+  const { data: d2 } = await supabase
+    .from('ofs')
+    .select('*')
+    .or(`of.ilike.%${n}%,numero.ilike.%${n}%`)
+    .is('deleted_at', null)
+    .limit(1);
+  return Array.isArray(d2) && d2[0] ? d2[0] : null;
 }
 
 async function _jarvisFindClienteByNome(nome) {
@@ -9326,7 +9353,7 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
   const p = String(pergunta || '').trim();
   if (!p) return null;
 
-  if (ofNum && _jarvisHasAny(norm, 'imagem', 'foto') && _jarvisHasAny(norm, 'troque', 'trocar', 'mude', 'mudar', 'altere', 'alterar', 'atualize', 'atualizar')) {
+  if (ofNum && _jarvisHasAny(norm, 'imagem', 'foto') && _jarvisHasAny(norm, 'troque', 'trocar', 'mude', 'mudar', 'altere', 'alterar', 'atualize', 'atualizar', 'adicione', 'adicionar', 'inserir', 'coloque', 'colocar')) {
     return { type: 'of_upload_image', ofNum };
   }
   if (ofNum && _jarvisHasAny(norm, 'cancele', 'cancelar', 'cancela')) {
@@ -9382,7 +9409,8 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
 
 app.post('/api/assistente', authMiddleware, async (req, res) => {
   try {
-    const { nome, email, perfil } = await _assistUser(req);
+    const { nome: nomeFull, email, perfil } = await _assistUser(req);
+    const nome = _jarvisFirstName(nomeFull || email || '');
     const pergunta = String(req.body?.pergunta || req.body?.texto || req.body?.q || '').trim();
     if (!pergunta) return res.status(400).json({ ok: false, error: 'pergunta_obrigatoria' });
     const norm = _assistNorm(pergunta);
@@ -9399,8 +9427,97 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
 
+    if (/tutorial|como usar|me ensine|como funciona|ajuda geral/i.test(pergunta)) {
+      return res.json({
+        ok: true,
+        resposta:
+          `⚙️ Tutorial do Sistema Italy Embalagens\n\n` +
+          `📋 PCP / Ordens de Fabricação (OFs)\n` +
+          `- Para criar uma OF: Menu PCP → botão "+ Nova OF" → preencha cliente, produto, máquinas, quantidade e data de entrega\n` +
+          `- Para clonar uma OF existente: clique em "Clonar" nas ações da OF → ajuste data e quantidade → Salvar\n` +
+          `- Para concluir uma OF: botão "▶" na OF → informar quantidade produzida → Concluir\n` +
+          `- Para cancelar: botão vermelho "Cancelar OF"\n` +
+          `- Para comparar OFs: marque 2 checkboxes → botão "⚖️ Comparar OFs"\n\n` +
+          `📦 Estoque de Chapas\n` +
+          `- Para dar entrada: Estoques → Chapas → "Entrada em Lote" → informe NF, chapas e quantidades\n` +
+          `- Para ver estoque crítico: itens em vermelho estão abaixo do mínimo\n` +
+          `- Para ajustar quantidade: clique na chapa → botão "Movimentação"\n` +
+          `- Gerar QR Code: botão QR na chapa para identificação física\n\n` +
+          `👥 Clientes\n` +
+          `- Cadastrar: Cadastros → Clientes → "+ Novo Cliente"\n` +
+          `- Ver histórico completo: clique no cliente → abas OFs, Financeiro, Visitas\n` +
+          `- Importar em massa: botão "Importar Excel"\n` +
+          `- Verificar duplicatas: botão "Verificar Duplicatas"\n\n` +
+          `📊 Relatórios\n` +
+          `- Exportar Excel: botão "⬇ Excel" em qualquer listagem\n` +
+          `- Relatórios do PCP: botão "📄 Relatório" com seleção de período\n\n` +
+          `🎯 Comandos rápidos do JARVIS\n` +
+          `- /resumo — resumo completo do dia\n` +
+          `- /atrasadas — OFs em atraso\n` +
+          `- /estoque — estoque de chapas\n` +
+          `- /dashboard — faturamento do ano\n` +
+          `- /ajuda — lista de comandos\n\n` +
+          `Quer tutorial detalhado de alguma área específica?`,
+        suggestions: ['Como criar OF', 'Como dar entrada no estoque', 'Como cadastrar cliente', '/ajuda'],
+      });
+    }
+    if (/como criar.*(of|ordem)/i.test(pergunta)) {
+      return res.json({
+        ok: true,
+        resposta:
+          `📋 Como criar uma OF (PCP)\n` +
+          `1) Abra o menu PCP\n` +
+          `2) Clique em "+ Nova OF"\n` +
+          `3) Preencha cliente, descrição/produto, quantidade e data de entrega\n` +
+          `4) Selecione o fluxo de máquinas\n` +
+          `5) Clique em "Salvar"\n\n` +
+          `Dica: para reaproveitar uma OF parecida, use "Clonar" e ajuste data/quantidade.`,
+        suggestions: ['Clonar OF', 'Concluir OF', 'Cancelar OF'],
+      });
+    }
+    if (/como.*(entrada|estoque|chapa)/i.test(pergunta)) {
+      return res.json({
+        ok: true,
+        resposta:
+          `📦 Como dar entrada no estoque de chapas\n` +
+          `1) Vá em Estoques → Chapas\n` +
+          `2) Clique em "Entrada em Lote"\n` +
+          `3) Informe NF, selecione as chapas e quantidades\n` +
+          `4) Confirme para registrar a movimentação\n\n` +
+          `Dica: itens abaixo do mínimo ficam destacados como críticos.`,
+        suggestions: ['/estoque', 'Estoque crítico', 'Movimentação de chapa'],
+      });
+    }
+    if (/como.*(cliente|cadastr)/i.test(pergunta)) {
+      return res.json({
+        ok: true,
+        resposta:
+          `👥 Como cadastrar um cliente\n` +
+          `1) Cadastros → Clientes\n` +
+          `2) Clique em "+ Novo Cliente"\n` +
+          `3) Preencha os dados principais (nome, telefone, CNPJ, endereço)\n` +
+          `4) Salve\n\n` +
+          `Dica: se existir duplicidade, use a verificação de duplicatas antes de cadastrar novamente.`,
+        suggestions: ['Clientes inativos', 'Cliente existe X?', 'Top clientes do mês'],
+      });
+    }
+    if (/como.*(relatorio|relatório|dre|faturamento)/i.test(pergunta)) {
+      return res.json({
+        ok: true,
+        resposta:
+          `📊 Como usar relatórios\n` +
+          `- No PCP: use "📄 Relatório" e selecione o período\n` +
+          `- Para exportar: use "⬇ Excel" nas listagens\n` +
+          `- Para indicadores: use /dashboard (faturamento anual) e "Faturamento do mês"\n\n` +
+          `Se você me disser o período (ex: abril/2026), eu resumo os números.`,
+        suggestions: ['/dashboard', 'Faturamento do mês', 'Faturamento por empresa'],
+      });
+    }
+
     const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
     let ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
+    const match = pergunta.match(/\b(\d+)\b/);
+    if (!ofNum && match) ofNum = String(match[1] || '').trim();
     const historico = req.body?.historico || req.body?.history || null;
     if (!ofNum && historico && (_jarvisHasAny(norm, 'ela', 'anterior', 'anterior?', 'da anterior') || (norm.includes('of') && _jarvisHasAny(norm, 'anterior')))) {
       ofNum = _jarvisLastOfNumFromHistory(historico);
@@ -9413,7 +9530,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       try {
         if (act.type.startsWith('of_')) {
           const of = await _jarvisFindOFByNumero(act.ofNum);
-          if (!of) return respond(`${_jarvisFirstName(nome)}, não encontrei a OF #${act.ofNum}.`);
+          if (!of) return respond(`${nome}, não encontrei a OF #${act.ofNum}.`);
           const cid = _assistPickOfClienteId(of);
           const cliMap = await _assistLoadClientesByIds([cid]);
           const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
@@ -9430,7 +9547,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           act.ofId = String(of.id || '');
         } else if (act.type.startsWith('chapa_')) {
           const ch = await _jarvisFindChapaByNome(act.chapaNome);
-          if (!ch) return respond(`${_jarvisFirstName(nome)}, não encontrei a chapa "${act.chapaNome}".`);
+          if (!ch) return respond(`${nome}, não encontrei a chapa "${act.chapaNome}".`);
           const nomeCh = String(ch.nomenclatura || ch.nome_uso || ch.nome || '—').trim() || '—';
           if (act.type === 'chapa_entrada') resumo = `⚠️ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
           else if (act.type === 'chapa_set_min') resumo = `⚠️ Confirmar ajuste do estoque mínimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
@@ -9458,7 +9575,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (norm.startsWith('/ajuda')) {
       return res.json({
         ok: true,
-        resposta: `${_jarvisFirstName(nome)}, comandos disponíveis:\n` +
+        resposta: `${nome}, comandos disponíveis:\n` +
           `• /ajuda — lista de comandos\n` +
           `• /resumo — resumo do dia (OFs atrasadas, de hoje e urgentes)\n` +
           `• /atrasadas — lista de OFs em atraso\n` +
@@ -9530,10 +9647,26 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
         return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s)`;
       });
+      const tbl = {
+        headers: ['OF', 'Cliente', 'Entrega', 'Atraso (dias)'],
+        rows: top.map((o) => {
+          const ent = _assistPickOfEntrega(o);
+          const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
+          const cid = _assistPickOfClienteId(o);
+          const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+          return [
+            String(_assistPickOfNumber(o)),
+            cNome,
+            ent ? _assistFmtDateBr(ent) : '—',
+            String(atraso),
+          ];
+        }),
+      };
       const extra = atras.length > top.length ? `\n...e mais ${atras.length - top.length} itens` : '';
       return res.json({
         ok: true,
         resposta: `${_jarvisFirstName(nome)}, OFs atrasadas: ${atras.length}\n${linhas.join('\n') || '—'}${extra}`,
+        table: tbl,
         suggestions: ['/resumo', 'OFs urgentes', 'Estoque crítico', '/dashboard'],
       });
     }
@@ -9617,17 +9750,6 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
-    if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
-      try {
-        const dadosContexto = await _jarvisBuildContext({ norm, hoje, month, year });
-        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico });
-        if (cla?.ok && String(cla.text || '').trim()) {
-          return respond(String(cla.text || '').trim());
-        }
-      } catch (_) {}
-    }
-
     let _ofCtx = null;
     const loadOfCtx = async () => {
       if (_ofCtx) return _ofCtx;
@@ -9679,12 +9801,22 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     if (ofNum && hasAny('imagem', 'foto') && (hasAny('mostrar', 'ver') || norm.includes('imagem') || norm.includes('foto'))) {
-      const { data } = await supabase
+      const { data: ofPorNumero } = await supabase
         .from('ofs')
         .select('id,of,numero,imagem_url,imgs')
-        .or(`numero.eq.${ofNum},of.ilike.%${ofNum}%`)
+        .or(`of.eq.${ofNum},numero.eq.${ofNum}`)
+        .is('deleted_at', null)
         .limit(1);
-      const row = Array.isArray(data) && data[0] ? data[0] : null;
+      let row = Array.isArray(ofPorNumero) && ofPorNumero[0] ? ofPorNumero[0] : null;
+      if (!row) {
+        const { data: ofPorNumero2 } = await supabase
+          .from('ofs')
+          .select('id,of,numero,imagem_url,imgs')
+          .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`)
+          .is('deleted_at', null)
+          .limit(1);
+        row = Array.isArray(ofPorNumero2) && ofPorNumero2[0] ? ofPorNumero2[0] : null;
+      }
       if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
       const arr = Array.isArray(row.imgs)
         ? row.imgs
@@ -9692,8 +9824,14 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           ? (() => { try { const p = JSON.parse(row.imgs || '[]'); return Array.isArray(p) ? p : [row.imgs]; } catch (_) { return [row.imgs]; } })()
           : []);
       const urls = [String(row.imagem_url || '').trim(), ...arr.map((x) => String(x || '').trim())].filter(Boolean).slice(0, 3);
-      if (!urls.length) return respond(`${nome}, a OF #${_assistPickOfNumber(row)} não possui imagem cadastrada.`);
-      return res.json({ ok: true, resposta: `${nome}, aqui está a imagem da OF #${_assistPickOfNumber(row)}:`, images: urls });
+      const extras = { dadosExtras: { tipo: 'of', imagem_url: String(row.imagem_url || '').trim() || null, imgs: row.imgs ?? null } };
+      if (!urls.length) {
+        return respond(
+          `A OF #${_assistPickOfNumber(row)} não possui imagem cadastrada. Deseja adicionar uma?`,
+          { ...extras, suggestions: [`Adicionar foto da OF ${_assistPickOfNumber(row)}`, `/ajuda`] }
+        );
+      }
+      return res.json({ ok: true, resposta: `${nome}, aqui está a imagem da OF #${_assistPickOfNumber(row)}:`, images: urls, ...extras });
     }
 
     if (hasAny('que horas sao', 'que horas são', 'hora', 'horas') && (norm.includes('que horas') || norm === 'hora' || norm === 'horas')) {
@@ -10194,6 +10332,17 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, OFs do cliente "${cNome}": ${ofs.length}\n${linhas.join('\n') || '—'}${extra}`);
     }
 
+    const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
+    if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
+      try {
+        const dadosContexto = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
+        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico });
+        if (cla?.ok && String(cla.text || '').trim()) {
+          return respond(String(cla.text || '').trim());
+        }
+      } catch (_) {}
+    }
+
     return naoEntendi();
   } catch (e) {
     return err(res, e);
@@ -10268,8 +10417,8 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
         ok: true,
         resposta: `${first}, selecione a imagem para a OF #${act.ofNum}:`,
         actions: [
-          { id: newId, label: '📎 Enviar imagem', decision: 'upload' },
-          { id: newId, label: '❌ Cancelar', decision: 'cancel' },
+          { id: newId, label: '📎 Enviar imagem', decision: 'upload', ofId: String(of.id || '') },
+          { id: newId, label: '❌ Cancelar', decision: 'cancel', ofId: String(of.id || '') },
         ],
       });
     }

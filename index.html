@@ -37536,10 +37536,11 @@ window.atualizarChapas = async function(){
       }
       const act = t.getAttribute && t.getAttribute('data-act');
       const dec = t.getAttribute && t.getAttribute('data-dec');
+      const ofid = t.getAttribute && t.getAttribute('data-ofid');
       if(act){
         ev.preventDefault();
         ev.stopPropagation();
-        runAction(String(act||''), String(dec||'confirm'));
+        runAction(String(act||''), String(dec||'confirm'), String(ofid||''));
         return;
       }
     });
@@ -37676,7 +37677,7 @@ window.atualizarChapas = async function(){
       const imgs = Array.isArray(m.images) ? m.images.map((u)=>String(u||'').trim()).filter(Boolean).slice(0, 3) : [];
       const imgsHtml = imgs.length ? imgs.map((u)=>`<img class="assist-img" src="${escAttr(u)}" alt="Imagem OF">`).join('') : '';
       const actions = Array.isArray(m.actions) ? m.actions : [];
-      const actionsHtml = actions.length ? `<div class="jarvis-actions">${actions.map((a)=>`<button type="button" class="jarvis-action" data-act="${escAttr(a.id||'')}" data-dec="${escAttr(a.decision||'confirm')}">${esc(a.label||'')}</button>`).join('')}</div>` : '';
+      const actionsHtml = actions.length ? `<div class="jarvis-actions">${actions.map((a)=>`<button type="button" class="jarvis-action" data-act="${escAttr(a.id||'')}" data-dec="${escAttr(a.decision||'confirm')}" data-ofid="${escAttr(a.ofId||a.of_id||'')}">${esc(a.label||'')}</button>`).join('')}</div>` : '';
       const tbl = m.table && typeof m.table === 'object' ? m.table : null;
       const tableHtml = (tbl && Array.isArray(tbl.headers) && Array.isArray(tbl.rows))
         ? `<table class="jarvis-table"><thead><tr>${tbl.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${tbl.rows.map(r=>`<tr>${(Array.isArray(r)?r:[]).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
@@ -37741,7 +37742,7 @@ window.atualizarChapas = async function(){
     }catch(e){}
   };
 
-  const runAction = async (id, decision)=>{
+  const runAction = async (id, decision, ofId)=>{
     const actionId = String(id||'').trim();
     if(!actionId) return;
     if(String(decision||'').toLowerCase() === 'upload'){
@@ -37755,6 +37756,25 @@ window.atualizarChapas = async function(){
         try{ inp.remove(); }catch(e){}
         if(!f) return;
         try{
+          const ofRealId = String(ofId || '').trim();
+          if(ofRealId){
+            const fdUp = new FormData();
+            fdUp.append('file', f);
+            const up = await apiFetch('/api/ofs/upload', { method:'POST', body: fdUp, headers:{} });
+            const uj = up ? await up.json().catch(()=>null) : null;
+            const url = uj && (uj.url || uj.data?.url || uj.data?.publicUrl) ? String(uj.url || uj.data?.url || uj.data?.publicUrl).trim() : '';
+            if(!up || !up.ok || !url){
+              addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui enviar a imagem.`);
+              return;
+            }
+            const sv = await apiFetch('/api/ofs/' + encodeURIComponent(ofRealId), { method:'PATCH', body:{ imagem_url: url }, headers:{} });
+            if(!sv || !sv.ok){
+              addMsg('assistant', `Desculpe ${getUserFirstName()}, enviei a imagem mas não consegui atualizar a OF.`);
+              return;
+            }
+            addMsg('assistant', `✅ ${getUserFirstName()}, imagem atualizada com sucesso!`, { images: [url] });
+            return;
+          }
           const fd = new FormData();
           fd.append('id', actionId);
           fd.append('file', f);
@@ -37808,6 +37828,21 @@ window.atualizarChapas = async function(){
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
       const images = (j && (j.images || j.imagens)) ? (Array.isArray(j.images || j.imagens) ? (j.images || j.imagens) : []) : [];
+      const dadosExtras = (j && j.dadosExtras && typeof j.dadosExtras === 'object') ? j.dadosExtras : null;
+      const extraImages = [];
+      if(dadosExtras && String(dadosExtras.tipo||'') === 'of'){
+        const iu = String(dadosExtras.imagem_url || '').trim();
+        if(iu) extraImages.push(iu);
+        const raw = dadosExtras.imgs;
+        let arr = [];
+        if(Array.isArray(raw)) arr = raw;
+        else if(typeof raw === 'string'){
+          try{ const p = JSON.parse(raw || '[]'); arr = Array.isArray(p) ? p : [raw]; }catch(e){ arr = raw ? [raw] : []; }
+        }
+        const firstImg = arr.map(x=>String(x||'').trim()).filter(Boolean)[0] || '';
+        if(firstImg) extraImages.push(firstImg);
+      }
+      const mergedImages = Array.from(new Set([...(Array.isArray(images)?images:[]), ...extraImages].map(x=>String(x||'').trim()).filter(Boolean))).slice(0, 3);
       const table = (j && j.table) ? j.table : null;
       const chart = (j && j.chart) ? j.chart : null;
       const el = document.getElementById(typingId);
@@ -37816,7 +37851,7 @@ window.atualizarChapas = async function(){
         addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images, table, chart, actions: j.actions || [], suggestions: j.suggestions || [] });
+      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images: mergedImages, table, chart, actions: j.actions || [], suggestions: j.suggestions || [] });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
