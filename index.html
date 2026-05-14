@@ -40133,7 +40133,8 @@ window.atualizarChapas = async function(){
           const imgHtml = imgUrl
             ? `<img src="${esc(imgUrl)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;cursor:pointer;flex:0 0 auto;border:1px solid #2a2a4a" data-img="${esc(imgUrl)}" data-imgof="${esc(num)}">`
             : `<div style="width:60px;height:60px;border-radius:10px;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto">📦</div>`;
-          return `<div class="mobile-card mobile-of-card${isSemPapel(of)?' sem-papel':''}">
+          const prio = Number.isFinite(Number(of?.prioridade)) ? Math.trunc(Number(of.prioridade)) : 0;
+          return `<div class="mobile-card mobile-of-card${isSemPapel(of)?' sem-papel':''}" data-of-id="${esc(id)}" data-prioridade="${esc(String(prio))}" data-maq="${esc(nome)}">
             <div style="display:flex;gap:12px;align-items:flex-start">
               ${imgHtml}
               <div style="min-width:0;flex:1">
@@ -40313,69 +40314,173 @@ window.atualizarChapas = async function(){
           return rows;
         };
 
+        const originCard = btn.closest('.mobile-of-card');
+        const listWrap = originCard ? originCard.parentElement : null;
+
         const actEntrega = ()=>{
           closeBottomSheet();
-          const inp = document.createElement('input');
-          inp.type = 'date';
-          inp.value = clampIso(getOfEntrega(of) || mobileState.maqDate);
-          inp.style.position = 'fixed';
-          inp.style.left = '-9999px';
-          inp.style.top = '-9999px';
-          document.body.appendChild(inp);
-          inp.addEventListener('change', async ()=>{
-            const nv = clampIso(inp.value || '');
+          const mk = (d)=>{
+            const dt = (d instanceof Date) ? d : new Date();
+            return dt.toISOString().slice(0,10);
+          };
+          const fmtBrDate = (iso)=>{
+            const d = iso ? new Date(String(iso).slice(0,10) + 'T12:00:00') : null;
+            if(!d || isNaN(d.getTime())) return '—';
+            try{ return d.toLocaleDateString('pt-BR'); }catch(e){ return fmtBR(iso); }
+          };
+          const now = new Date();
+          const hoje = mk(now);
+          const amanha = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+1));
+          const mais3 = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+3));
+          const mais7 = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+7));
+          const atual = clampIso(getOfDataEntrega(of) || getOfEntrega(of) || mobileState.maqDate || hoje);
+
+          const sh = abrirBottomSheet(`
+            <div style="margin-bottom:16px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+                <button class="mobile-btn" data-set="${esc(hoje)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:14px;cursor:pointer">
+                  Hoje<br><span style="color:#888;font-size:12px">${esc(fmtBrDate(hoje))}</span>
+                </button>
+                <button class="mobile-btn" data-set="${esc(amanha)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:14px;cursor:pointer">
+                  Amanhã<br><span style="color:#888;font-size:12px">${esc(fmtBrDate(amanha))}</span>
+                </button>
+                <button class="mobile-btn" data-set="${esc(mais3)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:14px;cursor:pointer">
+                  +3 dias<br><span style="color:#888;font-size:12px">${esc(fmtBrDate(mais3))}</span>
+                </button>
+                <button class="mobile-btn" data-set="${esc(mais7)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:14px;cursor:pointer">
+                  +7 dias<br><span style="color:#888;font-size:12px">${esc(fmtBrDate(mais7))}</span>
+                </button>
+              </div>
+              <div style="margin-bottom:12px">
+                <label style="color:#aaa;font-size:13px;display:block;margin-bottom:6px">Ou escolha outra data:</label>
+                <input type="date" id="mobile-data-input" value="${esc(atual)}" style="width:100%;padding:12px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;color:white;font-size:16px">
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="mobile-btn" data-cancel="1" style="flex:1;padding:12px">❌ Cancelar</button>
+                <button class="mobile-btn primary" data-confirm="1" style="flex:1;padding:12px">✅ Confirmar</button>
+              </div>
+            </div>
+          `, `📅 Nova data de entrega — OF #${esc(num)}`);
+
+          const patchDate = async (nv)=>{
+            const nova = clampIso(nv || '');
+            if(!nova) return;
+            closeBottomSheet();
             try{
-              const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ data_entrega: nv, ent: nv } });
+              const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ data_entrega: nova, ent: nova } });
               const j = r ? await r.json().catch(()=>null) : null;
               if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha');
-              showMobileToast('✅ Data alterada para ' + fmtBR(nv).slice(0,5), 'success');
+              showMobileToast(`✅ OF #${String(num)} — data alterada para ${fmtBrDate(nova)}`, 'success');
               await mobileRefreshMaquinas();
               renderMaquinas();
             }catch(err){
-              showMobileToast('Erro ao alterar data', 'error');
-            }finally{
-              try{ inp.remove(); }catch(e){}
+              showMobileToast('❌ Erro ao alterar data', 'error');
             }
-          }, { once:true });
-          try{ inp.showPicker ? inp.showPicker() : inp.click(); }catch(e){ try{ inp.click(); }catch(_){} }
+          };
+          sh.querySelectorAll('[data-set]').forEach((b)=>b.addEventListener('click', ()=>patchDate(b.getAttribute('data-set')||'')));
+          sh.querySelector('[data-cancel]')?.addEventListener('click', closeBottomSheet);
+          sh.querySelector('[data-confirm]')?.addEventListener('click', ()=>patchDate(byId('mobile-data-input')?.value || ''));
         };
 
-        const actSemPapel = async ()=>{
-          const map = loadSemPapelMap();
-          const cur = (of && typeof of === 'object' && ('sem_papel' in of)) ? !!of.sem_papel : !!map[id];
-          const next = !cur;
-          map[id] = next;
-          saveSemPapelMap(map);
-          try{
-            const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ sem_papel: next } });
-            const j = r ? await r.json().catch(()=>null) : null;
-            if(r && r.ok && !(j && j.ok === false)){
-              try{ of.sem_papel = next; }catch(e){}
-            }
-          }catch(e){}
-          showMobileToast(next ? '📦 Marcado: sem papelão' : '📦 Desmarcado: sem papelão', 'success');
-          renderMaquinas();
+        const actSemPapel = ()=>{
           closeBottomSheet();
+          const mk = (d)=>{
+            const dt = (d instanceof Date) ? d : new Date();
+            return dt.toISOString().slice(0,10);
+          };
+          const fmtBrDate = (iso)=>{
+            const d = iso ? new Date(String(iso).slice(0,10) + 'T12:00:00') : null;
+            if(!d || isNaN(d.getTime())) return '—';
+            try{ return d.toLocaleDateString('pt-BR'); }catch(e){ return fmtBR(iso); }
+          };
+          const now = new Date();
+          const amanha = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+1));
+          const mais2 = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+2));
+          const mais5 = mk(new Date(now.getFullYear(), now.getMonth(), now.getDate()+5));
+          const sh = abrirBottomSheet(`
+            <div style="background:#2a1a0a;border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid #ff9800">
+              <div style="color:#ff9800;font-size:14px;font-weight:900">⚠️ OF #${esc(num)} será marcada como SEM PAPELÃO</div>
+              <div style="color:#aaa;font-size:13px;margin-top:4px">Quando o papelão chegará?</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+              <button class="mobile-btn" data-set="${esc(amanha)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:13px;cursor:pointer">
+                Amanhã<br><span style="color:#888;font-size:11px">${esc(fmtBrDate(amanha))}</span>
+              </button>
+              <button class="mobile-btn" data-set="${esc(mais2)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:13px;cursor:pointer">
+                +2 dias<br><span style="color:#888;font-size:11px">${esc(fmtBrDate(mais2))}</span>
+              </button>
+              <button class="mobile-btn" data-set="${esc(mais5)}" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:13px;cursor:pointer">
+                +5 dias<br><span style="color:#888;font-size:11px">${esc(fmtBrDate(mais5))}</span>
+              </button>
+              <button class="mobile-btn" data-set="" style="padding:12px;background:#2a2a4a;border:none;border-radius:10px;color:white;font-size:13px;cursor:pointer">
+                Não sei<br><span style="color:#888;font-size:11px">Sem previsão</span>
+              </button>
+            </div>
+            <div style="margin-bottom:12px">
+              <label style="color:#aaa;font-size:13px;display:block;margin-bottom:6px">Ou escolha a data:</label>
+              <input type="date" id="mobile-papel-data" style="width:100%;padding:12px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;color:white;font-size:16px">
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="mobile-btn" data-cancel="1" style="flex:1;padding:12px">❌ Cancelar</button>
+              <button class="mobile-btn danger" data-confirm="1" style="flex:1;padding:12px;background:#ff9800;border:none">📦 Confirmar</button>
+            </div>
+          `, `📦 Sem Papelão — OF #${esc(num)}`);
+
+          const confirm = async (dataRep)=>{
+            const dt = dataRep ? clampIso(dataRep) : '';
+            closeBottomSheet();
+            try{
+              const obsTexto = dt ? (`SEM PAPELÃO — previsão chegada: ${fmtBrDate(dt)}`) : 'SEM PAPELÃO — sem previsão';
+              const body = { obs: obsTexto, sem_papel: true };
+              if(dt){ body.data_entrega = dt; body.ent = dt; }
+              const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body });
+              const j = r ? await r.json().catch(()=>null) : null;
+              if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha');
+              try{ of.sem_papel = true; of.obs = obsTexto; if(dt){ of.data_entrega = dt; of.ent = dt; } }catch(e){}
+              try{ const map = loadSemPapelMap(); map[id] = true; saveSemPapelMap(map); }catch(e){}
+              if(originCard) originCard.classList.add('sem-papel');
+              showMobileToast(`📦 OF #${String(num)} marcada como sem papelão`, 'success');
+              await mobileRefreshMaquinas();
+              renderMaquinas();
+            }catch(e){
+              showMobileToast('❌ Erro ao marcar sem papelão', 'error');
+            }
+          };
+          sh.querySelectorAll('[data-set]').forEach((b)=>b.addEventListener('click', ()=>confirm(b.getAttribute('data-set')||'')));
+          sh.querySelector('[data-cancel]')?.addEventListener('click', closeBottomSheet);
+          sh.querySelector('[data-confirm]')?.addEventListener('click', ()=>confirm(byId('mobile-papel-data')?.value || ''));
         };
 
         const actMove = async (dir)=>{
+          closeBottomSheet();
+          if(!originCard || !listWrap){ showMobileToast('❌ OF não encontrada na lista', 'error'); return; }
+          const cards = Array.from(listWrap.querySelectorAll('.mobile-of-card'));
+          const idxAtual = cards.findIndex((c)=>String(c?.dataset?.ofId||'')===String(id||''));
+          if(idxAtual < 0){ showMobileToast('❌ OF não encontrada na lista', 'error'); return; }
+          const idxAlvo = (dir === 'up') ? (idxAtual - 1) : (idxAtual + 1);
+          if(idxAlvo < 0 || idxAlvo >= cards.length){
+            showMobileToast(dir === 'up' ? '⚠️ Já está no topo' : '⚠️ Já está no fim', 'success');
+            return;
+          }
+          const cardAlvo = cards[idxAlvo];
+          const ofAlvoId = String(cardAlvo?.dataset?.ofId || '').trim();
+          if(!ofAlvoId){ showMobileToast('❌ OF alvo inválida', 'error'); return; }
           try{
             const rows = await ensurePrioridades();
-            const idx = rows.findIndex((o)=>String(o?.id||'')===String(id||''));
-            const j = dir === 'up' ? (idx - 1) : (idx + 1);
-            if(idx < 0 || j < 0 || j >= rows.length){ closeBottomSheet(); return; }
-            const a = rows[idx]; const b2 = rows[j];
-            const pa = Math.trunc(Number(a?.prioridade) || 0);
-            const pb = Math.trunc(Number(b2?.prioridade) || 0);
-            await apiFetch('/api/ofs/' + encodeURIComponent(String(a.id)), { method:'PATCH', body:{ prioridade: pb } });
-            await apiFetch('/api/ofs/' + encodeURIComponent(String(b2.id)), { method:'PATCH', body:{ prioridade: pa } });
-            a.prioridade = pb; b2.prioridade = pa;
-            showMobileToast('✅ Prioridade atualizada', 'success');
-            renderMaquinas();
+            const map = new Map(rows.map((o)=>[String(o?.id||''), Math.trunc(Number(o?.prioridade) || 0)]));
+            const pa = map.get(String(id)) ?? Math.trunc(Number(originCard.dataset.prioridade || 0));
+            const pb = map.get(String(ofAlvoId)) ?? Math.trunc(Number(cardAlvo.dataset.prioridade || 0));
+            await Promise.all([
+              apiFetch('/api/ofs/' + encodeURIComponent(String(id)), { method:'PATCH', body:{ prioridade: pb } }),
+              apiFetch('/api/ofs/' + encodeURIComponent(String(ofAlvoId)), { method:'PATCH', body:{ prioridade: pa } }),
+            ]);
+            originCard.dataset.prioridade = String(pb);
+            cardAlvo.dataset.prioridade = String(pa);
+            if(dir === 'up') listWrap.insertBefore(originCard, cardAlvo);
+            else listWrap.insertBefore(cardAlvo, originCard);
+            showMobileToast(`✅ OF #${String(num)} movida ${dir === 'up' ? '⬆️ para cima' : '⬇️ para baixo'}`, 'success');
           }catch(e){
-            showMobileToast('Erro ao mover', 'error');
-          }finally{
-            closeBottomSheet();
+            showMobileToast('❌ Erro ao mover OF', 'error');
           }
         };
 
