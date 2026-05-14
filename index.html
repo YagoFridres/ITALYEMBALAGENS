@@ -8190,6 +8190,19 @@ async function abrirModalOF(id){
   const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
+  try{
+    const modal = document.getElementById('modal-of');
+    if(modal){
+      modal.querySelectorAll('details.of-sec').forEach((d)=>{ try{ d.open = true; }catch(e){} });
+      const ess = modal.querySelector('#of-sec-ess');
+      const sum = ess ? ess.querySelector('summary') : null;
+      if(sum && !sum._lockEss){
+        sum._lockEss = true;
+        sum.addEventListener('click', (ev)=>{ try{ ev.preventDefault(); ev.stopPropagation(); }catch(e){}; try{ ess.open = true; }catch(e){} }, true);
+      }
+      try{ ofUpdateProgress(); }catch(e){}
+    }
+  }catch(e){}
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
 }
 
@@ -33271,7 +33284,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
     </details>
 
-    <details class="of-sec" id="of-sec-prod">
+    <details class="of-sec" open id="of-sec-prod">
       <summary><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></summary>
       <div class="of-sec-body">
         <div class="fg">
@@ -33333,7 +33346,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
     </details>
 
-    <details class="of-sec" id="of-sec-det">
+    <details class="of-sec" open id="of-sec-det">
       <summary><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></summary>
       <div class="of-sec-body">
         <div class="fg">
