@@ -9580,6 +9580,166 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
 
+    if (hasAny('cadastrar cliente', 'cadastre o cliente', 'novo cliente', 'adicionar cliente', 'criar cliente', 'adicione o cliente')) {
+      return res.json({
+        ok: true,
+        resposta:
+          `Vou cadastrar um novo cliente! Me informe os dados:\n` +
+          `1️⃣ Qual o nome do cliente?`,
+        jarvis_state: {
+          acao: 'cadastrar_cliente',
+          etapa: 'nome',
+          dados: { nome: '', cnpj: '', tel: '', email: '', cidade: '', ramo: '', vendedor_id: null },
+        },
+      });
+    }
+
+    if (hasAny('quanto vamos faturar', 'previsão de faturamento', 'previsao de faturamento', 'faturamento previsto')) {
+      const mesRef = new Date().toISOString().slice(0, 7);
+      const [ano, mm] = mesRef.split('-').map(Number);
+      const dtIni = `${mesRef}-01`;
+      const dtFim = new Date(ano, mm, 0).toISOString().slice(0, 10);
+      const { data: ofsRaw } = await supabase
+        .from('ofs')
+        .select('status,deleted_at,data_entrega,ent,data_conclusao,valor_total,valor_venda,val')
+        .is('deleted_at', null)
+        .limit(5000);
+      const rows = Array.isArray(ofsRaw) ? ofsRaw : [];
+      const ativas = rows.filter((o) => !_assistIsCancelada(o));
+      const conclMes = ativas.filter((o) => {
+        const dc = String(o.data_conclusao || '').slice(0, 10);
+        return dc && dc >= dtIni && dc <= dtFim && _assistIsConcluida(o);
+      });
+      const abertasMesEntrega = ativas.filter((o) => {
+        if (_assistIsConcluida(o)) return false;
+        const ent = _assistPickOfEntrega(o);
+        return ent && ent >= dtIni && ent <= dtFim;
+      });
+      const faturado = conclMes.reduce((s, o) => s + _assistPickOfValor(o), 0);
+      const previstoAberto = abertasMesEntrega.reduce((s, o) => s + _assistPickOfValor(o), 0);
+      const total = faturado + previstoAberto;
+      return respond(
+        `📊 Previsão de faturamento de ${mesRef}:\n` +
+        `• Total previsto: ${_assistFmtMoney(total)}\n` +
+        `• Já faturado (OFs concluídas no mês): ${_assistFmtMoney(faturado)}\n` +
+        `• Em OFs abertas com entrega este mês: ${_assistFmtMoney(previstoAberto)}\n\n` +
+        `💡 Por que sugiro isso: somei o valor total das OFs concluídas no mês + OFs abertas com entrega entre ${_assistFmtDateBr(dtIni)} e ${_assistFmtDateBr(dtFim)}.`
+      );
+    }
+
+    if (hasAny('clientes vip', 'melhores clientes', 'quais clientes merecem atenção', 'quais clientes merecem atencao')) {
+      const now = new Date();
+      const dt3m = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10);
+      const dtMesIni = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+      const dtMesFim = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const { data: ofsRaw } = await supabase
+        .from('ofs')
+        .select('cli_id,cliente_id,deleted_at,status,valor_total,valor_venda,val,data_conclusao,data_entrega,ent,created_at')
+        .is('deleted_at', null)
+        .limit(5000);
+      const rows = (Array.isArray(ofsRaw) ? ofsRaw : []).filter((o) => !_assistIsCancelada(o));
+      const in3m = rows.filter((o) => {
+        const dc = String(o.data_conclusao || o.created_at || '').slice(0, 10);
+        return dc && dc >= dt3m;
+      });
+      const sumMap = new Map();
+      const cntMes = new Map();
+      const hadBefore = new Map();
+      const hadThis = new Map();
+      in3m.forEach((o) => {
+        const cid = String(_assistPickOfClienteId(o) || '').trim();
+        if (!cid) return;
+        sumMap.set(cid, (sumMap.get(cid) || 0) + _assistPickOfValor(o));
+        const dc = String(o.data_conclusao || o.created_at || '').slice(0, 10);
+        if (dc >= dtMesIni && dc <= dtMesFim) {
+          cntMes.set(cid, (cntMes.get(cid) || 0) + 1);
+          hadThis.set(cid, true);
+        } else {
+          hadBefore.set(cid, true);
+        }
+      });
+      const ids = [...new Set([...sumMap.keys()])];
+      const cliMap = await _assistLoadClientesByIds(ids);
+      const top = ids
+        .map((id) => ({ id, valor: sumMap.get(id) || 0 }))
+        .sort((a, b) => (b.valor || 0) - (a.valor || 0))
+        .slice(0, 10);
+      const frequentes = ids
+        .filter((id) => (cntMes.get(id) || 0) >= 4)
+        .sort((a, b) => (cntMes.get(b) || 0) - (cntMes.get(a) || 0))
+        .slice(0, 10);
+      const queda = ids
+        .filter((id) => hadBefore.get(id) && !hadThis.get(id))
+        .sort((a, b) => (sumMap.get(b) || 0) - (sumMap.get(a) || 0))
+        .slice(0, 10);
+      const lnTop = top.map((x, i) => `• ${i + 1}. ${String(cliMap.get(x.id) || '—')} — ${_assistFmtMoney(x.valor)}`);
+      const lnFreq = frequentes.map((id, i) => `• ${i + 1}. ${String(cliMap.get(id) || '—')} — ${Number(cntMes.get(id) || 0)} compras no mês`);
+      const lnQueda = queda.map((id, i) => `• ${i + 1}. ${String(cliMap.get(id) || '—')} — comprava antes e não comprou neste mês`);
+      return respond(
+        `👑 Clientes VIP (últimos 3 meses):\n\n` +
+        `🥇 Top compradores:\n${lnTop.join('\n') || '—'}\n\n` +
+        `📈 Mais frequentes (mês atual):\n${lnFreq.join('\n') || '—'}\n\n` +
+        `⚠️ Clientes em queda:\n${lnQueda.join('\n') || '—'}\n\n` +
+        `💡 Por que sugiro isso: usei as OFs dos últimos 3 meses e somei valores por cliente; frequência considera compras no mês atual; “queda” = tinha compra antes e zero neste mês.`
+      );
+    }
+
+    if (/como (fa[cç]o|fazer|funciona)|me ensine|n[aã]o sei como/i.test(pergunta)) {
+      const p = _assistNorm(pergunta);
+      const mk = (lines) => lines.map((t, i) => `${['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'][i] || '•'} ${t}`).join('\n');
+      if (p.includes('criar') && p.includes('of')) {
+        return respond(`📋 Como criar uma OF:\n` + mk([
+          `Vá em PCP e clique em "+ Nova OF"`,
+          `Selecione o cliente (use o autocomplete)`,
+          `Preencha Produto/Descrição, Quantidade e Data de entrega`,
+          `Abra "Produção" e selecione o fluxo de máquinas (sugestão é opcional)`,
+          `Clique em "Salvar OF"`,
+          `Dica: se precisar dividir em itens, use os itens da OF (Detalhes)`,
+        ]));
+      }
+      if ((p.includes('entrada') || p.includes('dar entrada')) && (p.includes('estoque') || p.includes('chapa'))) {
+        return respond(`📦 Como dar entrada no estoque:\n` + mk([
+          `Vá em Estoque (Chapas)`,
+          `Clique em "📥 Entrada em Lote"`,
+          `Informe NF/fornecedor e as quantidades`,
+          `Confirme e verifique se a chapa atualizou`,
+        ]));
+      }
+      if (p.includes('concluir') && p.includes('of')) {
+        return respond(`✅ Como concluir uma OF:\n` + mk([
+          `No PCP, localize a OF`,
+          `Use a ação de concluir (ou peça no JARVIS: "concluir OF 123")`,
+          `Informe: produzidas, perdidas e a máquina`,
+          `Confirme na tela`,
+        ]));
+      }
+      if ((p.includes('cadastrar') || p.includes('cadastro') || p.includes('novo')) && p.includes('cliente')) {
+        return respond(`👥 Como cadastrar cliente:\n` + mk([
+          `Vá em Clientes e clique em "+ Novo Cliente"`,
+          `Preencha nome e telefone (o resto é opcional)`,
+          `Salve`,
+          `Dica: também dá para cadastrar pelo JARVIS: "cadastrar cliente"`,
+        ]));
+      }
+      if (p.includes('cota') || p.includes('cotacao')) {
+        return respond(`🛒 Como fazer cotação:\n` + mk([
+          `Vá em Compras MP`,
+          `Crie uma cotação e adicione itens/quantidades`,
+          `Selecione fornecedores e registre propostas`,
+          `Marque o fornecedor escolhido e finalize`,
+        ]));
+      }
+      if (p.includes('jarvis')) {
+        return respond(`⚙️ Como usar o JARVIS:\n` + mk([
+          `Digite um número (ex: "230") para ver uma OF`,
+          `Peça ações: "concluir OF 230", "altere a OF 230"`,
+          `Peça listas: "OFs do cliente X", "clientes VIP"`,
+          `Peça relatórios: "relatório de estoque", "relatório de perdas"`,
+        ]));
+      }
+      return respond(`🧠 Me diga exatamente o que você quer aprender (ex: "como criar uma OF", "como dar entrada no estoque").`);
+    }
+
     if (/^\s*\d{1,4}\s*$/.test(pergunta)) {
       const n = String(pergunta || '').trim();
       const of = await _jarvisFindOFByNumero(n);
@@ -9627,16 +9787,57 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         null;
       const cliNome = m ? String(m[1] || '').trim() : '';
       if (!cliNome) return naoEntendi();
-      const cli = await _jarvisFindClienteByNome(cliNome);
-      if (!cli) return respond(`${nome}, não encontrei o cliente "${cliNome}".`);
-      const cliId = String(cli.id || '').trim();
-      const { data: ofsRaw } = await supabase
-        .from('ofs')
-        .select('id,of,numero,status,cli_id,cliente_id,descricao,prodDesc,produto,qtd,qtd_pedida,quantidade,ent,data_entrega,urg,urgente,deleted_at,fluxo_maquinas,maq,maquina_atual_index')
-        .is('deleted_at', null)
-        .not('status', 'in', '("Cancelada","Cancelado")')
-        .limit(5000);
-      const ofs = (Array.isArray(ofsRaw) ? ofsRaw : []).filter((o) => String(_assistPickOfClienteId(o) || '') === cliId && !_assistIsConcluida(o));
+      const termo = cliNome.replace(/%/g, '').trim();
+      const { data: clientesRaw } = await supabase
+        .from('clientes')
+        .select('id,nome')
+        .ilike('nome', `%${termo}%`)
+        .limit(5);
+      const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
+      if (!clientes.length) return respond(`${nome}, não encontrei o cliente "${cliNome}".`);
+
+      const listOfsByCliId = async (id) => {
+        const cid = String(id || '').trim();
+        if (!cid) return [];
+        const cols = ['cli_id', 'cliente_id', 'cliId', 'clienteId'];
+        const isMissingCol = (err) => {
+          const msg = String(err?.message || err || '');
+          return msg.includes("Could not find the '") || msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist');
+        };
+        for (const col of cols) {
+          try {
+            const { data, error } = await supabase
+              .from('ofs')
+              .select('id,of,numero,status,cli_id,cliente_id,cliId,clienteId,descricao,prodDesc,produto,qtd,qtd_pedida,quantidade,ent,data_entrega,urg,urgente,deleted_at,fluxo_maquinas,maq,maquina_atual_index')
+              .eq(col, cid)
+              .is('deleted_at', null)
+              .not('status', 'in', '("Cancelada","Cancelado")')
+              .order('data_entrega', { ascending: true })
+              .limit(5000);
+            if (!error) return Array.isArray(data) ? data : [];
+            if (isMissingCol(error)) continue;
+            throw error;
+          } catch (e) {
+            if (isMissingCol(e)) continue;
+            throw e;
+          }
+        }
+        return [];
+      };
+
+      const all = [];
+      for (const c of clientes) {
+        const ofsCli = await listOfsByCliId(c.id);
+        ofsCli.forEach((o) => all.push({ ...o, _cliNome: String(c.nome || '').trim() }));
+      }
+      const seen = new Set();
+      const ofs = all.filter((o) => {
+        const id = String(o.id || '').trim() || String(o.of || o.numero || '').trim();
+        if (!id) return false;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return !_assistIsConcluida(o);
+      });
       const aberta = ofs.filter((o) => String(o.status || '').trim() === 'Em aberto');
       const prod = ofs.filter((o) => String(o.status || '').trim() === 'Em produção' || String(o.status || '').trim() === 'Em producao');
       const atras = ofs.filter((o) => {
@@ -9655,13 +9856,16 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const maq = pickMaqAtual(o);
         const ent = _assistPickOfEntrega(o);
         const qtd = Math.trunc(Number(o.qtd_pedida || o.quantidade || o.qtd || 0) || 0);
-        return `• OF #${num} — ${desc || '—'}${maq ? ` — ${maq}` : ''} — Qtd: ${qtd.toLocaleString('pt-BR')}${ent ? ` — Entrega: ${_assistFmtDateBr(ent)}` : ''}`;
+        const cliTag = o._cliNome ? ` — ${String(o._cliNome).trim()}` : '';
+        return `• OF #${num}${cliTag} — ${desc || '—'}${maq ? ` — ${maq}` : ''} — Qtd: ${qtd.toLocaleString('pt-BR')}${ent ? ` — Entrega: ${_assistFmtDateBr(ent)}` : ''}`;
       };
       return respond(
-        `📋 OFs ativas de ${String(cli.nome || cliNome).trim()}:\n\n` +
+        `📋 OFs ativas de "${cliNome}":\n` +
+        `Clientes encontrados: ${clientes.map((c) => String(c.nome || '').trim()).filter(Boolean).join(', ') || '—'}\n\n` +
         `🔵 Em produção (${prod.length}):\n${prod.slice(0, 10).map(fmtLinha).join('\n') || '—'}\n\n` +
         `🟡 Em aberto (${aberta.length}):\n${aberta.slice(0, 10).map(fmtLinha).join('\n') || '—'}\n\n` +
-        `🔴 Atrasadas (${atras.length}):\n${atras.slice(0, 10).map(fmtLinha).join('\n') || '—'}`
+        `🔴 Atrasadas (${atras.length}):\n${atras.slice(0, 10).map(fmtLinha).join('\n') || '—'}\n\n` +
+        `💡 Por que sugiro isso: busquei clientes por nome parcial (ilike) e consultei as OFs vinculadas por cli_id/cliente_id.`
       );
     }
 

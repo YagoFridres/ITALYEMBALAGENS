@@ -6,7 +6,12 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f0f1a">
+<link rel="manifest" href="/manifest.json">
 <title>Italy Embalagens — PCP Pro ERP</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -1302,6 +1307,70 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
     width:100% !important;
     margin-top:0 !important;
   }
+}
+
+#mobile-bottom-nav{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:60px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  z-index:9999;
+  display:none;
+  align-items:center;
+  padding:0 8px;
+  gap:4px;
+}
+#mobile-bottom-nav .mbn-item{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  border:1px solid transparent;
+  background:transparent;
+  color:var(--text2);
+  border-radius:12px;
+  padding:8px 6px;
+  cursor:pointer;
+  font-weight:800;
+  font-size:.66rem;
+  font-family:var(--font);
+  user-select:none;
+}
+#mobile-bottom-nav .mbn-item .ico{font-size:1.05rem;line-height:1}
+#mobile-bottom-nav .mbn-item.active{
+  background:var(--accent-soft);
+  color:var(--accent);
+  border-color:color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+@media (max-width: 768px) {
+  .sidebar, #sidebar, [class*="sidebar"] { display:none !important; }
+  #mobile-bottom-nav{ display:flex !important; }
+  .content, #content, .main-content, #main-content { margin-left:0 !important; margin-bottom:70px !important; width:100% !important; }
+  .page-body{ padding:8px !important; padding-bottom:84px !important; width:100% !important; }
+  table, .table{ display:block !important; overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; }
+  .modal, [class*="modal"]{ width:100% !important; height:100% !important; max-width:100% !important; max-height:100% !important; margin:0 !important; border-radius:0 !important; top:0 !important; left:0 !important; }
+  button, .btn, [class*="btn"]{ min-height:44px !important; min-width:44px !important; font-size:14px !important; }
+  input, select, textarea{ min-height:44px !important; font-size:16px !important; padding:8px 12px !important; }
+  h1{ font-size:20px !important; } h2{ font-size:18px !important; } h3{ font-size:16px !important; }
+  .grid, [class*="grid"], .cards, [class*="cards"]{ grid-template-columns:1fr !important; flex-direction:column !important; }
+  .header, #header{ padding:8px !important; height:50px !important; }
+  .logo, [class*="logo"]{ max-width:120px !important; font-size:14px !important; }
+  .hide-mobile{ display:none !important; }
+  .show-mobile{ display:block !important; }
+  body.is-mobile.mobile-blocked #mobile-access-block{ display:none !important; }
+  body.is-mobile #page-pcp{ display:flex !important; }
+}
+
+@media (max-width: 480px) {
+  .modal-body{ padding:12px !important; }
+  .card{ padding:12px !important; }
 }
 
 </style>
@@ -2830,6 +2899,16 @@ function _goBase(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
+  try{
+    const bn = document.getElementById('mobile-bottom-nav');
+    if(bn){
+      bn.querySelectorAll('.mbn-item').forEach(b=>b.classList.remove('active'));
+      const map = { dashboard:'mbn-home', pcp:'mbn-pcp', estoque:'mbn-estoque', clientes:'mbn-clientes', configuracoes:'mbn-config' };
+      const btnId = map[id] || (id === 'relatorios' || id === 'relmensal' ? 'mbn-home' : '');
+      const btn = btnId ? document.getElementById(btnId) : null;
+      if(btn) btn.classList.add('active');
+    }
+  }catch(e){}
   try{ document.getElementById('page-'+id)?.querySelector('.no-perm-overlay')?.remove(); }catch(e){}
   document.querySelectorAll('.nav-item').forEach(n=>{if((n.getAttribute('onclick')||'').includes(`go('${id}')`))n.classList.add('active');});
   openNavGroupForPage(id);
@@ -20870,6 +20949,58 @@ function cfgUserApply(cfg){
   window.USER_CFG = c;
   window.JARVIS_CFG = { voz: !!c.jarvisVoz, rate: Number(c.jarvisRate || 1) || 1, volume: Math.max(0, Math.min(100, Number(c.jarvisVolume || 100) || 100)) };
 }
+
+const UI_ZOOM_KEY = 'ui_zoom';
+function uiZoomClamp(z){
+  const n = Number(z);
+  if(!Number.isFinite(n)) return 1;
+  return Math.max(0.5, Math.min(2, Math.round(n * 10) / 10));
+}
+function uiZoomGetSaved(){
+  try{
+    const raw = localStorage.getItem(UI_ZOOM_KEY);
+    if(raw == null) return null;
+    const z = uiZoomClamp(parseFloat(String(raw)));
+    return z;
+  }catch(e){
+    return null;
+  }
+}
+function uiZoomApply(z, persist){
+  const val = uiZoomClamp(z);
+  try{ document.body.style.zoom = String(val); }catch(e){}
+  if(persist !== false){
+    try{ localStorage.setItem(UI_ZOOM_KEY, String(val)); }catch(e){}
+  }
+  try{
+    const lbl = document.getElementById('cfg-ui-zoom-lbl');
+    if(lbl) lbl.textContent = Math.round(val * 100) + '%';
+  }catch(e){}
+}
+function uiZoomInit(){
+  const saved = uiZoomGetSaved();
+  if(saved != null) uiZoomApply(saved, false);
+  try{
+    document.addEventListener('wheel', (e)=>{
+      if(!e.ctrlKey) return;
+      e.preventDefault();
+      const cur = uiZoomGetSaved();
+      const base = cur != null ? cur : uiZoomClamp(parseFloat(String(document.body.style.zoom || '1')));
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      uiZoomApply(base + delta, true);
+    }, { passive:false });
+  }catch(e){}
+}
+window.uiZoomStep = (delta)=>{
+  const cur = uiZoomGetSaved();
+  const base = cur != null ? cur : uiZoomClamp(parseFloat(String(document.body.style.zoom || '1')));
+  uiZoomApply(base + Number(delta || 0), true);
+};
+window.uiZoomReset = ()=>{
+  uiZoomApply(1, true);
+};
+
+try{ uiZoomInit(); }catch(e){}
 let _cfgSaveT = null;
 function cfgUserSaveAndApplyDebounced(){
   clearTimeout(_cfgSaveT);
@@ -20904,6 +21035,11 @@ function renderSistema(){
     const rt = document.getElementById('cfg-jarvis-rate'); if(rt) rt.value = String(cfg.jarvisRate || 1);
     const vl = document.getElementById('cfg-jarvis-volume'); if(vl) vl.value = String(cfg.jarvisVolume ?? 100);
     const vll = document.getElementById('cfg-jarvis-volume-lbl'); if(vll) vll.textContent = String(cfg.jarvisVolume ?? 100) + '%';
+    const zl = document.getElementById('cfg-ui-zoom-lbl');
+    if(zl){
+      const z = uiZoomGetSaved();
+      zl.textContent = Math.round(((z != null ? z : 1) * 100)) + '%';
+    }
     cfgUserApply(cfg);
   }catch(e){}
 }
@@ -32952,6 +33088,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               </select>
             </div>
             <div class="mf">
+              <label>Zoom da interface</label>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="uiZoomStep(-0.1)">−</button>
+                <div id="cfg-ui-zoom-lbl" style="min-width:72px;text-align:center;font-family:var(--mono);font-weight:900;color:var(--text2)">100%</div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="uiZoomStep(0.1)">+</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="uiZoomReset()">Reset</button>
+              </div>
+            </div>
+            <div class="mf">
               <label><input type="checkbox" id="cfg-compact" onchange="cfgUserSaveAndApply()"> Modo compacto</label>
             </div>
             <div class="mf">
@@ -33228,6 +33373,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 </div><!-- /content -->
 </div><!-- /layout -->
+
+<div id="mobile-bottom-nav">
+  <button class="mbn-item" id="mbn-home" onclick="go('dashboard')"><span class="ico">🏠</span><span>Home</span></button>
+  <button class="mbn-item" id="mbn-pcp" onclick="go('pcp')"><span class="ico">📋</span><span>PCP</span></button>
+  <button class="mbn-item" id="mbn-estoque" onclick="go('estoque')"><span class="ico">📦</span><span>Estoque</span></button>
+  <button class="mbn-item" id="mbn-clientes" onclick="go('clientes')"><span class="ico">👥</span><span>Clientes</span></button>
+  <button class="mbn-item" id="mbn-config" onclick="go('configuracoes')"><span class="ico">⚙️</span><span>Config</span></button>
+</div>
 
 <!-- TABLET VIEW -->
 <div id="tablet-view">
@@ -38439,6 +38592,9 @@ window.atualizarChapas = async function(){
     st.textContent = `
       #assist-fab{position:fixed;right:16px;bottom:16px;z-index:10000}
       #assist-fab button{width:56px;height:56px;border-radius:16px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+      #assist-mini{position:fixed;right:16px;bottom:86px;z-index:10003;display:none;touch-action:none}
+      #assist-mini button{width:56px;height:56px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--mono);font-weight:900}
+      #assist-mini .mini-dot{width:10px;height:10px;border-radius:999px;background:rgba(34,197,94,.95);box-shadow:0 0 10px rgba(34,197,94,.55)}
       #assist-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:10001;display:none}
       #assist-panel{position:fixed;top:0;right:0;height:100vh;width:min(380px,92vw);background:#0f0f1a;border-left:1px solid var(--border);z-index:10002;transform:translateX(110%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.55)}
       #assist-panel.open{transform:translateX(0)}
@@ -38487,6 +38643,14 @@ window.atualizarChapas = async function(){
       .jarvis-typing span:nth-child(2){animation-delay:.15s}
       .jarvis-typing span:nth-child(3){animation-delay:.3s}
       @keyframes jarvisDot{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-3px);opacity:1}}
+      @media (max-width:768px){
+        #assist-fab{right:14px;bottom:76px}
+        #assist-mini{right:14px;bottom:76px}
+        #assist-panel{width:100vw;height:calc(100vh - 60px);top:0;right:0;border-left:none}
+        #assist-input{position:sticky;bottom:0}
+        #assist-actions button{padding:9px 12px;font-size:.78rem}
+        #assist-close{font-size:1rem}
+      }
     `;
     document.head.appendChild(st);
 
@@ -38494,6 +38658,11 @@ window.atualizarChapas = async function(){
     fab.id = 'assist-fab';
     fab.innerHTML = `<button type="button" title="JARVIS">⚙️</button>`;
     document.body.appendChild(fab);
+
+    const mini = document.createElement('div');
+    mini.id = 'assist-mini';
+    mini.innerHTML = `<button type="button" title="JARVIS"><span>⚙️</span><span>J</span><span class="mini-dot"></span></button>`;
+    document.body.appendChild(mini);
 
     const overlay = document.createElement('div');
     overlay.id = 'assist-overlay';
@@ -38508,6 +38677,7 @@ window.atualizarChapas = async function(){
         <div id="assist-title">${logoImg}<span>⚙️ JARVIS</span> <span id="jarvis-online"><span class="dot"></span>online</span></div>
         <div id="assist-actions">
           <button type="button" id="assist-clear">Limpar</button>
+          <button type="button" id="assist-min">—</button>
           <button type="button" id="assist-close">✕</button>
         </div>
       </div>
@@ -38575,7 +38745,59 @@ window.atualizarChapas = async function(){
       w.print();
     };
 
+    const miniKey = 'jarvis_mini_v1';
+    const miniPosKey = 'jarvis_mini_pos_v1';
+    const clamp = (v, a, b)=>Math.max(a, Math.min(b, v));
+    const readMiniState = ()=>{
+      try{ return localStorage.getItem(miniKey) === '1'; }catch(e){ return false; }
+    };
+    const writeMiniState = (on)=>{
+      try{ localStorage.setItem(miniKey, on ? '1' : '0'); }catch(e){}
+    };
+    const loadMiniPos = ()=>{
+      try{
+        const raw = localStorage.getItem(miniPosKey);
+        const p = raw ? JSON.parse(raw) : null;
+        const x = Number(p?.x);
+        const y = Number(p?.y);
+        if(!Number.isFinite(x) || !Number.isFinite(y)) return null;
+        return { x, y };
+      }catch(e){ return null; }
+    };
+    const saveMiniPos = (x, y)=>{
+      try{ localStorage.setItem(miniPosKey, JSON.stringify({ x, y })); }catch(e){}
+    };
+    const applyMiniPos = (pos)=>{
+      try{
+        const b = mini.getBoundingClientRect();
+        const w = b.width || 56;
+        const h = b.height || 56;
+        const x = clamp(Number(pos?.x || 0), 6, Math.max(6, window.innerWidth - w - 6));
+        const y = clamp(Number(pos?.y || 0), 6, Math.max(6, window.innerHeight - h - 6));
+        mini.style.left = x + 'px';
+        mini.style.top = y + 'px';
+        mini.style.right = 'auto';
+        mini.style.bottom = 'auto';
+      }catch(e){}
+    };
+    const setMini = (on)=>{
+      if(on){
+        overlay.style.display = 'none';
+        panel.classList.remove('open');
+        fab.style.display = 'none';
+        mini.style.display = 'block';
+        writeMiniState(true);
+        const p = loadMiniPos();
+        if(p) applyMiniPos(p);
+      } else {
+        mini.style.display = 'none';
+        fab.style.display = 'block';
+        writeMiniState(false);
+      }
+    };
+
     const open = ()=>{
+      setMini(false);
       overlay.style.display = 'block';
       panel.classList.add('open');
       setTimeout(()=>{ try{ document.getElementById('assist-text')?.focus(); }catch(e){} }, 50);
@@ -38588,7 +38810,46 @@ window.atualizarChapas = async function(){
     };
     fab.querySelector('button').onclick = open;
     overlay.onclick = close;
+    mini.querySelector('button').onclick = open;
     panel.querySelector('#assist-close').onclick = close;
+    panel.querySelector('#assist-min').onclick = ()=>setMini(true);
+
+    let drag = null;
+    const onDown = (ev)=>{
+      try{
+        const pt = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+        const r = mini.getBoundingClientRect();
+        drag = { dx: pt.clientX - r.left, dy: pt.clientY - r.top };
+        ev.preventDefault();
+      }catch(e){}
+    };
+    const onMove = (ev)=>{
+      if(!drag) return;
+      try{
+        const pt = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+        const x = pt.clientX - drag.dx;
+        const y = pt.clientY - drag.dy;
+        applyMiniPos({ x, y });
+      }catch(e){}
+    };
+    const onUp = ()=>{
+      if(!drag) return;
+      drag = null;
+      try{
+        const r = mini.getBoundingClientRect();
+        saveMiniPos(Math.round(r.left), Math.round(r.top));
+      }catch(e){}
+    };
+    try{
+      mini.addEventListener('mousedown', onDown);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+      mini.addEventListener('touchstart', onDown, { passive:false });
+      window.addEventListener('touchmove', onMove, { passive:false });
+      window.addEventListener('touchend', onUp);
+    }catch(e){}
+    try{ window.addEventListener('resize', ()=>{ const p = loadMiniPos(); if(p) applyMiniPos(p); }); }catch(e){}
+    if(readMiniState()) setMini(true);
 
     panel.querySelector('#assist-clear').onclick = ()=>{
       saveHist([]);
@@ -38776,6 +39037,151 @@ window.atualizarChapas = async function(){
             { id:'local_alterar_cancel', label:'❌ Cancelar', decision:'cancel', ofId: st.of_id },
           ] }
         );
+        return true;
+      }
+      return true;
+    }
+
+    if(acao === 'cadastrar_cliente'){
+      const isSkip = tnorm === 'pular' || tnorm === 'skip';
+      const askVend = ()=>{
+        const vs = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : [];
+        const list = vs.filter(v=>v && v.id && v.nome).slice(0, 20);
+        const lines = list.map((v, i)=>`${i+1}. ${String(v.nome||'').trim()}`).join('\n');
+        addMsg('assistant', `7️⃣ Qual o vendedor? Digite o número (ou "pular"):\n${lines || '—'}\n0. Sem vendedor`);
+      };
+      const showConfirm = ()=>{
+        const resumo =
+          `📋 Confirmar cadastro do cliente:\n` +
+          `- Nome: ${dados.nome || '—'}\n` +
+          `- CNPJ/CPF: ${dados.cnpj || '—'}\n` +
+          `- Telefone: ${dados.tel || '—'}\n` +
+          `- Email: ${dados.email || '—'}\n` +
+          `- Cidade: ${dados.cidade || '—'}\n` +
+          `- Ramo: ${dados.ramo || '—'}\n` +
+          `- Vendedor: ${dados.vendedor_nome || '—'}`;
+        addMsg('assistant', resumo, { actions:[
+          { id:'local_cli_confirm', label:'✅ Confirmar', decision:'confirm' },
+          { id:'local_cli_edit', label:'✏️ Editar', decision:'edit' },
+          { id:'local_cli_cancel', label:'❌ Cancelar', decision:'cancel' },
+        ] });
+      };
+
+      if(etapa === 'nome'){
+        const v = String(text||'').trim();
+        if(!v){ addMsg('assistant','1️⃣ Qual o nome do cliente?'); return true; }
+        dados.nome = v;
+        st.etapa = 'cnpj';
+        addMsg('assistant', `2️⃣ Qual o CNPJ ou CPF? (ou digite "pular" para deixar em branco)`);
+        return true;
+      }
+      if(etapa === 'cnpj'){
+        dados.cnpj = isSkip ? '' : String(text||'').trim();
+        st.etapa = 'telefone';
+        addMsg('assistant', `3️⃣ Qual o telefone?`);
+        return true;
+      }
+      if(etapa === 'telefone'){
+        const v = String(text||'').trim();
+        if(isSkip || !v){ addMsg('assistant', `3️⃣ Qual o telefone?`); return true; }
+        dados.tel = v;
+        st.etapa = 'email';
+        addMsg('assistant', `4️⃣ Qual o email? (ou "pular")`);
+        return true;
+      }
+      if(etapa === 'email'){
+        dados.email = isSkip ? '' : String(text||'').trim();
+        st.etapa = 'cidade';
+        addMsg('assistant', `5️⃣ Qual a cidade? (ou "pular")`);
+        return true;
+      }
+      if(etapa === 'cidade'){
+        dados.cidade = isSkip ? '' : String(text||'').trim();
+        st.etapa = 'ramo';
+        addMsg('assistant', `6️⃣ Qual o ramo de atividade? (ex: Alimentício, Moveleiro, etc — ou "pular")`);
+        return true;
+      }
+      if(etapa === 'ramo'){
+        dados.ramo = isSkip ? '' : String(text||'').trim();
+        st.etapa = 'vendedor';
+        askVend();
+        return true;
+      }
+      if(etapa === 'vendedor'){
+        if(isSkip){
+          dados.vendedor_id = null;
+          dados.vendedor_nome = 'Sem vendedor';
+          st.etapa = 'confirmacao';
+          showConfirm();
+          return true;
+        }
+        const n = _jarvisParseInt(text);
+        const vs = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : [];
+        const list = vs.filter(v=>v && v.id && v.nome).slice(0, 20);
+        if(Number.isFinite(n)){
+          if(n === 0){
+            dados.vendedor_id = null;
+            dados.vendedor_nome = 'Sem vendedor';
+            st.etapa = 'confirmacao';
+            showConfirm();
+            return true;
+          }
+          const pick = list[n-1];
+          if(pick){
+            dados.vendedor_id = pick.id;
+            dados.vendedor_nome = String(pick.nome||'').trim();
+            st.etapa = 'confirmacao';
+            showConfirm();
+            return true;
+          }
+        }
+        const t = String(text||'').trim();
+        const hit = list.find(v=>_jarvisNorm(v.nome).includes(_jarvisNorm(t))) || null;
+        if(hit){
+          dados.vendedor_id = hit.id;
+          dados.vendedor_nome = String(hit.nome||'').trim();
+          st.etapa = 'confirmacao';
+          showConfirm();
+          return true;
+        }
+        askVend();
+        return true;
+      }
+      if(etapa === 'editar_campo'){
+        const k = _jarvisNorm(text);
+        const map = (()=>{
+          if(k.includes('nome')) return 'nome';
+          if(k.includes('cnpj') || k.includes('cpf')) return 'cnpj';
+          if(k.includes('tel') || k.includes('fone') || k.includes('telefone')) return 'tel';
+          if(k.includes('email')) return 'email';
+          if(k.includes('cidade')) return 'cidade';
+          if(k.includes('ramo')) return 'ramo';
+          if(k.includes('vendedor')) return 'vendedor';
+          return '';
+        })();
+        if(!map){ addMsg('assistant','Qual campo deseja editar? (nome, cnpj, telefone, email, cidade, ramo, vendedor)'); return true; }
+        dados._editCampo = map;
+        st.etapa = 'editar_valor';
+        addMsg('assistant', `Informe o novo valor para ${map}:`);
+        return true;
+      }
+      if(etapa === 'editar_valor'){
+        const campo = String(dados._editCampo || '').trim();
+        if(!campo){ st.etapa = 'editar_campo'; addMsg('assistant','Qual campo deseja editar?'); return true; }
+        const v = String(text||'').trim();
+        if(campo === 'vendedor'){
+          st.etapa = 'vendedor';
+          askVend();
+          return true;
+        }
+        if(campo === 'tel' && (!v || v.toLowerCase() === 'pular')){ addMsg('assistant','Telefone é obrigatório.'); return true; }
+        dados[campo] = (v.toLowerCase() === 'pular') ? '' : v;
+        st.etapa = 'confirmacao';
+        showConfirm();
+        return true;
+      }
+      if(etapa === 'confirmacao'){
+        showConfirm();
         return true;
       }
       return true;
@@ -38988,6 +39394,49 @@ window.atualizarChapas = async function(){
     if(!actionId) return;
     if(actionId.startsWith('local_')){
       const st = window.jarvisState;
+      if(actionId === 'local_cli_cancel'){
+        _jarvisStateClear();
+        addMsg('assistant', '❌ Ok, cancelado.');
+        return;
+      }
+      if(actionId === 'local_cli_edit'){
+        if(!st || st.acao !== 'cadastrar_cliente'){ addMsg('assistant','Não encontrei um cadastro em andamento.'); return; }
+        st.etapa = 'editar_campo';
+        addMsg('assistant','Qual campo deseja editar? (nome, cnpj, telefone, email, cidade, ramo, vendedor)');
+        return;
+      }
+      if(actionId === 'local_cli_confirm'){
+        if(!st || st.acao !== 'cadastrar_cliente'){ addMsg('assistant','Não encontrei um cadastro em andamento.'); return; }
+        const d = st.dados || {};
+        const payload = {
+          nome: String(d.nome || '').trim(),
+          cnpj: String(d.cnpj || '').trim() || null,
+          tel: String(d.tel || '').trim(),
+          email: String(d.email || '').trim() || null,
+          cidade: String(d.cidade || '').trim() || null,
+          ramo: String(d.ramo || '').trim() || null,
+          vendedor_id: d.vendedor_id || null,
+          ativo: true,
+        };
+        const emp = (typeof EMP_FILTRO !== 'undefined' && EMP_FILTRO) ? String(EMP_FILTRO) : '';
+        if(emp) payload.emp_id = emp;
+        if(!payload.nome || !payload.tel){ addMsg('assistant','Nome e telefone são obrigatórios.'); return; }
+        try{
+          const resp = await apiFetch('/api/clientes', { method:'POST', body: payload });
+          const j = resp ? await resp.json().catch(()=>null) : null;
+          if(!resp || !resp.ok || !j || !j.ok){
+            addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui cadastrar o cliente.`);
+            return;
+          }
+          _jarvisStateClear();
+          addMsg('assistant', `✅ Cliente ${payload.nome} cadastrado com sucesso! ID: ${String(j.data?.id || j.id || '').trim() || '—'}`);
+          try{ await carregarClientes(false); }catch(e){}
+          try{ renderClientes(); }catch(e){}
+        }catch(e){
+          addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro ao cadastrar o cliente.`);
+        }
+        return;
+      }
       if(actionId === 'local_concluir_cancel'){
         _jarvisStateClear();
         addMsg('assistant', '❌ Ok, cancelado.');
@@ -39207,6 +39656,65 @@ window.atualizarChapas = async function(){
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUI);
   else ensureUI();
+})();
+</script>
+
+<script>
+(function(){
+  let _deferred = null;
+  const ensureBtn = ()=>{
+    if(document.getElementById('pwa-install-btn')) return document.getElementById('pwa-install-btn');
+    const b = document.createElement('button');
+    b.id = 'pwa-install-btn';
+    b.type = 'button';
+    b.textContent = '📱 Instalar app';
+    b.style.position = 'fixed';
+    b.style.left = '12px';
+    b.style.bottom = '74px';
+    b.style.zIndex = '10010';
+    b.style.border = '1px solid var(--border)';
+    b.style.background = 'var(--accent)';
+    b.style.color = '#fff';
+    b.style.borderRadius = '12px';
+    b.style.padding = '10px 12px';
+    b.style.fontWeight = '900';
+    b.style.fontFamily = 'var(--mono)';
+    b.style.cursor = 'pointer';
+    b.style.boxShadow = '0 10px 30px rgba(0,0,0,.35)';
+    b.style.display = 'none';
+    b.onclick = async ()=>{
+      try{
+        if(!_deferred) return;
+        b.style.display = 'none';
+        _deferred.prompt();
+        await _deferred.userChoice;
+      }catch(e){}
+      _deferred = null;
+    };
+    document.body.appendChild(b);
+    return b;
+  };
+
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    try{
+      e.preventDefault();
+      _deferred = e;
+      const b = ensureBtn();
+      b.style.display = 'block';
+    }catch(err){}
+  });
+  window.addEventListener('appinstalled', ()=>{
+    try{
+      const b = document.getElementById('pwa-install-btn');
+      if(b) b.style.display = 'none';
+    }catch(e){}
+    _deferred = null;
+  });
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('/sw.js').catch(()=>null);
+    });
+  }
 })();
 </script>
 
