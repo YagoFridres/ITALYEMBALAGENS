@@ -39839,6 +39839,9 @@ window.atualizarChapas = async function(){
     document.body.appendChild(modal);
   }
 
+  try{ window.abrirImagemMobile = abrirImagemMobile; }catch(e){}
+  try{ window.imprimirImagemMobile = (url)=>mobilePrintImage(url); }catch(e){}
+
   function renderShell(){
     const root = byId('mobile-app-root');
     if(!root) return;
@@ -39921,13 +39924,67 @@ window.atualizarChapas = async function(){
     const content = byId('mob-content');
     if(!content) return;
     const chips = mobileState.jarvisSuggestions || [];
+    const renderMensagemJarvis = (msg)=>{
+      const txt = String(msg?.text ?? msg?.texto ?? msg?.resposta ?? '').trim();
+      const extras = (msg && typeof msg === 'object') ? (msg.dadosExtras || msg.dados_extras || msg.extra || null) : null;
+      const imagem = String(extras?.imagem_url || msg?.imagem_url || '').trim() || null;
+      const imgsRaw = extras?.imgs ?? msg?.imgs ?? msg?.images ?? msg?.imagens ?? null;
+      let imgUrl = imagem;
+      if(!imgUrl && imgsRaw){
+        try{
+          const arr = typeof imgsRaw === 'string' ? JSON.parse(imgsRaw) : imgsRaw;
+          if(Array.isArray(arr) && arr.length > 0) imgUrl = String(arr[0] || '').trim() || null;
+        }catch(_){}
+      }
+      const gal = (extras && extras.tipo === 'galeria_imagens' && Array.isArray(extras.imagens)) ? extras.imagens : [];
+      const galHtml = gal.length ? `
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px">
+          ${gal.map((it)=>{
+            const u = String(it?.imgUrl || it?.url || '').trim();
+            const n = String(it?.numero || it?.of || '').trim();
+            const d = String(it?.descricao || '').trim();
+            if(!u) return '';
+            return `
+              <div style="background:#0f0f1a;border:1px solid #2a2a4a;border-radius:10px;overflow:hidden;cursor:pointer" onclick="window.abrirImagemMobile && window.abrirImagemMobile('${esc(u)}','${esc(n)}')">
+                <img src="${esc(u)}" style="width:100%;height:100px;object-fit:cover;display:block" onerror="this.style.display='none'">
+                <div style="padding:6px 8px">
+                  <div style="color:#4a9eff;font-size:12px;font-weight:900">OF #${esc(n || '—')}</div>
+                  <div style="color:#aaa;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d)}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : '';
+      const imgHtml = imgUrl ? `
+        <div style="margin-top:10px">
+          <img src="${esc(imgUrl)}" style="width:100%;max-width:280px;border-radius:10px;cursor:pointer;display:block;border:1px solid #2a2a4a" onclick="window.abrirImagemMobile && window.abrirImagemMobile('${esc(imgUrl)}','')" onerror="this.style.display='none'">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="window.open('${esc(imgUrl)}','_blank')" style="flex:1;padding:8px;background:#2a2a4a;border:none;border-radius:8px;color:white;font-size:13px;cursor:pointer">⬇️ Baixar</button>
+            <button onclick="window.imprimirImagemMobile && window.imprimirImagemMobile('${esc(imgUrl)}')" style="flex:1;padding:8px;background:#2a2a4a;border:none;border-radius:8px;color:white;font-size:13px;cursor:pointer">🖨️ Imprimir</button>
+          </div>
+        </div>
+      ` : '';
+      return `
+        <div style="display:flex;gap:10px;margin:10px 0;justify-content:flex-start">
+          <div style="width:32px;height:32px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:16px">⚙️</div>
+          <div style="max-width:92%;background:#111426;border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;color:#fff;white-space:pre-wrap;word-break:break-word;line-height:1.28">
+            ${esc(txt)}
+            ${imgHtml}
+            ${galHtml}
+          </div>
+        </div>
+      `;
+    };
+
     const rows = (mobileState.jarvisHist || []).map((m)=>{
       const mine = m.role === 'user';
-      const align = mine ? 'flex-end' : 'flex-start';
-      const bg = mine ? 'rgba(74,158,255,.18)' : '#111426';
-      return `<div style="display:flex;justify-content:${align};margin:8px 0">
-        <div style="max-width:92%;background:${bg};border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;line-height:1.28">${esc(m.text||'')}</div>
-      </div>`;
+      if(mine){
+        return `<div style="display:flex;justify-content:flex-end;margin:8px 0">
+          <div style="max-width:92%;background:rgba(74,158,255,.18);border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;line-height:1.28">${esc(m.text||'')}</div>
+        </div>`;
+      }
+      return renderMensagemJarvis(m);
     }).join('');
     content.innerHTML = `
       <div class="mobile-chip-row">
@@ -40538,7 +40595,9 @@ window.atualizarChapas = async function(){
       const j = r ? await r.json().catch(()=>null) : null;
       mobileState.jarvisHist = (mobileState.jarvisHist||[]).filter(m=>!m.typing);
       const ans = String(j?.resposta || j?.answer || '').trim() || 'Não entendi. Tente perguntar de outra forma.';
-      mobileState.jarvisHist.push({ role:'assistant', text:ans, ts:Date.now() });
+      const dadosExtras = (j && typeof j === 'object') ? (j.dadosExtras || j.dados_extras || j.extra || null) : null;
+      const images = Array.isArray(j?.images) ? j.images : (Array.isArray(j?.imagens) ? j.imagens : null);
+      mobileState.jarvisHist.push({ role:'assistant', text:ans, ts:Date.now(), dadosExtras, images });
       const sug = Array.isArray(j?.suggestions) ? j.suggestions.map(s=>String(s||'').trim()).filter(Boolean) : [];
       if(sug.length) mobileState.jarvisSuggestions = sug.slice(0, 8);
       saveHist();
