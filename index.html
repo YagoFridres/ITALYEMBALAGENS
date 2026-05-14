@@ -39638,20 +39638,30 @@ window.atualizarChapas = async function(){
     mobileState.maqEmp = '';
   }
 
-  async function mobileFetchOFsByEntrega(dateIso, empId){
+  function getOfDataEntrega(of){
+    const raw = of?.data_entrega || of?.ent || of?.dia || '';
+    if(!raw) return '';
+    return String(raw).slice(0, 10);
+  }
+
+  async function mobileFetchOFsMobile(dateIso, empId){
     const out = [];
-    const iso = clampIso(dateIso);
+    const sel = clampIso(dateIso);
+    const hoje = todayIso();
+    const isHoje = sel === hoje;
     let offset = 0;
     for(let guard = 0; guard < 10; guard++){
       const qs = new URLSearchParams();
       qs.set('lite','1');
       qs.set('limit','500');
       qs.set('offset', String(offset));
-      qs.set('from', iso);
-      qs.set('to', iso);
-      qs.set('date_field', 'entrega');
       qs.set('excluir_canceladas','1');
       if(empId) qs.set('empId', String(empId));
+      if(!isHoje){
+        qs.set('from', '1900-01-01');
+        qs.set('to', sel);
+        qs.set('date_field', 'entrega');
+      }
       const r = await api('GET','/ofs?' + qs.toString());
       const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
       out.push(...chunk);
@@ -39659,13 +39669,18 @@ window.atualizarChapas = async function(){
       offset += 500;
       if(out.length >= 3000) break;
     }
-    return out.filter(isOfAtiva).filter((of)=>String(of?.ent || of?.data_entrega || '').slice(0,10) === iso);
+    const ativos = out.filter(isOfAtiva);
+    if(isHoje) return ativos;
+    return ativos.filter((of)=>{
+      const dt = getOfDataEntrega(of);
+      return dt && dt <= sel;
+    });
   }
   async function mobileRefreshMaquinas(){
     const maq = await api('GET','/maquinas');
     const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
     const empId = String(mobileState.maqEmp || '').trim();
-    const ofs = await mobileFetchOFsByEntrega(mobileState.maqDate, empId);
+    const ofs = await mobileFetchOFsMobile(mobileState.maqDate, empId);
     mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
     mobileState.ofs = ofs;
   }
@@ -39937,11 +39952,27 @@ window.atualizarChapas = async function(){
 
     const iso = clampIso(mobileState.maqDate);
     const empId = String(mobileState.maqEmp || '').trim();
-    const allowedMap = new Map(MAQUINAS_MOBILE_PERMITIDAS.map((n)=>[String(n||'').trim().toUpperCase(), String(n||'').trim()]));
-    const ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso);
+    const hoje = todayIso();
+    const isHoje = iso === hoje;
+    const matchPerm = (mkUpper)=>{
+      const mku = String(mkUpper || '').trim().toUpperCase();
+      if(!mku) return '';
+      for(const p of MAQUINAS_MOBILE_PERMITIDAS){
+        const pu = String(p||'').trim().toUpperCase();
+        if(!pu) continue;
+        if(mku === pu || mku.includes(pu) || pu.includes(mku)) return String(p||'').trim();
+      }
+      return '';
+    };
+    const ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((of)=>{
+      if(isHoje) return true;
+      const dt = getOfDataEntrega(of);
+      return dt && dt <= iso;
+    });
     const ofs = ofsBase.filter((of)=>{
-      const mk = String(getOfMaquinaAtual(of) || '').trim().toUpperCase();
-      return allowedMap.has(mk);
+      const mk = String(getOfMaquinaAtual(of) || '').trim();
+      const perm = matchPerm(mk);
+      return !!perm;
     });
     const totalOfs = ofs.length;
     const totalCaixas = ofs.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
@@ -39959,18 +39990,19 @@ window.atualizarChapas = async function(){
     const maquinasFiltradas = MAQUINAS_MOBILE_PERMITIDAS
       .map((nomePerm)=>{
         const up = String(nomePerm||'').trim().toUpperCase();
-        const m = (mobileState.maquinas || []).find((mm)=>
-          String(mm?.nome || '').trim().toUpperCase() === up ||
-          String(mm?.col || '').trim().toUpperCase() === up
-        );
+        const m = (mobileState.maquinas || []).find((mm)=>{
+          const n = String(mm?.nome || '').trim().toUpperCase();
+          const c = String(mm?.col || '').trim().toUpperCase();
+          return n === up || c === up || n.includes(up) || c.includes(up) || up.includes(n) || up.includes(c);
+        });
         return m ? { perm: String(nomePerm||'').trim(), obj: m } : null;
       })
       .filter(Boolean);
 
     const byMaq = new Map();
     ofs.forEach((of)=>{
-      const mk = String(getOfMaquinaAtual(of) || '').trim().toUpperCase();
-      const key = allowedMap.get(mk);
+      const mk = String(getOfMaquinaAtual(of) || '').trim();
+      const key = matchPerm(mk);
       if(!key) return;
       if(!byMaq.has(key)) byMaq.set(key, []);
       byMaq.get(key).push(of);
@@ -40394,6 +40426,24 @@ window.atualizarChapas = async function(){
     const input = byId('mob-jarvis-input'); if(input) input.style.display = 'none';
     const content = byId('mob-content');
     if(!content) return;
+    try{
+      if(!mobileState._orcLoading && (!mobileState._orcLoadedAt || (Date.now() - mobileState._orcLoadedAt) > 60000)){
+        mobileState._orcLoading = true;
+        content.innerHTML = `<div class="mobile-card" style="text-align:center;color:#8b93a7">Carregando orçamentos…</div>`;
+        Promise.resolve().then(async ()=>{
+          try{
+            await mobileRefreshOrcamentos();
+            mobileState._orcLoadedAt = Date.now();
+          }catch(e){
+            try{ showMobileToast('Erro ao carregar orçamentos', 'error'); }catch(_){}
+          }finally{
+            mobileState._orcLoading = false;
+            try{ if(mobileState.view === 'orcamentos') renderOrcamentos(); }catch(_){}
+          }
+        });
+        return;
+      }
+    }catch(e){}
     const rows = (mobileState.orcamentos || []).slice();
     const statuses = ['Todos', ...Array.from(new Set(rows.map(o=>String(o?.status||'').trim()).filter(Boolean))).slice(0, 8)];
     const sel = mobileState.orcFiltro || 'Todos';
