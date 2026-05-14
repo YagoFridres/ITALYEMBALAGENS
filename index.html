@@ -851,6 +851,7 @@ body.mobile-mode #modal-calc{
   justify-content:stretch !important;
   padding:0 !important;
 }
+body.mobile-mode #modal-calc.open,
 body.mobile-mode #modal-calc.show,
 body.mobile-mode #modal-calc.active{display:flex !important;}
 body.mobile-mode #modal-calculadora{
@@ -39974,8 +39975,11 @@ window.atualizarChapas = async function(){
       const perm = matchPerm(mk);
       return !!perm;
     });
-    const totalOfs = ofs.length;
-    const totalCaixas = ofs.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
+    const SEM_MAQ_KEY = '📋 Sem máquina definida';
+    const ofsSemMaq = ofsBase.filter((of)=>!String(getOfMaquinaAtual(of) || '').trim());
+    const ofsShown = ofs.concat(ofsSemMaq);
+    const totalOfs = ofsShown.length;
+    const totalCaixas = ofsShown.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
 
     const rel = (()=>{
       const dtSel = new Date(iso + 'T00:00:00');
@@ -40007,6 +40011,7 @@ window.atualizarChapas = async function(){
       if(!byMaq.has(key)) byMaq.set(key, []);
       byMaq.get(key).push(of);
     });
+    byMaq.set(SEM_MAQ_KEY, ofsSemMaq);
     byMaq.forEach((arr)=>{
       arr.sort((a,b)=>{
         const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
@@ -40018,7 +40023,7 @@ window.atualizarChapas = async function(){
       });
     });
 
-    const nomes = maquinasFiltradas.map((x)=>x.perm);
+    const nomes = maquinasFiltradas.map((x)=>x.perm).concat([SEM_MAQ_KEY]);
 
     const maqByPerm = new Map(maquinasFiltradas.map((x)=>[String(x.perm||'').trim().toUpperCase(), x.obj]));
     const getMaqObj = (nome)=>{
@@ -40211,12 +40216,19 @@ window.atualizarChapas = async function(){
 
         const getListMaq = ()=>{
           const iso0 = clampIso(mobileState.maqDate);
-          const allowed = new Map(MAQUINAS_MOBILE_PERMITIDAS.map((n)=>[String(n||'').trim().toUpperCase(), String(n||'').trim()]));
-          const rows = (mobileState.ofs || [])
+          const isHoje0 = iso0 === todayIso();
+          const SEM_MAQ_KEY = '📋 Sem máquina definida';
+          const isSemGrupo = String(maqNome || '').trim() === SEM_MAQ_KEY;
+          const base = (mobileState.ofs || [])
             .filter(isOfAtiva)
-            .filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso0)
-            .filter((o)=>allowed.has(String(getOfMaquinaAtual(o)||'').trim().toUpperCase()))
-            .filter((o)=>allowed.get(String(getOfMaquinaAtual(o)||'').trim().toUpperCase()) === maqNome);
+            .filter((o)=>{
+              if(isHoje0) return true;
+              const dt = getOfDataEntrega(o);
+              return dt && dt <= iso0;
+            });
+          const rows = isSemGrupo
+            ? base.filter((o)=>!String(getOfMaquinaAtual(o) || '').trim())
+            : base.filter((o)=>matchPerm(String(getOfMaquinaAtual(o) || '').trim()) === String(maqNome || '').trim());
           rows.sort((a,b)=>{
             const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
             const ha = Number.isFinite(pa); const hb = Number.isFinite(pb);
@@ -40356,7 +40368,8 @@ window.atualizarChapas = async function(){
             try{
               const prod = Math.trunc(toNum(byId('mob-bs-prod')?.value || 0));
               const perd = Math.trunc(toNum(byId('mob-bs-perd')?.value || 0));
-              const payload = { qtd_produzida: prod, qtdPerdida: perd, qtd_perdida: perd, maquina: maqNome };
+              const maqPayload = matchPerm(String(getOfMaquinaAtual(of) || '').trim()) || '';
+              const payload = { qtd_produzida: prod, qtdPerdida: perd, qtd_perdida: perd, maquina: maqPayload };
               const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')) + '/concluir', { method:'POST', body: payload });
               const j = r ? await r.json().catch(()=>null) : null;
               if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha ao concluir');
