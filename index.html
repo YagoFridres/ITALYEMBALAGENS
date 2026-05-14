@@ -656,393 +656,170 @@ body[data-device="tablet"] .cards-row{grid-template-columns:repeat(3,minmax(0,1f
 body[data-device="tablet"] .g2,body[data-device="tablet"] .g3{grid-template-columns:1fr!important;}
 body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{display:none;}
 
-body[data-device="mobile"] .topbar{padding:0 12px;gap:8px;}
-body[data-device="mobile"] #hamburger-btn{display:flex!important;}
-body[data-device="mobile"] .sidebar{position:fixed;left:-248px;top:52px;bottom:0;z-index:900;width:240px;transition:left .22s;box-shadow:var(--shadow-lg);}
-body[data-device="mobile"] .sidebar.mob-open{left:0;}
-body[data-device="mobile"] .layout{overflow:visible;}
-body[data-device="mobile"] .cards-row{grid-template-columns:1fr 1fr!important;}
-body[data-device="mobile"] .g2,body[data-device="mobile"] .g3{grid-template-columns:1fr!important;}
-body[data-device="mobile"] .topbar-badges,body[data-device="mobile"] .clock,body[data-device="mobile"] #user-action-badge{display:none!important;}
-body[data-device="mobile"] .page-body{padding:12px;}
-body[data-device="mobile"] .ptoolbar{flex-wrap:wrap;gap:6px;}
-body[data-device="mobile"] table th:nth-child(n+5),body[data-device="mobile"] table td:nth-child(n+5){display:table-cell;}
-body[data-device="mobile"] .modal{border-radius:0;margin:0;width:100vw;min-height:100vh;max-height:100vh;}
-body[data-device="mobile"] .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
-body[data-device="mobile"] .sidebar-brand{padding:14px 14px 8px;}
-
-#modal-of.modal-overlay{overflow:hidden;padding:0;}
-#modal-of .modal{
-  width:min(860px,96vw);
-  max-height:92vh;
-  overflow:hidden;
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  z-index:9999;
-  display:flex;
-  flex-direction:column;
-}
- #modal-of .of-modal-body{overflow:auto;padding:0 18px 14px 18px}
- #modal-of .of-progress{display:flex;align-items:center;gap:10px;margin:8px 0 10px 0}
- #modal-of .of-step{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--text2);font-family:var(--mono);font-weight:900}
- #modal-of .of-dot{width:18px;height:18px;border-radius:999px;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text3)}
- #modal-of .of-step.done .of-dot{border-color:rgba(34,197,94,.9);background:rgba(34,197,94,.15);color:rgba(34,197,94,.95)}
- #modal-of .of-step.active .of-dot{border-color:rgba(59,130,246,.9);background:rgba(59,130,246,.15);color:rgba(59,130,246,.95)}
- #modal-of details.of-sec{border:1px solid var(--border);border-radius:12px;background:var(--s2);margin:10px 0;overflow:hidden}
- #modal-of details.of-sec > summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;font-weight:900;color:var(--text)}
-#modal-of details.of-sec.locked > summary{cursor:default;pointer-events:none}
- #modal-of details.of-sec > summary::-webkit-details-marker{display:none}
- #modal-of .of-sec-body{padding:12px}
- #modal-of .of-sec-hint{font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900}
- #modal-of .of-required.bad{border-color:rgba(239,68,68,.8)!important;box-shadow:0 0 0 2px rgba(239,68,68,.18)!important}
-body[data-device="mobile"] #modal-of.modal-overlay{align-items:center;justify-content:center;padding:0 8px;}
-body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-height:92vh;border-radius:14px;margin:0;}
-
 #mobile-access-block{display:none;}
 
-@media(max-width:768px){
-  body{font-size:14px;}
-  #hamburger-btn{display:flex!important;}
-  .sidebar{position:fixed;left:-248px;top:52px;bottom:0;z-index:900;width:240px;transition:left .22s;box-shadow:var(--shadow-lg);}
-  .sidebar.mob-open{left:0;}
-  .layout{overflow:visible;}
-  .topbar{padding:0 12px;gap:8px;}
-  .topbar-badges,.clock,#user-action-badge{display:none!important;}
-  .page-body{padding:12px;}
-  .ptoolbar{flex-wrap:wrap;gap:8px;}
-  .btn,.btn-icon{min-height:42px;padding:10px 14px;font-size:.9rem;}
-  .btn-sm{min-height:38px;padding:9px 12px;font-size:.84rem;}
-  input,select,textarea{min-height:42px;font-size:.95rem;}
-  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.pcp-table{min-width:780px;}
-  .modal-overlay{align-items:stretch;justify-content:stretch;padding:0;}
-  .modal{width:100vw;min-height:100vh;max-height:100vh;border-radius:0;margin:0;padding:18px;}
-  .modal-footer{position:sticky;bottom:0;background:var(--surface);padding-top:10px;margin-top:14px;}
-  #modal-of.modal-overlay{align-items:center;justify-content:center;padding:0 8px;}
-  #modal-of .modal{width:96vw;min-height:auto;max-height:92vh;border-radius:14px;margin:0;}
+/* ===== MOBILE MODE (SEPARADO DO DESKTOP) ===== */
+.mobile-only{display:none;}
+body.mobile-mode{background:#0f0f1a;color:#fff;}
+body.mobile-mode .topbar,
+body.mobile-mode .layout,
+body.mobile-mode #tablet-view,
+body.mobile-mode #device-screen,
+body.mobile-mode #sidebar-overlay,
+body.mobile-mode #mobile-access-block,
+body.mobile-mode #assist-fab,
+body.mobile-mode #assist-panel,
+body.mobile-mode #assist-overlay,
+body.mobile-mode #assist-mini{display:none!important;}
+body.mobile-mode .mobile-only{display:flex!important;}
+
+.mobile-app{
+  position:fixed;
+  inset:0;
+  background:#0f0f1a;
+  display:flex;
+  flex-direction:column;
+  font-size:15px;
+}
+.mobile-header{
+  height:52px;
+  background:#1a1a2e;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 16px;
+  border-bottom:1px solid #2a2a4a;
+  flex-shrink:0;
+}
+.mobile-header .mh-title{font-weight:900;font-family:var(--mono);letter-spacing:.3px;}
+.mobile-header .mh-btn{
+  border:1px solid #2a2a4a;
+  background:#0f0f1a;
+  color:#fff;
+  border-radius:10px;
+  width:38px;
+  height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.mobile-content{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:12px;
+  padding-bottom:80px;
+}
+.mobile-bottom-nav{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  height:60px;
+  background:#1a1a2e;
+  border-top:1px solid #2a2a4a;
+  display:flex;
+  align-items:center;
+  justify-content:space-around;
+  z-index:9999;
+}
+.mobile-nav-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  padding:8px 20px;
+  border-radius:10px;
+  color:#8b93a7;
+  font-size:11px;
+  cursor:pointer;
+  user-select:none;
+}
+.mobile-nav-item.active{color:#4a9eff;}
+.mobile-nav-item .icon{font-size:22px;line-height:1;}
+
+.mobile-chip-row{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:6px;
+}
+.mobile-chip{
+  flex:0 0 auto;
+  border:1px solid #2a2a4a;
+  background:#1a1a2e;
+  color:#d7def2;
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:800;
 }
 
-@media(min-width:769px) and (max-width:1024px){
-  .sidebar{width:70px;overflow:hidden;}
-  .sidebar-brand-name,.sidebar-brand-sub,.sidebar-section,.nav-item span:not(.ico),.badge-n{display:none!important;}
-  .sidebar-brand{padding:12px 8px 10px;text-align:center;}
-  .nav-item{justify-content:center;padding:12px 0;}
-  .clock,.topbar-badges{display:none;}
+.mobile-card{
+  background:#1a1a2e;
+  border:1px solid #2a2a4a;
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:10px;
 }
-
-@media(max-width:860px){
-  .dev-cards{grid-template-columns:1fr;}
+.mobile-of-card{border-left:4px solid #4a9eff;}
+.mobile-of-card.atrasada{border-left-color:#ff4444;}
+.mobile-of-card.proxima{border-left-color:#ff9800;}
+.mobile-of-card.ok{border-left-color:#44ff88;}
+.mobile-of-title{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.mobile-of-title .n{font-weight:900;font-family:var(--mono);}
+.mobile-of-title .st{font-size:12px;color:#8b93a7;}
+.mobile-of-meta{margin-top:8px;color:#c9d2ea;font-size:13px;line-height:1.25;}
+.mobile-actions{display:flex;gap:10px;margin-top:10px;}
+.mobile-btn{
+  flex:1;
+  border:1px solid #2a2a4a;
+  background:#0f0f1a;
+  color:#fff;
+  border-radius:10px;
+  padding:10px 12px;
+  font-weight:900;
+  cursor:pointer;
 }
+.mobile-btn.primary{background:#4a9eff;border-color:#4a9eff;}
+.mobile-btn.danger{background:#ff4444;border-color:#ff4444;}
 
-@media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); position: fixed; z-index: 1000; transition: transform 0.3s; left: 0 !important; }
-  .sidebar.open, .sidebar.mob-open { transform: translateX(0); }
-  .main { margin-left: 0 !important; width: 100% !important; }
-  .topbar { position: sticky; top: 0; z-index: 100; }
-  table { display: block; overflow-x: auto; white-space: nowrap; }
-  .shell { flex-direction: column; }
-  .view { padding: 8px !important; }
-  .card-grid { grid-template-columns: 1fr !important; }
-  input, select, textarea { font-size: 16px !important; }
-  .btn { min-height: 44px; min-width: 44px; }
-  .modal, .modal-content, .modal-box { width: 95vw !important; max-height: 90vh; overflow-y: auto; }
+.mobile-jarvis-input{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:60px;
+  padding:10px 12px;
+  background:#1a1a2e;
+  border-top:1px solid #2a2a4a;
+  display:flex;
+  gap:8px;
+  align-items:center;
 }
-
-@media (max-width: 480px) {
-  .topbar-right { display: none; }
-  .brand-sub, .sidebar-brand-sub { display: none; }
-  th, td { padding: 6px 8px !important; font-size: 12px !important; }
+.mobile-jarvis-input input{
+  flex:1;
+  background:#0f0f1a;
+  border:1px solid #2a2a4a;
+  border-radius:24px;
+  padding:10px 16px;
+  color:#fff;
+  font-size:15px;
+  outline:none;
 }
-
-@media (max-width: 768px) {
-  body.is-mobile{overflow-x:hidden !important;width:100vw !important;max-width:100vw !important;}
-  body.is-mobile *{max-width:100% !important;box-sizing:border-box !important;}
-  body.is-mobile #app,
-  body.is-mobile #main-content,
-  body.is-mobile .main-content,
-  body.is-mobile #content,
-  body.is-mobile .content{width:100% !important;max-width:100vw !important;overflow-x:hidden !important;padding:0 8px !important;margin:0 !important;}
-  body.is-mobile .layout{overflow-x:hidden !important;}
-
-  #mobile-access-block{
-    display:none;
-    position:fixed;
-    inset:0;
-    z-index:12000;
-    background:var(--bg);
-    align-items:center;
-    justify-content:center;
-    padding:24px;
-  }
-  body.is-mobile.mobile-blocked #mobile-access-block{display:flex;}
-  #mobile-access-block .mab-card{
-    width:min(520px,100%);
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:18px 16px;
-    box-shadow:var(--shadow-lg);
-  }
-  #mobile-access-block .mab-title{font-weight:950;font-size:1.05rem;color:var(--text);margin-bottom:6px;}
-  #mobile-access-block .mab-sub{color:var(--text3);font-size:.9rem;line-height:1.35;}
-
-  body.is-mobile .sidebar .nav-item{display:none!important;}
-  body.is-mobile .sidebar .nav-group,
-  body.is-mobile .sidebar .sidebar-section{display:none!important;}
-  body.is-mobile .sidebar #menu-ofs-maquina,
-  body.is-mobile .sidebar #menu-orcamentos{display:flex!important;}
-
-  body.is-mobile #page-pcp{display:none!important;}
-  body.is-mobile #page-pcp #pcp-batchbar{display:none!important;}
-
-  body.is-mobile #page-pcp #pcp-busca,
-  body.is-mobile #page-pcp #pcp-status,
-  body.is-mobile #page-pcp #pcp-vend,
-  body.is-mobile #page-pcp #pcp-dia-input,
-  body.is-mobile #page-pcp #btn-cancelar-of,
-  body.is-mobile #page-pcp #btn-alterar-of,
-  body.is-mobile #page-pcp #btn-baixa-of,
-  body.is-mobile #page-pcp button[onclick^="imprimirProgramacao"]{display:none!important;}
-
-  body.is-mobile #page-ofmaq .ptoolbar > span{display:none!important;}
-  body.is-mobile #page-ofmaq #ofmaq-data,
-  body.is-mobile #page-ofmaq #ofmaq-busca,
-  body.is-mobile #page-ofmaq #ofmaq-status,
-  body.is-mobile #page-ofmaq #ofmaq-btn-concluir-tudo,
-  body.is-mobile #page-ofmaq #ofmaq-btn-nova-of,
-  body.is-mobile #page-ofmaq #ofmaq-btn-relatorio,
-  body.is-mobile #page-ofmaq #ofmaq-btn-atualizar,
-  body.is-mobile #page-ofmaq #ofmaq-dias-bar #ofsmaq-label-semana,
-  body.is-mobile #page-ofmaq .ofmaq-dia-count{display:none!important;}
-
-  body.is-mobile #page-ofmaq .ofmaq-toprow{flex-direction:column !important;align-items:stretch !important;}
-
-  body.is-mobile #ofmaq-dias-bar,
-  body.is-mobile .ofmaq-dias-grid{display:flex !important;flex-direction:row !important;width:100% !important;overflow-x:hidden !important;gap:4px !important;}
-  body.is-mobile #ofmaq-dias-bar{min-width:0 !important;}
-  body.is-mobile #ofmaq-dias-bar .btn,
-  body.is-mobile #ofmaq-dias-bar button{flex:1 !important;min-width:0 !important;font-size:.8rem !important;padding:8px 4px !important;white-space:nowrap !important;}
-
-  body.is-mobile #ofsmaq-select-maquina,
-  body.is-mobile #ofsmaq-filtro-maquina,
-  body.is-mobile select[id*="maquina"]{width:100% !important;max-width:100% !important;display:block !important;margin-top:8px !important;font-size:1rem !important;padding:10px !important;min-height:44px !important;}
-
-  body.is-mobile #page-ofmaq #ofmaq-fab-nova-of{
-    display:flex!important;
-    position:fixed;
-    bottom:20px;
-    right:20px;
-    z-index:999;
-    min-height:48px;
-    padding:12px 16px;
-    border-radius:14px;
-    font-weight:800;
-    box-shadow:var(--shadow-lg);
-  }
-
-  body.is-mobile .ofmaq-card,
-  body.is-mobile [class*="ofmaq-card"],
-  body.is-mobile .card-of-maquina{width:100% !important;max-width:100% !important;margin:0 0 12px 0 !important;padding:12px !important;border-radius:8px !important;display:flex !important;flex-direction:column !important;gap:8px !important;}
-
-  body.is-mobile #page-ofmaq .ofmaq-card .ofmaq-img{width:56px!important;height:56px!important;}
-  body.is-mobile #page-ofmaq .ofmaq-num{font-size:1.1rem!important;font-weight:900!important;}
-  body.is-mobile #page-ofmaq .ofmaq-cliente{font-size:.9rem!important;}
-  body.is-mobile #page-ofmaq .ofmaq-actions{width:100%!important;}
-  body.is-mobile .ofmaq-btn-concluir,
-  body.is-mobile button[onclick*="concluirOF"],
-  body.is-mobile button[onclick*="baixarOf"]{width:100% !important;min-height:52px !important;font-size:1.1rem !important;font-weight:bold !important;margin-top:8px !important;}
-
-  body.is-mobile #page-ofmaq .ofmaq-btn-sem-papelao{min-height:44px!important;width:100%!important;}
-  body.is-mobile #page-ofmaq .ofmaq-arrows{gap:10px!important;width:100%!important;}
-  body.is-mobile .ofmaq-btn-arrow,
-  body.is-mobile button[onclick*="moverOF"]{min-width:52px !important;min-height:52px !important;font-size:1.2rem !important;}
-
-  body.is-mobile .ofmaq-grupo-header,
-  body.is-mobile [class*="grupo-maquina"] h3,
-  body.is-mobile [class*="grupo-maquina"] h2{font-size:1.2rem !important;font-weight:bold !important;padding:12px 8px !important;width:100% !important;}
-
-  body.is-mobile #page-orcamentos{
-    flex-direction:column !important;
-    width:100vw !important;
-    max-width:100vw !important;
-    padding:12px !important;
-    box-sizing:border-box !important;
-    overflow-x:hidden !important;
-    gap:12px !important;
-  }
-  body.is-mobile #page-orcamentos.page.active{display:flex !important;}
-  body.is-mobile #page-orcamentos.page:not(.active){display:none !important;}
-  body.is-mobile #page-orcamentos > *{
-    width:100% !important;
-    max-width:100% !important;
-    float:none !important;
-    position:static !important;
-    margin:0 0 8px 0 !important;
-    box-sizing:border-box !important;
-  }
-  body.is-mobile #page-orcamentos .ptoolbar{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:stretch !important;
-    gap:12px !important;
-  }
-  body.is-mobile #page-orcamentos #orc-fil-emp{width:100% !important;}
-  body.is-mobile #page-orcamentos .page-body{
-    padding:0 !important;
-    width:100% !important;
-    max-width:100% !important;
-    overflow-x:hidden !important;
-  }
-  body.is-mobile #orc-body{
-    display:flex !important;
-    flex-direction:column !important;
-    width:100% !important;
-    max-width:100% !important;
-    overflow-x:hidden !important;
-    gap:12px !important;
-  }
-  body.is-mobile #page-orcamentos .orc-card{
-    width:100% !important;
-    max-width:100% !important;
-    margin:0 !important;
-  }
-  body.is-mobile #page-orcamentos .orc-actions{
-    display:flex !important;
-    flex-direction:column !important;
-    gap:10px !important;
-    width:100% !important;
-  }
-  body.is-mobile #page-orcamentos *,
-  body.is-mobile #orc-body *{
-    position: static !important;
-    float: none !important;
-    transform: none !important;
-  }
-
-  body.is-mobile #page-orcamentos input,
-  body.is-mobile #page-orcamentos select,
-  body.is-mobile #page-orcamentos textarea,
-  body.is-mobile #modal-orc input,
-  body.is-mobile #modal-orc select,
-  body.is-mobile #modal-orc textarea,
-  body.is-mobile #orc-calc-card input,
-  body.is-mobile #orc-calc-card select,
-  body.is-mobile #orc-calc-card textarea{
-    width:100% !important;
-    min-height:48px !important;
-    font-size:16px !important;
-    padding:12px !important;
-    box-sizing:border-box !important;
-  }
-
-  body.is-mobile #modal-orc #oc-dims-grid,
-  body.is-mobile #orc-calc-card .orc-dims-grid{
-    display:grid !important;
-    grid-template-columns:1fr !important;
-    gap:8px !important;
-    width:100% !important;
-  }
-  body.is-mobile #modal-orc #oc-dims-grid > *,
-  body.is-mobile #orc-calc-card .orc-dims-grid > *{
-    width:100% !important;
-    max-width:100% !important;
-    margin:0 !important;
-  }
-
-  body.is-mobile #orc-calc-results{
-    background:rgba(255,255,255,0.05) !important;
-    border-radius:8px !important;
-    padding:16px !important;
-    width:100% !important;
-  }
-
-  body.is-mobile #page-orcamentos button,
-  body.is-mobile #page-orcamentos .btn,
-  body.is-mobile #modal-orc .modal-footer .btn,
-  body.is-mobile #orc-calc-card button,
-  body.is-mobile #orc-calc-card .btn{
-    width:100% !important;
-    min-height:52px !important;
-    font-size:1.1rem !important;
-    font-weight:bold !important;
-  }
-
-  body.is-mobile #modal-orc .modal{overflow-y:auto !important;}
-  body.is-mobile #modal-orc .fg{grid-template-columns:1fr !important;}
-  body.is-mobile #modal-orc .modal-footer{display:grid;grid-template-columns:1fr;gap:10px;}
-}
-
-@media (max-width: 1024px){
-  #page-orcamentos{
-    flex-direction:column !important;
-    width:100vw !important;
-    max-width:100vw !important;
-    padding:12px !important;
-    box-sizing:border-box !important;
-    overflow-x:hidden !important;
-    gap:12px !important;
-  }
-  #page-orcamentos > *{
-    width:100% !important;
-    max-width:100% !important;
-    float:none !important;
-    position:static !important;
-    margin:0 0 8px 0 !important;
-    box-sizing:border-box !important;
-  }
-  #page-orcamentos .ptoolbar{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:stretch !important;
-    gap:12px !important;
-  }
-  #page-orcamentos #orc-fil-emp{width:100% !important;}
-  #page-orcamentos .page-body{
-    padding:0 !important;
-    width:100% !important;
-    max-width:100% !important;
-    overflow-x:hidden !important;
-  }
-  #orc-body{
-    display:flex !important;
-    flex-direction:column !important;
-    width:100% !important;
-    max-width:100% !important;
-    overflow-x:hidden !important;
-    gap:12px !important;
-  }
-  #page-orcamentos .orc-actions{
-    display:flex !important;
-    flex-direction:column !important;
-    gap:10px !important;
-    width:100% !important;
-  }
-  #page-orcamentos input,
-  #page-orcamentos select,
-  #page-orcamentos textarea,
-  #modal-orc input,
-  #modal-orc select,
-  #modal-orc textarea,
-  #orc-calc-card input,
-  #orc-calc-card select,
-  #orc-calc-card textarea{
-    width:100% !important;
-    min-height:48px !important;
-    font-size:16px !important;
-    padding:12px !important;
-    box-sizing:border-box !important;
-  }
-  #modal-orc #oc-dims-grid,
-  #orc-calc-card .orc-dims-grid{
-    display:grid !important;
-    grid-template-columns:1fr !important;
-    gap:8px !important;
-    width:100% !important;
-  }
-  #modal-orc .fg{grid-template-columns:1fr !important;}
-  #modal-orc .modal-footer{display:grid;grid-template-columns:1fr;gap:10px;}
+.mobile-jarvis-input button{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background:#4a9eff;
+  border:none;
+  color:#fff;
+  font-size:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
 }
 
 @media print {
@@ -1241,138 +1018,6 @@ body[data-device="mobile"] #modal-of .modal{width:96vw;min-height:auto;max-heigh
   gap:10px;
 }
 
-@media (max-width:768px){
-  #modal-calculadora{
-    width:100vw !important;
-    max-width:100vw !important;
-    height:100dvh !important;
-    max-height:100dvh !important;
-    margin:0 !important;
-    border-radius:0 !important;
-    padding:12px !important;
-  }
-  #modal-calculadora .modal-body,
-  #modal-calculadora .calc-body{
-    flex-direction:column !important;
-    overflow-y:auto !important;
-    overflow-x:hidden !important;
-  }
-  #modal-calculadora .calc-col-esq{
-    order:1 !important;
-    flex:0 0 auto !important;
-    overflow:visible !important;
-    padding:12px !important;
-    gap:12px !important;
-  }
-  #modal-calculadora .calc-col-dir{
-    order:2 !important;
-    width:100% !important;
-    flex:0 0 auto !important;
-    overflow:visible !important;
-    border-left:none !important;
-    border-top:1px solid rgba(255,255,255,0.08) !important;
-    background:transparent !important;
-    padding:12px !important;
-    display:grid !important;
-    grid-template-columns:1fr 1fr !important;
-    gap:10px !important;
-  }
-  #modal-calculadora .calc-col-dir > div:first-child{
-    grid-column:1 / -1 !important;
-  }
-  #modal-calculadora .param-frete-total{
-    grid-column:1 / -1 !important;
-  }
-  #modal-calculadora .param-row{
-    border-bottom:none !important;
-    padding:0 !important;
-  }
-  #modal-calculadora select,
-  #modal-calculadora input,
-  #modal-calculadora textarea{
-    font-size:16px !important;
-  }
-  #modal-calculadora #calc-sheet{
-    min-width:900px !important;
-  }
-}
-
-@media (max-width:768px){
-  body.is-mobile .of-actions-wrap{
-    display:grid !important;
-    grid-template-columns:1fr 1fr !important;
-    gap:8px !important;
-  }
-  body.is-mobile .of-actions-wrap button{
-    width:100% !important;
-    margin-top:0 !important;
-  }
-}
-
-#mobile-bottom-nav{
-  position:fixed;
-  left:0;
-  right:0;
-  bottom:0;
-  height:60px;
-  background:var(--surface);
-  border-top:1px solid var(--border);
-  z-index:9999;
-  display:none;
-  align-items:center;
-  padding:0 8px;
-  gap:4px;
-}
-#mobile-bottom-nav .mbn-item{
-  flex:1;
-  min-width:0;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:3px;
-  border:1px solid transparent;
-  background:transparent;
-  color:var(--text2);
-  border-radius:12px;
-  padding:8px 6px;
-  cursor:pointer;
-  font-weight:800;
-  font-size:.66rem;
-  font-family:var(--font);
-  user-select:none;
-}
-#mobile-bottom-nav .mbn-item .ico{font-size:1.05rem;line-height:1}
-#mobile-bottom-nav .mbn-item.active{
-  background:var(--accent-soft);
-  color:var(--accent);
-  border-color:color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-@media (max-width: 768px) {
-  .sidebar, #sidebar, [class*="sidebar"] { display:none !important; }
-  #mobile-bottom-nav{ display:flex !important; }
-  .content, #content, .main-content, #main-content { margin-left:0 !important; margin-bottom:70px !important; width:100% !important; }
-  .page-body{ padding:8px !important; padding-bottom:84px !important; width:100% !important; }
-  table, .table{ display:block !important; overflow-x:auto !important; -webkit-overflow-scrolling:touch !important; }
-  .modal, [class*="modal"]{ width:100% !important; height:100% !important; max-width:100% !important; max-height:100% !important; margin:0 !important; border-radius:0 !important; top:0 !important; left:0 !important; }
-  button, .btn, [class*="btn"]{ min-height:44px !important; min-width:44px !important; font-size:14px !important; }
-  input, select, textarea{ min-height:44px !important; font-size:16px !important; padding:8px 12px !important; }
-  h1{ font-size:20px !important; } h2{ font-size:18px !important; } h3{ font-size:16px !important; }
-  .grid, [class*="grid"], .cards, [class*="cards"]{ grid-template-columns:1fr !important; flex-direction:column !important; }
-  .header, #header{ padding:8px !important; height:50px !important; }
-  .logo, [class*="logo"]{ max-width:120px !important; font-size:14px !important; }
-  .hide-mobile{ display:none !important; }
-  .show-mobile{ display:block !important; }
-  body.is-mobile.mobile-blocked #mobile-access-block{ display:none !important; }
-  body.is-mobile #page-pcp{ display:flex !important; }
-}
-
-@media (max-width: 480px) {
-  .modal-body{ padding:12px !important; }
-  .card{ padding:12px !important; }
-}
-
 </style>
 </head>
 <body data-device="desktop">
@@ -1429,35 +1074,47 @@ const ITALY_LOGO_B64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDA
 
 let OFs = [];
 
+function isMobile(){
+  try{
+    return (Number(window.innerWidth || 0) < 768) || /Android|iPhone|iPad/i.test(navigator.userAgent || '');
+  }catch(e){
+    return false;
+  }
+}
+function enableMobileMode(){
+  const body = document.body;
+  if(!body || !body.classList) return;
+  body.classList.add('mobile-mode');
+  try{ window.__MOBILE_MODE = true; }catch(e){}
+  try{ document.getElementById('device-screen')?.classList?.remove('show'); }catch(e){}
+  const ls=document.getElementById('login-screen');
+  if(ls && !CURRENT_USER) ls.style.display='flex';
+  try{
+    if(typeof window.renderMobileApp === 'function'){
+      window.renderMobileApp();
+    } else {
+      window.__MOBILE_RENDER_PENDING = true;
+    }
+  }catch(e){}
+}
+
 function escolherDispositivo(tipo){
+  if(tipo === 'mobile'){
+    enableMobileMode();
+    return;
+  }
   aplicarDispositivo(tipo);
-  try{ applyMobileAccessRules(); }catch(e){}
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
   if(ds) ds.classList.remove('show');
   if(ls && !CURRENT_USER) ls.style.display='flex';
 }
 
-function applyMobileAccessRules(){
-  const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
-  const u = window.CURRENT_USER || window._currentUser || null;
-  const perfil = String((u && u.perfil) || '').trim().toLowerCase();
-  const isAdmin = (perfil === 'admin');
-  const body = document.body;
-  if(!body) return;
+function applyMobileAccessRules(){ return; }
 
-  body.classList.toggle('is-mobile', !!isMobileScreen);
-
-  if(isMobileScreen && u && !isAdmin){
-    body.classList.remove('mobile-blocked');
-    if(String(window._PAGE_ATUAL||'') !== 'orcamentos'){
-      try{ _goBase('orcamentos'); }catch(e){}
-      try{ renderOrcamentos(); }catch(e){}
-    }
-    return;
-  }
-  body.classList.remove('mobile-blocked');
-}
+try{
+  if(isMobile()) enableMobileMode();
+}catch(e){}
 
 function parseFluxo(v){
   if(Array.isArray(v)) return v;
@@ -4311,7 +3968,7 @@ function ofFluxoMaquinasObj(of){
 }
 function ofDeveAparecerNaMaquina(of, nomeMaquina){
   const st = String(of?.status || '').trim();
-  if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada') return false;
+  if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada' || st === 'Pedido Pronto') return false;
   const nome = String(nomeMaquina||'').trim();
   if(!nome) return false;
   const canon = (nome === 'Sem Máquina') ? 'Sem Máquina' : maqAtivaFromNome(nome);
@@ -4477,7 +4134,7 @@ function gerarRelatorioMaquina(){
   const mesmoDia = (a,b)=>a && b && a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
   const isOfProgramadaNoDia = (of, diaProd, hoje)=>{
     const st = String(of?.status || '').trim();
-    if(st === 'Cancelado' || st === 'Cancelada') return false;
+    if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada' || st === 'Pedido Pronto') return false;
     if(of?.deleted_at) return false;
     const entrega = String(of?.ent || of?.data_entrega || '').slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(entrega)) return false;
@@ -4514,17 +4171,30 @@ function gerarRelatorioMaquina(){
   const today = new Date(); today.setHours(0,0,0,0);
   const baseAll = (Array.isArray(window._ofmaqListaCompleta) && window._ofmaqListaCompleta.length) ? window._ofmaqListaCompleta
     : (Array.isArray(window.OFS_HIST) && window.OFS_HIST.length ? window.OFS_HIST : (Array.isArray(window.OFS) && window.OFS.length ? window.OFS : (OFs||[])));
+  const empId = String(window.EMP_FILTRO || '').trim();
   const ofsFiltradas = [];
   const dias = diasNoRange(dataIni, dataFim);
   (baseAll || []).forEach(of=>{
+    if(empId){
+      const eid = String(of?.emp_id ?? of?.empId ?? '').trim();
+      if(eid && eid !== empId) return;
+    }
     for(const diaProd of dias){
       if(!isOfProgramadaNoDia(of, diaProd, today)) continue;
       const fluxoNomes = (ofFluxoGetNames(of) || []).map(maqAtivaFromNome).filter(Boolean).filter(n=>allowed.has(_normMaqNome(n)));
       const temMaquina = maqsParaFiltrar.some(m => fluxoNomes.some(x => norm(x) === norm(m)));
       const apareceMaquina = maqsParaFiltrar.some(m => ofDeveAparecerNaMaquina(of, m));
-      if(temMaquina || apareceMaquina){
-        ofsFiltradas.push(of);
-        break;
+      const semMaquina = ofDeveAparecerNaMaquina(of, 'Sem Máquina');
+      if(maqFiltro === 'Todas as máquinas'){
+        if(temMaquina || apareceMaquina || semMaquina){
+          ofsFiltradas.push(of);
+          break;
+        }
+      } else {
+        if(temMaquina || apareceMaquina){
+          ofsFiltradas.push(of);
+          break;
+        }
       }
     }
   });
@@ -4547,7 +4217,7 @@ function gerarRelatorioMaquina(){
     const pedido = fmtBR(of.dia || of.data_producao);
     const entrega = fmtBR(of.ent || of.data_entrega);
     const fluxoNomes = (ofFluxoGetNames(of) || []).map(maqAtivaFromNome).filter(Boolean).filter(n=>allowed.has(_normMaqNome(n)));
-    const maquinas = fluxoNomes.filter(m => maqsParaFiltrar.some(f => norm(f) === norm(m))).join(', ') || fluxoNomes.join(', ') || '—';
+    const maquinas = fluxoNomes.filter(m => maqsParaFiltrar.some(f => norm(f) === norm(m))).join(', ') || (fluxoNomes.length ? fluxoNomes.join(', ') : 'Sem máquina');
     const urgente = (of.urg || of.urgente) ? '🔴 SIM' : '—';
     const status = of.status || '—';
     const dataConclusao = fmtBR(String(of.data_conclusao || of.dataConclusao || '').slice(0,10));
@@ -4576,12 +4246,10 @@ function gerarRelatorioMaquina(){
   };
 
   const grupoKey = (of) => {
-    const st = String(of?.status || '').toLowerCase().trim();
-    if(st.startsWith('conclu') || st === 'pedido pronto') return 'Concluídas';
     const atual = ofMaquinaAtualPendente(of) || ofFluxoGetMaquinaAtualAtiva(of) || '';
     const canon = maqAtivaFromNome(atual);
     if(canon && allowed.has(_normMaqNome(canon))) return canon;
-    return 'Sem Máquina';
+    return '📋 Sem máquina';
   };
 
   const grupos = {};
@@ -4589,14 +4257,6 @@ function gerarRelatorioMaquina(){
     const k = grupoKey(of);
     if(maqFiltro && maqFiltro !== 'Todas as máquinas'){
       if(k === maqFiltro){
-        if(!grupos[k]) grupos[k] = [];
-        grupos[k].push(of);
-        return;
-      }
-      if(k === 'Concluídas'){
-        const fluxoNomes = (ofFluxoGetNames(of) || []).map(maqAtivaFromNome).filter(Boolean).filter(n=>allowed.has(_normMaqNome(n)));
-        const ok = fluxoNomes.some(n=>_normMaqNome(n)===_normMaqNome(maqFiltro));
-        if(!ok) return;
         if(!grupos[k]) grupos[k] = [];
         grupos[k].push(of);
         return;
@@ -4609,8 +4269,7 @@ function gerarRelatorioMaquina(){
 
   const ordemGrupos = [
     ...maqsBase,
-    ...(grupos['Sem Máquina'] ? ['Sem Máquina'] : []),
-    ...(grupos['Concluídas'] ? ['Concluídas'] : [])
+    ...(grupos['📋 Sem máquina'] ? ['📋 Sem máquina'] : [])
   ].filter((v,i,a)=>a.indexOf(v)===i);
 
   const partes = ordemGrupos.filter(k=>Array.isArray(grupos[k]) && grupos[k].length).map((k)=>{
@@ -7910,6 +7569,14 @@ async function ofAtualizarSugestaoMaquinas(){
   const larg = dims.largura;
   const alt = dims.altura;
   const onda = String(document.getElementById('of-onda')?.value || '').trim();
+  try{
+    const badge = document.getElementById('of-auto-maq-badge');
+    if(badge){
+      const sel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+      const manual = Array.isArray(sel) && sel.length > 0;
+      badge.style.display = (!manual && comp > 0 && larg > 0 && alt > 0) ? 'block' : 'none';
+    }
+  }catch(e){}
   if(!(comp > 0 && larg > 0 && alt > 0)){
     box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento, largura e altura para ver a sugestão.</span>`;
     return;
@@ -33374,13 +33041,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </div><!-- /content -->
 </div><!-- /layout -->
 
-<div id="mobile-bottom-nav">
-  <button class="mbn-item" id="mbn-home" onclick="go('dashboard')"><span class="ico">🏠</span><span>Home</span></button>
-  <button class="mbn-item" id="mbn-pcp" onclick="go('pcp')"><span class="ico">📋</span><span>PCP</span></button>
-  <button class="mbn-item" id="mbn-estoque" onclick="go('estoque')"><span class="ico">📦</span><span>Estoque</span></button>
-  <button class="mbn-item" id="mbn-clientes" onclick="go('clientes')"><span class="ico">👥</span><span>Clientes</span></button>
-  <button class="mbn-item" id="mbn-config" onclick="go('configuracoes')"><span class="ico">⚙️</span><span>Config</span></button>
-</div>
+<div id="mobile-app-root" class="mobile-only"></div>
 
 <!-- TABLET VIEW -->
 <div id="tablet-view">
@@ -33464,6 +33125,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
             </div>
             <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+            <div id="of-auto-maq-badge" style="display:none;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.35);color:var(--text2);font-size:12px;font-weight:900">💡 Máquina será sugerida automaticamente ao salvar</div>
             <div id="tempo-estimado-sugestao" style="margin-top:10px;font-size:12px;color:var(--text2);display:none"></div>
             <div id="of-tempo-estimado" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
           </div>
@@ -38542,6 +38204,7 @@ window.atualizarChapas = async function(){
 
 <script>
 (function(){
+  try{ if(document.body && document.body.classList && document.body.classList.contains('mobile-mode')) return; }catch(e){}
   const LS_KEY = 'italy_jarvis_history_v1';
   const MAX_MSG = 20;
   const DEFAULT_SUG = ['OFs atrasadas hoje', 'Estoque crítico', 'Faturamento do mês', 'Clientes inativos'];
@@ -39656,6 +39319,603 @@ window.atualizarChapas = async function(){
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUI);
   else ensureUI();
+})();
+</script>
+
+<script>
+(function(){
+  const isMobileMode = ()=>{ try{ return !!(document.body && document.body.classList && document.body.classList.contains('mobile-mode')); }catch(e){ return false; } };
+  const esc = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const mobileState = {
+    view: 'jarvis',
+    jarvisHist: [],
+    maquinaExpanded: {},
+    maquinas: [],
+    ofs: [],
+    orcamentos: [],
+    orcFiltro: 'Todos',
+    jarvisSuggestions: ['OFs atrasadas hoje', 'Faturamento do mês', 'Clientes VIP', 'Como criar uma OF'],
+    pulling: false,
+    pullStartY: 0,
+    pullTriggered: false,
+  };
+
+  const LS_HIST = 'italy_mobile_jarvis_hist_v1';
+  const saveHist = ()=>{
+    try{ localStorage.setItem(LS_HIST, JSON.stringify((mobileState.jarvisHist||[]).slice(-40))); }catch(e){}
+  };
+  const loadHist = ()=>{
+    try{
+      const raw = localStorage.getItem(LS_HIST);
+      const arr = raw ? JSON.parse(raw) : [];
+      if(Array.isArray(arr)) mobileState.jarvisHist = arr.slice(-40);
+    }catch(e){}
+  };
+
+  const byId = (id)=>document.getElementById(id);
+  const fmtBR = (d)=>{
+    const s = String(d||'').slice(0,10);
+    const p = s.split('-');
+    return p.length===3 ? (p[2]+'/'+p[1]+'/'+p[0]) : (s || '—');
+  };
+  const toNum = (v)=>{ const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const getOfNumero = (of)=>{
+    const base = of?.of ?? of?.numero ?? of?.of_num ?? of?.numero_of ?? '';
+    const digits = String(base||'').replace(/\D/g,'');
+    return digits ? digits : String(base||'').trim();
+  };
+  const getOfCliente = (of)=>{
+    try{
+      const cid = String(of?.cliId ?? of?.cli_id ?? of?.cliente_id ?? '').trim();
+      const c = (typeof getCli === 'function' && cid) ? (getCli(cid) || null) : null;
+      return String(c?.nome || of?.cliNome || of?.clinome || of?.cliente_nome || of?.cliente || '—').trim() || '—';
+    }catch(e){
+      return String(of?.cliNome || of?.cliente_nome || '—');
+    }
+  };
+  const getOfProduto = (of)=>{
+    try{
+      const itens = Array.isArray(of?.itens) ? of.itens : (typeof of?.itens === 'string' ? (JSON.parse(of.itens||'[]')||[]) : []);
+      const it0 = itens[0] || {};
+      return String(it0?.desc || it0?.descricao || of?.prodDesc || of?.descricao || '—').trim() || '—';
+    }catch(e){
+      return String(of?.prodDesc || of?.descricao || '—');
+    }
+  };
+  const getOfEntrega = (of)=>{
+    const s = String(of?.ent || of?.data_entrega || '').slice(0,10);
+    return s;
+  };
+  const isOfAtiva = (of)=>{
+    const st = String(of?.status || '').trim();
+    if(of?.deleted_at) return false;
+    if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelada' || st === 'Cancelado' || st === 'Pedido Pronto') return false;
+    return true;
+  };
+  const getOfMaquinaAtual = (of)=>{
+    try{
+      if(typeof ofMaquinaAtualPendente === 'function'){
+        const n = String(ofMaquinaAtualPendente(of) || '').trim();
+        if(n) return n;
+      }
+    }catch(e){}
+    try{
+      const arr = (typeof parseFluxo === 'function') ? parseFluxo(of?.fluxo_maquinas ?? of?.maq ?? []) : (Array.isArray(of?.fluxo_maquinas) ? of.fluxo_maquinas : []);
+      const n0 = Array.isArray(arr) ? String(arr[0] || '').trim() : '';
+      return n0;
+    }catch(e){
+      return '';
+    }
+  };
+  const ofStatusClass = (of)=>{
+    const ent = getOfEntrega(of);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dt = ent ? new Date(ent + 'T00:00:00') : null;
+    if(dt && !isNaN(dt.getTime())){
+      dt.setHours(0,0,0,0);
+      const diff = Math.round((dt - today) / 86400000);
+      if(diff < 0) return 'atrasada';
+      if(diff <= 2) return 'proxima';
+      return 'ok';
+    }
+    return 'ok';
+  };
+
+  const modal = {
+    open(html){
+      try{ byId('mob-modal')?.remove(); }catch(e){}
+      const el = document.createElement('div');
+      el.id = 'mob-modal';
+      el.style.position = 'fixed';
+      el.style.inset = '0';
+      el.style.background = 'rgba(0,0,0,.65)';
+      el.style.zIndex = '10020';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.padding = '14px';
+      el.innerHTML = `<div style="width:min(520px,100%);background:#1a1a2e;border:1px solid #2a2a4a;border-radius:14px;padding:14px">${html}</div>`;
+      el.addEventListener('click', (e)=>{ if(e.target === el) modal.close(); });
+      document.body.appendChild(el);
+    },
+    close(){ try{ byId('mob-modal')?.remove(); }catch(e){} }
+  };
+
+  async function mobileFetchAllOFs(){
+    const out = [];
+    let offset = 0;
+    for(let guard = 0; guard < 30; guard++){
+      const qs = new URLSearchParams();
+      qs.set('lite','1');
+      qs.set('limit','500');
+      qs.set('offset', String(offset));
+      qs.set('excluir_canceladas','1');
+      const r = await api('GET','/ofs?' + qs.toString());
+      const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+      out.push(...chunk);
+      if(chunk.length < 500) break;
+      offset += 500;
+      if(out.length >= 5000) break;
+    }
+    return out.filter(isOfAtiva);
+  }
+  async function mobileRefreshMaquinas(){
+    const maq = await api('GET','/maquinas');
+    const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
+    const ofs = await mobileFetchAllOFs();
+    mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
+    mobileState.ofs = ofs;
+  }
+  async function mobileRefreshOrcamentos(){
+    const qs = new URLSearchParams();
+    try{ if(window.EMP_FILTRO) qs.set('empId', String(window.EMP_FILTRO)); }catch(e){}
+    const r = await api('GET','/orcamentos' + (qs.toString()?('?'+qs.toString()):''));
+    const rows = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    mobileState.orcamentos = rows || [];
+  }
+
+  function renderShell(){
+    const root = byId('mobile-app-root');
+    if(!root) return;
+    root.innerHTML = `
+      <div class="mobile-app">
+        <div class="mobile-header">
+          <button class="mh-btn" id="mob-menu-btn">☰</button>
+          <div class="mh-title" id="mob-title">⚙️ JARVIS</div>
+          <div style="width:38px;height:38px"></div>
+        </div>
+        <div class="mobile-content" id="mob-content"></div>
+        <div class="mobile-jarvis-input" id="mob-jarvis-input">
+          <input id="mob-jarvis-text" placeholder="Digite sua mensagem..." autocomplete="off">
+          <button id="mob-jarvis-mic" title="Voz">🎙</button>
+          <button id="mob-jarvis-send" title="Enviar">➤</button>
+        </div>
+        <div class="mobile-bottom-nav">
+          <div class="mobile-nav-item" data-tab="jarvis"><div class="icon">🤖</div><div>JARVIS</div></div>
+          <div class="mobile-nav-item" data-tab="maquinas"><div class="icon">🏭</div><div>Máquinas</div></div>
+          <div class="mobile-nav-item" data-tab="orcamentos"><div class="icon">📋</div><div>Orçamentos</div></div>
+        </div>
+      </div>
+    `;
+
+    const setTab = (tab)=>{
+      mobileState.view = tab;
+      render();
+    };
+
+    root.querySelectorAll('.mobile-nav-item').forEach((el)=>{
+      el.addEventListener('click', ()=>setTab(el.getAttribute('data-tab')));
+    });
+
+    byId('mob-menu-btn')?.addEventListener('click', ()=>{
+      modal.open(`
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-weight:900;font-family:var(--mono)">Menu</div>
+          <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('jarvis')">🤖 JARVIS</button>
+          <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('maquinas')">🏭 Máquinas</button>
+          <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('orcamentos')">📋 Orçamentos</button>
+        </div>
+      `);
+    });
+
+    window.__mobSetTab = (t)=>{ modal.close(); setTab(t); };
+
+    const send = ()=>mobileSendJarvis();
+    byId('mob-jarvis-send')?.addEventListener('click', send);
+    byId('mob-jarvis-text')?.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); send(); } });
+
+    const micBtn = byId('mob-jarvis-mic');
+    if(micBtn){
+      micBtn.addEventListener('click', ()=>{
+        try{
+          const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if(!SR) return;
+          const rec = new SR();
+          rec.lang = 'pt-BR';
+          rec.interimResults = false;
+          rec.maxAlternatives = 1;
+          micBtn.style.opacity = '0.65';
+          rec.onresult = (ev)=>{
+            try{
+              const t = String(ev?.results?.[0]?.[0]?.transcript || '').trim();
+              if(t) byId('mob-jarvis-text').value = t;
+            }catch(e){}
+          };
+          rec.onend = ()=>{ micBtn.style.opacity = '1'; };
+          rec.start();
+        }catch(e){}
+      });
+    }
+  }
+
+  function renderJarvis(){
+    const title = byId('mob-title'); if(title) title.textContent = '⚙️ JARVIS';
+    const content = byId('mob-content');
+    if(!content) return;
+    const chips = mobileState.jarvisSuggestions || [];
+    const rows = (mobileState.jarvisHist || []).map((m)=>{
+      const mine = m.role === 'user';
+      const align = mine ? 'flex-end' : 'flex-start';
+      const bg = mine ? 'rgba(74,158,255,.18)' : '#111426';
+      return `<div style="display:flex;justify-content:${align};margin:8px 0">
+        <div style="max-width:92%;background:${bg};border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;line-height:1.28">${esc(m.text||'')}</div>
+      </div>`;
+    }).join('');
+    content.innerHTML = `
+      <div class="mobile-chip-row">
+        ${chips.map(c=>`<button class="mobile-chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}
+      </div>
+      <div style="margin-top:8px">${rows}</div>
+    `;
+    content.querySelectorAll('[data-chip]').forEach((b)=>{
+      b.addEventListener('click', ()=>{
+        byId('mob-jarvis-text').value = b.getAttribute('data-chip') || '';
+        mobileSendJarvis();
+      });
+    });
+    try{ content.scrollTop = content.scrollHeight; }catch(e){}
+    const input = byId('mob-jarvis-input'); if(input) input.style.display = 'flex';
+  }
+
+  function renderMaquinas(){
+    const title = byId('mob-title'); if(title) title.textContent = '🏭 OFs por Máquina';
+    const input = byId('mob-jarvis-input'); if(input) input.style.display = 'none';
+    const content = byId('mob-content');
+    if(!content) return;
+
+    const ofs = (mobileState.ofs || []).filter(isOfAtiva);
+    const byMaq = new Map();
+    ofs.forEach((of)=>{
+      const m = String(getOfMaquinaAtual(of) || '').trim();
+      const key = m ? m : '📋 Sem máquina';
+      if(!byMaq.has(key)) byMaq.set(key, []);
+      byMaq.get(key).push(of);
+    });
+    byMaq.forEach((arr)=>arr.sort((a,b)=>String(getOfEntrega(a)||'9999-99-99').localeCompare(String(getOfEntrega(b)||'9999-99-99'))));
+
+    const maquinas = (mobileState.maquinas || []).map(m=>String(m?.nome || '').trim()).filter(Boolean);
+    const nomes = [...new Set([...maquinas, ...Array.from(byMaq.keys())])].filter(Boolean);
+
+    const cardHtml = (nome)=>{
+      const exp = !!mobileState.maquinaExpanded[nome];
+      const list = byMaq.get(nome) || [];
+      const head = `<div class="mobile-card" data-maq="${esc(nome)}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="font-weight:900">${esc(nome)}</div>
+          <div style="color:#8b93a7;font-family:var(--mono);font-weight:900">${list.length}</div>
+        </div>
+        ${exp ? `<div style="margin-top:10px">${list.map(of=>{
+          const cls = ofStatusClass(of);
+          const num = getOfNumero(of) || '—';
+          const cli = getOfCliente(of);
+          const prod = getOfProduto(of);
+          const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
+          const ent = fmtBR(getOfEntrega(of));
+          const st = String(of?.status || '').trim() || '—';
+          const id = String(of?.id || '').trim();
+          return `<div class="mobile-card mobile-of-card ${cls}">
+            <div class="mobile-of-title">
+              <div class="n">OF ${esc(num)}</div>
+              <div class="st">${esc(st)}</div>
+            </div>
+            <div class="mobile-of-meta">
+              <div><b>Cliente:</b> ${esc(cli)}</div>
+              <div><b>Produto:</b> ${esc(prod)}</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+                <div><b>Qtd:</b> ${esc(String(qtd))}</div>
+                <div><b>Entrega:</b> ${esc(ent)}</div>
+              </div>
+            </div>
+            <div class="mobile-actions">
+              <button class="mobile-btn danger" data-concluir="${esc(id)}" data-maq="${esc(nome)}">Concluir</button>
+              <button class="mobile-btn" data-detalhes="${esc(id)}">Detalhes</button>
+            </div>
+          </div>`;
+        }).join('')}</div>` : ``}
+      </div>`;
+      return head;
+    };
+
+    content.innerHTML = `
+      <div id="mob-pull-hint" style="display:none;margin-bottom:10px;color:#8b93a7;font-family:var(--mono);font-weight:900">Atualizando…</div>
+      ${nomes.map(cardHtml).join('')}
+    `;
+
+    content.querySelectorAll('[data-maq]').forEach((el)=>{
+      el.addEventListener('click', (e)=>{
+        const nome = el.getAttribute('data-maq');
+        if(!nome) return;
+        const isBtn = e.target && e.target.closest && (e.target.closest('button') != null);
+        if(isBtn) return;
+        mobileState.maquinaExpanded[nome] = !mobileState.maquinaExpanded[nome];
+        renderMaquinas();
+      });
+    });
+    content.querySelectorAll('[data-detalhes]').forEach((b)=>{
+      b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-detalhes');
+        const of = (mobileState.ofs||[]).find(o=>String(o?.id||'')===String(id||''));
+        if(!of) return;
+        const num = getOfNumero(of) || '—';
+        const cli = getOfCliente(of);
+        const prod = getOfProduto(of);
+        const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
+        const ent = fmtBR(getOfEntrega(of));
+        const st = String(of?.status || '').trim() || '—';
+        modal.open(`
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="font-weight:900">OF ${esc(num)}</div>
+            <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
+          </div>
+          <div style="color:#d7def2;line-height:1.35">
+            <div><b>Cliente:</b> ${esc(cli)}</div>
+            <div><b>Produto:</b> ${esc(prod)}</div>
+            <div><b>Quantidade:</b> ${esc(String(qtd))}</div>
+            <div><b>Entrega:</b> ${esc(ent)}</div>
+            <div><b>Status:</b> ${esc(st)}</div>
+          </div>
+        `);
+      });
+    });
+    content.querySelectorAll('[data-concluir]').forEach((b)=>{
+      b.addEventListener('click', ()=>{
+        const id = b.getAttribute('data-concluir');
+        const maqNome = b.getAttribute('data-maq') || '';
+        const of = (mobileState.ofs||[]).find(o=>String(o?.id||'')===String(id||''));
+        if(!of) return;
+        const num = getOfNumero(of) || '—';
+        const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
+        modal.open(`
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="font-weight:900">Concluir OF ${esc(num)}</div>
+            <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div>
+              <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Caixas produzidas</div>
+              <input id="mob-conc-prod" type="number" value="${esc(String(qtd))}" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+            </div>
+            <div>
+              <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Caixas perdidas</div>
+              <input id="mob-conc-perd" type="number" value="0" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="mobile-btn" onclick="document.getElementById('mob-modal')?.remove()">Cancelar</button>
+              <button class="mobile-btn danger" onclick="window.__mobConcluirOF && window.__mobConcluirOF('${esc(String(id||''))}','${esc(String(maqNome||''))}')">Concluir</button>
+            </div>
+          </div>
+        `);
+      });
+    });
+
+    const onTouchStart = (e)=>{
+      try{
+        if(content.scrollTop > 0) return;
+        mobileState.pulling = true;
+        mobileState.pullTriggered = false;
+        mobileState.pullStartY = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+      }catch(err){}
+    };
+    const onTouchMove = (e)=>{
+      if(!mobileState.pulling) return;
+      try{
+        const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : 0;
+        const dy = y - mobileState.pullStartY;
+        const hint = byId('mob-pull-hint');
+        if(dy > 70 && !mobileState.pullTriggered){
+          mobileState.pullTriggered = true;
+          if(hint) hint.style.display = 'block';
+        }
+      }catch(err){}
+    };
+    const onTouchEnd = async ()=>{
+      if(!mobileState.pulling) return;
+      mobileState.pulling = false;
+      if(!mobileState.pullTriggered) return;
+      const hint = byId('mob-pull-hint'); if(hint) hint.style.display = 'block';
+      try{
+        await mobileRefreshMaquinas();
+      }catch(e){}
+      if(hint) hint.style.display = 'none';
+      renderMaquinas();
+    };
+    content.addEventListener('touchstart', onTouchStart, { passive:true });
+    content.addEventListener('touchmove', onTouchMove, { passive:true });
+    content.addEventListener('touchend', onTouchEnd, { passive:true });
+  }
+
+  function renderOrcamentos(){
+    const title = byId('mob-title'); if(title) title.textContent = '📋 Orçamentos';
+    const input = byId('mob-jarvis-input'); if(input) input.style.display = 'none';
+    const content = byId('mob-content');
+    if(!content) return;
+    const rows = (mobileState.orcamentos || []).slice();
+    const statuses = ['Todos', ...Array.from(new Set(rows.map(o=>String(o?.status||'').trim()).filter(Boolean))).slice(0, 8)];
+    const sel = mobileState.orcFiltro || 'Todos';
+    const filtered = sel === 'Todos' ? rows : rows.filter(o=>String(o?.status||'').trim()===sel);
+    content.innerHTML = `
+      <div class="mobile-chip-row">
+        ${statuses.map(s=>`<button class="mobile-chip" data-st="${esc(s)}" style="${s===sel?'border-color:#4a9eff;color:#4a9eff':''}">${esc(s)}</button>`).join('')}
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button class="mobile-btn primary" style="flex:0 0 auto" id="mob-orc-new">+ Novo orçamento</button>
+      </div>
+      <div style="margin-top:10px">
+        ${filtered.map(o=>{
+          const num = String(o?.numero_orcamento || o?.numero || '—');
+          const cli = String(o?.cliente_nome || o?.descricao || '—');
+          const med = String(o?.medidas || o?.titulo || '—');
+          const val = toNum(o?.valor_total || o?.valorTotal || 0);
+          const st = String(o?.status || '—');
+          return `<div class="mobile-card">
+            <div class="mobile-of-title">
+              <div class="n">Orç. ${esc(num)}</div>
+              <div class="st">${esc(st)}</div>
+            </div>
+            <div class="mobile-of-meta">
+              <div><b>Cliente:</b> ${esc(cli)}</div>
+              <div><b>Medidas:</b> ${esc(med)}</div>
+              <div style="margin-top:6px"><b>Valor:</b> R$ ${esc(val.toFixed(2))}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    content.querySelectorAll('[data-st]').forEach((b)=>{
+      b.addEventListener('click', ()=>{
+        mobileState.orcFiltro = b.getAttribute('data-st') || 'Todos';
+        renderOrcamentos();
+      });
+    });
+    byId('mob-orc-new')?.addEventListener('click', ()=>{
+      modal.open(`
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-weight:900">Novo orçamento</div>
+          <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Cliente</div>
+            <input id="mob-orc-cli" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+          </div>
+          <div>
+            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Medidas</div>
+            <input id="mob-orc-med" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+          </div>
+          <div>
+            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Valor total</div>
+            <input id="mob-orc-val" type="number" step="0.01" value="0" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="mobile-btn" onclick="document.getElementById('mob-modal')?.remove()">Cancelar</button>
+            <button class="mobile-btn primary" onclick="window.__mobCriarOrc && window.__mobCriarOrc()">Criar</button>
+          </div>
+        </div>
+      `);
+    });
+  }
+
+  async function mobileSendJarvis(){
+    if(!isMobileMode()) return;
+    const inp = byId('mob-jarvis-text');
+    const t = String(inp?.value || '').trim();
+    if(!t) return;
+    inp.value = '';
+    mobileState.jarvisHist.push({ role:'user', text:t, ts:Date.now() });
+    saveHist();
+    renderJarvis();
+    mobileState.jarvisHist.push({ role:'assistant', text:'Digitando...', ts:Date.now(), typing:true });
+    renderJarvis();
+
+    try{
+      const hist = (mobileState.jarvisHist || []).filter(m=>!m.typing).slice(-8).map(m=>({ role:m.role, content:m.text }));
+      const r = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta:t, historico: hist } });
+      const j = r ? await r.json().catch(()=>null) : null;
+      mobileState.jarvisHist = (mobileState.jarvisHist||[]).filter(m=>!m.typing);
+      const ans = String(j?.resposta || j?.answer || '').trim() || 'Não entendi. Tente perguntar de outra forma.';
+      mobileState.jarvisHist.push({ role:'assistant', text:ans, ts:Date.now() });
+      const sug = Array.isArray(j?.suggestions) ? j.suggestions.map(s=>String(s||'').trim()).filter(Boolean) : [];
+      if(sug.length) mobileState.jarvisSuggestions = sug.slice(0, 8);
+      saveHist();
+      renderJarvis();
+    }catch(e){
+      mobileState.jarvisHist = (mobileState.jarvisHist||[]).filter(m=>!m.typing);
+      mobileState.jarvisHist.push({ role:'assistant', text:'Erro ao consultar o JARVIS.', ts:Date.now() });
+      saveHist();
+      renderJarvis();
+    }
+  }
+
+  window.__mobConcluirOF = async (id, maqNome)=>{
+    try{
+      const prod = Math.trunc(toNum(byId('mob-conc-prod')?.value || 0));
+      const perd = Math.trunc(toNum(byId('mob-conc-perd')?.value || 0));
+      const payload = { qtd_produzida: prod, qtdPerdida: perd, qtd_perdida: perd, maquina: maqNome };
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')) + '/concluir', { method:'POST', body: payload });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha ao concluir');
+      modal.close();
+      await mobileRefreshMaquinas();
+      renderMaquinas();
+    }catch(e){
+      try{ alert(String(e?.message || e)); }catch(_){}
+    }
+  };
+  window.__mobCriarOrc = async ()=>{
+    try{
+      const cli = String(byId('mob-orc-cli')?.value || '').trim();
+      const med = String(byId('mob-orc-med')?.value || '').trim();
+      const val = toNum(byId('mob-orc-val')?.value || 0);
+      if(!cli){ alert('Informe o cliente'); return; }
+      const payload = { cliente_nome: cli, medidas: med, valor_total: val, emp_id: (window.EMP_FILTRO || '') };
+      const r = await apiFetch('/api/orcamentos', { method:'POST', body: payload });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha ao criar');
+      modal.close();
+      await mobileRefreshOrcamentos();
+      renderOrcamentos();
+    }catch(e){
+      try{ alert(String(e?.message || e)); }catch(_){}
+    }
+  };
+
+  function render(){
+    if(!isMobileMode()) return;
+    const root = byId('mobile-app-root');
+    if(!root || !root.firstElementChild) renderShell();
+    const navs = root.querySelectorAll('.mobile-nav-item');
+    navs.forEach((n)=>n.classList.toggle('active', n.getAttribute('data-tab') === mobileState.view));
+    if(mobileState.view === 'maquinas') renderMaquinas();
+    else if(mobileState.view === 'orcamentos') renderOrcamentos();
+    else renderJarvis();
+  }
+
+  window.renderMobileApp = async function(){
+    if(!isMobileMode()) return;
+    loadHist();
+    renderShell();
+    try{
+      if(window.CURRENT_USER || window._currentUser){
+        await Promise.all([
+          mobileRefreshMaquinas().catch(()=>null),
+          mobileRefreshOrcamentos().catch(()=>null),
+        ]);
+      }
+    }catch(e){}
+    render();
+  };
+
+  try{
+    if(isMobileMode() && window.__MOBILE_RENDER_PENDING){
+      window.__MOBILE_RENDER_PENDING = false;
+      if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ()=>window.renderMobileApp());
+      else window.renderMobileApp();
+    }
+  }catch(e){}
 })();
 </script>
 

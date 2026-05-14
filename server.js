@@ -2421,6 +2421,88 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
   } catch (e) {}
 }
 
+function _parseFluxoAny(v){
+  if(Array.isArray(v)) return v.map(x=>String(x||'').trim()).filter(Boolean);
+  if(typeof v === 'string'){
+    const s = v.trim();
+    if(!s) return [];
+    try{
+      const p = JSON.parse(s);
+      if(Array.isArray(p)) return p.map(x=>String(x||'').trim()).filter(Boolean);
+    }catch(_){}
+    return [s].filter(Boolean);
+  }
+  return [];
+}
+
+async function _autoSugerirMaquinaParaOF(body, created){
+  try{
+    const fluxoBody = _parseFluxoAny(body?.fluxo_maquinas ?? body?.fluxoMaquinas ?? body?.maq ?? body?.maquinas ?? []);
+    const fluxoCreated = _parseFluxoAny(created?.fluxo_maquinas ?? created?.maq ?? []);
+    if(fluxoBody.length || fluxoCreated.length) return { ok:false, skipped:'ja_tem_maquina' };
+
+    const comp = Number(body?.comprimento_mm ?? body?.caixa_comprimento ?? body?.caixaComprimento ?? body?.comprimento ?? created?.comprimento_mm ?? created?.caixa_comprimento ?? 0) || 0;
+    const larg = Number(body?.largura_mm ?? body?.caixa_largura ?? body?.caixaLargura ?? body?.largura ?? created?.largura_mm ?? created?.caixa_largura ?? 0) || 0;
+    const alt = Number(body?.altura_mm ?? body?.caixa_altura ?? body?.caixaAltura ?? body?.altura ?? created?.altura_mm ?? created?.caixa_altura ?? 0) || 0;
+    const onda = String(body?.onda ?? body?.of_onda ?? body?.onda_caixa ?? created?.onda ?? '').trim();
+
+    if(!(comp > 0 && larg > 0)) return { ok:false, skipped:'sem_medidas' };
+
+    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true);
+    if(error || !Array.isArray(maquinas) || !maquinas.length) return { ok:false, skipped:'sem_maquinas' };
+
+    const folgaPuxadaBase = 20;
+    const folgaBocaBase = 15;
+    const ondaNorm = onda.toLowerCase();
+    const folgaPuxada = ondaNorm.includes('bc') ? folgaPuxadaBase + 5 : folgaPuxadaBase;
+    const folgaBoca = ondaNorm.includes('bc') ? folgaBocaBase + 5 : folgaBocaBase;
+    const desenvolvimento = (comp + alt) * 2 + folgaPuxada;
+    const boca = larg + (alt * 2) + folgaBoca;
+    const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+
+    const compat = (maquinas || []).filter((m)=>{
+      const puxMin = toNumOrNull(m.puxada_min);
+      const puxMax = toNumOrNull(m.puxada_max);
+      const bocaMax = toNumOrNull(m.boca_max);
+      const devOk = (puxMin == null || desenvolvimento >= puxMin) && (puxMax == null || desenvolvimento <= puxMax);
+      const bocaOk = (bocaMax == null || boca <= bocaMax);
+      return !!(devOk && bocaOk);
+    }).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter((m)=>m.nome);
+
+    if(!compat.length) return { ok:false, skipped:'sem_compativeis' };
+
+    const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+    const filas = await Promise.all(compat.map(async (m)=>{
+      try{
+        const { count, error: eCount } = await supabase
+          .from('ofs')
+          .select('id', { count: 'exact' })
+          .contains('fluxo_maquinas', [m.nome])
+          .not('status', 'in', statusNotIn)
+          .is('deleted_at', null);
+        if(eCount) return { ...m, fila: 999999 };
+        return { ...m, fila: Math.trunc(Number(count || 0) || 0) };
+      }catch(_){
+        return { ...m, fila: 999999 };
+      }
+    }));
+    filas.sort((a,b)=> (a.fila - b.fila) || String(a.nome).localeCompare(String(b.nome)));
+    const melhor = filas[0];
+    if(!melhor || !melhor.nome) return { ok:false, skipped:'sem_melhor' };
+
+    const updPayload = {
+      fluxo_maquinas: [melhor.nome],
+      maq: JSON.stringify([melhor.nome]),
+      maquina_atual_index: 0
+    };
+    const upd = await supabase.from('ofs').update(updPayload).eq('id', created?.id).select().maybeSingle();
+    if(upd.error) return { ok:false, skipped:'falha_update', error: upd.error.message };
+    return { ok:true, nome: melhor.nome, updated: upd.data || null };
+  }catch(e){
+    return { ok:false, skipped:'erro', error: String(e?.message || e) };
+  }
+}
+
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
@@ -2445,7 +2527,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
-    const created = createdRes.data;
+    let created = createdRes.data;
     await logAuditoria('ofs', 'INSERT', created?.id, null, created, req);
     await _maybeRegistrarComissaoOF(req, body, created);
     await _maybeBaixaAutomaticaChapasOF(req, body, created);
@@ -2480,6 +2562,10 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         }, created);
       }
     } catch (_) {}
+    try{
+      const sug = await _autoSugerirMaquinaParaOF(body, created);
+      if(sug && sug.ok && sug.updated) created = sug.updated;
+    }catch(_){}
     const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
       ? { ignored_columns: createdRes.ignoredColumns.slice() }
       : null;
