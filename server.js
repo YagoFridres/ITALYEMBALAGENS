@@ -2068,7 +2068,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
   console.log('[OFS GET START] query:', JSON.stringify(req.query));
   try {
     setNoCache(res);
-    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 150));
+    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
     const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';

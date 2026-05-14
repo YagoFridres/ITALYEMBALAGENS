@@ -22569,7 +22569,16 @@ function normalizeOF(r){
   const imgUrl = imgUrlPick || null;
   const imgUrlNorm = imgUrlPick || '';
   const dataConc = r.data_conclusao || r.dataConclusao || null;
-  const deletedAt = r.deleted_at ?? r.deletedAt ?? null;
+  const normDeletedAt = (v)=>{
+    if(v == null) return null;
+    const s = String(v).trim();
+    if(!s) return null;
+    const sl = s.toLowerCase();
+    if(sl === 'null' || sl === 'undefined' || sl === '0') return null;
+    if(s === '0000-00-00' || s.startsWith('0000-00-00')) return null;
+    return v;
+  };
+  const deletedAt = normDeletedAt(r.deleted_at ?? r.deletedAt ?? null);
   const itensQtdTotal = itens.reduce((s, it)=>s + (Number(it.qtd || 0) || 0), 0);
   const qtdNorm = (Number(qtd || 0) > 0) ? Number(qtd || 0) : itensQtdTotal;
   const itensValTotal = itens.reduce((s, it)=>s + (Number(it.valor_total || 0) || 0), 0);
@@ -23032,6 +23041,7 @@ async function carregarOFSArquivo(force=false){
         qs.set('lite','1');
         qs.set('order_by','created_at');
         qs.set('order','asc');
+        qs.set('nocache','1');
         const r = await api('GET', '/ofs?' + qs.toString());
         const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
         if(typeof r?.total === 'number') total = r.total;
