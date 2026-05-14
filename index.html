@@ -786,6 +786,25 @@ body.mobile-mode .mobile-only{display:flex!important;}
 .mobile-btn.primary{background:#4a9eff;border-color:#4a9eff;}
 .mobile-btn.danger{background:#ff4444;border-color:#ff4444;}
 
+.mob-day-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:10px;
+  font-family:var(--mono);
+  font-weight:900;
+  letter-spacing:.2px;
+  border:1px solid #2a2a4a;
+  background:#0f0f1a;
+  color:#d7def2;
+  white-space:nowrap;
+}
+.mob-day-badge.past{background:rgba(255,68,68,.12);border-color:rgba(255,68,68,.45);color:#ff8a8a;}
+.mob-day-badge.today{background:rgba(74,158,255,.14);border-color:rgba(74,158,255,.45);color:#8fc6ff;}
+.mob-day-badge.future{background:rgba(68,255,136,.12);border-color:rgba(68,255,136,.45);color:#9fffc4;}
+
 .mobile-jarvis-input{
   position:fixed;
   left:0;
@@ -820,6 +839,89 @@ body.mobile-mode .mobile-only{display:flex!important;}
   align-items:center;
   justify-content:center;
   cursor:pointer;
+}
+
+body.mobile-mode #modal-calc{
+  position:fixed !important;
+  inset:0 !important;
+  background:#000000cc !important;
+  z-index:12000 !important;
+  display:none;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  padding:0 !important;
+}
+body.mobile-mode #modal-calc.show,
+body.mobile-mode #modal-calc.active{display:flex !important;}
+body.mobile-mode #modal-calculadora{
+  width:100vw !important;
+  max-width:100vw !important;
+  height:100dvh !important;
+  max-height:100dvh !important;
+  margin:0 !important;
+  border-radius:0 !important;
+  padding:12px !important;
+}
+body.mobile-mode #modal-calculadora .modal-body,
+body.mobile-mode #modal-calculadora .calc-body{
+  flex-direction:column !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+}
+body.mobile-mode #modal-calculadora .calc-col-esq{
+  overflow:visible !important;
+}
+body.mobile-mode #modal-calculadora .calc-row-top,
+body.mobile-mode #modal-calculadora .calc-row-dims,
+body.mobile-mode #modal-calculadora .calc-row-valores{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:10px !important;
+}
+body.mobile-mode #modal-calculadora .calc-col-dir{
+  width:100% !important;
+  display:block !important;
+  border-left:none !important;
+  border-top:none !important;
+  padding:0 !important;
+}
+body.mobile-mode #modal-calculadora details.mob-params{
+  border:1px solid #2a2a4a;
+  border-radius:12px;
+  background:#0f0f1a;
+  overflow:hidden;
+}
+body.mobile-mode #modal-calculadora details.mob-params > summary{
+  list-style:none;
+  cursor:pointer;
+  padding:12px;
+  font-weight:900;
+  color:#d7def2;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+body.mobile-mode #modal-calculadora details.mob-params > summary::-webkit-details-marker{display:none;}
+body.mobile-mode #modal-calculadora .mob-params-body{padding:12px;display:flex;flex-direction:column;gap:10px;}
+body.mobile-mode #modal-calculadora .modal-footer{
+  position:sticky !important;
+  bottom:0 !important;
+  background:#1a1a2e !important;
+  border-top:1px solid #2a2a4a !important;
+  padding:12px !important;
+  margin:0 -12px -12px -12px !important;
+  align-items:stretch !important;
+  flex-direction:column !important;
+  gap:10px !important;
+}
+body.mobile-mode #modal-calculadora .modal-footer > div{
+  margin-right:0 !important;
+  width:100% !important;
+  justify-content:space-between !important;
+}
+body.mobile-mode #modal-calculadora .modal-footer > button{
+  width:100% !important;
 }
 
 @media print {
@@ -22078,6 +22180,11 @@ async function doLogin(){
   if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
   iniciarSistema(CURRENT_USER);
   try{ await loadCoreData(); }catch(e){}
+  try{
+    if(document.body && document.body.classList && document.body.classList.contains('mobile-mode') && typeof window.renderMobileApp === 'function'){
+      window.renderMobileApp();
+    }
+  }catch(e){}
   try{ logAction('Login realizado','—'); }catch(e){}
   toast('Bem-vindo, '+(CURRENT_USER?CURRENT_USER.nome:'')+' ✓');
 }
@@ -27069,6 +27176,11 @@ async function salvarOrcamentoCalc(){
     const pid=ap && ap.id ? ap.id.replace('page-','') : '';
     if(pid==='orcamentos') renderOrcamentos();
   }catch(e){}
+  try{
+    if(document.body && document.body.classList && document.body.classList.contains('mobile-mode') && typeof window.__mobAfterOrcSave === 'function'){
+      window.__mobAfterOrcSave();
+    }
+  }catch(e){}
   toast('Orçamento Nº '+(_orcNumeroAtual||'')+' salvo ✓','var(--green)');
   const numEl=document.getElementById('orc-numero-display');
   if(numEl) numEl.textContent = _orcNumeroAtual ? ('Orçamento Nº '+_orcNumeroAtual) : '';
@@ -27264,6 +27376,32 @@ function abrirCalculadora(){
       }
     }
 
+    try{
+      const isMobileMode = !!(document.body && document.body.classList && document.body.classList.contains('mobile-mode'));
+      if(isMobile && isMobileMode && colDir && colDir.dataset && colDir.dataset.mobWrapped !== '1'){
+        const nodes = Array.from(colDir.childNodes || []);
+        colDir.innerHTML = '';
+        colDir.style.display = 'block';
+        colDir.style.gridTemplateColumns = '';
+        colDir.style.gap = '';
+        colDir.style.padding = '0';
+        colDir.style.borderTop = 'none';
+
+        const det = document.createElement('details');
+        det.className = 'mob-params';
+        det.open = false;
+        const sum = document.createElement('summary');
+        sum.innerHTML = `<span>⚙️ Parâmetros</span><span style="color:#8b93a7;font-family:var(--mono);font-weight:900">toque para abrir</span>`;
+        const body = document.createElement('div');
+        body.className = 'mob-params-body';
+        nodes.forEach((n)=>body.appendChild(n));
+        det.appendChild(sum);
+        det.appendChild(body);
+        colDir.appendChild(det);
+        colDir.dataset.mobWrapped = '1';
+      }
+    }catch(e){}
+
     const inputsOnda = modal.querySelectorAll(
       '#calc-onda-b, #calc-onda-c, #calc-onda-bc, ' +
       '#calc-vb, #calc-vc, #calc-vbc, #calc-vb2, ' +
@@ -27303,6 +27441,39 @@ function abrirCalculadora(){
       ).forEach(btn => { btn.onclick = fecharCalculadora; });
     }catch(e){}
   }, 50);
+}
+
+function novoOrcamentoCalc(){
+  try{ _orcIdAtual = null; }catch(e){}
+  try{ _orcNumeroAtual = null; }catch(e){}
+  try{ _calcOpcaoSelecionada = { compIdx: 0, onda: 'B' }; }catch(e){}
+  try{
+    const numEl=document.getElementById('orc-numero-display');
+    if(numEl) numEl.textContent = '';
+  }catch(e){}
+  const set = (id, v)=>{
+    const el = document.getElementById(id);
+    if(el) el.value = String(v ?? '');
+  };
+  set('calc-cli', '');
+  set('calc-tipo', (document.getElementById('calc-tipo')||{}).value || '201');
+  set('calc-comp', '300');
+  set('calc-larg', '200');
+  set('calc-alt', '100');
+  set('calc-qtd', '1000');
+  set('calc-vb', '2.47');
+  set('calc-vb2', '2.47');
+  set('calc-vc', '3.29');
+  set('calc-vbc', '4.46');
+  set('calc-cm', '49');
+  set('calc-cf', '15');
+  set('calc-mg', '25');
+  set('calc-cv', '1');
+  set('calc-imp', '10');
+  set('calc-vkm', '1.15');
+  set('calc-km', '50');
+  try{ calcTipoChange(); }catch(e){ try{ calcRecalc(); }catch(_){} }
+  abrirCalculadora();
 }
 
 function calcTipoChange(){
@@ -33858,7 +34029,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <button onclick="fecharCalculadora()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">Fechar</button>
     <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text);border:1px solid rgba(255,255,255,0.12);cursor:pointer">🖨 Imprimir</button>
-    <button onclick="imprimirOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
+    <button onclick="salvarOrcamentoCalc()" style="padding:10px 14px;border-radius:8px;background:#4A90D9;color:#fff;border:none;cursor:pointer;font-weight:700">💾 Salvar Orçamento</button>
     <button onclick="enviarOrcamentoPorEmail()" style="padding:10px 14px;border-radius:8px;background:#7B68EE;color:#fff;border:none;cursor:pointer;font-weight:700">✉ Enviar por Email</button>
   </div>
 </div></div>
@@ -39442,28 +39613,57 @@ window.atualizarChapas = async function(){
     close(){ try{ byId('mob-modal')?.remove(); }catch(e){} }
   };
 
-  async function mobileFetchAllOFs(){
+  const LS_MAQ_DATE = 'italy_mobile_ofmaq_date_v1';
+  const LS_MAQ_EMP = 'italy_mobile_ofmaq_emp_v1';
+  const todayIso = ()=>new Date().toISOString().slice(0,10);
+  const clampIso = (s)=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||'')) ? String(s) : todayIso();
+  const addDaysIso = (iso, delta)=>{
+    const d = new Date(String(iso||'') + 'T00:00:00');
+    if(isNaN(d.getTime())) return todayIso();
+    d.setDate(d.getDate() + (Number(delta)||0));
+    return d.toISOString().slice(0,10);
+  };
+
+  try{
+    const d = localStorage.getItem(LS_MAQ_DATE);
+    mobileState.maqDate = clampIso(d || todayIso());
+  }catch(e){
+    mobileState.maqDate = todayIso();
+  }
+  try{
+    mobileState.maqEmp = String(localStorage.getItem(LS_MAQ_EMP) || '').trim();
+  }catch(e){
+    mobileState.maqEmp = '';
+  }
+
+  async function mobileFetchOFsByEntrega(dateIso, empId){
     const out = [];
+    const iso = clampIso(dateIso);
     let offset = 0;
-    for(let guard = 0; guard < 30; guard++){
+    for(let guard = 0; guard < 10; guard++){
       const qs = new URLSearchParams();
       qs.set('lite','1');
       qs.set('limit','500');
       qs.set('offset', String(offset));
+      qs.set('from', iso);
+      qs.set('to', iso);
+      qs.set('date_field', 'entrega');
       qs.set('excluir_canceladas','1');
+      if(empId) qs.set('empId', String(empId));
       const r = await api('GET','/ofs?' + qs.toString());
       const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
       out.push(...chunk);
       if(chunk.length < 500) break;
       offset += 500;
-      if(out.length >= 5000) break;
+      if(out.length >= 3000) break;
     }
-    return out.filter(isOfAtiva);
+    return out.filter(isOfAtiva).filter((of)=>String(of?.ent || of?.data_entrega || '').slice(0,10) === iso);
   }
   async function mobileRefreshMaquinas(){
     const maq = await api('GET','/maquinas');
     const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
-    const ofs = await mobileFetchAllOFs();
+    const empId = String(mobileState.maqEmp || '').trim();
+    const ofs = await mobileFetchOFsByEntrega(mobileState.maqDate, empId);
     mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
     mobileState.ofs = ofs;
   }
@@ -39473,6 +39673,7 @@ window.atualizarChapas = async function(){
     const r = await api('GET','/orcamentos' + (qs.toString()?('?'+qs.toString()):''));
     const rows = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
     mobileState.orcamentos = rows || [];
+    try{ if(isMobileMode()) window.ORCAMENTOS = rows || []; }catch(e){}
   }
 
   function renderShell(){
@@ -39587,7 +39788,22 @@ window.atualizarChapas = async function(){
     const content = byId('mob-content');
     if(!content) return;
 
-    const ofs = (mobileState.ofs || []).filter(isOfAtiva);
+    const iso = clampIso(mobileState.maqDate);
+    const empId = String(mobileState.maqEmp || '').trim();
+    const ofs = (mobileState.ofs || []).filter(isOfAtiva).filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso);
+    const totalOfs = ofs.length;
+    const totalCaixas = ofs.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
+
+    const rel = (()=>{
+      const dtSel = new Date(iso + 'T00:00:00');
+      const td = new Date(); td.setHours(0,0,0,0);
+      if(isNaN(dtSel.getTime())) return { cls:'future', lbl:'FUTURO' };
+      dtSel.setHours(0,0,0,0);
+      if(dtSel.getTime() < td.getTime()) return { cls:'past', lbl:'PASSOU DO DIA' };
+      if(dtSel.getTime() === td.getTime()) return { cls:'today', lbl:'HOJE' };
+      return { cls:'future', lbl:'FUTURO' };
+    })();
+
     const byMaq = new Map();
     ofs.forEach((of)=>{
       const m = String(getOfMaquinaAtual(of) || '').trim();
@@ -39600,16 +39816,42 @@ window.atualizarChapas = async function(){
     const maquinas = (mobileState.maquinas || []).map(m=>String(m?.nome || '').trim()).filter(Boolean);
     const nomes = [...new Set([...maquinas, ...Array.from(byMaq.keys())])].filter(Boolean);
 
+    const maqByNome = new Map();
+    (mobileState.maquinas || []).forEach((m)=>{
+      const n = String(m?.nome || '').trim();
+      if(!n) return;
+      maqByNome.set(n.toUpperCase(), m);
+    });
+    const getMaqObj = (nome)=>{
+      const key = String(nome||'').trim().toUpperCase();
+      return key ? (maqByNome.get(key) || null) : null;
+    };
+    const getMaqPhora = (nome)=>{
+      const m = getMaqObj(nome);
+      if(!m) return 0;
+      const v = Number(m.producao_hora ?? m.producao ?? m.phora ?? m.cxhora ?? 0) || 0;
+      return v > 0 ? v : 0;
+    };
+    const fmtTempo = (nomeMaq, qtd)=>{
+      const ph = getMaqPhora(nomeMaq);
+      const q = Math.max(0, Math.trunc(Number(qtd||0) || 0));
+      if(!(ph > 0) || !(q > 0)) return '—';
+      const min = Math.max(1, Math.round((q / ph) * 60));
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return h > 0 ? (h + 'h ' + m + 'min') : (m + 'min');
+    };
+
     const cardHtml = (nome)=>{
       const exp = !!mobileState.maquinaExpanded[nome];
       const list = byMaq.get(nome) || [];
+      const countDia = list.length;
       const head = `<div class="mobile-card" data-maq="${esc(nome)}">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div style="font-weight:900">${esc(nome)}</div>
-          <div style="color:#8b93a7;font-family:var(--mono);font-weight:900">${list.length}</div>
+          <div style="color:#8b93a7;font-family:var(--mono);font-weight:900">${countDia}</div>
         </div>
         ${exp ? `<div style="margin-top:10px">${list.map(of=>{
-          const cls = ofStatusClass(of);
           const num = getOfNumero(of) || '—';
           const cli = getOfCliente(of);
           const prod = getOfProduto(of);
@@ -39617,10 +39859,14 @@ window.atualizarChapas = async function(){
           const ent = fmtBR(getOfEntrega(of));
           const st = String(of?.status || '').trim() || '—';
           const id = String(of?.id || '').trim();
-          return `<div class="mobile-card mobile-of-card ${cls}">
+          const tempo = fmtTempo(nome, qtd);
+          return `<div class="mobile-card mobile-of-card">
             <div class="mobile-of-title">
               <div class="n">OF ${esc(num)}</div>
-              <div class="st">${esc(st)}</div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
+                <span class="st">${esc(st)}</span>
+              </div>
             </div>
             <div class="mobile-of-meta">
               <div><b>Cliente:</b> ${esc(cli)}</div>
@@ -39628,10 +39874,11 @@ window.atualizarChapas = async function(){
               <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
                 <div><b>Qtd:</b> ${esc(String(qtd))}</div>
                 <div><b>Entrega:</b> ${esc(ent)}</div>
+                <div><b>⏱</b> ${esc(String(tempo))}</div>
               </div>
             </div>
             <div class="mobile-actions">
-              <button class="mobile-btn danger" data-concluir="${esc(id)}" data-maq="${esc(nome)}">Concluir</button>
+              <button class="mobile-btn danger" data-concluir="${esc(id)}" data-maq="${esc(nome)}">✓ Concluir</button>
               <button class="mobile-btn" data-detalhes="${esc(id)}">Detalhes</button>
             </div>
           </div>`;
@@ -39641,9 +39888,45 @@ window.atualizarChapas = async function(){
     };
 
     content.innerHTML = `
+      <div class="mobile-card" style="margin-bottom:10px">
+        <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+          <button class="mobile-btn" id="mob-date-prev" style="flex:0 0 auto;padding:9px 12px">← Ant</button>
+          <button class="mobile-btn primary" id="mob-date-today" style="flex:0 0 auto;padding:9px 12px">Hoje</button>
+          <button class="mobile-btn" id="mob-date-next" style="flex:0 0 auto;padding:9px 12px">Próx →</button>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <input type="date" id="mob-date" value="${esc(iso)}" style="flex:1;min-width:160px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:10px 12px;color:#fff;font-size:16px">
+          <select id="mob-emp" style="flex:1;min-width:160px;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:10px 12px;color:#fff;font-size:16px">
+            <option value="" ${!empId?'selected':''}>Todas</option>
+            <option value="E1" ${empId==='E1'?'selected':''}>Italy</option>
+            <option value="E2" ${empId==='E2'?'selected':''}>Cartoeste</option>
+            <option value="E3" ${empId==='E3'?'selected':''}>Oestepack</option>
+          </select>
+        </div>
+        <div style="margin-top:10px;color:#d7def2;font-weight:900;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>${esc(String(totalOfs))} OFs — ${esc(String(totalCaixas))} caixas para ${esc(fmtBR(iso))}</span>
+          <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
+        </div>
+      </div>
       <div id="mob-pull-hint" style="display:none;margin-bottom:10px;color:#8b93a7;font-family:var(--mono);font-weight:900">Atualizando…</div>
       ${nomes.map(cardHtml).join('')}
     `;
+
+    const persist = ()=>{
+      try{ localStorage.setItem(LS_MAQ_DATE, String(mobileState.maqDate||'')); }catch(e){}
+      try{ localStorage.setItem(LS_MAQ_EMP, String(mobileState.maqEmp||'')); }catch(e){}
+    };
+    const refresh = async ()=>{
+      const hint = byId('mob-pull-hint'); if(hint) hint.style.display = 'block';
+      try{ await mobileRefreshMaquinas(); }catch(e){}
+      if(hint) hint.style.display = 'none';
+      renderMaquinas();
+    };
+    byId('mob-date-prev')?.addEventListener('click', ()=>{ mobileState.maqDate = addDaysIso(mobileState.maqDate, -1); persist(); refresh(); });
+    byId('mob-date-next')?.addEventListener('click', ()=>{ mobileState.maqDate = addDaysIso(mobileState.maqDate, 1); persist(); refresh(); });
+    byId('mob-date-today')?.addEventListener('click', ()=>{ mobileState.maqDate = todayIso(); persist(); refresh(); });
+    byId('mob-date')?.addEventListener('change', (e)=>{ mobileState.maqDate = clampIso(e?.target?.value || todayIso()); persist(); refresh(); });
+    byId('mob-emp')?.addEventListener('change', (e)=>{ mobileState.maqEmp = String(e?.target?.value || '').trim(); persist(); refresh(); });
 
     content.querySelectorAll('[data-maq]').forEach((el)=>{
       el.addEventListener('click', (e)=>{
@@ -39771,7 +40054,8 @@ window.atualizarChapas = async function(){
           const med = String(o?.medidas || o?.titulo || '—');
           const val = toNum(o?.valor_total || o?.valorTotal || 0);
           const st = String(o?.status || '—');
-          return `<div class="mobile-card">
+          const oid = String(o?.id || '').trim();
+          return `<div class="mobile-card" data-orc-id="${esc(oid)}">
             <div class="mobile-of-title">
               <div class="n">Orç. ${esc(num)}</div>
               <div class="st">${esc(st)}</div>
@@ -39792,30 +40076,23 @@ window.atualizarChapas = async function(){
       });
     });
     byId('mob-orc-new')?.addEventListener('click', ()=>{
-      modal.open(`
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
-          <div style="font-weight:900">Novo orçamento</div>
-          <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div>
-            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Cliente</div>
-            <input id="mob-orc-cli" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
-          </div>
-          <div>
-            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Medidas</div>
-            <input id="mob-orc-med" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
-          </div>
-          <div>
-            <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Valor total</div>
-            <input id="mob-orc-val" type="number" step="0.01" value="0" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
-          </div>
-          <div style="display:flex;gap:10px">
-            <button class="mobile-btn" onclick="document.getElementById('mob-modal')?.remove()">Cancelar</button>
-            <button class="mobile-btn primary" onclick="window.__mobCriarOrc && window.__mobCriarOrc()">Criar</button>
-          </div>
-        </div>
-      `);
+      try{
+        if(typeof window.novoOrcamentoCalc === 'function') window.novoOrcamentoCalc();
+        else if(typeof window.abrirCalculadora === 'function') window.abrirCalculadora();
+      }catch(e){}
+    });
+    content.querySelectorAll('[data-orc-id]').forEach((card)=>{
+      card.addEventListener('click', ()=>{
+        const id = String(card.getAttribute('data-orc-id') || '').trim();
+        if(!id) return;
+        try{
+          if(typeof window.abrirCalculadoraComOrc === 'function') window.abrirCalculadoraComOrc(id);
+          else if(typeof window.carregarOrcamentoCalc === 'function'){
+            const orc = (mobileState.orcamentos || []).find(o=>String(o?.id||'')===id);
+            if(orc) window.carregarOrcamentoCalc(orc);
+          }
+        }catch(e){}
+      });
     });
   }
 
@@ -39864,6 +40141,12 @@ window.atualizarChapas = async function(){
     }catch(e){
       try{ alert(String(e?.message || e)); }catch(_){}
     }
+  };
+  window.__mobAfterOrcSave = async ()=>{
+    try{
+      await mobileRefreshOrcamentos();
+      if(mobileState.view === 'orcamentos') renderOrcamentos();
+    }catch(e){}
   };
   window.__mobCriarOrc = async ()=>{
     try{
