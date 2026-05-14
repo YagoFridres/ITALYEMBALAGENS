@@ -3119,6 +3119,22 @@ app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) =>
 
 app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
   try {
+    const enrichMaquinas = async (rows) => {
+      const list = Array.isArray(rows) ? rows : [];
+      const ids = [...new Set(list.map(r => String(r?.maquina_id || r?.maquinaId || '').trim()).filter(Boolean))];
+      if (!ids.length) return list;
+      const { data: maqs, error: em } = await supabase.from('maquinas').select('id,nome');
+      if (em) return list;
+      const map = new Map((Array.isArray(maqs) ? maqs : []).map(m => [String(m.id), String(m.nome || '').trim()]));
+      return list.map((r) => {
+        const mid = String(r?.maquina_id || r?.maquinaId || '').trim();
+        const nome = mid ? (map.get(mid) || '') : '';
+        const fallback = String(r?.maquina || '').trim();
+        const finalNome = nome || fallback;
+        return { ...r, maquina: finalNome, maquina_nome: finalNome };
+      });
+    };
+
     let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
     if (req.query.empId) q = q.eq('emp_id', req.query.empId);
     const mes = String(req.query.mes || '').trim();
@@ -3142,9 +3158,10 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
           return true;
         });
         if (req.query.empId) {
-          return ok(res, result.filter((r) => r.emp_id === req.query.empId));
+          const filtered = result.filter((r) => r.emp_id === req.query.empId);
+          return ok(res, await enrichMaquinas(filtered));
         }
-        return ok(res, result);
+        return ok(res, await enrichMaquinas(result));
       }
     }
     if (req.query.de) q = q.gte('data', req.query.de);
@@ -3155,7 +3172,7 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
       throw error;
     }
-    return ok(res, data || []);
+    return ok(res, await enrichMaquinas(data || []));
   } catch (e) { err(res, e); }
 });
 
@@ -9563,6 +9580,158 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
 
+    if (/^\s*\d{1,4}\s*$/.test(pergunta)) {
+      const n = String(pergunta || '').trim();
+      const of = await _jarvisFindOFByNumero(n);
+      if (!of) return respond(`Não encontrei nenhuma OF com o número ${n}. Verifique o número e tente novamente.`);
+      const cid = _assistPickOfClienteId(of);
+      const cliMap = await _assistLoadClientesByIds([cid]);
+      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+      const numOf = _assistPickOfNumber(of);
+      const produto = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const qtd = Math.trunc(Number(of.qtd_pedida || of.qtd_produzida || of.quantidade || of.qtd || 0) || 0);
+      const valor = _assistPickOfValor(of);
+      const status = String(of.status || '—').trim() || '—';
+      const diaPedido = String(of.data_pedido || of.dia || of.data || of.created_at || '').slice(0, 10);
+      const entrega = _assistPickOfEntrega(of);
+      const urg = !!(of.urg || of.urgente);
+      const emp = String(of.emp_id || of.empId || of.empresa || of.empresa_id || '').trim() || '—';
+      const obs = String(of.obs || of.observacao || '').trim();
+      const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || of.maquinas || of.etapas || []);
+      const fluxoTxt = fluxo.length ? fluxo.map((x) => String(x || '').trim()).filter(Boolean).join(' → ') : '—';
+      const imgsRaw = Array.isArray(of.imgs) ? of.imgs : (typeof of.imgs === 'string' ? (() => { try { const p = JSON.parse(of.imgs || '[]'); return Array.isArray(p) ? p : [of.imgs]; } catch (_) { return [of.imgs]; } })() : []);
+      const iu = String(of.imagem_url || '').trim();
+      const imgs = [...new Set([iu, ...(imgsRaw || [])].map(x => String(x || '').trim()).filter(Boolean))].slice(0, 3);
+      return respond(
+        `📋 OF #${numOf}\n` +
+        `👤 Cliente: ${cNome}\n` +
+        `📦 Produto: ${produto}\n` +
+        `📦 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas\n` +
+        `💰 Valor: ${valor ? _assistFmtMoney(valor) : '—'}\n` +
+        `🏷 Status: ${status}\n` +
+        `📅 Data do pedido: ${diaPedido ? _assistFmtDateBr(diaPedido) : '—'}\n` +
+        `🚚 Entrega: ${entrega ? _assistFmtDateBr(entrega) : '—'}\n` +
+        `🏭 Máquinas: ${fluxoTxt}\n` +
+        `⚡ Urgente: ${urg ? 'Sim' : 'Não'}\n` +
+        `🏢 Empresa: ${emp}\n` +
+        (obs ? `📝 Observações: ${obs}\n` : ''),
+        imgs.length ? { images: imgs, dadosExtras: { tipo: 'of', of_id: of.id, numero: numOf, imagem_url: iu || null, imgs } } : { dadosExtras: { tipo: 'of', of_id: of.id, numero: numOf, imagem_url: iu || null, imgs } }
+      );
+    }
+
+    if (hasAny('ofs do cliente', 'of do cliente', 'ofs da cliente', 'situação do cliente', 'situacao do cliente', 'tem of do cliente')) {
+      const m =
+        pergunta.match(/ofs?\s+(?:do|da)\s+cliente\s+(.+)$/i) ||
+        pergunta.match(/situa[cç][aã]o\s+do\s+cliente\s+(.+)$/i) ||
+        pergunta.match(/tem\s+ofs?\s+do\s+cliente\s+(.+)$/i) ||
+        null;
+      const cliNome = m ? String(m[1] || '').trim() : '';
+      if (!cliNome) return naoEntendi();
+      const cli = await _jarvisFindClienteByNome(cliNome);
+      if (!cli) return respond(`${nome}, não encontrei o cliente "${cliNome}".`);
+      const cliId = String(cli.id || '').trim();
+      const { data: ofsRaw } = await supabase
+        .from('ofs')
+        .select('id,of,numero,status,cli_id,cliente_id,descricao,prodDesc,produto,qtd,qtd_pedida,quantidade,ent,data_entrega,urg,urgente,deleted_at,fluxo_maquinas,maq,maquina_atual_index')
+        .is('deleted_at', null)
+        .not('status', 'in', '("Cancelada","Cancelado")')
+        .limit(5000);
+      const ofs = (Array.isArray(ofsRaw) ? ofsRaw : []).filter((o) => String(_assistPickOfClienteId(o) || '') === cliId && !_assistIsConcluida(o));
+      const aberta = ofs.filter((o) => String(o.status || '').trim() === 'Em aberto');
+      const prod = ofs.filter((o) => String(o.status || '').trim() === 'Em produção' || String(o.status || '').trim() === 'Em producao');
+      const atras = ofs.filter((o) => {
+        const e = _assistPickOfEntrega(o);
+        return e && e < hoje && !_assistIsConcluida(o);
+      });
+      const pickMaqAtual = (o) => {
+        const fluxo = parseFluxo(o.fluxo_maquinas || o.maq || []);
+        const idx = Number(o.maquina_atual_index || 0) || 0;
+        const nm = fluxo[idx] || fluxo[0] || '';
+        return String(nm || '').trim();
+      };
+      const fmtLinha = (o) => {
+        const num = _assistPickOfNumber(o);
+        const desc = String(o.descricao || o.prodDesc || o.produto || '').trim();
+        const maq = pickMaqAtual(o);
+        const ent = _assistPickOfEntrega(o);
+        const qtd = Math.trunc(Number(o.qtd_pedida || o.quantidade || o.qtd || 0) || 0);
+        return `• OF #${num} — ${desc || '—'}${maq ? ` — ${maq}` : ''} — Qtd: ${qtd.toLocaleString('pt-BR')}${ent ? ` — Entrega: ${_assistFmtDateBr(ent)}` : ''}`;
+      };
+      return respond(
+        `📋 OFs ativas de ${String(cli.nome || cliNome).trim()}:\n\n` +
+        `🔵 Em produção (${prod.length}):\n${prod.slice(0, 10).map(fmtLinha).join('\n') || '—'}\n\n` +
+        `🟡 Em aberto (${aberta.length}):\n${aberta.slice(0, 10).map(fmtLinha).join('\n') || '—'}\n\n` +
+        `🔴 Atrasadas (${atras.length}):\n${atras.slice(0, 10).map(fmtLinha).join('\n') || '—'}`
+      );
+    }
+
+    if (hasAny('relatório de', 'relatorio de', 'relatório sobre', 'relatorio sobre', 'me dê um relatório', 'me de um relatorio')) {
+      const temaRaw =
+        (pergunta.match(/relat[óo]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
+        (pergunta.match(/me\s+d[êe]\s+um\s+relat[óo]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
+        '';
+      const tema = String(temaRaw || '').trim();
+      if (!tema) return respond(`${nome}, qual tema você quer no relatório? Ex: OFs, clientes, estoque, perdas, faturamento, máquinas, fornecedores.`);
+
+      const tnorm = _assistNorm(tema);
+      let assunto = 'geral';
+      if (tnorm.includes('of')) assunto = 'ofs';
+      else if (tnorm.includes('client')) assunto = 'clientes';
+      else if (tnorm.includes('estoque') || tnorm.includes('chapa')) assunto = 'estoque';
+      else if (tnorm.includes('perda') || tnorm.includes('caixas perdidas')) assunto = 'perdas';
+      else if (tnorm.includes('fatur') || tnorm.includes('venda')) assunto = 'faturamento';
+      else if (tnorm.includes('maquin')) assunto = 'maquinas';
+      else if (tnorm.includes('fornec')) assunto = 'fornecedores';
+
+      const dados = {};
+      if (assunto === 'ofs') {
+        const { data } = await supabase.from('ofs').select('*').is('deleted_at', null).order('created_at', { ascending: false }).limit(500);
+        dados.ofs = data || [];
+      } else if (assunto === 'clientes') {
+        const { data } = await supabase.from('clientes').select('*').limit(500);
+        dados.clientes = data || [];
+      } else if (assunto === 'estoque') {
+        const { data } = await supabase.from('chapas_estoque').select('*').limit(500);
+        dados.estoque = data || [];
+      } else if (assunto === 'perdas') {
+        const { data } = await supabase.from('caixas_perdidas').select('*').order('data', { ascending: false }).limit(500);
+        dados.perdas = data || [];
+      } else if (assunto === 'maquinas') {
+        const { data } = await supabase.from('maquinas').select('*').order('ordem', { ascending: true }).limit(500);
+        dados.maquinas = data || [];
+      } else if (assunto === 'fornecedores') {
+        const { data } = await supabase.from('fornecedores').select('*').limit(500);
+        dados.fornecedores = data || [];
+      } else if (assunto === 'faturamento') {
+        const { data } = await supabase.from('ofs').select('id,of,numero,status,valor_total,valor_venda,val,emp_id,data_conclusao,created_at,deleted_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(1000);
+        dados.ofs = data || [];
+      } else {
+        const ctx = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
+        Object.assign(dados, ctx || {});
+      }
+
+      const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
+      if (!useClaude) {
+        return respond(`${nome}, para gerar relatório automático eu preciso da chave ANTHROPIC_API_KEY configurada no servidor.`);
+      }
+
+      const perguntaRel =
+        `Gere um relatório completo sobre: ${tema}.\n` +
+        `Responda SOMENTE com HTML (sem Markdown) usando <h2>, <p>, <ul> e uma <table class="jarvis-table"> para os dados.\n` +
+        `Inclua: resumo executivo, dados em tabela, insights principais e sugestões de ação.\n` +
+        `Não inclua <script>.\n` +
+        `DADOS:\n${JSON.stringify(dados || {}, null, 2)}`;
+
+      const rClaude = await _jarvisCallClaude({ pergunta: perguntaRel, nomeUsuario: nome, dadosContexto: {}, historico: req.body?.historico || [] });
+      if (!rClaude.ok) return respond(`${nome}, não consegui gerar o relatório agora (${String(rClaude.error || 'erro')}).`);
+      return res.json({
+        ok: true,
+        resposta: `📄 Relatório pronto: ${tema}`,
+        html: String(rClaude.text || '').trim(),
+        report: true,
+      });
+    }
+
     if (/tutorial|como usar|me ensine|como funciona|ajuda geral/i.test(pergunta)) {
       return res.json({
         ok: true,
@@ -9657,6 +9826,76 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const historico = req.body?.historico || req.body?.history || null;
     if (!ofNum && historico && (_jarvisHasAny(norm, 'ela', 'anterior', 'anterior?', 'da anterior') || (norm.includes('of') && _jarvisHasAny(norm, 'anterior')))) {
       ofNum = _jarvisLastOfNumFromHistory(historico);
+    }
+
+    if (ofNum && (_jarvisHasAny(norm, 'concluir', 'finalizar', 'dar baixa') && _jarvisHasAny(norm, 'of', 'ordem'))) {
+      const of = await _jarvisFindOFByNumero(ofNum);
+      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      const cid = _assistPickOfClienteId(of);
+      const cliMap = await _assistLoadClientesByIds([cid]);
+      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+      const nOf = _assistPickOfNumber(of);
+      const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
+      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || []);
+      return res.json({
+        ok: true,
+        resposta:
+          `OF #${nOf} — ${cNome} — ${desc} — ${qtd.toLocaleString('pt-BR')} caixas\n\n` +
+          `Quantas caixas foram produzidas?`,
+        jarvis_state: {
+          acao: 'concluir_of',
+          of_id: String(of.id || ''),
+          of_numero: Number(nOf) || Number(ofNum) || ofNum,
+          etapa: 'aguardando_qtd_produzida',
+          dados: { maquinas: fluxo.slice(0, 12) },
+        },
+      });
+    }
+
+    if (ofNum && (_jarvisHasAny(norm, 'altere', 'alterar', 'mude', 'mudar', 'edite', 'editar') && _jarvisHasAny(norm, 'of', 'ordem'))) {
+      const of = await _jarvisFindOFByNumero(ofNum);
+      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      const cid = _assistPickOfClienteId(of);
+      const cliMap = await _assistLoadClientesByIds([cid]);
+      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+      const nOf = _assistPickOfNumber(of);
+      const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
+      const entrega = _assistPickOfEntrega(of);
+      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const obs = String(of.obs || of.observacao || '').trim();
+      const urg = !!(of.urg || of.urgente);
+      const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || []);
+      return res.json({
+        ok: true,
+        resposta:
+          `✏️ Editar OF #${nOf}\n` +
+          `Cliente: ${cNome}\n` +
+          `Produto: ${desc}\n` +
+          `Quantidade: ${qtd.toLocaleString('pt-BR')}\n` +
+          `Entrega: ${entrega ? _assistFmtDateBr(entrega) : '—'}\n` +
+          `Urgente: ${urg ? 'Sim' : 'Não'}\n` +
+          `Máquinas: ${fluxo.length ? fluxo.join(' → ') : '—'}\n` +
+          (obs ? `Obs: ${obs}\n` : '') +
+          `\nO que deseja alterar? (data de entrega, quantidade, cliente, produto, urgente, máquinas, observações)`,
+        jarvis_state: {
+          acao: 'alterar_of',
+          of_id: String(of.id || ''),
+          of_numero: Number(nOf) || Number(ofNum) || ofNum,
+          etapa: 'aguardando_campo',
+          dados: {
+            of_atual: {
+              data_entrega: entrega || null,
+              qtd,
+              cliente: cNome,
+              produto: desc,
+              urgente: urg,
+              maquinas: fluxo.slice(0, 20),
+              obs: obs || '',
+            },
+          },
+        },
+      });
     }
 
     const act = await _jarvisDetectAction({ norm, pergunta, ofNum, year });

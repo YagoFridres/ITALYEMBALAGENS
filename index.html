@@ -60,6 +60,16 @@
 *{margin:0;padding:0;box-sizing:border-box;}
 html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;display:flex;flex-direction:column;transition:background .2s,color .2s;}
+body.font-size-small{font-size:12px}
+body.font-size-normal{font-size:14px}
+body.font-size-large{font-size:16px}
+body.compact .ptoolbar{padding:8px 12px}
+body.compact .page-body{padding:12px}
+body.compact .pcp-table td, body.compact .pcp-table th{padding:6px 8px!important;font-size:12px}
+body.compact table th, body.compact table td{padding:6px 8px}
+body.daltonico{--red:#f97316;--red-soft:#f9731620;--green:#3b82f6;--green-soft:#3b82f620;--yellow:#a855f7;--yellow-soft:#a855f720;}
+body.theme-azulado{--accent:#0ea5e9;--accent2:#0284c7;--accent-soft:#0ea5e920}
+body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .emp-sel-bar{flex-shrink:0;}
 
 /* ===== SCROLLBAR ===== */
@@ -1505,7 +1515,7 @@ const MODULOS_SISTEMA = [
   { key:'comissoes',      label:'Comissões',           grupo:'Análises',  menuId:'menu-comissoes',       paginaId:'comissoes' },
   { key:'caixas_perdidas',label:'Caixas Perdidas',     grupo:'Análises',  menuId:'menu-caixas-perdidas', paginaId:'caixas-perdidas' },
   { key:'relatorio_mensal',label:'Relatório Mensal',   grupo:'Análises',  menuId:'menu-relatorio-mensal',paginaId:'relatorio-mensal' },
-  { key:'backup',         label:'Backup / Importar',   grupo:'Análises',  menuId:'menu-backup',          paginaId:'backup' },
+  { key:'configuracoes',  label:'Configurações',       grupo:'Análises',  menuId:'menu-config',         paginaId:'configuracoes' },
   { key:'notificacoes',   label:'Notificações',        grupo:'Análises',  menuId:'menu-notificacoes',    paginaId:'notificacoes' },
 ];
 
@@ -1557,7 +1567,7 @@ const PERMISSOES_SISTEMA = {
       comissoes: 'Comissões',
       caixas_perdidas: 'Caixas Perdidas',
       relatorio_mensal: 'Relatório Mensal',
-      backup: 'Backup / Importar',
+      configuracoes: 'Configurações',
       notificacoes: 'Notificações',
     }
   }
@@ -2532,6 +2542,236 @@ function startClock(){
   },1000);
 }
 
+function globalSearchInit(){
+  if(window.__GS_INIT) return;
+  window.__GS_INIT = true;
+  const inp = document.getElementById('gsearch');
+  const dd = document.getElementById('gsearch-dd');
+  const inner = document.getElementById('gsearch-dd-inner');
+  if(!inp || !dd || !inner) return;
+
+  const norm = (s)=>{
+    try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
+  };
+  const esc = (s)=>escH(s);
+
+  const show = ()=>{ dd.style.display='block'; };
+  const hide = ()=>{ dd.style.display='none'; };
+
+  const render = (q)=>{
+    const query = String(q||'').trim();
+    const nq = norm(query);
+    if(!nq){
+      inner.innerHTML = `<div style="padding:10px 12px;color:var(--text3);font-size:.75rem;font-family:var(--mono)">Digite para buscar: OFs, clientes, chapas, fornecedores</div>`;
+      show();
+      return;
+    }
+
+    const ofs = Array.isArray(window.OFs) ? window.OFs : [];
+    const clientes = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
+    const chapas = Array.isArray(window.ESTOQUE) ? window.ESTOQUE : [];
+    const fornecedores = Array.isArray(window.FORNECEDORES) ? window.FORNECEDORES : [];
+
+    const ofHits = ofs
+      .map((o)=>({
+        id: o.id || o.of,
+        of: String(o.of || o.numero || '').trim(),
+        cli: String(o.cliNome || o.cliente_nome || o.cliente || '').trim(),
+        desc: String(o.prodDesc || o.descricao || '').trim(),
+      }))
+      .filter((o)=> o.of && (norm(o.of).includes(nq) || norm(o.cli).includes(nq) || norm(o.desc).includes(nq)))
+      .slice(0, 6);
+
+    const cliHits = clientes
+      .map((c)=>({ id:c.id, nome:String(c.nome||'').trim(), cidade:String(c.cidade||'').trim(), cnpj:String(c.cnpj||'').trim() }))
+      .filter((c)=> c.nome && (norm(c.nome).includes(nq) || norm(c.cnpj).includes(nq) || norm(c.cidade).includes(nq)))
+      .slice(0, 6);
+
+    const chHits = chapas
+      .map((c)=>({ id:c.id, nome:String(c.nome_uso||c.nome||c.nomenclatura||'').trim(), forn:String(c.fornecedor||c.fornecedor_nome||'').trim() }))
+      .filter((c)=> c.nome && (norm(c.nome).includes(nq) || norm(c.forn).includes(nq)))
+      .slice(0, 6);
+
+    const fornHits = fornecedores
+      .map((f)=>({ id:f.id, nome:String(f.nome||f.razao_social||f.rs||'').trim(), cidade:String(f.cidade||'').trim(), cnpj:String(f.cnpj||'').trim() }))
+      .filter((f)=> f.nome && (norm(f.nome).includes(nq) || norm(f.cnpj).includes(nq) || norm(f.cidade).includes(nq)))
+      .slice(0, 6);
+
+    const sec = (title, itemsHtml)=> itemsHtml ? `<div style="padding:8px 10px;border-bottom:1px solid var(--border);background:var(--s2);font-size:.62rem;font-family:var(--mono);font-weight:900;color:var(--text2);text-transform:uppercase;letter-spacing:.4px">${esc(title)}</div>${itemsHtml}` : '';
+    const row = (label, sub, data)=>`<div class="gsearch-row" data-type="${esc(data.type)}" data-q="${esc(data.q||'')}" data-id="${esc(data.id||'')}" style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:3px">
+      <div style="font-weight:900;color:var(--text)">${label}</div>
+      ${sub ? `<div style="font-size:.72rem;color:var(--text3)">${sub}</div>` : ``}
+    </div>`;
+
+    const ofHtml = ofHits.map((o)=>row(`OF #${esc(o.of)} — ${esc(o.cli||'')}`, esc(o.desc||''), { type:'of', q:o.of, id:o.of })).join('');
+    const cliHtml = cliHits.map((c)=>row(`${esc(c.nome)}`, `${esc(c.cidade||'')}${c.cnpj?` · ${esc(c.cnpj)}`:''}`, { type:'cliente', q:c.nome, id:c.id })).join('');
+    const chHtml = chHits.map((c)=>row(`${esc(c.nome)}`, `${esc(c.forn||'')}`, { type:'chapa', q:c.nome, id:c.id })).join('');
+    const fnHtml = fornHits.map((f)=>row(`${esc(f.nome)}`, `${esc(f.cidade||'')}${f.cnpj?` · ${esc(f.cnpj)}`:''}`, { type:'fornecedor', q:f.nome, id:f.id })).join('');
+
+    const any = ofHtml || cliHtml || chHtml || fnHtml;
+    if(!any){
+      inner.innerHTML = `<div style="padding:10px 12px;color:var(--text3);font-size:.75rem;font-family:var(--mono)">Nenhum resultado.</div>`;
+      show();
+      return;
+    }
+    inner.innerHTML = [
+      sec('OFs', ofHtml),
+      sec('Clientes', cliHtml),
+      sec('Chapas', chHtml),
+      sec('Fornecedores', fnHtml),
+    ].filter(Boolean).join('');
+    show();
+  };
+
+  const navTo = (type, q)=>{
+    const t = String(type||'');
+    const query = String(q||'').trim();
+    if(t === 'of'){
+      go('pcp');
+      setTimeout(()=>{
+        const b = document.getElementById('pcp-busca');
+        if(b) b.value = query;
+        try{ renderPCP(); }catch(e){}
+      }, 0);
+    } else if(t === 'cliente'){
+      go('clientes');
+      setTimeout(()=>{
+        const b = document.getElementById('cli-busca');
+        if(b) b.value = query;
+        try{ renderClientes(); }catch(e){}
+      }, 0);
+    } else if(t === 'chapa'){
+      go('estoque');
+      setTimeout(()=>{
+        const b = document.getElementById('est-busca');
+        if(b) b.value = query;
+        try{ renderEstoque(); }catch(e){}
+      }, 0);
+    } else if(t === 'fornecedor'){
+      go('fornecedores');
+      setTimeout(()=>{
+        const b = document.getElementById('forn-busca');
+        if(b) b.value = query;
+        try{ renderFornecedores(); }catch(e){}
+      }, 0);
+    }
+  };
+
+  let tmr = null;
+  inp.addEventListener('input', ()=>{
+    clearTimeout(tmr);
+    tmr = setTimeout(()=>render(inp.value), 80);
+  });
+  inp.addEventListener('focus', ()=>render(inp.value));
+  inp.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){ hide(); inp.blur(); }
+  });
+  document.addEventListener('click', (e)=>{
+    const host = document.getElementById('gsearch-wrap');
+    if(!host) return;
+    if(host.contains(e.target)) return;
+    hide();
+  });
+  inner.addEventListener('click', (e)=>{
+    const row = e.target.closest('.gsearch-row');
+    if(!row) return;
+    const type = row.getAttribute('data-type') || '';
+    const q = row.getAttribute('data-q') || '';
+    hide();
+    navTo(type, q);
+  });
+}
+
+function openShortcutsHelp(){
+  try{ abrir('modal-help-shortcuts'); }catch(e){ alert('Atalhos:\nCtrl+N Nova OF\nCtrl+K Busca\nCtrl+P PCP\nCtrl+E Estoque\nCtrl+C Clientes\n? Ajuda'); }
+}
+
+function initGlobalShortcuts(){
+  if(window.__SC_INIT) return;
+  window.__SC_INIT = true;
+  document.addEventListener('keydown', (e)=>{
+    const tag = (e.target && e.target.tagName) ? String(e.target.tagName).toLowerCase() : '';
+    const inInput = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+    const k = e.key;
+    if(k === '?' && !e.ctrlKey && !e.metaKey){
+      if(!inInput){ e.preventDefault(); openShortcutsHelp(); }
+      return;
+    }
+    if(!(e.ctrlKey || e.metaKey)) return;
+    const key = String(k||'').toLowerCase();
+    if(key === 'n'){ e.preventDefault(); try{ abrirModalOF(); }catch(_){} return; }
+    if(key === 'k'){ e.preventDefault(); globalSearchInit(); const inp = document.getElementById('gsearch'); if(inp){ inp.focus(); inp.select(); } return; }
+    if(key === 'p'){ e.preventDefault(); go('pcp'); return; }
+    if(key === 'e'){ e.preventDefault(); go('estoque'); return; }
+    if(key === 'c'){ if(inInput) return; e.preventDefault(); go('clientes'); return; }
+  });
+}
+
+function navHistKey(){
+  const u = window.CURRENT_USER || window._currentUser || {};
+  const id = String(u.id || 'anon');
+  return 'nav_hist_' + id;
+}
+function navHistLoad(){
+  try{
+    const raw = localStorage.getItem(navHistKey());
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function navHistSave(arr){
+  try{ localStorage.setItem(navHistKey(), JSON.stringify((arr||[]).slice(0,10))); }catch(e){}
+}
+function navHistLabel(id){
+  const pid = String(id||'');
+  const map = {
+    pcp:'PCP', estoque:'Estoque', clientes:'Clientes', fornecedores:'Fornecedores', maquinas:'Máquinas',
+    relatorios:'Relatórios', dashboard:'Dashboard', comissoes:'Comissões', 'caixas-perdidas':'Caixas Perdidas',
+    configuracoes:'Configurações'
+  };
+  return map[pid] || pid;
+}
+function navHistPush(pageId){
+  const pid = String(pageId||'').trim();
+  if(!pid) return;
+  const arr = navHistLoad().filter(x=>x && x.id !== pid);
+  arr.unshift({ id: pid, label: navHistLabel(pid), ts: Date.now() });
+  navHistSave(arr);
+}
+function renderNavHist(){
+  const host = document.getElementById('navhist-list');
+  if(!host) return;
+  const arr = navHistLoad();
+  if(!arr.length){
+    host.innerHTML = `<div style="padding:10px 8px;color:var(--text3);font-size:.75rem;font-family:var(--mono)">Sem histórico.</div>`;
+    return;
+  }
+  host.innerHTML = arr.map((x)=>`<div class="navhist-item" data-id="${escH(x.id)}" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin:6px 4px;cursor:pointer;background:var(--s2);color:var(--text2);font-size:.78rem">
+    <div style="font-weight:900;color:var(--text)">${escH(x.label||x.id)}</div>
+  </div>`).join('');
+  host.querySelectorAll('.navhist-item').forEach(el=>{
+    el.onclick = ()=>{
+      const pid = el.getAttribute('data-id') || '';
+      if(pid){ try{ go(pid); }catch(e){} }
+      try{ document.getElementById('navhist-dd').style.display='none'; }catch(e){}
+    };
+  });
+}
+function toggleNavHist(){
+  const dd = document.getElementById('navhist-dd');
+  if(!dd) return;
+  const open = dd.style.display !== 'none' && dd.style.display !== '';
+  dd.style.display = open ? 'none' : 'block';
+  if(!open) renderNavHist();
+}
+document.addEventListener('click', (e)=>{
+  const dd = document.getElementById('navhist-dd');
+  const wrap = document.getElementById('navhist-wrap');
+  if(!dd || !wrap) return;
+  if(wrap.contains(e.target)) return;
+  dd.style.display = 'none';
+});
+
 // ===================== NAVIGATION =====================
 function toggleNavGroup(id){
   const g=document.getElementById(id);
@@ -2552,7 +2792,7 @@ function openNavGroupForPage(pageId){
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', 'sel-chapas':'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
-    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', sistema:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
+    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
   const gId=map[pageId];
   if(gId){
@@ -2586,6 +2826,7 @@ function _goBase(id){
   if(prev === 'ofmaq' && id !== 'ofmaq') pararPollingOFsMaquina();
   if(!temPermPagina(id)) { toast('Sem permissão para acessar esta área','var(--red)'); mostrarSemPermissao(id); return; }
   window._PAGE_ATUAL = id;
+  try{ navHistPush(id); }catch(e){}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -2682,7 +2923,7 @@ function _goBase(id){
   if(id==='compras')renderCompras();
   if(id==='orcamentos')renderOrcamentos();
   if(id==='usuarios')carregarUsuarios();
-  if(id==='sistema')renderSistema();
+  if(id==='configuracoes')renderSistema();
   if(id==='facas1'){
     if(_apiConectado && CURRENT_USER) carregarFacas().then(()=>renderFacas1()).catch(()=>renderFacas1());
     else renderFacas1();
@@ -20582,16 +20823,89 @@ function confirmarImport(){
   toast('✅ Dados importados com sucesso! Recarregando...','var(--green)');
   setTimeout(()=>location.reload(),1500);
 }
+function cfgUserKey(){
+  const u = window.CURRENT_USER || window._currentUser || {};
+  const id = String(u.id || u.user_id || u.uid || '').trim() || 'anon';
+  return 'configuracoes_usuario_' + id;
+}
+function cfgUserDefaults(){
+  return {
+    fontSize: 'normal',
+    compact: false,
+    daltonico: false,
+    themeVariant: 'default',
+    jarvisVoz: true,
+    jarvisRate: 1,
+    jarvisVolume: 100,
+  };
+}
+function cfgUserLoad(){
+  const key = cfgUserKey();
+  try{
+    const raw = localStorage.getItem(key);
+    const obj = raw ? JSON.parse(raw) : null;
+    return { ...cfgUserDefaults(), ...(obj && typeof obj === 'object' ? obj : {}) };
+  }catch(e){
+    return cfgUserDefaults();
+  }
+}
+function cfgUserSave(cfg){
+  const key = cfgUserKey();
+  try{
+    localStorage.setItem(key, JSON.stringify(cfg || {}));
+    localStorage.setItem('configuracoes_usuario_last', JSON.stringify(cfg || {}));
+  }catch(e){}
+}
+function cfgUserApply(cfg){
+  const c = { ...cfgUserDefaults(), ...(cfg || {}) };
+  const b = document.body;
+  if(b && b.classList){
+    b.classList.remove('font-size-small','font-size-normal','font-size-large','compact','daltonico','theme-azulado','theme-roxo');
+    b.classList.add(c.fontSize === 'small' ? 'font-size-small' : (c.fontSize === 'large' ? 'font-size-large' : 'font-size-normal'));
+    if(c.compact) b.classList.add('compact');
+    if(c.daltonico) b.classList.add('daltonico');
+    if(c.themeVariant === 'azulado') b.classList.add('theme-azulado');
+    if(c.themeVariant === 'roxo') b.classList.add('theme-roxo');
+  }
+  window.USER_CFG = c;
+  window.JARVIS_CFG = { voz: !!c.jarvisVoz, rate: Number(c.jarvisRate || 1) || 1, volume: Math.max(0, Math.min(100, Number(c.jarvisVolume || 100) || 100)) };
+}
+let _cfgSaveT = null;
+function cfgUserSaveAndApplyDebounced(){
+  clearTimeout(_cfgSaveT);
+  _cfgSaveT = setTimeout(()=>{ try{ cfgUserSaveAndApply(); }catch(e){} }, 120);
+}
+function cfgUserSaveAndApply(){
+  const cfg = cfgUserLoad();
+  const fs = document.getElementById('cfg-fontsize')?.value || cfg.fontSize;
+  const tv = document.getElementById('cfg-theme-variant')?.value || cfg.themeVariant;
+  const compact = !!document.getElementById('cfg-compact')?.checked;
+  const dal = !!document.getElementById('cfg-daltonico')?.checked;
+  const voz = !!document.getElementById('cfg-jarvis-voz')?.checked;
+  const rate = Number(document.getElementById('cfg-jarvis-rate')?.value || 1) || 1;
+  const vol = Number(document.getElementById('cfg-jarvis-volume')?.value || 100) || 100;
+  const out = { ...cfg, fontSize: fs, themeVariant: tv, compact, daltonico: dal, jarvisVoz: voz, jarvisRate: rate, jarvisVolume: vol };
+  cfgUserSave(out);
+  cfgUserApply(out);
+  try{ toast('✓ Configurações aplicadas', 'var(--green)'); }catch(e){}
+}
 function renderSistema(){
   const ts=localStorage.getItem('pcpro_ts');
   const el=document.getElementById('sis-ts-label');
   if(el&&ts){const ago=Math.round((Date.now()-parseInt(ts))/60000);el.textContent='Último save local: '+ago+' min atrás';}
   else if(el) el.textContent='Nenhum save local encontrado.';
-  const cfgEl = document.getElementById('cfg-dias-cli-inativo');
-  if(cfgEl){
-    const n = cfgDiasClienteInativo();
-    if(!cfgEl.value) cfgEl.value = String(n);
-  }
+  const cfg = cfgUserLoad();
+  try{
+    const fs = document.getElementById('cfg-fontsize'); if(fs) fs.value = cfg.fontSize || 'normal';
+    const tv = document.getElementById('cfg-theme-variant'); if(tv) tv.value = cfg.themeVariant || 'default';
+    const cm = document.getElementById('cfg-compact'); if(cm) cm.checked = !!cfg.compact;
+    const dl = document.getElementById('cfg-daltonico'); if(dl) dl.checked = !!cfg.daltonico;
+    const vz = document.getElementById('cfg-jarvis-voz'); if(vz) vz.checked = cfg.jarvisVoz !== false;
+    const rt = document.getElementById('cfg-jarvis-rate'); if(rt) rt.value = String(cfg.jarvisRate || 1);
+    const vl = document.getElementById('cfg-jarvis-volume'); if(vl) vl.value = String(cfg.jarvisVolume ?? 100);
+    const vll = document.getElementById('cfg-jarvis-volume-lbl'); if(vll) vll.textContent = String(cfg.jarvisVolume ?? 100) + '%';
+    cfgUserApply(cfg);
+  }catch(e){}
 }
 function exportarDadosCompletos(){
   try{
@@ -21191,8 +21505,11 @@ function renderArteFinal(){
 document.addEventListener('DOMContentLoaded', function(){
   try {
     PCP_DIA_ATUAL = today();
+    try{ const raw = localStorage.getItem('configuracoes_usuario_last'); if(raw) cfgUserApply(JSON.parse(raw)); }catch(e){}
     applyTheme();
     startClock();
+    try{ globalSearchInit(); }catch(e){}
+    try{ initGlobalShortcuts(); }catch(e){}
     try{ /* hamburger usa onclick="toggleMobMenu()" */ }catch(e){}
     const logData = document.getElementById('log-data');
     if(logData) logData.value = today();
@@ -21258,6 +21575,7 @@ async function bootAuthAndData(){
     return;
   }
   CURRENT_USER = normalizarUsuario(u);
+  try{ cfgUserApply(cfgUserLoad()); }catch(e){}
   try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
   try{ iniciarSistema(CURRENT_USER); }catch(e){}
   try{ await loadCoreData(); }catch(e){}
@@ -21755,6 +22073,7 @@ function temPermPagina(paginaId){
     'caixas-perdidas': ['caixas_perdidas','caixas-perdidas','relatorios'],
     relmensal: ['relatorio_mensal','relmensal','relatorios'],
     sistema: ['sistema'],
+    configuracoes: ['sistema','configuracoes'],
   };
   const needed = map[pid];
   if(!needed) return true;
@@ -23522,7 +23841,7 @@ function renderActivePageSync(){
     if(pid==='compras') return renderCompras();
     if(pid==='orcamentos') return renderOrcamentos();
     if(pid==='usuarios') return carregarUsuarios();
-    if(pid==='sistema') return renderSistema();
+    if(pid==='configuracoes') return renderSistema();
     if(pid==='facas1') return renderFacas1();
     if(pid==='cliches') return renderCliches();
   }catch(e){
@@ -31174,6 +31493,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span class="tbadge tb-yellow" id="bdg-ug">0 URGENTES</span>
     <span class="tbadge tb-green" id="bdg-ok">0 CONCLUÍDOS</span>
   </div>
+  <div id="gsearch-wrap" style="position:relative;display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:6px 10px;min-width:240px;max-width:340px;">
+    <span style="font-size:.9rem;color:var(--text3)">🔍</span>
+    <input id="gsearch" placeholder="Buscar OF, cliente, chapa, fornecedor (Ctrl+K)" style="flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:.78rem;font-family:var(--font);min-width:120px">
+    <div id="gsearch-dd" style="display:none;position:absolute;top:calc(100% + 8px);left:0;width:min(520px,92vw);background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);z-index:1000;overflow:hidden">
+      <div id="gsearch-dd-inner" style="max-height:360px;overflow:auto"></div>
+    </div>
+  </div>
   <div id="menu-notificacoes" style="position:relative;cursor:pointer;" onclick="toggleNotifPanel()">
     <span style="font-size:1rem;">🔔</span>
     <span id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;width:14px;height:14px;font-size:.55rem;font-weight:800;display:none;align-items:center;justify-content:center;font-family:var(--mono);">0</span>
@@ -31181,6 +31507,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="notif-panel" style="display:none;position:fixed;top:56px;right:10px;width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:800;max-height:420px;overflow-y:auto;box-shadow:var(--shadow-lg);">
     <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600;font-size:.8rem;display:flex;align-items:center;gap:8px;">🔔 Notificações <button onclick="dispensarTodasNotifs();event.stopPropagation();" style="margin-left:auto;background:none;border:none;color:var(--accent);cursor:pointer;font-size:.72rem;font-weight:700;">Limpar</button><button onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem;">✕</button></div>
     <div id="notif-list" style="padding:8px;"></div>
+  </div>
+  <div id="navhist-wrap" style="position:relative;">
+    <div onclick="toggleNavHist()" title="Histórico de navegação" style="display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.82rem;color:var(--text2);">🕐</div>
+    <div id="navhist-dd" style="display:none;position:fixed;top:56px;right:360px;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:12px;z-index:801;max-height:320px;overflow:auto;box-shadow:var(--shadow-lg);">
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:800;font-size:.72rem;color:var(--text2);font-family:var(--mono)">🕐 Histórico</div>
+      <div id="navhist-list" style="padding:6px"></div>
+    </div>
   </div>
   <div class="clock" id="clock">--:--:--</div>
   <!-- Theme toggle -->
@@ -31264,7 +31597,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
       <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
-      <div id="menu-backup" class="nav-item" onclick="go('sistema');closeNavGroupsExcept('ng-analises')"><span class="ico">💾</span>Backup / Importar</div>
+      <div id="menu-config" class="nav-item" onclick="go('configuracoes');closeNavGroupsExcept('ng-analises')"><span class="ico">⚙️</span>Configurações</div>
     </div>
   </div>
 </div>
@@ -32078,6 +32411,34 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-help-shortcuts">
+  <div class="modal" style="max-width:520px">
+    <button class="close-btn" onclick="fechar('modal-help-shortcuts')">✕</button>
+    <h2>❓ Atalhos do Sistema</h2>
+    <div class="modal-body">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;border:1px solid var(--border);text-align:left;font-size:.62rem;font-family:var(--mono);text-transform:uppercase;color:var(--text2)">Atalho</th>
+            <th style="padding:8px 10px;border:1px solid var(--border);text-align:left;font-size:.62rem;font-family:var(--mono);text-transform:uppercase;color:var(--text2)">Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">Ctrl+N</td><td style="padding:8px 10px;border:1px solid var(--border)">Nova OF</td></tr>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">Ctrl+K</td><td style="padding:8px 10px;border:1px solid var(--border)">Busca global</td></tr>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">Ctrl+P</td><td style="padding:8px 10px;border:1px solid var(--border)">Ir para PCP</td></tr>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">Ctrl+E</td><td style="padding:8px 10px;border:1px solid var(--border)">Ir para Estoque</td></tr>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">Ctrl+C</td><td style="padding:8px 10px;border:1px solid var(--border)">Ir para Clientes (fora de inputs)</td></tr>
+          <tr><td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono)">?</td><td style="padding:8px 10px;border:1px solid var(--border)">Abrir ajuda de atalhos</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-accent" onclick="fechar('modal-help-shortcuts')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ========== CONTAS A PAGAR ========== -->
 <div id="page-contaspagar" class="page" style="display:none!important">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
@@ -32564,54 +32925,89 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- ========== 14. DASHBOARD ========== -->
 
 <!-- ========== SISTEMA / BACKUP ========== -->
-<div id="page-sistema" class="page">
+<div id="page-configuracoes" class="page">
   <div class="ptoolbar">
-    <span style="font-size:.78rem;color:var(--text2)">💾 Gestão de Dados do Sistema</span>
+    <span style="font-size:.78rem;color:var(--text2)">⚙️ Configurações do Usuário</span>
   </div>
   <div class="page-body">
     <div class="g2">
-      <!-- EXPORT -->
       <div class="sbox">
-        <div class="sbox-h">📤 Exportar / Salvar Dados</div>
+        <div class="sbox-h">🎨 Aparência</div>
         <div class="sbox-b">
-          <p style="font-size:.78rem;color:var(--text2);margin-bottom:14px">Salve todos os dados em um arquivo JSON que pode ser importado depois.</p>
-          <div style="background:var(--green-soft);border:1px solid var(--green);border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--green);margin-bottom:12px">
-            ✅ <b>Salvamento automático ativo</b> — todos os dados são salvos automaticamente no seu navegador a cada alteração (localStorage).
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn btn-accent" onclick="exportarDadosCompletos()">💾 Exportar Backup Completo (JSON)</button>
-            <button class="btn btn-ghost" onclick="exportarRelCSV()">📊 Exportar Relatório atual como CSV</button>
-            <button class="btn btn-ghost" onclick="autoSaveNow()">🔄 Forçar Salvamento Local</button>
-            <button class="btn btn-purple" onclick="migrarClientesParaSupabase()">⬆ Migrar Clientes</button>
-          </div>
-          <div style="margin-top:14px;padding:10px;background:var(--s2);border-radius:6px;font-size:.72rem;color:var(--text2)">
-            <b>LocalStorage:</b> Os dados também são salvos automaticamente no seu navegador a cada 60s.<br>
-            <span id="sis-ts-label" style="color:var(--text3)">Carregando...</span>
+          <div class="fg">
+            <div class="mf">
+              <label>Tamanho do texto</label>
+              <select id="cfg-fontsize" onchange="cfgUserSaveAndApply()" style="width:240px">
+                <option value="small">Pequeno (12px)</option>
+                <option value="normal">Normal (14px)</option>
+                <option value="large">Grande (16px)</option>
+              </select>
+            </div>
+            <div class="mf">
+              <label>Tema</label>
+              <select id="cfg-theme-variant" onchange="cfgUserSaveAndApply()" style="width:240px">
+                <option value="default">Escuro (padrão)</option>
+                <option value="azulado">Escuro azulado</option>
+                <option value="roxo">Escuro roxo</option>
+              </select>
+            </div>
+            <div class="mf">
+              <label><input type="checkbox" id="cfg-compact" onchange="cfgUserSaveAndApply()"> Modo compacto</label>
+            </div>
+            <div class="mf">
+              <label><input type="checkbox" id="cfg-daltonico" onchange="cfgUserSaveAndApply()"> Modo daltônico</label>
+            </div>
           </div>
         </div>
       </div>
-      <!-- IMPORT -->
+
       <div class="sbox">
-        <div class="sbox-h">📥 Importar Dados</div>
+        <div class="sbox-h">⚙️ JARVIS</div>
         <div class="sbox-b">
-          <p style="font-size:.78rem;color:var(--text2);margin-bottom:10px">Selecione um arquivo de backup JSON exportado anteriormente para restaurar os dados.</p>
-          <input type="file" id="sis-import-file" accept=".json" style="background:var(--s2);border:1px dashed var(--accent);color:var(--text);border-radius:6px;padding:8px;font-size:.78rem;width:100%;cursor:pointer;margin-bottom:10px">
-          <button class="btn btn-green" onclick="importarDados()">📥 Importar e Restaurar</button>
-          <div id="sis-import-preview" style="margin-top:10px;font-size:.75rem;color:var(--text2)"></div>
+          <div class="fg">
+            <div class="mf">
+              <label><input type="checkbox" id="cfg-jarvis-voz" onchange="cfgUserSaveAndApply()"> Voz ativada</label>
+            </div>
+            <div class="mf">
+              <label>Velocidade da fala</label>
+              <select id="cfg-jarvis-rate" onchange="cfgUserSaveAndApply()" style="width:240px">
+                <option value="0.9">Lenta</option>
+                <option value="1">Normal</option>
+                <option value="1.15">Rápida</option>
+              </select>
+            </div>
+            <div class="mf">
+              <label>Volume</label>
+              <input id="cfg-jarvis-volume" type="range" min="0" max="100" step="5" value="100" oninput="document.getElementById('cfg-jarvis-volume-lbl').textContent=this.value+'%'; cfgUserSaveAndApplyDebounced()">
+              <div id="cfg-jarvis-volume-lbl" style="font-size:.72rem;color:var(--text3);font-family:var(--mono);margin-top:4px">100%</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
+
     <div class="sbox" style="margin-top:12px">
-      <div class="sbox-h">⚙ Configurações</div>
+      <div class="sbox-h">⌨️ Atalhos</div>
+      <div class="sbox-b" style="font-size:.78rem;color:var(--text2)">
+        Ctrl+N (Nova OF) · Ctrl+K (Busca) · Ctrl+P (PCP) · Ctrl+E (Estoque) · Ctrl+C (Clientes) · ? (Ajuda)
+      </div>
+    </div>
+
+    <div class="sbox" style="margin-top:12px">
+      <div class="sbox-h">📦 Importar / Exportar dados</div>
       <div class="sbox-b">
-        <div class="fg">
-          <div class="mf">
-            <label>Dias para considerar cliente inativo</label>
-            <input id="cfg-dias-cli-inativo" type="number" min="1" step="1" style="width:220px" placeholder="Ex: 30">
-          </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-accent" onclick="exportarDadosCompletos()">💾 Exportar Backup Completo (JSON)</button>
+          <button class="btn btn-ghost" onclick="exportarRelCSV()">📊 Exportar Relatório atual como CSV</button>
+          <button class="btn btn-ghost" onclick="autoSaveNow()">🔄 Forçar Salvamento Local</button>
+          <div style="height:1px;background:var(--border);margin:6px 0"></div>
+          <input type="file" id="sis-import-file" accept=".json" style="background:var(--s2);border:1px dashed var(--accent);color:var(--text);border-radius:6px;padding:8px;font-size:.78rem;width:100%;cursor:pointer;margin-bottom:4px">
+          <button class="btn btn-green" onclick="importarDados()">📥 Importar e Restaurar</button>
+          <div id="sis-import-preview" style="margin-top:8px;font-size:.75rem;color:var(--text2)"></div>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:10px">
-          <button class="btn btn-accent" onclick="salvarCfgDiasClienteInativo()">Salvar Configurações</button>
+        <div style="margin-top:14px;padding:10px;background:var(--s2);border-radius:6px;font-size:.72rem;color:var(--text2)">
+          <b>LocalStorage:</b> Dados também são salvos automaticamente no navegador.<br>
+          <span id="sis-ts-label" style="color:var(--text3)">Carregando...</span>
         </div>
       </div>
     </div>
@@ -34920,10 +35316,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       itens = oEditLocal.itens;
     }
     console.log('[collectModalOfPayload] itens:', itens.length, itens);
-    const qtdTotal=itens.reduce((s,it)=>s+(parseFloat(it.qtd)||0),0);
+    const qtdItens = itens.reduce((s,it)=>s+(parseFloat(it.qtd)||0),0);
+    const qtdInput = (()=>{
+      const el = document.getElementById('of-qtd-total');
+      const v = el ? parseFloat(String(el.value || '').replace(',','.')) : 0;
+      return Number.isFinite(v) ? v : 0;
+    })();
+    const qtdTotal = (qtdInput > 0) ? qtdInput : qtdItens;
     const valTotal=itens.reduce((s,it)=>s+Number(it.valor_total || ((parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0)) || 0),0);
     if(!cliId){toast('Selecione o cliente na lista de sugestões','var(--red)');return null;}
-    if(itens.length===0||qtdTotal===0){toast('Adicione ao menos um item com quantidade','var(--red)');return null;}
+    if(itens.length===0 && qtdTotal > 0){
+      const desc0 = String(seguro('f-prod-desc','') || '').trim();
+      itens = [{ desc: desc0, qtd: qtdTotal, vunit: 0, valor_total: 0, img: null }];
+    }
+    if(itens.length===0||qtdTotal===0){toast('Informe a quantidade (ou adicione item com quantidade)','var(--red)');return null;}
     const chpId=seguro('f-chp',''), qchp=parseInt(seguro('f-qchp','0'))||0;
     if(chpId&&qchp>0){
       const ch=getCh(chpId);
@@ -35033,7 +35439,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     for(let i=0;i<(p.itens||[]).length;i++){
       const it = p.itens[i] || {};
       const imgsEff = (Array.isArray(p.imgs) && p.imgs.length) ? p.imgs : (it.img ? [it.img] : []);
-      const payloadEff = { cliId: p.cliId, cli_id: p.cliId, cliente_id: p.cliId, imagem_url: p.imagem_url || null, imgs: imgsEff };
+      const payloadEff = {
+        cliId: p.cliId,
+        cli_id: p.cliId,
+        cliente_id: p.cliId,
+        prodDesc: (p.prodDesc||'') || (it.desc||it.descricao||''),
+        descricao: (p.prodDesc||'') || (it.desc||it.descricao||''),
+        ent: p.ent,
+        data_entrega: p.ent,
+        empId: p.empId,
+        emp_id: p.empId,
+        qtd: Number(p.qtdTotal || (parseFloat(it.qtd)||0) || 0),
+        quantidade: Number(p.qtdTotal || (parseFloat(it.qtd)||0) || 0),
+        imagem_url: p.imagem_url || null,
+        imgs: imgsEff
+      };
       const errosObrig = validarCamposObrigatoriosOF(payloadEff, [it]);
       if(errosObrig.length > 0){
         toast('Preencha os campos obrigatórios no item ' + (i+1) + ':\n• ' + errosObrig.join('\n• '), 'var(--red)');
@@ -38044,6 +38464,10 @@ window.atualizarChapas = async function(){
       .assist-bubble-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .assist-tts{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:10px;padding:4px 8px;cursor:pointer;font-weight:900;font-family:var(--mono);font-size:.75rem;line-height:1}
       .assist-img{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border);display:block}
+      .assist-img-wrap{margin-top:10px}
+      .assist-img-wrap .assist-img{margin-top:0}
+      .assist-img-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+      .assist-img-btn{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:.72rem;font-weight:900;font-family:var(--mono)}
       .jarvis-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
       .jarvis-action{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:900;font-family:var(--mono)}
       .jarvis-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
@@ -38096,6 +38520,60 @@ window.atualizarChapas = async function(){
       </div>
     `;
     document.body.appendChild(panel);
+
+    window.jarvisPrintImage = (url)=>{
+      const u = String(url || '').trim();
+      if(!u) return;
+      const w = window.open('', '_blank');
+      if(!w) return;
+      w.document.open();
+      w.document.write(`<html><head><meta charset="utf-8"><title>Imprimir</title><style>body{margin:0;padding:18px;font-family:Arial,sans-serif}img{max-width:100%;height:auto;border:1px solid #ccc;border-radius:8px}</style></head><body><img src="${u.replace(/"/g,'&quot;')}" alt="Imagem"></body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    };
+
+    window.jarvisDownloadImage = async (url)=>{
+      const u = String(url || '').trim();
+      if(!u) return;
+      try{
+        const r = await fetch(u, { cache:'no-store' });
+        if(!r.ok) throw new Error('download_failed');
+        const blob = await r.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ext = (blob.type && blob.type.includes('/')) ? blob.type.split('/')[1] : 'png';
+        const safeExt = (ext || 'png').toLowerCase().replace(/[^a-z0-9]/g,'') || 'png';
+        a.href = objUrl;
+        a.download = `of_imagem_${Date.now()}.${safeExt}`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>{ try{ a.remove(); }catch(e){} try{ URL.revokeObjectURL(objUrl); }catch(e){} }, 0);
+      }catch(e){
+        try{ alert('Não consegui baixar a imagem.'); }catch(_){}
+      }
+    };
+
+    window.jarvisPrintReport = (idx)=>{
+      const i = Number(idx);
+      if(!Number.isFinite(i) || i < 0) return;
+      const hist = loadHist();
+      const m = hist[i];
+      const html = (m && typeof m.html === 'string') ? String(m.html).trim() : '';
+      if(!html) return;
+      const w = window.open('', '_blank');
+      if(!w) return;
+      w.document.open();
+      w.document.write(`<html><head><meta charset="utf-8"><title>Imprimir relatório</title><style>
+        body{margin:0;padding:18px;font-family:Arial,sans-serif;color:#111}
+        .jarvis-table{width:100%;border-collapse:collapse;margin-top:10px}
+        .jarvis-table th,.jarvis-table td{border:1px solid #ccc;padding:6px 8px;font-size:11px;vertical-align:top}
+        .jarvis-table th{background:#f3f4f6;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:10px}
+      </style></head><body>${html}</body></html>`);
+      w.document.close();
+      w.focus();
+      w.print();
+    };
 
     const open = ()=>{
       overlay.style.display = 'block';
@@ -38169,6 +38647,141 @@ window.atualizarChapas = async function(){
   let _speakUtter = null;
   let _rec = null;
   let _listening = false;
+  window.jarvisState = window.jarvisState || null;
+
+  const _jarvisNorm = (s)=>{
+    try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
+  };
+  const _jarvisParseInt = (s)=>{
+    const m = String(s||'').match(/-?\d+/);
+    const n = m ? parseInt(m[0], 10) : NaN;
+    return Number.isFinite(n) ? n : NaN;
+  };
+  const _jarvisParseDateIso = (s)=>{
+    const t = String(s||'').trim();
+    if(!t) return '';
+    if(typeof sanitizeDateInput === 'function'){
+      const iso = sanitizeDateInput(t);
+      if(iso) return iso;
+    }
+    const m1 = t.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if(m1) return `${m1[3]}-${m1[2]}-${m1[1]}`;
+    const m2 = t.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+    return '';
+  };
+
+  const _jarvisStateClear = ()=>{
+    window.jarvisState = null;
+  };
+
+  const _jarvisHandleStateInput = async (text)=>{
+    const st = window.jarvisState;
+    if(!st || !st.acao) return false;
+    const acao = String(st.acao||'');
+    const etapa = String(st.etapa||'');
+    const dados = (st.dados && typeof st.dados === 'object') ? st.dados : (st.dados = {});
+    const tnorm = _jarvisNorm(text);
+
+    if(acao === 'concluir_of'){
+      if(etapa === 'aguardando_qtd_produzida'){
+        const n = _jarvisParseInt(text);
+        if(!Number.isFinite(n) || n < 0){ addMsg('assistant', 'Informe um número válido de caixas produzidas.'); return true; }
+        dados.qtd_produzida = n;
+        st.etapa = 'aguardando_qtd_perdida';
+        addMsg('assistant', 'Quantas caixas foram perdidas?');
+        return true;
+      }
+      if(etapa === 'aguardando_qtd_perdida'){
+        const n = _jarvisParseInt(text);
+        if(!Number.isFinite(n) || n < 0){ addMsg('assistant', 'Informe um número válido de caixas perdidas.'); return true; }
+        dados.qtd_perdida = n;
+        st.etapa = 'aguardando_maquina';
+        const opts = Array.isArray(dados.maquinas) ? dados.maquinas : [];
+        addMsg('assistant', `Qual a máquina de produção?${opts.length ? `\nOpções: ${opts.join(', ')}` : ''}`);
+        return true;
+      }
+      if(etapa === 'aguardando_maquina'){
+        const opts = Array.isArray(dados.maquinas) ? dados.maquinas : [];
+        let maq = String(text||'').trim();
+        if(opts.length){
+          const hit = opts.find((m)=>_jarvisNorm(m) === _jarvisNorm(maq)) || opts.find((m)=>_jarvisNorm(m).includes(_jarvisNorm(maq))) || '';
+          if(hit) maq = hit;
+        }
+        if(!maq){ addMsg('assistant', 'Informe a máquina (ex: IMP 02).'); return true; }
+        dados.maquina = maq;
+        st.etapa = 'confirmacao';
+        addMsg('assistant',
+          `⚠️ Confirmar conclusão da OF #${st.of_numero}?\n` +
+          `Produzidas: ${Number(dados.qtd_produzida||0).toLocaleString('pt-BR')} | Perdidas: ${Number(dados.qtd_perdida||0).toLocaleString('pt-BR')} | Máquina: ${dados.maquina}`,
+          { actions:[
+            { id:'local_concluir_confirm', label:'✅ Confirmar', decision:'confirm', ofId: st.of_id },
+            { id:'local_concluir_cancel', label:'❌ Cancelar', decision:'cancel', ofId: st.of_id },
+          ] }
+        );
+        return true;
+      }
+      return true;
+    }
+
+    if(acao === 'alterar_of'){
+      const mapCampo = ()=>{
+        if(tnorm.includes('entrega') || tnorm.includes('data')) return 'data_entrega';
+        if(tnorm.includes('quant') || tnorm.includes('qtd') || tnorm.includes('caixas')) return 'qtd';
+        if(tnorm.includes('cliente')) return 'cliente';
+        if(tnorm.includes('produto') || tnorm.includes('descricao') || tnorm.includes('descrição')) return 'produto';
+        if(tnorm.includes('urg')) return 'urgente';
+        if(tnorm.includes('maquin')) return 'maquinas';
+        if(tnorm.includes('obs') || tnorm.includes('observ')) return 'obs';
+        return '';
+      };
+      if(etapa === 'aguardando_campo'){
+        const campo = mapCampo();
+        if(!campo){ addMsg('assistant', 'Qual campo? (data de entrega, quantidade, cliente, produto, urgente, máquinas, observações)'); return true; }
+        dados.campo = campo;
+        st.etapa = 'aguardando_valor';
+        addMsg('assistant', `Qual o novo valor para ${campo.replace('_',' ')}?`);
+        return true;
+      }
+      if(etapa === 'aguardando_valor'){
+        const campo = String(dados.campo||'');
+        let novo = String(text||'').trim();
+        if(!campo){ st.etapa = 'aguardando_campo'; addMsg('assistant','Qual campo deseja alterar?'); return true; }
+        if(campo === 'data_entrega'){
+          const iso = _jarvisParseDateIso(novo);
+          if(!iso){ addMsg('assistant','Informe a data (DD/MM/AAAA ou AAAA-MM-DD).'); return true; }
+          novo = iso;
+        } else if(campo === 'qtd'){
+          const n = _jarvisParseInt(novo);
+          if(!Number.isFinite(n) || n <= 0){ addMsg('assistant','Informe uma quantidade válida (> 0).'); return true; }
+          novo = n;
+        } else if(campo === 'urgente'){
+          const yes = ['sim','s','1','true','urgente','marcar'].includes(tnorm);
+          const no = ['nao','não','n','0','false','tirar','remover'].includes(tnorm);
+          if(!yes && !no){ addMsg('assistant','Digite "sim" ou "não".'); return true; }
+          novo = yes;
+        } else if(campo === 'maquinas'){
+          const parts = novo.split(/,|->|→/).map(s=>String(s||'').trim()).filter(Boolean);
+          if(!parts.length){ addMsg('assistant','Informe as máquinas (ex: IMP 02, IMP 03).'); return true; }
+          novo = parts;
+        }
+        dados.novo_valor = novo;
+        st.etapa = 'confirmacao';
+        addMsg('assistant',
+          `⚠️ Confirmar alteração na OF #${st.of_numero}?\n` +
+          `Campo: ${campo}\n` +
+          `Novo valor: ${Array.isArray(novo) ? novo.join(' → ') : String(novo)}`,
+          { actions:[
+            { id:'local_alterar_confirm', label:'✅ Confirmar', decision:'confirm', ofId: st.of_id },
+            { id:'local_alterar_cancel', label:'❌ Cancelar', decision:'cancel', ofId: st.of_id },
+          ] }
+        );
+        return true;
+      }
+      return true;
+    }
+    return false;
+  };
 
   const addMsg = (role, text, extra)=>{
     const hist = loadHist();
@@ -38179,6 +38792,8 @@ window.atualizarChapas = async function(){
       if(Array.isArray(extra.suggestions)) msg.suggestions = extra.suggestions;
       if(extra.table && typeof extra.table === 'object') msg.table = extra.table;
       if(extra.chart && typeof extra.chart === 'object') msg.chart = extra.chart;
+      if(typeof extra.html === 'string' && extra.html.trim()) msg.html = String(extra.html);
+      if(extra.report) msg.report = true;
     }
     hist.push(msg);
     saveHist(hist);
@@ -38194,6 +38809,8 @@ window.atualizarChapas = async function(){
 
   const speakToggle = (idx)=>{
     if(!(window.speechSynthesis && window.SpeechSynthesisUtterance)) return;
+    const cfg = (window.JARVIS_CFG && typeof window.JARVIS_CFG === 'object') ? window.JARVIS_CFG : null;
+    if(cfg && cfg.voz === false) return;
     const hist = loadHist();
     const m = hist[idx] || null;
     const txt = String(m?.text || '').trim();
@@ -38208,8 +38825,10 @@ window.atualizarChapas = async function(){
     try{
       const u = new SpeechSynthesisUtterance(txt);
       u.lang = 'pt-BR';
-      u.rate = 1;
+      u.rate = cfg && Number.isFinite(Number(cfg.rate)) ? Number(cfg.rate) : 1;
       u.pitch = 1;
+      const vol = cfg ? (Number(cfg.volume || 100) || 100) : 100;
+      u.volume = Math.max(0, Math.min(1, vol / 100));
       u.onend = ()=>{ _speakIdx = -1; _speakUtter = null; try{ render(); }catch(e){} };
       u.onerror = ()=>{ _speakIdx = -1; _speakUtter = null; try{ render(); }catch(e){} };
       _speakUtter = u;
@@ -38284,11 +38903,22 @@ window.atualizarChapas = async function(){
     const escAttr = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     body.innerHTML = hist.map((m, idx)=>{
       const role = m.role === 'user' ? 'user' : 'assistant';
-      const txtHtml = `<div>${esc(m.text || '')}</div>`;
+      const htmlRaw = (m && typeof m.html === 'string') ? String(m.html) : '';
+      const txtHtml = htmlRaw ? `<div>${htmlRaw}</div>` : `<div>${esc(m.text || '')}</div>`;
       const imgs = Array.isArray(m.images) ? m.images.map((u)=>String(u||'').trim()).filter(Boolean).slice(0, 3) : [];
-      const imgsHtml = imgs.length ? imgs.map((u)=>`<img class="assist-img" src="${escAttr(u)}" alt="Imagem OF">`).join('') : '';
+      const imgsHtml = imgs.length ? imgs.map((u)=>{
+        const su = escAttr(u);
+        return `<div class="assist-img-wrap">
+          <img class="assist-img" src="${su}" alt="Imagem OF">
+          <div class="assist-img-actions">
+            <button type="button" class="assist-img-btn" onclick="jarvisPrintImage('${su}')">🖨️ Imprimir</button>
+            <button type="button" class="assist-img-btn" onclick="jarvisDownloadImage('${su}')">⬇️ Baixar</button>
+          </div>
+        </div>`;
+      }).join('') : '';
       const actions = Array.isArray(m.actions) ? m.actions : [];
       const actionsHtml = actions.length ? `<div class="jarvis-actions">${actions.map((a)=>`<button type="button" class="jarvis-action" data-act="${escAttr(a.id||'')}" data-dec="${escAttr(a.decision||'confirm')}" data-ofid="${escAttr(a.ofId||a.of_id||'')}">${esc(a.label||'')}</button>`).join('')}</div>` : '';
+      const reportHtml = (m && m.report && htmlRaw) ? `<div class="jarvis-actions"><button type="button" class="jarvis-action" onclick="jarvisPrintReport(${idx})">🖨️ Imprimir relatório</button></div>` : '';
       const tbl = m.table && typeof m.table === 'object' ? m.table : null;
       const tableHtml = (tbl && Array.isArray(tbl.headers) && Array.isArray(tbl.rows))
         ? `<table class="jarvis-table"><thead><tr>${tbl.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${tbl.rows.map(r=>`<tr>${(Array.isArray(r)?r:[]).map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
@@ -38300,7 +38930,7 @@ window.atualizarChapas = async function(){
         const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
         const speakIcon = isSpeaking ? '🔇' : '🔊';
         const top = `<div class="assist-bubble-top"><div></div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
-        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${reportHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
       const bubble = `<div class="assist-bubble">${txtHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
@@ -38356,6 +38986,99 @@ window.atualizarChapas = async function(){
   const runAction = async (id, decision, ofId)=>{
     const actionId = String(id||'').trim();
     if(!actionId) return;
+    if(actionId.startsWith('local_')){
+      const st = window.jarvisState;
+      if(actionId === 'local_concluir_cancel'){
+        _jarvisStateClear();
+        addMsg('assistant', '❌ Ok, cancelado.');
+        return;
+      }
+      if(actionId === 'local_concluir_confirm'){
+        if(!st || st.acao !== 'concluir_of'){ addMsg('assistant','Não encontrei uma conclusão em andamento.'); return; }
+        const dados = st.dados || {};
+        const payload = {
+          qtd_produzida: Number(dados.qtd_produzida || 0) || 0,
+          qtd_perdida: Number(dados.qtd_perdida || 0) || 0,
+          maquina_producao: String(dados.maquina || '').trim(),
+        };
+        try{
+          const resp = await apiFetch('/api/ofs/' + encodeURIComponent(String(st.of_id||'')) + '/concluir', { method:'POST', body: payload });
+          const j = resp ? await resp.json().catch(()=>null) : null;
+          if(!resp || !resp.ok || !j || !j.ok){
+            addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui concluir a OF.`);
+            return;
+          }
+          _jarvisStateClear();
+          addMsg('assistant', `✅ OF #${st.of_numero} concluída com sucesso!`);
+        }catch(e){
+          addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro ao concluir a OF.`);
+        }
+        return;
+      }
+      if(actionId === 'local_alterar_cancel'){
+        _jarvisStateClear();
+        addMsg('assistant', '❌ Ok, cancelado.');
+        return;
+      }
+      if(actionId === 'local_alterar_confirm'){
+        if(!st || st.acao !== 'alterar_of'){ addMsg('assistant','Não encontrei uma alteração em andamento.'); return; }
+        const dados = st.dados || {};
+        const campo = String(dados.campo || '').trim();
+        const novo = dados.novo_valor;
+        if(!campo){ addMsg('assistant','Campo inválido.'); return; }
+        const patch = {};
+        if(campo === 'data_entrega'){
+          const iso = String(novo||'').trim();
+          patch.data_entrega = iso;
+          patch.ent = iso;
+        } else if(campo === 'qtd'){
+          const n = Number(novo || 0) || 0;
+          patch.qtd = Math.trunc(n);
+          patch.quantidade = Math.trunc(n);
+          patch.qtd_pedida = Math.trunc(n);
+        } else if(campo === 'urgente'){
+          const b = !!novo;
+          patch.urg = b;
+          patch.urgente = b;
+        } else if(campo === 'obs'){
+          patch.obs = String(novo||'');
+        } else if(campo === 'produto'){
+          patch.descricao = String(novo||'');
+          patch.prodDesc = String(novo||'');
+        } else if(campo === 'maquinas'){
+          patch.fluxo_maquinas = Array.isArray(novo) ? novo : [];
+        } else if(campo === 'cliente'){
+          const alvo = String(novo||'').trim();
+          if(!alvo){ addMsg('assistant','Informe o nome do cliente.'); return; }
+          try{
+            const r = await apiFetch('/api/clientes?lite=1&limit=500', { method:'GET' });
+            const cj = r ? await r.json().catch(()=>null) : null;
+            const list = (cj && cj.ok && Array.isArray(cj.data)) ? cj.data : (Array.isArray(cj) ? cj : []);
+            const nn = _jarvisNorm(alvo);
+            const best = list.find(c=>_jarvisNorm(c.nome).includes(nn)) || list.find(c=>_jarvisNorm(c.rs).includes(nn)) || null;
+            if(!best){ addMsg('assistant', `Não encontrei o cliente "${alvo}".`); return; }
+            patch.cli_id = best.id;
+            patch.cliente_id = best.id;
+            patch.cliId = best.id;
+          }catch(e){
+            addMsg('assistant','Não consegui buscar clientes agora.'); return;
+          }
+        }
+        try{
+          const resp = await apiFetch('/api/ofs/' + encodeURIComponent(String(st.of_id||'')), { method:'PATCH', body: patch });
+          const j = resp ? await resp.json().catch(()=>null) : null;
+          if(!resp || !resp.ok || !j || !j.ok){
+            addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui alterar a OF.`);
+            return;
+          }
+          _jarvisStateClear();
+          addMsg('assistant', `✅ OF #${st.of_numero} alterada com sucesso!`);
+        }catch(e){
+          addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro ao alterar a OF.`);
+        }
+        return;
+      }
+    }
     if(String(decision||'').toLowerCase() === 'upload'){
       const inp = document.createElement('input');
       inp.type = 'file';
@@ -38422,6 +39145,11 @@ window.atualizarChapas = async function(){
     if(!text){ try{ ta?.focus(); }catch(e){}; return; }
     const histBefore = loadHist();
     if(ta) ta.value = '';
+    if(window.jarvisState && window.jarvisState.acao){
+      addMsg('user', text);
+      try{ await _jarvisHandleStateInput(text); }catch(e){ addMsg('assistant', `Desculpe ${getUserFirstName()}, ocorreu um erro.`); }
+      return;
+    }
     addMsg('user', text);
     const historico = histBefore.slice(-5).map((m)=>({ role: m.role === 'user' ? 'user' : 'assistant', content: String(m.text||'').trim() })).filter((m)=>m.content);
     const typingId = 'typing-' + Math.random().toString(16).slice(2);
@@ -38456,13 +39184,20 @@ window.atualizarChapas = async function(){
       const mergedImages = Array.from(new Set([...(Array.isArray(images)?images:[]), ...extraImages].map(x=>String(x||'').trim()).filter(Boolean))).slice(0, 3);
       const table = (j && j.table) ? j.table : null;
       const chart = (j && j.chart) ? j.chart : null;
+      const html = (j && typeof j.html === 'string') ? String(j.html) : '';
+      const report = !!(j && j.report);
+      if(j && j.jarvis_state && typeof j.jarvis_state === 'object'){
+        window.jarvisState = j.jarvis_state;
+      } else {
+        window.jarvisState = null;
+      }
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
       if(!resp || !resp.ok){
         addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images: mergedImages, table, chart, actions: j.actions || [], suggestions: j.suggestions || [] });
+      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images: mergedImages, table, chart, html, report, actions: j.actions || [], suggestions: j.suggestions || [] });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
