@@ -39615,6 +39615,8 @@ window.atualizarChapas = async function(){
 
   const LS_MAQ_DATE = 'italy_mobile_ofmaq_date_v1';
   const LS_MAQ_EMP = 'italy_mobile_ofmaq_emp_v1';
+  const LS_MAQ_SEM_PAPEL = 'italy_mobile_sem_papel_v1';
+  const MAQUINAS_MOBILE_PERMITIDAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
   const todayIso = ()=>new Date().toISOString().slice(0,10);
   const clampIso = (s)=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||'')) ? String(s) : todayIso();
   const addDaysIso = (iso, delta)=>{
@@ -39674,6 +39676,151 @@ window.atualizarChapas = async function(){
     const rows = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
     mobileState.orcamentos = rows || [];
     try{ if(isMobileMode()) window.ORCAMENTOS = rows || []; }catch(e){}
+  }
+
+  const loadSemPapelMap = ()=>{
+    try{
+      const raw = localStorage.getItem(LS_MAQ_SEM_PAPEL);
+      const obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === 'object') ? obj : {};
+    }catch(e){ return {}; }
+  };
+  const saveSemPapelMap = (m)=>{
+    try{ localStorage.setItem(LS_MAQ_SEM_PAPEL, JSON.stringify(m && typeof m === 'object' ? m : {})); }catch(e){}
+  };
+
+  const ensureMobileOverlays = ()=>{
+    if(document.getElementById('mob-bottom-sheet-style')) return;
+    const style = document.createElement('style');
+    style.id = 'mob-bottom-sheet-style';
+    style.textContent = `
+      @keyframes mobSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      @keyframes mobFadeInOut { 0%{opacity:0;transform:translateY(-6px)} 10%{opacity:1;transform:translateY(0)} 90%{opacity:1} 100%{opacity:0;transform:translateY(-6px)} }
+      .mobile-bottom-sheet{ position:fixed; left:0; right:0; bottom:0; background:#1a1a2e; border-radius:20px 20px 0 0; padding:20px 16px 80px; z-index:10050; max-height:80vh; overflow-y:auto; box-shadow:0 -4px 24px rgba(0,0,0,.5); animation: mobSlideUp .3s ease; }
+      .mobile-bottom-sheet-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10049; }
+      .bottom-sheet-btn{ display:flex; align-items:center; gap:12px; width:100%; padding:16px 12px; background:none; border:none; border-bottom:1px solid #2a2a4a; color:#fff; font-size:16px; cursor:pointer; text-align:left; }
+      .bottom-sheet-btn:last-child{ border-bottom:none; }
+      .bottom-sheet-btn:active{ background:#2a2a4a; }
+      .mobile-of-card.sem-papel{ border-color:rgba(255,165,0,.55) !important; box-shadow:0 0 0 2px rgba(255,165,0,.12) inset; }
+      .mobile-img-modal{ position:fixed; inset:0; background:#000; z-index:10080; display:flex; flex-direction:column; }
+    `;
+    document.head.appendChild(style);
+  };
+
+  const closeBottomSheet = ()=>{
+    try{ document.querySelector('.mobile-bottom-sheet')?.remove(); }catch(e){}
+    try{ document.querySelector('.mobile-bottom-sheet-overlay')?.remove(); }catch(e){}
+  };
+  function abrirBottomSheet(html, titulo){
+    ensureMobileOverlays();
+    closeBottomSheet();
+    const overlay = document.createElement('div');
+    overlay.className = 'mobile-bottom-sheet-overlay';
+    overlay.onclick = closeBottomSheet;
+    const sheet = document.createElement('div');
+    sheet.className = 'mobile-bottom-sheet';
+    sheet.innerHTML = `
+      <div style="width:40px;height:4px;background:#444;border-radius:2px;margin:0 auto 16px"></div>
+      <div style="font-size:16px;font-weight:900;color:white;margin-bottom:16px">${esc(titulo || '')}</div>
+      ${html || ''}
+    `;
+    document.body.appendChild(overlay);
+    document.body.appendChild(sheet);
+    return sheet;
+  }
+
+  function showMobileToast(msg, tipo = 'success'){
+    ensureMobileOverlays();
+    try{ document.getElementById('mob-toast')?.remove(); }catch(e){}
+    const toast = document.createElement('div');
+    toast.id = 'mob-toast';
+    const ok = tipo === 'success';
+    toast.style.cssText = [
+      'position:fixed',
+      'top:60px',
+      'left:16px',
+      'right:16px',
+      'padding:14px 16px',
+      'background:' + (ok ? '#1a4a1a' : '#4a1a1a'),
+      'border:1px solid ' + (ok ? '#44ff88' : '#ff4444'),
+      'border-radius:12px',
+      'color:white',
+      'font-size:15px',
+      'z-index:10090',
+      'text-align:center',
+      'animation: mobFadeInOut 3s ease forwards'
+    ].join(';');
+    toast.textContent = String(msg || '');
+    document.body.appendChild(toast);
+    setTimeout(()=>{ try{ toast.remove(); }catch(e){} }, 3000);
+  }
+
+  function getMobileOfImagem(of){
+    try{
+      const u = String(of?.imagem_url || '').trim();
+      if(u) return u;
+      const raw = of?.imgs;
+      let arr = [];
+      if(Array.isArray(raw)) arr = raw;
+      else if(typeof raw === 'string'){ try{ arr = JSON.parse(raw || '[]'); }catch(e){ arr = []; } }
+      const first = (Array.isArray(arr) ? arr : []).map(x=>String(x||'').trim()).filter(Boolean)[0] || '';
+      return first || null;
+    }catch(e){ return null; }
+  }
+
+  async function mobileDownloadUrl(url, filename){
+    try{
+      const r = await fetch(String(url||''));
+      const b = await r.blob();
+      const a = document.createElement('a');
+      const obj = URL.createObjectURL(b);
+      a.href = obj;
+      a.download = String(filename || 'arquivo');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>{ try{ URL.revokeObjectURL(obj); }catch(e){} }, 1500);
+    }catch(e){
+      try{ window.open(String(url||''), '_blank'); }catch(_){}
+    }
+  }
+
+  function mobilePrintImage(url){
+    try{
+      const w = window.open('', '_blank');
+      if(!w) return;
+      const safe = String(url||'');
+      w.document.open();
+      w.document.write(`<html><head><title>Imprimir</title><style>html,body{margin:0;padding:0}img{max-width:100vw;max-height:100vh;display:block;margin:0 auto;}</style></head><body><img src="${safe}"></body></html>`);
+      w.document.close();
+      w.focus();
+      setTimeout(()=>{ try{ w.print(); }catch(e){} }, 250);
+    }catch(e){ try{ window.print(); }catch(_){} }
+  }
+
+  function abrirImagemMobile(url, numeroOf){
+    ensureMobileOverlays();
+    try{ document.querySelector('.mobile-img-modal')?.remove(); }catch(e){}
+    const modal = document.createElement('div');
+    modal.className = 'mobile-img-modal';
+    const num = String(numeroOf || '').replace(/\D/g,'') || String(numeroOf||'').trim();
+    modal.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1a1a2e">
+        <span style="color:white;font-weight:900">OF #${esc(num||'—')}</span>
+        <button data-close="1" style="background:none;border:none;color:white;font-size:24px">✕</button>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:16px">
+        <img src="${esc(String(url||''))}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px">
+      </div>
+      <div style="display:flex;gap:12px;padding:16px;background:#1a1a2e">
+        <button data-dl="1" style="flex:1;padding:12px;background:#2a2a4a;border:none;border-radius:8px;color:white;font-size:15px">⬇️ Baixar</button>
+        <button data-pr="1" style="flex:1;padding:12px;background:#4a9eff;border:none;border-radius:8px;color:white;font-size:15px">🖨️ Imprimir</button>
+      </div>
+    `;
+    modal.querySelector('[data-close]')?.addEventListener('click', ()=>{ try{ modal.remove(); }catch(e){} });
+    modal.querySelector('[data-dl]')?.addEventListener('click', ()=>mobileDownloadUrl(url, `OF-${num||'imagem'}.jpg`));
+    modal.querySelector('[data-pr]')?.addEventListener('click', ()=>mobilePrintImage(url));
+    document.body.appendChild(modal);
   }
 
   function renderShell(){
@@ -39790,7 +39937,12 @@ window.atualizarChapas = async function(){
 
     const iso = clampIso(mobileState.maqDate);
     const empId = String(mobileState.maqEmp || '').trim();
-    const ofs = (mobileState.ofs || []).filter(isOfAtiva).filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso);
+    const allowedMap = new Map(MAQUINAS_MOBILE_PERMITIDAS.map((n)=>[String(n||'').trim().toUpperCase(), String(n||'').trim()]));
+    const ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso);
+    const ofs = ofsBase.filter((of)=>{
+      const mk = String(getOfMaquinaAtual(of) || '').trim().toUpperCase();
+      return allowedMap.has(mk);
+    });
     const totalOfs = ofs.length;
     const totalCaixas = ofs.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
 
@@ -39804,27 +39956,42 @@ window.atualizarChapas = async function(){
       return { cls:'future', lbl:'FUTURO' };
     })();
 
+    const maquinasFiltradas = MAQUINAS_MOBILE_PERMITIDAS
+      .map((nomePerm)=>{
+        const up = String(nomePerm||'').trim().toUpperCase();
+        const m = (mobileState.maquinas || []).find((mm)=>
+          String(mm?.nome || '').trim().toUpperCase() === up ||
+          String(mm?.col || '').trim().toUpperCase() === up
+        );
+        return m ? { perm: String(nomePerm||'').trim(), obj: m } : null;
+      })
+      .filter(Boolean);
+
     const byMaq = new Map();
     ofs.forEach((of)=>{
-      const m = String(getOfMaquinaAtual(of) || '').trim();
-      const key = m ? m : '📋 Sem máquina';
+      const mk = String(getOfMaquinaAtual(of) || '').trim().toUpperCase();
+      const key = allowedMap.get(mk);
+      if(!key) return;
       if(!byMaq.has(key)) byMaq.set(key, []);
       byMaq.get(key).push(of);
     });
-    byMaq.forEach((arr)=>arr.sort((a,b)=>String(getOfEntrega(a)||'9999-99-99').localeCompare(String(getOfEntrega(b)||'9999-99-99'))));
-
-    const maquinas = (mobileState.maquinas || []).map(m=>String(m?.nome || '').trim()).filter(Boolean);
-    const nomes = [...new Set([...maquinas, ...Array.from(byMaq.keys())])].filter(Boolean);
-
-    const maqByNome = new Map();
-    (mobileState.maquinas || []).forEach((m)=>{
-      const n = String(m?.nome || '').trim();
-      if(!n) return;
-      maqByNome.set(n.toUpperCase(), m);
+    byMaq.forEach((arr)=>{
+      arr.sort((a,b)=>{
+        const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
+        const ha = Number.isFinite(pa); const hb = Number.isFinite(pb);
+        if(ha && hb && pa !== pb) return pa - pb;
+        if(ha && !hb) return -1;
+        if(!ha && hb) return 1;
+        return String(getOfEntrega(a)||'9999-99-99').localeCompare(String(getOfEntrega(b)||'9999-99-99'));
+      });
     });
+
+    const nomes = maquinasFiltradas.map((x)=>x.perm);
+
+    const maqByPerm = new Map(maquinasFiltradas.map((x)=>[String(x.perm||'').trim().toUpperCase(), x.obj]));
     const getMaqObj = (nome)=>{
       const key = String(nome||'').trim().toUpperCase();
-      return key ? (maqByNome.get(key) || null) : null;
+      return key ? (maqByPerm.get(key) || null) : null;
     };
     const getMaqPhora = (nome)=>{
       const m = getMaqObj(nome);
@@ -39840,6 +40007,14 @@ window.atualizarChapas = async function(){
       const h = Math.floor(min / 60);
       const m = min % 60;
       return h > 0 ? (h + 'h ' + m + 'min') : (m + 'min');
+    };
+
+    const semPapelMap = loadSemPapelMap();
+    const isSemPapel = (of)=>{
+      const id = String(of?.id || '').trim();
+      const remote = (of && typeof of === 'object' && ('sem_papel' in of)) ? !!of.sem_papel : false;
+      const local = id ? !!semPapelMap[id] : false;
+      return remote || local;
     };
 
     const cardHtml = (nome)=>{
@@ -39860,26 +40035,36 @@ window.atualizarChapas = async function(){
           const st = String(of?.status || '').trim() || '—';
           const id = String(of?.id || '').trim();
           const tempo = fmtTempo(nome, qtd);
-          return `<div class="mobile-card mobile-of-card">
-            <div class="mobile-of-title">
-              <div class="n">OF ${esc(num)}</div>
-              <div style="display:flex;gap:8px;align-items:center">
-                <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
-                <span class="st">${esc(st)}</span>
+          const imgUrl = getMobileOfImagem(of);
+          const imgHtml = imgUrl
+            ? `<img src="${esc(imgUrl)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;cursor:pointer;flex:0 0 auto;border:1px solid #2a2a4a" data-img="${esc(imgUrl)}" data-imgof="${esc(num)}">`
+            : `<div style="width:60px;height:60px;border-radius:10px;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto">📦</div>`;
+          return `<div class="mobile-card mobile-of-card${isSemPapel(of)?' sem-papel':''}">
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              ${imgHtml}
+              <div style="min-width:0;flex:1">
+                <div class="mobile-of-title" style="margin:0">
+                  <div class="n">OF ${esc(num)}</div>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+                    <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
+                    <span class="st">${esc(st)}</span>
+                  </div>
+                </div>
+                <div class="mobile-of-meta">
+                  <div style="margin-top:4px"><b>Cliente:</b> ${esc(cli)}</div>
+                  <div><b>Produto:</b> ${esc(prod)}</div>
+                  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+                    <div><b>Qtd:</b> ${esc(String(qtd))}</div>
+                    <div><b>Entrega:</b> ${esc(ent)}</div>
+                    <div><b>⏱</b> ${esc(String(tempo))}</div>
+                    <div><b>⚡</b> ${esc(String(getMaqPhora(nome) || '—'))} cx/h</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="mobile-of-meta">
-              <div><b>Cliente:</b> ${esc(cli)}</div>
-              <div><b>Produto:</b> ${esc(prod)}</div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-                <div><b>Qtd:</b> ${esc(String(qtd))}</div>
-                <div><b>Entrega:</b> ${esc(ent)}</div>
-                <div><b>⏱</b> ${esc(String(tempo))}</div>
-              </div>
-            </div>
-            <div class="mobile-actions">
-              <button class="mobile-btn danger" data-concluir="${esc(id)}" data-maq="${esc(nome)}">✓ Concluir</button>
-              <button class="mobile-btn" data-detalhes="${esc(id)}">Detalhes</button>
+            <div class="mobile-actions" style="margin-top:10px">
+              <button class="mobile-btn danger" data-actions="${esc(id)}" data-maq="${esc(nome)}">⚡ Ações</button>
+              <button class="mobile-btn" data-detalhes="${esc(id)}">📋 Detalhes</button>
             </div>
           </div>`;
         }).join('')}</div>` : ``}
@@ -39964,34 +40149,207 @@ window.atualizarChapas = async function(){
         `);
       });
     });
-    content.querySelectorAll('[data-concluir]').forEach((b)=>{
-      b.addEventListener('click', ()=>{
-        const id = b.getAttribute('data-concluir');
-        const maqNome = b.getAttribute('data-maq') || '';
+    content.querySelectorAll('[data-img]').forEach((img)=>{
+      img.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const url = img.getAttribute('data-img') || '';
+        const num = img.getAttribute('data-imgof') || '';
+        if(url) abrirImagemMobile(url, num);
+      });
+    });
+    content.querySelectorAll('[data-actions]').forEach((btn)=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const id = String(btn.getAttribute('data-actions') || '').trim();
+        const maqNome = String(btn.getAttribute('data-maq') || '').trim();
         const of = (mobileState.ofs||[]).find(o=>String(o?.id||'')===String(id||''));
         if(!of) return;
         const num = getOfNumero(of) || '—';
-        const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
-        modal.open(`
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
-            <div style="font-weight:900">Concluir OF ${esc(num)}</div>
-            <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <div>
-              <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Caixas produzidas</div>
-              <input id="mob-conc-prod" type="number" value="${esc(String(qtd))}" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+        const cli = getOfCliente(of);
+
+        const sheet = abrirBottomSheet(`
+          <button class="bottom-sheet-btn" data-act="entrega">📅 Alterar data de entrega</button>
+          <button class="bottom-sheet-btn" data-act="sempapel">📦 Sem papelão</button>
+          <button class="bottom-sheet-btn" data-act="up">⬆️ Mover para cima</button>
+          <button class="bottom-sheet-btn" data-act="down">⬇️ Mover para baixo</button>
+          <button class="bottom-sheet-btn" data-act="maq">🔄 Mudar de máquina</button>
+          <button class="bottom-sheet-btn" data-act="conc">✅ Concluir OF</button>
+          <button class="bottom-sheet-btn" data-act="close">❌ Fechar</button>
+        `, `OF #${esc(num)} — ${esc(cli)}`);
+
+        const getListMaq = ()=>{
+          const iso0 = clampIso(mobileState.maqDate);
+          const allowed = new Map(MAQUINAS_MOBILE_PERMITIDAS.map((n)=>[String(n||'').trim().toUpperCase(), String(n||'').trim()]));
+          const rows = (mobileState.ofs || [])
+            .filter(isOfAtiva)
+            .filter((o)=>String(o?.ent || o?.data_entrega || '').slice(0,10) === iso0)
+            .filter((o)=>allowed.has(String(getOfMaquinaAtual(o)||'').trim().toUpperCase()))
+            .filter((o)=>allowed.get(String(getOfMaquinaAtual(o)||'').trim().toUpperCase()) === maqNome);
+          rows.sort((a,b)=>{
+            const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
+            const ha = Number.isFinite(pa); const hb = Number.isFinite(pb);
+            if(ha && hb && pa !== pb) return pa - pb;
+            if(ha && !hb) return -1;
+            if(!ha && hb) return 1;
+            return 0;
+          });
+          return rows;
+        };
+
+        const ensurePrioridades = async ()=>{
+          const rows = getListMaq();
+          const needs = rows.some((o)=>!Number.isFinite(Number(o?.prioridade)));
+          if(!needs) return rows;
+          let pr = 10;
+          for(const o of rows){
+            if(Number.isFinite(Number(o?.prioridade))){ pr = Math.max(pr, Math.trunc(Number(o.prioridade)) + 10); continue; }
+            const pid = String(o?.id||'').trim();
+            const val = pr;
+            pr += 10;
+            try{ await apiFetch('/api/ofs/' + encodeURIComponent(pid), { method:'PATCH', body:{ prioridade: val } }); }catch(e){}
+            try{ o.prioridade = val; }catch(e){}
+          }
+          return rows;
+        };
+
+        const actEntrega = ()=>{
+          closeBottomSheet();
+          const inp = document.createElement('input');
+          inp.type = 'date';
+          inp.value = clampIso(getOfEntrega(of) || mobileState.maqDate);
+          inp.style.position = 'fixed';
+          inp.style.left = '-9999px';
+          inp.style.top = '-9999px';
+          document.body.appendChild(inp);
+          inp.addEventListener('change', async ()=>{
+            const nv = clampIso(inp.value || '');
+            try{
+              const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ data_entrega: nv, ent: nv } });
+              const j = r ? await r.json().catch(()=>null) : null;
+              if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha');
+              showMobileToast('✅ Data alterada para ' + fmtBR(nv).slice(0,5), 'success');
+              await mobileRefreshMaquinas();
+              renderMaquinas();
+            }catch(err){
+              showMobileToast('Erro ao alterar data', 'error');
+            }finally{
+              try{ inp.remove(); }catch(e){}
+            }
+          }, { once:true });
+          try{ inp.showPicker ? inp.showPicker() : inp.click(); }catch(e){ try{ inp.click(); }catch(_){} }
+        };
+
+        const actSemPapel = async ()=>{
+          const map = loadSemPapelMap();
+          const cur = (of && typeof of === 'object' && ('sem_papel' in of)) ? !!of.sem_papel : !!map[id];
+          const next = !cur;
+          map[id] = next;
+          saveSemPapelMap(map);
+          try{
+            const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ sem_papel: next } });
+            const j = r ? await r.json().catch(()=>null) : null;
+            if(r && r.ok && !(j && j.ok === false)){
+              try{ of.sem_papel = next; }catch(e){}
+            }
+          }catch(e){}
+          showMobileToast(next ? '📦 Marcado: sem papelão' : '📦 Desmarcado: sem papelão', 'success');
+          renderMaquinas();
+          closeBottomSheet();
+        };
+
+        const actMove = async (dir)=>{
+          try{
+            const rows = await ensurePrioridades();
+            const idx = rows.findIndex((o)=>String(o?.id||'')===String(id||''));
+            const j = dir === 'up' ? (idx - 1) : (idx + 1);
+            if(idx < 0 || j < 0 || j >= rows.length){ closeBottomSheet(); return; }
+            const a = rows[idx]; const b2 = rows[j];
+            const pa = Math.trunc(Number(a?.prioridade) || 0);
+            const pb = Math.trunc(Number(b2?.prioridade) || 0);
+            await apiFetch('/api/ofs/' + encodeURIComponent(String(a.id)), { method:'PATCH', body:{ prioridade: pb } });
+            await apiFetch('/api/ofs/' + encodeURIComponent(String(b2.id)), { method:'PATCH', body:{ prioridade: pa } });
+            a.prioridade = pb; b2.prioridade = pa;
+            showMobileToast('✅ Prioridade atualizada', 'success');
+            renderMaquinas();
+          }catch(e){
+            showMobileToast('Erro ao mover', 'error');
+          }finally{
+            closeBottomSheet();
+          }
+        };
+
+        const actMaq = ()=>{
+          const list = MAQUINAS_MOBILE_PERMITIDAS.map((n)=>`<button class="bottom-sheet-btn" data-maqsel="${esc(n)}">${esc(n)}</button>`).join('');
+          const sh = abrirBottomSheet(list + `<button class="bottom-sheet-btn" data-maqsel="">❌ Cancelar</button>`, 'Mudar de máquina');
+          sh.querySelectorAll('[data-maqsel]').forEach((b)=>{
+            b.addEventListener('click', async ()=>{
+              const nv = String(b.getAttribute('data-maqsel') || '').trim();
+              if(!nv){ closeBottomSheet(); return; }
+              try{
+                const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')), { method:'PATCH', body:{ fluxo_maquinas:[nv], maq: JSON.stringify([nv]) } });
+                const j = r ? await r.json().catch(()=>null) : null;
+                if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha');
+                showMobileToast('✅ OF #' + String(num) + ' movida para ' + nv, 'success');
+                await mobileRefreshMaquinas();
+                renderMaquinas();
+              }catch(err){
+                showMobileToast('Erro ao mudar máquina', 'error');
+              }finally{
+                closeBottomSheet();
+              }
+            });
+          });
+        };
+
+        const actConcluir = ()=>{
+          const qtd0 = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
+          const sh = abrirBottomSheet(`
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Quantas caixas foram produzidas?</div>
+                <input id="mob-bs-prod" type="number" value="${esc(String(qtd0))}" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+              </div>
+              <div>
+                <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Quantas foram perdidas?</div>
+                <input id="mob-bs-perd" type="number" value="0" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
+              </div>
+              <div style="display:flex;gap:10px">
+                <button class="mobile-btn" style="flex:1" data-cancel="1">Cancelar</button>
+                <button class="mobile-btn danger" style="flex:1" data-ok="1">Confirmar</button>
+              </div>
             </div>
-            <div>
-              <div style="font-size:12px;color:#8b93a7;font-weight:900;margin-bottom:6px">Caixas perdidas</div>
-              <input id="mob-conc-perd" type="number" value="0" style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:12px;color:#fff;font-size:16px">
-            </div>
-            <div style="display:flex;gap:10px">
-              <button class="mobile-btn" onclick="document.getElementById('mob-modal')?.remove()">Cancelar</button>
-              <button class="mobile-btn danger" onclick="window.__mobConcluirOF && window.__mobConcluirOF('${esc(String(id||''))}','${esc(String(maqNome||''))}')">Concluir</button>
-            </div>
-          </div>
-        `);
+          `, `Concluir OF #${esc(num)}`);
+          sh.querySelector('[data-cancel]')?.addEventListener('click', closeBottomSheet);
+          sh.querySelector('[data-ok]')?.addEventListener('click', async ()=>{
+            try{
+              const prod = Math.trunc(toNum(byId('mob-bs-prod')?.value || 0));
+              const perd = Math.trunc(toNum(byId('mob-bs-perd')?.value || 0));
+              const payload = { qtd_produzida: prod, qtdPerdida: perd, qtd_perdida: perd, maquina: maqNome };
+              const r = await apiFetch('/api/ofs/' + encodeURIComponent(String(id||'')) + '/concluir', { method:'POST', body: payload });
+              const j = r ? await r.json().catch(()=>null) : null;
+              if(!(r && r.ok) || (j && j.ok === false)) throw new Error((j && (j.error||j.message)) || 'Falha ao concluir');
+              showMobileToast('✅ OF #' + String(num) + ' concluída!', 'success');
+              closeBottomSheet();
+              await mobileRefreshMaquinas();
+              renderMaquinas();
+            }catch(err){
+              showMobileToast('Erro ao concluir OF', 'error');
+            }
+          });
+        };
+
+        sheet.querySelectorAll('[data-act]').forEach((b)=>{
+          b.addEventListener('click', ()=>{
+            const act = String(b.getAttribute('data-act') || '').trim();
+            if(act === 'close') return closeBottomSheet();
+            if(act === 'entrega') return actEntrega();
+            if(act === 'sempapel') return actSemPapel();
+            if(act === 'up') return actMove('up');
+            if(act === 'down') return actMove('down');
+            if(act === 'maq') return actMaq();
+            if(act === 'conc') return actConcluir();
+          });
+        });
       });
     });
 
@@ -40045,7 +40403,7 @@ window.atualizarChapas = async function(){
         ${statuses.map(s=>`<button class="mobile-chip" data-st="${esc(s)}" style="${s===sel?'border-color:#4a9eff;color:#4a9eff':''}">${esc(s)}</button>`).join('')}
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:10px">
-        <button class="mobile-btn primary" style="flex:0 0 auto" id="mob-orc-new">+ Novo orçamento</button>
+        <button class="mobile-btn primary" style="flex:0 0 auto" id="mobile-novo-orcamento-btn">+ Novo orçamento</button>
       </div>
       <div style="margin-top:10px">
         ${filtered.map(o=>{
@@ -40075,10 +40433,13 @@ window.atualizarChapas = async function(){
         renderOrcamentos();
       });
     });
-    byId('mob-orc-new')?.addEventListener('click', ()=>{
+    byId('mobile-novo-orcamento-btn')?.addEventListener('click', ()=>{
       try{
-        if(typeof window.novoOrcamentoCalc === 'function') window.novoOrcamentoCalc();
-        else if(typeof window.abrirCalculadora === 'function') window.abrirCalculadora();
+        if(typeof window.novoOrcamentoCalc === 'function') return window.novoOrcamentoCalc();
+        if(typeof window.abrirCalculadora === 'function') return window.abrirCalculadora();
+        if(typeof window.novoOrcamento === 'function') return window.novoOrcamento();
+        if(typeof window.abrirModalOrcamento === 'function') return window.abrirModalOrcamento();
+        document.querySelector('[onclick*="orcamento"], [onclick*="Orcamento"], #btn-novo-orcamento')?.click();
       }catch(e){}
     });
     content.querySelectorAll('[data-orc-id]').forEach((card)=>{
