@@ -1262,6 +1262,9 @@ window.__jarvisGetData = function () {
     let ofs = null;
     let fonte = '';
     if (Array.isArray(ctx.ofs) && ctx.ofs.length) { ofs = ctx.ofs; fonte = 'window.JARVIS_CONTEXT.ofs'; }
+    else if (Array.isArray(window._ofs) && window._ofs.length) { ofs = window._ofs; fonte = 'window._ofs'; }
+    else if (Array.isArray(window.ofsCarregadas) && window.ofsCarregadas.length) { ofs = window.ofsCarregadas; fonte = 'window.ofsCarregadas'; }
+    else if (window.PCP && Array.isArray(window.PCP.ofs) && window.PCP.ofs.length) { ofs = window.PCP.ofs; fonte = 'window.PCP.ofs'; }
     else if (Array.isArray(window.OFS) && window.OFS.length) { ofs = window.OFS; fonte = 'window.OFS'; }
     else if (typeof OFs !== 'undefined' && Array.isArray(OFs) && OFs.length) { ofs = OFs; fonte = 'OFs'; }
     else if (Array.isArray(window.OFS_ARQUIVO) && window.OFS_ARQUIVO.length) { ofs = window.OFS_ARQUIVO; fonte = 'window.OFS_ARQUIVO'; }
@@ -23716,6 +23719,7 @@ async function carregarOFsUnico(force = false){
       try{ window.OFS = OFs; }catch(e){}
       _ofsLastHash = hash;
     }
+    try{ if(typeof window.__jarvisContextUpdate === 'function') window.__jarvisContextUpdate({ ofs: Array.isArray(OFs) ? OFs : [] }); }catch(e){}
     _ultimaCargaOFs = Date.now();
     try{ window._ofsUltimaCarga = _ultimaCargaOFs; }catch(e){}
     try{ console.log('[OFS] carregados:', (Array.isArray(OFs)?OFs.length:0), 'primeira entrega:', OFs?.[0]?.ent); }catch(e){}
@@ -23754,6 +23758,7 @@ async function carregarOFs(opts){
     return normalizeOF({ ...o, fluxo_maquinas: fm });
   });
   try{ console.log('[OFS] recebidas:', (Array.isArray(lista)?lista.length:0), 'primeira:', lista?.[0]?.cliNome, lista?.[0]?.ent); }catch(e){}
+  try{ if(typeof window.__jarvisContextUpdate === 'function') window.__jarvisContextUpdate({ ofs: Array.isArray(lista) ? lista : [] }); }catch(e){}
   return { ...(r||{}), data: lista };
 }
 
@@ -40700,7 +40705,8 @@ window.atualizarChapas = async function(){
     const mobNorm = (s)=>{
       try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
     };
-    const q = mobNorm(String(mobileState.maqSearch || '').trim());
+    const qRaw = String(mobileState.maqSearch || '');
+    const q = mobNorm(qRaw.trim());
     const showAll = !!mobileState.maqShowAll;
     let ofsBase = (mobileState.ofs || []).filter((of)=>{
       if(of?.deleted_at) return false;
@@ -40709,12 +40715,6 @@ window.atualizarChapas = async function(){
       if(isHoje) return (!dt || dt <= hoje);
       return dt === iso;
     });
-    if(q){
-      ofsBase = ofsBase.filter((of)=>{
-        const txt = mobNorm([getOfNumero(of), getOfCliente(of), getOfProduto(of)].join(' '));
-        return txt.includes(q);
-      });
-    }
     const ofs = ofsBase.filter((of)=>{
       const mk = String(getOfMaquinaAtual(of) || '').trim();
       const perm = matchPerm(mk);
@@ -40825,6 +40825,17 @@ window.atualizarChapas = async function(){
       return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.78rem;background:${bg};color:#fff;white-space:nowrap">${esc(lbl)}</span>`;
     };
 
+    const applySearchDomFilter = (term)=>{
+      const t = mobNorm(String(term||'').trim());
+      try{
+        const cards = content.querySelectorAll('.mobile-of-card');
+        cards.forEach((el)=>{
+          const txt = String(el.getAttribute('data-search-text') || '');
+          el.style.display = (!t || txt.includes(t)) ? '' : 'none';
+        });
+      }catch(e){}
+    };
+
     const cardHtml = (nome)=>{
       const exp = !!mobileState.maquinaExpanded[nome];
       const list = byMaq.get(nome) || [];
@@ -40848,7 +40859,8 @@ window.atualizarChapas = async function(){
             ? `<img src="${esc(imgUrl)}" style="width:60px;height:60px;object-fit:cover;border-radius:10px;cursor:pointer;flex:0 0 auto;border:1px solid #2a2a4a" data-img="${esc(imgUrl)}" data-imgof="${esc(num)}">`
             : `<div style="width:60px;height:60px;border-radius:10px;background:#2a2a4a;display:flex;align-items:center;justify-content:center;font-size:24px;flex:0 0 auto">📦</div>`;
           const prio = Number.isFinite(Number(of?.prioridade)) ? Math.trunc(Number(of.prioridade)) : 0;
-          return `<div class="mobile-card mobile-of-card${isSemPapel(of)?' sem-papel':''}" data-of-id="${esc(id)}" data-prioridade="${esc(String(prio))}" data-maq="${esc(nome)}">
+          const searchText = mobNorm([num, cli, prod].join(' '));
+          return `<div class="mobile-card mobile-of-card${isSemPapel(of)?' sem-papel':''}" data-of-id="${esc(id)}" data-prioridade="${esc(String(prio))}" data-maq="${esc(nome)}" data-search-text="${esc(searchText)}">
             <div style="display:flex;gap:12px;align-items:flex-start">
               ${imgHtml}
               <div style="min-width:0;flex:1">
@@ -40941,7 +40953,7 @@ window.atualizarChapas = async function(){
       byId('mob-maq-search')?.addEventListener('input', (e)=>{
         mobileState.maqSearch = String(e?.target?.value || '');
         if(tmr) clearTimeout(tmr);
-        tmr = setTimeout(()=>{ try{ renderMaquinas(); }catch(_e){} }, 300);
+        tmr = setTimeout(()=>{ try{ applySearchDomFilter(mobileState.maqSearch); }catch(_e){} }, 300);
       });
     }catch(e){}
 
@@ -41008,7 +41020,7 @@ window.atualizarChapas = async function(){
           input.value = nm;
           mobileState.maqSearch = nm;
           hide();
-          renderMaquinas();
+          applySearchDomFilter(mobileState.maqSearch);
         });
         if(!window.__mobMaqAcGlobalBound){
           window.__mobMaqAcGlobalBound = 1;
@@ -41025,6 +41037,8 @@ window.atualizarChapas = async function(){
         }
       }
     }catch(e){}
+
+    applySearchDomFilter(qRaw);
 
     content.querySelectorAll('[data-maq]').forEach((el)=>{
       el.addEventListener('click', (e)=>{
