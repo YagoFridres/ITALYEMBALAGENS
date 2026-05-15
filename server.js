@@ -1414,7 +1414,18 @@ function ofIn(p) {
   return out;
 }
 
-const OFS_TABLE_COLS = [
+const COLUNAS_OPCIONAIS_OFS = [
+  'prioridade',
+  'sem_papel',
+  'chapa_id',
+  'qtd_chapas',
+  'cidade_entrega',
+  'modo_programacao',
+  'dia_programacao',
+  'data_faturamento',
+  'maquina_perda_id',
+];
+const OFS_TABLE_COLS_ALL = [
   'id',
   'numero',
   'of',
@@ -1447,8 +1458,11 @@ const OFS_TABLE_COLS = [
   'obs',
   'sem_papel',
   'deleted_at',
-  'chapa_id',
   'maquina_perda',
+  'maquina_perda_id',
+  'chapa_id',
+  'qtd_chapas',
+  'data_faturamento',
   'qtd_perdida',
   'qtd_produzida',
   'qtd_pedida',
@@ -1457,6 +1471,8 @@ const OFS_TABLE_COLS = [
   'created_at',
   'updated_at',
 ];
+const OFS_TABLE_COLS = OFS_TABLE_COLS_ALL.filter((c) => !COLUNAS_OPCIONAIS_OFS.includes(c));
+const OFS_PAYLOAD_COLS_SET = new Set(OFS_TABLE_COLS_ALL);
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
 const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
@@ -1465,7 +1481,7 @@ function _filterOfsPayloadKnownCols(input, keepMeta = true) {
   const out = {};
   Object.keys(src).forEach((k) => {
     if (keepMeta && String(k || '').startsWith('_')) { out[k] = src[k]; return; }
-    if (OFS_TABLE_COLS_SET.has(k)) out[k] = src[k];
+    if (OFS_PAYLOAD_COLS_SET.has(k)) out[k] = src[k];
   });
   return out;
 }
@@ -2282,14 +2298,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         break;
       }
       rawErr = r.error;
-      const msg = String(r.error?.message || '');
-      const col42703 = msg.match(/column\s+(?:ofs\.)?(\w+)\s+does not exist/i)?.[1];
-      const m = msg.match(/Could not find the '([^']+)' column/i)
-        || msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
-      const colProb = col42703 || m?.[1];
-      if (colProb) {
+      const msg = String(r.error?.message || r.error || '');
+      const colProb =
+        msg.match(/column\s+"?(\w+)"?\s+does not exist/i)?.[1] ||
+        msg.match(/column\s+ofs\."?(\w+)"?\s+does not exist/i)?.[1] ||
+        msg.match(/Could not find the '([^']+)' column/i)?.[1] ||
+        null;
+      if (colProb && colsArr.includes(colProb)) {
         colsArr = colsArr.filter((c) => c !== colProb);
-        try { console.warn('[OFS GET] removendo coluna inexistente:', colProb, 'rid:', req._rid); } catch (_) {}
+        try { console.warn('[OFS GET] removendo coluna:', colProb); } catch (_) {}
         continue;
       }
       break;

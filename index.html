@@ -555,8 +555,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .of-sec{background:var(--s2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
 .of-sec.locked{border-color:rgba(74,158,255,.35);background:rgba(74,158,255,.06);}
 .of-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:900;font-family:var(--mono);color:var(--text2);font-size:.75rem;}
-.of-sec-body{padding:12px 14px;}
+.of-sec-body{padding:0 14px;}
 .of-sec-hint{color:var(--text3);font-size:.7rem;font-family:var(--mono);font-weight:900;}
+.of-secao-header{cursor:pointer;user-select:none;}
+.of-secao-header.aberta{color:var(--text);}
+.of-secao-conteudo{max-height:0;opacity:0;overflow:hidden;padding:0 14px;transition:max-height .25s ease, opacity .2s ease, padding .2s ease;}
+.of-secao-conteudo.aberta{max-height:2000px;opacity:1;padding:12px 14px;}
 
 /* ===== ARTE FINAL ===== */
 .af-tool{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:7px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.82rem;transition:.12s;font-family:inherit;flex-shrink:0;}
@@ -8205,6 +8209,7 @@ async function abrirModalOF(id){
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
   try{ ofUpdateProgress(); }catch(e){}
+  try{ inicializarAccordionOF(); }catch(e){}
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
 }
 
@@ -8857,6 +8862,38 @@ function ofUpdateProgress(){
 }
 function calcularValorTotalOF(){
   return ofItensTemp.reduce((s,it)=>s+(parseFloat(it.qtd)||0)*(parseFloat(it.vunit)||0),0);
+}
+function inicializarAccordionOF(){
+  const modal = document.getElementById('modal-of');
+  if(!modal) return;
+  const closeAll = ()=>{
+    modal.querySelectorAll('.of-secao-conteudo').forEach((s)=>s.classList.remove('aberta'));
+    modal.querySelectorAll('.of-secao-header').forEach((h)=>h.classList.remove('aberta'));
+  };
+  const openId = (hid, cid)=>{
+    const h = document.getElementById(hid);
+    const c = document.getElementById(cid);
+    if(h) h.classList.add('aberta');
+    if(c) c.classList.add('aberta');
+  };
+  closeAll();
+  openId('of-header-essencial', 'of-conteudo-essencial');
+  const bind = (hid, cid)=>{
+    const h = document.getElementById(hid);
+    if(!h || h.dataset.accBound === '1') return;
+    h.dataset.accBound = '1';
+    h.addEventListener('click', ()=>{
+      const c = document.getElementById(cid);
+      const isOpen = !!(c && c.classList.contains('aberta'));
+      closeAll();
+      openId('of-header-essencial', 'of-conteudo-essencial');
+      if(!isOpen) openId(hid, cid);
+      try{ ofUpdateProgress(); }catch(e){}
+    });
+  };
+  bind('of-header-producao', 'of-conteudo-producao');
+  bind('of-header-detalhes', 'of-conteudo-detalhes');
+  try{ ofUpdateProgress(); }catch(e){}
 }
 function sanitizeDateInput(v){
   if (!v || String(v).trim() === '') return null;
@@ -33262,8 +33299,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="of-modal-body">
     <div class="of-sec locked" id="of-sec-ess">
-      <div class="of-sec-head"><span>1 — Essencial</span><span class="of-sec-hint" id="of-ess-hint">Obrigatório</span></div>
-      <div class="of-sec-body">
+      <div class="of-sec-head of-secao-header aberta" id="of-header-essencial"><span>1 — Essencial</span><span class="of-sec-hint" id="of-ess-hint">Obrigatório</span></div>
+      <div class="of-sec-body of-secao-conteudo aberta" id="of-conteudo-essencial">
         <div class="fg">
           <div class="mf"><label>Nº OF</label><input id="f-of" class="of-required" style="color:var(--accent);font-weight:800;font-family:var(--mono);" readonly></div>
           <div class="mf"><label>EMPRESA *</label><select id="f-emp" class="of-required" onchange="ofAtualizaChapas()"><option value="">Selecionar empresa...</option></select></div>
@@ -33296,8 +33333,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
 
     <div class="of-sec" id="of-sec-prod">
-      <div class="of-sec-head"><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></div>
-      <div class="of-sec-body">
+      <div class="of-sec-head of-secao-header" id="of-header-producao"><span>2 — Produção</span><span class="of-sec-hint">Opcional</span></div>
+      <div class="of-sec-body of-secao-conteudo" id="of-conteudo-producao">
         <div class="fg">
           <div class="mf fgf" style="grid-column:1/-1"><label>TIPO DE CAIXA</label>
             <select id="of-tipo-caixa" onchange="ofTipoCaixaChange();ofUpdateProgress()">
@@ -33358,8 +33395,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
 
     <div class="of-sec" id="of-sec-det">
-      <div class="of-sec-head"><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></div>
-      <div class="of-sec-body">
+      <div class="of-sec-head of-secao-header" id="of-header-detalhes"><span>3 — Detalhes</span><span class="of-sec-hint">Opcional</span></div>
+      <div class="of-sec-body of-secao-conteudo" id="of-conteudo-detalhes">
         <div class="fg">
           <div class="mf"><label>Status</label><select id="f-st" onchange="ofUpdateProgress()"><option>Em aberto</option><option>Em produção</option><option>Concluído</option><option>Atrasado</option><option>Cancelado</option></select></div>
           <div class="mf" style="grid-column:1/-1">
