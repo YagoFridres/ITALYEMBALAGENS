@@ -1256,13 +1256,32 @@ window.__jarvisCanSeeFinance = function () {
     return false;
   } catch (e) { return false; }
 };
+window.__jarvisGetData = function () {
+  try {
+    const ctx = (window.JARVIS_CONTEXT && typeof window.JARVIS_CONTEXT === 'object') ? window.JARVIS_CONTEXT : {};
+    let ofs = null;
+    let fonte = '';
+    if (Array.isArray(ctx.ofs) && ctx.ofs.length) { ofs = ctx.ofs; fonte = 'window.JARVIS_CONTEXT.ofs'; }
+    else if (Array.isArray(window.OFS) && window.OFS.length) { ofs = window.OFS; fonte = 'window.OFS'; }
+    else if (typeof OFs !== 'undefined' && Array.isArray(OFs) && OFs.length) { ofs = OFs; fonte = 'OFs'; }
+    else if (Array.isArray(window.OFS_ARQUIVO) && window.OFS_ARQUIVO.length) { ofs = window.OFS_ARQUIVO; fonte = 'window.OFS_ARQUIVO'; }
+    else { ofs = Array.isArray(ctx.ofs) ? ctx.ofs : []; fonte = 'empty'; }
+
+    const clientes = (Array.isArray(ctx.clientes) && ctx.clientes.length) ? ctx.clientes : ((typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : []);
+    const maquinas = (Array.isArray(ctx.maquinas) && ctx.maquinas.length) ? ctx.maquinas : ((typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)) ? MAQUINAS : []);
+    const estoque = (Array.isArray(ctx.estoque) && ctx.estoque.length) ? ctx.estoque : ((typeof ESTOQUE !== 'undefined' && Array.isArray(ESTOQUE)) ? ESTOQUE : []);
+    return { ofs, clientes, maquinas, estoque, fonte };
+  } catch (e) {
+    return { ofs: [], clientes: [], maquinas: [], estoque: [], fonte: 'error' };
+  }
+};
 window.buscarOFsCliente = function (nomeCliente, status) {
   const q = window.__jarvisNorm(nomeCliente);
   const stQ = window.__jarvisNorm(status || 'todas');
   try{ console.log('[JARVIS SEARCH]', { cliente: nomeCliente, status: status || 'todas' }); }catch(e){}
-  const ctx = window.JARVIS_CONTEXT || {};
-  const ofs = Array.isArray(ctx.ofs) ? ctx.ofs : (Array.isArray(window.OFS) ? window.OFS : []);
-  const clientes = Array.isArray(ctx.clientes) ? ctx.clientes : (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []);
+  const base = (typeof window.__jarvisGetData === 'function') ? window.__jarvisGetData() : { ofs: [], clientes: [], fonte: 'none' };
+  const ofs = Array.isArray(base.ofs) ? base.ofs : [];
+  const clientes = Array.isArray(base.clientes) ? base.clientes : [];
   const normStatus = (s) => window.__jarvisNorm(String(s || ''));
   const isConcluida = (o) => { const s = normStatus(o?.status); return s.includes('conclu') || s === 'pedido pronto'; };
   const isCancelada = (o) => { const s = normStatus(o?.status); return s.includes('cancel'); };
@@ -1319,10 +1338,17 @@ window.__jarvisTryLocalQuery = function (text) {
   const raw = String(text || '').trim();
   const t = window.__jarvisNorm(raw);
   if (!t) return null;
-  const ctx = window.JARVIS_CONTEXT || {};
-  const ofs = Array.isArray(ctx.ofs) ? ctx.ofs : (Array.isArray(window.OFS) ? window.OFS : []);
+  const base = (typeof window.__jarvisGetData === 'function') ? window.__jarvisGetData() : { ofs: [], clientes: [], maquinas: [], estoque: [], fonte: 'none' };
+  const ofs = Array.isArray(base.ofs) ? base.ofs : [];
+  const clientes = Array.isArray(base.clientes) ? base.clientes : [];
+  const maquinasCtx = Array.isArray(base.maquinas) ? base.maquinas : [];
+  const estoqueCtx = Array.isArray(base.estoque) ? base.estoque : [];
   const canFin = window.__jarvisCanSeeFinance();
   try{ console.log('[JARVIS QUERY]', raw); }catch(e){}
+  try{ console.log('[JARVIS CONTEXT]', { ofsTotal: ofs.length, fonte: base.fonte }); }catch(e){}
+  if(ofs.length === 0 && (t.includes('of') || t.includes('ofs') || t.includes('pedido') || t.includes('cliente') || t.includes('maquin') || t.includes('estoque'))){
+    return { ok:true, resposta:'Estou carregando os dados do sistema. Tente novamente em alguns segundos.' };
+  }
   const pickStatus = () => {
     if (t.includes('abert')) return 'aberta';
     if (t.includes('produc')) return 'producao';
@@ -1332,6 +1358,7 @@ window.__jarvisTryLocalQuery = function (text) {
     return 'todas';
   };
   const status = pickStatus();
+  const isCount = t.includes('quantas') || t.includes('quantidade') || t.includes('total') || t.includes('count');
   const hoje = new Date().toISOString().slice(0,10);
   const amanha = (function(){ const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
   const normStatus = (s)=>window.__jarvisNorm(String(s||''));
@@ -1347,6 +1374,17 @@ window.__jarvisTryLocalQuery = function (text) {
     const n = d.getTime();
     return Number.isFinite(n) ? n : 0;
   };
+  const pickClienteTerm = ()=>{
+    const m = raw.match(/\b(?:do|da|de)\s+([^?!.]+)$/i) || raw.match(/\bcliente\s+([^?!.]+)$/i);
+    const term = m ? String(m[1] || '').trim() : '';
+    if(!term) return '';
+    const bad = ['hoje','hj','amanha','amanhã','semana','esta semana','essa semana','aberta','abertas','producao','produção','concluida','concluída','atrasada','atrasadas','pedido','of','ofs'];
+    const nt = window.__jarvisNorm(term);
+    if(!nt) return '';
+    if(bad.includes(nt)) return '';
+    return term;
+  };
+  const clienteTerm = pickClienteTerm();
   const statusBadge = (st)=>{
     const s = normStatus(st);
     let bg = '#1a56db';
@@ -1357,6 +1395,35 @@ window.__jarvisTryLocalQuery = function (text) {
     else if(s.includes('cancel')) bg = '#111827';
     return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-weight:900;font-size:.74rem;background:${bg};color:#fff;white-space:nowrap">${String(st||'').replace(/</g,'&lt;')}</span>`;
   };
+
+  try{ console.log('[JARVIS INTENT]', { cliente: clienteTerm || null, status, periodo: t.includes('hoje') ? 'hoje' : (t.includes('amanha') || t.includes('amanhã')) ? 'amanha' : (t.includes('semana')) ? 'semana' : null, count: isCount }); }catch(e){}
+
+  if (t.includes('ultima') || t.includes('última') || t.includes('ultimo') || t.includes('último') || t.includes('mais recente') || t.includes('recente')) {
+    if (clienteTerm) {
+      const list = window.buscarOFsCliente(clienteTerm, 'todas').slice().sort((a,b)=>ts(b)-ts(a));
+      const o = list[0] || null;
+      if (!o) return { ok:true, resposta:`Não encontrei OFs para "${clienteTerm}".` };
+      const numero = o?.of || o?.numero || o?.of_num || '';
+      const cliente = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+      const produto = o?.descricao || o?.prodDesc || o?.produto || '';
+      const st = String(o?.status || '').trim();
+      const entrega = ent(o);
+      const html = `<div style="display:grid;gap:10px">
+        <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+          <div style="font-weight:900">Última OF de ${String(clienteTerm||'').replace(/</g,'&lt;')}</div>
+          <div style="margin-top:6px;display:grid;gap:6px">
+            <div><b>OF:</b> ${String(numero||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Cliente:</b> ${String(cliente||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Produto:</b> ${String(produto||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Status:</b> ${statusBadge(st)}</div>
+            <div><b>Entrega:</b> ${String(entrega||'').replace(/</g,'&lt;')}</div>
+          </div>
+        </div>
+      </div>`;
+      try{ console.log('[JARVIS RESULT]', { total: 1 }); }catch(e){}
+      return { ok:true, resposta:`Última OF de ${String(cliente||clienteTerm).trim()}: ${String(numero||'—').trim()}`, html };
+    }
+  }
 
   if (t.includes('ultima') || t.includes('última') || t.includes('ultimo') || t.includes('último') || t.includes('mais recente') || t.includes('recente')) {
     if (t.includes('cliente') || t.includes('of') || t.includes('pedido')) {
@@ -1419,6 +1486,56 @@ window.__jarvisTryLocalQuery = function (text) {
     return { ok:true, resposta:`Total de OFs hoje (${hoje.split('-').reverse().join('/')}): ${n}.` };
   }
 
+  if (clienteTerm && (t.includes('of') || t.includes('pedido') || t.includes('quero ver') || t.includes('me mostra') || t.includes('o que tem'))) {
+    const list = window.buscarOFsCliente(clienteTerm, status);
+    if (isCount) {
+      const head = `${String(clienteTerm).trim()} possui ${list.length} OF(s)${status !== 'todas' ? ` ${status}` : ''}.`.replace(/\s+/g,' ').trim();
+      const lines = list.slice(0, 10).map((o)=>{
+        const numero = o?.of || o?.numero || o?.of_num || '';
+        const entrega = ent(o);
+        return `• Nº ${String(numero||'—').replace(/\D/g,'') || String(numero||'—')} — entrega ${String(entrega||'—').split('-').reverse().join('/')}${entrega && entrega < hoje ? ' ⚠️' : ''}`;
+      }).join('\n');
+      try{ console.log('[JARVIS RESULT]', { total: list.length }); }catch(e){}
+      return { ok:true, resposta: head + (lines ? `\n${lines}` : '') };
+    }
+    if (!list.length) {
+      const alt = status.includes('abert') ? window.buscarOFsCliente(clienteTerm, 'concluida') : [];
+      const msg = `Não encontrei OFs para "${clienteTerm}" com status "${status}".` + (alt.length ? ` Encontrei ${alt.length} concluída(s). Quer ver?` : '');
+      try{ console.log('[JARVIS RESULT]', { total: 0 }); }catch(e){}
+      return { ok:true, resposta: msg };
+    }
+    const rows = list.slice(0, 25).map((o)=>({
+      numero: o?.of || o?.numero || o?.of_num || '',
+      cliente: o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '',
+      produto: o?.descricao || o?.prodDesc || o?.produto || '',
+      entrega: ent(o),
+      status: String(o?.status||'').trim(),
+    }));
+    const head = `Encontrei ${list.length} OF(s)${status !== 'todas' ? ` ${status}` : ''} para "${clienteTerm}".`.replace(/\s+/g,' ').trim();
+    const cardsTxt = list.slice(0, 5).map((o)=>{
+      const numero = o?.of || o?.numero || o?.of_num || '';
+      const cli = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+      const prod = o?.descricao || o?.prodDesc || o?.produto || '—';
+      const qtd = o?.qtd ?? o?.quantidade ?? o?.qtd_pedida ?? '';
+      const st = String(o?.status || '').trim();
+      const entrega = ent(o);
+      let maq = String(o?.maq || '').trim();
+      try{ if(typeof ofFluxoGetMaquinaAtualAtiva === 'function'){ const m = ofFluxoGetMaquinaAtualAtiva(o); if(m) maq = String(m||'').trim(); } }catch(e){}
+      const prazo = entrega ? (entrega < hoje ? '⚠️ Atrasada' : (entrega === hoje ? '🟡 Hoje' : '✅ No prazo')) : '—';
+      return `📦 OF Nº ${String(numero||'—').replace(/\D/g,'') || String(numero||'—')} — ${String(cli||'—').trim()}\n   Produto: ${String(prod||'—').trim()}\n   Qtd: ${qtd === '' ? '—' : String(qtd)} caixas\n   Entrega: ${entrega ? entrega.split('-').reverse().join('/') : '—'} ${prazo}\n   Status: ${String(st||'—').trim()}\n   Máquina: ${maq || '—'}`;
+    }).join('\n\n');
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%"><thead><tr><th>OF</th><th>Cliente</th><th>Produto</th><th>Entrega</th><th>Status</th></tr></thead><tbody>
+          ${rows.map((r)=>`<tr><td>${String(r.numero).replace(/</g,'&lt;')}</td><td>${String(r.cliente).replace(/</g,'&lt;')}</td><td>${String(r.produto).replace(/</g,'&lt;')}</td><td>${String(r.entrega).replace(/</g,'&lt;')}</td><td>${statusBadge(r.status)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+    try{ console.log('[JARVIS RESULT]', { total: list.length }); }catch(e){}
+    return { ok:true, resposta: cardsTxt ? (head + '\n\n' + cardsTxt) : head, html };
+  }
+
   if (t.includes('of') && (t.includes('atras') || t.includes('atrasou'))) {
     const list = ofs.filter((o)=>!isConcluida(o) && !isCancelada(o) && ent(o) && ent(o) < hoje);
     const head = `OFs atrasadas: ${list.length}.`;
@@ -1438,6 +1555,53 @@ window.__jarvisTryLocalQuery = function (text) {
       </div>
     </div>`;
     return { ok:true, resposta: head, html };
+  }
+
+  if ((t.includes('produc') || t.includes('produz')) && (t.includes('hoje') || t.includes('hj')) && !clienteTerm) {
+    let list = ofs.filter((o)=>isProducao(o) && !isCancelada(o));
+    const listHoje = list.filter((o)=>ent(o) === hoje);
+    if(listHoje.length) list = listHoje;
+    const head = `Em produção ${listHoje.length ? 'hoje' : ''}: ${list.length} OF(s).`.replace(/\s+/g,' ').trim();
+    const cards = list.slice(0, 8).map((o)=>{
+      const numero = o?.of || o?.numero || o?.of_num || '';
+      const cli = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+      const prod = o?.descricao || o?.prodDesc || o?.produto || '—';
+      const entrega = ent(o);
+      let maq = String(o?.maq || '').trim();
+      try{ if(typeof ofFluxoGetMaquinaAtualAtiva === 'function'){ const m = ofFluxoGetMaquinaAtualAtiva(o); if(m) maq = String(m||'').trim(); } }catch(e){}
+      return `📦 OF Nº ${String(numero||'—').replace(/\D/g,'') || String(numero||'—')} — ${String(cli||'—').trim()}\n   Produto: ${String(prod||'—').trim()}\n   Entrega: ${entrega ? entrega.split('-').reverse().join('/') : '—'}\n   Máquina: ${maq || '—'}`;
+    }).join('\n\n');
+    try{ console.log('[JARVIS RESULT]', { total: list.length }); }catch(e){}
+    return { ok:true, resposta: cards ? (head + '\n\n' + cards) : head };
+  }
+
+  if ((t.includes('cliente') || t.includes('clientes')) && (t.includes('amanha') || t.includes('amanhã')) && (t.includes('entrega') || t.includes('entregar'))) {
+    const list = ofs.filter((o)=>!isConcluida(o) && !isCancelada(o) && ent(o) === amanha);
+    const map = new Map();
+    list.forEach((o)=>{
+      const cli = String(o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '—').trim() || '—';
+      map.set(cli, (map.get(cli) || 0) + 1);
+    });
+    const arr = Array.from(map.entries()).sort((a,b)=>b[1]-a[1]);
+    const head = `Clientes com entrega amanhã (${amanha.split('-').reverse().join('/')}): ${arr.length}.`;
+    const lines = arr.slice(0, 20).map(([cli, n])=>`• ${cli} — ${n} OF(s)`).join('\n');
+    try{ console.log('[JARVIS RESULT]', { total: list.length, clientes: arr.length }); }catch(e){}
+    return { ok:true, resposta: head + (lines ? `\n${lines}` : '') };
+  }
+
+  if (t.includes('maquin') && clienteTerm && !(t.includes('produc') || t.includes('produz'))) {
+    const list = window.buscarOFsCliente(clienteTerm, 'todas').filter((o)=>!isCancelada(o));
+    const pick = list.find((o)=>isProducao(o)) || list.find((o)=>isAberta(o)) || list[0] || null;
+    if(!pick) return { ok:true, resposta:`Não encontrei OFs para "${clienteTerm}".` };
+    let maq = String(pick?.maq || '').trim();
+    try{ if(typeof ofFluxoGetMaquinaAtualAtiva === 'function'){ const m = ofFluxoGetMaquinaAtualAtiva(pick); if(m) maq = String(m||'').trim(); } }catch(e){}
+    const numero = pick?.of || pick?.numero || pick?.of_num || '';
+    const cli = pick?.cliNome || pick?.clinome || pick?.cliente_nome || pick?.cliente || '';
+    const entrega = ent(pick);
+    const st = String(pick?.status || '').trim();
+    const msg = `Máquina: ${maq || '—'} (OF Nº ${String(numero||'—').replace(/\D/g,'') || String(numero||'—')} — ${String(cli||clienteTerm).trim()} — entrega ${entrega ? entrega.split('-').reverse().join('/') : '—'} — ${st || '—'})`;
+    try{ console.log('[JARVIS RESULT]', { total: 1 }); }catch(e){}
+    return { ok:true, resposta: msg };
   }
 
   if (t.includes('maquin') && (t.includes('produz') || t.includes('produc')) && t.includes('cliente')) {
@@ -1523,7 +1687,7 @@ window.__jarvisTryLocalQuery = function (text) {
     return { ok:true, resposta: head, html };
   }
   if (t.includes('maquin') && t.includes('parad')) {
-    const maqs = Array.isArray(ctx.maquinas) ? ctx.maquinas : ((typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)) ? MAQUINAS : []);
+    const maqs = maquinasCtx;
     const aps = (typeof APONTAMENTOS !== 'undefined' && Array.isArray(APONTAMENTOS)) ? APONTAMENTOS : [];
     const ativas = new Set(aps.filter((a)=>window.__jarvisNorm(a?.status).includes('andamento') || window.__jarvisNorm(a?.status).includes('em_andamento')).map((a)=>String(a?.maquina_id||a?.maquinaId||'').trim()).filter(Boolean));
     const paradas = maqs.filter((m)=>m && m.id && !ativas.has(String(m.id).trim()));
@@ -1563,7 +1727,7 @@ window.__jarvisTryLocalQuery = function (text) {
     return { ok:true, resposta: head, html };
   }
   if (t.includes('estoque') && (t.includes('abaixo') || t.includes('minim') || t.includes('mínim'))) {
-    const est = Array.isArray(ctx.estoque) ? ctx.estoque : ((typeof ESTOQUE !== 'undefined' && Array.isArray(ESTOQUE)) ? ESTOQUE : []);
+    const est = estoqueCtx;
     const rows = est.map((x)=>{
       const q = Number(x?.quantidade ?? x?.qtd ?? 0);
       const min = Number(x?.quantidade_minima ?? x?.minimo ?? x?.min ?? 0);
@@ -40134,6 +40298,7 @@ window.atualizarChapas = async function(){
 
   const LS_MAQ_DATE = 'italy_mobile_ofmaq_date_v1';
   const LS_MAQ_EMP = 'italy_mobile_ofmaq_emp_v1';
+  const LS_MAQ_SHOW_ALL = 'italy_mobile_ofmaq_show_all_v1';
   const LS_MAQ_SEM_PAPEL = 'italy_mobile_sem_papel_v1';
   const MAQUINAS_MOBILE_PERMITIDAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
   const todayIso = ()=>new Date().toISOString().slice(0,10);
@@ -40155,6 +40320,11 @@ window.atualizarChapas = async function(){
     mobileState.maqEmp = String(localStorage.getItem(LS_MAQ_EMP) || '').trim();
   }catch(e){
     mobileState.maqEmp = '';
+  }
+  try{
+    mobileState.maqShowAll = String(localStorage.getItem(LS_MAQ_SHOW_ALL) || '') === '1';
+  }catch(e){
+    mobileState.maqShowAll = false;
   }
 
   function getOfDataEntrega(of){
@@ -40531,7 +40701,10 @@ window.atualizarChapas = async function(){
       try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
     };
     const q = mobNorm(String(mobileState.maqSearch || '').trim());
-    let ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((of)=>{
+    const showAll = !!mobileState.maqShowAll;
+    let ofsBase = (mobileState.ofs || []).filter((of)=>{
+      if(of?.deleted_at) return false;
+      if(!showAll && !isOfAtiva(of)) return false;
       const dt = getOfDataEntrega(of);
       if(isHoje) return (!dt || dt <= hoje);
       return dt === iso;
@@ -40626,6 +40799,32 @@ window.atualizarChapas = async function(){
       return remote || local;
     };
 
+    const entregaBadge = (entIso)=>{
+      const d = String(entIso||'').slice(0,10);
+      if(!d) return `<span style="color:#8b93a7">—</span>`;
+      const color = (d < hoje) ? '#ef4444' : (d === hoje) ? '#fbbf24' : '#22c55e';
+      const lbl = fmtBR(d);
+      return `<span style="color:${color};font-weight:900;font-family:var(--mono)}">${esc(lbl)}</span>`;
+    };
+    const statusBadge = (st, entIso)=>{
+      let s = String(st||'').toLowerCase();
+      try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+      s = s.trim();
+      const e = String(entIso||'').slice(0,10);
+      let bg = '#1a56db';
+      let lbl = 'Em aberto';
+      if(s.includes('produc')) { bg = '#f59e0b'; lbl = 'Em produção'; }
+      else if(s.includes('conclu') || s === 'pedido pronto') { bg = '#16a34a'; lbl = 'Concluída'; }
+      else if(s.includes('cancel')) { bg = '#111827'; lbl = 'Cancelada'; }
+      else if(s.includes('paus')) { bg = '#6b7280'; lbl = 'Pausada'; }
+      else { bg = '#1a56db'; lbl = 'Em aberto'; }
+      if(e && e < hoje && !(s.includes('conclu') || s === 'pedido pronto' || s.includes('cancel'))){
+        bg = '#dc2626';
+        lbl = 'Atrasada';
+      }
+      return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.78rem;background:${bg};color:#fff;white-space:nowrap">${esc(lbl)}</span>`;
+    };
+
     const cardHtml = (nome)=>{
       const exp = !!mobileState.maquinaExpanded[nome];
       const list = byMaq.get(nome) || [];
@@ -40640,8 +40839,8 @@ window.atualizarChapas = async function(){
           const cli = getOfCliente(of);
           const prod = getOfProduto(of);
           const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
-          const ent = fmtBR(getOfEntrega(of));
-          const st = String(of?.status || '').trim() || '—';
+          const entIso = getOfEntrega(of);
+          const st = String(of?.status || '').trim() || 'Em aberto';
           const id = String(of?.id || '').trim();
           const tempo = fmtTempo(nome, qtd);
           const imgUrl = getMobileOfImagem(of);
@@ -40653,22 +40852,24 @@ window.atualizarChapas = async function(){
             <div style="display:flex;gap:12px;align-items:flex-start">
               ${imgHtml}
               <div style="min-width:0;flex:1">
-                <div class="mobile-of-title" style="margin:0">
-                  <div class="n">OF ${esc(num)}</div>
-                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
-                    <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
-                    <span class="st">${esc(st)}</span>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                  <div style="min-width:0">
+                    <div style="font-weight:900;color:#4a9eff;white-space:nowrap">Nº ${esc(String(num))}</div>
+                    <div style="font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(cli)}</div>
+                    <div style="color:#d7def2;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(prod)}</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto">
+                    ${statusBadge(st, entIso)}
+                    <div style="font-weight:900;font-family:var(--mono);color:#d7def2">📦 ${esc(String(qtd))} cx</div>
                   </div>
                 </div>
-                <div class="mobile-of-meta">
-                  <div style="margin-top:4px"><b>Cliente:</b> ${esc(cli)}</div>
-                  <div><b>Produto:</b> ${esc(prod)}</div>
-                  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-                    <div><b>Qtd:</b> ${esc(String(qtd))}</div>
-                    <div><b>Entrega:</b> ${esc(ent)}</div>
-                    <div><b>⏱</b> ${esc(String(tempo))}</div>
-                    <div><b>⚡</b> ${esc(String(getMaqPhora(nome) || '—'))} cx/h</div>
-                  </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;flex-wrap:wrap">
+                  <div style="font-weight:900">📅 Entrega: ${entregaBadge(entIso)}</div>
+                  <div style="color:#8b93a7;font-family:var(--mono);font-weight:900">${esc(String(nome||''))}</div>
+                </div>
+                <div style="margin-top:6px;color:#8b93a7;font-family:var(--mono);font-weight:900;display:flex;gap:12px;flex-wrap:wrap">
+                  <div>⏱ ${esc(String(tempo))}</div>
+                  <div>⚡ ${esc(String(getMaqPhora(nome) || '—'))} cx/h</div>
                 </div>
               </div>
             </div>
@@ -40701,6 +40902,10 @@ window.atualizarChapas = async function(){
         <div style="margin-top:10px">
           <input type="text" id="mob-maq-search" value="${esc(String(mobileState.maqSearch||''))}" placeholder="🔍 Buscar cliente, nº OF ou produto..." style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:10px 12px;color:#fff;font-size:16px">
         </div>
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <button class="mobile-btn" id="mob-maq-toggle-all" style="padding:9px 12px">${showAll ? '✅ Mostrando todas' : '👀 Só ativas'}</button>
+          <div style="color:#8b93a7;font-family:var(--mono);font-weight:900">Filtro: cliente/OF/produto</div>
+        </div>
         <div style="margin-top:10px;color:#d7def2;font-weight:900;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <span>${esc(String(totalOfs))} OFs — ${esc(String(totalCaixas))} caixas para ${esc(fmtBR(iso))}</span>
           <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
@@ -40713,6 +40918,7 @@ window.atualizarChapas = async function(){
     const persist = ()=>{
       try{ localStorage.setItem(LS_MAQ_DATE, String(mobileState.maqDate||'')); }catch(e){}
       try{ localStorage.setItem(LS_MAQ_EMP, String(mobileState.maqEmp||'')); }catch(e){}
+      try{ localStorage.setItem(LS_MAQ_SHOW_ALL, mobileState.maqShowAll ? '1' : '0'); }catch(e){}
     };
     const refresh = async ()=>{
       const hint = byId('mob-pull-hint'); if(hint) hint.style.display = 'block';
@@ -40725,6 +40931,11 @@ window.atualizarChapas = async function(){
     byId('mob-date-today')?.addEventListener('click', ()=>{ mobileState.maqDate = todayIso(); persist(); refresh(); });
     byId('mob-date')?.addEventListener('change', (e)=>{ mobileState.maqDate = clampIso(e?.target?.value || todayIso()); persist(); refresh(); });
     byId('mob-emp')?.addEventListener('change', (e)=>{ mobileState.maqEmp = String(e?.target?.value || '').trim(); persist(); refresh(); });
+    byId('mob-maq-toggle-all')?.addEventListener('click', ()=>{
+      mobileState.maqShowAll = !mobileState.maqShowAll;
+      persist();
+      renderMaquinas();
+    });
     try{
       let tmr = null;
       byId('mob-maq-search')?.addEventListener('input', (e)=>{
@@ -40732,6 +40943,87 @@ window.atualizarChapas = async function(){
         if(tmr) clearTimeout(tmr);
         tmr = setTimeout(()=>{ try{ renderMaquinas(); }catch(_e){} }, 300);
       });
+    }catch(e){}
+
+    try{
+      const input = byId('mob-maq-search');
+      if(input && !input.dataset._acBound){
+        input.dataset._acBound = '1';
+        let dd = document.getElementById('mob-maq-ac');
+        if(!dd){
+          dd = document.createElement('div');
+          dd.id = 'mob-maq-ac';
+          dd.style.position = 'fixed';
+          dd.style.zIndex = '10050';
+          dd.style.display = 'none';
+          dd.style.maxHeight = '220px';
+          dd.style.overflow = 'auto';
+          dd.style.background = '#0f0f1a';
+          dd.style.border = '1px solid #2a2a4a';
+          dd.style.borderRadius = '12px';
+          dd.style.boxShadow = '0 12px 30px rgba(0,0,0,.45)';
+          document.body.appendChild(dd);
+        }
+        const getClientes = ()=>{
+          const base = (typeof window.__jarvisGetData === 'function') ? window.__jarvisGetData() : null;
+          const arr = base && Array.isArray(base.clientes) ? base.clientes : ((typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : []);
+          return arr.filter((c)=>c && (c.nome || c.fantasia || c.razao_social));
+        };
+        const pos = ()=>{
+          try{
+            const r = input.getBoundingClientRect();
+            dd.style.left = Math.max(8, r.left) + 'px';
+            dd.style.top = (r.bottom + 6) + 'px';
+            dd.style.width = Math.max(240, r.width) + 'px';
+          }catch(e){}
+        };
+        const hide = ()=>{ dd.style.display = 'none'; dd.innerHTML = ''; };
+        const show = (items)=>{
+          pos();
+          dd.innerHTML = items.map((it)=>{
+            const nm = String(it?.nome || it?.fantasia || it?.razao_social || '').trim();
+            return `<div data-nm="${esc(nm)}" style="padding:10px 12px;border-bottom:1px solid #2a2a4a;cursor:pointer;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(nm)}</div>`;
+          }).join('');
+          dd.style.display = items.length ? 'block' : 'none';
+        };
+        const update = ()=>{
+          const q0 = mobNorm(String(input.value || '').trim());
+          if(q0.length < 2) return hide();
+          const clis = getClientes();
+          const hits = clis.map((c)=>{
+            const nm = String(c?.nome || c?.fantasia || c?.razao_social || '').trim();
+            const nn = mobNorm(nm);
+            const idx = nn.indexOf(q0);
+            return { c, idx: idx < 0 ? 9999 : idx };
+          }).filter((x)=>x.idx < 9999).sort((a,b)=>a.idx-b.idx).slice(0, 6).map((x)=>x.c);
+          if(!hits.length) return hide();
+          show(hits);
+        };
+        input.addEventListener('input', ()=>{ try{ update(); }catch(e){} });
+        input.addEventListener('focus', ()=>{ try{ update(); }catch(e){} });
+        dd.addEventListener('click', (ev)=>{
+          const t = ev?.target || null;
+          const nm = t && t.getAttribute ? t.getAttribute('data-nm') : '';
+          if(!nm) return;
+          input.value = nm;
+          mobileState.maqSearch = nm;
+          hide();
+          renderMaquinas();
+        });
+        if(!window.__mobMaqAcGlobalBound){
+          window.__mobMaqAcGlobalBound = 1;
+          window.addEventListener('resize', ()=>{ try{ if(dd.style.display==='block') pos(); }catch(e){} });
+          document.addEventListener('mousedown', (ev)=>{
+            try{
+              if(dd.style.display !== 'block') return;
+              const tg = ev?.target;
+              if(tg === input || (tg && input.contains && input.contains(tg))) return;
+              if(tg === dd || (tg && dd.contains && dd.contains(tg))) return;
+              hide();
+            }catch(e){}
+          });
+        }
+      }
     }catch(e){}
 
     content.querySelectorAll('[data-maq]').forEach((el)=>{
