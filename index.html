@@ -685,8 +685,15 @@ body.mobile-mode #tablet-view,
 body.mobile-mode #device-screen,
 body.mobile-mode #sidebar-overlay,
 body.mobile-mode #mobile-access-block,
+body.mobile-mode #assist-fab,
+body.mobile-mode #assist-panel,
+body.mobile-mode #assist-overlay,
 body.mobile-mode #assist-mini{display:none!important;}
 body.mobile-mode .mobile-only{display:flex!important;}
+
+@media (max-width:768px){
+  #assist-fab{display:none!important;}
+}
 
 .mobile-app{
   position:fixed;
@@ -1252,6 +1259,7 @@ window.__jarvisCanSeeFinance = function () {
 window.buscarOFsCliente = function (nomeCliente, status) {
   const q = window.__jarvisNorm(nomeCliente);
   const stQ = window.__jarvisNorm(status || 'todas');
+  try{ console.log('[JARVIS SEARCH]', { cliente: nomeCliente, status: status || 'todas' }); }catch(e){}
   const ctx = window.JARVIS_CONTEXT || {};
   const ofs = Array.isArray(ctx.ofs) ? ctx.ofs : (Array.isArray(window.OFS) ? window.OFS : []);
   const clientes = Array.isArray(ctx.clientes) ? ctx.clientes : (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []);
@@ -1329,8 +1337,16 @@ window.__jarvisTryLocalQuery = function (text) {
   const normStatus = (s)=>window.__jarvisNorm(String(s||''));
   const isConcluida = (o)=>{ const s=normStatus(o?.status); return s.includes('conclu') || s === 'pedido pronto'; };
   const isCancelada = (o)=>{ const s=normStatus(o?.status); return s.includes('cancel'); };
+  const isProducao = (o)=>{ const s=normStatus(o?.status); return s.includes('produc'); };
+  const isAberta = (o)=>!isConcluida(o) && !isCancelada(o) && !isProducao(o) && !normStatus(o?.status).includes('paus');
   const ent = (o)=>String(o?.data_entrega || o?.ent || o?.dia || '').slice(0,10);
   const conc = (o)=>String(o?.data_conclusao || '').slice(0,10);
+  const ts = (o)=>{
+    const s = String(o?.created_at || o?.updated_at || '');
+    const d = new Date(s);
+    const n = d.getTime();
+    return Number.isFinite(n) ? n : 0;
+  };
   const statusBadge = (st)=>{
     const s = normStatus(st);
     let bg = '#1a56db';
@@ -1341,6 +1357,117 @@ window.__jarvisTryLocalQuery = function (text) {
     else if(s.includes('cancel')) bg = '#111827';
     return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-weight:900;font-size:.74rem;background:${bg};color:#fff;white-space:nowrap">${String(st||'').replace(/</g,'&lt;')}</span>`;
   };
+
+  if (t.includes('ultima') || t.includes('última') || t.includes('ultimo') || t.includes('último') || t.includes('mais recente') || t.includes('recente')) {
+    if (t.includes('cliente') || t.includes('of') || t.includes('pedido')) {
+      const sorted = ofs.slice().sort((a,b)=>ts(b)-ts(a));
+      const o = sorted[0] || null;
+      if (!o) return { ok:true, resposta:'Não encontrei OFs no contexto carregado.' };
+      const numero = o?.of || o?.numero || o?.of_num || '';
+      const cliente = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+      const produto = o?.descricao || o?.prodDesc || o?.produto || '';
+      const st = String(o?.status || '').trim();
+      const entrega = ent(o);
+      const html = `<div style="display:grid;gap:10px">
+        <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+          <div style="font-weight:900">OF mais recente</div>
+          <div style="margin-top:6px;display:grid;gap:6px">
+            <div><b>OF:</b> ${String(numero||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Cliente:</b> ${String(cliente||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Produto:</b> ${String(produto||'—').replace(/</g,'&lt;')}</div>
+            <div><b>Status:</b> ${statusBadge(st)}</div>
+            <div><b>Entrega:</b> ${String(entrega||'').replace(/</g,'&lt;')}</div>
+          </div>
+        </div>
+      </div>`;
+      return { ok:true, resposta:`OF mais recente: ${String(numero||'—').trim()} (${String(cliente||'—').trim()})`, html };
+    }
+  }
+
+  const mOfNum = raw.match(/(?:\bOF\b|\bPedido\b)\s*#?\s*(\d{1,8})/i);
+  if (mOfNum && mOfNum[1]) {
+    const digits = String(mOfNum[1] || '').replace(/\D/g,'');
+    const hit = ofs.find((o)=>{
+      const v = String(o?.of ?? o?.numero ?? o?.of_num ?? '').replace(/\D/g,'');
+      return v && v === digits;
+    }) || null;
+    if (!hit) return { ok:true, resposta:`Não encontrei a OF ${digits} no contexto carregado.` };
+    const numero = hit?.of || hit?.numero || hit?.of_num || '';
+    const cliente = hit?.cliNome || hit?.clinome || hit?.cliente_nome || hit?.cliente || '';
+    const produto = hit?.descricao || hit?.prodDesc || hit?.produto || '';
+    const st = String(hit?.status || '').trim();
+    const entrega = ent(hit);
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+        <div style="font-weight:900">OF ${String(numero||digits).replace(/</g,'&lt;')}</div>
+        <div style="margin-top:6px;display:grid;gap:6px">
+          <div><b>Cliente:</b> ${String(cliente||'—').replace(/</g,'&lt;')}</div>
+          <div><b>Produto:</b> ${String(produto||'—').replace(/</g,'&lt;')}</div>
+          <div><b>Status:</b> ${statusBadge(st)}</div>
+          <div><b>Entrega:</b> ${String(entrega||'').replace(/</g,'&lt;')}</div>
+        </div>
+      </div>
+    </div>`;
+    return { ok:true, resposta:`OF ${String(numero||digits).trim()} — ${String(cliente||'—').trim()}`, html };
+  }
+
+  if (t.includes('quant') && t.includes('of') && (t.includes('hoje') || t.includes('hj'))) {
+    const n = ofs.filter((o)=>{
+      const d = ent(o) || String(o?.created_at || '').slice(0,10);
+      return d === hoje && !isCancelada(o);
+    }).length;
+    return { ok:true, resposta:`Total de OFs hoje (${hoje.split('-').reverse().join('/')}): ${n}.` };
+  }
+
+  if (t.includes('of') && (t.includes('atras') || t.includes('atrasou'))) {
+    const list = ofs.filter((o)=>!isConcluida(o) && !isCancelada(o) && ent(o) && ent(o) < hoje);
+    const head = `OFs atrasadas: ${list.length}.`;
+    const rows = list.slice(0, 25).map((o)=>({
+      numero: o?.of || o?.numero || o?.of_num || '',
+      cliente: o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '',
+      produto: o?.descricao || o?.prodDesc || o?.produto || '',
+      entrega: ent(o),
+      status: String(o?.status||'').trim(),
+    }));
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%"><thead><tr><th>OF</th><th>Cliente</th><th>Produto</th><th>Entrega</th><th>Status</th></tr></thead><tbody>
+          ${rows.map((r)=>`<tr><td>${String(r.numero).replace(/</g,'&lt;')}</td><td>${String(r.cliente).replace(/</g,'&lt;')}</td><td>${String(r.produto).replace(/</g,'&lt;')}</td><td>${String(r.entrega).replace(/</g,'&lt;')}</td><td>${statusBadge(r.status)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+    return { ok:true, resposta: head, html };
+  }
+
+  if (t.includes('maquin') && (t.includes('produz') || t.includes('produc')) && t.includes('cliente')) {
+    const mCli = raw.match(/cliente\s+(.+)$/i) || raw.match(/do\s+cliente\s+(.+)$/i) || raw.match(/da\s+(.+)$/i) || null;
+    const cliName = mCli ? String(mCli[1] || '').trim() : '';
+    const list = window.buscarOFsCliente(cliName, 'producao');
+    const o = list[0] || null;
+    if(!o) return { ok:true, resposta:`Não encontrei OFs em produção para "${cliName}".` };
+    let maq = String(o?.maq || '').trim();
+    try{ if(typeof ofFluxoGetMaquinaAtualAtiva === 'function'){ const m = ofFluxoGetMaquinaAtualAtiva(o); if(m) maq = String(m||'').trim(); } }catch(e){}
+    const numero = o?.of || o?.numero || o?.of_num || '';
+    const cliente = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+    const produto = o?.descricao || o?.prodDesc || o?.produto || '';
+    const st = String(o?.status || '').trim();
+    const entrega = ent(o);
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
+        <div style="font-weight:900">Em produção agora</div>
+        <div style="margin-top:6px;display:grid;gap:6px">
+          <div><b>Máquina:</b> ${String(maq||'—').replace(/</g,'&lt;')}</div>
+          <div><b>OF:</b> ${String(numero||'—').replace(/</g,'&lt;')}</div>
+          <div><b>Cliente:</b> ${String(cliente||'—').replace(/</g,'&lt;')}</div>
+          <div><b>Produto:</b> ${String(produto||'—').replace(/</g,'&lt;')}</div>
+          <div><b>Status:</b> ${statusBadge(st)}</div>
+          <div><b>Entrega:</b> ${String(entrega||'').replace(/</g,'&lt;')}</div>
+        </div>
+      </div>
+    </div>`;
+    return { ok:true, resposta:`Máquina: ${maq || '—'} (OF ${String(numero||'—').trim()} — ${String(cliente||'—').trim()})`, html };
+  }
   const mCli = raw.match(/cliente\s+(.+)$/i) || raw.match(/da\s+(.+)$/i) || null;
   if (t.includes('of') && (t.includes('cliente') || (mCli && mCli[1]))) {
     const cliName = mCli ? String(mCli[1] || '').trim() : '';
@@ -38883,6 +39010,29 @@ window.atualizarChapas = async function(){
     `;
     document.body.appendChild(panel);
 
+    const updateVisibility = ()=>{
+      try{
+        const hide = !!(document.body && document.body.classList && document.body.classList.contains('mobile-mode')) || (Number(window.innerWidth||0) < 768);
+        fab.style.display = hide ? 'none' : '';
+        if(hide) mini.style.display = 'none';
+        if(hide){
+          try{ panel.classList.remove('open'); }catch(e){}
+          panel.style.display = 'none';
+          overlay.style.display = 'none';
+        }else{
+          panel.style.display = 'flex';
+        }
+      }catch(e){}
+    };
+    updateVisibility();
+    try{
+      if(!window.__assistVisBound){
+        window.__assistVisBound = 1;
+        window.addEventListener('resize', ()=>{ try{ updateVisibility(); }catch(e){} });
+        window.addEventListener('orientationchange', ()=>{ try{ updateVisibility(); }catch(e){} });
+      }
+    }catch(e){}
+
     window.jarvisPrintImage = (url)=>{
       const u = String(url || '').trim();
       if(!u) return;
@@ -40377,11 +40527,21 @@ window.atualizarChapas = async function(){
       }
       return '';
     };
-    const ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((of)=>{
+    const mobNorm = (s)=>{
+      try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
+    };
+    const q = mobNorm(String(mobileState.maqSearch || '').trim());
+    let ofsBase = (mobileState.ofs || []).filter(isOfAtiva).filter((of)=>{
       const dt = getOfDataEntrega(of);
       if(isHoje) return (!dt || dt <= hoje);
       return dt === iso;
     });
+    if(q){
+      ofsBase = ofsBase.filter((of)=>{
+        const txt = mobNorm([getOfNumero(of), getOfCliente(of), getOfProduto(of)].join(' '));
+        return txt.includes(q);
+      });
+    }
     const ofs = ofsBase.filter((of)=>{
       const mk = String(getOfMaquinaAtual(of) || '').trim();
       const perm = matchPerm(mk);
@@ -40538,6 +40698,9 @@ window.atualizarChapas = async function(){
             <option value="E3" ${empId==='E3'?'selected':''}>Oestepack</option>
           </select>
         </div>
+        <div style="margin-top:10px">
+          <input type="text" id="mob-maq-search" value="${esc(String(mobileState.maqSearch||''))}" placeholder="🔍 Buscar cliente, nº OF ou produto..." style="width:100%;background:#0f0f1a;border:1px solid #2a2a4a;border-radius:12px;padding:10px 12px;color:#fff;font-size:16px">
+        </div>
         <div style="margin-top:10px;color:#d7def2;font-weight:900;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
           <span>${esc(String(totalOfs))} OFs — ${esc(String(totalCaixas))} caixas para ${esc(fmtBR(iso))}</span>
           <span class="mob-day-badge ${esc(rel.cls)}">${esc(rel.lbl)}</span>
@@ -40562,6 +40725,14 @@ window.atualizarChapas = async function(){
     byId('mob-date-today')?.addEventListener('click', ()=>{ mobileState.maqDate = todayIso(); persist(); refresh(); });
     byId('mob-date')?.addEventListener('change', (e)=>{ mobileState.maqDate = clampIso(e?.target?.value || todayIso()); persist(); refresh(); });
     byId('mob-emp')?.addEventListener('change', (e)=>{ mobileState.maqEmp = String(e?.target?.value || '').trim(); persist(); refresh(); });
+    try{
+      let tmr = null;
+      byId('mob-maq-search')?.addEventListener('input', (e)=>{
+        mobileState.maqSearch = String(e?.target?.value || '');
+        if(tmr) clearTimeout(tmr);
+        tmr = setTimeout(()=>{ try{ renderMaquinas(); }catch(_e){} }, 300);
+      });
+    }catch(e){}
 
     content.querySelectorAll('[data-maq]').forEach((el)=>{
       el.addEventListener('click', (e)=>{
