@@ -23091,7 +23091,9 @@ async function carregarOFSArquivo(force=false){
       _ofsArquivoLastLoad = Date.now();
       return { ok:true, data: Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [] };
     }catch(e){
-      return { ok:false, error: String(e?.message || e) };
+      try { console.error('[OFS] API falhou, mantendo cache anterior'); } catch (_) {}
+      const cached = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
+      return { ok:false, error: String(e?.message || e), data: cached, cached: cached.length > 0 };
     }finally{
       _ofsArquivoLoading = false;
       try{ window._ofsArquivoPromise = null; }catch(_){}

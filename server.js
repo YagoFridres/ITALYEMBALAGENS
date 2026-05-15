@@ -266,6 +266,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/ofs_test', async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('id,numero,status,created_at')
+      .limit(3);
+    console.log('[OFS TEST]', error?.message || 'OK', Array.isArray(data) ? data.length : null);
+    return res.json({ ok: !error, data: data || [], error: error?.message || null });
+  } catch (e) {
+    console.error('[OFS TEST FATAL]', e?.message);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 const JWT_SECRET = process.env.JWT_SECRET || 'italy_secret_2026';
 
 function _getTokenFromReq(req) {
@@ -282,12 +297,18 @@ function _getTokenFromReq(req) {
 }
 
 function authMiddleware(req, res, next) {
+  try { console.log('[AUTH]', req.method, req.path); } catch (_) {}
   const token = _getTokenFromReq(req);
-  if (!token) return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+  if (!token) {
+    try { console.log('[AUTH] token missing'); } catch (_) {}
+    return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+  }
   try {
     req.usuario = jwt.verify(token, JWT_SECRET);
+    try { console.log('[AUTH] OK', req.usuario?.email); } catch (_) {}
     return next();
   } catch (e) {
+    try { console.log('[AUTH] invalid', e?.message); } catch (_) {}
     return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
   }
 }
@@ -337,6 +358,7 @@ app.use((req, res, next) => {
   if (!req.path.startsWith('/api')) return next();
   if (req.method === 'OPTIONS') return next();
   if (req.path === '/api/health') return next();
+  if (req.path === '/api/ofs_test') return next();
   if (req.path === '/api/auth/login' || req.path === '/api/auth/login/') return next();
   if (req.path === '/api/auth/refresh' || req.path === '/api/auth/refresh/') return next();
   return authMiddleware(req, res, next);
@@ -2087,7 +2109,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const orderRaw = String(req.query.order || '').trim().toLowerCase();
     const orderAsc = orderRaw === 'asc';
     const orderDir = orderAsc ? 'asc' : 'desc';
+    const ALLOWED_ORDER_BY = new Set([
+      'created_at', 'updated_at', 'data_entrega', 'ent', 'dia',
+      'numero', 'of', 'status', 'valor_total',
+    ]);
     let orderBy = orderByRaw || 'created_at';
+    if (!ALLOWED_ORDER_BY.has(orderBy)) orderBy = 'created_at';
     if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
     const CACHE_VERSION = 'ofs_v4';
