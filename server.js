@@ -1441,12 +1441,18 @@ const OFS_TABLE_COLS = [
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
 const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
+function _ofsSelectableHas(col) {
+  try { return !!(OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.has === 'function' && OFS_SELECTABLE_COLS_SET.has(col)); } catch (_) { return false; }
+}
+function _ofsTableHas(col) {
+  try { return !!(OFS_TABLE_COLS_SET && typeof OFS_TABLE_COLS_SET.has === 'function' && OFS_TABLE_COLS_SET.has(col)); } catch (_) { return false; }
+}
 function _filterOfsPayloadKnownCols(input, keepMeta = true) {
   const src = input && typeof input === 'object' ? input : {};
   const out = {};
   Object.keys(src).forEach((k) => {
     if (keepMeta && String(k || '').startsWith('_')) { out[k] = src[k]; return; }
-    if (OFS_TABLE_COLS_SET.has(k)) out[k] = src[k];
+    if (_ofsTableHas(k)) out[k] = src[k];
   });
   return out;
 }
@@ -2046,8 +2052,13 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
-  console.log('[OFS GET START] query:', JSON.stringify(req.query));
+  console.log('[OFS GET INICIO]', req.query);
   try {
+    console.log('[OFS GET COLS CHECK]', {
+      tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
+      selectableLen: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
+      setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
+    });
     setNoCache(res);
     try {
       console.log('[OFS COLS]', JSON.stringify({
@@ -2077,7 +2088,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const orderAsc = orderRaw === 'asc';
     const orderDir = orderAsc ? 'asc' : 'desc';
     let orderBy = orderByRaw || 'created_at';
-    if (!OFS_SELECTABLE_COLS_SET.has(orderBy)) orderBy = 'created_at';
+    if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
     const CACHE_VERSION = 'ofs_v4';
     const cacheKey = [
@@ -2139,7 +2150,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       'maquina_perda', 'maq', 'fluxo_maquinas', 'maquina_atual_index',
       'imgs', 'imagem_url',
     ];
-    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
+    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => _ofsSelectableHas(c));
     const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
     const enrichJoinClientVend = async (rows) => {
       const arr = Array.isArray(rows) ? rows : [];
@@ -2209,7 +2220,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     };
 
-    const colsValidas = selectCols.filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
+    const colsValidas = selectCols.filter((c) => _ofsSelectableHas(c));
     let data = null;
     let rawErr = null;
     let colsArr = colsValidas.slice();
@@ -2225,11 +2236,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return true;
     };
     if (from && to) {
-      const fallback = (OFS_SELECTABLE_COLS_SET.has('dia') ? 'dia' : 'created_at');
+      const fallback = (_ofsSelectableHas('dia') ? 'dia' : 'created_at');
       const wantsEntrega = (dateFieldRaw === 'entrega' || dateFieldRaw === 'data_entrega' || dateFieldRaw === 'ent');
       if (wantsEntrega) {
-        if (OFS_SELECTABLE_COLS_SET.has('data_entrega')) dateCol = 'data_entrega';
-        else if (OFS_SELECTABLE_COLS_SET.has('ent')) dateCol = 'ent';
+        if (_ofsSelectableHas('data_entrega')) dateCol = 'data_entrega';
+        else if (_ofsSelectableHas('ent')) dateCol = 'ent';
         else dateCol = fallback;
       } else {
         dateCol = fallback;
@@ -2242,7 +2253,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     for (let t = 0; t < 5; t++) {
       let colsSel = colsArr.slice();
-      if (orderBy && OFS_SELECTABLE_COLS_SET.has(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
+      if (orderBy && _ofsSelectableHas(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
       const sel = colsSel.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
       let q = supabase
         .from('ofs')
@@ -2301,6 +2312,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     if (!data && rawErr) {
+      try { console.error('[OFS GET QUERY ERROR]', rawErr?.message || rawErr); } catch (_) {}
       _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit, offset, empId, status, from, to, lite });
       return res.status(500).json({ ok: false, error: String(rawErr.message || rawErr), rid: req._rid || null });
     }
