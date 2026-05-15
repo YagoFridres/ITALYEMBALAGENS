@@ -2085,17 +2085,17 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
-  console.log('[OFS CHEGOU]', req.query);
-  console.log('[OFS GET START]', req.query);
   try {
-    console.log('[OFS DEBUG ENTRY]', {
-      query: req.query,
-      usuario: req?.usuario?.id,
-      supabaseOk: !!supabase,
-      colsSetSize: OFS_SELECTABLE_COLS_SET?.size,
-    });
-  } catch (_) {}
-  try {
+    console.log('[OFS CHEGOU]', req.query);
+    console.log('[OFS GET START]', req.query);
+    try {
+      console.log('[OFS DEBUG ENTRY]', {
+        query: req.query,
+        usuario: req?.usuario?.id,
+        supabaseOk: !!supabase,
+        colsSetSize: OFS_SELECTABLE_COLS_SET?.size,
+      });
+    } catch (_) {}
     console.log('[OFS GET COLS CHECK]', {
       tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
       selectableLen: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
