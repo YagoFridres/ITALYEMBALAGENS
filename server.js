@@ -1439,7 +1439,7 @@ const OFS_TABLE_COLS = [
   'created_at', 'updated_at',
 ];
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
-const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.slice();
+const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
 function _filterOfsPayloadKnownCols(input, keepMeta = true) {
   const src = input && typeof input === 'object' ? input : {};
@@ -2049,6 +2049,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
   console.log('[OFS GET START] query:', JSON.stringify(req.query));
   try {
     setNoCache(res);
+    try {
+      console.log('[OFS COLS]', JSON.stringify({
+        table: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
+        selectable: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
+        set: OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number' ? OFS_SELECTABLE_COLS_SET.size : null,
+      }));
+    } catch (_) {}
     const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
     const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
@@ -2367,7 +2374,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     cacheSet(cacheKey, payload, 10 * 1000);
     return res.json({ ok: true, ...payload });
   } catch (e) {
-    console.error('[OFS GET FATAL]', e?.message, String(e?.stack || '').split('\n')[0]);
+    console.error('[OFS GET FATAL ERROR]', e?.message);
+    console.error('[OFS GET STACK]', e?.stack?.split('\n')?.slice(0, 5)?.join(' | '));
+    try {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,status,created_at')
+        .limit(5);
+      console.log('[OFS TEST]', error?.message || 'OK', Array.isArray(data) ? data.length : null);
+    } catch (e2) {
+      console.log('[OFS TEST]', String(e2?.message || e2));
+    }
     _logApiError('OFS GET', req, e, { query: req.query });
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
   }
