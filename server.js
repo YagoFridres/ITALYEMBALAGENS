@@ -2285,77 +2285,77 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let cliCols = clienteId ? ['cli_id', 'cliId', 'cliente_id', 'cliid'] : [];
     let numCols = numero ? ['numero', 'of', 'of_num'] : [];
 
-    for (let t = 0; t < 5; t++) {
-      let colsSel = colsArr.slice();
-      if (orderBy && _ofsSelectableHas(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
-      const sel = useSelectAllFallback ? '*' : (colsSel.join(',') || 'id,numero,status,created_at');
+    for (let tentativa = 0; tentativa < 8; tentativa++) {
+      const sel = tentativa === 0 ? '*' : (colsArr.length ? colsArr.join(',') : 'id,numero,status,created_at');
+
       let q = supabase
         .from('ofs')
         .select(sel, { count: 'exact' })
         .order(orderBy, { ascending: orderAsc })
         .range(offset, offset + limit - 1);
-      if (status) {
-        let sk = String(status || '').toLowerCase().trim();
-        try { sk = sk.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-        if (sk.includes('conclu') || sk === 'pedido pronto') {
-          q = q.in('status', ['Concluído', 'Concluido', 'Pedido Pronto', 'Pedido pronto']);
-        } else if (sk.includes('cancelad')) {
-          q = q.in('status', ['Cancelada', 'Cancelado']);
-        } else {
-          q = q.eq('status', status);
-        }
+
+      if (status) q = q.eq('status', status);
+
+      if (empId && Array.isArray(empCols) && empCols.length) {
+        const empCol = empCols[Math.min(tentativa, empCols.length - 1)];
+        if (empCol) q = q.eq(empCol, empId);
       }
-      if (empId && Array.isArray(empCols) && empCols.length) q = q.eq(empCols[0], empId);
+
       if (clienteId && Array.isArray(cliCols) && cliCols.length) {
         const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
         if (expr) q = q.or(expr);
       }
+
       if (numero && Array.isArray(numCols) && numCols.length) {
         const expr = numCols.map((c) => `${c}.eq.${numero}`).join(',');
         if (expr) q = q.or(expr);
       }
+
+      if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
+      if (from && to) q = q.gte(dateCol || 'data_entrega', from).lte(dateCol || 'data_entrega', to);
+
       const r = await q;
-      if (r.error) {
-        rawErr = r.error;
-        const errMsg = String(r.error?.message || r.error?.details || '');
-        console.error('[OFS RETRY] erro t=' + t + ':', errMsg);
 
-        const isColMissing =
-          String(r.error?.code || '').trim() === '42703' ||
-          /does not exist/i.test(errMsg) ||
-          /Could not find the/i.test(errMsg);
-
-        const colMatch =
-          errMsg.match(/column ofs\."?(\w+)"? does not exist/i) ||
-          errMsg.match(/column "?(\w+)"? does not exist/i) ||
-          errMsg.match(/Could not find the '(\w+)' column/i);
-
-        const colProb = colMatch ? colMatch[1] : null;
-
-        if (isColMissing) {
-          colMissingHits += 1;
-          if (colMissingHits > 2) useSelectAllFallback = true;
-        }
-
-        if (isColMissing && colProb) {
-          console.warn('[OFS RETRY] removendo coluna:', colProb);
-          colsArr = colsArr.filter((c) => c !== colProb);
-          if (orderBy === colProb) orderBy = 'created_at';
-          if (dateCol === colProb) dateCol = 'created_at';
-          if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
-          if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
-          if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
-          if (colsArr.length === 0) colsArr = ['id', 'numero', 'status', 'created_at'];
-          continue;
-        }
-
-        if (isColMissing && useSelectAllFallback) continue;
+      if (!r.error) {
+        data = r.data || [];
+        if (typeof r.count === 'number') total = r.count;
+        console.log('[OFS GET] OK tentativa=' + tentativa + ' rows=' + (Array.isArray(data) ? data.length : 0));
         break;
       }
-      data = r.data;
-      if (typeof r.count === 'number') total = r.count;
+
+      rawErr = r.error;
+      const msg = String(r.error?.message || '');
+      console.error('[OFS GET] erro tentativa=' + tentativa + ':', msg);
+
+      const colMatch =
+        msg.match(/column ofs\."?(\w+)"? does not exist/i) ||
+        msg.match(/column "?(\w+)"? does not exist/i) ||
+        msg.match(/Could not find the '(\w+)' column/i);
+
+      if (colMatch) {
+        const colProb = colMatch[1];
+        console.warn('[OFS GET] removendo coluna:', colProb);
+        colsArr = colsArr.filter((c) => c !== colProb);
+        if (orderBy === colProb) orderBy = 'created_at';
+        if (dateCol === colProb) dateCol = 'created_at';
+        if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
+        if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
+        if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
+        continue;
+      }
+
+      if (msg.includes('does not exist') || msg.includes('Could not find')) {
+        colsArr = [
+          'id', 'numero', 'of', 'status', 'created_at', 'updated_at', 'deleted_at',
+          'cli_id', 'cliId', 'cliente_id', 'emp_id', 'empId', 'empresa_id',
+          'data_entrega', 'ent', 'valor_total', 'valor_venda', 'qtd', 'quantidade',
+          'descricao', 'obs', 'urgente', 'urg', 'imgs', 'imagem_url',
+          'maq', 'fluxo_maquinas', 'data_conclusao', 'cliNome', 'clinome'
+        ];
+        continue;
+      }
+
       break;
     }
 
