@@ -297,19 +297,29 @@ function _getTokenFromReq(req) {
 }
 
 function authMiddleware(req, res, next) {
-  try { console.log('[AUTH]', req.method, req.path); } catch (_) {}
-  const token = _getTokenFromReq(req);
-  if (!token) {
-    try { console.log('[AUTH] token missing'); } catch (_) {}
-    return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
-  }
   try {
-    req.usuario = jwt.verify(token, JWT_SECRET);
-    try { console.log('[AUTH] OK', req.usuario?.email); } catch (_) {}
-    return next();
+    try { console.log('[AUTH]', req.method, req.path); } catch (_) {}
+    if (req && req.usuario && typeof req.usuario === 'object') {
+      try { console.log('[AUTH] skip (req.usuario já existe)'); } catch (_) {}
+      return next();
+    }
+    const token = _getTokenFromReq(req);
+    if (!token) {
+      try { console.log('[AUTH FAIL] token missing', req.path); } catch (_) {}
+      return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
+    }
+    try {
+      req.usuario = jwt.verify(token, JWT_SECRET);
+      try { console.log('[AUTH] OK', req.usuario?.email); } catch (_) {}
+      return next();
+    } catch (e) {
+      try { console.log('[AUTH FAIL] token invalid', req.path, e?.message); } catch (_) {}
+      return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
+    }
   } catch (e) {
-    try { console.log('[AUTH] invalid', e?.message); } catch (_) {}
-    return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
+    try { console.error('[AUTH FATAL]', e?.message); } catch (_) {}
+    try { console.error('[AUTH STACK]', e?.stack?.split('\n')?.slice(0, 5)?.join(' | ')); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 }
 
@@ -2075,7 +2085,8 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
-  console.log('[OFS GET START]', JSON.stringify(req.query));
+  console.log('[OFS CHEGOU]', req.query);
+  console.log('[OFS GET START]', req.query);
   try {
     console.log('[OFS DEBUG ENTRY]', {
       query: req.query,
