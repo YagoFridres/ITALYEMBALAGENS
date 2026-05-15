@@ -2266,6 +2266,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     }
 
+    let empCol = empId ? 'emp_id' : '';
+    let empColAlt = empId ? 'empresa_id' : '';
+    let cliCols = clienteId ? ['cli_id', 'cliente_id'] : [];
+    let numCols = numero ? ['numero', 'of'] : [];
+
     for (let t = 0; t < 5; t++) {
       let colsSel = colsArr.slice();
       if (orderBy && OFS_SELECTABLE_COLS_SET.has(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
@@ -2286,9 +2291,22 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           q = q.eq('status', status);
         }
       }
-      if (empId) q = q.eq('emp_id', empId);
-      if (clienteId) q = q.or(`cli_id.eq.${clienteId},cliente_id.eq.${clienteId}`);
-      if (numero) q = q.or(`numero.eq.${numero},of.ilike.%${numero}%`);
+      if (empId) {
+        const use = empCol || empColAlt;
+        if (use) q = q.eq(use, empId);
+      }
+      if (clienteId && Array.isArray(cliCols) && cliCols.length) {
+        const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
+        if (expr) q = q.or(expr);
+      }
+      if (numero && Array.isArray(numCols) && numCols.length) {
+        const expr = numCols.map((c) => {
+          if (c === 'numero') return `numero.eq.${numero}`;
+          if (c === 'of') return `of.ilike.%${numero}%`;
+          return '';
+        }).filter(Boolean).join(',');
+        if (expr) q = q.or(expr);
+      }
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
       const r = await q;
@@ -2304,10 +2322,19 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         msg.match(/column\s+ofs\."?(\w+)"?\s+does not exist/i)?.[1] ||
         msg.match(/Could not find the '([^']+)' column/i)?.[1] ||
         null;
-      if (colProb && colsArr.includes(colProb)) {
-        colsArr = colsArr.filter((c) => c !== colProb);
-        try { console.warn('[OFS GET] removendo coluna:', colProb); } catch (_) {}
-        continue;
+      if (colProb) {
+        let changed = false;
+        if (colsArr.includes(colProb)) { colsArr = colsArr.filter((c) => c !== colProb); changed = true; }
+        if (orderBy === colProb) { orderBy = 'created_at'; changed = true; }
+        if (dateCol === colProb) { dateCol = 'created_at'; changed = true; }
+        if (Array.isArray(cliCols) && cliCols.includes(colProb)) { cliCols = cliCols.filter((c) => c !== colProb); changed = true; }
+        if (Array.isArray(numCols) && numCols.includes(colProb)) { numCols = numCols.filter((c) => c !== colProb); changed = true; }
+        if (empCol === colProb) { empCol = empColAlt; empColAlt = ''; changed = true; }
+        else if (empColAlt === colProb) { empColAlt = ''; empCol = ''; changed = true; }
+        if (changed) {
+          try { console.warn('[OFS GET] removendo coluna:', colProb); } catch (_) {}
+          continue;
+        }
       }
       break;
     }
