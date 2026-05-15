@@ -40890,6 +40890,11 @@ window.atualizarChapas = async function(){
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
       navigator.serviceWorker.register('/sw.js').catch(()=>null);
+      try{
+        navigator.serviceWorker.getRegistrations().then((registrations)=>{
+          (registrations||[]).forEach((reg)=>{ try{ reg.update(); }catch(e){} });
+        }).catch(()=>null);
+      }catch(e){}
     });
   }
 })();

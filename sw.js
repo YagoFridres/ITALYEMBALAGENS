@@ -1,4 +1,4 @@
-const CACHE_NAME = 'italy-pcp-v1';
+const CACHE_NAME = 'italy-cache-v3';
 const CORE = [
   '/',
   '/index.html',
@@ -17,9 +17,11 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.map((k) => (k === CACHE_NAME ? null : caches.delete(k)))))
-      .then(() => self.clients.claim())
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
   );
 });
 
