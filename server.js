@@ -1414,74 +1414,39 @@ function ofIn(p) {
   return out;
 }
 
-const COLUNAS_OPCIONAIS_OFS = [
-  'prioridade',
-  'sem_papel',
-  'chapa_id',
-  'qtd_chapas',
-  'cidade_entrega',
-  'modo_programacao',
-  'dia_programacao',
-  'data_faturamento',
-  'maquina_perda_id',
-];
-const OFS_TABLE_COLS_ALL = [
-  'id',
-  'numero',
-  'of',
-  'cli_id',
-  'cliente_id',
-  'vendedor_id',
-  'emp_id',
-  'status',
-  'data_entrega',
-  'ent',
-  'qtd',
-  'prioridade',
-  'valor_total',
-  'valor_venda',
-  'itens',
-  'imgs',
-  'imagem_url',
-  'fluxo_maquinas',
-  'maq',
-  'descricao',
-  'urg',
-  'urgente',
-  'dia',
-  'data_producao',
-  'maquina_atual_index',
-  'data_conclusao',
-  'cidade_entrega',
-  'modo_programacao',
-  'dia_programacao',
-  'obs',
-  'sem_papel',
+const OFS_TABLE_COLS = [
+  'id', 'numero', 'of', 'of_num', 'of_seq', 'seq',
+  'status', 'cliente_id', 'cli_id', 'cliId', 'cliid',
+  'cliNome', 'clinome', 'cliente_nome',
+  'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
+  'emp_id', 'empId', 'empresa_id', 'empNome',
+  'data_entrega', 'ent', 'dia', 'data_producao',
+  'data_conclusao', 'data_faturamento', 'dia_programacao',
+  'urgente', 'urg',
+  'quantidade', 'qtd', 'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
+  'caixas_excedentes', 'qtd_chapas',
+  'valor_total', 'valor_venda', 'preco', 'total',
+  'descricao', 'obs', 'obs2',
+  'itens', 'imgs', 'imagem_url',
+  'maq', 'fluxo', 'fluxo_maquinas', 'maquina_atual_index',
+  'chp', 'chapa_id', 'maquina_perda',
   'deleted_at',
-  'maquina_perda',
-  'maquina_perda_id',
-  'chapa_id',
-  'qtd_chapas',
-  'data_faturamento',
-  'qtd_perdida',
-  'qtd_produzida',
-  'qtd_pedida',
-  'caixas_excedentes',
+  'prioridade', 'sem_papel',
+  'cidade_entrega', 'modo_programacao',
   'usuario_conclusao',
-  'created_at',
-  'updated_at',
+  'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+  'cond_pagamento', 'pagto', 'ramo', 'smp_id',
+  'created_at', 'updated_at',
 ];
-const OFS_TABLE_COLS = OFS_TABLE_COLS_ALL.filter((c) => !COLUNAS_OPCIONAIS_OFS.includes(c));
-const OFS_PAYLOAD_COLS_SET = new Set(OFS_TABLE_COLS_ALL);
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
-const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
+const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.slice();
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
 function _filterOfsPayloadKnownCols(input, keepMeta = true) {
   const src = input && typeof input === 'object' ? input : {};
   const out = {};
   Object.keys(src).forEach((k) => {
     if (keepMeta && String(k || '').startsWith('_')) { out[k] = src[k]; return; }
-    if (OFS_PAYLOAD_COLS_SET.has(k)) out[k] = src[k];
+    if (OFS_TABLE_COLS_SET.has(k)) out[k] = src[k];
   });
   return out;
 }
@@ -2149,24 +2114,22 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
     const selectLitePref = [
-      'id', 'of', 'numero', 'status',
-      'created_at', 'updated_at', 'deleted_at',
-      'emp_id',
-      'cli_id',
-      'cliente_id',
-      'vendedor_id',
-      'qtd',
-      'prioridade',
-      'sem_papel',
-      'obs',
-      'descricao',
+      'id', 'of', 'numero', 'of_num', 'seq',
+      'status', 'created_at', 'updated_at', 'deleted_at',
+      'emp_id', 'empId', 'empresa_id',
+      'cli_id', 'cliId', 'cliente_id',
+      'cliNome', 'clinome', 'cliente_nome',
+      'vendedor_id', 'vendId',
+      'vendNome', 'vendedor',
+      'qtd', 'quantidade', 'qtd_pedida',
+      'prioridade', 'sem_papel',
+      'obs', 'descricao',
       'valor_total', 'valor_venda',
-      'urg', 'urgente',
-      'dia', 'data_producao',
-      'ent', 'data_entrega',
+      'urgente', 'urg',
+      'dia', 'data_producao', 'ent', 'data_entrega',
       'data_conclusao', 'usuario_conclusao',
-      'qtd_produzida', 'qtd_perdida', 'qtd_pedida', 'caixas_excedentes', 'maquina_perda',
-      'maq', 'fluxo_maquinas', 'maquina_atual_index',
+      'qtd_produzida', 'qtd_perdida', 'qtd_pedida', 'caixas_excedentes',
+      'maquina_perda', 'maq', 'fluxo_maquinas', 'maquina_atual_index',
       'imgs', 'imagem_url',
     ];
     const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => OFS_SELECTABLE_COLS_SET.has(c));
@@ -2266,10 +2229,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     }
 
-    let empCol = empId ? 'emp_id' : '';
-    let empColAlt = empId ? 'empresa_id' : '';
-    let cliCols = clienteId ? ['cli_id', 'cliente_id'] : [];
-    let numCols = numero ? ['numero', 'of'] : [];
+    let empCols = empId ? ['emp_id', 'empId', 'empresa_id'] : [];
+    let cliCols = clienteId ? ['cli_id', 'cliId', 'cliente_id', 'cliid'] : [];
+    let numCols = numero ? ['numero', 'of', 'of_num'] : [];
 
     for (let t = 0; t < 5; t++) {
       let colsSel = colsArr.slice();
@@ -2291,20 +2253,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           q = q.eq('status', status);
         }
       }
-      if (empId) {
-        const use = empCol || empColAlt;
-        if (use) q = q.eq(use, empId);
-      }
+      if (empId && Array.isArray(empCols) && empCols.length) q = q.eq(empCols[0], empId);
       if (clienteId && Array.isArray(cliCols) && cliCols.length) {
         const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
         if (expr) q = q.or(expr);
       }
       if (numero && Array.isArray(numCols) && numCols.length) {
-        const expr = numCols.map((c) => {
-          if (c === 'numero') return `numero.eq.${numero}`;
-          if (c === 'of') return `of.ilike.%${numero}%`;
-          return '';
-        }).filter(Boolean).join(',');
+        const expr = numCols.map((c) => `${c}.eq.${numero}`).join(',');
         if (expr) q = q.or(expr);
       }
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
@@ -2329,8 +2284,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (dateCol === colProb) { dateCol = 'created_at'; changed = true; }
         if (Array.isArray(cliCols) && cliCols.includes(colProb)) { cliCols = cliCols.filter((c) => c !== colProb); changed = true; }
         if (Array.isArray(numCols) && numCols.includes(colProb)) { numCols = numCols.filter((c) => c !== colProb); changed = true; }
-        if (empCol === colProb) { empCol = empColAlt; empColAlt = ''; changed = true; }
-        else if (empColAlt === colProb) { empColAlt = ''; empCol = ''; changed = true; }
+        if (Array.isArray(empCols) && empCols.includes(colProb)) { empCols = empCols.filter((c) => c !== colProb); changed = true; }
         if (changed) {
           try { console.warn('[OFS GET] removendo coluna:', colProb); } catch (_) {}
           continue;
