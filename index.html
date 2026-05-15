@@ -685,9 +685,6 @@ body.mobile-mode #tablet-view,
 body.mobile-mode #device-screen,
 body.mobile-mode #sidebar-overlay,
 body.mobile-mode #mobile-access-block,
-body.mobile-mode #assist-fab,
-body.mobile-mode #assist-panel,
-body.mobile-mode #assist-overlay,
 body.mobile-mode #assist-mini{display:none!important;}
 body.mobile-mode .mobile-only{display:flex!important;}
 
@@ -38439,7 +38436,6 @@ window.atualizarChapas = async function(){
 
 <script>
 (function(){
-  try{ if(document.body && document.body.classList && document.body.classList.contains('mobile-mode')) return; }catch(e){}
   const LS_KEY = 'italy_jarvis_history_v1';
   const MAX_MSG = 20;
   const DEFAULT_SUG = ['OFs atrasadas hoje', 'Estoque crítico', 'Faturamento do mês', 'Clientes inativos'];
