@@ -119,7 +119,7 @@ if (!_supabaseEnvOk) {
   console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
   console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
   console.error('index.html fallback:', !!frontSb);
-  process.exit(1);
+  console.error('Aviso: iniciando servidor SEM Supabase configurado (rotas que dependem do banco vão falhar).');
 } else {
   supabase = createClient(supabaseUrl, supabaseKey);
   // Conexão Supabase verificada no startup sem query ao banco
