@@ -2074,7 +2074,7 @@ async function comprasUpdateCompat(id, payload) {
 }
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
-  console.log('[OFS GET INICIO]', req.query);
+  console.log('[OFS GET START]', JSON.stringify(req.query));
   try {
     console.log('[OFS GET COLS CHECK]', {
       tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
@@ -2082,6 +2082,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
     });
     setNoCache(res);
+    const testeRapido = await supabase.from('ofs').select('id').limit(1);
+    console.log('[OFS TESTE RAPIDO]', testeRapido.error?.message || 'OK');
+    if (testeRapido.error) {
+      return res.status(500).json({ ok: false, error: testeRapido.error.message });
+    }
     try {
       console.log('[OFS COLS]', JSON.stringify({
         table: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
@@ -2310,31 +2315,29 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from && to && dateCol) q = q.gte(dateCol, from).lte(dateCol, to);
       const r = await q;
-      if (!r.error) {
-        data = r.data;
-        if (typeof r.count === 'number') total = r.count;
-        break;
-      }
-      rawErr = r.error;
-      const msg = String(r.error?.message || r.error || '');
-      const colProb =
-        msg.match(/column\s+"?(\w+)"?\s+does not exist/i)?.[1] ||
-        msg.match(/column\s+ofs\."?(\w+)"?\s+does not exist/i)?.[1] ||
-        msg.match(/Could not find the '([^']+)' column/i)?.[1] ||
-        null;
-      if (colProb) {
-        let changed = false;
-        if (colsArr.includes(colProb)) { colsArr = colsArr.filter((c) => c !== colProb); changed = true; }
-        if (orderBy === colProb) { orderBy = 'created_at'; changed = true; }
-        if (dateCol === colProb) { dateCol = 'created_at'; changed = true; }
-        if (Array.isArray(cliCols) && cliCols.includes(colProb)) { cliCols = cliCols.filter((c) => c !== colProb); changed = true; }
-        if (Array.isArray(numCols) && numCols.includes(colProb)) { numCols = numCols.filter((c) => c !== colProb); changed = true; }
-        if (Array.isArray(empCols) && empCols.includes(colProb)) { empCols = empCols.filter((c) => c !== colProb); changed = true; }
-        if (changed) {
-          try { console.warn('[OFS GET] removendo coluna:', colProb); } catch (_) {}
+      if (r.error) {
+        rawErr = r.error;
+        const errMsg = String(r.error?.message || r.error?.details || '');
+        console.error('[OFS RETRY] erro t=' + t + ':', errMsg);
+
+        const colMatch =
+          errMsg.match(/column ofs\."?(\w+)"? does not exist/i) ||
+          errMsg.match(/column "?(\w+)"? does not exist/i) ||
+          errMsg.match(/Could not find the '(\w+)' column/i);
+
+        const colProb = colMatch ? colMatch[1] : null;
+
+        if (colProb) {
+          console.warn('[OFS RETRY] removendo coluna:', colProb);
+          colsArr = colsArr.filter((c) => c !== colProb);
+          if (colsArr.length === 0) colsArr = ['id', 'numero', 'status', 'created_at'];
           continue;
         }
+
+        break;
       }
+      data = r.data;
+      if (typeof r.count === 'number') total = r.count;
       break;
     }
 
