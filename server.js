@@ -2256,6 +2256,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let data = null;
     let rawErr = null;
     let colsArr = colsValidas.slice();
+    let colMissingHits = 0;
+    let useSelectAllFallback = false;
     let total = null;
     let dateCol = '';
     const isDeletedAt = (v) => {
@@ -2286,7 +2288,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     for (let t = 0; t < 5; t++) {
       let colsSel = colsArr.slice();
       if (orderBy && _ofsSelectableHas(orderBy) && !colsSel.includes(orderBy)) colsSel.push(orderBy);
-      const sel = colsSel.join(',') || 'id,of,numero,status,created_at,updated_at,emp_id,cli_id';
+      const sel = useSelectAllFallback ? '*' : (colsSel.join(',') || 'id,numero,status,created_at');
       let q = supabase
         .from('ofs')
         .select(sel, { count: 'exact' })
@@ -2320,6 +2322,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const errMsg = String(r.error?.message || r.error?.details || '');
         console.error('[OFS RETRY] erro t=' + t + ':', errMsg);
 
+        const isColMissing =
+          String(r.error?.code || '').trim() === '42703' ||
+          /does not exist/i.test(errMsg) ||
+          /Could not find the/i.test(errMsg);
+
         const colMatch =
           errMsg.match(/column ofs\."?(\w+)"? does not exist/i) ||
           errMsg.match(/column "?(\w+)"? does not exist/i) ||
@@ -2327,13 +2334,24 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
         const colProb = colMatch ? colMatch[1] : null;
 
-        if (colProb) {
+        if (isColMissing) {
+          colMissingHits += 1;
+          if (colMissingHits > 2) useSelectAllFallback = true;
+        }
+
+        if (isColMissing && colProb) {
           console.warn('[OFS RETRY] removendo coluna:', colProb);
           colsArr = colsArr.filter((c) => c !== colProb);
+          if (orderBy === colProb) orderBy = 'created_at';
+          if (dateCol === colProb) dateCol = 'created_at';
+          if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
+          if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
+          if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
           if (colsArr.length === 0) colsArr = ['id', 'numero', 'status', 'created_at'];
           continue;
         }
 
+        if (isColMissing && useSelectAllFallback) continue;
         break;
       }
       data = r.data;
