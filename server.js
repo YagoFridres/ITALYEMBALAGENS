@@ -1463,6 +1463,7 @@ const OFS_TABLE_COLS = [
 const OFS_TABLE_COLS_SET = new Set(OFS_TABLE_COLS);
 const OFS_SELECTABLE_COLS = OFS_TABLE_COLS.filter((c) => c !== 'prodDesc');
 const OFS_SELECTABLE_COLS_SET = new Set(OFS_SELECTABLE_COLS);
+try { console.log('[BOOT] OFS_SELECTABLE_COLS_SET size:', OFS_SELECTABLE_COLS_SET?.size); } catch (_) {}
 function _ofsSelectableHas(col) {
   try { return !!(OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.has === 'function' && OFS_SELECTABLE_COLS_SET.has(col)); } catch (_) { return false; }
 }
@@ -2076,6 +2077,14 @@ async function comprasUpdateCompat(id, payload) {
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   console.log('[OFS GET START]', JSON.stringify(req.query));
   try {
+    console.log('[OFS DEBUG ENTRY]', {
+      query: req.query,
+      usuario: req?.usuario?.id,
+      supabaseOk: !!supabase,
+      colsSetSize: OFS_SELECTABLE_COLS_SET?.size,
+    });
+  } catch (_) {}
+  try {
     console.log('[OFS GET COLS CHECK]', {
       tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
       selectableLen: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
@@ -2388,7 +2397,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const VENDEDOR_PADRAO_NOME = 'RONI MEIA VENDA';
       const { data: todosClientes } = await supabase
         .from('clientes')
-        .select('id,nome,vendedor_id');
+        .select('id,nome,vendedor_id')
+        .limit(5000);
       const cliMap = new Map(
         (Array.isArray(todosClientes) ? todosClientes : [])
           .filter((c) => c && c.id)
@@ -2397,7 +2407,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       const { data: todosVendedores } = await supabase
         .from('vendedores')
-        .select('id,nome');
+        .select('id,nome')
+        .limit(5000);
       const vendMap = new Map(
         (Array.isArray(todosVendedores) ? todosVendedores : [])
           .filter((v) => v && v.id)
