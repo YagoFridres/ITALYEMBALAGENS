@@ -1192,6 +1192,279 @@ const ITALY_LOGO_B64 = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDA
 
 let OFs = [];
 
+window.JARVIS_CONTEXT = window.JARVIS_CONTEXT || {
+  ofs: [],
+  clientes: [],
+  vendedores: [],
+  maquinas: [],
+  estoque: [],
+  programacao: [],
+  producao: [],
+  compras: [],
+  fornecedores: [],
+  kpis: {},
+};
+window.__jarvisContextUpdate = function (patch) {
+  try {
+    const ctx = (window.JARVIS_CONTEXT && typeof window.JARVIS_CONTEXT === 'object') ? window.JARVIS_CONTEXT : (window.JARVIS_CONTEXT = {});
+    const p = (patch && typeof patch === 'object') ? patch : {};
+    Object.keys(p).forEach((k) => {
+      const v = p[k];
+      if (v === undefined) return;
+      if (Array.isArray(v) && v.length === 0 && Array.isArray(ctx[k]) && ctx[k].length > 0) return;
+      if (v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length === 0 && ctx[k] && typeof ctx[k] === 'object' && Object.keys(ctx[k]).length > 0) return;
+      ctx[k] = v;
+    });
+  } catch (e) {}
+};
+window.__jarvisNorm = function (s) {
+  try { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); } catch (e) { return String(s || '').toLowerCase().trim(); }
+};
+window.__jarvisLevenshtein = function (a, b) {
+  const s = String(a || '');
+  const t = String(b || '');
+  const m = s.length, n = t.length;
+  if (!m) return n;
+  if (!n) return m;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[m][n];
+};
+window.__jarvisCanSeeFinance = function () {
+  try {
+    const u = window.CURRENT_USER || window._currentUser || null;
+    const perfil = String(u?.perfil || '').trim().toLowerCase();
+    const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+    const isAdmin = (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo'));
+    if (isAdmin) return true;
+    if (perfil.includes('produc')) return false;
+    if (perfil.includes('estoque')) return false;
+    return false;
+  } catch (e) { return false; }
+};
+window.buscarOFsCliente = function (nomeCliente, status) {
+  const q = window.__jarvisNorm(nomeCliente);
+  const stQ = window.__jarvisNorm(status || 'todas');
+  const ctx = window.JARVIS_CONTEXT || {};
+  const ofs = Array.isArray(ctx.ofs) ? ctx.ofs : (Array.isArray(window.OFS) ? window.OFS : []);
+  const clientes = Array.isArray(ctx.clientes) ? ctx.clientes : (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : []);
+  const normStatus = (s) => window.__jarvisNorm(String(s || ''));
+  const isConcluida = (o) => { const s = normStatus(o?.status); return s.includes('conclu') || s === 'pedido pronto'; };
+  const isCancelada = (o) => { const s = normStatus(o?.status); return s.includes('cancel'); };
+  const isProducao = (o) => { const s = normStatus(o?.status); return s.includes('produc'); };
+  const isAberta = (o) => { const s = normStatus(o?.status); return !isConcluida(o) && !isCancelada(o) && !isProducao(o); };
+  const hoje = new Date().toISOString().slice(0, 10);
+  const ent = (o) => String(o?.data_entrega || o?.ent || o?.dia || '').slice(0, 10);
+  const matchCli = (o, cli) => {
+    const fields = [o?.cliNome, o?.clinome, o?.cliente_nome, o?.cliente].map((x) => window.__jarvisNorm(x)).filter(Boolean);
+    const cliFields = [cli?.nome, cli?.fantasia, cli?.razao_social, cli?.rs].map((x) => window.__jarvisNorm(x)).filter(Boolean);
+    const joined = (fields.join(' ') + ' ' + cliFields.join(' ')).trim();
+    if (!joined) return false;
+    if (q && joined.includes(q)) return true;
+    if (q && q.length >= 4) {
+      const tokens = joined.split(/\s+/g).filter(Boolean).slice(0, 60);
+      const qTokens = q.split(/\s+/g).filter(Boolean);
+      return qTokens.every((qt) => tokens.some((tk) => tk.includes(qt) || window.__jarvisLevenshtein(tk, qt) <= 1));
+    }
+    return false;
+  };
+  let cliHits = [];
+  if (q) {
+    cliHits = clientes
+      .map((c) => {
+        const cand = [c?.nome, c?.fantasia, c?.razao_social, c?.rs].map((x) => window.__jarvisNorm(x)).filter(Boolean).join(' ');
+        const score = cand.includes(q) ? 0 : (q ? Math.min(...cand.split(/\s+/g).filter(Boolean).slice(0, 40).map((tk) => window.__jarvisLevenshtein(tk, q))) : 999);
+        return { c, cand, score };
+      })
+      .filter((x) => x.c && x.c.id && x.cand && (x.cand.includes(q) || x.score <= 2))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 5)
+      .map((x) => x.c);
+  }
+  let filtered = ofs.slice();
+  if (q) {
+    filtered = filtered.filter((o) => {
+      const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
+      const cli = cid ? (clientes.find((c) => String(c?.id || '').trim() === cid) || null) : null;
+      if (cli && matchCli(o, cli)) return true;
+      return cliHits.some((c) => matchCli(o, c));
+    });
+  }
+  if (stQ.includes('abert')) filtered = filtered.filter(isAberta);
+  else if (stQ.includes('produc')) filtered = filtered.filter(isProducao);
+  else if (stQ.includes('conclu')) filtered = filtered.filter(isConcluida);
+  else if (stQ.includes('atras')) filtered = filtered.filter((o) => !isConcluida(o) && ent(o) && ent(o) < hoje);
+  else if (stQ.includes('paus')) filtered = filtered.filter((o) => normStatus(o?.status).includes('paus'));
+  return filtered;
+};
+window.buscarOFsAbertasCliente = function (clienteId) { return window.buscarOFsCliente(String(clienteId || ''), 'aberta'); };
+window.buscarOFsConcluidasCliente = function (clienteId) { return window.buscarOFsCliente(String(clienteId || ''), 'concluida'); };
+window.buscarOFsEmProducao = function (clienteId) { return window.buscarOFsCliente(String(clienteId || ''), 'producao'); };
+window.__jarvisTryLocalQuery = function (text) {
+  const raw = String(text || '').trim();
+  const t = window.__jarvisNorm(raw);
+  if (!t) return null;
+  const ctx = window.JARVIS_CONTEXT || {};
+  const ofs = Array.isArray(ctx.ofs) ? ctx.ofs : (Array.isArray(window.OFS) ? window.OFS : []);
+  const canFin = window.__jarvisCanSeeFinance();
+  try{ console.log('[JARVIS QUERY]', raw); }catch(e){}
+  const pickStatus = () => {
+    if (t.includes('abert')) return 'aberta';
+    if (t.includes('produc')) return 'producao';
+    if (t.includes('conclu')) return 'concluida';
+    if (t.includes('atras')) return 'atrasada';
+    if (t.includes('paus')) return 'pausada';
+    return 'todas';
+  };
+  const status = pickStatus();
+  const hoje = new Date().toISOString().slice(0,10);
+  const amanha = (function(){ const d=new Date(); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); })();
+  const normStatus = (s)=>window.__jarvisNorm(String(s||''));
+  const isConcluida = (o)=>{ const s=normStatus(o?.status); return s.includes('conclu') || s === 'pedido pronto'; };
+  const isCancelada = (o)=>{ const s=normStatus(o?.status); return s.includes('cancel'); };
+  const ent = (o)=>String(o?.data_entrega || o?.ent || o?.dia || '').slice(0,10);
+  const conc = (o)=>String(o?.data_conclusao || '').slice(0,10);
+  const statusBadge = (st)=>{
+    const s = normStatus(st);
+    let bg = '#1a56db';
+    if(s.includes('produc')) bg = '#f59e0b';
+    else if(s.includes('conclu') || s === 'pedido pronto') bg = '#16a34a';
+    else if(s.includes('atras')) bg = '#dc2626';
+    else if(s.includes('paus')) bg = '#6b7280';
+    else if(s.includes('cancel')) bg = '#111827';
+    return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-weight:900;font-size:.74rem;background:${bg};color:#fff;white-space:nowrap">${String(st||'').replace(/</g,'&lt;')}</span>`;
+  };
+  const mCli = raw.match(/cliente\s+(.+)$/i) || raw.match(/da\s+(.+)$/i) || null;
+  if (t.includes('of') && (t.includes('cliente') || (mCli && mCli[1]))) {
+    const cliName = mCli ? String(mCli[1] || '').trim() : '';
+    const list = window.buscarOFsCliente(cliName, status);
+    const n = list.length;
+    const head = `Encontrei ${n} OF(s) ${status === 'todas' ? '' : status} para "${cliName}".`.replace(/\s+/g, ' ').trim();
+    const rows = list.slice(0, 25).map((o) => {
+      const numero = o?.of || o?.numero || o?.of_num || '';
+      const cli = o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '';
+      const prod = o?.descricao || o?.prodDesc || o?.produto || '';
+      const st = String(o?.status || '').trim();
+      const ent = String(o?.data_entrega || o?.ent || '').slice(0, 10);
+      const val = canFin ? (o?.valor_total ?? o?.valor_venda ?? o?.total ?? '') : '';
+      return { numero, cliente: cli, produto: prod, status: st, entrega: ent, valor: val };
+    });
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%">
+          <thead><tr>
+            <th>OF</th><th>Cliente</th><th>Produto</th><th>Status</th><th>Entrega</th>${canFin ? '<th>Valor</th>' : ''}
+          </tr></thead>
+          <tbody>
+            ${rows.map((r) => `<tr><td>${String(r.numero || '').replace(/</g, '&lt;')}</td><td>${String(r.cliente || '').replace(/</g, '&lt;')}</td><td>${String(r.produto || '').replace(/</g, '&lt;')}</td><td>${statusBadge(r.status)}</td><td>${String(r.entrega || '').replace(/</g, '&lt;')}</td>${canFin ? `<td>${String(r.valor || '').replace(/</g, '&lt;')}</td>` : ''}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+    return { ok: true, resposta: head, html, suggestions: ['OFs atrasadas hoje', 'quais OFs em produção?', 'qual máquina está mais carregada?'] };
+  }
+  if (t.includes('quant') && t.includes('of') && t.includes('conclu') && (t.includes('hoje') || t.includes('hj'))) {
+    const n = ofs.filter((o)=>isConcluida(o) && conc(o) === hoje).length;
+    const msg = `Total: ${n} OF(s) concluída(s) hoje (${hoje.split('-').reverse().join('/')}).`;
+    return { ok:true, resposta: msg };
+  }
+  if (t.includes('pedido') && t.includes('atras') && (t.includes('amanha') || t.includes('amanhã'))) {
+    const list = ofs.filter((o)=>!isConcluida(o) && !isCancelada(o) && ent(o) && ent(o) <= amanha);
+    const head = `Pedidos com entrega até amanhã (${amanha.split('-').reverse().join('/')}): ${list.length}.`;
+    const rows = list.slice(0, 25).map((o)=>({
+      numero: o?.of || o?.numero || o?.of_num || '',
+      cliente: o?.cliNome || o?.clinome || o?.cliente_nome || o?.cliente || '',
+      entrega: ent(o),
+      status: String(o?.status||'').trim(),
+    }));
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%"><thead><tr><th>OF</th><th>Cliente</th><th>Entrega</th><th>Status</th></tr></thead><tbody>
+          ${rows.map((r)=>`<tr><td>${String(r.numero).replace(/</g,'&lt;')}</td><td>${String(r.cliente).replace(/</g,'&lt;')}</td><td>${String(r.entrega).replace(/</g,'&lt;')}</td><td>${statusBadge(r.status)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+    return { ok:true, resposta: head, html };
+  }
+  if (t.includes('maquin') && t.includes('parad')) {
+    const maqs = Array.isArray(ctx.maquinas) ? ctx.maquinas : ((typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)) ? MAQUINAS : []);
+    const aps = (typeof APONTAMENTOS !== 'undefined' && Array.isArray(APONTAMENTOS)) ? APONTAMENTOS : [];
+    const ativas = new Set(aps.filter((a)=>window.__jarvisNorm(a?.status).includes('andamento') || window.__jarvisNorm(a?.status).includes('em_andamento')).map((a)=>String(a?.maquina_id||a?.maquinaId||'').trim()).filter(Boolean));
+    const paradas = maqs.filter((m)=>m && m.id && !ativas.has(String(m.id).trim()));
+    const head = `Máquinas paradas: ${paradas.length}.`;
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${paradas.slice(0,40).map((m)=>`<span style="padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--s2);font-weight:800">${String(m.nome||m.label||'—').replace(/</g,'&lt;')}</span>`).join('') || '<div style="color:var(--text2)">Nenhuma.</div>'}</div>
+    </div>`;
+    return { ok:true, resposta: head, html };
+  }
+  if (t.includes('maquin') && t.includes('carreg')) {
+    const getMaq = (o)=>{
+      try{
+        if(typeof ofFluxoGetMaquinaAtualAtiva === 'function'){
+          const m = ofFluxoGetMaquinaAtualAtiva(o);
+          if(m) return String(m||'').trim();
+        }
+      }catch(e){}
+      return String(o?.maq || '').trim();
+    };
+    const map = new Map();
+    ofs.filter((o)=>!isConcluida(o) && !isCancelada(o)).forEach((o)=>{
+      const m = getMaq(o) || 'Sem Máquina';
+      map.set(m, (map.get(m)||0) + 1);
+    });
+    const arr = Array.from(map.entries()).sort((a,b)=>b[1]-a[1]);
+    const top = arr[0] || null;
+    const head = top ? `Máquina mais carregada: ${top[0]} (${top[1]} OFs).` : 'Sem dados de carga.';
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%"><thead><tr><th>Máquina</th><th>OFs</th></tr></thead><tbody>
+          ${arr.slice(0,20).map(([m,c])=>`<tr><td>${String(m).replace(/</g,'&lt;')}</td><td>${String(c)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+    return { ok:true, resposta: head, html };
+  }
+  if (t.includes('estoque') && (t.includes('abaixo') || t.includes('minim') || t.includes('mínim'))) {
+    const est = Array.isArray(ctx.estoque) ? ctx.estoque : ((typeof ESTOQUE !== 'undefined' && Array.isArray(ESTOQUE)) ? ESTOQUE : []);
+    const rows = est.map((x)=>{
+      const q = Number(x?.quantidade ?? x?.qtd ?? 0);
+      const min = Number(x?.quantidade_minima ?? x?.minimo ?? x?.min ?? 0);
+      return { x, q, min };
+    }).filter((r)=>Number.isFinite(r.min) && r.min > 0 && Number.isFinite(r.q) && r.q <= r.min)
+      .sort((a,b)=>(a.q-a.min) - (b.q-b.min))
+      .slice(0, 50);
+    const head = `Itens abaixo do mínimo: ${rows.length}.`;
+    const html = `<div style="display:grid;gap:10px">
+      <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)"><div style="font-weight:900">${head}</div></div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="jarvis-table" style="margin:0;width:100%"><thead><tr><th>Código</th><th>Descrição</th><th>Qtd</th><th>Mín</th></tr></thead><tbody>
+          ${rows.map((r)=>`<tr><td>${String(r.x?.codigo||r.x?.id||'').replace(/</g,'&lt;')}</td><td>${String(r.x?.descricao||'').replace(/</g,'&lt;')}</td><td>${String(r.q)}</td><td>${String(r.min)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>`;
+    return { ok:true, resposta: head, html };
+  }
+  if (t.includes('quant') && t.includes('of') && (t.includes('conclu') || t.includes('abert') || t.includes('produc'))) {
+    const st = status;
+    const list = st === 'todas' ? ofs : window.buscarOFsCliente('', st);
+    const n = Array.isArray(list) ? list.length : 0;
+    const msg = `Total: ${n} OF(s) ${st === 'todas' ? '' : st}.`.replace(/\s+/g, ' ').trim();
+    return { ok: true, resposta: msg };
+  }
+  return null;
+};
+
 function isMobile(){
   try{
     return (Number(window.innerWidth || 0) < 768) || /Android|iPhone|iPad/i.test(navigator.userAgent || '');
@@ -5472,7 +5745,10 @@ async function renderOFsPorMaquina(){
 
     const selMaqEl = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
     const filtroMaq = selMaqEl?.value||'';
-    const busca=String((document.getElementById('ofmaq-busca')||{}).value||'').trim().toLowerCase();
+    const ofmaqNorm = (s)=>{
+      try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
+    };
+    const busca=ofmaqNorm(String((document.getElementById('ofmaq-busca')||{}).value||'').trim());
     const maqsBase = ofmaqMaquinasValidas();
 
     if(window._ofmaqView === 'lista'){
@@ -5507,7 +5783,7 @@ async function renderOFsPorMaquina(){
       lista = lista.filter(o=>{
         const clientesArr = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [];
         const cliNome = clientesArr.find(c => c.id === o.cli_id)?.nome || clientesArr.find(c => c.id === o.cliente_id)?.nome || clientesArr.find(c => c.id === o.cliId)?.nome || o.cliente || o.cliente_nome || o.cli_nome || o.clinome || '';
-        const txt=[o.of,o.prodDesc,o.prod,o.produto,o.descricao,o.status,cliNome].join(' ').toLowerCase();
+        const txt=ofmaqNorm([o.of,o.prodDesc,o.prod,o.produto,o.descricao,o.status,cliNome].join(' '));
         return txt.includes(busca);
       });
     }
@@ -5620,6 +5896,14 @@ async function renderOFsPorMaquina(){
       </div>`;
     }
   } finally { _ofsMaqRenderizando=false; }
+}
+
+let _ofmaqBuscaTimer = null;
+function ofmaqOnBuscaInput(){
+  try{ if(_ofmaqBuscaTimer) clearTimeout(_ofmaqBuscaTimer); }catch(e){}
+  _ofmaqBuscaTimer = setTimeout(()=>{
+    try{ renderOFsPorMaquina(); }catch(e){}
+  }, 300);
 }
 
 function ofmaqSetFiltroData(m){
@@ -21495,6 +21779,18 @@ async function loadCoreData(){
     carregarOFs({ from: hoje, to: hoje, forcar: true }),
     carregarVendedores(false)
   ]);
+  try{
+    if(typeof window.__jarvisContextUpdate === 'function'){
+      window.__jarvisContextUpdate({
+        ofs: Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []),
+        clientes: (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : [],
+        vendedores: (typeof VENDEDORES !== 'undefined' && Array.isArray(VENDEDORES)) ? VENDEDORES : [],
+        maquinas: (typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)) ? MAQUINAS : [],
+        estoque: (typeof ESTOQUE !== 'undefined' && Array.isArray(ESTOQUE)) ? ESTOQUE : [],
+        fornecedores: (typeof FORNECEDORES !== 'undefined' && Array.isArray(FORNECEDORES)) ? FORNECEDORES : [],
+      });
+    }
+  }catch(e){}
   try{updateBadges();}catch(e){}
   try{renderPCP();}catch(e){}
 }
@@ -23030,6 +23326,7 @@ function _setOFSArquivoGlobal(all){
   try{ window.OFS = ativas; }catch(e){}
   try{ window.OFs = ativas; }catch(e){}
   try{ OFs = ativas; }catch(e){}
+  try{ if(typeof window.__jarvisContextUpdate === 'function') window.__jarvisContextUpdate({ ofs: ativas }); }catch(e){}
   _dispatchOfsAtualizadas();
 }
 function _upsertOFSArquivoLocal(ofRow){
@@ -23048,6 +23345,7 @@ function _upsertOFSArquivoLocal(ofRow){
     try{ window.OFS = ativas; }catch(e){}
     try{ window.OFs = ativas; }catch(e){}
     try{ OFs = ativas; }catch(e){}
+    try{ if(typeof window.__jarvisContextUpdate === 'function') window.__jarvisContextUpdate({ ofs: ativas }); }catch(e){}
     _dispatchOfsAtualizadas();
   }
   return o;
@@ -31705,7 +32003,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span style="font-size:.78rem;color:var(--text2)">🏭 OFs agrupadas por máquina</span>
     <span style="font-size:.72rem;color:var(--text2);font-family:var(--mono)">DATA:</span>
     <input type="date" id="ofmaq-data" onchange="setFiltroOFsMaquina('data')" style="width:150px;">
-    <input id="ofmaq-busca" placeholder="🔍 OF, cliente, produto..." oninput="renderOFsPorMaquina()" style="width:190px;">
+    <input id="ofmaq-busca" placeholder="🔍 OF, cliente, produto..." oninput="ofmaqOnBuscaInput()" style="width:190px;">
     <select id="ofmaq-status" onchange="renderOFsPorMaquina()">
       <option value="">Todos status</option>
       <option>Em aberto</option><option>Em produção</option>
@@ -39506,6 +39804,17 @@ window.atualizarChapas = async function(){
       scrollBottom();
     }
     try{
+      try{
+        const local = (typeof window.__jarvisTryLocalQuery === 'function') ? window.__jarvisTryLocalQuery(text) : null;
+        if(local && local.ok){
+          const el = document.getElementById(typingId);
+          if(el && el.parentNode) el.parentNode.remove();
+          addMsg('assistant', String(local.resposta || '').trim() || `Ok.`, { html: local.html || '', suggestions: local.suggestions || [] });
+          return;
+        }
+      }catch(e){
+        try{ console.error('[JARVIS ERROR] local query', e?.message || e); }catch(_){}
+      }
       const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text, historico } });
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
@@ -40741,6 +41050,18 @@ window.atualizarChapas = async function(){
     renderJarvis();
 
     try{
+      try{
+        const local = (typeof window.__jarvisTryLocalQuery === 'function') ? window.__jarvisTryLocalQuery(t) : null;
+        if(local && local.ok){
+          mobileState.jarvisHist = (mobileState.jarvisHist||[]).filter(m=>!m.typing);
+          mobileState.jarvisHist.push({ role:'assistant', text:String(local.resposta||'').trim()||'Ok.', ts:Date.now() });
+          saveHist();
+          renderJarvis();
+          return;
+        }
+      }catch(e){
+        try{ console.error('[JARVIS ERROR] local query (mobile)', e?.message || e); }catch(_){}
+      }
       const hist = (mobileState.jarvisHist || []).filter(m=>!m.typing).slice(-8).map(m=>({ role:m.role, content:m.text }));
       const r = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta:t, historico: hist } });
       const j = r ? await r.json().catch(()=>null) : null;
