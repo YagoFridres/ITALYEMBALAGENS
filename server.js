@@ -10816,6 +10816,75 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       );
     }
 
+    if (hasAny('valor total do estoque','inventário','inventario','valor do estoque','total do estoque')) {
+      const {data:chapasRaw}=await supabase.from('chapas_estoque').select('nome,nomenclatura,nom,fornecedor,forn,tamanho,tam,quantidade,qtd,quantidade_atual,valor_unitario,val,estoque_minimo').limit(1000);
+      const chapas=Array.isArray(chapasRaw)?chapasRaw:[];
+      let totalVal=0, totalItens=0, abaixoMin=0, semValor=0;
+      chapas.forEach(c=>{
+        const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const vu=Number(c.valor_unitario||c.val||0);
+        const min=Math.trunc(Number(c.estoque_minimo||200)||200);
+        totalVal+=qtd*vu; totalItens+=qtd;
+        if(vu===0) semValor++;
+        if(qtd<min) abaixoMin++;
+      });
+      return respond(
+        `📦 Inventário do estoque (${hoje.split('-').reverse().join('/')}):\n\n`+
+        `🏷️ Total de tipos de chapas: ${chapas.length}\n`+
+        `🔢 Total de unidades: ${totalItens.toLocaleString('pt-BR')}\n`+
+        `💰 Valor total estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `⚠️ Abaixo do mínimo: ${abaixoMin}\n`+
+        `❓ Sem valor cadastrado: ${semValor}`
+      );
+    }
+
+    if (hasAny('vão atrasar','vao atrasar','previsão de atraso','previsao de atraso','risco de atraso','podem atrasar')) {
+      const d=new Date(); const dow=d.getDay(); const diffMon=dow===0?6:dow-1;
+      const mon=new Date(d); mon.setDate(d.getDate()-diffMon);
+      const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+      const deS=mon.toISOString().slice(0,10); const ateS=sun.toISOString().slice(0,10);
+      const {data:ofsRaw}=await supabase.from('ofs').select('id,of,numero,status,data_entrega,ent,cli_id,cliente_id,cliNome,cliente_nome,qtd,quantidade,qtd_pedida,fluxo_maquinas,maq,deleted_at').is('deleted_at',null).limit(500);
+      const semana=(Array.isArray(ofsRaw)?ofsRaw:[]).filter(o=>{
+        const s=String(o.status||'').toLowerCase();
+        if(s.includes('conclu')||s.includes('cancel')) return false;
+        const ent=String(o.data_entrega||o.ent||'').slice(0,10);
+        return ent>=deS&&ent<=ateS;
+      });
+      const atrasadas=semana.filter(o=>{const ent=String(o.data_entrega||o.ent||'').slice(0,10);return ent&&ent<hoje;});
+      const cliMap=await _assistLoadClientesByIds(semana.map(o=>String(o.cli_id||o.cliente_id||'').trim()));
+      const linhas=semana.slice(0,12).map(o=>{
+        const num=String(o.of||o.numero||'—');
+        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'—').trim();
+        const ent=String(o.data_entrega||o.ent||'').slice(0,10);
+        const atras=ent&&ent<hoje;
+        const maq=_jarvisMaqAtualOf(o);
+        return `• OF #${num}${atras?' ⚠️ ATRASADA':''} — ${cli} — Entrega: ${ent?ent.split('-').reverse().join('/'):'—'} — ${maq}`;
+      });
+      return respond(
+        `📅 OFs da semana (${deS.split('-').reverse().join('/')} a ${ateS.split('-').reverse().join('/')}):\n\n`+
+        `Total: ${semana.length} | Já atrasadas: ${atrasadas.length}\n\n`+
+        `${linhas.join('\n')||'Nenhuma OF esta semana.'}`
+      );
+    }
+
+    if (hasAny('modo fábrica','modo fabrica','modo operador','modo producao','modo produção')) {
+      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativo',true).order('ordem',{ascending:true});
+      const maquinas=(Array.isArray(maqAll)?maqAll:[]).map(m=>String(m.nome||m.col||'').trim()).filter(Boolean);
+      return res.json({
+        ok:true,
+        resposta:
+          `🏭 **MODO FÁBRICA ATIVADO**\n\n`+
+          `Comandos disponíveis:\n`+
+          `• "OF da IMP 02" → ver OF atual da máquina\n`+
+          `• "concluir OF 498" → registrar produção\n`+
+          `• "imagem da OF 498" → ver referência visual\n`+
+          `• "fila da IMP 03" → ver próximas OFs\n`+
+          `• "parei IMP 02 por manutenção" → registrar parada\n\n`+
+          `Máquinas disponíveis:\n${maquinas.map(m=>`• ${m}`).join('\n')||'—'}`,
+        dadosExtras:{ tipo:'modo_fabrica', maquinas }
+      });
+    }
+
     if (ofNum && hasAny('concluir','finalizar','dar baixa','concluída','concluida') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
       if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
@@ -10939,54 +11008,65 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (norm.startsWith('/ajuda') || norm.startsWith('/help') || hasAny('o que você pode fazer', 'o que voce pode fazer', 'o que você faz', 'como usar o jarvis', 'me ajude', 'preciso de ajuda', 'quais comandos', 'o que posso pedir')) {
+    if (norm.startsWith('/ajuda') || norm.startsWith('/help') ||
+        hasAny('o que você pode fazer','o que voce pode fazer','o que você faz',
+               'como usar o jarvis','quais comandos','o que posso pedir',
+               'me ajude','preciso de ajuda')) {
       return res.json({
         ok: true,
         resposta:
-`${nome}, sou o JARVIS — sua IA integrada ao ERP Italy Embalagens. Veja o que posso fazer por você:
+`${nome}, sou o JARVIS — IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:
 
-📋 **ORDENS DE FABRICAÇÃO (OFs)**
-• "imagem da OF 498" → mostro a imagem com dados completos
-• "OFs do cliente João Silva" → listo todas as OFs com status, qtd e datas
-• "quantas OFs tem em aberto para hoje" → contagem real do dia
-• "OF 498" → mostro todos os dados da OF
-• "OFs atrasadas" → listo OFs com entrega vencida
-• "OFs urgentes" → listo OFs marcadas como urgentes
-• "altere a entrega da OF 498 para 25/05/2026" → altero após confirmação
-• "concluir OF 498" → solicito qtd produzida e concluo
-• "cancelar OF 498" → cancelo após confirmação
+📋 ORDENS DE FABRICAÇÃO
+- "imagem da OF 498" → imagem + dados completos + ações
+- "OF 498" → todos os dados da OF
+- "OFs do cliente João" → situação completa com status
+- "OFs atrasadas" / "OFs urgentes" / "OFs de hoje"
+- "concluir OF 498" → solicito dados e concluo
+- "cancelar OF 498" → cancelo após confirmação
+- "altere a entrega da OF 498 para 25/05" → altero após confirmação
+- "programa a OF 498 para amanhã na IMP 03" → reagendo
+- "clonar OF 498 para cliente X com entrega 30/05" → cria cópia
+- "mover todas as OFs da IMP 03 para amanhã" → lote
 
-📦 **ESTOQUE DE CHAPAS**
-• "quanto tem de chapa onda B 1200x900" → mostro saldo
-• "estoque crítico" → chapas abaixo do mínimo
-• "dar entrada de 100 na chapa onda B 1200x900" → registro após confirmação
-• "retirar 50 da chapa onda C 1000x800" → registro após confirmação
+🏭 PRODUÇÃO
+- "como está a produção agora" → dashboard em tempo real
+- "fila da IMP 02" → OFs em ordem de prioridade
+- "qual máquina está mais livre" → ranking de carga
+- "quais OFs vão atrasar essa semana" → previsão
+- "ranking de produtos mais fabricados" → top produtos
+- "modo fábrica" → interface simplificada para operadores
 
-👥 **CLIENTES**
-• "OFs do cliente Padaria X" → situação completa do cliente
-• "clientes inativos" → clientes sem OF nos últimos 30 dias
-• "top clientes do mês" → maiores compradores
-• "PDF do cliente Padaria X" → gera relatório para imprimir
+👥 CLIENTES
+- "histórico do cliente X" → OFs, ticket médio, total gasto
+- "abre o cliente Padaria X" → busca com dados
+- "clientes inativos" → sem pedido há 30 dias
+- "top clientes do mês" → maiores compradores
+- "PDF do cliente X" → relatório para imprimir
+- "compare faturamento de abril com maio" → comparativo
 
-📊 **RELATÓRIOS E FATURAMENTO**
-• "faturamento do mês" → total faturado no mês atual
-• "faturamento por empresa" → separado por empresa
-• "perdas do mês" → caixas perdidas e valor
-• "/dashboard" → gráfico de faturamento do ano
-• "/resumo" → resumo completo do dia
+📦 ESTOQUE
+- "quanto tem de chapa onda B" → saldo atual
+- "estoque crítico" → abaixo do mínimo
+- "valor total do estoque" → inventário completo
+- "o que preciso comprar esta semana" → sugestão de compra
+- "dar entrada de 100 na chapa X" → registra após confirmação
+- "última entrada de onda B 1200x900" → histórico
+- "custo de chapas da OF 498" → cálculo de custo
 
-🏭 **MÁQUINAS**
-• "qual máquina está mais carregada" → ranking de carga por máquina
-• "OFs da IMP 03" → listo OFs na máquina específica
+📊 RELATÓRIOS
+- "faturamento do mês" / "faturamento de abril"
+- "compare faturamento de abril com maio"
+- "/dashboard" → gráfico anual
+- "/resumo" → resumo completo do dia
+- "/atrasadas" → lista rápida
 
-💡 **DICAS**
-• Qualquer número de 1 a 4 dígitos → busco a OF automaticamente
-• "/atrasadas" → lista rápida de atrasadas
-• "/estoque" → tabela de chapas
-• Posso receber imagens pelo botão 📎 para atualizar foto de uma OF
-
-Digite qualquer pergunta naturalmente — entendo português! 😊`,
-        suggestions: ['imagem da OF 498', 'OFs do cliente X', 'faturamento do mês', '/dashboard', 'estoque crítico']
+💡 DICAS
+- Digite só o número (ex: "498") → mostro a OF direto
+- Botão 📎 → enviar imagem para atualizar foto de OF
+- Botão 🎤 → comando por voz
+- "modo fábrica" → modo simplificado para chão de fábrica`,
+        suggestions: ['imagem da OF 498','fila da IMP 02','o que preciso comprar','como está a produção agora','PDF do cliente X']
       });
     }
 
@@ -12147,6 +12227,44 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
 });
 
 setTimeout(() => { _reloadRelEmailSchedule().catch(() => {}); }, 500);
+
+if (cron) {
+  cron.schedule('*/30 * * * *', async () => {
+    try {
+      const agoraStr = new Date().toISOString();
+      const trintaMin = new Date(Date.now() - 31*60*1000).toISOString();
+      const { data: novasAtras } = await supabase.from('ofs')
+        .select('id,of,numero,cliNome,cliente_nome,data_entrega,ent')
+        .lt('data_entrega', new Date().toISOString().slice(0,10))
+        .is('deleted_at', null)
+        .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+        .gte('updated_at', trintaMin)
+        .limit(10);
+
+      if (Array.isArray(novasAtras) && novasAtras.length) {
+        for (const of2 of novasAtras) {
+          const msg = `⚠️ OF #${of2.of||of2.numero} — ${of2.cliNome||of2.cliente_nome||'—'} passou da data de entrega!`;
+          await supabase.from('notificacoes').insert([{ mensagem: msg, tipo: 'warning', lida: false, data_hora: agoraStr, criado_por: 'JARVIS' }]);
+        }
+      }
+
+      const { data: chapasC } = await supabase.from('chapas_estoque').select('id,nomenclatura,nom,nome,quantidade,qtd,quantidade_atual,estoque_minimo').limit(500);
+      const criticas = (Array.isArray(chapasC)?chapasC:[]).filter(c => {
+        const qtd = Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const min = Math.trunc(Number(c.estoque_minimo||200)||200);
+        return qtd < min && qtd >= 0;
+      });
+      if (criticas.length > 0) {
+        const msg = `📦 ${criticas.length} chapa${criticas.length!==1?'s':''} abaixo do estoque mínimo! Use "estoque crítico" para ver.`;
+        const { data: existente } = await supabase.from('notificacoes').select('id').eq('mensagem', msg).eq('lida', false).limit(1);
+        if (!Array.isArray(existente) || !existente.length) {
+          await supabase.from('notificacoes').insert([{ mensagem: msg, tipo: 'warning', lida: false, data_hora: new Date().toISOString(), criado_por: 'JARVIS' }]);
+        }
+      }
+    } catch(e) { console.warn('[JARVIS CRON]', e?.message); }
+  }, { scheduled: true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
+  console.log('✅ JARVIS: alertas proativos configurados (30min)');
+}
 
 app.use((e, req, res, next) => {
   if (!e) return next();
