@@ -6030,16 +6030,8 @@ async function renderOFsPorMaquina(){
   let container = null;
   try {
     try{
-      const isMobileScreen = !!(window.matchMedia && window.matchMedia('(max-width:768px)').matches);
-      const u = window.CURRENT_USER || window._currentUser || null;
-      const perfil = String((u && u.perfil) || '').trim().toLowerCase();
-      const perms = (u && Array.isArray(u.permissoes)) ? u.permissoes : [];
-      const isAdmin = (perfil === 'admin' || perfil.indexOf('admin') >= 0 || perms.includes('tudo'));
-      if(isMobileScreen && u && isAdmin) window._ofmaqView = 'dia';
+      if(!window._ofmaqView) window._ofmaqView = 'lista';
     }catch(e){}
-    if(!window._ofmaqView){
-      window._ofmaqView = window._ofmaqModo === 'todas' ? 'lista' : 'dia';
-    }
     if(window._ofmaqSemanaOffset == null) window._ofmaqSemanaOffset = 0;
     getSemanaAtiva();
     const dbg = !!window._debugOfmaq;
@@ -6057,15 +6049,22 @@ async function renderOFsPorMaquina(){
           ${Array.from({length:6}).map(()=>`<div style="height:74px;border:1px solid var(--border);border-radius:10px;background:var(--surface);opacity:.9"></div>`).join('')}
         </div>
       </div>`;
-      const qs = new URLSearchParams();
-      if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-      qs.set('limit','800');
-      qs.set('excluir_canceladas','1');
-      qs.set('nocache','1');
-      const r = await api('GET','/ofs?'+qs.toString());
-      const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+      const headersAuth = ()=>{
+        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        return token ? { Authorization: 'Bearer ' + token } : {};
+      };
+      const params = new URLSearchParams({
+        limit: '800',
+        excluir_canceladas: '1',
+        nocache: '1'
+      });
+      if(EMP_FILTRO) params.set('empId', EMP_FILTRO);
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const resposta = await fetch(base + '/api/ofs?' + params.toString(), { headers: headersAuth() });
+      const d = await resposta.json().catch(()=>null);
+      const rows = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
       lista = rows || [];
-      if(dbg) console.log('[OFMAQ] fetch /api/ofs rows:', lista.length, 'respOk:', !!(r&&r.ok));
+      if(dbg) console.log('[OFMAQ] fetch /api/ofs rows:', lista.length, 'respOk:', !!(resposta && resposta.ok));
       if(Array.isArray(OFs) && OFs.length === 0) OFs = lista.map(normalizeOF);
     }
     lista = (lista||[]).map(normalizeOF);
@@ -39261,7 +39260,7 @@ window.atualizarChapas = async function(){
       <div id="assist-body"></div>
       <div id="assist-input">
         <textarea id="assist-text" placeholder="Digite sua pergunta..."></textarea>
-        <input type="file" id="jarvis-img-input" accept="image/*" style="display:none" onchange="handleJarvisImg(this)">
+        <input type="file" id="jarvis-img-input" accept="image/*" style="display:none" onchange="enviarImagemJarvis(this.files[0]); this.value='';">
         <button type="button" onclick="document.getElementById('jarvis-img-input').click()" title="Enviar imagem">📎</button>
         <button type="button" id="assist-mic" title="Falar">🎤</button>
         <button type="button" id="assist-send">Enviar</button>
@@ -40266,6 +40265,34 @@ window.atualizarChapas = async function(){
     }
   };
 
+  window.enviarImagemJarvis = async function enviarImagemJarvis(file) {
+    if (!file) return;
+    try {
+      const previewUrl = URL.createObjectURL(file);
+      addMsg('user', '', { images: [previewUrl] });
+    } catch (e) {}
+
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const r = await fetch(base + '/api/of/upload', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form
+      });
+      const j = await r.json().catch(() => null);
+      if (j && j.ok && j.data && j.data.url) {
+        await send('Recebi esta imagem: ' + j.data.url + ' — O que você quer fazer com ela? Posso atualizar a imagem de uma OF se você me disser o número.');
+      } else {
+        addMsg('assistant', 'Não consegui fazer o upload da imagem. Tente novamente.');
+      }
+    } catch (e) {
+      addMsg('assistant', 'Erro no upload: ' + e.message);
+    }
+  };
+
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureUI);
   else ensureUI();
 })();
@@ -40879,6 +40906,7 @@ window.atualizarChapas = async function(){
       if(!d) return `<span style="color:#8b93a7">—</span>`;
       const color = (d < hoje) ? '#ef4444' : (d === hoje) ? '#fbbf24' : '#22c55e';
       const lbl = fmtBR(d);
+      if(d === iso) return `<span style="color:${color};font-weight:900;font-family:var(--mono);background:rgba(74,158,255,.18);border:1px solid #2a2a4a;padding:2px 6px;border-radius:8px">${esc(lbl)} 📅</span>`;
       return `<span style="color:${color};font-weight:900;font-family:var(--mono)}">${esc(lbl)}</span>`;
     };
     const statusBadge = (st, entIso)=>{

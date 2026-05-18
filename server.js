@@ -3078,6 +3078,21 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
+app.post('/api/of/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const filename = `of/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
+    return ok(res, { url: urlData?.publicUrl || '' });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
 app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   try {
     console.log('[RELATORIO VENDEDOR] iniciando, query:', req.query);
@@ -10536,21 +10551,54 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (norm.startsWith('/ajuda')) {
+    if (norm.startsWith('/ajuda') || norm.startsWith('/help') || hasAny('o que você pode fazer', 'o que voce pode fazer', 'o que você faz', 'como usar o jarvis', 'me ajude', 'preciso de ajuda', 'quais comandos', 'o que posso pedir')) {
       return res.json({
         ok: true,
-        resposta: `${nome}, comandos disponíveis:\n` +
-          `• /ajuda — lista de comandos\n` +
-          `• /resumo — resumo do dia (OFs atrasadas, de hoje e urgentes)\n` +
-          `• /atrasadas — lista de OFs em atraso\n` +
-          `• /estoque — tabela de estoque de chapas\n` +
-          `• /dashboard — gráfico de faturamento do ano\n\n` +
-          `Exemplos:\n` +
-          `• "status da OF 123"\n` +
-          `• "cancele a OF 123" (vai pedir confirmação)\n` +
-          `• "mostre a imagem da OF 123"\n` +
-          `• "cliente da OF 123"`,
-        suggestions: ['/resumo', '/atrasadas', '/estoque', '/dashboard'],
+        resposta:
+`${nome}, sou o JARVIS — sua IA integrada ao ERP Italy Embalagens. Veja o que posso fazer por você:
+
+📋 **ORDENS DE FABRICAÇÃO (OFs)**
+• "imagem da OF 498" → mostro a imagem com dados completos
+• "OFs do cliente João Silva" → listo todas as OFs com status, qtd e datas
+• "quantas OFs tem em aberto para hoje" → contagem real do dia
+• "OF 498" → mostro todos os dados da OF
+• "OFs atrasadas" → listo OFs com entrega vencida
+• "OFs urgentes" → listo OFs marcadas como urgentes
+• "altere a entrega da OF 498 para 25/05/2026" → altero após confirmação
+• "concluir OF 498" → solicito qtd produzida e concluo
+• "cancelar OF 498" → cancelo após confirmação
+
+📦 **ESTOQUE DE CHAPAS**
+• "quanto tem de chapa onda B 1200x900" → mostro saldo
+• "estoque crítico" → chapas abaixo do mínimo
+• "dar entrada de 100 na chapa onda B 1200x900" → registro após confirmação
+• "retirar 50 da chapa onda C 1000x800" → registro após confirmação
+
+👥 **CLIENTES**
+• "OFs do cliente Padaria X" → situação completa do cliente
+• "clientes inativos" → clientes sem OF nos últimos 30 dias
+• "top clientes do mês" → maiores compradores
+• "PDF do cliente Padaria X" → gera relatório para imprimir
+
+📊 **RELATÓRIOS E FATURAMENTO**
+• "faturamento do mês" → total faturado no mês atual
+• "faturamento por empresa" → separado por empresa
+• "perdas do mês" → caixas perdidas e valor
+• "/dashboard" → gráfico de faturamento do ano
+• "/resumo" → resumo completo do dia
+
+🏭 **MÁQUINAS**
+• "qual máquina está mais carregada" → ranking de carga por máquina
+• "OFs da IMP 03" → listo OFs na máquina específica
+
+💡 **DICAS**
+• Qualquer número de 1 a 4 dígitos → busco a OF automaticamente
+• "/atrasadas" → lista rápida de atrasadas
+• "/estoque" → tabela de chapas
+• Posso receber imagens pelo botão 📎 para atualizar foto de uma OF
+
+Digite qualquer pergunta naturalmente — entendo português! 😊`,
+        suggestions: ['imagem da OF 498', 'OFs do cliente X', 'faturamento do mês', '/dashboard', 'estoque crítico']
       });
     }
 
@@ -10764,22 +10812,18 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, a OF #${ctx.numero} está ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcação de urgência'}.`);
     }
 
-    if (ofNum && (norm.includes('imagem') || norm.includes('foto'))) {
+    if (ofNum && (norm.includes('imagem') || norm.includes('foto') || norm.includes('ver of') || norm.includes('mostrar of'))) {
       let row = null;
-      const { data: d1 } = await supabase
-        .from('ofs')
-        .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,qtd,quantidade,data_entrega,ent')
+      const { data: d1 } = await supabase.from('ofs')
+        .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,fluxo_maquinas,maq,maquina_atual_index,urg,urgente')
         .or(`of.eq.${ofNum},numero.eq.${ofNum}`)
-        .is('deleted_at', null)
-        .limit(1);
+        .is('deleted_at', null).limit(1);
       row = Array.isArray(d1) && d1[0] ? d1[0] : null;
       if (!row) {
-        const { data: d2 } = await supabase
-          .from('ofs')
-          .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,qtd,quantidade,data_entrega,ent')
+        const { data: d2 } = await supabase.from('ofs')
+          .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,fluxo_maquinas,maq,maquina_atual_index,urg,urgente')
           .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`)
-          .is('deleted_at', null)
-          .limit(1);
+          .is('deleted_at', null).limit(1);
         row = Array.isArray(d2) && d2[0] ? d2[0] : null;
       }
       if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
@@ -10789,29 +10833,43 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       try {
         const raw = row.imgs;
         const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
-        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim()).filter(Boolean)])].slice(0, 5);
+        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x||'').trim()).filter(Boolean)])].slice(0,5);
       } catch (_) { urls = iu ? [iu] : []; }
 
       const numOf  = String(row.of || row.numero || '—');
-      const desc   = String(row.descricao || row.prodDesc || '').trim();
-      const status = String(row.status || '').trim();
-      const cli    = String(row.cliNome || row.cliente_nome || '').trim();
-      const qtd    = Math.trunc(Number(row.qtd || row.quantidade || 0));
-      const ent    = String(row.data_entrega || row.ent || '').slice(0, 10);
-      const entFmt = ent ? ent.split('-').reverse().join('/') : '—';
+      const desc   = String(row.descricao || row.prodDesc || '').trim() || '—';
+      const status = String(row.status || '').trim() || '—';
+      const cli    = String(row.cliNome || row.cliente_nome || '').trim() || '—';
+      const qtd    = Math.trunc(Number(row.qtd_pedida || row.quantidade || row.qtd || 0));
+      const ent    = String(row.data_entrega || row.ent || '').slice(0,10);
+      const dia    = String(row.data_producao || row.dia || '').slice(0,10);
+      const valor  = Number(row.valor_total || row.valor_venda || 0);
+      const urg    = !!(row.urg || row.urgente);
+      const fmtD   = s => s ? s.split('-').reverse().join('/') : '—';
+      const isAtras = ent && ent < hoje;
+
+      const dadosOf = [
+        `📋 **OF #${numOf}**${urg ? ' 🚨 URGENTE' : ''}`,
+        `👤 Cliente: ${cli}`,
+        `📦 Produto: ${desc}`,
+        `📊 Status: ${status}${isAtras ? ' ⚠️ ATRASADA' : ''}`,
+        `🔢 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas`,
+        `🚚 Entrega: ${fmtD(ent)}`,
+        dia ? `🏭 Produção: ${fmtD(dia)}` : null,
+        valor > 0 ? `💰 Valor: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}` : null,
+      ].filter(Boolean).join('\n');
 
       if (!urls.length) {
-        return respond(
-          `${nome}, OF #${numOf} não possui imagem cadastrada.\n` +
-          `Cliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${entFmt}`
-        );
+        return res.json({
+          ok: true,
+          resposta: dadosOf + '\n\n📷 Esta OF não possui imagem cadastrada.\n\nO que deseja fazer?\n• "alterar entrega da OF ' + numOf + ' para DD/MM/AAAA"\n• "concluir OF ' + numOf + '"\n• "cancelar OF ' + numOf + '"',
+          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf }
+        });
       }
 
       return res.json({
         ok: true,
-        resposta:
-          `${nome}, OF #${numOf}${desc ? ` — ${desc}` : ''}\n` +
-          `Cliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${entFmt}`,
+        resposta: dadosOf + '\n\n📷 Imagem da OF #' + numOf + ':\n\nO que deseja fazer com esta OF?\n• Baixar imagem\n• Imprimir imagem\n• Alterar data de entrega\n• Concluir esta OF\n• Cancelar esta OF',
         images: urls,
         dadosExtras: {
           tipo: 'of_imagem',
