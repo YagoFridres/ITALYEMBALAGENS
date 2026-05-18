@@ -13,6 +13,15 @@ const { XMLParser } = require('fast-xml-parser');
 let cron = null;
 try { cron = require('node-cron'); } catch (_) { cron = null; }
 
+process.on('uncaughtException', (e) => {
+  try { console.error('[CRASH] uncaughtException:', e?.message || e); } catch (_) {}
+  try { console.error('[CRASH STACK]', String(e?.stack || '').split('\n').slice(0, 15).join(' | ')); } catch (_) {}
+});
+process.on('unhandledRejection', (e) => {
+  try { console.error('[REJECTION] unhandledRejection:', e?.message || e); } catch (_) {}
+  try { console.error('[REJECTION STACK]', String(e?.stack || '').split('\n').slice(0, 15).join(' | ')); } catch (_) {}
+});
+
 function parseFluxo(v) {
   if (Array.isArray(v)) return v;
   if (typeof v === 'string') {
