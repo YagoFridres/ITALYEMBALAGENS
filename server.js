@@ -10407,27 +10407,31 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       ofNum = _jarvisLastOfNumFromHistory(historico);
     }
 
-    if (ofNum && (_jarvisHasAny(norm, 'concluir', 'finalizar', 'dar baixa') && _jarvisHasAny(norm, 'of', 'ordem'))) {
+    if (ofNum && hasAny('concluir','finalizar','dar baixa','concluída','concluida') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
       if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
       const cid = _assistPickOfClienteId(of);
       const cliMap = await _assistLoadClientesByIds([cid]);
-      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
-      const nOf = _assistPickOfNumber(of);
-      const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
-      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
-      const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || []);
+      const cNome = String(cliMap.get(cid)||of.cliNome||of.cliente_nome||'—').trim()||'—';
+      const nOf   = _assistPickOfNumber(of);
+      const qtd   = Math.trunc(Number(of.qtd_pedida||of.quantidade||of.qtd||0)||0);
+      const desc  = String(of.descricao||of.prodDesc||of.produto||of.prod||'').trim()||'—';
+      const fluxo = parseFluxo(of.fluxo_maquinas||of.maq||[]);
+
       return res.json({
         ok: true,
         resposta:
-          `OF #${nOf} — ${cNome} — ${desc} — ${qtd.toLocaleString('pt-BR')} caixas\n\n` +
-          `Quantas caixas foram produzidas?`,
+          `📋 Concluir OF #${nOf}\n`+
+          `Cliente: ${cNome}\n`+
+          `Produto: ${desc}\n`+
+          `Qtd pedida: ${qtd.toLocaleString('pt-BR')} caixas\n\n`+
+          `Quantas caixas foram **produzidas**?`,
         jarvis_state: {
           acao: 'concluir_of',
-          of_id: String(of.id || ''),
-          of_numero: Number(nOf) || Number(ofNum) || ofNum,
+          of_id: String(of.id||''),
+          of_numero: nOf,
           etapa: 'aguardando_qtd_produzida',
-          dados: { maquinas: fluxo.slice(0, 12) },
+          dados: { qtd_pedida: qtd, maquinas: fluxo.slice(0,12) },
         },
       });
     }
@@ -11267,6 +11271,82 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, fornecedores cadastrados: ${rows.length}\n${top.join('\n') || '—'}${extra}`);
     }
 
+    if (hasAny('chapa','chapas') && hasAny('estoque','quanto tem','quantas tem','saldo','disponivel','disponível')) {
+      const mChapa = pergunta.match(/(?:chapa|chapas?)\s+(?:de\s+)?(.+?)(?:\s+no\s+estoque|\s+disponivel|\s+disponível|\?|$)/i) ||
+                     pergunta.match(/estoque\s+(?:da?\s+)?chapa\s+(.+)$/i) || null;
+      const termoBusca = mChapa ? String(mChapa[1]||'').trim() : '';
+
+      const table = 'chapas_estoque';
+      let q = supabase.from(table).select('id,nome,nomenclatura,nom,fornecedor,forn,tamanho,tam,quantidade,qtd,quantidade_atual,estoque_minimo,valor_unitario,val').limit(20);
+      if (termoBusca) q = q.or(`nomenclatura.ilike.%${termoBusca}%,nom.ilike.%${termoBusca}%,nome.ilike.%${termoBusca}%`);
+      else q = q.order('created_at', { ascending: false });
+
+      const { data: chapas } = await q;
+      const rows = Array.isArray(chapas) ? chapas : [];
+      if (!rows.length) return respond(`${nome}, não encontrei chapas${termoBusca?' com "'+termoBusca+'"':''} no estoque.`);
+
+      const linhas = rows.slice(0,10).map(c => {
+        const nom = String(c.nomenclatura||c.nom||c.nome||'—').trim();
+        const tam = String(c.tamanho||c.tam||'').trim();
+        const forn = String(c.fornecedor||c.forn||'').trim();
+        const qtd = Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const min = Math.trunc(Number(c.estoque_minimo||0)||0);
+        const val = Number(c.valor_unitario||c.val||0);
+        const alerta = min > 0 && qtd < min ? ' ⚠️ ABAIXO DO MÍNIMO' : '';
+        return `• ${nom}${tam?' ('+tam+')':''} | Saldo: **${qtd}**${min>0?' | Mín: '+min:''}${val>0?' | R$ '+val.toFixed(2):''}${forn?' | '+forn:''}${alerta}`;
+      });
+
+      return respond(`${nome}, estoque de chapas${termoBusca?' ('+termoBusca+')':''}:\n${linhas.join('\n')}${rows.length>10?'\n...e mais '+(rows.length-10)+' chapas':''}`);
+    }
+
+    if (hasAny('chapa','chapas') && hasAny('adicionar','adicione','entrada','dar entrada','subtrair','retire','retirar','baixar','saida','saída','ajustar','ajuste')) {
+      const tipo = hasAny('adicionar','adicione','entrada','dar entrada') ? 'entrada' : hasAny('subtrair','retire','retirar','baixar','saida','saída') ? 'saida' : 'ajuste';
+      const mQtd   = pergunta.match(/(\d+)\s*(?:unidades?|un|folhas?|chapas?)?/i);
+      const mChapa = pergunta.match(/(?:na|da|na chapa|chapa)\s+(.+?)(?:\s+\d|\s+unidade|\s*$)/i) || pergunta.match(/chapa\s+(.+?)(?:\s+\d|\s*$)/i) || null;
+      const qtd = mQtd ? Math.trunc(Number(mQtd[1])||0) : 0;
+      const termoBusca = mChapa ? String(mChapa[1]||'').trim().replace(/\d+/g,'').trim() : '';
+
+      if (!qtd || !termoBusca) {
+        return respond(`${nome}, para movimentar estoque de chapa preciso saber:\n- Qual chapa (nome ou nomenclatura)\n- Quantidade\n- Tipo: entrada ou saída\n\nEx: "dar entrada de 100 na chapa onda B 1200x900"`);
+      }
+
+      const { data: chapas } = await supabase.from('chapas_estoque')
+        .select('id,nome,nomenclatura,nom,tamanho,tam,quantidade,qtd,quantidade_atual')
+        .or(`nomenclatura.ilike.%${termoBusca}%,nom.ilike.%${termoBusca}%,nome.ilike.%${termoBusca}%`)
+        .limit(3);
+      const rows = Array.isArray(chapas) ? chapas : [];
+
+      if (!rows.length) return respond(`${nome}, não encontrei chapa com "${termoBusca}".`);
+      if (rows.length > 1) {
+        const opts = rows.map((c,i)=>`${i+1}. ${String(c.nomenclatura||c.nom||c.nome||'').trim()} ${String(c.tamanho||c.tam||'').trim()}`).join('\n');
+        return respond(`${nome}, encontrei mais de uma chapa:\n${opts}\n\nEspecifique melhor o nome.`);
+      }
+
+      const chapa = rows[0];
+      const nomChapa = String(chapa.nomenclatura||chapa.nom||chapa.nome||'').trim();
+      const qtdAtual = Math.trunc(Number(chapa.quantidade_atual||chapa.quantidade||chapa.qtd||0)||0);
+      const tipoLabel = tipo === 'entrada' ? 'ENTRADA' : tipo === 'saida' ? 'SAÍDA' : 'AJUSTE';
+
+      const uid = String(req?.usuario?.id || '');
+      const actionId = _jarvisStoreAction(uid, {
+        type: 'chapa_movimento',
+        chapaId: String(chapa.id),
+        chapaName: nomChapa,
+        tipo,
+        qtd,
+        qtdAtual,
+      });
+
+      return res.json({
+        ok: true,
+        resposta: `${nome}, confirmar ${tipoLabel} de **${qtd}** unidades na chapa **${nomChapa}**?\nSaldo atual: ${qtdAtual} → Novo saldo: ${tipo==='entrada'?qtdAtual+qtd:tipo==='saida'?qtdAtual-qtd:qtd}`,
+        actions: [
+          { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
+          { id: actionId, label: '❌ Cancelar',  decision: 'cancel'  },
+        ]
+      });
+    }
+
     const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
     if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
       try {
@@ -11301,24 +11381,24 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
     _jarvisPendingActions.delete(id);
 
     if (act.type === 'of_cancel') {
-      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
-      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { status: 'Cancelada', deleted_at: new Date().toISOString() } });
-      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} cancelada com sucesso.` });
+      const ofId = act.ofId;
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      await supabase.from('ofs').update({ status: 'Cancelada', deleted_at: new Date().toISOString() }).eq('id', ofId);
+      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum||act.ofId} cancelada com sucesso.` });
     }
 
     if (act.type === 'of_set_entrega') {
-      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
-      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { ent: act.data, data_entrega: act.data } });
-      return res.json({ ok: true, resposta: `✅ ${first}, entrega da OF #${act.ofNum} atualizada para ${_assistFmtDateBr(act.data)}.` });
+      const ofId = act.ofId;
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      await supabase.from('ofs').update({ ent: act.data, data_entrega: act.data, updated_at: new Date().toISOString() }).eq('id', ofId);
+      return res.json({ ok: true, resposta: `✅ ${first}, data de entrega da OF #${act.ofNum} alterada para ${act.data.split('-').reverse().join('/')}.` });
     }
 
     if (act.type === 'of_set_qtd') {
-      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
-      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { qtd_pedida: act.qtd, quantidade: act.qtd, qtd: act.qtd } });
-      return res.json({ ok: true, resposta: `✅ ${first}, quantidade da OF #${act.ofNum} atualizada para ${Number(act.qtd).toLocaleString('pt-BR')} caixas.` });
+      const ofId = act.ofId;
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      await supabase.from('ofs').update({ qtd: act.qtd, quantidade: act.qtd, qtd_pedida: act.qtd, updated_at: new Date().toISOString() }).eq('id', ofId);
+      return res.json({ ok: true, resposta: `✅ ${first}, quantidade da OF #${act.ofNum} alterada para ${Number(act.qtd).toLocaleString('pt-BR')} caixas.` });
     }
 
     if (act.type === 'of_set_urgente') {
@@ -11338,10 +11418,22 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
     }
 
     if (act.type === 'of_concluir') {
-      const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
-      await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}/concluir`, { method: 'POST', body: { qtd_produzida: 0, qtd_perdida: 0 } });
-      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída.` });
+      const ofId = act.ofId;
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      const qtdProd  = act.qtdProduzida || 0;
+      const qtdPerd  = act.qtdPerdida   || 0;
+      const maqPerda = act.maquina      || '';
+      const now = new Date().toISOString();
+      await supabase.from('ofs').update({
+        status: 'Concluído',
+        qtd_produzida: qtdProd,
+        qtd_perdida: qtdPerd,
+        maquina_perda: maqPerda || null,
+        data_conclusao: now,
+        usuario_conclusao: req.usuario?.nome || 'sistema',
+        updated_at: now,
+      }).eq('id', ofId);
+      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída! Produzidas: ${Number(qtdProd).toLocaleString('pt-BR')} cx | Perdidas: ${Number(qtdPerd).toLocaleString('pt-BR')} cx.` });
     }
 
     if (act.type === 'of_upload_image') {
@@ -11368,6 +11460,15 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
       await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}`, { method: 'PATCH', body: { estoque_minimo: act.min } });
       return res.json({ ok: true, resposta: `✅ ${first}, estoque mínimo atualizado.` });
+    }
+
+    if (act.type === 'chapa_movimento') {
+      const { chapaId, tipo, qtd, chapaName } = act;
+      const payload = { tipo, delta: qtd, qtd, obs: `Movimentação via JARVIS por ${req.usuario?.nome||'sistema'}` };
+      if (String(tipo || '') === 'ajuste') payload.quantidade = qtd;
+      const j = await _jarvisCallInternal(req, `/api/chapas_estoque/${String(chapaId)}/movimento`, { method: 'POST', body: payload });
+      const novoSaldo = j?.qtd_estoque ?? '—';
+      return res.json({ ok: true, resposta: `✅ ${first}, ${tipo==='entrada'?'entrada':'saída'} de **${qtd}** na chapa **${chapaName}** registrada! Novo saldo: **${novoSaldo}**` });
     }
 
     if (act.type === 'cliente_create') {
