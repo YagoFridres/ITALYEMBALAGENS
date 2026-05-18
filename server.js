@@ -10428,6 +10428,225 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       ofNum = _jarvisLastOfNumFromHistory(historico);
     }
 
+    if (ofNum && hasAny('programa','programar','agendar','agende','mover para','move para') && hasAny('of','ordem')) {
+      const of = await _jarvisFindOFByNumero(ofNum);
+      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+
+      const mMaq = pergunta.match(/(?:na|para a|máquina|maquina)\s+([A-Z0-9\s]+?)(?:\s+para|\s+amanhã|\s+dia|\s*$)/i);
+      const mData = pergunta.match(/(?:para\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i) ||
+                    (norm.includes('amanhã') || norm.includes('amanha') ? ['','amanhã'] : null);
+
+      const maqNova = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
+      let dataNova = '';
+      if (mData && mData[1] !== 'amanhã') {
+        const partes = mData[1].split('/');
+        const y = partes[2] ? (partes[2].length === 2 ? '20'+partes[2] : partes[2]) : new Date().getFullYear();
+        dataNova = `${y}-${String(partes[1]).padStart(2,'0')}-${String(partes[0]).padStart(2,'0')}`;
+      } else if (norm.includes('amanhã') || norm.includes('amanha')) {
+        const d = new Date(); d.setDate(d.getDate()+1);
+        dataNova = d.toISOString().slice(0,10);
+      }
+
+      const nOf = _assistPickOfNumber(of);
+      const uid = String(req?.usuario?.id||'');
+      const actionId = _jarvisStoreAction(uid, { type:'of_programar', ofId:String(of.id), ofNum:nOf, maqNova, dataProducao:dataNova });
+
+      const detalhes = [
+        maqNova ? `Máquina: ${maqNova}` : null,
+        dataNova ? `Data de produção: ${dataNova.split('-').reverse().join('/')}` : null,
+      ].filter(Boolean).join(' | ');
+
+      return res.json({
+        ok:true,
+        resposta:`${nome}, confirmar programação da OF #${nOf}?\n${detalhes}`,
+        actions:[
+          {id:actionId,label:'✅ Confirmar',decision:'confirm'},
+          {id:actionId,label:'❌ Cancelar',decision:'cancel'},
+        ]
+      });
+    }
+
+    if (ofNum && hasAny('clonar','clone','copiar','cópia','duplicar')) {
+      const of = await _jarvisFindOFByNumero(ofNum);
+      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+
+      const mData = pergunta.match(/(?:entrega|para)\s+(?:dia\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i);
+      const mCli  = pergunta.match(/(?:para o|para a|cliente)\s+(.+?)(?:\s+com|\s+entrega|\s*$)/i);
+      let novaEntrega = '';
+      if (mData) {
+        const p = mData[1].split('/');
+        const y = p[2] ? (p[2].length===2?'20'+p[2]:p[2]) : new Date().getFullYear();
+        novaEntrega = `${y}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`;
+      }
+      let novoCliNome = mCli ? String(mCli[1]||'').trim() : '';
+      let novoCliId = of.cli_id || of.cliente_id || of.cliId || null;
+      if (novoCliNome) {
+        const {data:clsC} = await supabase.from('clientes').select('id,nome').ilike('nome',`%${novoCliNome}%`).limit(1);
+        if (Array.isArray(clsC)&&clsC[0]) { novoCliId=clsC[0].id; novoCliNome=clsC[0].nome; }
+      }
+
+      const nOf = _assistPickOfNumber(of);
+      const uid = String(req?.usuario?.id||'');
+      const actionId = _jarvisStoreAction(uid, {type:'of_clonar', ofId:String(of.id), ofNum:nOf, novaEntrega, novoCliId, novoCliNome});
+
+      return res.json({
+        ok:true,
+        resposta:`${nome}, confirmar clonagem da OF #${nOf}?\n${novoCliNome?'Novo cliente: '+novoCliNome:'Mesmo cliente'}${novaEntrega?' | Nova entrega: '+novaEntrega.split('-').reverse().join('/'):''}`,
+        actions:[
+          {id:actionId,label:'✅ Confirmar',decision:'confirm'},
+          {id:actionId,label:'❌ Cancelar',decision:'cancel'},
+        ]
+      });
+    }
+
+    if (hasAny('mover todas','reagendar todas','reprogramar todas') && hasAny('ofs','of')) {
+      const mMaq = pergunta.match(/(?:da|de)\s+([A-Z0-9\s]+?)(?:\s+de|\s+para|\s*$)/i);
+      const maqNome = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
+      let dataDestino = '';
+      if (norm.includes('amanhã')||norm.includes('amanha')) {
+        const d=new Date(); d.setDate(d.getDate()+1); dataDestino=d.toISOString().slice(0,10);
+      } else {
+        const mData = pergunta.match(/para\s+(?:dia\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i);
+        if (mData) { const p=mData[1].split('/'); const y=p[2]?(p[2].length===2?'20'+p[2]:p[2]):new Date().getFullYear(); dataDestino=`${y}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`; }
+      }
+      if (!maqNome||!dataDestino) return respond(`${nome}, preciso saber a máquina e a data destino. Ex: "mover todas as OFs da IMP 03 para amanhã"`);
+
+      const {data:ofsMaq} = await supabase.from('ofs').select('id,of,numero,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,status').is('deleted_at',null).limit(500);
+      const lista = (Array.isArray(ofsMaq)?ofsMaq:[]).filter(o=>{
+        let f=o.fluxo_maquinas||o.maq||[];
+        if(typeof f==='string'){try{f=JSON.parse(f);}catch(_){f=[];}}
+        if(!Array.isArray(f)) return false;
+        const idx=Number(o.maquina_atual_index||0)||0;
+        const item=f[Math.min(idx,f.length-1)]||f[0];
+        const mNome=item&&typeof item==='object'?String(item.nome||item.maquina||'').trim():String(item||'').trim();
+        return mNome.toUpperCase()===maqNome;
+      });
+
+      if (!lista.length) return respond(`${nome}, não encontrei OFs abertas na máquina ${maqNome}.`);
+      const uid = String(req?.usuario?.id||'');
+      const actionId = _jarvisStoreAction(uid,{type:'of_reagendar_lote', maqNome, dataDestino, ids:lista.map(o=>o.id)});
+      return res.json({
+        ok:true,
+        resposta:`${nome}, confirmar reagendamento de ${lista.length} OFs da ${maqNome} para ${dataDestino.split('-').reverse().join('/')}?`,
+        actions:[{id:actionId,label:'✅ Confirmar',decision:'confirm'},{id:actionId,label:'❌ Cancelar',decision:'cancel'}]
+      });
+    }
+
+    if (hasAny('fila','fila da','fila de') && (norm.match(/\b(imp|cor|acab|vinco|maq)\b/i) || norm.includes('maquina') || norm.includes('máquina'))) {
+      const mMaq = pergunta.match(/(?:fila\s+(?:da|de|do)\s+)([A-Z0-9\s]+?)(?:\?|$)/i) ||
+                   pergunta.match(/(?:da|de|do)\s+([A-Z0-9\s]+?)(?:\?|$)/i);
+      const maqBusca = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
+      if (!maqBusca) return respond(`${nome}, qual máquina? Ex: "fila da IMP 02"`);
+
+      const {data:ofsAll} = await supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,cli_id,descricao,prodDesc,qtd,quantidade,qtd_pedida,data_entrega,ent,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,urg,urgente,deleted_at').is('deleted_at',null).limit(500);
+      const fila = (Array.isArray(ofsAll)?ofsAll:[]).filter(o=>{
+        const s=String(o.status||'').toLowerCase();
+        if(s.includes('conclu')||s.includes('cancel')) return false;
+        let f=o.fluxo_maquinas||o.maq||[];
+        if(typeof f==='string'){try{f=JSON.parse(f);}catch(_){f=[];}}
+        if(!Array.isArray(f)||!f.length) return false;
+        const idx=Number(o.maquina_atual_index||0)||0;
+        const item=f[Math.min(idx,f.length-1)]||f[0];
+        const mNome=item&&typeof item==='object'?String(item.nome||item.maquina||'').trim():String(item||'').trim();
+        return mNome.toUpperCase()===maqBusca;
+      }).sort((a,b)=>{
+        const urgA=(a.urg||a.urgente)?0:1; const urgB=(b.urg||b.urgente)?0:1;
+        if(urgA!==urgB) return urgA-urgB;
+        const ea=String(a.data_entrega||a.ent||''); const eb=String(b.data_entrega||b.ent||'');
+        return ea.localeCompare(eb);
+      });
+
+      if(!fila.length) return respond(`${nome}, a máquina ${maqBusca} não tem OFs na fila agora.`);
+      const cliIds=fila.map(o=>String(o.cli_id||o.cliente_id||'').trim()).filter(Boolean);
+      const cliMap=await _assistLoadClientesByIds(cliIds);
+      const totalCx=fila.reduce((s,o)=>s+Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0),0);
+
+      const linhas=fila.slice(0,15).map((o,i)=>{
+        const num=String(o.of||o.numero||'—');
+        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'—').trim();
+        const desc=String(o.descricao||o.prodDesc||'').trim();
+        const qtd=Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
+        const ent=String(o.data_entrega||o.ent||'').slice(0,10);
+        const dia=String(o.data_producao||o.dia||'').slice(0,10);
+        const atras=ent&&ent<hoje;
+        return `${i+1}. OF #${num}${(o.urg||o.urgente)?' 🚨':''}${atras?' ⚠️':''} — ${cli}\n   ${desc} | ${qtd.toLocaleString('pt-BR')} cx | Entrega: ${ent?ent.split('-').reverse().join('/'):'—'} | Prod: ${dia?dia.split('-').reverse().join('/'):'—'}`;
+      });
+
+      return respond(`🏭 Fila da ${maqBusca}: ${fila.length} OF${fila.length!==1?'s':''} (${totalCx.toLocaleString('pt-BR')} cx)\n\n${linhas.join('\n')}${fila.length>15?'\n...e mais '+(fila.length-15)+' OFs':''}`);
+    }
+
+    if (hasAny('como está a produção','como esta a producao','produção agora','producao agora','status da produção','status da producao')) {
+      const {data:ofsAbRaw} = await supabase.from('ofs').select('id,status,fluxo_maquinas,maq,maquina_atual_index,qtd,quantidade,qtd_pedida,deleted_at').is('deleted_at',null).limit(800);
+      const ofsAb=(Array.isArray(ofsAbRaw)?ofsAbRaw:[]).filter(o=>{const s=String(o.status||'').toLowerCase();return !s.includes('conclu')&&!s.includes('cancel');});
+
+      const {data:conclHoje} = await supabase.from('ofs').select('id,qtd_produzida,qtd,quantidade,valor_total,valor_venda').gte('data_conclusao',hoje).is('deleted_at',null).limit(500);
+      const conclH=Array.isArray(conclHoje)?conclHoje:[];
+      const cxHoje=conclH.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0);
+      const fatHoje=conclH.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0);
+
+      const maqMap=new Map();
+      ofsAb.forEach(o=>{
+        let f=o.fluxo_maquinas||o.maq||[];
+        if(typeof f==='string'){try{f=JSON.parse(f);}catch(_){f=[];}}
+        if(!Array.isArray(f)||!f.length) return;
+        const idx=Number(o.maquina_atual_index||0)||0;
+        const item=f[Math.min(idx,f.length-1)]||f[0];
+        const mNome=item&&typeof item==='object'?String(item.nome||item.maquina||'').trim():String(item||'').trim();
+        if(!mNome) return;
+        if(!maqMap.has(mNome)) maqMap.set(mNome,{ofs:0,caixas:0});
+        const cur=maqMap.get(mNome);
+        cur.ofs++;
+        cur.caixas+=Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
+      });
+
+      const maqLinhas=[...maqMap.entries()].sort((a,b)=>b[1].ofs-a[1].ofs).slice(0,8).map(([m,v])=>`  🏭 ${m}: ${v.ofs} OF${v.ofs!==1?'s':''} (${v.caixas.toLocaleString('pt-BR')} cx)`);
+      const totalCxAb=ofsAb.reduce((s,o)=>s+Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0),0);
+
+      return respond(
+        `📊 Produção agora (${hoje.split('-').reverse().join('/')}):\n\n`+
+        `🔵 Em produção: ${ofsAb.length} OFs (${totalCxAb.toLocaleString('pt-BR')} cx)\n`+
+        `✅ Concluídas hoje: ${conclH.length} OFs (${cxHoje.toLocaleString('pt-BR')} cx)\n`+
+        `💰 Faturado hoje: R$ ${fatHoje.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n\n`+
+        `Carga por máquina:\n${maqLinhas.join('\n')||'  —'}`
+      );
+    }
+
+    if (hasAny('histórico do cliente','historico do cliente','histórico de compras','historico de compras','ticket médio','ticket medio')) {
+      const mCli=pergunta.match(/(?:histórico|historico|ticket)\s+(?:do|da|de)\s+(?:cliente\s+)?(.+?)(?:\?|$)/i)||pergunta.match(/cliente\s+(.+?)(?:\?|$)/i)||null;
+      const cliNomeBusca=mCli?String(mCli[1]||'').trim().replace(/\?+$/,'').trim():'';
+      if(!cliNomeBusca) return respond(`${nome}, qual o cliente? Ex: "histórico do cliente Padaria X"`);
+      const {data:cls}=await supabase.from('clientes').select('id,nome,cidade,tel,telefone').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(3);
+      const clientes=Array.isArray(cls)?cls:[];
+      if(!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
+      const cli=clientes[0]; const cliNome=String(cli.nome||'').trim(); const cliId=String(cli.id||'').trim();
+      const todas=await _jarvisOfsDoCliente(cliId);
+      const concluidas=todas.filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
+      const abertas=todas.filter(o=>{const s=String(o.status||'').toLowerCase();return !s.includes('conclu')&&!s.includes('cancel');});
+      const totalFat=concluidas.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0);
+      const ticketMedio=concluidas.length>0?totalFat/concluidas.length:0;
+      const totalCx=concluidas.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0);
+      const ultimas=concluidas.slice(0,5).map(o=>{
+        const num=String(o.of||o.numero||'—');
+        const desc=String(o.descricao||o.prodDesc||o.produto||'').trim();
+        const dc=String(o.data_conclusao||'').slice(0,10);
+        const val=Number(o.valor_total||o.valor_venda||0);
+        return `• OF #${num} — ${desc} — ${dc?dc.split('-').reverse().join('/'):'—'} — R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+      });
+      return respond(
+        `📊 Histórico: ${cliNome}\n`+
+        (cli.cidade?`📍 ${cli.cidade}\n`:'')+
+        (cli.tel||cli.telefone?`📞 ${cli.tel||cli.telefone}\n`:'')+
+        `\n📈 RESUMO:\n`+
+        `• Total de OFs: ${todas.length}\n`+
+        `• Concluídas: ${concluidas.length}\n`+
+        `• Em aberto: ${abertas.length}\n`+
+        `• Total caixas produzidas: ${totalCx.toLocaleString('pt-BR')}\n`+
+        `• Faturamento total: R$ ${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `• Ticket médio por OF: R$ ${ticketMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `\n🕐 Últimas concluídas:\n${ultimas.join('\n')||'—'}`
+      );
+    }
+
     if (ofNum && hasAny('concluir','finalizar','dar baixa','concluída','concluida') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
       if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
@@ -11529,6 +11748,49 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
         updated_at: now,
       }).eq('id', ofId);
       return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída! Produzidas: ${Number(qtdProd).toLocaleString('pt-BR')} cx | Perdidas: ${Number(qtdPerd).toLocaleString('pt-BR')} cx.` });
+    }
+
+    if (act.type === 'of_programar') {
+      const payload = {};
+      if (act.maqNova) {
+        payload.fluxo_maquinas = [act.maqNova];
+        payload.maq = JSON.stringify([act.maqNova]);
+        payload.maquina_atual_index = 0;
+      }
+      if (act.dataProducao) { payload.data_producao = act.dataProducao; payload.dia = act.dataProducao; }
+      payload.updated_at = new Date().toISOString();
+      await supabase.from('ofs').update(payload).eq('id', act.ofId);
+      return res.json({ok:true, resposta:`✅ ${first}, OF #${act.ofNum} programada!${act.maqNova?' Máquina: '+act.maqNova:''}${act.dataProducao?' | Data: '+act.dataProducao.split('-').reverse().join('/'):''}` });
+    }
+
+    if (act.type === 'of_clonar') {
+      const {data:ofOrig} = await supabase.from('ofs').select('*').eq('id',act.ofId).maybeSingle();
+      if (!ofOrig) return res.json({ok:false, resposta:`${first}, OF original não encontrada.`});
+      const {data:last} = await supabase.from('ofs').select('seq,of,numero').order('seq',{ascending:false}).limit(1).maybeSingle();
+      const nextSeq = Math.trunc(Number(last?.seq||0)||0)+1;
+      const numStr = String(nextSeq);
+      const clone = {...ofOrig};
+      delete clone.id; delete clone.created_at; delete clone.updated_at; delete clone.deleted_at;
+      delete clone.data_conclusao; delete clone.qtd_produzida; delete clone.qtd_perdida;
+      delete clone.usuario_conclusao; delete clone.maquina_perda;
+      clone.seq = nextSeq; clone.of = numStr; clone.numero = numStr;
+      clone.status = 'Em aberto';
+      if (act.novaEntrega) { clone.ent = act.novaEntrega; clone.data_entrega = act.novaEntrega; }
+      if (act.novoCliId) { clone.cli_id = act.novoCliId; clone.cliente_id = act.novoCliId; }
+      clone.created_at = new Date().toISOString();
+      clone.updated_at = new Date().toISOString();
+      const {data:nova, error} = await supabase.from('ofs').insert([clone]).select('id,of,numero').single();
+      if (error) return res.json({ok:false, resposta:`${first}, erro ao clonar: ${error.message}`});
+      return res.json({ok:true, resposta:`✅ ${first}, OF #${act.ofNum} clonada! Nova OF criada: #${nova.of||nova.numero}`});
+    }
+
+    if (act.type === 'of_reagendar_lote') {
+      let ok2=0;
+      for (const id of (act.ids||[])) {
+        const r = await supabase.from('ofs').update({dia:act.dataDestino,data_producao:act.dataDestino,updated_at:new Date().toISOString()}).eq('id',id);
+        if(!r.error) ok2++;
+      }
+      return res.json({ok:true, resposta:`✅ ${first}, ${ok2} OFs da ${act.maqNome} reagendadas para ${act.dataDestino.split('-').reverse().join('/')}.`});
     }
 
     if (act.type === 'of_upload_image') {
