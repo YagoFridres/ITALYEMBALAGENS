@@ -9867,6 +9867,12 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
 
+    const imgMatch = pergunta.match(/https?:\/\/\S+/i);
+    if (imgMatch && (norm.includes('recebi uma imagem') || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(imgMatch[0]))) {
+      const url = String(imgMatch[0] || '').replace(/[)\],.]+$/g, '').trim();
+      if (url) return respond(`Imagem recebida!`, { images: [url], dadosExtras: { tipo: 'imagem_recebida', url } });
+    }
+
     if (hasAny('cadastrar cliente', 'cadastre o cliente', 'novo cliente', 'adicionar cliente', 'criar cliente', 'adicione o cliente')) {
       return res.json({
         ok: true,
@@ -10760,32 +10766,63 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     if (ofNum && (norm.includes('imagem') || norm.includes('foto'))) {
       let row = null;
-      const { data: d1 } = await supabase.from('ofs')
+      const { data: d1 } = await supabase
+        .from('ofs')
         .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,qtd,quantidade,data_entrega,ent')
-        .or(`of.eq.${ofNum},numero.eq.${ofNum}`).is('deleted_at', null).limit(1);
+        .or(`of.eq.${ofNum},numero.eq.${ofNum}`)
+        .is('deleted_at', null)
+        .limit(1);
       row = Array.isArray(d1) && d1[0] ? d1[0] : null;
       if (!row) {
-        const { data: d2 } = await supabase.from('ofs')
+        const { data: d2 } = await supabase
+          .from('ofs')
           .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,qtd,quantidade,data_entrega,ent')
-          .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`).is('deleted_at', null).limit(1);
+          .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`)
+          .is('deleted_at', null)
+          .limit(1);
         row = Array.isArray(d2) && d2[0] ? d2[0] : null;
       }
       if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      const urls = _jarvisTodasImgsOf(row);
-      const numOf = String(row.of || row.numero || '—');
-      const desc = String(row.descricao || row.prodDesc || '').trim();
+
+      const iu = String(row.imagem_url || '').trim();
+      let urls = [];
+      try {
+        const raw = row.imgs;
+        const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
+        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim()).filter(Boolean)])].slice(0, 5);
+      } catch (_) { urls = iu ? [iu] : []; }
+
+      const numOf  = String(row.of || row.numero || '—');
+      const desc   = String(row.descricao || row.prodDesc || '').trim();
       const status = String(row.status || '').trim();
-      const cli = String(row.cliNome || row.cliente_nome || '').trim();
-      const qtd = Math.trunc(Number(row.qtd || row.quantidade || 0));
-      const ent = String(row.data_entrega || row.ent || '').slice(0, 10);
+      const cli    = String(row.cliNome || row.cliente_nome || '').trim();
+      const qtd    = Math.trunc(Number(row.qtd || row.quantidade || 0));
+      const ent    = String(row.data_entrega || row.ent || '').slice(0, 10);
+      const entFmt = ent ? ent.split('-').reverse().join('/') : '—';
+
       if (!urls.length) {
-        return respond(`${nome}, a OF #${numOf}${desc ? ` (${desc})` : ''} não possui imagem cadastrada.\nCliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${ent ? _assistFmtDateBr(ent) : '—'}`);
+        return respond(
+          `${nome}, OF #${numOf} não possui imagem cadastrada.\n` +
+          `Cliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${entFmt}`
+        );
       }
+
       return res.json({
         ok: true,
-        resposta: `${nome}, OF #${numOf}${desc ? ` — ${desc}` : ''}\nCliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${ent ? _assistFmtDateBr(ent) : '—'}`,
+        resposta:
+          `${nome}, OF #${numOf}${desc ? ` — ${desc}` : ''}\n` +
+          `Cliente: ${cli || '—'} | Status: ${status} | Qtd: ${qtd} cx | Entrega: ${entFmt}`,
         images: urls,
-        dadosExtras: { tipo: 'of_imagem', of_id: row.id, numero: numOf, descricao: desc, status, imagem_url: urls[0] || null, imgs: urls, acoes_imagem: ['abrir', 'baixar', 'imprimir'] }
+        dadosExtras: {
+          tipo: 'of_imagem',
+          of_id: row.id,
+          numero: numOf,
+          descricao: desc,
+          status,
+          imagem_url: urls[0] || null,
+          imgs: urls,
+          acoes_imagem: ['abrir', 'baixar', 'imprimir'],
+        }
       });
     }
 

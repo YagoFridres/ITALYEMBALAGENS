@@ -5852,6 +5852,8 @@ function cardOFMaquina(of, maquinaAtual){
   const hoje = new Date().toISOString().slice(0,10);
   const entStr = (of.ent || of.data_entrega || '').slice(0,10);
   const atrasada = entStr && entStr < hoje;
+  const selDia = String(window._ofmaqSelectedDate || '').slice(0,10);
+  const isSelDia = !!(selDia && entStr && entStr === selDia);
   const prodStr = String(of.dia || of.data_producao || of.dataProducao || '').slice(0,10);
   const statusRaw = String(of.status || 'Em aberto').trim();
   const statusBadge = (()=>{
@@ -5915,7 +5917,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'</div>'
     +'<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">'
     +'<span style="font-size:13px">🏭 <b>Produção:</b> '+fmtD(prodStr)+'</span>'
-    +'<span style="font-size:13px;color:'+(atrasada?'#f44336':entStr===hoje?'#ff9800':'#4CAF50')+'">🚚 <b>Entrega:</b> '+fmtD(entStr)+'</span>'
+    +'<span style="font-size:13px;color:'+(isSelDia?'var(--accent)':(atrasada?'#f44336':entStr===hoje?'#ff9800':'#4CAF50'))+'">🚚 <b>Entrega:</b> '+fmtD(entStr)+(isSelDia?' 📅':'')+'</span>'
     +'</div>'
     +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
     +'<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -6057,10 +6059,9 @@ async function renderOFsPorMaquina(){
       </div>`;
       const qs = new URLSearchParams();
       if(EMP_FILTRO) qs.set('empId', EMP_FILTRO);
-      qs.set('limit','150');
-      qs.set('offset','0');
-      qs.set('lite','1');
+      qs.set('limit','800');
       qs.set('excluir_canceladas','1');
+      qs.set('nocache','1');
       const r = await api('GET','/ofs?'+qs.toString());
       const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
       lista = rows || [];
@@ -6103,40 +6104,20 @@ async function renderOFsPorMaquina(){
     const maqsBase = ofmaqMaquinasValidas();
 
     if(window._ofmaqView === 'lista'){
-      if(modo === 'hoje'){
-        lista = lista.filter(o => diaExibicaoOF(o) === hoje);
-      } else if(modo === 'data'){
-        if(dataSel) lista = lista.filter(o => diaExibicaoOF(o) === dataSel);
-      } else if(modo === 'semana'){
-        const now = new Date();
-        const mon = new Date(now);
-        const diff = (now.getDay() + 6) % 7;
-        mon.setDate(now.getDate() - diff);
-        mon.setHours(0,0,0,0);
-        const sun = new Date(mon);
-        sun.setDate(mon.getDate() + 6);
-        const monStr = mon.toISOString().slice(0,10);
-        const sunStr = sun.toISOString().slice(0,10);
-        lista = lista.filter(o => {
-          const d = dataRef(o);
-          return d && d >= monStr && d <= sunStr;
-        });
-      }
+      lista = lista;
     }
 
     const todasOfs = (lista || []).slice();
     window._ofmaqListaCompleta = todasOfs.slice();
 
     const dataSelecionada = String(dataSel || hoje).slice(0,10);
-    const soAtivas = true;
+    try{ window._ofmaqSelectedDate = dataSelecionada; }catch(_){}
     let ofsFiltradas = todasOfs.filter(o => {
       if (!o || o.deleted_at) return false;
       const s = String(o.status || '').toLowerCase();
       if (s.includes('cancel')) return false;
-      if (soAtivas && s.includes('conclu')) return false;
-      const ent = String(o.data_entrega || o.ent || '').slice(0, 10);
-      if (!ent) return false;
-      return ent <= dataSelecionada;
+      if (s.includes('conclu')) return false;
+      return true;
     });
 
     if (busca) {
@@ -35751,6 +35732,31 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       obs:r.obs||'',
       status:r.status||''
     };
+
+    window.handleJarvisImg = async function handleJarvisImg(input) {
+      const file = input && input.files ? input.files[0] : null;
+      if (!file) return;
+      const form = new FormData();
+      form.append('file', file);
+      try {
+        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        const r = await fetch('/api/chat/upload', {
+          method: 'POST',
+          headers: token ? { Authorization: 'Bearer ' + token } : {},
+          body: form
+        });
+        const j = await r.json().catch(()=>null);
+        const url = (j && j.ok && (j.data?.url || j.url)) ? String(j.data?.url || j.url || '').trim() : '';
+        if (url) {
+          const inputMsg = document.getElementById('assist-text') || document.querySelector('.jarvis-input');
+          if (inputMsg) inputMsg.value = `Recebi uma imagem: ${url}`;
+          document.getElementById('assist-send')?.click();
+        }
+      } catch (e) {
+        console.error('Erro upload imagem JARVIS:', e);
+      }
+      try { input.value = ''; } catch (e) {}
+    };
   };
 
   // Multi-seleção com Ctrl/Cmd
@@ -39255,6 +39261,8 @@ window.atualizarChapas = async function(){
       <div id="assist-body"></div>
       <div id="assist-input">
         <textarea id="assist-text" placeholder="Digite sua pergunta..."></textarea>
+        <input type="file" id="jarvis-img-input" accept="image/*" style="display:none" onchange="handleJarvisImg(this)">
+        <button type="button" onclick="document.getElementById('jarvis-img-input').click()" title="Enviar imagem">📎</button>
         <button type="button" id="assist-mic" title="Falar">🎤</button>
         <button type="button" id="assist-send">Enviar</button>
       </div>
@@ -40775,15 +40783,12 @@ window.atualizarChapas = async function(){
     const showAll = !!mobileState.maqShowAll;
     const todasOfs = mobileState.ofs || [];
     const dataSelecionada = iso;
-    const soAtivas = !showAll;
     let ofsBase = (todasOfs || []).filter(o => {
       if (!o || o.deleted_at) return false;
       const s = String(o.status || '').toLowerCase();
       if (s.includes('cancel')) return false;
-      if (soAtivas && s.includes('conclu')) return false;
-      const ent = String(o.data_entrega || o.ent || '').slice(0, 10);
-      if (!ent) return false;
-      return ent <= dataSelecionada;
+      if (s.includes('conclu')) return false;
+      return true;
     });
     const ofs = ofsBase.filter((of)=>{
       const mk = String(getOfMaquinaAtual(of) || '').trim();
