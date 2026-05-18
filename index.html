@@ -5157,49 +5157,101 @@ async function salvarAlterarEntrega(){
   toast(`✅ Entrega da OF #${numeroLabel} alterada para ${fmtD(ent)}`, 'var(--green)');
 }
 
-async function baixaPorMaquinaPC(ofId, ofNum){
-  const id = String(ofId || '').trim();
-  if(!id) return;
-  const maq = prompt('Máquina (ex: IMP 03):', '');
-  if(!maq) return;
-  const qtd = Math.trunc(Number(prompt('Qtd produzida (cx):', '0') || 0) || 0);
-  try{
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+let inconfAtual = { ofId: null, ofNum: null, maquina: null, fotoUrl: null };
+let baixaMaqAtual = { ofId: null, ofNum: null, maquina: null };
+
+function fecharModalInconformidade() {
+  const m = document.getElementById('modal-inconformidade');
+  if (m) m.style.display = 'none';
+}
+
+async function handleInconfFoto(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const st = document.getElementById('inconf-foto-status');
+  if (st) st.textContent = 'Enviando...';
+  const form = new FormData();
+  form.append('file', file);
+  try {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
-    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + String(token || ''), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maquina: maq, qtd_produzida: qtd })
-    });
-    const j = await r.json().catch(()=>null);
-    if(!r.ok || j?.ok === false) return toast('Erro: ' + String(j?.error || 'falha'), 'var(--red)');
-    toast(String(j?.mensagem || '✅ Baixa registrada!'), 'var(--green)');
-  }catch(e){
-    toast('Erro: ' + String(e?.message || e), 'var(--red)');
+    const r = await fetch('/api/chat/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+    const j = await r.json().catch(() => null);
+    if (j?.ok && j?.data?.url) {
+      inconfAtual.fotoUrl = String(j.data.url || '').trim();
+      if (st) st.textContent = '✅ Foto anexada';
+      const prev = document.getElementById('inconf-foto-preview');
+      if (prev) {
+        prev.src = inconfAtual.fotoUrl;
+        prev.style.display = 'block';
+      }
+    } else {
+      if (st) st.textContent = '❌ Erro no upload';
+    }
+  } catch (e) {
+    if (st) st.textContent = '❌ Erro no upload';
   }
+  try { input.value = ''; } catch (_) {}
+}
+
+async function salvarInconformidade() {
+  const obs = String((document.getElementById('inconf-obs') || {}).value || '').trim();
+  if (!obs) { alert('Descreva o problema'); return; }
+  const operador = String((document.getElementById('inconf-operador') || {}).value || '').trim();
+  const qtdPerdida = Math.trunc(Number((document.getElementById('inconf-qtd-perdida') || {}).value) || 0);
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+
+  let clienteNome = '';
+  let imagemOf = '';
+  try {
+    const ro = await fetch('/api/ofs/' + encodeURIComponent(String(inconfAtual.ofId || '')), { headers: { Authorization: 'Bearer ' + token } });
+    const jo = await ro.json().catch(() => null);
+    const data = jo?.data || null;
+    if (jo?.ok && data) {
+      clienteNome = String(data.cliNome || data.cliente_nome || '').trim();
+      imagemOf = String(data.imagem_url || '').trim();
+    }
+  } catch (_) {}
+
+  try {
+    const r = await fetch('/api/inconformidades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        of_id: inconfAtual.ofId,
+        of_numero: inconfAtual.ofNum,
+        maquina: inconfAtual.maquina,
+        operador: operador || 'Não informado',
+        obs,
+        qtd_perdida: qtdPerdida,
+        imagem_url: imagemOf || null,
+        imagem_problema_url: inconfAtual.fotoUrl || null,
+        cliente_nome: clienteNome,
+        status: 'Aberta',
+      })
+    });
+    const j = await r.json().catch(() => null);
+    if (j?.ok) {
+      fecharModalInconformidade();
+      alert('✅ Inconformidade registrada com sucesso!');
+      try { if (typeof carregarInconformidadesControle === 'function') carregarInconformidadesControle(); } catch (_) {}
+    } else {
+      alert('Erro: ' + String(j?.error || 'Tente novamente'));
+    }
+  } catch (e) {
+    alert('Erro ao salvar: ' + String(e?.message || e));
+  }
+}
+
+async function baixaPorMaquinaPC(ofId, ofNum){
+  return baixarPorMaquina(ofId, ofNum);
 }
 
 async function registrarInconformidadePC(ofId, ofNum){
   const id = String(ofId || '').trim();
-  if(!id) return;
-  const maq = prompt('Máquina onde ocorreu o problema:', '');
-  if(!maq) return;
-  const qtdPerd = Math.trunc(Number(prompt('Qtd perdida (cx):', '0') || 0) || 0);
-  const obs = String(prompt('Observação do problema:', '') || '').trim();
-  try{
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
-    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + String(token || ''), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maquina: maq, qtd_produzida: 0, tem_problema: true, obs_problema: obs, qtd_perdida: qtdPerd })
-    });
-    const j = await r.json().catch(()=>null);
-    if(!r.ok || j?.ok === false) return toast('Erro: ' + String(j?.error || 'falha'), 'var(--red)');
-    toast('⚠️ Inconformidade registrada na OF #' + String(ofNum || ofId), 'var(--green)');
-  }catch(e){
-    toast('Erro: ' + String(e?.message || e), 'var(--red)');
-  }
+  if (!id) return;
+  const of = typeof ofmaqGetOFById === 'function' ? ofmaqGetOFById(id) : null;
+  const maqAtual = of && typeof getMaquinaAtual === 'function' ? (getMaquinaAtual(of) || '') : '';
+  return registrarInconformidade(ofId, ofNum, maqAtual);
 }
 
 function _ensureOfImgInputPC(){
@@ -34282,6 +34334,57 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </div>
 
 <!-- ===== MODAIS ===== -->
+<div id="modal-inconformidade" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center">
+  <div style="background:var(--surface,#1e2333); border-radius:14px; padding:20px; width:min(480px,95vw); max-height:90vh; overflow-y:auto">
+    <h3 style="margin-bottom:16px">⚠️ Registrar Inconformidade</h3>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--muted)">OF</label>
+      <input id="inconf-of" readonly style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--muted)">Operador</label>
+      <input id="inconf-operador" placeholder="Nome do operador" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--muted)">Máquina</label>
+      <input id="inconf-maquina" readonly style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--muted)">Descrição do Problema *</label>
+      <textarea id="inconf-obs" placeholder="Descreva o problema ocorrido..." rows="3" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px;resize:vertical"></textarea>
+    </div>
+
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--muted)">Caixas Perdidas</label>
+      <input type="number" id="inconf-qtd-perdida" min="0" value="0" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+    </div>
+
+    <div style="margin-bottom:16px">
+      <label style="font-size:12px;color:var(--muted)">Foto do problema (opcional)</label>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+        <input type="file" id="inconf-foto-input" accept="image/*" capture="environment" style="display:none" onchange="handleInconfFoto(this)">
+        <button onclick="document.getElementById('inconf-foto-input').click()" style="padding:8px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:inherit;cursor:pointer;font-size:13px">
+          📷 Tirar foto / Anexar
+        </button>
+        <span id="inconf-foto-status" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <img id="inconf-foto-preview" style="display:none;margin-top:8px;max-width:100%;border-radius:8px;max-height:200px;object-fit:cover">
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button onclick="salvarInconformidade()" style="flex:1;padding:12px;background:#ef4444;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:14px">
+        ⚠️ Registrar
+      </button>
+      <button onclick="fecharModalInconformidade()" style="padding:12px 16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:inherit;cursor:pointer">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-inc-resolver">
   <div class="modal" style="width:min(560px,96vw)">
     <button class="close-btn" onclick="fechar('modal-inc-resolver')">✕</button>
@@ -40982,17 +41085,73 @@ window.atualizarChapas = async function(){
     const id = String(ofId || '').trim();
     if(!id) return;
     const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const maq = prompt('Máquina (ex: IMP 03):', '');
-    if(!maq) return;
-    const qtd = Math.trunc(Number(prompt('Qtd produzida (cx):', '0') || 0) || 0);
-    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
-      method: 'POST',
-      headers: { ..._headersAuthSimple(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maquina: maq, qtd_produzida: qtd })
-    });
-    const j = await r.json().catch(()=>null);
-    if(!r.ok || j?.ok === false) return showMobileToast('Erro: ' + String(j?.error || 'falha'), 'error');
-    showMobileToast(String(j?.mensagem || '✅ Baixa registrada!'), 'success');
+
+    let of = null;
+    try { of = (mobileState.ofs || []).find(o => String(o?.id) === String(id)) || null; } catch (_) {}
+    if (!of) {
+      try { of = (typeof ofmaqGetOFById === 'function') ? (ofmaqGetOFById(id) || null) : null; } catch (_) {}
+    }
+    const maqAtual = of && typeof getMaquinaAtual === 'function' ? (getMaquinaAtual(of) || '') : '';
+    baixaMaqAtual = { ofId, ofNum, maquina: maqAtual };
+
+    const resp = prompt(
+      `Baixa por Máquina — OF #${String(ofNum || '')}\nMáquina: ${String(maqAtual || '')}\n\nQuantas caixas foram produzidas nesta máquina?\n(0 = não informar)`,
+      '0'
+    );
+    if (resp === null) return;
+
+    const qtdProd = Math.trunc(Number(resp) || 0);
+    const temProblema = confirm('Houve algum problema nesta máquina?');
+
+    let obsProblema = '';
+    let qtdPerdida = 0;
+    if (temProblema) {
+      obsProblema = String(prompt('Descreva o problema:') || '').trim();
+      const perdStr = String(prompt('Quantas caixas foram perdidas? (0 = nenhuma)') || '0');
+      qtdPerdida = Math.trunc(Number(perdStr) || 0);
+    }
+
+    const operador = String(prompt('Nome do operador (Enter para pular):') || '').trim();
+
+    try {
+      const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
+        method: 'POST',
+        headers: { ..._headersAuthSimple(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          maquina: maqAtual,
+          operador,
+          qtd_produzida: qtdProd,
+          tem_problema: temProblema,
+          obs_problema: obsProblema,
+          qtd_perdida: qtdPerdida,
+        })
+      });
+      const j = await r.json().catch(()=>null);
+      if(!r.ok || j?.ok === false){
+        if (document.body.classList.contains('mobile-mode') && typeof showMobileToast === 'function') showMobileToast('Erro: ' + String(j?.error || 'Tente novamente'), 'error');
+        else if (typeof toast === 'function') toast('Erro: ' + String(j?.error || 'Tente novamente'), 'var(--red)');
+        else alert('Erro: ' + String(j?.error || 'Tente novamente'));
+        return;
+      }
+      const msgOk = String(j?.mensagem || '✅ Baixa registrada!');
+      if (document.body.classList.contains('mobile-mode') && typeof showMobileToast === 'function') showMobileToast(msgOk, 'success');
+      else if (typeof toast === 'function') toast(msgOk, 'var(--green)');
+      else alert(msgOk);
+
+      if (temProblema && obsProblema) {
+        registrarInconformidade(ofId, ofNum, maqAtual);
+        try { document.getElementById('inconf-obs').value = obsProblema; } catch (_) {}
+        try { document.getElementById('inconf-qtd-perdida').value = String(qtdPerdida); } catch (_) {}
+        if (operador) { try { document.getElementById('inconf-operador').value = operador; } catch (_) {} }
+      }
+
+      try { if (typeof carregarDados === 'function') carregarDados(); } catch (_) {}
+    } catch (e) {
+      const msg = 'Erro: ' + String(e?.message || e);
+      if (document.body.classList.contains('mobile-mode') && typeof showMobileToast === 'function') showMobileToast(msg, 'error');
+      else if (typeof toast === 'function') toast(msg, 'var(--red)');
+      else alert(msg);
+    }
   }
 
   function concluirOfModal(ofId){
@@ -41062,22 +41221,29 @@ window.atualizarChapas = async function(){
     inp.click();
   }
 
-  async function registrarInconformidade(ofId, ofNum){
+  function registrarInconformidade(ofId, ofNum, maquina){
     const id = String(ofId || '').trim();
     if(!id) return;
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const maq = prompt('Máquina onde ocorreu o problema:', '');
-    if(!maq) return;
-    const qtdPerd = Math.trunc(Number(prompt('Qtd perdida (cx):', '0') || 0) || 0);
-    const obs = String(prompt('Observação do problema:', '') || '').trim();
-    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
-      method: 'POST',
-      headers: { ..._headersAuthSimple(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ maquina: maq, qtd_produzida: 0, tem_problema: true, obs_problema: obs, qtd_perdida: qtdPerd })
-    });
-    const j = await r.json().catch(()=>null);
-    if(!r.ok || j?.ok === false) return showMobileToast('Erro: ' + String(j?.error || 'falha'), 'error');
-    showMobileToast('⚠️ Inconformidade registrada na OF #' + (ofNum || ofId), 'success');
+
+    let maq = String(maquina || '').trim();
+    if(!maq){
+      let of = null;
+      try { of = (mobileState.ofs || []).find(o => String(o?.id) === String(id)) || null; } catch (_) {}
+      if (!of) {
+        try { of = (typeof ofmaqGetOFById === 'function') ? (ofmaqGetOFById(id) || null) : null; } catch (_) {}
+      }
+      try { if (of && typeof getMaquinaAtual === 'function') maq = String(getMaquinaAtual(of) || '').trim(); } catch (_) {}
+    }
+
+    inconfAtual = { ofId, ofNum, maquina: maq || '', fotoUrl: null };
+    try { document.getElementById('inconf-of').value = 'OF #' + String(ofNum || ''); } catch (_) {}
+    try { document.getElementById('inconf-maquina').value = String(maq || ''); } catch (_) {}
+    try { document.getElementById('inconf-operador').value = ''; } catch (_) {}
+    try { document.getElementById('inconf-obs').value = ''; } catch (_) {}
+    try { document.getElementById('inconf-qtd-perdida').value = '0'; } catch (_) {}
+    try { document.getElementById('inconf-foto-status').textContent = ''; } catch (_) {}
+    try { document.getElementById('inconf-foto-preview').style.display = 'none'; } catch (_) {}
+    try { document.getElementById('modal-inconformidade').style.display = 'flex'; } catch (_) {}
   }
 
   function abrirDrawer(ofId){
