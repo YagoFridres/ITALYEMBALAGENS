@@ -10647,6 +10647,175 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       );
     }
 
+    if (hasAny('o que preciso comprar','o que devo comprar','sugestão de compra','sugestao de compra','comprar esta semana','comprar essa semana')) {
+      const {data:chapasRaw}=await supabase.from('chapas_estoque').select('id,nome,nomenclatura,nom,fornecedor,forn,tamanho,tam,quantidade,qtd,quantidade_atual,estoque_minimo,valor_unitario,val').limit(500);
+      const chapas=Array.isArray(chapasRaw)?chapasRaw:[];
+      const criticas=chapas.filter(c=>{
+        const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const min=Math.trunc(Number(c.estoque_minimo||200)||200);
+        return qtd<min;
+      }).sort((a,b)=>{
+        const qa=Math.trunc(Number(a.quantidade_atual||a.quantidade||a.qtd||0)||0);
+        const qb=Math.trunc(Number(b.quantidade_atual||b.quantidade||b.qtd||0)||0);
+        const ma=Math.trunc(Number(a.estoque_minimo||200)||200);
+        const mb=Math.trunc(Number(b.estoque_minimo||200)||200);
+        return (qa-ma)-(qb-mb);
+      });
+      if(!criticas.length) return respond(`${nome}, estoque de chapas está OK! Nenhuma abaixo do mínimo.`);
+      const linhas=criticas.slice(0,10).map(c=>{
+        const nom=String(c.nomenclatura||c.nom||c.nome||'—').trim();
+        const tam=String(c.tamanho||c.tam||'').trim();
+        const forn=String(c.fornecedor||c.forn||'').trim();
+        const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const min=Math.trunc(Number(c.estoque_minimo||200)||200);
+        const sug=Math.max(0,min-qtd);
+        const val=Number(c.valor_unitario||c.val||0);
+        return `• ${nom}${tam?' ('+tam+')':''}\n  Saldo: ${qtd} | Mínimo: ${min} | Comprar: ${sug} un${val>0?' | ~R$ '+(sug*val).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}${forn?' | '+forn:''}`;
+      });
+      const totalVal=criticas.slice(0,10).reduce((s,c)=>{
+        const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
+        const min=Math.trunc(Number(c.estoque_minimo||200)||200);
+        const val=Number(c.valor_unitario||c.val||0);
+        return s+(Math.max(0,min-qtd)*val);
+      },0);
+      return respond(`🛒 ${nome}, ${criticas.length} chapa${criticas.length!==1?'s':''} para comprar:\n\n${linhas.join('\n')}\n\n💰 Investimento estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}`);
+    }
+
+    if (hasAny('compare','comparar','comparativo') && hasAny('faturamento','vendas','mês','mes')) {
+      const meses={janeiro:1,fevereiro:2,marco:3,'março':3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+      const palavras=norm.split(/\s+/);
+      const mesesEncontrados=[];
+      palavras.forEach(p=>{if(meses[p]) mesesEncontrados.push(meses[p]);});
+      if(mesesEncontrados.length<2) return respond(`${nome}, preciso de dois meses. Ex: "compare faturamento de abril com maio"`);
+      const y=new Date().getFullYear();
+      const fatMes=async(m)=>{
+        const ini=`${y}-${String(m).padStart(2,'0')}-01`;
+        const fim=new Date(y,m,0).toISOString().slice(0,10);
+        const {data}=await supabase.from('ofs').select('valor_total,valor_venda,qtd_produzida,qtd,status,deleted_at').gte('data_conclusao',ini).lte('data_conclusao',fim).is('deleted_at',null).limit(5000);
+        const rows=(Array.isArray(data)?data:[]).filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
+        return {fat:rows.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0),ofs:rows.length,cx:rows.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0)};
+      };
+      const [r1,r2]=await Promise.all([fatMes(mesesEncontrados[0]),fatMes(mesesEncontrados[1])]);
+      const nomeMes=n=>Object.keys(meses).find(k=>meses[k]===n&&!k.includes('ç'))||String(n);
+      const diff=r2.fat-r1.fat; const pct=r1.fat>0?((diff/r1.fat)*100):0;
+      return respond(
+        `📊 Comparativo de faturamento (${y}):\n\n`+
+        `📅 ${nomeMes(mesesEncontrados[0]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[0]).slice(1)}:\n`+
+        `  💰 R$ ${r1.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r1.ofs} OFs | ${r1.cx.toLocaleString('pt-BR')} cx\n\n`+
+        `📅 ${nomeMes(mesesEncontrados[1]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[1]).slice(1)}:\n`+
+        `  💰 R$ ${r2.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r2.ofs} OFs | ${r2.cx.toLocaleString('pt-BR')} cx\n\n`+
+        `${diff>=0?'📈':'📉'} Variação: ${diff>=0?'+':''}R$ ${Math.abs(diff).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${diff>=0?'+':''}${pct.toFixed(1)}%)`
+      );
+    }
+
+    if (hasAny('produtos mais fabricados','produtos mais vendidos','mais fabricados','mais produzidos','ranking de produtos')) {
+      const m=new Date().toISOString().slice(0,7);
+      const {data:ofsRaw}=await supabase.from('ofs').select('descricao,prodDesc,produto,qtd_produzida,qtd,status,deleted_at,data_conclusao').gte('data_conclusao',m+'-01').is('deleted_at',null).limit(5000);
+      const rows=(Array.isArray(ofsRaw)?ofsRaw:[]).filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
+      const ranking=new Map();
+      rows.forEach(o=>{
+        const prod=String(o.descricao||o.prodDesc||o.produto||'Sem descrição').trim();
+        const qtd=Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
+        ranking.set(prod,(ranking.get(prod)||0)+qtd);
+      });
+      const top=[...ranking.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+      if(!top.length) return respond(`${nome}, não há dados de produção para este mês ainda.`);
+      const linhas=top.map(([p,q],i)=>`${i+1}. ${p}: ${q.toLocaleString('pt-BR')} cx`);
+      return respond(`🏆 Top ${top.length} produtos mais fabricados (${m}):\n\n${linhas.join('\n')}`);
+    }
+
+    if (hasAny('abrir cliente','abre o cliente','abre a cliente','buscar cliente','encontrar cliente','ver cliente') && !hasAny('ofs do cliente','of do cliente')) {
+      const mCli=pergunta.match(/(?:abrir?|abre|buscar|encontrar|ver)\s+(?:o\s+|a\s+)?(?:cliente\s+)?(.+?)(?:\?|$)/i)||null;
+      const cliNomeBusca=mCli?String(mCli[1]||'').trim().replace(/\?+$/,'').trim():'';
+      if(!cliNomeBusca) return respond(`${nome}, qual o nome do cliente?`);
+      const {data:cls}=await supabase.from('clientes').select('id,nome,cidade,tel,telefone,cnpj').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(5);
+      const clientes=Array.isArray(cls)?cls:[];
+      if(!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
+      const linhas=clientes.map((c,i)=>`${i+1}. **${String(c.nome||'').trim()}**${c.cidade?' — '+c.cidade:''}${c.tel||c.telefone?' | 📞 '+(c.tel||c.telefone):''}${c.cnpj?' | CNPJ: '+c.cnpj:''}`);
+      return res.json({
+        ok:true,
+        resposta:`${nome}, encontrei ${clientes.length} cliente${clientes.length!==1?'s':''}:\n\n${linhas.join('\n')}`,
+        dadosExtras:{tipo:'clientes_lista', clientes:clientes.map(c=>({id:c.id,nome:c.nome,cidade:c.cidade,tel:c.tel||c.telefone}))}
+      });
+    }
+
+    if (hasAny('máquina mais livre','maquina mais livre','qual máquina','qual maquina') && hasAny('livre','disponível','disponivel','menos ocupada','menos carregada')) {
+      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativo',true);
+      const {data:ofsAb}=await supabase.from('ofs').select('fluxo_maquinas,maq,maquina_atual_index,status,deleted_at').is('deleted_at',null).limit(500);
+      const contagem=new Map();
+      (Array.isArray(maqAll)?maqAll:[]).forEach(m=>{const n=String(m.nome||m.col||'').trim();if(n) contagem.set(n,0);});
+      (Array.isArray(ofsAb)?ofsAb:[]).forEach(o=>{
+        const s=String(o.status||'').toLowerCase();
+        if(s.includes('conclu')||s.includes('cancel')) return;
+        let f=o.fluxo_maquinas||o.maq||[];
+        if(typeof f==='string'){try{f=JSON.parse(f);}catch(_){f=[];}}
+        if(!Array.isArray(f)||!f.length) return;
+        const idx=Number(o.maquina_atual_index||0)||0;
+        const item=f[Math.min(idx,f.length-1)]||f[0];
+        const mNome=item&&typeof item==='object'?String(item.nome||item.maquina||'').trim():String(item||'').trim();
+        if(mNome) contagem.set(mNome,(contagem.get(mNome)||0)+1);
+      });
+      const ranking=[...contagem.entries()].sort((a,b)=>a[1]-b[1]);
+      if(!ranking.length) return respond(`${nome}, não encontrei máquinas cadastradas.`);
+      const linhas=ranking.slice(0,8).map(([m,n],i)=>`${i+1}. ${m}: ${n} OF${n!==1?'s':''} na fila`);
+      const livre=ranking[0];
+      return respond(`🏭 ${nome}, a máquina mais livre é **${livre[0]}** com ${livre[1]} OF${livre[1]!==1?'s':''} na fila.\n\nRanking (menos para mais carregada):\n${linhas.join('\n')}`);
+    }
+
+    if (hasAny('última entrada','ultima entrada','histórico de chapa','historico de chapa','última compra de chapa','ultima compra de chapa') && hasAny('chapa','onda','papel')) {
+      const mChapa=pergunta.match(/(?:entrada|chapa|compra)\s+(?:de\s+)?(.+?)(?:\?|$)/i)||null;
+      const termoBusca=mChapa?String(mChapa[1]||'').trim():'';
+      const tables=['chapas_estoque_movimentos_v2','chapas_estoque_movimentos'];
+      let movs=[];
+      for(const t of tables){
+        try{
+          let q2=supabase.from(t).select('chapa_id,tipo,delta,created_at,nf,usuario,obs,valor_unitario,vunit,val').eq('tipo','entrada').order('created_at',{ascending:false}).limit(100);
+          const {data,error}=await q2;
+          if(!error&&Array.isArray(data)){movs=data;break;}
+        }catch(_){}
+      }
+      let chapaIds=[];
+      if(termoBusca){
+        const {data:chapas}=await supabase.from('chapas_estoque').select('id,nomenclatura,nom,nome,tamanho,tam').or(`nomenclatura.ilike.%${termoBusca}%,nom.ilike.%${termoBusca}%,nome.ilike.%${termoBusca}%`).limit(5);
+        chapaIds=(Array.isArray(chapas)?chapas:[]).map(c=>String(c.id));
+        movs=movs.filter(m=>chapaIds.includes(String(m.chapa_id||'')));
+      }
+      if(!movs.length) return respond(`${nome}, não encontrei histórico de entradas${termoBusca?' para "'+termoBusca+'"':''}.`);
+      const linhas=movs.slice(0,8).map(m=>{
+        const dt=String(m.created_at||'').slice(0,10).split('-').reverse().join('/');
+        const qtd=Math.abs(Math.trunc(Number(m.delta||0)||0));
+        const vu=Number(m.valor_unitario||m.vunit||m.val||0);
+        return `• ${dt} — ${qtd} un${vu>0?' | R$ '+vu.toFixed(2)+'/un':''}${m.nf?' | NF: '+m.nf:''}${m.usuario?' | '+m.usuario:''}`;
+      });
+      return respond(`📦 ${nome}, histórico de entradas${termoBusca?' ('+termoBusca+')':''}:\n\n${linhas.join('\n')}`);
+    }
+
+    if (ofNum && hasAny('custo','quanto custou','quanto de chapa','chapas da of','chapa da of')) {
+      const of=await _jarvisFindOFByNumero(ofNum);
+      if(!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      const nOf=_assistPickOfNumber(of);
+      const chapaId=String(of.chapa_id||of.chp||'').trim();
+      const qtdChapas=Math.trunc(Number(of.qtd_chapas||of.qchp||0)||0);
+      if(!chapaId||!qtdChapas) return respond(`${nome}, a OF #${nOf} não tem chapas registradas.`);
+      const table='chapas_estoque';
+      const {data:chapa}=await supabase.from(table).select('id,nomenclatura,nom,nome,valor_unitario,val,tamanho,tam').eq('id',chapaId).maybeSingle();
+      if(!chapa) return respond(`${nome}, não encontrei os dados da chapa da OF #${nOf}.`);
+      const nom=String(chapa.nomenclatura||chapa.nom||chapa.nome||'—').trim();
+      const tam=String(chapa.tamanho||chapa.tam||'').trim();
+      const vu=Number(chapa.valor_unitario||chapa.val||0);
+      const custo=qtdChapas*vu;
+      const valorOf=Number(of.valor_total||of.valor_venda||0);
+      const pctCusto=valorOf>0?((custo/valorOf)*100):0;
+      return respond(
+        `📊 Custo de chapas da OF #${nOf}:\n\n`+
+        `📄 Chapa: ${nom}${tam?' ('+tam+')':''}\n`+
+        `🔢 Quantidade usada: ${qtdChapas.toLocaleString('pt-BR')} un\n`+
+        `💰 Valor unitário: R$ ${vu.toFixed(2)}\n`+
+        `💰 Custo total chapas: R$ ${custo.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        (valorOf>0?`📊 Representa ${pctCusto.toFixed(1)}% do valor da OF (R$ ${valorOf.toLocaleString('pt-BR',{minimumFractionDigits:2})})`:'')
+      );
+    }
+
     if (ofNum && hasAny('concluir','finalizar','dar baixa','concluída','concluida') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
       if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
