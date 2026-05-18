@@ -10044,60 +10044,27 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
       if (!clientes.length) return respond(`${nome}, não encontrei nenhum cliente com o nome "${cliNome}".`);
 
-      const listOfsByCliId = async (id) => {
-        const cid = String(id || '').trim();
-        if (!cid) return [];
-        const cols = ['cli_id', 'cliente_id', 'cliId', 'clienteId'];
-        const isMissingCol = (err) => {
-          const msg = String(err?.message || err || '');
-          return msg.includes("Could not find the '") || msg.toLowerCase().includes('column') || msg.toLowerCase().includes('does not exist');
-        };
-        for (const col of cols) {
-          try {
-            const { data, error } = await supabase
-              .from('ofs')
-              .select('id,of,numero,descricao,prodDesc,produto,imagem_url,imgs,status,data_entrega,ent,deleted_at')
-              .eq(col, cid)
-              .is('deleted_at', null)
-              .not('status', 'in', '("Cancelada","Cancelado")')
-              .order('created_at', { ascending: false })
-              .limit(5000);
-            if (!error) return Array.isArray(data) ? data : [];
-            if (isMissingCol(error)) continue;
-            throw error;
-          } catch (e) {
-            if (isMissingCol(e)) continue;
-            throw e;
-          }
-        }
-        return [];
-      };
-
       const all = [];
       for (const c of clientes) {
-        const ofsCli = await listOfsByCliId(c.id);
-        ofsCli.forEach((o) => all.push({ ...o, _cliNome: String(c.nome || '').trim() }));
+        const cid = String(c?.id || '').trim();
+        if (!cid) continue;
+        const ofsCli = await _jarvisOfsDoCliente(cid);
+        (Array.isArray(ofsCli) ? ofsCli : []).forEach((o) => all.push({ ...o, _cliNome: String(c.nome || '').trim() }));
       }
       const seen = new Set();
       const ofs = all.filter((o) => {
         const id = String(o.id || '').trim() || String(o.of || o.numero || '').trim();
         if (!id) return false;
+        if (_assistIsCancelada(o)) return false;
         if (seen.has(id)) return false;
         seen.add(id);
         return true;
       });
 
-      const pickImg = (o) => {
-        const iu = String(o.imagem_url || '').trim();
-        if (iu) return iu;
-        const raw = o.imgs;
-        try {
-          const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : raw;
-          const first = Array.isArray(arr) ? arr.map((x) => String(x || '').trim()).filter(Boolean)[0] : '';
-          return first || '';
-        } catch (_) { return ''; }
-      };
-      const ofsComImg = ofs.map((o) => ({ o, url: pickImg(o) })).filter((x) => !!x.url).slice(0, 20);
+      const ofsComImg = ofs.map((o) => {
+        const urls = _jarvisTodasImgsOf(o);
+        return { o, url: (Array.isArray(urls) && urls[0]) ? String(urls[0] || '').trim() : '' };
+      }).filter((x) => !!x.url).slice(0, 20);
       const cli0 = clientes[0];
       const cliNome0 = String(cli0?.nome || cliNome || '').trim() || cliNome;
       if (!ofsComImg.length) {
@@ -11324,32 +11291,6 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const top = rows.slice(0, 10).map((f) => `🏭 ${String(f.nome || '—').trim() || '—'}`);
       const extra = rows.length > top.length ? `\n...e mais ${rows.length - top.length} itens` : '';
       return respond(`${nome}, fornecedores cadastrados: ${rows.length}\n${top.join('\n') || '—'}${extra}`);
-    }
-
-    if (hasAny('ofs do cliente', 'of do cliente') && norm.includes('cliente')) {
-      const m = norm.match(/\bcliente\s+(.+)$/);
-      const termo = m ? String(m[1] || '').trim() : '';
-      if (!termo) return naoEntendi();
-      const like = '%' + termo.replace(/%/g, '').trim() + '%';
-      const { data: clsAll } = await supabase.from('clientes').select('id,nome').ilike('nome', like).limit(10);
-      const cls = Array.isArray(clsAll) ? clsAll : [];
-      if (!cls.length) return respond(`${nome}, não encontrei o cliente "${termo}".`);
-      const cid = String(cls[0].id || '').trim();
-      const cNome = String(cls[0].nome || '').trim() || termo;
-      const { data: ofsAll } = await supabase
-        .from('ofs')
-        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,valor_total,valor_venda,val')
-        .or(`cli_id.eq.${cid},cliente_id.eq.${cid}`)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      const ofs = (Array.isArray(ofsAll) ? ofsAll : []).filter((o) => !o.deleted_at && !_assistIsCancelada(o));
-      const top = ofs.slice(0, 10);
-      const linhas = top.map((o) => {
-        const ent = _assistPickOfEntrega(o);
-        return `📦 OF #${_assistPickOfNumber(o)} — ${String(o.status || '—').trim() || '—'}${ent ? ` — entrega ${_assistFmtDateBr(ent)}` : ''}`;
-      });
-      const extra = ofs.length > top.length ? `\n...e mais ${ofs.length - top.length} itens` : '';
-      return respond(`${nome}, OFs do cliente "${cNome}": ${ofs.length}\n${linhas.join('\n') || '—'}${extra}`);
     }
 
     const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
