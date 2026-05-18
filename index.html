@@ -5157,6 +5157,169 @@ async function salvarAlterarEntrega(){
   toast(`✅ Entrega da OF #${numeroLabel} alterada para ${fmtD(ent)}`, 'var(--green)');
 }
 
+async function baixaPorMaquinaPC(ofId, ofNum){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const maq = prompt('Máquina (ex: IMP 03):', '');
+  if(!maq) return;
+  const qtd = Math.trunc(Number(prompt('Qtd produzida (cx):', '0') || 0) || 0);
+  try{
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + String(token || ''), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maquina: maq, qtd_produzida: qtd })
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || j?.ok === false) return toast('Erro: ' + String(j?.error || 'falha'), 'var(--red)');
+    toast(String(j?.mensagem || '✅ Baixa registrada!'), 'var(--green)');
+  }catch(e){
+    toast('Erro: ' + String(e?.message || e), 'var(--red)');
+  }
+}
+
+async function registrarInconformidadePC(ofId, ofNum){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const maq = prompt('Máquina onde ocorreu o problema:', '');
+  if(!maq) return;
+  const qtdPerd = Math.trunc(Number(prompt('Qtd perdida (cx):', '0') || 0) || 0);
+  const obs = String(prompt('Observação do problema:', '') || '').trim();
+  try{
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + String(token || ''), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maquina: maq, qtd_produzida: 0, tem_problema: true, obs_problema: obs, qtd_perdida: qtdPerd })
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || j?.ok === false) return toast('Erro: ' + String(j?.error || 'falha'), 'var(--red)');
+    toast('⚠️ Inconformidade registrada na OF #' + String(ofNum || ofId), 'var(--green)');
+  }catch(e){
+    toast('Erro: ' + String(e?.message || e), 'var(--red)');
+  }
+}
+
+function _ensureOfImgInputPC(){
+  let inp = document.getElementById('of-img-input-pc');
+  if(inp) return inp;
+  inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.id = 'of-img-input-pc';
+  inp.style.display = 'none';
+  inp.addEventListener('change', async (e)=>{
+    const f = e?.target?.files?.[0];
+    if(!f) return;
+    const tgt = window.__ofImgTargetPC || {};
+    const ofId = String(tgt.ofId || '').trim();
+    const ofNum = String(tgt.ofNum || '').trim();
+    try{
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+      const form = new FormData();
+      form.append('file', f);
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const up = await fetch(base + '/api/ofs/upload', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + String(token || '') },
+        body: form
+      });
+      const j = await up.json().catch(()=>null);
+      const url = String(j?.data?.url || j?.url || '').trim();
+      if(!up.ok || j?.ok === false || !url) throw new Error(String(j?.error || 'upload_falhou'));
+      try{
+        const of = ofmaqGetOFById(ofId);
+        let imgs = [];
+        const raw = of?.imgs;
+        if(Array.isArray(raw)) imgs = raw;
+        else if(typeof raw === 'string'){ try{ imgs = JSON.parse(raw || '[]'); }catch(_){ imgs = []; } }
+        imgs = [...new Set([url, ...imgs.map(x=>String(x||'').trim()).filter(Boolean)])].slice(0, 10);
+        await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PUT', body:{ imagem_url: url, imgs: JSON.stringify(imgs) } });
+        if(of){ of.imagem_url = url; of.imgs = imgs; }
+      }catch(_){}
+      toast('✅ Imagem atualizada na OF #' + (ofNum || ofId), 'var(--green)');
+    }catch(err){
+      toast('Erro: ' + String(err?.message || err), 'var(--red)');
+    } finally {
+      try{ inp.value = ''; }catch(_){}
+    }
+  });
+  document.body.appendChild(inp);
+  return inp;
+}
+
+function verImagemOfPC(ofId, ofNum){
+  const of = ofmaqGetOFById(String(ofId||''));
+  const iu = String(of?.imagem_url || '').trim();
+  let imgs = [];
+  const raw = of?.imgs;
+  if(Array.isArray(raw)) imgs = raw;
+  else if(typeof raw === 'string'){ try{ imgs = JSON.parse(raw || '[]'); }catch(_){ imgs = []; } }
+  const url = iu || (Array.isArray(imgs) ? (imgs.map(x=>String(x||'').trim()).filter(Boolean)[0] || '') : '');
+  if(url){
+    try{ abrirFotoModal(String(url).replace(/'/g,'%27'), 'OF ' + String(ofNum||'')); }catch(e){ try{ window.open(url,'_blank'); }catch(_e){} }
+    if(confirm('Trocar a imagem desta OF?')) {
+      window.__ofImgTargetPC = { ofId: String(ofId||''), ofNum: String(ofNum||'') };
+      _ensureOfImgInputPC().click();
+    }
+    return;
+  }
+  window.__ofImgTargetPC = { ofId: String(ofId||''), ofNum: String(ofNum||'') };
+  _ensureOfImgInputPC().click();
+}
+
+function abrirAcoesPc(ofId, ofNum){
+  try{ document.getElementById('acoes-pc-pop')?.remove(); }catch(e){}
+  try{ document.getElementById('acoes-pc-ov')?.remove(); }catch(e){}
+
+  const ov = document.createElement('div');
+  ov.id = 'acoes-pc-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9998;background:transparent';
+  ov.onclick = ()=>{ try{ ov.remove(); }catch(e){}; try{ pop.remove(); }catch(e){}; };
+
+  const pop = document.createElement('div');
+  pop.id = 'acoes-pc-pop';
+  pop.style.cssText = 'position:fixed;z-index:9999;min-width:240px;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px';
+
+  const acts = [
+    { icon:'✅', label:'Baixa por Máquina', on: ()=>baixaPorMaquinaPC(ofId, ofNum) },
+    { icon:'🏁', label:'Concluir OF', on: ()=>{ try{ concluirOFComBaixa(String(ofId||'')); }catch(e){} } },
+    { icon:'📅', label:'Alterar Entrega', on: ()=>{ try{ abrirModalAlterarEntrega(String(ofId||'')); }catch(e){} } },
+    { icon:'📷', label:'Ver / Trocar Imagem', on: ()=>verImagemOfPC(ofId, ofNum) },
+    { icon:'⚠️', label:'Registrar Inconformidade', on: ()=>registrarInconformidadePC(ofId, ofNum) },
+    { icon:'📋', label:'Ver Detalhes', on: ()=>{ try{ abrirModalOF(String(ofId||'')); }catch(e){} } },
+    { icon:'❌', label:'Cancelar OF', on: ()=>{ try{ cancelarOF(String(ofId||''), String(ofNum||'')); }catch(e){} } },
+  ];
+
+  pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">⚡ Ações — OF #${escH(ofNum||'')}</div>` +
+    acts.map((a,i)=>`<button data-i="${i}" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;margin:0 0 6px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-weight:800;font-size:.82rem;text-align:left">
+      <span style="font-size:1rem">${a.icon}</span> ${escH(a.label)}
+    </button>`).join('');
+
+  document.body.appendChild(ov);
+  document.body.appendChild(pop);
+
+  const ev = window.event;
+  const x = (ev && ev.clientX != null) ? ev.clientX : 420;
+  const y = (ev && ev.clientY != null) ? ev.clientY : 120;
+  const rect = pop.getBoundingClientRect();
+  const left = Math.min(window.innerWidth - rect.width - 12, Math.max(12, x - rect.width + 24));
+  const top = Math.min(window.innerHeight - rect.height - 12, Math.max(64, y + 10));
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+
+  pop.querySelectorAll('button[data-i]').forEach((b)=>{
+    b.addEventListener('click', ()=>{
+      const i = Number(b.getAttribute('data-i')||0);
+      try{ acts[i]?.on(); }catch(e){}
+      try{ pop.remove(); }catch(e){}
+      try{ ov.remove(); }catch(e){}
+    });
+  });
+}
+
 function renderCardOfDia(of, nomeMaquina, opts){
   try{
     opts = (opts && typeof opts === 'object') ? opts : {};
@@ -5251,21 +5414,7 @@ function renderCardOfDia(of, nomeMaquina, opts){
           <div style="margin-top:8px">${renderEtapasFluxo(of)}</div>
         </div>
         <div class="ofmaq-actions" style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
-          <div style="display:flex;gap:7px">
-            <button class="ofmaq-btn-sem-papelao" onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal('${escAttr(of.id||'')}','${escAttr(numeroDigits)}')" style="flex:1;padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📦 Sem Papelão</button>
-            <button onclick="event.stopPropagation();abrirModalAlterarEntrega('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">📅 Alterar Entrega</button>
-          </div>
-          <button onclick="event.stopPropagation();abrirModalMoverOFMaq('${escAttr(of.id||'')}','${escAttr(maq)}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">↔ Mover</button>
-          ${imgUrl ? `<button onclick="event.stopPropagation();imprimirImagemOF('${escAttr(of.id||ofSelNum||'')}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-weight:800;cursor:pointer;white-space:nowrap">🖼 Imprimir Imagem</button>` : ''}
-          ${isOverflow ? `<div style="display:flex;gap:7px;align-items:center">
-            <button onclick="event.stopPropagation();ofmaqAbrirReagendar('${escAttr(of.id||'')}')" style="flex:1;padding:10px 14px;min-height:44px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:800;cursor:pointer;white-space:nowrap">🔁 Reagendar</button>
-            <input type="date" id="ofmaq-reag-${escAttr(of.id||'')}" onchange="event.stopPropagation();ofmaqReagendarOF('${escAttr(of.id||'')}', this.value)" style="width:160px;min-height:44px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:none">
-          </div>` : ''}
-          ${podeConcluir ? `<button class="ofmaq-btn-concluir" onclick="event.stopPropagation();concluirOFComBaixa('${escAttr(of.id||'')}')" style="padding:10px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:700;cursor:pointer;white-space:nowrap">✓ Concluir</button>` : ''}
-          <div class="ofmaq-arrows" style="display:flex;gap:5px">
-            <button class="ofmaq-btn-arrow" onclick="event.stopPropagation();moverOFNaFila('${escAttr(of.id||'')}','up')" style="flex:1;padding:7px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.9rem;font-weight:700">↑</button>
-            <button class="ofmaq-btn-arrow" onclick="event.stopPropagation();moverOFNaFila('${escAttr(of.id||'')}','down')" style="flex:1;padding:7px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.9rem;font-weight:700">↓</button>
-          </div>
+          <button class="btn-acoes-pc" onclick="event.stopPropagation();abrirAcoesPc('${escAttr(of.id||'')}','${escAttr(String(of.of||of.numero||ofSelNum||''))}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">⚡ Ações</button>
         </div>
       </div>`;
   } catch(e) {
@@ -30416,9 +30565,182 @@ function go(id){
   }
   if(id==='orcamentos')renderOrcamentos();
   if(id==='compras')renderCompras();
+  if(id==='inconformidades')carregarInconformidadesControle();
   if(id==='logistica')setTimeout(renderRotaMapa,200);
   try{ applyMobileAccessRules(); }catch(e){}
   try{ setTimeout(()=>{ tryHandleScanParam(); }, 0); }catch(e){}
+}
+
+let INCONFORMIDADES_CONTROLE = [];
+let _INC_RESOLVER_ID = '';
+
+function headersAuth(){
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  return token ? { Authorization: 'Bearer ' + String(token || '') } : {};
+}
+
+async function carregarInconformidadesControle(){
+  const empAtual = String(window.EMP_FILTRO || '').trim();
+  const filtroStatus = String((document.getElementById('inc-status')||{}).value || '').trim();
+  const filtroMaq = String((document.getElementById('inc-maquina')||{}).value || '').trim();
+  const filtroDataInicio = String((document.getElementById('inc-de')||{}).value || '').trim();
+  const filtroDataFim = String((document.getElementById('inc-ate')||{}).value || '').trim();
+  const qs = new URLSearchParams({
+    empId: empAtual,
+    status: filtroStatus || '',
+    maquina: filtroMaq || '',
+    de: filtroDataInicio || '',
+    ate: filtroDataFim || '',
+  });
+  try{
+    const r = await fetch('/api/inconformidades_controle?' + qs.toString(), { headers: headersAuth() });
+    const j = await r.json().catch(()=>null);
+    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    INCONFORMIDADES_CONTROLE = rows || [];
+  }catch(e){
+    INCONFORMIDADES_CONTROLE = [];
+  }
+  renderInconformidades();
+}
+
+function renderInconformidades(){
+  const maqSel = document.getElementById('inc-maquina');
+  if(maqSel && maqSel.options.length <= 1){
+    const list = Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
+    list.forEach(m=>{
+      const n = String(m?.col || m?.nome || '').trim();
+      if(!n) return;
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      maqSel.appendChild(opt);
+    });
+  }
+
+  const filtroStatus = String((document.getElementById('inc-status')||{}).value || '').trim();
+  const filtroMaq = String((document.getElementById('inc-maquina')||{}).value || '').trim();
+  const busca = String((document.getElementById('inc-busca')||{}).value || '').trim().toLowerCase();
+  const de = String((document.getElementById('inc-de')||{}).value || '').trim();
+  const ate = String((document.getElementById('inc-ate')||{}).value || '').trim();
+
+  let lista = Array.isArray(INCONFORMIDADES_CONTROLE) ? INCONFORMIDADES_CONTROLE.slice() : [];
+  if(filtroStatus) lista = lista.filter(x=>String(x?.status||'').trim()===filtroStatus);
+  if(filtroMaq) lista = lista.filter(x=>String(x?.maquina||'').trim()===filtroMaq);
+  if(de) lista = lista.filter(x=>String(x?.created_at||'').slice(0,10) >= de);
+  if(ate) lista = lista.filter(x=>String(x?.created_at||'').slice(0,10) <= ate);
+  if(busca){
+    lista = lista.filter(x=>{
+      const cli = String(x?.cliente_nome||'').toLowerCase();
+      const ofn = String(x?.of_numero||'').toLowerCase();
+      return cli.includes(busca) || ofn.includes(busca);
+    });
+  }
+
+  const abertas = (Array.isArray(INCONFORMIDADES_CONTROLE)?INCONFORMIDADES_CONTROLE:[]).filter(x=>{
+    const st = String(x?.status||'').toLowerCase();
+    return st.includes('aberta') || st.includes('analise') || st.includes('análise');
+  }).length;
+  const cont = document.getElementById('inc-contador');
+  if(cont) cont.textContent = `${abertas} inconformidade(s) aberta(s)`;
+
+  const wrap = document.getElementById('inc-lista');
+  if(!wrap) return;
+  if(!lista.length){
+    wrap.innerHTML = `<div style="color:var(--text3)">Nenhuma inconformidade encontrada.</div>`;
+    return;
+  }
+
+  const badge = (st)=>{
+    const s = String(st||'').toLowerCase();
+    let bg = 'var(--yellow)';
+    let txt = String(st||'Aberta');
+    if(s.includes('resolv')) bg = 'var(--green)';
+    else if(s.includes('anal')) bg = 'var(--orange)';
+    else bg = 'var(--red)';
+    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.72rem;background:${bg};color:#111">${escH(txt)}</span>`;
+  };
+
+  const thumb = (url, label)=>{
+    const u = String(url||'').trim();
+    if(!u) return '';
+    return `<div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:.65rem;color:var(--text3);font-family:var(--mono)">${escH(label||'')}</div>
+      <img src="${escAttr(u)}" style="width:92px;height:72px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:pointer" onclick="abrirFotoModal('${escAttr(u).replace(/'/g,'%27')}','${escAttr(label||'Imagem')}')">
+    </div>`;
+  };
+
+  wrap.innerHTML = lista.map(x=>{
+    const id = String(x?.id||'').trim();
+    const ofn = String(x?.of_numero||'—').trim();
+    const cli = String(x?.cliente_nome||'—').trim();
+    const maq = String(x?.maquina||'—').trim();
+    const op = String(x?.operador||'—').trim();
+    const dt = String(x?.created_at||x?.data_hora||'').replace('T',' ').slice(0,16);
+    const qtdp = Math.trunc(Number(x?.qtd_perdida||0)||0);
+    const obs = String(x?.obs||'').trim();
+    const st = String(x?.status||'Aberta').trim();
+    const imgProb = String(x?.imagem_problema_url||'').trim();
+    const imgOf = String(x?.imagem_url||'').trim();
+    const podeResolver = !String(st||'').toLowerCase().includes('resolv');
+    return `<div class="sbox" style="padding:0">
+      <div class="sbox-b" style="padding:14px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div style="min-width:0">
+            <div style="font-weight:900;color:var(--accent)">OF #${escH(ofn)} — ${escH(cli)}</div>
+            <div style="margin-top:6px;color:var(--text2);font-size:.78rem;display:flex;gap:12px;flex-wrap:wrap">
+              <span>⚙ ${escH(maq)}</span>
+              <span>👷 ${escH(op)}</span>
+              <span>🕒 ${escH(dt||'—')}</span>
+              ${qtdp>0?`<span style="color:var(--red);font-family:var(--mono);font-weight:900">📦 ${qtdp} cx perdidas</span>`:''}
+            </div>
+          </div>
+          <div style="flex:0 0 auto;display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+            ${badge(st)}
+            ${podeResolver?`<button class="btn btn-accent btn-sm" onclick="incAbrirResolver('${escAttr(id)}')">Resolver</button>`:''}
+          </div>
+        </div>
+        ${obs?`<div style="margin-top:10px;color:var(--text);font-size:.82rem;white-space:pre-wrap">${escH(obs)}</div>`:''}
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:12px">
+          ${thumb(imgProb,'Imagem do problema')}
+          ${thumb(imgOf,'Imagem da OF')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function incAbrirResolver(id){
+  _INC_RESOLVER_ID = String(id||'').trim();
+  const resp = document.getElementById('inc-resp'); if(resp) resp.value = '';
+  const obs = document.getElementById('inc-obs-res'); if(obs) obs.value = '';
+  abrir('modal-inc-resolver');
+}
+
+async function incSalvarResolucao(){
+  const id = String(_INC_RESOLVER_ID || '').trim();
+  if(!id) return;
+  const responsavel = String((document.getElementById('inc-resp')||{}).value || '').trim();
+  const obs = String((document.getElementById('inc-obs-res')||{}).value || '').trim();
+  const payload = {
+    status: 'Resolvida',
+    responsavel_resolucao: responsavel || null,
+    obs_resolucao: obs || null,
+    resolved_at: new Date().toISOString(),
+  };
+  try{
+    const r = await fetch('/api/inconformidades_controle/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: { ...headersAuth(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || j?.ok === false) return toast('Erro: ' + String(j?.error || 'falha'), 'var(--red)');
+    fechar('modal-inc-resolver');
+    await carregarInconformidadesControle();
+    toast('✓ Inconformidade resolvida!', 'var(--green)');
+  }catch(e){
+    toast('Erro: ' + String(e?.message || e), 'var(--red)');
+  }
 }
 
 
@@ -32280,6 +32602,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
       <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
       <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
+      <div id="menu-inconformidades" class="nav-item" onclick="go('inconformidades');closeNavGroupsExcept('ng-analises')"><span class="ico">⚠️</span>Inconformidades</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-config" class="nav-item" onclick="go('configuracoes');closeNavGroupsExcept('ng-analises')"><span class="ico">⚙️</span>Configurações</div>
     </div>
@@ -33588,6 +33911,30 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div>
 
+<div id="page-inconformidades" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <span style="font-size:.78rem;color:var(--text2)">⚠️ Inconformidades</span>
+    <select id="inc-status" style="width:190px" onchange="renderInconformidades()">
+      <option value="">Todas</option>
+      <option value="Aberta">Aberta</option>
+      <option value="Em Análise">Em Análise</option>
+      <option value="Resolvida">Resolvida</option>
+    </select>
+    <select id="inc-maquina" style="width:220px" onchange="renderInconformidades()">
+      <option value="">Todas as máquinas</option>
+    </select>
+    <input id="inc-de" type="date" style="width:150px" onchange="renderInconformidades()">
+    <input id="inc-ate" type="date" style="width:150px" onchange="renderInconformidades()">
+    <input id="inc-busca" placeholder="🔍 Cliente ou OF" style="width:220px" oninput="renderInconformidades()">
+    <div style="flex:1"></div>
+    <span id="inc-contador" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">—</span>
+    <button class="btn btn-accent btn-sm" onclick="carregarInconformidadesControle()">Atualizar</button>
+  </div>
+  <div class="page-body" style="display:grid;gap:10px">
+    <div id="inc-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;"></div>
+  </div>
+</div>
+
 <div id="page-relmensal" class="page">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
     <span style="font-size:.78rem;color:var(--text2)">📅 Relatório Mensal de OFs</span>
@@ -33935,6 +34282,22 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 </div>
 
 <!-- ===== MODAIS ===== -->
+<div class="modal-overlay" id="modal-inc-resolver">
+  <div class="modal" style="width:min(560px,96vw)">
+    <button class="close-btn" onclick="fechar('modal-inc-resolver')">✕</button>
+    <h2>⚠️ Resolver Inconformidade</h2>
+    <div class="page-body" style="padding:0">
+      <div class="fg" style="margin-top:12px">
+        <div class="mf fgf" style="grid-column:1/-1"><label>Responsável pela resolução</label><input id="inc-resp" placeholder="Nome"></div>
+        <div class="mf fgf" style="grid-column:1/-1"><label>Observação da resolução</label><textarea id="inc-obs-res" rows="4" placeholder="Descreva o que foi feito"></textarea></div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+        <button class="btn btn-ghost" onclick="fechar('modal-inc-resolver')">Cancelar</button>
+        <button class="btn btn-accent" onclick="incSalvarResolucao()">Marcar como Resolvida</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- Modal OF -->
 <div class="modal-overlay" id="modal-of">
 <div class="modal" style="width:min(900px,98vw)">
@@ -40443,25 +40806,58 @@ window.atualizarChapas = async function(){
     return String(raw).slice(0, 10);
   }
 
-  async function mobileFetchOFsMobile(empId){
-    try{
-      if(typeof carregarOFSArquivo === 'function') await carregarOFSArquivo(false);
-    }catch(e){}
-    const base = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
-    const all = Array.isArray(base) ? base.slice() : [];
-    if(empId){
-      const eid = String(empId).trim();
-      return all.filter((o)=>String(o?.emp_id || o?.empId || o?.empresa_id || '').trim() === eid);
-    }
-    return all;
+  const MAQ_OFS_CACHE_KEY = 'ofs_maquina_cache';
+
+  function mobileFilterEmp(ofs, empId){
+    const eid = String(empId || '').trim();
+    const arr = Array.isArray(ofs) ? ofs : [];
+    if(!eid) return arr;
+    return arr.filter((o)=>String(o?.emp_id || o?.empId || o?.empresa_id || o?.emp || '').trim() === eid);
   }
+
+  function mobileLoadOfsCache(empId){
+    try{
+      const cached = sessionStorage.getItem(MAQ_OFS_CACHE_KEY);
+      if(!cached) return null;
+      const parsed = JSON.parse(cached);
+      return mobileFilterEmp(parsed, empId);
+    }catch(e){ return null; }
+  }
+
+  async function mobileFetchOfsApi(empId){
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const url = base + '/api/ofs?limit=800&excluir_canceladas=1&nocache=1' + (empId ? ('&empId=' + encodeURIComponent(String(empId))) : '');
+    const r = await fetch(url, {
+      headers: { Authorization: 'Bearer ' + String(token || '') }
+    });
+    const j = await r.json().catch(()=>null);
+    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    try{ sessionStorage.setItem(MAQ_OFS_CACHE_KEY, JSON.stringify(rows || [])); }catch(e){}
+    return mobileFilterEmp(rows, empId);
+  }
+
   async function mobileRefreshMaquinas(){
+    const empId = String(mobileState.maqEmp || '').trim();
+    const cached = mobileLoadOfsCache(empId);
+    if(cached && cached.length){
+      mobileState.ofs = cached;
+    }
+
     const maq = await api('GET','/maquinas');
     const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
-    const empId = String(mobileState.maqEmp || '').trim();
-    const ofs = await mobileFetchOFsMobile(empId);
     mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
-    mobileState.ofs = ofs;
+
+    try{
+      const ofs = await mobileFetchOfsApi(empId);
+      mobileState.ofs = ofs;
+    }catch(e){
+      try{
+        if(typeof carregarOFSArquivo === 'function') await carregarOFSArquivo(false);
+        const base = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
+        mobileState.ofs = mobileFilterEmp(base, empId);
+      }catch(_){}
+    }
   }
   async function mobileRefreshOrcamentos(){
     const qs = new URLSearchParams();
@@ -40489,6 +40885,7 @@ window.atualizarChapas = async function(){
     style.id = 'mob-bottom-sheet-style';
     style.textContent = `
       @keyframes mobSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
       @keyframes mobFadeInOut { 0%{opacity:0;transform:translateY(-6px)} 10%{opacity:1;transform:translateY(0)} 90%{opacity:1} 100%{opacity:0;transform:translateY(-6px)} }
       .mobile-bottom-sheet{ position:fixed; left:0; right:0; bottom:0; background:#1a1a2e; border-radius:20px 20px 0 0; padding:20px 16px 80px; z-index:10050; max-height:80vh; overflow-y:auto; box-shadow:0 -4px 24px rgba(0,0,0,.5); animation: mobSlideUp .3s ease; }
       .mobile-bottom-sheet-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:10049; }
@@ -40522,6 +40919,203 @@ window.atualizarChapas = async function(){
     document.body.appendChild(sheet);
     return sheet;
   }
+
+  function abrirAcoesOf(ofId, ofNum) {
+    const todasOfs = mobileState.ofs || [];
+    const of = todasOfs.find(o => String(o?.id) === String(ofId));
+    if (!of) return;
+
+    const sheet = document.createElement('div');
+    sheet.id = 'acoes-sheet';
+    sheet.style.cssText = `
+      position:fixed;bottom:0;left:0;right:0;z-index:9999;
+      background:var(--surface, #1e2333);
+      border-radius:16px 16px 0 0;
+      border-top:1px solid rgba(255,255,255,0.1);
+      padding:20px 16px 32px;
+      box-shadow:0 -8px 40px rgba(0,0,0,0.5);
+      animation:slideUp .2s ease;
+    `;
+
+    const acoes = [
+      { icon:'✅', label:'Baixa por Máquina', action:`baixarPorMaquina('${ofId}','${ofNum}')` },
+      { icon:'🏁', label:'Concluir OF', action:`concluirOfModal('${ofId}','${ofNum}')` },
+      { icon:'📅', label:'Alterar Entrega', action:`alterarEntregaOf('${ofId}','${ofNum}')` },
+      { icon:'📷', label:'Ver / Trocar Imagem', action:`verImagemOf('${ofId}','${ofNum}')` },
+      { icon:'⚠️', label:'Registrar Inconformidade', action:`registrarInconformidade('${ofId}','${ofNum}')` },
+      { icon:'📋', label:'Ver Detalhes', action:`abrirDrawer('${ofId}')` },
+      { icon:'❌', label:'Cancelar OF', action:`cancelarOf('${ofId}','${ofNum}')` },
+    ];
+
+    sheet.innerHTML = `
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 12px"></div>
+        <strong style="font-size:15px">OF #${esc(ofNum)}</strong>
+      </div>
+      ${acoes.map(a => `
+        <button onclick="${a.action};document.getElementById('acoes-sheet').remove();document.getElementById('acoes-overlay').remove()"
+          style="width:100%;padding:14px 16px;margin-bottom:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:inherit;font-size:14px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px">
+          <span style="font-size:20px">${a.icon}</span> ${a.label}
+        </button>
+      `).join('')}
+      <button onclick="document.getElementById('acoes-sheet').remove();document.getElementById('acoes-overlay').remove()"
+        style="width:100%;padding:12px;margin-top:4px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:var(--muted,#6b7399);font-size:14px;cursor:pointer">
+        Cancelar
+      </button>
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'acoes-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5)';
+    overlay.onclick = () => { sheet.remove(); overlay.remove(); };
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(sheet);
+  }
+
+  function _headersAuthSimple(){
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    return { Authorization: 'Bearer ' + String(token || '') };
+  }
+
+  async function baixarPorMaquina(ofId, ofNum){
+    const id = String(ofId || '').trim();
+    if(!id) return;
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const maq = prompt('Máquina (ex: IMP 03):', '');
+    if(!maq) return;
+    const qtd = Math.trunc(Number(prompt('Qtd produzida (cx):', '0') || 0) || 0);
+    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
+      method: 'POST',
+      headers: { ..._headersAuthSimple(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maquina: maq, qtd_produzida: qtd })
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || j?.ok === false) return showMobileToast('Erro: ' + String(j?.error || 'falha'), 'error');
+    showMobileToast(String(j?.mensagem || '✅ Baixa registrada!'), 'success');
+  }
+
+  function concluirOfModal(ofId){
+    try{ if(typeof concluirOFComBaixa === 'function') return concluirOFComBaixa(String(ofId||'')); }catch(e){}
+  }
+
+  function alterarEntregaOf(ofId){
+    try{ if(typeof abrirModalAlterarEntrega === 'function') return abrirModalAlterarEntrega(String(ofId||'')); }catch(e){}
+  }
+
+  function _ensureOfImgInput(){
+    let inp = document.getElementById('of-img-input');
+    if(inp) return inp;
+    inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = 'image/*';
+    inp.id = 'of-img-input';
+    inp.style.display = 'none';
+    inp.addEventListener('change', async (e)=>{
+      const f = e?.target?.files?.[0];
+      if(!f) return;
+      const tgt = window.__ofImgTarget || {};
+      const ofId = String(tgt.ofId || '').trim();
+      const ofNum = String(tgt.ofNum || '').trim();
+      try{
+        const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+        const form = new FormData();
+        form.append('file', f);
+        const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+        const up = await fetch(base + '/api/ofs/upload', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + String(token || '') },
+          body: form
+        });
+        const j = await up.json().catch(()=>null);
+        const url = String(j?.data?.url || j?.url || '').trim();
+        if(!up.ok || j?.ok === false || !url) throw new Error(String(j?.error || 'upload_falhou'));
+        try{
+          const of = (mobileState.ofs||[]).find(o=>String(o?.id||'')===String(ofId));
+          let imgs = [];
+          const raw = of?.imgs;
+          if(Array.isArray(raw)) imgs = raw;
+          else if(typeof raw === 'string'){ try{ imgs = JSON.parse(raw || '[]'); }catch(_){ imgs = []; } }
+          imgs = [...new Set([url, ...imgs.map(x=>String(x||'').trim()).filter(Boolean)])].slice(0, 10);
+          await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PUT', body:{ imagem_url: url, imgs: JSON.stringify(imgs) } });
+          if(of){ of.imagem_url = url; of.imgs = imgs; }
+        }catch(_){}
+        showMobileToast('✅ Imagem atualizada na OF #' + (ofNum || ofId), 'success');
+      }catch(err){
+        showMobileToast('Erro: ' + String(err?.message || err), 'error');
+      } finally {
+        try{ inp.value = ''; }catch(_){}
+      }
+    });
+    document.body.appendChild(inp);
+    return inp;
+  }
+
+  function verImagemOf(ofId, ofNum){
+    const of = (mobileState.ofs || []).find(o=>String(o?.id||'')===String(ofId));
+    const url = getMobileOfImagem(of);
+    if(url){
+      return abrirImagemMobile(url, ofNum);
+    }
+    window.__ofImgTarget = { ofId: String(ofId||''), ofNum: String(ofNum||'') };
+    const inp = _ensureOfImgInput();
+    inp.click();
+  }
+
+  async function registrarInconformidade(ofId, ofNum){
+    const id = String(ofId || '').trim();
+    if(!id) return;
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const maq = prompt('Máquina onde ocorreu o problema:', '');
+    if(!maq) return;
+    const qtdPerd = Math.trunc(Number(prompt('Qtd perdida (cx):', '0') || 0) || 0);
+    const obs = String(prompt('Observação do problema:', '') || '').trim();
+    const r = await fetch(base + '/api/ofs/' + encodeURIComponent(id) + '/baixa_maquina', {
+      method: 'POST',
+      headers: { ..._headersAuthSimple(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ maquina: maq, qtd_produzida: 0, tem_problema: true, obs_problema: obs, qtd_perdida: qtdPerd })
+    });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || j?.ok === false) return showMobileToast('Erro: ' + String(j?.error || 'falha'), 'error');
+    showMobileToast('⚠️ Inconformidade registrada na OF #' + (ofNum || ofId), 'success');
+  }
+
+  function abrirDrawer(ofId){
+    const of = (mobileState.ofs||[]).find(o=>String(o?.id||'')===String(ofId||''));
+    if(!of) return;
+    const num = getOfNumero(of) || '—';
+    const cli = getOfCliente(of);
+    const prod = getOfProduto(of);
+    const qtd = Math.trunc(toNum(of?.qtd || of?.quantidade || 0));
+    const ent = fmtBR(getOfEntrega(of));
+    const st = String(of?.status || '').trim() || '—';
+    modal.open(`
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="font-weight:900">OF ${esc(num)}</div>
+        <button class="mobile-btn" style="flex:0 0 auto;padding:8px 10px" onclick="document.getElementById('mob-modal')?.remove()">✕</button>
+      </div>
+      <div style="color:#d7def2;line-height:1.35">
+        <div><b>Cliente:</b> ${esc(cli)}</div>
+        <div><b>Produto:</b> ${esc(prod)}</div>
+        <div><b>Quantidade:</b> ${esc(String(qtd))}</div>
+        <div><b>Entrega:</b> ${esc(ent)}</div>
+        <div><b>Status:</b> ${esc(st)}</div>
+      </div>
+    `);
+  }
+
+  function cancelarOf(ofId, ofNum){
+    try{ if(typeof cancelarOF === 'function') return cancelarOF(String(ofId||''), String(ofNum||'')); }catch(e){}
+  }
+
+  try{ window.abrirAcoesOf = abrirAcoesOf; }catch(e){}
+  try{ window.baixarPorMaquina = baixarPorMaquina; }catch(e){}
+  try{ window.concluirOfModal = concluirOfModal; }catch(e){}
+  try{ window.alterarEntregaOf = alterarEntregaOf; }catch(e){}
+  try{ window.verImagemOf = verImagemOf; }catch(e){}
+  try{ window.registrarInconformidade = registrarInconformidade; }catch(e){}
+  try{ window.abrirDrawer = abrirDrawer; }catch(e){}
+  try{ window.cancelarOf = cancelarOf; }catch(e){}
 
   function showMobileToast(msg, tipo = 'success'){
     ensureMobileOverlays();
@@ -40989,7 +41583,7 @@ window.atualizarChapas = async function(){
               </div>
             </div>
             <div class="mobile-actions" style="margin-top:10px">
-              <button class="mobile-btn danger" data-actions="${esc(id)}" data-maq="${esc(nome)}">⚡ Ações</button>
+              <button class="mobile-btn danger btn-acoes-of" onclick="event.stopPropagation(); abrirAcoesOf('${escAttr(id)}','${escAttr(String(num))}')">⚡ Ações</button>
               <button class="mobile-btn" data-detalhes="${esc(id)}">📋 Detalhes</button>
             </div>
           </div>`;
@@ -41035,11 +41629,23 @@ window.atualizarChapas = async function(){
       try{ localStorage.setItem(LS_MAQ_EMP, String(mobileState.maqEmp||'')); }catch(e){}
       try{ localStorage.setItem(LS_MAQ_SHOW_ALL, mobileState.maqShowAll ? '1' : '0'); }catch(e){}
     };
-    const refresh = async ()=>{
+    const refresh = ()=>{
       const hint = byId('mob-pull-hint'); if(hint) hint.style.display = 'block';
-      try{ await mobileRefreshMaquinas(); }catch(e){}
-      if(hint) hint.style.display = 'none';
-      renderMaquinas();
+      try{
+        const empId0 = String(mobileState.maqEmp || '').trim();
+        const cached = mobileLoadOfsCache(empId0);
+        if(cached && Array.isArray(cached)){
+          mobileState.ofs = cached;
+          renderMaquinas();
+        }
+      }catch(e){}
+      Promise.resolve()
+        .then(()=>mobileRefreshMaquinas())
+        .catch(()=>null)
+        .finally(()=>{
+          if(hint) hint.style.display = 'none';
+          renderMaquinas();
+        });
     };
     byId('mob-date-prev')?.addEventListener('click', ()=>{ mobileState.maqDate = addDaysIso(mobileState.maqDate, -1); persist(); refresh(); });
     byId('mob-date-next')?.addEventListener('click', ()=>{ mobileState.maqDate = addDaysIso(mobileState.maqDate, 1); persist(); refresh(); });
@@ -41208,17 +41814,10 @@ window.atualizarChapas = async function(){
         `, `OF #${esc(num)} — ${esc(cli)}`);
 
         const getListMaq = ()=>{
-          const iso0 = clampIso(mobileState.maqDate);
-          const isHoje0 = iso0 === todayIso();
           const SEM_MAQ_KEY = '📋 Sem máquina definida';
           const isSemGrupo = String(maqNome || '').trim() === SEM_MAQ_KEY;
           const base = (mobileState.ofs || [])
-            .filter(isOfAtiva)
-            .filter((o)=>{
-              const dt = getOfDataEntrega(o);
-              if(isHoje0) return (!dt || dt <= todayIso());
-              return dt === iso0;
-            });
+            .filter(isOfAtiva);
           const rows = isSemGrupo
             ? base.filter((o)=>!String(getOfMaquinaAtual(o) || '').trim())
             : base.filter((o)=>matchPerm(String(getOfMaquinaAtual(o) || '').trim()) === String(maqNome || '').trim());

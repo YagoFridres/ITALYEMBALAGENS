@@ -10123,10 +10123,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const obs = String(of.obs || of.observacao || '').trim();
       const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || of.maquinas || of.etapas || []);
       const fluxoTxt = fluxo.length ? fluxo.map((x) => String(x || '').trim()).filter(Boolean).join(' → ') : '—';
-      const imgsRaw = Array.isArray(of.imgs) ? of.imgs : (typeof of.imgs === 'string' ? (() => { try { const p = JSON.parse(of.imgs || '[]'); return Array.isArray(p) ? p : [of.imgs]; } catch (_) { return [of.imgs]; } })() : []);
-      const iu = String(of.imagem_url || '').trim();
-      const imgs = [...new Set([iu, ...(imgsRaw || [])].map(x => String(x || '').trim()).filter(Boolean))].slice(0, 3);
-      return respond(
+      const texto =
         `📋 OF #${numOf}\n` +
         `👤 Cliente: ${cNome}\n` +
         `📦 Produto: ${produto}\n` +
@@ -10138,9 +10135,18 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         `🏭 Máquinas: ${fluxoTxt}\n` +
         `⚡ Urgente: ${urg ? 'Sim' : 'Não'}\n` +
         `🏢 Empresa: ${emp}\n` +
-        (obs ? `📝 Observações: ${obs}\n` : ''),
-        imgs.length ? { images: imgs, dadosExtras: { tipo: 'of', of_id: of.id, numero: numOf, imagem_url: iu || null, imgs } } : { dadosExtras: { tipo: 'of', of_id: of.id, numero: numOf, imagem_url: iu || null, imgs } }
-      );
+        (obs ? `📝 Observações: ${obs}\n` : '');
+
+      const imgs203 = _jarvisTodasImgsOf ? _jarvisTodasImgsOf(of) : [];
+      if (imgs203 && imgs203.length) {
+        return res.json({
+          ok: true,
+          resposta: texto,
+          images: imgs203,
+          dadosExtras: { tipo: 'of_imagem', of_id: of.id, numero: numOf, imagem_url: imgs203[0]||null, imgs: imgs203, acoes_imagem: ['abrir','baixar','imprimir'] }
+        });
+      }
+      return respond(texto);
     }
 
     if (norm.includes('pdf') && (norm.includes('cliente') || norm.includes('relatorio') || norm.includes('relatório'))) {
@@ -11280,20 +11286,24 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, a OF #${ctx.numero} está ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcação de urgência'}.`);
     }
 
-    if (ofNum && (norm.includes('imagem') || norm.includes('foto') || norm.includes('ver of') || norm.includes('mostrar of'))) {
+    if (ofNum && (norm.includes('imagem') || norm.includes('foto'))) {
       let row = null;
+
+      const campos = 'id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,urg,urgente';
+
       const { data: d1 } = await supabase.from('ofs')
-        .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,fluxo_maquinas,maq,maquina_atual_index,urg,urgente')
-        .or(`of.eq.${ofNum},numero.eq.${ofNum}`)
+        .select(campos).or(`of.eq.${ofNum},numero.eq.${ofNum}`)
         .is('deleted_at', null).limit(1);
       row = Array.isArray(d1) && d1[0] ? d1[0] : null;
+
       if (!row) {
         const { data: d2 } = await supabase.from('ofs')
-          .select('id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,fluxo_maquinas,maq,maquina_atual_index,urg,urgente')
+          .select(campos)
           .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`)
           .is('deleted_at', null).limit(1);
         row = Array.isArray(d2) && d2[0] ? d2[0] : null;
       }
+
       if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
 
       const iu = String(row.imagem_url || '').trim();
@@ -11301,7 +11311,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       try {
         const raw = row.imgs;
         const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
-        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x||'').trim()).filter(Boolean)])].slice(0,5);
+        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim()).filter(Boolean)])].slice(0, 5);
       } catch (_) { urls = iu ? [iu] : []; }
 
       const numOf  = String(row.of || row.numero || '—');
@@ -11309,35 +11319,36 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const status = String(row.status || '').trim() || '—';
       const cli    = String(row.cliNome || row.cliente_nome || '').trim() || '—';
       const qtd    = Math.trunc(Number(row.qtd_pedida || row.quantidade || row.qtd || 0));
-      const ent    = String(row.data_entrega || row.ent || '').slice(0,10);
-      const dia    = String(row.data_producao || row.dia || '').slice(0,10);
-      const valor  = Number(row.valor_total || row.valor_venda || 0);
+      const ent    = String(row.data_entrega || row.ent || '').slice(0, 10);
+      const dia    = String(row.data_producao || row.dia || '').slice(0, 10);
+      const val    = Number(row.valor_total || row.valor_venda || 0);
       const urg    = !!(row.urg || row.urgente);
       const fmtD   = s => s ? s.split('-').reverse().join('/') : '—';
       const isAtras = ent && ent < hoje;
 
-      const dadosOf = [
-        `📋 **OF #${numOf}**${urg ? ' 🚨 URGENTE' : ''}`,
-        `👤 Cliente: ${cli}`,
-        `📦 Produto: ${desc}`,
-        `📊 Status: ${status}${isAtras ? ' ⚠️ ATRASADA' : ''}`,
-        `🔢 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas`,
-        `🚚 Entrega: ${fmtD(ent)}`,
-        dia ? `🏭 Produção: ${fmtD(dia)}` : null,
-        valor > 0 ? `💰 Valor: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits:2})}` : null,
-      ].filter(Boolean).join('\n');
+      const dadosTexto =
+        `📋 OF #${numOf}${urg ? ' 🚨 URGENTE' : ''}${isAtras ? ' ⚠️ ATRASADA' : ''}\n` +
+        `👤 Cliente: ${cli}\n` +
+        `📦 Produto: ${desc}\n` +
+        `📊 Status: ${status}\n` +
+        `🔢 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas\n` +
+        `🚚 Entrega: ${fmtD(ent)}\n` +
+        (dia ? `🏭 Produção: ${fmtD(dia)}\n` : '') +
+        (val > 0 ? `💰 Valor: R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` : '') +
+        `\nO que deseja fazer?\n• Baixar imagem\n• Imprimir imagem\n• Alterar data de entrega\n• Concluir esta OF\n• Cancelar esta OF`;
 
       if (!urls.length) {
         return res.json({
           ok: true,
-          resposta: dadosOf + '\n\n📷 Esta OF não possui imagem cadastrada.\n\nO que deseja fazer?\n• "alterar entrega da OF ' + numOf + ' para DD/MM/AAAA"\n• "concluir OF ' + numOf + '"\n• "cancelar OF ' + numOf + '"',
-          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf }
+          resposta: dadosTexto.replace('\nO que deseja fazer?\n• Baixar imagem\n• Imprimir imagem\n', '\n') +
+            '\n📷 Esta OF não possui imagem cadastrada.',
+          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf, imagem_url: null, imgs: null }
         });
       }
 
       return res.json({
         ok: true,
-        resposta: dadosOf + '\n\n📷 Imagem da OF #' + numOf + ':\n\nO que deseja fazer com esta OF?\n• Baixar imagem\n• Imprimir imagem\n• Alterar data de entrega\n• Concluir esta OF\n• Cancelar esta OF',
+        resposta: dadosTexto,
         images: urls,
         dadosExtras: {
           tipo: 'of_imagem',
@@ -12224,6 +12235,142 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
   } catch(e) {
     return res.status(500).json({ ok: false, error: String(e?.message||e) });
   }
+});
+
+app.post('/api/ofs/:id/baixa_maquina', authMiddleware, async (req, res) => {
+  try {
+    const ofId = String(req.params.id || '').trim();
+    const maquina = String(req.body?.maquina || req.body?.maquina_nome || '').trim();
+    const operador = String(req.body?.operador || req.usuario?.nome || '').trim();
+    const qtdProduzida = Math.trunc(Number(req.body?.qtd_produzida || 0) || 0);
+    const temProblema = !!(req.body?.tem_problema || req.body?.temProblema);
+    const obsProblema = String(req.body?.obs_problema || req.body?.obsProblema || '').trim();
+    const qtdPerdida = Math.trunc(Number(req.body?.qtd_perdida || 0) || 0);
+    const imagemUrl = String(req.body?.imagem_url || '').trim();
+
+    if (!ofId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!maquina) return res.status(400).json({ ok: false, error: 'maquina obrigatória' });
+
+    const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', ofId).maybeSingle();
+    if (errOf || !of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    const now = new Date().toISOString();
+
+    let fluxoRaw = of.fluxo_maquinas;
+    if (typeof fluxoRaw === 'string') { try { fluxoRaw = JSON.parse(fluxoRaw || '[]'); } catch (_) { fluxoRaw = []; } }
+    const fluxoArr = Array.isArray(fluxoRaw) ? fluxoRaw : [];
+    const isFluxoObj = fluxoArr.some(x => x && typeof x === 'object');
+
+    let fluxoAtualizado = fluxoArr;
+    let novoIdx = Number(of.maquina_atual_index || 0) || 0;
+
+    if (isFluxoObj) {
+      fluxoAtualizado = fluxoArr.map(row => {
+        if (!row || typeof row !== 'object') return row;
+        const nomeMaq = String(row.nome || row.maquina || row.name || '').trim().toUpperCase();
+        if (nomeMaq === maquina.toUpperCase()) {
+          return { ...row, concluido: true, data_baixa: now, operador: operador || null, qtd_baixa: qtdProduzida || null };
+        }
+        return row;
+      });
+    }
+
+    novoIdx = novoIdx + 1;
+    const todasConcluidas = isFluxoObj
+      ? fluxoAtualizado.every(x => x && typeof x === 'object' ? !!x.concluido : true)
+      : novoIdx >= fluxoArr.length;
+
+    const updatePayload = {
+      fluxo_maquinas: fluxoAtualizado,
+      maquina_atual_index: novoIdx,
+      updated_at: now,
+    };
+    if (String(of.status || '').toLowerCase() === 'em aberto') {
+      updatePayload.status = 'Em Produção';
+    }
+
+    const upd = await ofsUpdateWithRetry(ofId, updatePayload);
+    if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message });
+
+    try {
+      await supabase.from('historico_acoes').insert([{
+        data_hora: now,
+        tipo_acao: 'baixa_maquina',
+        descricao: `OF #${of.of || of.numero} baixada na máquina ${maquina}${qtdProduzida > 0 ? ` — ${qtdProduzida.toLocaleString('pt-BR')} cx` : ''}${temProblema ? ' ⚠️ COM PROBLEMA' : ''}`,
+        usuario: operador || req.usuario?.nome || 'sistema',
+      }]);
+    } catch (_) {}
+
+    if (temProblema && (obsProblema || qtdPerdida > 0 || imagemUrl)) {
+      const cliId = String(of.cli_id || of.cliente_id || of.cliId || '').trim();
+      let cliNome = '';
+      if (cliId) {
+        try {
+          const { data: cliData } = await supabase.from('clientes').select('nome').eq('id', cliId).maybeSingle();
+          cliNome = String(cliData?.nome || '').trim();
+        } catch (_) {}
+      }
+      const inconf = {
+        of_id: ofId,
+        of_numero: String(of.of || of.numero || ''),
+        cliente_id: cliId || null,
+        cliente_nome: cliNome || String(of.cliNome || of.cliente_nome || '').trim(),
+        maquina: maquina,
+        operador: operador || req.usuario?.nome || '',
+        obs: obsProblema,
+        qtd_perdida: qtdPerdida || 0,
+        imagem_url: imagemUrl || String(of.imagem_url || '').trim() || null,
+        imagem_problema_url: imagemUrl || null,
+        status: 'Aberta',
+        emp_id: String(of.emp_id || of.empId || '').trim() || null,
+        created_at: now,
+      };
+      Object.keys(inconf).forEach(k => { if (inconf[k] === null || inconf[k] === '') delete inconf[k]; });
+      try { await supabase.from('inconformidades').insert([inconf]); } catch (e) { console.warn('[BAIXA MAQ] inconformidade:', e?.message); }
+    }
+
+    return res.json({
+      ok: true,
+      data: upd.data,
+      todasConcluidas,
+      mensagem: todasConcluidas
+        ? `✅ OF #${of.of || of.numero} passou por todas as máquinas! Agora você pode fazer a Conclusão Final.`
+        : `✅ OF #${of.of || of.numero} baixada na máquina ${maquina}.`,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/inconformidades_controle', authMiddleware, async (req, res) => {
+  try {
+    let q = supabase.from('inconformidades')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
+    if (req.query.status) q = q.eq('status', req.query.status);
+    if (req.query.maquina) q = q.eq('maquina', req.query.maquina);
+    if (req.query.de) q = q.gte('created_at', req.query.de);
+    if (req.query.ate) q = q.lte('created_at', req.query.ate + 'T23:59:59');
+    const { data, error } = await q.limit(500);
+    if (error) {
+      const m = String(error.message || '').toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation')) return ok(res, []);
+      throw error;
+    }
+    return ok(res, data || []);
+  } catch (e) { return err(res, e); }
+});
+
+app.put('/api/inconformidades_controle/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const payload = { ...(req.body || {}), updated_at: new Date().toISOString() };
+    delete payload.id;
+    const { data, error } = await supabase.from('inconformidades').update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return ok(res, data);
+  } catch (e) { return err(res, e); }
 });
 
 setTimeout(() => { _reloadRelEmailSchedule().catch(() => {}); }, 500);
