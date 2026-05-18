@@ -40339,23 +40339,16 @@ window.atualizarChapas = async function(){
   }
 
   async function mobileFetchOFsMobile(empId){
-    const out = [];
-    let offset = 0;
-    for(let guard = 0; guard < 10; guard++){
-      const qs = new URLSearchParams();
-      qs.set('lite','1');
-      qs.set('limit','500');
-      qs.set('offset', String(offset));
-      qs.set('excluir_canceladas','1');
-      if(empId) qs.set('empId', String(empId));
-      const r = await api('GET','/ofs?' + qs.toString());
-      const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
-      out.push(...chunk);
-      if(chunk.length < 500) break;
-      offset += 500;
-      if(out.length >= 3000) break;
+    try{
+      if(typeof carregarOFSArquivo === 'function') await carregarOFSArquivo(false);
+    }catch(e){}
+    const base = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : (Array.isArray(window.OFS) ? window.OFS : (Array.isArray(OFs) ? OFs : []));
+    const all = Array.isArray(base) ? base.slice() : [];
+    if(empId){
+      const eid = String(empId).trim();
+      return all.filter((o)=>String(o?.emp_id || o?.empId || o?.empresa_id || '').trim() === eid);
     }
-    return out.filter(isOfAtiva);
+    return all;
   }
   async function mobileRefreshMaquinas(){
     const maq = await api('GET','/maquinas');

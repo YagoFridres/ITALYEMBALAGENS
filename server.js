@@ -3573,14 +3573,8 @@ app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
   try {
-    let q = supabase.from('tempos_reais').select('*');
-
-    const testData = await supabase.from('tempos_reais').select('data').limit(1);
-    if (!testData.error) {
-      q = q.order('data', { ascending: false }).order('created_at', { ascending: false });
-    } else {
-      q = q.order('created_at', { ascending: false });
-    }
+    let q = supabase.from('tempos_reais').select('*')
+      .order('created_at', { ascending: false });
 
     if (req.query.maquina_id) q = q.eq('maquina_id', req.query.maquina_id);
     if (req.query.de) q = q.gte('created_at', req.query.de);
@@ -9841,6 +9835,9 @@ function _jarvisPickAllImgs(o) {
   } catch (_) { return iu ? [iu] : []; }
 }
 
+function _jarvisMaqAtualOf(o) { return _jarvisPickMaqAtualOf(o); }
+function _jarvisTodasImgsOf(o) { return _jarvisPickAllImgs(o); }
+
 app.post('/api/assistente', authMiddleware, async (req, res) => {
   try {
     const { nome: nomeFull, email, perfil } = await _assistUser(req);
@@ -10152,20 +10149,18 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (
       hasAny(
         'ofs do cliente', 'of do cliente', 'ofs da cliente',
+        'situação do cliente', 'situacao do cliente', 'tem of do cliente',
         'ofs abertas do cliente', 'pedidos do cliente',
-        'situação do cliente', 'situacao do cliente',
-        'o que tem para o cliente', 'o que temos para o cliente',
-        'pedidos abertos do cliente', 'em aberto do cliente',
-        'quais ofs do cliente', 'quais pedidos do cliente'
+        'o que tem para o cliente', 'quantas ofs tem o cliente',
+        'quantas ofs do cliente', 'quais ofs do cliente',
+        'pedidos abertos do cliente'
       )
     ) {
       const mCli =
-        pergunta.match(/(?:ofs?|pedidos?|situa[cç][aã]o|o que (?:tem|temos) para|em aberto|conclu[ií]das?)\s+(?:do|da|de)\s+cliente\s+(.+)$/i) ||
-        pergunta.match(/ofs?\s+(?:do|da)\s+cliente\s+(.+)$/i) ||
-        pergunta.match(/pedidos?\s+(?:do|da)\s+cliente\s+(.+)$/i) ||
+        pergunta.match(/(?:ofs?|pedidos?|situa[cç][aã]o|quantas\s+ofs?\s+(?:tem|do)|o que (?:tem|temos) para)\s+(?:o\s+)?(?:cliente\s+)?(.+)$/i) ||
         pergunta.match(/cliente\s+(.+)$/i) ||
         null;
-      const cliNomeBusca = mCli ? String(mCli[1] || '').trim() : '';
+      const cliNomeBusca = mCli ? String(mCli[1] || '').trim().replace(/\?+$/, '').trim() : '';
 
       if (!cliNomeBusca) {
         return respond(`${nome}, me diga o nome do cliente. Ex: "OFs do cliente João Silva"`);
@@ -11006,25 +11001,35 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, encontrei ${atras.length} OF(s) atrasada(s):\n${linhas.join('\n') || '—'}${extra}`);
     }
 
-    if (hasAny('ofs de hoje', 'entregas de hoje', 'of hoje', 'entrega hoje')) {
-      const { data } = await supabase
+    if (hasAny(
+      'ofs de hoje', 'entregas de hoje', 'of hoje', 'entrega hoje',
+      'quantas ofs tem em aberto para hoje', 'ofs em aberto para hoje',
+      'ofs para hoje', 'quantas ofs para hoje'
+    )) {
+      const { data: ofsHojeRaw } = await supabase
         .from('ofs')
-        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome')
-        .order('created_at', { ascending: false })
-        .limit(5000);
-      const rows = Array.isArray(data) ? data : [];
-      const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
-      const hojeList = ativos.filter((o) => _assistPickOfEntrega(o) === hoje);
-      const cliMap = await _assistLoadClientesByIds(hojeList.map(_assistPickOfClienteId));
-      const top = hojeList.slice(0, 10);
-      const linhas = top.map((o) => {
+        .select('id,of,numero,status,ent,data_entrega,deleted_at,cli_id,cliente_id,cliNome,cliente_nome,fluxo_maquinas,maq,maquina_atual_index')
+        .or(`data_entrega.eq.${hoje},ent.eq.${hoje}`)
+        .is('deleted_at', null)
+        .limit(500);
+
+      const rows = Array.isArray(ofsHojeRaw) ? ofsHojeRaw : [];
+      const ativos = rows.filter(o => !o.deleted_at && String(o.status || '').toLowerCase() !== 'cancelada' && String(o.status || '').toLowerCase() !== 'cancelado');
+      const abertas = ativos.filter(o => !String(o.status || '').toLowerCase().includes('conclu'));
+      const cliMap = await _assistLoadClientesByIds(abertas.map(_assistPickOfClienteId));
+
+      const top = abertas.slice(0, 10);
+      const linhas = top.map(o => {
         const cid = _assistPickOfClienteId(o);
         const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
-        const st = String(o.status || '—').trim() || '—';
-        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${st}`;
+        const maq = _jarvisMaqAtualOf(o);
+        const st = String(o.status || '—').trim();
+        return `• OF #${_assistPickOfNumber(o)} — ${cNome} — ${st} — Máq: ${maq}`;
       });
-      const extra = hojeList.length > top.length ? `\n...e mais ${hojeList.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${hojeList.length} OF(s) para hoje (${_assistFmtDateBr(hoje)}):\n${linhas.join('\n') || '—'}${extra}`);
+      const extra = abertas.length > 10 ? `\n...e mais ${abertas.length - 10} itens` : '';
+      return respond(
+        `${nome}, OFs em aberto para hoje (${_assistFmtDateBr(hoje)}): ${abertas.length}\n${linhas.join('\n') || '—'}${extra}`
+      );
     }
 
     if (hasAny('ofs urgentes', 'of urgente', 'urgentes', 'urgente')) {
