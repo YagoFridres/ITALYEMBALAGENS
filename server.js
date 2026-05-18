@@ -3573,15 +3573,32 @@ app.delete('/api/amostras/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
   try {
-    let q = supabase.from('tempos_reais').select('*')
-      .order('data', { ascending: false })
-      .order('created_at', { ascending: false });
-    if (req.query.maquina_id) q = q.eq('maquina_id', req.query.maquina_id);
-    if (req.query.de) q = q.gte('data', req.query.de);
-    if (req.query.ate) q = q.lte('data', req.query.ate);
-    const { data, error } = await q;
-    if (error) throw error;
-    return ok(res, data || []);
+    const maquinaId = req.query.maquina_id ? String(req.query.maquina_id) : '';
+    const de = req.query.de ? String(req.query.de) : '';
+    const ate = req.query.ate ? String(req.query.ate) : '';
+
+    const run = async (mode) => {
+      let q = supabase.from('tempos_reais').select('*');
+      if (maquinaId) q = q.eq('maquina_id', maquinaId);
+      if (mode === 'created_at') {
+        if (de) q = q.gte('created_at', de);
+        if (ate) q = q.lte('created_at', ate);
+        q = q.order('created_at', { ascending: false });
+      } else {
+        q = q.order('id', { ascending: false });
+      }
+      return await q;
+    };
+
+    let r = await run('created_at');
+    if (r.error) {
+      const msg = String(r.error?.message || r.error || '');
+      const code = String(r.error?.code || r.error?.details?.code || '');
+      const isMissingCol = code === '42703' || /does not exist/i.test(msg) || /Could not find the/i.test(msg);
+      if (isMissingCol) r = await run('id');
+    }
+    if (r.error) throw r.error;
+    return ok(res, r.data || []);
   } catch (e) {
     const msg = String(e?.message || e || '').toLowerCase();
     const code = String(e?.code || e?.details?.code || '');
