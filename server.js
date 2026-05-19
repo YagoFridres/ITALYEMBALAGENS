@@ -135,6 +135,14 @@ if (!_supabaseEnvOk) {
   console.log('✅ Supabase conectado:', supabaseUrl);
 }
 
+const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
+if (OPENAI_API_KEY) {
+  console.log('[IA] OpenAI GPT configurado ✅');
+} else {
+  console.log('[IA] OpenAI não configurada (opcional)');
+}
+console.log('[IA] Claude:', !!String(process.env.ANTHROPIC_API_KEY || '').trim(), '| OpenAI:', !!OPENAI_API_KEY);
+
 let transporter = null;
 try {
   const emailUser = String(process.env.EMAIL_USER || '').trim();
@@ -2573,20 +2581,49 @@ function _parseFluxoAny(v){
   return [];
 }
 
-async function _autoSugerirMaquinaParaOF(body, created){
+function _ofPickFluxoNames(of){
   try{
-    const fluxoBody = _parseFluxoAny(body?.fluxo_maquinas ?? body?.fluxoMaquinas ?? body?.maq ?? body?.maquinas ?? []);
-    const fluxoCreated = _parseFluxoAny(created?.fluxo_maquinas ?? created?.maq ?? []);
-    if(fluxoBody.length || fluxoCreated.length) return { ok:false, skipped:'ja_tem_maquina' };
+    let f = of?.fluxo_maquinas ?? of?.maq ?? [];
+    if(typeof f === 'string'){
+      const raw = String(f||'').trim();
+      if(!raw) f = [];
+      else { try{ f = JSON.parse(raw || '[]'); }catch(_){ f = _parseFluxoAny(raw); } }
+    }
+    if(!Array.isArray(f)) f = [];
+    return f.map((x)=>{
+      if(x && typeof x === 'object'){
+        const n = x.nome ?? x.maquina ?? x.name ?? x.value ?? x.label ?? '';
+        return String(n||'').trim();
+      }
+      return String(x||'').trim();
+    }).filter(Boolean);
+  }catch(_){
+    return [];
+  }
+}
 
-    const comp = Number(body?.comprimento_mm ?? body?.caixa_comprimento ?? body?.caixaComprimento ?? body?.comprimento ?? created?.comprimento_mm ?? created?.caixa_comprimento ?? 0) || 0;
-    const larg = Number(body?.largura_mm ?? body?.caixa_largura ?? body?.caixaLargura ?? body?.largura ?? created?.largura_mm ?? created?.caixa_largura ?? 0) || 0;
-    const alt = Number(body?.altura_mm ?? body?.caixa_altura ?? body?.caixaAltura ?? body?.altura ?? created?.altura_mm ?? created?.caixa_altura ?? 0) || 0;
-    const onda = String(body?.onda ?? body?.of_onda ?? body?.onda_caixa ?? created?.onda ?? '').trim();
+function _ofPickMaqAtualName(of){
+  try{
+    const f = _ofPickFluxoNames(of);
+    if(!f.length) return '';
+    const idx = Number(of?.maquina_atual_index ?? 0) || 0;
+    return String(f[Math.min(Math.max(0, idx), f.length - 1)] || f[0] || '').trim();
+  }catch(_){
+    return '';
+  }
+}
 
+async function _autoPickSugestaoMaquinaNome(body){
+  const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+  try{
+    if(!supabase) return { ok:false, skipped:'supabase_not_configured' };
+    const comp = Number(body?.comprimento_mm ?? body?.caixa_comprimento ?? body?.caixaComprimento ?? body?.comprimento ?? 0) || 0;
+    const larg = Number(body?.largura_mm ?? body?.caixa_largura ?? body?.caixaLargura ?? body?.largura ?? 0) || 0;
+    const alt = Number(body?.altura_mm ?? body?.caixa_altura ?? body?.caixaAltura ?? body?.altura ?? 0) || 0;
+    const onda = String(body?.onda ?? body?.of_onda ?? body?.onda_caixa ?? '').trim();
     if(!(comp > 0 && larg > 0)) return { ok:false, skipped:'sem_medidas' };
 
-    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true);
+    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true).limit(500);
     if(error || !Array.isArray(maquinas) || !maquinas.length) return { ok:false, skipped:'sem_maquinas' };
 
     const folgaPuxadaBase = 20;
@@ -2596,7 +2633,6 @@ async function _autoSugerirMaquinaParaOF(body, created){
     const folgaBoca = ondaNorm.includes('bc') ? folgaBocaBase + 5 : folgaBocaBase;
     const desenvolvimento = (comp + alt) * 2 + folgaPuxada;
     const boca = larg + (alt * 2) + folgaBoca;
-    const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
 
     const compat = (maquinas || []).filter((m)=>{
       const puxMin = toNumOrNull(m.puxada_min);
@@ -2610,32 +2646,105 @@ async function _autoSugerirMaquinaParaOF(body, created){
     if(!compat.length) return { ok:false, skipped:'sem_compativeis' };
 
     const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
-    const filas = await Promise.all(compat.map(async (m)=>{
-      try{
-        const { count, error: eCount } = await supabase
-          .from('ofs')
-          .select('id', { count: 'exact' })
-          .contains('fluxo_maquinas', [m.nome])
-          .not('status', 'in', statusNotIn)
-          .is('deleted_at', null);
-        if(eCount) return { ...m, fila: 999999 };
-        return { ...m, fila: Math.trunc(Number(count || 0) || 0) };
-      }catch(_){
-        return { ...m, fila: 999999 };
-      }
-    }));
-    filas.sort((a,b)=> (a.fila - b.fila) || String(a.nome).localeCompare(String(b.nome)));
-    const melhor = filas[0];
+    const { data: ofsRaw } = await supabase
+      .from('ofs')
+      .select('id,status,fluxo_maquinas,maq,maquina_atual_index,deleted_at')
+      .is('deleted_at', null)
+      .not('status', 'in', statusNotIn)
+      .limit(5000);
+    const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];
+    const filaMap = new Map();
+    const cand = new Set(compat.map(x=>String(x.nome)));
+    ofs.forEach((o)=>{
+      const mk = String(_ofPickMaqAtualName(o) || '').trim();
+      if(!mk || !cand.has(mk)) return;
+      filaMap.set(mk, (filaMap.get(mk) || 0) + 1);
+    });
+
+    const dt30 = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
+    const { data: perdasRaw } = await supabase
+      .from('caixas_perdidas')
+      .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at')
+      .gte('data', dt30)
+      .limit(5000);
+    const perdas = Array.isArray(perdasRaw) ? perdasRaw : [];
+    const ofIds = [...new Set(perdas.map(p=>String(p?.of_id||'').trim()).filter(Boolean))];
+    const ofQtdMap = new Map();
+    for(let i=0;i<ofIds.length;i+=200){
+      const chunk = ofIds.slice(i,i+200);
+      const { data: ofsP } = await supabase
+        .from('ofs')
+        .select('id,qtd,qtd_produzida,quantidade')
+        .in('id', chunk)
+        .limit(200);
+      (Array.isArray(ofsP)?ofsP:[]).forEach((x)=>{
+        const id = String(x?.id||'').trim();
+        if(!id) return;
+        const qtd = Number(x?.qtd_produzida ?? x?.qtd ?? x?.quantidade ?? 0) || 0;
+        ofQtdMap.set(id, qtd);
+      });
+    }
+    const perdaAgg = new Map();
+    const pickMaq = (p)=>{
+      const a = String(p?.maquina_perda||'').trim();
+      const b = String(p?.maquina_nome||'').trim();
+      const c = String(p?.maquina||'').trim();
+      return a || b || c;
+    };
+    perdas.forEach((p)=>{
+      const mk = String(pickMaq(p) || '').trim();
+      if(!mk || !cand.has(mk)) return;
+      const lost = Math.trunc(Number(p?.qtd_perdida||0) || 0);
+      const prod = ofQtdMap.get(String(p?.of_id||'').trim()) || 0;
+      const cur = perdaAgg.get(mk) || { lost:0, prod:0 };
+      cur.lost += lost;
+      cur.prod += Math.trunc(Number(prod)||0);
+      perdaAgg.set(mk, cur);
+    });
+    const lossRate = (mk)=>{
+      const a = perdaAgg.get(mk) || { lost:0, prod:0 };
+      const lost = Number(a.lost||0) || 0;
+      const prod = Number(a.prod||0) || 0;
+      if(prod > 0) return lost / prod;
+      return lost > 0 ? 1 : 0;
+    };
+
+    const ranked = compat.map((m)=>{
+      const fila = Math.trunc(Number(filaMap.get(m.nome) || 0) || 0);
+      const taxa = lossRate(m.nome);
+      const penal = taxa > 0.05 ? 1000 : 0;
+      return { ...m, fila, taxa_perda: taxa, penalidade: penal };
+    });
+    ranked.sort((a,b)=>{
+      if((a.penalidade||0) !== (b.penalidade||0)) return (a.penalidade||0) - (b.penalidade||0);
+      if((a.fila||0) !== (b.fila||0)) return (a.fila||0) - (b.fila||0);
+      if((a.taxa_perda||0) !== (b.taxa_perda||0)) return (a.taxa_perda||0) - (b.taxa_perda||0);
+      return String(a.nome).localeCompare(String(b.nome));
+    });
+    const melhor = ranked[0];
     if(!melhor || !melhor.nome) return { ok:false, skipped:'sem_melhor' };
+    return { ok:true, nome: melhor.nome, fila: melhor.fila, taxa_perda: melhor.taxa_perda, penalidade: melhor.penalidade };
+  }catch(e){
+    return { ok:false, skipped:'erro', error: String(e?.message || e) };
+  }
+}
+
+async function _autoSugerirMaquinaParaOF(body, created){
+  try{
+    const fluxoBody = _parseFluxoAny(body?.fluxo_maquinas ?? body?.fluxoMaquinas ?? body?.maq ?? body?.maquinas ?? []);
+    const fluxoCreated = _parseFluxoAny(created?.fluxo_maquinas ?? created?.maq ?? []);
+    if(fluxoBody.length || fluxoCreated.length) return { ok:false, skipped:'ja_tem_maquina' };
+    const sug = await _autoPickSugestaoMaquinaNome({ ...(created||{}), ...(body||{}) });
+    if(!sug || !sug.ok || !sug.nome) return { ok:false, skipped: sug?.skipped || 'sem_melhor' };
 
     const updPayload = {
-      fluxo_maquinas: [melhor.nome],
-      maq: JSON.stringify([melhor.nome]),
+      fluxo_maquinas: [sug.nome],
+      maq: JSON.stringify([sug.nome]),
       maquina_atual_index: 0
     };
     const upd = await supabase.from('ofs').update(updPayload).eq('id', created?.id).select().maybeSingle();
     if(upd.error) return { ok:false, skipped:'falha_update', error: upd.error.message };
-    return { ok:true, nome: melhor.nome, updated: upd.data || null };
+    return { ok:true, nome: sug.nome, updated: upd.data || null, fila: sug.fila, taxa_perda: sug.taxa_perda, penalidade: sug.penalidade };
   }catch(e){
     return { ok:false, skipped:'erro', error: String(e?.message || e) };
   }
@@ -8484,6 +8593,101 @@ app.get('/api/chapas_estoque/search', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async (req, res) => {
+  try {
+    const comp = Number(req.body?.comprimento_mm);
+    const larg = Number(req.body?.largura_mm);
+    const alt  = Number(req.body?.altura_mm);
+    const empId = String(req.body?.emp_id || req.body?.empId || '').trim();
+
+    if (!(comp > 0 && larg > 0 && alt > 0)) {
+      return res.status(400).json({ ok: false, error: 'comprimento_mm, largura_mm e altura_mm são obrigatórios e devem ser > 0' });
+    }
+
+    const devLarg = comp + (alt * 2) + 20;
+    const devComp = (larg * 2) + (alt * 2) + 30;
+    const areaCaixa = devLarg * devComp;
+
+    const table = await _chapasPreferV2Table();
+    let q = supabase.from(table).select('*').limit(5000);
+    if (empId) q = q.eq('emp_id', empId);
+    const { data: chapasRaw, error } = await q;
+    if (error) throw error;
+
+    const chapas = (Array.isArray(chapasRaw) ? chapasRaw : [])
+      .map(r => _chapasCanonicalFromAny(r, table))
+      .filter(c => (Number(c.quantidade || c.qtd || 0) || 0) > 0);
+
+    const resultados = [];
+
+    for (const c of chapas) {
+      const tam = String(c.tamanho || c.tam || '').trim();
+      const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
+      if (!m) continue;
+
+      const d1 = Number(m[1]);
+      const d2 = Number(m[2]);
+      if (!(d1 > 0 && d2 > 0)) continue;
+
+      const areaChapa = d1 * d2;
+
+      const sentidoA = d1 >= devComp && d2 >= devLarg;
+      const sentidoB = d1 >= devLarg && d2 >= devComp;
+      if (!sentidoA && !sentidoB) continue;
+
+      let cxL, cxC;
+      if (sentidoA) {
+        cxC = Math.floor(d1 / devComp);
+        cxL = Math.floor(d2 / devLarg);
+      } else {
+        cxC = Math.floor(d1 / devLarg);
+        cxL = Math.floor(d2 / devComp);
+      }
+      const caixasPorChapa = Math.max(1, cxL * cxC);
+      const areaUsada = caixasPorChapa * areaCaixa;
+      const despPct = Math.round(((areaChapa - areaUsada) / areaChapa) * 100);
+
+      resultados.push({
+        id: c.id,
+        nome: String(c.nome || c.nomenclatura || '').trim(),
+        fornecedor: String(c.fornecedor || '').trim(),
+        tamanho: tam,
+        dim1: d1,
+        dim2: d2,
+        area_chapa_mm2: areaChapa,
+        quantidade: Number(c.quantidade || c.qtd || 0) || 0,
+        valor_unitario: Number(c.valor_unitario || c.val || 0) || 0,
+        cabe: true,
+        caixas_por_chapa: caixasPorChapa,
+        desperdicio_real_pct: Math.max(0, despPct),
+        economia_vs_pior: 0,
+      });
+    }
+
+    if (!resultados.length) {
+      return res.json({
+        ok: true,
+        chapas: [],
+        aviso: 'nenhuma_chapa_compativel',
+        dados_caixa: { desenvolvimento_largura: devLarg, desenvolvimento_comprimento: devComp, area_caixa_mm2: areaCaixa }
+      });
+    }
+
+    resultados.sort((a, b) => a.desperdicio_real_pct - b.desperdicio_real_pct);
+    const piorPct = resultados[resultados.length - 1].desperdicio_real_pct;
+    resultados.forEach(r => { r.economia_vs_pior = piorPct - r.desperdicio_real_pct; });
+
+    return res.json({
+      ok: true,
+      dados_caixa: { desenvolvimento_largura: devLarg, desenvolvimento_comprimento: devComp, area_caixa_mm2: areaCaixa },
+      chapas: resultados.slice(0, 10),
+    });
+  } catch (e) {
+    _logApiError('CHAPA_SUGERIR', req, e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/chapas_estoque/reset', authMiddleware, async (req, res) => {
   try {
     console.log('chapas_estoque/reset body type:', Array.isArray(req.body) ? 'array' : typeof req.body);
@@ -9547,6 +9751,16 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
       .limit(1);
     if (Array.isArray(ofEspecifica) && ofEspecifica[0]) ctx.of_especifica = ofEspecifica[0];
   }
+  try{
+    const ofCtx = ctx.of_especifica || null;
+    if(ofCtx){
+      const sug = await _autoPickSugestaoMaquinaNome(ofCtx);
+      if(sug && sug.ok && sug.nome){
+        ctx.sugestao_maquina = sug.nome;
+        ctx.sugestao_maquina_meta = { fila: sug.fila, taxa_perda: sug.taxa_perda, penalidade: sug.penalidade };
+      }
+    }
+  }catch(_){}
 
   const { data: chapasRaw } = await supabase
     .from('chapas_estoque')
@@ -9587,6 +9801,95 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
   } catch (_) {
     ctx.perdas_mes = { total_caixas: 0, valor_total: 0 };
   }
+
+  try {
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mes = d.toISOString().slice(0, 7);
+      const de = mes + '-01';
+      const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+      const { data: ofsM } = await supabase
+        .from('ofs')
+        .select('valor_total,valor_venda,val,status,deleted_at')
+        .gte('data_conclusao', de)
+        .lte('data_conclusao', fim)
+        .is('deleted_at', null)
+        .limit(1000);
+      const total = (Array.isArray(ofsM) ? ofsM : [])
+        .filter(o => !o.deleted_at)
+        .reduce((s, o) => s + (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0), 0);
+      meses.push({ mes, total: Math.round(total) });
+    }
+    ctx.tendencia_faturamento = meses;
+    const vals = meses.map(m => m.total).filter(v => v > 0);
+    if (vals.length >= 2) {
+      const ultimo = vals[vals.length - 1];
+      const penultimo = vals[vals.length - 2];
+      ctx.variacao_mes_pct = penultimo > 0 ? Math.round(((ultimo - penultimo) / penultimo) * 100) : 0;
+    }
+  } catch (_) {}
+
+  try {
+    const mesRef = new Date().toISOString().slice(0, 7);
+    const { data: ofsClientes } = await supabase
+      .from('ofs')
+      .select('cli_id,cliente_id,valor_total,valor_venda,val,deleted_at,status')
+      .gte('created_at', mesRef + '-01')
+      .is('deleted_at', null)
+      .limit(2000);
+    const mapCli = {};
+    (Array.isArray(ofsClientes) ? ofsClientes : []).forEach(o => {
+      const cid = String(o.cli_id || o.cliente_id || '').trim();
+      if (!cid) return;
+      const v = Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0;
+      mapCli[cid] = (mapCli[cid] || 0) + v;
+    });
+    const topIds = Object.entries(mapCli).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
+    if (topIds.length) {
+      const { data: clisTop } = await supabase.from('clientes').select('id,nome').in('id', topIds).limit(200);
+      ctx.top_clientes_mes = topIds.map(id => {
+        const c = (Array.isArray(clisTop) ? clisTop : []).find(x => String(x.id) === String(id));
+        return { nome: c?.nome || id, valor: Math.round(mapCli[id] || 0) };
+      });
+    }
+  } catch (_) {}
+
+  try {
+    const { data: ofsAbertas } = await supabase
+      .from('ofs')
+      .select('fluxo_maquinas,maq,maquina_atual_index,status,deleted_at')
+      .is('deleted_at', null)
+      .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+      .limit(500);
+    const filaMap = {};
+    (Array.isArray(ofsAbertas) ? ofsAbertas : []).forEach(o => {
+      const fluxo = parseFluxo(o.fluxo_maquinas || o.maq || []);
+      const idx = Number(o.maquina_atual_index || 0) || 0;
+      const maq = String(fluxo[idx] || fluxo[0] || '').trim();
+      if (maq) filaMap[maq] = (filaMap[maq] || 0) + 1;
+    });
+    ctx.fila_maquinas = Object.entries(filaMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([maq, qtd]) => ({ maquina: maq, ofs_na_fila: qtd }));
+  } catch (_) {}
+
+  try {
+    const anoAtual = new Date().getFullYear();
+    const { data: ofsAno } = await supabase
+      .from('ofs')
+      .select('valor_total,valor_venda,val,status,deleted_at,data_conclusao')
+      .gte('data_conclusao', `${anoAtual}-01-01`)
+      .is('deleted_at', null)
+      .limit(5000);
+    const concluidas = (Array.isArray(ofsAno) ? ofsAno : []).filter(o =>
+      !o.deleted_at && (String(o.status || '').toLowerCase().includes('conclu'))
+    );
+    ctx.faturamento_ano_atual = Math.round(concluidas.reduce((s, o) =>
+      s + (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0), 0));
+    ctx.total_ofs_concluidas_ano = concluidas.length;
+  } catch (_) {}
 
   ctx.hoje = hoje;
   ctx.mes = month || (new Date().getMonth() + 1);
@@ -9648,6 +9951,148 @@ async function _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, histori
     ? j.content.map((c) => (c && c.type === 'text' ? String(c.text || '') : '')).join('\n').trim()
     : String(j?.content || j?.text || '').trim();
   return { ok: true, text: txt };
+}
+
+async function _callOpenAI({ mensagem, sistema, historico, json, modelo }) {
+  try {
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY não configurada');
+
+    const modeloFinal = modelo || 'gpt-4o';
+    const msgs = [];
+
+    if (sistema) msgs.push({ role: 'system', content: String(sistema) });
+
+    if (Array.isArray(historico)) {
+      historico.slice(-8).forEach((m) => {
+        const role = String(m?.role || '').toLowerCase() === 'assistant' ? 'assistant' : 'user';
+        const content = String(m?.content || m?.texto || m?.text || '').trim();
+        if (content) msgs.push({ role, content });
+      });
+    }
+
+    msgs.push({ role: 'user', content: String(mensagem || '') });
+
+    const bodyReq = {
+      model: modeloFinal,
+      messages: msgs,
+      max_tokens: 2000,
+      temperature: 0.4,
+    };
+
+    if (json) bodyReq.response_format = { type: 'json_object' };
+
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify(bodyReq),
+    });
+
+    const data = await r.json().catch(() => null);
+    if (!r.ok) {
+      throw new Error(data?.error?.message || `OpenAI erro HTTP ${r.status}`);
+    }
+
+    const texto = String(data?.choices?.[0]?.message?.content || '').trim();
+    return { ok: true, text: texto, modelo: modeloFinal };
+  } catch (e) {
+    throw e;
+  }
+}
+
+async function _callJarvisIA({ pergunta, nomeUsuario, dadosContexto, historico, modo }) {
+  try {
+    const temClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
+    const temOpenAI = !!OPENAI_API_KEY;
+
+    const hoje = new Date().toLocaleString('pt-BR');
+    const firstName = _jarvisFirstName(nomeUsuario || 'usuário');
+
+    const systemBase = `Você é o JARVIS, assistente ultra-inteligente da Italy Embalagens, fábrica de caixas de papelão.
+USUÁRIO: ${firstName}
+DATA/HORA: ${hoje}
+
+DADOS DO ERP EM TEMPO REAL:
+${JSON.stringify(dadosContexto || {}, null, 2)}
+
+REGRAS ABSOLUTAS:
+- Responda SEMPRE em português brasileiro
+- Seja direto, inteligente e útil como o JARVIS do Iron Man
+- Use os dados do ERP acima para responder com precisão
+- Formate valores em R$ (ex: R$ 45.230,00)
+- Formate datas como DD/MM/AAAA
+- Quando listar OFs: número, cliente, status, data entrega
+- Para análises complexas: mostre os cálculos e o raciocínio
+- Você TEM ACESSO aos dados reais do sistema listados acima
+- Nunca invente dados que não estão no contexto
+- Se não souber algo, diga o que sabe e sugira como encontrar`;
+
+    if (modo === 'turbo' && temClaude && temOpenAI) {
+      try {
+        const [rClaude, rOpenAI] = await Promise.allSettled([
+          _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, historico }),
+          _callOpenAI({ mensagem: pergunta, sistema: systemBase, historico, modelo: 'gpt-4o' }),
+        ]);
+
+        const textoClaude = rClaude.status === 'fulfilled' ? String(rClaude.value?.text || '') : '';
+        const textoOpenAI = rOpenAI.status === 'fulfilled' ? String(rOpenAI.value?.text || '') : '';
+
+        if (textoClaude && textoOpenAI) {
+          const sintese = await _callOpenAI({
+            mensagem: `Duas análises foram feitas sobre a pergunta: "${pergunta}"
+
+ANÁLISE 1 (Claude):
+${textoClaude}
+
+ANÁLISE 2 (GPT-4o):
+${textoOpenAI}
+
+Sintetize as duas análises em UMA resposta única, completa e superior.
+Aproveite os pontos fortes de cada análise.
+Responda em português brasileiro, de forma direta e clara.
+NÃO mencione que houve duas análises — apenas dê a melhor resposta possível.`,
+            sistema: 'Você sintetiza análises em respostas superiores. Responda em português.',
+            modelo: 'gpt-4o',
+          });
+          return { ok: true, text: sintese.text, origem: 'turbo' };
+        }
+
+        if (textoClaude) return { ok: true, text: textoClaude, origem: 'claude' };
+        if (textoOpenAI) return { ok: true, text: textoOpenAI, origem: 'openai' };
+      } catch (e) {
+        console.warn('[JARVIS TURBO] erro:', e?.message);
+      }
+    }
+
+    if (temClaude) {
+      try {
+        const r = await _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, historico });
+        if (r?.ok && r.text) return { ok: true, text: r.text, origem: 'claude' };
+      } catch (e) {
+        console.warn('[JARVIS] Claude falhou, tentando OpenAI:', e?.message);
+      }
+    }
+
+    if (temOpenAI) {
+      try {
+        const r = await _callOpenAI({
+          mensagem: pergunta,
+          sistema: systemBase,
+          historico,
+          modelo: 'gpt-4o',
+        });
+        if (r?.ok && r.text) return { ok: true, text: r.text, origem: 'openai' };
+      } catch (e) {
+        console.warn('[JARVIS] OpenAI também falhou:', e?.message);
+      }
+    }
+
+    return { ok: false, text: '', origem: 'nenhuma' };
+  } catch (e) {
+    throw e;
+  }
 }
 
 const _jarvisPendingActions = new Map();
@@ -9724,7 +10169,9 @@ async function _jarvisFindChapaByNome(nome) {
 function _jarvisInternalBase(req) {
   const host = String(req.get('host') || '').trim();
   if (!host) return '';
-  return `http://${host}`;
+  const xf = String(req.headers['x-forwarded-proto'] || '').trim();
+  const proto = xf || String(req.protocol || '').trim() || 'http';
+  return `${proto}://${host}`;
 }
 
 async function _jarvisCallInternal(req, path, { method, body } = {}) {
@@ -9881,6 +10328,69 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     const has = (...words) => words.every((w) => norm.includes(_assistNorm(w)));
     const hasAny = (...words) => words.some((w) => norm.includes(_assistNorm(w)));
+
+    const empIdCtx = String(req.body?.empId || req.body?.emp_id || req.query?.empId || '').trim() || null;
+
+    const hasMedidas = /\b\d{1,4}\s*[x×]\s*\d{1,4}\s*[x×]\s*\d{1,4}\b/i.test(pergunta);
+    const hasCaixasNum = /\bcaix[a-z]*\b/i.test(pergunta) && /\b\d{1,6}\b/.test(pergunta);
+    if ((hasMedidas || hasCaixasNum) && !norm.startsWith('/')) {
+      try{
+        const usuario_id = String(req?.usuario?.id || '').trim() || null;
+        const r = await _pedidoLinguagemNaturalProcess({ texto: pergunta, empId: empIdCtx, usuario_id, req });
+        if (r?.ok && r?.of) {
+          const ofRow = r.of;
+          const num = String(ofRow?.of || ofRow?.numero || '').trim();
+          const cli = String(ofRow?.cliNome || ofRow?.cliente_nome || '').trim();
+          const prod = String(ofRow?.descricao || ofRow?.prodDesc || '').trim();
+          const ent = String(ofRow?.data_entrega || ofRow?.ent || '').slice(0, 10);
+          const mk = String(_ofPickMaqAtualName(ofRow) || '').trim();
+          return respond(
+            `✅ Pedido entendido e OF criada!\n` +
+            `• OF #${num || ofRow?.id}\n` +
+            `• Cliente: ${cli || '—'}\n` +
+            `• Produto: ${prod || '—'}\n` +
+            `• Entrega: ${_assistFmtDateBr(ent)}\n` +
+            (mk ? `• Sugestão/Máquina: ${mk}\n` : '') +
+            `\nSe quiser, eu já te monto o sequenciamento da máquina.`,
+            { dadosExtras: { tipo: 'of_criada_linguagem_natural', of_id: ofRow?.id, numero: num || null } }
+          );
+        }
+        if (r?.erro === 'cliente_nao_encontrado') {
+          const sug = Array.isArray(r?.sugestoes) ? r.sugestoes : [];
+          return respond(
+            `⚠️ Entendi o pedido, mas não encontrei o cliente "${String(r?.dados_extraidos?.cliente_nome || '').trim()}".\n` +
+            (sug.length ? `Sugestões:\n${sug.slice(0, 8).map((x)=>`• ${x}`).join('\n')}` : `Me diga o nome do cliente como está cadastrado.`),
+            { dadosExtras: { tipo: 'pedido_cliente_nao_encontrado', dados_extraidos: r?.dados_extraidos || null } }
+          );
+        }
+        if (Array.isArray(r?.campos_faltando) && r.campos_faltando.length) {
+          return respond(
+            `⚠️ Entendi parcialmente, mas faltaram dados: ${r.campos_faltando.join(', ')}.\n` +
+            `Me envie a frase novamente incluindo esses campos (ex: "500 caixas 30x20x15 onda B entrega 2026-05-25 cliente X").`,
+            { dadosExtras: { tipo: 'pedido_campos_faltando', dados_extraidos: r?.dados_extraidos || null } }
+          );
+        }
+      }catch(_){}
+    }
+
+    if (hasAny('perda','perdas','caixas perdidas') || (hasAny('maquina','máquina') && hasAny('perda','perdas'))) {
+      try{
+        const qs = new URLSearchParams();
+        if(empIdCtx) qs.set('empId', empIdCtx);
+        qs.set('meses', '3');
+        const anal = await _jarvisCallInternal(req, '/api/analytics/padroes_perda?' + qs.toString());
+        const data = anal?.data || anal || null;
+        const alertas = Array.isArray(data?.alertas) ? data.alertas : [];
+        const pior = data?.pior_combinacao || null;
+        const msg =
+          `📉 Padrões de perda (últimos ${data?.meses || 3} meses)\n` +
+          (alertas.length
+            ? `\n⚠️ Alertas (máquinas > 2× média geral):\n` + alertas.slice(0, 8).map((a)=>`• ${a.maquina}: média ${Math.round(Number(a.media_por_of||0))} cx/OF (geral ${Math.round(Number(a.media_geral||0))})`).join('\n')
+            : `\n✅ Sem alertas acima de 2× a média geral.`) +
+          (pior ? `\n\n🔥 Pior combinação: ${pior.maquina_perda} · ${pior.dia_semana} · ${pior.turno} — ${Math.round(Number(pior.total_perdido||0))} cx perdidas` : '');
+        return respond(msg, { dadosExtras: { tipo: 'analise_perdas', data } });
+      }catch(_){}
+    }
 
     const imgMatch = pergunta.match(/https?:\/\/\S+/i);
     if (imgMatch && (norm.includes('recebi uma imagem') || /\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(imgMatch[0]))) {
@@ -11921,20 +12431,88 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
-    if (useClaude && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
+    const isComplexo = _jarvisHasAny(
+      norm,
+      'analise', 'análise', 'compare', 'comparar', 'explique', 'por que', 'como melhorar',
+      'sugestao', 'sugestão', 'estrategia', 'estratégia', 'previsao', 'previsão',
+      'tendencia', 'tendência', 'relatório', 'relatorio', 'dashboard', 'insight'
+    );
+    const modoReq = String(req.body?.modo || '').trim().toLowerCase();
+    const turboDisponivel = !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY);
+    const modoIA = (modoReq === 'turbo' && turboDisponivel) ? 'turbo' : (isComplexo && OPENAI_API_KEY ? 'turbo' : 'normal');
+
+    const temQualquerIA = !!String(process.env.ANTHROPIC_API_KEY || '').trim() || !!OPENAI_API_KEY;
+
+    if (temQualquerIA && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
       try {
         const dadosContexto = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
-        const cla = await _jarvisCallClaude({ pergunta, nomeUsuario: nome, dadosContexto, historico });
-        if (cla?.ok && String(cla.text || '').trim()) {
-          return respond(String(cla.text || '').trim());
+        const rIA = await _callJarvisIA({
+          pergunta,
+          nomeUsuario: nome,
+          dadosContexto,
+          historico,
+          modo: modoIA,
+        });
+        if (rIA?.ok && String(rIA.text || '').trim()) {
+          const extras = rIA.origem === 'turbo' ? { modo: 'turbo', origem: 'turbo', badge: '⚡ Turbo' } : { origem: rIA.origem };
+          return respond(String(rIA.text || '').trim(), extras);
         }
-      } catch (_) {}
+      } catch (e) {
+        console.error('[JARVIS IA FINAL]', e?.message);
+      }
     }
 
     return naoEntendi();
   } catch (e) {
     return err(res, e);
+  }
+});
+
+app.get('/api/ia/status', authMiddleware, async (req, res) => {
+  try {
+    return res.json({
+      ok: true,
+      claude: { ativo: !!String(process.env.ANTHROPIC_API_KEY || '').trim(), modelo: 'claude-sonnet-4' },
+      openai: { ativo: !!OPENAI_API_KEY, modelo: 'gpt-4o' },
+      modo_turbo_disponivel: !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/jarvis/turbo', authMiddleware, async (req, res) => {
+  try {
+    const { nome: nomeUsuarioFull, email } = await _assistUser(req);
+    const nomeUsuario = _jarvisFirstName(nomeUsuarioFull || email || '');
+    const pergunta = String(req.body?.pergunta || '').trim();
+    const historico = Array.isArray(req.body?.historico) ? req.body.historico : [];
+
+    if (!pergunta) return res.status(400).json({ ok: false, error: 'pergunta_obrigatoria' });
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    const norm = _assistNorm(pergunta);
+
+    const dadosContexto = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario });
+
+    const rIA = await _callJarvisIA({
+      pergunta,
+      nomeUsuario,
+      dadosContexto,
+      historico,
+      modo: 'turbo',
+    });
+
+    return res.json({
+      ok: true,
+      resposta: rIA.text || 'Não consegui processar.',
+      origem: rIA.origem,
+      modo: 'turbo',
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
@@ -12372,6 +12950,1006 @@ app.put('/api/inconformidades_controle/:id', authMiddleware, async (req, res) =>
     return ok(res, data);
   } catch (e) { return err(res, e); }
 });
+
+function _tzParts(date, timeZone){
+  const d = date instanceof Date ? date : new Date(date);
+  const tz = String(timeZone || 'America/Sao_Paulo');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  }).formatToParts(d);
+  const get = (t)=> parts.find(p=>p.type===t)?.value || '';
+  return {
+    y: Number(get('year')) || 0,
+    m: Number(get('month')) || 0,
+    d: Number(get('day')) || 0,
+    hh: Number(get('hour')) || 0,
+    mm: Number(get('minute')) || 0,
+    ss: Number(get('second')) || 0,
+    isoDate: `${get('year')}-${get('month')}-${get('day')}`,
+  };
+}
+
+function _isoDateFromTzNow(timeZone){
+  try{ return _tzParts(new Date(), timeZone).isoDate; }catch(_){ return new Date().toISOString().slice(0,10); }
+}
+
+function _addDaysIso(iso, delta){
+  try{
+    const d = new Date(String(iso||'').slice(0,10) + 'T00:00:00');
+    if(isNaN(d.getTime())) return '';
+    d.setDate(d.getDate() + (Number(delta)||0));
+    return d.toISOString().slice(0,10);
+  }catch(_){ return ''; }
+}
+
+function _monthKey(iso){
+  return String(iso||'').slice(0,7);
+}
+
+function _monthStartIso(iso){
+  const s = String(iso||'').slice(0,10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return '';
+  return `${m[1]}-${m[2]}-01`;
+}
+
+function _safeParseJsonLoose(txt){
+  const raw = String(txt||'').trim();
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(_){}
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(m){ try{ return JSON.parse(m[0]); }catch(_){} }
+  return null;
+}
+
+function _uniqEmails(list){
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(list)?list:[]).forEach((x)=>{
+    const e = String(x||'').trim().toLowerCase();
+    if(!e || !e.includes('@')) return;
+    if(seen.has(e)) return;
+    seen.add(e);
+    out.push(e);
+  });
+  return out;
+}
+
+async function _analyticsPadroesPerdaCompute({ empId, meses }){
+  const nMeses = Math.max(1, Math.min(12, Math.trunc(Number(meses || 3) || 3)));
+  const now = new Date();
+  const dtIni = new Date(now.getFullYear(), now.getMonth() - (nMeses - 1), 1);
+  const iniIso = dtIni.toISOString().slice(0,10);
+  let q = supabase
+    .from('caixas_perdidas')
+    .select('id,of_id,qtd_perdida,maquina_perda,maquina,maquina_nome,data,created_at,emp_id')
+    .gte('data', iniIso)
+    .limit(5000);
+  if(empId) q = q.eq('emp_id', empId);
+  const { data, error } = await q;
+  if(error){
+    const msg = String(error.message||error).toLowerCase();
+    if(msg.includes('does not exist') || msg.includes('not exist')) return { ok:true, data:{ empId: empId||null, meses:nMeses, grupos:[], alertas:[], pior_combinacao:null } };
+    throw error;
+  }
+  const rows = Array.isArray(data) ? data : [];
+  const pickMaq = (r)=> String(r?.maquina_perda || r?.maquina_nome || r?.maquina || '').trim() || '—';
+  const dowName = (dow)=>{
+    const map = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    return map[dow] || '—';
+  };
+  const turno = (h)=>{
+    const hh = Number(h)||0;
+    if(hh >= 6 && hh < 12) return 'manhã';
+    if(hh >= 12 && hh < 18) return 'tarde';
+    return 'noite';
+  };
+  const groups = new Map();
+  const perMaq = new Map();
+  const allOfs = new Set();
+  let totalLost = 0;
+  rows.forEach((r)=>{
+    const mk = pickMaq(r);
+    const lost = Math.trunc(Number(r?.qtd_perdida||0) || 0);
+    totalLost += lost;
+    const ofId = String(r?.of_id||'').trim();
+    if(ofId) allOfs.add(ofId);
+    const dtRaw = String(r?.created_at || r?.data || '').trim() || '';
+    const dt = dtRaw ? new Date(dtRaw) : new Date();
+    const dow = dt.getDay();
+    const hr = dt.getHours();
+    const key = `${mk}||${dow}||${turno(hr)}`;
+    const cur = groups.get(key) || { maquina_perda: mk, dia_semana: dowName(dow), turno: turno(hr), total_perdido: 0, ofs: new Set() };
+    cur.total_perdido += lost;
+    if(ofId) cur.ofs.add(ofId);
+    groups.set(key, cur);
+    const mcur = perMaq.get(mk) || { total:0, ofs:new Set() };
+    mcur.total += lost;
+    if(ofId) mcur.ofs.add(ofId);
+    perMaq.set(mk, mcur);
+  });
+  const geralDen = Math.max(1, allOfs.size || rows.length || 1);
+  const mediaGeral = totalLost / geralDen;
+  const grupos = [...groups.values()].map((g)=>{
+    const nOf = Math.max(1, g.ofs.size || 0);
+    return { maquina_perda: g.maquina_perda, dia_semana: g.dia_semana, turno: g.turno, total_perdido: g.total_perdido, media_por_of: g.total_perdido / nOf };
+  }).sort((a,b)=> (b.total_perdido - a.total_perdido));
+  const pior = grupos[0] || null;
+  const alertas = [];
+  [...perMaq.entries()].forEach(([mk, v])=>{
+    const den = Math.max(1, v.ofs.size || 0);
+    const med = v.total / den;
+    if(med > (mediaGeral * 2) && v.total > 0){
+      alertas.push({ maquina: mk, media_por_of: med, media_geral: mediaGeral, fator: mediaGeral > 0 ? (med / mediaGeral) : null });
+    }
+  });
+  alertas.sort((a,b)=> (b.media_por_of - a.media_por_of));
+  return {
+    ok: true,
+    data: {
+      empId: empId || null,
+      meses: nMeses,
+      total_perdido: totalLost,
+      media_geral_por_of: mediaGeral,
+      pior_combinacao: pior,
+      grupos: grupos.slice(0, 500),
+      alertas: alertas.slice(0, 50),
+    }
+  };
+}
+
+function _horasUteisAteEntrega(hojeIso, entregaIso){
+  const h = String(hojeIso||'').slice(0,10);
+  const e = String(entregaIso||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(h) || !/^\d{4}-\d{2}-\d{2}$/.test(e)) return 0;
+  if(e <= h) return 0;
+  const start = new Date(h + 'T00:00:00');
+  const end = new Date(e + 'T00:00:00');
+  if(isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  let hrs = 0;
+  const day = new Date(start);
+  while(day < end){
+    const dow = day.getDay();
+    if(dow !== 0 && dow !== 6) hrs += 10;
+    day.setDate(day.getDate() + 1);
+  }
+  return hrs;
+}
+
+async function _analyticsPrevisaoAtrasosCompute({ empId }){
+  const hojeIso = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
+  const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+  let q = supabase
+    .from('ofs')
+    .select('id,of,numero,status,cli_id,cliId,cliente_id,descricao,cliNome,cliente_nome,ent,data_entrega,data_producao,dia,fluxo_maquinas,maq,maquina_atual_index,qtd,quantidade,qtd_produzida,created_at,emp_id,deleted_at')
+    .is('deleted_at', null)
+    .not('status', 'in', statusNotIn)
+    .limit(5000);
+  if(empId) q = q.eq('emp_id', empId);
+  const { data: ofsRaw, error: eOf } = await q;
+  if(eOf) throw eOf;
+  const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];
+  const empFilter = String(empId||'').trim();
+  const ativos = empFilter ? ofs.filter(o=>String(o?.emp_id||o?.empId||o?.empresa_id||'').trim()===empFilter) : ofs;
+
+  const { data: maqsRaw } = await supabase.from('maquinas').select('id,nome,producao,phora,setup_medio,setup').eq('ativo', true).limit(500);
+  const maqs = Array.isArray(maqsRaw) ? maqsRaw : [];
+  const maqMap = new Map(maqs.map(m=>{
+    const nome = String(m?.nome||'').trim();
+    const prod = Number(m?.producao ?? m?.phora ?? 0) || 0;
+    const setup = Number(m?.setup_medio ?? m?.setup ?? 0) || 0;
+    return [nome, { prodHora: prod, setupMin: setup }];
+  }));
+
+  const pickEntrega = (o)=> String(o?.data_entrega ?? o?.ent ?? '').slice(0,10);
+  const pickQtd = (o)=> Number(o?.qtd_produzida ?? o?.qtd ?? o?.quantidade ?? 0) || 0;
+  const queueByMaq = new Map();
+  ativos.forEach((o)=>{
+    const mk = String(_ofPickMaqAtualName(o) || '').trim();
+    if(!mk) return;
+    if(!queueByMaq.has(mk)) queueByMaq.set(mk, []);
+    queueByMaq.get(mk).push(o);
+  });
+  const avgHrsByMaq = new Map();
+  queueByMaq.forEach((arr, mk)=>{
+    const meta = maqMap.get(mk) || { prodHora: 0, setupMin: 0 };
+    const prodHora = Number(meta.prodHora||0) || 0;
+    const setupH = (Number(meta.setupMin||0) || 0) / 60;
+    const est = arr.map((o)=>{
+      const qtd = Math.max(0, pickQtd(o));
+      const h = (prodHora > 0 ? (qtd / prodHora) : 0) + setupH;
+      return Number.isFinite(h) ? h : 0;
+    }).filter(x=>x > 0);
+    const avg = est.length ? (est.reduce((s,x)=>s+x,0) / est.length) : 1;
+    avgHrsByMaq.set(mk, avg);
+  });
+
+  const out = [];
+  for(const ofRow of ativos){
+    const entrega = pickEntrega(ofRow);
+    if(!entrega) continue;
+    const fluxo = _ofPickFluxoNames(ofRow);
+    if(!fluxo.length) continue;
+    const horasDisp = _horasUteisAteEntrega(hojeIso, entrega);
+    let horasEst = 0;
+    for(const mk of fluxo){
+      const qArr = queueByMaq.get(mk) || [];
+      const ahead = qArr.filter((o)=>{
+        if(String(o?.id||'') === String(ofRow?.id||'')) return false;
+        const e2 = pickEntrega(o);
+        return e2 && entrega && e2 < entrega;
+      }).length;
+      const avg = Number(avgHrsByMaq.get(mk) || 1) || 1;
+      horasEst += ahead * avg;
+    }
+    const lim = horasDisp * 0.8;
+    const limMed = horasDisp * 0.6;
+    let risco = 'ok';
+    if(horasEst > lim) risco = 'alto';
+    else if(horasEst > limMed) risco = 'medio';
+    const cliente = String(ofRow?.cliNome || ofRow?.cliente_nome || '').trim();
+    const numero = String(ofRow?.of || ofRow?.numero || '').trim();
+    out.push({
+      of_id: ofRow.id,
+      numero,
+      cliente,
+      entrega,
+      risco,
+      horas_disponiveis: Number(horasDisp.toFixed(2)),
+      horas_estimadas: Number(horasEst.toFixed(2)),
+    });
+  }
+  return { ok:true, data: out.sort((a,b)=> String(a.entrega).localeCompare(String(b.entrega)) || String(b.risco).localeCompare(String(a.risco))) };
+}
+
+async function _notificarRiscoAtraso({ empId, items }){
+  try{
+    const arr = Array.isArray(items) ? items : [];
+    const altos = arr.filter(x=>x && x.risco === 'alto').slice(0, 50);
+    if(!altos.length) return;
+    const agora = new Date().toISOString();
+    for(const it of altos){
+      const msg = `⚠️ Risco ALTO de atraso — OF #${it.numero||it.of_id} — entrega ${it.entrega} (estimado ${it.horas_estimadas}h / disponível ${it.horas_disponiveis}h)`;
+      const { data: existente, error: e1 } = await supabase
+        .from('notificacoes')
+        .select('id')
+        .eq('mensagem', msg)
+        .eq('lida', false)
+        .limit(1);
+      if(e1) continue;
+      if(Array.isArray(existente) && existente.length) continue;
+      await supabase.from('notificacoes').insert([{
+        mensagem: msg,
+        tipo: 'warning',
+        lida: false,
+        data_hora: agora,
+        criado_por: 'AUTO',
+        emp_id: empId || null,
+      }]);
+    }
+  }catch(_){}
+}
+
+app.get('/api/analytics/padroes_perda', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const empId = String(req.query.empId || '').trim();
+    const meses = Math.max(1, Math.min(12, Math.trunc(Number(req.query.meses || 3) || 3)));
+    const r = await _analyticsPadroesPerdaCompute({ empId: empId || null, meses });
+    return res.json(r);
+  }catch(e){ return err(res, e); }
+});
+
+app.get('/api/analytics/previsao_atrasos', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const empId = String(req.query.empId || '').trim();
+    const r = await _analyticsPrevisaoAtrasosCompute({ empId: empId || null });
+    try{ await _notificarRiscoAtraso({ empId: empId || null, items: r?.data || [] }); }catch(_){}
+    return res.json(r);
+  }catch(e){ return err(res, e); }
+});
+
+async function _anthropicExtrairPedidoJson(texto){
+  const key = String(process.env.ANTHROPIC_API_KEY || '').trim();
+  if(!key) throw new Error('missing_anthropic_key');
+  const hojeIso = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
+  const system =
+    'Você extrai dados de pedidos de caixas de papelão. Retorne APENAS JSON válido sem markdown:\n' +
+    '{ cliente_nome, produto, quantidade, comprimento_mm, largura_mm, altura_mm, onda, data_entrega (YYYY-MM-DD), urgente (bool), observacoes }\n' +
+    'Se não conseguir extrair um campo, use null. Data relativa como "semana que vem" = hoje + 7 dias.';
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 700,
+      system,
+      messages: [
+        { role: 'user', content: `Hoje: ${hojeIso}\n\nPedido:\n${String(texto||'')}` }
+      ],
+    }),
+  });
+  const j = await r.json().catch(()=>null);
+  if(!r.ok) throw new Error(String(j?.error?.message || j?.error || r.status));
+  const txt = Array.isArray(j?.content) ? j.content.map(c=>c && c.type==='text'?String(c.text||''):'').join('\n').trim() : String(j?.content||j?.text||'').trim();
+  const parsed = _safeParseJsonLoose(txt);
+  if(!parsed || typeof parsed !== 'object') throw new Error('json_parse_failed');
+  const fixIso = (s)=>{
+    const raw = String(s||'').trim();
+    if(!raw) return null;
+    if(/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    return null;
+  };
+  const out = {
+    cliente_nome: parsed.cliente_nome != null ? String(parsed.cliente_nome||'').trim() : null,
+    produto: parsed.produto != null ? String(parsed.produto||'').trim() : null,
+    quantidade: parsed.quantidade != null ? Math.trunc(Number(parsed.quantidade)||0) : null,
+    comprimento_mm: parsed.comprimento_mm != null ? Math.trunc(Number(parsed.comprimento_mm)||0) : null,
+    largura_mm: parsed.largura_mm != null ? Math.trunc(Number(parsed.largura_mm)||0) : null,
+    altura_mm: parsed.altura_mm != null ? Math.trunc(Number(parsed.altura_mm)||0) : null,
+    onda: parsed.onda != null ? String(parsed.onda||'').trim() : null,
+    data_entrega: fixIso(parsed.data_entrega),
+    urgente: parsed.urgente != null ? !!parsed.urgente : null,
+    observacoes: parsed.observacoes != null ? String(parsed.observacoes||'').trim() : null,
+  };
+  if(!out.data_entrega && typeof parsed.data_entrega === 'string'){
+    const n = _assistNorm(parsed.data_entrega);
+    if(n.includes('semana que vem') || n.includes('semana vem') || n.includes('semana que vem')){
+      out.data_entrega = _addDaysIso(hojeIso, 7) || null;
+    }
+  }
+  return out;
+}
+
+async function _pedidoLinguagemNaturalProcess({ texto, empId, usuario_id, req }){
+  const extraidos = await _anthropicExtrairPedidoJson(texto);
+  const faltando = [];
+  if(!extraidos.cliente_nome) faltando.push('cliente_nome');
+  if(!extraidos.produto) faltando.push('produto');
+  if(!(Number(extraidos.quantidade||0) > 0)) faltando.push('quantidade');
+  if(!extraidos.data_entrega) faltando.push('data_entrega');
+  if(faltando.length){
+    return { ok:false, dados_extraidos: extraidos, campos_faltando: faltando };
+  }
+  const termo = String(extraidos.cliente_nome||'').replace(/%/g,'').trim();
+  let qCli = supabase.from('clientes').select('id,nome').ilike('nome', `%${termo}%`).limit(10);
+  if(empId) qCli = qCli.eq('emp_id', empId);
+  const { data: clientesRaw } = await qCli;
+  const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
+  if(!clientes.length){
+    const sugSet = new Set();
+    const tokens = _assistNorm(termo).split(/\s+/).filter(Boolean).slice(0, 4);
+    for(const tk of tokens){
+      if(tk.length < 2) continue;
+      let q2 = supabase.from('clientes').select('nome').ilike('nome', `%${tk.replace(/%/g,'')}%`).limit(10);
+      if(empId) q2 = q2.eq('emp_id', empId);
+      const { data: d2 } = await q2;
+      (Array.isArray(d2)?d2:[]).forEach((c)=>{ const n = String(c?.nome||'').trim(); if(n) sugSet.add(n); });
+      if(sugSet.size >= 10) break;
+    }
+    return { ok:false, dados_extraidos: extraidos, erro:'cliente_nao_encontrado', sugestoes: Array.from(sugSet).slice(0, 10) };
+  }
+  const low = _assistNorm(termo);
+  const exato = clientes.find(c=>_assistNorm(c?.nome||'') === low) || clientes[0];
+  const cliId = String(exato?.id||'').trim();
+  if(!cliId){
+    return { ok:false, dados_extraidos: extraidos, erro:'cliente_nao_encontrado', sugestoes: clientes.map(c=>String(c?.nome||'').trim()).filter(Boolean).slice(0,10) };
+  }
+  const payload = {
+    cli_id: cliId,
+    cliId,
+    cliente_id: cliId,
+    cliNome: String(exato?.nome||'').trim(),
+    descricao: String(extraidos.produto||'').trim(),
+    prodDesc: String(extraidos.produto||'').trim(),
+    qtd: Math.trunc(Number(extraidos.quantidade)||0),
+    quantidade: Math.trunc(Number(extraidos.quantidade)||0),
+    ent: extraidos.data_entrega,
+    data_entrega: extraidos.data_entrega,
+    onda: extraidos.onda || null,
+    caixa_comprimento: extraidos.comprimento_mm || null,
+    caixa_largura: extraidos.largura_mm || null,
+    caixa_altura: extraidos.altura_mm || null,
+    urg: !!extraidos.urgente,
+    urgente: !!extraidos.urgente,
+    obs: extraidos.observacoes ? String(extraidos.observacoes) : '',
+    emp_id: empId || 'E1',
+    criado_por: usuario_id || null,
+    status: 'Em aberto',
+  };
+
+  if(req){
+    const r = await _jarvisCallInternal(req, '/api/ofs', { method:'POST', body: payload });
+    const created = r?.data || null;
+    if(!created) throw new Error('of_create_failed');
+    return { ok:true, of: created, cliente_encontrado:true, dados_extraidos: extraidos };
+  }
+
+  const filtered = ofPayloadFiltrado(payload);
+  if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
+    try {
+      const { data: last } = await supabase
+        .from('ofs')
+        .select('seq,of,numero')
+        .order('seq', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const lastSeq = Math.trunc(Number(last?.seq || 0) || 0);
+      const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
+      filtered.seq = nextSeq;
+      const numStr = String(nextSeq);
+      filtered.of = numStr;
+      filtered.numero = numStr;
+    } catch (_) {}
+  }
+  const createdRes = await ofsInsertWithRetry(ofIn(filtered));
+  if (createdRes.error) throw createdRes.error;
+  let created = createdRes.data;
+  try{
+    const sug = await _autoSugerirMaquinaParaOF(payload, created);
+    if(sug && sug.ok && sug.updated) created = sug.updated;
+  }catch(_){}
+  return { ok:true, of: created, cliente_encontrado:true, dados_extraidos: extraidos };
+}
+
+app.post('/api/pedido/linguagem_natural', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const texto = String(req.body?.texto || '').trim();
+    const empId = String(req.body?.empId || req.body?.emp_id || '').trim();
+    const usuario_id = String(req.body?.usuario_id || req?.usuario?.id || '').trim();
+    if(!texto) return res.status(400).json({ ok:false, error:'texto_obrigatorio' });
+    const r = await _pedidoLinguagemNaturalProcess({ texto, empId: empId || null, usuario_id: usuario_id || null, req });
+    return res.json(r);
+  }catch(e){ return err(res, e); }
+});
+
+async function _sequenciamentoListar({ maquina, empId }){
+  const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+  let q = supabase
+    .from('ofs')
+    .select('id,of,numero,status,cliNome,cliente_nome,cli_id,cliente_id,data_entrega,ent,prioridade,prioridade_producao,urg,urgente,fluxo_maquinas,maq,maquina_atual_index,created_at,emp_id,deleted_at,tipo_caixa,tipo_caixa_id,onda')
+    .is('deleted_at', null)
+    .not('status', 'in', statusNotIn)
+    .limit(5000);
+  if(empId) q = q.eq('emp_id', empId);
+  const { data: ofsRaw, error } = await q;
+  if(error) throw error;
+  const ofs = Array.isArray(ofsRaw)?ofsRaw:[];
+  const mk = String(maquina||'').trim();
+  const filtered = mk ? ofs.filter(o=>String(_ofPickMaqAtualName(o)||'').trim()===mk) : ofs;
+  const ord = (a,b)=>{
+    const ua = !!(a?.urg || a?.urgente);
+    const ub = !!(b?.urg || b?.urgente);
+    if(ua !== ub) return ua ? -1 : 1;
+    const ea = String(a?.data_entrega ?? a?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
+    const eb = String(b?.data_entrega ?? b?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
+    if(ea !== eb) return ea.localeCompare(eb);
+    const pa = Number(a?.prioridade_producao ?? a?.prioridade ?? 0) || 0;
+    const pb = Number(b?.prioridade_producao ?? b?.prioridade ?? 0) || 0;
+    if(pa !== pb) return pb - pa;
+    return String(a?.created_at||'').localeCompare(String(b?.created_at||''));
+  };
+  const base = filtered.slice().sort(ord);
+  if(!mk) return base;
+  let manual = null;
+  try{
+    const { data: man, error: em } = await supabase
+      .from('sequenciamento_manual')
+      .select('of_id,posicao,maquina,updated_at')
+      .eq('maquina', mk)
+      .limit(5000);
+    if(!em && Array.isArray(man)) manual = man;
+  }catch(_){}
+  if(!manual) return base;
+  const posMap = new Map((manual||[]).map(x=>[String(x?.of_id||'').trim(), Number(x?.posicao||0)||0]).filter(x=>x[0]));
+  const hasManual = (o)=> posMap.has(String(o?.id||'').trim());
+  const a = base.filter(hasManual).sort((x,y)=> (posMap.get(String(x.id))||0) - (posMap.get(String(y.id))||0));
+  const b = base.filter(o=>!hasManual(o));
+  return a.concat(b);
+}
+
+async function _sequenciamentoSalvarOrdem({ maquina, ordem }){
+  const mk = String(maquina||'').trim();
+  const arr = Array.isArray(ordem)?ordem:[];
+  if(!mk || !arr.length) return { ok:false, error:'invalid_payload' };
+  const clean = arr
+    .map((x)=>({ of_id: String(x?.of_id||'').trim(), posicao: Math.trunc(Number(x?.posicao||0)||0) }))
+    .filter(x=>x.of_id && x.posicao >= 0)
+    .slice(0, 5000);
+  if(!clean.length) return { ok:false, error:'empty' };
+  const nowIso = new Date().toISOString();
+  try{
+    const up = clean.map((x)=>({ of_id: x.of_id, maquina: mk, posicao: x.posicao, updated_at: nowIso }));
+    const { error } = await supabase.from('sequenciamento_manual').upsert(up, { onConflict: 'of_id,maquina' });
+    if(!error) return { ok:true, saved:'sequenciamento_manual', count: up.length };
+  }catch(_){}
+  for(const x of clean){
+    const pr = Math.max(0, 100000 - x.posicao);
+    await supabase.from('ofs').update({ prioridade_producao: pr }).eq('id', x.of_id).limit(1);
+  }
+  return { ok:true, saved:'prioridade_producao', count: clean.length };
+}
+
+app.get('/api/sequenciamento', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const maquina = String(req.query.maquina||'').trim();
+    const empId = String(req.query.empId||'').trim();
+    const lista = await _sequenciamentoListar({ maquina, empId: empId || null });
+    return ok(res, lista);
+  }catch(e){ return err(res, e); }
+});
+
+app.post('/api/sequenciamento/reordenar', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const maquina = String(req.body?.maquina||'').trim();
+    const ordem = Array.isArray(req.body?.ordem) ? req.body.ordem : [];
+    const r = await _sequenciamentoSalvarOrdem({ maquina, ordem });
+    return res.json({ ok:true, data:r });
+  }catch(e){ return err(res, e); }
+});
+
+app.post('/api/sequenciamento/auto', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const maquina = String(req.body?.maquina||'').trim();
+    const empId = String(req.body?.empId||'').trim();
+    const lista = await _sequenciamentoListar({ maquina, empId: empId || null });
+    const keySetup = (o)=> String(o?.tipo_caixa_id || o?.tipo_caixa || o?.onda || '').trim();
+    const entrega = (o)=> String(o?.data_entrega ?? o?.ent ?? '9999-99-99').slice(0,10) || '9999-99-99';
+    const urg = (o)=> !!(o?.urg || o?.urgente);
+    const sorted = (lista||[]).slice().sort((a,b)=>{
+      const ua = urg(a); const ub = urg(b);
+      if(ua !== ub) return ua ? -1 : 1;
+      const ea = entrega(a); const eb = entrega(b);
+      if(ea !== eb) return ea.localeCompare(eb);
+      const sa = keySetup(a); const sb = keySetup(b);
+      if(sa !== sb) return sa.localeCompare(sb);
+      return String(a?.created_at||'').localeCompare(String(b?.created_at||''));
+    });
+    const ordem = sorted.map((o,i)=>({ of_id: o.id, posicao: i+1 }));
+    const saved = await _sequenciamentoSalvarOrdem({ maquina, ordem });
+    return res.json({ ok:true, data:{ maquina, total: ordem.length, saved } });
+  }catch(e){ return err(res, e); }
+});
+
+app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const empId = String(req.query.empId||'').trim();
+    const hoje = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
+    const mes = _monthKey(hoje);
+    const mesIni = mes + '-01';
+    let qCli = supabase.from('clientes').select('id,nome,cidade,estado,tel,telefone,vendedor_id,emp_id').limit(5000);
+    if(empId) qCli = qCli.eq('emp_id', empId);
+    const { data: clientesRaw, error: eCli } = await qCli;
+    if(eCli) throw eCli;
+    const clientes = Array.isArray(clientesRaw)?clientesRaw:[];
+    let qOf = supabase
+      .from('ofs')
+      .select('id,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,emp_id,deleted_at,status')
+      .gte('created_at', mesIni)
+      .is('deleted_at', null)
+      .limit(5000);
+    if(empId) qOf = qOf.eq('emp_id', empId);
+    const { data: ofsRaw } = await qOf;
+    const ofs = Array.isArray(ofsRaw)?ofsRaw:[];
+    const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+    const cliKey = (o)=> String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim();
+    const agg = new Map();
+    ofs.forEach((o)=>{
+      const cid = cliKey(o);
+      if(!cid) return;
+      const cur = agg.get(cid) || { total_ofs_mes:0, valor_mes:0, ultima_of:'' };
+      cur.total_ofs_mes += 1;
+      cur.valor_mes += valOf(o);
+      const u = String(o?.data_conclusao || o?.created_at || '').slice(0,10);
+      if(u && (!cur.ultima_of || u > cur.ultima_of)) cur.ultima_of = u;
+      agg.set(cid, cur);
+    });
+    const out = clientes.map((c)=>{
+      const id = String(c?.id||'').trim();
+      const a = agg.get(id) || { total_ofs_mes:0, valor_mes:0, ultima_of:'' };
+      return {
+        id,
+        nome: String(c?.nome||'').trim(),
+        cidade: String(c?.cidade||'').trim() || null,
+        estado: String(c?.estado||'').trim() || null,
+        tel: String(c?.tel || c?.telefone || '').trim() || null,
+        ultima_of: a.ultima_of || null,
+        total_ofs_mes: a.total_ofs_mes,
+        valor_mes: Number(a.valor_mes.toFixed(2)),
+        lat: null,
+        lng: null,
+        vendedor_id: c?.vendedor_id || null,
+        emp_id: c?.emp_id || null,
+      };
+    });
+    return ok(res, out);
+  }catch(e){ return err(res, e); }
+});
+
+app.get('/api/pedidos_recorrentes', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const empId = String(req.query.empId||'').trim();
+    let q = supabase.from('pedidos_recorrentes').select('*').order('created_at', { ascending: false }).limit(2000);
+    if(empId) q = q.eq('emp_id', empId);
+    const { data, error } = await q;
+    if(error){
+      const msg = String(error.message||error).toLowerCase();
+      if(msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
+      throw error;
+    }
+    return ok(res, data || []);
+  }catch(e){ return err(res, e); }
+});
+
+app.post('/api/pedidos_recorrentes', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const b = req.body || {};
+    const row = {
+      cliente_id: b.cliente_id || null,
+      descricao: String(b.descricao||''),
+      quantidade: Math.trunc(Number(b.quantidade||0)||0),
+      onda: b.onda != null ? String(b.onda||'') : null,
+      comprimento_mm: b.comprimento_mm != null ? Math.trunc(Number(b.comprimento_mm||0)||0) : null,
+      largura_mm: b.largura_mm != null ? Math.trunc(Number(b.largura_mm||0)||0) : null,
+      altura_mm: b.altura_mm != null ? Math.trunc(Number(b.altura_mm||0)||0) : null,
+      dia_do_mes: Math.max(1, Math.min(31, Math.trunc(Number(b.dia_do_mes||1)||1))),
+      ativo: b.ativo == null ? true : !!b.ativo,
+      antecedencia_dias: b.antecedencia_dias == null ? 3 : Math.max(0, Math.min(31, Math.trunc(Number(b.antecedencia_dias||3)||3))),
+      emp_id: String(b.emp_id || b.empId || 'E1').trim(),
+      criado_por: String(b.criado_por || req?.usuario?.id || '').trim() || null,
+      created_at: new Date().toISOString(),
+      ultima_geracao: b.ultima_geracao || null,
+    };
+    const { data, error } = await supabase.from('pedidos_recorrentes').insert([row]).select().single();
+    if(error) throw error;
+    return ok(res, data);
+  }catch(e){ return err(res, e); }
+});
+
+app.put('/api/pedidos_recorrentes/:id', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const id = String(req.params.id||'').trim();
+    if(!id) return res.status(400).json({ ok:false, error:'id_obrigatorio' });
+    const b = req.body || {};
+    const payload = { ...b };
+    delete payload.id;
+    payload.updated_at = new Date().toISOString();
+    const { data, error } = await supabase.from('pedidos_recorrentes').update(payload).eq('id', id).select().single();
+    if(error) throw error;
+    return ok(res, data);
+  }catch(e){ return err(res, e); }
+});
+
+app.delete('/api/pedidos_recorrentes/:id', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const id = String(req.params.id||'').trim();
+    if(!id) return res.status(400).json({ ok:false, error:'id_obrigatorio' });
+    const { data, error } = await supabase.from('pedidos_recorrentes').update({ ativo:false, updated_at:new Date().toISOString() }).eq('id', id).select().single();
+    if(error){
+      const msg = String(error.message||error).toLowerCase();
+      if(msg.includes('does not exist') || msg.includes('not exist')) return ok(res, true);
+      throw error;
+    }
+    return ok(res, data || true);
+  }catch(e){ return err(res, e); }
+});
+
+async function _gerarRecorrenteSePrecisa(rec, forcar){
+  const hojeIso = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
+  const diaHoje = Number(String(hojeIso).slice(8,10)) || 0;
+  const diaDoMes = Math.max(1, Math.min(31, Math.trunc(Number(rec?.dia_do_mes||1)||1)));
+  const ant = Math.max(0, Math.min(31, Math.trunc(Number(rec?.antecedencia_dias||3)||3)));
+  const diaGera = diaDoMes - ant;
+  if(!forcar && diaHoje !== diaGera) return { ok:false, skipped:'nao_e_dia' };
+  const rid = String(rec?.id||'').trim();
+  const empId = String(rec?.emp_id || 'E1').trim();
+  const mes = _monthKey(hojeIso);
+  const tag = `[RECORRENTE:${rid}]`;
+  const { data: exist } = await supabase.from('ofs').select('id,of,numero,obs,created_at').ilike('obs', `%${tag}%`).gte('created_at', mes+'-01').is('deleted_at', null).limit(1);
+  if(Array.isArray(exist) && exist.length) return { ok:false, skipped:'ja_existe', existente: exist[0] };
+  const cliId = String(rec?.cliente_id||'').trim();
+  if(!cliId) return { ok:false, skipped:'sem_cliente' };
+  const desc = String(rec?.descricao||'').trim();
+  const qtd = Math.trunc(Number(rec?.quantidade||0)||0);
+  if(!(qtd > 0) || !desc) return { ok:false, skipped:'dados_incompletos' };
+  const entrega = _addDaysIso(hojeIso, Math.max(0, ant)) || hojeIso;
+  const payload = {
+    cli_id: cliId,
+    cliId,
+    cliente_id: cliId,
+    descricao: desc,
+    prodDesc: desc,
+    qtd,
+    quantidade: qtd,
+    ent: entrega,
+    data_entrega: entrega,
+    onda: rec?.onda || null,
+    caixa_comprimento: rec?.comprimento_mm || null,
+    caixa_largura: rec?.largura_mm || null,
+    caixa_altura: rec?.altura_mm || null,
+    obs: `${tag} ${String(rec?.obs||'').trim()}`.trim(),
+    emp_id: empId,
+    criado_por: rec?.criado_por || null,
+    status: 'Em aberto',
+  };
+  const filtered = ofPayloadFiltrado(payload);
+  if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
+    try {
+      const { data: last } = await supabase.from('ofs').select('seq').order('seq', { ascending: false }).limit(1).maybeSingle();
+      const lastSeq = Math.trunc(Number(last?.seq || 0) || 0);
+      const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
+      filtered.seq = nextSeq;
+      const numStr = String(nextSeq);
+      filtered.of = numStr;
+      filtered.numero = numStr;
+    } catch (_) {}
+  }
+  const createdRes = await ofsInsertWithRetry(ofIn(filtered));
+  if(createdRes.error) throw createdRes.error;
+  const created = createdRes.data;
+  await supabase.from('pedidos_recorrentes').update({ ultima_geracao: hojeIso, updated_at: new Date().toISOString() }).eq('id', rid);
+  return { ok:true, created, tag };
+}
+
+app.post('/api/pedidos_recorrentes/gerar_agora', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const id = String(req.body?.id || '').trim();
+    if(!id) return res.status(400).json({ ok:false, error:'id_obrigatorio' });
+    const { data: rec, error } = await supabase.from('pedidos_recorrentes').select('*').eq('id', id).limit(1).maybeSingle();
+    if(error) throw error;
+    if(!rec) return res.status(404).json({ ok:false, error:'not_found' });
+    const r = await _gerarRecorrenteSePrecisa(rec, true);
+    return res.json({ ok:true, data:r });
+  }catch(e){ return err(res, e); }
+});
+
+function _mailTransportPrefer(){
+  if(transporter) return transporter;
+  try{
+    const host = String(process.env.EMAIL_HOST || process.env.SMTP_HOST || '').trim();
+    const port = Math.trunc(Number(process.env.EMAIL_PORT || process.env.SMTP_PORT || 587) || 587);
+    const user = String(process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+    const pass = String(process.env.EMAIL_PASS || process.env.SMTP_PASS || '').trim();
+    if(!host || !user || !pass) return null;
+    return nodemailer.createTransport({ host, port, secure: false, auth: { user, pass }, tls: { rejectUnauthorized: false } });
+  }catch(_){ return null; }
+}
+
+async function _relDiarioFetchData(empId){
+  const tz = String(process.env.REPORT_TZ || 'America/Sao_Paulo');
+  const hoje = _isoDateFromTzNow(tz);
+  const mesAtual = _monthKey(hoje);
+  const mesAnterior = _monthKey(_addDaysIso(_monthStartIso(hoje), -1));
+  const mesAtualIni = mesAtual + '-01';
+  const mesAntIni = mesAnterior + '-01';
+  const mesAntFim = _addDaysIso(mesAtualIni, -1);
+  let qOf = supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,descricao,data_entrega,ent,valor_total,valor_venda,val,data_conclusao,created_at,emp_id,deleted_at').is('deleted_at', null).limit(5000);
+  if(empId) qOf = qOf.eq('emp_id', empId);
+  const { data: ofsRaw } = await qOf;
+  const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];
+  const entrega = (o)=> String(o?.data_entrega ?? o?.ent ?? '').slice(0,10);
+  const valor = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+  const abertas = ofs.filter(o=>o && !_assistIsCancelada(o) && !_assistIsConcluida(o));
+  const atrasadas = abertas.filter(o=>{ const e = entrega(o); return e && e < hoje; }).sort((a,b)=> entrega(a).localeCompare(entrega(b)));
+  const entregasHoje = abertas.filter(o=>entrega(o) === hoje).sort((a,b)=> String(a?.cliente_nome||a?.cliNome||'').localeCompare(String(b?.cliente_nome||b?.cliNome||'')));
+  const concluidasMesAtual = ofs.filter(o=>{ const dc = String(o?.data_conclusao||'').slice(0,10); return dc && dc >= mesAtualIni && _assistIsConcluida(o); });
+  const concluidasMesAnt = ofs.filter(o=>{ const dc = String(o?.data_conclusao||'').slice(0,10); return dc && dc >= mesAntIni && dc <= mesAntFim && _assistIsConcluida(o); });
+  const fatAtual = concluidasMesAtual.reduce((s,o)=>s+valor(o),0);
+  const fatAnt = concluidasMesAnt.reduce((s,o)=>s+valor(o),0);
+  const pct = fatAnt > 0 ? ((fatAtual - fatAnt) / fatAnt) * 100 : null;
+
+  let chapasCrit = [];
+  try{
+    let qc = supabase.from('chapas_estoque').select('id,nome,nomenclatura,tamanho,fornecedor,quantidade_atual,quantidade,qtd,estoque_minimo').limit(1000);
+    if(empId) qc = qc.eq('emp_id', empId);
+    const { data: chRaw } = await qc;
+    const ch = Array.isArray(chRaw)?chRaw:[];
+    chapasCrit = ch.filter((c)=>{
+      const qtd = Math.trunc(Number(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0);
+      const min = Math.trunc(Number(c?.estoque_minimo ?? 200) || 200);
+      return qtd < min;
+    }).slice(0, 50);
+  }catch(_){}
+
+  let perdasSemana = { total_caixas:0, valor_total:0 };
+  try{
+    const now = new Date();
+    const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+    const dow = d0.getDay();
+    const diff = (dow === 0) ? 6 : (dow - 1);
+    d0.setDate(d0.getDate() - diff);
+    const ini = d0.toISOString().slice(0,10);
+    let qp = supabase.from('caixas_perdidas').select('qtd_perdida,valor_perdido,data,emp_id').gte('data', ini).limit(5000);
+    if(empId) qp = qp.eq('emp_id', empId);
+    const { data: pr } = await qp;
+    const per = Array.isArray(pr)?pr:[];
+    perdasSemana = {
+      total_caixas: per.reduce((s,p)=>s+(Number(p?.qtd_perdida||0)||0),0),
+      valor_total: per.reduce((s,p)=>s+(Number(p?.valor_perdido||0)||0),0),
+    };
+  }catch(_){}
+
+  let riscoAtraso = [];
+  try{
+    const prev = await _analyticsPrevisaoAtrasosCompute({ empId: empId || null });
+    const arr = Array.isArray(prev?.data)?prev.data:[];
+    riscoAtraso = arr.filter(x=>x && (x.risco==='alto' || x.risco==='medio')).slice(0, 30);
+    try{ await _notificarRiscoAtraso({ empId: empId || null, items: arr }); }catch(_){}
+  }catch(_){}
+
+  return { empId: empId || null, hoje, atrasadas, entregasHoje, fatAtual, fatAnt, pct, chapasCrit, riscoAtraso, perdasSemana };
+}
+
+function _relDiarioRenderHtml(d){
+  const fmtMoney = (v)=>_assistFmtMoney(Number(v||0)||0);
+  const fmtPct = (p)=> (p == null ? '—' : (p >= 0 ? `+${p.toFixed(1)}%` : `${p.toFixed(1)}%`));
+  const rowOf = (o)=>`<tr>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.of||o?.numero||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.cliNome||o?.cliente_nome||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.descricao||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${_assistFmtDateBr(String(o?.data_entrega??o?.ent??'').slice(0,10))}</td>
+  </tr>`;
+  const rowsAtras = (d.atrasadas||[]).slice(0,5).map(rowOf).join('');
+  const rowsHoje = (d.entregasHoje||[]).slice(0,8).map(rowOf).join('');
+  const riscoRows = (d.riscoAtraso||[]).slice(0,12).map((x)=>`<tr>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.numero||x.of_id||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.cliente||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${_assistFmtDateBr(String(x.entrega||''))}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${String(x.risco||'ok')}</td>
+  </tr>`).join('');
+  const chapasRows = (d.chapasCrit||[]).slice(0,10).map((c)=>`<tr>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.nome||c?.nomenclatura||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.tamanho||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right">${Math.trunc(Number(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0)||0)}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right">${Math.trunc(Number(c?.estoque_minimo ?? 200)||200)}</td>
+  </tr>`).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Relatório Diário</title></head>
+  <body style="margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
+  <div style="max-width:920px;margin:0 auto;padding:22px 14px">
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:16px 16px 10px">
+      <div style="font-weight:900;font-size:18px">Relatório Diário — ${_assistFmtDateBr(d.hoje)}</div>
+      <div style="color:rgba(229,231,235,0.70);margin-top:4px">ERP Italy Embalagens</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">OFs atrasadas</div>
+        <div style="font-size:28px;font-weight:900;color:#ef4444">${(d.atrasadas||[]).length}</div>
+        <div style="margin-top:10px;font-size:13px;color:rgba(229,231,235,0.85)">5 mais antigas</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
+          <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Produto</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th></tr></thead>
+          <tbody>${rowsAtras || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">Entregas de hoje</div>
+        <div style="font-size:28px;font-weight:900;color:#22c55e">${(d.entregasHoje||[]).length}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
+          <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Produto</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th></tr></thead>
+          <tbody>${rowsHoje || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">Faturamento</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Mês atual</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAtual)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Mês anterior</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAnt)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Variação</div><div style="font-size:20px;font-weight:900">${fmtPct(d.pct)}</div></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">Perdas da semana</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Caixas</div><div style="font-size:20px;font-weight:900">${Math.trunc(Number(d?.perdasSemana?.total_caixas||0)||0)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Valor</div><div style="font-size:20px;font-weight:900">${fmtMoney(Number(d?.perdasSemana?.valor_total||0)||0)}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">Estoque crítico (Chapas)</div>
+        <div style="color:rgba(229,231,235,0.70);font-size:12px;margin-bottom:8px">${(d.chapasCrit||[]).length} item(ns)</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Chapa</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Tam.</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Qtd</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Min</th></tr></thead>
+          <tbody>${chapasRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
+        <div style="font-weight:900;margin-bottom:8px">OFs em risco de atraso</div>
+        <div style="color:rgba(229,231,235,0.70);font-size:12px;margin-bottom:8px">${(d.riscoAtraso||[]).length} item(ns)</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Risco</th></tr></thead>
+          <tbody>${riscoRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </body></html>`;
+}
+
+let _relDiarioCron = null;
+async function _relDiarioEnviar(){
+  const toFixos = ['eleomarfridres@gmail.com','yagostebanfridres@gmail.com'];
+  let extra = [];
+  let empId = null;
+  try{
+    const cfg = await _loadConfigJson('relatorio_email', null);
+    if(cfg && Array.isArray(cfg.to)) extra = cfg.to;
+    empId = String(cfg?.emp_id || cfg?.empId || '').trim() || null;
+  }catch(_){}
+  const to = _uniqEmails([...toFixos, ...(extra||[])]);
+  if(!to.length) return;
+  const data = await _relDiarioFetchData(empId);
+  const html = _relDiarioRenderHtml(data);
+  const subject = `Relatório Diário ERP — ${_assistFmtDateBr(data.hoje)}`;
+  const t = _mailTransportPrefer();
+  if(!t) throw new Error('smtp_not_configured');
+  const from = String(process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+  if(!from) throw new Error('smtp_from_missing');
+  await t.sendMail({ from, to: to.join(','), subject, html });
+}
+
+if(cron && cron.validate('0 7 * * *')){
+  try{
+    if(_relDiarioCron) { try{ _relDiarioCron.stop(); }catch(_){}; _relDiarioCron = null; }
+    _relDiarioCron = cron.schedule('0 7 * * *', async ()=>{
+      try{ await _relDiarioEnviar(); }catch(e){ try{ console.warn('[REL DIARIO]', String(e?.message||e)); }catch(_){} }
+    }, { scheduled:true, timezone: 'America/Sao_Paulo' });
+  }catch(e){
+    try{ console.warn('[REL DIARIO] cron falhou:', String(e?.message||e)); }catch(_){}
+  }
+}
+
+if(cron && cron.validate('0 6 * * *')){
+  cron.schedule('0 6 * * *', async ()=>{
+    try{
+      const { data: recsRaw, error } = await supabase.from('pedidos_recorrentes').select('*').eq('ativo', true).limit(2000);
+      if(error) throw error;
+      const recs = Array.isArray(recsRaw)?recsRaw:[];
+      const geradas = [];
+      for(const rec of recs){
+        const r = await _gerarRecorrenteSePrecisa(rec, false);
+        if(r && r.ok && r.created) geradas.push(r.created);
+      }
+      if(geradas.length){
+        const to = _uniqEmails(['eleomarfridres@gmail.com','yagostebanfridres@gmail.com']);
+        const t = _mailTransportPrefer();
+        if(t){
+          const from = String(process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
+          const subject = `OFs geradas automaticamente (recorrentes) — ${_assistFmtDateBr(_isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo'))}`;
+          const rows = geradas.slice(0, 30).map((o)=>`<li>OF #${String(o?.of||o?.numero||'—')} — ${String(o?.cliNome||o?.cliente_nome||'—')} — ${String(o?.descricao||'—')}</li>`).join('');
+          const html = `<!doctype html><html><body style="margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial"><div style="max-width:760px;margin:0 auto;padding:18px"><div style="font-weight:900;font-size:18px;margin-bottom:10px">Pedidos Recorrentes</div><div>Foram geradas ${geradas.length} OF(s):</div><ul style="margin-top:10px">${rows}</ul></div></body></html>`;
+          await t.sendMail({ from, to: to.join(','), subject, html });
+        }
+      }
+    }catch(e){
+      try{ console.warn('[RECORRENTES CRON]', String(e?.message||e)); }catch(_){}
+    }
+  }, { scheduled:true, timezone:'America/Sao_Paulo' });
+}
 
 setTimeout(() => { _reloadRelEmailSchedule().catch(() => {}); }, 500);
 

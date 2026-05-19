@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f0f1a">
 <link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <title>Italy Embalagens — PCP Pro ERP</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -1913,6 +1915,8 @@ const MODULOS_SISTEMA = [
   { key:'tipos_caixa',    label:'Tipos de Caixa',      grupo:'Máquinas',  menuId:'menu-tipos-caixa',     paginaId:'tipos-caixa' },
   { key:'tempos_reais',   label:'Tempos Reais',        grupo:'Máquinas',  menuId:'menu-tempos-reais',    paginaId:'tempos-reais' },
   { key:'clientes',       label:'Clientes',            grupo:'Cadastros', menuId:'menu-clientes',        paginaId:'clientes' },
+  { key:'mapa_clientes',  label:'Mapa de Clientes',    grupo:'Cadastros', menuId:'menu-mapa-clientes',   paginaId:'mapa-clientes' },
+  { key:'pedidos_recorrentes',label:'Pedidos Recorrentes',grupo:'Cadastros', menuId:'menu-pedidos-recorrentes', paginaId:'pedidos-recorrentes' },
   { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
@@ -1955,6 +1959,8 @@ const PERMISSOES_SISTEMA = {
     label: 'Cadastros',
     itens: {
       clientes: 'Clientes',
+      mapa_clientes: 'Mapa de Clientes',
+      pedidos_recorrentes: 'Pedidos Recorrentes',
       fornecedores: 'Fornecedores',
       vendedores: 'Vendedores',
       usuarios: 'Usuários',
@@ -3225,7 +3231,7 @@ function closeNavGroupsExcept(id){
 function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
-    clientes:'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
+    clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', 'pedidos-recorrentes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', 'sel-chapas':'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
@@ -3313,6 +3319,28 @@ function _goBase(id){
       carregarClientes(false).then(()=>renderClientes()).catch(()=>renderClientes());
     } else {
       renderClientes();
+    }
+  }
+  if(id==='mapa-clientes'){
+    const doRender = ()=>{ try{ renderMapaClientes(); }catch(e){} };
+    if(_apiConectado && CURRENT_USER){
+      Promise.all([
+        carregarClientes(false).catch(()=>null),
+        carregarVendedores(false).catch(()=>null),
+        carregarOFsUnico(false).catch(()=>null),
+      ]).then(doRender).catch(doRender);
+    } else {
+      doRender();
+    }
+  }
+  if(id==='pedidos-recorrentes'){
+    const doRender = ()=>{ try{ renderPedidosRecorrentes(); }catch(e){} };
+    if(_apiConectado && CURRENT_USER){
+      Promise.all([
+        carregarClientes(false).catch(()=>null),
+      ]).then(doRender).catch(doRender);
+    } else {
+      doRender();
     }
   }
   if(id==='estoque'){
@@ -4199,6 +4227,16 @@ function setFiltroOFsMaquina(f){
     window._filtroOFsMaqData = 'hoje';
   } else {
     window._filtroOFsMaqData = 'data';
+    try{
+      const dsel = String(inp?.value || '').slice(0,10);
+      if(dsel && window._ofmaqLastDate !== dsel){
+        window._ofmaqLastDate = dsel;
+        window._ofmaqForceReload = true;
+        try{ window._ofsCarregadasEm = null; }catch(e){}
+        try{ window._ofsUltimaCarga = 0; }catch(e){}
+        try{ _ultimaCargaOFs = 0; }catch(e){}
+      }
+    }catch(e){}
   }
   renderOFsPorMaquina();
 }
@@ -4718,18 +4756,59 @@ function ofMaquinaAtualPendente(of){
   const pend = (fluxo||[]).find(m=>m && m.concluido !== true);
   return pend ? String(pend.nome||'').trim() : '';
 }
+function ofmaqPrioridadeBucket(of){
+  const hoje = new Date().toISOString().slice(0,10);
+  const entStr = String(of?.ent || of?.data_entrega || '').slice(0,10);
+  const urgente = !!(of?.urg || of?.urgente);
+  const atrasada = !!(entStr && entStr < hoje);
+  if(urgente && atrasada) return 0;
+  if(urgente) return 1;
+  if(atrasada) return 2;
+  return 3;
+}
+function ofmaqPrioridadeVisual(of){
+  const b = ofmaqPrioridadeBucket(of);
+  if(b === 0) return { cor:'#E24B4A', badge:'URGENTE ATRASADA' };
+  if(b === 1) return { cor:'#EF9F27', badge:'URGENTE' };
+  if(b === 2) return { cor:'#facc15', badge:'ATRASADA' };
+  return { cor:'', badge:'' };
+}
 function ordenarOFsPorPrioridade(ofs){
-  return [...(ofs||[])].sort((a, b) => {
-    const aPrioNum = Number(a?.prioridade_producao);
-    const bPrioNum = Number(b?.prioridade_producao);
-    const aPrio = Number.isFinite(aPrioNum) ? aPrioNum : 999;
-    const bPrio = Number.isFinite(bPrioNum) ? bPrioNum : 999;
-    if (aPrio !== bPrio) return aPrio - bPrio;
-    const aEnt = String((a && (a.ent || a.data_entrega)) || '9999-99-99').slice(0, 10);
-    const bEnt = String((b && (b.ent || b.data_entrega)) || '9999-99-99').slice(0, 10);
-    if (aEnt < bEnt) return -1;
-    if (aEnt > bEnt) return 1;
-    return String(a?.of || a?.numero || '').localeCompare(String(b?.of || b?.numero || ''));
+  const hoje = new Date().toISOString().slice(0,10);
+  const ent = (o)=> String(o?.ent || o?.data_entrega || '').slice(0,10);
+  const created = (o)=> String(o?.created_at || o?.createdAt || o?.updated_at || o?.updatedAt || '').trim();
+  const prio = (o)=> {
+    const n = Number(o?.prioridade_producao ?? o?.prioridade ?? 0);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const numKey = (o)=> String(o?.of || o?.numero || '').replace(/\D/g,'') || String(o?.of || o?.numero || '');
+  const bucket = (o)=>{
+    const e = ent(o);
+    const urgente = !!(o?.urg || o?.urgente);
+    const atrasada = !!(e && e < hoje);
+    if(urgente && atrasada) return 0;
+    if(urgente) return 1;
+    if(atrasada) return 2;
+    return 3;
+  };
+  const entKey = (o)=> {
+    const e = ent(o);
+    return e && /^\d{4}-\d{2}-\d{2}$/.test(e) ? e : '9999-99-99';
+  };
+  return [...(ofs||[])].sort((a,b)=>{
+    const ba = bucket(a);
+    const bb = bucket(b);
+    if(ba !== bb) return ba - bb;
+    const pa = prio(a);
+    const pb = prio(b);
+    if(pa !== pb) return pb - pa;
+    const ea = entKey(a);
+    const eb = entKey(b);
+    if(ea !== eb) return ea.localeCompare(eb);
+    const ca = created(a) || '9999';
+    const cb = created(b) || '9999';
+    if(ca !== cb) return ca.localeCompare(cb);
+    return numKey(a).localeCompare(numKey(b));
   });
 }
 function abrirModalRelatorioMaquina(){
@@ -5322,6 +5401,26 @@ function verImagemOfPC(ofId, ofNum){
   _ensureOfImgInputPC().click();
 }
 
+async function ofmaqIniciarProducaoPC(ofId){
+  const id = String(ofId||'').trim();
+  if(!id) return;
+  try{
+    showSaveIndicator('Iniciando produção...','var(--yellow)');
+    const r = await api('PUT','/ofs/'+encodeURIComponent(id), { status:'Em produção' });
+    if(!r || r.ok === false) throw new Error(String(r?.error || 'Falha ao iniciar'));
+    const row = r.data || r;
+    try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
+    try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
+    showSaveIndicator('✓ iniciado','var(--green)');
+    toast('▶️ Produção iniciada','var(--green)');
+    try{ renderOFsPorMaquina(); }catch(_){}
+    try{ renderPCP(); }catch(_){}
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: ' + String(e?.message||e), 'var(--red)');
+  }
+}
+
 function abrirAcoesPc(ofId, ofNum){
   try{ document.getElementById('acoes-pc-pop')?.remove(); }catch(e){}
   try{ document.getElementById('acoes-pc-ov')?.remove(); }catch(e){}
@@ -5335,17 +5434,20 @@ function abrirAcoesPc(ofId, ofNum){
   pop.id = 'acoes-pc-pop';
   pop.style.cssText = 'position:fixed;z-index:9999;min-width:240px;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px';
 
+  const id = String(ofId||'').trim();
+  const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : null;
+  const maqAtual = of && typeof getMaquinaAtual === 'function' ? (getMaquinaAtual(of) || '') : '';
   const acts = [
-    { icon:'✅', label:'Baixa por Máquina', on: ()=>baixaPorMaquinaPC(ofId, ofNum) },
-    { icon:'🏁', label:'Concluir OF', on: ()=>{ try{ concluirOFComBaixa(String(ofId||'')); }catch(e){} } },
-    { icon:'📅', label:'Alterar Entrega', on: ()=>{ try{ abrirModalAlterarEntrega(String(ofId||'')); }catch(e){} } },
-    { icon:'📷', label:'Ver / Trocar Imagem', on: ()=>verImagemOfPC(ofId, ofNum) },
-    { icon:'⚠️', label:'Registrar Inconformidade', on: ()=>registrarInconformidadePC(ofId, ofNum) },
-    { icon:'📋', label:'Ver Detalhes', on: ()=>{ try{ abrirModalOF(String(ofId||'')); }catch(e){} } },
-    { icon:'❌', label:'Cancelar OF', on: ()=>{ try{ cancelarOF(String(ofId||''), String(ofNum||'')); }catch(e){} } },
+    { icon:'▶️', label:'Iniciar produção', on: ()=>ofmaqIniciarProducaoPC(id) },
+    { icon:'🏁', label:'Concluir OF', on: ()=>{ try{ concluirOFComBaixa(String(id||'')); }catch(e){} } },
+    { icon:'🧾', label:'Baixa parcial', on: ()=>baixaPorMaquinaPC(id, ofNum) },
+    { icon:'↔', label:'Alterar máquina', on: ()=>{ try{ abrirModalMoverOFMaq(String(id||''), String(maqAtual||'')); }catch(e){} } },
+    { icon:'📋', label:'Ver detalhes', on: ()=>{ try{ abrirModalOF(String(id||'')); }catch(e){} } },
+    { icon:'✏️', label:'Editar OF', on: ()=>{ try{ abrirModalOF(String(id||'')); }catch(e){} } },
+    { icon:'❌', label:'Cancelar OF', on: ()=>{ try{ cancelarOF(String(id||''), String(ofNum||'')); }catch(e){} } },
   ];
 
-  pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">⚡ Ações — OF #${escH(ofNum||'')}</div>` +
+  pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">Ações ▾ — OF #${escH(ofNum||'')}</div>` +
     acts.map((a,i)=>`<button data-i="${i}" style="width:100%;display:flex;align-items:center;gap:10px;padding:10px 10px;margin:0 0 6px;background:var(--s2);border:1px solid var(--border);border-radius:10px;color:var(--text);cursor:pointer;font-weight:800;font-size:.82rem;text-align:left">
       <span style="font-size:1rem">${a.icon}</span> ${escH(a.label)}
     </button>`).join('');
@@ -5402,7 +5504,7 @@ function renderCardOfDia(of, nomeMaquina, opts){
     const maq = String(nomeMaquina||'').trim();
     const podeConcluir = !!(maq && maq !== 'Sem Máquina');
     const urgente = !!(of.urg || of.urgente);
-    const atrasada = ofEstaAtrasadaNaProducao(of);
+    const pri = ofmaqPrioridadeVisual(of);
     const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
     const qtdEst = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : qtd;
     const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, (maq && maq !== 'Sem Máquina') ? maq : '');
@@ -5426,8 +5528,14 @@ function renderCardOfDia(of, nomeMaquina, opts){
       <span>📦 ${escH(String(qtdMini))} cx</span>
       <span>⚡ ${escH(velocidadeTxt)}</span>
     </div>`;
+    const priBadge = pri?.badge ? `<span style="background:${pri.cor};color:#fff;font-size:.75rem;font-weight:900;padding:3px 10px;border-radius:10px;white-space:nowrap">${escH(pri.badge)}</span>` : '';
+    const priBorder = (!isOverflow && pri?.cor) ? `border-left:6px solid ${pri.cor};` : '';
+    const moveBtns = `<div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maq)}','${escAttr(String(of.id||''))}',-1)">▲</button>
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maq)}','${escAttr(String(of.id||''))}',1)">▼</button>
+    </div>`;
     return `
-      <div class="ofmaq-card" data-of-id="${escAttr(of.id||'')}" data-ofmaq-maq="${escAttr(maq)}" onclick="ofmaqSelecionarOF('${escAttr(ofSelNum)}')" style="display:flex;gap:16px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--border);background:${isOverflow?'#e5393512':'var(--s3)'};border-radius:10px;margin-bottom:10px;${isOverflow?'border-left:4px solid #e53935;':''}">
+      <div class="ofmaq-card" data-of-id="${escAttr(of.id||'')}" data-ofmaq-maq="${escAttr(maq)}" onclick="ofmaqSelecionarOF('${escAttr(ofSelNum)}')" style="display:flex;gap:16px;align-items:flex-start;padding:18px;border-bottom:1px solid var(--border);background:${isOverflow?'#e5393512':'var(--s3)'};border-radius:10px;margin-bottom:10px;${isOverflow?'border-left:4px solid #e53935;':priBorder}">
         ${imgUrl
           ? `<div style="cursor:pointer;flex-shrink:0" title="Clique para ampliar" onclick="event.stopPropagation();abrirFotoModal('${escAttr(imgUrlSafe)}','${escAttr(numeroLabel)}')">
               <img class="ofmaq-img" src="${escAttr(imgUrl)}" style="width:88px;height:88px;object-fit:cover;border-radius:8px;border:2px solid var(--border)" onerror="this.parentElement.innerHTML='<div class=\\'ofmaq-img\\' style=\\'width:80px;height:80px;background:var(--s2);border-radius:8px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:2rem\\'>📦</div>'">
@@ -5443,13 +5551,8 @@ function renderCardOfDia(of, nomeMaquina, opts){
           <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
             <span class="ofmaq-num" style="font-size:1rem;font-weight:700;color:var(--accent);white-space:nowrap">${escH(String(numeroLabel))}</span>
             <span class="ofmaq-title" style="font-size:1.3rem;font-weight:800;color:var(--text);line-height:1.2;min-width:0;overflow:hidden;text-overflow:ellipsis">${escH(String(produto))}</span>
-            ${urgente
-              ? `<span style="background:var(--red);color:#fff;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap">🔴 URGENTE</span>`
-              : ''}
+            ${priBadge}
             ${isOverflow ? `<span style="background:#e53935;color:#fff;font-size:.75rem;font-weight:800;padding:3px 10px;border-radius:10px;white-space:nowrap">PASSA DE DIA</span>` : ''}
-            ${atrasada
-              ? `<span style="background:#f90;color:#000;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:10px;white-space:nowrap">⚠️ PASSOU DO DIA</span>`
-              : ''}
           </div>
           <div class="ofmaq-cliente" style="font-size:1.05rem;color:var(--text2);font-weight:600;margin-bottom:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escAttr(cliente)}">👤 ${escH(String(cliente))}</div>
           <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:baseline;font-size:.95rem">
@@ -5466,7 +5569,8 @@ function renderCardOfDia(of, nomeMaquina, opts){
           <div style="margin-top:8px">${renderEtapasFluxo(of)}</div>
         </div>
         <div class="ofmaq-actions" style="display:flex;flex-direction:column;gap:7px;flex-shrink:0">
-          <button class="btn-acoes-pc" onclick="event.stopPropagation();abrirAcoesPc('${escAttr(of.id||'')}','${escAttr(String(of.of||of.numero||ofSelNum||''))}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">⚡ Ações</button>
+          ${moveBtns}
+          <button class="btn-acoes-pc" onclick="event.stopPropagation();abrirAcoesPc('${escAttr(of.id||'')}','${escAttr(String(of.of||of.numero||ofSelNum||''))}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">Ações ▾</button>
         </div>
       </div>`;
   } catch(e) {
@@ -6049,7 +6153,9 @@ function cardOFMaquina(of, maquinaAtual){
   }
   const nomeCliente = getNomeCliente(of) || of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '—';
   const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
-  const isUrg = !!(of.urg||of.urgente);
+  const pri = ofmaqPrioridadeVisual(of);
+  const priBorder = pri?.cor ? `border-left:6px solid ${pri.cor};` : '';
+  const priBadge = pri?.badge ? `<div style="background:${pri.cor};color:#fff;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;display:inline-block">${escH(pri.badge)}</div>` : '';
   const hoje = new Date().toISOString().slice(0,10);
   const entStr = (of.ent || of.data_entrega || '').slice(0,10);
   const atrasada = entStr && entStr < hoje;
@@ -6103,10 +6209,34 @@ function cardOFMaquina(of, maquinaAtual){
     return '<span style="color:#666;font-size:.8rem;font-weight:700;padding:2px 6px;border-radius:8px;background:transparent;border:1px solid transparent">'+s+'</span>';
   }).join(' <span style="color:#555">→</span> ');
 
-  return '<div data-of-id="'+escAttr(of.id||'')+'" data-ofmaq-maquina-atual="'+escAttr(maquinaAtual||atual||'')+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid '+(isUrg?'#f44336':atrasada?'#ff9800':'var(--border)')+';border-radius:10px;padding:16px;margin-bottom:10px">'
+  const isMobile = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
+  const maqCtx = String(maquinaAtual||atual||'').trim();
+  const moveBtns = isMobile
+    ? (`<div style="display:flex;gap:8px;margin-left:auto">
+        <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',-1)">▲</button>
+        <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',1)">▼</button>
+      </div>`)
+    : '';
+  const desktopActions = (!isMobile && window.innerWidth > 768)
+    ? (`<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-acoes-pc" onclick="event.stopPropagation();abrirAcoesPc('${escAttr(of.id||'')}','${escAttr(String(of.of||of.numero||ofSelNum||''))}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">Ações ▾</button>
+      </div>`)
+    : null;
+  try{
+    if(!window._ofmaqMoveCss){
+      window._ofmaqMoveCss = 1;
+      const st = document.createElement('style');
+      st.textContent = `.ofmaq-move-btn{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--border);background:var(--s3);color:var(--text);font-weight:900;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+@media (min-width: 769px){.ofmaq-move-btn{display:none!important}}`;
+      document.head.appendChild(st);
+    }
+  }catch(e){}
+
+  return '<div data-of-id="'+escAttr(of.id||'')+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+priBorder+'border-radius:10px;padding:16px;margin-bottom:10px">'
     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
-    +(isUrg?'<div style="background:#f44336;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:bold;display:inline-block">🔴 URGENTE</div>':'' )
+    +priBadge
     +statusBadge
+    +moveBtns
     +'</div>'
     +imgHtml
     +'<div style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2">'+escH(produto)+'</div>'
@@ -6121,13 +6251,68 @@ function cardOFMaquina(of, maquinaAtual){
     +'<span style="font-size:13px;color:'+(isSelDia?'var(--accent)':(atrasada?'#f44336':entStr===hoje?'#ff9800':'#4CAF50'))+'">🚚 <b>Entrega:</b> '+fmtD(entStr)+(isSelDia?' 📅':'')+'</span>'
     +'</div>'
     +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
-    +'<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
-    +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
-    +'<button onclick="event.stopPropagation();abrirModalMoverOFMaq(\''+escAttr(of.id)+'\',\''+escAttr(maquinaAtual||atual||'')+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:900">↔ Mover</button>'
-    +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
-    +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maquinaAtual||atual||'')+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
-    +'</div></div>';
+    +(desktopActions != null
+      ? (desktopActions + '</div>')
+      : ('<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
+        +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
+        +'<button onclick="event.stopPropagation();abrirModalMoverOFMaq(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:900">↔ Mover</button>'
+        +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
+        +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
+        +'</div></div>'))
+  ;
+}
+
+async function ofmaqMoverPosicao(maquina, ofId, dir){
+  try{
+    const mk = String(maquina||'').trim();
+    const id = String(ofId||'').trim();
+    const d = Math.trunc(Number(dir||0)||0);
+    if(!mk || !id || !(d === -1 || d === 1)) return;
+    if(!window._ofmaqLastGroupOfs || typeof window._ofmaqLastGroupOfs !== 'object') return;
+    const list = Array.isArray(window._ofmaqLastGroupOfs[mk]) ? window._ofmaqLastGroupOfs[mk] : [];
+    const idx = list.findIndex(o=>String(o?.id||'').trim()===id);
+    if(idx < 0) return;
+    const j = idx + d;
+    if(!(j >= 0 && j < list.length)) return;
+    const a = list[idx];
+    const b = list[j];
+    const ba = ofmaqPrioridadeBucket(a);
+    const bb = ofmaqPrioridadeBucket(b);
+    if(ba !== bb){ toast('Não pode mover entre prioridades','var(--yellow)'); return; }
+
+    if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+    let ordem = Array.isArray(window._ordemMaquinas[mk]) ? window._ordemMaquinas[mk].slice() : [];
+    if(!ordem.length){
+      ordem = list.map(o=>String(o?.id||'').trim()).filter(Boolean);
+    }
+    const ia = ordem.indexOf(id);
+    const ib = ordem.indexOf(String(b?.id||'').trim());
+    if(ia < 0 || ib < 0){ ordem = list.map(o=>String(o?.id||'').trim()).filter(Boolean); }
+    const ia2 = ordem.indexOf(id);
+    const ib2 = ordem.indexOf(String(b?.id||'').trim());
+    if(ia2 < 0 || ib2 < 0) return;
+    ordem[ia2] = String(b?.id||'').trim();
+    ordem[ib2] = id;
+    window._ordemMaquinas[mk] = ordem;
+
+    try{ renderOFsPorMaquina(); }catch(e){}
+
+    setTimeout(()=>{
+      try{
+        const el = document.querySelector('[data-of-id="'+CSS.escape(id)+'"]');
+        if(el){
+          el.style.opacity = '0.65';
+          setTimeout(()=>{ try{ el.style.opacity = '1'; }catch(e){} }, 120);
+        }
+      }catch(e){}
+    }, 80);
+
+    if(_apiConectado && CURRENT_USER){
+      const payload = { maquina: mk, ordem: ordem.map((x,i)=>({ of_id: x, posicao: i+1 })) };
+      try{ await api('POST','/sequenciamento/reordenar', payload); }catch(e){}
+    }
+  }catch(e){}
 }
 
 async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
@@ -6277,6 +6462,8 @@ async function renderOFsPorMaquina(){
     const inp = document.getElementById('ofmaq-data');
     if(inp && !inp.value) inp.value = hoje;
     const dataSel = String(inp?.value || '').slice(0,10);
+    const dataSelecionada = String(dataSel || hoje).slice(0,10);
+    try{ window._ofmaqSelectedDate = dataSelecionada; }catch(_){}
 
     const isConcluidaOF = (o) => {
       let s = String(o?.status || '').toLowerCase();
@@ -6295,6 +6482,48 @@ async function renderOFsPorMaquina(){
     };
     const dataRef = (o) => diaExibicaoOF(o) || entOf(o);
 
+    const isDesktop = !(document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) && (window.innerWidth > 768);
+    if(isDesktop && modo === 'data' && dataSelecionada){
+      try{
+        const headersAuth = ()=>{
+          const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+          return token ? { Authorization: 'Bearer ' + token } : {};
+        };
+        const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+        const fetchDia = async (dateField)=>{
+          const params = new URLSearchParams({
+            limit: '800',
+            excluir_canceladas: '1',
+            nocache: '1',
+            date_field: String(dateField||''),
+            from: dataSelecionada,
+            to: dataSelecionada,
+          });
+          if(EMP_FILTRO) params.set('empId', EMP_FILTRO);
+          const resp = await fetch(base + '/api/ofs?' + params.toString(), { headers: headersAuth() });
+          const j = await resp.json().catch(()=>null);
+          const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+          return (rows || []).map(normalizeOF);
+        };
+        const [entRows, prodRows] = await Promise.all([fetchDia('data_entrega'), fetchDia('data_producao')]);
+        const prodOnly = (prodRows || []).filter((o)=>{
+          const e = entOf(o);
+          const p = diaOf(o);
+          return (!e) && p === dataSelecionada;
+        });
+        const seen = new Set();
+        const merged = [...(entRows||[]), ...(prodOnly||[])].filter((o)=>{
+          const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
+          if(!id) return false;
+          if(seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        lista = merged;
+        try{ window._ofmaqForceReload = false; }catch(e){}
+      }catch(e){}
+    }
+
     const selMaqEl = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
     const filtroMaq = selMaqEl?.value||'';
     const ofmaqNorm = (s)=>{
@@ -6309,9 +6538,6 @@ async function renderOFsPorMaquina(){
 
     const todasOfs = (lista || []).slice();
     window._ofmaqListaCompleta = todasOfs.slice();
-
-    const dataSelecionada = String(dataSel || hoje).slice(0,10);
-    try{ window._ofmaqSelectedDate = dataSelecionada; }catch(_){}
     let ofsFiltradas = todasOfs.filter(o => {
       if (!o || o.deleted_at) return false;
       const s = String(o.status || '').toLowerCase();
@@ -6319,6 +6545,14 @@ async function renderOFsPorMaquina(){
       if (s.includes('conclu')) return false;
       return true;
     });
+
+    if (modo === 'data' && dataSelecionada) {
+      ofsFiltradas = ofsFiltradas.filter((o)=>{
+        const e = entOf(o);
+        const p = diaOf(o);
+        return (e && e === dataSelecionada) || ((!e) && p === dataSelecionada);
+      });
+    }
 
     if (busca) {
       const t = busca.toLowerCase();
@@ -6408,8 +6642,26 @@ async function renderOFsPorMaquina(){
     ];
 
     if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
+    if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+    if(!window._ofmaqLastGroupOfs || typeof window._ofmaqLastGroupOfs !== 'object') window._ofmaqLastGroupOfs = {};
     container.innerHTML = maquinas.filter(m=>grupos[m]).map(maq=>{
-      const ofs = ordenarOFsPorPrioridade(grupos[maq] || []);
+      const baseSorted = ordenarOFsPorPrioridade(grupos[maq] || []);
+      const pos = new Map();
+      const ordArr = Array.isArray(window._ordemMaquinas[maq]) ? window._ordemMaquinas[maq] : [];
+      ordArr.forEach((id, idx)=>{ const k = String(id||'').trim(); if(k) pos.set(k, idx); });
+      const buckets = [[],[],[],[]];
+      baseSorted.forEach((o)=>{ buckets[ofmaqPrioridadeBucket(o) || 3].push(o); });
+      const ofs = buckets.flatMap((arr)=>{
+        if(!arr.length) return [];
+        if(!pos.size) return arr;
+        return arr.slice().sort((a,b)=>{
+          const ia = pos.has(String(a?.id||'')) ? pos.get(String(a?.id||'')) : 999999;
+          const ib = pos.has(String(b?.id||'')) ? pos.get(String(b?.id||'')) : 999999;
+          if(ia !== ib) return ia - ib;
+          return 0;
+        });
+      });
+      try{ window._ofmaqLastGroupOfs[maq] = ofs.slice(); }catch(e){}
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       const exp = (window._ofmaqExpanded[maq] === undefined) ? true : !!window._ofmaqExpanded[maq];
       const bodyId = 'ofmaq-body-' + encodeURIComponent(maq).replace(/%/g,'_');
@@ -8358,8 +8610,171 @@ function ofDimensoesChange(){
     console.log('[SUGESTAO] comprimento:', dims.comprimento);
     console.log('[SUGESTAO] MAQUINAS disponíveis:', (Array.isArray(MAQUINAS) ? MAQUINAS.length : 0));
   }catch(e){}
+  try{ _sugestaoChapa_verificarMostrarBotao(); }catch(e){}
   try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
   try{ ofAtualizarTempoEstimado(); }catch(e){}
+}
+
+function _sugestaoChapa_verificarMostrarBotao(){
+  const dims = (typeof ofDimensoesGet === 'function') ? (ofDimensoesGet() || {}) : {};
+  const comp = Number(dims.comprimento || 0);
+  const larg = Number(dims.largura || 0);
+  const alt  = Number(dims.altura || 0);
+  const container = document.getElementById('sugestao-chapa-container');
+  if (container) {
+    container.style.display = (comp > 0 && larg > 0 && alt > 0) ? 'block' : 'none';
+  }
+}
+
+async function _sugestaoChapa_buscar(){
+  const dims = (typeof ofDimensoesGet === 'function') ? (ofDimensoesGet() || {}) : {};
+  const comp = Number(dims.comprimento || 0);
+  const larg = Number(dims.largura || 0);
+  const alt  = Number(dims.altura || 0);
+  const empId = String(document.getElementById('f-emp')?.value || EMP_FILTRO || '').trim();
+  const onda = String(document.getElementById('of-onda')?.value || '').trim();
+
+  if (!(comp > 0 && larg > 0 && alt > 0)) {
+    alert('Preencha comprimento, largura e altura da caixa primeiro.');
+    return;
+  }
+
+  const loading = document.getElementById('sugestao-chapa-loading');
+  const painel  = document.getElementById('sugestao-chapa-painel');
+  const lista   = document.getElementById('sugestao-chapa-lista');
+  const aviso   = document.getElementById('sugestao-chapa-aviso');
+  const infoCaixa = document.getElementById('sugestao-chapa-info-caixa');
+
+  if(painel && painel.style.display === 'block' && (!loading || loading.style.display !== 'inline')){
+    painel.style.display = 'none';
+    return;
+  }
+
+  if (loading) loading.style.display = 'inline';
+  if (painel)  painel.style.display  = 'block';
+  if (lista)   lista.innerHTML        = '<div style="padding:12px;font-size:12px;color:var(--text2)">Calculando...</div>';
+  if (aviso)   aviso.style.display   = 'none';
+
+  try{
+    const data = await api('POST','/chapas_estoque/sugerir_menor_desperdicio', {
+      comprimento_mm: comp,
+      largura_mm: larg,
+      altura_mm: alt,
+      onda: onda || null,
+      emp_id: empId || null
+    });
+
+    if (loading) loading.style.display = 'none';
+
+    if (!data || data.ok !== true || !Array.isArray(data.chapas)) {
+      if (lista) lista.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--red)">Erro ao calcular.</div>';
+      return;
+    }
+
+    if (infoCaixa && data.dados_caixa) {
+      const dc = data.dados_caixa;
+      const devComp = Number(dc.desenvolvimento_comprimento || 0);
+      const devLarg = Number(dc.desenvolvimento_largura || 0);
+      const areaMm2 = Number(dc.area_caixa_mm2 || 0);
+      infoCaixa.textContent =
+        `Planificação: ${Math.round(devComp)}mm × ${Math.round(devLarg)}mm` +
+        ` — Área da caixa: ${(areaMm2 / 1000000).toFixed(4)} m²`;
+    }
+
+    if (!data.chapas.length) {
+      if (lista)  lista.style.display  = 'none';
+      if (aviso)  aviso.style.display  = 'block';
+      return;
+    }
+
+    const cores = ['#22c55e', '#16a34a', '#84cc16', '#f59e0b', '#f97316'];
+    if (lista) {
+      lista.style.display = 'block';
+      lista.innerHTML = data.chapas.map((c, i) => {
+        const corPct = i < 3 ? cores[i] : (i < 6 ? cores[3] : cores[4]);
+        const melhor = i === 0;
+        const nome = String(c?.nome || '').trim();
+        const tamanho = String(c?.tamanho || '').trim();
+        const fornecedor = String(c?.fornecedor || '').trim();
+        const pct = Math.trunc(Number(c?.desperdicio_real_pct || 0) || 0);
+        const cxCh = Math.max(1, Math.trunc(Number(c?.caixas_por_chapa || 1) || 1));
+        const qtdEst = Math.trunc(Number(c?.quantidade || 0) || 0);
+        const econ = Math.trunc(Number(c?.economia_vs_pior || 0) || 0);
+        const label = nome || tamanho || 'Chapa';
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;background:${melhor ? 'rgba(34,197,94,.12)' : 'transparent'}"
+            data-id="${escAttr(String(c?.id||''))}"
+            data-nome="${escAttr(label)}"
+            data-tamanho="${escAttr(tamanho)}"
+            onclick="_sugestaoChapa_selecionar(this.dataset.id, this.dataset.nome, this.dataset.tamanho)"
+            title="Clique para selecionar esta chapa">
+            <div style="width:44px;text-align:center;flex-shrink:0">
+              <div style="font-size:14px;font-weight:900;color:${corPct}">${escH(String(Math.max(0,pct)))}%</div>
+              <div style="font-size:10px;color:var(--text3)">desperd.</div>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                ${melhor ? '✓ ' : ''}${escH(label)}
+              </div>
+              <div style="font-size:11px;color:var(--text2)">
+                ${escH(fornecedor)}${fornecedor ? ' · ' : ''}${escH(tamanho)}
+                · ${escH(String(cxCh))} cx/chapa
+                · ${escH(String(qtdEst))} em estoque
+              </div>
+            </div>
+            ${econ > 0
+              ? `<div style="flex-shrink:0;font-size:11px;font-weight:900;color:#22c55e;white-space:nowrap">${escH(String(econ))}% menos<br>desperdício</div>`
+              : `<div style="flex-shrink:0;font-size:10px;color:var(--text3)">base</div>`}
+          </div>`;
+      }).join('');
+    }
+  }catch(e){
+    if (loading) loading.style.display = 'none';
+    if (lista)   lista.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--red)">Erro de conexão.</div>';
+    try{ console.error('[SUGESTAO CHAPA]', e); }catch(_){}
+  }
+}
+
+function _sugestaoChapa_selecionar(id, nome, tamanho){
+  const chapaId = String(id || '').trim();
+  if(!chapaId) return;
+  const label = String(nome || tamanho || '').trim();
+  const selectChapa = document.getElementById('f-chp') || document.querySelector('[name="chapa_id"],#chapa_id,#campo-chapa-id');
+  if (selectChapa) {
+    selectChapa.value = chapaId;
+    try{ selectChapa.dispatchEvent(new Event('change', { bubbles: true })); }catch(e){}
+  }
+  const painel = document.getElementById('sugestao-chapa-painel');
+  if (painel) painel.style.display = 'none';
+  const btn = document.getElementById('btn-sugerir-chapa');
+  if(btn){
+    if(!btn.dataset.htmlOrig) btn.dataset.htmlOrig = btn.innerHTML;
+    btn.innerHTML = `<span style="font-size:15px">✓</span> Chapa selecionada: ${escH(label || '—')}`;
+    setTimeout(()=>{ try{ btn.innerHTML = btn.dataset.htmlOrig; }catch(e){} }, 3000);
+  }
+  try{ toast('✓ Chapa selecionada: ' + (label || tamanho || chapaId), 'var(--green)'); }catch(e){}
+}
+
+function _sugestaoChapa_inicializar(){
+  const container = document.getElementById('sugestao-chapa-container');
+  const btn = document.getElementById('btn-sugerir-chapa');
+  if(!container || !btn) return;
+  if(btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  const campos = [
+    document.getElementById('of-caixa-comp'),
+    document.getElementById('of-caixa-larg'),
+    document.getElementById('of-caixa-alt'),
+    document.getElementById('of-onda'),
+    document.getElementById('f-emp'),
+  ].filter(Boolean);
+  campos.forEach(c=>{
+    if(c.dataset && c.dataset.sugChapaBound === '1') return;
+    if(c.dataset) c.dataset.sugChapaBound = '1';
+    c.addEventListener('input', _sugestaoChapa_verificarMostrarBotao);
+    c.addEventListener('change', _sugestaoChapa_verificarMostrarBotao);
+  });
+  _sugestaoChapa_verificarMostrarBotao();
 }
 
 function ofGetTipoCaixaObj(){
@@ -9032,7 +9447,6 @@ async function abrirModalOF(id){
     ofAddItem();
     try{ ofUpdateProgress(); }catch(e){}
   }
-  try{ ocultarCamposChapaModalOF(); }catch(e){}
   const footer=document.querySelector('#modal-of .modal-footer');
   const imgUrlPrint = oEdit ? ofGetImagemUrl(oEdit) : '';
   footer.innerHTML=oEdit
@@ -9041,6 +9455,8 @@ async function abrirModalOF(id){
   const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
+  try{ _sugestaoChapa_inicializar(); }catch(e){}
+  try{ _sugestaoChapa_verificarMostrarBotao(); }catch(e){}
   try{ ofUpdateProgress(); }catch(e){}
   try{ inicializarAccordionOF(); }catch(e){}
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
@@ -13692,6 +14108,608 @@ function renderClientes(){
       </div>
     </div>`.replace('class="cli-card"', `class="cli-card" style="${cardStyle}"`);
   }).join('');
+}
+
+function mapaClientesRecarregar(force){
+  try{ window._mapCliCacheAt = 0; }catch(e){}
+  return renderMapaClientes(!!force);
+}
+
+function _mapcliFillEmpSelects(){
+  const fill = (id)=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = String(el.value||'').trim();
+    el.innerHTML = '<option value="">Todas as empresas</option>' + (EMPRESAS||[]).map(e=>{
+      const eid = String(e?.id||'').trim();
+      const nome = String(e?.nome||'').trim();
+      const sigla = String(e?.sigla||eid||'').trim();
+      if(!eid) return '';
+      return `<option value="${escAttr(eid)}">${escH(sigla)} — ${escH(nome||eid)}</option>`;
+    }).filter(Boolean).join('');
+    const pick = cur || (EMP_FILTRO ? String(EMP_FILTRO) : '');
+    el.value = (pick && (EMPRESAS||[]).some(e=>String(e?.id||'')===pick)) ? pick : '';
+  };
+  fill('mapcli-emp');
+  fill('rec-emp');
+}
+
+function _mapcliFillVendedorSelect(){
+  const el = document.getElementById('mapcli-vend');
+  if(!el) return;
+  const cur = String(el.value||'').trim();
+  const vendArr = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+  el.innerHTML = '<option value="">Todos vendedores</option>' + vendArr.map(v=>{
+    const id = String(v?.id||'').trim();
+    const nome = String(v?.nome||'').trim();
+    if(!id) return '';
+    return `<option value="${escAttr(id)}">${escH(nome||id)}</option>`;
+  }).filter(Boolean).join('');
+  el.value = cur && vendArr.some(v=>String(v?.id||'')===cur) ? cur : '';
+}
+
+function _mapcliGeoCacheGet(){
+  try{
+    const raw = localStorage.getItem('mapa_clientes_geo_v1');
+    const obj = raw ? JSON.parse(raw) : null;
+    return (obj && typeof obj === 'object') ? obj : {};
+  }catch(e){
+    return {};
+  }
+}
+function _mapcliGeoCacheSet(obj){
+  try{ localStorage.setItem('mapa_clientes_geo_v1', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+}
+
+function _mapcliColorByVolume(totalMes){
+  const n = Math.trunc(Number(totalMes||0)||0);
+  if(n > 5) return '#22c55e';
+  if(n >= 1) return '#fbbf24';
+  return '#94a3b8';
+}
+
+function _mapcliInitMap(){
+  const el = document.getElementById('mapcli-map');
+  if(!el) return null;
+  if(!window.L || typeof window.L.map !== 'function') return null;
+  if(!window._mapCliState) window._mapCliState = {};
+  if(window._mapCliState.map) return window._mapCliState.map;
+  const m = window.L.map(el, { zoomControl:true, preferCanvas:true }).setView([-15, -55], 4);
+  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(m);
+  const layer = window.L.layerGroup().addTo(m);
+  window._mapCliState = { map:m, layer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false };
+  return m;
+}
+
+function _mapcliClearMarkers(){
+  try{
+    const st = window._mapCliState || {};
+    if(st.layer) st.layer.clearLayers();
+    if(st.markers && typeof st.markers.clear === 'function') st.markers.clear();
+  }catch(e){}
+}
+
+function mapaClientesVerOFs(nomeCliente){
+  const nome = String(nomeCliente||'').trim();
+  try{ abrirModalTodasOFs(); }catch(e){ return; }
+  setTimeout(()=>{
+    try{
+      const inp = document.getElementById('todas-ofs-busca');
+      if(inp){ inp.value = nome; }
+      try{ renderModalTodasOFs(); }catch(e){}
+    }catch(e){}
+  }, 120);
+}
+
+function _mapcliPopupHtml(c){
+  const nome = String(c?.nome||'—').trim() || '—';
+  const cidade = String(c?.cidade||'').trim();
+  const estado = String(c?.estado||'').trim();
+  const local = (cidade || estado) ? `${cidade || ''}${(cidade && estado) ? ' / ' : ''}${estado || ''}` : '—';
+  const ultima = c?.ultima_of ? fmtD(String(c.ultima_of).slice(0,10)) : '—';
+  const valor = fmtR(Number(c?.valor_mes||0)||0);
+  const btn = `<button onclick="mapaClientesVerOFs('${escAttr(nome)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver OFs</button>`;
+  return `<div style="min-width:220px;color:#0f172a">
+    <div style="font-weight:900;font-size:14px">${escH(nome)}</div>
+    <div style="margin-top:6px;font-size:12px">📍 ${escH(local)}</div>
+    <div style="margin-top:4px;font-size:12px">🗓 Última OF: ${escH(ultima)}</div>
+    <div style="margin-top:4px;font-size:12px">💰 Valor mês: ${escH(valor)}</div>
+    ${btn}
+  </div>`;
+}
+
+function _mapcliUpsertMarker(c){
+  try{
+    const st = window._mapCliState || null;
+    if(!st || !st.map || !st.layer || !window.L) return;
+    const id = String(c?.id||'').trim();
+    const lat = Number(c?.lat);
+    const lng = Number(c?.lng);
+    if(!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const col = _mapcliColorByVolume(c?.total_ofs_mes);
+    const mk = window.L.circleMarker([lat, lng], {
+      radius: 8,
+      color: col,
+      weight: 2,
+      fillColor: col,
+      fillOpacity: 0.85,
+    });
+    mk.bindPopup(_mapcliPopupHtml(c), { maxWidth: 320 });
+    mk.addTo(st.layer);
+    st.markers.set(id, mk);
+  }catch(e){}
+}
+
+async function _mapcliGeocodeMissing(list){
+  if(!Array.isArray(list) || !list.length) return;
+  if(!window.L) return;
+  if(!window._mapCliState) return;
+  if(window._mapCliState.geocoding) return;
+  window._mapCliState.geocoding = true;
+  const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+  try{
+    const cache = _mapcliGeoCacheGet();
+    for(const c of list){
+      if(String(window._PAGE_ATUAL||'') !== 'mapa-clientes') break;
+      const id = String(c?.id||'').trim();
+      const cidade = String(c?.cidade||'').trim();
+      const estado = String(c?.estado||'').trim();
+      if(!id || !cidade) continue;
+      const cached = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
+      if(cached && Number.isFinite(Number(cached.lat)) && Number.isFinite(Number(cached.lng))){
+        c.lat = Number(cached.lat);
+        c.lng = Number(cached.lng);
+        _mapcliUpsertMarker(c);
+        continue;
+      }
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        city: cidade,
+        state: estado || '',
+        country: 'Brazil',
+        format: 'json'
+      }).toString();
+      let lat = null;
+      let lng = null;
+      try{
+        const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
+        const j = await resp.json().catch(()=>null);
+        const hit = Array.isArray(j) && j[0] ? j[0] : null;
+        if(hit && hit.lat && hit.lon){
+          lat = Number(hit.lat);
+          lng = Number(hit.lon);
+        }
+      }catch(e){}
+      if(Number.isFinite(lat) && Number.isFinite(lng)){
+        cache[id] = { lat, lng, cidade, estado, ts: Date.now() };
+        _mapcliGeoCacheSet(cache);
+        c.lat = lat;
+        c.lng = lng;
+        _mapcliUpsertMarker(c);
+      }
+      await sleep(1050);
+    }
+  } finally {
+    window._mapCliState.geocoding = false;
+  }
+}
+
+function _mapcliApplyFilters(base){
+  let list = Array.isArray(base) ? base.slice() : [];
+  const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
+  const vendSel = String(document.getElementById('mapcli-vend')?.value||'').trim();
+  const periodo = Math.trunc(Number(document.getElementById('mapcli-periodo')?.value||0)||0);
+  if(EMP_FILTRO && !empSel) list = list.filter(c=>String(c?.emp_id||'')===String(EMP_FILTRO));
+  if(empSel) list = list.filter(c=>String(c?.emp_id||'')===empSel);
+  if(vendSel) list = list.filter(c=>String(c?.vendedor_id||'')===vendSel);
+  if(periodo > 0){
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    const lim = new Date(hoje);
+    lim.setDate(lim.getDate() - periodo);
+    list = list.filter(c=>{
+      const d = String(c?.ultima_of||'').slice(0,10);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+      const dt = new Date(d + 'T00:00:00');
+      return Number.isFinite(dt.getTime()) && dt.getTime() >= lim.getTime();
+    });
+  }
+  return list;
+}
+
+function _mapcliRenderSide(list){
+  const info = document.getElementById('mapcli-info');
+  const top = document.getElementById('mapcli-top10');
+  if(info){
+    info.innerHTML = `
+      <div style="display:grid;gap:8px;font-size:.9rem">
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#22c55e"></span> Verde: &gt; 5 OFs/mês</div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#fbbf24"></span> Amarelo: 1–4 OFs/mês</div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#94a3b8"></span> Cinza: 0 OFs/mês</div>
+        <div style="margin-top:8px;color:var(--text2);font-family:var(--mono);font-weight:900">${(Array.isArray(list)?list.length:0)} cliente(s) no filtro</div>
+      </div>`;
+  }
+  if(top){
+    const rows = (Array.isArray(list)?list:[]).slice().sort((a,b)=>(Number(b?.valor_mes||0)||0)-(Number(a?.valor_mes||0)||0)).slice(0,10);
+    top.innerHTML = rows.length ? rows.map((c,i)=>{
+      const nome = String(c?.nome||'—').trim() || '—';
+      const cidade = String(c?.cidade||'').trim();
+      const estado = String(c?.estado||'').trim();
+      const local = (cidade || estado) ? `${cidade || ''}${(cidade && estado) ? ' / ' : ''}${estado || ''}` : '—';
+      const v = fmtR(Number(c?.valor_mes||0)||0);
+      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-bottom:8px;cursor:pointer" onclick="mapaClientesVerOFs('${escAttr(nome)}')">
+        <div style="min-width:0">
+          <div style="font-weight:900">${i+1}. ${escH(nome)}</div>
+          <div style="color:var(--text2);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(local)}</div>
+        </div>
+        <div style="font-family:var(--mono);font-weight:900;white-space:nowrap">${escH(v)}</div>
+      </div>`;
+    }).join('') : `<div style="color:var(--text2)">Sem dados para este filtro.</div>`;
+  }
+}
+
+async function renderMapaClientes(force){
+  try{
+    _mapcliFillEmpSelects();
+    _mapcliFillVendedorSelect();
+    const map = _mapcliInitMap();
+    if(map) setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 120);
+
+    const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
+    const empId = empSel || (EMP_FILTRO ? String(EMP_FILTRO) : '');
+    const now = Date.now();
+    const ttlOk = (now - Number(window._mapCliCacheAt||0)) < 5*60*1000;
+    if(!force && ttlOk && Array.isArray(window._mapCliCache)) {
+      const filtered = _mapcliApplyFilters(window._mapCliCache);
+      _mapcliClearMarkers();
+      filtered.forEach(_mapcliUpsertMarker);
+      _mapcliRenderSide(filtered);
+      _mapcliGeocodeMissing(filtered.filter(c=>!c.lat && !c.lng));
+      return;
+    }
+
+    if(!_apiConectado || !CURRENT_USER){
+      const filtered = _mapcliApplyFilters([]);
+      _mapcliClearMarkers();
+      _mapcliRenderSide(filtered);
+      return;
+    }
+
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET','/clientes/mapa?' + qs.toString());
+    const data = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    window._mapCliCache = data;
+    window._mapCliCacheAt = Date.now();
+
+    const cache = _mapcliGeoCacheGet();
+    const merged = data.map((c)=>{
+      const id = String(c?.id||'').trim();
+      const cc = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
+      if(cc && Number.isFinite(Number(cc.lat)) && Number.isFinite(Number(cc.lng))){
+        return { ...c, lat:Number(cc.lat), lng:Number(cc.lng) };
+      }
+      return { ...c };
+    });
+    const filtered = _mapcliApplyFilters(merged);
+    _mapcliClearMarkers();
+    filtered.forEach(_mapcliUpsertMarker);
+    _mapcliRenderSide(filtered);
+    _mapcliGeocodeMissing(filtered.filter(c=>!c.lat && !c.lng));
+  }catch(e){
+    try{ console.error('[renderMapaClientes]', e); }catch(_){}
+  }
+}
+
+function recorrentesRecarregar(force){
+  try{ window._recCacheAt = 0; }catch(e){}
+  return renderPedidosRecorrentes(!!force);
+}
+
+function _recNextGeracao(rec){
+  const diaDoMes = Math.max(1, Math.min(31, Math.trunc(Number(rec?.dia_do_mes||1)||1)));
+  const ant = Math.max(0, Math.min(31, Math.trunc(Number(rec?.antecedencia_dias||3)||3)));
+  const diaGera = diaDoMes - ant;
+  if(!(diaGera >= 1 && diaGera <= 31)) return '';
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const pick = (yy, mm)=> {
+    const dt = new Date(yy, mm, diaGera);
+    if(dt.getMonth() !== mm) return null;
+    dt.setHours(0,0,0,0);
+    return dt;
+  };
+  const a = pick(hoje.getFullYear(), hoje.getMonth());
+  if(a && a.getTime() >= hoje.getTime()) return a.toISOString().slice(0,10);
+  const b = pick(hoje.getFullYear(), hoje.getMonth()+1);
+  return b ? b.toISOString().slice(0,10) : '';
+}
+
+function _recCliNomeById(id){
+  const cid = String(id||'').trim();
+  if(!cid) return '—';
+  const arr = Array.isArray(CLIENTES) ? CLIENTES : [];
+  const c = arr.find(x=>String(x?.id||'').trim()===cid) || null;
+  return String(c?.nome || c?.razao_social || '—').trim() || '—';
+}
+
+function _ensureModalRecorrente(){
+  let modal = document.getElementById('modal-recorrente');
+  if(modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'modal-recorrente';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:none;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="width:min(780px,96vw);background:var(--s2);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);padding:16px 16px 14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-weight:900;font-size:16px">🔁 Pedido Recorrente</div>
+        <button class="btn btn-ghost btn-sm" onclick="fecharModalRecorrente()">✕</button>
+      </div>
+      <input id="rec-id" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">CLIENTE</div>
+          <select id="rec-cliente" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)"></select>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">EMPRESA</div>
+          <select id="rec-emp-modal" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)"></select>
+        </div>
+        <div style="grid-column:1 / -1">
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">PRODUTO</div>
+          <input id="rec-descricao" placeholder="Descrição do produto" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">QUANTIDADE</div>
+          <input id="rec-qtd" type="number" min="0" step="1" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">ONDA</div>
+          <input id="rec-onda" placeholder="B / C / BC..." style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">MEDIDAS (mm)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <input id="rec-comp" type="number" min="0" step="1" placeholder="Compr." style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+            <input id="rec-larg" type="number" min="0" step="1" placeholder="Larg." style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+            <input id="rec-alt" type="number" min="0" step="1" placeholder="Alt." style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">DIA DO MÊS</div>
+          <input id="rec-dia" type="number" min="1" max="31" step="1" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+        </div>
+        <div>
+          <div style="font-size:.75rem;color:var(--text2);font-weight:900;margin-bottom:6px">ANTECEDÊNCIA (dias)</div>
+          <input id="rec-ant" type="number" min="0" max="31" step="1" style="width:100%;padding:10px 10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text)">
+        </div>
+        <div style="grid-column:1 / -1;display:flex;align-items:center;gap:10px;margin-top:2px">
+          <input id="rec-ativo" type="checkbox" checked>
+          <label for="rec-ativo" style="font-weight:900">Ativo</label>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="fecharModalRecorrente()">Cancelar</button>
+        <button class="btn btn-accent btn-sm" onclick="salvarModalRecorrente()">Salvar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function fecharModalRecorrente(){
+  const m = document.getElementById('modal-recorrente');
+  if(m) m.style.display = 'none';
+}
+
+function abrirModalRecorrente(id){
+  const m = _ensureModalRecorrente();
+  const cidSel = document.getElementById('rec-cliente');
+  const empSel = document.getElementById('rec-emp-modal');
+  const cliArr = Array.isArray(CLIENTES) ? CLIENTES : [];
+  cidSel.innerHTML = '<option value="">Selecionar...</option>' + cliArr.slice().sort((a,b)=>String(a?.nome||'').localeCompare(String(b?.nome||''))).map(c=>{
+    const cid = String(c?.id||'').trim();
+    const nome = String(c?.nome||c?.razao_social||'').trim();
+    if(!cid) return '';
+    return `<option value="${escAttr(cid)}">${escH(nome||cid)}</option>`;
+  }).filter(Boolean).join('');
+  empSel.innerHTML = '<option value="">(auto)</option>' + (EMPRESAS||[]).map(e=>{
+    const eid = String(e?.id||'').trim();
+    const nome = String(e?.nome||'').trim();
+    const sigla = String(e?.sigla||eid||'').trim();
+    if(!eid) return '';
+    return `<option value="${escAttr(eid)}">${escH(sigla)} — ${escH(nome||eid)}</option>`;
+  }).filter(Boolean).join('');
+
+  const rid = String(id||'').trim();
+  const rec = rid && Array.isArray(window._recCache) ? (window._recCache.find(r=>String(r?.id||'').trim()===rid) || null) : null;
+  document.getElementById('rec-id').value = rid || '';
+  document.getElementById('rec-descricao').value = rec ? String(rec.descricao||'') : '';
+  document.getElementById('rec-qtd').value = rec ? String(rec.quantidade||0) : '';
+  document.getElementById('rec-onda').value = rec ? String(rec.onda||'') : '';
+  document.getElementById('rec-comp').value = rec && rec.comprimento_mm != null ? String(rec.comprimento_mm) : '';
+  document.getElementById('rec-larg').value = rec && rec.largura_mm != null ? String(rec.largura_mm) : '';
+  document.getElementById('rec-alt').value = rec && rec.altura_mm != null ? String(rec.altura_mm) : '';
+  document.getElementById('rec-dia').value = rec ? String(rec.dia_do_mes||1) : '1';
+  document.getElementById('rec-ant').value = rec ? String(rec.antecedencia_dias==null?3:rec.antecedencia_dias) : '3';
+  document.getElementById('rec-ativo').checked = rec ? !!rec.ativo : true;
+  cidSel.value = rec ? String(rec.cliente_id||'') : '';
+  empSel.value = rec ? String(rec.emp_id||'') : (String(document.getElementById('rec-emp')?.value||EMP_FILTRO||'').trim() || '');
+
+  m.style.display = 'flex';
+}
+
+async function salvarModalRecorrente(){
+  try{
+    if(!_apiConectado || !CURRENT_USER){ toast('Sem conexão com a API','var(--red)'); return; }
+    const id = String(document.getElementById('rec-id')?.value||'').trim();
+    const cliente_id = String(document.getElementById('rec-cliente')?.value||'').trim();
+    const emp_id = String(document.getElementById('rec-emp-modal')?.value||document.getElementById('rec-emp')?.value||EMP_FILTRO||'E1').trim() || 'E1';
+    const descricao = String(document.getElementById('rec-descricao')?.value||'').trim();
+    const quantidade = Math.trunc(Number(document.getElementById('rec-qtd')?.value||0)||0);
+    const onda = String(document.getElementById('rec-onda')?.value||'').trim() || null;
+    const comprimento_mm = document.getElementById('rec-comp')?.value ? Math.trunc(Number(document.getElementById('rec-comp').value||0)||0) : null;
+    const largura_mm = document.getElementById('rec-larg')?.value ? Math.trunc(Number(document.getElementById('rec-larg').value||0)||0) : null;
+    const altura_mm = document.getElementById('rec-alt')?.value ? Math.trunc(Number(document.getElementById('rec-alt').value||0)||0) : null;
+    const dia_do_mes = Math.max(1, Math.min(31, Math.trunc(Number(document.getElementById('rec-dia')?.value||1)||1)));
+    const antecedencia_dias = Math.max(0, Math.min(31, Math.trunc(Number(document.getElementById('rec-ant')?.value||3)||3)));
+    const ativo = !!document.getElementById('rec-ativo')?.checked;
+
+    if(!cliente_id){ toast('Selecione o cliente','var(--red)'); return; }
+    if(!descricao){ toast('Informe o produto','var(--red)'); return; }
+    if(!(quantidade > 0)){ toast('Quantidade inválida','var(--red)'); return; }
+
+    showSaveIndicator('Salvando...','var(--yellow)');
+    const body = { cliente_id, emp_id, descricao, quantidade, onda, comprimento_mm, largura_mm, altura_mm, dia_do_mes, antecedencia_dias, ativo };
+    const r = id
+      ? await api('PUT','/pedidos_recorrentes/' + encodeURIComponent(id), body)
+      : await api('POST','/pedidos_recorrentes', body);
+    if(!r || r.ok === false) throw new Error(String(r?.error||'Falha ao salvar'));
+    fecharModalRecorrente();
+    showSaveIndicator('✓ salvo','var(--green)');
+    toast('✓ Recorrente salvo','var(--green)');
+    await recorrentesRecarregar(true);
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: ' + String(e?.message||e), 'var(--red)');
+  }
+}
+
+async function desativarRecorrente(id){
+  try{
+    if(!_apiConectado || !CURRENT_USER){ toast('Sem conexão com a API','var(--red)'); return; }
+    const rid = String(id||'').trim();
+    if(!rid) return;
+    if(!confirm('Desativar este recorrente?')) return;
+    showSaveIndicator('Desativando...','var(--yellow)');
+    const r = await api('DELETE','/pedidos_recorrentes/' + encodeURIComponent(rid));
+    if(!r || r.ok === false) throw new Error(String(r?.error||'Falha ao desativar'));
+    showSaveIndicator('✓ desativado','var(--green)');
+    toast('Recorrente desativado','var(--green)');
+    await recorrentesRecarregar(true);
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: ' + String(e?.message||e), 'var(--red)');
+  }
+}
+
+async function gerarRecorrenteAgora(id){
+  try{
+    if(!_apiConectado || !CURRENT_USER){ toast('Sem conexão com a API','var(--red)'); return; }
+    const rid = String(id||'').trim();
+    if(!rid) return;
+    showSaveIndicator('Gerando...','var(--yellow)');
+    const r = await api('POST','/pedidos_recorrentes/gerar_agora', { id: rid });
+    if(!r || r.ok === false) throw new Error(String(r?.error||'Falha ao gerar'));
+    const created = r?.data?.created || null;
+    const num = String(created?.of || created?.numero || '').trim();
+    showSaveIndicator('✓ gerado','var(--green)');
+    toast(created ? ('✓ OF gerada: #' + (num||created?.id||'—')) : '✓ OK', 'var(--green)');
+    await recorrentesRecarregar(true);
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: ' + String(e?.message||e), 'var(--red)');
+  }
+}
+
+async function renderPedidosRecorrentes(force){
+  try{
+    _mapcliFillEmpSelects();
+    const empSel = String(document.getElementById('rec-emp')?.value||'').trim();
+    const empId = empSel || (EMP_FILTRO ? String(EMP_FILTRO) : '');
+    const busca = String(document.getElementById('rec-busca')?.value||'').trim().toLowerCase();
+
+    const now = Date.now();
+    const ttlOk = (now - Number(window._recCacheAt||0)) < 5*60*1000;
+    if(!_apiConectado || !CURRENT_USER){
+      const box = document.getElementById('recorrentes-list');
+      if(box) box.innerHTML = '<div style="color:var(--text2)">Sem conexão com a API.</div>';
+      return;
+    }
+    if(!force && ttlOk && Array.isArray(window._recCache)){
+      const base = window._recCache;
+      const list = base.filter(r=>{
+        if(empId && String(r?.emp_id||'')!==empId) return false;
+        if(EMP_FILTRO && !empSel && String(r?.emp_id||'')!==String(EMP_FILTRO)) return false;
+        if(!busca) return true;
+        const cli = _recCliNomeById(r?.cliente_id).toLowerCase();
+        const desc = String(r?.descricao||'').toLowerCase();
+        return cli.includes(busca) || desc.includes(busca);
+      });
+      _renderPedidosRecorrentesList(list);
+      return;
+    }
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET','/pedidos_recorrentes?' + qs.toString());
+    const rows = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    window._recCache = rows;
+    window._recCacheAt = Date.now();
+    const list = rows.filter(r2=>{
+      if(empId && String(r2?.emp_id||'')!==empId) return false;
+      if(EMP_FILTRO && !empSel && String(r2?.emp_id||'')!==String(EMP_FILTRO)) return false;
+      if(!busca) return true;
+      const cli = _recCliNomeById(r2?.cliente_id).toLowerCase();
+      const desc = String(r2?.descricao||'').toLowerCase();
+      return cli.includes(busca) || desc.includes(busca);
+    });
+    _renderPedidosRecorrentesList(list);
+  }catch(e){
+    try{ console.error('[renderPedidosRecorrentes]', e); }catch(_){}
+  }
+}
+
+function _renderPedidosRecorrentesList(list){
+  const box = document.getElementById('recorrentes-list');
+  if(!box) return;
+  const rows = Array.isArray(list) ? list.slice() : [];
+  rows.sort((a,b)=>String(b?.created_at||'').localeCompare(String(a?.created_at||'')));
+  const thS = 'padding:8px 10px;font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap';
+  const tdS = 'padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top';
+  box.innerHTML = `
+    <div style="overflow:auto;border:1px solid var(--border);border-radius:12px">
+      <table style="width:100%;border-collapse:collapse;min-width:980px">
+        <thead>
+          <tr>
+            <th style="${thS}">Cliente</th>
+            <th style="${thS}">Produto</th>
+            <th style="${thS};text-align:center">Dia</th>
+            <th style="${thS};text-align:center">Antecedência</th>
+            <th style="${thS};text-align:center">Última geração</th>
+            <th style="${thS};text-align:center">Próxima geração</th>
+            <th style="${thS};text-align:center">Ativo</th>
+            <th style="${thS};text-align:center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.length ? rows.map(r=>{
+            const id = String(r?.id||'').trim();
+            const cli = _recCliNomeById(r?.cliente_id);
+            const desc = String(r?.descricao||'—').trim() || '—';
+            const dia = Math.trunc(Number(r?.dia_do_mes||1)||1);
+            const ant = Math.trunc(Number(r?.antecedencia_dias==null?3:r?.antecedencia_dias)||0);
+            const ult = r?.ultima_geracao ? fmtD(String(r.ultima_geracao).slice(0,10)) : '—';
+            const prox = _recNextGeracao(r);
+            const ativo = r?.ativo === false ? 'Não' : 'Sim';
+            return `<tr>
+              <td style="${tdS}">${escH(cli)}</td>
+              <td style="${tdS}">${escH(desc)}</td>
+              <td style="${tdS};text-align:center">${escH(String(dia))}</td>
+              <td style="${tdS};text-align:center">${escH(String(ant))} dia(s)</td>
+              <td style="${tdS};text-align:center">${escH(ult)}</td>
+              <td style="${tdS};text-align:center">${escH(prox ? fmtD(prox) : '—')}</td>
+              <td style="${tdS};text-align:center">${escH(ativo)}</td>
+              <td style="${tdS};text-align:center;white-space:nowrap">
+                <button class="btn btn-ghost btn-sm" onclick="abrirModalRecorrente('${escAttr(id)}')">✏ Editar</button>
+                <button class="btn btn-ghost btn-sm" onclick="gerarRecorrenteAgora('${escAttr(id)}')">⚡ Gerar Agora</button>
+                <button class="btn btn-ghost btn-sm" onclick="desativarRecorrente('${escAttr(id)}')" style="color:var(--red)">⛔ Desativar</button>
+              </td>
+            </tr>`;
+          }).join('') : `<tr><td colspan="8" style="${tdS};color:var(--text2);text-align:center">Nenhum recorrente cadastrado.</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 var _CLI_IMPORT = null;
@@ -32624,6 +33642,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-clientes" class="nav-item" onclick="go('clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👥</span>Clientes</div>
+      <div id="menu-mapa-clientes" class="nav-item" onclick="go('mapa-clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Mapa de Clientes</div>
+      <div id="menu-pedidos-recorrentes" class="nav-item" onclick="go('pedidos-recorrentes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🔁</span>Pedidos Recorrentes</div>
       <div id="menu-fornecedores" class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
@@ -32917,6 +33937,66 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <input id="cli-import-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="clientesHandleImportExcelFile(this.files[0]); this.value='';">
   </div>
   <div class="page-body"><div class="cli-grid" id="cli-grid"></div></div>
+</div>
+
+<!-- ========== 3A. MAPA DE CLIENTES ========== -->
+<div id="page-mapa-clientes" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
+    <select id="mapcli-emp" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="">Todas as empresas</option>
+    </select>
+    <select id="mapcli-vend" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);min-width:200px">
+      <option value="">Todos vendedores</option>
+    </select>
+    <select id="mapcli-periodo" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="">Última OF: todos</option>
+      <option value="30">Última OF: 30 dias</option>
+      <option value="90">Última OF: 90 dias</option>
+      <option value="180">Última OF: 180 dias</option>
+      <option value="365">Última OF: 1 ano</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="mapaClientesRecarregar(true)">↻ Atualizar</button>
+  </div>
+  <div class="page-body">
+    <div style="display:grid;grid-template-columns:1.6fr .8fr;gap:12px;align-items:stretch">
+      <div class="sbox">
+        <div class="sbox-h">🗺 Mapa</div>
+        <div class="sbox-b" style="padding:0">
+          <div id="mapcli-map" style="height:70vh;min-height:460px;width:100%"></div>
+        </div>
+      </div>
+      <div style="display:grid;gap:12px;align-content:start">
+        <div class="sbox">
+          <div class="sbox-h">🏆 Top 10 por valor (mês)</div>
+          <div class="sbox-b" id="mapcli-top10"></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-h">ℹ️ Legenda</div>
+          <div class="sbox-b" id="mapcli-info"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 3B. PEDIDOS RECORRENTES ========== -->
+<div id="page-pedidos-recorrentes" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
+    <input id="rec-busca" placeholder="🔍 Cliente ou produto..." oninput="renderPedidosRecorrentes()" style="width:220px;">
+    <select id="rec-emp" onchange="renderPedidosRecorrentes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="">Todas as empresas</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="recorrentesRecarregar(true)">↻ Atualizar</button>
+    <button class="btn btn-accent" onclick="abrirModalRecorrente()">＋ Novo recorrente</button>
+  </div>
+  <div class="page-body">
+    <div class="sbox">
+      <div class="sbox-h">🔁 Pedidos Recorrentes</div>
+      <div class="sbox-b" id="recorrentes-list"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ========== 4. ESTOQUE ========== -->
@@ -34472,6 +35552,32 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
               <div class="mf" style="margin:0"><label>Largura</label><input id="of-caixa-larg" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
               <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+            </div>
+            <div class="mf fgf campo-chapa" style="grid-column:1/-1;margin-top:12px">
+              <label>CHAPA (ESTOQUE)</label>
+              <select id="f-chp"></select>
+              <div id="sugestao-chapa-container" style="margin-top:8px;display:none">
+                <button type="button" id="btn-sugerir-chapa"
+                  style="display:flex;align-items:center;gap:6px;font-size:12px;padding:8px 12px;background:rgba(34,197,94,.12);color:var(--text);border:1px solid rgba(34,197,94,.35);border-radius:10px;cursor:pointer;width:100%;font-weight:900"
+                  onclick="_sugestaoChapa_buscar()">
+                  <span style="font-size:15px">♻</span>
+                  Encontrar chapa com menor desperdício
+                  <span id="sugestao-chapa-loading" style="display:none;font-size:11px;opacity:0.7">calculando...</span>
+                </button>
+                <div id="sugestao-chapa-painel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--s2)">
+                  <div style="padding:8px 12px;background:var(--s3);font-size:12px;color:var(--text2);border-bottom:1px solid var(--border)">
+                    <span id="sugestao-chapa-info-caixa"></span>
+                  </div>
+                  <div id="sugestao-chapa-lista" style="max-height:280px;overflow-y:auto"></div>
+                  <div id="sugestao-chapa-aviso" style="display:none;padding:12px;font-size:12px;color:var(--yellow);text-align:center">
+                    Nenhuma chapa em estoque é compatível com essas medidas.
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mf campo-chapa" style="grid-column:1/-1;margin-top:8px">
+              <label>QTD CHAPAS (OPCIONAL)</label>
+              <input id="f-qchp" type="number" min="0" step="1" placeholder="0" oninput="ofUpdateProgress()">
             </div>
             <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
             <div id="of-auto-maq-badge" style="display:none;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.35);color:var(--text2);font-size:12px;font-weight:900">💡 Máquina será sugerida automaticamente ao salvar</div>
@@ -39644,6 +40750,10 @@ window.atualizarChapas = async function(){
       #assist-title img{width:28px;height:28px;border-radius:10px;object-fit:contain;background:#fff;padding:3px}
       #jarvis-online{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-weight:900;font-size:.72rem;color:rgba(34,197,94,.95)}
       #jarvis-online .dot{width:8px;height:8px;border-radius:999px;background:rgba(34,197,94,.95);box-shadow:0 0 10px rgba(34,197,94,.55)}
+      #assist-ia{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#0f0f1a}
+      .ia-badge{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:6px 10px;font-size:.7rem;font-weight:900;font-family:var(--mono);white-space:nowrap}
+      .ia-badge.on{border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.12);color:rgba(187,247,208,.95)}
+      .ia-badge.turbo{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98)}
       #assist-actions{display:flex;gap:8px;align-items:center}
       #assist-actions button{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
       #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#0f0f1a}
@@ -39677,6 +40787,11 @@ window.atualizarChapas = async function(){
       #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
       #assist-send{border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
       #assist-mic{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+      #assist-turbo{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+      #assist-turbo.on{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98)}
+      #assist-turbo.off{opacity:.55;cursor:not-allowed}
+      .jarvis-msg-badge{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:900;font-family:var(--mono);white-space:nowrap}
+      .jarvis-msg-badge.turbo{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98)}
       #assist-mic.listening{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.45);animation:assistPulse 1.1s ease-in-out infinite}
       @keyframes assistPulse{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
       .jarvis-typing{display:inline-flex;align-items:center;gap:4px}
@@ -39722,6 +40837,7 @@ window.atualizarChapas = async function(){
           <button type="button" id="assist-close">✕</button>
         </div>
       </div>
+      <div id="assist-ia"></div>
       <div id="assist-sug"></div>
       <div id="assist-body"></div>
       <div id="assist-input">
@@ -39729,10 +40845,65 @@ window.atualizarChapas = async function(){
         <input type="file" id="jarvis-img-input" accept="image/*" style="display:none" onchange="enviarImagemJarvis(this.files[0]); this.value='';">
         <button type="button" onclick="document.getElementById('jarvis-img-input').click()" title="Enviar imagem">📎</button>
         <button type="button" id="assist-mic" title="Falar">🎤</button>
+        <button type="button" id="assist-turbo" title="Modo Turbo">⚡</button>
         <button type="button" id="assist-send">Enviar</button>
       </div>
     `;
     document.body.appendChild(panel);
+
+    const TURBO_KEY = 'italy_jarvis_turbo_v1';
+    const readTurbo = ()=>{ try{ return localStorage.getItem(TURBO_KEY) === '1'; }catch(e){ return false; } };
+    const writeTurbo = (on)=>{ try{ localStorage.setItem(TURBO_KEY, on ? '1' : '0'); }catch(e){} };
+    window.__jarvisTurboEnabled = readTurbo();
+    window.__jarvisTurboAvailable = false;
+
+    const renderIaBadges = (st)=>{
+      const host = document.getElementById('assist-ia');
+      if(!host) return;
+      const cla = !!st?.claude?.ativo;
+      const gpt = !!st?.openai?.ativo;
+      const turbo = !!st?.modo_turbo_disponivel;
+      const chips = [];
+      if(cla) chips.push(`<span class="ia-badge on">Claude ativo</span>`);
+      if(gpt) chips.push(`<span class="ia-badge on">GPT-4o ativo</span>`);
+      if(turbo) chips.push(`<span class="ia-badge turbo">⚡ Modo Turbo disponível</span>`);
+      host.innerHTML = chips.join('') || `<span class="ia-badge">IA indisponível</span>`;
+    };
+
+    const applyTurboUi = ()=>{
+      const btn = document.getElementById('assist-turbo');
+      if(!btn) return;
+      const enabled = !!window.__jarvisTurboAvailable;
+      const on = !!(window.__jarvisTurboEnabled && enabled);
+      btn.classList.toggle('on', on);
+      btn.classList.toggle('off', !enabled);
+      btn.title = enabled ? (on ? 'Modo Turbo ativado' : 'Ativar Modo Turbo') : 'Modo Turbo indisponível';
+    };
+
+    let _iaStatusCache = null;
+    let _iaStatusAt = 0;
+    const refreshIaStatus = async (force)=>{
+      try{
+        if(!force && _iaStatusCache && (Date.now() - _iaStatusAt) < 60_000){
+          renderIaBadges(_iaStatusCache);
+          window.__jarvisTurboAvailable = !!_iaStatusCache?.modo_turbo_disponivel;
+          applyTurboUi();
+          return;
+        }
+        const r = await apiFetch('/api/ia/status', { method:'GET' });
+        const j = r ? await r.json().catch(()=>null) : null;
+        if(!(r && r.ok) || !j || j.ok !== true) throw new Error('status_failed');
+        _iaStatusCache = j;
+        _iaStatusAt = Date.now();
+        renderIaBadges(j);
+        window.__jarvisTurboAvailable = !!j?.modo_turbo_disponivel;
+        applyTurboUi();
+      }catch(e){
+        renderIaBadges(null);
+        window.__jarvisTurboAvailable = false;
+        applyTurboUi();
+      }
+    };
 
     const updateVisibility = ()=>{
       try{
@@ -39867,6 +41038,7 @@ window.atualizarChapas = async function(){
       overlay.style.display = 'block';
       panel.classList.add('open');
       setTimeout(()=>{ try{ document.getElementById('assist-text')?.focus(); }catch(e){} }, 50);
+      refreshIaStatus(true);
       render();
       scrollBottom();
     };
@@ -39879,6 +41051,13 @@ window.atualizarChapas = async function(){
     mini.querySelector('button').onclick = open;
     panel.querySelector('#assist-close').onclick = close;
     panel.querySelector('#assist-min').onclick = ()=>setMini(true);
+    panel.querySelector('#assist-turbo').onclick = ()=>{
+      if(!window.__jarvisTurboAvailable) return;
+      window.__jarvisTurboEnabled = !window.__jarvisTurboEnabled;
+      writeTurbo(window.__jarvisTurboEnabled);
+      applyTurboUi();
+    };
+    applyTurboUi();
 
     let drag = null;
     const onDown = (ev)=>{
@@ -40266,6 +41445,9 @@ window.atualizarChapas = async function(){
       if(extra.chart && typeof extra.chart === 'object') msg.chart = extra.chart;
       if(typeof extra.html === 'string' && extra.html.trim()) msg.html = String(extra.html);
       if(extra.report) msg.report = true;
+      if(extra.modo) msg.modo = String(extra.modo);
+      if(extra.origem) msg.origem = String(extra.origem);
+      if(extra.badge) msg.badge = String(extra.badge);
     }
     hist.push(msg);
     saveHist(hist);
@@ -40401,7 +41583,9 @@ window.atualizarChapas = async function(){
       if(role === 'assistant'){
         const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
         const speakIcon = isSpeaking ? '🔇' : '🔊';
-        const top = `<div class="assist-bubble-top"><div></div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
+        const turbo = (String(m?.modo||'').toLowerCase() === 'turbo') || (String(m?.origem||'').toLowerCase() === 'turbo') || (String(m?.badge||'') === '⚡ Turbo');
+        const badge = turbo ? `<span class="jarvis-msg-badge turbo">⚡ Turbo</span>` : '';
+        const top = `<div class="assist-bubble-top"><div style="display:flex;gap:8px;align-items:center">${badge}</div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
         const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${reportHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
@@ -40689,7 +41873,8 @@ window.atualizarChapas = async function(){
       }catch(e){
         try{ console.error('[JARVIS ERROR] local query', e?.message || e); }catch(_){}
       }
-      const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text, historico } });
+      const modo = (window.__jarvisTurboAvailable && window.__jarvisTurboEnabled) ? 'turbo' : undefined;
+      const resp = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta: text, historico, modo } });
       const j = resp ? await resp.json().catch(()=>null) : null;
       const ans = (j && (j.resposta || j.data || j.texto)) ? String(j.resposta || j.data || j.texto) : '';
       const images = (j && (j.images || j.imagens)) ? (Array.isArray(j.images || j.imagens) ? (j.images || j.imagens) : []) : [];
@@ -40723,7 +41908,7 @@ window.atualizarChapas = async function(){
         addMsg('assistant', `Desculpe ${getUserFirstName()}, não consegui responder agora.`);
         return;
       }
-      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images: mergedImages, table, chart, html, report, actions: j.actions || [], suggestions: j.suggestions || [] });
+      addMsg('assistant', ans || `Desculpe ${getUserFirstName()}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`, { images: mergedImages, table, chart, html, report, actions: j.actions || [], suggestions: j.suggestions || [], modo: j.modo || null, origem: j.origem || null, badge: j.badge || null });
     }catch(e){
       const el = document.getElementById(typingId);
       if(el && el.parentNode) el.parentNode.remove();
@@ -41396,6 +42581,7 @@ window.atualizarChapas = async function(){
         <div class="mobile-jarvis-input" id="mob-jarvis-input">
           <input id="mob-jarvis-text" placeholder="Digite sua mensagem..." autocomplete="off">
           <button id="mob-jarvis-mic" title="Voz">🎙</button>
+          <button id="mob-jarvis-turbo" title="Turbo">⚡</button>
           <button id="mob-jarvis-send" title="Enviar">➤</button>
         </div>
         <div class="mobile-bottom-nav">
@@ -41434,6 +42620,15 @@ window.atualizarChapas = async function(){
     const send = ()=>mobileSendJarvis();
     byId('mob-jarvis-send')?.addEventListener('click', send);
     byId('mob-jarvis-text')?.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); send(); } });
+    byId('mob-jarvis-turbo')?.addEventListener('click', ()=>{
+      try{
+        const k = 'italy_jarvis_turbo_v1';
+        const cur = (localStorage.getItem(k) === '1');
+        const next = !cur;
+        localStorage.setItem(k, next ? '1' : '0');
+        try{ toast(next ? '⚡ Turbo ativado' : 'Turbo desativado', next ? 'var(--yellow)' : 'var(--text2)'); }catch(e){}
+      }catch(e){}
+    });
 
     const micBtn = byId('mob-jarvis-mic');
     if(micBtn){
@@ -41466,6 +42661,7 @@ window.atualizarChapas = async function(){
     const chips = mobileState.jarvisSuggestions || [];
     const renderMensagemJarvis = (msg)=>{
       const txt = String(msg?.text ?? msg?.texto ?? msg?.resposta ?? '').trim();
+      const turbo = (String(msg?.modo||'').toLowerCase() === 'turbo') || (String(msg?.origem||'').toLowerCase() === 'turbo') || (String(msg?.badge||'') === '⚡ Turbo');
       const extras = (msg && typeof msg === 'object') ? (msg.dadosExtras || msg.dados_extras || msg.extra || null) : null;
       const imagem = String(extras?.imagem_url || msg?.imagem_url || '').trim() || null;
       const imgsRaw = extras?.imgs ?? msg?.imgs ?? msg?.images ?? msg?.imagens ?? null;
@@ -41509,6 +42705,7 @@ window.atualizarChapas = async function(){
         <div style="display:flex;gap:10px;margin:10px 0;justify-content:flex-start">
           <div style="width:32px;height:32px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:16px">⚙️</div>
           <div style="max-width:92%;background:#111426;border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;color:#fff;white-space:pre-wrap;word-break:break-word;line-height:1.28">
+            ${turbo ? `<div style="margin-bottom:8px"><span style="display:inline-block;border:1px solid rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98);border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:900;font-family:var(--mono);white-space:nowrap">⚡ Turbo</span></div>` : ``}
             ${esc(txt)}
             ${imgHtml}
             ${galHtml}
@@ -42408,13 +43605,14 @@ window.atualizarChapas = async function(){
         try{ console.error('[JARVIS ERROR] local query (mobile)', e?.message || e); }catch(_){}
       }
       const hist = (mobileState.jarvisHist || []).filter(m=>!m.typing).slice(-8).map(m=>({ role:m.role, content:m.text }));
-      const r = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta:t, historico: hist } });
+      const modo = (localStorage.getItem('italy_jarvis_turbo_v1') === '1') ? 'turbo' : undefined;
+      const r = await apiFetch('/api/assistente', { method:'POST', body:{ pergunta:t, historico: hist, modo } });
       const j = r ? await r.json().catch(()=>null) : null;
       mobileState.jarvisHist = (mobileState.jarvisHist||[]).filter(m=>!m.typing);
       const ans = String(j?.resposta || j?.answer || '').trim() || 'Não entendi. Tente perguntar de outra forma.';
       const dadosExtras = (j && typeof j === 'object') ? (j.dadosExtras || j.dados_extras || j.extra || null) : null;
       const images = Array.isArray(j?.images) ? j.images : (Array.isArray(j?.imagens) ? j.imagens : null);
-      mobileState.jarvisHist.push({ role:'assistant', text:ans, ts:Date.now(), dadosExtras, images });
+      mobileState.jarvisHist.push({ role:'assistant', text:ans, ts:Date.now(), dadosExtras, images, modo: j?.modo || null, origem: j?.origem || null, badge: j?.badge || null });
       const sug = Array.isArray(j?.suggestions) ? j.suggestions.map(s=>String(s||'').trim()).filter(Boolean) : [];
       if(sug.length) mobileState.jarvisSuggestions = sug.slice(0, 8);
       saveHist();
