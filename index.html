@@ -9545,15 +9545,68 @@ function _simdGerarVisual(chapa, dadosCaixa){
 
     if (dadosEl) {
       const totalCx = cxPorLinha * cxPorCol;
-      const areaChapa = chapaX * chapaY;
-      const areaUsada = totalCx * planifComp * planifLarg;
-      const areaSobra = Math.max(0, areaChapa - areaUsada);
-      const pct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
-      const sobraLateralMm = Number(chapa?.sobra_lateral_mm ?? 0) || Math.max(0, Math.round(chapaX - (cxPorLinha * boxX)));
-      const sobraInferiorMm = Number(chapa?.sobra_inferior_mm ?? 0) || Math.max(0, Math.round(chapaY - (cxPorCol * boxY)));
-      const chapasNec = (chapa && chapa.chapas_necessarias != null) ? Number(chapa.chapas_necessarias) : null;
-      const custoTotal = (chapa && chapa.custo_total != null) ? Number(chapa.custo_total) : null;
-      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaX)} × ${Math.round(chapaY)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">${Math.round(planifComp)} × ${Math.round(planifLarg)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinha} colunas × ${cxPorCol} linhas</div></div>${chapasNec ? `<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapas necessárias (pedido)</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.85)">${chapasNec} chapas</div>${custoTotal ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Custo total: R$ ${custoTotal.toFixed(2)}</div>` : ''}</div>` : ''}<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra lateral (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraLateralMm || 0} mm</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:8px">Sobra inferior (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraInferiorMm || 0} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentido === 'A' ? '→ puxada' : '→ boca'}</div></div></div>`;
+      const areaUsada = totalCx * boxX * boxY;
+      const areaSobra = Math.max(0, chapaX * chapaY - areaUsada);
+      const pct = Math.round((areaSobra / (chapaX * chapaY)) * 100);
+      const sobraX = chapaX - usadoX / escala;
+      const sobraY = chapaY - usadoY / escala;
+
+      dadosEl.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div>
+            <div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">
+              ${chapaX} × ${chapaY} mm
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Peça cortada</div>
+            <div style="font-size:14px;font-weight:500;color:#9FE1CB">
+              ${Math.round(boxX)} × ${Math.round(boxY)} mm
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Peças por chapa</div>
+            <div style="font-size:20px;font-weight:700;color:#185FA5">
+              ${totalCx}
+            </div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px">
+              ${cxPorLinha} colunas × ${cxPorCol} linhas
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra lateral</div>
+            <div style="font-size:14px;font-weight:500;color:#EF9F27">
+              ${Math.round(chapaX - cxPorLinha * boxX)} mm
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra inferior</div>
+            <div style="font-size:14px;font-weight:500;color:#EF9F27">
+              ${Math.round(chapaY - cxPorCol * boxY)} mm
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div>
+            <div style="font-size:18px;font-weight:700;
+                 color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">
+              ${pct}%
+            </div>
+          </div>
+          ${chapa.chapas_necessarias ? `
+          <div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4)">
+              Chapas necessárias
+            </div>
+            <div style="font-size:18px;font-weight:700;color:#9FE1CB">
+              ${chapa.chapas_necessarias}
+            </div>
+            ${chapa.custo_total ? `
+            <div style="font-size:13px;color:#EF9F27;margin-top:2px">
+              R$ ${Number(chapa.custo_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>` : ''}
+          </div>` : ''}
+        </div>`;
     }
 
     try{ visual.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(_){}
