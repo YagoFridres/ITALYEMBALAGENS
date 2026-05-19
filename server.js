@@ -10025,17 +10025,14 @@ DATA/HORA: ${hoje}
 DADOS DO ERP EM TEMPO REAL:
 ${JSON.stringify(dadosContexto || {}, null, 2)}
 
-REGRAS ABSOLUTAS:
+REGRAS:
 - Responda SEMPRE em português brasileiro
-- Seja direto, inteligente e útil como o JARVIS do Iron Man
 - Use os dados do ERP acima para responder com precisão
-- Formate valores em R$ (ex: R$ 45.230,00)
+- Formate valores em R$ com separador de milhar
 - Formate datas como DD/MM/AAAA
-- Quando listar OFs: número, cliente, status, data entrega
-- Para análises complexas: mostre os cálculos e o raciocínio
-- Você TEM ACESSO aos dados reais do sistema listados acima
-- Nunca invente dados que não estão no contexto
-- Se não souber algo, diga o que sabe e sugira como encontrar`;
+- Seja direto e objetivo
+- Nunca invente dados que não estão no contexto acima
+- Para listas de OFs: mostre número, cliente, status e data de entrega`;
 
     if (modo === 'turbo' && temClaude && temOpenAI) {
       try {
@@ -12455,7 +12452,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const turboDisponivel = !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY);
     const modoIA = (modoReq === 'turbo' && turboDisponivel) ? 'turbo' : (isComplexo && OPENAI_API_KEY ? 'turbo' : 'normal');
 
-    const temQualquerIA = !!String(process.env.ANTHROPIC_API_KEY || '').trim() || !!OPENAI_API_KEY;
+    const temQualquerIA = !!OPENAI_API_KEY;
 
     if (temQualquerIA && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
       try {

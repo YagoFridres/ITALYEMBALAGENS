@@ -8618,27 +8618,17 @@ function ofDimensoesChange(){
 }
 
 function _sugestaoChapa_verificarMostrarBotao(){
-  const comp = Number(
-    document.getElementById('of-caixa-comp')?.value ||
-    document.getElementById('f-comp')?.value ||
-    document.querySelector('[name="caixa_comprimento"]')?.value ||
-    document.querySelector('[name="comprimento_mm"]')?.value ||
-    0
-  );
-  const larg = Number(
-    document.getElementById('of-caixa-larg')?.value ||
-    document.getElementById('f-larg')?.value ||
-    document.querySelector('[name="caixa_largura"]')?.value ||
-    document.querySelector('[name="largura_mm"]')?.value ||
-    0
-  );
-  const alt = Number(
-    document.getElementById('of-caixa-alt')?.value ||
-    document.getElementById('f-alt')?.value ||
-    document.querySelector('[name="caixa_altura"]')?.value ||
-    document.querySelector('[name="altura_mm"]')?.value ||
-    0
-  );
+  const getVal = (...sels) => {
+    for (const s of sels) {
+      const el = document.querySelector(s);
+      const v = el ? String(el.value || '').trim() : '';
+      if (v) return Number(v) || 0;
+    }
+    return 0;
+  };
+  const comp = getVal('#of-caixa-comp','[name="caixa_comprimento"]','#f-comp','[name="comprimento_mm"]');
+  const larg = getVal('#of-caixa-larg','[name="caixa_largura"]','#f-larg','[name="largura_mm"]');
+  const alt  = getVal('#of-caixa-alt','[name="caixa_altura"]','#f-alt','[name="altura_mm"]');
   const container = document.getElementById('sugestao-chapa-container');
   if (container) {
     container.style.display = (comp > 0 && larg > 0 && alt > 0) ? 'block' : 'none';
@@ -8795,30 +8785,41 @@ function _sugestaoChapa_inicializar(){
   const container = document.getElementById('sugestao-chapa-container');
   const btn = document.getElementById('btn-sugerir-chapa');
   if(!container || !btn) return;
-  if(btn.dataset.bound === '1') return;
-  btn.dataset.bound = '1';
-  const campos = [
-    document.getElementById('of-caixa-comp'),
-    document.getElementById('of-caixa-larg'),
-    document.getElementById('of-caixa-alt'),
-    document.getElementById('f-comp'),
-    document.getElementById('f-larg'),
-    document.getElementById('f-alt'),
-    document.querySelector('[name="caixa_comprimento"]'),
-    document.querySelector('[name="caixa_largura"]'),
-    document.querySelector('[name="caixa_altura"]'),
-    document.querySelector('[name="comprimento_mm"]'),
-    document.querySelector('[name="largura_mm"]'),
-    document.querySelector('[name="altura_mm"]'),
-    document.getElementById('of-onda'),
-    document.getElementById('f-emp'),
-  ].filter(Boolean);
-  campos.forEach(c=>{
-    if(c.dataset && c.dataset.sugChapaBound === '1') return;
-    if(c.dataset) c.dataset.sugChapaBound = '1';
-    c.addEventListener('input', _sugestaoChapa_verificarMostrarBotao);
-    c.addEventListener('change', _sugestaoChapa_verificarMostrarBotao);
+  const seletoresMedidas = [
+    '#of-caixa-comp', '#of-caixa-larg', '#of-caixa-alt',
+    '[name="caixa_comprimento"]', '[name="caixa_largura"]', '[name="caixa_altura"]',
+    '#f-comp', '#f-larg', '#f-alt',
+    '[name="comprimento_mm"]', '[name="largura_mm"]', '[name="altura_mm"]',
+  ];
+  let encontrou = false;
+  const encontrados = [];
+  seletoresMedidas.forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) {
+      encontrou = true;
+      encontrados.push(sel);
+      el.removeEventListener('input', _sugestaoChapa_verificarMostrarBotao);
+      el.removeEventListener('change', _sugestaoChapa_verificarMostrarBotao);
+      el.addEventListener('input', _sugestaoChapa_verificarMostrarBotao);
+      el.addEventListener('change', _sugestaoChapa_verificarMostrarBotao);
+    }
   });
+
+  if(btn.dataset.bound !== '1'){
+    btn.dataset.bound = '1';
+    console.log('[CHAPA DEBUG]', {
+      wrapper: !!document.getElementById('sugestao-chapa-wrapper'),
+      container: !!document.getElementById('sugestao-chapa-container'),
+      btnSugerir: !!document.getElementById('btn-sugerir-chapa'),
+      campoChp: !!document.getElementById('f-chp'),
+      campoComp: !!document.querySelector('[name="caixa_comprimento"]') ||
+                 !!document.getElementById('of-caixa-comp') ||
+                 !!document.getElementById('f-comp'),
+      seletoresMedidasEncontrados: encontrados,
+    });
+    console.log('[CHAPA SUGESTAO] inicializado, campos encontrados:', encontrou);
+  }
+
   _sugestaoChapa_verificarMostrarBotao();
 }
 
