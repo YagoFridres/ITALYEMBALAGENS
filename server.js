@@ -2781,17 +2781,125 @@ async function _autoSugerirMaquinaParaOF(body, created){
     const fluxoBody = _parseFluxoAny(body?.fluxo_maquinas ?? body?.fluxoMaquinas ?? body?.maq ?? body?.maquinas ?? []);
     const fluxoCreated = _parseFluxoAny(created?.fluxo_maquinas ?? created?.maq ?? []);
     if(fluxoBody.length || fluxoCreated.length) return { ok:false, skipped:'ja_tem_maquina' };
-    const sug = await _autoPickSugestaoMaquinaNome({ ...(created||{}), ...(body||{}) });
-    if(!sug || !sug.ok || !sug.nome) return { ok:false, skipped: sug?.skipped || 'sem_melhor' };
+    if(!supabase) return { ok:false, skipped:'supabase_not_configured' };
+
+    const src = { ...(created||{}), ...(body||{}) };
+    const comp = Number(src?.comprimento_mm ?? src?.caixa_comprimento ?? src?.caixaComprimento ?? src?.comprimento ?? 0) || 0;
+    const larg = Number(src?.largura_mm ?? src?.caixa_largura ?? src?.caixaLargura ?? src?.largura ?? 0) || 0;
+    const alt  = Number(src?.altura_mm ?? src?.caixa_altura ?? src?.caixaAltura ?? src?.altura ?? 0) || 0;
+    if(!(comp > 0 && larg > 0 && alt > 0)) return { ok:false, skipped:'sem_medidas' };
+
+    const { data: maquinas, error } = await supabase
+      .from('maquinas')
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true })
+      .limit(50);
+
+    if (error || !Array.isArray(maquinas) || !maquinas.length) {
+      return { ok: false, skipped: 'sem_maquinas' };
+    }
+
+    const MAQUINAS_VALIDAS = [
+      'CORTE VINCO ROTATIVA',
+      'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
+    ];
+
+    const maquinasAtivas = maquinas.filter(m => {
+      const nome = String(m.nome || m.col || '').trim().toUpperCase();
+      if (!m || m.ativo !== true) return false;
+      if (!nome) return false;
+      return MAQUINAS_VALIDAS.some(v => nome.includes(v) || v.includes(nome));
+    });
+
+    if (!maquinasAtivas.length) {
+      return { ok: false, skipped: 'sem_maquinas_ativas' };
+    }
+
+    const folgaPuxada = 20;
+    const folgaBoca = 15;
+    const desenvolvimento = comp + (alt * 2) + folgaPuxada;
+    const boca = larg + (alt * 2) + folgaBoca;
+
+    console.log('[SUGESTAO MAQ]', {
+      comp, larg, alt, desenvolvimento, boca,
+      total_maquinas: maquinasAtivas.length,
+      maquinas: maquinasAtivas.map(m => ({ nome: m.nome, pmin: m.puxada_min, pmax: m.puxada_max, bmax: m.boca_max })),
+    });
+
+    const toNum = (v) => {
+      const n = Number(v);
+      return (!v || n === 0 || !Number.isFinite(n)) ? null : n;
+    };
+
+    const getRealLimits = (m) => {
+      let pMin = toNum(m?.puxada_min);
+      let pMax = toNum(m?.puxada_max);
+      if (pMin != null && pMax != null && pMin > pMax && pMax > 0) {
+        [pMin, pMax] = [pMax, pMin];
+      }
+      const bMax = toNum(m?.boca_max);
+      return { pMin, pMax, bMax };
+    };
+
+    const compat = maquinasAtivas.filter(m => {
+      const { pMin, pMax, bMax } = getRealLimits(m);
+      const devOk = (pMin === null || desenvolvimento >= pMin) && (pMax === null || desenvolvimento <= pMax);
+      const bocaOk = bMax === null || boca <= bMax;
+      return devOk && bocaOk;
+    });
+
+    const maquinasParaFila = compat.length > 0 ? compat : maquinasAtivas;
+    console.log('[SUGESTAO MAQ] compat:', compat.length, 'fallback:', compat.length === 0);
+
+    const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+    const filas = await Promise.all(maquinasParaFila.map(async (m) => {
+      try {
+        const nomeMaq = String(m.nome || m.col || '').trim();
+        const { count, error: eCount } = await supabase
+          .from('ofs')
+          .select('id', { count: 'exact', head: true })
+          .contains('fluxo_maquinas', [nomeMaq])
+          .not('status', 'in', statusNotIn)
+          .is('deleted_at', null);
+        return { ...m, fila: eCount ? 999 : Math.trunc(Number(count || 0)) };
+      } catch(_) {
+        return { ...m, fila: 999 };
+      }
+    }));
+
+    filas.sort((a, b) =>
+      (Number(a.fila || 0) - Number(b.fila || 0)) ||
+      String(a.nome || a.col || '').localeCompare(String(b.nome || b.col || ''))
+    );
+
+    const melhor = filas[0];
+    if (!melhor) return { ok: false, skipped: 'sem_melhor' };
+
+    const nomeMelhor = String(melhor.nome || melhor.col || '').trim();
+    if (!nomeMelhor) return { ok: false, skipped: 'nome_vazio' };
 
     const updPayload = {
-      fluxo_maquinas: [sug.nome],
-      maq: JSON.stringify([sug.nome]),
+      fluxo_maquinas: [nomeMelhor],
+      maq: JSON.stringify([nomeMelhor]),
       maquina_atual_index: 0
     };
-    const upd = await supabase.from('ofs').update(updPayload).eq('id', created?.id).select().maybeSingle();
-    if(upd.error) return { ok:false, skipped:'falha_update', error: upd.error.message };
-    return { ok:true, nome: sug.nome, updated: upd.data || null, fila: sug.fila, taxa_perda: sug.taxa_perda, penalidade: sug.penalidade };
+    const upd = await supabase
+      .from('ofs')
+      .update(updPayload)
+      .eq('id', created?.id)
+      .select()
+      .maybeSingle();
+
+    if (upd?.error) return { ok: false, skipped: 'falha_update', error: upd.error.message };
+
+    return {
+      ok: true,
+      nome: nomeMelhor,
+      updated: upd?.data || null,
+      compat_count: compat.length,
+      fallback_usado: compat.length === 0,
+    };
   }catch(e){
     return { ok:false, skipped:'erro', error: String(e?.message || e) };
   }
@@ -5636,11 +5744,16 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
       .order('ordem', { ascending: true })
       .limit(50);
     if (error) throw error;
-    const maquinas = (Array.isArray(maquinasRaw) ? maquinasRaw : []).filter(m =>
-      m.ativo === true &&
-      String(m.nome || '').trim() !== '' &&
-      String(m.nome || '').trim() !== 'null'
-    );
+    const MAQUINAS_VALIDAS = [
+      'CORTE VINCO ROTATIVA',
+      'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
+    ];
+    const maquinas = (Array.isArray(maquinasRaw) ? maquinasRaw : []).filter(m => {
+      const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
+      if (!m || m.ativo !== true) return false;
+      if (!nome || nome === 'NULL') return false;
+      return MAQUINAS_VALIDAS.some(v => nome.includes(v) || v.includes(nome));
+    });
 
     const folgaPuxada = 20;
     const folgaBoca = 15;
@@ -5654,8 +5767,11 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
     };
 
     const resultado = (Array.isArray(maquinas) ? maquinas : []).map((m) => {
-      const puxMin = toNum(m.puxada_min);
-      const puxMax = toNum(m.puxada_max);
+      let puxMin = toNum(m.puxada_min);
+      let puxMax = toNum(m.puxada_max);
+      if (puxMin != null && puxMax != null && puxMin > puxMax && puxMax > 0) {
+        [puxMin, puxMax] = [puxMax, puxMin];
+      }
       const bocaMax = toNum(m.boca_max);
       const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
       const bocaOk = bocaMax === null || boca <= bocaMax;
@@ -5687,12 +5803,12 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
       return (Number(a.score) || 0) - (Number(b.score) || 0);
     });
 
-    const anyCompat = (resultado || []).some(r => r && r.compativel);
-    if (!anyCompat && Array.isArray(resultado) && resultado.length) {
-      resultado.forEach(r => { r.compativel = true; r.motivo = null; r.score = 0; });
-    }
+    const algumCompat = (resultado || []).some(r => r && r.compativel);
+    const resultadoFinal = algumCompat
+      ? resultado
+      : (resultado || []).map(r => ({ ...r, compativel: true, motivo: null, score: 0, fallback: true }));
 
-    return res.json({ ok: true, data: resultado });
+    return res.json({ ok: true, data: resultadoFinal });
   } catch (e) {
     return err(res, e);
   }

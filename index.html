@@ -9085,21 +9085,32 @@ async function _simdCalcular(){
     if (tabelaW) tabelaW.style.display = 'block';
     const cores = ['#97C459','#9FE1CB','#9FE1CB','#EF9F27','#EF9F27','#EF9F27','#E24B4A','#E24B4A','#E24B4A','#E24B4A'];
     if (linhas) {
+      try{
+        const visual = document.getElementById('simd-visual');
+        if (visual) visual.style.display = 'none';
+      }catch(_){}
+      const dadosJsonBase = JSON.stringify(data.dados_caixa || {}).replace(/"/g, '&quot;');
       linhas.innerHTML = data.chapas.map((c, i) => {
+        const chapaJson = JSON.stringify(c || {}).replace(/"/g, '&quot;');
         const melhor = i === 0;
-        const cor = cores[i] || '#E24B4A';
+        const cor = i === 0 ? '#97C459' : (i <= 2 ? '#9FE1CB' : (i <= 5 ? '#EF9F27' : '#E24B4A'));
         const bg  = melhor ? 'rgba(39,80,10,0.15)' : 'transparent';
         const nome = c.nome || c.tamanho;
         const fornecedor = c.fornecedor || '—';
         const valorUnit = Number(c.valor_unitario || 0) || 0;
         return `
-          <div style="display:grid;grid-template-columns:60px 1fr 120px 80px 90px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:${bg};border-bottom:0.5px solid rgba(255,255,255,0.05)">
+          <div onclick="_simdGerarVisual(JSON.parse(this.dataset.chapa), JSON.parse(this.dataset.dados))"
+               data-chapa="${chapaJson}"
+               data-dados="${dadosJsonBase}"
+               style="display:grid;grid-template-columns:60px 1fr 120px 80px 90px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:${bg};cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.05);transition:background 0.1s"
+               onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+               onmouseout="this.style.background='${bg}'">
             <div style="text-align:center">
               <span style="font-size:18px;font-weight:700;color:${cor};line-height:1">${c.desperdicio_real_pct}%</span>
             </div>
             <div>
               <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.85)">${melhor ? '✓ ' : ''}${escH(nome || '—')}</div>
-              ${melhor ? '<div style="font-size:11px;color:#97C459;margin-top:2px">Melhor opção</div>' : ''}
+              ${melhor ? '<div style="font-size:11px;color:#97C459;margin-top:2px">Melhor opção · clique para visualizar</div>' : '<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:2px">clique para visualizar</div>'}
             </div>
             <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(fornecedor)}</div>
             <div style="font-size:12px;color:rgba(255,255,255,0.6);text-align:center">${escH(c.tamanho || '—')}</div>
@@ -9110,6 +9121,11 @@ async function _simdCalcular(){
             </div>
           </div>`;
       }).join('');
+      try{
+        if (Array.isArray(data.chapas) && data.chapas.length > 0) {
+          setTimeout(() => _simdGerarVisual(data.chapas[0], data.dados_caixa || {}), 100);
+        }
+      }catch(_){}
     }
   }catch(e){
     try{
@@ -9122,6 +9138,90 @@ async function _simdCalcular(){
     }catch(_){}
     try{ console.error('[SIMD]', e); }catch(_){}
   }
+}
+
+function _simdGerarVisual(chapa, dadosCaixa){
+  try{
+    const visual = document.getElementById('simd-visual');
+    const titulo = document.getElementById('simd-visual-titulo');
+    const svgCont = document.getElementById('simd-svg-container');
+    const dadosEl = document.getElementById('simd-visual-dados');
+    if (!visual || !svgCont) return;
+    visual.style.display = 'block';
+    if (titulo) titulo.textContent = (String(chapa?.nome || chapa?.tamanho || '').trim() || 'Chapa') + ' — ' + String(chapa?.desperdicio_real_pct ?? '—') + '% desperdício';
+
+    const parseDims = (c) => {
+      const d1 = Number(c?.dim1 ?? c?.d1 ?? 0) || 0;
+      const d2 = Number(c?.dim2 ?? c?.d2 ?? 0) || 0;
+      if (d1 > 0 && d2 > 0) return { d1, d2 };
+      const t = String(c?.tamanho || c?.nome || '').trim();
+      const m = t.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i);
+      if (m) {
+        const a = Number(String(m[1]).replace(',', '.')) || 0;
+        const b = Number(String(m[2]).replace(',', '.')) || 0;
+        if (a > 0 && b > 0) return { d1: a, d2: b };
+      }
+      return { d1: 0, d2: 0 };
+    };
+
+    const dims = parseDims(chapa || {});
+    const chapaD1 = Number(dims.d1) || 0;
+    const chapaD2 = Number(dims.d2) || 0;
+    const devComp = Number(dadosCaixa?.desenvolvimento_comprimento ?? dadosCaixa?.desenvolvimentoComprimento ?? 0) || 0;
+    const devLarg = Number(dadosCaixa?.desenvolvimento_largura ?? dadosCaixa?.desenvolvimentoLargura ?? 0) || 0;
+    if (!(chapaD1 > 0 && chapaD2 > 0 && devComp > 0 && devLarg > 0)) {
+      svgCont.innerHTML = '<div style="padding:14px;font-size:12px;color:rgba(255,255,255,0.5)">Dados insuficientes para gerar a visualização.</div>';
+      if (dadosEl) dadosEl.innerHTML = '';
+      return;
+    }
+
+    const sentidoA = chapaD1 >= devComp && chapaD2 >= devLarg;
+    const cxW = sentidoA ? devComp : devLarg;
+    const cxH = sentidoA ? devLarg : devComp;
+    const cxPorLinhaH = Math.max(0, Math.floor(chapaD1 / cxW));
+    const cxPorLinhaV = Math.max(0, Math.floor(chapaD2 / cxH));
+
+    const escala = Math.min(480 / chapaD1, 320 / chapaD2);
+    const svgW = Math.round(chapaD1 * escala);
+    const svgH = Math.round(chapaD2 * escala);
+    const boxW = Math.round(cxW * escala);
+    const boxH = Math.round(cxH * escala);
+
+    let rects = '';
+    for (let row = 0; row < cxPorLinhaV; row++) {
+      for (let col = 0; col < cxPorLinhaH; col++) {
+        const x = Math.round(col * boxW);
+        const y = Math.round(row * boxH);
+        const isFirst = row === 0 && col === 0;
+        rects += `<rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" fill="${isFirst ? '#185FA5' : 'rgba(24,95,165,0.55)'}" stroke="rgba(0,0,0,0.4)" stroke-width="0.5" rx="1"/>`;
+        rects += `<text x="${x + boxW/2}" y="${y + boxH/2}" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.7)" font-size="${Math.max(7, Math.round(boxW/8))}">${(isFirst ? (Math.round(cxW) + '×' + Math.round(cxH)) : '')}</text>`;
+      }
+    }
+
+    const usadoW = cxPorLinhaH * boxW;
+    const usadoH = cxPorLinhaV * boxH;
+    let sobras = '';
+    if (usadoW < svgW) {
+      sobras += `<rect x="${usadoW}" y="0" width="${svgW - usadoW}" height="${usadoH}" fill="rgba(239,159,39,0.15)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
+    }
+    if (usadoH < svgH) {
+      sobras += `<rect x="0" y="${usadoH}" width="${svgW}" height="${svgH - usadoH}" fill="rgba(239,159,39,0.15)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
+    }
+
+    const svg = `<svg width="${svgW}" height="${svgH + 20}" viewBox="0 0 ${svgW} ${svgH + 20}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${svgW}" height="${svgH}" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="2"/>${sobras}${rects}<text x="${svgW/2}" y="${svgH + 14}" text-anchor="middle" style="fill:rgba(255,255,255,0.5);font-size:10px">${Math.round(chapaD1)} mm</text><text x="4" y="${svgH - 4}" style="fill:rgba(255,255,255,0.5);font-size:9px">${sentidoA ? '→ comprimento' : '→ largura'}</text></svg>`;
+    svgCont.innerHTML = svg;
+
+    if (dadosEl) {
+      const totalCx = cxPorLinhaH * cxPorLinhaV;
+      const areaChapa = chapaD1 * chapaD2;
+      const areaUsada = totalCx * cxW * cxH;
+      const areaSobra = Math.max(0, areaChapa - areaUsada);
+      const pct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
+      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaD1)} × ${Math.round(chapaD2)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação da caixa</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">${Math.round(cxW)} × ${Math.round(cxH)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinhaH} colunas × ${cxPorLinhaV} linhas</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentidoA ? 'Comprimento da caixa ao longo da chapa →' : 'Largura da caixa ao longo da chapa →'}</div></div></div>`;
+    }
+
+    try{ visual.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(_){}
+  }catch(e){}
 }
 
 function _simdAtualizarLargura(){
@@ -35280,6 +35380,31 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <div style="text-align:right">Economia</div>
           </div>
           <div id="simd-linhas"></div>
+        </div>
+        <div id="simd-visual" style="display:none;margin-top:20px">
+          <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.7);margin-bottom:12px">
+            Simulação visual de corte — <span id="simd-visual-titulo" style="color:#9FE1CB"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+            <div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px">Vista de cima — como a chapa é cortada</div>
+              <div id="simd-svg-container" style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;overflow:auto"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px">Detalhes do corte</div>
+              <div id="simd-visual-dados" style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px"></div>
+              <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:16px;height:16px;border-radius:3px;background:#185FA5;flex-shrink:0"></div>
+                  <span style="font-size:12px;color:rgba(255,255,255,0.6)">Planificação da caixa (área útil)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:16px;height:16px;border-radius:3px;background:rgba(239,159,39,0.4);border:1px dashed #EF9F27;flex-shrink:0"></div>
+                  <span style="font-size:12px;color:rgba(255,255,255,0.6)">Área desperdiçada (sobra)</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="simd-loading" style="display:none;padding:30px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4)">Calculando...</div>
