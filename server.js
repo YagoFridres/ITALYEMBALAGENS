@@ -11831,6 +11831,12 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
         urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim()).filter(Boolean)])].slice(0, 5);
       } catch (_) { urls = iu ? [iu] : []; }
+      urls = (Array.isArray(urls) ? urls : []).map((u)=>{
+        const s = String(u || '').trim();
+        if(!s) return '';
+        if(s.startsWith('http') || s.startsWith('data:') || s.startsWith('/')) return s;
+        return '/' + s;
+      }).filter(Boolean).slice(0, 5);
 
       const numOf  = String(row.of || row.numero || '—');
       const desc   = String(row.descricao || row.prodDesc || '').trim() || '—';

@@ -41661,7 +41661,8 @@ window.atualizarChapas = async function(){
       const txtHtml = htmlRaw ? `<div>${htmlRaw}</div>` : `<div>${esc(m.text || '')}</div>`;
       const imgs = Array.isArray(m.images) ? m.images.map((u)=>String(u||'').trim()).filter(Boolean).slice(0, 3) : [];
       const imgsHtml = imgs.length ? imgs.map((u)=>{
-        const su = escAttr(u);
+        const raw = String(u || '').trim();
+        const su = escAttr((raw.startsWith('http') || raw.startsWith('data:') || raw.startsWith('/')) ? raw : ('/' + raw));
         return `<div class="assist-img-wrap">
           <img class="assist-img" src="${su}" alt="Imagem OF">
           <div class="assist-img-actions">
@@ -42766,6 +42767,12 @@ window.atualizarChapas = async function(){
     const chips = mobileState.jarvisSuggestions || [];
     const renderMensagemJarvis = (msg)=>{
       const txt = String(msg?.text ?? msg?.texto ?? msg?.resposta ?? '').trim();
+      const normUrl = (u)=>{
+        const s = String(u || '').trim();
+        if(!s) return '';
+        if(s.startsWith('http') || s.startsWith('data:') || s.startsWith('/')) return s;
+        return '/' + s;
+      };
       const origem = String(msg?.origem||'').toLowerCase();
       const turbo = (String(msg?.modo||'').toLowerCase() === 'turbo') || (origem === 'turbo') || (String(msg?.badge||'') === '⚡ Turbo');
       const badge = turbo
@@ -42781,11 +42788,12 @@ window.atualizarChapas = async function(){
           if(Array.isArray(arr) && arr.length > 0) imgUrl = String(arr[0] || '').trim() || null;
         }catch(_){}
       }
+      imgUrl = imgUrl ? normUrl(imgUrl) : null;
       const gal = (extras && extras.tipo === 'galeria_imagens' && Array.isArray(extras.imagens)) ? extras.imagens : [];
       const galHtml = gal.length ? `
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px">
           ${gal.map((it)=>{
-            const u = String(it?.imgUrl || it?.url || '').trim();
+            const u = normUrl(String(it?.imgUrl || it?.url || '').trim());
             const n = String(it?.numero || it?.of || '').trim();
             const d = String(it?.descricao || '').trim();
             if(!u) return '';
