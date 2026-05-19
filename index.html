@@ -3236,6 +3236,7 @@ function openNavGroupForPage(pageId){
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', 'pedidos-recorrentes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', 'sel-chapas':'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
+    simd:'ng-papelao',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
   const gId=map[pageId];
@@ -3408,6 +3409,17 @@ function _goBase(id){
     if(_apiConectado && CURRENT_USER) carregarCliches().then(()=>renderCliches()).catch(()=>renderCliches());
     else renderCliches();
   }
+}
+
+function papelaoAbrirComprasChapas(){
+  try{
+    window._comprasTipoFiltro = 'chapas';
+  }catch(e){}
+  try{
+    go('compras');
+    closeNavGroupsExcept('ng-papelao');
+    if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();
+  }catch(e){}
 }
 
 function updateBadges(){
@@ -6351,44 +6363,143 @@ function cardOFMaquina(of, maquinaAtual){
       document.head.appendChild(st);
     }
   }catch(_){}
-  try{
-    const atual = String((typeof getMaquinaAtual === 'function' ? (getMaquinaAtual(of) || '') : '') || '').trim() || (typeof ofFluxoGetMaquinaAtualAtiva === 'function' ? ofFluxoGetMaquinaAtualAtiva(of) : '');
-    const maqCtx = String(maquinaAtual||atual||'').trim();
-    const getNomeCliente = (o)=>{
-      try{
-        const cliId = String(o?.cliId || o?.cli_id || o?.cliente_id || '').trim();
-        if (typeof getCli === 'function' && cliId){
-          const c = getCli(cliId);
-          if(c && (c.nome || c.razao_social)) return String(c.nome || c.razao_social || '');
-        }
-        const arr = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
-        if (!Array.isArray(arr) || !arr.length) return '';
-        if (!cliId) return '';
-        const c = arr.find(x => String(x.id || '').trim() === cliId);
-        return (c && (c.nome || c.razao_social)) ? (c.nome || c.razao_social) : '';
-      }catch(e){ return ''; }
-    };
-    const nomeCliente = getNomeCliente(of) || of?.cliNome || of?.cliente || of?.cliente_nome || of?.cli_nome || of?.clinome || '—';
-    const ofSelNum = String(of?.of || of?.numero || of?.of_num || of?.numero_of || '').trim();
-    const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, maqCtx);
-    const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
-    const tipoTR = String(of?.tipo_caixa || '').trim();
-    const prodHora = maqObj ? trVelocidadePreferidaSync(String(maqObj?.id || maqObj?.maquina_id || ''), tipoTR, prodHoraBase) : prodHoraBase;
-    const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
-    const ofView = Object.assign({}, of, {
-      cliNome: nomeCliente,
-      setup_medio: setupMedio ? Math.round(setupMedio) : null,
-      producao: prodHora ? Math.round(prodHora) : null,
-      of: of?.of ?? of?.numero ?? ofSelNum,
-      numero: of?.numero ?? of?.of ?? ofSelNum,
-    });
-    const isMobile = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
-    return _renderOfCard(ofView, maqCtx, isMobile);
-  }catch(e){
-    try{ console.error('[cardOFMaquina]', e); }catch(_){}
-    const num = of?.numero || of?.of || '';
-    return '<div style="padding:10px;color:var(--red);background:var(--s3);border-radius:8px;margin-bottom:6px">Erro ao renderizar OF ' + escH(String(num)) + '</div>';
+  const maqsBase = ofmaqMaquinasValidas();
+  const allowed = new Set(maqsBase.map(_normMaqNome));
+  const fluxo = (ofFluxoGetNamesAtivas(of) || []).map(maqAtivaFromNome).filter(Boolean).filter(n=>allowed.has(_normMaqNome(n)));
+  const atual = String(getMaquinaAtual(of) || '').trim() || (typeof ofFluxoGetMaquinaAtualAtiva === 'function' ? ofFluxoGetMaquinaAtualAtiva(of) : '');
+  function getNomeCliente(of){
+    const cliId = String(of.cliId || of.cli_id || of.cliente_id || '').trim();
+    if (typeof getCli === 'function' && cliId){
+      const c = getCli(cliId);
+      if(c && (c.nome || c.razao_social)) return String(c.nome || c.razao_social || '');
+    }
+    const arr = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
+    if (!Array.isArray(arr) || !arr.length) return '';
+    const id = cliId;
+    if (!id) return '';
+    const c = arr.find(x => String(x.id || '').trim() === id);
+    return (c && (c.nome || c.razao_social)) ? (c.nome || c.razao_social) : '';
   }
+  const nomeCliente = getNomeCliente(of) || of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '—';
+  const produto = of.prodDesc || of.prod || of.produto || of.descricao || '—';
+  const pri = ofmaqPrioridadeVisual(of);
+  const priBorder = pri?.cor ? `border-left:6px solid ${pri.cor};` : '';
+  const priBadge = pri?.badge ? `<div style="background:${pri.cor};color:#fff;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;display:inline-block">${escH(pri.badge)}</div>` : '';
+  const hoje = new Date().toISOString().slice(0,10);
+  const entStr = (of.ent || of.data_entrega || '').slice(0,10);
+  const atrasada = entStr && entStr < hoje && !_assistIsConcluida(of);
+  const urgente = !!(of && (of.urg===true||of.urg===1||of.urg==='1'||of.urgente===true||of.urgente===1||of.urgente==='1'));
+  let badgeHtml = '';
+  if (urgente && atrasada) {
+    badgeHtml = '<span style="background:#7F1111;color:#F09595;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">URGENTE ATRASADA</span>';
+  } else if (urgente) {
+    badgeHtml = '<span style="background:#412402;color:#EF9F27;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">URGENTE</span>';
+  } else if (atrasada) {
+    badgeHtml = '<span style="background:#500B0B;color:#F09595;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">ATRASADA</span>';
+  }
+  const borderColor = (urgente && atrasada) ? '#E24B4A' : urgente ? '#EF9F27' : atrasada ? '#F09595' : 'transparent';
+  const leftBorder = borderColor !== 'transparent' ? `border-left:6px solid ${borderColor};` : priBorder;
+  const selDia = String(window._ofmaqSelectedDate || '').slice(0,10);
+  const isSelDia = !!(selDia && entStr && entStr === selDia);
+  const prodStr = String(of.dia || of.data_producao || of.dataProducao || '').slice(0,10);
+  const statusRaw = String(of.status || 'Em aberto').trim();
+  const statusBadge = (()=>{
+    let s = String(statusRaw || '').toLowerCase();
+    try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+    s = s.trim();
+    let bg = '#1a56db';
+    let lbl = statusRaw || 'Em aberto';
+    if(s.includes('produc')) { bg = '#f59e0b'; lbl = 'Em produção'; }
+    else if(s.includes('conclu') || s === 'pedido pronto') { bg = '#16a34a'; lbl = 'Concluída'; }
+    else if(s.includes('cancel')) { bg = '#111827'; lbl = 'Cancelada'; }
+    else if(s.includes('paus')) { bg = '#6b7280'; lbl = 'Pausada'; }
+    else { bg = '#1a56db'; lbl = 'Em aberto'; }
+    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:900;font-size:.78rem;background:${bg};color:#fff;white-space:nowrap">${escH(lbl)}</span>`;
+  })();
+  const urlImagem = of.imagem_url || (Array.isArray(of.imgs)&&of.imgs.length?of.imgs[0]:'') || of.img || of.imagem || '';
+  const temImagem = !!urlImagem;
+  const numeroBase = (of.of ?? of.numero ?? of.of_num ?? of.numero_of ?? '');
+  const numeroDigits = String(numeroBase || '').replace(/\D/g,'');
+  const numeroLabel = numeroDigits ? ('Nº ' + numeroDigits.padStart(3,'0')) : 'Nº —';
+  const ofSelNum = String(of.of || of.numero || of.of_num || of.numero_of || '').trim();
+  const maqCtx = String(maquinaAtual||atual||'').trim();
+  const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, maqCtx);
+  const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const tipoTR = String(of?.tipo_caixa || '').trim();
+  const prodHora = maqObj ? trVelocidadePreferidaSync(String(maqObj?.id || maqObj?.maquina_id || ''), tipoTR, prodHoraBase) : prodHoraBase;
+  const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+  const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
+  const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
+  const tempoInfo = tempoMin != null ? (`⏱ ${tempoMin} min`) : '⏱ —';
+  const velInfo = prodHora > 0 ? (`⚡ ${Math.round(prodHora)} cx/h`) : '⚡ — cx/h';
+
+  const thumb = temImagem
+    ? `<div onclick="event.stopPropagation();verImagemOF('${escAttr(urlImagem)}')" title="Ver imagem da OF" style="width:60px;height:60px;border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0">
+        <img src="${escH(urlImagem)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='&lt;span style=&quot;font-size:22px;display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.35)&quot;&gt;📦&lt;/span&gt;'">
+      </div>`
+    : `<div title="Sem imagem" style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35);font-size:22px;flex-shrink:0">📦</div>`;
+
+  const atualCanon = atual ? maqAtivaFromNome(atual) : '';
+  const progressoHtml = (fluxo||[]).map((m)=>{
+    const s=escH(String(m||''));
+    if(atualCanon && _normMaqNome(m)===_normMaqNome(atualCanon)) return '<span style="background:#4A90D9;color:#fff;padding:4px 10px;border-radius:10px;font-weight:900;font-size:.85rem">'+s+'</span>';
+    return '<span style="color:#666;font-size:.8rem;font-weight:700;padding:2px 6px;border-radius:8px;background:transparent;border:1px solid transparent">'+s+'</span>';
+  }).join(' <span style="color:#555">→</span> ');
+
+  const isMobile = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
+  const moveBtns = `<div style="display:flex;gap:8px;margin-left:auto">
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',-1)" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;font-size:16px;cursor:pointer">▲</button>
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',1)" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;font-size:16px;cursor:pointer">▼</button>
+    </div>`;
+  const acoesId = 'acoes-' + String(of.id||'').replace(/[^a-zA-Z0-9_-]/g,'');
+  const dropdownActions = (!isMobile && window.innerWidth > 768)
+    ? (`<div class="of-acoes-wrap" style="position:relative;display:inline-block;margin-left:auto">
+        <button onclick="event.stopPropagation();_toggleAcoesOf('${escAttr(acoesId)}')" style="padding:10px 14px;min-height:44px;background:var(--s2);color:var(--text);border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-weight:900;cursor:pointer;white-space:nowrap">Ações ▾</button>
+        <div id="${escAttr(acoesId)}" style="display:none;position:absolute;right:0;top:100%;margin-top:6px;background:#1a1f2e;border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;min-width:200px;z-index:999;overflow:hidden">
+          <div onclick="event.stopPropagation();try{document.querySelectorAll('[id^=&quot;acoes-&quot;]').forEach(d=>d.style.display='none')}catch(e){};try{ofmaqAbrirSemPapelaoModal('${escAttr(of.id)}','${escAttr(numeroDigits)}')}catch(e){}" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.82)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">📦 Sem Papelão</div>
+          <div onclick="event.stopPropagation();try{document.querySelectorAll('[id^=&quot;acoes-&quot;]').forEach(d=>d.style.display='none')}catch(e){};try{abrirModalAlterarEntrega('${escAttr(of.id)}')}catch(e){}" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.82)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">📅 Alterar Entrega</div>
+          <div onclick="event.stopPropagation();try{document.querySelectorAll('[id^=&quot;acoes-&quot;]').forEach(d=>d.style.display='none')}catch(e){};try{abrirModalMoverOFMaq('${escAttr(of.id)}','${escAttr(maqCtx)}')}catch(e){}" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.82)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">↔ Mover</div>
+          ${temImagem?`<div onclick="event.stopPropagation();try{document.querySelectorAll('[id^=&quot;acoes-&quot;]').forEach(d=>d.style.display='none')}catch(e){};try{imprimirImagemOF('${escAttr(String(of.id||ofSelNum||''))}')}catch(e){}" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.82)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">🖼 Imprimir Imagem</div>`:''}
+          <div onclick="event.stopPropagation();try{document.querySelectorAll('[id^=&quot;acoes-&quot;]').forEach(d=>d.style.display='none')}catch(e){};try{concluirEtapaOF('${escAttr(of.id)}','${escAttr(maqCtx)}')}catch(e){}" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:#9FE1CB" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✓ Concluir</div>
+        </div>
+      </div>`)
+    : null;
+
+  return '<div data-of-id="'+escAttr(of.id||'')+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+leftBorder+'border-radius:10px;padding:16px;margin-bottom:10px">'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
+    +priBadge
+    +(badgeHtml?('<div>'+badgeHtml+'</div>'):'')
+    +statusBadge
+    +moveBtns
+    +(dropdownActions || '')
+    +'</div>'
+    +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
+    +thumb
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2">'+escH(produto)+'</div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<span style="font-size:13px;color:#4A90D9"><b>'+escH(numeroLabel)+'</b></span>'
+    +'<span style="font-size:13px"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
+    +'<span style="font-size:13px"><b>Qtd:</b> '+fmtN(of.qtd||of.quantidade||0)+'</span>'
+    +'<span style="font-size:13px;color:var(--text2);font-family:var(--mono)">'+escH(tempoInfo)+' | '+escH(velInfo)+'</span>'
+    +'</div>'
+    +'<div style="display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap">'
+    +'<span style="font-size:13px">🏭 <b>Produção:</b> '+fmtD(prodStr)+'</span>'
+    +'<span style="font-size:13px;color:'+(isSelDia?'var(--accent)':(atrasada?'#f44336':entStr===hoje?'#ff9800':'#4CAF50'))+'">🚚 <b>Entrega:</b> '+fmtD(entStr)+(isSelDia?' 📅':'')+'</span>'
+    +'</div>'
+    +'</div>'
+    +'</div>'
+    +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
+    +(dropdownActions != null
+      ? '</div>'
+      : ('<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
+        +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
+        +'<button onclick="event.stopPropagation();abrirModalMoverOFMaq(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:900">↔ Mover</button>'
+        +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
+        +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
+        +'</div></div>'))
+  ;
 }
 
 async function ofmaqMoverPosicao(maquina, ofId, dir){
@@ -8735,12 +8846,6 @@ function ofDimensoesGet(){
 }
 
 function ofDimensoesChange(){
-  try{
-    const dims = ofDimensoesGet();
-    console.log('[SUGESTAO] comprimento:', dims.comprimento);
-    console.log('[SUGESTAO] MAQUINAS disponíveis:', (Array.isArray(MAQUINAS) ? MAQUINAS.length : 0));
-  }catch(e){}
-  try{ _sugestaoChapa_verificarMostrarBotao(); }catch(e){}
   try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
   try{ ofAtualizarTempoEstimado(); }catch(e){}
 }
@@ -8910,45 +9015,107 @@ function _sugestaoChapa_selecionar(id, nome, tamanho){
 }
 
 function _sugestaoChapa_inicializar(){
-  const container = document.getElementById('sugestao-chapa-container');
-  const btn = document.getElementById('btn-sugerir-chapa');
-  if(!container || !btn) return;
-  const seletoresMedidas = [
-    '#of-caixa-comp', '#of-caixa-larg', '#of-caixa-alt',
-    '[name="caixa_comprimento"]', '[name="caixa_largura"]', '[name="caixa_altura"]',
-    '#f-comp', '#f-larg', '#f-alt',
-    '[name="comprimento_mm"]', '[name="largura_mm"]', '[name="altura_mm"]',
-  ];
-  let encontrou = false;
-  const encontrados = [];
-  seletoresMedidas.forEach(sel => {
-    const el = document.querySelector(sel);
-    if (el) {
-      encontrou = true;
-      encontrados.push(sel);
-      el.removeEventListener('input', _sugestaoChapa_verificarMostrarBotao);
-      el.removeEventListener('change', _sugestaoChapa_verificarMostrarBotao);
-      el.addEventListener('input', _sugestaoChapa_verificarMostrarBotao);
-      el.addEventListener('change', _sugestaoChapa_verificarMostrarBotao);
+  return;
+}
+
+async function _simdCalcular(){
+  try{
+    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
+    const larg = Number(document.getElementById('simd-larg')?.value) || 0;
+    const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
+    const onda = String(document.getElementById('simd-onda')?.value || '').trim();
+    if (!(comp > 0 && larg > 0 && alt > 0)) {
+      alert('Preencha comprimento, largura e altura.');
+      return;
     }
-  });
-
-  if(btn.dataset.bound !== '1'){
-    btn.dataset.bound = '1';
-    console.log('[CHAPA DEBUG]', {
-      wrapper: !!document.getElementById('sugestao-chapa-wrapper'),
-      container: !!document.getElementById('sugestao-chapa-container'),
-      btnSugerir: !!document.getElementById('btn-sugerir-chapa'),
-      campoChp: !!document.getElementById('f-chp'),
-      campoComp: !!document.querySelector('[name="caixa_comprimento"]') ||
-                 !!document.getElementById('of-caixa-comp') ||
-                 !!document.getElementById('f-comp'),
-      seletoresMedidasEncontrados: encontrados,
+    const loading   = document.getElementById('simd-loading');
+    const resultado = document.getElementById('simd-resultado');
+    const aviso     = document.getElementById('simd-aviso');
+    const linhas    = document.getElementById('simd-linhas');
+    const infoP     = document.getElementById('simd-info-planif');
+    const tabelaW   = document.getElementById('simd-tabela-wrap');
+    if (loading)   loading.style.display   = 'block';
+    if (resultado) resultado.style.display = 'none';
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+    const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/chapas_estoque/sugerir_menor_desperdicio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        comprimento_mm: comp,
+        largura_mm: larg,
+        altura_mm: alt,
+        onda: onda || null,
+        emp_id: empId || null,
+      }),
     });
-    console.log('[CHAPA SUGESTAO] inicializado, campos encontrados:', encontrou);
+    const data = await r.json().catch(()=>null);
+    if (loading)   loading.style.display   = 'none';
+    if (resultado) resultado.style.display = 'block';
+    if (!data || data.ok !== true) {
+      if (aviso) { aviso.style.display = 'block'; aviso.textContent = String(data?.error || 'Erro ao calcular.'); }
+      if (tabelaW) tabelaW.style.display = 'none';
+      return;
+    }
+    if (infoP && data.dados_caixa) {
+      const dc = data.dados_caixa;
+      infoP.innerHTML =
+        'Planificação necessária: <strong style="color:rgba(255,255,255,0.8)">' +
+        dc.desenvolvimento_comprimento + ' × ' + dc.desenvolvimento_largura +
+        ' mm</strong>' +
+        ' — Área da caixa: <strong style="color:rgba(255,255,255,0.8)">' +
+        (Number(dc.area_caixa_mm2 || 0) / 1000000).toFixed(4) + ' m²</strong>';
+    }
+    if (!Array.isArray(data.chapas) || !data.chapas.length) {
+      if (aviso)   aviso.style.display   = 'block';
+      if (tabelaW) tabelaW.style.display = 'none';
+      return;
+    }
+    if (aviso)   aviso.style.display   = 'none';
+    if (tabelaW) tabelaW.style.display = 'block';
+    const cores = ['#97C459','#9FE1CB','#9FE1CB','#EF9F27','#EF9F27','#EF9F27','#E24B4A','#E24B4A','#E24B4A','#E24B4A'];
+    if (linhas) {
+      linhas.innerHTML = data.chapas.map((c, i) => {
+        const melhor = i === 0;
+        const cor = cores[i] || '#E24B4A';
+        const bg  = melhor ? 'rgba(39,80,10,0.15)' : 'transparent';
+        const nome = c.nome || c.tamanho;
+        const fornecedor = c.fornecedor || '—';
+        const valorUnit = Number(c.valor_unitario || 0) || 0;
+        return `
+          <div style="display:grid;grid-template-columns:60px 1fr 120px 80px 90px 90px 100px;padding:11px 16px;gap:8px;align-items:center;background:${bg};border-bottom:0.5px solid rgba(255,255,255,0.05)">
+            <div style="text-align:center">
+              <span style="font-size:18px;font-weight:700;color:${cor};line-height:1">${c.desperdicio_real_pct}%</span>
+            </div>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.85)">${melhor ? '✓ ' : ''}${escH(nome || '—')}</div>
+              ${melhor ? '<div style="font-size:11px;color:#97C459;margin-top:2px">Melhor opção</div>' : ''}
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(fornecedor)}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.6);text-align:center">${escH(c.tamanho || '—')}</div>
+            <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);text-align:center">${escH(String(c.caixas_por_chapa || 0))} cx</div>
+            <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.8);text-align:right">${escH(String(c.quantidade || 0))}${valorUnit > 0 ? '<div style=\"font-size:11px;color:rgba(255,255,255,0.4)\">R$ ' + valorUnit.toFixed(2) + '</div>' : ''}</div>
+            <div style="text-align:right">
+              ${Number(c.economia_vs_pior || 0) > 0 ? '<span style=\"font-size:12px;font-weight:600;color:#97C459\">' + escH(String(c.economia_vs_pior)) + '% menos</span>' : '<span style=\"font-size:11px;color:rgba(255,255,255,0.25)\">referência</span>'}
+            </div>
+          </div>`;
+      }).join('');
+    }
+  }catch(e){
+    try{
+      const loading   = document.getElementById('simd-loading');
+      const resultado = document.getElementById('simd-resultado');
+      const linhas    = document.getElementById('simd-linhas');
+      if (loading)   loading.style.display   = 'none';
+      if (resultado) resultado.style.display = 'block';
+      if (linhas) linhas.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#F09595">Erro ao calcular. Tente novamente.</div>';
+    }catch(_){}
+    try{ console.error('[SIMD]', e); }catch(_){}
   }
-
-  _sugestaoChapa_verificarMostrarBotao();
 }
 
 function ofGetTipoCaixaObj(){
@@ -9121,7 +9288,7 @@ async function ofAtualizarSugestaoMaquinas(){
     }
   }catch(e){}
   if(!(comp > 0 && larg > 0 && alt > 0)){
-    box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento, largura e altura para ver a sugestão.</span>`;
+    box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento, largura e altura para calcular a sugestão.</span>`;
     return;
   }
   const key = `${Math.round(comp)}x${Math.round(larg)}x${Math.round(alt)}:${onda||'-'}`;
@@ -9629,8 +9796,6 @@ async function abrirModalOF(id){
   const numTitle = oEdit ? (oEdit.of || oEdit.numero || '') : '';
   document.querySelector('#modal-of h2').textContent=oEdit?('Editando OF #'+numTitle):'Nova Ordem de Fabricação';
   abrir('modal-of');
-  try{ _sugestaoChapa_inicializar(); }catch(e){}
-  try{ _sugestaoChapa_verificarMostrarBotao(); }catch(e){}
   try{ ofUpdateProgress(); }catch(e){}
   try{ inicializarAccordionOF(); }catch(e){}
   setTimeout(()=>{ try{ ofModoProgChange(); }catch(e){} },50);
@@ -31286,9 +31451,21 @@ function renderCompras(){
   setTimeout(() => { try{ preencherEmpresasCompra(); }catch(e){} }, 150);
   const fil=(document.getElementById('cmp-fil-st')||{}).value||'';
   const empFil=(document.getElementById('cmp-fil-emp')||{}).value||EMP_FILTRO||'';
+  const tipoFiltro = String(window._comprasTipoFiltro || '').trim().toLowerCase();
   let lista=[...COMPRAS].sort((a,b)=>b.id.localeCompare(a.id));
   if(fil)lista=lista.filter(c=>c.status===fil);
   if(empFil)lista=lista.filter(c=>(c.empId||'')===empFil);
+  if(tipoFiltro === 'chapas'){
+    lista = lista.filter((c)=>{
+      const itens = Array.isArray(c?.itens) ? c.itens : [];
+      return itens.some((it)=>{
+        const comp = Number(it?.comp || 0) || 0;
+        const larg = Number(it?.larg || 0) || 0;
+        const nom = String(it?.nom || it?.nome || '').trim();
+        return (comp > 0 && larg > 0) || !!nom;
+      });
+    });
+  }
   renderEmpBar();
   const stCor={'Solicitada':'var(--accent)','Comprada':'var(--yellow)','Recebida parcialmente':'var(--orange)','Recebida':'var(--green)','Cancelada':'var(--red)'};
   const stIco={'Solicitada':'📝','Comprada':'🛒','Recebida parcialmente':'📦','Recebida':'✅','Cancelada':'✕'};
@@ -34365,6 +34542,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
   </div>
 
+  <div class="nav-group" id="ng-papelao">
+    <div class="nav-group-header" onclick="toggleNavGroup('ng-papelao')">
+      <span class="ng-ico">🍃</span>Papelão<span class="ng-arr">▶</span>
+    </div>
+    <div class="nav-group-items">
+      <div id="menu-papelao-compras" class="nav-item" onclick="papelaoAbrirComprasChapas()"><span class="ico">🛒</span>Compra de Papelão</div>
+      <div id="menu-papelao-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">📦</span>Estoque de Chapas</div>
+      <div id="menu-papelao-simd" class="nav-item" onclick="go('simd');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">♻️</span>Simulador de Desperdício</div>
+    </div>
+  </div>
+
   <!-- GRUPO: ANÁLISES -->
   <div class="nav-group" id="ng-analises">
     <div class="nav-group-header" onclick="toggleNavGroup('ng-analises')">
@@ -34918,6 +35106,63 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="renderSelecaoChapas()">↻ Atualizar</button>
   </div>
   <div class="page-body" id="sel-chapas-body"></div>
+</div>
+
+<div id="page-simd" class="page">
+  <div class="page-body">
+    <div id="tela-simulador-desperdicio" style="padding:20px">
+      <div style="margin-bottom:20px">
+        <h2 style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 4px">Simulador de desperdício de papelão</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe as medidas da caixa e veja quais chapas do estoque desperdiçam menos papelão para este pedido</p>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Medidas da caixa (mm)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento</label>
+            <input type="number" id="simd-comp" placeholder="ex: 400" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura</label>
+            <input type="number" id="simd-larg" placeholder="ex: 300" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Altura</label>
+            <input type="number" id="simd-alt" placeholder="ex: 200" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Onda</label>
+            <select id="simd-onda" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+              <option value="">Qualquer</option>
+              <option value="B">Onda B</option>
+              <option value="C">Onda C</option>
+              <option value="BC">Onda BC</option>
+              <option value="E">Onda E</option>
+              <option value="F">Onda F</option>
+            </select>
+          </div>
+        </div>
+        <button id="simd-btn" onclick="_simdCalcular()" style="padding:10px 24px;background:#185FA5;border:none;border-radius:7px;color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Calcular desperdício</button>
+      </div>
+      <div id="simd-resultado" style="display:none">
+        <div id="simd-info-planif" style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:7px;border-left:3px solid #185FA5"></div>
+        <div id="simd-aviso" style="display:none;padding:16px;text-align:center;font-size:13px;color:#EF9F27;background:rgba(239,159,39,0.1);border-radius:8px;margin-bottom:14px">Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.</div>
+        <div id="simd-tabela-wrap" style="background:rgba(255,255,255,0.02);border:0.5px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:60px 1fr 120px 80px 90px 90px 100px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:0.5px solid rgba(255,255,255,0.08);font-size:11px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.04em;gap:8px">
+            <div>Desp.</div>
+            <div>Chapa</div>
+            <div>Fornecedor</div>
+            <div>Tamanho</div>
+            <div style="text-align:center">Cx/chapa</div>
+            <div style="text-align:right">Estoque</div>
+            <div style="text-align:right">Economia</div>
+          </div>
+          <div id="simd-linhas"></div>
+        </div>
+      </div>
+      <div id="simd-loading" style="display:none;padding:30px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4)">Calculando...</div>
+    </div>
+  </div>
 </div>
 
 <!-- ========== 5. FLUXOS ========== -->
@@ -36255,24 +36500,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <div class="mf fgf campo-chapa" style="grid-column:1/-1;margin-top:12px">
               <label>CHAPA (ESTOQUE)</label>
               <select id="f-chp"></select>
-              <div id="sugestao-chapa-container" style="margin-top:8px;display:none">
-                <button type="button" id="btn-sugerir-chapa"
-                  style="display:flex;align-items:center;gap:6px;font-size:12px;padding:8px 12px;background:rgba(34,197,94,.12);color:var(--text);border:1px solid rgba(34,197,94,.35);border-radius:10px;cursor:pointer;width:100%;font-weight:900"
-                  onclick="_sugestaoChapa_buscar()">
-                  <span style="font-size:15px">♻</span>
-                  Encontrar chapa com menor desperdício
-                  <span id="sugestao-chapa-loading" style="display:none;font-size:11px;opacity:0.7">calculando...</span>
-                </button>
-                <div id="sugestao-chapa-painel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--s2)">
-                  <div style="padding:8px 12px;background:var(--s3);font-size:12px;color:var(--text2);border-bottom:1px solid var(--border)">
-                    <span id="sugestao-chapa-info-caixa"></span>
-                  </div>
-                  <div id="sugestao-chapa-lista" style="max-height:280px;overflow-y:auto"></div>
-                  <div id="sugestao-chapa-aviso" style="display:none;padding:12px;font-size:12px;color:var(--yellow);text-align:center">
-                    Nenhuma chapa em estoque é compatível com essas medidas.
-                  </div>
-                </div>
-              </div>
             </div>
             <div class="mf campo-chapa" style="grid-column:1/-1;margin-top:8px">
               <label>QTD CHAPAS (OPCIONAL)</label>

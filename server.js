@@ -10014,6 +10014,7 @@ async function _callJarvisIA({ pergunta, nomeUsuario, dadosContexto, historico, 
   try {
     const temClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
     const temOpenAI = !!OPENAI_API_KEY;
+    console.log('[CALLJARVIS]', { temOpenAI: !!OPENAI_API_KEY, modelo: 'gpt-4o', perguntaLen: pergunta?.length });
 
     const hoje = new Date().toLocaleString('pt-BR');
     const firstName = _jarvisFirstName(nomeUsuario || 'usuário');
@@ -12469,7 +12470,6 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const turboDisponivel = !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY);
     const modoIA = (modoReq === 'turbo' && turboDisponivel) ? 'turbo' : (isComplexo && OPENAI_API_KEY ? 'turbo' : 'normal');
 
-    const temIA = !!OPENAI_API_KEY || !!String(process.env.ANTHROPIC_API_KEY || '').trim();
     const isCmd = _jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard');
 
     let dadosContexto = {};
@@ -12525,23 +12525,30 @@ O HTML deve:
       }
     }
 
-    if (temIA && !isCmd) {
+    const temIA = !!OPENAI_API_KEY || !!process.env.ANTHROPIC_API_KEY;
+    if (temIA) {
+      let dadosCtx = {};
       try {
-        const rIA = await _callJarvisIA({
+        dadosCtx = await _jarvisBuildContext({
+          pergunta, norm, hoje, month, year, nomeUsuario: nome
+        });
+      } catch (eBc) {
+        console.error('[JARVIS BC]', eBc?.message);
+      }
+
+      try {
+        const rFinal = await _callJarvisIA({
           pergunta,
           nomeUsuario: nome,
-          dadosContexto,
-          historico,
-          modo: modoIA,
+          dadosContexto: dadosCtx,
+          historico: historico || [],
+          modo: 'normal',
         });
-        if (rIA?.ok && String(rIA.text || '').trim()) {
-          const extras = rIA.origem === 'turbo'
-            ? { modo: 'turbo', origem: 'turbo', origem_ia: 'turbo', badge: '⚡ Turbo' }
-            : { origem: rIA.origem, origem_ia: rIA.origem };
-          return respond(String(rIA.text || '').trim(), extras);
+        if (rFinal?.ok && String(rFinal.text || '').trim()) {
+          return respond(String(rFinal.text).trim(), { origem_ia: rFinal.origem });
         }
-      } catch (e) {
-        console.error('[JARVIS IA]', e?.message);
+      } catch (eF) {
+        console.error('[JARVIS FALLBACK]', eF?.message);
       }
     }
 
