@@ -11843,84 +11843,45 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(`${nome}, a OF #${ctx.numero} está ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcação de urgência'}.`);
     }
 
-    if (ofNum && (norm.includes('imagem') || norm.includes('foto'))) {
-      let row = null;
+    if (ofNum && (hasAny('imagem','foto','fotos','imagens') || norm.includes('imagem') || norm.includes('foto'))) {
+      const ofImg = await _jarvisFindOFByNumero(ofNum);
+      if (!ofImg) return respond(`Não encontrei a OF #${ofNum}.`);
 
-      const campos = 'id,of,numero,imagem_url,imgs,descricao,prodDesc,status,cliNome,cliente_nome,cli_id,cliente_id,qtd,quantidade,qtd_pedida,data_entrega,ent,data_producao,dia,valor_total,valor_venda,urg,urgente';
+      const pickImg = (o) => {
+        const iu = String(o.imagem_url || '').trim();
+        if (iu && iu.startsWith('http')) return iu;
+        try {
+          const arr = typeof o.imgs === 'string'
+            ? JSON.parse(o.imgs || '[]')
+            : (o.imgs || []);
+          const first = Array.isArray(arr)
+            ? arr.map(x => String(x||'').trim()).filter(x => x.startsWith('http'))[0]
+            : '';
+          return first || '';
+        } catch(_) { return ''; }
+      };
 
-      const { data: d1 } = await supabase.from('ofs')
-        .select(campos).or(`of.eq.${ofNum},numero.eq.${ofNum}`)
-        .is('deleted_at', null).limit(1);
-      row = Array.isArray(d1) && d1[0] ? d1[0] : null;
+      const imgUrl = pickImg(ofImg);
+      const numOf = _assistPickOfNumber(ofImg);
 
-      if (!row) {
-        const { data: d2 } = await supabase.from('ofs')
-          .select(campos)
-          .or(`of.ilike.%${ofNum}%,numero.ilike.%${ofNum}%`)
-          .is('deleted_at', null).limit(1);
-        row = Array.isArray(d2) && d2[0] ? d2[0] : null;
-      }
-
-      if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-
-      const iu = String(row.imagem_url || '').trim();
-      let urls = [];
-      try {
-        const raw = row.imgs;
-        const arr = typeof raw === 'string' ? JSON.parse(raw || '[]') : (Array.isArray(raw) ? raw : []);
-        urls = [...new Set([...(iu ? [iu] : []), ...arr.map(x => String(x || '').trim()).filter(Boolean)])].slice(0, 5);
-      } catch (_) { urls = iu ? [iu] : []; }
-      urls = (Array.isArray(urls) ? urls : []).map((u)=>{
-        const s = String(u || '').trim();
-        if(!s) return '';
-        if(s.startsWith('http') || s.startsWith('data:') || s.startsWith('/')) return s;
-        return '/' + s;
-      }).filter(Boolean).slice(0, 5);
-
-      const numOf  = String(row.of || row.numero || '—');
-      const desc   = String(row.descricao || row.prodDesc || '').trim() || '—';
-      const status = String(row.status || '').trim() || '—';
-      const cli    = String(row.cliNome || row.cliente_nome || '').trim() || '—';
-      const qtd    = Math.trunc(Number(row.qtd_pedida || row.quantidade || row.qtd || 0));
-      const ent    = String(row.data_entrega || row.ent || '').slice(0, 10);
-      const dia    = String(row.data_producao || row.dia || '').slice(0, 10);
-      const val    = Number(row.valor_total || row.valor_venda || 0);
-      const urg    = !!(row.urg || row.urgente);
-      const fmtD   = s => s ? s.split('-').reverse().join('/') : '—';
-      const isAtras = ent && ent < hoje;
-
-      const dadosTexto =
-        `📋 OF #${numOf}${urg ? ' 🚨 URGENTE' : ''}${isAtras ? ' ⚠️ ATRASADA' : ''}\n` +
-        `👤 Cliente: ${cli}\n` +
-        `📦 Produto: ${desc}\n` +
-        `📊 Status: ${status}\n` +
-        `🔢 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas\n` +
-        `🚚 Entrega: ${fmtD(ent)}\n` +
-        (dia ? `🏭 Produção: ${fmtD(dia)}\n` : '') +
-        (val > 0 ? `💰 Valor: R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n` : '') +
-        `\nO que deseja fazer?\n• Baixar imagem\n• Imprimir imagem\n• Alterar data de entrega\n• Concluir esta OF\n• Cancelar esta OF`;
-
-      if (!urls.length) {
-        return res.json({
-          ok: true,
-          resposta: `A OF #${numOf} não possui imagem cadastrada.`,
-          images: [],
-          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf, imagem_url: null, pode_baixar: false, pode_imprimir: false }
-        });
+      if (!imgUrl) {
+        return respond(
+          `A OF #${numOf} não possui imagem cadastrada. ` +
+          `Para adicionar, edite a OF e faça upload da foto.`
+        );
       }
 
       return res.json({
         ok: true,
-        resposta: `Aqui está a imagem da OF #${numOf}:`,
-        images: [urls[0]],
+        resposta: `Imagem da OF #${numOf}:`,
+        images: [imgUrl],
         dadosExtras: {
           tipo: 'of',
-          of_id: row.id,
+          of_id: String(ofImg.id || ''),
           numero: numOf,
-          imagem_url: urls[0] || null,
+          imagem_url: imgUrl,
           pode_baixar: true,
-          pode_imprimir: true,
-        },
+        }
       });
     }
 
@@ -12558,7 +12519,7 @@ O HTML deve:
           pergunta, norm, hoje, month, year, nomeUsuario: nome
         });
       } catch (eBc) {
-        console.error('[JARVIS BC]', eBc?.message);
+        console.error('[JARVIS BC FALLBACK]', eBc?.message);
       }
 
       try {
@@ -12566,14 +12527,14 @@ O HTML deve:
           pergunta,
           nomeUsuario: nome,
           dadosContexto: dadosCtx,
-          historico: historico || [],
+          historico: Array.isArray(historico) ? historico : [],
           modo: 'normal',
         });
         if (rFinal?.ok && String(rFinal.text || '').trim()) {
           return respond(String(rFinal.text).trim(), { origem_ia: rFinal.origem });
         }
       } catch (eF) {
-        console.error('[JARVIS FALLBACK]', eF?.message);
+        console.error('[JARVIS FALLBACK GPT]', eF?.message);
       }
     }
 

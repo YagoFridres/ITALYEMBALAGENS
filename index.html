@@ -1912,7 +1912,7 @@ const MODULOS_SISTEMA = [
   { key:'ofs_maquina',    label:'OFs por Máquina',     grupo:'Produção',  menuId:'menu-ofs-maquina',     paginaId:'ofs-maquina' },
   { key:'lancar_pedido',  label:'Armazenamento de OFs',grupo:'Produção',  menuId:'menu-pedidos',         paginaId:'lancar-pedido' },
   { key:'orcamentos',     label:'Orçamentos',          grupo:'Produção',  menuId:'menu-orcamentos',      paginaId:'orcamentos' },
-  { key:'compras',        label:'Compras MP',          grupo:'Produção',  menuId:'menu-compras',         paginaId:'compras' },
+  { key:'compras',        label:'Compra de Papelão',   grupo:'Papelão',   menuId:'menu-papelao-compras', paginaId:'compras' },
   { key:'fluxos',         label:'Fluxos',              grupo:'Máquinas',  menuId:'menu-fluxos',          paginaId:'fluxos' },
   { key:'maquinas',       label:'Máquinas',            grupo:'Máquinas',  menuId:'menu-maquinas',        paginaId:'maquinas' },
   { key:'tipos_caixa',    label:'Tipos de Caixa',      grupo:'Máquinas',  menuId:'menu-tipos-caixa',     paginaId:'tipos-caixa' },
@@ -1946,7 +1946,7 @@ const PERMISSOES_SISTEMA = {
       lancar_pedido: 'Armazenamento de OFs',
       pcp: 'PCP / Programação',
       orcamentos: 'Orçamentos',
-      compras: 'Compras MP',
+      compras: 'Compra de Papelão',
     }
   },
   maquinas: {
@@ -6300,24 +6300,25 @@ function _renderOfCard(of, maquinaNome, isMobile){
     const ofNumRaw = String(of?.of || of?.numero || '').trim();
     const ofNum = escA2(ofNumRaw);
     const acoesId = 'acoes-' + String(ofIdRaw || '').replace(/[^a-zA-Z0-9_-]/g,'');
-    const acoesHtml = `
-      <div class="of-acoes-wrap" style="position:relative;display:inline-block">
-        <button onclick="event.stopPropagation();_toggleAcoesOf('${escA2(acoesId)}')" style="padding:5px 12px;background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.15);border-radius:6px; color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer">Ações ▾</button>
-        <div id="${escA2(acoesId)}" style="display:none;position:absolute;right:0;top:100%; margin-top:4px;background:#1a1f2e;border:0.5px solid rgba(255,255,255,0.15); border-radius:8px;min-width:180px;z-index:999;overflow:hidden">
-          <div onclick="_ofAcao('iniciar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">▶ Iniciar produção</div>
-          <div onclick="_ofAcao('concluir','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✓ Concluir OF</div>
-          <div onclick="_ofAcao('baixa','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">↓ Baixa parcial</div>
-          <div onclick="_ofAcao('maquina','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">↔ Alterar máquina</div>
-          <div onclick="_ofAcao('detalhes','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">☰ Ver detalhes</div>
-          <div onclick="_ofAcao('editar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.8)" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✎ Editar OF</div>
-          <div onclick="_ofAcao('cancelar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer; display:flex;align-items:center;gap:8px;color:#F09595" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✕ Cancelar OF</div>
-        </div>
-      </div>`;
     const maqNome = String(maquinaNome||'').trim();
-    const moveHtml = `
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button class="ofmaq-move-btn" onclick="event.stopPropagation();_ofMover('${ofId}','${escA2(maqNome)}','up')" title="Mover para cima" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12);border-radius:5px; color:rgba(255,255,255,0.5);cursor:pointer;font-size:14px">▲</button>
-        <button class="ofmaq-move-btn" onclick="event.stopPropagation();_ofMover('${ofId}','${escA2(maqNome)}','down')" title="Mover para baixo" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.06); border:0.5px solid rgba(255,255,255,0.12);border-radius:5px; color:rgba(255,255,255,0.5);cursor:pointer;font-size:14px">▼</button>
+    const acoesMoveHtml = `
+      <div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:6px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <button onclick="event.stopPropagation();_ofMover('${ofId}','${escA2(maqNome)}','up')" style="width:30px;height:30px;min-width:30px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:5px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">▲</button>
+          <button onclick="event.stopPropagation();_ofMover('${ofId}','${escA2(maqNome)}','down')" style="width:30px;height:30px;min-width:30px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:5px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center">▼</button>
+          <div style="position:relative">
+            <button onclick="event.stopPropagation();_toggleAcoesOf('${escA2(acoesId)}')" style="padding:0 12px;height:30px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:5px;color:rgba(255,255,255,0.8);font-size:12px;cursor:pointer;white-space:nowrap">Ações ▾</button>
+            <div id="${escA2(acoesId)}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#1a1f2e;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;min-width:170px;z-index:9999;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5)">
+              <div onclick="event.stopPropagation();_ofAcao('iniciar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">▶ Iniciar produção</div>
+              <div onclick="event.stopPropagation();_ofAcao('concluir','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✓ Concluir OF</div>
+              <div onclick="event.stopPropagation();_ofAcao('baixa','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">↓ Baixa parcial</div>
+              <div onclick="event.stopPropagation();_ofAcao('maquina','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">↔ Alterar máquina</div>
+              <div onclick="event.stopPropagation();_ofAcao('detalhes','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">☰ Ver detalhes</div>
+              <div onclick="event.stopPropagation();_ofAcao('editar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:rgba(255,255,255,0.8);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✎ Editar OF</div>
+              <div onclick="event.stopPropagation();_ofAcao('cancelar','${ofId}','${ofNum}')" style="padding:10px 14px;font-size:13px;cursor:pointer;color:#F09595;border-top:0.5px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:8px" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">✕ Cancelar OF</div>
+            </div>
+          </div>
+        </div>
       </div>`;
     const clienteNome = String(of?.cliNome || of?.cliente_nome || of?.cliid || '—');
     const qtd = Number(of?.qtd || of?.quantidade || 0) || 0;
@@ -6343,10 +6344,7 @@ function _renderOfCard(of, maquinaNome, isMobile){
           </div>
           ${fluxoHtml ? '<div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">' + fluxoHtml + '</div>' : ''}
         </div>
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;flex-shrink:0">
-          ${acoesHtml}
-          ${moveHtml}
-        </div>
+        ${acoesMoveHtml}
       </div>`;
   }catch(e){
     try{ console.error('[_renderOfCard]', e); }catch(_){}
@@ -36364,7 +36362,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="page-body"><div class="cli-grid" id="forn-grid"></div></div>
 </div>
 
-<!-- ========== COMPRAS MP ========== -->
+<!-- ========== COMPRAS ========== -->
 <div id="page-compras" class="page">
   <div class="ptoolbar">
     <select id="cmp-fil-st" onchange="renderCompras()">
@@ -42643,7 +42641,8 @@ window.atualizarChapas = async function(){
             ? `<span class="jarvis-msg-badge">GPT-4o</span>`
             : (origem === 'claude' ? `<span class="jarvis-msg-badge">Claude</span>` : ''));
         const top = `<div class="assist-bubble-top"><div style="display:flex;gap:8px;align-items:center">${badge}</div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
-        const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${reportHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
+      const conteudoMid = (htmlRaw && imgsHtml) ? `${imgsHtml}${txtHtml}` : `${txtHtml}${imgsHtml}`;
+      const bubble = `<div class="assist-bubble">${top}${conteudoMid}${tableHtml}${chartHtml}${reportHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
       }
       const bubble = `<div class="assist-bubble">${txtHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
@@ -42952,7 +42951,12 @@ window.atualizarChapas = async function(){
       const mergedImages = Array.from(new Set([...(Array.isArray(images)?images:[]), ...extraImages].map(x=>String(x||'').trim()).filter(Boolean))).slice(0, 3);
       const table = (j && j.table) ? j.table : null;
       const chart = (j && j.chart) ? j.chart : null;
-      const html = (j && typeof j.html === 'string') ? String(j.html) : '';
+      let html = (j && typeof j.html === 'string') ? String(j.html) : '';
+      try{
+        if (mergedImages.length && dadosExtras && String(dadosExtras.tipo || '') === 'of') {
+          html = '';
+        }
+      }catch(e){}
       const html_relatorio = (j && typeof j.html_relatorio === 'string') ? String(j.html_relatorio) : '';
       const report = !!(j && j.report);
       if(j && j.jarvis_state && typeof j.jarvis_state === 'object'){
