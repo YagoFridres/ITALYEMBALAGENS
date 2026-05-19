@@ -14196,7 +14196,7 @@ function _mapcliFillVendedorSelect(){
 
 function _mapcliGeoCacheGet(){
   try{
-    const raw = localStorage.getItem('italy_geo_cache_v1') || localStorage.getItem('mapa_clientes_geo_v1');
+    const raw = localStorage.getItem('italy_geo_v2') || localStorage.getItem('italy_geo_cache_v1') || localStorage.getItem('mapa_clientes_geo_v1');
     const obj = raw ? JSON.parse(raw) : null;
     return (obj && typeof obj === 'object') ? obj : {};
   }catch(e){
@@ -14204,7 +14204,7 @@ function _mapcliGeoCacheGet(){
   }
 }
 function _mapcliGeoCacheSet(obj){
-  try{ localStorage.setItem('italy_geo_cache_v1', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+  try{ localStorage.setItem('italy_geo_v2', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
 }
 
 function _mapcliColorByRecencia(ultimaOfIso){
@@ -14258,16 +14258,22 @@ function mapaClientesVerOFs(nomeCliente){
 function _mapcliPopupHtml(c){
   const nome = String(c?.nome||'—').trim() || '—';
   const cidade = String(c?.cidade||'').trim();
-  const estado = String(c?.estado||'').trim();
+  const estado = String(c?.estado||c?.uf||'').trim();
   const local = (cidade || estado) ? `${cidade || ''}${(cidade && estado) ? ' / ' : ''}${estado || ''}` : '—';
   const ultima = c?.ultima_of ? fmtD(String(c.ultima_of).slice(0,10)) : '—';
-  const valor = fmtR(Number(c?.valor_mes||0)||0);
-  const btn = `<button onclick="mapaClientesVerOFs('${escAttr(nome)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver OFs</button>`;
+  const valorMes = fmtR(Number(c?.valor_mes||0)||0);
+  const valorAno = fmtR(Number(c?.valor_ano||0)||0);
+  const ofsMes = Math.trunc(Number(c?.total_ofs_mes||0)||0);
+  const ofsAno = Math.trunc(Number(c?.total_ofs_ano||0)||0);
+  const btn = `<button onclick="mapaClientesVerOFs('${escAttr(nome)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver OFs deste cliente</button>`;
   return `<div style="min-width:220px;color:#0f172a">
     <div style="font-weight:900;font-size:14px">${escH(nome)}</div>
     <div style="margin-top:6px;font-size:12px">📍 ${escH(local)}</div>
+    <div style="margin-top:4px;font-size:12px">💰 Valor vendido este mês: ${escH(valorMes)}</div>
+    <div style="margin-top:4px;font-size:12px">💰 Valor vendido este ano: ${escH(valorAno)}</div>
+    <div style="margin-top:4px;font-size:12px">📦 OFs este mês: ${escH(String(ofsMes))} pedido(s)</div>
+    <div style="margin-top:4px;font-size:12px">📦 OFs este ano: ${escH(String(ofsAno))} pedido(s)</div>
     <div style="margin-top:4px;font-size:12px">🗓 Última OF: ${escH(ultima)}</div>
-    <div style="margin-top:4px;font-size:12px">💰 Valor mês: ${escH(valor)}</div>
     ${btn}
   </div>`;
 }
@@ -14289,6 +14295,11 @@ function _mapcliUpsertMarker(c){
       fillOpacity: 0.85,
     });
     mk.bindPopup(_mapcliPopupHtml(c), { maxWidth: 320 });
+    try{ mk._cli = c; }catch(e){}
+    try{
+      mk.on('mouseover', function(){ try{ this.openPopup(); }catch(e){} });
+      mk.on('mouseout', function(){ try{ this.closePopup(); }catch(e){} });
+    }catch(e){}
     mk.addTo(st.layer);
     st.markers.set(id, mk);
   }catch(e){}
@@ -14302,13 +14313,18 @@ async function _mapcliGeocodeMissing(list){
   window._mapCliState.geocoding = true;
   const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
   try{
+    const progEl = document.getElementById('mapcli-progress');
     const cache = _mapcliGeoCacheGet();
+    const total = list.length;
+    let done = 0;
     for(const c of list){
       if(String(window._PAGE_ATUAL||'') !== 'mapa-clientes') break;
       const id = String(c?.id||'').trim();
       const cidade = String(c?.cidade||'').trim();
-      const estado = String(c?.estado||'').trim();
+      const estado = String(c?.estado || c?.uf || '').trim();
       if(!id || !cidade) continue;
+      done += 1;
+      if(progEl) progEl.textContent = `Geocodificando ${done} de ${total} clientes...`;
       const cached = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
       if(cached && Number.isFinite(Number(cached.lat)) && Number.isFinite(Number(cached.lng))){
         c.lat = Number(cached.lat);
@@ -14340,9 +14356,13 @@ async function _mapcliGeocodeMissing(list){
         c.lng = lng;
         _mapcliUpsertMarker(c);
       }
-      await sleep(1050);
+      await sleep(1100);
     }
   } finally {
+    try{
+      const progEl = document.getElementById('mapcli-progress');
+      if(progEl) progEl.textContent = '';
+    }catch(e){}
     window._mapCliState.geocoding = false;
   }
 }
@@ -14351,54 +14371,106 @@ function _mapcliApplyFilters(base){
   let list = Array.isArray(base) ? base.slice() : [];
   const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
   const vendSel = String(document.getElementById('mapcli-vend')?.value||'').trim();
-  const periodo = Math.trunc(Number(document.getElementById('mapcli-periodo')?.value||0)||0);
   if(EMP_FILTRO && !empSel) list = list.filter(c=>String(c?.emp_id||'')===String(EMP_FILTRO));
   if(empSel) list = list.filter(c=>String(c?.emp_id||'')===empSel);
   if(vendSel) list = list.filter(c=>String(c?.vendedor_id||'')===vendSel);
-  if(periodo > 0){
-    const hoje = new Date();
-    hoje.setHours(0,0,0,0);
-    const lim = new Date(hoje);
-    lim.setDate(lim.getDate() - periodo);
-    list = list.filter(c=>{
-      const d = String(c?.ultima_of||'').slice(0,10);
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
-      const dt = new Date(d + 'T00:00:00');
-      return Number.isFinite(dt.getTime()) && dt.getTime() >= lim.getTime();
-    });
-  }
   return list;
 }
 
 function _mapcliRenderSide(list){
   const info = document.getElementById('mapcli-info');
-  const top = document.getElementById('mapcli-top10');
+  const cidadesEl = document.getElementById('mapcli-cidades');
+  const periodo = String(document.getElementById('mapcli-periodo')?.value||'mes').trim() || 'mes';
+  const periodLabel = (periodo === 'ano') ? 'ano' : (periodo === '3m' ? '3 meses' : 'mês');
+  const pickValor = (c)=> periodo === 'ano'
+    ? (Number(c?.valor_ano||0)||0)
+    : (periodo === '3m' ? (Number(c?.valor_3m||0)||0) : (Number(c?.valor_mes||0)||0));
+  const pickOfs = (c)=> periodo === 'ano'
+    ? (Math.trunc(Number(c?.total_ofs_ano||0)||0))
+    : (periodo === '3m' ? (Math.trunc(Number(c?.total_ofs_3m||0)||0)) : (Math.trunc(Number(c?.total_ofs_mes||0)||0)));
   if(info){
     info.innerHTML = `
       <div style="display:grid;gap:8px;font-size:.9rem">
-        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#22c55e"></span> Verde: &gt; 5 OFs/mês</div>
-        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#fbbf24"></span> Amarelo: 1–4 OFs/mês</div>
-        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#94a3b8"></span> Cinza: 0 OFs/mês</div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#22c55e"></span> Verde: última OF no último mês</div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#fbbf24"></span> Amarelo: última OF nos últimos 3 meses</div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:14px;height:14px;border-radius:999px;background:#94a3b8"></span> Cinza: sem OF recente</div>
         <div style="margin-top:8px;color:var(--text2);font-family:var(--mono);font-weight:900">${(Array.isArray(list)?list.length:0)} cliente(s) no filtro</div>
       </div>`;
   }
-  if(top){
-    const rows = (Array.isArray(list)?list:[]).slice().sort((a,b)=>(Number(b?.valor_mes||0)||0)-(Number(a?.valor_mes||0)||0)).slice(0,10);
-    top.innerHTML = rows.length ? rows.map((c,i)=>{
-      const nome = String(c?.nome||'—').trim() || '—';
+  if(cidadesEl){
+    const by = new Map();
+    (Array.isArray(list)?list:[]).forEach((c)=>{
       const cidade = String(c?.cidade||'').trim();
-      const estado = String(c?.estado||'').trim();
-      const local = (cidade || estado) ? `${cidade || ''}${(cidade && estado) ? ' / ' : ''}${estado || ''}` : '—';
-      const v = fmtR(Number(c?.valor_mes||0)||0);
-      return `<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);margin-bottom:8px;cursor:pointer" onclick="mapaClientesVerOFs('${escAttr(nome)}')">
-        <div style="min-width:0">
-          <div style="font-weight:900">${i+1}. ${escH(nome)}</div>
-          <div style="color:var(--text2);font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(local)}</div>
-        </div>
-        <div style="font-family:var(--mono);font-weight:900;white-space:nowrap">${escH(v)}</div>
-      </div>`;
-    }).join('') : `<div style="color:var(--text2)">Sem dados para este filtro.</div>`;
+      const estado = String(c?.estado||c?.uf||'').trim();
+      if(!cidade) return;
+      const key = cidade.toLowerCase() + '|' + estado.toLowerCase();
+      const cur = by.get(key) || { cidade, estado, total_clientes: 0, total_ofs: 0, valor: 0 };
+      cur.total_clientes += 1;
+      cur.total_ofs += pickOfs(c);
+      cur.valor += pickValor(c);
+      by.set(key, cur);
+    });
+    const rows = Array.from(by.values()).sort((a,b)=>(b.valor||0)-(a.valor||0)).slice(0, 120);
+    const th = 'padding:8px 10px;font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap;position:sticky;top:0;background:var(--s2)';
+    const td = 'padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top';
+    cidadesEl.innerHTML = rows.length ? `
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:12px;max-height:70vh">
+        <table style="width:100%;border-collapse:collapse;min-width:520px">
+          <thead>
+            <tr>
+              <th style="${th}">Cidade</th>
+              <th style="${th};text-align:center">Clientes</th>
+              <th style="${th};text-align:center">OFs/${escH(periodLabel)}</th>
+              <th style="${th};text-align:right">Valor/${escH(periodLabel)}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((r)=>{
+              const cidade = String(r.cidade||'').trim();
+              const estado = String(r.estado||'').trim();
+              const local = estado ? `${cidade} / ${estado}` : cidade;
+              const v = fmtR(Number(r.valor||0)||0);
+              return `<tr style="cursor:pointer" onclick="mapaClientesFocarCidade('${escAttr(cidade)}','${escAttr(estado)}')">
+                <td style="${td};max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(local || '—')}</td>
+                <td style="${td};text-align:center;font-family:var(--mono);font-weight:900">${escH(String(Math.trunc(Number(r.total_clientes||0)||0)))}</td>
+                <td style="${td};text-align:center;font-family:var(--mono);font-weight:900">${escH(String(Math.trunc(Number(r.total_ofs||0)||0)))}</td>
+                <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;white-space:nowrap">${escH(v)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : `<div style="color:var(--text2)">Sem dados para este filtro.</div>`;
   }
+}
+
+function mapaClientesFocarCidade(cidade, estado){
+  try{
+    const city = String(cidade||'').trim().toLowerCase();
+    const stt = String(estado||'').trim().toLowerCase();
+    const st = window._mapCliState || null;
+    if(!st || !st.map || !st.markers) return;
+    const hits = [];
+    st.markers.forEach((mk)=>{
+      const c = mk && mk._cli ? mk._cli : null;
+      const cCity = String(c?.cidade||'').trim().toLowerCase();
+      const cSt = String(c?.estado||c?.uf||'').trim().toLowerCase();
+      const match = cCity === city && (!stt || cSt === stt);
+      try{
+        mk.setStyle({
+          opacity: match ? 1 : 0.25,
+          fillOpacity: match ? 0.9 : 0.15,
+          weight: match ? 3 : 1,
+          radius: match ? 10 : 7,
+        });
+      }catch(e){}
+      if(match) hits.push(mk);
+    });
+    if(hits.length){
+      const group = window.L.featureGroup(hits);
+      st.map.fitBounds(group.getBounds().pad(0.25), { animate:true });
+    }
+  }catch(e){}
 }
 
 async function renderMapaClientes(force){
@@ -34088,18 +34160,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- ========== 3A. MAPA DE CLIENTES ========== -->
 <div id="page-mapa-clientes" class="page">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
-    <select id="mapcli-emp" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+    <select id="mapcli-emp" onchange="renderMapaClientes(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas as empresas</option>
     </select>
-    <select id="mapcli-vend" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);min-width:200px">
-      <option value="">Todos vendedores</option>
+    <select id="mapcli-periodo" onchange="renderMapaClientes(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="mes">Este mês</option>
+      <option value="3m">Últimos 3 meses</option>
+      <option value="ano">Este ano</option>
     </select>
-    <select id="mapcli-periodo" onchange="renderMapaClientes()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
-      <option value="">Última OF: todos</option>
-      <option value="30">Última OF: 30 dias</option>
-      <option value="90">Última OF: 90 dias</option>
-      <option value="180">Última OF: 180 dias</option>
-      <option value="365">Última OF: 1 ano</option>
+    <select id="mapcli-vend" onchange="renderMapaClientes(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);min-width:200px">
+      <option value="">Todos vendedores</option>
     </select>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="mapaClientesRecarregar(true)">↻ Atualizar</button>
@@ -34107,15 +34177,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="page-body">
     <div style="display:grid;grid-template-columns:1.6fr .8fr;gap:12px;align-items:stretch">
       <div class="sbox">
-        <div class="sbox-h">🗺 Mapa</div>
+        <div class="sbox-h">🗺 Mapa <span id="mapcli-progress" style="margin-left:auto;font-family:var(--mono);font-weight:900;color:var(--text2);font-size:.72rem"></span></div>
         <div class="sbox-b" style="padding:0">
           <div id="mapcli-map" style="height:500px;width:100%;min-height:400px;"></div>
         </div>
       </div>
       <div style="display:grid;gap:12px;align-content:start">
         <div class="sbox">
-          <div class="sbox-h">🏆 Top 10 por valor (mês)</div>
-          <div class="sbox-b" id="mapcli-top10"></div>
+          <div class="sbox-h">🏙 Vendas por Cidade</div>
+          <div class="sbox-b" id="mapcli-cidades"></div>
         </div>
         <div class="sbox">
           <div class="sbox-h">ℹ️ Legenda</div>

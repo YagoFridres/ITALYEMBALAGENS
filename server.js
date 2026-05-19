@@ -10018,21 +10018,35 @@ async function _callJarvisIA({ pergunta, nomeUsuario, dadosContexto, historico, 
     const hoje = new Date().toLocaleString('pt-BR');
     const firstName = _jarvisFirstName(nomeUsuario || 'usuário');
 
-    const systemBase = `Você é o JARVIS, assistente ultra-inteligente da Italy Embalagens, fábrica de caixas de papelão.
-USUÁRIO: ${firstName}
-DATA/HORA: ${hoje}
+    const systemBase = `Você é o JARVIS, assistente de inteligência artificial da Italy Embalagens.
+Seu papel é responder perguntas com base nos dados reais do ERP abaixo.
 
-DADOS DO ERP EM TEMPO REAL:
+USUÁRIO LOGADO: ${firstName}
+DATA E HORA: ${hoje}
+
+═══ DADOS REAIS DO SISTEMA ═══
 ${JSON.stringify(dadosContexto || {}, null, 2)}
+══════════════════════════════
 
-REGRAS:
-- Responda SEMPRE em português brasileiro
-- Use os dados do ERP acima para responder com precisão
-- Formate valores em R$ com separador de milhar
-- Formate datas como DD/MM/AAAA
-- Seja direto e objetivo
-- Nunca invente dados que não estão no contexto acima
-- Para listas de OFs: mostre número, cliente, status e data de entrega`;
+INSTRUÇÕES OBRIGATÓRIAS:
+1. Use APENAS os dados acima para responder — nunca invente números
+2. Responda SEMPRE em português brasileiro
+3. Seja analítico e completo — explique o que os dados significam
+4. Formate valores em R$ com separador de milhar (ex: R$ 45.230,00)
+5. Formate datas como DD/MM/AAAA
+6. Para listas de OFs: número, cliente, status, data entrega, valor
+7. Quando perguntarem sobre tendências: compare períodos e indique se melhorou ou piorou
+8. Quando perguntarem sobre problemas: identifique causas e sugira ações
+9. Se os dados não contiverem a informação pedida: diga exatamente o que está faltando
+10. Para relatórios: organize em seções com títulos claros
+
+CAPACIDADES:
+- Analisar OFs atrasadas, urgentes, por máquina, por cliente
+- Calcular faturamento por período, por empresa, por vendedor
+- Identificar padrões de perda e problemas de produção
+- Comparar desempenho entre períodos
+- Sugerir prioridades de produção
+- Gerar relatórios detalhados em HTML para impressão`;
 
     if (modo === 'turbo' && temClaude && temOpenAI) {
       try {
@@ -10225,8 +10239,10 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
     const cliNome = m ? String(m[1] || '').trim() : '';
     if (cliNome) return { type: 'of_set_cliente', ofNum, clienteNome: cliNome };
   }
-  if (ofNum && _jarvisHasAny(norm, 'status') && _jarvisHasAny(norm, 'concluida', 'concluída', 'concluido', 'concluído', 'concluir')) {
-    return { type: 'of_concluir', ofNum };
+  if (ofNum && _jarvisHasAny(norm, 'conclua', 'concluir', 'concluida', 'concluída', 'concluido', 'concluído')) {
+    const m = p.match(/\bcom\s+([0-9]{1,9})\s*(?:caixas?|cx)\b/i) || p.match(/\b([0-9]{1,9})\s*(?:caixas?|cx)\b/i);
+    const qtdProd = m ? Math.trunc(Number(m[1])) : 0;
+    return { type: 'of_concluir', ofNum, qtdProduzida: (qtdProd > 0 ? qtdProd : undefined) };
   }
   if (_jarvisHasAny(norm, 'entrada') && _jarvisHasAny(norm, 'chapa')) {
     const m = p.match(/entrada\s+de\s+([0-9]{1,9})\s+(?:unidades\s+)?na\s+chapa\s+(.+)$/i);
@@ -10569,54 +10585,54 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         pergunta.match(/(?:cliente)\s+(.+)$/i) ||
         null;
       const cliNome = m ? String(m[1] || '').trim() : '';
-      if (!cliNome) return naoEntendi();
+      if (cliNome) {
+        const termo = cliNome.replace(/%/g, '').trim();
+        const { data: clientesRaw } = await supabase
+          .from('clientes')
+          .select('id,nome')
+          .ilike('nome', `%${termo}%`)
+          .limit(5);
+        const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
+        if (!clientes.length) return respond(`${nome}, não encontrei nenhum cliente com o nome "${cliNome}".`);
 
-      const termo = cliNome.replace(/%/g, '').trim();
-      const { data: clientesRaw } = await supabase
-        .from('clientes')
-        .select('id,nome')
-        .ilike('nome', `%${termo}%`)
-        .limit(5);
-      const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
-      if (!clientes.length) return respond(`${nome}, não encontrei nenhum cliente com o nome "${cliNome}".`);
+        const all = [];
+        for (const c of clientes) {
+          const cid = String(c?.id || '').trim();
+          if (!cid) continue;
+          const ofsCli = await _jarvisOfsDoCliente(cid);
+          (Array.isArray(ofsCli) ? ofsCli : []).forEach((o) => all.push({ ...o, _cliNome: String(c.nome || '').trim() }));
+        }
+        const seen = new Set();
+        const ofs = all.filter((o) => {
+          const id = String(o.id || '').trim() || String(o.of || o.numero || '').trim();
+          if (!id) return false;
+          if (_assistIsCancelada(o)) return false;
+          if (seen.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
 
-      const all = [];
-      for (const c of clientes) {
-        const cid = String(c?.id || '').trim();
-        if (!cid) continue;
-        const ofsCli = await _jarvisOfsDoCliente(cid);
-        (Array.isArray(ofsCli) ? ofsCli : []).forEach((o) => all.push({ ...o, _cliNome: String(c.nome || '').trim() }));
+        const ofsComImg = ofs.map((o) => {
+          const urls = _jarvisTodasImgsOf(o);
+          return { o, url: (Array.isArray(urls) && urls[0]) ? String(urls[0] || '').trim() : '' };
+        }).filter((x) => !!x.url).slice(0, 20);
+        const cli0 = clientes[0];
+        const cliNome0 = String(cli0?.nome || cliNome || '').trim() || cliNome;
+        if (!ofsComImg.length) {
+          return respond(`${nome}, encontrei ${ofs.length} OFs do cliente "${cliNome0}", mas nenhuma possui imagem cadastrada.`);
+        }
+
+        const imagens = ofsComImg.map(({ o, url }) => ({
+          numero: o.of || o.numero || '',
+          descricao: String(o.descricao || o.prodDesc || o.produto || '').trim(),
+          imgUrl: url,
+          status: String(o.status || '').trim(),
+        }));
+        return respond(
+          `${nome}, aqui estão as imagens das OFs de "${cliNome0}" (${imagens.length} OFs com imagem):`,
+          { dadosExtras: { tipo: 'galeria_imagens', imagens } }
+        );
       }
-      const seen = new Set();
-      const ofs = all.filter((o) => {
-        const id = String(o.id || '').trim() || String(o.of || o.numero || '').trim();
-        if (!id) return false;
-        if (_assistIsCancelada(o)) return false;
-        if (seen.has(id)) return false;
-        seen.add(id);
-        return true;
-      });
-
-      const ofsComImg = ofs.map((o) => {
-        const urls = _jarvisTodasImgsOf(o);
-        return { o, url: (Array.isArray(urls) && urls[0]) ? String(urls[0] || '').trim() : '' };
-      }).filter((x) => !!x.url).slice(0, 20);
-      const cli0 = clientes[0];
-      const cliNome0 = String(cli0?.nome || cliNome || '').trim() || cliNome;
-      if (!ofsComImg.length) {
-        return respond(`${nome}, encontrei ${ofs.length} OFs do cliente "${cliNome0}", mas nenhuma possui imagem cadastrada.`);
-      }
-
-      const imagens = ofsComImg.map(({ o, url }) => ({
-        numero: o.of || o.numero || '',
-        descricao: String(o.descricao || o.prodDesc || o.produto || '').trim(),
-        imgUrl: url,
-        status: String(o.status || '').trim(),
-      }));
-      return respond(
-        `${nome}, aqui estão as imagens das OFs de "${cliNome0}" (${imagens.length} OFs com imagem):`,
-        { dadosExtras: { tipo: 'galeria_imagens', imagens } }
-      );
     }
 
     if (/^\s*\d{1,4}\s*$/.test(pergunta)) {
@@ -11499,7 +11515,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           else if (act.type === 'of_set_qtd') resumo = `⚠️ Confirmar alteração da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
           else if (act.type === 'of_set_urgente') resumo = `⚠️ Confirmar marcar urgência na OF #${nOf} — ${cNome}?`;
           else if (act.type === 'of_set_cliente') resumo = `⚠️ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
-          else if (act.type === 'of_concluir') resumo = `⚠️ Confirmar concluir a OF #${nOf} — ${cNome}?`;
+          else if (act.type === 'of_concluir') resumo = `⚠️ Confirmar concluir a OF #${nOf} — ${cNome}${act.qtdProduzida ? ` (produzidas ${Number(act.qtdProduzida).toLocaleString('pt-BR')} cx)` : ''}?`;
           else resumo = `⚠️ Confirmar ação na OF #${nOf}?`;
           act.ofId = String(of.id || '');
         } else if (act.type.startsWith('chapa_')) {
@@ -11861,26 +11877,24 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       if (!urls.length) {
         return res.json({
           ok: true,
-          resposta: dadosTexto.replace('\nO que deseja fazer?\n• Baixar imagem\n• Imprimir imagem\n', '\n') +
-            '\n📷 Esta OF não possui imagem cadastrada.',
-          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf, imagem_url: null, imgs: null }
+          resposta: `A OF #${numOf} não possui imagem cadastrada.`,
+          images: [],
+          dadosExtras: { tipo: 'of', of_id: row.id, numero: numOf, imagem_url: null, pode_baixar: false, pode_imprimir: false }
         });
       }
 
       return res.json({
         ok: true,
-        resposta: dadosTexto,
-        images: urls,
+        resposta: `Aqui está a imagem da OF #${numOf}:`,
+        images: [urls[0]],
         dadosExtras: {
-          tipo: 'of_imagem',
+          tipo: 'of',
           of_id: row.id,
           numero: numOf,
-          descricao: desc,
-          status,
           imagem_url: urls[0] || null,
-          imgs: urls,
-          acoes_imagem: ['abrir', 'baixar', 'imprimir'],
-        }
+          pode_baixar: true,
+          pode_imprimir: true,
+        },
       });
     }
 
@@ -11972,7 +11986,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (hasAny('quanto tem de', 'quanto temos de', 'quanto tem da', 'quantidade de') && hasAny('chapa', 'chapas')) {
       const m = norm.match(/\b(?:de|da)\s+(.+)$/);
       const termo = m ? String(m[1] || '').trim() : '';
-      if (!termo) return naoEntendi();
+      if (!termo) {
+      } else {
       const { data } = await supabase.from('chapas_estoque').select('id,nomenclatura,nome_uso,nome,quantidade,quantidade_atual,qtd,estoque_minimo').limit(5000);
       const rows = Array.isArray(data) ? data : [];
       const t = _assistNorm(termo);
@@ -11982,6 +11997,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const min = Number(found.estoque_minimo ?? 0) || 0;
       const nom = String(found.nomenclatura || found.nome_uso || found.nome || '—').trim();
       return respond(`${nome}, a chapa "${nom}" está com saldo ${qtd}${(min ? ` (mín ${min})` : '')}.`);
+      }
     }
 
     if (hasAny('valor total do estoque', 'valor do estoque', 'total do estoque')) {
@@ -12293,12 +12309,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (hasAny('cliente', 'existe') && norm.includes('cliente') && norm.includes('existe')) {
       const m = norm.match(/\bcliente\s+(.+?)\s+existe\b/);
       const termo = m ? String(m[1] || '').trim() : '';
-      if (!termo) return naoEntendi();
-      const { data } = await supabase.from('clientes').select('id,nome').ilike('nome', '%' + termo.replace(/%/g, '') + '%').limit(5);
-      const rows = Array.isArray(data) ? data : [];
-      if (!rows.length) return respond(`${nome}, não encontrei cliente com esse nome.`);
-      const linhas = rows.slice(0, 5).map((c) => `👤 ${String(c.nome || '').trim()} (id ${String(c.id || '').slice(0, 8)})`);
-      return respond(`${nome}, encontrei ${rows.length} resultado(s):\n${linhas.join('\n')}`);
+      if (termo) {
+        const { data } = await supabase.from('clientes').select('id,nome').ilike('nome', '%' + termo.replace(/%/g, '') + '%').limit(5);
+        const rows = Array.isArray(data) ? data : [];
+        if (!rows.length) return respond(`${nome}, não encontrei cliente com esse nome.`);
+        const linhas = rows.slice(0, 5).map((c) => `👤 ${String(c.nome || '').trim()} (id ${String(c.id || '').slice(0, 8)})`);
+        return respond(`${nome}, encontrei ${rows.length} resultado(s):\n${linhas.join('\n')}`);
+      }
     }
 
     if (hasAny('caixas perdidas', 'perdas') && hasAny('hoje', 'este mes', 'este mês', 'mês', 'mes')) {
@@ -12452,11 +12469,64 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     const turboDisponivel = !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY);
     const modoIA = (modoReq === 'turbo' && turboDisponivel) ? 'turbo' : (isComplexo && OPENAI_API_KEY ? 'turbo' : 'normal');
 
-    const temQualquerIA = !!OPENAI_API_KEY;
+    const temIA = !!OPENAI_API_KEY || !!String(process.env.ANTHROPIC_API_KEY || '').trim();
+    const isCmd = _jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard');
 
-    if (temQualquerIA && !_jarvisHasAny(norm, '/ajuda', '/resumo', '/estoque', '/atrasadas', '/dashboard')) {
+    let dadosContexto = {};
+    try {
+      dadosContexto = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
+    } catch (e) {
+      console.error('[JARVIS BUILD CONTEXT]', e?.message);
+      dadosContexto = {};
+    }
+
+    const pediuRelatorio = _jarvisHasAny(norm, 'relatorio', 'relatório', 'gerar relatorio', 'gerar relatório', 'exportar', 'imprimir', 'baixar relatorio', 'baixar relatório', 'pdf');
+    if (!isCmd && pediuRelatorio && OPENAI_API_KEY) {
       try {
-        const dadosContexto = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
+        const promptRelatorio = `Gere um relatório completo sobre: ${pergunta}
+
+Use os dados do ERP: ${JSON.stringify(dadosContexto, null, 2)}
+
+Retorne APENAS HTML válido (sem markdown, sem explicação fora do HTML).
+O HTML deve:
+- Ter um <style> interno com CSS para impressão
+- Incluir @media print com margens adequadas
+- Usar tabelas bem formatadas com bordas
+- Ter cabeçalho com logo "Italy Embalagens" e data
+- Ter rodapé com total de registros
+- Usar cores: fundo branco, texto preto, bordas #ddd
+- Ter um botão de impressão: <button onclick="window.print()"
+  style="display:block;margin:10px auto;padding:8px 20px;
+  background:#1a7a4a;color:white;border:none;border-radius:4px;
+  cursor:pointer;font-size:14px" class="no-print">Imprimir relatório</button>
+- O botão deve ter class="no-print" para não aparecer na impressão`;
+
+        const rRel = await _callOpenAI({
+          mensagem: promptRelatorio,
+          sistema: 'Você gera relatórios HTML para impressão. Retorne apenas HTML válido.',
+          modelo: 'gpt-4o',
+        });
+
+        const htmlRel = String(rRel?.text || '').trim();
+        if (htmlRel) {
+          return res.json({
+            ok: true,
+            resposta: 'Relatório gerado! Clique em "Imprimir" para imprimir ou salvar como PDF.',
+            html_relatorio: htmlRel,
+            html: htmlRel,
+            report: true,
+            pode_imprimir: true,
+            origem: 'openai',
+            origem_ia: 'openai',
+          });
+        }
+      } catch (e) {
+        console.error('[JARVIS RELATORIO]', e?.message);
+      }
+    }
+
+    if (temIA && !isCmd) {
+      try {
         const rIA = await _callJarvisIA({
           pergunta,
           nomeUsuario: nome,
@@ -12465,11 +12535,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           modo: modoIA,
         });
         if (rIA?.ok && String(rIA.text || '').trim()) {
-          const extras = rIA.origem === 'turbo' ? { modo: 'turbo', origem: 'turbo', badge: '⚡ Turbo' } : { origem: rIA.origem };
+          const extras = rIA.origem === 'turbo'
+            ? { modo: 'turbo', origem: 'turbo', origem_ia: 'turbo', badge: '⚡ Turbo' }
+            : { origem: rIA.origem, origem_ia: rIA.origem };
           return respond(String(rIA.text || '').trim(), extras);
         }
       } catch (e) {
-        console.error('[JARVIS IA FINAL]', e?.message);
+        console.error('[JARVIS IA]', e?.message);
       }
     }
 
@@ -13539,54 +13611,112 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
     const empId = String(req.query.empId||'').trim();
     const hoje = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
-    const mes = _monthKey(hoje);
-    const mesIni = mes + '-01';
-    let qCli = supabase.from('clientes').select('id,nome,cidade,estado,tel,telefone,vendedor_id,emp_id').limit(5000);
+    const de30 = _addDaysIso(hoje, -30) || _addDaysIso(hoje, -31);
+    const de90 = _addDaysIso(hoje, -93) || _addDaysIso(hoje, -90);
+    const de365 = _addDaysIso(hoje, -365) || _addDaysIso(hoje, -366);
+
+    let qCli = supabase.from('clientes').select('id,nome,cidade,estado,uf,tel,telefone,vendedor_id,emp_id').limit(5000);
     if(empId) qCli = qCli.eq('emp_id', empId);
     const { data: clientesRaw, error: eCli } = await qCli;
     if(eCli) throw eCli;
     const clientes = Array.isArray(clientesRaw)?clientesRaw:[];
-    let qOf = supabase
+
+    const ofCols = 'id,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,emp_id,deleted_at,status';
+    let qOf1 = supabase
       .from('ofs')
-      .select('id,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,emp_id,deleted_at,status')
-      .gte('created_at', mesIni)
+      .select(ofCols)
+      .gte('created_at', de365)
       .is('deleted_at', null)
       .limit(5000);
-    if(empId) qOf = qOf.eq('emp_id', empId);
-    const { data: ofsRaw } = await qOf;
-    const ofs = Array.isArray(ofsRaw)?ofsRaw:[];
+    if(empId) qOf1 = qOf1.eq('emp_id', empId);
+    const { data: ofsRaw1 } = await qOf1;
+    const ofs1 = Array.isArray(ofsRaw1)?ofsRaw1:[];
+
+    let qOf2 = supabase
+      .from('ofs')
+      .select(ofCols)
+      .gte('data_conclusao', de365)
+      .is('deleted_at', null)
+      .limit(5000);
+    if(empId) qOf2 = qOf2.eq('emp_id', empId);
+    const { data: ofsRaw2 } = await qOf2;
+    const ofs2 = Array.isArray(ofsRaw2)?ofsRaw2:[];
+
+    const seenOf = new Set();
+    const ofs = [];
+    [...ofs1, ...ofs2].forEach((o)=>{
+      const id = String(o?.id||'').trim();
+      if(!id || seenOf.has(id)) return;
+      seenOf.add(id);
+      ofs.push(o);
+    });
+
     const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
     const cliKey = (o)=> String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim();
     const agg = new Map();
     ofs.forEach((o)=>{
       const cid = cliKey(o);
       if(!cid) return;
-      const cur = agg.get(cid) || { total_ofs_mes:0, valor_mes:0, ultima_of:'' };
-      cur.total_ofs_mes += 1;
-      cur.valor_mes += valOf(o);
-      const u = String(o?.data_conclusao || o?.created_at || '').slice(0,10);
-      if(u && (!cur.ultima_of || u > cur.ultima_of)) cur.ultima_of = u;
+      const st = String(o?.status||'').toLowerCase();
+      if(st.includes('cancel')) return;
+      const dt = String(o?.data_conclusao || o?.created_at || '').slice(0,10);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return;
+      const cur = agg.get(cid) || { total_ofs_mes:0, valor_mes:0, total_ofs_3m:0, valor_3m:0, total_ofs_ano:0, valor_ano:0, ultima_of:'' };
+      const v = valOf(o);
+      cur.total_ofs_ano += 1;
+      cur.valor_ano += v;
+      if(de30 && dt >= de30){ cur.total_ofs_mes += 1; cur.valor_mes += v; }
+      if(de90 && dt >= de90){ cur.total_ofs_3m += 1; cur.valor_3m += v; }
+      if(dt && (!cur.ultima_of || dt > cur.ultima_of)) cur.ultima_of = dt;
       agg.set(cid, cur);
     });
     const out = clientes.map((c)=>{
       const id = String(c?.id||'').trim();
-      const a = agg.get(id) || { total_ofs_mes:0, valor_mes:0, ultima_of:'' };
+      const a = agg.get(id) || { total_ofs_mes:0, valor_mes:0, total_ofs_3m:0, valor_3m:0, total_ofs_ano:0, valor_ano:0, ultima_of:'' };
       return {
         id,
         nome: String(c?.nome||'').trim(),
         cidade: String(c?.cidade||'').trim() || null,
         estado: String(c?.estado||'').trim() || null,
+        uf: String(c?.uf||'').trim() || null,
         tel: String(c?.tel || c?.telefone || '').trim() || null,
         ultima_of: a.ultima_of || null,
         total_ofs_mes: a.total_ofs_mes,
-        valor_mes: Number(a.valor_mes.toFixed(2)),
+        valor_mes: Number((Number(a.valor_mes||0)).toFixed(2)),
+        total_ofs_3m: a.total_ofs_3m,
+        valor_3m: Number((Number(a.valor_3m||0)).toFixed(2)),
+        total_ofs_ano: a.total_ofs_ano,
+        valor_ano: Number((Number(a.valor_ano||0)).toFixed(2)),
         lat: null,
         lng: null,
         vendedor_id: c?.vendedor_id || null,
         emp_id: c?.emp_id || null,
       };
     });
-    return ok(res, out);
+
+    const cityAgg = new Map();
+    out.forEach((c)=>{
+      const cidade = String(c?.cidade||'').trim();
+      const est = String(c?.estado || c?.uf || '').trim();
+      if(!cidade) return;
+      const key = _assistNorm(cidade) + '|' + _assistNorm(est);
+      const cur = cityAgg.get(key) || { cidade, estado: est || null, total_clientes: 0, valor_mes: 0, valor_ano: 0, total_ofs_mes: 0 };
+      cur.total_clientes += 1;
+      cur.total_ofs_mes += Math.trunc(Number(c?.total_ofs_mes||0)||0);
+      cur.valor_mes += Number(c?.valor_mes||0)||0;
+      cur.valor_ano += Number(c?.valor_ano||0)||0;
+      cityAgg.set(key, cur);
+    });
+    const cidades = Array.from(cityAgg.values()).map((x)=>({
+      cidade: x.cidade,
+      estado: x.estado,
+      total_clientes: x.total_clientes,
+      total_ofs_mes: x.total_ofs_mes,
+      valor_mes: Number((Number(x.valor_mes||0)).toFixed(2)),
+      valor_ano: Number((Number(x.valor_ano||0)).toFixed(2)),
+    })).sort((a,b)=>(Number(b.valor_mes||0)||0)-(Number(a.valor_mes||0)||0)).slice(0, 2000);
+
+    return res.json({ ok:true, data: out, clientes: out, cidades });
   }catch(e){ return err(res, e); }
 });
 
