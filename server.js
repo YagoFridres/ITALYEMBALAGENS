@@ -13720,6 +13720,207 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
   }catch(e){ return err(res, e); }
 });
 
+app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const cidadeParam = String(req.params.cidade || '').trim();
+    const empId = String(req.query.empId || '').trim();
+    const estado = String(req.query.estado || '').trim();
+    const periodo = Math.max(7, Math.min(365, Number(req.query.periodo) || 30));
+
+    if(!cidadeParam) return res.status(400).json({ ok:false, error:'cidade_obrigatoria' });
+
+    let qCli = supabase.from('clientes').select('*').ilike('cidade', '%' + cidadeParam + '%');
+    if(empId) qCli = qCli.eq('emp_id', empId);
+    if(estado) qCli = qCli.or(`estado.ilike.%${estado}%,uf.ilike.%${estado}%`);
+    const { data: clientesRaw, error: eCli } = await qCli.limit(500);
+    if(eCli) throw eCli;
+    const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
+    if(!clientes.length){
+      return res.json({
+        ok: true,
+        cidade: cidadeParam,
+        estado: estado || null,
+        resumo: { total_clientes: 0, total_ofs_periodo: 0, valor_total_periodo: 0, ticket_medio: 0, melhor_mes: null, valor_melhor_mes: 0 },
+        clientes: [],
+        vendedores: [],
+        historico_mensal: []
+      });
+    }
+
+    const vendIds = [...new Set(clientes.map(c => String(c?.vendedor_id || c?.vendId || '').trim()).filter(Boolean))];
+    const vendMap = new Map();
+    if(vendIds.length){
+      const { data: vends, error: eVend } = await supabase.from('vendedores').select('id,nome,comissao_pct').in('id', vendIds).limit(1000);
+      if(eVend){
+        const msg = String(eVend?.message || eVend || '').toLowerCase();
+        if(!(msg.includes('does not exist') || msg.includes('not exist'))) throw eVend;
+      }
+      (Array.isArray(vends)?vends:[]).forEach(v => { try{ vendMap.set(String(v.id), v); }catch(_){} });
+    }
+
+    const cliIds = clientes.map(c => String(c?.id || '').trim()).filter(Boolean);
+    const dataCorte = new Date();
+    dataCorte.setDate(dataCorte.getDate() - periodo);
+    const dataCorteIso = dataCorte.toISOString().slice(0, 10);
+
+    const camposCli = ['cli_id', 'cliente_id', 'cliId'];
+    let todasOfs = [];
+    for(const campo of camposCli){
+      try{
+        const { data: ofs, error: eOf } = await supabase
+          .from('ofs')
+          .select('id,of,numero,status,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,deleted_at')
+          .in(campo, cliIds)
+          .gte('created_at', dataCorteIso + 'T00:00:00')
+          .is('deleted_at', null)
+          .limit(5000);
+        if(!eOf && Array.isArray(ofs)){
+          todasOfs = [...todasOfs, ...ofs];
+          break;
+        }
+        const msg = String(eOf?.message || ''); 
+        if(msg.includes('column') || msg.includes('Could not find')) continue;
+        throw eOf;
+      }catch(e){
+        const msg = String(e?.message || '');
+        if(msg.includes('column') || msg.includes('Could not find')) continue;
+        throw e;
+      }
+    }
+    const ofsMap = new Map();
+    (Array.isArray(todasOfs)?todasOfs:[]).forEach(o => { if(o?.id) ofsMap.set(String(o.id), o); });
+    const ofsPeriodo = Array.from(ofsMap.values()).filter(o => !_assistIsCancelada(o));
+
+    const historicoMap = {};
+    const agora = new Date();
+    for(let i = 11; i >= 0; i--){
+      const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+      const mes = d.toISOString().slice(0, 7);
+      historicoMap[mes] = { mes, valor: 0, total_ofs: 0 };
+    }
+    const dataAnoCorte = new Date();
+    dataAnoCorte.setMonth(dataAnoCorte.getMonth() - 11);
+    const dataAnoIso = dataAnoCorte.toISOString().slice(0, 7) + '-01';
+    let ofsAno = [];
+    for(const campo of camposCli){
+      try{
+        const { data: oA, error: eA } = await supabase
+          .from('ofs')
+          .select('cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,deleted_at,status')
+          .in(campo, cliIds)
+          .gte('created_at', dataAnoIso + 'T00:00:00')
+          .is('deleted_at', null)
+          .limit(5000);
+        if(!eA && Array.isArray(oA)){
+          ofsAno = oA;
+          break;
+        }
+      }catch(_){}
+    }
+    (Array.isArray(ofsAno)?ofsAno:[]).filter(o => !_assistIsCancelada(o)).forEach(o => {
+      const mes = String(o?.created_at || '').slice(0, 7);
+      if(historicoMap[mes]){
+        historicoMap[mes].valor += Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0;
+        historicoMap[mes].total_ofs += 1;
+      }
+    });
+    const historico_mensal = Object.values(historicoMap).map(x=>({
+      mes: x.mes,
+      valor: Math.round((Number(x.valor||0)||0) * 100) / 100,
+      total_ofs: Math.trunc(Number(x.total_ofs||0)||0),
+    }));
+    let melhorMes = null;
+    let valorMelhorMes = 0;
+    historico_mensal.forEach(h=>{
+      const v = Number(h?.valor||0)||0;
+      if(v > valorMelhorMes){
+        valorMelhorMes = v;
+        melhorMes = String(h?.mes||'');
+      }
+    });
+
+    const ofsporCli = {};
+    ofsPeriodo.forEach(o=>{
+      const cid = String(o?.cli_id || o?.cliId || o?.cliente_id || '').trim();
+      if(!cid) return;
+      if(!ofsporCli[cid]) ofsporCli[cid] = [];
+      ofsporCli[cid].push(o);
+    });
+
+    const resultClientes = clientes.map((c)=>{
+      const cid = String(c?.id || '').trim();
+      const ofsC = ofsporCli[cid] || [];
+      const valor = ofsC.reduce((s,o)=> s + (Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0), 0);
+      const vendId = String(c?.vendedor_id || c?.vendId || '').trim();
+      const vend = vendMap.get(vendId);
+      let ultimaOf = null;
+      ofsC.forEach(o=>{
+        const dt = String(o?.created_at || o?.data_conclusao || '').trim();
+        if(!dt) return;
+        if(!ultimaOf || dt.localeCompare(String(ultimaOf?.created_at || ultimaOf?.data_conclusao || '')) > 0) ultimaOf = o;
+      });
+      return {
+        id: cid,
+        nome: String(c?.nome || '').trim(),
+        cnpj: String(c?.cnpj || '').trim() || null,
+        tel: String(c?.tel || c?.telefone || '').trim() || null,
+        ramo: String(c?.ramo || '').trim() || null,
+        vendedor_id: vendId || null,
+        vendedor_nome: (vend && vend.nome) ? String(vend.nome) : null,
+        total_ofs_periodo: ofsC.length,
+        valor_periodo: Math.round((Number(valor||0)||0) * 100) / 100,
+        ticket_medio: ofsC.length ? Math.round(((Number(valor||0)||0) / ofsC.length) * 100) / 100 : 0,
+        ultima_of_data: ultimaOf ? String(ultimaOf?.created_at || ultimaOf?.data_conclusao || '').slice(0, 10) : null,
+        ultima_of_numero: ultimaOf ? String(ultimaOf?.of || ultimaOf?.numero || '') : null,
+        ultima_of_status: ultimaOf ? String(ultimaOf?.status || '') : null,
+        ativo: (c && ('ativo' in c)) ? !!c.ativo : true,
+      };
+    }).sort((a,b)=>(Number(b.valor_periodo||0)||0)-(Number(a.valor_periodo||0)||0));
+
+    const totalOfsPeriodo = resultClientes.reduce((s,c)=> s + Math.trunc(Number(c?.total_ofs_periodo||0)||0), 0);
+    const valorTotalPeriodo = resultClientes.reduce((s,c)=> s + (Number(c?.valor_periodo||0)||0), 0);
+    const ticketMedio = totalOfsPeriodo > 0 ? (valorTotalPeriodo / totalOfsPeriodo) : 0;
+
+    const vendAgg = new Map();
+    resultClientes.forEach(c=>{
+      const vid = String(c?.vendedor_id || '').trim();
+      if(!vid) return;
+      const cur = vendAgg.get(vid) || { id: vid, nome: String(c?.vendedor_nome||'').trim() || null, total_clientes_cidade: 0, total_ofs_periodo: 0, valor_periodo: 0 };
+      cur.total_clientes_cidade += 1;
+      cur.total_ofs_periodo += Math.trunc(Number(c?.total_ofs_periodo||0)||0);
+      cur.valor_periodo += Number(c?.valor_periodo||0)||0;
+      vendAgg.set(vid, cur);
+    });
+    const vendedores = Array.from(vendAgg.values()).map(v=>({
+      id: v.id,
+      nome: v.nome,
+      total_clientes_cidade: Math.trunc(Number(v.total_clientes_cidade||0)||0),
+      total_ofs_periodo: Math.trunc(Number(v.total_ofs_periodo||0)||0),
+      valor_periodo: Math.round((Number(v.valor_periodo||0)||0) * 100) / 100,
+      percentual_cidade: valorTotalPeriodo > 0 ? Math.round(((Number(v.valor_periodo||0)||0) / valorTotalPeriodo) * 1000) / 10 : 0,
+    })).sort((a,b)=>(Number(b.valor_periodo||0)||0)-(Number(a.valor_periodo||0)||0));
+
+    const estadoOut = estado || String(clientes[0]?.estado || clientes[0]?.uf || '').trim() || null;
+    return res.json({
+      ok: true,
+      cidade: cidadeParam,
+      estado: estadoOut,
+      resumo: {
+        total_clientes: resultClientes.length,
+        total_ofs_periodo: totalOfsPeriodo,
+        valor_total_periodo: Math.round((Number(valorTotalPeriodo||0)||0) * 100) / 100,
+        ticket_medio: Math.round((Number(ticketMedio||0)||0) * 100) / 100,
+        melhor_mes: melhorMes ? (String(melhorMes).split('-').reverse().join('/')) : null,
+        valor_melhor_mes: Math.round((Number(valorMelhorMes||0)||0) * 100) / 100,
+      },
+      clientes: resultClientes,
+      vendedores,
+      historico_mensal,
+    });
+  }catch(e){ return err(res, e); }
+});
+
 app.get('/api/pedidos_recorrentes', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
