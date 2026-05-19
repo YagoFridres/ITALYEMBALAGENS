@@ -9151,92 +9151,56 @@ try {
   }
 } catch (e) {}
 
-async function _simdCalcular(){
-  try{
-    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
-    const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
-    const qtdPedido = Number(document.getElementById('simd-qtd')?.value) || 0;
-    const larg = Math.round(comp * 0.6);
-    const onda = String(document.getElementById('simd-onda')?.value || '').trim();
-    if (!(comp > 0 && alt > 0)) {
-      alert('Preencha altura e comprimento.');
-      return;
-    }
-    const puxada = (comp + alt) * 2 + 20;
-    const boca   = larg + (alt * 2) + 15;
-    const loading   = document.getElementById('simd-loading');
-    const resultado = document.getElementById('simd-resultado');
+function _simdVerificarCampos() {
+  const larg = Number(document.getElementById('simd-larg')?.value) || 0;
+  const comp = Number(document.getElementById('simd-comp')?.value) || 0;
+  const btn = document.getElementById('simd-btn');
+  const ok = larg > 0 && comp > 0;
+  if (btn) {
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.5';
+    btn.style.cursor = ok ? 'pointer' : 'not-allowed';
+  }
+}
+
+function _simdRenderResultados(data, qtdPedido) {
+  try {
     const aviso     = document.getElementById('simd-aviso');
     const linhas    = document.getElementById('simd-linhas');
-    const infoP     = document.getElementById('simd-info-planif');
     const tabelaW   = document.getElementById('simd-tabela-wrap');
-    if (loading)   loading.style.display   = 'block';
-    if (resultado) resultado.style.display = 'none';
-    const dadosCaixaCalc = {
-      desenvolvimento_comprimento: puxada,
-      desenvolvimento_largura: boca,
-      area_caixa_mm2: puxada * boca
-    };
-    let data = null;
 
-    if (window._simdChapaSelecionada) {
-      const resultadosManual = _simdCalcularParaChapas([window._simdChapaSelecionada], comp, larg, alt, puxada, boca, qtdPedido);
-      data = { ok: true, chapas: resultadosManual, dados_caixa: dadosCaixaCalc };
-    } else {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
-      const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
-      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-      const r = await fetch(base + '/api/chapas_estoque/sugerir_menor_desperdicio', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({
-          comprimento_mm: comp,
-          largura_mm: larg,
-          altura_mm: alt,
-          onda: onda || null,
-          emp_id: empId || null,
-        }),
-      });
-      data = await r.json().catch(()=>null);
-      if (data && data.ok === true) {
-        data.dados_caixa = Object.assign({}, (data.dados_caixa || {}), dadosCaixaCalc);
-      }
-    }
-    if (loading)   loading.style.display   = 'none';
-    if (resultado) resultado.style.display = 'block';
     if (!data || data.ok !== true) {
       if (aviso) { aviso.style.display = 'block'; aviso.textContent = String(data?.error || 'Erro ao calcular.'); }
       if (tabelaW) tabelaW.style.display = 'none';
+      if (linhas) linhas.innerHTML = '';
       return;
     }
-    if (infoP) {
-      infoP.innerHTML =
-        'Puxada: <strong style="color:rgba(255,255,255,0.8)">' + Math.round(puxada) + ' mm</strong> × ' +
-        'Boca: <strong style="color:rgba(255,255,255,0.8)">' + Math.round(boca) + ' mm</strong>' +
-        ' — Área da caixa: <strong style="color:rgba(255,255,255,0.8)">' +
-        (Number(dadosCaixaCalc.area_caixa_mm2 || 0) / 1000000).toFixed(4) + ' m²</strong>';
-    }
+
     if (!Array.isArray(data.chapas) || !data.chapas.length) {
-      if (aviso)   aviso.style.display   = 'block';
+      if (aviso) {
+        aviso.style.display = 'block';
+        aviso.textContent = 'Nenhuma chapa em estoque é compatível com estas medidas. Verifique se há chapas cadastradas ou ajuste as medidas.';
+      }
       if (tabelaW) tabelaW.style.display = 'none';
+      if (linhas) linhas.innerHTML = '';
       return;
     }
-    if (aviso)   aviso.style.display   = 'none';
+
+    if (aviso) aviso.style.display = 'none';
     if (tabelaW) tabelaW.style.display = 'block';
+
     const cores = ['#97C459','#9FE1CB','#9FE1CB','#EF9F27','#EF9F27','#EF9F27','#E24B4A','#E24B4A','#E24B4A','#E24B4A'];
     if (linhas) {
-      try{
+      try {
         const visual = document.getElementById('simd-visual');
         if (visual) visual.style.display = 'none';
-      }catch(_){}
+      } catch (_) {}
+
       const dadosJsonBase = JSON.stringify(data.dados_caixa || {}).replace(/"/g, '&quot;');
       linhas.innerHTML = data.chapas.map((c, i) => {
         const chapaJson = JSON.stringify(c || {}).replace(/"/g, '&quot;');
         const melhor = i === 0;
-        const cor = i === 0 ? '#97C459' : (i <= 2 ? '#9FE1CB' : (i <= 5 ? '#EF9F27' : '#E24B4A'));
+        const cor = i === 0 ? cores[0] : (i <= 2 ? cores[1] : (i <= 5 ? cores[3] : cores[6]));
         const bg  = melhor ? 'rgba(39,80,10,0.15)' : 'transparent';
         const nome = c.nome || c.tamanho;
         const fornecedor = c.fornecedor || '—';
@@ -9264,11 +9228,110 @@ async function _simdCalcular(){
             </div>
           </div>`;
       }).join('');
-      try{
+
+      try {
         if (Array.isArray(data.chapas) && data.chapas.length > 0) {
           setTimeout(() => _simdGerarVisual(data.chapas[0], data.dados_caixa || {}), 100);
         }
-      }catch(_){}
+      } catch (_) {}
+    }
+  } catch (e) {
+    try {
+      const linhas = document.getElementById('simd-linhas');
+      if (linhas) linhas.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#F09595">Erro ao renderizar. Tente novamente.</div>';
+    } catch (_) {}
+  }
+}
+
+async function _simdCalcular(){
+  try{
+    const larg = Number(document.getElementById('simd-larg')?.value) || 0;
+    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
+    const qtdPedido = Number(document.getElementById('simd-qtd')?.value) || 0;
+
+    if (!(larg > 0 && comp > 0)) {
+      alert('Preencha largura e comprimento necessários.');
+      return;
+    }
+
+    const planifLarg = larg;
+    const planifComp = comp;
+    const areaPlanif = planifLarg * planifComp;
+
+    const loading   = document.getElementById('simd-loading');
+    const resultado = document.getElementById('simd-resultado');
+    const infoP     = document.getElementById('simd-info-planif');
+
+    if (loading)   loading.style.display   = 'block';
+    if (resultado) resultado.style.display = 'none';
+
+    if (infoP) {
+      infoP.innerHTML =
+        'Planificação: <strong style="color:rgba(255,255,255,0.8)">' +
+        planifComp + ' × ' + planifLarg + ' mm</strong>' +
+        ' — Área: <strong style="color:rgba(255,255,255,0.8)">' +
+        (areaPlanif / 1000000).toFixed(4) + ' m²</strong>';
+    }
+
+    if (window._simdChapaSelecionada) {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+
+      const res1 = _simdCalcularUmaChapa(window._simdChapaSelecionada, planifLarg, planifComp, qtdPedido);
+      _simdRenderResultados({
+        ok: true,
+        chapas: res1 ? [res1] : [],
+        dados_caixa: {
+          desenvolvimento_comprimento: planifComp,
+          desenvolvimento_largura: planifLarg,
+          area_caixa_mm2: areaPlanif,
+        }
+      }, qtdPedido);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+      const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+
+      const r = await fetch(base + '/api/chapas_estoque/sugerir_menor_desperdicio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          comprimento_mm: planifComp,
+          largura_mm: planifLarg,
+          altura_mm: 0,
+          emp_id: empId || null,
+          modo: 'planificacao_direta',
+        }),
+      });
+      const data = await r.json().catch(() => null);
+
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+
+      if (data && data.ok === true && qtdPedido > 0 && Array.isArray(data.chapas)) {
+        data.chapas = data.chapas.map(c => {
+          const cx = Number(c?.caixas_por_chapa || 0) || 0;
+          const chapasNec = cx > 0 ? Math.ceil(qtdPedido / cx) : null;
+          const v = Number(c?.valor_unitario || 0) || 0;
+          return Object.assign({}, c, {
+            chapas_necessarias: chapasNec,
+            custo_total: (chapasNec && v > 0) ? (chapasNec * v) : null,
+          });
+        });
+      }
+
+      _simdRenderResultados(data, qtdPedido);
+    } catch(e) {
+      if (loading) loading.style.display = 'none';
+      if (resultado) resultado.style.display = 'block';
+      _simdRenderResultados({ ok: false, error: 'Erro ao calcular. Tente novamente.' }, qtdPedido);
+      try{ console.error('[SIMD]', e); }catch(_){}
     }
   }catch(e){
     try{
@@ -9283,84 +9346,92 @@ async function _simdCalcular(){
   }
 }
 
-function _simdCalcularParaChapas(chapas, comp, larg, alt, puxada, boca, qtdPedido) {
-  return (Array.isArray(chapas) ? chapas : []).map(c => {
-    const tam = String(c?.tamanho || c?.tam || '').trim();
-    const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
-    if (!m) return null;
+function _simdCalcularUmaChapa(chapa, planifLarg, planifComp, qtdPedido) {
+  const tam = String(chapa?.tamanho || chapa?.tam || '').trim();
+  const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
+  if (!m) return null;
 
-    const d1 = Number(m[1]) || 0;
-    const d2 = Number(m[2]) || 0;
-    if (!(d1 > 0 && d2 > 0)) return null;
+  const d1 = Number(m[1]) || 0;
+  const d2 = Number(m[2]) || 0;
+  if (!(d1 > 0 && d2 > 0)) return null;
 
-    const areaChapa = d1 * d2;
+  const areaChapa = d1 * d2;
 
-    const sentidoAOk = d1 >= puxada && d2 >= boca;
-    const sentidoBOk = d1 >= boca && d2 >= puxada;
+  const sentidoA = d1 >= planifComp && d2 >= planifLarg;
+  const sentidoB = d1 >= planifLarg && d2 >= planifComp;
+  if (!sentidoA && !sentidoB) return null;
 
-    let melhorSentido = null;
-    let melhorCaixas = 0;
+  let melhorCx = 0;
+  let melhorSentido = null;
+  let melhorBoxW = 0;
+  let melhorBoxH = 0;
+  let melhorCxPorLinha = 0;
+  let melhorCxPorCol = 0;
 
-    if (sentidoAOk) {
-      const cxA = Math.floor(d1 / puxada) * Math.floor(d2 / boca);
-      if (cxA > melhorCaixas) {
-        melhorCaixas = cxA;
-        melhorSentido = 'A';
-      }
+  if (sentidoA) {
+    const cxPorLinha = Math.floor(d1 / planifComp);
+    const cxPorCol = Math.floor(d2 / planifLarg);
+    const cx = cxPorLinha * cxPorCol;
+    if (cx > melhorCx) {
+      melhorCx = cx;
+      melhorSentido = 'A';
+      melhorBoxW = planifComp;
+      melhorBoxH = planifLarg;
+      melhorCxPorLinha = cxPorLinha;
+      melhorCxPorCol = cxPorCol;
     }
-    if (sentidoBOk) {
-      const cxB = Math.floor(d1 / boca) * Math.floor(d2 / puxada);
-      if (cxB > melhorCaixas) {
-        melhorCaixas = cxB;
-        melhorSentido = 'B';
-      }
+  }
+  if (sentidoB) {
+    const cxPorLinha = Math.floor(d1 / planifLarg);
+    const cxPorCol = Math.floor(d2 / planifComp);
+    const cx = cxPorLinha * cxPorCol;
+    if (cx > melhorCx) {
+      melhorCx = cx;
+      melhorSentido = 'B';
+      melhorBoxW = planifLarg;
+      melhorBoxH = planifComp;
+      melhorCxPorLinha = cxPorLinha;
+      melhorCxPorCol = cxPorCol;
     }
+  }
 
-    const cabe = melhorSentido !== null && melhorCaixas > 0;
-    const caixasPorChapa = cabe ? melhorCaixas : 0;
+  const caixasPorChapa = melhorCx;
+  const areaUsada = caixasPorChapa * planifComp * planifLarg;
+  const areaSobra = Math.max(0, areaChapa - areaUsada);
+  const despPct = areaChapa > 0 ? Math.max(0, Math.round((areaSobra / areaChapa) * 100)) : 0;
 
-    const boxW = melhorSentido === 'A' ? puxada : (melhorSentido === 'B' ? boca : puxada);
-    const boxH = melhorSentido === 'A' ? boca   : (melhorSentido === 'B' ? puxada : boca);
-    const cxPorLinha = cabe ? Math.floor(d1 / boxW) : 0;
-    const cxPorCol   = cabe ? Math.floor(d2 / boxH) : 0;
+  const sobraLat = melhorBoxW > 0 ? Math.max(0, d1 - (melhorCxPorLinha * melhorBoxW)) : 0;
+  const sobraInf = melhorBoxH > 0 ? Math.max(0, d2 - (melhorCxPorCol * melhorBoxH)) : 0;
 
-    const areaUsada = caixasPorChapa * puxada * boca;
-    const areaSobra = areaChapa - areaUsada;
-    const despPct = areaChapa > 0 ? Math.max(0, Math.round((Math.max(0, areaSobra) / areaChapa) * 100)) : 0;
+  const chapasNec = (qtdPedido > 0 && caixasPorChapa > 0) ? Math.ceil(qtdPedido / caixasPorChapa) : null;
+  const vUnit = Number(chapa?.valor_unitario || chapa?.val || 0) || 0;
+  const custoTotal = (chapasNec && vUnit > 0) ? (chapasNec * vUnit) : null;
 
-    const sobraLateral = Math.max(0, d1 - (cxPorLinha * boxW));
-    const sobraInferior = Math.max(0, d2 - (cxPorCol * boxH));
-
-    const chapasNecessarias = (qtdPedido > 0 && caixasPorChapa > 0) ? Math.ceil(qtdPedido / caixasPorChapa) : null;
-    const valUnit = Number(c?.valor_unitario || c?.val || 0) || 0;
-    const custoTotal = (chapasNecessarias && valUnit > 0) ? (chapasNecessarias * valUnit) : null;
-
-    return {
-      id: c?.id,
-      nome: String(c?.nome || c?.nomenclatura || c?.nome_uso || '').trim(),
-      fornecedor: String(c?.fornecedor || c?.forn || '').trim(),
-      tamanho: tam,
-      dim1: d1,
-      dim2: d2,
-      area_chapa_mm2: areaChapa,
-      quantidade: Number(c?.quantidade || c?.qtd || 0) || 0,
-      valor_unitario: valUnit,
-      cabe,
-      caixas_por_chapa: caixasPorChapa,
-      cx_por_linha: cxPorLinha,
-      cx_por_col: cxPorCol,
-      box_w: boxW,
-      box_h: boxH,
-      sentido: melhorSentido,
-      desperdicio_real_pct: despPct,
-      area_sobra_mm2: areaSobra,
-      sobra_lateral_mm: sobraLateral,
-      sobra_inferior_mm: sobraInferior,
-      economia_vs_pior: 0,
-      chapas_necessarias: chapasNecessarias,
-      custo_total: custoTotal,
-    };
-  }).filter(Boolean);
+  return {
+    id: chapa?.id,
+    nome: String(chapa?.nome || chapa?.nomenclatura || chapa?.nome_uso || '').trim(),
+    fornecedor: String(chapa?.fornecedor || chapa?.forn || '').trim(),
+    tamanho: tam,
+    dim1: d1,
+    dim2: d2,
+    area_chapa_mm2: areaChapa,
+    quantidade: Number(chapa?.quantidade || chapa?.qtd || 0) || 0,
+    valor_unitario: vUnit,
+    cabe: true,
+    caixas_por_chapa: caixasPorChapa,
+    cx_por_linha: melhorCxPorLinha,
+    cx_por_col: melhorCxPorCol,
+    box_w: melhorBoxW,
+    box_h: melhorBoxH,
+    sentido: melhorSentido,
+    desperdicio_real_pct: despPct,
+    area_sobra_mm2: areaSobra,
+    sobra_lateral_mm: sobraLat,
+    sobra_inferior_mm: sobraInf,
+    economia_vs_pior: 0,
+    chapas_necessarias: chapasNec,
+    custo_total: custoTotal,
+  };
 }
 
 function _simdGerarVisual(chapa, dadosCaixa){
@@ -9369,9 +9440,12 @@ function _simdGerarVisual(chapa, dadosCaixa){
     const titulo = document.getElementById('simd-visual-titulo');
     const svgCont = document.getElementById('simd-svg-container');
     const dadosEl = document.getElementById('simd-visual-dados');
+
     if (!visual || !svgCont) return;
     visual.style.display = 'block';
-    if (titulo) titulo.textContent = (String(chapa?.nome || chapa?.tamanho || '').trim() || 'Chapa') + ' — ' + String(chapa?.desperdicio_real_pct ?? '—') + '% desperdício';
+    if (titulo) titulo.textContent =
+      (String(chapa?.nome || chapa?.tamanho || '').trim() || 'Chapa') +
+      ' — ' + String(chapa?.desperdicio_real_pct ?? '—') + '% desperdício';
 
     const parseDims = (c) => {
       const d1 = Number(c?.dim1 ?? c?.d1 ?? 0) || 0;
@@ -9388,100 +9462,101 @@ function _simdGerarVisual(chapa, dadosCaixa){
     };
 
     const dims = parseDims(chapa || {});
-    const chapaD1 = Number(dims.d1) || 0;
-    const chapaD2 = Number(dims.d2) || 0;
-    const devComp = Number(dadosCaixa?.desenvolvimento_comprimento ?? dadosCaixa?.desenvolvimentoComprimento ?? 0) || 0;
-    const devLarg = Number(dadosCaixa?.desenvolvimento_largura ?? dadosCaixa?.desenvolvimentoLargura ?? 0) || 0;
-    if (!(chapaD1 > 0 && chapaD2 > 0 && devComp > 0 && devLarg > 0)) {
+    let chapaX = Number(dims.d1) || 0;
+    let chapaY = Number(dims.d2) || 0;
+
+    if (chapaY > chapaX) {
+      const t = chapaX;
+      chapaX = chapaY;
+      chapaY = t;
+    }
+
+    const planifComp = Number(dadosCaixa?.desenvolvimento_comprimento ?? dadosCaixa?.desenvolvimentoComprimento ?? 0) || 0;
+    const planifLarg = Number(dadosCaixa?.desenvolvimento_largura ?? dadosCaixa?.desenvolvimentoLargura ?? 0) || 0;
+
+    if (!(chapaX > 0 && chapaY > 0 && planifComp > 0 && planifLarg > 0)) {
       svgCont.innerHTML = '<div style="padding:14px;font-size:12px;color:rgba(255,255,255,0.5)">Dados insuficientes para gerar a visualização.</div>';
       if (dadosEl) dadosEl.innerHTML = '';
       return;
     }
 
-    const sentidoAOk = chapaD1 >= devComp && chapaD2 >= devLarg;
-    const sentidoBOk = chapaD1 >= devLarg && chapaD2 >= devComp;
+    const sentidoAOk = chapaX >= planifComp && chapaY >= planifLarg;
+    const sentidoBOk = chapaX >= planifLarg && chapaY >= planifComp;
     let sentido = null;
+
     const prefer = String(chapa?.sentido || '').toUpperCase();
     if (prefer === 'A' && sentidoAOk) sentido = 'A';
     if (prefer === 'B' && sentidoBOk) sentido = 'B';
+
     if (!sentido) {
       let melhor = 0;
       if (sentidoAOk) {
-        const cxA = Math.floor(chapaD1 / devComp) * Math.floor(chapaD2 / devLarg);
-        if (cxA > melhor) { melhor = cxA; sentido = 'A'; }
+        const cx = Math.floor(chapaX / planifComp) * Math.floor(chapaY / planifLarg);
+        if (cx > melhor) { melhor = cx; sentido = 'A'; }
       }
       if (sentidoBOk) {
-        const cxB = Math.floor(chapaD1 / devLarg) * Math.floor(chapaD2 / devComp);
-        if (cxB > melhor) { melhor = cxB; sentido = 'B'; }
+        const cx = Math.floor(chapaX / planifLarg) * Math.floor(chapaY / planifComp);
+        if (cx > melhor) { melhor = cx; sentido = 'B'; }
       }
-      if (!sentido) sentido = 'A';
+      if (!sentido) sentido = sentidoAOk ? 'A' : 'B';
     }
 
-    const cxW = sentido === 'A' ? devComp : devLarg;
-    const cxH = sentido === 'A' ? devLarg : devComp;
-    const cxPorLinhaH = Math.max(0, Math.floor(chapaD1 / cxW));
-    const cxPorLinhaV = Math.max(0, Math.floor(chapaD2 / cxH));
+    const boxX = sentido === 'A' ? planifComp : planifLarg;
+    const boxY = sentido === 'A' ? planifLarg : planifComp;
+    const cxPorLinha = boxX > 0 ? Math.floor(chapaX / boxX) : 0;
+    const cxPorCol   = boxY > 0 ? Math.floor(chapaY / boxY) : 0;
 
-    const escala = Math.min(480 / chapaD1, 320 / chapaD2);
-    const svgW = Math.round(chapaD1 * escala);
-    const svgH = Math.round(chapaD2 * escala);
-    const boxW = Math.round(cxW * escala);
-    const boxH = Math.round(cxH * escala);
+    const maxW = 560;
+    const maxH = 260;
+    const escala = Math.min(maxW / chapaX, maxH / chapaY);
+    const svgW = Math.round(chapaX * escala);
+    const svgH = Math.round(chapaY * escala);
+    const bW   = Math.round(boxX * escala);
+    const bH   = Math.round(boxY * escala);
 
     let rects = '';
-    for (let row = 0; row < cxPorLinhaV; row++) {
-      for (let col = 0; col < cxPorLinhaH; col++) {
-        const x = Math.round(col * boxW);
-        const y = Math.round(row * boxH);
-        const isFirst = row === 0 && col === 0;
-        rects += `<rect x="${x}" y="${y}" width="${boxW}" height="${boxH}" fill="${isFirst ? '#185FA5' : 'rgba(24,95,165,0.55)'}" stroke="rgba(0,0,0,0.4)" stroke-width="0.5" rx="1"/>`;
-        rects += `<text x="${x + boxW/2}" y="${y + boxH/2}" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.7)" font-size="${Math.max(7, Math.round(boxW/8))}">${(isFirst ? (Math.round(cxW) + '×' + Math.round(cxH)) : '')}</text>`;
+    for (let col = 0; col < cxPorLinha; col++) {
+      for (let row = 0; row < cxPorCol; row++) {
+        const x = col * bW;
+        const y = row * bH;
+        const isFirst = col === 0 && row === 0;
+        rects += `<rect x="${x}" y="${y}" width="${bW}" height="${bH}" fill="${isFirst ? '#185FA5' : 'rgba(24,95,165,0.5)'}" stroke="rgba(0,0,0,0.5)" stroke-width="0.5" rx="1"/>`;
+        if (isFirst) {
+          const fs = Math.max(8, Math.min(12, Math.round(bW / 8)));
+          rects += `<text x="${x + bW/2}" y="${y + bH/2}" text-anchor="middle" dominant-baseline="central" fill="rgba(255,255,255,0.8)" font-size="${fs}px">${Math.round(boxX)}×${Math.round(boxY)}</text>`;
+        }
       }
     }
 
-    const usadoW = cxPorLinhaH * boxW;
-    const usadoH = cxPorLinhaV * boxH;
+    const usadoX = cxPorLinha * bW;
+    const usadoY = cxPorCol   * bH;
     let sobras = '';
-    if (usadoW < svgW) {
-      sobras += `<rect x="${usadoW}" y="0" width="${svgW - usadoW}" height="${usadoH}" fill="rgba(239,159,39,0.15)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
+    if (usadoX < svgW) {
+      sobras += `<rect x="${usadoX}" y="0" width="${svgW - usadoX}" height="${usadoY}" fill="rgba(239,159,39,0.2)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
     }
-    if (usadoH < svgH) {
-      sobras += `<rect x="0" y="${usadoH}" width="${svgW}" height="${svgH - usadoH}" fill="rgba(239,159,39,0.15)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
+    if (usadoY < svgH) {
+      sobras += `<rect x="0" y="${usadoY}" width="${svgW}" height="${svgH - usadoY}" fill="rgba(239,159,39,0.2)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
     }
 
-    const svg = `<svg width="${svgW}" height="${svgH + 20}" viewBox="0 0 ${svgW} ${svgH + 20}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${svgW}" height="${svgH}" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="2"/>${sobras}${rects}<text x="${svgW/2}" y="${svgH + 14}" text-anchor="middle" style="fill:rgba(255,255,255,0.5);font-size:10px">${Math.round(chapaD1)} mm</text><text x="4" y="${svgH - 4}" style="fill:rgba(255,255,255,0.5);font-size:9px">${sentido === 'A' ? '→ puxada' : '→ boca'}</text></svg>`;
+    const svg = `<svg width="${svgW}" height="${svgH + 22}" viewBox="0 0 ${svgW} ${svgH + 22}" xmlns="http://www.w3.org/2000/svg" style="display:block"><rect x="0" y="0" width="${svgW}" height="${svgH}" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.25)" stroke-width="1" rx="2"/>${sobras}${rects}<text x="${svgW / 2}" y="${svgH + 14}" text-anchor="middle" style="fill:rgba(255,255,255,0.45);font-size:10px;font-family:sans-serif">${Math.round(chapaX)} mm</text><text x="3" y="${svgH - 3}" style="fill:rgba(255,255,255,0.45);font-size:9px;font-family:sans-serif">${sentido === 'A' ? '→ puxada' : '→ boca'}</text></svg>`;
+
+    svgCont.style.overflow = 'auto';
     svgCont.innerHTML = svg;
 
     if (dadosEl) {
-      const totalCx = cxPorLinhaH * cxPorLinhaV;
-      const areaChapa = chapaD1 * chapaD2;
-      const areaUsada = totalCx * cxW * cxH;
+      const totalCx = cxPorLinha * cxPorCol;
+      const areaChapa = chapaX * chapaY;
+      const areaUsada = totalCx * planifComp * planifLarg;
       const areaSobra = Math.max(0, areaChapa - areaUsada);
       const pct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
-      const sobraLateralMm = Number(chapa?.sobra_lateral_mm ?? 0) || Math.max(0, Math.round(chapaD1 - (cxPorLinhaH * cxW)));
-      const sobraInferiorMm = Number(chapa?.sobra_inferior_mm ?? 0) || Math.max(0, Math.round(chapaD2 - (cxPorLinhaV * cxH)));
+      const sobraLateralMm = Number(chapa?.sobra_lateral_mm ?? 0) || Math.max(0, Math.round(chapaX - (cxPorLinha * boxX)));
+      const sobraInferiorMm = Number(chapa?.sobra_inferior_mm ?? 0) || Math.max(0, Math.round(chapaY - (cxPorCol * boxY)));
       const chapasNec = (chapa && chapa.chapas_necessarias != null) ? Number(chapa.chapas_necessarias) : null;
       const custoTotal = (chapa && chapa.custo_total != null) ? Number(chapa.custo_total) : null;
-      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaD1)} × ${Math.round(chapaD2)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação da caixa</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">Puxada: ${Math.round(devComp)} mm × Boca: ${Math.round(devLarg)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinhaH} colunas × ${cxPorLinhaV} linhas</div></div>${chapasNec ? `<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapas necessárias (pedido)</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.85)">${chapasNec} chapas</div>${custoTotal ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Custo total: R$ ${custoTotal.toFixed(2)}</div>` : ''}</div>` : ''}<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra lateral (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraLateralMm || 0} mm</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:8px">Sobra inferior (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraInferiorMm || 0} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentido === 'A' ? 'Puxada na dimensão 1, Boca na dimensão 2' : 'Puxada na dimensão 2, Boca na dimensão 1'}</div></div></div>`;
+      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaX)} × ${Math.round(chapaY)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">${Math.round(planifComp)} × ${Math.round(planifLarg)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinha} colunas × ${cxPorCol} linhas</div></div>${chapasNec ? `<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapas necessárias (pedido)</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.85)">${chapasNec} chapas</div>${custoTotal ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Custo total: R$ ${custoTotal.toFixed(2)}</div>` : ''}</div>` : ''}<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra lateral (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraLateralMm || 0} mm</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:8px">Sobra inferior (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraInferiorMm || 0} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentido === 'A' ? '→ puxada' : '→ boca'}</div></div></div>`;
     }
 
     try{ visual.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(_){}
-  }catch(e){}
-}
-
-function _simdAtualizarLargura(){
-  try{
-    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
-    const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
-    const largCalc = comp > 0 ? Math.round(comp * 0.6) : 0;
-    const el = document.getElementById('simd-largura-calc');
-    if (el) el.textContent = comp > 0 ? ('Largura estimada: ' + largCalc + ' mm (ajuste se necessário)') : 'Largura estimada: — mm';
-    const btn = document.getElementById('simd-btn');
-    if (btn) {
-      const ok = comp > 0 && alt > 0;
-      btn.disabled = !ok;
-      btn.style.opacity = ok ? '1' : '0.5';
-    }
   }catch(e){}
 }
 
@@ -9490,9 +9565,9 @@ try{
     window._SIMD_WIRE = 1;
     document.addEventListener('DOMContentLoaded', ()=>{
       try{
-        document.getElementById('simd-comp')?.addEventListener('input', _simdAtualizarLargura);
-        document.getElementById('simd-alt')?.addEventListener('input', _simdAtualizarLargura);
-        _simdAtualizarLargura();
+        document.getElementById('simd-larg')?.addEventListener('input', _simdVerificarCampos);
+        document.getElementById('simd-comp')?.addEventListener('input', _simdVerificarCampos);
+        _simdVerificarCampos();
       }catch(e){}
     });
   }
@@ -35582,29 +35657,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="tela-simulador-desperdicio" style="padding:20px">
       <div style="margin-bottom:20px">
         <h2 style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.9);margin:0 0 4px">Simulador de desperdício de papelão</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe as medidas da caixa e veja quais chapas do estoque desperdiçam menos papelão para este pedido</p>
+        <p style="font-size:13px;color:rgba(255,255,255,0.4);margin:0">Informe a planificação necessária em mm e veja quais chapas do estoque desperdiçam menos papelão para este pedido</p>
       </div>
       <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px;margin-bottom:20px">
-        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Medidas da caixa (mm)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Planificação (mm)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento</label>
-            <input type="number" id="simd-comp" placeholder="ex: 400" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura necessária (mm)</label>
+            <input type="number" id="simd-larg" placeholder="ex: 715" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">largura + (altura × 2) + 15mm</div>
           </div>
           <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Altura</label>
-            <input type="number" id="simd-alt" placeholder="ex: 200" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
-          </div>
-          <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Onda</label>
-            <select id="simd-onda" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
-              <option value="">Qualquer</option>
-              <option value="B">Onda B</option>
-              <option value="C">Onda C</option>
-              <option value="BC">Onda BC</option>
-              <option value="E">Onda E</option>
-              <option value="F">Onda F</option>
-            </select>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento necessário (mm)</label>
+            <input type="number" id="simd-comp" placeholder="ex: 1420" min="1" oninput="_simdVerificarCampos()" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">(comprimento + altura) × 2 + 20mm</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;margin-bottom:8px">
@@ -35613,8 +35679,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <input type="number" id="simd-qtd" placeholder="ex: 1000" min="0" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
           </div>
         </div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura calculada automaticamente (60% do comprimento)</div>
-        <div id="simd-largura-calc" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura estimada: — mm</div>
         <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.08)">
           <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">
             Simular com chapa específica (opcional)

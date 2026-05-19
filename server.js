@@ -8775,23 +8775,36 @@ app.get('/api/chapas_estoque/search', authMiddleware, async (req, res) => {
 
 app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async (req, res) => {
   try {
-    const comp = Number(req.body?.comprimento_mm);
-    const larg = Number(req.body?.largura_mm);
-    const alt  = Number(req.body?.altura_mm);
+    const modo = String(req.body?.modo || '').trim();
     const empId = String(req.body?.emp_id || req.body?.empId || '').trim();
 
-    if (!(comp > 0 && larg > 0 && alt > 0)) {
-      return res.status(400).json({ ok: false, error: 'comprimento_mm, largura_mm e altura_mm são obrigatórios e devem ser > 0' });
+    let planifLarg = 0;
+    let planifComp = 0;
+
+    if (modo === 'planificacao_direta') {
+      planifLarg = Number(req.body?.largura_mm) || 0;
+      planifComp = Number(req.body?.comprimento_mm) || 0;
+    } else {
+      const comp = Number(req.body?.comprimento_mm) || 0;
+      const larg = Number(req.body?.largura_mm) || 0;
+      const alt  = Number(req.body?.altura_mm) || 0;
+      if (!(comp > 0 && larg > 0)) {
+        return res.status(400).json({ ok: false, error: 'largura_mm e comprimento_mm obrigatórios' });
+      }
+      planifLarg = larg + (alt * 2) + 15;
+      planifComp = (comp + alt) * 2 + 20;
     }
 
-    const devLarg = comp + (alt * 2) + 20;
-    const devComp = (larg * 2) + (alt * 2) + 30;
-    const areaCaixa = devLarg * devComp;
+    if (!(planifLarg > 0 && planifComp > 0)) {
+      return res.status(400).json({ ok: false, error: 'Dimensões de planificação inválidas' });
+    }
+
+    const areaPlanif = planifLarg * planifComp;
 
     const table = await _chapasPreferV2Table();
-    let q = supabase.from(table).select('*').limit(5000);
+    let q = supabase.from(table).select('*');
     if (empId) q = q.eq('emp_id', empId);
-    const { data: chapasRaw, error } = await q;
+    const { data: chapasRaw, error } = await q.limit(500);
     if (error) throw error;
 
     const chapas = (Array.isArray(chapasRaw) ? chapasRaw : [])
@@ -8811,21 +8824,27 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
       const areaChapa = d1 * d2;
 
-      const sentidoA = d1 >= devComp && d2 >= devLarg;
-      const sentidoB = d1 >= devLarg && d2 >= devComp;
+      const sentidoA = d1 >= planifComp && d2 >= planifLarg;
+      const sentidoB = d1 >= planifLarg && d2 >= planifComp;
       if (!sentidoA && !sentidoB) continue;
 
-      let cxL, cxC;
+      let melhorCx = 0;
+      let melhorSentido = null;
+
       if (sentidoA) {
-        cxC = Math.floor(d1 / devComp);
-        cxL = Math.floor(d2 / devLarg);
-      } else {
-        cxC = Math.floor(d1 / devLarg);
-        cxL = Math.floor(d2 / devComp);
+        const cx = Math.floor(d1 / planifComp) * Math.floor(d2 / planifLarg);
+        if (cx > melhorCx) { melhorCx = cx; melhorSentido = 'A'; }
       }
-      const caixasPorChapa = Math.max(1, cxL * cxC);
-      const areaUsada = caixasPorChapa * areaCaixa;
-      const despPct = Math.round(((areaChapa - areaUsada) / areaChapa) * 100);
+      if (sentidoB) {
+        const cx = Math.floor(d1 / planifLarg) * Math.floor(d2 / planifComp);
+        if (cx > melhorCx) { melhorCx = cx; melhorSentido = 'B'; }
+      }
+      if (!(melhorCx > 0)) continue;
+
+      const caixasPorChapa = melhorCx;
+      const areaUsada = caixasPorChapa * areaPlanif;
+      const areaSobra = Math.max(0, areaChapa - areaUsada);
+      const despPct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
 
       resultados.push({
         id: c.id,
@@ -8839,6 +8858,7 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
         valor_unitario: Number(c.valor_unitario || c.val || 0) || 0,
         cabe: true,
         caixas_por_chapa: caixasPorChapa,
+        sentido: melhorSentido,
         desperdicio_real_pct: Math.max(0, despPct),
         economia_vs_pior: 0,
       });
@@ -8849,7 +8869,7 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
         ok: true,
         chapas: [],
         aviso: 'nenhuma_chapa_compativel',
-        dados_caixa: { desenvolvimento_largura: devLarg, desenvolvimento_comprimento: devComp, area_caixa_mm2: areaCaixa }
+        dados_caixa: { desenvolvimento_largura: planifLarg, desenvolvimento_comprimento: planifComp, area_caixa_mm2: areaPlanif }
       });
     }
 
@@ -8859,7 +8879,7 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
     return res.json({
       ok: true,
-      dados_caixa: { desenvolvimento_largura: devLarg, desenvolvimento_comprimento: devComp, area_caixa_mm2: areaCaixa },
+      dados_caixa: { desenvolvimento_largura: planifLarg, desenvolvimento_comprimento: planifComp, area_caixa_mm2: areaPlanif },
       chapas: resultados.slice(0, 10),
     });
   } catch (e) {
