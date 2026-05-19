@@ -14425,6 +14425,14 @@ function _mapcliUpsertMarker(c){
     try{
       mk.on('mouseover', function(){ try{ this.openPopup(); }catch(e){} });
       mk.on('mouseout', function(){ try{ this.closePopup(); }catch(e){} });
+      mk.on('click', function(){
+        try{
+          const cli = this && this._cli ? this._cli : null;
+          const cidade = String(cli?.cidade || '').trim();
+          const estado = String(cli?.estado || cli?.uf || '').trim();
+          if(cidade) _cidadeDrawer_abrir(cidade, estado);
+        }catch(e){}
+      });
     }catch(e){}
     mk.addTo(st.layer);
     st.markers.set(id, mk);
@@ -14556,7 +14564,7 @@ function _mapcliRenderSide(list){
               const estado = String(r.estado||'').trim();
               const local = estado ? `${cidade} / ${estado}` : cidade;
               const v = fmtR(Number(r.valor||0)||0);
-              return `<tr style="cursor:pointer" onclick="mapaClientesFocarCidade('${escAttr(cidade)}','${escAttr(estado)}');mapaClientesDetalharCidade('${escAttr(cidade)}','${escAttr(estado)}')">
+              return `<tr style="cursor:pointer" onclick="mapaClientesFocarCidade('${escAttr(cidade)}','${escAttr(estado)}');_cidadeDrawer_abrir('${escAttr(cidade)}','${escAttr(estado)}')">
                 <td style="${td};max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(local || '—')}</td>
                 <td style="${td};text-align:center;font-family:var(--mono);font-weight:900">${escH(String(Math.trunc(Number(r.total_clientes||0)||0)))}</td>
                 <td style="${td};text-align:center;font-family:var(--mono);font-weight:900">${escH(String(Math.trunc(Number(r.total_ofs||0)||0)))}</td>
@@ -14595,6 +14603,201 @@ function mapaClientesFocarCidade(cidade, estado){
     if(hits.length){
       const group = window.L.featureGroup(hits);
       st.map.fitBounds(group.getBounds().pad(0.25), { animate:true });
+    }
+  }catch(e){}
+}
+
+async function _cidadeDrawer_abrir(cidadeNome, estado){
+  try{
+    const drawer = document.getElementById('cidade-drawer');
+    const overlay = document.getElementById('cidade-drawer-overlay');
+    if(!drawer) return;
+    const cidade = String(cidadeNome||'').trim();
+    const uf = String(estado||'').trim();
+    if(!cidade) return;
+
+    drawer.style.right = '0';
+    if(overlay) overlay.style.display = 'block';
+    const tit = document.getElementById('cidade-drawer-titulo');
+    const sub = document.getElementById('cidade-drawer-sub');
+    if(tit) tit.textContent = cidade;
+    if(sub) sub.textContent = uf || 'Carregando...';
+    const cards = document.getElementById('cidade-resumo-cards');
+    const vends = document.getElementById('cidade-vendedores-lista');
+    const clis = document.getElementById('cidade-clientes-lista');
+    const hist = document.getElementById('cidade-historico');
+    if(cards) cards.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4)">Carregando dados...</div>';
+    if(vends) vends.innerHTML = '';
+    if(clis) clis.innerHTML = '';
+    if(hist) hist.innerHTML = '';
+
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+    const empSel = String(document.getElementById('mapcli-emp')?.value || '').trim();
+    const empId = empSel || (typeof EMP_FILTRO !== 'undefined' && EMP_FILTRO ? String(EMP_FILTRO) : '');
+    const periodoSel = String(document.getElementById('mapcli-periodo')?.value || 'mes').trim() || 'mes';
+    const periodo = (periodoSel === 'ano') ? 365 : (periodoSel === '3m' ? 93 : 30);
+
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const url = base + '/api/clientes/cidade/' + encodeURIComponent(cidade) +
+      '?empId=' + encodeURIComponent(empId || '') +
+      '&estado=' + encodeURIComponent(uf || '') +
+      '&periodo=' + encodeURIComponent(String(periodo));
+    const r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + String(token||'') } });
+    const data = await r.json().catch(()=>null);
+    if(!r.ok || !data || data.ok !== true) throw new Error(String(data?.error || 'Erro ao carregar'));
+    _cidadeDrawer_renderizar(data);
+  }catch(e){
+    try{
+      const cards = document.getElementById('cidade-resumo-cards');
+      if(cards) cards.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;font-size:13px;color:#F09595">Erro ao carregar dados da cidade.</div>';
+    }catch(_){}
+    try{ console.error('[CIDADE DRAWER]', e); }catch(_){}
+  }
+}
+
+function _cidadeDrawer_fechar(){
+  try{
+    const drawer = document.getElementById('cidade-drawer');
+    const overlay = document.getElementById('cidade-drawer-overlay');
+    if(drawer) drawer.style.right = '-480px';
+    if(overlay) overlay.style.display = 'none';
+  }catch(e){}
+}
+
+function _fmtMoeda(v){
+  try{
+    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }catch(e){
+    return 'R$ 0,00';
+  }
+}
+
+function _cidadeDrawer_renderizar(data){
+  try{
+    const r = (data && typeof data === 'object' && data.resumo && typeof data.resumo === 'object') ? data.resumo : {};
+    const cidade = String(data?.cidade || '').trim();
+    const uf = String(data?.estado || '').trim();
+    const tit = document.getElementById('cidade-drawer-titulo');
+    const sub = document.getElementById('cidade-drawer-sub');
+    if(tit) tit.textContent = cidade || 'Cidade';
+    if(sub) sub.textContent = (uf ? uf + ' · ' : '') + String(r.total_clientes||0) + ' clientes · ' + String(r.total_ofs_periodo||0) + ' OFs no período';
+
+    const normalizaMelhorMes = (m)=>{
+      const s = String(m||'').trim();
+      if(!s) return '—';
+      if(/^\d{4}-\d{2}$/.test(s)){
+        const [y,mm] = s.split('-');
+        return mm + '/' + y;
+      }
+      if(/^\d{2}\/\d{4}$/.test(s)) return s;
+      if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s.slice(3);
+      return s;
+    };
+
+    const cards = [
+      { label: 'Faturamento período', valor: _fmtMoeda(r.valor_total_periodo), cor: '#97C459' },
+      { label: 'Ticket médio', valor: _fmtMoeda(r.ticket_medio), cor: '#9FE1CB' },
+      { label: 'Melhor mês', valor: normalizaMelhorMes(r.melhor_mes), cor: '#EF9F27' },
+      { label: 'Valor melhor mês', valor: _fmtMoeda(r.valor_melhor_mes), cor: '#EF9F27' },
+    ];
+    const cardsEl = document.getElementById('cidade-resumo-cards');
+    if(cardsEl){
+      cardsEl.innerHTML = cards.map(c => `
+        <div style="background:rgba(255,255,255,0.04); border:0.5px solid rgba(255,255,255,0.08); border-radius:8px; padding:12px">
+          <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-bottom:4px">${escH(c.label)}</div>
+          <div style="font-size:16px; font-weight:600; color:${c.cor}">${escH(c.valor)}</div>
+        </div>
+      `).join('');
+    }
+
+    const vendsEl = document.getElementById('cidade-vendedores-lista');
+    const vendArr = Array.isArray(data?.vendedores) ? data.vendedores : [];
+    if(vendsEl){
+      if(!vendArr.length){
+        vendsEl.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3)">Nenhum vendedor encontrado.</div>';
+      } else {
+        vendsEl.innerHTML = vendArr.map((v) => {
+          const nome = String(v?.nome || 'Sem vendedor').trim() || 'Sem vendedor';
+          const ini = String(nome).slice(0, 2).toUpperCase();
+          const totCli = Math.trunc(Number(v?.total_clientes_cidade || 0) || 0);
+          const totOfs = Math.trunc(Number(v?.total_ofs_periodo || 0) || 0);
+          const val = _fmtMoeda(v?.valor_periodo || 0);
+          const pct = Number(v?.percentual_cidade || 0) || 0;
+          return `
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; background:rgba(255,255,255,0.03); border:0.5px solid rgba(255,255,255,0.07); border-radius:8px; margin-bottom:6px">
+              <div style="width:32px; height:32px; border-radius:50%; background:rgba(23,95,165,0.3); border:0.5px solid #185FA5; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#85B7EB; flex-shrink:0">${escH(ini)}</div>
+              <div style="flex:1; min-width:0">
+                <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escH(nome)}</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:2px">${escH(String(totCli))} cliente${totCli !== 1 ? 's' : ''} · ${escH(String(totOfs))} OFs</div>
+              </div>
+              <div style="text-align:right; flex-shrink:0">
+                <div style="font-size:13px; font-weight:600; color:#97C459">${escH(val)}</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.4)">${escH(String(pct))}% da cidade</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    const clisEl = document.getElementById('cidade-clientes-lista');
+    const cliArr = Array.isArray(data?.clientes) ? data.clientes : [];
+    const top10 = cliArr.slice(0, 10);
+    if(clisEl){
+      if(!top10.length){
+        clisEl.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3)">Nenhum cliente com OFs no período.</div>';
+      } else {
+        clisEl.innerHTML = top10.map((c, i) => {
+          const nome = String(c?.nome || '').trim() || '—';
+          const vend = String(c?.vendedor_nome || '').trim();
+          const ofs = Math.trunc(Number(c?.total_ofs_periodo || 0) || 0);
+          const ramo = String(c?.ramo || '').trim();
+          const val = _fmtMoeda(c?.valor_periodo || 0);
+          const ticket = _fmtMoeda(c?.ticket_medio || 0);
+          const corIdx = i < 3 ? '#EF9F27' : 'rgba(255,255,255,0.3)';
+          return `
+            <div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:0.5px solid rgba(255,255,255,0.06)">
+              <div style="width:22px; text-align:center; font-size:12px; font-weight:600; color:${corIdx}; flex-shrink:0">${i + 1}</div>
+              <div style="flex:1; min-width:0">
+                <div style="font-size:13px; font-weight:500; color:rgba(255,255,255,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${escH(nome)}</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.4); margin-top:2px">
+                  ${vend ? ('Vendedor: ' + escH(vend) + ' · ') : ''}${escH(String(ofs))} OFs${ramo ? (' · ' + escH(ramo)) : ''}
+                </div>
+              </div>
+              <div style="text-align:right; flex-shrink:0">
+                <div style="font-size:13px; font-weight:600; color:#9FE1CB">${escH(val)}</div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.4)">ticket ${escH(ticket)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    const histEl = document.getElementById('cidade-historico');
+    const histArr = Array.isArray(data?.historico_mensal) ? data.historico_mensal : [];
+    const fmtMes = (m)=>{
+      const s = String(m||'').trim();
+      if(/^\d{4}-\d{2}$/.test(s)){
+        const [y,mm] = s.split('-');
+        return mm + '/' + y;
+      }
+      return s || '—';
+    };
+    if(histEl){
+      if(!histArr.length){
+        histEl.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3)">Sem histórico.</div>';
+      } else {
+        histEl.innerHTML = histArr.map((h)=>`
+          <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">
+            <div style="font-size:12px;color:rgba(255,255,255,0.7)">${escH(fmtMes(h?.mes||''))}</div>
+            <div style="display:flex;gap:12px;align-items:baseline;flex-shrink:0">
+              <div style="font-size:11px;color:rgba(255,255,255,0.4)">${escH(String(Math.trunc(Number(h?.total_ofs||0)||0)))} OFs</div>
+              <div style="font-size:12px;font-family:var(--mono);font-weight:900;color:rgba(255,255,255,0.85)">${escH(_fmtMoeda(h?.valor||0))}</div>
+            </div>
+          </div>
+        `).join('');
+      }
     }
   }catch(e){}
 }
@@ -44324,5 +44527,29 @@ window.atualizarChapas = async function(){
   }
 })();
 </script>
+
+<div id="cidade-drawer" style="position:fixed;top:0;right:-480px;width:460px;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
+  <div style="padding:16px 20px;border-bottom:0.5px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0f1623;z-index:1">
+    <div>
+      <div id="cidade-drawer-titulo" style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.9)">Cidade</div>
+      <div id="cidade-drawer-sub" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px"></div>
+    </div>
+    <button onclick="_cidadeDrawer_fechar()" style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);border-radius:6px;color:rgba(255,255,255,0.6);padding:6px 10px;cursor:pointer;font-size:14px">✕</button>
+  </div>
+  <div id="cidade-resumo-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:16px 20px 0"></div>
+  <div style="padding:16px 20px 0">
+    <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Vendedores</div>
+    <div id="cidade-vendedores-lista"></div>
+  </div>
+  <div style="padding:16px 20px 0">
+    <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Melhores clientes no período</div>
+    <div id="cidade-clientes-lista"></div>
+  </div>
+  <div style="padding:16px 20px">
+    <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Histórico mensal (12 meses)</div>
+    <div id="cidade-historico"></div>
+  </div>
+</div>
+<div id="cidade-drawer-overlay" onclick="_cidadeDrawer_fechar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9998"></div>
 
 </body></html>
