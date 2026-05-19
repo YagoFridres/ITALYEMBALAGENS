@@ -8618,10 +8618,27 @@ function ofDimensoesChange(){
 }
 
 function _sugestaoChapa_verificarMostrarBotao(){
-  const dims = (typeof ofDimensoesGet === 'function') ? (ofDimensoesGet() || {}) : {};
-  const comp = Number(dims.comprimento || 0);
-  const larg = Number(dims.largura || 0);
-  const alt  = Number(dims.altura || 0);
+  const comp = Number(
+    document.getElementById('of-caixa-comp')?.value ||
+    document.getElementById('f-comp')?.value ||
+    document.querySelector('[name="caixa_comprimento"]')?.value ||
+    document.querySelector('[name="comprimento_mm"]')?.value ||
+    0
+  );
+  const larg = Number(
+    document.getElementById('of-caixa-larg')?.value ||
+    document.getElementById('f-larg')?.value ||
+    document.querySelector('[name="caixa_largura"]')?.value ||
+    document.querySelector('[name="largura_mm"]')?.value ||
+    0
+  );
+  const alt = Number(
+    document.getElementById('of-caixa-alt')?.value ||
+    document.getElementById('f-alt')?.value ||
+    document.querySelector('[name="caixa_altura"]')?.value ||
+    document.querySelector('[name="altura_mm"]')?.value ||
+    0
+  );
   const container = document.getElementById('sugestao-chapa-container');
   if (container) {
     container.style.display = (comp > 0 && larg > 0 && alt > 0) ? 'block' : 'none';
@@ -8629,10 +8646,27 @@ function _sugestaoChapa_verificarMostrarBotao(){
 }
 
 async function _sugestaoChapa_buscar(){
-  const dims = (typeof ofDimensoesGet === 'function') ? (ofDimensoesGet() || {}) : {};
-  const comp = Number(dims.comprimento || 0);
-  const larg = Number(dims.largura || 0);
-  const alt  = Number(dims.altura || 0);
+  const comp = Number(
+    document.getElementById('of-caixa-comp')?.value ||
+    document.getElementById('f-comp')?.value ||
+    document.querySelector('[name="caixa_comprimento"]')?.value ||
+    document.querySelector('[name="comprimento_mm"]')?.value ||
+    0
+  );
+  const larg = Number(
+    document.getElementById('of-caixa-larg')?.value ||
+    document.getElementById('f-larg')?.value ||
+    document.querySelector('[name="caixa_largura"]')?.value ||
+    document.querySelector('[name="largura_mm"]')?.value ||
+    0
+  );
+  const alt = Number(
+    document.getElementById('of-caixa-alt')?.value ||
+    document.getElementById('f-alt')?.value ||
+    document.querySelector('[name="caixa_altura"]')?.value ||
+    document.querySelector('[name="altura_mm"]')?.value ||
+    0
+  );
   const empId = String(document.getElementById('f-emp')?.value || EMP_FILTRO || '').trim();
   const onda = String(document.getElementById('of-onda')?.value || '').trim();
 
@@ -8767,6 +8801,15 @@ function _sugestaoChapa_inicializar(){
     document.getElementById('of-caixa-comp'),
     document.getElementById('of-caixa-larg'),
     document.getElementById('of-caixa-alt'),
+    document.getElementById('f-comp'),
+    document.getElementById('f-larg'),
+    document.getElementById('f-alt'),
+    document.querySelector('[name="caixa_comprimento"]'),
+    document.querySelector('[name="caixa_largura"]'),
+    document.querySelector('[name="caixa_altura"]'),
+    document.querySelector('[name="comprimento_mm"]'),
+    document.querySelector('[name="largura_mm"]'),
+    document.querySelector('[name="altura_mm"]'),
     document.getElementById('of-onda'),
     document.getElementById('f-emp'),
   ].filter(Boolean);
