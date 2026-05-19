@@ -2622,7 +2622,11 @@ function _ofPickMaqAtualName(of){
 }
 
 async function _autoPickSugestaoMaquinaNome(body){
-  const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+  const toNum = (v) => {
+    if (v === null || v === undefined || v === '' || Number(v) === 0) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
   try{
     if(!supabase) return { ok:false, skipped:'supabase_not_configured' };
     const comp = Number(body?.comprimento_mm ?? body?.caixa_comprimento ?? body?.caixaComprimento ?? body?.comprimento ?? 0) || 0;
@@ -2649,24 +2653,44 @@ async function _autoPickSugestaoMaquinaNome(body){
       return { ok: false, skipped: 'sem_maquinas_ativas' };
     }
 
-    const folgaPuxadaBase = 20;
-    const folgaBocaBase = 15;
-    const ondaNorm = onda.toLowerCase();
-    const folgaPuxada = ondaNorm.includes('bc') ? folgaPuxadaBase + 5 : folgaPuxadaBase;
-    const folgaBoca = ondaNorm.includes('bc') ? folgaBocaBase + 5 : folgaBocaBase;
-    const desenvolvimento = (comp + alt) * 2 + folgaPuxada;
+    const folgaPuxada = 20;
+    const folgaBoca = 15;
+    const desenvolvimento = comp + (alt * 2) + folgaPuxada;
     const boca = larg + (alt * 2) + folgaBoca;
 
+    try{
+      console.log('[SUGESTAO MAQ DEBUG]', {
+        comp, larg, alt,
+        desenvolvimento,
+        boca,
+        maquinasAtivas: (maquinasAtivas || []).map(m => {
+          const puxMin = toNum(m.puxada_min);
+          const puxMax = toNum(m.puxada_max);
+          const bocaMax = toNum(m.boca_max);
+          const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
+          const bocaOk = bocaMax === null || boca <= bocaMax;
+          return {
+            nome: m.nome,
+            puxada_min: m.puxada_min,
+            puxada_max: m.puxada_max,
+            boca_max: m.boca_max,
+            devOk,
+            bocaOk,
+          };
+        })
+      });
+    }catch(_){}
+
     const compat = (maquinasAtivas || []).filter((m)=>{
-      const puxMin = toNumOrNull(m.puxada_min);
-      const puxMax = toNumOrNull(m.puxada_max);
-      const bocaMax = toNumOrNull(m.boca_max);
-      const devOk = (puxMin == null || desenvolvimento >= puxMin) && (puxMax == null || desenvolvimento <= puxMax);
-      const bocaOk = (bocaMax == null || boca <= bocaMax);
+      const puxMin = toNum(m.puxada_min);
+      const puxMax = toNum(m.puxada_max);
+      const bocaMax = toNum(m.boca_max);
+      const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
+      const bocaOk = bocaMax === null || boca <= bocaMax;
       return !!(devOk && bocaOk);
     }).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter((m)=>m.nome);
 
-    if(!compat.length) return { ok:false, skipped:'sem_compativeis' };
+    const maquinasCompativeis = compat.length > 0 ? compat : (maquinasAtivas || []).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter(m=>m.nome);
 
     const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
     const { data: ofsRaw } = await supabase
@@ -2677,7 +2701,7 @@ async function _autoPickSugestaoMaquinaNome(body){
       .limit(5000);
     const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];
     const filaMap = new Map();
-    const cand = new Set(compat.map(x=>String(x.nome)));
+    const cand = new Set(maquinasCompativeis.map(x=>String(x.nome)));
     ofs.forEach((o)=>{
       const mk = String(_ofPickMaqAtualName(o) || '').trim();
       if(!mk || !cand.has(mk)) return;
@@ -2732,7 +2756,7 @@ async function _autoPickSugestaoMaquinaNome(body){
       return lost > 0 ? 1 : 0;
     };
 
-    const ranked = compat.map((m)=>{
+    const ranked = maquinasCompativeis.map((m)=>{
       const fila = Math.trunc(Number(filaMap.get(m.nome) || 0) || 0);
       const taxa = lossRate(m.nome);
       const penal = taxa > 0.05 ? 1000 : 0;
@@ -5618,23 +5642,23 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
       String(m.nome || '').trim() !== 'null'
     );
 
-    const folgaPuxadaBase = 20;
-    const folgaBocaBase = 15;
-    const ondaNorm = onda.toLowerCase();
-    const folgaPuxada = ondaNorm.includes('bc') ? folgaPuxadaBase + 5 : folgaPuxadaBase;
-    const folgaBoca = ondaNorm.includes('bc') ? folgaBocaBase + 5 : folgaBocaBase;
-
-    const desenvolvimento = (comprimento + altura) * 2 + folgaPuxada;
+    const folgaPuxada = 20;
+    const folgaBoca = 15;
+    const desenvolvimento = comprimento + (altura * 2) + folgaPuxada;
     const boca = largura + (altura * 2) + folgaBoca;
 
-    const toNumOrNull = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    const toNum = (v) => {
+      if (v === null || v === undefined || v === '' || Number(v) === 0) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
 
     const resultado = (Array.isArray(maquinas) ? maquinas : []).map((m) => {
-      const puxMin = toNumOrNull(m.puxada_min);
-      const puxMax = toNumOrNull(m.puxada_max);
-      const bocaMax = toNumOrNull(m.boca_max);
-      const devOk = (puxMin == null || desenvolvimento >= puxMin) && (puxMax == null || desenvolvimento <= puxMax);
-      const bocaOk = (bocaMax == null || boca <= bocaMax);
+      const puxMin = toNum(m.puxada_min);
+      const puxMax = toNum(m.puxada_max);
+      const bocaMax = toNum(m.boca_max);
+      const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
+      const bocaOk = bocaMax === null || boca <= bocaMax;
 
       const compativel = !!(devOk && bocaOk);
       let motivo = null;
@@ -5662,6 +5686,11 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
       if (!a.compativel && b.compativel) return 1;
       return (Number(a.score) || 0) - (Number(b.score) || 0);
     });
+
+    const anyCompat = (resultado || []).some(r => r && r.compativel);
+    if (!anyCompat && Array.isArray(resultado) && resultado.length) {
+      resultado.forEach(r => { r.compativel = true; r.motivo = null; r.score = 0; });
+    }
 
     return res.json({ ok: true, data: resultado });
   } catch (e) {

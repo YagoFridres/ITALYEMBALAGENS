@@ -1925,7 +1925,7 @@ const MODULOS_SISTEMA = [
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
   { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
   { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
-  { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Estoques',  menuId:'menu-sel-chapas',      paginaId:'sel-chapas' },
+  { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Papelão',   menuId:'menu-papelao-sel-chapas', paginaId:'sel-chapas' },
   { key:'estoque_facas',  label:'Estoque de Facas',    grupo:'Estoques',  menuId:'menu-facas',           paginaId:'facas' },
   { key:'estoque_cliches',label:'Estoque Clichês',     grupo:'Estoques',  menuId:'menu-cliches',         paginaId:'cliches' },
   { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
@@ -1974,9 +1974,16 @@ const PERMISSOES_SISTEMA = {
     label: 'Estoques',
     itens: {
       estoque_chapas: 'Estoque Chapas',
-      sel_chapas: 'Seleção de Chapas',
       estoque_facas: 'Estoque de Facas',
       estoque_cliches: 'Estoque Clichês',
+    }
+  },
+  papelao: {
+    label: 'Papelão',
+    itens: {
+      compras: 'Compra de Papelão',
+      sel_chapas: 'Seleção de Chapas',
+      simd: 'Simulador de Desperdício',
     }
   },
   analises: {
@@ -3235,7 +3242,8 @@ function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', 'pedidos-recorrentes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
-    estoque:'ng-estoques', 'sel-chapas':'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
+    estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
+    'sel-chapas':'ng-papelao',
     simd:'ng-papelao',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
   };
@@ -9019,11 +9027,11 @@ function _sugestaoChapa_inicializar(){
 async function _simdCalcular(){
   try{
     const comp = Number(document.getElementById('simd-comp')?.value) || 0;
-    const larg = Number(document.getElementById('simd-larg')?.value) || 0;
     const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
+    const larg = Math.round(comp * 0.6);
     const onda = String(document.getElementById('simd-onda')?.value || '').trim();
-    if (!(comp > 0 && larg > 0 && alt > 0)) {
-      alert('Preencha comprimento, largura e altura.');
+    if (!(comp > 0 && alt > 0)) {
+      alert('Preencha comprimento e altura.');
       return;
     }
     const loading   = document.getElementById('simd-loading');
@@ -9115,6 +9123,35 @@ async function _simdCalcular(){
     try{ console.error('[SIMD]', e); }catch(_){}
   }
 }
+
+function _simdAtualizarLargura(){
+  try{
+    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
+    const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
+    const largCalc = comp > 0 ? Math.round(comp * 0.6) : 0;
+    const el = document.getElementById('simd-largura-calc');
+    if (el) el.textContent = comp > 0 ? ('Largura estimada: ' + largCalc + ' mm (ajuste se necessário)') : 'Largura estimada: — mm';
+    const btn = document.getElementById('simd-btn');
+    if (btn) {
+      const ok = comp > 0 && alt > 0;
+      btn.disabled = !ok;
+      btn.style.opacity = ok ? '1' : '0.5';
+    }
+  }catch(e){}
+}
+
+try{
+  if(!window._SIMD_WIRE){
+    window._SIMD_WIRE = 1;
+    document.addEventListener('DOMContentLoaded', ()=>{
+      try{
+        document.getElementById('simd-comp')?.addEventListener('input', _simdAtualizarLargura);
+        document.getElementById('simd-alt')?.addEventListener('input', _simdAtualizarLargura);
+        _simdAtualizarLargura();
+      }catch(e){}
+    });
+  }
+}catch(e){}
 
 function ofGetTipoCaixaObj(){
   const tc = ofGetTipoCaixaSelecionado ? ofGetTipoCaixaSelecionado() : { id:null, nome:null };
@@ -9286,7 +9323,7 @@ async function ofAtualizarSugestaoMaquinas(){
     }
   }catch(e){}
   if(!(comp > 0 && larg > 0 && alt > 0)){
-    box.innerHTML = `<span style="color:var(--text3)">Informe as medidas da caixa para gerar sugestão.</span>`;
+    box.innerHTML = '';
     return;
   }
   const key = `${Math.round(comp)}x${Math.round(larg)}x${Math.round(alt)}:${onda||'-'}`;
@@ -34624,7 +34661,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-estoques')"><span class="ico">📦</span>Estoque Chapas</div>
-      <div id="menu-sel-chapas" class="nav-item" onclick="go('sel-chapas');closeNavGroupsExcept('ng-estoques')"><span class="ico">🧾</span>Seleção de Chapas</div>
       <div id="menu-facas" class="nav-item" onclick="go('facas1');closeNavGroupsExcept('ng-estoques')"><span class="ico">🔧</span>Estoque de Facas</div>
       <div id="menu-cliches" class="nav-item" onclick="go('cliches');closeNavGroupsExcept('ng-estoques')"><span class="ico">🖼</span>Estoque Clichês</div>
     </div>
@@ -34636,6 +34672,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-papelao-compras" class="nav-item" onclick="papelaoAbrirComprasChapas()"><span class="ico">🛒</span>Compra de Papelão</div>
+      <div id="menu-papelao-sel-chapas" class="nav-item" onclick="go('sel-chapas');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">🧾</span>Seleção de Chapas</div>
       <div id="menu-papelao-simd" class="nav-item" onclick="go('simd');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">♻️</span>Simulador de Desperdício</div>
     </div>
   </div>
@@ -35204,14 +35241,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
       <div style="background:rgba(255,255,255,0.03);border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:20px;margin-bottom:20px">
         <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:14px">Medidas da caixa (mm)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:8px">
           <div>
             <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Comprimento</label>
             <input type="number" id="simd-comp" placeholder="ex: 400" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
-          </div>
-          <div>
-            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Largura</label>
-            <input type="number" id="simd-larg" placeholder="ex: 300" min="1" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
           </div>
           <div>
             <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Altura</label>
@@ -35229,6 +35262,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             </select>
           </div>
         </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura calculada automaticamente (60% do comprimento)</div>
+        <div id="simd-largura-calc" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura estimada: — mm</div>
         <button id="simd-btn" onclick="_simdCalcular()" style="padding:10px 24px;background:#185FA5;border:none;border-radius:7px;color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Calcular desperdício</button>
       </div>
       <div id="simd-resultado" style="display:none">
@@ -36583,14 +36618,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
               <div class="mf" style="margin:0"><label>Largura</label><input id="of-caixa-larg" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
               <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
-            </div>
-            <div class="mf fgf campo-chapa" style="grid-column:1/-1;margin-top:12px">
-              <label>CHAPA (ESTOQUE)</label>
-              <select id="f-chp"></select>
-            </div>
-            <div class="mf campo-chapa" style="grid-column:1/-1;margin-top:8px">
-              <label>QTD CHAPAS (OPCIONAL)</label>
-              <input id="f-qchp" type="number" min="0" step="1" placeholder="0" oninput="ofUpdateProgress()">
             </div>
             <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
             <div id="of-auto-maq-badge" style="display:none;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.35);color:var(--text2);font-size:12px;font-weight:900">💡 Máquina será sugerida automaticamente ao salvar</div>
