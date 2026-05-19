@@ -9024,16 +9024,146 @@ function _sugestaoChapa_inicializar(){
   return;
 }
 
+window._simdChapasCache = null;
+window._simdChapaSelecionada = null;
+
+async function _simdCarregarChapas() {
+  if (window._simdChapasCache) return window._simdChapasCache;
+  if (Array.isArray(window.CHAPAS) && window.CHAPAS.length) {
+    window._simdChapasCache = window.CHAPAS;
+    return window._simdChapasCache;
+  }
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+    const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/chapas_estoque?limit=500' + (empId ? '&empId=' + empId : ''), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await r.json().catch(() => null);
+    const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : (Array.isArray(data?.chapas) ? data.chapas : []));
+    window._simdChapasCache = arr;
+    return window._simdChapasCache;
+  } catch (e) {
+    try { console.error('[SIMD CHAPAS]', e); } catch (_) {}
+    return window._simdChapasCache || [];
+  }
+}
+
+function _simdBuscarChapa(termo) {
+  const t = String(termo || '').trim().toLowerCase();
+  const resultados = document.getElementById('simd-busca-resultados');
+  if (!resultados) return;
+
+  if (!t || t.length < 2) {
+    resultados.style.display = 'none';
+    resultados.innerHTML = '';
+    return;
+  }
+
+  _simdCarregarChapas().then(chapas => {
+    const found = (Array.isArray(chapas) ? chapas : []).filter(c => {
+      const nome = String(c?.nome || c?.nomenclatura || c?.nome_uso || '').toLowerCase();
+      const forn = String(c?.fornecedor || c?.forn || '').toLowerCase();
+      const tam  = String(c?.tamanho || c?.tam || '').toLowerCase();
+      return nome.includes(t) || forn.includes(t) || tam.includes(t);
+    }).slice(0, 8);
+
+    if (!found.length) {
+      resultados.style.display = 'none';
+      resultados.innerHTML = '';
+      return;
+    }
+
+    resultados.style.display = 'block';
+    resultados.innerHTML = found.map(c => {
+      const nome = String(c?.nome || c?.nomenclatura || c?.nome_uso || '').trim();
+      const forn = String(c?.fornecedor || c?.forn || '').trim();
+      const tam  = String(c?.tamanho || c?.tam || '').trim();
+      const qtd  = Number(c?.quantidade || c?.qtd || 0) || 0;
+      const cJson = JSON.stringify(c).replace(/"/g, '&quot;');
+      return `
+        <div onclick="_simdSelecionarChapa(JSON.parse(this.dataset.c))"
+             data-c="${cJson}"
+             style="padding:10px 14px;cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.06)"
+             onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+             onmouseout="this.style.background='transparent'">
+          <div style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.85)">${escH(nome)}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">
+            ${escH(forn ? (forn + ' · ') : '')}${escH(tam)}
+            · ${escH(String(qtd))} em estoque
+          </div>
+        </div>`;
+    }).join('');
+  });
+}
+
+function _simdSelecionarChapa(chapa) {
+  window._simdChapaSelecionada = chapa;
+
+  const nome = String(chapa?.nome || chapa?.nomenclatura || chapa?.nome_uso || '').trim();
+  const forn = String(chapa?.fornecedor || chapa?.forn || '').trim();
+  const tam  = String(chapa?.tamanho || chapa?.tam || '').trim();
+  const qtd  = Number(chapa?.quantidade || chapa?.qtd || 0) || 0;
+  const val  = Number(chapa?.valor_unitario || chapa?.val || 0) || 0;
+
+  const elNome = document.getElementById('simd-chapa-sel-nome');
+  const elInfo = document.getElementById('simd-chapa-sel-info');
+  const elCard = document.getElementById('simd-chapa-selecionada');
+  const elBtnLimpar = document.getElementById('simd-btn-limpar-chapa');
+  const elResultados = document.getElementById('simd-busca-resultados');
+  const elInput = document.getElementById('simd-busca-chapa');
+
+  if (elNome) elNome.textContent = nome + (tam ? ' — ' + tam : '');
+  if (elInfo) elInfo.textContent =
+    (forn ? ('Fornecedor: ' + forn + ' · ') : '') +
+    'Estoque: ' + qtd + ' un' +
+    (val > 0 ? (' · R$ ' + val.toFixed(2) + '/un') : '');
+  if (elCard) elCard.style.display = 'block';
+  if (elBtnLimpar) elBtnLimpar.style.display = 'block';
+  if (elResultados) elResultados.style.display = 'none';
+  if (elInput) elInput.value = nome;
+
+  try { console.log('[SIMD] chapa selecionada:', nome, tam); } catch (_) {}
+}
+
+function _simdLimparChapaSelecionada() {
+  window._simdChapaSelecionada = null;
+  const elCard = document.getElementById('simd-chapa-selecionada');
+  const elBtnLimpar = document.getElementById('simd-btn-limpar-chapa');
+  const elInput = document.getElementById('simd-busca-chapa');
+  const elResultados = document.getElementById('simd-busca-resultados');
+  if (elCard) elCard.style.display = 'none';
+  if (elBtnLimpar) elBtnLimpar.style.display = 'none';
+  if (elResultados) { elResultados.style.display = 'none'; elResultados.innerHTML = ''; }
+  if (elInput) elInput.value = '';
+}
+
+try {
+  if (!window._SIMD_BUSCA_CHAPA_WIRE) {
+    window._SIMD_BUSCA_CHAPA_WIRE = 1;
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#simd-busca-chapa') && !e.target.closest('#simd-busca-resultados')) {
+        const el = document.getElementById('simd-busca-resultados');
+        if (el) el.style.display = 'none';
+      }
+    });
+  }
+} catch (e) {}
+
 async function _simdCalcular(){
   try{
     const comp = Number(document.getElementById('simd-comp')?.value) || 0;
     const alt  = Number(document.getElementById('simd-alt')?.value) || 0;
+    const qtdPedido = Number(document.getElementById('simd-qtd')?.value) || 0;
     const larg = Math.round(comp * 0.6);
     const onda = String(document.getElementById('simd-onda')?.value || '').trim();
     if (!(comp > 0 && alt > 0)) {
-      alert('Preencha comprimento e altura.');
+      alert('Preencha altura e comprimento.');
       return;
     }
+    const puxada = (comp + alt) * 2 + 20;
+    const boca   = larg + (alt * 2) + 15;
     const loading   = document.getElementById('simd-loading');
     const resultado = document.getElementById('simd-resultado');
     const aviso     = document.getElementById('simd-aviso');
@@ -9042,24 +9172,39 @@ async function _simdCalcular(){
     const tabelaW   = document.getElementById('simd-tabela-wrap');
     if (loading)   loading.style.display   = 'block';
     if (resultado) resultado.style.display = 'none';
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
-    const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const r = await fetch(base + '/api/chapas_estoque/sugerir_menor_desperdicio', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({
-        comprimento_mm: comp,
-        largura_mm: larg,
-        altura_mm: alt,
-        onda: onda || null,
-        emp_id: empId || null,
-      }),
-    });
-    const data = await r.json().catch(()=>null);
+    const dadosCaixaCalc = {
+      desenvolvimento_comprimento: puxada,
+      desenvolvimento_largura: boca,
+      area_caixa_mm2: puxada * boca
+    };
+    let data = null;
+
+    if (window._simdChapaSelecionada) {
+      const resultadosManual = _simdCalcularParaChapas([window._simdChapaSelecionada], comp, larg, alt, puxada, boca, qtdPedido);
+      data = { ok: true, chapas: resultadosManual, dados_caixa: dadosCaixaCalc };
+    } else {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+      const empId = window.EMPRESA_ATIVA || window._empAtual || EMP_FILTRO || '';
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const r = await fetch(base + '/api/chapas_estoque/sugerir_menor_desperdicio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          comprimento_mm: comp,
+          largura_mm: larg,
+          altura_mm: alt,
+          onda: onda || null,
+          emp_id: empId || null,
+        }),
+      });
+      data = await r.json().catch(()=>null);
+      if (data && data.ok === true) {
+        data.dados_caixa = Object.assign({}, (data.dados_caixa || {}), dadosCaixaCalc);
+      }
+    }
     if (loading)   loading.style.display   = 'none';
     if (resultado) resultado.style.display = 'block';
     if (!data || data.ok !== true) {
@@ -9067,14 +9212,12 @@ async function _simdCalcular(){
       if (tabelaW) tabelaW.style.display = 'none';
       return;
     }
-    if (infoP && data.dados_caixa) {
-      const dc = data.dados_caixa;
+    if (infoP) {
       infoP.innerHTML =
-        'Planificação necessária: <strong style="color:rgba(255,255,255,0.8)">' +
-        dc.desenvolvimento_comprimento + ' × ' + dc.desenvolvimento_largura +
-        ' mm</strong>' +
+        'Puxada: <strong style="color:rgba(255,255,255,0.8)">' + Math.round(puxada) + ' mm</strong> × ' +
+        'Boca: <strong style="color:rgba(255,255,255,0.8)">' + Math.round(boca) + ' mm</strong>' +
         ' — Área da caixa: <strong style="color:rgba(255,255,255,0.8)">' +
-        (Number(dc.area_caixa_mm2 || 0) / 1000000).toFixed(4) + ' m²</strong>';
+        (Number(dadosCaixaCalc.area_caixa_mm2 || 0) / 1000000).toFixed(4) + ' m²</strong>';
     }
     if (!Array.isArray(data.chapas) || !data.chapas.length) {
       if (aviso)   aviso.style.display   = 'block';
@@ -9140,6 +9283,86 @@ async function _simdCalcular(){
   }
 }
 
+function _simdCalcularParaChapas(chapas, comp, larg, alt, puxada, boca, qtdPedido) {
+  return (Array.isArray(chapas) ? chapas : []).map(c => {
+    const tam = String(c?.tamanho || c?.tam || '').trim();
+    const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
+    if (!m) return null;
+
+    const d1 = Number(m[1]) || 0;
+    const d2 = Number(m[2]) || 0;
+    if (!(d1 > 0 && d2 > 0)) return null;
+
+    const areaChapa = d1 * d2;
+
+    const sentidoAOk = d1 >= puxada && d2 >= boca;
+    const sentidoBOk = d1 >= boca && d2 >= puxada;
+
+    let melhorSentido = null;
+    let melhorCaixas = 0;
+
+    if (sentidoAOk) {
+      const cxA = Math.floor(d1 / puxada) * Math.floor(d2 / boca);
+      if (cxA > melhorCaixas) {
+        melhorCaixas = cxA;
+        melhorSentido = 'A';
+      }
+    }
+    if (sentidoBOk) {
+      const cxB = Math.floor(d1 / boca) * Math.floor(d2 / puxada);
+      if (cxB > melhorCaixas) {
+        melhorCaixas = cxB;
+        melhorSentido = 'B';
+      }
+    }
+
+    const cabe = melhorSentido !== null && melhorCaixas > 0;
+    const caixasPorChapa = cabe ? melhorCaixas : 0;
+
+    const boxW = melhorSentido === 'A' ? puxada : (melhorSentido === 'B' ? boca : puxada);
+    const boxH = melhorSentido === 'A' ? boca   : (melhorSentido === 'B' ? puxada : boca);
+    const cxPorLinha = cabe ? Math.floor(d1 / boxW) : 0;
+    const cxPorCol   = cabe ? Math.floor(d2 / boxH) : 0;
+
+    const areaUsada = caixasPorChapa * puxada * boca;
+    const areaSobra = areaChapa - areaUsada;
+    const despPct = areaChapa > 0 ? Math.max(0, Math.round((Math.max(0, areaSobra) / areaChapa) * 100)) : 0;
+
+    const sobraLateral = Math.max(0, d1 - (cxPorLinha * boxW));
+    const sobraInferior = Math.max(0, d2 - (cxPorCol * boxH));
+
+    const chapasNecessarias = (qtdPedido > 0 && caixasPorChapa > 0) ? Math.ceil(qtdPedido / caixasPorChapa) : null;
+    const valUnit = Number(c?.valor_unitario || c?.val || 0) || 0;
+    const custoTotal = (chapasNecessarias && valUnit > 0) ? (chapasNecessarias * valUnit) : null;
+
+    return {
+      id: c?.id,
+      nome: String(c?.nome || c?.nomenclatura || c?.nome_uso || '').trim(),
+      fornecedor: String(c?.fornecedor || c?.forn || '').trim(),
+      tamanho: tam,
+      dim1: d1,
+      dim2: d2,
+      area_chapa_mm2: areaChapa,
+      quantidade: Number(c?.quantidade || c?.qtd || 0) || 0,
+      valor_unitario: valUnit,
+      cabe,
+      caixas_por_chapa: caixasPorChapa,
+      cx_por_linha: cxPorLinha,
+      cx_por_col: cxPorCol,
+      box_w: boxW,
+      box_h: boxH,
+      sentido: melhorSentido,
+      desperdicio_real_pct: despPct,
+      area_sobra_mm2: areaSobra,
+      sobra_lateral_mm: sobraLateral,
+      sobra_inferior_mm: sobraInferior,
+      economia_vs_pior: 0,
+      chapas_necessarias: chapasNecessarias,
+      custo_total: custoTotal,
+    };
+  }).filter(Boolean);
+}
+
 function _simdGerarVisual(chapa, dadosCaixa){
   try{
     const visual = document.getElementById('simd-visual');
@@ -9175,9 +9398,27 @@ function _simdGerarVisual(chapa, dadosCaixa){
       return;
     }
 
-    const sentidoA = chapaD1 >= devComp && chapaD2 >= devLarg;
-    const cxW = sentidoA ? devComp : devLarg;
-    const cxH = sentidoA ? devLarg : devComp;
+    const sentidoAOk = chapaD1 >= devComp && chapaD2 >= devLarg;
+    const sentidoBOk = chapaD1 >= devLarg && chapaD2 >= devComp;
+    let sentido = null;
+    const prefer = String(chapa?.sentido || '').toUpperCase();
+    if (prefer === 'A' && sentidoAOk) sentido = 'A';
+    if (prefer === 'B' && sentidoBOk) sentido = 'B';
+    if (!sentido) {
+      let melhor = 0;
+      if (sentidoAOk) {
+        const cxA = Math.floor(chapaD1 / devComp) * Math.floor(chapaD2 / devLarg);
+        if (cxA > melhor) { melhor = cxA; sentido = 'A'; }
+      }
+      if (sentidoBOk) {
+        const cxB = Math.floor(chapaD1 / devLarg) * Math.floor(chapaD2 / devComp);
+        if (cxB > melhor) { melhor = cxB; sentido = 'B'; }
+      }
+      if (!sentido) sentido = 'A';
+    }
+
+    const cxW = sentido === 'A' ? devComp : devLarg;
+    const cxH = sentido === 'A' ? devLarg : devComp;
     const cxPorLinhaH = Math.max(0, Math.floor(chapaD1 / cxW));
     const cxPorLinhaV = Math.max(0, Math.floor(chapaD2 / cxH));
 
@@ -9208,7 +9449,7 @@ function _simdGerarVisual(chapa, dadosCaixa){
       sobras += `<rect x="0" y="${usadoH}" width="${svgW}" height="${svgH - usadoH}" fill="rgba(239,159,39,0.15)" stroke="#EF9F27" stroke-width="0.5" stroke-dasharray="4,2"/>`;
     }
 
-    const svg = `<svg width="${svgW}" height="${svgH + 20}" viewBox="0 0 ${svgW} ${svgH + 20}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${svgW}" height="${svgH}" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="2"/>${sobras}${rects}<text x="${svgW/2}" y="${svgH + 14}" text-anchor="middle" style="fill:rgba(255,255,255,0.5);font-size:10px">${Math.round(chapaD1)} mm</text><text x="4" y="${svgH - 4}" style="fill:rgba(255,255,255,0.5);font-size:9px">${sentidoA ? '→ comprimento' : '→ largura'}</text></svg>`;
+    const svg = `<svg width="${svgW}" height="${svgH + 20}" viewBox="0 0 ${svgW} ${svgH + 20}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${svgW}" height="${svgH}" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.2)" stroke-width="1" rx="2"/>${sobras}${rects}<text x="${svgW/2}" y="${svgH + 14}" text-anchor="middle" style="fill:rgba(255,255,255,0.5);font-size:10px">${Math.round(chapaD1)} mm</text><text x="4" y="${svgH - 4}" style="fill:rgba(255,255,255,0.5);font-size:9px">${sentido === 'A' ? '→ puxada' : '→ boca'}</text></svg>`;
     svgCont.innerHTML = svg;
 
     if (dadosEl) {
@@ -9217,7 +9458,11 @@ function _simdGerarVisual(chapa, dadosCaixa){
       const areaUsada = totalCx * cxW * cxH;
       const areaSobra = Math.max(0, areaChapa - areaUsada);
       const pct = areaChapa > 0 ? Math.round((areaSobra / areaChapa) * 100) : 0;
-      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaD1)} × ${Math.round(chapaD2)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação da caixa</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">${Math.round(cxW)} × ${Math.round(cxH)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinhaH} colunas × ${cxPorLinhaV} linhas</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentidoA ? 'Comprimento da caixa ao longo da chapa →' : 'Largura da caixa ao longo da chapa →'}</div></div></div>`;
+      const sobraLateralMm = Number(chapa?.sobra_lateral_mm ?? 0) || Math.max(0, Math.round(chapaD1 - (cxPorLinhaH * cxW)));
+      const sobraInferiorMm = Number(chapa?.sobra_inferior_mm ?? 0) || Math.max(0, Math.round(chapaD2 - (cxPorLinhaV * cxH)));
+      const chapasNec = (chapa && chapa.chapas_necessarias != null) ? Number(chapa.chapas_necessarias) : null;
+      const custoTotal = (chapa && chapa.custo_total != null) ? Number(chapa.custo_total) : null;
+      dadosEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px"><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapa</div><div style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.9)">${Math.round(chapaD1)} × ${Math.round(chapaD2)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Planificação da caixa</div><div style="font-size:14px;font-weight:500;color:#9FE1CB">Puxada: ${Math.round(devComp)} mm × Boca: ${Math.round(devLarg)} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Caixas por chapa</div><div style="font-size:18px;font-weight:700;color:#185FA5">${totalCx} caixas</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${cxPorLinhaH} colunas × ${cxPorLinhaV} linhas</div></div>${chapasNec ? `<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Chapas necessárias (pedido)</div><div style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.85)">${chapasNec} chapas</div>${custoTotal ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Custo total: R$ ${custoTotal.toFixed(2)}</div>` : ''}</div>` : ''}<div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Desperdício</div><div style="font-size:16px;font-weight:700;color:${pct < 15 ? '#97C459' : pct < 30 ? '#EF9F27' : '#E24B4A'}">${pct}%</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">${(areaSobra / 1000000).toFixed(4)} m² de sobra</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Sobra lateral (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraLateralMm || 0} mm</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:8px">Sobra inferior (mm)</div><div style="font-size:14px;font-weight:500;color:#EF9F27">${sobraInferiorMm || 0} mm</div></div><div><div style="font-size:11px;color:rgba(255,255,255,0.4)">Orientação de corte</div><div style="font-size:13px;color:rgba(255,255,255,0.7)">${sentido === 'A' ? 'Puxada na dimensão 1, Boca na dimensão 2' : 'Puxada na dimensão 2, Boca na dimensão 1'}</div></div></div>`;
     }
 
     try{ visual.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }catch(_){}
@@ -35362,8 +35607,43 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             </select>
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px;margin-bottom:8px">
+          <div>
+            <label style="font-size:11px;color:rgba(255,255,255,0.4);display:block;margin-bottom:5px">Quantidade do pedido (opcional)</label>
+            <input type="number" id="simd-qtd" placeholder="ex: 1000" min="0" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:14px">
+          </div>
+        </div>
         <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura calculada automaticamente (60% do comprimento)</div>
         <div id="simd-largura-calc" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Largura estimada: — mm</div>
+        <div style="margin-top:14px;padding-top:14px;border-top:0.5px solid rgba(255,255,255,0.08)">
+          <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">
+            Simular com chapa específica (opcional)
+          </div>
+          
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="simd-busca-chapa"
+              placeholder="Digite o nome ou fornecedor da chapa..."
+              oninput="_simdBuscarChapa(this.value)"
+              style="flex:1;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.9);font-size:13px">
+            <button onclick="_simdLimparChapaSelecionada()"
+              id="simd-btn-limpar-chapa"
+              style="display:none;padding:9px 12px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.15);border-radius:7px;color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer;white-space:nowrap">
+              ✕ Limpar
+            </button>
+          </div>
+        
+          <!-- Dropdown de resultados da busca -->
+          <div id="simd-busca-resultados" style="display:none;margin-top:4px;background:#1a1f2e;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
+        
+          <!-- Chapa selecionada -->
+          <div id="simd-chapa-selecionada" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(24,95,165,0.15);border:0.5px solid rgba(24,95,165,0.4);border-radius:7px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">Chapa selecionada</div>
+            <div id="simd-chapa-sel-nome"
+              style="font-size:13px;font-weight:500;color:rgba(255,255,255,0.9)"></div>
+            <div id="simd-chapa-sel-info"
+              style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px"></div>
+          </div>
+        </div>
         <button id="simd-btn" onclick="_simdCalcular()" style="padding:10px 24px;background:#185FA5;border:none;border-radius:7px;color:#fff;font-size:14px;font-weight:500;cursor:pointer;transition:opacity 0.2s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Calcular desperdício</button>
       </div>
       <div id="simd-resultado" style="display:none">
