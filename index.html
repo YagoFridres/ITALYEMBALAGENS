@@ -9288,7 +9288,7 @@ async function ofAtualizarSugestaoMaquinas(){
     }
   }catch(e){}
   if(!(comp > 0 && larg > 0 && alt > 0)){
-    box.innerHTML = `<span style="color:var(--text3)">Preencha comprimento, largura e altura para calcular a sugestão.</span>`;
+    box.innerHTML = `<span style="color:var(--text3)">Informe as medidas da caixa para gerar sugestão.</span>`;
     return;
   }
   const key = `${Math.round(comp)}x${Math.round(larg)}x${Math.round(alt)}:${onda||'-'}`;
@@ -9298,7 +9298,7 @@ async function ofAtualizarSugestaoMaquinas(){
   }
   const reqId = (window._OF_SUG_REQ_ID = (Number(window._OF_SUG_REQ_ID||0) + 1));
   if(window._OF_SUG_TMR) clearTimeout(window._OF_SUG_TMR);
-  box.innerHTML = `<span style="color:var(--text3)">Calculando sugestão…</span>`;
+  box.innerHTML = `<span style="color:var(--text3)">Atualizando sugestão…</span>`;
   window._OF_SUG_TMR = setTimeout(async ()=>{
     try{
       const resp = await apiFetch('/api/maquinas/sugerir', { method:'POST', body:{ comprimento: comp, largura: larg, altura: alt, onda } });
@@ -9353,12 +9353,67 @@ function ofSugestaoMaquinasIgnorar(){
   try{ ofAtualizarSugestaoMaquinas(); }catch(e){}
 }
 
+function _ofUsarSugestaoMaquina(nomeMaquina){
+  try{
+    const nome = String(nomeMaquina || '').trim();
+    if (!nome) return;
+    const checkboxes = document.querySelectorAll(
+      '#modal-of input[type="checkbox"][data-maquina],' +
+      '#modal-nova-of input[type="checkbox"][data-maquina],' +
+      '.of-fluxo-maquinas input[type="checkbox"],' +
+      '#maq-chks input[type="checkbox"],' +
+      'input[type="checkbox"][value="' + nome.replace(/"/g, '\\"') + '"]'
+    );
+    checkboxes.forEach(cb => { cb.checked = false; });
+    let marcou = false;
+    checkboxes.forEach(cb => {
+      const maqNome = String(cb.dataset.maquina || cb.value || cb.nextSibling?.textContent || cb.parentElement?.textContent || '').trim();
+      if (maqNome.toUpperCase() === nome.toUpperCase()) {
+        cb.checked = true;
+        marcou = true;
+      }
+    });
+    if (!marcou) {
+      const hiddenFluxo = document.querySelector(
+        'input[name="fluxo_maquinas"],' +
+        '#of-fluxo-maquinas,' +
+        '#campo-fluxo-maquinas'
+      );
+      if (hiddenFluxo) hiddenFluxo.value = JSON.stringify([nome]);
+    }
+    if (window._ofFluxoAtual !== undefined) window._ofFluxoAtual = [nome];
+    if (window._novaOfFluxo !== undefined) window._novaOfFluxo = [nome];
+    checkboxes.forEach(cb => {
+      try { cb.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
+    });
+    const btnSugestao = document.querySelector(
+      '.btn-usar-sugestao, [onclick*="usarSugestao"], [onclick*="usar_sugestao"], [onclick*="ofSugestaoMaquinasAplicar"]'
+    );
+    if (btnSugestao) {
+      const textoOriginal = btnSugestao.textContent;
+      btnSugestao.textContent = '✓ ' + nome + ' selecionada';
+      btnSugestao.style.background = '#1D9E75';
+      setTimeout(() => {
+        btnSugestao.textContent = textoOriginal;
+        btnSugestao.style.background = '';
+      }, 2500);
+    }
+    console.log('[SUGESTAO MAQUINA] aplicada:', nome, 'marcou checkbox:', marcou);
+  }catch(e){}
+}
+
 function ofSugestaoMaquinasAplicar(){
   try{
     const ids = Array.isArray(window._OF_SUG_LAST?.compatIds) ? window._OF_SUG_LAST.compatIds : [];
-    if(!ids.length){ toast('Nenhuma máquina compatível para aplicar','var(--yellow)'); return; }
-    OF_FLUXO_IDS = ids.slice(0, 10).map(x=>String(x)).filter(Boolean);
-    renderMaqChks();
+    const nomes = Array.isArray(window._OF_SUG_LAST?.compatNomes) ? window._OF_SUG_LAST.compatNomes : [];
+    if(!ids.length && !nomes.length){ toast('Nenhuma máquina compatível para aplicar','var(--yellow)'); return; }
+    const melhorId = String(ids[0] || '').trim();
+    const melhorNome = String(nomes[0] || '').trim();
+    if (melhorId) {
+      OF_FLUXO_IDS = [melhorId];
+      renderMaqChks();
+    }
+    if (melhorNome) _ofUsarSugestaoMaquina(melhorNome);
     window._OF_SUG_IGNORE_KEY = '';
     toast('Sugestão aplicada no fluxo ✓','var(--green)');
     try{ document.getElementById('of-sec-prod')?.setAttribute('open',''); }catch(e){}
@@ -10898,12 +10953,30 @@ async function salvarOF(){
     const m = String(it?.maquina || '').trim();
     if (m) maquina_por_item[String(i)] = m;
   });
-  const idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+  let idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+  try{
+    const cbs = document.querySelectorAll('#maq-chks input[type="checkbox"]:checked');
+    const idsChecked = Array.from(cbs).map(cb => String(cb.value || '').trim()).filter(Boolean);
+    if (idsChecked.length) {
+      idsSel = idsChecked;
+      try{ renderMaqChks(idsChecked); }catch(e){}
+    }
+  }catch(e){}
   let fluxo_maquinas = [];
   try{
     const namesSel = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(idsSel) || []) : idsSel;
     fluxo_maquinas = (namesSel || []).map((x) => String(x || '').trim()).filter(Boolean);
   }catch(e){}
+  if (!fluxo_maquinas.length) {
+    try{
+      const fb = Array.isArray(window._ofFluxoAtual) ? window._ofFluxoAtual : [];
+      const fbNomes = fb.map(x => String(x || '').trim()).filter(Boolean);
+      if (fbNomes.length) {
+        fluxo_maquinas = fbNomes;
+        if (typeof ofFluxoIdsFromNames === 'function') idsSel = ofFluxoIdsFromNames(fbNomes);
+      }
+    }catch(e){}
+  }
   if (!fluxo_maquinas.length) {
     const addFluxo = (arr, v) => {
       const n = String(v || '').trim();
@@ -11097,12 +11170,30 @@ async function salvarEdicaoOFId(id){
       const m = String(it?.maquina || '').trim();
       if (m) maquina_por_item[String(i)] = m;
     });
-    const idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+    let idsSel = (typeof getMaqSel === 'function') ? (getMaqSel() || []) : [];
+    try{
+      const cbs = document.querySelectorAll('#maq-chks input[type="checkbox"]:checked');
+      const idsChecked = Array.from(cbs).map(cb => String(cb.value || '').trim()).filter(Boolean);
+      if (idsChecked.length) {
+        idsSel = idsChecked;
+        try{ renderMaqChks(idsChecked); }catch(e){}
+      }
+    }catch(e){}
     let fluxo_maquinas = [];
     try{
       const namesSel = (typeof ofFluxoNamesFromIds === 'function') ? (ofFluxoNamesFromIds(idsSel) || []) : idsSel;
       fluxo_maquinas = (namesSel || []).map((x) => String(x || '').trim()).filter(Boolean);
     }catch(e){}
+    if (!fluxo_maquinas.length) {
+      try{
+        const fb = Array.isArray(window._ofFluxoAtual) ? window._ofFluxoAtual : [];
+        const fbNomes = fb.map(x => String(x || '').trim()).filter(Boolean);
+        if (fbNomes.length) {
+          fluxo_maquinas = fbNomes;
+          if (typeof ofFluxoIdsFromNames === 'function') idsSel = ofFluxoIdsFromNames(fbNomes);
+        }
+      }catch(e){}
+    }
     if (!fluxo_maquinas.length) {
       const addFluxo = (arr, v) => {
         const n = String(v || '').trim();
@@ -34498,7 +34589,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
 <div id="menu-amostras" class="nav-item" onclick="go('amostras')"><span class="ico">🧪</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
   <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
-  <div id="menu-compras" class="nav-item" onclick="go('compras')"><span class="ico">🛒</span>Compras MP</div>
 
   <!-- GRUPO: MÁQUINAS -->
   <div class="nav-group" id="ng-maquinas">
@@ -34548,7 +34638,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div class="nav-group-items">
       <div id="menu-papelao-compras" class="nav-item" onclick="papelaoAbrirComprasChapas()"><span class="ico">🛒</span>Compra de Papelão</div>
-      <div id="menu-papelao-estoque" class="nav-item" onclick="go('estoque');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">📦</span>Estoque de Chapas</div>
       <div id="menu-papelao-simd" class="nav-item" onclick="go('simd');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">♻️</span>Simulador de Desperdício</div>
     </div>
   </div>

@@ -2631,8 +2631,23 @@ async function _autoPickSugestaoMaquinaNome(body){
     const onda = String(body?.onda ?? body?.of_onda ?? body?.onda_caixa ?? '').trim();
     if(!(comp > 0 && larg > 0)) return { ok:false, skipped:'sem_medidas' };
 
-    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true).limit(500);
-    if(error || !Array.isArray(maquinas) || !maquinas.length) return { ok:false, skipped:'sem_maquinas' };
+    const { data: maquinas, error } = await supabase
+      .from('maquinas')
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true })
+      .limit(50);
+    if (error || !Array.isArray(maquinas) || !maquinas.length) {
+      return { ok: false, skipped: 'sem_maquinas' };
+    }
+    const maquinasAtivas = maquinas.filter(m =>
+      m.ativo === true &&
+      String(m.nome || '').trim() !== '' &&
+      String(m.nome || '').trim() !== 'null'
+    );
+    if (!maquinasAtivas.length) {
+      return { ok: false, skipped: 'sem_maquinas_ativas' };
+    }
 
     const folgaPuxadaBase = 20;
     const folgaBocaBase = 15;
@@ -2642,7 +2657,7 @@ async function _autoPickSugestaoMaquinaNome(body){
     const desenvolvimento = (comp + alt) * 2 + folgaPuxada;
     const boca = larg + (alt * 2) + folgaBoca;
 
-    const compat = (maquinas || []).filter((m)=>{
+    const compat = (maquinasAtivas || []).filter((m)=>{
       const puxMin = toNumOrNull(m.puxada_min);
       const puxMax = toNumOrNull(m.puxada_max);
       const bocaMax = toNumOrNull(m.boca_max);
@@ -5590,8 +5605,18 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
     const onda = String(req.body?.onda || '').trim();
     if (!(comprimento > 0 && largura > 0 && altura > 0)) return res.json({ ok: true, data: [] });
 
-    const { data: maquinas, error } = await supabase.from('maquinas').select('*').eq('ativo', true);
+    const { data: maquinasRaw, error } = await supabase
+      .from('maquinas')
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true })
+      .limit(50);
     if (error) throw error;
+    const maquinas = (Array.isArray(maquinasRaw) ? maquinasRaw : []).filter(m =>
+      m.ativo === true &&
+      String(m.nome || '').trim() !== '' &&
+      String(m.nome || '').trim() !== 'null'
+    );
 
     const folgaPuxadaBase = 20;
     const folgaBocaBase = 15;
