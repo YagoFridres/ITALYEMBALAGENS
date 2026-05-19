@@ -142,6 +142,14 @@ if (OPENAI_API_KEY) {
   console.log('[IA] OpenAI não configurada (opcional)');
 }
 console.log('[IA] Claude:', !!String(process.env.ANTHROPIC_API_KEY || '').trim(), '| OpenAI:', !!OPENAI_API_KEY);
+console.log('[IA DIAGNÓSTICO]', {
+  anthropic: process.env.ANTHROPIC_API_KEY ?
+    'OK (primeiros 10 chars: ' + String(process.env.ANTHROPIC_API_KEY).slice(0, 10) + ')' :
+    'AUSENTE',
+  openai: process.env.OPENAI_API_KEY ?
+    'OK (primeiros 10 chars: ' + String(process.env.OPENAI_API_KEY).slice(0, 10) + ')' :
+    'AUSENTE',
+});
 
 let transporter = null;
 try {
