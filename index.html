@@ -184,6 +184,8 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .btn-icon{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;transition:.1s;font-family:inherit;}
 .btn-icon:hover{color:var(--text);background:var(--s3);}
 .ofmaq-move-btn{min-width:44px;min-height:44px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#cidade-drawer{right:-480px;width:460px}
+@media (max-width: 768px){#cidade-drawer{width:100vw;right:-100vw}}
 
 /* ===== CARDS ===== */
 .cards-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;}
@@ -14392,6 +14394,9 @@ function _mapcliPopupHtml(c){
   const ofsMes = Math.trunc(Number(c?.total_ofs_mes||0)||0);
   const ofsAno = Math.trunc(Number(c?.total_ofs_ano||0)||0);
   const btn = `<button onclick="mapaClientesVerOFs('${escAttr(nome)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver OFs deste cliente</button>`;
+  const btnCidade = (cidade || estado)
+    ? `<button onclick="_cidadeDrawer_abrir('${escAttr(cidade)}','${escAttr(estado)}')" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:#185FA5;color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver cidade completa</button>`
+    : '';
   return `<div style="min-width:220px;color:#0f172a">
     <div style="font-weight:900;font-size:14px">${escH(nome)}</div>
     <div style="margin-top:6px;font-size:12px">📍 ${escH(local)}</div>
@@ -14401,6 +14406,7 @@ function _mapcliPopupHtml(c){
     <div style="margin-top:4px;font-size:12px">📦 OFs este ano: ${escH(String(ofsAno))} pedido(s)</div>
     <div style="margin-top:4px;font-size:12px">🗓 Última OF: ${escH(ultima)}</div>
     ${btn}
+    ${btnCidade}
   </div>`;
 }
 
@@ -14659,7 +14665,7 @@ function _cidadeDrawer_fechar(){
   try{
     const drawer = document.getElementById('cidade-drawer');
     const overlay = document.getElementById('cidade-drawer-overlay');
-    if(drawer) drawer.style.right = '-480px';
+    if(drawer) drawer.style.right = '';
     if(overlay) overlay.style.display = 'none';
   }catch(e){}
 }
@@ -14776,27 +14782,27 @@ function _cidadeDrawer_renderizar(data){
 
     const histEl = document.getElementById('cidade-historico');
     const histArr = Array.isArray(data?.historico_mensal) ? data.historico_mensal : [];
-    const fmtMes = (m)=>{
-      const s = String(m||'').trim();
-      if(/^\d{4}-\d{2}$/.test(s)){
-        const [y,mm] = s.split('-');
-        return mm + '/' + y;
-      }
-      return s || '—';
-    };
     if(histEl){
       if(!histArr.length){
         histEl.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,0.3)">Sem histórico.</div>';
       } else {
-        histEl.innerHTML = histArr.map((h)=>`
-          <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:0.5px solid rgba(255,255,255,0.06)">
-            <div style="font-size:12px;color:rgba(255,255,255,0.7)">${escH(fmtMes(h?.mes||''))}</div>
-            <div style="display:flex;gap:12px;align-items:baseline;flex-shrink:0">
-              <div style="font-size:11px;color:rgba(255,255,255,0.4)">${escH(String(Math.trunc(Number(h?.total_ofs||0)||0)))} OFs</div>
-              <div style="font-size:12px;font-family:var(--mono);font-weight:900;color:rgba(255,255,255,0.85)">${escH(_fmtMoeda(h?.valor||0))}</div>
+        const maxValor = Math.max(...histArr.map(h => Number(h?.valor||0)||0), 1);
+        histEl.innerHTML = histArr.map(h => {
+          const val = Number(h?.valor||0)||0;
+          const pct = Math.round((val / maxValor) * 100);
+          const mesRaw = String(h?.mes || '').trim();
+          const mes = mesRaw ? (mesRaw.slice(5,7) + '/' + mesRaw.slice(2,4)) : '';
+          const cor = pct > 80 ? '#97C459' : (pct > 40 ? '#9FE1CB' : '#185FA5');
+          return `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <div style="width:36px;font-size:11px;color:rgba(255,255,255,0.4);text-align:right;flex-shrink:0">${escH(mes)}</div>
+              <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:3px;height:14px">
+                <div style="width:${pct}%;background:${cor};border-radius:3px;height:100%;transition:width 0.4s ease"></div>
+              </div>
+              <div style="width:90px;font-size:11px;color:rgba(255,255,255,0.6);text-align:right;flex-shrink:0">${escH(_fmtMoeda(val))}</div>
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
     }
   }catch(e){}
@@ -44528,7 +44534,7 @@ window.atualizarChapas = async function(){
 })();
 </script>
 
-<div id="cidade-drawer" style="position:fixed;top:0;right:-480px;width:460px;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
+<div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
   <div style="padding:16px 20px;border-bottom:0.5px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0f1623;z-index:1">
     <div>
       <div id="cidade-drawer-titulo" style="font-size:17px;font-weight:600;color:rgba(255,255,255,0.9)">Cidade</div>
