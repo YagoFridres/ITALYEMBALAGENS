@@ -41583,8 +41583,13 @@ window.atualizarChapas = async function(){
       if(role === 'assistant'){
         const isSpeaking = (window.speechSynthesis && (window.speechSynthesis.speaking || window.speechSynthesis.pending) && _speakIdx === idx);
         const speakIcon = isSpeaking ? '🔇' : '🔊';
-        const turbo = (String(m?.modo||'').toLowerCase() === 'turbo') || (String(m?.origem||'').toLowerCase() === 'turbo') || (String(m?.badge||'') === '⚡ Turbo');
-        const badge = turbo ? `<span class="jarvis-msg-badge turbo">⚡ Turbo</span>` : '';
+        const origem = String(m?.origem||'').toLowerCase();
+        const turbo = (String(m?.modo||'').toLowerCase() === 'turbo') || (origem === 'turbo') || (String(m?.badge||'') === '⚡ Turbo');
+        const badge = turbo
+          ? `<span class="jarvis-msg-badge turbo">⚡ Turbo</span>`
+          : (origem === 'openai'
+            ? `<span class="jarvis-msg-badge">GPT-4o</span>`
+            : (origem === 'claude' ? `<span class="jarvis-msg-badge">Claude</span>` : ''));
         const top = `<div class="assist-bubble-top"><div style="display:flex;gap:8px;align-items:center">${badge}</div><button class="assist-tts" data-tts="${idx}" title="Ouvir">${speakIcon}</button></div>`;
         const bubble = `<div class="assist-bubble">${top}${txtHtml}${imgsHtml}${tableHtml}${chartHtml}${reportHtml}${actionsHtml}<div class="assist-meta">${esc(fmtHora(m.ts))}</div></div>`;
         return `<div class="assist-row assistant">${avatar}${bubble}</div>`;
@@ -42661,7 +42666,11 @@ window.atualizarChapas = async function(){
     const chips = mobileState.jarvisSuggestions || [];
     const renderMensagemJarvis = (msg)=>{
       const txt = String(msg?.text ?? msg?.texto ?? msg?.resposta ?? '').trim();
-      const turbo = (String(msg?.modo||'').toLowerCase() === 'turbo') || (String(msg?.origem||'').toLowerCase() === 'turbo') || (String(msg?.badge||'') === '⚡ Turbo');
+      const origem = String(msg?.origem||'').toLowerCase();
+      const turbo = (String(msg?.modo||'').toLowerCase() === 'turbo') || (origem === 'turbo') || (String(msg?.badge||'') === '⚡ Turbo');
+      const badge = turbo
+        ? '⚡ Turbo'
+        : (origem === 'openai' ? 'GPT-4o' : (origem === 'claude' ? 'Claude' : ''));
       const extras = (msg && typeof msg === 'object') ? (msg.dadosExtras || msg.dados_extras || msg.extra || null) : null;
       const imagem = String(extras?.imagem_url || msg?.imagem_url || '').trim() || null;
       const imgsRaw = extras?.imgs ?? msg?.imgs ?? msg?.images ?? msg?.imagens ?? null;
@@ -42705,7 +42714,7 @@ window.atualizarChapas = async function(){
         <div style="display:flex;gap:10px;margin:10px 0;justify-content:flex-start">
           <div style="width:32px;height:32px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:16px">⚙️</div>
           <div style="max-width:92%;background:#111426;border:1px solid #2a2a4a;border-radius:14px;padding:10px 12px;color:#fff;white-space:pre-wrap;word-break:break-word;line-height:1.28">
-            ${turbo ? `<div style="margin-bottom:8px"><span style="display:inline-block;border:1px solid rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98);border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:900;font-family:var(--mono);white-space:nowrap">⚡ Turbo</span></div>` : ``}
+            ${badge ? `<div style="margin-bottom:8px"><span style="display:inline-block;border:1px solid ${turbo?'rgba(245,158,11,.55)':'#2a2a4a'};background:${turbo?'rgba(245,158,11,.14)':'#0f0f1a'};color:${turbo?'rgba(253,230,138,.98)':'#b9c0d4'};border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:900;font-family:var(--mono);white-space:nowrap">${esc(badge)}</span></div>` : ``}
             ${esc(txt)}
             ${imgHtml}
             ${galHtml}
