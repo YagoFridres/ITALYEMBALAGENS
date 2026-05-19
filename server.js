@@ -135,6 +135,31 @@ if (!_supabaseEnvOk) {
   console.log('✅ Supabase conectado:', supabaseUrl);
 }
 
+(async () => {
+  try {
+    if (!supabase) return;
+    const { data: rows, error } = await supabase
+      .from('maquinas')
+      .select('id,nome,puxada_min,puxada_max')
+      .eq('nome', 'CORTE VINCO ROTATIVA')
+      .limit(1);
+    if (error) return;
+    const m = Array.isArray(rows) ? rows[0] : null;
+    if (!m) return;
+    const pMin = Number(m.puxada_min || 0) || 0;
+    const pMax = Number(m.puxada_max || 0) || 0;
+    if ((pMin > pMax && pMax > 0) || (pMin === 1300 && pMax === 32)) {
+      const upd = await supabase
+        .from('maquinas')
+        .update({ puxada_min: 32, puxada_max: 1300 })
+        .eq('nome', 'CORTE VINCO ROTATIVA');
+      if (!upd?.error) console.log('[MAQUINAS] corrigido CORTE VINCO ROTATIVA: puxada_min=32 puxada_max=1300');
+    }
+  } catch (e) {
+    console.error('[MAQUINAS] erro ao corrigir CORTE VINCO ROTATIVA:', String(e?.message || e));
+  }
+})();
+
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
 if (OPENAI_API_KEY) {
   console.log('[IA] OpenAI GPT configurado ✅');
@@ -2589,6 +2614,11 @@ function _parseFluxoAny(v){
   return [];
 }
 
+const MAQUINAS_VALIDAS_NOMES = [
+  'CORTE VINCO ROTATIVA',
+  'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
+];
+
 function _ofPickFluxoNames(of){
   try{
     let f = of?.fluxo_maquinas ?? of?.maq ?? [];
@@ -2622,11 +2652,6 @@ function _ofPickMaqAtualName(of){
 }
 
 async function _autoPickSugestaoMaquinaNome(body){
-  const toNum = (v) => {
-    if (v === null || v === undefined || v === '' || Number(v) === 0) return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  };
   try{
     if(!supabase) return { ok:false, skipped:'supabase_not_configured' };
     const comp = Number(body?.comprimento_mm ?? body?.caixa_comprimento ?? body?.caixaComprimento ?? body?.comprimento ?? 0) || 0;
@@ -2644,11 +2669,12 @@ async function _autoPickSugestaoMaquinaNome(body){
     if (error || !Array.isArray(maquinas) || !maquinas.length) {
       return { ok: false, skipped: 'sem_maquinas' };
     }
-    const maquinasAtivas = maquinas.filter(m =>
-      m.ativo === true &&
-      String(m.nome || '').trim() !== '' &&
-      String(m.nome || '').trim() !== 'null'
-    );
+    const maquinasAtivas = maquinas.filter(m => {
+      const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
+      if (!m || m.ativo !== true) return false;
+      if (!nome || nome === 'NULL') return false;
+      return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
+    });
     if (!maquinasAtivas.length) {
       return { ok: false, skipped: 'sem_maquinas_ativas' };
     }
@@ -2658,17 +2684,23 @@ async function _autoPickSugestaoMaquinaNome(body){
     const desenvolvimento = comp + (alt * 2) + folgaPuxada;
     const boca = larg + (alt * 2) + folgaBoca;
 
+    const getRealLimits = (m) => {
+      let pMin = Number(m?.puxada_min) || 0;
+      let pMax = Number(m?.puxada_max) || 9999;
+      if (pMin > pMax && pMax > 0) [pMin, pMax] = [pMax, pMin];
+      const bMax = Number(m?.boca_max) || 9999;
+      return { pMin, pMax, bMax };
+    };
+
     try{
       console.log('[SUGESTAO MAQ DEBUG]', {
         comp, larg, alt,
         desenvolvimento,
         boca,
         maquinasAtivas: (maquinasAtivas || []).map(m => {
-          const puxMin = toNum(m.puxada_min);
-          const puxMax = toNum(m.puxada_max);
-          const bocaMax = toNum(m.boca_max);
-          const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
-          const bocaOk = bocaMax === null || boca <= bocaMax;
+          const { pMin, pMax, bMax } = getRealLimits(m);
+          const devOk = desenvolvimento >= pMin && desenvolvimento <= pMax;
+          const bocaOk = boca <= bMax;
           return {
             nome: m.nome,
             puxada_min: m.puxada_min,
@@ -2682,12 +2714,10 @@ async function _autoPickSugestaoMaquinaNome(body){
     }catch(_){}
 
     const compat = (maquinasAtivas || []).filter((m)=>{
-      const puxMin = toNum(m.puxada_min);
-      const puxMax = toNum(m.puxada_max);
-      const bocaMax = toNum(m.boca_max);
-      const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
-      const bocaOk = bocaMax === null || boca <= bocaMax;
-      return !!(devOk && bocaOk);
+      const { pMin, pMax, bMax } = getRealLimits(m);
+      const devOk = desenvolvimento >= pMin && desenvolvimento <= pMax;
+      const bocaOk = boca <= bMax;
+      return devOk && bocaOk;
     }).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter((m)=>m.nome);
 
     const maquinasCompativeis = compat.length > 0 ? compat : (maquinasAtivas || []).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter(m=>m.nome);
@@ -2800,16 +2830,11 @@ async function _autoSugerirMaquinaParaOF(body, created){
       return { ok: false, skipped: 'sem_maquinas' };
     }
 
-    const MAQUINAS_VALIDAS = [
-      'CORTE VINCO ROTATIVA',
-      'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
-    ];
-
     const maquinasAtivas = maquinas.filter(m => {
       const nome = String(m.nome || m.col || '').trim().toUpperCase();
       if (!m || m.ativo !== true) return false;
       if (!nome) return false;
-      return MAQUINAS_VALIDAS.some(v => nome.includes(v) || v.includes(nome));
+      return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
     });
 
     if (!maquinasAtivas.length) {
@@ -2827,25 +2852,18 @@ async function _autoSugerirMaquinaParaOF(body, created){
       maquinas: maquinasAtivas.map(m => ({ nome: m.nome, pmin: m.puxada_min, pmax: m.puxada_max, bmax: m.boca_max })),
     });
 
-    const toNum = (v) => {
-      const n = Number(v);
-      return (!v || n === 0 || !Number.isFinite(n)) ? null : n;
-    };
-
     const getRealLimits = (m) => {
-      let pMin = toNum(m?.puxada_min);
-      let pMax = toNum(m?.puxada_max);
-      if (pMin != null && pMax != null && pMin > pMax && pMax > 0) {
-        [pMin, pMax] = [pMax, pMin];
-      }
-      const bMax = toNum(m?.boca_max);
+      let pMin = Number(m?.puxada_min) || 0;
+      let pMax = Number(m?.puxada_max) || 9999;
+      if (pMin > pMax && pMax > 0) [pMin, pMax] = [pMax, pMin];
+      const bMax = Number(m?.boca_max) || 9999;
       return { pMin, pMax, bMax };
     };
 
     const compat = maquinasAtivas.filter(m => {
       const { pMin, pMax, bMax } = getRealLimits(m);
-      const devOk = (pMin === null || desenvolvimento >= pMin) && (pMax === null || desenvolvimento <= pMax);
-      const bocaOk = bMax === null || boca <= bMax;
+      const devOk = desenvolvimento >= pMin && desenvolvimento <= pMax;
+      const bocaOk = boca <= bMax;
       return devOk && bocaOk;
     });
 
@@ -5744,69 +5762,53 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
       .order('ordem', { ascending: true })
       .limit(50);
     if (error) throw error;
-    const MAQUINAS_VALIDAS = [
-      'CORTE VINCO ROTATIVA',
-      'IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05',
-    ];
-    const maquinas = (Array.isArray(maquinasRaw) ? maquinasRaw : []).filter(m => {
-      const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
-      if (!m || m.ativo !== true) return false;
-      if (!nome || nome === 'NULL') return false;
-      return MAQUINAS_VALIDAS.some(v => nome.includes(v) || v.includes(nome));
-    });
 
     const folgaPuxada = 20;
     const folgaBoca = 15;
     const desenvolvimento = comprimento + (altura * 2) + folgaPuxada;
     const boca = largura + (altura * 2) + folgaBoca;
 
-    const toNum = (v) => {
-      if (v === null || v === undefined || v === '' || Number(v) === 0) return null;
-      const n = Number(v);
-      return Number.isFinite(n) ? n : null;
+    const getRealLimits = (m) => {
+      let pMin = Number(m?.puxada_min) || 0;
+      let pMax = Number(m?.puxada_max) || 9999;
+      if (pMin > pMax && pMax > 0) [pMin, pMax] = [pMax, pMin];
+      const bMax = Number(m?.boca_max) || 9999;
+      return { pMin, pMax, bMax };
     };
 
-    const resultado = (Array.isArray(maquinas) ? maquinas : []).map((m) => {
-      let puxMin = toNum(m.puxada_min);
-      let puxMax = toNum(m.puxada_max);
-      if (puxMin != null && puxMax != null && puxMin > puxMax && puxMax > 0) {
-        [puxMin, puxMax] = [puxMax, puxMin];
-      }
-      const bocaMax = toNum(m.boca_max);
-      const devOk = (puxMin === null || desenvolvimento >= puxMin) && (puxMax === null || desenvolvimento <= puxMax);
-      const bocaOk = bocaMax === null || boca <= bocaMax;
-
-      const compativel = !!(devOk && bocaOk);
+    const resultadoFinal = (Array.isArray(maquinasRaw) ? maquinasRaw : [])
+      .filter(m => {
+        const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
+        if (!m || m.ativo !== true) return false;
+        if (!nome || nome === 'NULL') return false;
+        return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
+      })
+      .map((m) => {
+        const { pMin, pMax, bMax } = getRealLimits(m);
+        const devOk = desenvolvimento >= pMin && desenvolvimento <= pMax;
+        const bocaOk = boca <= bMax;
+        const compativel = devOk && bocaOk;
       let motivo = null;
       if (!devOk) {
-        motivo = `Puxada necessária ${Math.round(desenvolvimento)}mm (limite: ${puxMin != null ? Math.round(puxMin) : '—'}-${puxMax != null ? Math.round(puxMax) : '—'}mm)`;
+        motivo = 'Puxada necessária ' + Math.round(desenvolvimento) + 'mm (limite: ' + pMin + '–' + pMax + 'mm)';
       } else if (!bocaOk) {
-        motivo = `Boca necessária ${Math.round(boca)}mm (máximo: ${bocaMax != null ? Math.round(bocaMax) : '—'}mm)`;
+        motivo = 'Boca necessária ' + Math.round(boca) + 'mm (máximo: ' + bMax + 'mm)';
       }
-
-      const folgaPuxadaLivre = puxMax != null ? (puxMax - desenvolvimento) : 999999;
-      const folgaBocaLivre = bocaMax != null ? (bocaMax - boca) : 999999;
-      const score = (compativel ? 0 : 1_000_000) + Math.max(0, folgaPuxadaLivre) + Math.max(0, folgaBocaLivre);
-
-      return {
-        id: m.id,
-        nome: m.nome,
-        compativel,
-        motivo,
-        desenvolvimento_necessario: Math.round(desenvolvimento),
-        boca_necessaria: Math.round(boca),
-        score,
-      };
-    }).sort((a, b) => {
-      if (a.compativel && !b.compativel) return -1;
-      if (!a.compativel && b.compativel) return 1;
-      return (Number(a.score) || 0) - (Number(b.score) || 0);
-    });
-
-    const algumCompat = (resultado || []).some(r => r && r.compativel);
-    const resultadoFinal = algumCompat
-      ? resultado
-      : (resultado || []).map(r => ({ ...r, compativel: true, motivo: null, score: 0, fallback: true }));
+        return {
+          id: m.id,
+          nome: m.nome,
+          compativel,
+          motivo,
+          desenvolvimento_necessario: Math.round(desenvolvimento),
+          boca_necessaria: Math.round(boca),
+          score: compativel ? 0 : 1000000,
+        };
+      })
+      .sort((a, b) => {
+        if (a.compativel && !b.compativel) return -1;
+        if (!a.compativel && b.compativel) return 1;
+        return String(a.nome || '').localeCompare(String(b.nome || ''));
+      });
 
     return res.json({ ok: true, data: resultadoFinal });
   } catch (e) {
