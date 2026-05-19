@@ -3322,7 +3322,7 @@ function _goBase(id){
     }
   }
   if(id==='mapa-clientes'){
-    const doRender = ()=>{ try{ renderMapaClientes(); }catch(e){} };
+    const doRender = ()=>{ try{ setTimeout(_mapaClientes_init, 300); }catch(e){} };
     if(_apiConectado && CURRENT_USER){
       Promise.all([
         carregarClientes(false).catch(()=>null),
@@ -14150,7 +14150,7 @@ function _mapcliFillVendedorSelect(){
 
 function _mapcliGeoCacheGet(){
   try{
-    const raw = localStorage.getItem('mapa_clientes_geo_v1');
+    const raw = localStorage.getItem('italy_geo_cache_v1') || localStorage.getItem('mapa_clientes_geo_v1');
     const obj = raw ? JSON.parse(raw) : null;
     return (obj && typeof obj === 'object') ? obj : {};
   }catch(e){
@@ -14158,13 +14158,19 @@ function _mapcliGeoCacheGet(){
   }
 }
 function _mapcliGeoCacheSet(obj){
-  try{ localStorage.setItem('mapa_clientes_geo_v1', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+  try{ localStorage.setItem('italy_geo_cache_v1', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
 }
 
-function _mapcliColorByVolume(totalMes){
-  const n = Math.trunc(Number(totalMes||0)||0);
-  if(n > 5) return '#22c55e';
-  if(n >= 1) return '#fbbf24';
+function _mapcliColorByRecencia(ultimaOfIso){
+  const d = String(ultimaOfIso||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return '#94a3b8';
+  const hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  const dt = new Date(d + 'T00:00:00');
+  if(!Number.isFinite(dt.getTime())) return '#94a3b8';
+  const diffDays = Math.floor((hoje.getTime() - dt.getTime()) / 86400000);
+  if(diffDays <= 31) return '#22c55e';
+  if(diffDays <= 93) return '#fbbf24';
   return '#94a3b8';
 }
 
@@ -14228,7 +14234,7 @@ function _mapcliUpsertMarker(c){
     const lat = Number(c?.lat);
     const lng = Number(c?.lng);
     if(!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    const col = _mapcliColorByVolume(c?.total_ofs_mes);
+    const col = _mapcliColorByRecencia(c?.ultima_of);
     const mk = window.L.circleMarker([lat, lng], {
       radius: 8,
       color: col,
@@ -14376,10 +14382,68 @@ async function renderMapaClientes(force){
       return;
     }
 
-    const qs = new URLSearchParams();
-    if(empId) qs.set('empId', empId);
-    const r = await api('GET','/clientes/mapa?' + qs.toString());
-    const data = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    let data = [];
+    try{
+      const qs = new URLSearchParams();
+      if(empId) qs.set('empId', empId);
+      const r = await api('GET','/clientes/mapa?' + qs.toString());
+      data = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    }catch(e){
+      data = [];
+    }
+
+    if(!data.length){
+      try{
+        const qs2 = new URLSearchParams();
+        qs2.set('limit','500');
+        qs2.set('lite','1');
+        if(empId) qs2.set('empId', empId);
+        const r2 = await api('GET','/clientes?' + qs2.toString());
+        const clis = Array.isArray(r2?.data) ? r2.data : (Array.isArray(r2) ? r2 : []);
+        data = (Array.isArray(clis) ? clis : []).map(c=>({
+          id: c.id,
+          nome: c.nome,
+          cidade: c.cidade,
+          estado: c.estado || c.uf,
+          uf: c.uf,
+          tel: c.tel || c.telefone,
+          vendedor_id: c.vendedor_id || c.vendId,
+          emp_id: c.emp_id || c.empId,
+          ultima_of: null,
+          total_ofs_mes: 0,
+          valor_mes: 0,
+          lat: null,
+          lng: null,
+        }));
+
+        try{
+          const hoje = new Date();
+          const to = hoje.toISOString().slice(0,10);
+          const fromDt = new Date(hoje);
+          fromDt.setDate(fromDt.getDate() - 93);
+          const from = fromDt.toISOString().slice(0,10);
+          const qsOf = new URLSearchParams();
+          qsOf.set('from', from);
+          qsOf.set('to', to);
+          qsOf.set('nocache','1');
+          qsOf.set('limit','2000');
+          if(empId) qsOf.set('empId', empId);
+          const ro = await api('GET','/ofs?' + qsOf.toString());
+          const ofs = Array.isArray(ro?.data) ? ro.data : (Array.isArray(ro) ? ro : []);
+          const lastMap = {};
+          (Array.isArray(ofs)?ofs:[]).forEach(o=>{
+            const cid = String(o?.cli_id || o?.cliente_id || o?.cliId || '').trim();
+            if(!cid) return;
+            const dt = String(o?.created_at || o?.createdAt || o?.data_entrega || o?.ent || '').slice(0,10);
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return;
+            if(!lastMap[cid] || dt > lastMap[cid]) lastMap[cid] = dt;
+          });
+          data = data.map(c=>({ ...c, ultima_of: lastMap[String(c?.id||'').trim()] || null }));
+        }catch(e){}
+      }catch(e){
+        data = [];
+      }
+    }
     window._mapCliCache = data;
     window._mapCliCacheAt = Date.now();
 
@@ -14400,6 +14464,42 @@ async function renderMapaClientes(force){
   }catch(e){
     try{ console.error('[renderMapaClientes]', e); }catch(_){}
   }
+}
+
+function _mapaClientes_init(){
+  try{
+    const container = document.getElementById('mapcli-map');
+    if(!container){
+      console.error('[MAPA] container não encontrado');
+      return;
+    }
+    if(!window.L){
+      console.error('[MAPA] Leaflet indisponível');
+      return;
+    }
+    if(window._mapCliState && window._mapCliState.map){
+      try{ window._mapCliState.map.remove(); }catch(_){}
+      try{ window._mapCliState = null; }catch(_){}
+    }
+    container.innerHTML = '';
+    window._mapaClientesInstance = window.L.map(container).setView([-15, -55], 4);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 18,
+    }).addTo(window._mapaClientesInstance);
+    setTimeout(()=>{ try{ window._mapaClientesInstance.invalidateSize(); }catch(e){} }, 200);
+    const layer = window.L.layerGroup().addTo(window._mapaClientesInstance);
+    window._mapCliState = { map: window._mapaClientesInstance, layer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false };
+    _mapaClientes_carregarDados();
+  }catch(e){
+    try{ console.error('[MAPA] erro init', e); }catch(_){}
+  }
+}
+
+function _mapaClientes_carregarDados(){
+  try{
+    renderMapaClientes(true);
+  }catch(e){}
 }
 
 function recorrentesRecarregar(force){
@@ -33963,7 +34063,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="sbox">
         <div class="sbox-h">🗺 Mapa</div>
         <div class="sbox-b" style="padding:0">
-          <div id="mapcli-map" style="height:70vh;min-height:460px;width:100%"></div>
+          <div id="mapcli-map" style="height:500px;width:100%;min-height:400px;"></div>
         </div>
       </div>
       <div style="display:grid;gap:12px;align-content:start">
