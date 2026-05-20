@@ -8848,7 +8848,8 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
       resultados.push({
         id: c.id,
-        nome: String(c.nome || c.nomenclatura || '').trim(),
+        nome: String(c.nome || c.nomenclatura || c.nom || '').trim(),
+        nomenclatura: String(c.nomenclatura || c.nom || '').trim(),
         fornecedor: String(c.fornecedor || '').trim(),
         tamanho: tam,
         dim1: d1,
