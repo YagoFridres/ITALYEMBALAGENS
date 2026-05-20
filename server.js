@@ -9039,6 +9039,126 @@ app.post('/api/chapas_estoque/reset', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.post('/api/admin/importar_chapas', authMiddleware, async (req, res) => {
+  try {
+    const chapas = Array.isArray(req.body?.chapas) ? req.body.chapas : [];
+    if (!chapas.length) return res.status(400).json({ ok: false, error: 'chapas vazio' });
+
+    const table = await _chapasPreferV2Table();
+    let inseridos = 0, atualizados = 0, erros = 0;
+
+    const hasCol = async (col) => {
+      const { error } = await supabase.from(table).select(col).limit(1);
+      if (!error) return true;
+      const msg = String(error.message || error);
+      if (msg.includes('column') || msg.includes('Could not find')) return false;
+      throw error;
+    };
+
+    const cols = table === 'chapas_estoque_v2'
+      ? null
+      : {
+          fornecedor: await hasCol('fornecedor'),
+          forn: await hasCol('forn'),
+          nomenclatura: await hasCol('nomenclatura'),
+          nom: await hasCol('nom'),
+          tamanho: await hasCol('tamanho'),
+          tam: await hasCol('tam'),
+          nome_uso: await hasCol('nome_uso'),
+          nome: await hasCol('nome'),
+          descricao: await hasCol('descricao'),
+          quantidade: await hasCol('quantidade'),
+          quantidade_atual: await hasCol('quantidade_atual'),
+          qtd: await hasCol('qtd'),
+          saldo: await hasCol('saldo'),
+          valor_unitario: await hasCol('valor_unitario'),
+          custo_unitario: await hasCol('custo_unitario'),
+          val: await hasCol('val'),
+          categoria: await hasCol('categoria'),
+          emp_id: await hasCol('emp_id'),
+        };
+
+    const colForn = table === 'chapas_estoque_v2'
+      ? 'fornecedor'
+      : (cols.fornecedor ? 'fornecedor' : (cols.forn ? 'forn' : null));
+    const colNom = table === 'chapas_estoque_v2'
+      ? 'nomenclatura'
+      : (cols.nomenclatura ? 'nomenclatura' : (cols.nom ? 'nom' : null));
+    const colTam = table === 'chapas_estoque_v2'
+      ? 'tamanho'
+      : (cols.tamanho ? 'tamanho' : (cols.tam ? 'tam' : null));
+
+    if (!colForn || !colNom || !colTam) {
+      return res.status(500).json({ ok: false, error: 'schema_chapas_sem_chaves' });
+    }
+
+    const setAny = (obj, candidates, value) => {
+      for (const k of candidates) {
+        if (table === 'chapas_estoque_v2') {
+          obj[k] = value;
+          return;
+        }
+        if (cols && cols[k]) { obj[k] = value; return; }
+      }
+    };
+
+    for (const c of chapas) {
+      try {
+        const fornecedor = String(c?.fornecedor || '').trim();
+        const nomenclatura = String(c?.nomenclatura || c?.nom || '').trim();
+        const tamanho = String(c?.tamanho || c?.tam || '').trim().toUpperCase();
+        if (!fornecedor || !nomenclatura || !tamanho) { erros++; continue; }
+
+        const { data: exist } = await supabase
+          .from(table)
+          .select('id')
+          .eq(colForn, fornecedor)
+          .eq(colNom, nomenclatura)
+          .eq(colTam, tamanho)
+          .maybeSingle();
+
+        const qtd = Math.trunc(Number(c?.quantidade ?? c?.qtd ?? 0) || 0);
+        const vUnit = Number(c?.valor_unitario ?? c?.val ?? 0) || 0;
+        const nomeUso = String(c?.nome_uso || '').trim();
+        const categoria = String(c?.categoria || 'Estoque Simples').trim();
+        const empId = String(c?.emp_id || 'E1').trim() || 'E1';
+
+        if (exist?.id) {
+          const upd = {};
+          setAny(upd, ['quantidade', 'quantidade_atual', 'qtd', 'saldo'], qtd);
+          setAny(upd, ['valor_unitario', 'custo_unitario', 'val'], vUnit);
+          if (nomeUso) setAny(upd, ['nome_uso', 'nome', 'descricao'], nomeUso);
+          if (table === 'chapas_estoque_v2') {
+            if (String(c?.nome_uso || '').trim() === '' && String(c?.nome || '').trim() === '') {
+              setAny(upd, ['nome_uso'], undefined);
+            }
+          }
+          Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
+          await supabase.from(table).update(upd).eq('id', exist.id);
+          atualizados++;
+        } else {
+          const ins = {};
+          ins[colForn] = fornecedor;
+          ins[colNom] = nomenclatura;
+          ins[colTam] = tamanho;
+          setAny(ins, ['nome_uso', 'nome', 'descricao'], String(c?.nome_uso || nomenclatura).trim());
+          setAny(ins, ['quantidade', 'quantidade_atual', 'qtd', 'saldo'], qtd);
+          setAny(ins, ['valor_unitario', 'custo_unitario', 'val'], vUnit);
+          setAny(ins, ['categoria'], categoria);
+          setAny(ins, ['emp_id'], empId);
+          Object.keys(ins).forEach((k) => ins[k] === undefined && delete ins[k]);
+          await supabase.from(table).insert([ins]);
+          inseridos++;
+        }
+      } catch (e) { erros++; }
+    }
+
+    return res.json({ ok: true, inseridos, atualizados, erros, total: chapas.length, table });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/historico_acoes', authMiddleware, async (req, res) => {
   try {
     const row = {
