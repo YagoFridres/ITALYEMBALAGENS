@@ -13,7 +13,12 @@
 <meta name="theme-color" content="#0f0f1a">
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 <title>Italy Embalagens — PCP Pro ERP</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -5347,6 +5352,165 @@ async function salvarInconformidade() {
     }
   } catch (e) {
     alert('Erro ao salvar: ' + String(e?.message || e));
+  }
+}
+
+function fecharModalInconformidadeManual(){
+  const m = document.getElementById('modal-inconformidade-manual');
+  if(m) m.style.display = 'none';
+}
+
+function _incmParseClienteId(raw){
+  const s = String(raw||'').trim();
+  if(!s) return '';
+  const parts = s.split('—').map(x=>String(x||'').trim()).filter(Boolean);
+  if(parts.length >= 2){
+    const id = parts[parts.length - 1];
+    const arr = Array.isArray(CLIENTES) ? CLIENTES : [];
+    if(arr.some(c=>String(c?.id||'').trim()===id)) return id;
+  }
+  return '';
+}
+
+function abrirModalInconformidadeManual(){
+  const m = document.getElementById('modal-inconformidade-manual');
+  if(!m) return;
+  const hoje = new Date().toISOString().slice(0,10);
+  const elData = document.getElementById('incm-data');
+  if(elData) elData.value = hoje;
+  const elCli = document.getElementById('incm-cli');
+  if(elCli) elCli.value = '';
+  const dl = document.getElementById('incm-cli-dl');
+  if(dl){
+    const arr = (Array.isArray(CLIENTES) ? CLIENTES : []).slice().sort((a,b)=>String(a?.nome||'').localeCompare(String(b?.nome||'')));
+    dl.innerHTML = arr.map(c=>{
+      const id = String(c?.id||'').trim();
+      const nome = String(c?.nome||c?.razao_social||'').trim();
+      const cidade = String(c?.cidade||'').trim();
+      const uf = String(c?.uf||c?.estado||'').trim();
+      if(!id || !nome) return '';
+      const txt = `${nome}${cidade?(' · ' + cidade):''}${uf?('/'+uf):''} — ${id}`;
+      return `<option value="${escAttr(txt)}"></option>`;
+    }).filter(Boolean).join('');
+  }
+  const respSel = document.getElementById('incm-resp');
+  if(respSel){
+    const vendArr = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+    const u = CURRENT_USER ? String(CURRENT_USER?.nome || CURRENT_USER?.email || '').trim() : '';
+    const opts = [];
+    if(u) opts.push(`<option value="${escAttr(u)}">${escH(u)} (usuário)</option>`);
+    vendArr.forEach(v=>{
+      const n = String(v?.nome||'').trim();
+      if(!n) return;
+      opts.push(`<option value="${escAttr(n)}">${escH(n)}</option>`);
+    });
+    respSel.innerHTML = `<option value="">Selecionar...</option>` + opts.join('');
+  }
+  const g = document.querySelector('input[name="incm-grav"][value="Médio"]');
+  if(g) g.checked = true;
+  const anexosEl = document.getElementById('incm-anexos-list');
+  if(anexosEl) anexosEl.innerHTML = '';
+  window._incmAnexos = [];
+  m.style.display = 'flex';
+}
+
+async function incmUploadAnexo(input){
+  const file = input?.files?.[0];
+  if(!file) return;
+  const st = document.getElementById('incm-anexo-status');
+  if(st) st.textContent = 'Enviando...';
+  const form = new FormData();
+  form.append('file', file);
+  try{
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const r = await fetch('/api/chat/upload', { method:'POST', headers:{ Authorization: 'Bearer ' + token }, body: form });
+    const j = await r.json().catch(()=>null);
+    const url = String(j?.data?.url || '').trim();
+    if(j?.ok && url){
+      window._incmAnexos = Array.isArray(window._incmAnexos) ? window._incmAnexos : [];
+      window._incmAnexos = [...new Set([url, ...window._incmAnexos])].slice(0, 8);
+      if(st) st.textContent = '✅ Anexo enviado';
+      const list = document.getElementById('incm-anexos-list');
+      if(list){
+        list.innerHTML = (window._incmAnexos||[]).map(u=>`<div style="font-size:12px;color:var(--text2);word-break:break-all">${escH(u)}</div>`).join('');
+      }
+    } else {
+      if(st) st.textContent = '❌ Erro no upload';
+    }
+  }catch(e){
+    if(st) st.textContent = '❌ Erro no upload';
+  } finally {
+    try{ input.value = ''; }catch(_){}
+  }
+}
+
+async function salvarInconformidadeManual(){
+  try{
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const data = String(document.getElementById('incm-data')?.value||'').slice(0,10);
+    const cliRaw = String(document.getElementById('incm-cli')?.value||'').trim();
+    const cliente_id = _incmParseClienteId(cliRaw);
+    const cliArr = Array.isArray(CLIENTES) ? CLIENTES : [];
+    const cli = cliente_id ? (cliArr.find(c=>String(c?.id||'').trim()===cliente_id) || null) : null;
+    const cliente_nome = String(cli?.nome || '').trim() || String(cliRaw.split('—')[0]||'').trim();
+    const tipo = String(document.getElementById('incm-tipo')?.value||'').trim();
+    const desc = String(document.getElementById('incm-desc')?.value||'').trim();
+    const resp = String(document.getElementById('incm-resp')?.value||'').trim();
+    const grav = String(document.querySelector('input[name="incm-grav"]:checked')?.value||'').trim();
+    const acao = String(document.getElementById('incm-acao')?.value||'').trim();
+    const status = String(document.getElementById('incm-status')?.value||'').trim() || 'Aberta';
+    const ofRel = String(document.getElementById('incm-ofrel')?.value||'').trim();
+    const pedRel = String(document.getElementById('incm-pedrel')?.value||'').trim();
+    const empId = String(window.EMPRESA_ATIVA || window.EMP_FILTRO || window._empAtual || '').trim();
+
+    if(!data) { toast('Informe a data','var(--red)'); return; }
+    if(!cliente_nome || cliente_nome.length < 3) { toast('Selecione um cliente','var(--red)'); return; }
+    if(!tipo) { toast('Selecione o tipo','var(--red)'); return; }
+    if(!(desc && desc.length >= 20)) { toast('Descrição deve ter pelo menos 20 caracteres','var(--red)'); return; }
+    if(!resp) { toast('Informe o responsável','var(--red)'); return; }
+    if(!grav) { toast('Informe a gravidade','var(--red)'); return; }
+
+    const anexos = Array.isArray(window._incmAnexos) ? window._incmAnexos : [];
+    const obsParts = [
+      `Tipo: ${tipo}`,
+      `Gravidade: ${grav}`,
+      `Descrição: ${desc}`,
+      acao ? (`Ação corretiva: ${acao}`) : '',
+      ofRel ? (`OF relacionada: ${ofRel}`) : '',
+      pedRel ? (`Pedido relacionado: ${pedRel}`) : '',
+      anexos.length ? (`Anexos: ${anexos.join(' | ')}`) : '',
+    ].filter(Boolean);
+    const obs = obsParts.join('\n');
+
+    const body = {
+      manual: true,
+      data_ocorrencia: data,
+      emp_id: empId || undefined,
+      cliente_id: cliente_id || undefined,
+      cliente_nome,
+      operador: resp,
+      maquina: null,
+      obs,
+      qtd_perdida: 0,
+      imagem_problema_url: anexos[0] || null,
+      status,
+    };
+
+    const r = await fetch('/api/inconformidades', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization: 'Bearer ' + String(token||'') },
+      body: JSON.stringify(body)
+    });
+    const j = await r.json().catch(()=>null);
+    if(j?.ok){
+      fecharModalInconformidadeManual();
+      toast('✅ Inconformidade registrada', 'var(--green)');
+      try{ await carregarInconformidadesControle(); }catch(_){}
+      return;
+    }
+    toast('Erro: ' + String(j?.error || 'Tente novamente'), 'var(--red)');
+  }catch(e){
+    toast('Erro ao salvar: ' + String(e?.message || e), 'var(--red)');
   }
 }
 
@@ -15130,8 +15294,14 @@ function _mapcliInitMap(){
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
   }).addTo(m);
-  const layer = window.L.layerGroup().addTo(m);
-  window._mapCliState = { map:m, layer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false };
+  const layer = (window.L.markerClusterGroup ? window.L.markerClusterGroup({
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+    maxClusterRadius: 44,
+  }) : window.L.layerGroup());
+  layer.addTo(m);
+  const roteiroLayer = window.L.layerGroup().addTo(m);
+  window._mapCliState = { map:m, layer, roteiroLayer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false, roteiro: null };
   return m;
 }
 
@@ -15139,6 +15309,9 @@ function _mapcliClearMarkers(){
   try{
     const st = window._mapCliState || {};
     if(st.layer) st.layer.clearLayers();
+    if(st.roteiroLayer) st.roteiroLayer.clearLayers();
+    if(st.roteiro && typeof st.roteiro.remove === 'function') st.roteiro.remove();
+    st.roteiro = null;
     if(st.markers && typeof st.markers.clear === 'function') st.markers.clear();
   }catch(e){}
 }
@@ -15161,10 +15334,17 @@ function _mapcliPopupHtml(c){
   const estado = String(c?.estado||c?.uf||'').trim();
   const local = (cidade || estado) ? `${cidade || ''}${(cidade && estado) ? ' / ' : ''}${estado || ''}` : '—';
   const ultima = c?.ultima_of ? fmtD(String(c.ultima_of).slice(0,10)) : '—';
-  const valorMes = fmtR(Number(c?.valor_mes||0)||0);
-  const valorAno = fmtR(Number(c?.valor_ano||0)||0);
-  const ofsMes = Math.trunc(Number(c?.total_ofs_mes||0)||0);
-  const ofsAno = Math.trunc(Number(c?.total_ofs_ano||0)||0);
+  const periodo = String(document.getElementById('mapcli-periodo')?.value || 'mes').trim() || 'mes';
+  const label = (periodo === 'ano') ? 'este ano' : (periodo === '3m' ? 'últimos 3 meses' : 'este mês');
+  const valor = periodo === 'ano'
+    ? Number(c?.valor_ano||0)||0
+    : (periodo === '3m' ? (Number(c?.valor_3m||0)||0) : (Number(c?.valor_mes||0)||0));
+  const ofs = periodo === 'ano'
+    ? Math.trunc(Number(c?.total_ofs_ano||0)||0)
+    : (periodo === '3m' ? (Math.trunc(Number(c?.total_ofs_3m||0)||0)) : (Math.trunc(Number(c?.total_ofs_mes||0)||0)));
+  const vendArr = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+  const vend = vendArr.find(v=>String(v?.id||'')===String(c?.vendedor_id||'')) || null;
+  const vendNome = String(vend?.nome||'').trim() || '—';
   const btn = `<button onclick="mapaClientesVerOFs('${escAttr(nome)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver OFs deste cliente</button>`;
   const btnCidade = (cidade || estado)
     ? `<button onclick="_cidadeDrawer_abrir('${escAttr(cidade)}','${escAttr(estado)}')" style="margin-top:8px;padding:8px 10px;border-radius:10px;background:#185FA5;color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver cidade completa</button>`
@@ -15172,11 +15352,10 @@ function _mapcliPopupHtml(c){
   return `<div style="min-width:220px;color:#0f172a">
     <div style="font-weight:900;font-size:14px">${escH(nome)}</div>
     <div style="margin-top:6px;font-size:12px">📍 ${escH(local)}</div>
-    <div style="margin-top:4px;font-size:12px">💰 Valor vendido este mês: ${escH(valorMes)}</div>
-    <div style="margin-top:4px;font-size:12px">💰 Valor vendido este ano: ${escH(valorAno)}</div>
-    <div style="margin-top:4px;font-size:12px">📦 OFs este mês: ${escH(String(ofsMes))} pedido(s)</div>
-    <div style="margin-top:4px;font-size:12px">📦 OFs este ano: ${escH(String(ofsAno))} pedido(s)</div>
-    <div style="margin-top:4px;font-size:12px">🗓 Última OF: ${escH(ultima)}</div>
+    <div style="margin-top:4px;font-size:12px">💰 Total vendido (${escH(label)}): ${escH(fmtR(valor))}</div>
+    <div style="margin-top:4px;font-size:12px">📦 Quantidade de OFs (${escH(label)}): ${escH(String(ofs))} OF(s)</div>
+    <div style="margin-top:4px;font-size:12px">🧾 Última OF: ${escH(ultima)}</div>
+    <div style="margin-top:4px;font-size:12px">👤 Vendedor: ${escH(vendNome)}</div>
     ${btn}
     ${btnCidade}
   </div>`;
@@ -15223,52 +15402,84 @@ async function _mapcliGeocodeMissing(list){
   if(!window._mapCliState) return;
   if(window._mapCliState.geocoding) return;
   window._mapCliState.geocoding = true;
-  const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
   try{
     const progEl = document.getElementById('mapcli-progress');
     const cache = _mapcliGeoCacheGet();
-    const total = list.length;
-    let done = 0;
-    for(const c of list){
-      if(String(window._PAGE_ATUAL||'') !== 'mapa-clientes') break;
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+    const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
+    const empId = empSel || (EMP_FILTRO ? String(EMP_FILTRO) : '');
+    const toSend = [];
+    (list||[]).slice(0, 8).forEach((c)=>{
       const id = String(c?.id||'').trim();
       const cidade = String(c?.cidade||'').trim();
       const estado = String(c?.estado || c?.uf || '').trim();
-      if(!id || !cidade) continue;
-      done += 1;
-      if(progEl) progEl.textContent = `Geocodificando ${done} de ${total} clientes...`;
+      if(!id || !cidade) return;
       const cached = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
       if(cached && Number.isFinite(Number(cached.lat)) && Number.isFinite(Number(cached.lng))){
         c.lat = Number(cached.lat);
         c.lng = Number(cached.lng);
         _mapcliUpsertMarker(c);
-        continue;
+        return;
       }
-      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-        city: cidade,
-        state: estado || '',
-        country: 'Brazil',
-        format: 'json'
-      }).toString();
-      let lat = null;
-      let lng = null;
+      toSend.push({ id, cidade, estado });
+    });
+
+    if(toSend.length && _apiConectado && CURRENT_USER && token){
       try{
-        const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
-        const j = await resp.json().catch(()=>null);
-        const hit = Array.isArray(j) && j[0] ? j[0] : null;
-        if(hit && hit.lat && hit.lon){
-          lat = Number(hit.lat);
-          lng = Number(hit.lon);
-        }
-      }catch(e){}
-      if(Number.isFinite(lat) && Number.isFinite(lng)){
-        cache[id] = { lat, lng, cidade, estado, ts: Date.now() };
+        if(progEl) progEl.textContent = `Geocodificando ${toSend.length} cliente(s)...`;
+        const r = await fetch('/api/clientes/geocode_batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + String(token||'') },
+          body: JSON.stringify({ clientes: toSend, empId, limit: toSend.length }),
+        });
+        const j = await r.json().catch(()=>null);
+        const rows = Array.isArray(j?.data) ? j.data : [];
+        rows.forEach((g)=>{
+          const id = String(g?.id||'').trim();
+          const lat = Number(g?.lat);
+          const lng = Number(g?.lng);
+          if(!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          cache[id] = { lat, lng, cidade: g?.cidade, estado: g?.estado, ts: Date.now() };
+          const c = (list||[]).find(x=>String(x?.id||'').trim()===id) || null;
+          if(c){ c.lat = lat; c.lng = lng; _mapcliUpsertMarker(c); }
+        });
         _mapcliGeoCacheSet(cache);
-        c.lat = lat;
-        c.lng = lng;
-        _mapcliUpsertMarker(c);
+      }catch(e){}
+    }
+
+    const ainda = (list||[]).filter(c=>!(Number.isFinite(Number(c?.lat)) && Number.isFinite(Number(c?.lng)))).slice(0, 3);
+    if(ainda.length){
+      const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+      let done = 0;
+      for(const c of ainda){
+        if(String(window._PAGE_ATUAL||'') !== 'mapa-clientes') break;
+        const id = String(c?.id||'').trim();
+        const cidade = String(c?.cidade||'').trim();
+        const estado = String(c?.estado || c?.uf || '').trim();
+        if(!id || !cidade) continue;
+        done += 1;
+        if(progEl) progEl.textContent = `Geocodificando (fallback) ${done}/${ainda.length}...`;
+        const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+          q: [cidade, estado, 'Brasil'].filter(Boolean).join(', '),
+          format: 'jsonv2',
+          limit: '1'
+        }).toString();
+        try{
+          const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
+          const j = await resp.json().catch(()=>null);
+          const hit = Array.isArray(j) && j[0] ? j[0] : null;
+          const lat = hit?.lat != null ? Number(hit.lat) : NaN;
+          const lng = hit?.lon != null ? Number(hit.lon) : NaN;
+          if(Number.isFinite(lat) && Number.isFinite(lng)){
+            cache[id] = { lat, lng, cidade, estado, ts: Date.now() };
+            _mapcliGeoCacheSet(cache);
+            c.lat = lat;
+            c.lng = lng;
+            _mapcliUpsertMarker(c);
+          }
+        }catch(e){}
+        await sleep(1100);
       }
-      await sleep(1100);
     }
   } finally {
     try{
@@ -15834,6 +16045,14 @@ async function renderMapaClientes(force){
     filtered.forEach(_mapcliUpsertMarker);
     _mapcliRenderSide(filtered);
     _mapcliGeocodeMissing(filtered.filter(c=>!c.lat && !c.lng));
+    try{
+      const st = window._mapCliState || {};
+      const last = Number(st.roteiroLoadedAt||0) || 0;
+      if(!last || (Date.now() - last) > 10*60*1000){
+        st.roteiroLoadedAt = Date.now();
+        _mapcliCarregarRoteiroSemana();
+      }
+    }catch(e){}
   }catch(e){
     try{ console.error('[renderMapaClientes]', e); }catch(_){}
   }
@@ -15841,29 +16060,7 @@ async function renderMapaClientes(force){
 
 function _mapaClientes_init(){
   try{
-    const container = document.getElementById('mapcli-map');
-    if(!container){
-      console.error('[MAPA] container não encontrado');
-      return;
-    }
-    if(!window.L){
-      console.error('[MAPA] Leaflet indisponível');
-      return;
-    }
-    if(window._mapCliState && window._mapCliState.map){
-      try{ window._mapCliState.map.remove(); }catch(_){}
-      try{ window._mapCliState = null; }catch(_){}
-    }
-    container.innerHTML = '';
-    window._mapaClientesInstance = window.L.map(container).setView([-15, -55], 4);
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 18,
-    }).addTo(window._mapaClientesInstance);
-    setTimeout(()=>{ try{ window._mapaClientesInstance.invalidateSize(); }catch(e){} }, 200);
-    const layer = window.L.layerGroup().addTo(window._mapaClientesInstance);
-    window._mapCliState = { map: window._mapaClientesInstance, layer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false };
-    _mapaClientes_carregarDados();
+    renderMapaClientes(true);
   }catch(e){
     try{ console.error('[MAPA] erro init', e); }catch(_){}
   }
@@ -15872,6 +16069,264 @@ function _mapaClientes_init(){
 function _mapaClientes_carregarDados(){
   try{
     renderMapaClientes(true);
+  }catch(e){}
+}
+
+function _mapcliWeekRange(){
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const dow = now.getDay();
+  const diffToMon = (dow === 0) ? -6 : (1 - dow);
+  const mon = new Date(now);
+  mon.setDate(mon.getDate() + diffToMon);
+  const fri = new Date(mon);
+  fri.setDate(fri.getDate() + 4);
+  return { mon, fri, monIso: mon.toISOString().slice(0,10), friIso: fri.toISOString().slice(0,10) };
+}
+
+function _mapcliHaversineKm(a, b){
+  const R = 6371;
+  const toRad = (x)=> (Number(x) * Math.PI) / 180;
+  const dLat = toRad(Number(b.lat) - Number(a.lat));
+  const dLon = toRad(Number(b.lng) - Number(a.lng));
+  const lat1 = toRad(Number(a.lat));
+  const lat2 = toRad(Number(b.lat));
+  const s = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*(Math.sin(dLon/2)**2);
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+function _mapcliOrdenarPorProximidade(stops){
+  const pts = (Array.isArray(stops)?stops:[]).filter(p=>Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)));
+  if(pts.length <= 2) return pts;
+  const used = new Set();
+  const out = [];
+  let cur = pts[0];
+  out.push(cur);
+  used.add(cur._key);
+  while(out.length < pts.length){
+    let best = null;
+    let bestD = Infinity;
+    for(const p of pts){
+      if(used.has(p._key)) continue;
+      const d = _mapcliHaversineKm(cur, p);
+      if(d < bestD){ bestD = d; best = p; }
+    }
+    if(!best) break;
+    out.push(best);
+    used.add(best._key);
+    cur = best;
+  }
+  return out;
+}
+
+async function _mapcliCarregarRoteiroSemana(){
+  const box = document.getElementById('mapcli-roteiro');
+  if(box) box.innerHTML = `<div style="color:var(--text2)">Carregando roteiro…</div>`;
+  try{
+    if(!_apiConectado || !CURRENT_USER){ if(box) box.innerHTML = `<div style="color:var(--text3)">Sem conexão com a API.</div>`; return; }
+    const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
+    const empId = empSel || (EMP_FILTRO ? String(EMP_FILTRO) : '');
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET','/roteiro/semana' + (qs.toString() ? ('?' + qs.toString()) : ''));
+    const rows = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    const { monIso, friIso } = _mapcliWeekRange();
+    const inWeek = rows.filter(o=>{
+      const d = String(o?.data_entrega ?? o?.ent ?? '').slice(0,10);
+      return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= monIso && d <= friIso;
+    });
+
+    const cliCache = Array.isArray(window._mapCliCache) ? window._mapCliCache : [];
+    const cliMap = new Map(cliCache.map(c=>[String(c?.id||'').trim(), c]));
+    const stopsRaw = [];
+    inWeek.forEach((o)=>{
+      const cliId = String(o?.cli_id || o?.cliente_id || '').trim();
+      const cli = cliMap.get(cliId) || null;
+      const cidade = String(o?.cidade_entrega || cli?.cidade || '').trim();
+      const uf = String(cli?.estado || cli?.uf || '').trim();
+      const tel = String(o?.cliente_tel || cli?.tel || cli?.telefone || '').trim();
+      const lat = Number(cli?.lat);
+      const lng = Number(cli?.lng);
+      const key = cliId || (cidade.toLowerCase() + '|' + uf.toLowerCase());
+      stopsRaw.push({
+        _key: key,
+        cli_id: cliId || null,
+        cliente: String(o?.cliente_nome || cli?.nome || '').trim() || '—',
+        cidade,
+        uf,
+        tel,
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+        ofs: [{
+          id: o?.id,
+          num: String(o?.of || o?.numero || o?.of_num || '').trim(),
+          entrega: String(o?.data_entrega ?? o?.ent ?? '').slice(0,10),
+          valor: Number(o?.valor_total ?? o?.valor_venda ?? o?.total ?? o?.val ?? 0) || 0,
+          obs: String(o?.obs || o?.observacoes || '').trim(),
+        }]
+      });
+    });
+
+    const byKey = new Map();
+    stopsRaw.forEach(s=>{
+      const cur = byKey.get(s._key) || { ...s, ofs: [] };
+      cur.ofs = [...cur.ofs, ...(Array.isArray(s.ofs)?s.ofs:[])];
+      if(!Number.isFinite(Number(cur.lat)) && Number.isFinite(Number(s.lat))) { cur.lat = s.lat; cur.lng = s.lng; }
+      if(!cur.cidade && s.cidade) cur.cidade = s.cidade;
+      if(!cur.uf && s.uf) cur.uf = s.uf;
+      if(!cur.tel && s.tel) cur.tel = s.tel;
+      if(!cur.cliente || cur.cliente==='—') cur.cliente = s.cliente;
+      byKey.set(s._key, cur);
+    });
+    let stops = Array.from(byKey.values());
+
+    const faltando = stops.filter(s=>!(Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lng))) && s.cli_id && s.cidade).slice(0, 8);
+    if(faltando.length){
+      try{
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+        const rb = await fetch('/api/clientes/geocode_batch', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + String(token||'') },
+          body: JSON.stringify({ clientes: faltando.map(f=>({ id:f.cli_id, cidade:f.cidade, estado:f.uf })), empId, limit: faltando.length }),
+        });
+        const jb = await rb.json().catch(()=>null);
+        const geo = Array.isArray(jb?.data) ? jb.data : [];
+        const gMap = new Map(geo.map(g=>[String(g?.id||'').trim(), g]));
+        stops = stops.map(s=>{
+          if(!s.cli_id) return s;
+          const g = gMap.get(String(s.cli_id||'').trim()) || null;
+          if(g && Number.isFinite(Number(g.lat)) && Number.isFinite(Number(g.lng))){
+            return { ...s, lat:Number(g.lat), lng:Number(g.lng) };
+          }
+          return s;
+        });
+      }catch(e){}
+    }
+
+    const ordenado = _mapcliOrdenarPorProximidade(stops.map(s=>({ ...s, _key: String(s._key||'') })));
+    window._mapCliState.roteiro = { semana: _mapcliWeekRange(), stops: ordenado };
+    _mapcliRenderRoteiroSemana();
+    _mapcliPlotRoteiroSemana();
+  }catch(e){
+    if(box) box.innerHTML = `<div style="color:var(--red)">Erro ao carregar roteiro.</div>`;
+  }
+}
+
+function _mapcliRenderRoteiroSemana(){
+  const box = document.getElementById('mapcli-roteiro');
+  if(!box) return;
+  const st = window._mapCliState || {};
+  const r = st.roteiro || null;
+  if(!r || !Array.isArray(r.stops) || !r.stops.length){ box.innerHTML = `<div style="color:var(--text3)">Nenhuma entrega na semana.</div>`; return; }
+  const { monIso, friIso } = r.semana || _mapcliWeekRange();
+  const totOfs = r.stops.reduce((s,x)=>s + ((Array.isArray(x?.ofs)?x.ofs.length:0)), 0);
+  const totVal = r.stops.reduce((s,x)=>s + (Array.isArray(x?.ofs)?x.ofs.reduce((a,o)=>a + (Number(o?.valor||0)||0),0):0), 0);
+  box.innerHTML = `
+    <div style="font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-bottom:10px">
+      ROTEIRO — Semana ${escH(fmtD(monIso))} a ${escH(fmtD(friIso))} · ${escH(String(r.stops.length))} parada(s) · ${escH(String(totOfs))} OF(s) · ${escH(fmtR(totVal))}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${r.stops.map((s,i)=>{
+        const ofs = Array.isArray(s?.ofs)?s.ofs:[];
+        const ofsTxt = ofs.map(o=>String(o?.num||'').trim()).filter(Boolean).slice(0,6).join(', ') || '—';
+        const val = ofs.reduce((a,o)=>a + (Number(o?.valor||0)||0), 0);
+        const tel = String(s?.tel||'').trim();
+        const loc = String(s?.cidade||'').trim() + (s?.uf?(' / ' + String(s.uf).trim()):'');
+        return `<div style="border:1px solid var(--border);background:var(--s2);border-radius:12px;padding:10px 12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+            <div style="min-width:0">
+              <div style="font-weight:900;color:var(--accent)">${i+1}. 📍 ${escH(String(s?.cliente||'—'))}</div>
+              <div style="margin-top:4px;font-size:.75rem;color:var(--text2)">${escH(loc || '—')}${tel?(' · ☎ ' + escH(tel)) : ''}</div>
+              <div style="margin-top:6px;font-size:.74rem;color:var(--text2)">📦 OFs: ${escH(ofsTxt)}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-weight:900;color:var(--green)">${escH(fmtR(val))}</div>
+              <button class="btn btn-ghost btn-sm" onclick="_mapcliFocusStop(${i})" style="margin-top:6px">Ver no mapa</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function _mapcliFocusStop(i){
+  try{
+    const st = window._mapCliState || {};
+    const r = st.roteiro || null;
+    const s = r && Array.isArray(r.stops) ? r.stops[i] : null;
+    if(!s || !st.map) return;
+    const lat = Number(s.lat);
+    const lng = Number(s.lng);
+    if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    st.map.setView([lat, lng], 11, { animate:true });
+  }catch(e){}
+}
+
+function _mapcliPlotRoteiroSemana(){
+  try{
+    const st = window._mapCliState || {};
+    if(!st.map || !st.roteiroLayer) return;
+    st.roteiroLayer.clearLayers();
+    if(st.roteiro && st.roteiro._routing && typeof st.roteiro._routing.remove === 'function') st.roteiro._routing.remove();
+    const r = st.roteiro || null;
+    if(!r || !Array.isArray(r.stops) || !r.stops.length) return;
+    const pts = r.stops.filter(s=>Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lng)));
+    if(!pts.length) return;
+    const latlngs = pts.map(s=>[Number(s.lat), Number(s.lng)]);
+    latlngs.forEach((ll, idx)=>{
+      const icon = window.L.divIcon({
+        className: '',
+        html: `<div style="width:26px;height:26px;border-radius:999px;background:#f59e0b;border:2px solid rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-weight:900;color:#111;font-family:var(--mono);font-size:12px">${idx+1}</div>`,
+        iconSize: [26,26],
+        iconAnchor: [13,13],
+      });
+      window.L.marker(ll, { icon }).addTo(st.roteiroLayer);
+    });
+    window.L.polyline(latlngs, { color:'#f59e0b', weight:4, opacity:0.9 }).addTo(st.roteiroLayer);
+    try{
+      const bounds = window.L.latLngBounds(latlngs);
+      st.map.fitBounds(bounds.pad(0.25), { animate:true });
+    }catch(e){}
+  }catch(e){}
+}
+
+function _mapcliImprimirRoteiroSemana(){
+  try{
+    const st = window._mapCliState || {};
+    const r = st.roteiro || null;
+    if(!r || !Array.isArray(r.stops) || !r.stops.length){ toast('Nenhum roteiro para imprimir','var(--yellow)'); return; }
+    const { monIso, friIso } = r.semana || _mapcliWeekRange();
+    const w = window.open('', '_blank');
+    if(!w) return;
+    const rows = r.stops.map((s,i)=>{
+      const ofs = Array.isArray(s?.ofs)?s.ofs:[];
+      const ofsTxt = ofs.map(o=>String(o?.num||'').trim()).filter(Boolean).join(', ') || '—';
+      const val = ofs.reduce((a,o)=>a + (Number(o?.valor||0)||0), 0);
+      const loc = String(s?.cidade||'').trim() + (s?.uf?(' / ' + String(s.uf).trim()):'');
+      return `<div style="border:1px solid #ddd;border-radius:10px;padding:10px 12px;margin:10px 0">
+        <div style="font-weight:800">${i+1}. ${escH(String(s?.cliente||'—'))}</div>
+        <div style="margin-top:4px;font-size:12px;color:#333">${escH(loc || '—')}${s?.tel?(' · ' + escH(String(s.tel))):''}</div>
+        <div style="margin-top:6px;font-size:12px">OFs: ${escH(ofsTxt)}</div>
+        <div style="margin-top:6px;font-size:12px;font-weight:700">Valor: ${escH(fmtR(val))}</div>
+      </div>`;
+    }).join('');
+    w.document.write(`
+      <html><head><title>Roteiro da Semana</title>
+      <style>
+        body{font-family:Arial, sans-serif; padding:18px; color:#111}
+        h1{font-size:16px;margin:0 0 6px 0}
+        .sub{font-size:12px;color:#333;margin-bottom:14px}
+        @media print{ button{display:none} body{padding:10px} }
+      </style></head>
+      <body>
+        <h1>ROTEIRO DE ENTREGAS — Semana ${escH(fmtD(monIso))} a ${escH(fmtD(friIso))}</h1>
+        <div class="sub">Italy Embalagens</div>
+        ${rows}
+        <script>window.print();</script>
+      </body></html>
+    `);
+    w.document.close();
   }catch(e){}
 }
 
@@ -33241,7 +33696,7 @@ function renderInconformidades(){
       <div class="sbox-b" style="padding:14px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
           <div style="min-width:0">
-            <div style="font-weight:900;color:var(--accent)">OF #${escH(ofn)} — ${escH(cli)}</div>
+            <div style="font-weight:900;color:var(--accent)">${String(ofn||'').toUpperCase().startsWith('INC-') ? 'INC ' : 'OF #'}${escH(ofn)} — ${escH(cli)}</div>
             <div style="margin-top:6px;color:var(--text2);font-size:.78rem;display:flex;gap:12px;flex-wrap:wrap">
               <span>⚙ ${escH(maq)}</span>
               <span>👷 ${escH(op)}</span>
@@ -35467,6 +35922,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="sbox-h">ℹ️ Legenda</div>
           <div class="sbox-b" id="mapcli-info"></div>
         </div>
+        <div class="sbox">
+          <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <span>🗺️ Roteiro da Semana</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm" onclick="_mapcliCarregarRoteiroSemana()">Atualizar</button>
+              <button class="btn btn-ghost btn-sm" onclick="_mapcliImprimirRoteiroSemana()">Imprimir</button>
+            </div>
+          </div>
+          <div class="sbox-b" id="mapcli-roteiro"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -36657,6 +37122,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <input id="inc-busca" placeholder="🔍 Cliente ou OF" style="width:220px" oninput="renderInconformidades()">
     <div style="flex:1"></div>
     <span id="inc-contador" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">—</span>
+    <button class="btn btn-green btn-sm" onclick="abrirModalInconformidadeManual()">＋ Registrar Inconformidade</button>
     <button class="btn btn-accent btn-sm" onclick="carregarInconformidadesControle()">Atualizar</button>
   </div>
   <div class="page-body" style="display:grid;gap:10px">
@@ -37057,6 +37523,98 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         ⚠️ Registrar
       </button>
       <button onclick="fecharModalInconformidade()" style="padding:12px 16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:inherit;cursor:pointer">
+        Cancelar
+      </button>
+    </div>
+  </div>
+</div>
+<div id="modal-inconformidade-manual" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.7); align-items:center; justify-content:center; padding:16px">
+  <div style="background:var(--surface,#1e2333); border-radius:14px; padding:20px; width:min(720px,96vw); max-height:90vh; overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+      <h3 style="margin:0">＋ Registrar Inconformidade</h3>
+      <button class="btn btn-ghost btn-sm" onclick="fecharModalInconformidadeManual()">✕</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <label style="font-size:12px;color:var(--muted)">Data da ocorrência *</label>
+        <input id="incm-data" type="date" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted)">Status inicial *</label>
+        <select id="incm-status" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+          <option value="Aberta">Aberta</option>
+          <option value="Em Análise">Em Análise</option>
+          <option value="Resolvida">Resolvida</option>
+        </select>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;color:var(--muted)">Cliente *</label>
+        <input id="incm-cli" list="incm-cli-dl" placeholder="Digite e selecione o cliente..." style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+        <datalist id="incm-cli-dl"></datalist>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted)">Tipo *</label>
+        <select id="incm-tipo" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+          <option value="">Selecionar...</option>
+          <option>Produto com defeito</option>
+          <option>Entrega fora do prazo</option>
+          <option>Quantidade incorreta</option>
+          <option>Erro de embalagem</option>
+          <option>Reclamação de qualidade</option>
+          <option>Devolução</option>
+          <option>Outros</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted)">Responsável pela detecção *</label>
+        <select id="incm-resp" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+          <option value="">Selecionar...</option>
+        </select>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;color:var(--muted)">Descrição detalhada *</label>
+        <textarea id="incm-desc" placeholder="Descreva a inconformidade (mínimo 20 caracteres)..." rows="4" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px;resize:vertical"></textarea>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;color:var(--muted)">Nível de gravidade *</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="incm-grav" value="Baixo"> Baixo</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="incm-grav" value="Médio"> Médio</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="incm-grav" value="Alto"> Alto</label>
+          <label style="display:flex;align-items:center;gap:6px"><input type="radio" name="incm-grav" value="Crítico"> Crítico</label>
+        </div>
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;color:var(--muted)">Ação corretiva tomada (opcional)</label>
+        <textarea id="incm-acao" rows="2" placeholder="O que foi feito ou o que será feito..." style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px;resize:vertical"></textarea>
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted)">OF relacionada (opcional)</label>
+        <input id="incm-ofrel" placeholder="Ex: OF-2026-0123" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+      </div>
+      <div>
+        <label style="font-size:12px;color:var(--muted)">Pedido relacionado (opcional)</label>
+        <input id="incm-pedrel" placeholder="Ex: PED-12345" style="width:100%;padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:inherit;margin-top:4px">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;color:var(--muted)">Anexos (opcional)</label>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="file" id="incm-anexo-input" accept="image/*,application/pdf" style="display:none" onchange="incmUploadAnexo(this)">
+          <button onclick="document.getElementById('incm-anexo-input').click()" style="padding:8px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:inherit;cursor:pointer;font-size:13px">
+            📎 Anexar
+          </button>
+          <span id="incm-anexo-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="incm-anexos-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="salvarInconformidadeManual()" style="flex:1;padding:12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-weight:800;cursor:pointer;font-size:14px">
+        Salvar
+      </button>
+      <button onclick="fecharModalInconformidadeManual()" style="padding:12px 16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:inherit;cursor:pointer">
         Cancelar
       </button>
     </div>

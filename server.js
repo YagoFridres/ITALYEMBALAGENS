@@ -6332,7 +6332,52 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
 
 app.post('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('inconformidades').insert([req.body]).select();
+    const b = req.body || {};
+    const manual = !!(b.manual || b.modo === 'manual');
+    const nowIso = new Date().toISOString();
+    const year = Number(nowIso.slice(0, 4)) || new Date().getFullYear();
+
+    let payload = { ...b };
+    delete payload.id;
+
+    if (manual) {
+      if (!String(payload.status || '').trim()) payload.status = 'Aberta';
+      if (!String(payload.emp_id || payload.empId || '').trim()) {
+        payload.emp_id = String(req.query?.empId || req.query?.emp_id || payload.emp_id || payload.empId || '').trim() || undefined;
+      }
+      if (!String(payload.created_at || '').trim() && String(payload.data_ocorrencia || payload.data || '').trim()) {
+        const d = String(payload.data_ocorrencia || payload.data || '').slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.created_at = d + 'T12:00:00.000Z';
+      }
+
+      const hasInc = String(payload.of_numero || '').trim().toUpperCase().startsWith('INC-');
+      if (!payload.of_numero || hasInc) {
+        let seq = 1;
+        try {
+          const { data: last, error: eLast } = await supabase
+            .from('inconformidades')
+            .select('of_numero,created_at')
+            .like('of_numero', `INC-${year}-%`)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (!eLast && Array.isArray(last) && last[0]) {
+            const n = String(last[0].of_numero || '').trim();
+            const m = n.match(/INC-(\d{4})-(\d+)/i);
+            if (m && Number(m[1]) === year) seq = (Number(m[2]) || 0) + 1;
+          }
+        } catch (_) {}
+        payload.of_numero = `INC-${year}-${String(seq).padStart(4, '0')}`;
+      }
+    }
+
+    delete payload.manual;
+    delete payload.modo;
+    delete payload.data_ocorrencia;
+    delete payload.data;
+    delete payload.empId;
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+
+    const { data, error } = await supabase.from('inconformidades').insert([payload]).select();
     if (error) throw error;
     ok(res, data[0]);
   } catch (e) { err(res, e); }
@@ -13896,7 +13941,19 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     const de90 = _addDaysIso(hoje, -93) || _addDaysIso(hoje, -90);
     const de365 = _addDaysIso(hoje, -365) || _addDaysIso(hoje, -366);
 
-    let qCli = supabase.from('clientes').select('id,nome,cidade,estado,uf,tel,telefone,vendedor_id,emp_id').limit(5000);
+    const hasColCli = async (col) => {
+      const { error } = await supabase.from('clientes').select(col).limit(1);
+      if (!error) return true;
+      const msg = String(error.message || error);
+      if (msg.includes('column') || msg.includes('Could not find')) return false;
+      throw error;
+    };
+    const hasLat = await hasColCli('lat');
+    const hasLng = await hasColCli('lng');
+    const cliSel = 'id,nome,cidade,estado,uf,tel,telefone,vendedor_id,emp_id'
+      + ((hasLat && hasLng) ? ',lat,lng' : '');
+
+    let qCli = supabase.from('clientes').select(cliSel).limit(5000);
     if(empId) qCli = qCli.eq('emp_id', empId);
     const { data: clientesRaw, error: eCli } = await qCli;
     if(eCli) throw eCli;
@@ -13968,8 +14025,8 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
         valor_3m: Number((Number(a.valor_3m||0)).toFixed(2)),
         total_ofs_ano: a.total_ofs_ano,
         valor_ano: Number((Number(a.valor_ano||0)).toFixed(2)),
-        lat: null,
-        lng: null,
+        lat: (hasLat && hasLng && c?.lat != null) ? Number(c.lat) : null,
+        lng: (hasLat && hasLng && c?.lng != null) ? Number(c.lng) : null,
         vendedor_id: c?.vendedor_id || null,
         emp_id: c?.emp_id || null,
       };
@@ -13999,6 +14056,80 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
 
     return res.json({ ok:true, data: out, clientes: out, cidades });
   }catch(e){ return err(res, e); }
+});
+
+app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const list = Array.isArray(req.body?.clientes) ? req.body.clientes : [];
+    const limit = Math.max(1, Math.min(25, Math.trunc(Number(req.body?.limit || 10) || 10)));
+    const empId = String(req.body?.empId || req.body?.emp_id || req.query?.empId || '').trim();
+
+    const hasColCli = async (col) => {
+      const { error } = await supabase.from('clientes').select(col).limit(1);
+      if (!error) return true;
+      const msg = String(error.message || error);
+      if (msg.includes('column') || msg.includes('Could not find')) return false;
+      throw error;
+    };
+    const hasLat = await hasColCli('lat');
+    const hasLng = await hasColCli('lng');
+    if (!(hasLat && hasLng)) return res.status(500).json({ ok: false, error: 'clientes_sem_lat_lng' });
+
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = [];
+    const seen = new Set();
+
+    for (const c of list.slice(0, limit)) {
+      const id = String(c?.id || '').trim();
+      const cidade = String(c?.cidade || '').trim();
+      const estado = String(c?.estado || c?.uf || '').trim();
+      if (!id || !cidade) continue;
+      if (seen.has(id)) continue;
+      seen.add(id);
+
+      try {
+        let q = supabase.from('clientes').select('id,lat,lng,emp_id,cidade,estado,uf').eq('id', id).limit(1);
+        if (empId) q = q.eq('emp_id', empId);
+        const { data: row, error: er } = await q.maybeSingle();
+        if (er) throw er;
+
+        const curLat = row?.lat != null ? Number(row.lat) : null;
+        const curLng = row?.lng != null ? Number(row.lng) : null;
+        if (Number.isFinite(curLat) && Number.isFinite(curLng)) {
+          out.push({ id, lat: curLat, lng: curLng, cidade, estado });
+          continue;
+        }
+
+        const qStr = [cidade, estado, 'Brasil'].filter(Boolean).join(', ');
+        const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+          q: qStr,
+          format: 'jsonv2',
+          limit: '1',
+        }).toString();
+
+        const r = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'ItalyEmbalagensERP/1.0 (admin geocode)',
+          }
+        });
+        const j = await r.json().catch(() => null);
+        const hit = Array.isArray(j) && j[0] ? j[0] : null;
+        const lat = hit?.lat != null ? Number(hit.lat) : NaN;
+        const lng = hit?.lon != null ? Number(hit.lon) : NaN;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+        await supabase.from('clientes').update({ lat, lng }).eq('id', id);
+        out.push({ id, lat, lng, cidade, estado });
+        await sleep(1100);
+      } catch (_) {}
+    }
+
+    return res.json({ ok: true, data: out });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
