@@ -518,24 +518,23 @@ function avatarColorFromText(s) {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const body = (req && req.body && typeof req.body === 'object') ? req.body : {};
-    const email = body.email ?? body.usuario ?? body.login ?? body.user ?? '';
-    const senha = body.senha ?? body.password ?? body.pass ?? '';
-    try {
-      console.log('[LOGIN DEBUG] body recebido:', JSON.stringify({
-        hasBody: !!req.body,
-        keys: Object.keys(body || {}),
-        email: (email == null ? '' : String(email)).trim().toLowerCase(),
-        senhaLen: (senha == null ? 0 : String(senha).length),
-      }));
-    } catch (_) {}
-    if (!email || !senha)
-      return res.status(400).json({ error: 'Email e senha obrigatórios' });
+    const emailRaw = body.email ?? body.usuario ?? body.login ?? body.user ?? '';
+    const senhaRaw = body.senha ?? body.password ?? body.pass ?? '';
+    const emailNorm = String(emailRaw || '').trim().toLowerCase();
+    const senhaStr = String(senhaRaw || '');
 
-    console.log('[LOGIN] chamado', String(email).trim().toLowerCase());
-    console.log('[LOGIN DEBUG] email tentado:', String(email).trim().toLowerCase());
-    console.log('[LOGIN DEBUG] senha recebida length:', (senha == null ? 0 : String(senha).length));
+    console.log('[LOGIN TENTATIVA]', {
+      email: emailNorm,
+      temSenha: !!senhaStr,
+      body: Object.keys(body || {}),
+    });
 
-    const emailNorm = String(email).trim().toLowerCase();
+    if (!emailNorm || !senhaStr) {
+      console.log('[LOGIN ERRO] email ou senha vazios');
+      return res.status(400).json({ ok: false, error: 'Email e senha obrigatórios' });
+    }
+
+    console.log('[LOGIN BUSCA USUARIO]', emailNorm);
     let rows = null;
     let e1 = null;
     const isMissingColumnErr = (err) => {
@@ -549,11 +548,17 @@ app.post('/api/auth/login', async (req, res) => {
       return (m1 && m1[1]) || (m2 && m2[1]) || null;
     };
     const findUser = async (colName, value) => {
-      let q = supabase.from('usuarios').select('*').eq(colName, value).limit(1);
+      let q = supabase.from('usuarios').select('*');
+      if (colName === 'email') q = q.ilike(colName, String(value || '').trim().toLowerCase());
+      else q = q.eq(colName, value);
+      q = q.not('ativo', 'eq', false).limit(1);
       const r1 = await q;
       if (!r1?.error) return r1;
       if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
-        const r2 = await supabase.from('usuarios').select('*').eq(colName, value).limit(1);
+        let q2 = supabase.from('usuarios').select('*');
+        if (colName === 'email') q2 = q2.ilike(colName, String(value || '').trim().toLowerCase());
+        else q2 = q2.eq(colName, value);
+        const r2 = await q2.limit(1);
         return r2;
       }
       return r1;
@@ -563,9 +568,9 @@ app.post('/api/auth/login', async (req, res) => {
       { col: 'usuario', val: emailNorm },
       { col: 'login', val: emailNorm },
       { col: 'user', val: emailNorm },
-      { col: 'email', val: String(email).trim() },
-      { col: 'usuario', val: String(email).trim() },
-      { col: 'login', val: String(email).trim() },
+      { col: 'email', val: String(emailRaw || '').trim() },
+      { col: 'usuario', val: String(emailRaw || '').trim() },
+      { col: 'login', val: String(emailRaw || '').trim() },
     ];
     for (const c of idCandidates) {
       try {
@@ -603,6 +608,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const usuario = rows[0];
+    console.log('[LOGIN USUARIO ENCONTRADO]', !!usuario);
+    console.log('[LOGIN ATIVO]', usuario?.ativo);
+    if (usuario?.ativo === false) return res.status(401).json({ ok: false, error: 'Usuário inativo' });
+
     const hashCandidates = [usuario?.senha_hash, usuario?.senhaHash, usuario?.hash, usuario?.senha]
       .map((h) => (h == null ? '' : String(h)))
       .filter((h) => String(h || '').trim() !== '');
@@ -611,7 +620,6 @@ app.post('/api/auth/login', async (req, res) => {
 
     let senhaValida = false;
 
-    const senhaStr = senha == null ? '' : String(senha);
     const senhaTrim = senhaStr.trim();
     const senhaNoNbsp = senhaStr.replace(/\u00A0/g, ' ').trim();
     const senhaNorm = (senhaStr && senhaStr.normalize) ? senhaStr.normalize('NFKC') : senhaStr;
@@ -623,27 +631,43 @@ app.post('/api/auth/login', async (req, res) => {
       if (!senhaValida && senhaNoNbsp && senhaNoNbsp !== senhaStr) senhaValida = await bcrypt.compare(senhaNoNbsp, hash);
       if (!senhaValida && senhaNorm && senhaNorm !== senhaStr) senhaValida = await bcrypt.compare(senhaNorm, hash);
       if (!senhaValida && senhaNormTrim && senhaNormTrim !== senhaTrim) senhaValida = await bcrypt.compare(senhaNormTrim, hash);
-      console.log('bcrypt resultado:', senhaValida);
+      console.log('[LOGIN SENHA CHECK] bcrypt:', senhaValida);
     } catch (e) {
       console.error('Erro bcrypt:', String(e.message || e));
       senhaValida = false;
     }
 
     if (!senhaValida && !hash.startsWith('$2')) {
-      const { data: ok, error: e2 } = await supabase
-        .rpc('verificar_senha', { senha_input: String(senha), hash });
-      console.log('verificar_senha resultado:', ok, '| erro:', e2);
-      if (e2) console.error('Erro RPC verificar_senha:', e2);
-      senhaValida = !e2 && !!ok;
+      try {
+        const { data: ok, error: e2 } = await supabase
+          .rpc('verificar_senha', { senha_input: String(senhaStr), hash });
+        console.log('[LOGIN SENHA CHECK] rpc verificar_senha:', !!ok, '| erro:', e2 ? String(e2.message || e2) : null);
+        senhaValida = !e2 && !!ok;
+      } catch (e) {}
     }
 
     if (!senhaValida && hash && !hash.startsWith('$2')) {
-      senhaValida = (senhaStr === hash);
+      const h = String(hash || '').trim();
+      const isHex = /^[0-9a-f]+$/i.test(h);
+      if (isHex && h.length === 64) {
+        const sha = crypto.createHash('sha256').update(senhaStr).digest('hex');
+        const shaT = crypto.createHash('sha256').update(senhaTrim).digest('hex');
+        senhaValida = (sha === h) || (shaT === h);
+        console.log('[LOGIN SENHA CHECK] sha256:', senhaValida);
+      } else if (isHex && h.length === 32) {
+        const md5 = crypto.createHash('md5').update(senhaStr).digest('hex');
+        const md5T = crypto.createHash('md5').update(senhaTrim).digest('hex');
+        senhaValida = (md5 === h) || (md5T === h);
+        console.log('[LOGIN SENHA CHECK] md5:', senhaValida);
+      } else {
+        senhaValida = (senhaStr === h) || (senhaTrim === h);
+        console.log('[LOGIN SENHA CHECK] plain:', senhaValida);
+      }
     }
 
     console.log('[LOGIN]', String(email).trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
 
-    if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta' });
+    if (!senhaValida) return res.status(401).json({ ok: false, error: 'Senha incorreta' });
 
     let perms = usuario.permissoes != null ? usuario.permissoes : [];
     if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
@@ -651,6 +675,9 @@ app.post('/api/auth/login', async (req, res) => {
     const perfilNorm = String(usuario.perfil || '').trim().toLowerCase();
     if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
 
+    if (String(process.env.JWT_SECRET || '').trim() === '') {
+      console.error('[LOGIN ERRO] JWT_SECRET ausente no ambiente (Railway Variables).');
+    }
     const token = jwt.sign(
       {
         id: usuario.id,
@@ -662,7 +689,7 @@ app.post('/api/auth/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '30d' }
     );
-    console.log('[TOKEN GERADO] perfil:', usuario.perfil, 'permissoes:', usuario.permissoes);
+    console.log('[LOGIN TOKEN GERADO]', !!token);
 
     await supabase.from('usuarios')
       .update({ ultimo_acesso: new Date().toISOString() })
@@ -673,6 +700,7 @@ app.post('/api/auth/login', async (req, res) => {
     console.log('Login OK:', usuario.email);
 
     res.json({
+      ok: true,
       token,
       usuario: {
         id: usuario.id,
@@ -687,7 +715,35 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (err) {
     try { console.error('[LOGIN ERROR]', err?.message, err?.stack); } catch (_) {}
-    res.status(500).json({ error: 'Erro interno: ' + String(err?.message || err) });
+    res.status(500).json({ ok: false, error: 'Erro interno: ' + String(err?.message || err) });
+  }
+});
+
+app.post('/api/debug/check_usuario', authMiddleware, async (req, res) => {
+  try {
+    const perfil = String(req.usuario?.perfil || '').trim().toLowerCase();
+    const isAdmin = perfil === 'admin' || perfil.includes('admin');
+    if (!isAdmin) return res.status(403).json({ ok: false, error: 'forbidden' });
+
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ ok: false, error: 'email_obrigatorio' });
+
+    const { data: usuario, error } = await supabase
+      .from('usuarios')
+      .select('id,email,ativo,emp_id,perfil,created_at')
+      .ilike('email', email)
+      .maybeSingle();
+
+    return res.json({
+      ok: true,
+      encontrado: !!usuario,
+      ativo: usuario?.ativo ?? null,
+      emp_id: usuario?.emp_id ?? null,
+      perfil: usuario?.perfil ?? null,
+      erro_supabase: error?.message || null,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 

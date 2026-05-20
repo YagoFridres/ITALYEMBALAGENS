@@ -1203,6 +1203,25 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
 
 <!-- ========== LOGIN SCREEN ========== -->
 <script>
+window.escolherDispositivo = window.escolherDispositivo || function(tipo){
+  try{ localStorage.setItem('device_pref', String(tipo||'')); }catch(e){}
+  try{
+    if(document.body) document.body.setAttribute('data-device', String(tipo||'desktop') || 'desktop');
+  }catch(e){}
+  try{
+    if(String(tipo||'') === 'mobile'){
+      document.body && document.body.classList && document.body.classList.add('mobile-mode');
+      if(typeof window.enableMobileMode === 'function') window.enableMobileMode();
+    } else {
+      if(typeof window.aplicarDispositivo === 'function') window.aplicarDispositivo(tipo);
+    }
+  }catch(e){}
+  try{ document.getElementById('device-screen')?.classList?.remove('show'); }catch(e){}
+  try{
+    const ls=document.getElementById('login-screen');
+    if(ls && !window.CURRENT_USER) ls.style.display='flex';
+  }catch(e){}
+};
 window.onerror = function(msg, src, line, col, err) {
   try{ console.error('[ERRO GLOBAL]', msg, 'linha:', line, err); }catch(e){}
 };
@@ -25217,7 +25236,8 @@ function afImportarArquivo(evt){
 function renderArteFinal(){
   const sel=document.getElementById('af-of-sel'); if(!sel) return;
   sel.innerHTML='<option value="">Selecionar OF para editar arte...</option>';
-  OFs.filter(o=>o.status!=='Cancelado').forEach(o=>{ const cli=getCli(o.cliId)||{nome:'—'}; sel.innerHTML+=`<option value="${o.of}">${o.of} — ${cli.nome}</option>`; });
+  const ofsBase = Array.isArray(window.OFs) ? window.OFs : (Array.isArray(window.OFS) ? window.OFS : []);
+  ofsBase.filter(o=>o.status!=='Cancelado').forEach(o=>{ const cli=getCli(o.cliId)||{nome:'—'}; sel.innerHTML+=`<option value="${o.of}">${o.of} — ${cli.nome}</option>`; });
   if(!AF._keysRegistered){
     AF._keysRegistered=true;
     document.addEventListener('keydown',e=>{
@@ -40417,7 +40437,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     if(!sel) return;
     const curr=sel.value;
     sel.innerHTML='<option value="">Selecionar OF para editar arte...</option>';
-    OFs.filter(o=>o.status!=='Cancelado').filter(o=>!q || String(o.of).toLowerCase().includes(q.toLowerCase()) || String((getCli(o.cliId)||{nome:''}).nome).toLowerCase().includes(q.toLowerCase())).forEach(o=>{
+    const ofsBase = Array.isArray(window.OFs) ? window.OFs : (Array.isArray(window.OFS) ? window.OFS : []);
+    ofsBase.filter(o=>o.status!=='Cancelado').filter(o=>!q || String(o.of).toLowerCase().includes(q.toLowerCase()) || String((getCli(o.cliId)||{nome:''}).nome).toLowerCase().includes(q.toLowerCase())).forEach(o=>{
       const cli=getCli(o.cliId)||{nome:'—'};
       sel.innerHTML += '<option value="'+o.of+'">'+o.of+' — '+cli.nome+'</option>';
     });
