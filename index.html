@@ -36864,68 +36864,267 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div> 
  
     <div class="home2-right"> 
-      <div class="h2fu h2fu-4" style="position:relative;z-index:1"> 
-        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.55);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px">Painel</div> 
-        <div class="home2-mockup"> 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px"> 
-            <div style="font-size:14px;font-weight:700;color:rgba(255,255,255,0.85)">Ilustração / Preview</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.35)">3D mock</div> 
+ 
+      <div class="home2-mockup h2fu h2fu-1"> 
+        <div style="display:flex;align-items:center;gap:8px; 
+          margin-bottom:16px"> 
+          <div style="width:8px;height:8px;border-radius:50%; 
+            background:#EF4444"></div> 
+          <div style="width:8px;height:8px;border-radius:50%; 
+            background:#F59E0B"></div> 
+          <div style="width:8px;height:8px;border-radius:50%; 
+            background:#10B981"></div> 
+          <div style="flex:1;height:0.5px; 
+            background:rgba(255,255,255,0.08)"></div> 
+          <span style="font-size:10px; 
+            color:rgba(255,255,255,0.3)"> 
+            Italy ERP 
+          </span> 
+        </div> 
+ 
+        <div style="display:grid;grid-template-columns:1fr 1fr; 
+          gap:8px;margin-bottom:12px"> 
+          <div style="background:rgba(79,70,229,0.12); 
+            border:0.5px solid rgba(79,70,229,0.2); 
+            border-radius:10px;padding:12px"> 
+            <div style="font-size:10px; 
+              color:rgba(165,180,252,0.7);margin-bottom:6px"> 
+              OFs abertas 
+            </div> 
+            <div id="home2-mock-abertas" 
+              style="font-size:22px;font-weight:700; 
+              color:#A5B4FC">—</div> 
           </div> 
-          <svg viewBox="0 0 420 260" width="100%" height="240" style="display:block"> 
-            <defs> 
-              <linearGradient id="h2g1" x1="0" y1="0" x2="1" y2="1"> 
-                <stop offset="0" stop-color="#6366F1" stop-opacity="0.85"/> 
-                <stop offset="1" stop-color="#22C55E" stop-opacity="0.55"/> 
-              </linearGradient> 
-              <linearGradient id="h2g2" x1="1" y1="0" x2="0" y2="1"> 
-                <stop offset="0" stop-color="#7C3AED" stop-opacity="0.9"/> 
-                <stop offset="1" stop-color="#0EA5E9" stop-opacity="0.55"/> 
-              </linearGradient> 
-              <filter id="h2shadow" x="-30%" y="-30%" width="160%" height="160%"> 
-                <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/> 
-              </filter> 
-            </defs> 
-            <rect x="0" y="0" width="420" height="260" rx="18" fill="rgba(255,255,255,0.02)"/> 
-            <g filter="url(#h2shadow)"> 
-              <path d="M70 170 C120 120, 160 110, 220 150 C260 175, 300 190, 350 145 L350 210 L70 210 Z" fill="url(#h2g1)" opacity="0.9"/> 
-              <path d="M110 110 C150 70, 210 60, 270 95 C305 115, 330 125, 360 105 L360 165 C310 210, 250 205, 190 180 C150 160, 120 150, 110 145 Z" fill="url(#h2g2)" opacity="0.85"/> 
-              <circle cx="120" cy="95" r="22" fill="rgba(255,255,255,0.12)"/> 
-              <circle cx="120" cy="95" r="10" fill="rgba(255,255,255,0.22)"/> 
-              <circle cx="310" cy="78" r="16" fill="rgba(255,255,255,0.10)"/> 
-            </g> 
-          </svg> 
+          <div style="background:rgba(16,185,129,0.1); 
+            border:0.5px solid rgba(16,185,129,0.2); 
+            border-radius:10px;padding:12px"> 
+            <div style="font-size:10px; 
+              color:rgba(110,231,183,0.7);margin-bottom:6px"> 
+              Concluídas 
+            </div> 
+            <div id="home2-mock-ok" 
+              style="font-size:22px;font-weight:700; 
+              color:#6EE7B7">—</div> 
+          </div> 
+        </div> 
+ 
+        <div style="margin-bottom:12px"> 
+          <div style="display:flex;justify-content:space-between; 
+            margin-bottom:6px"> 
+            <span style="font-size:11px; 
+              color:rgba(255,255,255,0.5)"> 
+              Produção do dia 
+            </span> 
+            <span id="home2-prog-pct" 
+              style="font-size:11px;font-weight:600; 
+              color:rgba(165,180,252,0.9)">—%</span> 
+          </div> 
+          <div style="height:4px;background:rgba(255,255,255,0.07); 
+            border-radius:99px;overflow:hidden"> 
+            <div id="home2-prog-bar" 
+              style="height:100%;width:0; 
+              background:linear-gradient(90deg,#4F46E5,#7C3AED); 
+              border-radius:99px; 
+              transition:width 1s cubic-bezier(0.4,0,0.2,1)"></div> 
+          </div> 
+        </div> 
+ 
+        <div style="font-size:11px;font-weight:600; 
+          color:rgba(255,255,255,0.3);letter-spacing:0.06em; 
+          text-transform:uppercase;margin-bottom:8px"> 
+          Máquinas 
+        </div> 
+        <div id="home2-maquinas-list" 
+          style="display:flex;flex-direction:column;gap:5px"> 
+          <div style="display:flex;align-items:center; 
+            justify-content:space-between;padding:7px 10px; 
+            background:rgba(255,255,255,0.04); 
+            border-radius:8px"> 
+            <span style="font-size:12px; 
+              color:rgba(255,255,255,0.6)"> 
+              CORTE VINCO 
+            </span> 
+            <span style="font-size:10px;font-weight:600; 
+              color:#10B981;background:rgba(16,185,129,0.12); 
+              padding:2px 8px;border-radius:99px"> 
+              Ativo 
+            </span> 
+          </div> 
+          <div style="display:flex;align-items:center; 
+            justify-content:space-between;padding:7px 10px; 
+            background:rgba(255,255,255,0.04); 
+            border-radius:8px"> 
+            <span style="font-size:12px; 
+              color:rgba(255,255,255,0.6)">IMP 02</span> 
+            <span style="font-size:10px;font-weight:600; 
+              color:#F59E0B;background:rgba(245,158,11,0.12); 
+              padding:2px 8px;border-radius:99px"> 
+              Ocupada 
+            </span> 
+          </div> 
+          <div style="display:flex;align-items:center; 
+            justify-content:space-between;padding:7px 10px; 
+            background:rgba(255,255,255,0.04); 
+            border-radius:8px"> 
+            <span style="font-size:12px; 
+              color:rgba(255,255,255,0.6)">IMP 03</span> 
+            <span style="font-size:10px;font-weight:600; 
+              color:#6B7280;background:rgba(107,114,128,0.12); 
+              padding:2px 8px;border-radius:99px"> 
+              Livre 
+            </span> 
+          </div> 
         </div> 
       </div> 
  
-      <div class="home2-stat-card h2fu h2fu-5" style="position:relative;z-index:1"> 
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px"> 
-          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:0.08em;text-transform:uppercase">Status</div> 
-          <div style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:rgba(16,185,129,0.12);border:0.5px solid rgba(16,185,129,0.22);color:rgba(16,185,129,0.9);font-size:12px;font-weight:600"> 
-            <span style="width:6px;height:6px;border-radius:50%;background:#10B981"></span> Online 
-          </div> 
-        </div> 
-        <div style="display:flex;flex-direction:column;gap:10px"> 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-            <div style="font-size:12px;color:rgba(255,255,255,0.45)">IA</div> 
-            <div style="font-size:12px;color:rgba(255,255,255,0.85)"> 
-              <span id="home-ia-dot" style="color:#F59E0B">●</span> 
-              <span id="home-ia-txt"> IA: verificando</span> 
+      <div class="h2fu h2fu-2" id="home-jarvis-card" 
+        style="background:linear-gradient(135deg, 
+          rgba(79,70,229,0.15) 0%, 
+          rgba(124,58,237,0.1) 100%); 
+        border:0.5px solid rgba(99,102,241,0.3); 
+        border-radius:16px;padding:20px;cursor:pointer; 
+        transition:all 0.2s;position:relative;z-index:1" 
+        onmouseover="this.style.background='linear-gradient(135deg,rgba(79,70,229,0.22) 0%,rgba(124,58,237,0.16) 100%)'" 
+        onmouseout="this.style.background='linear-gradient(135deg,rgba(79,70,229,0.15) 0%,rgba(124,58,237,0.1) 100%)'"> 
+ 
+        <div style="display:flex;align-items:center; 
+          justify-content:space-between;margin-bottom:14px"> 
+          <div style="display:flex;align-items:center;gap:12px"> 
+            <div class="home2-jarvis-glow" 
+              style="width:44px;height:44px;border-radius:14px; 
+              background:linear-gradient(135deg,#4F46E5,#7C3AED); 
+              display:flex;align-items:center; 
+              justify-content:center;font-size:22px"> 
+              🤖 
+            </div> 
+            <div> 
+              <div style="font-size:15px;font-weight:700; 
+                color:#fff">Jarvis IA</div> 
+              <div style="font-size:11px; 
+                color:rgba(165,180,252,0.8);margin-top:1px"> 
+                Assistente inteligente 
+              </div> 
             </div> 
           </div> 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-            <div style="font-size:12px;color:rgba(255,255,255,0.45)">Atualizado</div> 
-            <div style="font-size:12px;color:rgba(255,255,255,0.85);font-family:var(--mono)"><span id="home-att">--:--</span></div> 
+          <div style="display:flex;align-items:center;gap:5px; 
+            background:rgba(16,185,129,0.12); 
+            border:0.5px solid rgba(16,185,129,0.25); 
+            border-radius:99px;padding:4px 10px"> 
+            <div style="width:6px;height:6px;border-radius:50%; 
+              background:#10B981" 
+              class="home2-dot-pulse"></div> 
+            <span style="font-size:10px;font-weight:600; 
+              color:#6EE7B7">Online</span> 
+          </div> 
+        </div> 
+ 
+        <div style="font-size:13px;color:rgba(255,255,255,0.55); 
+          line-height:1.6;margin-bottom:16px"> 
+          Pergunte sobre OFs, estoque, relatórios ou peça 
+          análises completas do sistema. 
+        </div> 
+ 
+        <div style="display:flex;flex-wrap:wrap;gap:6px"> 
+          <div class="home2-jarvis-prompt" 
+            style="background:rgba(255,255,255,0.07); 
+            border:0.5px solid rgba(255,255,255,0.12); 
+            border-radius:99px;padding:5px 12px; 
+            font-size:11px;font-weight:500; 
+            color:rgba(255,255,255,0.65);cursor:pointer; 
+            transition:all 0.15s" 
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
+            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
+            data-prompt="como está a produção hoje?"> 
+            📊 Produção hoje 
+          </div> 
+          <div class="home2-jarvis-prompt" 
+            style="background:rgba(255,255,255,0.07); 
+            border:0.5px solid rgba(255,255,255,0.12); 
+            border-radius:99px;padding:5px 12px; 
+            font-size:11px;font-weight:500; 
+            color:rgba(255,255,255,0.65);cursor:pointer; 
+            transition:all 0.15s" 
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
+            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
+            data-prompt="quais OFs estão atrasadas?"> 
+            ⚡ OFs atrasadas 
+          </div> 
+          <div class="home2-jarvis-prompt" 
+            style="background:rgba(255,255,255,0.07); 
+            border:0.5px solid rgba(255,255,255,0.12); 
+            border-radius:99px;padding:5px 12px; 
+            font-size:11px;font-weight:500; 
+            color:rgba(255,255,255,0.65);cursor:pointer; 
+            transition:all 0.15s" 
+            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
+            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
+            data-prompt="qual o faturamento deste mês?"> 
+            💰 Faturamento 
           </div> 
         </div> 
       </div> 
  
-      <div class="home2-stat-card h2fu h2fu-6" style="position:relative;z-index:1;overflow:hidden"> 
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px"> 
-          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.65);letter-spacing:0.08em;text-transform:uppercase">OFs urgentes</div> 
-          <div id="home-ver-pcp" style="font-size:12px;color:rgba(99,102,241,0.9);cursor:pointer;font-weight:600">Ver todas →</div> 
+      <div class="h2fu h2fu-3" 
+        style="background:rgba(255,255,255,0.03); 
+        border:0.5px solid rgba(255,255,255,0.07); 
+        border-radius:16px;overflow:hidden; 
+        position:relative;z-index:1"> 
+ 
+        <div style="padding:14px 18px; 
+          border-bottom:0.5px solid rgba(255,255,255,0.06); 
+          display:flex;justify-content:space-between; 
+          align-items:center"> 
+          <div style="display:flex;align-items:center;gap:8px"> 
+            <div style="width:7px;height:7px;border-radius:50%; 
+              background:#EF4444" 
+              class="home2-dot-pulse"></div> 
+            <span style="font-size:12px;font-weight:600; 
+              color:rgba(255,255,255,0.75); 
+              letter-spacing:0.04em"> 
+              OFs urgentes 
+            </span> 
+          </div> 
+          <span id="home-ver-pcp" 
+            style="font-size:11px;font-weight:500; 
+            color:rgba(99,102,241,0.8);cursor:pointer"> 
+            Ver todas → 
+          </span> 
         </div> 
-        <div id="home-ofs-urgentes" style="max-height:340px;overflow-y:auto"> 
-          <div style="padding:14px;text-align:center;font-size:12px;color:rgba(255,255,255,0.35)">Carregando...</div> 
+ 
+        <div id="home-ofs-urgentes" 
+          style="padding:6px;max-height:200px;overflow-y:auto"> 
+          <div style="padding:16px;text-align:center; 
+            font-size:12px;color:rgba(255,255,255,0.25)"> 
+            Carregando... 
+          </div> 
+        </div> 
+      </div> 
+ 
+      <div class="h2fu h2fu-4" 
+        style="display:flex;flex-direction:column;gap:6px; 
+        position:relative;z-index:1"> 
+        <div style="display:flex;align-items:center; 
+          justify-content:space-between"> 
+          <div style="display:flex;align-items:center;gap:6px"> 
+            <div style="width:6px;height:6px;border-radius:50%; 
+              background:#10B981"></div> 
+            <span style="font-size:11px; 
+              color:rgba(255,255,255,0.35)"> 
+              Sistema operacional 
+            </span> 
+          </div> 
+          <span id="home-att" 
+            style="font-size:10px; 
+            color:rgba(255,255,255,0.2)">—</span> 
+        </div> 
+        <div style="display:flex;align-items:center;gap:6px"> 
+          <div id="home-ia-dot" style="width:6px;height:6px; 
+            border-radius:50%;background:#F59E0B"></div> 
+          <span id="home-ia-txt" 
+            style="font-size:11px; 
+            color:rgba(255,255,255,0.35)"> 
+            IA: verificando... 
+          </span> 
         </div> 
       </div> 
     </div> 
@@ -47356,6 +47555,20 @@ async function _homeKpis() {
     if (elSO) elSO.textContent = abertas.length; 
     const elSK = document.getElementById('home-stat-ok'); 
     if (elSK) elSK.textContent = conclHoje.length; 
+ 
+    const m1 = document.getElementById('home2-mock-abertas'); 
+    const m2 = document.getElementById('home2-mock-ok'); 
+    if (m1) m1.textContent = abertas.length; 
+    if (m2) m2.textContent = conclHoje.length; 
+ 
+    const total2 = abertas.length + conclHoje.length; 
+    const pct = total2 > 0 ? 
+      Math.round((conclHoje.length / total2) * 100) : 0; 
+    const elPct = document.getElementById('home2-prog-pct'); 
+    const elBar = document.getElementById('home2-prog-bar'); 
+    if (elPct) elPct.textContent = pct + '%'; 
+    if (elBar) setTimeout(() => 
+      elBar.style.width = pct + '%', 300); 
   } catch(e) { 
     console.error('[HOME KPIs]', e?.message); 
   } 
@@ -47479,10 +47692,48 @@ async function _homeIaStatus() {
     try{ document.getElementById('hmod-jarvis')?.addEventListener('click', () => { 
       if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
     }); }catch(e){}
+    try{ document.getElementById('home-btn-jarvis')?.addEventListener('click', () => { 
+      if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
+    }); }catch(e){}
     try{ document.getElementById('hmod-simulador')?.addEventListener('click', () => go('simd')); }catch(e){}
     try{ document.getElementById('hmod-config')?.addEventListener('click', () => go('configuracoes')); }catch(e){}
     try{ document.getElementById('home-ver-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
     try{ document.getElementById('kpi-box-abertas')?.addEventListener('click', () => go('pcp')); }catch(e){}
+ 
+    try{ 
+      document.querySelectorAll('.home2-jarvis-prompt').forEach(el => { 
+        el.addEventListener('click', () => { 
+          const prompt = el.dataset.prompt; 
+          if (!prompt) return; 
+          if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
+          setTimeout(() => { 
+            const input = document.querySelector( 
+              '#jarvis-input, #jarvis-msg, .jarvis-input-field, ' + 
+              '[placeholder*=\"pergunta\"], [placeholder*=\"Jarvis\"]' 
+            ); 
+            if (input) { 
+              input.value = prompt; 
+              input.dispatchEvent(new Event('input', {bubbles:true})); 
+              const btn = document.querySelector( 
+                '#jarvis-send, .jarvis-send-btn, ' + 
+                'button[onclick*=\"jarvis\"], button[onclick*=\"Jarvis\"]' 
+              ); 
+              if (btn) btn.click(); 
+            } 
+          }, 400); 
+        }); 
+      }); 
+    } catch(e){} 
+ 
+    try{ 
+      document.getElementById('home-jarvis-card') 
+        ?.addEventListener('click', (e) => { 
+          try{ 
+            if (e?.target?.classList?.contains('home2-jarvis-prompt')) return; 
+          }catch(_){} 
+          if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
+        }); 
+    } catch(e){} 
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
