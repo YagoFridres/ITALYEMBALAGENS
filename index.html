@@ -36509,115 +36509,408 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       grid-template-columns:1fr 300px;gap:24px; 
       align-items:start"> 
  
-      <div class="home-fade-up home-fade-up-3"> 
-        <div style="font-size:12px;font-weight:600; 
-          color:rgba(255,255,255,0.55);text-transform:uppercase; 
-          letter-spacing:0.12em;margin-bottom:14px"> 
-          Acesso rápido 
-        </div> 
-        <div class="home-mod-grid" id="home-modulos-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px"> 
-          <div class="home-mod" id="hmod-pcp"> 
-            <div style="font-size:22px">📋</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">PCP</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Programação</div> 
-          </div> 
-          <div class="home-mod" id="hmod-maquina"> 
-            <div style="font-size:22px">🏭</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">OFs Máquina</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Produção</div> 
-          </div> 
-          <div class="home-mod" id="hmod-estoque"> 
-            <div style="font-size:22px">📦</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Estoque</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Chapas</div> 
-          </div> 
-          <div class="home-mod" id="hmod-clientes"> 
-            <div style="font-size:22px">👥</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Clientes</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Cadastros</div> 
-          </div> 
-          <div class="home-mod" id="hmod-fornecedores"> 
-            <div style="font-size:22px">🏢</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Fornecedores</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Cadastros</div> 
-          </div> 
-          <div class="home-mod" id="hmod-compras"> 
-            <div style="font-size:22px">🛒</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Compras</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Papelão</div> 
-          </div> 
-          <div class="home-mod" id="hmod-relatorios"> 
-            <div style="font-size:22px">📊</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Relatórios</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Análises</div> 
-          </div> 
-          <div class="home-mod" id="hmod-dashboard"> 
-            <div style="font-size:22px">📈</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Dashboard</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Visão geral</div> 
-          </div> 
-          <div class="home-mod" id="hmod-mapa"> 
-            <div style="font-size:22px">🗺️</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Mapa</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Clientes</div> 
-          </div> 
-          <div class="home-mod" id="hmod-jarvis"> 
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-              <div style="font-size:22px">🤖</div> 
-              <div class="home-jarvis-dot"></div> 
-            </div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Jarvis IA</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Assistente</div> 
-          </div> 
-          <div class="home-mod" id="hmod-simulador"> 
-            <div style="font-size:22px">♻️</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Simulador</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Desperdício</div> 
-          </div> 
-          <div class="home-mod" id="hmod-config"> 
-            <div style="font-size:22px">⚙️</div> 
-            <div style="font-size:13px;font-weight:600;color:var(--home-text)">Config.</div> 
-            <div style="font-size:11px;color:var(--home-muted)">Sistema</div> 
-          </div> 
-        </div> 
-      </div> 
+     <!-- COLUNA ESQUERDA --> 
+     <div style="display:flex;flex-direction:column;gap:24px"> 
  
-      <div class="home-right-panel home-fade-up home-fade-up-4" style="display:flex;flex-direction:column;gap:14px"> 
-        <div class="home-card" style="padding:18px"> 
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px"> 
-            <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:0.08em;text-transform:uppercase">Status</div> 
-            <div class="home-badge" style="background:rgba(16,185,129,0.12);border:0.5px solid rgba(16,185,129,0.25);color:rgba(16,185,129,0.9)"> 
-              <span style="width:6px;height:6px;border-radius:50%;background:#10B981"></span> 
-              Online 
-            </div> 
-          </div> 
-          <div style="display:flex;flex-direction:column;gap:10px"> 
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-              <div style="font-size:12px;color:var(--home-muted)">IA</div> 
-              <div style="font-size:12px;color:var(--home-text)"> 
-                <span id="home-ia-dot" style="color:#F59E0B">●</span> 
-                <span id="home-ia-txt"> IA: verificando</span> 
-              </div> 
-            </div> 
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-              <div style="font-size:12px;color:var(--home-muted)">Atualizado</div> 
-              <div style="font-size:12px;color:var(--home-text);font-family:var(--mono)"><span id="home-att">--:--</span></div> 
-            </div> 
-          </div> 
-        </div> 
+       <!-- Módulos --> 
+       <div class="home-fade-up home-fade-up-3"> 
+         <div style="display:flex;justify-content:space-between; 
+           align-items:center;margin-bottom:16px"> 
+           <div> 
+             <div style="font-size:13px;font-weight:600; 
+               color:rgba(255,255,255,0.8);letter-spacing:-0.01em"> 
+               Módulos do sistema 
+             </div> 
+             <div style="font-size:12px; 
+               color:rgba(255,255,255,0.35);margin-top:2px"> 
+               Acesse qualquer área rapidamente 
+             </div> 
+           </div> 
+         </div> 
  
-        <div class="home-card" style="overflow:hidden"> 
-          <div style="padding:14px 16px;border-bottom:0.5px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px"> 
-            <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:0.08em;text-transform:uppercase">OFs urgentes</div> 
-            <div id="home-ver-pcp" style="font-size:12px;color:rgba(59,130,246,0.9);cursor:pointer">Ver todas →</div> 
-          </div> 
-          <div id="home-ofs-urgentes" style="padding:10px 10px 12px;max-height:280px;overflow-y:auto"> 
-            <div style="padding:14px;text-align:center;font-size:12px;color:var(--home-muted)">Carregando...</div> 
-          </div> 
-        </div> 
-      </div> 
-    </div> 
-  </div> 
+         <div class="home-mod-grid" style="display:grid; 
+           grid-template-columns:repeat(4,1fr);gap:10px"> 
+ 
+           <div class="home-mod" id="hmod-pcp" 
+             style="border-color:rgba(59,130,246,0.15)"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:linear-gradient(135deg, 
+                 rgba(59,130,246,0.2),rgba(59,130,246,0.05)); 
+               border:0.5px solid rgba(59,130,246,0.2); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">📋</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">PCP</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Programação</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(59,130,246,0.5)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-maquina" 
+             style="border-color:rgba(16,185,129,0.15)"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:linear-gradient(135deg, 
+                 rgba(16,185,129,0.2),rgba(16,185,129,0.05)); 
+               border:0.5px solid rgba(16,185,129,0.2); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">🏭</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">OFs Máquina</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Produção</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(16,185,129,0.5)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-estoque" 
+             style="border-color:rgba(245,158,11,0.15)"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:linear-gradient(135deg, 
+                 rgba(245,158,11,0.2),rgba(245,158,11,0.05)); 
+               border:0.5px solid rgba(245,158,11,0.2); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">📦</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Estoque</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Chapas</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(245,158,11,0.5)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-clientes"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">👥</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Clientes</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Cadastros</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-fornecedores"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">🏢</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Fornecedores</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Cadastros</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-compras"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">🛒</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Compras</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Papelão</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-relatorios"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">📊</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Relatórios</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Análises</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-dashboard"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">📈</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Dashboard</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Visão geral</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-mapa"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">🗺️</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Mapa</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Clientes</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-simulador"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">♻️</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Simulador</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Desperdício</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <div class="home-mod" id="hmod-config"> 
+             <div style="width:40px;height:40px;border-radius:12px; 
+               background:rgba(255,255,255,0.07); 
+               border:0.5px solid rgba(255,255,255,0.1); 
+               display:flex;align-items:center; 
+               justify-content:center;font-size:18px">⚙️</div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Config.</div> 
+               <div style="font-size:11px; 
+                 color:rgba(255,255,255,0.35);margin-top:2px"> 
+                 Sistema</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(255,255,255,0.2)">→</div> 
+           </div> 
+ 
+           <!-- Card Jarvis especial --> 
+           <div class="home-mod" id="hmod-jarvis" 
+             style="background:linear-gradient(135deg, 
+               rgba(139,92,246,0.12),rgba(59,130,246,0.08)); 
+             border-color:rgba(139,92,246,0.25)"> 
+             <div style="display:flex;justify-content:space-between; 
+               align-items:flex-start"> 
+               <div style="width:40px;height:40px;border-radius:12px; 
+                 background:linear-gradient(135deg, 
+                   rgba(139,92,246,0.3),rgba(59,130,246,0.15)); 
+                 border:0.5px solid rgba(139,92,246,0.3); 
+                 display:flex;align-items:center; 
+                 justify-content:center;font-size:18px">🤖</div> 
+               <div class="home-jarvis-dot"></div> 
+             </div> 
+             <div> 
+               <div style="font-size:13px;font-weight:600; 
+                 color:rgba(255,255,255,0.9)">Jarvis IA</div> 
+               <div style="font-size:11px; 
+                 color:rgba(139,92,246,0.7);margin-top:2px"> 
+                 Online agora</div> 
+             </div> 
+             <div style="position:absolute;bottom:12px;right:12px; 
+               font-size:10px;color:rgba(139,92,246,0.5)">→</div> 
+           </div> 
+         </div> 
+       </div> 
+     </div> 
+ 
+     <!-- COLUNA DIREITA --> 
+     <div class="home-right-panel" 
+       style="display:flex;flex-direction:column;gap:16px; 
+       position:sticky;top:20px"> 
+ 
+       <!-- Card identidade da empresa --> 
+       <div class="home-fade-up home-fade-up-4" 
+         style="background:linear-gradient(145deg, 
+           rgba(59,130,246,0.12) 0%, 
+           rgba(139,92,246,0.1) 50%, 
+           rgba(16,185,129,0.08) 100%); 
+         border:0.5px solid rgba(255,255,255,0.1); 
+         border-radius:20px;padding:28px; 
+         position:relative;overflow:hidden;text-align:center"> 
+ 
+         <!-- Glow interno --> 
+         <div style="position:absolute;top:-60px;left:50%; 
+           transform:translateX(-50%); 
+           width:200px;height:200px;border-radius:50%; 
+           background:radial-gradient(circle, 
+             rgba(59,130,246,0.2),transparent 70%); 
+           pointer-events:none"></div> 
+ 
+         <!-- Logo/ícone --> 
+         <div style="position:relative;display:inline-block; 
+           margin-bottom:20px"> 
+           <div style="width:72px;height:72px;border-radius:20px; 
+             background:linear-gradient(135deg,#3B82F6,#8B5CF6); 
+             display:flex;align-items:center;justify-content:center; 
+             font-size:32px;margin:0 auto; 
+             box-shadow:0 8px 32px rgba(59,130,246,0.35)"> 
+             🏭 
+           </div> 
+           <div style="position:absolute;bottom:-4px;right:-4px; 
+             width:20px;height:20px;border-radius:50%; 
+             background:#10B981;border:2px solid #060812; 
+             display:flex;align-items:center; 
+             justify-content:center;font-size:10px">✓</div> 
+         </div> 
+ 
+         <div style="font-size:17px;font-weight:700;color:#fff; 
+           margin-bottom:4px;letter-spacing:-0.02em"> 
+           Italy Embalagens 
+         </div> 
+         <div style="font-size:12px;color:rgba(255,255,255,0.45); 
+           margin-bottom:20px"> 
+           Sistema ERP/PCP Industrial v2.0 
+         </div> 
+ 
+         <!-- Stats inline --> 
+         <div style="display:grid;grid-template-columns:1fr 1fr; 
+           gap:8px;margin-bottom:16px"> 
+           <div style="background:rgba(255,255,255,0.05); 
+             border-radius:10px;padding:10px"> 
+             <div style="font-size:18px;font-weight:700; 
+               color:#3B82F6" id="home-stat-ofs">—</div> 
+             <div style="font-size:10px; 
+               color:rgba(255,255,255,0.4);margin-top:2px"> 
+               OFs abertas</div> 
+           </div> 
+           <div style="background:rgba(255,255,255,0.05); 
+             border-radius:10px;padding:10px"> 
+             <div style="font-size:18px;font-weight:700; 
+               color:#10B981" id="home-stat-ok">—</div> 
+             <div style="font-size:10px; 
+               color:rgba(255,255,255,0.4);margin-top:2px"> 
+               Concluídas hoje</div> 
+           </div> 
+         </div> 
+ 
+         <!-- Status sistema --> 
+         <div style="display:flex;align-items:center; 
+           justify-content:center;gap:8px; 
+           background:rgba(16,185,129,0.1); 
+           border:0.5px solid rgba(16,185,129,0.2); 
+           border-radius:99px;padding:6px 16px"> 
+           <div style="width:6px;height:6px;border-radius:50%; 
+             background:#10B981; 
+             box-shadow:0 0 8px rgba(16,185,129,0.6)"></div> 
+           <span style="font-size:12px;font-weight:500; 
+             color:rgba(16,185,129,0.9)"> 
+             Sistema operacional 
+           </span> 
+         </div> 
+       </div> 
+ 
+       <!-- OFs urgentes --> 
+       <div class="home-fade-up home-fade-up-5" 
+         style="background:rgba(255,255,255,0.03); 
+         border:0.5px solid rgba(255,255,255,0.08); 
+         border-radius:16px;overflow:hidden"> 
+ 
+         <div style="padding:14px 16px; 
+           border-bottom:0.5px solid rgba(255,255,255,0.06); 
+           display:flex;justify-content:space-between; 
+           align-items:center"> 
+           <div style="display:flex;align-items:center;gap:8px"> 
+             <div style="width:6px;height:6px;border-radius:50%; 
+               background:#EF4444; 
+               animation:homeJarvisPulse 2s infinite"></div> 
+             <span style="font-size:12px;font-weight:600; 
+               color:rgba(255,255,255,0.7); 
+               letter-spacing:0.03em">OFs urgentes</span> 
+           </div> 
+           <span id="home-ver-pcp" 
+             style="font-size:11px;color:rgba(59,130,246,0.8); 
+             cursor:pointer;font-weight:500"> 
+             Ver todas →</span> 
+         </div> 
+ 
+         <div id="home-ofs-urgentes" 
+           style="padding:6px;max-height:240px;overflow-y:auto"> 
+           <div style="padding:16px;text-align:center; 
+             font-size:12px;color:rgba(255,255,255,0.25)"> 
+             Carregando... 
+           </div> 
+         </div> 
+       </div> 
+ 
+       <!-- Status IA + sistema --> 
+       <div class="home-fade-up home-fade-up-6" 
+         style="background:rgba(255,255,255,0.03); 
+         border:0.5px solid rgba(255,255,255,0.06); 
+         border-radius:12px;padding:14px 16px"> 
+         <div style="display:flex;flex-direction:column;gap:8px"> 
+           <div style="display:flex;align-items:center; 
+             justify-content:space-between"> 
+             <div style="display:flex;align-items:center;gap:6px"> 
+               <div style="width:6px;height:6px;border-radius:50%; 
+                 background:#10B981"></div> 
+               <span style="font-size:12px; 
+                 color:rgba(255,255,255,0.4)"> 
+                 Sistema online 
+               </span> 
+             </div> 
+             <span style="font-size:11px; 
+               color:rgba(255,255,255,0.25)" id="home-att">—</span> 
+           </div> 
+           <div style="display:flex;align-items:center; 
+             justify-content:space-between"> 
+             <div style="display:flex;align-items:center;gap:6px"> 
+               <div id="home-ia-dot" style="width:6px;height:6px; 
+                 border-radius:50%;background:#F59E0B"></div> 
+               <span id="home-ia-txt" style="font-size:12px; 
+                 color:rgba(255,255,255,0.4)"> 
+                 IA: verificando... 
+               </span> 
+             </div> 
+             <span style="font-size:10px; 
+               color:rgba(255,255,255,0.2)"> 
+               Italy ERP v2 
+             </span> 
+           </div> 
+         </div> 
+       </div> 
+     </div> 
+   </div> 
+ </div> 
 </div>
 
 <!-- ========== 1. PCP ========== -->
@@ -47039,6 +47332,11 @@ async function _homeKpis() {
       elFat.textContent = 'R$ ' + fatMes.toLocaleString('pt-BR', 
         {minimumFractionDigits:0, maximumFractionDigits:0}); 
     } 
+ 
+    const elSO = document.getElementById('home-stat-ofs'); 
+    if (elSO) elSO.textContent = abertas.length; 
+    const elSK = document.getElementById('home-stat-ok'); 
+    if (elSK) elSK.textContent = conclHoje.length; 
   } catch(e) { 
     console.error('[HOME KPIs]', e?.message); 
   } 
