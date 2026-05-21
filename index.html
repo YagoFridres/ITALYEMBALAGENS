@@ -18219,6 +18219,127 @@ async function carregarMetricasChapas(force){
   }
 }
 
+var _chapasToneladasBusy = false;
+var _chapasToneladasTs = 0;
+var _chapasToneladasEmp = null;
+window._chapasToneladasData = null;
+
+async function _chapasCarregarToneladas(force){
+  if(!_apiConectado || !CURRENT_USER) return;
+  if(_chapasToneladasBusy) return;
+  const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
+  const ttl = 5 * 60 * 1000;
+  if(!force && _chapasToneladasEmp === empId && _chapasToneladasTs && (Date.now() - _chapasToneladasTs) < ttl) return;
+  try{
+    _chapasToneladasBusy = true;
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    const resp = await apiFetch('/api/chapas_estoque/toneladas' + (qs.toString()?('?'+qs.toString()):''), { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j || j.ok === false) return;
+
+    window._chapasToneladasData = j;
+    _chapasToneladasTs = Date.now();
+    _chapasToneladasEmp = empId;
+
+    const elVal = document.getElementById('card-ton-valor');
+    const elDet = document.getElementById('card-ton-detalhe');
+    const t = Number(j.ton_estoque_atual || 0) || 0;
+    if(elVal){
+      elVal.textContent = t.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' t';
+    }
+    if(elDet){
+      const top = Array.isArray(j.ton_por_fornecedor) ? j.ton_por_fornecedor[0] : null;
+      if(top && top.fornecedor){
+        elDet.textContent = 'Maior: ' + String(top.fornecedor) + ' (' + (Number(top.ton||0)||0).toFixed(1) + ' t)';
+      } else {
+        elDet.textContent = (Number(j.unidades_total||0)||0).toLocaleString('pt-BR') + ' chapas em estoque';
+      }
+    }
+  } finally {
+    _chapasToneladasBusy = false;
+  }
+}
+
+function _chapasAbrirPainelToneladas(){
+  const data = window._chapasToneladasData;
+  if(!data || data.ok === false) return;
+
+  let modal = document.getElementById('modal-toneladas');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modal-toneladas';
+    modal.className = 'modal-overlay';
+    modal.onclick = function(e){ if(e && e.target === modal) fechar('modal-toneladas'); };
+    modal.innerHTML = `
+      <div class="modal" style="width:min(560px,96vw)">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <h3 style="margin:0">Toneladas em Estoque</h3>
+          <button class="btn btn-ghost btn-sm" onclick="fechar('modal-toneladas')">✕</button>
+        </div>
+        <div class="modal-body" id="modal-toneladas-body"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const totalTon = Number(data.ton_estoque_atual || 0) || 0;
+  const unidades = Math.trunc(Number(data.unidades_total || 0) || 0);
+  const porForn = Array.isArray(data.ton_por_fornecedor) ? data.ton_por_fornecedor : [];
+  const porCat = Array.isArray(data.ton_por_categoria) ? data.ton_por_categoria : [];
+
+  const html = `
+    <div style="padding:20px;max-width:520px">
+      <div style="text-align:center;padding:16px;background:var(--s2);border:1px solid var(--border);border-radius:14px;margin-bottom:16px">
+        <div style="font-size:36px;font-weight:900;color:var(--text1);font-family:var(--mono)">
+          ${totalTon.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} t
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-top:6px">
+          ${unidades.toLocaleString('pt-BR')} chapas em estoque
+        </div>
+      </div>
+
+      <div style="font-size:12px;font-weight:900;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">
+        Por Fornecedor
+      </div>
+      ${(porForn.length ? porForn : [{ fornecedor:'—', ton:0 }]).slice(0, 12).map(f=>{
+        const ton = Number(f?.ton||0)||0;
+        const pct = totalTon > 0 ? Math.max(0, Math.min(100, Math.round((ton / totalTon) * 100))) : 0;
+        const forn = String(f?.fornecedor||'—');
+        return `
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+              <span style="color:var(--text1);font-weight:800">${escH(forn)}</span>
+              <span style="color:var(--text2);font-family:var(--mono)">${ton.toFixed(1)} t (${pct}%)</span>
+            </div>
+            <div style="height:6px;background:var(--s3);border-radius:999px;overflow:hidden;border:1px solid var(--border)">
+              <div style="height:100%;width:${pct}%;background:var(--green);border-radius:999px"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+
+      <div style="font-size:12px;font-weight:900;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em;margin:16px 0 8px">
+        Por Categoria
+      </div>
+      ${porCat.map(c=>{
+        const cat = String(c?.categoria||'—');
+        const ton = Number(c?.ton||0)||0;
+        return `
+          <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;border-bottom:1px solid var(--border)">
+            <span style="color:var(--text1)">${escH(cat)}</span>
+            <span style="color:var(--text2);font-family:var(--mono);font-weight:900">${ton.toFixed(1)} t</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  const body = document.getElementById('modal-toneladas-body');
+  if(body) body.innerHTML = html;
+  abrir('modal-toneladas');
+}
+
 function _scheduleUltimoPrecoRerender(){
   if(_chpUltPrecoRerenderTimer) return;
   _chpUltPrecoRerenderTimer = setTimeout(()=>{
@@ -18768,7 +18889,17 @@ function _renderEstoqueBase(chapas) {
     return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
 
-  const colsCount = 16;
+  const showTon = lista.some((c)=>{
+    const g = Number(c?.gramatura ?? 0) || 0;
+    const p = Number(c?.peso_kg_unidade ?? 0) || 0;
+    return (g > 0) || (p > 0);
+  });
+  try{
+    const th = document.getElementById('est-th-ton');
+    if(th) th.style.display = showTon ? 'table-cell' : 'none';
+  }catch(e){}
+
+  const colsCount = showTon ? 17 : 16;
   if(!filtrada.length){
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
@@ -18866,6 +18997,14 @@ function _renderEstoqueBase(chapas) {
           <span style="font-weight:900;color:${zerado?'var(--red)':baixoEst?'var(--orange)':'var(--green)'}">${qtd.toLocaleString()}</span>
           ${(zerado||baixoEst)?`<div style="font-size:.62rem;color:${zerado?'var(--red)':'var(--orange)'};font-weight:900">${zerado?'ZERADO':`BAIXO (mín ${min})`}</div>`:''}
         </td>
+        ${showTon ? (() => {
+          const gram = Number(c.gramatura ?? 0) || 0;
+          const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
+          const tonLinha = (qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0;
+          const txt = (qtd > 0 && pesoKg > 0) ? (tonLinha.toFixed(3) + ' t') : '—';
+          const tip = 'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²' + '\n' + 'Peso/chapa: ' + (pesoKg > 0 ? pesoKg.toFixed(4) : '?') + ' kg';
+          return `<td title="${escAttr(tip)}" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:120px">${escH(txt)}</td>`;
+        })() : ''}
         <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:150px">${ultimoHtml}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:120px">${consumoHtml}</td>
@@ -18898,9 +19037,15 @@ function _renderEstoqueBase(chapas) {
         const total = Number(c.valor_total ?? (qtd*vunit) ?? 0) || 0;
         return s + total;
       },0);
+      const totalTon = showTon ? filtrada.reduce((s,c)=>{
+        const qtd = Number(c.quantidade??c.qtd??0)||0;
+        const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
+        return s + ((qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0);
+      }, 0) : 0;
       footEl.innerHTML = `<tr style="background:var(--s3)">
         <td colspan="7" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
+        ${showTon ? `<td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${(Number(totalTon||0)||0).toFixed(3)} t</td>` : ''}
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900">${fmtR(totalValTotal)}</td>
         <td colspan="7" style="padding:10px;border:1px solid var(--border)"></td>
       </tr>`;
@@ -18954,6 +19099,7 @@ function renderGrupoEstoque(cat, itens) {
 }
 
 function renderTabelaEstoque(itens) {
+  const showTon = (itens||[]).some((c)=> (Number(c?.gramatura ?? 0) || 0) > 0 || (Number(c?.peso_kg_unidade ?? 0) || 0) > 0);
   return `<table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr style="background:var(--bg3)">
       <th style="padding:8px;text-align:left">NOME/USO</th>
@@ -18964,6 +19110,7 @@ function renderTabelaEstoque(itens) {
       <th style="padding:8px">N° NF</th>
       <th style="padding:8px;text-align:right">R$/UN</th>
       <th style="padding:8px;text-align:center">QUANTIDADE</th>
+      ${showTon ? `<th style="padding:8px;text-align:right">TON. ESTOQUE</th>` : ''}
       <th style="padding:8px;text-align:right;color:#4CAF50">TOTAL R$</th>
       <th style="padding:8px">VINCOS</th>
       <th style="padding:8px;text-align:center">AÇÕES</th>
@@ -18977,6 +19124,11 @@ function renderTabelaEstoque(itens) {
         const nf = c.nf_entrada || c.nf || '—';
         const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
         const nomeExibir = c.nome || c.nome_comercial || c.nomenclatura || c.nom || '';
+        const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
+        const gram = Number(c.gramatura ?? 0) || 0;
+        const tonLinha = (qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0;
+        const tonTxt = (qtd > 0 && pesoKg > 0) ? (tonLinha.toFixed(3) + ' t') : '—';
+        const tonTip = 'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²' + '\n' + 'Peso/chapa: ' + (pesoKg > 0 ? pesoKg.toFixed(4) : '?') + ' kg';
         return `<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:8px">${escH(nomeExibir||'—')}</td>
           <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
@@ -18988,6 +19140,7 @@ function renderTabelaEstoque(itens) {
           <td style="padding:8px;text-align:center;color:${baixo?'#ff9800':'#4CAF50'}">
             ${fmtN(qtd)}${baixo?'<br><span style="font-size:10px">⚠ Baixo</span>':''}
           </td>
+          ${showTon ? `<td title="${escAttr(tonTip)}" style="padding:8px;text-align:right;font-family:var(--mono)">${escH(tonTxt)}</td>` : ''}
           <td style="padding:8px;text-align:right;color:#4CAF50;font-weight:500">${fmtR(total)}</td>
           <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(c.vincos||c.vinculos||'—')}</td>
           <td style="padding:8px;text-align:center">
@@ -29223,6 +29376,11 @@ function renderEstoqueResumo(){
     <div class="card"><div class="card-lbl">Baixo Estoque</div><div class="card-val cv-o">${baixoEstoque.toLocaleString()}</div></div>
     <div class="card"><div class="card-lbl">Sem Estoque</div><div class="card-val cv-r">${semEstoque.toLocaleString()}</div></div>
     <div class="card"><div class="card-lbl">Qtd Total (un)</div><div class="card-val cv-p">${totalQtd.toLocaleString()}</div></div>
+    <div class="card" id="card-toneladas" onclick="_chapasAbrirPainelToneladas()" style="cursor:pointer">
+      <div class="card-lbl">Toneladas em Estoque</div>
+      <div class="card-val cv-a" id="card-ton-valor">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" id="card-ton-detalhe">carregando...</div>
+    </div>
     <div class="card"><div class="card-lbl">Top Fornecedores</div><div class="card-val cv-a" style="font-size:.85rem;line-height:1.2">${topForn.map(([f,x])=>`${escH(f)} · ${fmtR(x.val)}`).join('<br>') || '—'}</div></div>
   `;
 }
@@ -29261,6 +29419,7 @@ function renderEstoque(){
   }
   _renderEstoqueBase();
   renderEstoqueResumo();
+  try{ _chapasCarregarToneladas(false); }catch(e){}
   renderAlertasEstoque();
   gerarNotificacoes();
   renderNotificacoes();
@@ -36152,6 +36311,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
                 <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
                 <th onclick="estOrdenar('valor_unitario')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">R$/UN</th>
                 <th onclick="estOrdenar('quantidade')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">QTD</th>
+                <th id="est-th-ton" style="display:none;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">TON. ESTOQUE</th>
                 <th onclick="estOrdenar('valor_total')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--green);white-space:nowrap;text-align:right">TOTAL</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">ÚLTIMO PREÇO</th>
                 <th style="padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:right">CONSUMO/MÊS</th>

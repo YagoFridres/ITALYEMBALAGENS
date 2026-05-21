@@ -8366,6 +8366,100 @@ app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
+  try {
+    const empId = String(req.query.empId || req.query.emp_id || '').trim();
+    const periodo = String(req.query.periodo || 'mes').trim().toLowerCase();
+
+    const table = await _chapasPreferV2Table();
+    let chapas = null;
+    let error = null;
+
+    try {
+      let q = supabase
+        .from(table)
+        .select('fornecedor,categoria,quantidade,peso_kg_unidade,valor_unitario,gramatura,emp_id')
+        .gt('quantidade', 0)
+        .gt('peso_kg_unidade', 0);
+      if (empId) q = q.eq('emp_id', empId);
+      const r = await q.limit(1000);
+      chapas = r?.data || [];
+      error = r?.error || null;
+    } catch (e) {
+      error = e;
+    }
+
+    if (error) {
+      const msg = String(error?.message || error || '');
+      if (msg.toLowerCase().includes('could not find the') || msg.toLowerCase().includes('does not exist') || msg.toLowerCase().includes('column')) {
+        return res.json({
+          ok: true,
+          periodo: ['dia', 'mes', 'ano'].includes(periodo) ? periodo : 'mes',
+          ton_estoque_atual: 0,
+          ton_por_fornecedor: [],
+          ton_por_categoria: [],
+          unidades_total: 0,
+          valor_total: 0,
+          aviso: 'colunas_peso_kg_unidade_ou_gramatura_inexistentes',
+        });
+      }
+      throw error;
+    }
+
+    const lista = Array.isArray(chapas) ? chapas : [];
+    let tonTotal = 0;
+    let unidadesTotal = 0;
+    let valorTotal = 0;
+
+    const porFornecedor = {};
+    const porCategoria = {};
+
+    lista.forEach((c) => {
+      const qtd = Number(c?.quantidade) || 0;
+      const pesoKg = Number(c?.peso_kg_unidade) || 0;
+      const val = Number(c?.valor_unitario) || 0;
+      const forn = String(c?.fornecedor || 'Outros').trim() || 'Outros';
+      const cat = String(c?.categoria || 'Outros').trim() || 'Outros';
+      if (!(qtd > 0 && pesoKg > 0)) return;
+
+      const tonChapa = (qtd * pesoKg) / 1000;
+      tonTotal += tonChapa;
+      unidadesTotal += qtd;
+      valorTotal += qtd * val;
+
+      if (!porFornecedor[forn]) porFornecedor[forn] = { fornecedor: forn, ton: 0, valor: 0, unidades: 0 };
+      porFornecedor[forn].ton += tonChapa;
+      porFornecedor[forn].valor += qtd * val;
+      porFornecedor[forn].unidades += qtd;
+
+      if (!porCategoria[cat]) porCategoria[cat] = { categoria: cat, ton: 0, unidades: 0 };
+      porCategoria[cat].ton += tonChapa;
+      porCategoria[cat].unidades += qtd;
+    });
+
+    const round2 = (v) => Math.round((Number(v || 0) || 0) * 100) / 100;
+    const fornecedoresList = Object.values(porFornecedor)
+      .map((f) => ({ ...f, ton: round2(f.ton), valor: round2(f.valor) }))
+      .sort((a, b) => (Number(b.ton || 0) || 0) - (Number(a.ton || 0) || 0));
+    const categoriasList = Object.values(porCategoria)
+      .map((c) => ({ ...c, ton: round2(c.ton) }))
+      .sort((a, b) => (Number(b.ton || 0) || 0) - (Number(a.ton || 0) || 0));
+
+    return res.json({
+      ok: true,
+      periodo: ['dia', 'mes', 'ano'].includes(periodo) ? periodo : 'mes',
+      ton_estoque_atual: round2(tonTotal),
+      ton_por_fornecedor: fornecedoresList,
+      ton_por_categoria: categoriasList,
+      unidades_total: unidadesTotal,
+      valor_total: round2(valorTotal),
+    });
+  } catch (e) {
+    _logApiError('TONELADAS', req, e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));
