@@ -1173,167 +1173,6 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
 .home-kpi:nth-child(4){animation-delay:0.20s} 
 .home-kpi:nth-child(5){animation-delay:0.25s} 
 .home-kpi:nth-child(6){animation-delay:0.30s} 
-.home-modulo { 
-  animation: homeSlideUp 0.35s ease forwards; 
-  opacity:0; 
-} 
-.home-modulo:nth-child(1){animation-delay:0.10s} 
-.home-modulo:nth-child(2){animation-delay:0.14s} 
-.home-modulo:nth-child(3){animation-delay:0.18s} 
-.home-modulo:nth-child(4){animation-delay:0.22s} 
-.home-modulo:nth-child(5){animation-delay:0.26s} 
-.home-modulo:nth-child(6){animation-delay:0.30s} 
-.home-modulo:nth-child(7){animation-delay:0.34s} 
-.home-modulo:nth-child(8){animation-delay:0.38s} 
-.home-modulo:nth-child(9){animation-delay:0.42s} 
-.home-modulo:nth-child(10){animation-delay:0.46s} 
-.home-modulo:nth-child(11){animation-delay:0.50s} 
-.home-modulo:nth-child(12){animation-delay:0.54s} 
-@media(max-width:900px){ 
-  .home-grid-main{grid-template-columns:1fr !important;} 
-  .home-grid-main > div:last-child{order:-1} 
-} 
-@media(max-width:600px){ 
-  .home-pad{padding:16px !important;} 
-  #tela-home{padding-bottom:80px} 
-} 
-
-:root { 
-  --home-bg: #060812; 
-  --home-surface: rgba(255,255,255,0.04); 
-  --home-surface-hover: rgba(255,255,255,0.07); 
-  --home-border: rgba(255,255,255,0.08); 
-  --home-border-hover: rgba(255,255,255,0.18); 
-  --home-blue: #3B82F6; 
-  --home-cyan: #06B6D4; 
-  --home-green: #10B981; 
-  --home-amber: #F59E0B; 
-  --home-red: #EF4444; 
-  --home-purple: #8B5CF6; 
-  --home-text: rgba(255,255,255,0.9); 
-  --home-muted: rgba(255,255,255,0.45); 
-  --home-subtle: rgba(255,255,255,0.2); 
-} 
- 
-#tela-home { 
-  font-family: 'Inter', system-ui, -apple-system, sans-serif !important; 
-  background: var(--home-bg) !important; 
-  min-height: 100vh; 
-  overflow-y: auto; 
-  overflow-x: hidden; 
-} 
- 
-.home-bg-glow { 
-  position: fixed; 
-  pointer-events: none; 
-  z-index: 0; 
-} 
-.home-bg-glow-1 { 
-  top: -200px; left: -200px; 
-  width: 600px; height: 600px; 
-  border-radius: 50%; 
-  background: radial-gradient(circle, 
-    rgba(59,130,246,0.08) 0%, transparent 70%); 
-  animation: homeGlowPulse 8s ease-in-out infinite; 
-} 
-.home-bg-glow-2 { 
-  top: 40%; right: -150px; 
-  width: 500px; height: 500px; 
-  border-radius: 50%; 
-  background: radial-gradient(circle, 
-    rgba(139,92,246,0.06) 0%, transparent 70%); 
-  animation: homeGlowPulse 10s ease-in-out infinite reverse; 
-} 
-.home-bg-glow-3 { 
-  bottom: -100px; left: 30%; 
-  width: 400px; height: 400px; 
-  border-radius: 50%; 
-  background: radial-gradient(circle, 
-    rgba(16,185,129,0.05) 0%, transparent 70%); 
-  animation: homeGlowPulse 12s ease-in-out infinite; 
-} 
-@keyframes homeGlowPulse { 
-  0%,100% { transform: scale(1); opacity: 1; } 
-  50% { transform: scale(1.15); opacity: 0.7; } 
-} 
- 
-.home-content { position: relative; z-index: 1; } 
- 
-.home-card { 
-  background: rgba(255,255,255,0.035); 
-  border: 0.5px solid rgba(255,255,255,0.08); 
-  border-radius: 16px; 
-  backdrop-filter: blur(12px); 
-  -webkit-backdrop-filter: blur(12px); 
-  transition: all 0.25s cubic-bezier(0.4,0,0.2,1); 
-} 
-.home-card:hover { 
-  background: rgba(255,255,255,0.06); 
-  border-color: rgba(255,255,255,0.16); 
-  transform: translateY(-2px); 
-  box-shadow: 0 20px 40px rgba(0,0,0,0.3), 
-              0 0 0 0.5px rgba(255,255,255,0.12) inset; 
-} 
- 
-.home-kpi-card { 
-  background: rgba(255,255,255,0.035); 
-  border: 0.5px solid rgba(255,255,255,0.08); 
-  border-radius: 14px; 
-  padding: 20px; 
-  cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
-  position: relative; 
-  overflow: hidden; 
-} 
-.home-kpi-card::before { 
-  content: ''; 
-  position: absolute; 
-  inset: 0; 
-  opacity: 0; 
-  transition: opacity 0.2s; 
-  border-radius: 14px; 
-} 
-.home-kpi-card:hover { 
-  transform: translateY(-3px); 
-  box-shadow: 0 16px 32px rgba(0,0,0,0.25); 
-} 
-.home-kpi-card:hover::before { opacity: 1; } 
- 
-.home-kpi-blue::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(59,130,246,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-blue:hover { border-color: rgba(59,130,246,0.3); } 
- 
-.home-kpi-green::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(16,185,129,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-green:hover { border-color: rgba(16,185,129,0.3); } 
- 
-.home-kpi-red::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(239,68,68,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-red:hover { border-color: rgba(239,68,68,0.3); } 
- 
-.home-kpi-amber::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(245,158,11,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-amber:hover { border-color: rgba(245,158,11,0.3); } 
- 
-.home-kpi-purple::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(139,92,246,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-purple:hover { border-color: rgba(139,92,246,0.3); } 
- 
-.home-kpi-cyan::before { 
-  background: radial-gradient(ellipse at top, 
-    rgba(6,182,212,0.12) 0%, transparent 70%); 
-} 
-.home-kpi-cyan:hover { border-color: rgba(6,182,212,0.3); } 
  
 .home-mod { 
   background: rgba(255,255,255,0.03); 
@@ -1365,586 +1204,6 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
   box-shadow: 0 12px 28px rgba(0,0,0,0.25); 
 } 
 .home-mod:hover::after { opacity: 1; } 
- 
-.home-hero-btn { 
-  background: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%); 
-  border: none; 
-  border-radius: 12px; 
-  color: #fff; 
-  font-size: 15px; 
-  font-weight: 600; 
-  padding: 14px 28px; 
-  cursor: pointer; 
-  transition: all 0.2s; 
-  box-shadow: 0 4px 24px rgba(59,130,246,0.4), 
-              0 0 0 1px rgba(255,255,255,0.1) inset; 
-  letter-spacing: -0.01em; 
-  font-family: 'Inter', sans-serif; 
-} 
-.home-hero-btn:hover { 
-  transform: translateY(-2px); 
-  box-shadow: 0 8px 32px rgba(59,130,246,0.5); 
-} 
-.home-hero-btn:active { 
-  transform: translateY(0); 
-} 
- 
-.home-jarvis-dot { 
-  width: 8px; height: 8px; 
-  border-radius: 50%; 
-  background: #10B981; 
-  box-shadow: 0 0 0 3px rgba(16,185,129,0.2); 
-  animation: homeJarvisPulse 2s ease-in-out infinite; 
-} 
-@keyframes homeJarvisPulse { 
-  0%,100% { box-shadow: 0 0 0 3px rgba(16,185,129,0.2); } 
-  50% { box-shadow: 0 0 0 6px rgba(16,185,129,0.1), 
-                    0 0 16px rgba(16,185,129,0.3); } 
-} 
- 
-.home-badge { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 5px; 
-  padding: 3px 10px; 
-  border-radius: 99px; 
-  font-size: 11px; 
-  font-weight: 500; 
-  letter-spacing: 0.02em; 
-} 
- 
-@keyframes homeFadeUp { 
-  from { opacity:0; transform:translateY(20px); } 
-  to   { opacity:1; transform:translateY(0); } 
-} 
-.home-fade-up { 
-  animation: homeFadeUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; 
-  opacity: 0; 
-} 
-.home-fade-up-1 { animation-delay: 0.05s; } 
-.home-fade-up-2 { animation-delay: 0.12s; } 
-.home-fade-up-3 { animation-delay: 0.18s; } 
-.home-fade-up-4 { animation-delay: 0.24s; } 
-.home-fade-up-5 { animation-delay: 0.30s; } 
-.home-fade-up-6 { animation-delay: 0.36s; } 
- 
-@keyframes homeBarLoad { 
-  from { width: 0; } 
-} 
-.home-bar-anim { 
-  animation: homeBarLoad 1s cubic-bezier(0.4,0,0.2,1) forwards; 
-  animation-delay: 0.5s; 
-} 
- 
-@media (max-width: 1100px) { 
-  .home-main-grid { 
-    grid-template-columns: 1fr !important; 
-  } 
-  .home-right-panel { display: none !important; } 
-} 
-@media (max-width: 700px) { 
-  .home-hero { padding: 20px 16px !important; } 
-  .home-section { padding: 0 16px !important; } 
-  .home-kpi-grid { 
-    grid-template-columns: repeat(2, 1fr) !important; 
-  } 
-  .home-mod-grid { 
-    grid-template-columns: repeat(2, 1fr) !important; 
-  } 
-} 
-
-#tela-home { 
-  font-family: 'Inter', system-ui, sans-serif !important; 
-  background: #0B0F1A !important; 
-  min-height: 100vh; 
-  overflow-y: auto; 
-  overflow-x: hidden; 
-} 
- 
-.home2-layout { 
-  display: grid; 
-  grid-template-columns: 1fr 420px; 
-  gap: 0; 
-  min-height: 100vh; 
-} 
- 
-.home2-left { 
-  padding: 40px 48px 40px 44px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 40px; 
-} 
- 
-.home2-right { 
-  background: linear-gradient(145deg, 
-    rgba(59,130,246,0.08) 0%, 
-    rgba(99,102,241,0.06) 40%, 
-    rgba(139,92,246,0.05) 100%); 
-  border-left: 0.5px solid rgba(255,255,255,0.06); 
-  display: flex; 
-  flex-direction: column; 
-  padding: 32px 28px; 
-  gap: 20px; 
-  position: relative; 
-  overflow: hidden; 
-} 
-.home2-right::before { 
-  content: ''; 
-  position: absolute; 
-  top: -100px; left: -100px; 
-  width: 400px; height: 400px; 
-  border-radius: 50%; 
-  background: radial-gradient(circle, 
-    rgba(99,102,241,0.12) 0%, transparent 65%); 
-  pointer-events: none; 
-} 
-.home2-right::after { 
-  content: ''; 
-  position: absolute; 
-  bottom: -80px; right: -80px; 
-  width: 300px; height: 300px; 
-  border-radius: 50%; 
-  background: radial-gradient(circle, 
-    rgba(16,185,129,0.08) 0%, transparent 65%); 
-  pointer-events: none; 
-} 
- 
-.home2-badge { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 7px; 
-  background: rgba(99,102,241,0.12); 
-  border: 0.5px solid rgba(99,102,241,0.3); 
-  border-radius: 99px; 
-  padding: 5px 14px; 
-  font-size: 11px; 
-  font-weight: 600; 
-  color: rgba(165,180,252,0.9); 
-  letter-spacing: 0.05em; 
-  text-transform: uppercase; 
-  width: fit-content; 
-} 
- 
-.home2-btn-primary { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 10px; 
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); 
-  border: none; 
-  border-radius: 12px; 
-  color: #fff; 
-  font-size: 15px; 
-  font-weight: 600; 
-  padding: 14px 28px; 
-  cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
-  box-shadow: 0 4px 24px rgba(79,70,229,0.4), 
-              0 1px 0 rgba(255,255,255,0.1) inset; 
-  font-family: 'Inter', sans-serif; 
-  letter-spacing: -0.01em; 
-} 
-.home2-btn-primary:hover { 
-  transform: translateY(-2px); 
-  box-shadow: 0 8px 32px rgba(79,70,229,0.5); 
-} 
-.home2-btn-secondary { 
-  display: inline-flex; 
-  align-items: center; 
-  gap: 8px; 
-  background: rgba(255,255,255,0.05); 
-  border: 0.5px solid rgba(255,255,255,0.12); 
-  border-radius: 12px; 
-  color: rgba(255,255,255,0.75); 
-  font-size: 14px; 
-  font-weight: 500; 
-  padding: 13px 22px; 
-  cursor: pointer; 
-  transition: all 0.2s; 
-  font-family: 'Inter', sans-serif; 
-} 
-.home2-btn-secondary:hover { 
-  background: rgba(255,255,255,0.09); 
-  border-color: rgba(255,255,255,0.2); 
-} 
- 
-.home2-kpi { 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.07); 
-  border-radius: 14px; 
-  padding: 18px 20px; 
-  cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
-  position: relative; 
-  overflow: hidden; 
-} 
-.home2-kpi:hover { 
-  background: rgba(255,255,255,0.07); 
-  border-color: rgba(255,255,255,0.14); 
-  transform: translateY(-2px); 
-  box-shadow: 0 12px 28px rgba(0,0,0,0.2); 
-} 
- 
-.home2-mod { 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.08); 
-  border-radius: 16px; 
-  padding: 20px; 
-  cursor: pointer; 
-  transition: all 0.22s cubic-bezier(0.4,0,0.2,1); 
-  display: flex; 
-  align-items: flex-start; 
-  gap: 14px; 
-} 
-.home2-mod:hover { 
-  background: rgba(255,255,255,0.07); 
-  border-color: rgba(255,255,255,0.16); 
-  transform: translateY(-2px); 
-  box-shadow: 0 16px 32px rgba(0,0,0,0.25); 
-} 
-.home2-mod-icon { 
-  width: 44px; 
-  height: 44px; 
-  border-radius: 12px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  font-size: 20px; 
-  flex-shrink: 0; 
-} 
- 
-.home2-stat-card { 
-  background: rgba(255,255,255,0.05); 
-  border: 0.5px solid rgba(255,255,255,0.09); 
-  border-radius: 14px; 
-  padding: 16px; 
-  transition: all 0.2s; 
-} 
-.home2-stat-card:hover { 
-  background: rgba(255,255,255,0.08); 
-} 
- 
-.home2-of-item { 
-  padding: 10px 12px; 
-  border-radius: 10px; 
-  cursor: pointer; 
-  transition: background 0.15s; 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
-} 
-.home2-of-item:hover { 
-  background: rgba(255,255,255,0.05); 
-} 
- 
-@keyframes jarvisGlow { 
-  0%,100% { 
-    box-shadow: 0 0 0 0 rgba(99,102,241,0.4), 
-                0 8px 32px rgba(79,70,229,0.3); 
-  } 
-  50% { 
-    box-shadow: 0 0 0 8px rgba(99,102,241,0.1), 
-                0 8px 40px rgba(79,70,229,0.5); 
-  } 
-} 
-.home2-jarvis-glow { 
-  animation: jarvisGlow 3s ease-in-out infinite; 
-} 
- 
-@keyframes home2Pulse { 
-  0%,100% { opacity:1; transform:scale(1); } 
-  50% { opacity:0.7; transform:scale(1.3); } 
-} 
-.home2-dot-pulse { 
-  animation: home2Pulse 2s ease-in-out infinite; 
-} 
- 
-@keyframes home2FadeUp { 
-  from { opacity:0; transform:translateY(24px); } 
-  to   { opacity:1; transform:translateY(0); } 
-} 
-.h2fu { animation: home2FadeUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; opacity:0; } 
-.h2fu-1{animation-delay:0.05s} .h2fu-2{animation-delay:0.12s} 
-.h2fu-3{animation-delay:0.18s} .h2fu-4{animation-delay:0.24s} 
-.h2fu-5{animation-delay:0.30s} .h2fu-6{animation-delay:0.36s} 
- 
-.home2-mockup { 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.1); 
-  border-radius: 20px; 
-  padding: 20px; 
-  position: relative; 
-  z-index: 1; 
-} 
- 
-@media (max-width: 1100px) { 
-  .home2-layout { 
-    grid-template-columns: 1fr !important; 
-  } 
-  .home2-right { display: none !important; } 
-} 
-@media (max-width: 680px) { 
-  .home2-left { padding: 24px 20px !important; } 
-  .home2-kpi-grid { 
-    grid-template-columns: repeat(2,1fr) !important; 
-  } 
-  .home2-mod-grid { 
-    grid-template-columns: 1fr !important; 
-  } 
-} 
-
-#tela-home * { box-sizing: border-box; } 
-
-#tela-home { 
-  font-family: 'Inter', system-ui, sans-serif !important; 
-  background: #080C14 !important; 
-  min-height: 100vh; 
-  display: flex; 
-  flex-direction: column; 
-  overflow-x: hidden; 
-} 
-
-.h3-topbar { 
-  height: 56px; 
-  background: rgba(13,18,30,0.95); 
-  border-bottom: 0.5px solid rgba(255,255,255,0.07); 
-  display: flex; 
-  align-items: center; 
-  padding: 0 24px; 
-  gap: 16px; 
-  position: sticky; 
-  top: 0; 
-  z-index: 100; 
-  backdrop-filter: blur(12px); 
-  flex-shrink: 0; 
-} 
-
-.h3-body { 
-  display: grid; 
-  grid-template-columns: 220px 1fr 320px; 
-  flex: 1; 
-  min-height: 0; 
-} 
-
-.h3-sidebar { 
-  background: rgba(10,14,24,0.98); 
-  border-right: 0.5px solid rgba(255,255,255,0.06); 
-  padding: 20px 12px; 
-  overflow-y: auto; 
-  height: calc(100vh - 56px); 
-  position: sticky; 
-  top: 56px; 
-} 
-.h3-nav-item { 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
-  padding: 9px 12px; 
-  border-radius: 10px; 
-  cursor: pointer; 
-  font-size: 13px; 
-  font-weight: 500; 
-  color: rgba(255,255,255,0.55); 
-  transition: all 0.15s; 
-  margin-bottom: 2px; 
-} 
-.h3-nav-item:hover { 
-  background: rgba(255,255,255,0.06); 
-  color: rgba(255,255,255,0.85); 
-} 
-.h3-nav-item.active { 
-  background: rgba(79,70,229,0.18); 
-  color: #A5B4FC; 
-  border: 0.5px solid rgba(79,70,229,0.25); 
-} 
-.h3-nav-section { 
-  font-size: 10px; 
-  font-weight: 700; 
-  color: rgba(255,255,255,0.25); 
-  letter-spacing: 0.1em; 
-  text-transform: uppercase; 
-  padding: 16px 12px 6px; 
-} 
-.h3-nav-icon { 
-  width: 18px; 
-  height: 18px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  font-size: 14px; 
-  flex-shrink: 0; 
-} 
-
-.h3-center { 
-  overflow-y: auto; 
-  height: calc(100vh - 56px); 
-  padding: 24px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 20px; 
-} 
-
-.h3-right { 
-  background: rgba(10,14,24,0.98); 
-  border-left: 0.5px solid rgba(255,255,255,0.06); 
-  overflow-y: auto; 
-  height: calc(100vh - 56px); 
-  position: sticky; 
-  top: 56px; 
-  padding: 20px 16px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 20px; 
-} 
-
-.h3-hero { 
-  border-radius: 20px; 
-  background: linear-gradient(135deg, 
-    #0F1729 0%, #111827 40%, #0D1B3E 100%); 
-  border: 0.5px solid rgba(79,70,229,0.2); 
-  padding: 32px 40px; 
-  position: relative; 
-  overflow: hidden; 
-  min-height: 200px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-} 
-.h3-hero::before { 
-  content: ''; 
-  position: absolute; 
-  inset: 0; 
-  background: radial-gradient(ellipse at 70% 50%, 
-    rgba(99,102,241,0.15) 0%, transparent 65%); 
-  pointer-events: none; 
-} 
-
-.h3-kpi { 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.08); 
-  border-radius: 16px; 
-  padding: 20px 22px; 
-  cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
-  position: relative; 
-  overflow: hidden; 
-} 
-.h3-kpi:hover { 
-  transform: translateY(-2px); 
-  box-shadow: 0 12px 28px rgba(0,0,0,0.25); 
-} 
-.h3-kpi::after { 
-  content: ''; 
-  position: absolute; 
-  top: 0; left: 0; right: 0; 
-  height: 2px; 
-  border-radius: 16px 16px 0 0; 
-  opacity: 0; 
-  transition: opacity 0.2s; 
-} 
-.h3-kpi:hover::after { opacity: 1; } 
-.h3-kpi-blue::after  { background: linear-gradient(90deg,#3B82F6,#6366F1); } 
-.h3-kpi-green::after { background: linear-gradient(90deg,#10B981,#34D399); } 
-.h3-kpi-red::after   { background: linear-gradient(90deg,#EF4444,#F87171); } 
-.h3-kpi-amber::after { background: linear-gradient(90deg,#F59E0B,#FCD34D); } 
-.h3-kpi-cyan::after  { background: linear-gradient(90deg,#06B6D4,#67E8F9); } 
-
-.h3-rcard { 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.08); 
-  border-radius: 14px; 
-  overflow: hidden; 
-} 
-
-.h3-maq-item { 
-  padding: 10px 14px; 
-  transition: background 0.15s; 
-} 
-.h3-maq-item:hover { 
-  background: rgba(255,255,255,0.04); 
-} 
-
-.h3-of-item { 
-  padding: 11px 14px; 
-  cursor: pointer; 
-  transition: background 0.15s; 
-  border-left: 2px solid transparent; 
-} 
-.h3-of-item:hover { 
-  background: rgba(255,255,255,0.04); 
-} 
-
-.h3-qa { 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
-  padding: 10px 14px; 
-  background: rgba(255,255,255,0.05); 
-  border: 0.5px solid rgba(255,255,255,0.09); 
-  border-radius: 10px; 
-  font-size: 12px; 
-  font-weight: 500; 
-  color: rgba(255,255,255,0.7); 
-  cursor: pointer; 
-  transition: all 0.15s; 
-} 
-.h3-qa:hover { 
-  background: rgba(255,255,255,0.09); 
-  color: #fff; 
-} 
-
-.h3-mod { 
-  display: flex; 
-  align-items: center; 
-  gap: 10px; 
-  padding: 12px 14px; 
-  background: rgba(255,255,255,0.04); 
-  border: 0.5px solid rgba(255,255,255,0.07); 
-  border-radius: 12px; 
-  cursor: pointer; 
-  transition: all 0.18s; 
-  font-size: 13px; 
-  font-weight: 500; 
-  color: rgba(255,255,255,0.75); 
-} 
-.h3-mod:hover { 
-  background: rgba(255,255,255,0.08); 
-  border-color: rgba(255,255,255,0.14); 
-  color: #fff; 
-  transform: translateY(-1px); 
-} 
-
-@keyframes h3Pulse { 
-  0%,100% { opacity:1; transform:scale(1); } 
-  50% { opacity:0.6; transform:scale(1.4); } 
-} 
-.h3-dot { animation: h3Pulse 2s ease-in-out infinite; } 
-
-.h3-chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; } 
-.h3-chart-area { opacity: 0.15; } 
-
-@keyframes h3FadeUp { 
-  from { opacity:0; transform:translateY(18px); } 
-  to   { opacity:1; transform:translateY(0); } 
-} 
-.h3fu { animation: h3FadeUp 0.45s cubic-bezier(0.4,0,0.2,1) forwards; opacity:0; } 
-.h3fu1{animation-delay:0.04s} .h3fu2{animation-delay:0.10s} 
-.h3fu3{animation-delay:0.16s} .h3fu4{animation-delay:0.22s} 
-.h3fu5{animation-delay:0.28s} .h3fu6{animation-delay:0.34s} 
-
-.h3-badge { 
-  display: inline-flex; align-items: center; gap: 5px; 
-  padding: 3px 10px; border-radius: 99px; 
-  font-size: 11px; font-weight: 600; 
-} 
-
-@media (max-width: 1200px) { 
-  .h3-body { grid-template-columns: 200px 1fr 280px; } 
-} 
-@media (max-width: 900px) { 
-  .h3-body { grid-template-columns: 1fr; } 
-  .h3-sidebar, .h3-right { display: none; } 
-  .h3-center { height: auto; } 
-} 
 
 </style>
 </head>
@@ -34667,6 +33926,10 @@ async function tryHandleScanParam(){
 // ===================== EXTEND go() =====================
 function go(id){
   if(id==='orcamento') id='orcamentos';
+  if(id==='maquina') id='ofmaq';
+  if(id==='chapas1') id='estoque';
+  if(id==='mapaclientes') id='mapa-clientes';
+  if(id==='simulador') id='simd';
   // Ocultar todas as views
   const todasViews = document.querySelectorAll('[id^="view-"], [id^="page-"], .view-content, .page-content');
   todasViews.forEach(v => { try{ v.style.display = 'none'; }catch(e){} });
@@ -36685,17 +35948,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sidebar-brand-name">Italy PCP Pro</div>
     <div class="sidebar-brand-sub">Italy Embalagens · Cartoeste · Oestepack</div>
   </div>
-  <div class="nav-item" onclick="go('home')" 
-    style="display:flex;align-items:center;gap:8px; 
-    padding:8px 12px;border-radius:8px;cursor:pointer; 
-    margin-bottom:4px;transition:background 0.15s" 
-    onmouseover="this.style.background='rgba(255,255,255,0.06)'" 
-    onmouseout="this.style.background='transparent'"> 
-    <span style="font-size:16px">🏠</span> 
-    <span style="font-size:13px;color:rgba(255,255,255,0.7)"> 
-      Início 
-    </span> 
-  </div> 
   <div class="sidebar-section">Produção</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
@@ -36775,800 +36027,254 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- CONTENT -->
 <div class="content">
 
-<div id="tela-home" class="tela" style="display:none; 
-  min-height:100vh;background:#0a0f1a; 
-  font-family:'Inter',system-ui,sans-serif;overflow-y:auto"> 
-  <!-- TOPBAR -->
-  <div class="h3-topbar">
-    <div style="display:flex;align-items:center;gap:10px;
-      min-width:180px;flex-shrink:0">
-      <div style="width:32px;height:32px;border-radius:8px;
-        background:linear-gradient(135deg,#4F46E5,#7C3AED);
-        display:flex;align-items:center;justify-content:center;
-        font-size:14px;font-weight:800;color:#fff">I</div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#fff;
-          letter-spacing:-0.01em">
-          Italy <span style="color:#818CF8">Embalagens</span>
-        </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.3);
-          margin-top:-1px">PCP PRO · ERP</div>
-      </div>
-    </div>
-
-    <div style="flex:1;max-width:480px;position:relative">
-      <div style="position:absolute;left:14px;top:50%;
-        transform:translateY(-50%);font-size:14px;
-        color:rgba(255,255,255,0.3)">🔍</div>
-      <input id="h3-search"
-        placeholder="Buscar (cliente, OF, produto, máquina...)"
-        style="width:100%;background:rgba(255,255,255,0.06);
-        border:0.5px solid rgba(255,255,255,0.1);
-        border-radius:10px;padding:9px 14px 9px 38px;
-        font-size:13px;color:rgba(255,255,255,0.8);
-        font-family:'Inter',sans-serif;outline:none;
-        transition:all 0.2s"
-        onfocus="this.style.borderColor='rgba(99,102,241,0.5)';
-          this.style.background='rgba(99,102,241,0.08)'"
-        onblur="this.style.borderColor='rgba(255,255,255,0.1)';
-          this.style.background='rgba(255,255,255,0.06)'">
-      <div style="position:absolute;right:12px;top:50%;
-        transform:translateY(-50%);font-size:10px;
-        color:rgba(255,255,255,0.2);font-weight:500">
-        Ctrl+K
-      </div>
-    </div>
-
-    <div style="flex:1"></div>
-
-    <div style="display:flex;align-items:center;gap:8px">
-      <div id="h3-badge-atrasadas"
-        style="background:rgba(239,68,68,0.15);
-        border:0.5px solid rgba(239,68,68,0.3);
-        border-radius:8px;padding:6px 14px;
-        font-size:12px;font-weight:600;
-        color:#FCA5A5;cursor:pointer;
-        transition:all 0.15s;white-space:nowrap"
-        onmouseover="this.style.background='rgba(239,68,68,0.25)'"
-        onmouseout="this.style.background='rgba(239,68,68,0.15)'">
-        <span id="h3-n-atrasadas">—</span> ATRASADAS
-      </div>
-      <div id="h3-badge-urgentes"
-        style="background:rgba(245,158,11,0.15);
-        border:0.5px solid rgba(245,158,11,0.3);
-        border-radius:8px;padding:6px 14px;
-        font-size:12px;font-weight:600;
-        color:#FCD34D;cursor:pointer;
-        transition:all 0.15s;white-space:nowrap"
-        onmouseover="this.style.background='rgba(245,158,11,0.25)'"
-        onmouseout="this.style.background='rgba(245,158,11,0.15)'">
-        <span id="h3-n-urgentes">—</span> URGENTES
-      </div>
-      <div id="h3-badge-concluidas"
-        style="background:rgba(16,185,129,0.15);
-        border:0.5px solid rgba(16,185,129,0.3);
-        border-radius:8px;padding:6px 14px;
-        font-size:12px;font-weight:600;
-        color:#6EE7B7;cursor:pointer;
-        transition:all 0.15s;white-space:nowrap"
-        onmouseover="this.style.background='rgba(16,185,129,0.25)'"
-        onmouseout="this.style.background='rgba(16,185,129,0.15)'">
-        <span id="h3-n-concluidas">—</span> CONCLUÍDAS
-      </div>
-    </div>
-
-    <div style="width:0.5px;height:24px;
-      background:rgba(255,255,255,0.1);margin:0 4px"></div>
-
-    <div style="display:flex;align-items:center;gap:6px">
-      <div style="width:36px;height:36px;border-radius:9px;
-        background:rgba(255,255,255,0.05);
-        border:0.5px solid rgba(255,255,255,0.09);
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;font-size:16px;transition:all 0.15s;
-        position:relative"
-        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-        onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-        🔔
-        <div id="h3-notif-dot"
-          style="position:absolute;top:6px;right:6px;
-          width:7px;height:7px;border-radius:50%;
-          background:#EF4444;border:1.5px solid #080C14;
-          display:none"></div>
-      </div>
-      <div style="width:36px;height:36px;border-radius:9px;
-        background:rgba(255,255,255,0.05);
-        border:0.5px solid rgba(255,255,255,0.09);
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;font-size:16px;transition:all 0.15s"
-        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
-        onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-        🔄
-      </div>
-    </div>
-
-    <div id="h3-user-btn"
-      style="display:flex;align-items:center;gap:10px;
-      background:rgba(255,255,255,0.05);
-      border:0.5px solid rgba(255,255,255,0.09);
-      border-radius:10px;padding:6px 12px 6px 8px;
-      cursor:pointer;transition:all 0.15s"
-      onmouseover="this.style.background='rgba(255,255,255,0.09)'"
-      onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-      <div style="width:28px;height:28px;border-radius:8px;
-        background:linear-gradient(135deg,#4F46E5,#7C3AED);
-        display:flex;align-items:center;justify-content:center;
-        font-size:12px;font-weight:700;color:#fff"
-        id="h3-user-avatar">A</div>
-      <div>
-        <div id="h3-user-name"
-          style="font-size:13px;font-weight:600;
-          color:rgba(255,255,255,0.9)">Administrador</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.35)">
-          Admin</div>
-      </div>
-      <span style="font-size:10px;color:rgba(255,255,255,0.3);
-        margin-left:4px">▾</span>
-    </div>
-  </div>
-
-  <div class="h3-body">
-
-    <div class="h3-sidebar">
-
-      <div class="h3-nav-item active" onclick="go('home')">
-        <div class="h3-nav-icon">🏠</div>
-        Início
-      </div>
-
-      <div class="h3-nav-section">Produção</div>
-
-      <div class="h3-nav-item" id="hnav-pcp">
-        <div class="h3-nav-icon">📋</div>
-        PCP / Programação
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-maquina">
-        <div class="h3-nav-icon">🏭</div>
-        OFs por Máquina
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-armazena">
-        <div class="h3-nav-icon">📁</div>
-        Armazenamento OFs
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-amostras">
-        <div class="h3-nav-icon">🧪</div>
-        Amostras
-      </div>
-      <div class="h3-nav-item" id="hnav-orcamentos">
-        <div class="h3-nav-icon">💼</div>
-        Orçamentos
-      </div>
-
-      <div class="h3-nav-section">Cadastros</div>
-
-      <div class="h3-nav-item" id="hnav-maquinas">
-        <div class="h3-nav-icon">⚙️</div>
-        Máquinas
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-clientes">
-        <div class="h3-nav-icon">👥</div>
-        Clientes
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-fornecedores">
-        <div class="h3-nav-icon">🏢</div>
-        Fornecedores
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-vendedores">
-        <div class="h3-nav-icon">🤝</div>
-        Vendedores
-      </div>
-      <div class="h3-nav-item" id="hnav-usuarios">
-        <div class="h3-nav-icon">👤</div>
-        Usuários
-      </div>
-
-      <div class="h3-nav-section">Estoque</div>
-
-      <div class="h3-nav-item" id="hnav-chapas">
-        <div class="h3-nav-icon">📦</div>
-        Estoque Chapas
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-selchapas">
-        <div class="h3-nav-icon">🧾</div>
-        Seleção Chapas
-      </div>
-      <div class="h3-nav-item" id="hnav-facas">
-        <div class="h3-nav-icon">🔪</div>
-        Estoque Facas
-      </div>
-
-      <div class="h3-nav-section">Papelão</div>
-
-      <div class="h3-nav-item" id="hnav-compras">
-        <div class="h3-nav-icon">🛒</div>
-        Compra de Papelão
-      </div>
-      <div class="h3-nav-item" id="hnav-simulador">
-        <div class="h3-nav-icon">♻️</div>
-        Simulador
-      </div>
-
-      <div class="h3-nav-section">Análises</div>
-
-      <div class="h3-nav-item" id="hnav-relatorios">
-        <div class="h3-nav-icon">📊</div>
-        Relatórios
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-      <div class="h3-nav-item" id="hnav-dashboard">
-        <div class="h3-nav-icon">📈</div>
-        Dashboard
-      </div>
-      <div class="h3-nav-item" id="hnav-mapa">
-        <div class="h3-nav-icon">🗺️</div>
-        Mapas
-        <span style="margin-left:auto;font-size:10px;
-          color:rgba(255,255,255,0.2)">›</span>
-      </div>
-
-      <div style="margin-top:auto;padding-top:16px;
-        border-top:0.5px solid rgba(255,255,255,0.06);
-        margin-top:20px">
-        <div class="h3-nav-item" id="hnav-config">
-          <div class="h3-nav-icon">⚙️</div>
-          Configurações
-        </div>
-      </div>
-    </div>
-
-    <div class="h3-center">
-      <div id="h3-center-content">
-        <!-- HERO --> 
-        <div class="h3-hero h3fu h3fu1"> 
-          <div style="max-width:480px;position:relative;z-index:1"> 
-            <div style="font-size:13px;color:rgba(255,255,255,0.5); 
-              margin-bottom:10px;font-weight:500" id="h3-turno"> 
-              quinta-feira, 22 de maio de 2026 
-            </div> 
-            <h1 style="font-size:38px;font-weight:800; 
-              color:#fff;margin:0 0 8px;line-height:1.2; 
-              letter-spacing:-0.03em"> 
-              Bem-vindo de volta, 
-            </h1> 
-            <h1 id="h3-welcome-name" 
-              style="font-size:38px;font-weight:800; 
-              background:linear-gradient(135deg,#818CF8,#A78BFA); 
-              -webkit-background-clip:text; 
-              -webkit-text-fill-color:transparent; 
-              background-clip:text; 
-              margin:0 0 20px;line-height:1.2; 
-              letter-spacing:-0.03em"> 
-              Administrador! 👋 
-            </h1> 
-            <div style="display:flex;align-items:center; 
-              gap:10px;margin-bottom:28px"> 
-              <div style="background:rgba(245,158,11,0.15); 
-                border:0.5px solid rgba(245,158,11,0.3); 
-                border-radius:99px;padding:5px 14px; 
-                font-size:12px;font-weight:600; 
-                color:#FCD34D"> 
-                ☀️ Turno: Matutino 
-              </div> 
-            </div> 
-            <div style="display:flex;gap:12px;flex-wrap:wrap"> 
-              <button id="h3-btn-pcp" 
-                style="background:linear-gradient(135deg,#4F46E5,#7C3AED); 
-                border:none;border-radius:12px;color:#fff; 
-                font-size:14px;font-weight:600;padding:12px 24px; 
-                cursor:pointer;transition:all 0.2s; 
-                font-family:'Inter',sans-serif; 
-                box-shadow:0 4px 24px rgba(79,70,229,0.4)" 
-                onmouseover="this.style.transform='translateY(-2px)'; 
-                  this.style.boxShadow='0 8px 32px rgba(79,70,229,0.5)'" 
-                onmouseout="this.style.transform='translateY(0)'; 
-                  this.style.boxShadow='0 4px 24px rgba(79,70,229,0.4)'"> 
-                Acessar PCP → 
-              </button> 
-              <button id="h3-btn-jarvis" 
-                style="background:rgba(255,255,255,0.07); 
-                border:0.5px solid rgba(255,255,255,0.15); 
-                border-radius:12px;color:rgba(255,255,255,0.8); 
-                font-size:14px;font-weight:500;padding:12px 20px; 
-                cursor:pointer;transition:all 0.2s; 
-                font-family:'Inter',sans-serif; 
-                display:flex;align-items:center;gap:8px" 
-                onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
-                onmouseout="this.style.background='rgba(255,255,255,0.07)'"> 
-                <div style="width:8px;height:8px;border-radius:50%; 
-                  background:#10B981; 
-                  box-shadow:0 0 8px rgba(16,185,129,0.7)" 
-                  class="h3-dot"></div> 
-                Jarvis IA 
-              </button> 
-            </div> 
-          </div> 
-        
-          <div style="position:relative;z-index:1;flex-shrink:0; 
-            opacity:0.9"> 
-            <svg width="320" height="180" viewBox="0 0 320 180" 
-              fill="none" xmlns="http://www.w3.org/2000/svg"> 
-              <ellipse cx="160" cy="160" rx="140" ry="16" 
-                fill="rgba(99,102,241,0.15)" 
-                stroke="rgba(99,102,241,0.3)" stroke-width="0.5"/> 
-              <rect x="40" y="60" width="12" height="80" rx="6" 
-                fill="rgba(79,70,229,0.6)"/> 
-              <rect x="30" y="55" width="32" height="14" rx="7" 
-                fill="rgba(99,102,241,0.8)"/> 
-              <rect x="25" y="110" width="42" height="10" rx="5" 
-                fill="rgba(99,102,241,0.5)"/> 
-              <rect x="268" y="60" width="12" height="80" rx="6" 
-                fill="rgba(79,70,229,0.6)"/> 
-              <rect x="258" y="55" width="32" height="14" rx="7" 
-                fill="rgba(99,102,241,0.8)"/> 
-              <rect x="253" y="110" width="42" height="10" rx="5" 
-                fill="rgba(99,102,241,0.5)"/> 
-              <rect x="100" y="90" width="120" height="70" rx="8" 
-                fill="rgba(139,92,246,0.3)" 
-                stroke="rgba(139,92,246,0.6)" stroke-width="1"/> 
-              <rect x="100" y="90" width="120" height="20" rx="8" 
-                fill="rgba(99,102,241,0.5)"/> 
-              <rect x="120" y="75" width="80" height="50" rx="6" 
-                fill="rgba(15,23,42,0.8)" 
-                stroke="rgba(99,102,241,0.4)" stroke-width="0.5"/> 
-              <polyline points="128,110 136,100 144,105 152,95 160,98 168,88 176,92 184,82 192,86" 
-                stroke="#6366F1" stroke-width="1.5" 
-                fill="none" stroke-linecap="round"/> 
-              <polyline points="128,115 136,112 144,118 152,108 160,112 168,105 176,110 184,100 192,104" 
-                stroke="#10B981" stroke-width="1" 
-                fill="none" stroke-linecap="round" opacity="0.7"/> 
-              <rect x="68" y="118" width="40" height="30" rx="4" 
-                fill="rgba(245,158,11,0.4)" 
-                stroke="rgba(245,158,11,0.6)" stroke-width="0.5"/> 
-              <rect x="72" y="110" width="32" height="12" rx="4" 
-                fill="rgba(245,158,11,0.6)"/> 
-              <rect x="212" y="118" width="40" height="30" rx="4" 
-                fill="rgba(16,185,129,0.4)" 
-                stroke="rgba(16,185,129,0.6)" stroke-width="0.5"/> 
-              <rect x="216" y="110" width="32" height="12" rx="4" 
-                fill="rgba(16,185,129,0.6)"/> 
-              <circle cx="80" cy="50" r="3" 
-                fill="rgba(99,102,241,0.6)"> 
-                <animate attributeName="cy" values="50;40;50" 
-                  dur="3s" repeatCount="indefinite"/> 
-                <animate attributeName="opacity" values="0.6;0.2;0.6" 
-                  dur="3s" repeatCount="indefinite"/> 
-              </circle> 
-              <circle cx="240" cy="45" r="2" 
-                fill="rgba(139,92,246,0.6)"> 
-                <animate attributeName="cy" values="45;35;45" 
-                  dur="2.5s" repeatCount="indefinite"/> 
-                <animate attributeName="opacity" values="0.6;0.1;0.6" 
-                  dur="2.5s" repeatCount="indefinite"/> 
-              </circle> 
-              <circle cx="160" cy="35" r="2.5" 
-                fill="rgba(16,185,129,0.5)"> 
-                <animate attributeName="cy" values="35;25;35" 
-                  dur="4s" repeatCount="indefinite"/> 
-              </circle> 
-              <line x1="52" y1="65" x2="100" y2="90" 
-                stroke="rgba(99,102,241,0.3)" stroke-width="0.5" 
-                stroke-dasharray="4,3"/> 
-              <line x1="268" y1="65" x2="220" y2="90" 
-                stroke="rgba(99,102,241,0.3)" stroke-width="0.5" 
-                stroke-dasharray="4,3"/> 
-            </svg> 
-          </div> 
-        </div> 
-        
-        <!-- KPIs --> 
-        <div class="h3fu h3fu2" style="display:grid; 
-          grid-template-columns:repeat(5,1fr);gap:12px"> 
-        
-          <div class="h3-kpi h3-kpi-blue" id="h3kpi-abertas"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between;margin-bottom:14px"> 
-              <div style="width:38px;height:38px;border-radius:10px; 
-                background:rgba(59,130,246,0.15); 
-                border:0.5px solid rgba(59,130,246,0.25); 
-                display:flex;align-items:center; 
-                justify-content:center;font-size:17px">👥</div> 
-              <span style="font-size:10px;font-weight:700; 
-                color:rgba(59,130,246,0.7);letter-spacing:0.08em; 
-                text-transform:uppercase">Em aberto</span> 
-            </div> 
-            <div id="kpi-ofs-abertas" 
-              style="font-size:40px;font-weight:800;color:#fff; 
-              line-height:1;letter-spacing:-0.03em;margin-bottom:8px"> 
-              — 
-            </div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-              margin-bottom:8px">Ordens de fabricação</div> 
-            <div id="h3-kpi-ab-var" 
-              style="font-size:11px;font-weight:600; 
-              color:rgba(59,130,246,0.8)"> 
-              Ver detalhes → 
-            </div> 
-          </div> 
-        
-          <div class="h3-kpi h3-kpi-green" id="h3kpi-hoje"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between;margin-bottom:14px"> 
-              <div style="width:38px;height:38px;border-radius:10px; 
-                background:rgba(16,185,129,0.15); 
-                border:0.5px solid rgba(16,185,129,0.25); 
-                display:flex;align-items:center; 
-                justify-content:center;font-size:17px">✅</div> 
-              <span style="font-size:10px;font-weight:700; 
-                color:rgba(16,185,129,0.7);letter-spacing:0.08em; 
-                text-transform:uppercase">Concluídas</span> 
-            </div> 
-            <div id="kpi-ofs-hoje" 
-              style="font-size:40px;font-weight:800; 
-              color:#10B981;line-height:1; 
-              letter-spacing:-0.03em;margin-bottom:8px">—</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-              margin-bottom:8px">Finalizadas hoje</div> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(16,185,129,0.8)"> 
-              Ver detalhes → 
-            </div> 
-          </div> 
-        
-          <div class="h3-kpi h3-kpi-red" id="h3kpi-atrasadas"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between;margin-bottom:14px"> 
-              <div style="width:38px;height:38px;border-radius:10px; 
-                background:rgba(239,68,68,0.15); 
-                border:0.5px solid rgba(239,68,68,0.25); 
-                display:flex;align-items:center; 
-                justify-content:center;font-size:17px">🔴</div> 
-              <span style="font-size:10px;font-weight:700; 
-                color:rgba(239,68,68,0.7);letter-spacing:0.08em; 
-                text-transform:uppercase">Atrasadas</span> 
-            </div> 
-            <div id="kpi-atrasadas" 
-              style="font-size:40px;font-weight:800; 
-              color:#EF4444;line-height:1; 
-              letter-spacing:-0.03em;margin-bottom:8px">—</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-              margin-bottom:8px">Requerem atenção</div> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(239,68,68,0.8)"> 
-              Ver urgente → 
-            </div> 
-          </div> 
-        
-          <div class="h3-kpi h3-kpi-amber" id="h3kpi-urgentes"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between;margin-bottom:14px"> 
-              <div style="width:38px;height:38px;border-radius:10px; 
-                background:rgba(245,158,11,0.15); 
-                border:0.5px solid rgba(245,158,11,0.25); 
-                display:flex;align-items:center; 
-                justify-content:center;font-size:17px">⚡</div> 
-              <span style="font-size:10px;font-weight:700; 
-                color:rgba(245,158,11,0.7);letter-spacing:0.08em; 
-                text-transform:uppercase">Urgentes</span> 
-            </div> 
-            <div id="kpi-urgentes" 
-              style="font-size:40px;font-weight:800; 
-              color:#F59E0B;line-height:1; 
-              letter-spacing:-0.03em;margin-bottom:8px">—</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-              margin-bottom:8px">Prioridade alta</div> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(245,158,11,0.8)"> 
-              Prioridade → 
-            </div> 
-          </div> 
-        
-          <div class="h3-kpi h3-kpi-cyan"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between;margin-bottom:14px"> 
-              <div style="width:38px;height:38px;border-radius:10px; 
-                background:rgba(6,182,212,0.15); 
-                border:0.5px solid rgba(6,182,212,0.25); 
-                display:flex;align-items:center; 
-                justify-content:center;font-size:17px">💰</div> 
-              <span style="font-size:10px;font-weight:700; 
-                color:rgba(6,182,212,0.7);letter-spacing:0.08em; 
-                text-transform:uppercase">Faturamento</span> 
-            </div> 
-            <div id="kpi-faturamento" 
-              style="font-size:24px;font-weight:800; 
-              color:#06B6D4;line-height:1; 
-              letter-spacing:-0.02em;margin-bottom:8px">—</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-              margin-bottom:8px">Este mês</div> 
-            <div id="kpi-fat-variacao" 
-              style="font-size:11px;font-weight:600; 
-              color:rgba(6,182,212,0.8)"> 
-              Este mês → 
-            </div> 
-          </div> 
-        </div> 
-      </div>
-
-      <!-- Gráfico + Status OFs --> 
-      <div class="h3fu h3fu3" style="display:grid; 
-        grid-template-columns:1fr 280px;gap:16px"> 
+<div id="tela-home" class="tela" style="display:none">
+  <div style="padding:32px 40px;max-width:1400px; 
+    font-family:'Inter',system-ui,sans-serif"> 
  
-        <!-- Gráfico de produção da semana --> 
-        <div style="background:rgba(255,255,255,0.04); 
-          border:0.5px solid rgba(255,255,255,0.08); 
-          border-radius:16px;padding:22px"> 
-          <div style="display:flex;justify-content:space-between; 
-            align-items:center;margin-bottom:20px"> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)"> 
-                Produção da semana 
-              </div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:2px"> 
-                OFs concluídas por dia 
-              </div> 
-            </div> 
-            <div style="background:rgba(255,255,255,0.06); 
-              border:0.5px solid rgba(255,255,255,0.1); 
-              border-radius:8px;padding:6px 12px; 
-              font-size:12px;color:rgba(255,255,255,0.6); 
-              cursor:pointer"> 
-              Esta semana ▾ 
-            </div> 
-          </div> 
+    <!-- Boas-vindas --> 
+    <div style="margin-bottom:32px"> 
+      <div style="font-size:13px;color:rgba(255,255,255,0.4); 
+        margin-bottom:8px" id="home-greeting"> 
+        Carregando... 
+      </div> 
+      <h1 id="home-welcome" 
+        style="font-size:32px;font-weight:700;color:#fff; 
+        margin:0;letter-spacing:-0.02em"> 
+        Bem-vindo de volta 👋 
+      </h1> 
+    </div> 
  
-          <div style="position:relative"> 
-            <svg id="h3-chart-svg" width="100%" height="160" 
-              viewBox="0 0 500 160" preserveAspectRatio="none" 
-              xmlns="http://www.w3.org/2000/svg"> 
-              <defs> 
-                <linearGradient id="h3ChartGrad" 
-                  x1="0" y1="0" x2="0" y2="1"> 
-                  <stop offset="0%" stop-color="#4F46E5" 
-                    stop-opacity="0.4"/> 
-                  <stop offset="100%" stop-color="#4F46E5" 
-                    stop-opacity="0"/> 
-                </linearGradient> 
-              </defs> 
-              <line x1="0" y1="30" x2="500" y2="30" 
-                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
-              <line x1="0" y1="65" x2="500" y2="65" 
-                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
-              <line x1="0" y1="100" x2="500" y2="100" 
-                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
-              <line x1="0" y1="135" x2="500" y2="135" 
-                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
-              <path id="h3-chart-area" 
-                d="M0,135 L71,120 L143,90 L214,100 L286,60 L357,70 L500,50 L500,160 L0,160 Z" 
-                fill="url(#h3ChartGrad)"/> 
-              <path id="h3-chart-line" class="h3-chart-line" 
-                d="M0,135 L71,120 L143,90 L214,100 L286,60 L357,70 L500,50" 
-                stroke="#6366F1"/> 
-              <circle cx="286" cy="60" r="5" 
-                fill="#4F46E5" stroke="#fff" stroke-width="2"/> 
-              <rect x="256" y="30" width="80" height="28" 
-                rx="6" fill="rgba(79,70,229,0.9)"/> 
-              <text x="296" y="48" text-anchor="middle" 
-                fill="#fff" font-size="11" font-family="Inter" 
-                font-weight="600" id="h3-chart-tooltip"> 
-                Hoje 
-              </text> 
-            </svg> 
+    <!-- KPIs --> 
+    <div style="display:grid; 
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); 
+      gap:12px;margin-bottom:28px"> 
  
-            <div style="display:flex;justify-content:space-between; 
-              padding:0 4px;margin-top:8px"> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Seg</span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Ter</span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Qua</span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.9);font-weight:600"> 
-                Qui 
-              </span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Sex</span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Sáb</span> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)">Dom</span> 
-            </div> 
-          </div> 
-        </div> 
- 
-        <!-- Status das OFs (donut simplificado) --> 
-        <div style="background:rgba(255,255,255,0.04); 
-          border:0.5px solid rgba(255,255,255,0.08); 
-          border-radius:16px;padding:22px"> 
-          <div style="font-size:14px;font-weight:600; 
-            color:rgba(255,255,255,0.9);margin-bottom:20px"> 
-            Status das OFs 
-          </div> 
- 
-          <div style="display:flex;justify-content:center; 
-            margin-bottom:20px;position:relative"> 
-            <svg width="140" height="140" viewBox="0 0 140 140"> 
-              <circle cx="70" cy="70" r="54" 
-                fill="none" stroke="rgba(255,255,255,0.06)" 
-                stroke-width="18"/> 
-              <circle id="h3-donut-aberto" cx="70" cy="70" r="54" 
-                fill="none" stroke="#4F46E5" stroke-width="18" 
-                stroke-dasharray="176 163" stroke-dashoffset="0" 
-                transform="rotate(-90 70 70)"/> 
-              <circle id="h3-donut-prod" cx="70" cy="70" r="54" 
-                fill="none" stroke="#F59E0B" stroke-width="18" 
-                stroke-dasharray="80 259" stroke-dashoffset="-176" 
-                transform="rotate(-90 70 70)"/> 
-              <circle id="h3-donut-ok" cx="70" cy="70" r="54" 
-                fill="none" stroke="#10B981" stroke-width="18" 
-                stroke-dasharray="60 279" stroke-dashoffset="-256" 
-                transform="rotate(-90 70 70)"/> 
-              <circle id="h3-donut-atr" cx="70" cy="70" r="54" 
-                fill="none" stroke="#EF4444" stroke-width="18" 
-                stroke-dasharray="23 316" stroke-dashoffset="-316" 
-                transform="rotate(-90 70 70)"/> 
-              <text x="70" y="65" text-anchor="middle" 
-                fill="#fff" font-size="24" font-family="Inter" 
-                font-weight="800" id="h3-donut-total">—</text> 
-              <text x="70" y="82" text-anchor="middle" 
-                fill="rgba(255,255,255,0.4)" font-size="11" 
-                font-family="Inter">Total</text> 
-            </svg> 
-          </div> 
- 
-          <div style="display:flex;flex-direction:column;gap:8px"> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between"> 
-              <div style="display:flex;align-items:center;gap:8px"> 
-                <div style="width:10px;height:10px;border-radius:50%; 
-                  background:#4F46E5"></div> 
-                <span style="font-size:12px; 
-                  color:rgba(255,255,255,0.6)">Em aberto</span> 
-              </div> 
-              <span id="h3-leg-aberto" 
-                style="font-size:12px;font-weight:600; 
-                color:rgba(255,255,255,0.8)">—</span> 
-            </div> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between"> 
-              <div style="display:flex;align-items:center;gap:8px"> 
-                <div style="width:10px;height:10px;border-radius:50%; 
-                  background:#F59E0B"></div> 
-                <span style="font-size:12px; 
-                  color:rgba(255,255,255,0.6)">Em produção</span> 
-              </div> 
-              <span id="h3-leg-prod" 
-                style="font-size:12px;font-weight:600; 
-                color:rgba(255,255,255,0.8)">—</span> 
-            </div> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between"> 
-              <div style="display:flex;align-items:center;gap:8px"> 
-                <div style="width:10px;height:10px;border-radius:50%; 
-                  background:#10B981"></div> 
-                <span style="font-size:12px; 
-                  color:rgba(255,255,255,0.6)">Concluídas</span> 
-              </div> 
-              <span id="h3-leg-ok" 
-                style="font-size:12px;font-weight:600; 
-                color:#10B981">—</span> 
-            </div> 
-            <div style="display:flex;align-items:center; 
-              justify-content:space-between"> 
-              <div style="display:flex;align-items:center;gap:8px"> 
-                <div style="width:10px;height:10px;border-radius:50%; 
-                  background:#EF4444"></div> 
-                <span style="font-size:12px; 
-                  color:rgba(255,255,255,0.6)">Atrasadas</span> 
-              </div> 
-              <span id="h3-leg-atr" 
-                style="font-size:12px;font-weight:600; 
-                color:#EF4444">—</span> 
-            </div> 
-          </div> 
+      <div onclick="go('pcp')" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(255,255,255,0.08); 
+        border-radius:14px;padding:20px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.07em; 
+          margin-bottom:10px">OFs em aberto</div> 
+        <div id="kpi-ofs-abertas" 
+          style="font-size:36px;font-weight:700; 
+          color:#fff;line-height:1;margin-bottom:6px">—</div> 
+        <div style="font-size:11px;color:rgba(99,102,241,0.8)"> 
+          Ver todas → 
         </div> 
       </div> 
  
-      <!-- Acesso rápido módulos --> 
-      <div class="h3fu h3fu4"> 
-        <div style="font-size:13px;font-weight:600; 
-          color:rgba(255,255,255,0.5);letter-spacing:0.06em; 
+      <div onclick="go('pcp')" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(16,185,129,0.2); 
+        border-radius:14px;padding:20px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(16,185,129,0.06)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.07em; 
+          margin-bottom:10px">Concluídas hoje</div> 
+        <div id="kpi-ofs-hoje" 
+          style="font-size:36px;font-weight:700; 
+          color:#10B981;line-height:1;margin-bottom:6px">—</div> 
+        <div style="font-size:11px;color:rgba(16,185,129,0.8)"> 
+          Ver detalhes → 
+        </div> 
+      </div> 
+ 
+      <div onclick="go('pcp')" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(239,68,68,0.2); 
+        border-radius:14px;padding:20px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(239,68,68,0.06)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.07em; 
+          margin-bottom:10px">Atrasadas</div> 
+        <div id="kpi-atrasadas" 
+          style="font-size:36px;font-weight:700; 
+          color:#EF4444;line-height:1;margin-bottom:6px">—</div> 
+        <div style="font-size:11px;color:rgba(239,68,68,0.8)"> 
+          Ver urgente → 
+        </div> 
+      </div> 
+ 
+      <div onclick="go('pcp')" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(245,158,11,0.2); 
+        border-radius:14px;padding:20px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(245,158,11,0.06)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.07em; 
+          margin-bottom:10px">Urgentes</div> 
+        <div id="kpi-urgentes" 
+          style="font-size:36px;font-weight:700; 
+          color:#F59E0B;line-height:1;margin-bottom:6px">—</div> 
+        <div style="font-size:11px;color:rgba(245,158,11,0.8)"> 
+          Prioridade → 
+        </div> 
+      </div> 
+ 
+      <div style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(6,182,212,0.2); 
+        border-radius:14px;padding:20px; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(6,182,212,0.06)';this.style.transform='translateY(-2px)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.07em; 
+          margin-bottom:10px">Faturamento mês</div> 
+        <div id="kpi-faturamento" 
+          style="font-size:22px;font-weight:700; 
+          color:#06B6D4;line-height:1;margin-bottom:6px">—</div> 
+        <div id="kpi-fat-variacao" 
+          style="font-size:11px;color:rgba(6,182,212,0.8)"> 
+          Este mês 
+        </div> 
+      </div> 
+    </div> 
+ 
+    <!-- Grid: Acesso rápido + OFs urgentes --> 
+    <div style="display:grid;grid-template-columns:1fr 320px; 
+      gap:20px;align-items:start"> 
+ 
+      <!-- Acesso rápido --> 
+      <div> 
+        <div style="font-size:11px;font-weight:600; 
+          color:rgba(255,255,255,0.3);letter-spacing:0.08em; 
           text-transform:uppercase;margin-bottom:14px"> 
           Acesso rápido 
         </div> 
         <div style="display:grid; 
-          grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); 
-          gap:8px" id="h3-mod-grid"> 
+          grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); 
+          gap:10px"> 
  
-          <div class="h3-mod" id="h3mod-pcp"> 
-            <span style="font-size:16px">📋</span> 
-            PCP / Programação 
+          <div id="hmod-pcp" 
+            style="background:rgba(79,70,229,0.1); 
+            border:0.5px solid rgba(79,70,229,0.25); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(79,70,229,0.18)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(79,70,229,0.1)'"> 
+            <div style="font-size:22px;margin-bottom:8px">📋</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">PCP</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Programação</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-maquina"> 
-            <span style="font-size:16px">🏭</span> 
-            OFs por Máquina 
+ 
+          <div id="hmod-maquina" 
+            style="background:rgba(16,185,129,0.08); 
+            border:0.5px solid rgba(16,185,129,0.2); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(16,185,129,0.15)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(16,185,129,0.08)'"> 
+            <div style="font-size:22px;margin-bottom:8px">🏭</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">OFs Máquina</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Produção</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-chapas"> 
-            <span style="font-size:16px">📦</span> 
-            Estoque de Chapas 
+ 
+          <div id="hmod-estoque" 
+            style="background:rgba(245,158,11,0.08); 
+            border:0.5px solid rgba(245,158,11,0.2); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(245,158,11,0.15)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(245,158,11,0.08)'"> 
+            <div style="font-size:22px;margin-bottom:8px">📦</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Estoque</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Chapas</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-clientes"> 
-            <span style="font-size:16px">👥</span> 
-            Clientes 
+ 
+          <div id="hmod-clientes" 
+            style="background:rgba(255,255,255,0.04); 
+            border:0.5px solid rgba(255,255,255,0.08); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
+            <div style="font-size:22px;margin-bottom:8px">👥</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Clientes</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Cadastros</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-fornecedores"> 
-            <span style="font-size:16px">🏢</span> 
-            Fornecedores 
+ 
+          <div id="hmod-mapa" 
+            style="background:rgba(255,255,255,0.04); 
+            border:0.5px solid rgba(255,255,255,0.08); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
+            <div style="font-size:22px;margin-bottom:8px">🗺️</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Mapa</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Clientes</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-relatorios"> 
-            <span style="font-size:16px">📊</span> 
-            Relatórios 
+ 
+          <div id="hmod-relatorios" 
+            style="background:rgba(255,255,255,0.04); 
+            border:0.5px solid rgba(255,255,255,0.08); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
+            <div style="font-size:22px;margin-bottom:8px">📊</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Relatórios</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Análises</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-dashboard"> 
-            <span style="font-size:16px">📈</span> 
-            Dashboard 
+ 
+          <div id="hmod-simulador" 
+            style="background:rgba(255,255,255,0.04); 
+            border:0.5px solid rgba(255,255,255,0.08); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
+            <div style="font-size:22px;margin-bottom:8px">♻️</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Simulador</div> 
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Desperdício</div> 
           </div> 
-          <div class="h3-mod" id="h3mod-mapa"> 
-            <span style="font-size:16px">🗺️</span> 
-            Mapas 
-          </div> 
-          <div class="h3-mod" id="h3mod-analises"> 
-            <span style="font-size:16px">🔬</span> 
-            Análises 
-          </div> 
-          <div class="h3-mod" id="h3mod-config"> 
-            <span style="font-size:16px">⚙️</span> 
-            Configurações 
-          </div> 
-          <div class="h3-mod" 
-            style="background:rgba(99,102,241,0.08); 
-            border-color:rgba(99,102,241,0.2); 
-            color:rgba(165,180,252,0.8)" id="h3mod-jarvis"> 
-            <span style="font-size:16px">🤖</span> 
-            Jarvis IA 
-          </div> 
-          <div class="h3-mod" id="h3mod-simulador"> 
-            <span style="font-size:16px">♻️</span> 
-            Simulador 
+ 
+          <div id="hmod-jarvis" 
+            style="background:rgba(99,102,241,0.1); 
+            border:0.5px solid rgba(99,102,241,0.3); 
+            border-radius:12px;padding:16px;cursor:pointer; 
+            transition:all 0.2s;position:relative" 
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(99,102,241,0.18)'" 
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(99,102,241,0.1)'"> 
+            <div style="position:absolute;top:10px;right:10px; 
+              width:7px;height:7px;border-radius:50%; 
+              background:#10B981; 
+              box-shadow:0 0 6px rgba(16,185,129,0.8)"></div> 
+            <div style="font-size:22px;margin-bottom:8px">🤖</div> 
+            <div style="font-size:13px;font-weight:600;color:#fff">Jarvis IA</div> 
+            <div style="font-size:11px;color:rgba(165,180,252,0.7);margin-top:2px">Online</div> 
           </div> 
         </div> 
       </div> 
-    </div>
-
-    <div class="h3-right">
-      <div id="h3-right-content">
-        <!-- Status das Máquinas --> 
-        <div> 
-          <div style="display:flex;justify-content:space-between; 
-            align-items:center;margin-bottom:14px"> 
-            <div style="font-size:13px;font-weight:600; 
-              color:rgba(255,255,255,0.8)"> 
-              Status das máquinas 
-            </div> 
-            <span id="h3-ver-maquinas" 
-              style="font-size:11px;font-weight:500; 
-              color:rgba(99,102,241,0.8);cursor:pointer"> 
-              Ver todas → 
-            </span> 
-          </div> 
-          <div class="h3-rcard" id="h3-maquinas-lista"> 
+ 
+      <!-- OFs urgentes --> 
+      <div> 
+        <div style="display:flex;justify-content:space-between; 
+          align-items:center;margin-bottom:14px"> 
+          <div style="font-size:11px;font-weight:600; 
+            color:rgba(255,255,255,0.3);letter-spacing:0.08em; 
+            text-transform:uppercase">OFs urgentes</div> 
+          <span id="home-ver-pcp" 
+            style="font-size:11px;color:rgba(99,102,241,0.8); 
+            cursor:pointer;font-weight:500"> 
+            Ver todas → 
+          </span> 
+        </div> 
+        <div style="background:rgba(255,255,255,0.03); 
+          border:0.5px solid rgba(255,255,255,0.07); 
+          border-radius:14px;overflow:hidden"> 
+          <div id="home-ofs-urgentes" 
+            style="max-height:300px;overflow-y:auto;padding:6px"> 
             <div style="padding:16px;text-align:center; 
               font-size:12px;color:rgba(255,255,255,0.25)"> 
               Carregando... 
@@ -37576,189 +36282,60 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </div> 
         </div> 
  
-        <!-- Jarvis IA --> 
-        <div> 
-          <div class="h3-rcard" 
-            style="background:linear-gradient(145deg, 
-              rgba(79,70,229,0.12),rgba(124,58,237,0.08)); 
-            border-color:rgba(99,102,241,0.25)"> 
- 
-            <div style="padding:18px 16px"> 
-              <div style="display:flex;align-items:center; 
-                justify-content:space-between;margin-bottom:14px"> 
-                <div style="display:flex;align-items:center;gap:10px"> 
-                  <div style="width:40px;height:40px;border-radius:12px; 
-                    background:linear-gradient(135deg,#4F46E5,#7C3AED); 
-                    display:flex;align-items:center; 
-                    justify-content:center;font-size:20px">🤖</div> 
-                  <div> 
-                    <div style="font-size:14px;font-weight:700; 
-                      color:#fff">Jarvis IA</div> 
-                    <div style="font-size:11px; 
-                      color:rgba(165,180,252,0.7)"> 
-                      Assistente inteligente 
-                    </div> 
-                  </div> 
-                </div> 
-                <div style="display:flex;align-items:center;gap:5px; 
-                  background:rgba(16,185,129,0.12); 
-                  border:0.5px solid rgba(16,185,129,0.25); 
-                  border-radius:99px;padding:3px 10px"> 
-                  <div class="h3-dot" 
-                    style="width:6px;height:6px;border-radius:50%; 
-                    background:#10B981"></div> 
-                  <span id="home-ia-txt" 
-                    style="font-size:10px;font-weight:600; 
-                    color:#6EE7B7">Online</span> 
-                </div> 
-              </div> 
- 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.5); 
-                line-height:1.6;margin-bottom:14px"> 
-                Olá! Aqui está o resumo inteligente do sistema 
-                para você. 
-              </div> 
- 
-              <!-- Mini KPIs Jarvis --> 
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr; 
-                gap:8px;margin-bottom:16px"> 
-                <div style="background:rgba(239,68,68,0.1); 
-                  border:0.5px solid rgba(239,68,68,0.2); 
-                  border-radius:10px;padding:10px;text-align:center"> 
-                  <div id="h3j-urgentes" 
-                    style="font-size:20px;font-weight:700; 
-                    color:#FCA5A5">—</div> 
-                  <div style="font-size:9px; 
-                    color:rgba(255,255,255,0.35);margin-top:3px"> 
-                    OFs urgentes 
-                  </div> 
-                </div> 
-                <div style="background:rgba(245,158,11,0.1); 
-                  border:0.5px solid rgba(245,158,11,0.2); 
-                  border-radius:10px;padding:10px;text-align:center"> 
-                  <div id="h3j-estoque" 
-                    style="font-size:20px;font-weight:700; 
-                    color:#FCD34D">—</div> 
-                  <div style="font-size:9px; 
-                    color:rgba(255,255,255,0.35);margin-top:3px"> 
-                    Estoque baixo 
-                  </div> 
-                </div> 
-                <div style="background:rgba(99,102,241,0.1); 
-                  border:0.5px solid rgba(99,102,241,0.2); 
-                  border-radius:10px;padding:10px;text-align:center"> 
-                  <div id="h3j-maquinas" 
-                    style="font-size:20px;font-weight:700; 
-                    color:#A5B4FC">—</div> 
-                  <div style="font-size:9px; 
-                    color:rgba(255,255,255,0.35);margin-top:3px"> 
-                    Máquinas ativas 
-                  </div> 
-                </div> 
-              </div> 
- 
-              <!-- Quick actions --> 
-              <div style="display:grid;grid-template-columns:1fr 1fr; 
-                gap:6px;margin-bottom:14px"> 
-                <div class="h3-qa h3-jarvis-qa" 
-                  data-prompt="como está a produção hoje?"> 
-                  🏭 Produção hoje 
-                </div> 
-                <div class="h3-qa h3-jarvis-qa" 
-                  data-prompt="quais OFs estão atrasadas?"> 
-                  ⚡ OFs atrasadas 
-                </div> 
-                <div class="h3-qa h3-jarvis-qa" 
-                  data-prompt="qual o faturamento deste mês?"> 
-                  💰 Faturamento 
-                </div> 
-                <div class="h3-qa h3-jarvis-qa" 
-                  data-prompt="qual o estoque crítico de chapas?"> 
-                  📦 Estoque baixo 
-                </div> 
-              </div> 
- 
-              <!-- Input Jarvis --> 
-              <div style="display:flex;gap:8px"> 
-                <input id="h3-jarvis-input" 
-                  placeholder="Pergunte algo ao Jarvis IA..." 
-                  style="flex:1;background:rgba(255,255,255,0.07); 
-                  border:0.5px solid rgba(255,255,255,0.12); 
-                  border-radius:10px;padding:10px 14px; 
-                  font-size:12px;color:rgba(255,255,255,0.8); 
-                  font-family:'Inter',sans-serif;outline:none; 
-                  transition:all 0.2s" 
-                  onfocus="this.style.borderColor='rgba(99,102,241,0.5)'" 
-                  onblur="this.style.borderColor='rgba(255,255,255,0.12)'"> 
-                <button id="h3-jarvis-send" 
-                  style="width:38px;height:38px;border-radius:10px; 
-                  background:linear-gradient(135deg,#4F46E5,#7C3AED); 
-                  border:none;cursor:pointer;font-size:16px; 
-                  transition:all 0.2s;flex-shrink:0" 
-                  onmouseover="this.style.transform='scale(1.05)'" 
-                  onmouseout="this.style.transform='scale(1)'"> 
-                  ➤ 
-                </button> 
-              </div> 
-            </div> 
-          </div> 
-        </div> 
- 
-        <!-- OFs urgentes --> 
-        <div> 
-          <div style="display:flex;justify-content:space-between; 
-            align-items:center;margin-bottom:14px"> 
-            <div style="font-size:13px;font-weight:600; 
-              color:rgba(255,255,255,0.8)">OFs urgentes</div> 
-            <span id="h3-ver-ofs" 
-              style="font-size:11px;font-weight:500; 
-              color:rgba(99,102,241,0.8);cursor:pointer"> 
-              Ver todas → 
-            </span> 
-          </div> 
-          <div class="h3-rcard"> 
-            <div id="home-ofs-urgentes" 
-              style="max-height:280px;overflow-y:auto"> 
-              <div style="padding:16px;text-align:center; 
-                font-size:12px;color:rgba(255,255,255,0.25)"> 
-                Carregando... 
-              </div> 
-            </div> 
-          </div> 
-        </div> 
- 
-        <!-- Status footer --> 
-        <div style="margin-top:auto;padding-top:8px; 
-          border-top:0.5px solid rgba(255,255,255,0.06); 
-          display:flex;flex-direction:column;gap:5px"> 
-          <div style="display:flex;justify-content:space-between"> 
+        <!-- Status --> 
+        <div style="margin-top:14px;padding:12px 16px; 
+          background:rgba(255,255,255,0.03); 
+          border:0.5px solid rgba(255,255,255,0.06); 
+          border-radius:10px"> 
+          <div style="display:flex;align-items:center; 
+            justify-content:space-between;margin-bottom:6px"> 
             <div style="display:flex;align-items:center;gap:6px"> 
               <div style="width:6px;height:6px;border-radius:50%; 
                 background:#10B981"></div> 
               <span style="font-size:11px; 
                 color:rgba(255,255,255,0.35)"> 
-                Sistema operacional 
+                Sistema online 
               </span> 
             </div> 
             <span id="home-att" 
-              style="font-size:11px;color:rgba(255,255,255,0.2)"> 
-              — 
-            </span> 
+              style="font-size:10px; 
+              color:rgba(255,255,255,0.2)">—</span> 
           </div> 
           <div style="display:flex;align-items:center;gap:6px"> 
             <div id="home-ia-dot" style="width:6px;height:6px; 
               border-radius:50%;background:#F59E0B"></div> 
-            <span style="font-size:11px; 
+            <span id="home-ia-txt" 
+              style="font-size:11px; 
               color:rgba(255,255,255,0.35)"> 
               IA: verificando... 
             </span> 
           </div> 
         </div> 
-      </div>
-    </div>
-  </div>
-</div>
+      </div> 
+    </div> 
+ 
+    <!-- Botão principal --> 
+    <div style="margin-top:28px;padding-top:24px; 
+      border-top:0.5px solid rgba(255,255,255,0.06); 
+      display:flex;align-items:center; 
+      justify-content:space-between;flex-wrap:wrap;gap:12px"> 
+      <div style="font-size:13px;color:rgba(255,255,255,0.35)"> 
+        Italy Embalagens ERP · Sistema operacional 
+      </div> 
+      <button id="home-btn-pcp" 
+        style="background:linear-gradient(135deg,#4F46E5,#7C3AED); 
+        border:none;border-radius:10px;color:#fff; 
+        font-size:14px;font-weight:600;padding:11px 24px; 
+        cursor:pointer;transition:all 0.2s; 
+        font-family:'Inter',system-ui,sans-serif; 
+        box-shadow:0 4px 20px rgba(79,70,229,0.35)" 
+        onmouseover="this.style.transform='translateY(-1px)'" 
+        onmouseout="this.style.transform='translateY(0)'"> 
+        Acessar PCP → 
+      </button> 
+    </div> 
+  </div> 
+</div> 
 
 <!-- ========== 1. PCP ========== -->
 <div id="page-pcp" class="page active">
@@ -48106,43 +46683,24 @@ window.atualizarChapas = async function(){
 
 <script>
 async function _homeInit() { 
-  const nome = window._usuarioLogado?.nome || 
-    localStorage.getItem('italy_nome') || 'Administrador'; 
-  const first = nome.split(' ')[0]; 
- 
-  const elW = document.getElementById('h3-welcome-name'); 
-  if (elW) elW.innerHTML = first + '! 👋'; 
- 
+  const nome = window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador'; 
+  const first = String(nome || 'Administrador').split(' ')[0] || 'Administrador'; 
+
+  const elW = document.getElementById('home-welcome'); 
+  if (elW) elW.textContent = 'Bem-vindo de volta, ' + first + ' 👋'; 
+
   const elG = document.getElementById('home-greeting'); 
-  if (elG) elG.textContent = new Date().toLocaleDateString( 
-    'pt-BR', {weekday:'long',day:'numeric', 
-    month:'long',year:'numeric'}); 
- 
-  const elT = document.getElementById('h3-turno'); 
-  if (elT) { 
-    const h = new Date().getHours(); 
-    const turno = h < 12 ? '☀️ Turno: Matutino' : 
-                  h < 18 ? '🌤️ Turno: Tarde' : '🌙 Turno: Noturno'; 
-    elT.textContent = new Date().toLocaleDateString('pt-BR', 
-      {weekday:'long',day:'numeric',month:'long',year:'numeric'}) + 
-      ' · ' + turno; 
-  } 
- 
-  const av = document.getElementById('h3-user-avatar'); 
-  if (av) av.textContent = first.charAt(0).toUpperCase(); 
-  const un = document.getElementById('h3-user-name'); 
-  if (un) un.textContent = first; 
- 
-  await Promise.allSettled([ 
-    _homeKpis(), 
-    _homeOfsUrgentes(), 
-    _homeIaStatus(), 
-    _homeMaquinas(), 
-  ]); 
- 
+  if (elG) elG.textContent = new Date().toLocaleDateString('pt-BR', { 
+    weekday:'long', 
+    day:'numeric', 
+    month:'long', 
+    year:'numeric' 
+  }); 
+
+  await Promise.allSettled([ _homeKpis(), _homeOfsUrgentes(), _homeIaStatus() ]); 
+
   const elA = document.getElementById('home-att'); 
-  if (elA) elA.textContent = new Date().toLocaleTimeString( 
-    'pt-BR', {hour:'2-digit',minute:'2-digit'}); 
+  if (elA) elA.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); 
 } 
  
 async function _homeKpis() { 
@@ -48186,25 +46744,6 @@ async function _homeKpis() {
     set('kpi-atrasadas', atrasadas.length); 
     set('kpi-urgentes', urgentes.length); 
  
-    set('h3-n-atrasadas', atrasadas.length); 
-    set('h3-n-urgentes', urgentes.length); 
-    set('h3-n-concluidas', conclHoje.length); 
- 
-    const total = abertas.length + conclHoje.length; 
-    set('h3-donut-total', total || '—'); 
-    set('h3-leg-aberto', 
-      abertas.length + ' (' + 
-      (total > 0 ? Math.round(abertas.length/total*100) : 0) + '%)'); 
-    set('h3-leg-prod', 
-      emProd.length + ' (' + 
-      (total > 0 ? Math.round(emProd.length/total*100) : 0) + '%)'); 
-    set('h3-leg-ok', 
-      conclHoje.length + ' (' + 
-      (total > 0 ? Math.round(conclHoje.length/total*100) : 0) + '%)'); 
-    set('h3-leg-atr', 
-      atrasadas.length + ' (' + 
-      (total > 0 ? Math.round(atrasadas.length/total*100) : 0) + '%)'); 
- 
     const mes = hoje.slice(0,7); 
     const fat = ofs 
       .filter(o => String(o.data_conclusao||'').slice(0,7) === mes) 
@@ -48217,109 +46756,8 @@ async function _homeKpis() {
           {minimumFractionDigits:0,maximumFractionDigits:0}); 
     } 
  
-    set('h3j-urgentes', urgentes.length); 
-    set('h3j-maquinas', emProd.length); 
- 
-    if (atrasadas.length > 0) { 
-      const dot = document.getElementById('h3-notif-dot'); 
-      if (dot) dot.style.display = 'block'; 
-    } 
- 
-    const tt = document.getElementById('h3-chart-tooltip'); 
-    if (tt) tt.textContent = 'Hoje · ' + conclHoje.length + ' OFs'; 
- 
   } catch(e) { 
     console.error('[HOME KPIs]', e?.message); 
-  } 
-} 
-
-async function _homeMaquinas() { 
-  const container = document.getElementById('h3-maquinas-lista'); 
-  if (!container) return; 
-  try { 
-    const token = localStorage.getItem('token') || ''; 
-    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
- 
-    const r = await fetch('/api/ofs?lite=1&limit=500&nocache=1' + 
-      (empId ? '&emp_id='+empId : ''), { 
-      headers: {'Authorization':'Bearer '+token} 
-    }); 
-    const d = await r.json(); 
-    const ofs = Array.isArray(d) ? d : 
-      (Array.isArray(d.data) ? d.data : []); 
- 
-    const maqMap = {}; 
-    const MAQUINAS = [ 
-      'CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05' 
-    ]; 
-    MAQUINAS.forEach(m => { maqMap[m] = 0; }); 
- 
-    ofs.filter(o => { 
-      const s = String(o.status||'').toLowerCase(); 
-      return !s.includes('conclu') && !s.includes('cancela'); 
-    }).forEach(o => { 
-      try { 
-        const fluxo = typeof o.fluxo_maquinas === 'string' ? 
-          JSON.parse(o.fluxo_maquinas || '[]') : 
-          (Array.isArray(o.fluxo_maquinas) ? o.fluxo_maquinas : []); 
-        const idx = Number(o.maquina_atual_index || 0); 
-        const maq = fluxo[idx]; 
-        const nome = typeof maq === 'object' ? 
-          (maq?.nome || maq?.name || '') : String(maq || ''); 
-        if (nome && maqMap[nome] !== undefined) maqMap[nome]++; 
-      } catch(_) {} 
-    }); 
- 
-    container.innerHTML = MAQUINAS.map(nome => { 
-      const qtd = maqMap[nome] || 0; 
-      const pct = Math.min(100, qtd * 5); 
-      const status = qtd > 10 ? 'Ocupada' : 
-                     qtd > 0  ? 'Ativo' : 'Livre'; 
-      const cor = qtd > 10 ? '#F59E0B' : 
-                  qtd > 0  ? '#10B981' : '#6B7280'; 
-      const barCor = qtd > 10 ? '#F59E0B' : 
-                     qtd > 0  ? '#10B981' : 'rgba(255,255,255,0.1)'; 
-      return `<div class="h3-maq-item" 
-        style="border-bottom:0.5px solid rgba(255,255,255,0.05)"> 
-        <div style="display:flex;align-items:center; 
-          justify-content:space-between;margin-bottom:6px"> 
-          <div> 
-            <div style="font-size:13px;font-weight:600; 
-              color:rgba(255,255,255,0.85)">${nome}</div> 
-            <div style="font-size:11px; 
-              color:rgba(255,255,255,0.4);margin-top:1px"> 
-              ${qtd > 0 ? 'Produzindo · '+qtd+' OFs' : 
-                'Aguardando produção'} 
-            </div> 
-          </div> 
-          <div style="background:${cor}22; 
-            border:0.5px solid ${cor}44; 
-            border-radius:99px;padding:3px 10px; 
-            font-size:11px;font-weight:600;color:${cor}"> 
-            ${status} 
-          </div> 
-        </div> 
-        <div style="height:3px;background:rgba(255,255,255,0.06); 
-          border-radius:99px;overflow:hidden"> 
-          <div style="height:100%;width:${pct}%; 
-            background:${barCor};border-radius:99px; 
-            transition:width 0.8s ease"></div> 
-        </div> 
-        <div style="text-align:right;font-size:10px; 
-          color:rgba(255,255,255,0.25);margin-top:3px"> 
-          ${pct}% 
-        </div> 
-      </div>`; 
-    }).join(''); 
- 
-    const ativas = MAQUINAS.filter(m => maqMap[m] > 0).length; 
-    const elM = document.getElementById('h3j-maquinas'); 
-    if (elM) elM.textContent = ativas; 
- 
-  } catch(e) { 
-    if (container) container.innerHTML = 
-      '<div style="padding:12px;font-size:12px;' + 
-      'color:rgba(255,255,255,0.3)">Erro ao carregar.</div>'; 
   } 
 } 
  
@@ -48410,13 +46848,13 @@ async function _homeIaStatus() {
     const txt = document.getElementById('home-ia-txt'); 
     if (!dot || !txt) return; 
     if (d.modo_turbo_disponivel) { 
-      dot.style.color = '#1D9E75'; 
+      dot.style.background = '#10B981'; 
       txt.textContent = ' IA: Turbo ativo'; 
     } else if (d.claude?.ativo || d.openai?.ativo) { 
-      dot.style.color = '#EF9F27'; 
+      dot.style.background = '#F59E0B'; 
       txt.textContent = ' IA: Parcial'; 
     } else { 
-      dot.style.color = '#E24B4A'; 
+      dot.style.background = '#EF4444'; 
       txt.textContent = ' IA: offline'; 
     } 
   } catch(_) {} 
@@ -48428,164 +46866,18 @@ async function _homeIaStatus() {
       if(window.__homeNavBound) return;
       window.__homeNavBound = 1;
     }catch(e){}
-    try{ document.getElementById('home-btn-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('hmod-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('hmod-maquina')?.addEventListener('click', () => go('ofmaq')); }catch(e){}
-    try{ document.getElementById('hmod-estoque')?.addEventListener('click', () => go('estoque')); }catch(e){}
-    try{ document.getElementById('hmod-clientes')?.addEventListener('click', () => go('clientes')); }catch(e){}
-    try{ document.getElementById('hmod-fornecedores')?.addEventListener('click', () => go('fornecedores')); }catch(e){}
-    try{ document.getElementById('hmod-compras')?.addEventListener('click', () => go('compras')); }catch(e){}
-    try{ document.getElementById('hmod-relatorios')?.addEventListener('click', () => go('relatorios')); }catch(e){}
-    try{ document.getElementById('hmod-dashboard')?.addEventListener('click', () => go('dashboard')); }catch(e){}
-    try{ document.getElementById('hmod-mapa')?.addEventListener('click', () => go('mapa-clientes')); }catch(e){}
-    try{ document.getElementById('hmod-jarvis')?.addEventListener('click', () => { 
-      if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
-    }); }catch(e){}
-    try{ document.getElementById('home-btn-jarvis')?.addEventListener('click', () => { 
-      if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
-    }); }catch(e){}
-    try{ document.getElementById('hmod-simulador')?.addEventListener('click', () => go('simd')); }catch(e){}
-    try{ document.getElementById('hmod-config')?.addEventListener('click', () => go('configuracoes')); }catch(e){}
-    try{ document.getElementById('home-ver-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('kpi-box-abertas')?.addEventListener('click', () => go('pcp')); }catch(e){}
- 
-    try{ 
-      document.querySelectorAll('.home2-jarvis-prompt').forEach(el => { 
-        el.addEventListener('click', () => { 
-          const prompt = el.dataset.prompt; 
-          if (!prompt) return; 
-          if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
-          setTimeout(() => { 
-            const input = document.querySelector( 
-              '#jarvis-input, #jarvis-msg, .jarvis-input-field, ' + 
-              '[placeholder*=\"pergunta\"], [placeholder*=\"Jarvis\"]' 
-            ); 
-            if (input) { 
-              input.value = prompt; 
-              input.dispatchEvent(new Event('input', {bubbles:true})); 
-              const btn = document.querySelector( 
-                '#jarvis-send, .jarvis-send-btn, ' + 
-                'button[onclick*=\"jarvis\"], button[onclick*=\"Jarvis\"]' 
-              ); 
-              if (btn) btn.click(); 
-            } 
-          }, 400); 
-        }); 
-      }); 
-    } catch(e){} 
- 
-    try{ 
-      document.getElementById('home-jarvis-card') 
-        ?.addEventListener('click', (e) => { 
-          try{ 
-            if (e?.target?.classList?.contains('home2-jarvis-prompt')) return; 
-          }catch(_){} 
-          if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
-        }); 
-    } catch(e){} 
-
-    try{ document.getElementById('h3-badge-atrasadas')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('h3-badge-urgentes')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('h3-badge-concluidas')?.addEventListener('click', () => go('pcp')); }catch(e){}
-
-    try{
-      const h3Nav = {
-        'hnav-pcp': 'pcp',
-        'hnav-maquina': 'ofmaq',
-        'hnav-amostras': 'amostras',
-        'hnav-orcamentos': 'orcamentos',
-        'hnav-maquinas': 'maquinas',
-        'hnav-clientes': 'clientes',
-        'hnav-fornecedores': 'fornecedores',
-        'hnav-vendedores': 'vendedores',
-        'hnav-usuarios': 'usuarios',
-        'hnav-chapas': 'estoque',
-        'hnav-selchapas': 'sel-chapas',
-        'hnav-facas': 'facas1',
-        'hnav-compras': 'compras',
-        'hnav-simulador': 'simd',
-        'hnav-relatorios': 'relatorios',
-        'hnav-dashboard': 'dashboard',
-        'hnav-mapa': 'mapa-clientes',
-        'hnav-config': 'configuracoes',
-      };
-      Object.entries(h3Nav).forEach(([id, tela]) => {
-        document.getElementById(id)?.addEventListener('click', () => go(tela));
-      });
-    }catch(e){}
-
-    try{
-      const h3Mods = {
-        'h3mod-pcp': 'pcp',
-        'h3mod-maquina': 'ofmaq',
-        'h3mod-chapas': 'estoque',
-        'h3mod-clientes': 'clientes',
-        'h3mod-fornecedores': 'fornecedores',
-        'h3mod-relatorios': 'relatorios',
-        'h3mod-dashboard': 'dashboard',
-        'h3mod-mapa': 'mapa-clientes',
-        'h3mod-analises': 'dashboard',
-        'h3mod-config': 'configuracoes',
-        'h3mod-simulador': 'simd',
-      };
-      Object.entries(h3Mods).forEach(([id, tela]) => {
-        document.getElementById(id)?.addEventListener('click', () => go(tela));
-      });
-    }catch(e){}
-
-    try{ document.getElementById('h3mod-jarvis')?.addEventListener('click', () => { if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); }); }catch(e){}
-    try{ document.getElementById('h3-btn-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
-    try{ document.getElementById('h3-btn-jarvis')?.addEventListener('click', () => { if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); }); }catch(e){}
-    try{ document.getElementById('h3-ver-maquinas')?.addEventListener('click', () => go('maquinas')); }catch(e){}
-    try{ document.getElementById('h3-ver-ofs')?.addEventListener('click', () => go('pcp')); }catch(e){}
-
-    try{
-      document.querySelectorAll('.h3-jarvis-qa').forEach(el => {
-        el.addEventListener('click', () => {
-          const prompt = el.dataset.prompt;
-          if (!prompt) return;
-          if (typeof _jarvisAbrir === 'function') _jarvisAbrir();
-          setTimeout(() => {
-            const inp = document.querySelector(
-              '#jarvis-input,#jarvis-msg,.jarvis-input-field,' +
-              '[placeholder*="pergunta"],[placeholder*="Jarvis"]'
-            );
-            if (inp) {
-              inp.value = prompt;
-              inp.dispatchEvent(new Event('input',{bubbles:true}));
-              const btn = document.querySelector('#jarvis-send,.jarvis-send-btn');
-              if (btn) btn.click();
-            }
-          }, 500);
-        });
-      });
-    }catch(e){}
-
-    try{
-      const h3JInput = document.getElementById('h3-jarvis-input');
-      const h3JSend  = document.getElementById('h3-jarvis-send');
-      h3JSend?.addEventListener('click', () => {
-        const txt = h3JInput?.value?.trim();
-        if (!txt) return;
-        if (typeof _jarvisAbrir === 'function') _jarvisAbrir();
-        setTimeout(() => {
-          const inp = document.querySelector(
-            '#jarvis-input,#jarvis-msg,.jarvis-input-field,' +
-            '[placeholder*="pergunta"],[placeholder*="Jarvis"]'
-          );
-          if (inp) {
-            inp.value = txt;
-            inp.dispatchEvent(new Event('input',{bubbles:true}));
-            const btn = document.querySelector('#jarvis-send,.jarvis-send-btn');
-            if (btn) btn.click();
-          }
-          if (h3JInput) h3JInput.value = '';
-        }, 500);
-      });
-      h3JInput?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') h3JSend?.click();
-      });
-    }catch(e){}
+    document.getElementById('home-btn-pcp')?.addEventListener('click', () => go('pcp'));
+    document.getElementById('home-ver-pcp')?.addEventListener('click', () => go('pcp'));
+    document.getElementById('hmod-pcp')?.addEventListener('click', () => go('pcp'));
+    document.getElementById('hmod-maquina')?.addEventListener('click', () => go('maquina'));
+    document.getElementById('hmod-estoque')?.addEventListener('click', () => go('chapas1'));
+    document.getElementById('hmod-clientes')?.addEventListener('click', () => go('clientes'));
+    document.getElementById('hmod-mapa')?.addEventListener('click', () => go('mapaclientes'));
+    document.getElementById('hmod-relatorios')?.addEventListener('click', () => go('relatorios'));
+    document.getElementById('hmod-simulador')?.addEventListener('click', () => go('simulador'));
+    document.getElementById('hmod-jarvis')?.addEventListener('click', () => {
+      if (typeof _jarvisAbrir === 'function') _jarvisAbrir();
+    });
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
