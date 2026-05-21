@@ -2395,12 +2395,22 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (s === '0000-00-00' || s.startsWith('0000-00-00')) return false;
       return true;
     };
-    if (from && to) {
-      const fallback = (_ofsSelectableHas('dia') ? 'dia' : 'created_at');
-      const wantsEntrega = (dateFieldRaw === 'entrega' || dateFieldRaw === 'data_entrega' || dateFieldRaw === 'ent');
-      if (wantsEntrega) {
+    if (from || to) {
+      const requested = dateFieldRaw || 'data_entrega';
+      const fallback =
+        (_ofsSelectableHas('data_entrega') ? 'data_entrega'
+          : (_ofsSelectableHas('ent') ? 'ent'
+            : (_ofsSelectableHas('dia') ? 'dia' : 'created_at')));
+      if (requested === 'entrega' || requested === 'data_entrega' || requested === 'ent') {
         if (_ofsSelectableHas('data_entrega')) dateCol = 'data_entrega';
         else if (_ofsSelectableHas('ent')) dateCol = 'ent';
+        else dateCol = fallback;
+      } else if (requested === 'producao' || requested === 'data_producao' || requested === 'dia') {
+        if (_ofsSelectableHas('data_producao')) dateCol = 'data_producao';
+        else if (_ofsSelectableHas('dia')) dateCol = 'dia';
+        else dateCol = fallback;
+      } else if (requested === 'created_at') {
+        if (_ofsSelectableHas('created_at')) dateCol = 'created_at';
         else dateCol = fallback;
       } else {
         dateCol = fallback;
@@ -2439,7 +2449,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       if (!incluirExcluidas) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      if (from && to) q = q.gte(dateCol || 'data_entrega', from).lte(dateCol || 'data_entrega', to);
+      if (from) {
+        const fromIso = (from.includes('T') ? from : (from + 'T00:00:00'));
+        q = q.gte(dateCol || 'data_entrega', fromIso);
+      }
+      if (to) {
+        const toIso = (to.includes('T') ? to : (to + 'T23:59:59'));
+        q = q.lte(dateCol || 'data_entrega', toIso);
+      }
 
       const r = await q;
 
@@ -2509,42 +2526,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
       return { ...row, vendedor_nome };
     });
-    try {
-      const VENDEDOR_PADRAO_ID = '0c4852da-ffff-4c1b-bfc4-38e169d6d580';
-      const VENDEDOR_PADRAO_NOME = 'RONI MEIA VENDA';
-      const { data: todosClientes } = await supabase
-        .from('clientes')
-        .select('id,nome,vendedor_id')
-        .limit(5000);
-      const cliMap = new Map(
-        (Array.isArray(todosClientes) ? todosClientes : [])
-          .filter((c) => c && c.id)
-          .map((c) => [String(c.id), c])
-      );
-
-      const { data: todosVendedores } = await supabase
-        .from('vendedores')
-        .select('id,nome')
-        .limit(5000);
-      const vendMap = new Map(
-        (Array.isArray(todosVendedores) ? todosVendedores : [])
-          .filter((v) => v && v.id)
-          .map((v) => [String(v.id), String(v.nome || '').trim()])
-      );
-
-      rows = (rows || []).map((r) => {
-        if (!r || typeof r !== 'object') return r;
-        const cid = String(r.cli_id || r.cliente_id || '').trim();
-        const cli = cid ? (cliMap.get(cid) || null) : null;
-        const vidRaw = String(r.vendedor_id || '').trim();
-        const vid = vidRaw || VENDEDOR_PADRAO_ID;
-        const cliNome = String(cli?.nome || r.cliNome || '').trim();
-        let vendNome = String((vid ? (vendMap.get(vid) || '') : '') || r.vendNome || '').trim();
-        if (!vendNome && !vidRaw) vendNome = VENDEDOR_PADRAO_NOME;
-        const vendedor_nome = String(r.vendedor_nome || '').trim() || vendNome;
-        return { ...r, cliNome, vendNome, vendedor_id: vid, vendedor_nome };
-      });
-    } catch (_) {}
     try {
       const sample = rows && rows[0] ? rows[0] : null;
       console.log('[OFS SAMPLE]', JSON.stringify({
@@ -7503,6 +7484,9 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       cacheClearPrefix('chapas_estoque:');
       _chapasCacheClearedOnBoot = true;
     }
+    const forceNoCache =
+      String(req.query.nocache || req.query.no_cache || '') === '1' ||
+      String(req.query.cache || '') === '0';
     const _isFiltroVazioChapas = (v) => {
       const s = String(v ?? '').trim().toLowerCase();
       return (
@@ -7517,7 +7501,11 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
         s === 'all'
       );
     };
-    const qEntries = Object.entries(req.query || {}).filter(([_, v]) => !_isFiltroVazioChapas(v));
+    const qEntries = Object.entries(req.query || {}).filter(([k, v]) => {
+      const kk = String(k || '').toLowerCase();
+      if (kk === 't' || kk === '_' || kk === 'nocache' || kk === 'no_cache' || kk === 'cache') return false;
+      return !_isFiltroVazioChapas(v);
+    });
     const hasFiltros = qEntries.length > 0;
     const limitDb = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
     const offsetDb = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
@@ -7525,7 +7513,7 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const cacheKey = hasFiltros
       ? ('chapas_estoque:' + CACHE_VERSION + ':q:' + new URLSearchParams(qEntries.sort((a, b) => String(a[0]).localeCompare(String(b[0])))).toString())
       : ('chapas_estoque:' + CACHE_VERSION + ':all:limit=' + String(limitDb) + ':offset=' + String(offsetDb));
-    const cached = cacheGet(cacheKey);
+    const cached = forceNoCache ? null : cacheGet(cacheKey);
     if (cached != null && !(Array.isArray(cached) && cached.length === 0)) return res.json(cached);
     const applyFilters = (inRows) => {
       let rows = Array.isArray(inRows) ? inRows : [];
@@ -7656,11 +7644,23 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     });
 
     console.log('[chapas_estoque] OK:', rows.length, 'registros', '| table:', usedTable);
-    if (rows.length > 0) cacheSet(cacheKey, rows, 10 * 1000);
+    if (!forceNoCache && rows.length > 0) cacheSet(cacheKey, rows, 10 * 1000);
     return res.json(rows);
   } catch (err) {
     console.error('[chapas_estoque] catch:', err.message);
     return res.json([]);
+  }
+});
+
+app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+    try { cacheClearPrefix('chapas_'); } catch (_) {}
+    try { global._chapasCache = null; } catch (_) {}
+    try { global._chapasV2Cache = null; } catch (_) {}
+    return res.json({ ok: true, msg: 'Cache de chapas limpo' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {

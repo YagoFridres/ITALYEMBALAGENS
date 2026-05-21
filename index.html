@@ -4492,6 +4492,16 @@ function renderBotoesDias(){
 function ofsMaqFiltroDia(idx){
   window._ofmaqDiaIdx = Number(idx||0);
   window._diaAtualIdx = window._ofmaqDiaIdx;
+  try{
+    const semana = getSemanaAtiva();
+    const d = Array.isArray(semana) ? semana[Math.max(0, Math.min(4, window._ofmaqDiaIdx))] : null;
+    const iso = (d instanceof Date && !isNaN(d.getTime())) ? d.toISOString().slice(0,10) : '';
+    const inp = document.getElementById('ofmaq-data');
+    if(inp && iso) inp.value = iso;
+    if(iso) window._ofmaqSelectedDate = iso;
+    window._ofmaqCache = {};
+    window._ofmaqBaseList = null;
+  }catch(e){}
   renderOFsPorMaquina();
 }
 function ofsmaqSemanaAnterior(){
@@ -6975,7 +6985,7 @@ async function renderOFsPorMaquina(){
       try{
         const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
         const fetched = await _ofmaqBuscarOFs(dataSelecionada, limitBase, empId);
-        if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
+        if(Array.isArray(fetched)) lista = fetched.map(normalizeOF);
         try{ window._ofmaqForceReload = false; }catch(e){}
       }catch(e){}
     }
@@ -15302,19 +15312,29 @@ function _mapcliFillVendedorSelect(){
 function _mapcliGeoCacheGet(){
   try{
     const raw =
-      localStorage.getItem('italy_geo_v3')
+      localStorage.getItem('italy_geo_v4')
+      || localStorage.getItem('italy_geo_v3')
       || localStorage.getItem('italy_geo_v2')
       || localStorage.getItem('italy_geo_cache_v1')
       || localStorage.getItem('italy_geo_v1')
       || localStorage.getItem('mapa_clientes_geo_v1');
     const obj = raw ? JSON.parse(raw) : null;
-    return (obj && typeof obj === 'object') ? obj : {};
+    const out = (obj && typeof obj === 'object') ? obj : {};
+    try{
+      Object.keys(out).forEach((k)=>{
+        const v = out[k];
+        if(!v || typeof v !== 'object') return;
+        if(v.lat == null || v.lng == null) return;
+        if(!_mapcliIsBrasilLatLng(v.lat, v.lng)) delete out[k];
+      });
+    }catch(e){}
+    return out;
   }catch(e){
     return {};
   }
 }
 function _mapcliGeoCacheSet(obj){
-  try{ localStorage.setItem('italy_geo_v3', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+  try{ localStorage.setItem('italy_geo_v4', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
 }
 
 function _mapcliIsBrasilLatLng(lat, lng){
@@ -15349,7 +15369,20 @@ function _mapcliInitMap(){
   if(!el) return null;
   if(!window.L || typeof window.L.map !== 'function') return null;
   if(!window._mapCliState) window._mapCliState = {};
-  if(window._mapCliState.map) return window._mapCliState.map;
+  if(window._mapCliState.map){
+    const m0 = window._mapCliState.map;
+    let okContainer = false;
+    try{
+      const c0 = (typeof m0.getContainer === 'function') ? m0.getContainer() : null;
+      okContainer = !!(c0 && c0 === el);
+    }catch(e){}
+    if(okContainer){
+      setTimeout(()=>{ try{ m0.invalidateSize(true); }catch(e){} }, 300);
+      return m0;
+    }
+    try{ m0.remove(); }catch(e){}
+    window._mapCliState = {};
+  }
   const m = window.L.map(el, { zoomControl:true, preferCanvas:true }).setView([-15, -55], 4);
   window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
@@ -15362,6 +15395,7 @@ function _mapcliInitMap(){
   layer.addTo(m);
   const roteiroLayer = window.L.layerGroup().addTo(m);
   window._mapCliState = { map:m, layer, roteiroLayer, markers: new Map(), data: [], lastFetchAt: 0, geocoding: false, roteiro: null };
+  setTimeout(()=>{ try{ m.invalidateSize(true); }catch(e){} }, 300);
   return m;
 }
 
@@ -16173,11 +16207,23 @@ async function renderMapaClientes(force){
 function _mapaClientes_init(){
   try{
     try {
-      localStorage.removeItem('italy_geo_v2');
-      localStorage.removeItem('italy_geo_cache_v1');
-      localStorage.removeItem('italy_geo_v1');
+      ['italy_geo_v1','italy_geo_v2','italy_geo_v3','italy_geo_v4',
+       'italy_geo_cache_v1','italy_geo_cache_v2','mapa_clientes_geo_v1'
+      ].forEach((k)=>{ try{ localStorage.removeItem(k); }catch(e){} });
     } catch(_) {}
+    try{
+      const st = window._mapCliState || null;
+      const m0 = st && st.map ? st.map : null;
+      if(m0 && typeof m0.remove === 'function'){ try{ m0.remove(); }catch(e){} }
+      window._mapCliState = {};
+    }catch(e){}
     renderMapaClientes(true);
+    setTimeout(()=>{
+      try{
+        const st = window._mapCliState || {};
+        if(st.map && typeof st.map.invalidateSize === 'function') st.map.invalidateSize(true);
+      }catch(e){}
+    }, 350);
   }catch(e){
     try{ console.error('[MAPA] erro init', e); }catch(_){}
   }
@@ -27523,6 +27569,7 @@ async function carregarChapas(forcar=false){
     try{ carregarMetricasChapas(false); }catch(e){}
     return { ok:true, cached:true, data:ESTOQUE };
   }
+  const bust = Date.now();
   const all = [];
   for(let page=0; page<200; page++){
     const qs = new URLSearchParams();
@@ -27530,6 +27577,8 @@ async function carregarChapas(forcar=false){
     qs.set('limit', '500');
     qs.set('offset', String(page * 500));
     if(forcar) qs.set('flush_cache', '1');
+    qs.set('nocache','1');
+    qs.set('t', String(bust));
     const r = await api('GET','/chapas_estoque?' + qs.toString());
     const chunk = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
     if(chunk && chunk.length) all.push(...chunk);
