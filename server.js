@@ -3434,6 +3434,9 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       'id', 'of', 'numero', 'status', 'dia', 'created_at',
       'cli_id',
       'vendedor_id',
+      'vendId', 'vend_id', 'vendedorId',
+      'vendedor', 'vendedor_nome', 'vendNome',
+      'cliente_id',
       'valor_total', 'valor_venda',
       'qtd', 'descricao',
       'emp_id', 'deleted_at',
@@ -3475,6 +3478,9 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         'id', 'of', 'numero', 'status', 'dia', 'created_at',
         'cli_id',
         'vendedor_id',
+        'vendId', 'vend_id', 'vendedorId',
+        'vendedor', 'vendedor_nome', 'vendNome',
+        'cliente_id',
         'valor_total', 'valor_venda',
         'qtd', 'descricao',
         'emp_id',
@@ -3497,43 +3503,75 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
     });
 
     console.log('[RELATORIO VENDEDOR] OFs após filtro:', ofs.length);
+    console.log('[COMISSAO DEBUG]', {
+      totalOfs: ofs?.length,
+      semVendedor: ofs?.filter((o) => !o.vendedor_id && !o.vendId && !o.vend_id).length,
+      camposVendedor: ofs?.[0] ? Object.keys(ofs[0]).filter((k) => String(k || '').toLowerCase().includes('vend')) : [],
+    });
 
-    const cliIds = Array.from(new Set((ofs || []).map((o) => String(o?.cli_id || '').trim()).filter(Boolean)));
+    const cliIds = Array.from(new Set((ofs || []).map((o) => String(o?.cli_id || o?.cliente_id || '').trim()).filter(Boolean)));
     const mapCli = {};
+    const cliVendMap = new Map();
     if (cliIds.length) {
       try {
-        const { data: clis, error: ec } = await supabase.from('clientes').select('id,nome').in('id', cliIds);
-        if (!ec) (clis || []).forEach((c) => { if (c && c.id) mapCli[String(c.id)] = c.nome || ''; });
+        const { data: clis, error: ec } = await supabase
+          .from('clientes')
+          .select('id,nome,vendedor_id,vendId,vend_id')
+          .in('id', cliIds)
+          .limit(2000);
+        if (!ec) {
+          (clis || []).forEach((c) => {
+            if (c && c.id) mapCli[String(c.id)] = c.nome || '';
+            const vid = String(c?.vendedor_id || c?.vendId || c?.vend_id || '').trim();
+            if (c?.id && vid) cliVendMap.set(String(c.id), vid);
+          });
+        }
       } catch (_) {}
     }
 
     const { data: vendedores, error: ev } = await supabase.from('vendedores').select('id,nome,comissao_pct');
     if (ev) throw ev;
     const mapVend = {};
+    const vendNomeMap = new Map();
     (vendedores || []).forEach((v) => {
       mapVend[String(v.id)] = { id: v.id, nome: v.nome || '', pct: Number(v.comissao_pct || 0) };
+      if (v && v.id) vendNomeMap.set(String(v.id), String(v.nome || '').trim());
     });
 
     console.log('[RELATORIO VENDEDOR] vendedores:', Object.keys(mapVend).length);
+
+    const getVendedorId = (of) => {
+      return String(of?.vendedor_id || of?.vendId || of?.vend_id || of?.vendedorId || '').trim();
+    };
+    const getVendedorNome = (of, vendMap) => {
+      const vid = getVendedorId(of);
+      if (vid && vendMap?.has?.(vid)) return vendMap.get(vid);
+      const nome = String(of?.vendedor_nome || of?.vendNome || of?.vendedor || '').trim();
+      return nome || null;
+    };
 
     const grupos = {};
     let totalGeral = 0;
     let totalComissao = 0;
 
     for (const ofRow of ofs) {
-      const vendId = String(ofRow.vendedor_id || '').trim();
-      if (!vendId) continue;
+      const cliId = String(ofRow?.cli_id || ofRow?.cliente_id || '').trim();
+      const vendIdDireto = getVendedorId(ofRow);
+      const vendDoCliente = cliId ? (cliVendMap.get(cliId) || '') : '';
+      const vendIdFinal = String(vendIdDireto || vendDoCliente || '').trim();
+      const vendNomeDireto = vendIdFinal ? '' : (getVendedorNome(ofRow, vendNomeMap) || '');
+      const grupoKey = vendIdFinal || (vendNomeDireto ? `nome:${vendNomeDireto}` : 'sem_vendedor');
 
-      const vend = mapVend[vendId];
-      const vendNome = vend ? vend.nome : 'Vendedor não encontrado';
+      const vend = vendIdFinal ? mapVend[vendIdFinal] : null;
+      const vendNome = vend ? vend.nome : (vendNomeDireto || 'Sem vendedor');
       const pct = vend ? vend.pct : 0;
       const valor = Number(ofRow.valor_total || ofRow.valor_venda || 0);
       const comissaoOf = valor * (pct / 100);
       const dtOf = ofRow.dia || (ofRow.created_at ? String(ofRow.created_at).slice(0, 10) : '');
 
-      if (!grupos[vendId]) {
-        grupos[vendId] = {
-          vendedorId: vendId,
+      if (!grupos[grupoKey]) {
+        grupos[grupoKey] = {
+          vendedorId: vendIdFinal || null,
           vendedor: vendNome,
           comissaoPct: pct,
           pedidos: 0,
@@ -3544,13 +3582,13 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         };
       }
 
-      grupos[vendId].pedidos++;
-      grupos[vendId].qtdTotal += Number(ofRow.qtd || 0);
-      grupos[vendId].valorTotal += valor;
-      grupos[vendId].comissaoTotal += comissaoOf;
-      grupos[vendId].ofs.push({
+      grupos[grupoKey].pedidos++;
+      grupos[grupoKey].qtdTotal += Number(ofRow.qtd || 0);
+      grupos[grupoKey].valorTotal += valor;
+      grupos[grupoKey].comissaoTotal += comissaoOf;
+      grupos[grupoKey].ofs.push({
         numero: ofRow.of || ofRow.numero || '',
-        cliente: mapCli[String(ofRow.cli_id || '').trim()] || (ofRow.cli_id || ''),
+        cliente: mapCli[String(cliId || '').trim()] || (cliId || ''),
         descricao: ofRow.descricao || '',
         qtd: Number(ofRow.qtd || 0),
         valor,
