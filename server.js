@@ -2192,6 +2192,46 @@ async function comprasUpdateCompat(id, payload) {
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
+    console.log('[OFS DEBUG 500]', {
+      query: req.query,
+      usuario: req.usuario?.id,
+      supabaseOk: !!supabase,
+    });
+    const {
+      limit: q_limit,
+      offset: q_offset,
+      from: q_from,
+      to: q_to,
+      de: q_de,
+      ate: q_ate,
+      date_field: q_date_field,
+      dateField: q_dateField,
+      emp_id: q_emp_id,
+      empId: q_empId,
+      status: q_status,
+      lite: q_lite,
+      nocache: q_nocache,
+      no_cache: q_no_cache,
+      cache: q_cache,
+      clear_cache: q_clear_cache,
+      clearCache: q_clearCache,
+      order_by: q_order_by,
+      orderBy: q_orderBy,
+      order: q_order,
+      incluir_excluidas: q_incluir_excluidas,
+      incluirExcluidas: q_incluirExcluidas,
+      incluir_canceladas: q_incluir_canceladas,
+      incluirCanceladas: q_incluirCanceladas,
+      excluir_canceladas: q_excluir_canceladas,
+      excluirCanceladas: q_excluirCanceladas,
+      cliente_id: q_cliente_id,
+      clienteId: q_clienteId,
+      cli_id: q_cli_id,
+      cliId: q_cliId,
+      numero: q_numero,
+      of_num: q_of_num,
+      of: q_of,
+    } = (req.query || {});
     console.log('[OFS CHEGOU]', req.query);
     console.log('[OFS GET START]', req.query);
     try {
@@ -2220,24 +2260,24 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         set: OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number' ? OFS_SELECTABLE_COLS_SET.size : null,
       }));
     } catch (_) {}
-    const limit = Math.max(1, Math.min(500, parseInt(String(req.query.limit || ''), 10) || 500));
-    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
-    const incluirExcluidas = String(req.query.incluir_excluidas || '') === '1';
-    const incluirCanceladas = String(req.query.incluir_canceladas || req.query.incluir_excluidas || req.query.incluirExcluidas || '') === '1';
-    const excluirCanceladas = String(req.query.excluir_canceladas || req.query.excluirCanceladas || '') === '1';
-    const empId = req.query.empId ? String(req.query.empId).trim() : '';
-    const clienteId = String(req.query.cliente_id || req.query.clienteId || req.query.cli_id || req.query.cliId || '').trim();
-    const numeroRaw = String(req.query.numero || req.query.of_num || req.query.of || '').trim();
+    const limit = Math.max(1, Math.min(500, parseInt(String(q_limit || ''), 10) || 500));
+    const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
+    const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
+    const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
+    const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
+    const empId = String(q_empId || q_emp_id || '').trim();
+    const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
+    const numeroRaw = String(q_numero || q_of_num || q_of || '').trim();
     const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
-    let statusRaw = req.query.status ? String(req.query.status).trim() : '';
+    let statusRaw = q_status ? String(q_status).trim() : '';
     try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
-    const lite = String(req.query.lite || '') === '1';
-    const from = String(req.query.from || req.query.de || '').trim();
-    const to = String(req.query.to || req.query.ate || '').trim();
-    const dateFieldRaw = String(req.query.date_field || req.query.dateField || '').trim().toLowerCase();
-    const orderByRaw = String(req.query.order_by || req.query.orderBy || '').trim();
-    const orderRaw = String(req.query.order || '').trim().toLowerCase();
+    const lite = String(q_lite || '') === '1';
+    const from = String(q_from || q_de || '').trim();
+    const to = String(q_to || q_ate || '').trim();
+    const dateFieldRaw = String(q_date_field || q_dateField || '').trim().toLowerCase();
+    const orderByRaw = String(q_order_by || q_orderBy || '').trim();
+    const orderRaw = String(q_order || '').trim().toLowerCase();
     const orderAsc = orderRaw === 'asc';
     const orderDir = orderAsc ? 'asc' : 'desc';
     const ALLOWED_ORDER_BY = new Set([
@@ -2269,9 +2309,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       String(offset),
     ].join('|');
     const forceNoCache =
-      String(req.query.nocache || req.query.no_cache || '') === '1' ||
-      String(req.query.cache || '') === '0' ||
-      String(req.query.clear_cache || req.query.clearCache || '') === '1';
+      String(q_nocache || q_no_cache || '') === '1' ||
+      String(q_cache || '') === '0' ||
+      String(q_clear_cache || q_clearCache || '') === '1';
     if (forceNoCache) {
       try { cacheClearPrefix(CACHE_VERSION); } catch (_) {}
     }
@@ -2480,8 +2520,18 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const colProb = colMatch[1];
         console.warn('[OFS GET] removendo coluna:', colProb);
         colsArr = colsArr.filter((c) => c !== colProb);
-        if (orderBy === colProb) orderBy = 'created_at';
-        if (dateCol === colProb) dateCol = 'created_at';
+        if (orderBy === colProb) {
+          if (colProb !== 'created_at' && _ofsSelectableHas('created_at')) orderBy = 'created_at';
+          else if (colProb !== 'updated_at' && _ofsSelectableHas('updated_at')) orderBy = 'updated_at';
+          else if (colProb !== 'id' && _ofsSelectableHas('id')) orderBy = 'id';
+          else orderBy = 'numero';
+        }
+        if (dateCol === colProb) {
+          if (colProb !== 'created_at' && _ofsSelectableHas('created_at')) dateCol = 'created_at';
+          else if (colProb !== 'dia' && _ofsSelectableHas('dia')) dateCol = 'dia';
+          else if (colProb !== 'ent' && _ofsSelectableHas('ent')) dateCol = 'ent';
+          else dateCol = '';
+        }
         if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
         if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
         if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
@@ -2543,17 +2593,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     cacheSet(cacheKey, payload, 10 * 1000);
     return res.json({ ok: true, ...payload });
   } catch (e) {
-    console.error('[OFS GET FATAL ERROR]', e?.message);
-    console.error('[OFS GET STACK]', e?.stack?.split('\n')?.slice(0, 5)?.join(' | '));
-    try {
-      const { data, error } = await supabase
-        .from('ofs')
-        .select('id,numero,status,created_at')
-        .limit(5);
-      console.log('[OFS TEST]', error?.message || 'OK', Array.isArray(data) ? data.length : null);
-    } catch (e2) {
-      console.log('[OFS TEST]', String(e2?.message || e2));
-    }
+    console.error('[OFS 500]', e?.message, String(e?.stack || '').slice(0, 200));
     _logApiError('OFS GET', req, e, { query: req.query });
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
   }
