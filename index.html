@@ -37303,6 +37303,253 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </div> 
         </div> 
       </div>
+
+      <!-- Gráfico + Status OFs --> 
+      <div class="h3fu h3fu3" style="display:grid; 
+        grid-template-columns:1fr 280px;gap:16px"> 
+ 
+        <!-- Gráfico de produção da semana --> 
+        <div style="background:rgba(255,255,255,0.04); 
+          border:0.5px solid rgba(255,255,255,0.08); 
+          border-radius:16px;padding:22px"> 
+          <div style="display:flex;justify-content:space-between; 
+            align-items:center;margin-bottom:20px"> 
+            <div> 
+              <div style="font-size:14px;font-weight:600; 
+                color:rgba(255,255,255,0.9)"> 
+                Produção da semana 
+              </div> 
+              <div style="font-size:12px; 
+                color:rgba(255,255,255,0.4);margin-top:2px"> 
+                OFs concluídas por dia 
+              </div> 
+            </div> 
+            <div style="background:rgba(255,255,255,0.06); 
+              border:0.5px solid rgba(255,255,255,0.1); 
+              border-radius:8px;padding:6px 12px; 
+              font-size:12px;color:rgba(255,255,255,0.6); 
+              cursor:pointer"> 
+              Esta semana ▾ 
+            </div> 
+          </div> 
+ 
+          <div style="position:relative"> 
+            <svg id="h3-chart-svg" width="100%" height="160" 
+              viewBox="0 0 500 160" preserveAspectRatio="none" 
+              xmlns="http://www.w3.org/2000/svg"> 
+              <defs> 
+                <linearGradient id="h3ChartGrad" 
+                  x1="0" y1="0" x2="0" y2="1"> 
+                  <stop offset="0%" stop-color="#4F46E5" 
+                    stop-opacity="0.4"/> 
+                  <stop offset="100%" stop-color="#4F46E5" 
+                    stop-opacity="0"/> 
+                </linearGradient> 
+              </defs> 
+              <line x1="0" y1="30" x2="500" y2="30" 
+                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
+              <line x1="0" y1="65" x2="500" y2="65" 
+                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
+              <line x1="0" y1="100" x2="500" y2="100" 
+                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
+              <line x1="0" y1="135" x2="500" y2="135" 
+                stroke="rgba(255,255,255,0.05)" stroke-width="1"/> 
+              <path id="h3-chart-area" 
+                d="M0,135 L71,120 L143,90 L214,100 L286,60 L357,70 L500,50 L500,160 L0,160 Z" 
+                fill="url(#h3ChartGrad)"/> 
+              <path id="h3-chart-line" class="h3-chart-line" 
+                d="M0,135 L71,120 L143,90 L214,100 L286,60 L357,70 L500,50" 
+                stroke="#6366F1"/> 
+              <circle cx="286" cy="60" r="5" 
+                fill="#4F46E5" stroke="#fff" stroke-width="2"/> 
+              <rect x="256" y="30" width="80" height="28" 
+                rx="6" fill="rgba(79,70,229,0.9)"/> 
+              <text x="296" y="48" text-anchor="middle" 
+                fill="#fff" font-size="11" font-family="Inter" 
+                font-weight="600" id="h3-chart-tooltip"> 
+                Hoje 
+              </text> 
+            </svg> 
+ 
+            <div style="display:flex;justify-content:space-between; 
+              padding:0 4px;margin-top:8px"> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Seg</span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Ter</span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Qua</span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.9);font-weight:600"> 
+                Qui 
+              </span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Sex</span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Sáb</span> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)">Dom</span> 
+            </div> 
+          </div> 
+        </div> 
+ 
+        <!-- Status das OFs (donut simplificado) --> 
+        <div style="background:rgba(255,255,255,0.04); 
+          border:0.5px solid rgba(255,255,255,0.08); 
+          border-radius:16px;padding:22px"> 
+          <div style="font-size:14px;font-weight:600; 
+            color:rgba(255,255,255,0.9);margin-bottom:20px"> 
+            Status das OFs 
+          </div> 
+ 
+          <div style="display:flex;justify-content:center; 
+            margin-bottom:20px;position:relative"> 
+            <svg width="140" height="140" viewBox="0 0 140 140"> 
+              <circle cx="70" cy="70" r="54" 
+                fill="none" stroke="rgba(255,255,255,0.06)" 
+                stroke-width="18"/> 
+              <circle id="h3-donut-aberto" cx="70" cy="70" r="54" 
+                fill="none" stroke="#4F46E5" stroke-width="18" 
+                stroke-dasharray="176 163" stroke-dashoffset="0" 
+                transform="rotate(-90 70 70)"/> 
+              <circle id="h3-donut-prod" cx="70" cy="70" r="54" 
+                fill="none" stroke="#F59E0B" stroke-width="18" 
+                stroke-dasharray="80 259" stroke-dashoffset="-176" 
+                transform="rotate(-90 70 70)"/> 
+              <circle id="h3-donut-ok" cx="70" cy="70" r="54" 
+                fill="none" stroke="#10B981" stroke-width="18" 
+                stroke-dasharray="60 279" stroke-dashoffset="-256" 
+                transform="rotate(-90 70 70)"/> 
+              <circle id="h3-donut-atr" cx="70" cy="70" r="54" 
+                fill="none" stroke="#EF4444" stroke-width="18" 
+                stroke-dasharray="23 316" stroke-dashoffset="-316" 
+                transform="rotate(-90 70 70)"/> 
+              <text x="70" y="65" text-anchor="middle" 
+                fill="#fff" font-size="24" font-family="Inter" 
+                font-weight="800" id="h3-donut-total">—</text> 
+              <text x="70" y="82" text-anchor="middle" 
+                fill="rgba(255,255,255,0.4)" font-size="11" 
+                font-family="Inter">Total</text> 
+            </svg> 
+          </div> 
+ 
+          <div style="display:flex;flex-direction:column;gap:8px"> 
+            <div style="display:flex;align-items:center; 
+              justify-content:space-between"> 
+              <div style="display:flex;align-items:center;gap:8px"> 
+                <div style="width:10px;height:10px;border-radius:50%; 
+                  background:#4F46E5"></div> 
+                <span style="font-size:12px; 
+                  color:rgba(255,255,255,0.6)">Em aberto</span> 
+              </div> 
+              <span id="h3-leg-aberto" 
+                style="font-size:12px;font-weight:600; 
+                color:rgba(255,255,255,0.8)">—</span> 
+            </div> 
+            <div style="display:flex;align-items:center; 
+              justify-content:space-between"> 
+              <div style="display:flex;align-items:center;gap:8px"> 
+                <div style="width:10px;height:10px;border-radius:50%; 
+                  background:#F59E0B"></div> 
+                <span style="font-size:12px; 
+                  color:rgba(255,255,255,0.6)">Em produção</span> 
+              </div> 
+              <span id="h3-leg-prod" 
+                style="font-size:12px;font-weight:600; 
+                color:rgba(255,255,255,0.8)">—</span> 
+            </div> 
+            <div style="display:flex;align-items:center; 
+              justify-content:space-between"> 
+              <div style="display:flex;align-items:center;gap:8px"> 
+                <div style="width:10px;height:10px;border-radius:50%; 
+                  background:#10B981"></div> 
+                <span style="font-size:12px; 
+                  color:rgba(255,255,255,0.6)">Concluídas</span> 
+              </div> 
+              <span id="h3-leg-ok" 
+                style="font-size:12px;font-weight:600; 
+                color:#10B981">—</span> 
+            </div> 
+            <div style="display:flex;align-items:center; 
+              justify-content:space-between"> 
+              <div style="display:flex;align-items:center;gap:8px"> 
+                <div style="width:10px;height:10px;border-radius:50%; 
+                  background:#EF4444"></div> 
+                <span style="font-size:12px; 
+                  color:rgba(255,255,255,0.6)">Atrasadas</span> 
+              </div> 
+              <span id="h3-leg-atr" 
+                style="font-size:12px;font-weight:600; 
+                color:#EF4444">—</span> 
+            </div> 
+          </div> 
+        </div> 
+      </div> 
+ 
+      <!-- Acesso rápido módulos --> 
+      <div class="h3fu h3fu4"> 
+        <div style="font-size:13px;font-weight:600; 
+          color:rgba(255,255,255,0.5);letter-spacing:0.06em; 
+          text-transform:uppercase;margin-bottom:14px"> 
+          Acesso rápido 
+        </div> 
+        <div style="display:grid; 
+          grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); 
+          gap:8px" id="h3-mod-grid"> 
+ 
+          <div class="h3-mod" id="h3mod-pcp"> 
+            <span style="font-size:16px">📋</span> 
+            PCP / Programação 
+          </div> 
+          <div class="h3-mod" id="h3mod-maquina"> 
+            <span style="font-size:16px">🏭</span> 
+            OFs por Máquina 
+          </div> 
+          <div class="h3-mod" id="h3mod-chapas"> 
+            <span style="font-size:16px">📦</span> 
+            Estoque de Chapas 
+          </div> 
+          <div class="h3-mod" id="h3mod-clientes"> 
+            <span style="font-size:16px">👥</span> 
+            Clientes 
+          </div> 
+          <div class="h3-mod" id="h3mod-fornecedores"> 
+            <span style="font-size:16px">🏢</span> 
+            Fornecedores 
+          </div> 
+          <div class="h3-mod" id="h3mod-relatorios"> 
+            <span style="font-size:16px">📊</span> 
+            Relatórios 
+          </div> 
+          <div class="h3-mod" id="h3mod-dashboard"> 
+            <span style="font-size:16px">📈</span> 
+            Dashboard 
+          </div> 
+          <div class="h3-mod" id="h3mod-mapa"> 
+            <span style="font-size:16px">🗺️</span> 
+            Mapas 
+          </div> 
+          <div class="h3-mod" id="h3mod-analises"> 
+            <span style="font-size:16px">🔬</span> 
+            Análises 
+          </div> 
+          <div class="h3-mod" id="h3mod-config"> 
+            <span style="font-size:16px">⚙️</span> 
+            Configurações 
+          </div> 
+          <div class="h3-mod" 
+            style="background:rgba(99,102,241,0.08); 
+            border-color:rgba(99,102,241,0.2); 
+            color:rgba(165,180,252,0.8)" id="h3mod-jarvis"> 
+            <span style="font-size:16px">🤖</span> 
+            Jarvis IA 
+          </div> 
+          <div class="h3-mod" id="h3mod-simulador"> 
+            <span style="font-size:16px">♻️</span> 
+            Simulador 
+          </div> 
+        </div> 
+      </div> 
     </div>
 
     <div class="h3-right">
