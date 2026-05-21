@@ -46708,8 +46708,13 @@ async function _homeKpis() {
     const token = localStorage.getItem('token') || ''; 
     const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
     const hoje = new Date().toISOString().slice(0,10); 
+    const tresM = new Date(); 
+    tresM.setMonth(tresM.getMonth() - 3); 
+    const dataCorte = tresM.toISOString().slice(0,10); 
  
-    const r = await fetch('/api/ofs?lite=1&limit=2000&nocache=1' + 
+    const r = await fetch('/api/ofs?lite=1&limit=500&nocache=1' + 
+      '&from=' + dataCorte + 
+      '&date_field=created_at' + 
       (empId ? '&emp_id='+empId : ''), { 
       headers: {'Authorization':'Bearer '+token} 
     }); 
@@ -46769,7 +46774,7 @@ async function _homeOfsUrgentes() {
     const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
     const hoje = new Date().toISOString().slice(0,10); 
  
-    const r = await fetch('/api/ofs?lite=1&limit=300&nocache=1' + 
+    const r = await fetch('/api/ofs?lite=1&limit=100&nocache=1' + 
       (empId ? '&emp_id=' + empId : ''), { 
       headers: {'Authorization':'Bearer ' + token} 
     }); 

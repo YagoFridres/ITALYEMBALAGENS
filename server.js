@@ -2260,7 +2260,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         set: OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number' ? OFS_SELECTABLE_COLS_SET.size : null,
       }));
     } catch (_) {}
-    const limit = Math.max(1, Math.min(500, parseInt(String(q_limit || ''), 10) || 500));
+    const limitReq = Math.min(Math.max(1, (Number(q_limit || 200) || 200)), 300);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
@@ -2288,6 +2288,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!ALLOWED_ORDER_BY.has(orderBy)) orderBy = 'created_at';
     if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
+    const temFiltroData = !!(from || to);
+    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!status;
+    const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
+
     const CACHE_VERSION = 'ofs_v4';
     const cacheKey = [
       CACHE_VERSION,
@@ -2305,7 +2309,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
       incluirCanceladas ? 'incl_can1' : 'incl_can0',
       excluirCanceladas ? 'exc_can1' : 'exc_can0',
-      String(limit),
+      String(limitFinal),
       String(offset),
     ].join('|');
     const forceNoCache =
@@ -2468,7 +2472,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .from('ofs')
         .select(sel, { count: 'exact' })
         .order(orderBy, { ascending: orderAsc })
-        .range(offset, offset + limit - 1);
+        .range(offset, offset + limitFinal - 1);
 
       if (status) q = q.eq('status', status);
 
@@ -2498,7 +2502,31 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         q = q.lte(dateCol || 'data_entrega', toIso);
       }
 
-      const r = await q;
+      let r = null;
+      try {
+        if (typeof q.timeout === 'function') {
+          r = await q.timeout(8000);
+        } else if (typeof q.abortSignal === 'function') {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          try {
+            r = await q.abortSignal(controller.signal);
+          } finally {
+            clearTimeout(timeoutId);
+          }
+        } else {
+          r = await q;
+        }
+      } catch (e) {
+        const isAbort = e?.name === 'AbortError' || String(e?.message || '').toLowerCase().includes('abort');
+        if (isAbort) {
+          return res.status(504).json({
+            ok: false,
+            error: 'Query demorou demais. Use filtros para reduzir o resultado.',
+          });
+        }
+        throw e;
+      }
 
       if (!r.error) {
         data = r.data || [];
@@ -2554,7 +2582,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     if (!data && rawErr) {
       try { console.error('[OFS GET QUERY ERROR]', rawErr?.message || rawErr); } catch (_) {}
-      _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit, offset, empId, status, from, to, lite });
+      _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit: limitFinal, offset, empId, status, from, to, lite });
       return res.status(500).json({ ok: false, error: String(rawErr.message || rawErr), rid: req._rid || null });
     }
 
