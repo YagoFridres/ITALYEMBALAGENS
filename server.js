@@ -14064,9 +14064,35 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
       if(dt && (!cur.ultima_of || dt > cur.ultima_of)) cur.ultima_of = dt;
       agg.set(cid, cur);
     });
+
+    const mesAtual = String(hoje || '').slice(0, 7);
+    const mesStartIso = (/^\d{4}-\d{2}$/.test(mesAtual) ? (mesAtual + '-01T00:00:00') : (de30 ? (de30 + 'T00:00:00') : null));
+    const valorPorCli = {};
+    const ofsPorCli = {};
+    if (mesStartIso) {
+      let qMes = supabase
+        .from('ofs')
+        .select('cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,status,deleted_at,emp_id')
+        .gte('created_at', mesStartIso)
+        .is('deleted_at', null)
+        .not('status', 'in', '("Cancelada","Cancelado")')
+        .limit(5000);
+      if (empId) qMes = qMes.eq('emp_id', empId);
+      const { data: ofsAtivas } = await qMes;
+      (Array.isArray(ofsAtivas) ? ofsAtivas : []).forEach((o) => {
+        const cid = cliKey(o);
+        if (!cid) return;
+        const v = valOf(o);
+        valorPorCli[cid] = (valorPorCli[cid] || 0) + (Number(v) || 0);
+        ofsPorCli[cid] = (ofsPorCli[cid] || 0) + 1;
+      });
+    }
+
     const out = clientes.map((c)=>{
       const id = String(c?.id||'').trim();
       const a = agg.get(id) || { total_ofs_mes:0, valor_mes:0, total_ofs_3m:0, valor_3m:0, total_ofs_ano:0, valor_ano:0, ultima_of:'' };
+      const mesVal = Number(valorPorCli[id] || 0) || 0;
+      const mesOfs = Math.trunc(Number(ofsPorCli[id] || 0) || 0);
       return {
         id,
         nome: String(c?.nome||'').trim(),
@@ -14075,8 +14101,8 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
         uf: String(c?.uf||'').trim() || null,
         tel: String(c?.tel || c?.telefone || '').trim() || null,
         ultima_of: a.ultima_of || null,
-        total_ofs_mes: a.total_ofs_mes,
-        valor_mes: Number((Number(a.valor_mes||0)).toFixed(2)),
+        total_ofs_mes: mesOfs,
+        valor_mes: Number(mesVal.toFixed(2)),
         total_ofs_3m: a.total_ofs_3m,
         valor_3m: Number((Number(a.valor_3m||0)).toFixed(2)),
         total_ofs_ano: a.total_ofs_ano,
@@ -14139,7 +14165,7 @@ app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
     for (const c of list.slice(0, limit)) {
       const id = String(c?.id || '').trim();
       const cidade = String(c?.cidade || '').trim();
-      const estado = String(c?.estado || c?.uf || '').trim();
+      const estado = String(c?.estado || c?.uf || 'SC').trim();
       if (!id || !cidade) continue;
       if (seen.has(id)) continue;
       seen.add(id);
@@ -14162,11 +14188,13 @@ app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
           q: qStr,
           format: 'jsonv2',
           limit: '1',
+          countrycodes: 'br',
         }).toString();
 
         const r = await fetch(url, {
           headers: {
             'Accept': 'application/json',
+            'Accept-Language': 'pt-BR,pt;q=0.9',
             'User-Agent': 'ItalyEmbalagensERP/1.0 (admin geocode)',
           }
         });
@@ -14175,6 +14203,7 @@ app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
         const lat = hit?.lat != null ? Number(hit.lat) : NaN;
         const lng = hit?.lon != null ? Number(hit.lon) : NaN;
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        if (lat < -33 || lat > 5 || lng < -74 || lng > -28) continue;
 
         await supabase.from('clientes').update({ lat, lng }).eq('id', id);
         out.push({ id, lat, lng, cidade, estado });

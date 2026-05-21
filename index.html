@@ -6841,6 +6841,63 @@ async function confirmarMoverOFMaq(){
   }
 }
 
+async function _ofmaqBuscarOFs(dataSel, limite, empId){
+  const data = String(dataSel || '').slice(0,10) || new Date().toISOString().slice(0,10);
+  const lim = Math.max(1, Math.min(800, Math.trunc(Number(limite || 500) || 500)));
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  const headers = token ? { Authorization: 'Bearer ' + token } : {};
+
+  const fetchDia = async (dateField, from, to)=>{
+    const params = new URLSearchParams({
+      date_field: String(dateField||''),
+      from: String(from||data).slice(0,10),
+      to: String(to||data).slice(0,10),
+      nocache: '1',
+      excluir_canceladas: '1',
+      limit: String(lim),
+    });
+    const eid = String(empId||'').trim();
+    if(eid) params.set('empId', eid);
+    const r = await fetch(base + '/api/ofs?' + params.toString(), { headers });
+    const j = await r.json().catch(()=>null);
+    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    return (rows || []).map(normalizeOF);
+  };
+
+  const entRows = await fetchDia('data_entrega', data, data);
+  if(entRows.length >= lim) return entRows;
+
+  const prodRows = await fetchDia('data_producao', data, data);
+  const entOf = (o) => String((o?.ent || o?.data_entrega || o?.dataEntrega || '') || '').slice(0,10);
+  const diaOf = (o) => String((o?.dia || o?.data_producao || o?.dataProducao || '') || '').slice(0,10);
+  const prodOnly = (prodRows || []).filter((o)=> (!entOf(o)) && diaOf(o) === data);
+
+  const d0 = new Date(data + 'T00:00:00');
+  const dow = d0.getDay();
+  const diffToMon = (dow === 0) ? -6 : (1 - dow);
+  const mon = new Date(d0); mon.setDate(mon.getDate() + diffToMon);
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  const weekFrom = mon.toISOString().slice(0,10);
+  const weekTo = sun.toISOString().slice(0,10);
+
+  let semData = [];
+  try{
+    const createdRows = await fetchDia('created_at', weekFrom, weekTo);
+    semData = (createdRows || []).filter((o)=>!entOf(o) && !diaOf(o));
+  }catch(e){}
+
+  const seen = new Set();
+  const merged = [...(entRows||[]), ...(prodOnly||[]), ...(semData||[])].filter((o)=>{
+    const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
+    if(!id) return false;
+    if(seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  return merged;
+}
+
 async function renderOFsPorMaquina(){
   if(document.hidden) return;
   if(_ofsMaqRenderizando) return;
@@ -6869,15 +6926,13 @@ async function renderOFsPorMaquina(){
           ${Array.from({length:6}).map(()=>`<div style="height:74px;border:1px solid var(--border);border-radius:10px;background:var(--surface);opacity:.9"></div>`).join('')}
         </div>
       </div>`;
-      const headersAuth = ()=>{
+    const headersAuth = ()=>{
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
         return token ? { Authorization: 'Bearer ' + token } : {};
       };
-      const params = new URLSearchParams({
-        limit: '800',
-        excluir_canceladas: '1',
-        nocache: '1'
-      });
+    const isMobileScreen = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
+    const limitBase = isMobileScreen ? '200' : '500';
+    const params = new URLSearchParams({ limit: limitBase, excluir_canceladas: '1', nocache: '1' });
       if(EMP_FILTRO) params.set('empId', EMP_FILTRO);
       const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
       const resposta = await fetch(base + '/api/ofs?' + params.toString(), { headers: headersAuth() });
@@ -6916,44 +6971,11 @@ async function renderOFsPorMaquina(){
     };
     const dataRef = (o) => diaExibicaoOF(o) || entOf(o);
 
-    const isDesktop = !(document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) && (window.innerWidth > 768);
-    if(isDesktop && modo === 'data' && dataSelecionada){
+    if(modo === 'data' && dataSelecionada){
       try{
-        const headersAuth = ()=>{
-          const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-          return token ? { Authorization: 'Bearer ' + token } : {};
-        };
-        const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-        const fetchDia = async (dateField)=>{
-          const params = new URLSearchParams({
-            limit: '800',
-            excluir_canceladas: '1',
-            nocache: '1',
-            date_field: String(dateField||''),
-            from: dataSelecionada,
-            to: dataSelecionada,
-          });
-          if(EMP_FILTRO) params.set('empId', EMP_FILTRO);
-          const resp = await fetch(base + '/api/ofs?' + params.toString(), { headers: headersAuth() });
-          const j = await resp.json().catch(()=>null);
-          const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
-          return (rows || []).map(normalizeOF);
-        };
-        const [entRows, prodRows] = await Promise.all([fetchDia('data_entrega'), fetchDia('data_producao')]);
-        const prodOnly = (prodRows || []).filter((o)=>{
-          const e = entOf(o);
-          const p = diaOf(o);
-          return (!e) && p === dataSelecionada;
-        });
-        const seen = new Set();
-        const merged = [...(entRows||[]), ...(prodOnly||[])].filter((o)=>{
-          const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
-          if(!id) return false;
-          if(seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        });
-        lista = merged;
+        const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
+        const fetched = await _ofmaqBuscarOFs(dataSelecionada, limitBase, empId);
+        if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
         try{ window._ofmaqForceReload = false; }catch(e){}
       }catch(e){}
     }
@@ -15279,7 +15301,12 @@ function _mapcliFillVendedorSelect(){
 
 function _mapcliGeoCacheGet(){
   try{
-    const raw = localStorage.getItem('italy_geo_v2') || localStorage.getItem('italy_geo_cache_v1') || localStorage.getItem('mapa_clientes_geo_v1');
+    const raw =
+      localStorage.getItem('italy_geo_v3')
+      || localStorage.getItem('italy_geo_v2')
+      || localStorage.getItem('italy_geo_cache_v1')
+      || localStorage.getItem('italy_geo_v1')
+      || localStorage.getItem('mapa_clientes_geo_v1');
     const obj = raw ? JSON.parse(raw) : null;
     return (obj && typeof obj === 'object') ? obj : {};
   }catch(e){
@@ -15287,7 +15314,21 @@ function _mapcliGeoCacheGet(){
   }
 }
 function _mapcliGeoCacheSet(obj){
-  try{ localStorage.setItem('italy_geo_v2', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+  try{ localStorage.setItem('italy_geo_v3', JSON.stringify(obj && typeof obj==='object' ? obj : {})); }catch(e){}
+}
+
+function _mapcliIsBrasilLatLng(lat, lng){
+  const la = Number(lat);
+  const ln = Number(lng);
+  if(!Number.isFinite(la) || !Number.isFinite(ln)) return false;
+  return la >= -33 && la <= 5 && ln >= -74 && ln <= -28;
+}
+
+function _mapcliCoordKey(cidade, estado){
+  const c = String(cidade||'').trim().toLowerCase();
+  const e = String(estado||'').trim().toLowerCase();
+  if(!c) return '';
+  return (c + '_' + e).trim();
 }
 
 function _mapcliColorByRecencia(ultimaOfIso){
@@ -15385,9 +15426,13 @@ function _mapcliUpsertMarker(c){
     const st = window._mapCliState || null;
     if(!st || !st.map || !st.layer || !window.L) return;
     const id = String(c?.id||'').trim();
-    const lat = Number(c?.lat);
-    const lng = Number(c?.lng);
+    const latRaw = c?.lat;
+    const lngRaw = c?.lng;
+    if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return;
+    const lat = parseFloat(String(latRaw));
+    const lng = parseFloat(String(lngRaw));
     if(!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if(!_mapcliIsBrasilLatLng(lat, lng)) return;
     const col = _mapcliColorByRecencia(c?.ultima_of);
     const mk = window.L.circleMarker([lat, lng], {
       radius: 8,
@@ -15427,20 +15472,35 @@ async function _mapcliGeocodeMissing(list){
     const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
     const empSel = String(document.getElementById('mapcli-emp')?.value||'').trim();
     const empId = empSel || (EMP_FILTRO ? String(EMP_FILTRO) : '');
-    const toSend = [];
-    (list||[]).slice(0, 8).forEach((c)=>{
+    const byCity = {};
+    (list||[]).forEach((c)=>{
       const id = String(c?.id||'').trim();
       const cidade = String(c?.cidade||'').trim();
-      const estado = String(c?.estado || c?.uf || '').trim();
+      const estado = String(c?.estado || c?.uf || 'SC').trim();
       if(!id || !cidade) return;
-      const cached = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
-      if(cached && Number.isFinite(Number(cached.lat)) && Number.isFinite(Number(cached.lng))){
-        c.lat = Number(cached.lat);
-        c.lng = Number(cached.lng);
-        _mapcliUpsertMarker(c);
+      const key = _mapcliCoordKey(cidade, estado);
+      if(!key) return;
+      if(!byCity[key]) byCity[key] = { cidade, estado, ids: [], clientes: [] };
+      byCity[key].ids.push(id);
+      byCity[key].clientes.push(c);
+    });
+
+    const toSend = [];
+    Object.keys(byCity).slice(0, 60).forEach((key)=>{
+      const g = byCity[key];
+      const cached = cache[key] && typeof cache[key] === 'object' ? cache[key] : null;
+      if(cached && _mapcliIsBrasilLatLng(cached.lat, cached.lng)){
+        g.clientes.forEach((c)=>{
+          c.lat = Number(cached.lat);
+          c.lng = Number(cached.lng);
+          _mapcliUpsertMarker(c);
+        });
         return;
       }
-      toSend.push({ id, cidade, estado });
+      if(cached) delete cache[key];
+      const first = g && Array.isArray(g.clientes) ? g.clientes[0] : null;
+      const firstId = first ? String(first.id||'').trim() : '';
+      if(firstId) toSend.push({ id: firstId, cidade: g.cidade, estado: g.estado });
     });
 
     if(toSend.length && _apiConectado && CURRENT_USER && token){
@@ -15457,16 +15517,32 @@ async function _mapcliGeocodeMissing(list){
           const id = String(g?.id||'').trim();
           const lat = Number(g?.lat);
           const lng = Number(g?.lng);
-          if(!id || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-          cache[id] = { lat, lng, cidade: g?.cidade, estado: g?.estado, ts: Date.now() };
-          const c = (list||[]).find(x=>String(x?.id||'').trim()===id) || null;
-          if(c){ c.lat = lat; c.lng = lng; _mapcliUpsertMarker(c); }
+          const cidade = String(g?.cidade||'').trim();
+          const estado = String(g?.estado||'SC').trim();
+          const key = _mapcliCoordKey(cidade, estado);
+          if(!id || !key || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          if(!_mapcliIsBrasilLatLng(lat, lng)) return;
+          cache[key] = { lat, lng, cidade, estado, ts: Date.now() };
+          const group = byCity[key];
+          const targets = group && Array.isArray(group.clientes) ? group.clientes : ((list||[]).filter(x=>String(x?.id||'').trim()===id));
+          (targets||[]).forEach((c)=>{
+            c.lat = lat;
+            c.lng = lng;
+            _mapcliUpsertMarker(c);
+          });
         });
         _mapcliGeoCacheSet(cache);
       }catch(e){}
     }
 
-    const ainda = (list||[]).filter(c=>!(Number.isFinite(Number(c?.lat)) && Number.isFinite(Number(c?.lng)))).slice(0, 3);
+    const ainda = (list||[]).filter(c=>{
+      const latRaw = c?.lat;
+      const lngRaw = c?.lng;
+      if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return true;
+      const lat = parseFloat(String(latRaw));
+      const lng = parseFloat(String(lngRaw));
+      return !_mapcliIsBrasilLatLng(lat, lng);
+    }).slice(0, 3);
     if(ainda.length){
       const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
       let done = 0;
@@ -15474,14 +15550,15 @@ async function _mapcliGeocodeMissing(list){
         if(String(window._PAGE_ATUAL||'') !== 'mapa-clientes') break;
         const id = String(c?.id||'').trim();
         const cidade = String(c?.cidade||'').trim();
-        const estado = String(c?.estado || c?.uf || '').trim();
+        const estado = String(c?.estado || c?.uf || 'SC').trim();
         if(!id || !cidade) continue;
         done += 1;
         if(progEl) progEl.textContent = `Geocodificando (fallback) ${done}/${ainda.length}...`;
         const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
           q: [cidade, estado, 'Brasil'].filter(Boolean).join(', '),
           format: 'jsonv2',
-          limit: '1'
+          limit: '1',
+          countrycodes: 'br',
         }).toString();
         try{
           const resp = await fetch(url, { headers: { 'Accept':'application/json' } });
@@ -15489,8 +15566,9 @@ async function _mapcliGeocodeMissing(list){
           const hit = Array.isArray(j) && j[0] ? j[0] : null;
           const lat = hit?.lat != null ? Number(hit.lat) : NaN;
           const lng = hit?.lon != null ? Number(hit.lon) : NaN;
-          if(Number.isFinite(lat) && Number.isFinite(lng)){
-            cache[id] = { lat, lng, cidade, estado, ts: Date.now() };
+          const key = _mapcliCoordKey(cidade, estado);
+          if(Number.isFinite(lat) && Number.isFinite(lng) && key && _mapcliIsBrasilLatLng(lat, lng)){
+            cache[key] = { lat, lng, cidade, estado, ts: Date.now() };
             _mapcliGeoCacheSet(cache);
             c.lat = lat;
             c.lng = lng;
@@ -15974,7 +16052,14 @@ async function renderMapaClientes(force){
       _mapcliClearMarkers();
       filtered.forEach(_mapcliUpsertMarker);
       _mapcliRenderSide(filtered);
-      _mapcliGeocodeMissing(filtered.filter(c=>!c.lat && !c.lng));
+      _mapcliGeocodeMissing(filtered.filter(c=>{
+        const latRaw = c?.lat;
+        const lngRaw = c?.lng;
+        if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return true;
+        const lat = parseFloat(String(latRaw));
+        const lng = parseFloat(String(lngRaw));
+        return !_mapcliIsBrasilLatLng(lat, lng);
+      }));
       return;
     }
 
@@ -16053,8 +16138,9 @@ async function renderMapaClientes(force){
     const cache = _mapcliGeoCacheGet();
     const merged = data.map((c)=>{
       const id = String(c?.id||'').trim();
-      const cc = cache[id] && typeof cache[id] === 'object' ? cache[id] : null;
-      if(cc && Number.isFinite(Number(cc.lat)) && Number.isFinite(Number(cc.lng))){
+      const key = _mapcliCoordKey(c?.cidade, c?.estado || c?.uf || 'SC');
+      const cc = (key && cache[key] && typeof cache[key] === 'object') ? cache[key] : ((cache[id] && typeof cache[id] === 'object') ? cache[id] : null);
+      if(cc && _mapcliIsBrasilLatLng(cc.lat, cc.lng)){
         return { ...c, lat:Number(cc.lat), lng:Number(cc.lng) };
       }
       return { ...c };
@@ -16063,7 +16149,14 @@ async function renderMapaClientes(force){
     _mapcliClearMarkers();
     filtered.forEach(_mapcliUpsertMarker);
     _mapcliRenderSide(filtered);
-    _mapcliGeocodeMissing(filtered.filter(c=>!c.lat && !c.lng));
+    _mapcliGeocodeMissing(filtered.filter(c=>{
+      const latRaw = c?.lat;
+      const lngRaw = c?.lng;
+      if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return true;
+      const lat = parseFloat(String(latRaw));
+      const lng = parseFloat(String(lngRaw));
+      return !_mapcliIsBrasilLatLng(lat, lng);
+    }));
     try{
       const st = window._mapCliState || {};
       const last = Number(st.roteiroLoadedAt||0) || 0;
@@ -16079,6 +16172,11 @@ async function renderMapaClientes(force){
 
 function _mapaClientes_init(){
   try{
+    try {
+      localStorage.removeItem('italy_geo_v2');
+      localStorage.removeItem('italy_geo_cache_v1');
+      localStorage.removeItem('italy_geo_v1');
+    } catch(_) {}
     renderMapaClientes(true);
   }catch(e){
     try{ console.error('[MAPA] erro init', e); }catch(_){}
@@ -44322,14 +44420,19 @@ window.atualizarChapas = async function(){
   }
 
   async function mobileFetchOfsApi(empId){
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-    const url = base + '/api/ofs?limit=800&excluir_canceladas=1&nocache=1' + (empId ? ('&empId=' + encodeURIComponent(String(empId))) : '');
-    const r = await fetch(url, {
-      headers: { Authorization: 'Bearer ' + String(token || '') }
-    });
-    const j = await r.json().catch(()=>null);
-    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    const d = clampIso(mobileState.maqDate || todayIso());
+    const lim = mobileState.maqShowAll ? 200 : 200;
+    if(mobileState.maqShowAll){
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const url = base + '/api/ofs?limit=' + String(lim) + '&excluir_canceladas=1&nocache=1' + (empId ? ('&empId=' + encodeURIComponent(String(empId))) : '');
+      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + String(token || '') } });
+      const j = await r.json().catch(()=>null);
+      const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      try{ sessionStorage.setItem(MAQ_OFS_CACHE_KEY, JSON.stringify(rows || [])); }catch(e){}
+      return mobileFilterEmp(rows, empId);
+    }
+    const rows = await _ofmaqBuscarOFs(d, lim, empId);
     try{ sessionStorage.setItem(MAQ_OFS_CACHE_KEY, JSON.stringify(rows || [])); }catch(e){}
     return mobileFilterEmp(rows, empId);
   }
