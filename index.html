@@ -1159,6 +1159,45 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
   gap:10px;
 }
 
+@keyframes homeSlideUp { 
+  from { opacity:0; transform:translateY(16px); } 
+  to   { opacity:1; transform:translateY(0); } 
+} 
+.home-kpi { 
+  animation: homeSlideUp 0.4s ease forwards; 
+  opacity:0; 
+} 
+.home-kpi:nth-child(1){animation-delay:0.05s} 
+.home-kpi:nth-child(2){animation-delay:0.10s} 
+.home-kpi:nth-child(3){animation-delay:0.15s} 
+.home-kpi:nth-child(4){animation-delay:0.20s} 
+.home-kpi:nth-child(5){animation-delay:0.25s} 
+.home-kpi:nth-child(6){animation-delay:0.30s} 
+.home-modulo { 
+  animation: homeSlideUp 0.35s ease forwards; 
+  opacity:0; 
+} 
+.home-modulo:nth-child(1){animation-delay:0.10s} 
+.home-modulo:nth-child(2){animation-delay:0.14s} 
+.home-modulo:nth-child(3){animation-delay:0.18s} 
+.home-modulo:nth-child(4){animation-delay:0.22s} 
+.home-modulo:nth-child(5){animation-delay:0.26s} 
+.home-modulo:nth-child(6){animation-delay:0.30s} 
+.home-modulo:nth-child(7){animation-delay:0.34s} 
+.home-modulo:nth-child(8){animation-delay:0.38s} 
+.home-modulo:nth-child(9){animation-delay:0.42s} 
+.home-modulo:nth-child(10){animation-delay:0.46s} 
+.home-modulo:nth-child(11){animation-delay:0.50s} 
+.home-modulo:nth-child(12){animation-delay:0.54s} 
+@media(max-width:900px){ 
+  .home-grid-main{grid-template-columns:1fr !important;} 
+  .home-grid-main > div:last-child{order:-1} 
+} 
+@media(max-width:600px){ 
+  .home-pad{padding:16px !important;} 
+  #tela-home{padding-bottom:80px} 
+} 
+
 </style>
 </head>
 <body data-device="desktop">
@@ -35958,6 +35997,382 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 <!-- CONTENT -->
 <div class="content">
+
+<div id="tela-home" class="tela" style="display:none; 
+  min-height:100vh;background:#0a0f1a; 
+  font-family:'Inter',system-ui,sans-serif;overflow-y:auto"> 
+
+  <!-- HEADER --> 
+  <div class="home-pad" style="padding:28px 32px 0; 
+    display:flex;justify-content:space-between; 
+    align-items:center;flex-wrap:wrap;gap:12px"> 
+    <div> 
+      <div id="home-greeting" style="font-size:13px; 
+        color:rgba(255,255,255,0.4);margin-bottom:4px; 
+        letter-spacing:0.03em">Carregando...</div> 
+      <h1 id="home-welcome" style="font-size:26px; 
+        font-weight:600;color:#fff;margin:0; 
+        letter-spacing:-0.02em">Bem-vindo 👋</h1> 
+      <div style="font-size:14px;color:rgba(255,255,255,0.4); 
+        margin-top:4px">Italy Embalagens — ERP/PCP</div> 
+    </div> 
+    <button id="home-btn-pcp" 
+      style="padding:12px 24px;font-size:14px;font-weight:500; 
+      background:linear-gradient(135deg,#185FA5,#1D9E75); 
+      border:none;border-radius:10px;color:#fff;cursor:pointer; 
+      box-shadow:0 4px 20px rgba(24,95,165,0.4); 
+      transition:all 0.2s;white-space:nowrap" 
+      onmouseover="this.style.transform='translateY(-1px)'" 
+      onmouseout="this.style.transform='translateY(0)'"> 
+      Acessar PCP → 
+    </button> 
+  </div> 
+
+  <!-- KPIs --> 
+  <div class="home-pad" style="padding:24px 32px 0"> 
+    <div style="display:grid; 
+      grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); 
+      gap:12px"> 
+
+      <div class="home-kpi" id="kpi-box-abertas" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(255,255,255,0.08); 
+        border-radius:12px;padding:16px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(255,255,255,0.07)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">OFs em aberto</div> 
+        <div id="kpi-ofs-abertas" style="font-size:28px; 
+          font-weight:600;color:#fff;line-height:1">—</div> 
+        <div style="font-size:11px;color:#1D9E75;margin-top:6px"> 
+          ▸ Ver todas</div> 
+      </div> 
+
+      <div class="home-kpi" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(255,255,255,0.08); 
+        border-radius:12px;padding:16px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(255,255,255,0.07)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">Concluídas hoje</div> 
+        <div id="kpi-ofs-hoje" style="font-size:28px; 
+          font-weight:600;color:#1D9E75;line-height:1">—</div> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.3); 
+          margin-top:6px">▸ Detalhes</div> 
+      </div> 
+
+      <div class="home-kpi" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(226,75,74,0.25); 
+        border-radius:12px;padding:16px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(226,75,74,0.08)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">Atrasadas</div> 
+        <div id="kpi-atrasadas" style="font-size:28px; 
+          font-weight:600;color:#E24B4A;line-height:1">—</div> 
+        <div style="font-size:11px;color:#E24B4A;margin-top:6px"> 
+          ▸ Urgente</div> 
+      </div> 
+
+      <div class="home-kpi" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(239,159,39,0.2); 
+        border-radius:12px;padding:16px;cursor:pointer; 
+        transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(239,159,39,0.06)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">Urgentes</div> 
+        <div id="kpi-urgentes" style="font-size:28px; 
+          font-weight:600;color:#EF9F27;line-height:1">—</div> 
+        <div style="font-size:11px;color:#EF9F27;margin-top:6px"> 
+          ▸ Prioridade</div> 
+      </div> 
+
+      <div class="home-kpi" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(255,255,255,0.08); 
+        border-radius:12px;padding:16px;transition:all 0.2s"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">Em produção</div> 
+        <div id="kpi-producao" style="font-size:28px; 
+          font-weight:600;color:#EF9F27;line-height:1">—</div> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.3); 
+          margin-top:6px">▸ Máquinas</div> 
+      </div> 
+
+      <div class="home-kpi" 
+        style="background:rgba(255,255,255,0.04); 
+        border:0.5px solid rgba(29,158,117,0.25); 
+        border-radius:12px;padding:16px;transition:all 0.2s" 
+        onmouseover="this.style.background='rgba(29,158,117,0.06)'" 
+        onmouseout="this.style.background='rgba(255,255,255,0.04)'"> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
+          text-transform:uppercase;letter-spacing:0.08em; 
+          margin-bottom:8px">Faturamento mês</div> 
+        <div id="kpi-faturamento" style="font-size:20px; 
+          font-weight:600;color:#1D9E75;line-height:1">—</div> 
+        <div id="kpi-fat-variacao" 
+          style="font-size:11px;color:rgba(255,255,255,0.3); 
+          margin-top:6px">▸ vs anterior</div> 
+      </div> 
+    </div> 
+  </div> 
+
+  <!-- GRID PRINCIPAL --> 
+  <div class="home-pad home-grid-main" 
+    style="padding:20px 32px;display:grid; 
+    grid-template-columns:1fr 320px;gap:20px; 
+    align-items:start"> 
+
+    <!-- MÓDULOS --> 
+    <div> 
+      <div style="font-size:11px;font-weight:500; 
+        color:rgba(255,255,255,0.3);text-transform:uppercase; 
+        letter-spacing:0.1em;margin-bottom:14px"> 
+        Acesso rápido 
+      </div> 
+      <div style="display:grid; 
+        grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); 
+        gap:10px" id="home-modulos-grid"> 
+
+        <div class="home-modulo" id="hmod-pcp" 
+          style="background:rgba(24,95,165,0.12); 
+          border:0.5px solid rgba(24,95,165,0.3); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(24,95,165,0.22)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(24,95,165,0.12)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">📋</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">PCP</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Programação</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-maquina" 
+          style="background:rgba(29,158,117,0.1); 
+          border:0.5px solid rgba(29,158,117,0.3); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(29,158,117,0.2)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(29,158,117,0.1)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">🏭</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">OFs Máquina</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Produção</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-estoque" 
+          style="background:rgba(239,159,39,0.1); 
+          border:0.5px solid rgba(239,159,39,0.25); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(239,159,39,0.18)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(239,159,39,0.1)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">📦</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Estoque</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Chapas</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-clientes" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">👥</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Clientes</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Cadastros</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-fornecedores" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">🏢</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Fornecedores</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Cadastros</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-compras" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">🛒</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Compras</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Papelão</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-relatorios" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">📊</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Relatórios</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Análises</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-dashboard" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">📈</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Dashboard</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Visão geral</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-mapa" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">🗺️</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Mapa</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Clientes</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-jarvis" 
+          style="background:linear-gradient(135deg,rgba(24,95,165,0.15),rgba(29,158,117,0.1)); 
+          border:0.5px solid rgba(24,95,165,0.4); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s;position:relative" 
+          onmouseover="this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.transform='translateY(0)'"> 
+          <div style="position:absolute;top:8px;right:8px; 
+            width:7px;height:7px;border-radius:50%; 
+            background:#1D9E75; 
+            box-shadow:0 0 6px rgba(29,158,117,0.8)"></div> 
+          <div style="font-size:22px;margin-bottom:8px">🤖</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Jarvis IA</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Assistente</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-simulador" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">♻️</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Simulador</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Desperdício</div> 
+        </div> 
+
+        <div class="home-modulo" id="hmod-config" 
+          style="background:rgba(255,255,255,0.05); 
+          border:0.5px solid rgba(255,255,255,0.1); 
+          border-radius:12px;padding:16px 14px; 
+          cursor:pointer;transition:all 0.2s" 
+          onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.transform='translateY(-2px)'" 
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.transform='translateY(0)'"> 
+          <div style="font-size:22px;margin-bottom:8px">⚙️</div> 
+          <div style="font-size:13px;font-weight:500;color:#fff">Config.</div> 
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Sistema</div> 
+        </div> 
+      </div> 
+    </div> 
+
+    <!-- PAINEL DIREITO --> 
+    <div style="display:flex;flex-direction:column;gap:16px"> 
+
+      <!-- Visual glassmorphism --> 
+      <div style="background:linear-gradient(135deg, 
+          rgba(24,95,165,0.2),rgba(29,158,117,0.15)); 
+        border:0.5px solid rgba(255,255,255,0.12); 
+        border-radius:16px;padding:24px;position:relative; 
+        overflow:hidden;text-align:center"> 
+        <div style="position:absolute;top:-40px;right:-40px; 
+          width:150px;height:150px;border-radius:50%; 
+          background:radial-gradient(circle, 
+            rgba(24,95,165,0.3),transparent 70%); 
+          pointer-events:none"></div> 
+        <div style="position:absolute;bottom:-30px;left:-30px; 
+          width:120px;height:120px;border-radius:50%; 
+          background:radial-gradient(circle, 
+            rgba(29,158,117,0.25),transparent 70%); 
+          pointer-events:none"></div> 
+        <div style="font-size:52px;margin-bottom:14px; 
+          filter:drop-shadow(0 4px 12px rgba(24,95,165,0.5))"> 
+          🏭 
+        </div> 
+        <div style="font-size:15px;font-weight:600;color:#fff; 
+          margin-bottom:4px">Italy Embalagens</div> 
+        <div style="font-size:12px;color:rgba(255,255,255,0.5)"> 
+          Sistema ERP/PCP Industrial 
+        </div> 
+        <div style="font-size:11px;color:rgba(255,255,255,0.25); 
+          margin-top:10px;padding-top:10px; 
+          border-top:0.5px solid rgba(255,255,255,0.1)"> 
+          Caixas de papelão com qualidade e precisão 
+        </div> 
+      </div> 
+
+      <!-- OFs urgentes --> 
+      <div style="background:rgba(255,255,255,0.03); 
+        border:0.5px solid rgba(255,255,255,0.08); 
+        border-radius:12px;overflow:hidden"> 
+        <div style="padding:12px 16px; 
+          border-bottom:0.5px solid rgba(255,255,255,0.06); 
+          display:flex;justify-content:space-between; 
+          align-items:center"> 
+          <span style="font-size:11px;font-weight:500; 
+            color:rgba(255,255,255,0.5);text-transform:uppercase; 
+            letter-spacing:0.08em">OFs urgentes</span> 
+          <span id="home-ver-pcp" 
+            style="font-size:11px;color:#185FA5;cursor:pointer"> 
+            Ver todas →</span> 
+        </div> 
+        <div id="home-ofs-urgentes" 
+          style="padding:8px;max-height:220px;overflow-y:auto"> 
+          <div style="padding:12px;text-align:center; 
+            font-size:12px;color:rgba(255,255,255,0.3)"> 
+            Carregando... 
+          </div> 
+        </div> 
+      </div> 
+
+      <!-- Status --> 
+      <div style="background:rgba(255,255,255,0.03); 
+        border:0.5px solid rgba(255,255,255,0.06); 
+        border-radius:10px;padding:12px 16px"> 
+        <div style="display:flex;gap:16px;flex-wrap:wrap; 
+          align-items:center"> 
+          <div style="font-size:12px;color:rgba(255,255,255,0.3)"> 
+            <span style="color:#1D9E75">●</span> Online 
+          </div> 
+          <div style="font-size:12px;color:rgba(255,255,255,0.3)"> 
+            <span id="home-ia-dot" style="color:#EF9F27">●</span> 
+            <span id="home-ia-txt"> IA: verificando</span> 
+          </div>
+        </div> 
+      </div> 
+    </div> 
+  </div> 
+</div>
 
 <!-- ========== 1. PCP ========== -->
 <div id="page-pcp" class="page active">
