@@ -37554,8 +37554,207 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
     <div class="h3-right">
       <div id="h3-right-content">
-        <div style="padding:20px;text-align:center;
-          color:rgba(255,255,255,0.3)">Carregando...</div>
+        <!-- Status das Máquinas --> 
+        <div> 
+          <div style="display:flex;justify-content:space-between; 
+            align-items:center;margin-bottom:14px"> 
+            <div style="font-size:13px;font-weight:600; 
+              color:rgba(255,255,255,0.8)"> 
+              Status das máquinas 
+            </div> 
+            <span id="h3-ver-maquinas" 
+              style="font-size:11px;font-weight:500; 
+              color:rgba(99,102,241,0.8);cursor:pointer"> 
+              Ver todas → 
+            </span> 
+          </div> 
+          <div class="h3-rcard" id="h3-maquinas-lista"> 
+            <div style="padding:16px;text-align:center; 
+              font-size:12px;color:rgba(255,255,255,0.25)"> 
+              Carregando... 
+            </div> 
+          </div> 
+        </div> 
+ 
+        <!-- Jarvis IA --> 
+        <div> 
+          <div class="h3-rcard" 
+            style="background:linear-gradient(145deg, 
+              rgba(79,70,229,0.12),rgba(124,58,237,0.08)); 
+            border-color:rgba(99,102,241,0.25)"> 
+ 
+            <div style="padding:18px 16px"> 
+              <div style="display:flex;align-items:center; 
+                justify-content:space-between;margin-bottom:14px"> 
+                <div style="display:flex;align-items:center;gap:10px"> 
+                  <div style="width:40px;height:40px;border-radius:12px; 
+                    background:linear-gradient(135deg,#4F46E5,#7C3AED); 
+                    display:flex;align-items:center; 
+                    justify-content:center;font-size:20px">🤖</div> 
+                  <div> 
+                    <div style="font-size:14px;font-weight:700; 
+                      color:#fff">Jarvis IA</div> 
+                    <div style="font-size:11px; 
+                      color:rgba(165,180,252,0.7)"> 
+                      Assistente inteligente 
+                    </div> 
+                  </div> 
+                </div> 
+                <div style="display:flex;align-items:center;gap:5px; 
+                  background:rgba(16,185,129,0.12); 
+                  border:0.5px solid rgba(16,185,129,0.25); 
+                  border-radius:99px;padding:3px 10px"> 
+                  <div class="h3-dot" 
+                    style="width:6px;height:6px;border-radius:50%; 
+                    background:#10B981"></div> 
+                  <span id="home-ia-txt" 
+                    style="font-size:10px;font-weight:600; 
+                    color:#6EE7B7">Online</span> 
+                </div> 
+              </div> 
+ 
+              <div style="font-size:12px; 
+                color:rgba(255,255,255,0.5); 
+                line-height:1.6;margin-bottom:14px"> 
+                Olá! Aqui está o resumo inteligente do sistema 
+                para você. 
+              </div> 
+ 
+              <!-- Mini KPIs Jarvis --> 
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr; 
+                gap:8px;margin-bottom:16px"> 
+                <div style="background:rgba(239,68,68,0.1); 
+                  border:0.5px solid rgba(239,68,68,0.2); 
+                  border-radius:10px;padding:10px;text-align:center"> 
+                  <div id="h3j-urgentes" 
+                    style="font-size:20px;font-weight:700; 
+                    color:#FCA5A5">—</div> 
+                  <div style="font-size:9px; 
+                    color:rgba(255,255,255,0.35);margin-top:3px"> 
+                    OFs urgentes 
+                  </div> 
+                </div> 
+                <div style="background:rgba(245,158,11,0.1); 
+                  border:0.5px solid rgba(245,158,11,0.2); 
+                  border-radius:10px;padding:10px;text-align:center"> 
+                  <div id="h3j-estoque" 
+                    style="font-size:20px;font-weight:700; 
+                    color:#FCD34D">—</div> 
+                  <div style="font-size:9px; 
+                    color:rgba(255,255,255,0.35);margin-top:3px"> 
+                    Estoque baixo 
+                  </div> 
+                </div> 
+                <div style="background:rgba(99,102,241,0.1); 
+                  border:0.5px solid rgba(99,102,241,0.2); 
+                  border-radius:10px;padding:10px;text-align:center"> 
+                  <div id="h3j-maquinas" 
+                    style="font-size:20px;font-weight:700; 
+                    color:#A5B4FC">—</div> 
+                  <div style="font-size:9px; 
+                    color:rgba(255,255,255,0.35);margin-top:3px"> 
+                    Máquinas ativas 
+                  </div> 
+                </div> 
+              </div> 
+ 
+              <!-- Quick actions --> 
+              <div style="display:grid;grid-template-columns:1fr 1fr; 
+                gap:6px;margin-bottom:14px"> 
+                <div class="h3-qa h3-jarvis-qa" 
+                  data-prompt="como está a produção hoje?"> 
+                  🏭 Produção hoje 
+                </div> 
+                <div class="h3-qa h3-jarvis-qa" 
+                  data-prompt="quais OFs estão atrasadas?"> 
+                  ⚡ OFs atrasadas 
+                </div> 
+                <div class="h3-qa h3-jarvis-qa" 
+                  data-prompt="qual o faturamento deste mês?"> 
+                  💰 Faturamento 
+                </div> 
+                <div class="h3-qa h3-jarvis-qa" 
+                  data-prompt="qual o estoque crítico de chapas?"> 
+                  📦 Estoque baixo 
+                </div> 
+              </div> 
+ 
+              <!-- Input Jarvis --> 
+              <div style="display:flex;gap:8px"> 
+                <input id="h3-jarvis-input" 
+                  placeholder="Pergunte algo ao Jarvis IA..." 
+                  style="flex:1;background:rgba(255,255,255,0.07); 
+                  border:0.5px solid rgba(255,255,255,0.12); 
+                  border-radius:10px;padding:10px 14px; 
+                  font-size:12px;color:rgba(255,255,255,0.8); 
+                  font-family:'Inter',sans-serif;outline:none; 
+                  transition:all 0.2s" 
+                  onfocus="this.style.borderColor='rgba(99,102,241,0.5)'" 
+                  onblur="this.style.borderColor='rgba(255,255,255,0.12)'"> 
+                <button id="h3-jarvis-send" 
+                  style="width:38px;height:38px;border-radius:10px; 
+                  background:linear-gradient(135deg,#4F46E5,#7C3AED); 
+                  border:none;cursor:pointer;font-size:16px; 
+                  transition:all 0.2s;flex-shrink:0" 
+                  onmouseover="this.style.transform='scale(1.05)'" 
+                  onmouseout="this.style.transform='scale(1)'"> 
+                  ➤ 
+                </button> 
+              </div> 
+            </div> 
+          </div> 
+        </div> 
+ 
+        <!-- OFs urgentes --> 
+        <div> 
+          <div style="display:flex;justify-content:space-between; 
+            align-items:center;margin-bottom:14px"> 
+            <div style="font-size:13px;font-weight:600; 
+              color:rgba(255,255,255,0.8)">OFs urgentes</div> 
+            <span id="h3-ver-ofs" 
+              style="font-size:11px;font-weight:500; 
+              color:rgba(99,102,241,0.8);cursor:pointer"> 
+              Ver todas → 
+            </span> 
+          </div> 
+          <div class="h3-rcard"> 
+            <div id="home-ofs-urgentes" 
+              style="max-height:280px;overflow-y:auto"> 
+              <div style="padding:16px;text-align:center; 
+                font-size:12px;color:rgba(255,255,255,0.25)"> 
+                Carregando... 
+              </div> 
+            </div> 
+          </div> 
+        </div> 
+ 
+        <!-- Status footer --> 
+        <div style="margin-top:auto;padding-top:8px; 
+          border-top:0.5px solid rgba(255,255,255,0.06); 
+          display:flex;flex-direction:column;gap:5px"> 
+          <div style="display:flex;justify-content:space-between"> 
+            <div style="display:flex;align-items:center;gap:6px"> 
+              <div style="width:6px;height:6px;border-radius:50%; 
+                background:#10B981"></div> 
+              <span style="font-size:11px; 
+                color:rgba(255,255,255,0.35)"> 
+                Sistema operacional 
+              </span> 
+            </div> 
+            <span id="home-att" 
+              style="font-size:11px;color:rgba(255,255,255,0.2)"> 
+              — 
+            </span> 
+          </div> 
+          <div style="display:flex;align-items:center;gap:6px"> 
+            <div id="home-ia-dot" style="width:6px;height:6px; 
+              border-radius:50%;background:#F59E0B"></div> 
+            <span style="font-size:11px; 
+              color:rgba(255,255,255,0.35)"> 
+              IA: verificando... 
+            </span> 
+          </div> 
+        </div> 
       </div>
     </div>
   </div>
@@ -47911,22 +48110,39 @@ async function _homeInit() {
     localStorage.getItem('italy_nome') || 'Administrador'; 
   const first = nome.split(' ')[0]; 
  
-  const elW = document.getElementById('home-welcome'); 
-  if (elW) elW.textContent = 'Bem-vindo de volta, ' + first + ' 👋'; 
+  const elW = document.getElementById('h3-welcome-name'); 
+  if (elW) elW.innerHTML = first + '! 👋'; 
  
   const elG = document.getElementById('home-greeting'); 
-  if (elG) elG.textContent = new Date().toLocaleDateString('pt-BR', 
-    {weekday:'long',day:'numeric',month:'long',year:'numeric'}); 
+  if (elG) elG.textContent = new Date().toLocaleDateString( 
+    'pt-BR', {weekday:'long',day:'numeric', 
+    month:'long',year:'numeric'}); 
+ 
+  const elT = document.getElementById('h3-turno'); 
+  if (elT) { 
+    const h = new Date().getHours(); 
+    const turno = h < 12 ? '☀️ Turno: Matutino' : 
+                  h < 18 ? '🌤️ Turno: Tarde' : '🌙 Turno: Noturno'; 
+    elT.textContent = new Date().toLocaleDateString('pt-BR', 
+      {weekday:'long',day:'numeric',month:'long',year:'numeric'}) + 
+      ' · ' + turno; 
+  } 
+ 
+  const av = document.getElementById('h3-user-avatar'); 
+  if (av) av.textContent = first.charAt(0).toUpperCase(); 
+  const un = document.getElementById('h3-user-name'); 
+  if (un) un.textContent = first; 
  
   await Promise.allSettled([ 
     _homeKpis(), 
     _homeOfsUrgentes(), 
     _homeIaStatus(), 
+    _homeMaquinas(), 
   ]); 
  
   const elA = document.getElementById('home-att'); 
-  if (elA) elA.textContent = new Date().toLocaleTimeString('pt-BR', 
-    {hour:'2-digit',minute:'2-digit'}); 
+  if (elA) elA.textContent = new Date().toLocaleTimeString( 
+    'pt-BR', {hour:'2-digit',minute:'2-digit'}); 
 } 
  
 async function _homeKpis() { 
@@ -47935,9 +48151,9 @@ async function _homeKpis() {
     const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
     const hoje = new Date().toISOString().slice(0,10); 
  
-    const r = await fetch('/api/ofs?lite=1&limit=1000&nocache=1' + 
-      (empId ? '&emp_id=' + empId : ''), { 
-      headers: {'Authorization':'Bearer ' + token} 
+    const r = await fetch('/api/ofs?lite=1&limit=2000&nocache=1' + 
+      (empId ? '&emp_id='+empId : ''), { 
+      headers: {'Authorization':'Bearer '+token} 
     }); 
     const d = await r.json(); 
     const ofs = Array.isArray(d) ? d : 
@@ -47964,43 +48180,146 @@ async function _homeKpis() {
       if (el) el.textContent = typeof v === 'number' ? 
         v.toLocaleString('pt-BR') : v; 
     }; 
+ 
     set('kpi-ofs-abertas', abertas.length); 
     set('kpi-ofs-hoje', conclHoje.length); 
     set('kpi-atrasadas', atrasadas.length); 
     set('kpi-urgentes', urgentes.length); 
-    set('kpi-producao', emProd.length); 
  
-    const mesAtual = hoje.slice(0,7); 
-    const fatMes = ofs 
-      .filter(o => String(o.data_conclusao||'').slice(0,7) === mesAtual) 
+    set('h3-n-atrasadas', atrasadas.length); 
+    set('h3-n-urgentes', urgentes.length); 
+    set('h3-n-concluidas', conclHoje.length); 
+ 
+    const total = abertas.length + conclHoje.length; 
+    set('h3-donut-total', total || '—'); 
+    set('h3-leg-aberto', 
+      abertas.length + ' (' + 
+      (total > 0 ? Math.round(abertas.length/total*100) : 0) + '%)'); 
+    set('h3-leg-prod', 
+      emProd.length + ' (' + 
+      (total > 0 ? Math.round(emProd.length/total*100) : 0) + '%)'); 
+    set('h3-leg-ok', 
+      conclHoje.length + ' (' + 
+      (total > 0 ? Math.round(conclHoje.length/total*100) : 0) + '%)'); 
+    set('h3-leg-atr', 
+      atrasadas.length + ' (' + 
+      (total > 0 ? Math.round(atrasadas.length/total*100) : 0) + '%)'); 
+ 
+    const mes = hoje.slice(0,7); 
+    const fat = ofs 
+      .filter(o => String(o.data_conclusao||'').slice(0,7) === mes) 
       .reduce((s,o) => s + 
-        (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0)||0), 0); 
-    const elFat = document.getElementById('kpi-faturamento'); 
-    if (elFat && fatMes > 0) { 
-      elFat.textContent = 'R$ ' + fatMes.toLocaleString('pt-BR', 
-        {minimumFractionDigits:0, maximumFractionDigits:0}); 
+        (Number(o.valor_total??o.valor_venda??o.val??0)||0), 0); 
+    if (fat > 0) { 
+      const elF = document.getElementById('kpi-faturamento'); 
+      if (elF) elF.textContent = 'R$ ' + 
+        fat.toLocaleString('pt-BR', 
+          {minimumFractionDigits:0,maximumFractionDigits:0}); 
     } 
  
-    const elSO = document.getElementById('home-stat-ofs'); 
-    if (elSO) elSO.textContent = abertas.length; 
-    const elSK = document.getElementById('home-stat-ok'); 
-    if (elSK) elSK.textContent = conclHoje.length; 
+    set('h3j-urgentes', urgentes.length); 
+    set('h3j-maquinas', emProd.length); 
  
-    const m1 = document.getElementById('home2-mock-abertas'); 
-    const m2 = document.getElementById('home2-mock-ok'); 
-    if (m1) m1.textContent = abertas.length; 
-    if (m2) m2.textContent = conclHoje.length; 
+    if (atrasadas.length > 0) { 
+      const dot = document.getElementById('h3-notif-dot'); 
+      if (dot) dot.style.display = 'block'; 
+    } 
  
-    const total2 = abertas.length + conclHoje.length; 
-    const pct = total2 > 0 ? 
-      Math.round((conclHoje.length / total2) * 100) : 0; 
-    const elPct = document.getElementById('home2-prog-pct'); 
-    const elBar = document.getElementById('home2-prog-bar'); 
-    if (elPct) elPct.textContent = pct + '%'; 
-    if (elBar) setTimeout(() => 
-      elBar.style.width = pct + '%', 300); 
+    const tt = document.getElementById('h3-chart-tooltip'); 
+    if (tt) tt.textContent = 'Hoje · ' + conclHoje.length + ' OFs'; 
+ 
   } catch(e) { 
     console.error('[HOME KPIs]', e?.message); 
+  } 
+} 
+
+async function _homeMaquinas() { 
+  const container = document.getElementById('h3-maquinas-lista'); 
+  if (!container) return; 
+  try { 
+    const token = localStorage.getItem('token') || ''; 
+    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
+ 
+    const r = await fetch('/api/ofs?lite=1&limit=500&nocache=1' + 
+      (empId ? '&emp_id='+empId : ''), { 
+      headers: {'Authorization':'Bearer '+token} 
+    }); 
+    const d = await r.json(); 
+    const ofs = Array.isArray(d) ? d : 
+      (Array.isArray(d.data) ? d.data : []); 
+ 
+    const maqMap = {}; 
+    const MAQUINAS = [ 
+      'CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05' 
+    ]; 
+    MAQUINAS.forEach(m => { maqMap[m] = 0; }); 
+ 
+    ofs.filter(o => { 
+      const s = String(o.status||'').toLowerCase(); 
+      return !s.includes('conclu') && !s.includes('cancela'); 
+    }).forEach(o => { 
+      try { 
+        const fluxo = typeof o.fluxo_maquinas === 'string' ? 
+          JSON.parse(o.fluxo_maquinas || '[]') : 
+          (Array.isArray(o.fluxo_maquinas) ? o.fluxo_maquinas : []); 
+        const idx = Number(o.maquina_atual_index || 0); 
+        const maq = fluxo[idx]; 
+        const nome = typeof maq === 'object' ? 
+          (maq?.nome || maq?.name || '') : String(maq || ''); 
+        if (nome && maqMap[nome] !== undefined) maqMap[nome]++; 
+      } catch(_) {} 
+    }); 
+ 
+    container.innerHTML = MAQUINAS.map(nome => { 
+      const qtd = maqMap[nome] || 0; 
+      const pct = Math.min(100, qtd * 5); 
+      const status = qtd > 10 ? 'Ocupada' : 
+                     qtd > 0  ? 'Ativo' : 'Livre'; 
+      const cor = qtd > 10 ? '#F59E0B' : 
+                  qtd > 0  ? '#10B981' : '#6B7280'; 
+      const barCor = qtd > 10 ? '#F59E0B' : 
+                     qtd > 0  ? '#10B981' : 'rgba(255,255,255,0.1)'; 
+      return `<div class="h3-maq-item" 
+        style="border-bottom:0.5px solid rgba(255,255,255,0.05)"> 
+        <div style="display:flex;align-items:center; 
+          justify-content:space-between;margin-bottom:6px"> 
+          <div> 
+            <div style="font-size:13px;font-weight:600; 
+              color:rgba(255,255,255,0.85)">${nome}</div> 
+            <div style="font-size:11px; 
+              color:rgba(255,255,255,0.4);margin-top:1px"> 
+              ${qtd > 0 ? 'Produzindo · '+qtd+' OFs' : 
+                'Aguardando produção'} 
+            </div> 
+          </div> 
+          <div style="background:${cor}22; 
+            border:0.5px solid ${cor}44; 
+            border-radius:99px;padding:3px 10px; 
+            font-size:11px;font-weight:600;color:${cor}"> 
+            ${status} 
+          </div> 
+        </div> 
+        <div style="height:3px;background:rgba(255,255,255,0.06); 
+          border-radius:99px;overflow:hidden"> 
+          <div style="height:100%;width:${pct}%; 
+            background:${barCor};border-radius:99px; 
+            transition:width 0.8s ease"></div> 
+        </div> 
+        <div style="text-align:right;font-size:10px; 
+          color:rgba(255,255,255,0.25);margin-top:3px"> 
+          ${pct}% 
+        </div> 
+      </div>`; 
+    }).join(''); 
+ 
+    const ativas = MAQUINAS.filter(m => maqMap[m] > 0).length; 
+    const elM = document.getElementById('h3j-maquinas'); 
+    if (elM) elM.textContent = ativas; 
+ 
+  } catch(e) { 
+    if (container) container.innerHTML = 
+      '<div style="padding:12px;font-size:12px;' + 
+      'color:rgba(255,255,255,0.3)">Erro ao carregar.</div>'; 
   } 
 } 
  
@@ -48164,6 +48483,109 @@ async function _homeIaStatus() {
           if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
         }); 
     } catch(e){} 
+
+    try{ document.getElementById('h3-badge-atrasadas')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('h3-badge-urgentes')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('h3-badge-concluidas')?.addEventListener('click', () => go('pcp')); }catch(e){}
+
+    try{
+      const h3Nav = {
+        'hnav-pcp': 'pcp',
+        'hnav-maquina': 'ofmaq',
+        'hnav-amostras': 'amostras',
+        'hnav-orcamentos': 'orcamentos',
+        'hnav-maquinas': 'maquinas',
+        'hnav-clientes': 'clientes',
+        'hnav-fornecedores': 'fornecedores',
+        'hnav-vendedores': 'vendedores',
+        'hnav-usuarios': 'usuarios',
+        'hnav-chapas': 'estoque',
+        'hnav-selchapas': 'sel-chapas',
+        'hnav-facas': 'facas1',
+        'hnav-compras': 'compras',
+        'hnav-simulador': 'simd',
+        'hnav-relatorios': 'relatorios',
+        'hnav-dashboard': 'dashboard',
+        'hnav-mapa': 'mapa-clientes',
+        'hnav-config': 'configuracoes',
+      };
+      Object.entries(h3Nav).forEach(([id, tela]) => {
+        document.getElementById(id)?.addEventListener('click', () => go(tela));
+      });
+    }catch(e){}
+
+    try{
+      const h3Mods = {
+        'h3mod-pcp': 'pcp',
+        'h3mod-maquina': 'ofmaq',
+        'h3mod-chapas': 'estoque',
+        'h3mod-clientes': 'clientes',
+        'h3mod-fornecedores': 'fornecedores',
+        'h3mod-relatorios': 'relatorios',
+        'h3mod-dashboard': 'dashboard',
+        'h3mod-mapa': 'mapa-clientes',
+        'h3mod-analises': 'dashboard',
+        'h3mod-config': 'configuracoes',
+        'h3mod-simulador': 'simd',
+      };
+      Object.entries(h3Mods).forEach(([id, tela]) => {
+        document.getElementById(id)?.addEventListener('click', () => go(tela));
+      });
+    }catch(e){}
+
+    try{ document.getElementById('h3mod-jarvis')?.addEventListener('click', () => { if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); }); }catch(e){}
+    try{ document.getElementById('h3-btn-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('h3-btn-jarvis')?.addEventListener('click', () => { if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); }); }catch(e){}
+    try{ document.getElementById('h3-ver-maquinas')?.addEventListener('click', () => go('maquinas')); }catch(e){}
+    try{ document.getElementById('h3-ver-ofs')?.addEventListener('click', () => go('pcp')); }catch(e){}
+
+    try{
+      document.querySelectorAll('.h3-jarvis-qa').forEach(el => {
+        el.addEventListener('click', () => {
+          const prompt = el.dataset.prompt;
+          if (!prompt) return;
+          if (typeof _jarvisAbrir === 'function') _jarvisAbrir();
+          setTimeout(() => {
+            const inp = document.querySelector(
+              '#jarvis-input,#jarvis-msg,.jarvis-input-field,' +
+              '[placeholder*="pergunta"],[placeholder*="Jarvis"]'
+            );
+            if (inp) {
+              inp.value = prompt;
+              inp.dispatchEvent(new Event('input',{bubbles:true}));
+              const btn = document.querySelector('#jarvis-send,.jarvis-send-btn');
+              if (btn) btn.click();
+            }
+          }, 500);
+        });
+      });
+    }catch(e){}
+
+    try{
+      const h3JInput = document.getElementById('h3-jarvis-input');
+      const h3JSend  = document.getElementById('h3-jarvis-send');
+      h3JSend?.addEventListener('click', () => {
+        const txt = h3JInput?.value?.trim();
+        if (!txt) return;
+        if (typeof _jarvisAbrir === 'function') _jarvisAbrir();
+        setTimeout(() => {
+          const inp = document.querySelector(
+            '#jarvis-input,#jarvis-msg,.jarvis-input-field,' +
+            '[placeholder*="pergunta"],[placeholder*="Jarvis"]'
+          );
+          if (inp) {
+            inp.value = txt;
+            inp.dispatchEvent(new Event('input',{bubbles:true}));
+            const btn = document.querySelector('#jarvis-send,.jarvis-send-btn');
+            if (btn) btn.click();
+          }
+          if (h3JInput) h3JInput.value = '';
+        }, 500);
+      });
+      h3JInput?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') h3JSend?.click();
+      });
+    }catch(e){}
   };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
