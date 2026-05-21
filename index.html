@@ -1692,6 +1692,260 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
   } 
 } 
 
+#tela-home * { box-sizing: border-box; } 
+
+#tela-home { 
+  font-family: 'Inter', system-ui, sans-serif !important; 
+  background: #080C14 !important; 
+  min-height: 100vh; 
+  display: flex; 
+  flex-direction: column; 
+  overflow-x: hidden; 
+} 
+
+.h3-topbar { 
+  height: 56px; 
+  background: rgba(13,18,30,0.95); 
+  border-bottom: 0.5px solid rgba(255,255,255,0.07); 
+  display: flex; 
+  align-items: center; 
+  padding: 0 24px; 
+  gap: 16px; 
+  position: sticky; 
+  top: 0; 
+  z-index: 100; 
+  backdrop-filter: blur(12px); 
+  flex-shrink: 0; 
+} 
+
+.h3-body { 
+  display: grid; 
+  grid-template-columns: 220px 1fr 320px; 
+  flex: 1; 
+  min-height: 0; 
+} 
+
+.h3-sidebar { 
+  background: rgba(10,14,24,0.98); 
+  border-right: 0.5px solid rgba(255,255,255,0.06); 
+  padding: 20px 12px; 
+  overflow-y: auto; 
+  height: calc(100vh - 56px); 
+  position: sticky; 
+  top: 56px; 
+} 
+.h3-nav-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  padding: 9px 12px; 
+  border-radius: 10px; 
+  cursor: pointer; 
+  font-size: 13px; 
+  font-weight: 500; 
+  color: rgba(255,255,255,0.55); 
+  transition: all 0.15s; 
+  margin-bottom: 2px; 
+} 
+.h3-nav-item:hover { 
+  background: rgba(255,255,255,0.06); 
+  color: rgba(255,255,255,0.85); 
+} 
+.h3-nav-item.active { 
+  background: rgba(79,70,229,0.18); 
+  color: #A5B4FC; 
+  border: 0.5px solid rgba(79,70,229,0.25); 
+} 
+.h3-nav-section { 
+  font-size: 10px; 
+  font-weight: 700; 
+  color: rgba(255,255,255,0.25); 
+  letter-spacing: 0.1em; 
+  text-transform: uppercase; 
+  padding: 16px 12px 6px; 
+} 
+.h3-nav-icon { 
+  width: 18px; 
+  height: 18px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 14px; 
+  flex-shrink: 0; 
+} 
+
+.h3-center { 
+  overflow-y: auto; 
+  height: calc(100vh - 56px); 
+  padding: 24px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+} 
+
+.h3-right { 
+  background: rgba(10,14,24,0.98); 
+  border-left: 0.5px solid rgba(255,255,255,0.06); 
+  overflow-y: auto; 
+  height: calc(100vh - 56px); 
+  position: sticky; 
+  top: 56px; 
+  padding: 20px 16px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+} 
+
+.h3-hero { 
+  border-radius: 20px; 
+  background: linear-gradient(135deg, 
+    #0F1729 0%, #111827 40%, #0D1B3E 100%); 
+  border: 0.5px solid rgba(79,70,229,0.2); 
+  padding: 32px 40px; 
+  position: relative; 
+  overflow: hidden; 
+  min-height: 200px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+} 
+.h3-hero::before { 
+  content: ''; 
+  position: absolute; 
+  inset: 0; 
+  background: radial-gradient(ellipse at 70% 50%, 
+    rgba(99,102,241,0.15) 0%, transparent 65%); 
+  pointer-events: none; 
+} 
+
+.h3-kpi { 
+  background: rgba(255,255,255,0.04); 
+  border: 0.5px solid rgba(255,255,255,0.08); 
+  border-radius: 16px; 
+  padding: 20px 22px; 
+  cursor: pointer; 
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
+  position: relative; 
+  overflow: hidden; 
+} 
+.h3-kpi:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25); 
+} 
+.h3-kpi::after { 
+  content: ''; 
+  position: absolute; 
+  top: 0; left: 0; right: 0; 
+  height: 2px; 
+  border-radius: 16px 16px 0 0; 
+  opacity: 0; 
+  transition: opacity 0.2s; 
+} 
+.h3-kpi:hover::after { opacity: 1; } 
+.h3-kpi-blue::after  { background: linear-gradient(90deg,#3B82F6,#6366F1); } 
+.h3-kpi-green::after { background: linear-gradient(90deg,#10B981,#34D399); } 
+.h3-kpi-red::after   { background: linear-gradient(90deg,#EF4444,#F87171); } 
+.h3-kpi-amber::after { background: linear-gradient(90deg,#F59E0B,#FCD34D); } 
+.h3-kpi-cyan::after  { background: linear-gradient(90deg,#06B6D4,#67E8F9); } 
+
+.h3-rcard { 
+  background: rgba(255,255,255,0.04); 
+  border: 0.5px solid rgba(255,255,255,0.08); 
+  border-radius: 14px; 
+  overflow: hidden; 
+} 
+
+.h3-maq-item { 
+  padding: 10px 14px; 
+  transition: background 0.15s; 
+} 
+.h3-maq-item:hover { 
+  background: rgba(255,255,255,0.04); 
+} 
+
+.h3-of-item { 
+  padding: 11px 14px; 
+  cursor: pointer; 
+  transition: background 0.15s; 
+  border-left: 2px solid transparent; 
+} 
+.h3-of-item:hover { 
+  background: rgba(255,255,255,0.04); 
+} 
+
+.h3-qa { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 10px 14px; 
+  background: rgba(255,255,255,0.05); 
+  border: 0.5px solid rgba(255,255,255,0.09); 
+  border-radius: 10px; 
+  font-size: 12px; 
+  font-weight: 500; 
+  color: rgba(255,255,255,0.7); 
+  cursor: pointer; 
+  transition: all 0.15s; 
+} 
+.h3-qa:hover { 
+  background: rgba(255,255,255,0.09); 
+  color: #fff; 
+} 
+
+.h3-mod { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  padding: 12px 14px; 
+  background: rgba(255,255,255,0.04); 
+  border: 0.5px solid rgba(255,255,255,0.07); 
+  border-radius: 12px; 
+  cursor: pointer; 
+  transition: all 0.18s; 
+  font-size: 13px; 
+  font-weight: 500; 
+  color: rgba(255,255,255,0.75); 
+} 
+.h3-mod:hover { 
+  background: rgba(255,255,255,0.08); 
+  border-color: rgba(255,255,255,0.14); 
+  color: #fff; 
+  transform: translateY(-1px); 
+} 
+
+@keyframes h3Pulse { 
+  0%,100% { opacity:1; transform:scale(1); } 
+  50% { opacity:0.6; transform:scale(1.4); } 
+} 
+.h3-dot { animation: h3Pulse 2s ease-in-out infinite; } 
+
+.h3-chart-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; } 
+.h3-chart-area { opacity: 0.15; } 
+
+@keyframes h3FadeUp { 
+  from { opacity:0; transform:translateY(18px); } 
+  to   { opacity:1; transform:translateY(0); } 
+} 
+.h3fu { animation: h3FadeUp 0.45s cubic-bezier(0.4,0,0.2,1) forwards; opacity:0; } 
+.h3fu1{animation-delay:0.04s} .h3fu2{animation-delay:0.10s} 
+.h3fu3{animation-delay:0.16s} .h3fu4{animation-delay:0.22s} 
+.h3fu5{animation-delay:0.28s} .h3fu6{animation-delay:0.34s} 
+
+.h3-badge { 
+  display: inline-flex; align-items: center; gap: 5px; 
+  padding: 3px 10px; border-radius: 99px; 
+  font-size: 11px; font-weight: 600; 
+} 
+
+@media (max-width: 1200px) { 
+  .h3-body { grid-template-columns: 200px 1fr 280px; } 
+} 
+@media (max-width: 900px) { 
+  .h3-body { grid-template-columns: 1fr; } 
+  .h3-sidebar, .h3-right { display: none; } 
+  .h3-center { height: auto; } 
+} 
+
 </style>
 </head>
 <body data-device="desktop">
@@ -36524,611 +36778,278 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div id="tela-home" class="tela" style="display:none; 
   min-height:100vh;background:#0a0f1a; 
   font-family:'Inter',system-ui,sans-serif;overflow-y:auto"> 
-  <div class="home2-layout"> 
- 
-    <div class="home2-left"> 
- 
-      <div class="h2fu h2fu-1"> 
-        <div class="home2-badge" style="margin-bottom:22px"> 
-          <div style="width:6px;height:6px;border-radius:50%; 
-            background:#818CF8; 
-            box-shadow:0 0 8px rgba(129,140,248,0.8)" 
-            class="home2-dot-pulse"></div> 
-          Italy Embalagens · ERP/PCP 
-        </div> 
- 
-        <h1 id="home-welcome" 
-          style="font-size:42px;font-weight:800; 
-          color:#fff;margin:0 0 10px;line-height:1.2; 
-          letter-spacing:-0.035em"> 
-          Bem-vindo de volta 👋 
-        </h1> 
- 
-        <p id="home-greeting" 
-          style="font-size:16px; 
-          color:rgba(255,255,255,0.45); 
-          margin:0 0 28px;font-weight:400; 
-          line-height:1.6;max-width:440px"> 
-          É um ótimo dia para ser produtivo. Acesse rapidamente 
-          os módulos e gerencie tudo com eficiência. 
-        </p> 
- 
-        <div style="display:flex;gap:12px;flex-wrap:wrap"> 
-          <button class="home2-btn-primary" id="home-btn-pcp"> 
-            Acessar PCP 
-            <span style="font-size:16px">→</span> 
-          </button> 
-          <button class="home2-btn-secondary" id="home-btn-jarvis"> 
-            <div style="width:8px;height:8px;border-radius:50%; 
-              background:#10B981; 
-              box-shadow:0 0 8px rgba(16,185,129,0.7)" 
-              class="home2-dot-pulse"></div> 
-            Jarvis IA 
-          </button> 
-        </div> 
-      </div> 
- 
-      <div class="h2fu h2fu-2" style="height:0.5px; 
-        background:linear-gradient(90deg, 
-          rgba(255,255,255,0.08), 
-          rgba(255,255,255,0.04) 60%,transparent)"> 
-      </div> 
- 
-      <div class="h2fu h2fu-2"> 
-        <div style="font-size:12px;font-weight:600; 
-          color:rgba(255,255,255,0.35);letter-spacing:0.08em; 
-          text-transform:uppercase;margin-bottom:14px"> 
-          Visão geral de hoje 
-        </div> 
-        <div class="home2-kpi-grid" style="display:grid; 
-          grid-template-columns:repeat(3,1fr);gap:10px"> 
- 
-          <div class="home2-kpi" id="kpi-box-abertas" 
-            style="border-color:rgba(99,102,241,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(99,102,241,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Em aberto 
-            </div> 
-            <div id="kpi-ofs-abertas" 
-              style="font-size:38px;font-weight:800; 
-              color:#fff;line-height:1;letter-spacing:-0.03em"> 
-              — 
-            </div> 
-            <div style="font-size:11px; 
-              color:rgba(99,102,241,0.7);margin-top:8px; 
-              font-weight:500">OFs ativas →</div> 
-          </div> 
- 
-          <div class="home2-kpi" 
-            style="border-color:rgba(16,185,129,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(16,185,129,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Concluídas hoje 
-            </div> 
-            <div id="kpi-ofs-hoje" 
-              style="font-size:38px;font-weight:800; 
-              color:#10B981;line-height:1; 
-              letter-spacing:-0.03em">—</div> 
-            <div style="font-size:11px; 
-              color:rgba(16,185,129,0.7);margin-top:8px; 
-              font-weight:500">Ver detalhes →</div> 
-          </div> 
- 
-          <div class="home2-kpi" id="kpi-box-atrasadas" 
-            style="border-color:rgba(239,68,68,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(239,68,68,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Atrasadas 
-            </div> 
-            <div id="kpi-atrasadas" 
-              style="font-size:38px;font-weight:800; 
-              color:#EF4444;line-height:1; 
-              letter-spacing:-0.03em">—</div> 
-            <div style="font-size:11px; 
-              color:rgba(239,68,68,0.7);margin-top:8px; 
-              font-weight:500">Ver urgente →</div> 
-          </div> 
- 
-          <div class="home2-kpi" 
-            style="border-color:rgba(245,158,11,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(245,158,11,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Urgentes 
-            </div> 
-            <div id="kpi-urgentes" 
-              style="font-size:38px;font-weight:800; 
-              color:#F59E0B;line-height:1; 
-              letter-spacing:-0.03em">—</div> 
-            <div style="font-size:11px; 
-              color:rgba(245,158,11,0.7);margin-top:8px; 
-              font-weight:500">Prioridade →</div> 
-          </div> 
- 
-          <div class="home2-kpi" 
-            style="border-color:rgba(139,92,246,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(139,92,246,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Em produção 
-            </div> 
-            <div id="kpi-producao" 
-              style="font-size:38px;font-weight:800; 
-              color:#8B5CF6;line-height:1; 
-              letter-spacing:-0.03em">—</div> 
-            <div style="font-size:11px; 
-              color:rgba(139,92,246,0.7);margin-top:8px; 
-              font-weight:500">Máquinas →</div> 
-          </div> 
- 
-          <div class="home2-kpi" 
-            style="border-color:rgba(6,182,212,0.2)"> 
-            <div style="font-size:11px;font-weight:600; 
-              color:rgba(6,182,212,0.8);letter-spacing:0.06em; 
-              text-transform:uppercase;margin-bottom:12px"> 
-              Faturamento 
-            </div> 
-            <div id="kpi-faturamento" 
-              style="font-size:22px;font-weight:800; 
-              color:#06B6D4;line-height:1; 
-              letter-spacing:-0.02em">—</div> 
-            <div id="kpi-fat-variacao" 
-              style="font-size:11px; 
-              color:rgba(6,182,212,0.7);margin-top:8px; 
-              font-weight:500">Este mês →</div> 
-          </div> 
-        </div> 
-      </div> 
- 
-      <div class="h2fu h2fu-3"> 
-        <div style="font-size:12px;font-weight:600; 
-          color:rgba(255,255,255,0.35);letter-spacing:0.08em; 
-          text-transform:uppercase;margin-bottom:14px"> 
-          Acesso rápido 
-        </div> 
-        <div class="home2-mod-grid" style="display:grid; 
-          grid-template-columns:repeat(2,1fr);gap:10px"> 
- 
-          <div class="home2-mod" id="hmod-pcp"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(79,70,229,0.15); 
-              border:0.5px solid rgba(79,70,229,0.25)">📋</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">PCP / Programação</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Gerencie ordens de fabricação e planejamento 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-maquina"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(16,185,129,0.15); 
-              border:0.5px solid rgba(16,185,129,0.25)">🏭</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">OFs por Máquina</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Acompanhe a produção em tempo real 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-estoque"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(245,158,11,0.15); 
-              border:0.5px solid rgba(245,158,11,0.25)">📦</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Estoque de Chapas</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Controle entradas, saídas e saldos 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-clientes"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(59,130,246,0.15); 
-              border:0.5px solid rgba(59,130,246,0.25)">👥</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Clientes</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Gerencie cadastros e histórico 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-fornecedores"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(255,255,255,0.08); 
-              border:0.5px solid rgba(255,255,255,0.12)">🏭</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Fornecedores</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Controle de fornecedores e compras 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-compras"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(245,158,11,0.15); 
-              border:0.5px solid rgba(245,158,11,0.25)">🛒</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Compras</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Gestão de papelão e pedidos 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-relatorios"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(6,182,212,0.15); 
-              border:0.5px solid rgba(6,182,212,0.25)">📊</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Relatórios</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Visualize indicadores e análises 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-dashboard"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(255,255,255,0.08); 
-              border:0.5px solid rgba(255,255,255,0.12)">📈</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Dashboard</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Visão geral da operação 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-mapa"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(59,130,246,0.15); 
-              border:0.5px solid rgba(59,130,246,0.25)">🗺️</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Mapa</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Clientes no mapa 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-simulador"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(255,255,255,0.08); 
-              border:0.5px solid rgba(255,255,255,0.12)">♻️</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Simulador</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Desperdício de chapas 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-config"> 
-            <div class="home2-mod-icon" 
-              style="background:rgba(255,255,255,0.08); 
-              border:0.5px solid rgba(255,255,255,0.12)">⚙️</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Configurações</div> 
-              <div style="font-size:12px; 
-                color:rgba(255,255,255,0.4);margin-top:3px"> 
-                Personalize o sistema 
-              </div> 
-            </div> 
-          </div> 
- 
-          <div class="home2-mod" id="hmod-jarvis"> 
-            <div class="home2-mod-icon home2-jarvis-glow" 
-              style="background:rgba(99,102,241,0.18); 
-              border:0.5px solid rgba(99,102,241,0.28)">🤖</div> 
-            <div> 
-              <div style="font-size:14px;font-weight:600; 
-                color:rgba(255,255,255,0.9)">Jarvis IA</div> 
-              <div style="font-size:12px; 
-                color:rgba(165,180,252,0.8);margin-top:3px"> 
-                Assistente inteligente 
-              </div> 
-            </div> 
-          </div> 
-        </div> 
-      </div> 
-    </div> 
- 
-    <div class="home2-right"> 
- 
-      <div class="home2-mockup h2fu h2fu-1"> 
-        <div style="display:flex;align-items:center;gap:8px; 
-          margin-bottom:16px"> 
-          <div style="width:8px;height:8px;border-radius:50%; 
-            background:#EF4444"></div> 
-          <div style="width:8px;height:8px;border-radius:50%; 
-            background:#F59E0B"></div> 
-          <div style="width:8px;height:8px;border-radius:50%; 
-            background:#10B981"></div> 
-          <div style="flex:1;height:0.5px; 
-            background:rgba(255,255,255,0.08)"></div> 
-          <span style="font-size:10px; 
-            color:rgba(255,255,255,0.3)"> 
-            Italy ERP 
-          </span> 
-        </div> 
- 
-        <div style="display:grid;grid-template-columns:1fr 1fr; 
-          gap:8px;margin-bottom:12px"> 
-          <div style="background:rgba(79,70,229,0.12); 
-            border:0.5px solid rgba(79,70,229,0.2); 
-            border-radius:10px;padding:12px"> 
-            <div style="font-size:10px; 
-              color:rgba(165,180,252,0.7);margin-bottom:6px"> 
-              OFs abertas 
-            </div> 
-            <div id="home2-mock-abertas" 
-              style="font-size:22px;font-weight:700; 
-              color:#A5B4FC">—</div> 
-          </div> 
-          <div style="background:rgba(16,185,129,0.1); 
-            border:0.5px solid rgba(16,185,129,0.2); 
-            border-radius:10px;padding:12px"> 
-            <div style="font-size:10px; 
-              color:rgba(110,231,183,0.7);margin-bottom:6px"> 
-              Concluídas 
-            </div> 
-            <div id="home2-mock-ok" 
-              style="font-size:22px;font-weight:700; 
-              color:#6EE7B7">—</div> 
-          </div> 
-        </div> 
- 
-        <div style="margin-bottom:12px"> 
-          <div style="display:flex;justify-content:space-between; 
-            margin-bottom:6px"> 
-            <span style="font-size:11px; 
-              color:rgba(255,255,255,0.5)"> 
-              Produção do dia 
-            </span> 
-            <span id="home2-prog-pct" 
-              style="font-size:11px;font-weight:600; 
-              color:rgba(165,180,252,0.9)">—%</span> 
-          </div> 
-          <div style="height:4px;background:rgba(255,255,255,0.07); 
-            border-radius:99px;overflow:hidden"> 
-            <div id="home2-prog-bar" 
-              style="height:100%;width:0; 
-              background:linear-gradient(90deg,#4F46E5,#7C3AED); 
-              border-radius:99px; 
-              transition:width 1s cubic-bezier(0.4,0,0.2,1)"></div> 
-          </div> 
-        </div> 
- 
-        <div style="font-size:11px;font-weight:600; 
-          color:rgba(255,255,255,0.3);letter-spacing:0.06em; 
-          text-transform:uppercase;margin-bottom:8px"> 
-          Máquinas 
-        </div> 
-        <div id="home2-maquinas-list" 
-          style="display:flex;flex-direction:column;gap:5px"> 
-          <div style="display:flex;align-items:center; 
-            justify-content:space-between;padding:7px 10px; 
-            background:rgba(255,255,255,0.04); 
-            border-radius:8px"> 
-            <span style="font-size:12px; 
-              color:rgba(255,255,255,0.6)"> 
-              CORTE VINCO 
-            </span> 
-            <span style="font-size:10px;font-weight:600; 
-              color:#10B981;background:rgba(16,185,129,0.12); 
-              padding:2px 8px;border-radius:99px"> 
-              Ativo 
-            </span> 
-          </div> 
-          <div style="display:flex;align-items:center; 
-            justify-content:space-between;padding:7px 10px; 
-            background:rgba(255,255,255,0.04); 
-            border-radius:8px"> 
-            <span style="font-size:12px; 
-              color:rgba(255,255,255,0.6)">IMP 02</span> 
-            <span style="font-size:10px;font-weight:600; 
-              color:#F59E0B;background:rgba(245,158,11,0.12); 
-              padding:2px 8px;border-radius:99px"> 
-              Ocupada 
-            </span> 
-          </div> 
-          <div style="display:flex;align-items:center; 
-            justify-content:space-between;padding:7px 10px; 
-            background:rgba(255,255,255,0.04); 
-            border-radius:8px"> 
-            <span style="font-size:12px; 
-              color:rgba(255,255,255,0.6)">IMP 03</span> 
-            <span style="font-size:10px;font-weight:600; 
-              color:#6B7280;background:rgba(107,114,128,0.12); 
-              padding:2px 8px;border-radius:99px"> 
-              Livre 
-            </span> 
-          </div> 
-        </div> 
-      </div> 
- 
-      <div class="h2fu h2fu-2" id="home-jarvis-card" 
-        style="background:linear-gradient(135deg, 
-          rgba(79,70,229,0.15) 0%, 
-          rgba(124,58,237,0.1) 100%); 
-        border:0.5px solid rgba(99,102,241,0.3); 
-        border-radius:16px;padding:20px;cursor:pointer; 
-        transition:all 0.2s;position:relative;z-index:1" 
-        onmouseover="this.style.background='linear-gradient(135deg,rgba(79,70,229,0.22) 0%,rgba(124,58,237,0.16) 100%)'" 
-        onmouseout="this.style.background='linear-gradient(135deg,rgba(79,70,229,0.15) 0%,rgba(124,58,237,0.1) 100%)'"> 
- 
-        <div style="display:flex;align-items:center; 
-          justify-content:space-between;margin-bottom:14px"> 
-          <div style="display:flex;align-items:center;gap:12px"> 
-            <div class="home2-jarvis-glow" 
-              style="width:44px;height:44px;border-radius:14px; 
-              background:linear-gradient(135deg,#4F46E5,#7C3AED); 
-              display:flex;align-items:center; 
-              justify-content:center;font-size:22px"> 
-              🤖 
-            </div> 
-            <div> 
-              <div style="font-size:15px;font-weight:700; 
-                color:#fff">Jarvis IA</div> 
-              <div style="font-size:11px; 
-                color:rgba(165,180,252,0.8);margin-top:1px"> 
-                Assistente inteligente 
-              </div> 
-            </div> 
-          </div> 
-          <div style="display:flex;align-items:center;gap:5px; 
-            background:rgba(16,185,129,0.12); 
-            border:0.5px solid rgba(16,185,129,0.25); 
-            border-radius:99px;padding:4px 10px"> 
-            <div style="width:6px;height:6px;border-radius:50%; 
-              background:#10B981" 
-              class="home2-dot-pulse"></div> 
-            <span style="font-size:10px;font-weight:600; 
-              color:#6EE7B7">Online</span> 
-          </div> 
-        </div> 
- 
-        <div style="font-size:13px;color:rgba(255,255,255,0.55); 
-          line-height:1.6;margin-bottom:16px"> 
-          Pergunte sobre OFs, estoque, relatórios ou peça 
-          análises completas do sistema. 
-        </div> 
- 
-        <div style="display:flex;flex-wrap:wrap;gap:6px"> 
-          <div class="home2-jarvis-prompt" 
-            style="background:rgba(255,255,255,0.07); 
-            border:0.5px solid rgba(255,255,255,0.12); 
-            border-radius:99px;padding:5px 12px; 
-            font-size:11px;font-weight:500; 
-            color:rgba(255,255,255,0.65);cursor:pointer; 
-            transition:all 0.15s" 
-            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
-            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
-            data-prompt="como está a produção hoje?"> 
-            📊 Produção hoje 
-          </div> 
-          <div class="home2-jarvis-prompt" 
-            style="background:rgba(255,255,255,0.07); 
-            border:0.5px solid rgba(255,255,255,0.12); 
-            border-radius:99px;padding:5px 12px; 
-            font-size:11px;font-weight:500; 
-            color:rgba(255,255,255,0.65);cursor:pointer; 
-            transition:all 0.15s" 
-            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
-            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
-            data-prompt="quais OFs estão atrasadas?"> 
-            ⚡ OFs atrasadas 
-          </div> 
-          <div class="home2-jarvis-prompt" 
-            style="background:rgba(255,255,255,0.07); 
-            border:0.5px solid rgba(255,255,255,0.12); 
-            border-radius:99px;padding:5px 12px; 
-            font-size:11px;font-weight:500; 
-            color:rgba(255,255,255,0.65);cursor:pointer; 
-            transition:all 0.15s" 
-            onmouseover="this.style.background='rgba(255,255,255,0.12)'" 
-            onmouseout="this.style.background='rgba(255,255,255,0.07)'" 
-            data-prompt="qual o faturamento deste mês?"> 
-            💰 Faturamento 
-          </div> 
-        </div> 
-      </div> 
- 
-      <div class="h2fu h2fu-3" 
-        style="background:rgba(255,255,255,0.03); 
-        border:0.5px solid rgba(255,255,255,0.07); 
-        border-radius:16px;overflow:hidden; 
-        position:relative;z-index:1"> 
- 
-        <div style="padding:14px 18px; 
-          border-bottom:0.5px solid rgba(255,255,255,0.06); 
-          display:flex;justify-content:space-between; 
-          align-items:center"> 
-          <div style="display:flex;align-items:center;gap:8px"> 
-            <div style="width:7px;height:7px;border-radius:50%; 
-              background:#EF4444" 
-              class="home2-dot-pulse"></div> 
-            <span style="font-size:12px;font-weight:600; 
-              color:rgba(255,255,255,0.75); 
-              letter-spacing:0.04em"> 
-              OFs urgentes 
-            </span> 
-          </div> 
-          <span id="home-ver-pcp" 
-            style="font-size:11px;font-weight:500; 
-            color:rgba(99,102,241,0.8);cursor:pointer"> 
-            Ver todas → 
-          </span> 
-        </div> 
- 
-        <div id="home-ofs-urgentes" 
-          style="padding:6px;max-height:200px;overflow-y:auto"> 
-          <div style="padding:16px;text-align:center; 
-            font-size:12px;color:rgba(255,255,255,0.25)"> 
-            Carregando... 
-          </div> 
-        </div> 
-      </div> 
- 
-      <div class="h2fu h2fu-4" 
-        style="display:flex;flex-direction:column;gap:6px; 
-        position:relative;z-index:1"> 
-        <div style="display:flex;align-items:center; 
-          justify-content:space-between"> 
-          <div style="display:flex;align-items:center;gap:6px"> 
-            <div style="width:6px;height:6px;border-radius:50%; 
-              background:#10B981"></div> 
-            <span style="font-size:11px; 
-              color:rgba(255,255,255,0.35)"> 
-              Sistema operacional 
-            </span> 
-          </div> 
-          <span id="home-att" 
-            style="font-size:10px; 
-            color:rgba(255,255,255,0.2)">—</span> 
-        </div> 
-        <div style="display:flex;align-items:center;gap:6px"> 
-          <div id="home-ia-dot" style="width:6px;height:6px; 
-            border-radius:50%;background:#F59E0B"></div> 
-          <span id="home-ia-txt" 
-            style="font-size:11px; 
-            color:rgba(255,255,255,0.35)"> 
-            IA: verificando... 
-          </span> 
-        </div> 
-      </div> 
-    </div> 
-  </div> 
+  <!-- TOPBAR -->
+  <div class="h3-topbar">
+    <div style="display:flex;align-items:center;gap:10px;
+      min-width:180px;flex-shrink:0">
+      <div style="width:32px;height:32px;border-radius:8px;
+        background:linear-gradient(135deg,#4F46E5,#7C3AED);
+        display:flex;align-items:center;justify-content:center;
+        font-size:14px;font-weight:800;color:#fff">I</div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#fff;
+          letter-spacing:-0.01em">
+          Italy <span style="color:#818CF8">Embalagens</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);
+          margin-top:-1px">PCP PRO · ERP</div>
+      </div>
+    </div>
+
+    <div style="flex:1;max-width:480px;position:relative">
+      <div style="position:absolute;left:14px;top:50%;
+        transform:translateY(-50%);font-size:14px;
+        color:rgba(255,255,255,0.3)">🔍</div>
+      <input id="h3-search"
+        placeholder="Buscar (cliente, OF, produto, máquina...)"
+        style="width:100%;background:rgba(255,255,255,0.06);
+        border:0.5px solid rgba(255,255,255,0.1);
+        border-radius:10px;padding:9px 14px 9px 38px;
+        font-size:13px;color:rgba(255,255,255,0.8);
+        font-family:'Inter',sans-serif;outline:none;
+        transition:all 0.2s"
+        onfocus="this.style.borderColor='rgba(99,102,241,0.5)';
+          this.style.background='rgba(99,102,241,0.08)'"
+        onblur="this.style.borderColor='rgba(255,255,255,0.1)';
+          this.style.background='rgba(255,255,255,0.06)'">
+      <div style="position:absolute;right:12px;top:50%;
+        transform:translateY(-50%);font-size:10px;
+        color:rgba(255,255,255,0.2);font-weight:500">
+        Ctrl+K
+      </div>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="h3-badge-atrasadas"
+        style="background:rgba(239,68,68,0.15);
+        border:0.5px solid rgba(239,68,68,0.3);
+        border-radius:8px;padding:6px 14px;
+        font-size:12px;font-weight:600;
+        color:#FCA5A5;cursor:pointer;
+        transition:all 0.15s;white-space:nowrap"
+        onmouseover="this.style.background='rgba(239,68,68,0.25)'"
+        onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+        <span id="h3-n-atrasadas">—</span> ATRASADAS
+      </div>
+      <div id="h3-badge-urgentes"
+        style="background:rgba(245,158,11,0.15);
+        border:0.5px solid rgba(245,158,11,0.3);
+        border-radius:8px;padding:6px 14px;
+        font-size:12px;font-weight:600;
+        color:#FCD34D;cursor:pointer;
+        transition:all 0.15s;white-space:nowrap"
+        onmouseover="this.style.background='rgba(245,158,11,0.25)'"
+        onmouseout="this.style.background='rgba(245,158,11,0.15)'">
+        <span id="h3-n-urgentes">—</span> URGENTES
+      </div>
+      <div id="h3-badge-concluidas"
+        style="background:rgba(16,185,129,0.15);
+        border:0.5px solid rgba(16,185,129,0.3);
+        border-radius:8px;padding:6px 14px;
+        font-size:12px;font-weight:600;
+        color:#6EE7B7;cursor:pointer;
+        transition:all 0.15s;white-space:nowrap"
+        onmouseover="this.style.background='rgba(16,185,129,0.25)'"
+        onmouseout="this.style.background='rgba(16,185,129,0.15)'">
+        <span id="h3-n-concluidas">—</span> CONCLUÍDAS
+      </div>
+    </div>
+
+    <div style="width:0.5px;height:24px;
+      background:rgba(255,255,255,0.1);margin:0 4px"></div>
+
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="width:36px;height:36px;border-radius:9px;
+        background:rgba(255,255,255,0.05);
+        border:0.5px solid rgba(255,255,255,0.09);
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;font-size:16px;transition:all 0.15s;
+        position:relative"
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+        🔔
+        <div id="h3-notif-dot"
+          style="position:absolute;top:6px;right:6px;
+          width:7px;height:7px;border-radius:50%;
+          background:#EF4444;border:1.5px solid #080C14;
+          display:none"></div>
+      </div>
+      <div style="width:36px;height:36px;border-radius:9px;
+        background:rgba(255,255,255,0.05);
+        border:0.5px solid rgba(255,255,255,0.09);
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;font-size:16px;transition:all 0.15s"
+        onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+        🔄
+      </div>
+    </div>
+
+    <div id="h3-user-btn"
+      style="display:flex;align-items:center;gap:10px;
+      background:rgba(255,255,255,0.05);
+      border:0.5px solid rgba(255,255,255,0.09);
+      border-radius:10px;padding:6px 12px 6px 8px;
+      cursor:pointer;transition:all 0.15s"
+      onmouseover="this.style.background='rgba(255,255,255,0.09)'"
+      onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+      <div style="width:28px;height:28px;border-radius:8px;
+        background:linear-gradient(135deg,#4F46E5,#7C3AED);
+        display:flex;align-items:center;justify-content:center;
+        font-size:12px;font-weight:700;color:#fff"
+        id="h3-user-avatar">A</div>
+      <div>
+        <div id="h3-user-name"
+          style="font-size:13px;font-weight:600;
+          color:rgba(255,255,255,0.9)">Administrador</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35)">
+          Admin</div>
+      </div>
+      <span style="font-size:10px;color:rgba(255,255,255,0.3);
+        margin-left:4px">▾</span>
+    </div>
+  </div>
+
+  <div class="h3-body">
+
+    <div class="h3-sidebar">
+
+      <div class="h3-nav-item active" onclick="go('home')">
+        <div class="h3-nav-icon">🏠</div>
+        Início
+      </div>
+
+      <div class="h3-nav-section">Produção</div>
+
+      <div class="h3-nav-item" id="hnav-pcp">
+        <div class="h3-nav-icon">📋</div>
+        PCP / Programação
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-maquina">
+        <div class="h3-nav-icon">🏭</div>
+        OFs por Máquina
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-armazena">
+        <div class="h3-nav-icon">📁</div>
+        Armazenamento OFs
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-amostras">
+        <div class="h3-nav-icon">🧪</div>
+        Amostras
+      </div>
+      <div class="h3-nav-item" id="hnav-orcamentos">
+        <div class="h3-nav-icon">💼</div>
+        Orçamentos
+      </div>
+
+      <div class="h3-nav-section">Cadastros</div>
+
+      <div class="h3-nav-item" id="hnav-maquinas">
+        <div class="h3-nav-icon">⚙️</div>
+        Máquinas
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-clientes">
+        <div class="h3-nav-icon">👥</div>
+        Clientes
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-fornecedores">
+        <div class="h3-nav-icon">🏢</div>
+        Fornecedores
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-vendedores">
+        <div class="h3-nav-icon">🤝</div>
+        Vendedores
+      </div>
+      <div class="h3-nav-item" id="hnav-usuarios">
+        <div class="h3-nav-icon">👤</div>
+        Usuários
+      </div>
+
+      <div class="h3-nav-section">Estoque</div>
+
+      <div class="h3-nav-item" id="hnav-chapas">
+        <div class="h3-nav-icon">📦</div>
+        Estoque Chapas
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-selchapas">
+        <div class="h3-nav-icon">🧾</div>
+        Seleção Chapas
+      </div>
+      <div class="h3-nav-item" id="hnav-facas">
+        <div class="h3-nav-icon">🔪</div>
+        Estoque Facas
+      </div>
+
+      <div class="h3-nav-section">Papelão</div>
+
+      <div class="h3-nav-item" id="hnav-compras">
+        <div class="h3-nav-icon">🛒</div>
+        Compra de Papelão
+      </div>
+      <div class="h3-nav-item" id="hnav-simulador">
+        <div class="h3-nav-icon">♻️</div>
+        Simulador
+      </div>
+
+      <div class="h3-nav-section">Análises</div>
+
+      <div class="h3-nav-item" id="hnav-relatorios">
+        <div class="h3-nav-icon">📊</div>
+        Relatórios
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+      <div class="h3-nav-item" id="hnav-dashboard">
+        <div class="h3-nav-icon">📈</div>
+        Dashboard
+      </div>
+      <div class="h3-nav-item" id="hnav-mapa">
+        <div class="h3-nav-icon">🗺️</div>
+        Mapas
+        <span style="margin-left:auto;font-size:10px;
+          color:rgba(255,255,255,0.2)">›</span>
+      </div>
+
+      <div style="margin-top:auto;padding-top:16px;
+        border-top:0.5px solid rgba(255,255,255,0.06);
+        margin-top:20px">
+        <div class="h3-nav-item" id="hnav-config">
+          <div class="h3-nav-icon">⚙️</div>
+          Configurações
+        </div>
+      </div>
+    </div>
+
+    <div class="h3-center">
+      <div id="h3-center-content">
+        <div style="padding:40px;text-align:center;
+          color:rgba(255,255,255,0.3)">Carregando...</div>
+      </div>
+    </div>
+
+    <div class="h3-right">
+      <div id="h3-right-content">
+        <div style="padding:20px;text-align:center;
+          color:rgba(255,255,255,0.3)">Carregando...</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ========== 1. PCP ========== -->
