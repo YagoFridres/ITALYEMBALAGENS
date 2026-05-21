@@ -46718,6 +46718,186 @@ window.atualizarChapas = async function(){
 })();
 </script>
 
+<script>
+async function _homeInit() { 
+  const nome = window._usuarioLogado?.nome || 
+    localStorage.getItem('italy_nome') || 'Administrador'; 
+  const first = nome.split(' ')[0]; 
+ 
+  const elW = document.getElementById('home-welcome'); 
+  if (elW) elW.textContent = 'Bem-vindo de volta, ' + first + ' 👋'; 
+ 
+  const elG = document.getElementById('home-greeting'); 
+  if (elG) elG.textContent = new Date().toLocaleDateString('pt-BR', 
+    {weekday:'long',day:'numeric',month:'long',year:'numeric'}); 
+ 
+  await Promise.allSettled([ 
+    _homeKpis(), 
+    _homeOfsUrgentes(), 
+    _homeIaStatus(), 
+  ]); 
+ 
+  const elA = document.getElementById('home-att'); 
+  if (elA) elA.textContent = new Date().toLocaleTimeString('pt-BR', 
+    {hour:'2-digit',minute:'2-digit'}); 
+} 
+ 
+async function _homeKpis() { 
+  try { 
+    const token = localStorage.getItem('token') || ''; 
+    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
+    const hoje = new Date().toISOString().slice(0,10); 
+ 
+    const r = await fetch('/api/ofs?lite=1&limit=1000&nocache=1' + 
+      (empId ? '&emp_id=' + empId : ''), { 
+      headers: {'Authorization':'Bearer ' + token} 
+    }); 
+    const d = await r.json(); 
+    const ofs = Array.isArray(d) ? d : 
+      (Array.isArray(d.data) ? d.data : []); 
+ 
+    const abertas = ofs.filter(o => { 
+      const s = String(o.status||'').toLowerCase(); 
+      return !s.includes('conclu') && !s.includes('cancela'); 
+    }); 
+    const conclHoje = ofs.filter(o => 
+      String(o.data_conclusao||'').slice(0,10) === hoje); 
+    const atrasadas = abertas.filter(o => { 
+      const e = String(o.data_entrega||o.ent||'').slice(0,10); 
+      return e && e < hoje; 
+    }); 
+    const urgentes = abertas.filter(o => o.urg || o.urgente); 
+    const emProd = abertas.filter(o => { 
+      const s = String(o.status||'').toLowerCase(); 
+      return s.includes('produ'); 
+    }); 
+ 
+    const set = (id, v) => { 
+      const el = document.getElementById(id); 
+      if (el) el.textContent = typeof v === 'number' ? 
+        v.toLocaleString('pt-BR') : v; 
+    }; 
+    set('kpi-ofs-abertas', abertas.length); 
+    set('kpi-ofs-hoje', conclHoje.length); 
+    set('kpi-atrasadas', atrasadas.length); 
+    set('kpi-urgentes', urgentes.length); 
+    set('kpi-producao', emProd.length); 
+ 
+    const mesAtual = hoje.slice(0,7); 
+    const fatMes = ofs 
+      .filter(o => String(o.data_conclusao||'').slice(0,7) === mesAtual) 
+      .reduce((s,o) => s + 
+        (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0)||0), 0); 
+    const elFat = document.getElementById('kpi-faturamento'); 
+    if (elFat && fatMes > 0) { 
+      elFat.textContent = 'R$ ' + fatMes.toLocaleString('pt-BR', 
+        {minimumFractionDigits:0, maximumFractionDigits:0}); 
+    } 
+  } catch(e) { 
+    console.error('[HOME KPIs]', e?.message); 
+  } 
+} 
+ 
+async function _homeOfsUrgentes() { 
+  const container = document.getElementById('home-ofs-urgentes'); 
+  if (!container) return; 
+  try { 
+    const token = localStorage.getItem('token') || ''; 
+    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
+    const hoje = new Date().toISOString().slice(0,10); 
+ 
+    const r = await fetch('/api/ofs?lite=1&limit=300&nocache=1' + 
+      (empId ? '&emp_id=' + empId : ''), { 
+      headers: {'Authorization':'Bearer ' + token} 
+    }); 
+    const d = await r.json(); 
+    const ofs = Array.isArray(d) ? d : 
+      (Array.isArray(d.data) ? d.data : []); 
+ 
+    const lista = ofs 
+      .filter(o => { 
+        const s = String(o.status||'').toLowerCase(); 
+        if (s.includes('conclu') || s.includes('cancela')) return false; 
+        const e = String(o.data_entrega||o.ent||'').slice(0,10); 
+        return (o.urg || o.urgente) || (e && e < hoje); 
+      }) 
+      .sort((a,b) => { 
+        const ua = !!(a.urg||a.urgente), ub = !!(b.urg||b.urgente); 
+        if (ua && !ub) return -1; 
+        if (!ua && ub) return 1; 
+        return String(a.data_entrega||'') 
+          .localeCompare(String(b.data_entrega||'')); 
+      }) 
+      .slice(0, 7); 
+ 
+    if (!lista.length) { 
+      container.innerHTML = 
+        '<div style="padding:16px;text-align:center;' + 
+        'font-size:12px;color:rgba(255,255,255,0.3)">' + 
+        '✓ Nenhuma OF urgente</div>'; 
+      return; 
+    } 
+ 
+    container.innerHTML = lista.map(o => { 
+      const e = String(o.data_entrega||o.ent||'').slice(0,10); 
+      const atras = e && e < hoje; 
+      const urg = !!(o.urg||o.urgente); 
+      const cor = (urg && atras) ? '#E24B4A' : 
+                   urg ? '#EF9F27' : '#E24B4A'; 
+      const eFmt = e ? e.split('-').reverse().join('/') : '—'; 
+      const cli = String(o.cliNome||o.cliente_nome||'—'); 
+      const num = String(o.of||o.numero||'?'); 
+      return '<div style="padding:9px 12px;cursor:pointer;' + 
+        'border-radius:8px;display:flex;align-items:center;' + 
+        'gap:8px;transition:background 0.15s;margin-bottom:2px"' + 
+        ' onmouseover="this.style.background=&quot;rgba(255,255,255,0.05)&quot;"' + 
+        ' onmouseout="this.style.background=&quot;transparent&quot;"' + 
+        ' id="home-of-item-' + o.id + '">' + 
+        '<div style="width:3px;height:32px;border-radius:2px;' + 
+        'background:' + cor + ';flex-shrink:0"></div>' + 
+        '<div style="flex:1;min-width:0">' + 
+        '<div style="font-size:12px;font-weight:500;' + 
+        'color:rgba(255,255,255,0.85);white-space:nowrap;' + 
+        'overflow:hidden;text-overflow:ellipsis">' + cli + '</div>' + 
+        '<div style="font-size:11px;color:rgba(255,255,255,0.35);' + 
+        'margin-top:1px">Nº ' + num + 
+        ' · <span style="color:' + cor + '">' + eFmt + '</span></div>' + 
+        '</div>' + 
+        '<div style="font-size:10px;font-weight:600;color:' + cor + ';' + 
+        'white-space:nowrap">' + 
+        (urg ? 'URGENTE' : 'ATRASADA') + '</div></div>'; 
+    }).join(''); 
+  } catch(e) { 
+    container.innerHTML = 
+      '<div style="padding:12px;font-size:12px;' + 
+      'color:rgba(255,255,255,0.3)">Erro ao carregar.</div>'; 
+  } 
+} 
+ 
+async function _homeIaStatus() { 
+  try { 
+    const token = localStorage.getItem('token') || ''; 
+    const r = await fetch('/api/ia/status', { 
+      headers: {'Authorization':'Bearer ' + token} 
+    }); 
+    const d = await r.json(); 
+    const dot = document.getElementById('home-ia-dot'); 
+    const txt = document.getElementById('home-ia-txt'); 
+    if (!dot || !txt) return; 
+    if (d.modo_turbo_disponivel) { 
+      dot.style.color = '#1D9E75'; 
+      txt.textContent = ' IA: Turbo ativo'; 
+    } else if (d.claude?.ativo || d.openai?.ativo) { 
+      dot.style.color = '#EF9F27'; 
+      txt.textContent = ' IA: Parcial'; 
+    } else { 
+      dot.style.color = '#E24B4A'; 
+      txt.textContent = ' IA: offline'; 
+    } 
+  } catch(_) {} 
+} 
+</script>
+
 <div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
   <div style="padding:16px 20px;border-bottom:0.5px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#0f1623;z-index:1">
     <div>
