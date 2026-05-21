@@ -3351,7 +3351,12 @@ function _goBase(id){
   try{ navHistPush(id); }catch(e){}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
+  const pageEl = document.getElementById('page-'+id);
+  if(pageEl) pageEl.classList.add('active');
+  else {
+    const telaEl = document.getElementById('tela-'+id);
+    if(telaEl) telaEl.style.display = '';
+  }
   try{
     const bn = document.getElementById('mobile-bottom-nav');
     if(bn){
@@ -26376,6 +26381,12 @@ async function doLogin(){
   authSave(AUTH_TOKEN, CURRENT_USER);
   if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
   iniciarSistema(CURRENT_USER);
+  try{
+    const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
+    const perfil = String((CURRENT_USER && CURRENT_USER.perfil) || '').trim().toLowerCase();
+    const isAdmin = (perfil === 'admin');
+    if(!(isMobileScreen && isAdmin)) go('home');
+  }catch(e){}
   try{ await loadCoreData(); }catch(e){}
   try{
     if(document.body && document.body.classList && document.body.classList.contains('mobile-mode') && typeof window.renderMobileApp === 'function'){
@@ -33911,6 +33922,8 @@ function go(id){
   // Ocultar todas as views
   const todasViews = document.querySelectorAll('[id^="view-"], [id^="page-"], .view-content, .page-content');
   todasViews.forEach(v => { try{ v.style.display = 'none'; }catch(e){} });
+  const todasTelas = document.querySelectorAll('.tela');
+  todasTelas.forEach(v => { try{ v.style.display = 'none'; }catch(e){} });
 
   // Também ocultar especificamente
   const viewsConhecidas = [
@@ -33926,6 +33939,11 @@ function go(id){
   _goBase(id);
   const pageAtual = document.getElementById('page-'+id);
   if(pageAtual) pageAtual.style.display = '';
+  if(id === 'home'){
+    const telaHome = document.getElementById('tela-home');
+    if(telaHome) telaHome.style.display = '';
+    try{ _homeInit(); }catch(e){}
+  }
 
   // No mobile, garantir que a tela anterior fique 100% oculta
   if(document.body && document.body.classList && document.body.classList.contains('is-mobile')){
@@ -35919,6 +35937,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sidebar-brand-name">Italy PCP Pro</div>
     <div class="sidebar-brand-sub">Italy Embalagens · Cartoeste · Oestepack</div>
   </div>
+  <div class="nav-item" onclick="go('home')" 
+    style="display:flex;align-items:center;gap:8px; 
+    padding:8px 12px;border-radius:8px;cursor:pointer; 
+    margin-bottom:4px;transition:background 0.15s" 
+    onmouseover="this.style.background='rgba(255,255,255,0.06)'" 
+    onmouseout="this.style.background='transparent'"> 
+    <span style="font-size:16px">🏠</span> 
+    <span style="font-size:13px;color:rgba(255,255,255,0.7)"> 
+      Início 
+    </span> 
+  </div> 
   <div class="sidebar-section">Produção</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
@@ -46896,6 +46925,34 @@ async function _homeIaStatus() {
     } 
   } catch(_) {} 
 } 
+
+(function(){
+  const bind = ()=>{
+    try{
+      if(window.__homeNavBound) return;
+      window.__homeNavBound = 1;
+    }catch(e){}
+    try{ document.getElementById('home-btn-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('hmod-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('hmod-maquina')?.addEventListener('click', () => go('ofmaq')); }catch(e){}
+    try{ document.getElementById('hmod-estoque')?.addEventListener('click', () => go('estoque')); }catch(e){}
+    try{ document.getElementById('hmod-clientes')?.addEventListener('click', () => go('clientes')); }catch(e){}
+    try{ document.getElementById('hmod-fornecedores')?.addEventListener('click', () => go('fornecedores')); }catch(e){}
+    try{ document.getElementById('hmod-compras')?.addEventListener('click', () => go('compras')); }catch(e){}
+    try{ document.getElementById('hmod-relatorios')?.addEventListener('click', () => go('relatorios')); }catch(e){}
+    try{ document.getElementById('hmod-dashboard')?.addEventListener('click', () => go('dashboard')); }catch(e){}
+    try{ document.getElementById('hmod-mapa')?.addEventListener('click', () => go('mapa-clientes')); }catch(e){}
+    try{ document.getElementById('hmod-jarvis')?.addEventListener('click', () => { 
+      if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); 
+    }); }catch(e){}
+    try{ document.getElementById('hmod-simulador')?.addEventListener('click', () => go('simd')); }catch(e){}
+    try{ document.getElementById('hmod-config')?.addEventListener('click', () => go('configuracoes')); }catch(e){}
+    try{ document.getElementById('home-ver-pcp')?.addEventListener('click', () => go('pcp')); }catch(e){}
+    try{ document.getElementById('kpi-box-abertas')?.addEventListener('click', () => go('pcp')); }catch(e){}
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
 </script>
 
 <div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
