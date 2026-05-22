@@ -27179,7 +27179,7 @@ let _ofsLastHash = '';
 
 let _ofsArquivoLoading = false;
 let _ofsArquivoLastLoad = 0;
-const _OFS_ARQUIVO_LIMIT = 500;
+const _OFS_ARQUIVO_LIMIT = 200;
 
 function _normalizeOFRowFromApi(o){
   let fm = o && o.fluxo_maquinas;
@@ -27251,8 +27251,8 @@ async function carregarOFSArquivo(force=false){
         if(typeof r?.total === 'number') total = r.total;
         all.push(...chunk);
         if(total != null && all.length >= total) break;
-        if(chunk.length < _OFS_ARQUIVO_LIMIT) break;
-        offset += _OFS_ARQUIVO_LIMIT;
+        if(chunk.length === 0) break;
+        offset += chunk.length;
       }
       _setOFSArquivoGlobal(all);
       _ofsArquivoLastLoad = Date.now();
