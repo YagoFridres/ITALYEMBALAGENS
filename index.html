@@ -26684,7 +26684,12 @@ async function doLogin(){
     const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
     const perfil = String((CURRENT_USER && CURRENT_USER.perfil) || '').trim().toLowerCase();
     const isAdmin = (perfil === 'admin');
-    if(!(isMobileScreen && isAdmin)) go('home');
+    if(!(isMobileScreen && isAdmin)){
+      const pref = (()=>{
+        try{ return String(localStorage.getItem('italy_start_page') || '').trim().toLowerCase(); }catch(e){ return ''; }
+      })();
+      go(pref === 'hub' ? 'hub' : 'home');
+    }
   }catch(e){}
   try{ await loadCoreData(); }catch(e){}
   try{
@@ -34295,6 +34300,9 @@ function go(id){
     if(telaHome) telaHome.style.display = '';
     try{ _homeInit(); }catch(e){}
   }
+  if(id === 'hub'){
+    try{ if(typeof renderHub === 'function') renderHub(); }catch(e){}
+  }
 
   // No mobile, garantir que a tela anterior fique 100% oculta
   if(document.body && document.body.classList && document.body.classList.contains('is-mobile')){
@@ -36289,6 +36297,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sidebar-brand-sub">Italy Embalagens · Cartoeste · Oestepack</div>
   </div>
   <div class="sidebar-section">Produção</div>
+  <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
@@ -36777,6 +36786,49 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div id="ofs-por-maquina-container"></div>
     <button id="ofmaq-fab-nova-of" class="btn btn-accent" onclick="abrirModalOF()" style="display:none">＋ Nova OF</button>
+  </div>
+</div>
+
+<div id="page-hub" class="page" style="display:none">
+  <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
+    <span style="font-size:.78rem;color:var(--text2)">✨ Hub Inicial</span>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="go('home')">↩ Home</button>
+    <button class="btn btn-ghost btn-sm" onclick="hubToggleInicial()">⭐ Usar como inicial</button>
+    <button class="btn btn-ghost btn-sm" onclick="renderHub(true)">↻ Atualizar</button>
+  </div>
+  <div class="page-body" style="padding:18px 14px;max-width:1400px">
+    <div id="hub-top" style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div>
+        <div id="hub-sub" style="font-size:.78rem;color:var(--text3)">—</div>
+        <div id="hub-title" style="font-size:1.2rem;font-weight:900">Carregando…</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-accent btn-sm" onclick="go('pcp')">Abrir PCP</button>
+        <button class="btn btn-ghost btn-sm" onclick="go('ofmaq')">OFs por Máquina</button>
+        <button class="btn btn-ghost btn-sm" onclick="go('lancamento')">Armazenamento</button>
+      </div>
+    </div>
+    <div id="hub-cards" class="cards-row" style="margin-bottom:14px"></div>
+    <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:start">
+      <div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>📊 OFs por status (últimos 30 dias)</span>
+          <span id="hub-status-sub" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)"></span>
+        </div>
+        <div class="sbox-b" id="hub-status"></div>
+      </div>
+      <div style="display:grid;gap:12px">
+        <div class="sbox">
+          <div class="sbox-h">🏆 Ranking vendedores (mês)</div>
+          <div class="sbox-b" id="hub-ranking"></div>
+        </div>
+        <div class="sbox">
+          <div class="sbox-h">🔔 Pendências</div>
+          <div class="sbox-b" id="hub-pendencias"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -47234,6 +47286,161 @@ async function _homeIaStatus() {
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
   else bind();
 })();
+
+function hubToggleInicial(){
+  try{
+    const cur = String(localStorage.getItem('italy_start_page') || '').trim().toLowerCase();
+    const next = (cur === 'hub') ? 'home' : 'hub';
+    localStorage.setItem('italy_start_page', next);
+    toast(next === 'hub' ? '✓ Hub definido como tela inicial' : '✓ Home definida como tela inicial', 'var(--green)');
+    try{ renderHub(false); }catch(e){}
+  }catch(e){}
+}
+
+function hubCard(lbl, val, sub, color){
+  const c = color || 'var(--accent)';
+  return `<div class="card" style="min-width:160px">
+    <div class="card-lbl">${escH(lbl)}</div>
+    <div class="card-val" style="color:${escH(c)}">${escH(val)}</div>
+    <div class="card-sub">${escH(sub || '')}</div>
+  </div>`;
+}
+
+function _hubGetOfsBase(){
+  const a = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : null;
+  if(a && a.length) return a;
+  const b = Array.isArray(window.OFs) ? window.OFs : null;
+  if(b && b.length) return b;
+  const c = Array.isArray(window.OFS) ? window.OFS : null;
+  if(c && c.length) return c;
+  const d = Array.isArray(window._ofmaqListaCompleta) ? window._ofmaqListaCompleta : null;
+  if(d && d.length) return d;
+  return [];
+}
+
+async function renderHub(forcar=false){
+  try{
+    const title = document.getElementById('hub-title');
+    const sub = document.getElementById('hub-sub');
+    const cards = document.getElementById('hub-cards');
+    const rank = document.getElementById('hub-ranking');
+    const stBox = document.getElementById('hub-status');
+    const stSub = document.getElementById('hub-status-sub');
+    const pend = document.getElementById('hub-pendencias');
+    if(!title || !cards || !rank || !stBox || !pend) return;
+
+    const nome = String((window.CURRENT_USER?.nome || window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador') || 'Administrador');
+    const first = nome.split(' ')[0] || 'Administrador';
+    title.textContent = `Bem-vindo, ${first}`;
+    if(sub) sub.textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+    let ofs = _hubGetOfsBase();
+    const hoje = new Date().toISOString().slice(0,10);
+    const corte = new Date(); corte.setDate(corte.getDate() - 30);
+    const from = corte.toISOString().slice(0,10);
+    if((!ofs || ofs.length < 50) && _apiConectado && CURRENT_USER){
+      try{
+        const token = localStorage.getItem('token') || '';
+        const empId = window.EMP_FILTRO || window.EMPRESA_ATIVA || '';
+        const r = await fetch('/api/ofs?lite=1&limit=300&nocache=1&from='+encodeURIComponent(from)+'&date_field=created_at' + (empId ? '&emp_id='+encodeURIComponent(empId) : ''), { headers:{'Authorization':'Bearer '+token} });
+        const d = await r.json().catch(()=>null);
+        const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+        if(arr.length) ofs = arr;
+      }catch(e){}
+    }
+
+    const nrm = (s)=>{ try{ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }catch(e){ return String(s||'').toLowerCase().trim(); } };
+    const entOf = (o)=> String(o?.data_entrega ?? o?.ent ?? '').slice(0,10);
+    const createdOf = (o)=> String(o?.created_at ?? o?.createdAt ?? '').slice(0,10);
+    const conclOf = (o)=> String(o?.data_conclusao ?? o?.conclusao ?? '').slice(0,10);
+    const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.total ?? o?.val ?? 0) || 0;
+    const vendNome = (o)=> String(o?.vendNome ?? o?.vendedor_nome ?? o?.vendedor ?? '').trim();
+
+    const arr30 = (Array.isArray(ofs)?ofs:[]).filter(o=>{
+      const c = createdOf(o);
+      return !c || (c >= from && c <= hoje);
+    });
+
+    const abertas = arr30.filter(o=>{
+      const s = nrm(o?.status);
+      return !(s.includes('conclu') || s === 'pedido pronto' || s.includes('cancel'));
+    });
+    const atrasadas = abertas.filter(o=>{
+      const e = entOf(o);
+      return e && e < hoje;
+    });
+    const conclHoje = arr30.filter(o=>conclOf(o) === hoje);
+
+    const empId = String(window.EMP_FILTRO || '').trim();
+    const estoque = Array.isArray(window.ESTOQUE) ? window.ESTOQUE : (Array.isArray(window.CHAPAS) ? window.CHAPAS : []);
+    const estBaixo = (Array.isArray(estoque)?estoque:[]).filter(i=>{
+      const q = Number(i?.qtd ?? i?.estoque ?? i?.quantidade ?? 0) || 0;
+      const mn = Number(i?.min ?? i?.minimo ?? i?.estoque_min ?? 0) || 0;
+      return mn > 0 && q > 0 && q <= mn;
+    }).length;
+
+    const cardsHtml = [
+      hubCard('OFs em aberto', String(abertas.length), 'Últimos 30 dias', '#60A5FA'),
+      hubCard('Atrasadas', String(atrasadas.length), 'Precisa atenção', '#EF4444'),
+      hubCard('Concluídas hoje', String(conclHoje.length), hoje.split('-').reverse().join('/'), '#10B981'),
+      hubCard('Estoque baixo', String(estBaixo || 0), 'Chapas com mínimo', '#F59E0B'),
+    ].join('');
+    cards.innerHTML = cardsHtml;
+
+    const byStatus = new Map();
+    arr30.forEach(o=>{
+      const sRaw = String(o?.status || '—').trim() || '—';
+      const k = nrm(sRaw) || '—';
+      const cur = byStatus.get(k) || { label: sRaw, n: 0 };
+      cur.n += 1;
+      if(cur.label === '—' && sRaw !== '—') cur.label = sRaw;
+      byStatus.set(k, cur);
+    });
+    const stArr = Array.from(byStatus.values()).sort((a,b)=>b.n-a.n).slice(0, 8);
+    const max = Math.max(1, ...stArr.map(x=>x.n));
+    if(stSub) stSub.textContent = `${String(arr30.length)} OF(s)`;
+    stBox.innerHTML = stArr.map(x=>{
+      const w = Math.round((x.n / max) * 100);
+      return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
+        <div style="min-width:140px;font-size:.78rem;color:var(--text2)">${escH(x.label)}</div>
+        <div style="flex:1;height:10px;border-radius:999px;background:var(--s3);overflow:hidden;border:1px solid var(--border)">
+          <div style="height:100%;width:${w}%;background:var(--accent)"></div>
+        </div>
+        <div style="width:56px;text-align:right;font-family:var(--mono);font-weight:900;color:var(--text2)">${escH(String(x.n))}</div>
+      </div>`;
+    }).join('') || `<div style="color:var(--text3)">Sem dados.</div>`;
+
+    const mes = hoje.slice(0,7);
+    const conclMes = (Array.isArray(ofs)?ofs:[]).filter(o=>String(conclOf(o)).slice(0,7) === mes);
+    const vendMap = new Map();
+    conclMes.forEach(o=>{
+      const nomeV = vendNome(o) || '—';
+      const k = nomeV.toLowerCase().trim();
+      const cur = vendMap.get(k) || { nome: nomeV, valor: 0, n: 0 };
+      cur.valor += valOf(o);
+      cur.n += 1;
+      vendMap.set(k, cur);
+    });
+    const top = Array.from(vendMap.values()).filter(x=>x.nome !== '—').sort((a,b)=>b.valor-a.valor).slice(0,3);
+    rank.innerHTML = top.length ? top.map((x,i)=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="min-width:0">
+          <div style="font-weight:900">${i+1}. ${escH(x.nome)}</div>
+          <div style="font-size:.74rem;color:var(--text3)">${escH(String(x.n))} OF(s)</div>
+        </div>
+        <div style="font-family:var(--mono);font-weight:900;color:var(--green)">${escH(fmtR(x.valor))}</div>
+      </div>`).join('')
+      : `<div style="color:var(--text3)">Sem dados do mês.</div>`;
+
+    const pendArr = [];
+    if(atrasadas.length) pendArr.push(`OFs atrasadas: ${atrasadas.length}`);
+    if(typeof window._homeIaStatus === 'function'){ }
+    if(!Array.isArray(window.CLIENTES) || !window.CLIENTES.length) pendArr.push('Clientes ainda não carregados');
+    if(!Array.isArray(window.VENDEDORES) || !window.VENDEDORES.length) pendArr.push('Vendedores ainda não carregados');
+    if(!Array.isArray(window.MAQUINAS) || !window.MAQUINAS.length) pendArr.push('Máquinas ainda não carregadas');
+    pend.innerHTML = pendArr.length ? `<ul style="margin:0;padding-left:18px;color:var(--text2)">${pendArr.map(t=>`<li>${escH(t)}</li>`).join('')}</ul>` : `<div style="color:var(--text3)">Nenhuma pendência.</div>`;
+  }catch(e){}
+}
 </script>
 
 <div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
