@@ -11653,17 +11653,28 @@ function validarCamposObrigatoriosOF(payload, itens){
   const cli = String(p.cliId || p.cli_id || p.cliente_id || '').trim();
   if (!cli) erros.push('Cliente é obrigatório');
 
+  const vend = String(p.vendId || p.vendedor_id || p.vend_id || '').trim();
+  if (!vend) erros.push('Vendedor é obrigatório');
+
   const titulo = String(p.prodDesc || p.descricao || p.produto || '').trim();
   if (!titulo) erros.push('Produto/Descrição é obrigatório');
 
   const dtEnt = String(p.ent || p.data_entrega || '').slice(0, 10);
   if (!dtEnt) erros.push('Data de entrega é obrigatória');
 
-  const emp = String(p.empId || p.emp_id || '').trim();
-  if (!emp) erros.push('Empresa é obrigatória');
-
   const qtdTotal = Number(p.qtd ?? p.quantidade ?? 0);
   if (!(qtdTotal > 0)) erros.push('Quantidade deve ser maior que 0');
+
+  let vunit = 0;
+  try{
+    const arr = Array.isArray(itens) ? itens : [];
+    vunit = Math.max(0, ...arr.map(it => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
+  }catch(e){}
+  if(!(vunit > 0)){
+    const total = Number(p.valor_total ?? p.valor_venda ?? 0) || 0;
+    const u = (qtdTotal > 0) ? (total / qtdTotal) : 0;
+    if(!(u > 0)) erros.push('Valor unitário é obrigatório');
+  }
 
   return erros;
 }
@@ -11856,7 +11867,7 @@ async function salvarOF(){
         if(el) el.classList.toggle('bad', !ok);
       };
       mark('f-cli-search', !!cliId);
-      mark('f-emp', !!String(payloadLocal.empId || payloadLocal.emp_id || '').trim());
+      mark('f-vend', !!String(vendIdSel || '').trim());
       mark('f-prod-desc', !!String(titulo || '').trim());
       mark('of-qtd-total', Number(qtdTotal || 0) > 0);
       mark('f-ent', !!String(entregaSel || '').trim());
@@ -12053,7 +12064,7 @@ async function salvarEdicaoOFId(id){
           if(el) el.classList.toggle('bad', !ok);
         };
         mark('f-cli-search', !!cliId);
-        mark('f-emp', !!String(payload.empId || payload.emp_id || '').trim());
+        mark('f-vend', !!String(payload.vendId || payload.vendedor_id || payload.vend_id || '').trim());
         mark('f-prod-desc', !!String(titulo || '').trim());
         mark('of-qtd-total', Number(qtdTotal || 0) > 0);
         mark('f-ent', !!String(entregaSel || '').trim());
@@ -12133,6 +12144,106 @@ function lancVendNome(o){
     if (it && it.nome) return String(it.nome || '').trim() || '—';
   }
   return String((o.vendedor||o.vendedor_nome||'')).trim() || '—';
+}
+
+function lancMostrarOFsIncompletas(){
+  const rows = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : (Array.isArray(OFS_HIST) ? OFS_HIST : []);
+  if(!Array.isArray(rows) || !rows.length){ toast('Arquivo ainda não carregado','var(--yellow)'); return; }
+
+  const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  const getCliId = (o)=> String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
+  const getVendId = (o)=> String(o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? '').trim();
+  const getProd = (o)=>{
+    const itens = Array.isArray(o?.itens) ? o.itens : (typeof o?.itens === 'string' ? tryParse(o.itens, []) : []);
+    const arr = Array.isArray(itens) ? itens : [];
+    const item0 = arr[0] || {};
+    return String(item0.desc || item0.descricao || o?.prodDesc || o?.descricao || o?.produto || '').trim();
+  };
+  const getQtd = (o)=>{
+    const v = Number(o?.qtd ?? o?.quantidade ?? o?.qtd_pedida ?? 0) || 0;
+    if(v > 0) return v;
+    const itens = Array.isArray(o?.itens) ? o.itens : (typeof o?.itens === 'string' ? tryParse(o.itens, []) : []);
+    const arr = Array.isArray(itens) ? itens : [];
+    return arr.reduce((s,it)=>s + (Number(it?.qtd ?? it?.quantidade ?? 0) || 0), 0) || 0;
+  };
+
+  const incompletas = [];
+  rows.forEach((o)=>{
+    if(!o || o.deleted_at) return;
+    const faltando = [];
+    const cid = getCliId(o);
+    const vid = getVendId(o);
+    const qtd = getQtd(o);
+    const prod = getProd(o);
+    if(!cid) faltando.push('Cliente');
+    if(!vid || isUuid(String(o?.vendedor || '').trim())) faltando.push('Vendedor');
+    if(!(qtd > 0)) faltando.push('Quantidade');
+    if(!prod) faltando.push('Produto');
+    if(faltando.length) incompletas.push({ o, faltando, qtd, prod });
+  });
+
+  let modal = document.getElementById('modal-lanc-inc');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'modal-lanc-inc';
+    modal.innerHTML = `<div class="modal" style="width:min(980px,98vw)">
+      <button class="close-btn" onclick="fechar('modal-lanc-inc')">✕</button>
+      <h2>⚠ OFs Incompletas</h2>
+      <div class="page-body" id="lanc-inc-body" style="padding:12px 0"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="fechar('modal-lanc-inc')">Fechar</button>
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+  }
+  const host = document.getElementById('lanc-inc-body');
+  if(!host) return;
+
+  if(!incompletas.length){
+    host.innerHTML = `<div style="padding:12px;color:var(--text3)">Nenhuma OF incompleta encontrada.</div>`;
+    abrir('modal-lanc-inc');
+    return;
+  }
+  const th = 'padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.7rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+  const td = 'padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;white-space:nowrap;';
+  host.innerHTML = `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">Total: <b style="color:var(--text)">${String(incompletas.length)}</b></div>
+    <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar Arquivo</button>
+  </div>
+  <div style="max-height:70vh;overflow:auto;border:1px solid var(--border);border-radius:12px">
+    <table style="width:100%;border-collapse:collapse;min-width:920px">
+      <thead><tr>
+        <th style="${th}">Nº</th>
+        <th style="${th}">Cliente</th>
+        <th style="${th}">Vendedor</th>
+        <th style="${th}">Produto</th>
+        <th style="${th};text-align:right">Qtd</th>
+        <th style="${th}">Faltando</th>
+        <th style="${th}"></th>
+      </tr></thead>
+      <tbody>
+        ${incompletas.slice(0, 500).map(({o, faltando, qtd, prod})=>{
+          const num = String(o?.of || o?.numero || '').trim();
+          const id = String(o?.id || '').trim();
+          const cliNome = lancCliNome(o);
+          const vendNome = lancVendNome(o);
+          const falt = faltando.join(', ');
+          const verBtn = id ? `<button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(id)}')">Ver</button>` : '';
+          return `<tr>
+            <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">#${escH(num || '—')}</td>
+            <td style="${td}">${escH(cliNome || '—')}</td>
+            <td style="${td}">${escH(vendNome || '—')}</td>
+            <td style="${td};max-width:260px;overflow:hidden;text-overflow:ellipsis">${escH(String(prod || '—'))}</td>
+            <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(Number(qtd || 0) || 0)}</td>
+            <td style="${td};color:var(--orange);font-weight:900">${escH(falt)}</td>
+            <td style="${td};text-align:center">${verBtn}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+  abrir('modal-lanc-inc');
 }
 function lancDia(o){ return String((o.dia||o.data_pedido||o.dataPedido||'')||'').slice(0,10); }
 function lancEnt(o){ return String((o.ent||o.data_entrega||o.dataEntrega||'')||'').slice(0,10); }
@@ -12941,6 +13052,7 @@ function renderLancamento(){
       <button class="btn btn-ghost btn-sm" onclick="lancExportarExcel()">📥 Exportar Excel</button>
       <button class="btn btn-ghost btn-sm" onclick="lancExportarPDF()">📄 Exportar PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="lancImprimirLista()">🖨 Imprimir Lista</button>
+      <button class="btn btn-ghost btn-sm" onclick="lancMostrarOFsIncompletas()">⚠ OFs Incompletas</button>
       <button class="btn btn-ghost btn-sm" onclick="lancCarregarHistorico()">↻ Atualizar Arquivo</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px">

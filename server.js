@@ -3059,6 +3059,34 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         filtered.numero = numStr;
       } catch (_) {}
     }
+    {
+      const parseItens = (v) => {
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
+        return [];
+      };
+      const merged = { ...(body || {}), ...(filtered || {}) };
+      const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
+      const vendId = String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
+      const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
+      const itens = parseItens(merged.itens ?? body.itens);
+      const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
+      const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
+      const total = Number(merged.valor_total ?? merged.valor_venda ?? 0) || 0;
+      const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
+      const vunit = (vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0);
+      const missing = [];
+      if (!cliId) missing.push('cliente');
+      if (!vendId) missing.push('vendedor');
+      if (!(qtd > 0)) missing.push('quantidade');
+      if (!prod) missing.push('produto/modelo');
+      if (!ent) missing.push('data de entrega');
+      if (!(vunit > 0)) missing.push('valor unitário');
+      if (missing.length) {
+        return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
+      }
+    }
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
@@ -3189,6 +3217,47 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .eq('id', id)
       .maybeSingle();
     if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    {
+      const keys = Object.keys(req.body || {});
+      const shouldValidate = keys.some((k) => [
+        'cli_id','cliId','cliente_id','clienteId',
+        'vendedor_id','vendId','vend_id','vendedorId',
+        'qtd','quantidade','qtd_pedida','qtdPedida',
+        'valor_total','valor_venda','valorTotal','valorVenda',
+        'prodDesc','descricao','produto',
+        'ent','data_entrega','dataEntrega',
+        'itens',
+      ].includes(k));
+      if (shouldValidate) {
+        const parseItens = (v) => {
+          if (Array.isArray(v)) return v;
+          if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
+          return [];
+        };
+        const merged = { ...(ofAtual || {}), ...(cleanBody || {}) };
+        const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
+        const vendId = String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim();
+        const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
+        const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
+        const itens = parseItens(merged.itens ?? ofAtual?.itens);
+        const item0 = (Array.isArray(itens) ? itens : [])[0] || {};
+        const prod = String(merged.prodDesc ?? merged.descricao ?? merged.produto ?? item0.desc ?? item0.descricao ?? '').trim();
+        const total = Number(merged.valor_total ?? merged.valor_venda ?? 0) || 0;
+        const vunitItens = Math.max(0, ...(Array.isArray(itens) ? itens : []).map((it) => Number(it?.valor_unitario ?? it?.vunit ?? 0) || 0));
+        const vunit = (vunitItens > 0) ? vunitItens : ((qtd > 0) ? (total / qtd) : 0);
+        const missing = [];
+        if (!cliId) missing.push('cliente');
+        if (!vendId) missing.push('vendedor');
+        if (!(qtd > 0)) missing.push('quantidade');
+        if (!prod) missing.push('produto/modelo');
+        if (!ent) missing.push('data de entrega');
+        if (!(vunit > 0)) missing.push('valor unitário');
+        if (missing.length) {
+          return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
+        }
+      }
+    }
 
     try {
       const stAtual = String(ofAtual?.status || '').trim().toLowerCase();
