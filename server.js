@@ -665,7 +665,7 @@ app.post('/api/auth/login', async (req, res) => {
       }
     }
 
-    console.log('[LOGIN]', String(email).trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
+    console.log('[LOGIN]', String(usuario?.email || emailNorm || '').trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
 
     if (!senhaValida) return res.status(401).json({ ok: false, error: 'Senha incorreta' });
 
@@ -2466,7 +2466,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let numCols = numero ? ['numero', 'of', 'of_num'] : [];
 
     for (let tentativa = 0; tentativa < 8; tentativa++) {
-      const sel = tentativa === 0 ? '*' : (colsArr.length ? colsArr.join(',') : 'id,numero,status,created_at');
+      const sel = lite
+        ? (colsArr.length ? colsArr.join(',') : '*')
+        : (tentativa === 0 ? '*' : (colsArr.length ? colsArr.join(',') : 'id,numero,status,created_at'));
 
       let q = supabase
         .from('ofs')
@@ -2537,7 +2539,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       rawErr = r.error;
       const msg = String(r.error?.message || '');
-      console.error('[OFS GET] erro tentativa=' + tentativa + ':', msg);
+      console.error('[OFS GET] erro tentativa=' + tentativa + ':', {
+        message: msg,
+        code: r.error?.code,
+        details: r.error?.details,
+        hint: r.error?.hint,
+      });
 
       const colMatch =
         msg.match(/column ofs\."?(\w+)"? does not exist/i) ||
@@ -2621,6 +2628,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     cacheSet(cacheKey, payload, 10 * 1000);
     return res.json({ ok: true, ...payload });
   } catch (e) {
+    try { console.error('[OFS 500 FULL]', e); } catch (_) {}
     console.error('[OFS 500]', e?.message, String(e?.stack || '').slice(0, 200));
     _logApiError('OFS GET', req, e, { query: req.query });
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
