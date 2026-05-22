@@ -2360,7 +2360,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const cliIds = Array.from(new Set(
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
-      )).slice(0, 150);
+      )).slice(0, 500);
       const vendIdsFromRows = Array.from(new Set(
         arr.map((o) => String(
           o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? o?.vendId ?? ''
@@ -2370,7 +2370,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         arr.map((o) => String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim())
           .filter((v) => isUuid(v))
       ));
-      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 150);
+      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 500);
       if (!cliIds.length && !preVendIds.length) return arr;
       try {
         let cls = [];
@@ -2386,7 +2386,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const vendIdsFromClients = Array.from(new Set(
           cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
         ));
-        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 150);
+        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 500);
         const byVendId = new Map();
         if (vendIds.length) {
           const { data: vds } = await supabase
@@ -3104,6 +3104,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const warnings = (createdRes && Array.isArray(createdRes.ignoredColumns) && createdRes.ignoredColumns.length)
       ? { ignored_columns: createdRes.ignoredColumns.slice() }
       : null;
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data: created, ...(warnings ? { warnings } : {}) });
   } catch (e) {
     _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
@@ -3418,6 +3419,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     const warnings = (updRes && Array.isArray(updRes.ignoredColumns) && updRes.ignoredColumns.length)
       ? { ignored_columns: updRes.ignoredColumns.slice() }
       : null;
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data: updated, ...(warnings ? { warnings } : {}) });
   } catch (e) {
     _logApiError('OFS PUT', req, e, { id: req.params?.id, bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
@@ -3440,6 +3442,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (msg.toLowerCase().includes('deleted_at') && (msg.includes('column') || msg.includes('Could not find'))) {
         await deleteOne('ofs', id);
         await logAuditoria('ofs', 'DELETE', id, antes, null, req);
+        try { cacheClearPrefix('ofs_v4'); } catch (_) {}
         return ok(res, true);
       }
       throw error;
@@ -3458,6 +3461,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     await logAuditoria('ofs', 'DELETE', id, antes, null, req);
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { bad(res, e.message); }
 });
@@ -3469,6 +3473,7 @@ app.patch('/api/ofs/:id/restore', authMiddleware, async (req, res) => {
     const payload = { deleted_at: null, updated_at: now };
     const { data, error } = await supabase.from('ofs').update(payload).eq('id', id).select('*').maybeSingle();
     if (error) throw error;
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -4263,6 +4268,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     } catch (_) {}
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -4433,6 +4439,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     } catch (e) {}
 
     const dataOut = upd?.data ? { ...upd.data, ...payload } : { id, ...payload };
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data: dataOut, concluida, proxima: proxima || null, status: payload.status });
   } catch (e) {
     const msg = String(e?.message || e);
@@ -4706,6 +4713,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     } catch (e) {}
 
     const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({
       ok: true,
       data: { ...dataOut, maquina_producao: maquinaProducaoOut || null },
