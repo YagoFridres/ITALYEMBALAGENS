@@ -3194,6 +3194,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
+        try { console.log('[OF STATUS GUARD] ignorando reabertura via PUT', { id, stAtual, stNovo }); } catch (_) {}
         delete cleanBody.status;
         delete body.status;
       }
@@ -4228,6 +4229,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
+        try { console.log('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
         delete payload.status;
       }
     } catch (_) {}

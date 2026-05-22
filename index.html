@@ -2827,9 +2827,17 @@ function pcpDiaLabel(dateStr){
 const getM   = id => MAQUINAS.find(m=>m.id===id);
 const getF   = id => FLUXOS.find(f=>f.id===id);
 const getCh  = id => ESTOQUE.find(c=>c.id===id);
-const getCli = id => CLIENTES.find(c=>c.id===id);
+const getCli = id => {
+  const sid = String(id ?? '').trim();
+  if(!sid) return null;
+  return CLIENTES.find(c => String(c?.id ?? '').trim() === sid) || null;
+};
 const getCliByName = txt => CLIENTES.find(c=>(c.nome||'').toLowerCase()===(txt||'').toLowerCase());
-const getV   = id => VENDEDORES.find(v=>v.id===id);
+const getV   = id => {
+  const sid = String(id ?? '').trim();
+  if(!sid) return null;
+  return VENDEDORES.find(v => String(v?.id ?? '').trim() === sid) || null;
+};
 const getMot = id => MOTORISTAS.find(m=>m.id===id);
 function fmtDataBR(dateStr){
   if(!dateStr) return '—';
@@ -7603,12 +7611,7 @@ async function concluirOFComBaixa(ofId){
     }
     if(dataFaturamento) concluirBody.data_faturamento = dataFaturamento;
     try{
-      console.log('[CONCLUIR] body enviado:', {
-        qtd_produzida: qtdProd,
-        qtd_perdida: qtdPerd,
-        maquina_producao: concluirBody.maquina_producao,
-        maquina_perda: concluirBody.maquina_perda
-      });
+      console.log('[CONCLUIR] body enviado:', JSON.stringify(concluirBody));
     }catch(e){}
     const rConc = await apiFetch('/api/ofs/' + encodeURIComponent(id) + '/concluir', {
       method: 'POST',
@@ -7648,7 +7651,9 @@ async function concluirOFComBaixa(ofId){
       patch.valor_total = novoValor;
       patch.valor_venda = novoValor;
     }
+    try { console.log('[CONCLUIR] patch local:', JSON.stringify({ id, ...patch })); } catch (_) {}
     _atualizarOFLocal(id, patch);
+    try { _upsertOFSArquivoLocal({ ...(of||{}), id, ...patch }); } catch (_) {}
 
     try{
       const r2 = await apiFetch('/api/ofs/' + encodeURIComponent(id));
@@ -7657,6 +7662,7 @@ async function concluirOFComBaixa(ofId){
         const novo = normalizeOF(j2.data);
         const ix = (OFs||[]).findIndex(o => String(o?.id||'') === id);
         if(ix >= 0) OFs[ix] = novo; else (OFs||[]).push(novo);
+        try { _upsertOFSArquivoLocal(novo); } catch (_) {}
       }else{
         const ix = (OFs||[]).findIndex(o => String(o?.id||'') === id);
         if(ix >= 0){
@@ -12185,6 +12191,7 @@ async function lancCarregarHistorico(){
     toast('Erro ao carregar arquivo: '+String((r && r.error) ? r.error : 'falha'),'var(--red)');
     return;
   }
+  try{ await Promise.allSettled([carregarClientes(false), carregarVendedores(false)]); }catch(_){}
   OFS_HIST = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
   try{ showSaveIndicator('✓ carregado','var(--green)'); }catch(_){}
   renderLancamento();
@@ -12729,6 +12736,18 @@ function renderLancamento(){
   if(!host || !resumo) return;
 
   try{ carregarOFsFresh().catch(()=>null); }catch(e){}
+  try{
+    const needCli = !(Array.isArray(CLIENTES) && CLIENTES.length);
+    const needVend = !(Array.isArray(VENDEDORES) && VENDEDORES.length);
+    if(needCli || needVend){
+      Promise.allSettled([
+        needCli ? carregarClientes(false) : Promise.resolve(),
+        needVend ? carregarVendedores(false) : Promise.resolve(),
+      ]).then(()=>{
+        try{ if(window._PAGE_ATUAL === 'lancamento') renderLancamento(); }catch(_){}
+      });
+    }
+  }catch(_){}
 
   if(!Array.isArray(window.OFS_ARQUIVO)){
     host.innerHTML = `<div style="padding:14px;color:var(--text2)">Carregando arquivo...</div>`;
@@ -26490,6 +26509,17 @@ async function apiFetch(url, opts = {}) {
   const body = opts.body;
   const isForm = (typeof FormData !== 'undefined') && (body instanceof FormData);
   if (!isForm && !headers['Content-Type'] && !headers['content-type']) headers['Content-Type'] = 'application/json';
+  try {
+    const m = String(opts.method || 'GET').toUpperCase();
+    const u = String(url || '');
+    const b = opts.body;
+    const isPlainObj = b && typeof b === 'object' && !Array.isArray(b) && !(b instanceof Date) && !(b instanceof FormData);
+    if ((m === 'PUT' || m === 'PATCH' || m === 'POST') && u.includes('/api/ofs/') && isPlainObj) {
+      if (Object.prototype.hasOwnProperty.call(b, 'status') || Object.prototype.hasOwnProperty.call(b, 'data_conclusao') || Object.prototype.hasOwnProperty.call(b, 'usuario_conclusao')) {
+        console.log('[OFS FRONT UPDATE]', { method: m, url: u, body: b });
+      }
+    }
+  } catch (_) {}
   let fullUrl = String(url||'');
   if (!/^https?:\/\//i.test(fullUrl) && fullUrl.startsWith('/api/') && window.location && window.location.protocol === 'file:') {
     fullUrl = API_BASE + fullUrl;
@@ -26557,6 +26587,16 @@ async function api(method, url, body) {
   const fullUrl = (window.API_BASE || '') + '/api' + url;
   const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
+  try {
+    const m = String(method || '').toUpperCase();
+    const u = String(url || '');
+    const b = body && typeof body === 'object' && !Array.isArray(body) ? body : null;
+    if ((m === 'PUT' || m === 'PATCH' || m === 'POST') && u.includes('/ofs/') && b) {
+      if (Object.prototype.hasOwnProperty.call(b, 'status') || Object.prototype.hasOwnProperty.call(b, 'data_conclusao') || Object.prototype.hasOwnProperty.call(b, 'usuario_conclusao')) {
+        console.log('[OFS FRONT UPDATE]', { method: m, url: '/api' + u, body: b });
+      }
+    }
+  } catch (_) {}
 
   let resp = await fetch(fullUrl, opts);
   if (resp.status === 401) {
