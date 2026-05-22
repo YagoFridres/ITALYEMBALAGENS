@@ -1999,6 +1999,7 @@ const MODULOS_SISTEMA = [
   { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
+  { key:'operadores',     label:'Operadores',          grupo:'Cadastros', menuId:'menu-operadores',      paginaId:'operadores' },
   { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
   { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
   { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Papelão',   menuId:'menu-papelao-sel-chapas', paginaId:'sel-chapas' },
@@ -2043,6 +2044,7 @@ const PERMISSOES_SISTEMA = {
       fornecedores: 'Fornecedores',
       vendedores: 'Vendedores',
       usuarios: 'Usuários',
+      operadores: 'Operadores',
       roteiro: 'Roteiro de Entrega',
     }
   },
@@ -27486,7 +27488,24 @@ function normalizeMaq(r){
     ativo
   };
 }
-function normalizeOp(r){ return {id:r.id,nome:r.nome,funcao:r.funcao,ativo:r.ativo!==0,mat:r.mat,maqPrincipal:r.maq_principal,setor:r.setor,admissao:r.admissao,obs:r.obs,status:r.ativo?'Ativo':'Inativo'}; }
+function normalizeOp(r){
+  const maq = r.maq_principal ?? r.maqPrincipal ?? r.maq_id ?? r.maqId ?? '';
+  const setor = r.setor ?? r.funcao ?? '';
+  const ativo = r.ativo !== 0 && r.ativo !== false;
+  return {
+    id:r.id,
+    nome:r.nome,
+    funcao:r.funcao ?? r.setor ?? '',
+    ativo,
+    mat:r.mat,
+    maqId: maq,
+    maqPrincipal: maq,
+    setor,
+    admissao:r.admissao,
+    obs:r.obs,
+    status: ativo ? 'Ativo' : 'Inativo'
+  };
+}
 function normalizeCmp(r){
   const itens = tryParse(r.itens, null);
   const qtd = r.qtd != null ? Number(r.qtd) || 0 : 0;
@@ -27523,7 +27542,50 @@ function normalizeForn(r){
   }
   return { id:r.id, nome:r.nome, cnpj:r.cnpj, contato:r.contato, tel, email:r.email, cidade:r.cidade, uf:r.uf, end, tipo:r.tipo, obs:r.obs, empId, empresa_id: empresaUuid };
 }
-function normalizeInc(r){ return {id:r.id,data:r.data,ofId:r.of_id,tipo:r.tipo,descricao:r.descricao,responsavel:r.responsavel,status:r.status}; }
+function normalizeInc(r){
+  const src = (r && typeof r === 'object') ? r : {};
+  const pick = (keys, def=null)=>{
+    for(const k of keys){
+      if(src[k] !== undefined && src[k] !== null && String(src[k]).trim() !== '') return src[k];
+    }
+    return def;
+  };
+  const dataRaw = pick(['data','data_ocorrencia','created_at','data_hora','dt'], '');
+  const data = String(dataRaw || '').slice(0,10);
+  const ofId = pick(['of_id','ofId','ofs_id'], null);
+  const ofNum = pick(['of_numero','of','numero','ofNum','of_num','of_numero_ref'], '');
+  const maqId = pick(['maquina_id','maq_id','maqId','maquina_perda','maquina','maquina_nome','maq'], '');
+  const opId = pick(['operador_id','op_id','opId','operador','operador_nome','op_nome'], pick(['responsavel'], ''));
+  const qtdProd = Number(pick(['qtd_produzida','qtd_prod','qtdProd','quantidade_produzida','qtd_real','qtd'], 0)) || 0;
+  const qtdPerd = Number(pick(['qtd_perdida','qtdPerd','qtd_perd','qtd_perdida'], 0)) || 0;
+  const tipo = pick(['tipo','categoria'], '');
+  const desc = pick(['descricao','desc','detalhes','problema'], '');
+  const motivo = pick(['motivo','causa'], '');
+  const obs = pick(['obs','observacao','observacoes'], '');
+  const status = pick(['status'], '');
+  const empId = pick(['emp_id','empId'], '');
+  const clienteId = pick(['cliente_id','cli_id','cliId'], null);
+  const responsavel = pick(['responsavel','responsavel_resolucao'], null);
+  return {
+    id: src.id,
+    data,
+    ofId,
+    ofNum,
+    opId: String(opId || '').trim(),
+    maqId: String(maqId || '').trim(),
+    tipo: String(tipo || '').trim(),
+    descricao: String(desc || '').trim(),
+    desc: String(desc || '').trim(),
+    motivo: String(motivo || '').trim(),
+    obs: String(obs || '').trim(),
+    qtdProd: Math.trunc(qtdProd),
+    qtdPerd: Math.trunc(qtdPerd),
+    status: String(status || '').trim(),
+    responsavel,
+    empId: String(empId || '').trim(),
+    cliente_id: clienteId,
+  };
+}
 function tryParse(v, def){ try{ return typeof v==='string'?JSON.parse(v):v||def; }catch(e){ return def; } }
 function isUuid(v){
   const s = String(v || '').trim();
@@ -34425,6 +34487,7 @@ function go(id){
   }
   if(id==='orcamentos')renderOrcamentos();
   if(id==='compras')renderCompras();
+  if(id==='operadores'){ try{ if(typeof carregarOperadores === 'function') carregarOperadores(); }catch(e){} try{ if(typeof renderOperadores === 'function') renderOperadores(); }catch(e){} }
   if(id==='inconformidades')carregarInconformidadesControle();
   if(id==='logistica')setTimeout(renderRotaMapa,200);
   try{ applyMobileAccessRules(); }catch(e){}
@@ -34631,7 +34694,15 @@ function inconfMes(opId) {
   return INCONFORMIDADES.filter(ic => ic.opId === opId && ic.data.startsWith(mesAtual())).length;
 }
 
-function getOp(id) { return OPERADORES.find(o => o.id === id); }
+function getOp(id) {
+  const key = String(id || '').trim();
+  if(!key) return null;
+  const byId = OPERADORES.find(o => String(o?.id || '').trim() === key);
+  if(byId) return byId;
+  const norm = (v)=>String(v||'').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const nk = norm(key);
+  return OPERADORES.find(o => norm(o?.nome) === nk) || null;
+}
 
 // ===================== RENDER OPERADORES =====================
 function renderOperadores() {
@@ -35881,7 +35952,20 @@ salvarOperador = async function(){
   if(!nome.trim()){toast('Informe o nome','var(--red)');return;}
   const payload={nome:nome.trim(),mat:(document.getElementById('opr-mat')||{}).value||'',maq_principal:(document.getElementById('opr-maq')||{}).value||'',funcao:(document.getElementById('opr-setor')||{}).value||'',admissao:(document.getElementById('opr-admissao')||{}).value||'',ativo:(document.getElementById('opr-st')||{}).value!=='Inativo'?1:0,obs:(document.getElementById('opr-obs')||{}).value||''};
   const r=await salvarViaApiOuLocal('operador', ()=>api('POST','/operadores',payload), _salvarOp_orig);
-  if(r.ok && !r.local){OPERADORES.push({...payload,id:r.data.id,status:payload.ativo?'Ativo':'Inativo',maqPrincipal:payload.maq_principal});fechar('modal-operador');renderOperadores&&renderOperadores();autoSaveTrigger();toast('✓ Operador cadastrado!');}
+  if(r.ok && !r.local){
+    OPERADORES.push({
+      ...payload,
+      id:r.data.id,
+      status:payload.ativo?'Ativo':'Inativo',
+      maqId: payload.maq_principal,
+      setor: payload.funcao,
+      maqPrincipal: payload.maq_principal
+    });
+    fechar('modal-operador');
+    renderOperadores&&renderOperadores();
+    autoSaveTrigger();
+    toast('✓ Operador cadastrado!');
+  }
   else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
 };
 
@@ -35890,7 +35974,14 @@ const _salvarInconf_orig = salvarInconf;
 salvarInconf = async function(){
   const payload={data:(document.getElementById('ic-data')||{}).value||today(),of_id:(document.getElementById('ic-of')||{}).value||'',tipo:(document.getElementById('ic-tipo')||{}).value||'',descricao:(document.getElementById('ic-desc')||{}).value||'',responsavel:(document.getElementById('ic-op')||{}).value||'',status:'Aberta'};
   const r=await salvarViaApiOuLocal('inconformidade', ()=>api('POST','/inconformidades',payload), _salvarInconf_orig);
-  if(r.ok && !r.local){INCONFORMIDADES.push({...payload,id:r.data.id,ofId:payload.of_id});fechar('modal-inconf');renderQualidade&&renderQualidade();autoSaveTrigger();toast('✓ Inconformidade registrada!');}
+  if(r.ok && !r.local){
+    INCONFORMIDADES.push(normalizeInc({ ...payload, id:r.data.id, ofId:payload.of_id }));
+    fechar('modal-inconf');
+    renderQualidade&&renderQualidade();
+    renderOperadores&&renderOperadores();
+    autoSaveTrigger();
+    toast('✓ Inconformidade registrada!');
+  }
   else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
 };
 
@@ -36436,6 +36527,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-pedidos-recorrentes" class="nav-item" onclick="go('pedidos-recorrentes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🔁</span>Pedidos Recorrentes</div>
       <div id="menu-fornecedores" class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
+      <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
       <div id="menu-roteiro" class="nav-item" onclick="go('roteiro-entrega');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Roteiro de Entrega</div>
     </div>
@@ -38627,7 +38719,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 
 <!-- ========== OPERADORES ========== -->
-<div id="page-operadores" class="page" style="display:none!important">
+<div id="page-operadores" class="page">
   <div class="ptoolbar">
     <select id="op-fil-st" onchange="renderOperadores()">
       <option value="">Todos</option>
