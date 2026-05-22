@@ -6594,7 +6594,7 @@ function _renderOfCard(of, maquinaNome, isMobile){
     const prodTxt = (prodIso && prodIso.length === 10) ? prodIso.split('-').reverse().join('/') : '';
     const entTxt = (entrega && entrega.length === 10) ? entrega.split('-').reverse().join('/') : '';
     return `
-      <div class="of-card-maquina" data-of-id="${ofId}" data-maquina="${escA2(maqNome)}" onclick="try{ofmaqSelecionarOF && ofmaqSelecionarOF('${escA2(ofNumRaw)}')}catch(e){}" style="background:rgba(255,255,255,0.03); border:0.5px solid rgba(255,255,255,0.08); border-left:3px solid ${borderColor}; border-radius:8px; padding:12px 14px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start">
+      <div class="of-card-maquina" draggable="true" data-of-id="${ofId}" data-maquina="${escA2(maqNome)}" data-ofmaq-bucket="${String(ofmaqPrioridadeBucket(of))}" onclick="try{ofmaqSelecionarOF && ofmaqSelecionarOF('${escA2(ofNumRaw)}')}catch(e){}" style="background:rgba(255,255,255,0.03); border:0.5px solid rgba(255,255,255,0.08); border-left:3px solid ${borderColor}; border-radius:8px; padding:12px 14px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start; cursor:grab">
         <div style="flex:1;min-width:0">
           ${badgeHtml ? '<div style="margin-bottom:6px">' + badgeHtml + '</div>' : ''}
           <div style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9); margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH2(clienteNome)}</div>
@@ -6696,6 +6696,7 @@ function cardOFMaquina(of, maquinaAtual){
   const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
   const tempoInfo = tempoMin != null ? (`⏱ ${tempoMin} min`) : '⏱ —';
   const velInfo = prodHora > 0 ? (`⚡ ${Math.round(prodHora)} cx/h`) : '⚡ — cx/h';
+  const bucket = ofmaqPrioridadeBucket(of);
 
   const thumb = temImagem
     ? `<div onclick="event.stopPropagation();verImagemOF('${escAttr(urlImagem)}')" title="Ver imagem da OF" style="width:60px;height:60px;border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0">
@@ -6729,7 +6730,7 @@ function cardOFMaquina(of, maquinaAtual){
       </div>`)
     : null;
 
-  return '<div data-of-id="'+escAttr(of.id||'')+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+leftBorder+'border-radius:10px;padding:16px;margin-bottom:10px">'
+  return '<div class="of-card-maquina" draggable="true" data-of-id="'+escAttr(of.id||'')+'" data-maquina="'+escAttr(maqCtx)+'" data-ofmaq-bucket="'+escAttr(String(bucket))+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+leftBorder+'border-radius:10px;padding:16px;margin-bottom:10px;cursor:grab">'
     +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
     +priBadge
     +(badgeHtml?('<div>'+badgeHtml+'</div>'):'')
@@ -6816,6 +6817,97 @@ async function ofmaqMoverPosicao(maquina, ofId, dir){
       try{ await api('POST','/sequenciamento/reordenar', payload); }catch(e){}
     }
   }catch(e){}
+}
+
+function ofmaqBindDragDrop(container){
+  try{
+    const host = container || document.getElementById('ofs-por-maquina-container')||document.getElementById('ofsmaq-container')||document.getElementById('ofmaq-body');
+    if(!host) return;
+    if(host.dataset && host.dataset._ofmaqDndBound === '1') return;
+    if(host.dataset) host.dataset._ofmaqDndBound = '1';
+
+    const getCard = (el) => {
+      if(!el) return null;
+      return (el.closest ? el.closest('.of-card-maquina') : null);
+    };
+    const getContainer = (card) => {
+      if(!card) return null;
+      return card.closest ? card.closest('.of-cards-container') : null;
+    };
+    const getMaq = (card) => String(card?.getAttribute('data-maquina') || '').trim();
+    const getId = (card) => String(card?.getAttribute('data-of-id') || '').trim();
+    const getBucket = (card) => {
+      const v = card?.getAttribute('data-ofmaq-bucket');
+      const n = Math.trunc(Number(v));
+      return Number.isFinite(n) ? n : null;
+    };
+    const setDragging = (card, on) => { try{ card.classList.toggle('ofmaq-dragging', !!on); }catch(_){ } };
+
+    let drag = null;
+
+    host.addEventListener('dragstart', (e)=>{
+      try{
+        const card = getCard(e.target);
+        if(!card) return;
+        const id = getId(card);
+        const maq = getMaq(card);
+        if(!id || !maq) return;
+        drag = { id, maq, bucket: getBucket(card) };
+        try{ e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }catch(_){}
+        setDragging(card, true);
+      }catch(_){}
+    }, true);
+
+    host.addEventListener('dragend', (e)=>{
+      try{
+        const card = getCard(e.target);
+        if(card) setDragging(card, false);
+      }catch(_){}
+      drag = null;
+    }, true);
+
+    host.addEventListener('dragover', (e)=>{
+      const card = getCard(e.target);
+      if(!card || !drag) return;
+      const id = getId(card);
+      const maq = getMaq(card);
+      if(!id || !maq || maq !== drag.maq) return;
+      const b = getBucket(card);
+      if(drag.bucket != null && b != null && b !== drag.bucket) return;
+      e.preventDefault();
+      try{ e.dataTransfer.dropEffect = 'move'; }catch(_){}
+
+      const cont = getContainer(card);
+      if(!cont) return;
+      const draggingEl = cont.querySelector('.ofmaq-dragging');
+      if(!draggingEl || draggingEl === card) return;
+      const rect = card.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < (rect.height / 2);
+      if(before) cont.insertBefore(draggingEl, card);
+      else cont.insertBefore(draggingEl, card.nextSibling);
+    }, false);
+
+    host.addEventListener('drop', async (e)=>{
+      const card = getCard(e.target);
+      if(!card || !drag) return;
+      const maq = getMaq(card);
+      if(!maq || maq !== drag.maq) return;
+      const cont = getContainer(card);
+      if(!cont) return;
+      e.preventDefault();
+
+      const ids = Array.from(cont.querySelectorAll('.of-card-maquina[data-of-id]'))
+        .map((el)=>String(el.getAttribute('data-of-id')||'').trim()).filter(Boolean);
+      if(!ids.length) return;
+      if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+      window._ordemMaquinas[maq] = ids;
+
+      if(_apiConectado && CURRENT_USER){
+        const payload = { maquina: maq, ordem: ids.map((x,i)=>({ of_id: x, posicao: i+1 })) };
+        try{ await api('POST','/sequenciamento/reordenar', payload); }catch(_){}
+      }
+    }, false);
+  }catch(_){}
 }
 
 async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
@@ -7055,6 +7147,9 @@ async function renderOFsPorMaquina(){
       try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
     };
     const busca=ofmaqNorm(String((document.getElementById('ofmaq-busca')||{}).value||'').trim());
+    const statusSelRaw = String((document.getElementById('ofmaq-status')||{}).value||'').trim();
+    const statusSel = ofmaqNorm(statusSelRaw);
+    const priSel = String((document.getElementById('ofmaq-prioridade')||{}).value||'').trim();
     const maqsBase = ofmaqMaquinasValidas();
 
     if(window._ofmaqView === 'lista'){
@@ -7065,9 +7160,38 @@ async function renderOFsPorMaquina(){
     window._ofmaqListaCompleta = todasOfs.slice();
     let ofsFiltradas = todasOfs.filter(o => {
       if (!o || o.deleted_at) return false;
-      const s = String(o.status || '').toLowerCase();
-      if (s.includes('cancel')) return false;
-      if (s.includes('conclu')) return false;
+      let s = String(o.status || '').toLowerCase();
+      try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+      s = s.trim();
+
+      if(!statusSel){
+        if (s.includes('cancel')) return false;
+        if (s.includes('conclu') || s === 'pedido pronto') return false;
+        return true;
+      }
+
+      if(statusSel.includes('cancel')){
+        return s.includes('cancel');
+      }
+      if(statusSel.includes('conclu') || statusSel.includes('pronto')){
+        return s.includes('conclu') || s === 'pedido pronto';
+      }
+      if(statusSel.includes('atras')){
+        const entrega = entOf(o);
+        if(!entrega || entrega >= hoje) return false;
+        if (s.includes('cancel')) return false;
+        if (s.includes('conclu') || s === 'pedido pronto') return false;
+        return true;
+      }
+      if(statusSel.includes('produc')){
+        if (s.includes('cancel')) return false;
+        return s.includes('produc');
+      }
+      if(statusSel.includes('aberto')){
+        if (s.includes('cancel')) return false;
+        if (s.includes('conclu') || s === 'pedido pronto') return false;
+        return !s.includes('produc');
+      }
       return true;
     });
 
@@ -7086,6 +7210,18 @@ async function renderOFsPorMaquina(){
         const num  = String(o.of || o.numero || '').toLowerCase();
         const desc = String(o.descricao || o.prodDesc || o.produto || '').toLowerCase();
         return cli.includes(t) || num.includes(t) || desc.includes(t);
+      });
+    }
+
+    if (priSel) {
+      const want = String(priSel||'').trim();
+      ofsFiltradas = ofsFiltradas.filter((o)=>{
+        const b = ofmaqPrioridadeBucket(o);
+        if(want === 'urg_atrasada') return b === 0;
+        if(want === 'urgente') return b === 1;
+        if(want === 'atrasada') return b === 2;
+        if(want === 'normal') return b === 3;
+        return true;
       });
     }
 
@@ -7209,6 +7345,7 @@ async function renderOFsPorMaquina(){
       </div>`;
     }).join('');
 
+    try{ ofmaqBindDragDrop(container); }catch(e){}
     container.scrollTop = scroll;
   } catch(e){
     try{ console.error('[renderOFsPorMaquina]', e); }catch(_){}
@@ -36612,6 +36749,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todos status</option>
       <option>Em aberto</option><option>Em produção</option>
       <option>Concluído</option><option>Atrasado</option><option>Cancelado</option>
+    </select>
+    <select id="ofmaq-prioridade" onchange="renderOFsPorMaquina()">
+      <option value="">Todas prioridades</option>
+      <option value="urg_atrasada">Urgente atrasada</option>
+      <option value="urgente">Urgente</option>
+      <option value="atrasada">Atrasada</option>
+      <option value="normal">Normal</option>
     </select>
     <div style="flex:1"></div>
     <button id="ofmaq-btn-todas-ofs" onclick="abrirModalTodasOFs()" style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap">📋 Todas as OFs</button>
