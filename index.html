@@ -12104,14 +12104,29 @@ function lancEmpNome(o){
 function lancCliNome(o){
   const direct = String(o.cliNome || o.cliente_nome || o.cli_nome || o.clinome || o.cliente || '').trim();
   if(direct) return direct;
-  const cli = getCli(o.cliId)||null;
-  return String((cli && cli.nome) ? cli.nome : (o.cliente||o.cliente_nome||'')).trim() || '—';
+  const cliId = String(o.cliId || o.cli_id || o.cliid || o.cliente_id || '').trim();
+  const cli = cliId && (typeof getCli === 'function') ? (getCli(cliId) || null) : null;
+  if (cli && (cli.nome || cli.razao_social)) return String(cli.nome || cli.razao_social || '').trim() || '—';
+  const arr = window.CLIENTES || window.clientes || (typeof CLIENTES !== 'undefined' ? CLIENTES : []);
+  if (Array.isArray(arr) && arr.length && cliId) {
+    const c = arr.find(x => String(x?.id || '').trim() === cliId) || null;
+    if (c && (c.nome || c.razao_social)) return String(c.nome || c.razao_social || '').trim() || '—';
+  }
+  return String((o.cliente||o.cliente_nome||'')).trim() || '—';
 }
 function lancVendNome(o){
   const direct = String(o.vendNome || o.vendedor_nome || o.vendedor || '').trim();
-  if(direct && !direct.includes('-')) return direct;
-  const v = getV(o.vendId)||null;
-  return String((v && v.nome) ? v.nome : (o.vendedor||o.vendedor_nome||'')).trim() || '—';
+  const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+  if (direct && !isUuid(direct)) return direct;
+  const vendId = String(o.vendId || o.vendedor_id || o.vend_id || '').trim();
+  const v = vendId && (typeof getV === 'function') ? (getV(vendId) || null) : null;
+  if (v && v.nome) return String(v.nome || '').trim() || '—';
+  const arr = window.VENDEDORES || window.vendedores || (typeof VENDEDORES !== 'undefined' ? VENDEDORES : []);
+  if (Array.isArray(arr) && arr.length && vendId) {
+    const it = arr.find(x => String(x?.id || '').trim() === vendId) || null;
+    if (it && it.nome) return String(it.nome || '').trim() || '—';
+  }
+  return String((o.vendedor||o.vendedor_nome||'')).trim() || '—';
 }
 function lancDia(o){ return String((o.dia||o.data_pedido||o.dataPedido||'')||'').slice(0,10); }
 function lancEnt(o){ return String((o.ent||o.data_entrega||o.dataEntrega||'')||'').slice(0,10); }
@@ -12973,6 +12988,9 @@ function renderLancamento(){
       const nomeProduto = String(item0.desc || item0.descricao || o.prodDesc || o.descricao || o.produto || '—').trim() || '—';
       const ref0 = String(item0.ref || o.ref || '—').trim() || '—';
       const qtd = getQtd(o) || arr.reduce((s,i)=>s + (Number(i.qtd || i.quantidade || 0) || 0), 0) || 0;
+      const qtdProd = Math.trunc(Number(o.qtd_produzida ?? o.qtdProduzida ?? 0) || 0);
+      const qtdPerd = Math.trunc(Number(o.qtd_perdida ?? o.qtdPerdida ?? 0) || 0);
+      const userConc = String(o.usuario_conclusao ?? o.usuarioConclusao ?? '').trim();
       const total = getValor(o) || arr.reduce((s,i)=>s + (Number(i.valor_total || i.total || 0) || 0), 0) || 0;
       const imgUrl = String(o.imagem_url || (Array.isArray(o.imgs) ? o.imgs[0] : '') || '').trim();
       const stRaw = String(o.status || '').trim();
@@ -12995,6 +13013,9 @@ function renderLancamento(){
         <td style="${td};font-family:var(--mono)">${fmtD(lancEnt(o))}</td>
         <td style="${td};font-family:var(--mono)">${escH(getConc(o) ? fmtD(getConc(o)) : '—')}</td>
         <td style="${td}">${escH(stRaw || '—')}${o.deleted_at?` <span style="color:var(--red);font-family:var(--mono);font-weight:900">[EXC]</span>`:''}</td>
+        <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(qtdProd)}</td>
+        <td style="${td};text-align:right;font-family:var(--mono)">${fmtN(qtdPerd)}</td>
+        <td style="${td}">${escH(userConc || '—')}</td>
         <td style="${td};text-align:center">
           <button class="btn btn-ghost btn-sm" onclick="lancAbrirDetalhes('${escAttr(o.id)}')">Ver</button>
           ${(!o.deleted_at)?`<button class="btn btn-ghost btn-sm" onclick="lancEditarOF('${escAttr(o.id)}')" title="Editar">✏️</button>`:''}
@@ -13005,10 +13026,10 @@ function renderLancamento(){
         </td>
       </tr>`;
     };
-    const tbody = shown.length ? shown.map(renderRow).join('') : `<tr><td colspan="14" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`;
+    const tbody = shown.length ? shown.map(renderRow).join('') : `<tr><td colspan="17" style="${td};text-align:center;color:var(--text3)">Nenhum registro</td></tr>`;
     const moreBtn = hasMore ? `<div style="padding:12px;text-align:center"><button class="btn btn-ghost" onclick="lancCarregarMais()">Carregar mais (${shown.length}/${rows.length})</button></div>` : '';
     return `<div style="max-height:66vh;overflow:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:1380px">
+      <table style="width:100%;border-collapse:collapse;min-width:1580px">
         <thead><tr>
           <th style="${th.replace('cursor:pointer;','')};text-align:center">✓</th>
           ${thSort('of','Nº OF')}
@@ -13023,6 +13044,9 @@ function renderLancamento(){
           ${thSort('entrega','Entrega')}
           ${thSort('conclusao','Conclusão')}
           ${thSort('status','Status')}
+          <th style="${th.replace('cursor:pointer;','')};text-align:right">Caixas Produzidas</th>
+          <th style="${th.replace('cursor:pointer;','')};text-align:right">Perdas</th>
+          <th style="${th.replace('cursor:pointer;','')}">Concluído por</th>
           <th style="${th.replace('cursor:pointer;','')}">Ações</th>
         </tr></thead>
         <tbody>${tbody}</tbody>

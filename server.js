@@ -3188,6 +3188,18 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
 
     try {
+      const stAtual = String(ofAtual?.status || '').trim().toLowerCase();
+      const stNovo = Object.prototype.hasOwnProperty.call(cleanBody, 'status') ? String(cleanBody.status || '').trim().toLowerCase() : '';
+      const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto';
+      const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
+      const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
+      if (isConcluida && vaiReabrir && !force) {
+        delete cleanBody.status;
+        delete body.status;
+      }
+    } catch (_) {}
+
+    try {
       const hasEntrega = Object.prototype.hasOwnProperty.call(body, 'ent') || Object.prototype.hasOwnProperty.call(body, 'data_entrega');
       const hasMaq = Object.prototype.hasOwnProperty.call(body, 'fluxo_maquinas') || Object.prototype.hasOwnProperty.call(body, 'maq');
       if (hasEntrega || hasMaq) {
@@ -4208,6 +4220,17 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
+    try {
+      const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
+      const stAtual = String(ofAtual2?.status || '').trim().toLowerCase();
+      const stNovo = Object.prototype.hasOwnProperty.call(payload, 'status') ? String(payload.status || '').trim().toLowerCase() : '';
+      const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto';
+      const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
+      const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
+      if (isConcluida && vaiReabrir && !force) {
+        delete payload.status;
+      }
+    } catch (_) {}
     delete payload.id; delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
@@ -4429,6 +4452,14 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
     if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    try {
+      console.log('[CONCLUIR OF] before:', {
+        id: sid,
+        status: of?.status,
+        data_conclusao: of?.data_conclusao,
+        updated_at: of?.updated_at,
+      });
+    } catch (_) {}
 
     const qtdPedida = Number(of.qtd_pedida || of.quantidade || of.qtd || 0);
     const qtdProduzida = (Number(qtdProduzidaRaw) || 0) || (Number(qtdPedida) || 0);
@@ -4520,6 +4551,18 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     console.log('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+    try {
+      console.log('[CONCLUIR OF] after updRes:', {
+        id: sid,
+        status: upd?.data?.status,
+        data_conclusao: upd?.data?.data_conclusao,
+        updated_at: upd?.data?.updated_at,
+      });
+    } catch (_) {}
+    try {
+      const { data: ofAfter } = await supabase.from('ofs').select('status,data_conclusao,updated_at').eq('id', sid).maybeSingle();
+      console.log('[CONCLUIR OF] after db:', ofAfter);
+    } catch (_) {}
 
     try {
       const { data: ofVerif } = await supabase
