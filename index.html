@@ -17548,6 +17548,16 @@ async function salvarCliente() {
     emp_id: g('cli-empresa')||g('cl-empresa')||g('cl-emp')||EMP_FILTRO||'E1',
     ramo: ramoAtv,
   };
+  try{
+    const docDigits = _cliDigits(payload.cnpj);
+    if(docDigits.length === 14){
+      const dup = await _clienteCheckCnpjDuplicidade(docDigits, id, payload.emp_id);
+      if(dup) return;
+      payload.cnpj = _cliFmtDoc(docDigits);
+    } else if(docDigits.length === 11){
+      payload.cnpj = _cliFmtDoc(docDigits);
+    }
+  }catch(e){}
   Object.keys(payload).forEach(k=>{if(!payload[k])delete payload[k];});
   console.log('[CLIENTE] payload completo antes do envio:', payload);
   console.log('[CLIENTE] salvarCliente', { idDom: (idEl?idEl.value:''), idVar: CLIENTE_ATUAL_ID, idUsado: id, nome, payload });
@@ -17566,6 +17576,104 @@ async function salvarCliente() {
   try{ await carregarClientes(true); }catch(e){ try{ await carregarClientes(false); }catch(_){} }
   renderClientes();
   autoSaveTrigger();
+}
+
+function _cliDigits(v){
+  return String(v||'').replace(/\D/g,'');
+}
+
+function _cliFmtDoc(digits){
+  const d = String(digits||'').replace(/\D/g,'');
+  if(d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  if(d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  return String(digits||'').trim();
+}
+
+function _cliCnpjOnBlur(){
+  const el = document.getElementById('cl-cnpj');
+  if(!el) return;
+  const d = _cliDigits(el.value);
+  if(d.length === 14 || d.length === 11) el.value = _cliFmtDoc(d);
+}
+
+async function _clienteCheckCnpjDuplicidade(digits, ignoreId, empId){
+  try{
+    const qs = new URLSearchParams();
+    qs.set('only_check','1');
+    if(ignoreId) qs.set('ignore_id', String(ignoreId||''));
+    if(empId) qs.set('empId', String(empId||''));
+    const r = await api('GET','/clientes/cnpj/' + encodeURIComponent(String(digits||'')) + '?' + qs.toString());
+    if(r && r.ok) return false;
+    const status = Number(r?.status || 0) || 0;
+    if(status === 409 || String(r?.error||'') === 'cnpj_ja_cadastrado'){
+      const ex = r?.existing || null;
+      toast('CNPJ já cadastrado: ' + String(ex?.nome || ex?.id || '—'), 'var(--orange)');
+      return true;
+    }
+    return false;
+  }catch(e){
+    return false;
+  }
+}
+
+async function clienteBuscarCnpj(){
+  const inEl = document.getElementById('cl-cnpj');
+  const hint = document.getElementById('cl-cnpj-hint');
+  if(hint) hint.textContent = '';
+  const raw = String(inEl?.value || '').trim();
+  const digits = _cliDigits(raw);
+  if(digits.length !== 14){
+    toast('Informe um CNPJ com 14 dígitos', 'var(--orange)');
+    return;
+  }
+  try{
+    const id = String(CLIENTE_ATUAL_ID || (document.getElementById('cli-id')?.value||'') || '').trim();
+    const empId = String(document.getElementById('cl-emp')?.value || EMP_FILTRO || '').trim();
+    const qs = new URLSearchParams();
+    if(id) qs.set('ignore_id', id);
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET','/clientes/cnpj/' + encodeURIComponent(digits) + '?' + qs.toString());
+    if(!r || r.ok === false){
+      const status = Number(r?.status||0) || 0;
+      if(status === 409 || String(r?.error||'') === 'cnpj_ja_cadastrado'){
+        const ex = r?.existing || null;
+        toast('CNPJ já cadastrado: ' + String(ex?.nome || ex?.id || '—'), 'var(--orange)');
+        return;
+      }
+      toast('Falha ao consultar CNPJ', 'var(--red)');
+      return;
+    }
+    const d = r?.data || {};
+    if(inEl) inEl.value = _cliFmtDoc(digits);
+    const setIfEmpty = (id, val)=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      const cur = String(el.value||'').trim();
+      if(cur) return;
+      if(val == null) return;
+      const s = String(val||'').trim();
+      if(!s) return;
+      el.value = s;
+    };
+    setIfEmpty('cl-rs', d.razao_social);
+    setIfEmpty('cl-nome', d.nome_fantasia || d.razao_social);
+    setIfEmpty('cl-email', d.email);
+    setIfEmpty('cl-tel', d.telefone);
+    setIfEmpty('cl-cidade', d.cidade);
+    setIfEmpty('cl-uf', d.uf);
+    const endParts = [d.logradouro, d.numero, d.bairro].filter(Boolean).map(x=>String(x||'').trim()).filter(Boolean);
+    setIfEmpty('cl-end', endParts.join(' - ') + (d.cep ? (' · CEP ' + String(d.cep||'').trim()) : ''));
+    if(hint){
+      const parts = [];
+      if(d.situacao) parts.push('Situação: ' + String(d.situacao));
+      if(d.abertura) parts.push('Abertura: ' + String(d.abertura));
+      if(d.porte) parts.push('Porte: ' + String(d.porte));
+      hint.textContent = parts.join(' · ');
+    }
+    toast('Dados do CNPJ preenchidos', 'var(--green)');
+  }catch(e){
+    toast('Erro ao consultar CNPJ', 'var(--red)');
+  }
 }
 
 function _normClienteNome(v){
@@ -38978,7 +39086,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="fg">
     <div class="mf fgf"><label>NOME *</label><input id="cl-nome"></div>
     <div class="mf"><label>RAZÃO SOCIAL</label><input id="cl-rs"></div>
-    <div class="mf"><label>CNPJ / CPF</label><input id="cl-cnpj"></div>
+    <div class="mf"><label>CNPJ / CPF</label>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input id="cl-cnpj" onblur="_cliCnpjOnBlur()" style="flex:1">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="clienteBuscarCnpj()" style="padding:6px 10px">Buscar</button>
+      </div>
+      <div id="cl-cnpj-hint" style="font-size:.72rem;color:var(--text3);margin-top:4px;min-height:16px"></div>
+    </div>
     <div class="mf"><label>EMPRESA *</label><select id="cl-emp"><option value="">Selecionar empresa...</option></select></div>
     <div class="mf"><label>VENDEDOR RESPONSÁVEL</label><select id="cl-vend"><option value="">—</option></select></div>
     <div class="mf"><label>TELEFONE</label><input id="cl-tel"></div>
