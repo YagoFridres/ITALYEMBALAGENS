@@ -2430,6 +2430,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let useSelectAllFallback = false;
     let total = null;
     let dateCol = '';
+    let useDeletedAtFilter = !incluirExcluidas;
     const isDeletedAt = (v) => {
       if (v == null) return false;
       const s = String(v).trim();
@@ -2493,7 +2494,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (expr) q = q.or(expr);
       }
 
-      if (!incluirExcluidas) q = q.is('deleted_at', null);
+      if (useDeletedAtFilter) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from) {
         const fromIso = (from.includes('T') ? from : (from + 'T00:00:00'));
@@ -2567,6 +2568,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           else if (colProb !== 'ent' && _ofsSelectableHas('ent')) dateCol = 'ent';
           else dateCol = '';
         }
+        if (colProb === 'deleted_at') useDeletedAtFilter = false;
         if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
         if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
         if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
