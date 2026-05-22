@@ -2003,6 +2003,7 @@ const MODULOS_SISTEMA = [
   { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
   { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
   { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Papelão',   menuId:'menu-papelao-sel-chapas', paginaId:'sel-chapas' },
+  { key:'papelao_ia',     label:'Inteligência do Papelão', grupo:'Papelão', menuId:'menu-papelao-ia',     paginaId:'papelao-ia' },
   { key:'estoque_facas',  label:'Estoque de Facas',    grupo:'Estoques',  menuId:'menu-facas',           paginaId:'facas' },
   { key:'estoque_cliches',label:'Estoque Clichês',     grupo:'Estoques',  menuId:'menu-cliches',         paginaId:'cliches' },
   { key:'dashboard',      label:'Dashboard',           grupo:'Análises',  menuId:'menu-dashboard',       paginaId:'dashboard' },
@@ -2062,6 +2063,7 @@ const PERMISSOES_SISTEMA = {
       compras: 'Compra de Papelão',
       sel_chapas: 'Seleção de Chapas',
       simd: 'Simulador de Desperdício',
+      papelao_ia: 'Inteligência do Papelão',
     }
   },
   analises: {
@@ -9443,6 +9445,164 @@ function _sugestaoChapa_inicializar(){
 
 window._simdChapasCache = null;
 window._simdChapaSelecionada = null;
+window._simdStateKey = 'italy_simd_state_v1';
+
+function _simdSaveState(){
+  try{
+    const larg = Number(document.getElementById('simd-larg')?.value) || 0;
+    const comp = Number(document.getElementById('simd-comp')?.value) || 0;
+    const qtd = Number(document.getElementById('simd-qtd')?.value) || 0;
+    const c = window._simdChapaSelecionada || null;
+    const chapa = c ? {
+      id: c.id,
+      nome: c.nome || c.nome_uso || null,
+      fornecedor: c.fornecedor || c.forn || null,
+      tamanho: c.tamanho || c.tam || null,
+      quantidade: c.quantidade ?? c.qtd ?? null,
+      valor_unitario: c.valor_unitario ?? c.val ?? null,
+      nomenclatura: c.nomenclatura ?? c.nom ?? null,
+    } : null;
+    localStorage.setItem(window._simdStateKey, JSON.stringify({ larg, comp, qtd, chapa }));
+  }catch(e){}
+}
+
+function _simdRestoreState(){
+  try{
+    const raw = localStorage.getItem(window._simdStateKey);
+    const st = raw ? JSON.parse(raw) : null;
+    if(!st || typeof st !== 'object') return;
+    const setIfEmpty = (id, val)=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      const cur = String(el.value || '').trim();
+      if(cur) return;
+      if(val == null) return;
+      el.value = String(val);
+    };
+    setIfEmpty('simd-larg', st.larg);
+    setIfEmpty('simd-comp', st.comp);
+    setIfEmpty('simd-qtd', st.qtd);
+    const chapa = st.chapa && typeof st.chapa === 'object' ? st.chapa : null;
+    if(chapa && chapa.id){
+      _simdCarregarChapas().then((arr)=>{
+        const found = (Array.isArray(arr)?arr:[]).find(c=>String(c?.id||'')===String(chapa.id)) || null;
+        if(found) _simdSelecionarChapa(found);
+        else _simdSelecionarChapa(chapa);
+      }).catch(()=>{ try{ _simdSelecionarChapa(chapa); }catch(e){} });
+    }
+  }catch(e){}
+}
+
+function _papelaoIAInit(){
+  const sel = document.getElementById('papelaoia-emp');
+  if(!sel) return;
+  if(sel.dataset && sel.dataset.ready) return;
+  try{ if(sel.dataset) sel.dataset.ready = '1'; }catch(e){}
+  const arr = Array.isArray(window.EMPRESAS) ? window.EMPRESAS : (Array.isArray(EMPRESAS) ? EMPRESAS : []);
+  const opts = ['<option value="">Todas as empresas</option>'];
+  arr.forEach((e)=>{
+    const id = String(e?.id || '').trim();
+    const nome = String(e?.nome || e?.sigla || id || '').trim();
+    if(!id) return;
+    opts.push(`<option value="${escAttr(id)}">${escH(nome)}</option>`);
+  });
+  sel.innerHTML = opts.join('');
+  const pref = String(window.EMP_FILTRO || EMP_FILTRO || '').trim();
+  if(pref) sel.value = pref;
+}
+
+async function renderPapelaoIA(force){
+  _papelaoIAInit();
+  const host = document.getElementById('papelaoia-body');
+  if(!host) return;
+  host.innerHTML = '<div style="color:var(--text2)">Carregando…</div>';
+  try{
+    const empId = String(document.getElementById('papelaoia-emp')?.value || '').trim();
+    const meses = Math.max(1, Math.min(12, Math.trunc(Number(document.getElementById('papelaoia-meses')?.value || 3) || 3)));
+    const qs = new URLSearchParams();
+    qs.set('meses', String(meses));
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET', '/analytics/padroes_perda?' + qs.toString());
+    if(!r || r.ok === false){
+      host.innerHTML = '<div style="color:var(--red);font-weight:800">Erro ao carregar inteligência do papelão.</div>';
+      return;
+    }
+    const d = r.data || {};
+    const total = Number(d.total_perdido || 0) || 0;
+    const media = Number(d.media_geral_por_of || 0) || 0;
+    const pior = d.pior_combinacao || null;
+    const grupos = Array.isArray(d.grupos) ? d.grupos : [];
+    const alertas = Array.isArray(d.alertas) ? d.alertas : [];
+
+    const card = (lbl, val, sub, color)=>`
+      <div class="card">
+        <div class="card-lbl">${escH(lbl)}</div>
+        <div class="card-val" style="color:${color}">${escH(String(val))}</div>
+        <div class="card-sub">${escH(sub||'')}</div>
+      </div>`;
+
+    const topGrupos = grupos.slice(0, 12);
+    const topAlertas = alertas.slice(0, 8);
+
+    host.innerHTML = `
+      <div class="cards-row" style="margin-bottom:12px">
+        ${card('Perdas (total)', fmtN(total), `${String(d.meses||meses)} mês(es)`, 'var(--orange)')}
+        ${card('Média por OF', fmtN(media, 1), 'Base: caixas_perdidas', 'var(--yellow)')}
+        ${card('Pior combinação', pior ? `${pior.maquina_perda||'—'}` : '—', pior ? `${pior.dia_semana||'—'} · ${pior.turno||'—'}` : '', 'var(--red)')}
+      </div>
+
+      <div class="sbox" style="margin-bottom:12px">
+        <div class="sbox-h">📌 Top padrões (máquina · dia · turno)</div>
+        <div class="sbox-b" style="padding:0;overflow:auto">
+          <table class="pcp-table" style="min-width:860px">
+            <thead><tr>
+              <th style="width:240px">Máquina</th>
+              <th style="width:160px">Dia</th>
+              <th style="width:140px">Turno</th>
+              <th style="width:160px;text-align:right">Total perdido</th>
+              <th style="width:160px;text-align:right">Média por OF</th>
+            </tr></thead>
+            <tbody>
+              ${topGrupos.map(g=>`
+                <tr>
+                  <td>${escH(g.maquina_perda||'—')}</td>
+                  <td>${escH(g.dia_semana||'—')}</td>
+                  <td>${escH(g.turno||'—')}</td>
+                  <td style="text-align:right;font-family:var(--mono)">${escH(fmtN(g.total_perdido||0))}</td>
+                  <td style="text-align:right;font-family:var(--mono)">${escH(fmtN(g.media_por_of||0, 1))}</td>
+                </tr>`).join('') || '<tr><td colspan="5" style="padding:12px;color:var(--text3);text-align:center">Sem dados</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sbox">
+        <div class="sbox-h">⚠ Máquinas com perda fora do padrão</div>
+        <div class="sbox-b" style="padding:0;overflow:auto">
+          <table class="pcp-table" style="min-width:760px">
+            <thead><tr>
+              <th>Máquina</th>
+              <th style="width:180px;text-align:right">Média por OF</th>
+              <th style="width:180px;text-align:right">Média geral</th>
+              <th style="width:120px;text-align:right">Fator</th>
+            </tr></thead>
+            <tbody>
+              ${topAlertas.map(a=>`
+                <tr>
+                  <td>${escH(a.maquina||'—')}</td>
+                  <td style="text-align:right;font-family:var(--mono)">${escH(fmtN(a.media_por_of||0, 1))}</td>
+                  <td style="text-align:right;font-family:var(--mono)">${escH(fmtN(a.media_geral||0, 1))}</td>
+                  <td style="text-align:right;font-family:var(--mono)">${a.fator != null ? escH(fmtN(a.fator||0, 2)) + '×' : '—'}</td>
+                </tr>`).join('') || '<tr><td colspan="4" style="padding:12px;color:var(--text3);text-align:center">Sem alertas</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }catch(e){
+    host.innerHTML = '<div style="color:var(--red);font-weight:800">Erro ao renderizar inteligência do papelão.</div>';
+  }
+}
 
 async function _simdCarregarChapas() {
   if (window._simdChapasCache) return window._simdChapasCache;
@@ -9542,6 +9702,7 @@ function _simdSelecionarChapa(chapa) {
   if (elInput) elInput.value = nome;
 
   try { console.log('[SIMD] chapa selecionada:', nome, tam); } catch (_) {}
+  try{ _simdSaveState(); }catch(e){}
 }
 
 function _simdLimparChapaSelecionada() {
@@ -9554,6 +9715,7 @@ function _simdLimparChapaSelecionada() {
   if (elBtnLimpar) elBtnLimpar.style.display = 'none';
   if (elResultados) { elResultados.style.display = 'none'; elResultados.innerHTML = ''; }
   if (elInput) elInput.value = '';
+  try{ _simdSaveState(); }catch(e){}
 }
 
 try {
@@ -9578,6 +9740,7 @@ function _simdVerificarCampos() {
     btn.style.opacity = ok ? '1' : '0.5';
     btn.style.cursor = ok ? 'pointer' : 'not-allowed';
   }
+  try{ _simdSaveState(); }catch(e){}
 }
 
 function _simdRenderResultados(data, qtdPedido) {
@@ -9671,6 +9834,7 @@ async function _simdCalcular(){
       alert('Preencha largura e comprimento necessários.');
       return;
     }
+    try{ _simdSaveState(); }catch(e){}
 
     const planifLarg = larg;
     const planifComp = comp;
@@ -34487,6 +34651,8 @@ function go(id){
   }
   if(id==='orcamentos')renderOrcamentos();
   if(id==='compras')renderCompras();
+  if(id==='simd'){ try{ if(typeof _simdRestoreState === 'function') _simdRestoreState(); }catch(e){} try{ if(typeof _simdVerificarCampos === 'function') _simdVerificarCampos(); }catch(e){} }
+  if(id==='papelao-ia'){ try{ if(typeof renderPapelaoIA === 'function') renderPapelaoIA(true); }catch(e){} }
   if(id==='operadores'){ try{ if(typeof carregarOperadores === 'function') carregarOperadores(); }catch(e){} try{ if(typeof renderOperadores === 'function') renderOperadores(); }catch(e){} }
   if(id==='inconformidades')carregarInconformidadesControle();
   if(id==='logistica')setTimeout(renderRotaMapa,200);
@@ -36552,6 +36718,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-papelao-compras" class="nav-item" onclick="papelaoAbrirComprasChapas()"><span class="ico">🛒</span>Compra de Papelão</div>
       <div id="menu-papelao-sel-chapas" class="nav-item" onclick="go('sel-chapas');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">🧾</span>Seleção de Chapas</div>
+      <div id="menu-papelao-ia" class="nav-item" onclick="go('papelao-ia');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">🧠</span>Inteligência do Papelão</div>
       <div id="menu-papelao-simd" class="nav-item" onclick="go('simd');closeNavGroupsExcept('ng-papelao');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">♻️</span>Simulador de Desperdício</div>
     </div>
   </div>
@@ -37586,6 +37753,25 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="simd-loading" style="display:none;padding:30px;text-align:center;font-size:13px;color:rgba(255,255,255,0.4)">Calculando...</div>
     </div>
   </div>
+</div>
+
+<div id="page-papelao-ia" class="page">
+  <div class="ptoolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+    <span style="font-weight:bold;font-size:16px">🧠 Inteligência do Papelão</span>
+    <select id="papelaoia-emp" onchange="renderPapelaoIA(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);min-width:220px">
+      <option value="">Todas as empresas</option>
+    </select>
+    <select id="papelaoia-meses" onchange="renderPapelaoIA(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+      <option value="1">1 mês</option>
+      <option value="3" selected>3 meses</option>
+      <option value="6">6 meses</option>
+      <option value="12">12 meses</option>
+    </select>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="renderPapelaoIA(true)">↻ Atualizar</button>
+    <button class="btn btn-accent btn-sm" onclick="go('simd')">♻ Simulador</button>
+  </div>
+  <div class="page-body" id="papelaoia-body" style="padding:14px;"></div>
 </div>
 
 <!-- ========== 5. FLUXOS ========== -->
