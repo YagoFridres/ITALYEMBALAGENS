@@ -26521,6 +26521,19 @@ async function apiFetch(url, opts = {}) {
     }
   } catch (_) {}
   let fullUrl = String(url||'');
+  try {
+    if (fullUrl.startsWith('/api/ofs?') && fullUrl.includes('incluir_exc_der=')) {
+      const parts = fullUrl.split('?');
+      const basePath = parts[0] || '/api/ofs';
+      const sp = new URLSearchParams(parts.slice(1).join('?') || '');
+      const dir = String(sp.get('incluir_exc_der') || '').trim();
+      sp.delete('incluir_exc_der');
+      if (!sp.has('incluir_excluidas')) sp.set('incluir_excluidas', '1');
+      if (dir) sp.set('order', dir);
+      if (!sp.has('order_by')) sp.set('order_by', 'created_at');
+      fullUrl = basePath + '?' + sp.toString();
+    }
+  } catch (_) {}
   if (!/^https?:\/\//i.test(fullUrl) && fullUrl.startsWith('/api/') && window.location && window.location.protocol === 'file:') {
     fullUrl = API_BASE + fullUrl;
   }
@@ -26584,7 +26597,21 @@ async function api(method, url, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const fullUrl = (window.API_BASE || '') + '/api' + url;
+  let fullUrl = (window.API_BASE || '') + '/api' + url;
+  try {
+    const u = String(url || '');
+    if (u.startsWith('/ofs?') && u.includes('incluir_exc_der=')) {
+      const parts = u.split('?');
+      const basePath = parts[0] || '/ofs';
+      const sp = new URLSearchParams(parts.slice(1).join('?') || '');
+      const dir = String(sp.get('incluir_exc_der') || '').trim();
+      sp.delete('incluir_exc_der');
+      if (!sp.has('incluir_excluidas')) sp.set('incluir_excluidas', '1');
+      if (dir) sp.set('order', dir);
+      if (!sp.has('order_by')) sp.set('order_by', 'created_at');
+      fullUrl = (window.API_BASE || '') + '/api' + basePath + '?' + sp.toString();
+    }
+  } catch (_) {}
   const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   try {
