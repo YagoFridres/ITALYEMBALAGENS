@@ -10,7 +10,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0f0f1a">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-title" content="Italy PCP">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
@@ -27722,6 +27724,7 @@ else _bindMobileUX();
 let _pwaInstallPrompt = null;
 function pwaDismissInstall(){
   try{ document.getElementById('pwa-install-banner').style.display='none'; }catch(e){}
+  try{ document.getElementById('btn-instalar-app').style.display='none'; }catch(e){}
   try{ _pwaInstallPrompt = null; }catch(e){}
 }
 async function pwaDoInstall(){
@@ -27740,11 +27743,28 @@ try{
       _pwaInstallPrompt = e;
       const b = document.getElementById('pwa-install-banner');
       if(b) b.style.display = 'flex';
+      const btn = document.getElementById('btn-instalar-app');
+      if(btn) btn.style.display = 'inline-flex';
     }catch(_){}
   });
   window.addEventListener('appinstalled', ()=>{
     try{ pwaDismissInstall(); }catch(e){}
   });
+}catch(e){}
+
+try{
+  const ua = String(navigator.userAgent || '');
+  const isIOS = /iPad|iPhone|iPod/i.test(ua) && !window.MSStream;
+  const isSafari = isIOS && /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo/i.test(ua);
+  const isStandalone = !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone;
+  if(isSafari && !isStandalone){
+    const k = 'italy_pwa_ios_hint_v1';
+    const last = Number(localStorage.getItem(k) || 0) || 0;
+    if(Date.now() - last > (12*60*60*1000)){
+      localStorage.setItem(k, String(Date.now()));
+      setTimeout(()=>{ try{ toast("Para instalar: toque em compartilhar (□↑) e depois 'Adicionar à Tela de Início'", 'var(--accent)'); }catch(e){} }, 1200);
+    }
+  }
 }catch(e){}
 
 try{
@@ -37655,6 +37675,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div onclick="toggleTheme()" title="Alternar claro/escuro" style="display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:.72rem;color:var(--text2);">
     <span id="theme-icon">🌙</span><span id="theme-label">Escuro</span>
   </div>
+  <button id="btn-instalar-app" class="btn btn-accent btn-sm" style="display:none" onclick="pwaDoInstall()">📲 Instalar App</button>
   <div id="save-indicator" style="font-size:.62rem;font-family:var(--mono);color:var(--text3);padding:2px 8px;border-radius:5px;transition:.3s;opacity:0">✓ salvo</div>
   <button onclick="exportarDadosCompletos()" style="background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:7px;padding:5px 10px;font-size:.72rem;cursor:pointer;font-family:var(--font)">💾</button>
   <div id="topbar-user" onclick="trocarUsuario()" title="Trocar usuário" style="display:flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;padding:5px 12px;cursor:pointer;">
