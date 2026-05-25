@@ -14699,10 +14699,11 @@ async function renderComissoes(){
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data Conclusão</th>
       <th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Status</th>
+      <th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Ação</th>
     </tr>`;
     const rows = [];
     if(semOfsComVendedor){
-      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
+      tabOfs.querySelector('tbody').innerHTML = `<tr><td colspan="12" style="padding:14px;text-align:center;color:var(--text3)">Nenhuma OF com vendedor no período</td></tr>`;
       return;
     }
     (d.vendedores || []).forEach(v=>{
@@ -14711,8 +14712,10 @@ async function renderComissoes(){
         if(st === 'Cancelada' || st === 'Cancelado') return;
         const prod = of.descricao || of.prodDesc || of.produto || '—';
         const qtd = Number(of.qtd || of.quantidade || 0) || 0;
+        const ofId = String(of.id || of.of_id || of.ofId || '').trim();
+        const ofNum = String(of.numero || of.of || of.of_num || '').trim();
         rows.push(`<tr>
-          <td style="padding:8px;border:1px solid var(--s3)">#${escH(of.numero||'')}</td>
+          <td style="padding:8px;border:1px solid var(--s3)">#${escH(ofNum||'')}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(clienteNome(of.cliente))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(prod)}</td>
           <td style="padding:8px;border:1px solid var(--s3);text-align:right">${fmtN(qtd)}</td>
@@ -14723,11 +14726,83 @@ async function renderComissoes(){
           <td style="padding:8px;border:1px solid var(--s3)">${comFmtDate(of.data)}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(comFmtDataConclusao(of))}</td>
           <td style="padding:8px;border:1px solid var(--s3)">${escH(st||'—')}</td>
+          <td style="padding:8px;border:1px solid var(--s3);text-align:center">
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirModalTrocarVendedorOF('${escAttr(ofId)}','${escAttr(ofNum)}')" ${ofId ? '' : 'disabled'}>Trocar</button>
+          </td>
         </tr>`);
       });
     });
-    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="11" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
+    tabOfs.querySelector('tbody').innerHTML = rows.join('') || `<tr><td colspan="12" style="padding:14px;text-align:center;color:var(--text3)">Sem OFs para detalhar.</td></tr>`;
   }
+}
+
+function abrirModalTrocarVendedorOF(ofId, ofNum){
+  const id = String(ofId || '').trim();
+  const num = String(ofNum || '').trim();
+  if(!id){ toast('OF inválida para troca de vendedor','var(--red)'); return; }
+  const modal = document.getElementById('modal-trocar-vend-of');
+  const sel = document.getElementById('tv-of-vend');
+  const lbl = document.getElementById('tv-of-lbl');
+  if(!modal || !sel){ toast('Modal não encontrado','var(--red)'); return; }
+  const vendRef = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+  const opts = ['<option value="">Selecionar vendedor...</option>'];
+  vendRef.forEach(v=>{
+    const vid = String(v?.id || '').trim();
+    if(!vid) return;
+    opts.push(`<option value="${escAttr(vid)}">${escH(String(v?.nome || vid))}</option>`);
+  });
+  sel.innerHTML = opts.join('');
+  const ofLocal = (Array.isArray(OFs) ? OFs.find(o=>String(o?.id||'').trim()===id) : null) || null;
+  const curVend = String(ofLocal?.vendId || ofLocal?.vendedor_id || '').trim();
+  if(curVend) sel.value = curVend;
+  if(lbl) lbl.textContent = num ? ('OF #' + num) : ('OF ' + id);
+  modal.dataset.ofId = id;
+  modal.dataset.ofNum = num;
+  abrir('modal-trocar-vend-of');
+}
+
+async function salvarTrocaVendedorOF(){
+  const modal = document.getElementById('modal-trocar-vend-of');
+  const id = String(modal?.dataset?.ofId || '').trim();
+  const num = String(modal?.dataset?.ofNum || '').trim();
+  const sel = document.getElementById('tv-of-vend');
+  const novo = String(sel?.value || '').trim();
+  if(!id || !novo){ toast('Selecione um vendedor','var(--orange)'); return; }
+  const r = await api('PATCH','/ofs/'+encodeURIComponent(id), { vendedor_id: novo, vendId: novo, vendedorId: novo });
+  if(!r || !r.ok){ toast('Erro ao trocar vendedor da OF','var(--red)'); return; }
+  try{
+    const vendRef = Array.isArray(window.VENDEDORES) ? window.VENDEDORES : (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+    const vendObj = vendRef.find(v=>String(v?.id||'').trim()===novo) || null;
+    const ofIdx = Array.isArray(OFs) ? OFs.findIndex(o=>String(o?.id||'').trim()===id) : -1;
+    if(ofIdx >= 0){
+      OFs[ofIdx].vendId = novo;
+      OFs[ofIdx].vendedor_id = novo;
+      if(vendObj && vendObj.nome) OFs[ofIdx].vendedor = vendObj.nome;
+    }
+    const d = window._comissoesData || null;
+    if(d && Array.isArray(d.vendedores)){
+      d.vendedores.forEach(v=>{
+        v.ofs = (v.ofs||[]).filter(x=>String(x?.id||'').trim()!==id);
+      });
+      const tgtName = String(vendObj?.nome || '').trim() || '—';
+      const key = String(tgtName||'').trim().toLowerCase() || '__sem_vendedor__';
+      let row = d.vendedores.find(v=>String(v?.vendedor||'').trim().toLowerCase()===key) || null;
+      if(!row){
+        row = { vendedorId: novo, vendedor: tgtName || '—', comissaoPct: Number(vendObj?.comissao_pct ?? vendObj?.comissaoPct ?? 0) || 0, ofs: [] };
+        d.vendedores.push(row);
+      }
+      if(!row.vendedorId) row.vendedorId = novo;
+      if((!row.comissaoPct || Number(row.comissaoPct)<=0) && vendObj) row.comissaoPct = Number(vendObj?.comissao_pct ?? vendObj?.comissaoPct ?? 0) || 0;
+      const ofRow = (r && r.data) ? { ...(r.data||{}), dia: String(r.data?.dia||r.data?.data_faturamento||r.data?.data_conclusao||'').slice(0,10) } : null;
+      const fallback = ofRow || (Array.isArray(OFs) ? OFs.find(o=>String(o?.id||'').trim()===id) : null) || { id, numero: num };
+      row.ofs.push({ ...fallback, vendedor_id: novo, vendedor: tgtName, dia: String(fallback?.dia||fallback?.data_faturamento||fallback?.data_conclusao||fallback?.dia||'').slice(0,10) });
+      d.vendedores = d.vendedores.filter(v=> (v.ofs||[]).length > 0 || String(v?.vendedorId||'').trim() === novo);
+      comRecalcularLocal();
+      renderComissoes();
+    }
+  }catch(e){}
+  fechar('modal-trocar-vend-of');
+  toast('✓ Vendedor alterado na OF ' + (num ? ('#' + num) : id), 'var(--green)');
 }
 function comToggleVend(key){
   const k = String(key || '');
@@ -40124,6 +40199,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-vend')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarVendedor()">Salvar</button>
+  </div>
+</div></div>
+
+<!-- Modal Trocar Vendedor (Comissões) -->
+<div class="modal-overlay" id="modal-trocar-vend-of">
+<div class="modal" style="width:min(520px,98vw)">
+  <button class="close-btn" onclick="fechar('modal-trocar-vend-of')">✕</button>
+  <h2>🔁 Trocar vendedor</h2>
+  <div id="tv-of-lbl" style="color:var(--text2);font-weight:800;margin:6px 0 14px"></div>
+  <div class="fg">
+    <div class="mf fgf"><label>Novo vendedor *</label><select id="tv-of-vend"><option value="">Selecionar vendedor...</option></select></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fechar('modal-trocar-vend-of')">Cancelar</button>
+    <button class="btn btn-accent" onclick="salvarTrocaVendedorOF()">Salvar</button>
   </div>
 </div></div>
 
