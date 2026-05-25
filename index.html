@@ -5855,11 +5855,70 @@ function verImagemOfPC(ofId, ofNum){
 async function ofmaqIniciarProducaoPC(ofId){
   const id = String(ofId||'').trim();
   if(!id) return;
+  const of = typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+  if(!of){ toast('OF não encontrada','var(--red)'); return; }
+  const maqAtual = String(getMaquinaAtual(of) || ofMaquinaAtualPendente(of) || '').trim();
+  const fluxo = ofFluxoMaquinasObj(of);
+  const target = maqAtual || String(fluxo.find(m=>m && m.concluido !== true)?.nome || '').trim();
+  if(!target){ toast('Sem máquina para iniciar','var(--yellow)'); return; }
+  try{ await carregarMaquinas(false); }catch(e){}
+  const maqObj = getMaquinaFromFluxo((of?.fluxo_maquinas ?? of?.maq ?? []), MAQUINAS, of?.maquina_atual_index, target);
+  const prodHoraBase = Number(maqObj?.producao ?? maqObj?.phora ?? 0) || 0;
+  const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
+
+  try{ document.getElementById('modal-iniciar-producao')?.remove(); }catch(e){}
+  const html = `
+    <div id="modal-iniciar-producao" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="try{document.getElementById('modal-iniciar-producao').remove()}catch(e){}">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;width:min(460px,96vw);padding:18px" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="font-weight:900;color:var(--accent)">▶️ Iniciar produção</div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="try{document.getElementById('modal-iniciar-producao').remove()}catch(e){}">✕</button>
+        </div>
+        <div style="font-size:.82rem;color:var(--text2);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          OF ${escH(String(of?.of||of?.numero||'—'))} · ${escH(target)}
+        </div>
+        <div style="display:grid;gap:10px">
+          <div>
+            <label style="font-size:.72rem;color:var(--text3);font-weight:900">Tempo de setup (min)</label>
+            <input id="ip-setup" type="number" min="0" value="${escAttr(String(Math.trunc(setupMedio||0)))}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-size:16px">
+          </div>
+          <div>
+            <label style="font-size:.72rem;color:var(--text3);font-weight:900">Produção estimada (cx/h)</label>
+            <input id="ip-vel" type="number" min="0" value="${escAttr(String(Math.trunc(prodHoraBase||0)))}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-size:16px">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+          <button class="btn btn-ghost" style="min-height:44px" onclick="try{document.getElementById('modal-iniciar-producao').remove()}catch(e){}">Cancelar</button>
+          <button class="btn btn-accent" style="min-height:44px" onclick="_confirmarIniciarProducao('${escAttr(id)}','${escAttr(target)}')">Iniciar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function _confirmarIniciarProducao(ofId, nomeMaquina){
+  const id = String(ofId||'').trim();
+  const maq = String(nomeMaquina||'').trim();
+  if(!id || !maq) return;
+  const setup = Math.trunc(Number(document.getElementById('ip-setup')?.value || 0) || 0);
+  const vel = Math.trunc(Number(document.getElementById('ip-vel')?.value || 0) || 0);
+  try{ document.getElementById('modal-iniciar-producao')?.remove(); }catch(e){}
+  const of = typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+  if(!of) return;
+  const fluxo = ofFluxoMaquinasObj(of);
+  const nowIso = new Date().toISOString();
+  const fluxoOut = (fluxo||[]).map((m)=>{
+    const n = String(m?.nome||'').trim();
+    if(_normMaqNome(n) !== _normMaqNome(maq)) return m;
+    return { ...m, hora_inicio_producao: nowIso, tempo_setup_real: setup, velocidade_real: vel };
+  });
   try{
     showSaveIndicator('Iniciando produção...','var(--yellow)');
-    const r = await api('PUT','/ofs/'+encodeURIComponent(id), { status:'Em produção' });
-    if(!r || r.ok === false) throw new Error(String(r?.error || 'Falha ao iniciar'));
-    const row = r.data || r;
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ status:'Em produção', fluxo_maquinas: fluxoOut } });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao iniciar');
+    const row = j?.data || j;
     try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
     try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
     showSaveIndicator('✓ iniciado','var(--green)');
@@ -6940,7 +6999,9 @@ function cardOFMaquina(of, maquinaAtual){
   const setupMedio = Number(maqObj?.setup_medio ?? maqObj?.setup ?? 0) || 0;
   const qtdT = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (Number(of?.qtd || of?.quantidade || 0) || 0);
   const tempoMin = (prodHora > 0) ? Math.max(0, Math.round(setupMedio + (qtdT / prodHora * 60))) : null;
-  const tempoInfo = tempoMin != null ? (`⏱ ${tempoMin} min`) : '⏱ —';
+  const maqId = String(maqObj?.id || maqObj?.maquina_id || '').trim();
+  const tMed = (maqId && typeof ofmaqTempoMedioGetSync === 'function') ? ofmaqTempoMedioGetSync(maqId) : null;
+  const tempoInfo = Number.isFinite(Number(tMed)) ? (`~${Math.round(Number(tMed))} min médio`) : (tempoMin != null ? (`~${tempoMin} min estimado`) : '⏱ —');
   const velInfo = prodHora > 0 ? (`⚡ ${Math.round(prodHora)} cx/h`) : '⚡ — cx/h';
   const bucket = ofmaqPrioridadeBucket(of);
 
@@ -8322,11 +8383,6 @@ async function concluirEtapaOF(ofId, nomeMaquina){
   const of = (OFs||[]).find(o => String(o.id) === String(id)) || null;
   if(!of) return;
   const qtdOriginal = Number(of.qtd || of.quantidade || 0) || 0;
-  const fluxoObjs = ofFluxoMaquinasObj(of);
-  const nomesFluxo = (fluxoObjs||[]).map(m=>String(m?.nome||'').trim()).filter(Boolean);
-  const outros = nomesFluxo.filter(m => _normMaqNome(m) !== _normMaqNome(maq));
-  const todasOutrasConcluidas = outros.every(m => maquinaConcluidaNaOF(of, m));
-  const eUltimaEtapa = !!todasOutrasConcluidas;
   try{ document.getElementById('modal-concluir-etapa')?.remove(); }catch(e){}
   const numero = of.numero || of.of || '';
   const produto = of.prodDesc || of.descricao || '';
@@ -8336,14 +8392,13 @@ async function concluirEtapaOF(ofId, nomeMaquina){
         <h3 style="margin:0 0 6px;color:var(--accent)">✅ Concluir: ${escH(maq)}</h3>
         <p style="margin:0 0 16px;color:var(--text2);font-size:.85rem">OF ${escH(numero)} — ${escH(produto)}</p>
         <div style="margin-bottom:12px">
-          <label style="font-size:.78rem;font-weight:700;color:var(--text3)">QTD PRODUZIDA ${eUltimaEtapa ? '(total final)' : '(nesta etapa)'}</label>
+          <label style="font-size:.78rem;font-weight:700;color:var(--text3)">Quantidade produzida</label>
           <input type="number" id="inp-qtd-prod" min="0" value="${escAttr(String(qtdOriginal))}" style="width:100%;padding:10px;margin-top:4px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:1rem">
         </div>
-        ${eUltimaEtapa ? `
         <div style="margin-bottom:16px">
-          <label style="font-size:.78rem;font-weight:700;color:var(--text3)">QTD PERDIDA (não altera a OF, vai para Caixas Perdidas)</label>
+          <label style="font-size:.78rem;font-weight:700;color:var(--text3)">Quantidade com perda/defeito</label>
           <input type="number" id="inp-qtd-perd" min="0" value="0" style="width:100%;padding:10px;margin-top:4px;background:var(--s3);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:1rem">
-        </div>` : ''}
+        </div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button onclick="document.getElementById('modal-concluir-etapa').remove()" style="padding:8px 18px;background:var(--s3);color:var(--text);border:1px solid var(--border);border-radius:8px;cursor:pointer">Cancelar</button>
           <button onclick="_confirmarConcluirEtapa('${escAttr(id)}','${escAttr(maq)}')" style="padding:8px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">✅ Confirmar</button>
@@ -28980,6 +29035,40 @@ async function carregarMaquinas(forcar=false){
   try{ window._MAQUINAS = MAQUINAS; }catch(e){}
   try{ window.MAQUINAS = MAQUINAS; }catch(e){}
   return r;
+}
+
+async function ofmaqTempoMedioFetch(maquinaId){
+  const id = String(maquinaId||'').trim();
+  if(!id) return null;
+  if(!window._maqTempoMedioCache || typeof window._maqTempoMedioCache !== 'object') window._maqTempoMedioCache = {};
+  const cur = window._maqTempoMedioCache[id];
+  const now = Date.now();
+  if(cur && cur.ts && (now - cur.ts) < (10*60*1000) && cur.v !== undefined) return cur.v;
+  if(cur && cur.loading) return null;
+  window._maqTempoMedioCache[id] = { ...(cur||{}), loading:true };
+  try{
+    const r = await api('GET', '/maquinas/' + encodeURIComponent(id) + '/tempo_medio');
+    const v = (r && r.ok && r.data && r.data.media_min != null) ? Number(r.data.media_min) : null;
+    window._maqTempoMedioCache[id] = { v, ts: now, loading:false };
+    try{
+      if(String(window._PAGE_ATUAL||'') === 'ofmaq') renderOFsPorMaquina();
+    }catch(_){}
+    return v;
+  }catch(e){
+    window._maqTempoMedioCache[id] = { v: null, ts: now, loading:false };
+    return null;
+  }
+}
+
+function ofmaqTempoMedioGetSync(maquinaId){
+  const id = String(maquinaId||'').trim();
+  if(!id) return null;
+  if(!window._maqTempoMedioCache || typeof window._maqTempoMedioCache !== 'object') window._maqTempoMedioCache = {};
+  const cur = window._maqTempoMedioCache[id];
+  const now = Date.now();
+  if(cur && cur.ts && (now - cur.ts) < (10*60*1000) && cur.v !== undefined) return cur.v;
+  try{ ofmaqTempoMedioFetch(id); }catch(_){}
+  return null;
 }
 
 function normalizeFaca(r){

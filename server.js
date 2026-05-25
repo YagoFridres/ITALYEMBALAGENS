@@ -4960,13 +4960,31 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
     }
 
     const nowIso = new Date().toISOString();
+    const operador = String(body.operador || body.usuario || req.usuario?.nome || req.usuario?.email || '').trim() || 'sistema';
     const targetKey = maquinaConcluida.trim().toUpperCase();
     let found = false;
+    let tempoRealMin = null;
     fluxo = fluxo.map((m) => {
       const nomeKey = String(m.nome || '').trim().toUpperCase();
       if (nomeKey && nomeKey === targetKey) {
         found = true;
-        return { ...m, concluido: true, data_baixa: nowIso };
+        const ini = String(m?.hora_inicio_producao || m?.inicio_producao || m?.hora_inicio || '').trim();
+        let diffMin = null;
+        if (ini) {
+          const t0 = new Date(ini);
+          if (!isNaN(t0.getTime())) diffMin = Math.max(0, Math.round((Date.now() - t0.getTime()) / 60000));
+        }
+        tempoRealMin = diffMin;
+        return {
+          ...m,
+          concluido: true,
+          data_baixa: nowIso,
+          hora_fim_producao: nowIso,
+          tempo_producao_real_min: diffMin,
+          qtd_produzida: Number(qtdProduzida),
+          qtd_perdida: Math.trunc(Number(qtdPerdida) || 0),
+          operador: operador || m?.operador || null,
+        };
       }
       return m;
     });
@@ -5011,6 +5029,14 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
     Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
+    try {
+      await supabase.from('historico_acoes').insert([{
+        data_hora: nowIso,
+        tipo_acao: 'passagem_maquina',
+        descricao: `Etapa concluída: ${maquinaConcluida} — OF #${of?.of||of?.numero||''} — ${operador}${tempoRealMin != null ? (' — ' + tempoRealMin + ' min') : ''} — ${qtdProduzida} produzida — ${qtdPerdida} perda`,
+        usuario: operador,
+      }]);
+    } catch (_) {}
 
     const maqsRestantes = (fluxo || []).filter((m) => !m.concluido).map((m) => m.nome);
     return res.json({
@@ -5024,6 +5050,59 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message });
   }
+});
+
+app.get('/api/maquinas/:id/tempo_medio', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const cacheKey = 'maq_tempo_medio_' + id;
+    try {
+      const cached = cacheGet(cacheKey);
+      if (cached) return ok(res, cached);
+    } catch (_) {}
+
+    const { data: maq, error: em } = await supabase.from('maquinas').select('id,nome,col').eq('id', id).maybeSingle();
+    if (em) throw em;
+    if (!maq) return res.status(404).json({ ok: false, error: 'Máquina não encontrada' });
+    const nome = String(maq?.col || maq?.nome || '').trim();
+    if (!nome) return res.status(404).json({ ok: false, error: 'Máquina sem nome' });
+
+    const norm = (s) => {
+      try { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+      catch (_) { return String(s || '').toLowerCase().trim(); }
+    };
+    const alvo = norm(nome);
+
+    const { data: rows, error } = await supabase
+      .from('ofs')
+      .select('fluxo_maquinas,updated_at')
+      .is('deleted_at', null)
+      .not('fluxo_maquinas', 'is', null)
+      .order('updated_at', { ascending: false })
+      .limit(2000);
+    if (error) throw error;
+
+    let sum = 0;
+    let n = 0;
+    (Array.isArray(rows) ? rows : []).forEach((r) => {
+      let fluxo = r?.fluxo_maquinas;
+      if (typeof fluxo === 'string') { try { fluxo = JSON.parse(fluxo || '[]'); } catch (_) { fluxo = []; } }
+      const arr = Array.isArray(fluxo) ? fluxo : [];
+      arr.forEach((m) => {
+        if (!m || typeof m !== 'object') return;
+        const nm = norm(m.nome || m.maquina || m.name || m.id || '');
+        if (!nm || nm !== alvo) return;
+        const v = Number(m.tempo_producao_real_min ?? m.tempo_real_min ?? NaN);
+        if (Number.isFinite(v) && v > 0) { sum += v; n++; }
+      });
+    });
+
+    const media = n > 0 ? (sum / n) : null;
+    const out = { maquina_id: maq.id, maquina_nome: nome, media_min: media, amostras: n };
+    try { cacheSet(cacheKey, out, 30_000); } catch (_) {}
+    return ok(res, out);
+  } catch (e) { return err(res, e); }
 });
 
 app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
