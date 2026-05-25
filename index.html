@@ -677,6 +677,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 #hamburger-btn{display:none;width:32px;height:32px;background:var(--s2);border:1px solid var(--border);border-radius:7px;align-items:center;justify-content:center;cursor:pointer;font-size:.95rem;flex-shrink:0;color:var(--text2);}
 #sidebar-overlay{display:none;position:fixed;inset:52px 0 0 0;z-index:850;background:#0006;}
 #sidebar-overlay.show{display:block;}
+.mobile-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;height:60px;background:var(--surface);border-top:1px solid var(--border);z-index:880;align-items:stretch;justify-content:space-around;padding:6px 8px;gap:6px;}
+.mbn-item{flex:1;background:transparent;border:none;color:var(--text2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:12px;min-height:44px;cursor:pointer;}
+.mbn-ico{font-size:1.05rem;line-height:1;}
+.mbn-lbl{font-size:.62rem;font-weight:800;letter-spacing:.2px;}
+.mbn-item.active{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent);}
 body[data-device="tablet"] .sidebar{width:58px;overflow:hidden;}
 body[data-device="tablet"] .sidebar-brand-name,
 body[data-device="tablet"] .sidebar-brand-sub,
@@ -692,12 +697,13 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
 #mobile-access-block{display:none;}
 
 @media (max-width:768px){
-  #hamburger-btn{display:inline-flex;}
+  #hamburger-btn{display:none;}
+  #sidebar-overlay{inset:0;}
   .layout{position:relative;}
-  .sidebar{position:fixed;left:0;top:52px;bottom:0;width:min(320px,86vw);transform:translateX(-102%);transition:transform .18s ease;z-index:900;}
-  .sidebar.mob-open{transform:translateX(0);}
+  .sidebar{position:fixed;left:0;right:0;bottom:0;top:auto;height:min(78vh,560px);width:100%;transform:translateY(102%);transition:transform .18s ease;z-index:900;border-right:none;border-top:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;overflow:hidden;}
+  .sidebar.mob-open{transform:translateY(0);}
   .content{width:100%;}
-  .page-body{padding:14px;}
+  .page-body{padding:14px;padding-bottom:84px;}
   .ptoolbar{padding:10px 12px;}
   .btn,.btn-icon,button,.nav-item{min-height:44px;}
   input,select,textarea{font-size:16px;}
@@ -715,6 +721,7 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
   .ofmaq-thumb{width:48px !important;height:48px !important;border-radius:10px !important;}
   .ofmaq-thumb img{width:48px !important;height:48px !important;object-fit:cover !important;}
   .ofmaq-drop-ind{height:3px;background:#4a9eff;border-radius:999px;margin:6px 0;}
+  .mobile-bottom-nav{display:flex;}
 }
 
 /* ===== MOBILE APP (LEGADO, NÃO USADO) ===== */
@@ -27576,6 +27583,7 @@ function _bindMobileUX(){
     }, { passive:true });
   }catch(_){}
   try{ setTimeout(()=>decorateResponsiveTables(document), 0); }catch(_){}
+  try{ setTimeout(()=>{ try{ updateBottomNavActive(window._PAGE_ATUAL || 'pcp'); }catch(e){} }, 0); }catch(_){}
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _bindMobileUX);
 else _bindMobileUX();
@@ -35469,7 +35477,32 @@ function go(id){
   if(id==='inconformidades')carregarInconformidadesControle();
   if(id==='logistica')setTimeout(renderRotaMapa,200);
   try{ applyMobileAccessRules(); }catch(e){}
+  try{ if(typeof updateBottomNavActive === 'function') updateBottomNavActive(id); }catch(e){}
   try{ setTimeout(()=>{ tryHandleScanParam(); }, 0); }catch(e){}
+}
+
+function updateBottomNavActive(pageId){
+  const isMob = (typeof _isMobileLike === 'function') ? _isMobileLike() : (window.innerWidth <= 768);
+  const nav = document.getElementById('mobile-bottom-nav');
+  if(!nav) return;
+  nav.style.display = isMob ? 'flex' : 'none';
+  const id = String(pageId||window._PAGE_ATUAL||'').trim();
+  const activeKey = (() => {
+    const m = {
+      hub: ['hub','home'],
+      pcp: ['pcp'],
+      ofmaq: ['ofmaq','maquinas','fluxos','tipos-caixa','tempos-reais'],
+      estoque: ['estoque','facas1','cliches','lancamento','estoques'],
+    };
+    for(const k of Object.keys(m)){
+      if(m[k].includes(id)) return k;
+    }
+    return '';
+  })();
+  ['hub','pcp','ofmaq','estoque','mais'].forEach((k)=>{
+    const el = document.getElementById('mbn-'+k);
+    if(el) el.classList.toggle('active', k === activeKey);
+  });
 }
 
 let INCONFORMIDADES_CONTROLE = [];
@@ -49026,5 +49059,13 @@ async function renderHub(forcar=false){
   </div>
 </div>
 <div id="cidade-drawer-overlay" onclick="_cidadeDrawer_fechar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9998"></div>
+
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  <button class="mbn-item" id="mbn-hub" onclick="go('hub')"><div class="mbn-ico">🏠</div><div class="mbn-lbl">Hub</div></button>
+  <button class="mbn-item" id="mbn-pcp" onclick="go('pcp')"><div class="mbn-ico">📋</div><div class="mbn-lbl">PCP</div></button>
+  <button class="mbn-item" id="mbn-ofmaq" onclick="go('ofmaq')"><div class="mbn-ico">⚙️</div><div class="mbn-lbl">Máquinas</div></button>
+  <button class="mbn-item" id="mbn-estoque" onclick="go('estoque')"><div class="mbn-ico">📦</div><div class="mbn-lbl">Estoque</div></button>
+  <button class="mbn-item" id="mbn-mais" onclick="toggleMobMenu()"><div class="mbn-ico">☰</div><div class="mbn-lbl">Mais</div></button>
+</nav>
 
 </body></html>
