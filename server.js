@@ -551,7 +551,7 @@ app.post('/api/auth/login', async (req, res) => {
       let q = supabase.from('usuarios').select('*');
       if (colName === 'email') q = q.ilike(colName, String(value || '').trim().toLowerCase());
       else q = q.eq(colName, value);
-      q = q.not('ativo', 'eq', false).limit(1);
+      q = q.or('ativo.is.null,ativo.eq.true').limit(1);
       const r1 = await q;
       if (!r1?.error) return r1;
       if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
@@ -599,6 +599,7 @@ app.post('/api/auth/login', async (req, res) => {
         email: emailNorm,
         keySource: supabaseKeySource,
       });
+      try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'usuario_nao_encontrado' }); } catch (_) {}
       if (supabaseKeySource === 'SUPABASE_ANON_KEY' || supabaseKeySource === 'index.html:SUPABASE_KEY') {
         return res.status(500).json({
           error: 'Login bloqueado por permissões (RLS) ao ler public.usuarios. No Railway, use SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY com service_role).',
@@ -610,14 +611,15 @@ app.post('/api/auth/login', async (req, res) => {
     const usuario = rows[0];
     console.log('[LOGIN USUARIO ENCONTRADO]', !!usuario);
     console.log('[LOGIN ATIVO]', usuario?.ativo);
-    if (usuario?.ativo === false) return res.status(401).json({ ok: false, error: 'Usuário inativo' });
+    if (usuario?.ativo === false) {
+      try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'usuario_inativo' }); } catch (_) {}
+      return res.status(401).json({ ok: false, error: 'Usuário inativo' });
+    }
 
     const hashCandidates = [usuario?.senha_hash, usuario?.senhaHash, usuario?.hash, usuario?.senha]
       .map((h) => (h == null ? '' : String(h)))
       .filter((h) => String(h || '').trim() !== '');
     const hash = (hashCandidates.find((h) => String(h).startsWith('$2')) || hashCandidates[0] || '').trim();
-    console.log('[LOGIN DEBUG] hash do banco:', hash ? hash.substring(0, 20) : '');
-
     let senhaValida = false;
 
     const senhaTrim = senhaStr.trim();
@@ -667,7 +669,10 @@ app.post('/api/auth/login', async (req, res) => {
 
     console.log('[LOGIN]', String(usuario?.email || emailNorm || '').trim().toLowerCase(), '| senhaValida:', senhaValida, '| hashInicio:', (hash ? hash.substring(0, 10) : ''));
 
-    if (!senhaValida) return res.status(401).json({ ok: false, error: 'Senha incorreta' });
+    if (!senhaValida) {
+      try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'senha_incorreta' }); } catch (_) {}
+      return res.status(401).json({ ok: false, error: 'Senha incorreta' });
+    }
 
     let perms = usuario.permissoes != null ? usuario.permissoes : [];
     if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
@@ -981,6 +986,71 @@ app.put('/api/usuarios/:id/senha', requireAdmin, async (req, res) => {
     await logAuditoria('usuarios', 'UPDATE', id, antes, data || { id }, req);
     return ok(res, { id });
   } catch (e) { return err(res, e); }
+});
+
+app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
+  try {
+    const dryRun = String(req.body?.dry_run || req.query?.dry_run || '').trim() === '1';
+    let rows = null;
+    let error = null;
+    try {
+      const r = await supabase
+        .from('usuarios')
+        .select('id,email,perfil,ativo,permissoes,senha_hash,senha')
+        .limit(5000);
+      rows = r.data;
+      error = r.error;
+    } catch (e1) {
+      error = e1;
+    }
+    if (error) throw error;
+    const list = Array.isArray(rows) ? rows : [];
+    const updates = [];
+    const affected = [];
+    list.forEach((u) => {
+      const id = String(u?.id || '').trim();
+      if (!id) return;
+      const perfilNorm = String(u?.perfil || '').trim().toLowerCase();
+      const isAdmin = perfilNorm === 'admin' || perfilNorm.includes('admin');
+
+      const patch = {};
+
+      if (u?.ativo === null || u?.ativo === undefined) patch.ativo = true;
+
+      let perms = u?.permissoes;
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = []; }
+      }
+      if (!Array.isArray(perms)) perms = [];
+      if (isAdmin && !perms.includes('tudo')) perms = ['tudo', ...perms];
+      if (u?.permissoes == null || (typeof u?.permissoes === 'string') || !Array.isArray(u?.permissoes)) patch.permissoes = perms;
+
+      const senhaHash = String(u?.senha_hash || '').trim();
+      if (!senhaHash) {
+        const alt = String(u?.senha || '').trim();
+        if (alt.startsWith('$2')) patch.senha_hash = alt;
+      }
+
+      if (Object.keys(patch).length) {
+        updates.push({ id, patch });
+        affected.push({ id, email: u?.email || null, patch });
+      }
+    });
+
+    if (dryRun) {
+      return res.json({ ok: true, dry_run: true, total: updates.length, affected: affected.slice(0, 50) });
+    }
+
+    let okCount = 0;
+    for (const u of updates) {
+      const { error: e2 } = await supabase.from('usuarios').update(u.patch).eq('id', u.id);
+      if (e2) throw e2;
+      okCount++;
+    }
+    return res.json({ ok: true, updated: okCount, total: updates.length, affected: affected.slice(0, 50) });
+  } catch (e) {
+    return err(res, e);
+  }
 });
 
 app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
