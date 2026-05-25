@@ -682,6 +682,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .mbn-ico{font-size:1.05rem;line-height:1;}
 .mbn-lbl{font-size:.62rem;font-weight:800;letter-spacing:.2px;}
 .mbn-item.active{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent);}
+.pwa-install-banner{display:none;position:fixed;left:12px;right:12px;bottom:74px;z-index:881;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);padding:12px 12px;gap:10px;align-items:center;}
+.pwa-install-title{font-weight:900;color:var(--text);font-size:.78rem;}
+.pwa-install-sub{color:var(--text3);font-size:.7rem;line-height:1.25;}
+.pwa-install-actions{display:flex;gap:8px;flex-shrink:0;}
 body[data-device="tablet"] .sidebar{width:58px;overflow:hidden;}
 body[data-device="tablet"] .sidebar-brand-name,
 body[data-device="tablet"] .sidebar-brand-sub,
@@ -27588,6 +27592,42 @@ function _bindMobileUX(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _bindMobileUX);
 else _bindMobileUX();
 
+let _pwaInstallPrompt = null;
+function pwaDismissInstall(){
+  try{ document.getElementById('pwa-install-banner').style.display='none'; }catch(e){}
+  try{ _pwaInstallPrompt = null; }catch(e){}
+}
+async function pwaDoInstall(){
+  try{
+    if(!_pwaInstallPrompt) return pwaDismissInstall();
+    _pwaInstallPrompt.prompt();
+    await _pwaInstallPrompt.userChoice;
+  }catch(e){}
+  pwaDismissInstall();
+}
+
+try{
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    try{
+      e.preventDefault();
+      _pwaInstallPrompt = e;
+      const b = document.getElementById('pwa-install-banner');
+      if(b) b.style.display = 'flex';
+    }catch(_){}
+  });
+  window.addEventListener('appinstalled', ()=>{
+    try{ pwaDismissInstall(); }catch(e){}
+  });
+}catch(e){}
+
+try{
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    });
+  }
+}catch(e){}
+
 var AUTH_TOKEN_KEY='token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
@@ -49059,6 +49099,17 @@ async function renderHub(forcar=false){
   </div>
 </div>
 <div id="cidade-drawer-overlay" onclick="_cidadeDrawer_fechar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9998"></div>
+
+<div class="pwa-install-banner" id="pwa-install-banner">
+  <div style="min-width:0">
+    <div class="pwa-install-title">Instalar aplicativo</div>
+    <div class="pwa-install-sub">Adicione o ERP na tela inicial para abrir como app.</div>
+  </div>
+  <div class="pwa-install-actions">
+    <button class="btn btn-ghost btn-sm" onclick="pwaDismissInstall()">Agora não</button>
+    <button class="btn btn-accent btn-sm" onclick="pwaDoInstall()">Instalar</button>
+  </div>
+</div>
 
 <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
   <button class="mbn-item" id="mbn-hub" onclick="go('hub')"><div class="mbn-ico">🏠</div><div class="mbn-lbl">Hub</div></button>
