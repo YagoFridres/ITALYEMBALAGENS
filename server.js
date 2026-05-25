@@ -11333,6 +11333,39 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       if (url) return respond(`Imagem recebida!`, { images: [url], dadosExtras: { tipo: 'imagem_recebida', url } });
     }
 
+    if (hasAny('imagem', 'foto', 'img', 'figura') && hasAny('of', 'pedido')) {
+      const m = pergunta.match(/(?:\bof\b|\bpedido\b)\s*#?\s*(\d{1,8})/i);
+      const digits = String((m && m[1]) ? m[1] : '').replace(/\D/g, '');
+      if (digits) {
+        try {
+          let q = supabase
+            .from('ofs')
+            .select('id,of,numero,of_num,imagem_url,imgs,emp_id,empId,empresa_id,deleted_at')
+            .is('deleted_at', null)
+            .limit(50);
+          if (empIdCtx) q = q.eq('emp_id', empIdCtx);
+          q = q.or(`of.ilike.%${digits}%,numero.ilike.%${digits}%`);
+          const { data: rows, error: e1 } = await q;
+          if (e1) throw e1;
+          const arr = Array.isArray(rows) ? rows : [];
+          const pick = arr.find((o) => {
+            const v = String(o?.of ?? o?.numero ?? o?.of_num ?? '').replace(/\D/g, '');
+            return v && v === digits;
+          }) || null;
+          if (!pick) return respond(`Não encontrei a OF ${digits}.`);
+          const imgs = _jarvisPickAllImgs(pick);
+          const num = String(pick?.of || pick?.numero || digits).trim() || digits;
+          if (!imgs.length) {
+            return respond(`A OF ${num} não possui imagem cadastrada.`);
+          }
+          return respond(`Aqui está a imagem da OF ${num}:`, {
+            images: imgs,
+            dadosExtras: { tipo: 'of_imagem', of_id: pick.id, numero: num, imagem_url: imgs[0], imgs },
+          });
+        } catch (e) {}
+      }
+    }
+
     if (hasAny('cadastrar cliente', 'cadastre o cliente', 'novo cliente', 'adicionar cliente', 'criar cliente', 'adicione o cliente')) {
       return res.json({
         ok: true,
