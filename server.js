@@ -5179,64 +5179,68 @@ async function _clientesFindByCnpjDigits({ digits, empId, ignoreId }) {
   return ign ? rows.filter((r) => String(r?.id || '').trim() !== ign) : rows;
 }
 
-app.get('/api/clientes/cnpj/:cnpj', authMiddleware, async (req, res) => {
-  try {
-    const digits = _cnpjDigits(req.params.cnpj);
-    if (!_cnpjIs14(digits)) return res.status(400).json({ ok: false, error: 'cnpj_invalido' });
+async function _cnpjLookupHandler(req, res) {
+  const digits = _cnpjDigits(req.params.cnpj);
+  if (!_cnpjIs14(digits)) return res.status(400).json({ ok: false, error: 'cnpj_invalido' });
 
-    const empId = String(req.query.empId || '').trim();
-    const ignoreId = String(req.query.ignore_id || '').trim();
+  const empId = String(req.query.empId || '').trim();
+  const ignoreId = String(req.query.ignore_id || '').trim();
 
-    const existentes = await _clientesFindByCnpjDigits({ digits, empId: empId || null, ignoreId });
-    if (existentes.length) {
-      return res.status(409).json({ ok: false, error: 'cnpj_ja_cadastrado', existing: existentes[0], matches: existentes });
-    }
-
-    if (String(req.query.only_check || '') === '1') {
-      return res.json({ ok: true, exists: false });
-    }
-
-    const url = 'https://www.receitaws.com.br/v1/cnpj/' + digits;
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 9000);
-    let r = null;
-    try {
-      r = await fetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': 'ItalyERP/1.0' },
-        signal: ctrl.signal,
-      });
-    } finally {
-      clearTimeout(to);
-    }
-    const j = await r.json().catch(() => null);
-    if (!r.ok) return res.status(502).json({ ok: false, error: 'receita_ws_failed', status: r.status, detail: j });
-    if (j && String(j.status || '').toUpperCase() === 'ERROR') {
-      return res.status(400).json({ ok: false, error: 'receita_ws_error', message: j.message || j.mensagem || null, detail: j });
-    }
-    const out = {
-      cnpj: digits,
-      nome_fantasia: j?.fantasia || null,
-      razao_social: j?.nome || null,
-      situacao: j?.situacao || null,
-      abertura: j?.abertura || null,
-      email: j?.email || null,
-      telefone: j?.telefone || null,
-      logradouro: j?.logradouro || null,
-      numero: j?.numero || null,
-      complemento: j?.complemento || null,
-      bairro: j?.bairro || null,
-      cep: j?.cep || null,
-      cidade: j?.municipio || null,
-      uf: j?.uf || null,
-      atividade_principal: Array.isArray(j?.atividade_principal) ? j.atividade_principal[0] : null,
-      natureza_juridica: j?.natureza_juridica || null,
-      porte: j?.porte || null,
-    };
-    return res.json({ ok: true, data: out });
-  } catch (e) {
-    return err(res, e);
+  const existentes = await _clientesFindByCnpjDigits({ digits, empId: empId || null, ignoreId });
+  if (existentes.length) {
+    return res.status(409).json({ ok: false, error: 'cnpj_ja_cadastrado', existing: existentes[0], matches: existentes });
   }
+
+  if (String(req.query.only_check || '') === '1') {
+    return res.json({ ok: true, exists: false });
+  }
+
+  const url = 'https://receitaws.com.br/v1/cnpj/' + digits;
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 9000);
+  let r = null;
+  try {
+    r = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json', 'User-Agent': 'ItalyERP/1.0' },
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(to);
+  }
+  const j = await r.json().catch(() => null);
+  if (!r.ok) return res.status(502).json({ ok: false, error: 'receita_ws_failed', status: r.status, detail: j });
+  if (j && String(j.status || '').toUpperCase() === 'ERROR') {
+    return res.status(404).json({ ok: false, error: 'receita_ws_error', message: j.message || j.mensagem || null, detail: j });
+  }
+  const out = {
+    cnpj: digits,
+    nome_fantasia: j?.fantasia || null,
+    razao_social: j?.nome || null,
+    situacao: j?.situacao || null,
+    abertura: j?.abertura || null,
+    email: j?.email || null,
+    telefone: j?.telefone || null,
+    logradouro: j?.logradouro || null,
+    numero: j?.numero || null,
+    complemento: j?.complemento || null,
+    bairro: j?.bairro || null,
+    cep: j?.cep || null,
+    cidade: j?.municipio || null,
+    uf: j?.uf || null,
+    atividade_principal: Array.isArray(j?.atividade_principal) ? j.atividade_principal[0] : null,
+    natureza_juridica: j?.natureza_juridica || null,
+    porte: j?.porte || null,
+  };
+  return res.json({ ok: true, data: out });
+}
+
+app.get('/api/clientes/cnpj/:cnpj', authMiddleware, async (req, res) => {
+  try { return await _cnpjLookupHandler(req, res); } catch (e) { return err(res, e); }
+});
+
+app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
+  try { return await _cnpjLookupHandler(req, res); } catch (e) { return err(res, e); }
 });
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
