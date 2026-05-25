@@ -2714,14 +2714,11 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
     console.log('[COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf);
     if (!vendedorId || !(valorOf > 0)) return;
     const { data: vend } = await supabase.from('vendedores').select('*').eq('id', vendedorId).maybeSingle();
-    const VENDEDOR_PADRAO_ID = '0c4852da-ffff-4c1b-bfc4-38e169d6d580';
-    const VENDEDOR_PADRAO_NOME = 'RONI MEIA VENDA';
     let perc = Number(vend?.comissao_pct ?? vend?.comissao ?? vend?.comissaoPct ?? 0);
-    if (vendedorId === VENDEDOR_PADRAO_ID) perc = 0.5;
     console.log('[OF COMISSAO] vendedorId:', vendedorId, 'valorOf:', valorOf, 'comissao%:', perc);
     if (!(perc > 0)) return;
     const valorComissao = valorOf * (perc / 100);
-    const vendNome = String(vend?.nome || '').trim() || (vendedorId === VENDEDOR_PADRAO_ID ? VENDEDOR_PADRAO_NOME : '');
+    const vendNome = String(vend?.nome || '').trim();
     const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';
     await supabase.from('historico_acoes').insert([{
       tipo_acao: 'comissao_of',
@@ -5583,7 +5580,23 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
       if (col) q = q.eq(col, empId);
       const { data, error } = await q;
       if (!error) {
-        const rows = data || [];
+        let rows = data || [];
+        const norm = (s)=>{
+          try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
+        };
+        const want = norm('VENDEDOR 03');
+        const exists = rows.some((r)=>norm(r?.nome) === want);
+        if (!exists) {
+          const payload = { nome: 'VENDEDOR 03', comissao_pct: 1.5, ativo: true };
+          if (empId) payload.emp_id = empId;
+          try { await vendedoresInsertCompat(payload); } catch (_) {}
+          try {
+            let q2 = supabase.from('vendedores').select('*').order('nome');
+            if (col) q2 = q2.eq(col, empId);
+            const r2 = await q2;
+            if (!r2?.error) rows = r2.data || rows;
+          } catch (_) {}
+        }
         return ok(res, rows);
       }
       lastErr = error;
