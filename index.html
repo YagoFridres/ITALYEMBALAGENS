@@ -189,6 +189,7 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .btn-icon{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;transition:.1s;font-family:inherit;}
 .btn-icon:hover{color:var(--text);background:var(--s3);}
 .ofmaq-move-btn{min-width:44px;min-height:44px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.ofmaq-dragging{opacity:.6;cursor:grabbing;}
 #cidade-drawer{right:-480px;width:460px}
 @media (max-width: 768px){#cidade-drawer{width:100vw;right:-100vw}}
 
@@ -707,6 +708,13 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
   .rtbl tbody td{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:7px 0;border:none;border-bottom:1px dashed var(--border);white-space:normal;}
   .rtbl tbody td:last-child{border-bottom:none;}
   .rtbl tbody td::before{content:attr(data-label);font-size:.66rem;font-weight:900;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);flex:0 0 44%;}
+  .of-card-maquina{padding:12px !important;border-radius:12px !important;cursor:default !important;}
+  .of-card-maquina .ofmaq-move-btn{min-width:44px !important;min-height:44px !important;font-size:18px !important;}
+  .ofmaq-action-btn{min-height:44px !important;padding:10px 14px !important;font-size:13px !important;font-weight:900 !important;border-radius:10px !important;}
+  .ofmaq-ellipsis{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .ofmaq-thumb{width:48px !important;height:48px !important;border-radius:10px !important;}
+  .ofmaq-thumb img{width:48px !important;height:48px !important;object-fit:cover !important;}
+  .ofmaq-drop-ind{height:3px;background:#4a9eff;border-radius:999px;margin:6px 0;}
 }
 
 /* ===== MOBILE APP (LEGADO, NÃO USADO) ===== */
@@ -5917,6 +5925,74 @@ function abrirAcoesPc(ofId, ofNum){
   });
 }
 
+function _ensureOfmaqAcoesSheet(){
+  if(document.getElementById('ofmaq-acoes-sheet')) return;
+  const html = `
+    <div id="ofmaq-acoes-ov" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998" onclick="fecharOfmaqAcoesSheet()"></div>
+    <div id="ofmaq-acoes-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:99999;background:var(--surface);border-top-left-radius:16px;border-top-right-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow-lg);max-height:78vh;overflow:auto;transform:translateY(10px)">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <div style="font-weight:900">⚡ Ações</div>
+        <div id="ofmaq-acoes-sub" style="font-size:.72rem;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+        <div style="flex:1"></div>
+        <button class="btn btn-ghost btn-sm" onclick="fecharOfmaqAcoesSheet()">✕</button>
+      </div>
+      <div id="ofmaq-acoes-body" style="padding:12px 14px;display:grid;gap:8px"></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" style="width:100%;justify-content:center;min-height:44px" onclick="fecharOfmaqAcoesSheet()">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function fecharOfmaqAcoesSheet(){
+  try{ document.getElementById('ofmaq-acoes-ov').style.display = 'none'; }catch(e){}
+  try{ document.getElementById('ofmaq-acoes-sheet').style.display = 'none'; }catch(e){}
+}
+
+function ofmaqAbrirAcoesSheet(ofId, maqCtx){
+  _ensureOfmaqAcoesSheet();
+  const id = String(ofId||'').trim();
+  const maq = String(maqCtx||'').trim();
+  const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+  const num = String(of?.of || of?.numero || '').trim();
+  const numDigits = String(num||'').replace(/\\D/g,'');
+  const sub = document.getElementById('ofmaq-acoes-sub');
+  if(sub) sub.textContent = `OF ${num || '—'} · ${maq || '—'}`.trim();
+
+  const body = document.getElementById('ofmaq-acoes-body');
+  if(!body) return;
+  const temImagem = !!(of && (of.imagem_url || (Array.isArray(of.imgs)&&of.imgs.length)));
+  const acts = [
+    { icon:'⬆', label:'Subir na fila', on: ()=>ofmaqMoverPosicao(maq, id, -1) },
+    { icon:'⬇', label:'Descer na fila', on: ()=>ofmaqMoverPosicao(maq, id, 1) },
+    { icon:'▶️', label:'Iniciar produção', on: ()=>ofmaqIniciarProducaoPC(id) },
+    { icon:'📦', label:'Sem Papelão', on: ()=>ofmaqAbrirSemPapelaoModal(id, numDigits) },
+    { icon:'📅', label:'Alterar Entrega', on: ()=>abrirModalAlterarEntrega(id) },
+    { icon:'↔', label:'Mover', on: ()=>abrirModalMoverOFMaq(id, maq) },
+    ...(temImagem ? [{ icon:'🖼', label:'Imprimir Imagem', on: ()=>imprimirImagemOF(String(id||num||'')) }] : []),
+    { icon:'✓', label:'Concluir etapa (máquina)', on: ()=>concluirEtapaOF(id, maq) },
+    { icon:'📋', label:'Ver detalhes', on: ()=>abrirModalOF(id) },
+    { icon:'✏️', label:'Editar OF', on: ()=>abrirModalOF(id) },
+    { icon:'❌', label:'Cancelar OF', on: ()=>cancelarOF(id, num) },
+  ];
+  body.innerHTML = acts.map((a,i)=>`<button data-i="${i}" class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:10px;min-height:44px;font-weight:900">
+    <span style="width:24px;text-align:center">${a.icon}</span> ${escH(a.label)}
+  </button>`).join('');
+  body.querySelectorAll('button[data-i]').forEach((b)=>{
+    b.addEventListener('click', ()=>{
+      const i = Number(b.getAttribute('data-i')||0);
+      fecharOfmaqAcoesSheet();
+      try{ acts[i]?.on(); }catch(e){}
+    });
+  });
+
+  const ov = document.getElementById('ofmaq-acoes-ov');
+  const sheet = document.getElementById('ofmaq-acoes-sheet');
+  if(ov) ov.style.display = 'block';
+  if(sheet) sheet.style.display = 'block';
+}
+
 function renderCardOfDia(of, nomeMaquina, opts){
   try{
     opts = (opts && typeof opts === 'object') ? opts : {};
@@ -6869,10 +6945,10 @@ function cardOFMaquina(of, maquinaAtual){
   const bucket = ofmaqPrioridadeBucket(of);
 
   const thumb = temImagem
-    ? `<div onclick="event.stopPropagation();verImagemOF('${escAttr(urlImagem)}')" title="Ver imagem da OF" style="width:60px;height:60px;border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0">
-        <img src="${escH(urlImagem)}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='&lt;span style=&quot;font-size:22px;display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.35)&quot;&gt;📦&lt;/span&gt;'">
+    ? `<div class="ofmaq-thumb" onclick="event.stopPropagation();verImagemOF('${escAttr(urlImagem)}')" title="Ver imagem da OF" style="width:60px;height:60px;border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0">
+        <img src="${escH(urlImagem)}" style="width:60px;height:60px;object-fit:cover" onerror="this.parentElement.innerHTML='&lt;span style=&quot;font-size:22px;display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,0.35)&quot;&gt;📦&lt;/span&gt;'">
       </div>`
-    : `<div title="Sem imagem" style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35);font-size:22px;flex-shrink:0">📦</div>`;
+    : `<div class="ofmaq-thumb" title="Sem imagem" style="width:60px;height:60px;border-radius:6px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.35);font-size:22px;flex-shrink:0">📦</div>`;
 
   const atualCanon = atual ? maqAtivaFromNome(atual) : '';
   const progressoHtml = (fluxo||[]).map((m)=>{
@@ -6883,8 +6959,8 @@ function cardOFMaquina(of, maquinaAtual){
 
   const isMobile = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
   const moveBtns = `<div style="display:flex;gap:8px;margin-left:auto">
-      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',-1)" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;font-size:16px;cursor:pointer">▲</button>
-      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',1)" style="min-width:36px;min-height:36px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;font-size:16px;cursor:pointer">▼</button>
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',-1)" style="min-width:44px;min-height:44px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;font-size:18px;cursor:pointer">▲</button>
+      <button class="ofmaq-move-btn" onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',1)" style="min-width:44px;min-height:44px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:10px;font-size:18px;cursor:pointer">▼</button>
     </div>`;
   const acoesId = 'acoes-' + String(of.id||'').replace(/[^a-zA-Z0-9_-]/g,'');
   const dropdownActions = (!isMobile && window.innerWidth > 768)
@@ -6911,10 +6987,10 @@ function cardOFMaquina(of, maquinaAtual){
     +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
     +thumb
     +'<div style="flex:1;min-width:0">'
-    +'<div style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2">'+escH(produto)+'</div>'
+    +'<div class="ofmaq-ellipsis" title="'+escAttr(produto)+'" style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(produto)+'</div>'
     +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
     +'<span style="font-size:13px;color:#4A90D9"><b>'+escH(numeroLabel)+'</b></span>'
-    +'<span style="font-size:13px"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
+    +'<span class="ofmaq-ellipsis" title="'+escAttr(nomeCliente)+'" style="font-size:13px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
     +'<span style="font-size:13px"><b>Qtd:</b> '+fmtN(of.qtd||of.quantidade||0)+'</span>'
     +'<span style="font-size:13px;color:var(--text2);font-family:var(--mono)">'+escH(tempoInfo)+' | '+escH(velInfo)+'</span>'
     +'</div>'
@@ -6928,11 +7004,7 @@ function cardOFMaquina(of, maquinaAtual){
     +(dropdownActions != null
       ? '</div>'
       : ('<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button onclick="event.stopPropagation();ofmaqAbrirSemPapelaoModal(\''+escAttr(of.id)+'\',\''+escAttr(numeroDigits)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📦 Sem Papelão</button>'
-        +'<button onclick="event.stopPropagation();abrirModalAlterarEntrega(\''+escAttr(of.id)+'\')" style="background:#1a56db;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">📅 Alterar Entrega</button>'
-        +'<button onclick="event.stopPropagation();abrirModalMoverOFMaq(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:900">↔ Mover</button>'
-        +(temImagem?'<button onclick="event.stopPropagation();imprimirImagemOF(\''+escAttr(String(of.id||ofSelNum||''))+'\')" style="background:var(--s3);color:var(--text);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:800">🖼 Imprimir Imagem</button>':'')
-        +'<button onclick="event.stopPropagation();concluirEtapaOF(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:#2a7a2a;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500">✓ Concluir</button>'
+        +'<button class="ofmaq-action-btn" onclick="event.stopPropagation();ofmaqAbrirAcoesSheet(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:900;min-height:44px">⚡ Ações</button>'
         +'</div></div>'))
   ;
 }
@@ -7013,6 +7085,72 @@ function ofmaqBindDragDrop(container){
     };
     const setDragging = (card, on) => { try{ card.classList.toggle('ofmaq-dragging', !!on); }catch(_){ } };
 
+    const ensureIndicator = ()=>{
+      let ind = host.querySelector('.ofmaq-drop-ind');
+      if(!ind){
+        ind = document.createElement('div');
+        ind.className = 'ofmaq-drop-ind';
+        ind.style.display = 'none';
+        host.appendChild(ind);
+      }
+      return ind;
+    };
+    const showInd = (card, before)=>{
+      try{
+        const ind = ensureIndicator();
+        if(!card || !ind){ if(ind) ind.style.display='none'; return; }
+        const cont = getContainer(card);
+        if(!cont){ ind.style.display='none'; return; }
+        ind.style.display = 'block';
+        ind.style.height = '3px';
+        ind.style.background = '#4a9eff';
+        ind.style.borderRadius = '999px';
+        ind.style.margin = '6px 0';
+        if(before) cont.insertBefore(ind, card);
+        else cont.insertBefore(ind, card.nextSibling);
+      }catch(_){}
+    };
+    const hideInd = ()=>{
+      try{ const ind = host.querySelector('.ofmaq-drop-ind'); if(ind) ind.style.display = 'none'; }catch(_){}
+    };
+
+    const persistOrder = async (maq, cont)=>{
+      const mk = String(maq||'').trim();
+      if(!mk || !cont) return;
+      const cards = Array.from(cont.querySelectorAll('.of-card-maquina[data-of-id]'));
+      const byBucket = new Map();
+      cards.forEach((el)=>{
+        const id = String(el.getAttribute('data-of-id')||'').trim();
+        const b = el.getAttribute('data-ofmaq-bucket');
+        const bn = Math.trunc(Number(b));
+        const bucket = Number.isFinite(bn) ? bn : 3;
+        if(!id) return;
+        if(!byBucket.has(bucket)) byBucket.set(bucket, []);
+        byBucket.get(bucket).push(id);
+      });
+      const updates = [];
+      byBucket.forEach((ids)=>{
+        const n = ids.length;
+        ids.forEach((id, idx)=>{
+          const prio = Math.max(1, n - idx);
+          updates.push({ id, prioridade_producao: prio });
+        });
+      });
+      try{
+        showSaveIndicator('Salvando ordem...','var(--yellow)');
+        for(const u of updates){
+          const r = await apiFetch('/api/ofs/' + encodeURIComponent(u.id), { method:'PATCH', body:{ prioridade_producao: u.prioridade_producao } });
+          const j = r ? await r.json().catch(()=>null) : null;
+          if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao salvar');
+          try{ ofmaqAtualizarOfLocal(u.id, { prioridade_producao: u.prioridade_producao }); }catch(_){}
+        }
+        showSaveIndicator('✓ ordem salva','var(--green)');
+      }catch(e){
+        showSaveIndicator('⚠ erro ao salvar','var(--red)');
+        toast('Erro ao salvar ordem: ' + (e?.message||e), 'var(--red)');
+      }
+    };
+
     let drag = null;
 
     host.addEventListener('dragstart', (e)=>{
@@ -7025,6 +7163,7 @@ function ofmaqBindDragDrop(container){
         drag = { id, maq, bucket: getBucket(card) };
         try{ e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }catch(_){}
         setDragging(card, true);
+        hideInd();
       }catch(_){}
     }, true);
 
@@ -7033,6 +7172,7 @@ function ofmaqBindDragDrop(container){
         const card = getCard(e.target);
         if(card) setDragging(card, false);
       }catch(_){}
+      hideInd();
       drag = null;
     }, true);
 
@@ -7053,6 +7193,7 @@ function ofmaqBindDragDrop(container){
       if(!draggingEl || draggingEl === card) return;
       const rect = card.getBoundingClientRect();
       const before = (e.clientY - rect.top) < (rect.height / 2);
+      showInd(card, before);
       if(before) cont.insertBefore(draggingEl, card);
       else cont.insertBefore(draggingEl, card.nextSibling);
     }, false);
@@ -7065,18 +7206,79 @@ function ofmaqBindDragDrop(container){
       const cont = getContainer(card);
       if(!cont) return;
       e.preventDefault();
-
-      const ids = Array.from(cont.querySelectorAll('.of-card-maquina[data-of-id]'))
-        .map((el)=>String(el.getAttribute('data-of-id')||'').trim()).filter(Boolean);
-      if(!ids.length) return;
-      if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
-      window._ordemMaquinas[maq] = ids;
-
-      if(_apiConectado && CURRENT_USER){
-        const payload = { maquina: maq, ordem: ids.map((x,i)=>({ of_id: x, posicao: i+1 })) };
-        try{ await api('POST','/sequenciamento/reordenar', payload); }catch(_){}
-      }
+      hideInd();
+      await persistOrder(maq, cont);
     }, false);
+
+    let pressT = null;
+    let pressOn = null;
+    let startX = 0;
+    let startY = 0;
+    host.addEventListener('touchstart', (e)=>{
+      try{
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        const card = getCard(e.target);
+        if(!card) return;
+        const id = getId(card);
+        const maq = getMaq(card);
+        if(!id || !maq) return;
+        startX = t.clientX;
+        startY = t.clientY;
+        pressOn = card;
+        pressT = setTimeout(()=>{
+          try{
+            drag = { id, maq, bucket: getBucket(card), touch:true };
+            setDragging(card, true);
+            try{ navigator.vibrate && navigator.vibrate(12); }catch(_){}
+          }catch(_){}
+        }, 500);
+      }catch(_){}
+    }, { passive:true });
+    host.addEventListener('touchmove', (e)=>{
+      try{
+        const t = e.touches && e.touches[0];
+        if(!t) return;
+        if(pressT){
+          if(Math.abs(t.clientX - startX) > 12 || Math.abs(t.clientY - startY) > 12){
+            clearTimeout(pressT);
+            pressT = null;
+          }
+        }
+        if(!drag || !drag.touch) return;
+        e.preventDefault();
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const card = getCard(el);
+        if(!card) return;
+        const id = getId(card);
+        const maq = getMaq(card);
+        if(!id || !maq || maq !== drag.maq) return;
+        const b = getBucket(card);
+        if(drag.bucket != null && b != null && b !== drag.bucket) return;
+        const cont = getContainer(card);
+        if(!cont) return;
+        const draggingEl = cont.querySelector('.ofmaq-dragging');
+        if(!draggingEl || draggingEl === card) return;
+        const rect = card.getBoundingClientRect();
+        const before = (t.clientY - rect.top) < (rect.height / 2);
+        showInd(card, before);
+        if(before) cont.insertBefore(draggingEl, card);
+        else cont.insertBefore(draggingEl, card.nextSibling);
+      }catch(_){}
+    }, { passive:false });
+    host.addEventListener('touchend', async (e)=>{
+      try{
+        if(pressT){ clearTimeout(pressT); pressT = null; }
+        if(!drag || !drag.touch) { pressOn = null; return; }
+        const card = pressOn;
+        pressOn = null;
+        if(card) setDragging(card, false);
+        hideInd();
+        const cont = card ? getContainer(card) : null;
+        if(cont) await persistOrder(drag.maq, cont);
+      }catch(_){}
+      drag = null;
+    }, { passive:true });
   }catch(_){}
 }
 
