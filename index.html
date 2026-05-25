@@ -45417,7 +45417,7 @@ window.atualizarChapas = async function(){
         const raw = String(u || '').trim();
         const su = escAttr((raw.startsWith('http') || raw.startsWith('data:') || raw.startsWith('/')) ? raw : ('/' + raw));
         return `<div class="assist-img-wrap">
-          <img class="assist-img" src="${su}" alt="Imagem OF">
+          <img class="assist-img" src="${su}" alt="Imagem OF" style="cursor:zoom-in" onclick="window.open('${su}','_blank')">
           <div style="display:flex;gap:8px;margin-top:6px">
             <button onclick="window.open('${su}','_blank')" style="font-size:11px;padding:4px 10px;background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.15);border-radius:5px; color:rgba(255,255,255,0.7);cursor:pointer">↓ Baixar imagem</button>
             <button onclick="_jarvisImprimirImagem('${su}')" style="font-size:11px;padding:4px 10px;background:rgba(255,255,255,0.08); border:0.5px solid rgba(255,255,255,0.15);border-radius:5px; color:rgba(255,255,255,0.7);cursor:pointer">⎙ Imprimir</button>
