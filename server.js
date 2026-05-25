@@ -15432,6 +15432,88 @@ if (cron) {
   console.log('✅ JARVIS: alertas proativos configurados (30min)');
 }
 
+function _addDaysISO(iso, days){
+  const s = String(iso || '').slice(0,10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return '';
+  const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo, d));
+  if(isNaN(dt.getTime())) return '';
+  dt.setUTCDate(dt.getUTCDate() + Math.trunc(Number(days||0)||0));
+  return dt.toISOString().slice(0,10);
+}
+function _isWeekendISO(iso){
+  const s = String(iso || '').slice(0,10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+  const dt = new Date(Date.UTC(y, mo, d));
+  const dow = dt.getUTCDay();
+  return dow === 0 || dow === 6;
+}
+function _nextBusinessDayISO(iso){
+  let cur = _addDaysISO(iso, 1);
+  let guard = 0;
+  while(cur && _isWeekendISO(cur) && guard < 10){
+    cur = _addDaysISO(cur, 1);
+    guard++;
+  }
+  return cur;
+}
+function _obsIncAdiada(obs){
+  const s = String(obs || '').trim();
+  const m = s.match(/adiad[ao]\s*(\d+)/i);
+  if(m){
+    const n = Math.max(1, Math.trunc(Number(m[1]||0)||0));
+    return s.replace(/adiad[ao]\s*\d+/i, 'ADIADA ' + String(n + 1));
+  }
+  return s ? (s + ' | ADIADA 1') : 'ADIADA 1';
+}
+async function _jobAdiamento18h(){
+  const tz = String(process.env.REPORT_TZ || 'America/Sao_Paulo');
+  const hoje = _isoDateFromTzNow(tz);
+  const prox = _nextBusinessDayISO(hoje);
+  if(!hoje || !prox) return { ok:false, error:'data_invalida' };
+  const { data: rows, error } = await supabase.from('ofs')
+    .select('id,of,numero,status,obs,dia,data_producao,dia_programacao,deleted_at')
+    .is('deleted_at', null)
+    .not('status', 'in', '("Concluído","Concluido","Cancelado","Cancelada")')
+    .or(`dia.eq.${hoje},data_producao.eq.${hoje},dia_programacao.eq.${hoje}`)
+    .limit(2000);
+  if(error) throw error;
+  const list = Array.isArray(rows) ? rows : [];
+  let moved = 0;
+  for(const of2 of list){
+    const id = String(of2?.id || '').trim();
+    if(!id) continue;
+    const patch = {
+      dia: prox,
+      data_producao: prox,
+      obs: _obsIncAdiada(of2?.obs),
+      updated_at: new Date().toISOString(),
+    };
+    const { error: e2 } = await supabase.from('ofs').update(patch).eq('id', id);
+    if(e2) continue;
+    moved++;
+    try{
+      await supabase.from('historico_acoes').insert([{
+        data_hora: new Date().toISOString(),
+        tipo_acao: 'adiamento_18h',
+        descricao: `OF #${of2?.of||of2?.numero||''} adiada automaticamente: ${hoje} → ${prox}`,
+        usuario: 'JOB 18H',
+      }]);
+    }catch(_){}
+  }
+  try{ cacheClearPrefix('ofs_v4'); }catch(_){}
+  return { ok:true, hoje, proximo: prox, moved };
+}
+
+if(cron && cron.validate('0 18 * * *')){
+  cron.schedule('0 18 * * *', async ()=>{
+    try{ await _jobAdiamento18h(); }catch(e){ try{ console.warn('[JOB 18H]', String(e?.message||e)); }catch(_){ } }
+  }, { scheduled:true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
+}
+
 app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);

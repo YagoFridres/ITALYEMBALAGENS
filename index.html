@@ -193,8 +193,6 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 @media (max-width: 768px){#cidade-drawer{width:100vw;right:-100vw}}
 
 @media (max-width: 768px) {
-  .simd-col-nomenclatura { display: none !important; }
-  .simd-col-fornecedor { display: none !important; }
   .simd-grid { grid-template-columns: 60px 1fr 80px 90px 90px 100px !important; }
 }
 
@@ -692,24 +690,27 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
 
 #mobile-access-block{display:none;}
 
-/* ===== MOBILE MODE (SEPARADO DO DESKTOP) ===== */
-.mobile-only{display:none;}
-body.mobile-mode{background:#0f0f1a;color:#fff;}
-body.mobile-mode .topbar,
-body.mobile-mode .layout,
-body.mobile-mode #tablet-view,
-body.mobile-mode #device-screen,
-body.mobile-mode #sidebar-overlay,
-body.mobile-mode #mobile-access-block,
-body.mobile-mode #assist-fab,
-body.mobile-mode #assist-panel,
-body.mobile-mode #assist-overlay,
-body.mobile-mode #assist-mini{display:none!important;}
-body.mobile-mode .mobile-only{display:flex!important;}
-
 @media (max-width:768px){
-  #assist-fab{display:none!important;}
+  #hamburger-btn{display:inline-flex;}
+  .layout{position:relative;}
+  .sidebar{position:fixed;left:0;top:52px;bottom:0;width:min(320px,86vw);transform:translateX(-102%);transition:transform .18s ease;z-index:900;}
+  .sidebar.mob-open{transform:translateX(0);}
+  .content{width:100%;}
+  .page-body{padding:14px;}
+  .ptoolbar{padding:10px 12px;}
+  .btn,.btn-icon,button,.nav-item{min-height:44px;}
+  input,select,textarea{font-size:16px;}
+  .table-wrap{overflow-x:auto;}
+  .rtbl{width:100%;border-collapse:separate;border-spacing:0;}
+  .rtbl thead{display:none;}
+  .rtbl tbody tr{display:block;margin:0 0 12px 0;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);}
+  .rtbl tbody td{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:7px 0;border:none;border-bottom:1px dashed var(--border);white-space:normal;}
+  .rtbl tbody td:last-child{border-bottom:none;}
+  .rtbl tbody td::before{content:attr(data-label);font-size:.66rem;font-weight:900;letter-spacing:.4px;text-transform:uppercase;color:var(--text2);font-family:var(--mono);flex:0 0 44%;}
 }
+
+/* ===== MOBILE APP (LEGADO, NÃO USADO) ===== */
+.mobile-only{display:none;}
 
 .mobile-app{
   position:fixed;
@@ -1280,12 +1281,7 @@ window.escolherDispositivo = window.escolherDispositivo || function(tipo){
     if(document.body) document.body.setAttribute('data-device', String(tipo||'desktop') || 'desktop');
   }catch(e){}
   try{
-    if(String(tipo||'') === 'mobile'){
-      document.body && document.body.classList && document.body.classList.add('mobile-mode');
-      if(typeof window.enableMobileMode === 'function') window.enableMobileMode();
-    } else {
-      if(typeof window.aplicarDispositivo === 'function') window.aplicarDispositivo(tipo);
-    }
+    if(typeof window.aplicarDispositivo === 'function') window.aplicarDispositivo(tipo);
   }catch(e){}
   try{ document.getElementById('device-screen')?.classList?.remove('show'); }catch(e){}
   try{
@@ -1873,27 +1869,13 @@ function isMobile(){
   }
 }
 function enableMobileMode(){
-  const body = document.body;
-  if(!body || !body.classList) return;
-  body.classList.add('mobile-mode');
-  try{ window.__MOBILE_MODE = true; }catch(e){}
+  try{ aplicarDispositivo('mobile'); }catch(e){}
   try{ document.getElementById('device-screen')?.classList?.remove('show'); }catch(e){}
   const ls=document.getElementById('login-screen');
   if(ls && !CURRENT_USER) ls.style.display='flex';
-  try{
-    if(typeof window.renderMobileApp === 'function'){
-      window.renderMobileApp();
-    } else {
-      window.__MOBILE_RENDER_PENDING = true;
-    }
-  }catch(e){}
 }
 
 function escolherDispositivo(tipo){
-  if(tipo === 'mobile'){
-    enableMobileMode();
-    return;
-  }
   aplicarDispositivo(tipo);
   const ds=document.getElementById('device-screen');
   const ls=document.getElementById('login-screen');
@@ -1903,9 +1885,7 @@ function escolherDispositivo(tipo){
 
 function applyMobileAccessRules(){ return; }
 
-try{
-  if(isMobile()) enableMobileMode();
-}catch(e){}
+try{}catch(e){}
 
 function parseFluxo(v){
   if(Array.isArray(v)) return v;
@@ -4566,6 +4546,111 @@ function renderBotoesDias(){
     return '';
   }
 }
+
+function renderOfmaqSemanaView(lista, fromISO, toISO, filtroMaq){
+  const maqsBase = ofmaqMaquinasValidas();
+  const semana = getSemanaAtiva();
+  const dias = Array.isArray(semana) ? semana : [];
+  const labels = ['SEG','TER','QUA','QUI','SEX'];
+  const nomes = maqsBase.slice();
+  if(!nomes.includes('Sem Máquina')) nomes.push('Sem Máquina');
+  const filtro = maqsBase.includes(filtroMaq) ? String(filtroMaq) : '';
+  const rows = filtro ? [filtro] : nomes;
+
+  const countSemMaq = (of)=>{
+    if(!of) return false;
+    const mk = String(getMaquinaAtual(of) || '').trim();
+    if(mk) return false;
+    return true;
+  };
+
+  const head = `<div style="padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div style="font-weight:900">📅 Semana ${escH(String(fromISO||'').slice(8,10) + '/' + String(fromISO||'').slice(5,7))} – ${escH(String(toISO||'').slice(8,10) + '/' + String(toISO||'').slice(5,7))}</div>
+    <div style="font-size:.78rem;color:var(--text3);font-family:var(--mono)">Clique em uma célula para abrir o dia</div>
+  </div>`;
+
+  const table = `<div class="table-wrap" style="border:1px solid var(--border);border-radius:12px;overflow:auto;background:var(--surface)">
+    <table class="pcp-table" style="min-width:860px;margin:0">
+      <thead><tr>
+        <th style="text-align:left">MÁQUINA</th>
+        ${labels.map((l,i)=>{
+          const d = dias[i] instanceof Date ? dias[i].toISOString().slice(0,10) : '';
+          const dt = dias[i] instanceof Date ? dias[i].toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '';
+          return `<th style="text-align:center">${escH(l)}<div style="font-size:.62rem;color:var(--text3);font-family:var(--mono)">${escH(dt)}</div></th>`;
+        }).join('')}
+      </tr></thead>
+      <tbody>
+        ${rows.map((maq)=>{
+          const isSem = maq === 'Sem Máquina';
+          return `<tr>
+            <td style="font-weight:900;white-space:nowrap">${escH(maq)}</td>
+            ${labels.map((_,i)=>{
+              const d = dias[i] instanceof Date ? dias[i] : null;
+              const iso = d ? d.toISOString().slice(0,10) : '';
+              let cnt = 0;
+              if(d){
+                const ofsDia = ofsParaDia(d);
+                if(isSem) cnt = ofsDia.filter(countSemMaq).length;
+                else cnt = ofsDia.filter((of)=>{ try{ return ofDeveAparecerNaMaquina(of, maq); }catch(e){ return false; } }).length;
+              }
+              const pill = cnt > 0 ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;padding:4px 10px;border-radius:999px;background:var(--accent);color:#fff;font-weight:900;font-family:var(--mono)">${cnt}</span>` : `<span style="color:var(--text3);font-family:var(--mono)">—</span>`;
+              return `<td onclick="ofmaqIrParaData('${escAttr(iso)}')" style="text-align:center;cursor:pointer">${pill}</td>`;
+            }).join('')}
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+  return head + table;
+}
+
+function renderOfmaqMesView(lista, fromISO, toISO){
+  let ref = String(window._ofmaqSelectedDate || '').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(ref)){
+    ref = new Date().toISOString().slice(0,10);
+  }
+  const dt0 = new Date(ref + 'T00:00:00');
+  if(isNaN(dt0.getTime())) return `<div style="padding:18px;color:var(--text2)">Data inválida.</div>`;
+  dt0.setDate(1);
+  const y = dt0.getFullYear();
+  const m = dt0.getMonth();
+  const startDow = (dt0.getDay() + 6) % 7;
+  const end = new Date(dt0); end.setMonth(m+1); end.setDate(0);
+  const daysInMonth = end.getDate();
+
+  const map = new Map();
+  (Array.isArray(lista)?lista:[]).forEach((of)=>{
+    const d = ofmaqDiaProgramadoISO(of);
+    if(!d) return;
+    if(d.slice(0,7) !== String(ref).slice(0,7)) return;
+    map.set(d, (map.get(d)||0) + 1);
+  });
+
+  const monthLabel = dt0.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  const head = `<div style="padding:12px 14px;background:var(--s2);border:1px solid var(--border);border-radius:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div style="font-weight:900">🗓 ${escH(monthLabel)}</div>
+    <div style="font-size:.78rem;color:var(--text3);font-family:var(--mono)">Clique no dia para abrir a visão diária</div>
+  </div>`;
+
+  const cells = [];
+  for(let i=0;i<startDow;i++) cells.push('<div></div>');
+  for(let d=1; d<=daysInMonth; d++){
+    const iso = new Date(y, m, d).toISOString().slice(0,10);
+    const cnt = map.get(iso)||0;
+    cells.push(`<div onclick="ofmaqIrParaData('${escAttr(iso)}')" style="cursor:pointer;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:10px;min-height:72px;display:flex;flex-direction:column;gap:8px">
+      <div style="font-weight:900;font-family:var(--mono)">${String(d)}</div>
+      ${cnt>0?`<div style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;padding:4px 10px;border-radius:999px;background:var(--accent);color:#fff;font-weight:900;font-family:var(--mono)">${cnt}</span><span style="color:var(--text3);font-size:.78rem">OFs</span></div>`:`<div style="color:var(--text3);font-family:var(--mono)">—</div>`}
+    </div>`);
+  }
+
+  const grid = `<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px">
+    ${['SEG','TER','QUA','QUI','SEX','SAB','DOM'].map((d)=>`<div style="font-weight:900;color:var(--text2);font-size:.72rem;font-family:var(--mono);text-align:center">${d}</div>`).join('')}
+    ${cells.join('')}
+  </div>`;
+
+  return head + grid;
+}
 function ofsMaqFiltroDia(idx){
   window._ofmaqDiaIdx = Number(idx||0);
   window._diaAtualIdx = window._ofmaqDiaIdx;
@@ -4618,19 +4703,19 @@ function ofmaqDiaNav(delta){
 
 function semanaAnterior(){
   const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
-  const isMobile = document.body && document.body.classList ? document.body.classList.contains('is-mobile') : false;
+  const isMobile = (typeof _isMobileLike === 'function') ? _isMobileLike() : false;
   if(isMobileScreen && isMobile) return ofmaqDiaNav(-1);
   return ofsmaqSemanaAnterior();
 }
 function proximaSemana(){
   const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
-  const isMobile = document.body && document.body.classList ? document.body.classList.contains('is-mobile') : false;
+  const isMobile = (typeof _isMobileLike === 'function') ? _isMobileLike() : false;
   if(isMobileScreen && isMobile) return ofmaqDiaNav(1);
   return ofsmaqProximaSemana();
 }
 function semanaAtualReset(){
   const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
-  const isMobile = document.body && document.body.classList ? document.body.classList.contains('is-mobile') : false;
+  const isMobile = (typeof _isMobileLike === 'function') ? _isMobileLike() : false;
   if(isMobileScreen && isMobile){
     window._ofmaqSemanaOffset = 0;
     getSemanaAtiva();
@@ -4666,6 +4751,65 @@ function ofmaqIrParaData(dataStr){
   window._filtroOFsMaqData = 'semana';
   go('ofmaq');
   try{ renderOFsPorMaquina(); }catch(e){}
+}
+
+function ofmaqSetView(view){
+  const v = String(view||'').trim().toLowerCase();
+  if(!v) return;
+  window._ofmaqView = v;
+  try{
+    const bDia = document.getElementById('ofmaq-v-dia');
+    const bSem = document.getElementById('ofmaq-v-semana');
+    const bMes = document.getElementById('ofmaq-v-mes');
+    if(bDia) bDia.classList.toggle('btn-accent', v === 'dia');
+    if(bSem) bSem.classList.toggle('btn-accent', v === 'semana');
+    if(bMes) bMes.classList.toggle('btn-accent', v === 'mes');
+  }catch(e){}
+  try{ renderOFsPorMaquina(); }catch(e){}
+}
+
+function ofmaqHoje(){
+  try{
+    const hoje = new Date().toISOString().slice(0,10);
+    const inp = document.getElementById('ofmaq-data');
+    if(inp) inp.value = hoje;
+    window._ofmaqSelectedDate = hoje;
+    if(window._ofmaqView === 'dia' || !window._ofmaqView){
+      window._ofmaqSemanaOffset = 0;
+      getSemanaAtiva();
+      const d = new Date(); d.setHours(0,0,0,0);
+      const dw = d.getDay();
+      const idx = (dw >= 1 && dw <= 5) ? (dw - 1) : 0;
+      window._ofmaqDiaIdx = idx;
+      window._diaAtualIdx = idx;
+    }
+  }catch(e){}
+  try{ renderOFsPorMaquina(); }catch(e){}
+}
+
+function ofmaqNav(dir){
+  const d = Math.trunc(Number(dir||0)||0);
+  if(!(d === -1 || d === 1)) return;
+  const v = String(window._ofmaqView||'dia').trim().toLowerCase() || 'dia';
+  if(v === 'dia') return ofmaqDiaNav(d);
+  if(v === 'semana'){
+    window._ofmaqSemanaOffset = (Number(window._ofmaqSemanaOffset||0) || 0) + d;
+    getSemanaAtiva();
+    return renderOFsPorMaquina();
+  }
+  if(v === 'mes'){
+    const inp = document.getElementById('ofmaq-data');
+    const cur = String(inp?.value || window._ofmaqSelectedDate || new Date().toISOString().slice(0,10)).slice(0,10);
+    const dt = new Date(cur + 'T00:00:00');
+    if(isNaN(dt.getTime())) return;
+    dt.setDate(1);
+    dt.setMonth(dt.getMonth() + d);
+    const next = dt.toISOString().slice(0,10);
+    if(inp) inp.value = next;
+    window._ofmaqSelectedDate = next;
+    return renderOFsPorMaquina();
+  }
+  return renderOFsPorMaquina();
 }
 
 function _ensureModalTodasOFs(){
@@ -6679,6 +6823,14 @@ function cardOFMaquina(of, maquinaAtual){
   } else if (atrasada) {
     badgeHtml = '<span style="background:#500B0B;color:#F09595;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:4px">ATRASADA</span>';
   }
+  try{
+    const obs = String(of?.obs || of?.observacao || of?.observações || '').trim();
+    const semPapel = !!(of?.sem_papel === true || of?.sem_papelao === true || of?.sem_papelao === 1 || of?.sem_papel === 1) || /sem\s*papel/i.test(obs);
+    const mAd = obs.match(/adiad[ao]\s*(\d+)/i);
+    const nAd = mAd ? Math.max(1, Math.trunc(Number(mAd[1]||0)||0)) : 0;
+    if(semPapel) badgeHtml += '<span style="background:rgba(74,144,217,0.18);color:#4A90D9;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:900;margin-right:4px;border:1px solid rgba(74,144,217,0.35)">SEM PAPELÃO</span>';
+    if(nAd > 0) badgeHtml += '<span style="background:rgba(239,159,39,0.12);color:#EF9F27;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:900;margin-right:4px;border:1px solid rgba(239,159,39,0.35)">ADIADA ' + String(nAd) + 'x</span>';
+  }catch(e){}
   const borderColor = (urgente && atrasada) ? '#E24B4A' : urgente ? '#EF9F27' : atrasada ? '#F09595' : 'transparent';
   const leftBorder = borderColor !== 'transparent' ? `border-left:6px solid ${borderColor};` : priBorder;
   const selDia = String(window._ofmaqSelectedDate || '').slice(0,10);
@@ -7077,6 +7229,42 @@ async function _ofmaqBuscarOFs(dataSel, limite, empId){
   return merged;
 }
 
+async function _ofmaqBuscarOFsRange(from, to, limite, empId){
+  const f = String(from || '').slice(0,10);
+  const t = String(to || '').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return [];
+  const lim = Math.max(1, Math.min(800, Math.trunc(Number(limite || 800) || 800)));
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  const headers = token ? { Authorization: 'Bearer ' + token } : {};
+  const eid = String(empId||'').trim();
+  const fetchRange = async (dateField)=>{
+    const params = new URLSearchParams({
+      date_field: String(dateField||''),
+      from: f,
+      to: t,
+      nocache: '1',
+      excluir_canceladas: '1',
+      limit: String(lim),
+    });
+    if(eid) params.set('empId', eid);
+    const r = await fetch(base + '/api/ofs?' + params.toString(), { headers });
+    const j = await r.json().catch(()=>null);
+    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    return (rows || []).map(normalizeOF);
+  };
+  const entRows = await fetchRange('data_entrega');
+  const prodRows = await fetchRange('data_producao');
+  const seen = new Set();
+  return [...entRows, ...prodRows].filter((o)=>{
+    const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
+    if(!id) return false;
+    if(seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
 async function renderOFsPorMaquina(){
   if(document.hidden) return;
   if(_ofsMaqRenderizando) return;
@@ -7086,7 +7274,7 @@ async function renderOFsPorMaquina(){
   let container = null;
   try {
     try{
-      if(!window._ofmaqView) window._ofmaqView = 'lista';
+      if(!window._ofmaqView) window._ofmaqView = 'dia';
     }catch(e){}
     if(window._ofmaqSemanaOffset == null) window._ofmaqSemanaOffset = 0;
     getSemanaAtiva();
@@ -7109,7 +7297,7 @@ async function renderOFsPorMaquina(){
         const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
         return token ? { Authorization: 'Bearer ' + token } : {};
       };
-    const isMobileScreen = (document.body && document.body.classList && (document.body.classList.contains('mobile-mode') || document.body.classList.contains('is-mobile'))) || (window.innerWidth <= 768);
+    const isMobileScreen = (typeof _isMobileLike === 'function' ? _isMobileLike() : (window.innerWidth <= 768));
     const limitBase = isMobileScreen ? '200' : '500';
     const params = new URLSearchParams({ limit: limitBase, excluir_canceladas: '1', nocache: '1' });
       if(EMP_FILTRO) params.set('empId', EMP_FILTRO);
@@ -7122,6 +7310,35 @@ async function renderOFsPorMaquina(){
       if(Array.isArray(OFs) && OFs.length === 0) OFs = lista.map(normalizeOF);
     }
     lista = (lista||[]).map(normalizeOF);
+    try{
+      const sig = new Map();
+      (lista||[]).forEach((o)=>{
+        const id = String(o?.id || o?.of || o?.numero || '').trim();
+        if(!id) return;
+        const s = [
+          String(o?.updated_at||''),
+          String(o?.status||''),
+          String(o?.prioridade||o?.prioridade_producao||''),
+          String(o?.dia||o?.data_producao||''),
+          String(o?.ent||o?.data_entrega||''),
+          String(o?.sem_papel||''),
+        ].join('|');
+        sig.set(id, s);
+      });
+      const prev = window._ofmaqLastSig instanceof Map ? window._ofmaqLastSig : null;
+      if(prev){
+        let changed = 0;
+        sig.forEach((v,k)=>{ if(prev.get(k) !== v) changed++; });
+        if(changed > 0){
+          const last = Number(window._ofmaqLastToastAt||0) || 0;
+          if(Date.now() - last > 15000){
+            window._ofmaqLastToastAt = Date.now();
+            toast(`🔄 ${changed} OF${changed!==1?'s':''} atualizada${changed!==1?'s':''}`, 'var(--accent)');
+          }
+        }
+      }
+      window._ofmaqLastSig = sig;
+    }catch(e){}
     try{ await carregarMaquinas(false); }catch(e){}
     try{ window._listaMaquinas = Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []); }catch(e){}
 
@@ -7247,10 +7464,59 @@ async function renderOFsPorMaquina(){
     if(dbg) console.log('[OFMAQ] after status/date/search:', lista.length, 'modo:', modo, 'dataSel:', dataSel);
 
     window._ofmaqBaseList = lista;
+    const view = String(window._ofmaqView || 'dia').trim().toLowerCase() || 'dia';
+    try{
+      const bDia = document.getElementById('ofmaq-v-dia');
+      const bSem = document.getElementById('ofmaq-v-semana');
+      const bMes = document.getElementById('ofmaq-v-mes');
+      if(bDia) bDia.classList.toggle('btn-accent', view === 'dia');
+      if(bSem) bSem.classList.toggle('btn-accent', view === 'semana');
+      if(bMes) bMes.classList.toggle('btn-accent', view === 'mes');
+    }catch(e){}
     const barra = document.getElementById('ofmaq-dias-bar');
     if(barra) barra.innerHTML = renderBotoesDias();
 
-    const modoDias = window._ofmaqView !== 'lista';
+    const semanaAtiva = getSemanaAtiva();
+    const weekFrom = (Array.isArray(semanaAtiva) && semanaAtiva[0]) ? semanaAtiva[0].toISOString().slice(0,10) : dataSelecionada;
+    const weekTo = (Array.isArray(semanaAtiva) && semanaAtiva[4]) ? semanaAtiva[4].toISOString().slice(0,10) : dataSelecionada;
+
+    if(view === 'semana'){
+      try{
+        const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
+        const fetched = await _ofmaqBuscarOFsRange(weekFrom, weekTo, 800, empId);
+        if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
+      }catch(e){}
+      window._ofmaqBaseList = lista;
+      container.innerHTML = renderOfmaqSemanaView(lista, weekFrom, weekTo, filtroMaq);
+      _ofsMaqRenderizando=false;
+      return;
+    }
+
+    if(view === 'mes'){
+      try{
+        const baseD = new Date(String(dataSelecionada || hoje).slice(0,10) + 'T00:00:00');
+        if(!isNaN(baseD.getTime())){
+          baseD.setDate(1);
+          const from = baseD.toISOString().slice(0,10);
+          const end = new Date(baseD);
+          end.setMonth(end.getMonth() + 1);
+          end.setDate(0);
+          const to = end.toISOString().slice(0,10);
+          const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
+          const fetched = await _ofmaqBuscarOFsRange(from, to, 800, empId);
+          if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
+          window._ofmaqBaseList = lista;
+          container.innerHTML = renderOfmaqMesView(lista, from, to);
+          _ofsMaqRenderizando=false;
+          return;
+        }
+      }catch(e){}
+      container.innerHTML = renderOfmaqMesView(lista, '', '');
+      _ofsMaqRenderizando=false;
+      return;
+    }
+
+    const modoDias = view === 'dia';
     const sel = selMaqEl;
     if(modoDias){
       if(sel){
@@ -8039,14 +8305,19 @@ async function ofmaqConfirmarSemPapelao(ofId, numeroDigits){
   }
   try{
     showSaveIndicator('Movendo OF...','var(--yellow)');
-    const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body:{ dia: novaData, data_producao: novaData } });
+    const it = (OFs||[]).find(o=>String(o?.id||'').trim()===id) || (window.OFS_ARQUIVO||[]).find?.(o=>String(o?.id||'').trim()===id) || null;
+    const obsOld = String(it?.obs || it?.observacao || '').trim();
+    let obsNew = obsOld;
+    if(!/sem\s*papel/i.test(obsNew)) obsNew = (obsNew ? (obsNew + ' | ') : '') + 'SEM PAPELÃO';
+    const body = { dia: novaData, data_producao: novaData, sem_papel: true, obs: obsNew };
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PUT', body });
     const j = r ? await r.json().catch(()=>null) : null;
     if(!r?.ok || (j && j.ok === false)){
       showSaveIndicator('⚠ erro','var(--red)');
       toast('Erro ao mover OF: ' + (j?.error || 'Falha'), 'var(--red)');
       return;
     }
-    ofmaqAtualizarOfLocal(id, { dia: novaData, data_producao: novaData });
+    ofmaqAtualizarOfLocal(id, { dia: novaData, data_producao: novaData, sem_papel: true, obs: obsNew });
     ofmaqFecharSemPapelaoModal();
     const dig = String(numeroDigits||'').replace(/\D/g,'');
     const numTxt = dig ? ('#' + dig.padStart(3,'0')) : '#—';
@@ -26961,6 +27232,92 @@ function initDevice(){
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initDevice);
 else initDevice();
 
+function _isMobileLike(){
+  try{
+    if(String(document.body?.getAttribute('data-device')||'') === 'mobile') return true;
+    return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:768px)').matches;
+  }catch(e){ return false; }
+}
+
+function decorateResponsiveTables(root){
+  try{
+    if(!_isMobileLike()) return;
+    const scope = root && root.querySelectorAll ? root : document;
+    const tables = scope.querySelectorAll('table');
+    tables.forEach((t)=>{
+      if(!t || t.dataset && t.dataset.noMobileCards === '1') return;
+      const thead = t.querySelector('thead');
+      const ths = thead ? Array.from(thead.querySelectorAll('th')) : [];
+      if(!ths.length) return;
+      const labels = ths.map((th)=>String(th.textContent||'').replace(/\s+/g,' ').trim());
+      const rows = Array.from(t.querySelectorAll('tbody tr'));
+      if(!rows.length) return;
+      t.classList.add('rtbl');
+      rows.forEach((tr)=>{
+        const tds = Array.from(tr.children || []).filter((x)=>x && x.tagName === 'TD');
+        tds.forEach((td, i)=>{
+          if(!td || td.dataset && td.dataset.label) return;
+          const lbl = labels[i] || '';
+          if(lbl) td.dataset.label = lbl;
+        });
+      });
+    });
+  }catch(e){}
+}
+
+function _bindMobileUX(){
+  if(window._mobileUxBound) return;
+  window._mobileUxBound = 1;
+  document.addEventListener('focusin', (e)=>{
+    try{
+      if(!_isMobileLike()) return;
+      const el = e?.target;
+      if(!el || !(el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) return;
+      setTimeout(()=>{ try{ el.scrollIntoView({ block:'center', inline:'nearest' }); }catch(_){} }, 50);
+    }catch(_){}
+  }, true);
+  const root = document.querySelector('.content') || document.body;
+  if(root && window.MutationObserver){
+    let tm = null;
+    const obs = new MutationObserver(()=>{
+      try{ if(tm) clearTimeout(tm); }catch(_){}
+      tm = setTimeout(()=>{ try{ decorateResponsiveTables(document); }catch(e){} }, 50);
+    });
+    try{ obs.observe(root, { subtree:true, childList:true }); }catch(_){}
+  }
+  try{
+    let sx = 0, sy = 0;
+    document.addEventListener('touchstart', (e)=>{
+      try{
+        if(!_isMobileLike()) return;
+        if(String(window._PAGE_ATUAL||'') !== 'ofmaq') return;
+        const t = e?.touches && e.touches[0];
+        if(!t) return;
+        sx = t.clientX; sy = t.clientY;
+      }catch(_){}
+    }, { passive:true });
+    document.addEventListener('touchend', (e)=>{
+      try{
+        if(!_isMobileLike()) return;
+        if(String(window._PAGE_ATUAL||'') !== 'ofmaq') return;
+        const t = e?.changedTouches && e.changedTouches[0];
+        if(!t) return;
+        const dx = t.clientX - sx;
+        const dy = t.clientY - sy;
+        if(Math.abs(dx) < 70) return;
+        if(Math.abs(dx) < Math.abs(dy) * 1.8) return;
+        const view = String(window._ofmaqView||'dia').trim().toLowerCase() || 'dia';
+        if(view !== 'dia') return;
+        if(dx < 0) ofmaqNav(1);
+        else ofmaqNav(-1);
+      }catch(_){}
+    }, { passive:true });
+  }catch(_){}
+  try{ setTimeout(()=>decorateResponsiveTables(document), 0); }catch(_){}
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _bindMobileUX);
+else _bindMobileUX();
+
 var AUTH_TOKEN_KEY='token';
 var AUTH_USER_KEY='auth_user';
 var AUTH_EXP_KEY='auth_exp';
@@ -34805,19 +35162,9 @@ function go(id){
   }
   if(id === 'mapa-clientes'){
     try{ if(typeof mapcliSetAba === 'function') mapcliSetAba(window._mapCliStartTab || 'mapa'); }catch(e){}
+    try{ window._mapCliStartTab = null; }catch(e){}
   }
-
-  // No mobile, garantir que a tela anterior fique 100% oculta
-  if(document.body && document.body.classList && document.body.classList.contains('is-mobile')){
-    if(id === 'ofmaq'){
-      const orc = document.getElementById('page-orcamentos');
-      if(orc) orc.style.display = 'none';
-    }
-    if(id === 'orcamentos'){
-      const ofm = document.getElementById('page-ofmaq');
-      if(ofm) ofm.style.display = 'none';
-    }
-  }
+  try{ if(typeof decorateResponsiveTables === 'function') decorateResponsiveTables(pageAtual || document); }catch(e){}
   if(id==='orcamentos')renderOrcamentos();
   if(id==='compras')renderCompras();
   if(id==='simd'){ try{ if(typeof _simdRestoreState === 'function') _simdRestoreState(); }catch(e){} try{ if(typeof _simdVerificarCampos === 'function') _simdVerificarCampos(); }catch(e){} }
@@ -37287,6 +37634,14 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div id="page-ofmaq" class="page">
   <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
     <span style="font-size:.78rem;color:var(--text2)">🏭 OFs agrupadas por máquina</span>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetView('dia')" id="ofmaq-v-dia">DIA</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetView('semana')" id="ofmaq-v-semana">SEMANA</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqSetView('mes')" id="ofmaq-v-mes">MÊS</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqNav(-1)">←</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqHoje()">Hoje</button>
+      <button class="btn btn-ghost btn-sm" onclick="ofmaqNav(1)">→</button>
+    </div>
     <span style="font-size:.72rem;color:var(--text2);font-family:var(--mono)">DATA:</span>
     <input type="date" id="ofmaq-data" onchange="setFiltroOFsMaquina('data')" style="width:150px;">
     <input id="ofmaq-busca" placeholder="🔍 OF, cliente, produto..." oninput="ofmaqOnBuscaInput()" style="width:190px;">
