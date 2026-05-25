@@ -3379,7 +3379,7 @@ function iniciarPollingOFsMaquina() {
     .then(()=>carregarOFsUnico(false))
     .then(()=>renderOFsPorMaquina())
     .catch(()=>renderOFsPorMaquina());
-  _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 300000);
+  _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 30000);
 }
 
 function pararPollingOFsMaquina() {
@@ -45938,7 +45938,6 @@ window.atualizarChapas = async function(){
   const LS_MAQ_EMP = 'italy_mobile_ofmaq_emp_v1';
   const LS_MAQ_SHOW_ALL = 'italy_mobile_ofmaq_show_all_v1';
   const LS_MAQ_SEM_PAPEL = 'italy_mobile_sem_papel_v1';
-  const MAQUINAS_MOBILE_PERMITIDAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
   const todayIso = ()=>new Date().toISOString().slice(0,10);
   const clampIso = (s)=>/^\d{4}-\d{2}-\d{2}$/.test(String(s||'')) ? String(s) : todayIso();
   const addDaysIso = (iso, delta)=>{
@@ -46090,7 +46089,102 @@ window.atualizarChapas = async function(){
     return sheet;
   }
 
-  function abrirAcoesOf(ofId, ofNum) {
+  async function _mobPatchOf(id, body){
+    const ofId = String(id || '').trim();
+    if(!ofId) throw new Error('of_invalida');
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PATCH', body: (body && typeof body === 'object') ? body : {} });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!r?.ok || (j && j.ok === false)) throw new Error(String(j?.error || j?.message || 'Falha'));
+    return j?.data || j;
+  }
+
+  async function _mobEnsurePrioridadesGrupo(grupoKey){
+    const key = String(grupoKey || '').trim();
+    if(!key) return;
+    const map = (mobileState && typeof mobileState === 'object') ? (mobileState._maqGroupOrders || null) : null;
+    const ids = (map && typeof map === 'object' && Array.isArray(map[key])) ? map[key].slice() : [];
+    if(!ids.length) return;
+    const ofsAll = Array.isArray(mobileState.ofs) ? mobileState.ofs : [];
+    for(let i=0;i<ids.length;i++){
+      const id = String(ids[i] || '').trim();
+      if(!id) continue;
+      const of = ofsAll.find(o=>String(o?.id||'')===id) || null;
+      if(!of) continue;
+      const cur = Number(of?.prioridade);
+      if(Number.isFinite(cur)) continue;
+      const val = (i + 1) * 10;
+      try{ await _mobPatchOf(id, { prioridade: val }); }catch(e){}
+      try{ of.prioridade = val; }catch(e){}
+    }
+  }
+
+  async function mobileMaqMoverPosicao(ofId, dir, grupoKey){
+    const id = String(ofId || '').trim();
+    const d = Math.trunc(Number(dir || 0) || 0);
+    const key = String(grupoKey || '').trim();
+    if(!id || !(d === -1 || d === 1) || !key) return;
+    const map = (mobileState && typeof mobileState === 'object') ? (mobileState._maqGroupOrders || null) : null;
+    const ids = (map && typeof map === 'object' && Array.isArray(map[key])) ? map[key].slice() : [];
+    if(!ids.length) return showMobileToast('⚠️ Lista não encontrada (atualize)', 'error');
+    const idx = ids.indexOf(id);
+    const j = idx + d;
+    if(idx < 0 || !(j >= 0 && j < ids.length)) return;
+    const idB = String(ids[j] || '').trim();
+    if(!idB) return;
+    await _mobEnsurePrioridadesGrupo(key);
+    const ofsAll = Array.isArray(mobileState.ofs) ? mobileState.ofs : [];
+    const a = ofsAll.find(o=>String(o?.id||'')===id) || null;
+    const b = ofsAll.find(o=>String(o?.id||'')===idB) || null;
+    const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
+    const ha = Number.isFinite(pa); const hb = Number.isFinite(pb);
+    const fallbackA = (idx + 1) * 10;
+    const fallbackB = (j + 1) * 10;
+    const va = ha ? Math.trunc(pa) : fallbackA;
+    const vb = hb ? Math.trunc(pb) : fallbackB;
+    try{
+      await Promise.all([
+        _mobPatchOf(id, { prioridade: vb }),
+        _mobPatchOf(idB, { prioridade: va }),
+      ]);
+      if(a) a.prioridade = vb;
+      if(b) b.prioridade = va;
+      const next = ids.slice();
+      next[idx] = idB;
+      next[j] = id;
+      if(map && typeof map === 'object') map[key] = next;
+      showMobileToast(d === -1 ? '⬆️ Movida para cima' : '⬇️ Movida para baixo', 'success');
+      await mobileRefreshMaquinas();
+      renderMaquinas();
+    }catch(e){
+      showMobileToast('❌ Erro ao mover OF', 'error');
+    }
+  }
+
+  async function mobileMaqAlterarPrioridade(ofId){
+    const id = String(ofId || '').trim();
+    if(!id) return;
+    const valRaw = prompt('Nova prioridade (número). Ex: 10, 20, 30...', '');
+    if(valRaw == null) return;
+    const n = Math.trunc(Number(String(valRaw || '').replace(',','.') || 0) || 0);
+    if(!Number.isFinite(n) || n <= 0) return showMobileToast('Prioridade inválida', 'error');
+    try{
+      await _mobPatchOf(id, { prioridade: n });
+      try{
+        const of = (mobileState.ofs || []).find(o=>String(o?.id||'')===id) || null;
+        if(of) of.prioridade = n;
+      }catch(_){}
+      showMobileToast('✅ Prioridade atualizada', 'success');
+      await mobileRefreshMaquinas();
+      renderMaquinas();
+    }catch(e){
+      showMobileToast('❌ Erro ao salvar prioridade', 'error');
+    }
+  }
+
+  try{ window.mobileMaqMoverPosicao = mobileMaqMoverPosicao; }catch(e){}
+  try{ window.mobileMaqAlterarPrioridade = mobileMaqAlterarPrioridade; }catch(e){}
+
+  function abrirAcoesOf(ofId, ofNum, maqNome) {
     const todasOfs = mobileState.ofs || [];
     const of = todasOfs.find(o => String(o?.id) === String(ofId));
     if (!of) return;
@@ -46107,15 +46201,20 @@ window.atualizarChapas = async function(){
       animation:slideUp .2s ease;
     `;
 
+    const mk = String(maqNome || '').trim();
     const acoes = [
       { icon:'✅', label:'Baixa por Máquina', action:`baixarPorMaquina('${ofId}','${ofNum}')` },
+      { icon:'✓', label:'Concluir etapa (máquina)', action:`try{concluirEtapaOF('${ofId}','${escAttr(mk)}')}catch(e){}` },
+      { icon:'⬆️', label:'Mover para cima', action:`window.mobileMaqMoverPosicao && window.mobileMaqMoverPosicao('${ofId}',-1,'${escAttr(mk)}')` },
+      { icon:'⬇️', label:'Mover para baixo', action:`window.mobileMaqMoverPosicao && window.mobileMaqMoverPosicao('${ofId}',1,'${escAttr(mk)}')` },
+      { icon:'⭐', label:'Alterar prioridade', action:`window.mobileMaqAlterarPrioridade && window.mobileMaqAlterarPrioridade('${ofId}')` },
       { icon:'🏁', label:'Concluir OF', action:`concluirOfModal('${ofId}','${ofNum}')` },
       { icon:'📅', label:'Alterar Entrega', action:`alterarEntregaOf('${ofId}','${ofNum}')` },
       { icon:'📷', label:'Ver / Trocar Imagem', action:`verImagemOf('${ofId}','${ofNum}')` },
       { icon:'⚠️', label:'Registrar Inconformidade', action:`registrarInconformidade('${ofId}','${ofNum}')` },
       { icon:'📋', label:'Ver Detalhes', action:`abrirDrawer('${ofId}')` },
       { icon:'❌', label:'Cancelar OF', action:`cancelarOf('${ofId}','${ofNum}')` },
-    ];
+    ].filter(a=>a.label !== 'Concluir etapa (máquina)' || !!mk);
 
     sheet.innerHTML = `
       <div style="text-align:center;margin-bottom:16px">
@@ -46657,20 +46756,6 @@ window.atualizarChapas = async function(){
     const empId = String(mobileState.maqEmp || '').trim();
     const hoje = todayIso();
     const isHoje = iso === hoje;
-    const mkKey = (s)=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-    const matchPerm = (mkUpper)=>{
-      const raw = String(mkUpper || '').trim();
-      if(!raw) return '';
-      const mku = mkKey(raw);
-      if(!mku) return '';
-      for(const p of MAQUINAS_MOBILE_PERMITIDAS){
-        const pu0 = String(p||'').trim();
-        const pu = mkKey(pu0);
-        if(!pu) continue;
-        if(mku === pu || mku.includes(pu) || pu.includes(mku)) return pu0;
-      }
-      return '';
-    };
     const mobNorm = (s)=>{
       try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim(); }catch(e){ return String(s||'').toLowerCase().trim(); }
     };
@@ -46679,36 +46764,24 @@ window.atualizarChapas = async function(){
     const showAll = !!mobileState.maqShowAll;
     const todasOfs = mobileState.ofs || [];
     const dataSelecionada = iso;
-    const diaProg = (of)=>{
-      try{
-        if(typeof ofmaqDiaProgramadoISO === 'function') return ofmaqDiaProgramadoISO(of);
-      }catch(e){}
-      const e = String(of?.ent || of?.data_entrega || '').slice(0,10);
-      return e;
+    const entOf = (o) => String((o?.ent || o?.data_entrega || o?.dataEntrega || '') || '').slice(0,10);
+    const diaOf = (o) => String((o?.dia || o?.data_producao || o?.dataProducao || '') || '').slice(0,10);
+    const ofMatchesDia = (o)=>{
+      if(!dataSelecionada) return true;
+      const e = entOf(o);
+      const p = diaOf(o);
+      return (e && e === dataSelecionada) || ((!e) && p === dataSelecionada);
     };
     let ofsBase = (todasOfs || []).filter(o => {
       if (!o || o.deleted_at) return false;
       const s = String(o.status || '').toLowerCase();
       if (s.includes('cancel')) return false;
       if (s.includes('conclu')) return false;
-      const d = diaProg(o);
-      if(dataSelecionada && d && d !== dataSelecionada) return false;
+      if(!ofMatchesDia(o)) return false;
       return true;
     });
-    const ofs = ofsBase.filter((of)=>{
-      const mk = String(getOfMaquinaAtual(of) || '').trim();
-      const perm = matchPerm(mk);
-      return !!perm;
-    });
     const SEM_MAQ_KEY = '📋 Sem máquina definida';
-    const ofsSemMaq = ofsBase.filter((of)=>!String(getOfMaquinaAtual(of) || '').trim());
-    const OUTRAS_MAQ_KEY = '🧩 Outras máquinas';
-    const ofsOutras = ofsBase.filter((of)=>{
-      const mk = String(getOfMaquinaAtual(of) || '').trim();
-      if(!mk) return false;
-      return !matchPerm(mk);
-    });
-    const ofsShown = ofs.concat(ofsSemMaq).concat(ofsOutras);
+    const ofsShown = ofsBase;
     const totalOfs = ofsShown.length;
     const totalCaixas = ofsShown.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
 
@@ -46722,28 +46795,36 @@ window.atualizarChapas = async function(){
       return { cls:'future', lbl:'FUTURO' };
     })();
 
-    const maquinasFiltradas = MAQUINAS_MOBILE_PERMITIDAS
-      .map((nomePerm)=>{
-        const up = String(nomePerm||'').trim().toUpperCase();
-        const m = (mobileState.maquinas || []).find((mm)=>{
-          const n = String(mm?.nome || '').trim().toUpperCase();
-          const c = String(mm?.col || '').trim().toUpperCase();
-          return n === up || c === up || n.includes(up) || c.includes(up) || up.includes(n) || up.includes(c);
-        });
-        return m ? { perm: String(nomePerm||'').trim(), obj: m } : null;
-      })
-      .filter(Boolean);
+    const maquinasAll0 = Array.isArray(mobileState.maquinas) ? mobileState.maquinas : [];
+    const maqNome0 = (m)=>String(m?.col || m?.nome || '').trim();
+    const maqOrdem0 = (m)=>Number(m?.ordem ?? m?.ord ?? m?.pos ?? m?.idx ?? 9999);
+    const maquinasOrdenadas0 = maquinasAll0
+      .map((m)=>({ m, nome: maqNome0(m), ord: maqOrdem0(m) }))
+      .filter((x)=>x.nome)
+      .sort((a,b)=> (a.ord - b.ord) || a.nome.localeCompare(b.nome));
+    const nomesMaq0 = maquinasOrdenadas0.map((x)=>x.nome).filter(Boolean);
 
     const byMaq = new Map();
-    ofs.forEach((of)=>{
-      const mk = String(getOfMaquinaAtual(of) || '').trim();
-      const key = matchPerm(mk);
-      if(!key) return;
+    const pushMaq = (k, of)=>{
+      const key = String(k || '').trim() || SEM_MAQ_KEY;
       if(!byMaq.has(key)) byMaq.set(key, []);
       byMaq.get(key).push(of);
+    };
+    ofsBase.forEach((of)=>{
+      let any = false;
+      if(typeof ofDeveAparecerNaMaquina === 'function' && nomesMaq0.length){
+        nomesMaq0.forEach((nm)=>{
+          try{
+            if(ofDeveAparecerNaMaquina(of, nm)){ pushMaq(nm, of); any = true; }
+          }catch(e){}
+        });
+        try{ if(ofDeveAparecerNaMaquina(of, 'Sem Máquina')) pushMaq(SEM_MAQ_KEY, of); }catch(e){}
+      }
+      if(!any){
+        const mk = String(getOfMaquinaAtual(of) || '').trim();
+        pushMaq(mk || SEM_MAQ_KEY, of);
+      }
     });
-    byMaq.set(SEM_MAQ_KEY, ofsSemMaq);
-    byMaq.set(OUTRAS_MAQ_KEY, ofsOutras);
     byMaq.forEach((arr)=>{
       arr.sort((a,b)=>{
         const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
@@ -46754,13 +46835,45 @@ window.atualizarChapas = async function(){
         return String(getOfEntrega(a)||'9999-99-99').localeCompare(String(getOfEntrega(b)||'9999-99-99'));
       });
     });
+    try{
+      mobileState._maqGroupOrders = Object.fromEntries(Array.from(byMaq.entries()).map(([k, arr])=>[
+        String(k || '').trim(),
+        (Array.isArray(arr) ? arr : []).map(o=>String(o?.id||'').trim()).filter(Boolean),
+      ]));
+    }catch(e){}
 
-    const nomes = maquinasFiltradas.map((x)=>x.perm).concat([SEM_MAQ_KEY, OUTRAS_MAQ_KEY]);
+    const maquinasAll = Array.isArray(mobileState.maquinas) ? mobileState.maquinas : [];
+    const maqNome = (m)=>String(m?.col || m?.nome || '').trim();
+    const maqOrdem = (m)=>Number(m?.ordem ?? m?.ord ?? m?.pos ?? m?.idx ?? 9999);
+    const maquinasOrdenadas = maquinasAll
+      .map((m)=>({ m, nome: maqNome(m), ord: maqOrdem(m) }))
+      .filter((x)=>x.nome)
+      .sort((a,b)=> (a.ord - b.ord) || a.nome.localeCompare(b.nome));
+    const nomesSet = new Set();
+    const nomes = [];
+    maquinasOrdenadas.forEach((x)=>{
+      if(byMaq.has(x.nome) && !nomesSet.has(x.nome)){ nomes.push(x.nome); nomesSet.add(x.nome); }
+    });
+    Array.from(byMaq.keys()).forEach((k)=>{
+      if(k === SEM_MAQ_KEY) return;
+      if(!nomesSet.has(k)){ nomes.push(k); nomesSet.add(k); }
+    });
+    if(byMaq.has(SEM_MAQ_KEY)) nomes.push(SEM_MAQ_KEY);
+    nomes.sort((a,b)=>{
+      if(a === SEM_MAQ_KEY) return 1;
+      if(b === SEM_MAQ_KEY) return -1;
+      const ia = maquinasOrdenadas.findIndex(x=>x.nome===a);
+      const ib = maquinasOrdenadas.findIndex(x=>x.nome===b);
+      if(ia >= 0 && ib >= 0) return ia - ib;
+      if(ia >= 0 && ib < 0) return -1;
+      if(ia < 0 && ib >= 0) return 1;
+      return String(a).localeCompare(String(b));
+    });
 
-    const maqByPerm = new Map(maquinasFiltradas.map((x)=>[String(x.perm||'').trim().toUpperCase(), x.obj]));
+    const maqByNome = new Map(maquinasOrdenadas.map((x)=>[x.nome, x.m]));
     const getMaqObj = (nome)=>{
-      const key = String(nome||'').trim().toUpperCase();
-      return key ? (maqByPerm.get(key) || null) : null;
+      const key = String(nome||'').trim();
+      return key ? (maqByNome.get(key) || null) : null;
     };
     const getMaqPhora = (nome)=>{
       const m = getMaqObj(nome);
@@ -46874,7 +46987,7 @@ window.atualizarChapas = async function(){
               </div>
             </div>
             <div class="mobile-actions" style="margin-top:10px">
-              <button class="mobile-btn danger btn-acoes-of" onclick="event.stopPropagation(); abrirAcoesOf('${escAttr(id)}','${escAttr(String(num))}')">⚡ Ações</button>
+              <button class="mobile-btn danger btn-acoes-of" onclick="event.stopPropagation(); abrirAcoesOf('${escAttr(id)}','${escAttr(String(num))}','${escAttr(String(nome||''))}')">⚡ Ações</button>
               <button class="mobile-btn" data-detalhes="${esc(id)}">📋 Detalhes</button>
             </div>
           </div>`;
@@ -46948,6 +47061,34 @@ window.atualizarChapas = async function(){
       persist();
       renderMaquinas();
     });
+    if(!mobileState._maqPollTimer){
+      mobileState._maqPollTimer = setInterval(()=>{
+        try{
+          if(!isMobileMode()) return;
+          if(mobileState.view !== 'maquinas') return;
+          if(document.hidden) return;
+          mobileRefreshMaquinas().then(()=>{ try{ renderMaquinas(); }catch(e){} }).catch(()=>null);
+        }catch(e){}
+      }, 30000);
+    }
+    try{
+      if(!content.dataset.swipeMaq){
+        content.dataset.swipeMaq = '1';
+        let x0 = null;
+        content.addEventListener('touchstart', (e)=>{ try{ x0 = e?.touches?.[0]?.clientX ?? null; }catch(_){ x0 = null; } }, { passive:true });
+        content.addEventListener('touchend', (e)=>{
+          try{
+            const x1 = e?.changedTouches?.[0]?.clientX ?? null;
+            if(x0 == null || x1 == null) return;
+            const dx = x1 - x0;
+            if(Math.abs(dx) < 60) return;
+            mobileState.maqDate = addDaysIso(mobileState.maqDate, dx < 0 ? 1 : -1);
+            persist();
+            refresh();
+          }catch(_){}
+        }, { passive:true });
+      }
+    }catch(e){}
     try{
       let tmr = null;
       byId('mob-maq-search')?.addEventListener('input', (e)=>{
