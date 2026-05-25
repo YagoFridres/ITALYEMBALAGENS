@@ -17276,6 +17276,7 @@ function mapcliSetAba(tab){
   if(t === 'roteiro'){
     if(host && pg && pg.parentElement !== host) host.appendChild(pg);
     if(pg) pg.style.display = '';
+    try{ if(typeof carregarRoteiroEntrega === 'function') carregarRoteiroEntrega(); }catch(e){}
   } else {
     if(pg) pg.style.display = 'none';
   }
