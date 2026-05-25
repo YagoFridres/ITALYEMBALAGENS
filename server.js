@@ -3137,7 +3137,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       };
       const merged = { ...(body || {}), ...(filtered || {}) };
       const cliId = String(merged.cli_id ?? merged.cliId ?? merged.cliente_id ?? '').trim();
-      const vendId = String(merged.vendedor_id ?? merged.vendId ?? merged.vend_id ?? '').trim();
+      const vendId = String(merged.vendedor_id ?? merged.vendedorId ?? merged.vendId ?? merged.vend_id ?? '').trim();
       const qtd = Number(merged.qtd ?? merged.quantidade ?? merged.qtd_pedida ?? 0) || 0;
       const ent = String(merged.ent ?? merged.data_entrega ?? '').slice(0, 10);
       const itens = parseItens(merged.itens ?? body.itens);
