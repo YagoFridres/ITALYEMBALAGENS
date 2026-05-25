@@ -14814,6 +14814,25 @@ app.post('/api/sequenciamento/reordenar', authMiddleware, async (req, res) => {
   }catch(e){ return err(res, e); }
 });
 
+app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
+  try{
+    if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
+    const maquina = String(req.body?.maquina_id || req.body?.maquina || '').trim();
+    const ordemIn = req.body?.ordem;
+    if(!maquina) return res.status(400).json({ ok:false, error:'maquina_id_required' });
+    let ids = [];
+    if(Array.isArray(ordemIn)){
+      ids = ordemIn.map((x)=>String((typeof x === 'string' ? x : (x?.of_id || x?.id || x?.ofId || '')) || '').trim()).filter(Boolean);
+    } else if(typeof ordemIn === 'string'){
+      ids = ordemIn.split(',').map((x)=>String(x||'').trim()).filter(Boolean);
+    }
+    if(!ids.length) return res.status(400).json({ ok:false, error:'ordem_required' });
+    const ordem = ids.slice(0, 5000).map((id, idx)=>({ of_id: id, posicao: idx + 1 }));
+    const r = await _sequenciamentoSalvarOrdem({ maquina, ordem });
+    return res.json({ ok:true, data:r });
+  }catch(e){ return err(res, e); }
+});
+
 app.post('/api/sequenciamento/auto', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
