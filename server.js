@@ -78,14 +78,47 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE)
 if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_KEY) {
   process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY;
 }
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLEKEY) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLEKEY;
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_SERVICE_ROLE_SECRET) {
+  process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_SECRET;
+}
+if (!process.env.SUPABASE_URL && process.env.SUPABASE_PROJECT_URL) {
+  process.env.SUPABASE_URL = process.env.SUPABASE_PROJECT_URL;
+}
+if (!process.env.SUPABASE_URL && process.env.SUPABASE_REST_URL) {
+  process.env.SUPABASE_URL = process.env.SUPABASE_REST_URL;
+}
+if (!process.env.SUPABASE_URL && process.env.SUPABASE_API_URL) {
+  process.env.SUPABASE_URL = process.env.SUPABASE_API_URL;
+}
+if (!process.env.SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  process.env.SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+}
+if (!process.env.SUPABASE_URL && process.env.VITE_SUPABASE_URL) {
+  process.env.SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+}
+if (!process.env.SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  process.env.SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+}
+if (!process.env.SUPABASE_ANON_KEY && process.env.VITE_SUPABASE_ANON_KEY) {
+  process.env.SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+}
 
 function extractFrontSupabaseConfig() {
   try {
     const htmlPath = path.join(__dirname, 'index.html');
     if (!fs.existsSync(htmlPath)) return null;
     const raw = fs.readFileSync(htmlPath, 'utf8');
-    const urlMatch = raw.match(/\bconst\s+SUPABASE_URL\s*=\s*(['"`])([^'"`]+)\1/);
-    const keyMatch = raw.match(/\bconst\s+SUPABASE_KEY\s*=\s*(['"`])([^'"`]+)\1/);
+    const urlMatch =
+      raw.match(/\bconst\s+SUPABASE_URL\s*=\s*(['"`])([^'"`]+)\1/) ||
+      raw.match(/\b(?:var|let)\s+SUPABASE_URL\s*=\s*(['"`])([^'"`]+)\1/) ||
+      raw.match(/\bSUPABASE_URL\s*:\s*(['"`])([^'"`]+)\1/);
+    const keyMatch =
+      raw.match(/\bconst\s+SUPABASE_KEY\s*=\s*(['"`])([^'"`]+)\1/) ||
+      raw.match(/\b(?:var|let)\s+SUPABASE_KEY\s*=\s*(['"`])([^'"`]+)\1/) ||
+      raw.match(/\bSUPABASE_KEY\s*:\s*(['"`])([^'"`]+)\1/);
     const url = urlMatch ? String(urlMatch[2] || '').trim() : '';
     const key = keyMatch ? String(keyMatch[2] || '').trim() : '';
     if (!url || !key) return null;
@@ -103,11 +136,12 @@ const supabaseKey =
   process.env.SUPABASE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   (frontSb ? frontSb.key : null);
-const supabaseKeySource = process.env.SUPABASE_SERVICE_ROLE_KEY
-  ? 'SUPABASE_SERVICE_ROLE_KEY'
-  : (process.env.SUPABASE_KEY
-    ? 'SUPABASE_KEY'
-    : (process.env.SUPABASE_ANON_KEY ? 'SUPABASE_ANON_KEY' : (frontSb ? 'index.html:SUPABASE_KEY' : null)));
+const supabaseKeySource =
+  (process.env.SUPABASE_SERVICE_ROLE_KEY && 'SUPABASE_SERVICE_ROLE_KEY') ||
+  (process.env.SUPABASE_KEY && 'SUPABASE_KEY') ||
+  (process.env.SUPABASE_ANON_KEY && 'SUPABASE_ANON_KEY') ||
+  (frontSb && 'index.html:SUPABASE_KEY') ||
+  null;
 
 let supabase = null;
 let _supabaseEnvOk = true;
@@ -636,6 +670,14 @@ function avatarColorFromText(s) {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        ok: false,
+        error: 'Supabase não configurado no servidor (Railway Variables).',
+        missing: _supabaseMissing,
+        rid: req._rid || null,
+      });
+    }
     const body = (req && req.body && typeof req.body === 'object') ? req.body : {};
     const emailRaw = body.email ?? body.usuario ?? body.login ?? body.user ?? '';
     const senhaRaw = body.senha ?? body.password ?? body.pass ?? '';
@@ -2433,6 +2475,14 @@ async function comprasUpdateCompat(id, payload) {
 
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({
+        ok: false,
+        error: 'Supabase não configurado no servidor (Railway Variables).',
+        missing: _supabaseMissing,
+        rid: req._rid || null,
+      });
+    }
     console.log('[OFS DEBUG 500]', {
       query: req.query,
       usuario: req.usuario?.id,
