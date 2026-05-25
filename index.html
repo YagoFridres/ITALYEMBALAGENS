@@ -38226,6 +38226,29 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     .hub-footer-top .mono{font-family:var(--mono);color:var(--text2)}
     .hub-footer-phrase{color:var(--text2);font-weight:900}
     .hub-skel{background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.10), rgba(255,255,255,.05));background-size:200% 100%;animation:hubSk 1.3s linear infinite;border-radius:12px}
+    .hub-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);z-index:950;padding:18px}
+    .hub-modal .panel{width:min(1080px,100%);max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+    .hub-modal .ph{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .hub-modal .pt{font-weight:1000;font-size:1.05rem}
+    .hub-modal .ps{font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-top:4px}
+    .hub-modal .tabs{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg, rgba(99,102,241,.08), transparent)}
+    .hub-modal .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-weight:950;cursor:pointer;font-size:.78rem}
+    .hub-modal .tab.active{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.45)}
+    .hub-modal .pb{padding:14px 16px;display:grid;gap:12px}
+    .hub-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .hub-kbox{padding:12px;border-radius:14px;background:var(--bg2);border:1px solid var(--border)}
+    .hub-kbox .k{font-family:var(--mono);font-size:.72rem;color:var(--text3);font-weight:900}
+    .hub-kbox .v{margin-top:6px;font-size:1.05rem;font-weight:1000}
+    .hub-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:950;font-size:.72rem;border:1px solid var(--border);background:var(--s2);white-space:nowrap}
+    .hub-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:var(--s2);border:1px solid var(--border)}
+    .hub-row .m{font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-top:2px}
+    .hub-pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+    .hub-pager .pbtn{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-weight:950;cursor:pointer}
+    @media (max-width: 980px){
+      .hub-grid-2{grid-template-columns:1fr}
+      .hub-modal{padding:0}
+      .hub-modal .panel{max-height:100vh;height:100vh;border-radius:0}
+    }
     @keyframes hubSk{0%{background-position:200% 0}100%{background-position:-200% 0}}
     @media (max-width: 980px){
       .hub-header{grid-template-columns:1fr}
@@ -38302,6 +38325,22 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="mono" id="hub-last-access">—</div>
         </div>
         <div class="hub-footer-phrase" id="hub-motiv">—</div>
+      </div>
+
+      <div id="hub-cli-modal" class="hub-modal" onclick="hubCliPanelClose(true)">
+        <div class="panel" onclick="event.stopPropagation()">
+          <div class="ph">
+            <div style="min-width:0">
+              <div class="pt" id="hub-cli-title">Cliente</div>
+              <div class="ps" id="hub-cli-sub">—</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn btn-ghost btn-sm" onclick="hubCliPanelClose()">Fechar</button>
+            </div>
+          </div>
+          <div class="tabs" id="hub-cli-tabs"></div>
+          <div class="pb" id="hub-cli-body"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -49451,6 +49490,7 @@ function hubRenderSearch(){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button class="btn btn-accent btn-sm" onclick="hubAbrirPainelCliente('${escAttr(cid)}')">Abrir painel</button>
           <button class="btn btn-ghost btn-sm" onclick="go('clientes')">Ver clientes</button>
           <button class="btn btn-accent btn-sm" onclick="abrirModalOF('')">Nova OF</button>
         </div>
@@ -49481,6 +49521,359 @@ function hubRenderSearch(){
   box.innerHTML = cliSec + ofSec;
   box.style.display = '';
 }
+
+window.__HUB_CLI_PANEL = window.__HUB_CLI_PANEL || { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false };
+
+function hubCliPanelClose(fromBackdrop){
+  try{
+    const modal = document.getElementById('hub-cli-modal');
+    if(!modal) return;
+    modal.style.display = 'none';
+    if(fromBackdrop){
+      const input = document.getElementById('hub-search');
+      if(input) input.blur();
+    }
+  }catch(e){}
+}
+
+function hubCliPanelSetTab(tab){
+  try{
+    const st = window.__HUB_CLI_PANEL || (window.__HUB_CLI_PANEL = { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false });
+    st.tab = String(tab||'resumo');
+    if(st.tab === 'historico') st.histPage = Math.max(0, Math.trunc(Number(st.histPage||0)||0));
+    hubCliPanelRender();
+  }catch(e){}
+}
+
+function hubCliPanelHistPage(dir){
+  try{
+    const st = window.__HUB_CLI_PANEL;
+    if(!st) return;
+    st.histPage = Math.max(0, Math.trunc(Number(st.histPage||0)||0) + Math.trunc(Number(dir||0)||0));
+    hubCliPanelRender();
+  }catch(e){}
+}
+
+function _hubCliPick(c){
+  const nome = String(c?.nome ?? c?.razao ?? c?.razao_social ?? '—').trim() || '—';
+  const cidade = String(c?.cidade ?? '').trim();
+  const uf = String(c?.uf ?? c?.estado ?? '').trim();
+  const doc = String(c?.cnpj ?? c?.cpf ?? '').trim();
+  const tel = String(c?.tel ?? c?.telefone ?? '').trim();
+  const email = String(c?.email ?? '').trim();
+  return { nome, cidade, uf, doc, tel, email };
+}
+
+function _hubOfProduto(o){
+  const p = String(o?.descricao ?? o?.prodDesc ?? o?.produto ?? '').trim();
+  if(p) return p;
+  try{
+    const itens = Array.isArray(o?.itens) ? o.itens : (typeof o?.itens === 'string' ? (JSON.parse(o.itens||'[]')||[]) : []);
+    const it0 = itens[0] || {};
+    return String(it0?.desc ?? it0?.descricao ?? '').trim();
+  }catch(e){ return ''; }
+}
+
+function _hubOfNumeroLabel(o){
+  const base = String(o?.of ?? o?.numero ?? o?.of_num ?? o?.numero_of ?? '').trim();
+  return base || '—';
+}
+
+function _hubStatusPill(st){
+  let s = String(st||'').toLowerCase();
+  try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+  s = s.trim();
+  let bg = '#1a56db';
+  let lbl = String(st||'Em aberto').trim() || 'Em aberto';
+  if(s.includes('produc')) { bg = '#f59e0b'; lbl = 'Em produção'; }
+  else if(s.includes('conclu') || s === 'pedido pronto') { bg = '#16a34a'; lbl = 'Concluída'; }
+  else if(s.includes('cancel')) { bg = '#111827'; lbl = 'Cancelada'; }
+  else if(s.includes('paus')) { bg = '#6b7280'; lbl = 'Pausada'; }
+  else if(s.includes('atras')) { bg = '#dc2626'; lbl = 'Atrasada'; }
+  return `<span class="hub-badge" style="background:${bg};border-color:rgba(255,255,255,.12);color:#fff">${escH(lbl)}</span>`;
+}
+
+async function hubAbrirPainelCliente(clienteId){
+  try{
+    const cid = String(clienteId||'').trim();
+    if(!cid) return;
+    const modal = document.getElementById('hub-cli-modal');
+    if(modal) modal.style.display = 'flex';
+    const st = window.__HUB_CLI_PANEL || (window.__HUB_CLI_PANEL = { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false });
+    st.clienteId = cid;
+    st.tab = st.tab || 'resumo';
+    st.histPage = 0;
+    st.loading = true;
+    st.data = null;
+    hubCliPanelRender();
+
+    if(!window.__HUB_CLI_CACHE) window.__HUB_CLI_CACHE = {};
+    const cache = window.__HUB_CLI_CACHE[cid];
+    if(cache && cache.data && (Date.now() - cache.ts) < 60000){
+      st.data = cache.data;
+      st.loading = false;
+      hubCliPanelRender();
+      return;
+    }
+
+    const hubData = (window.__HUB_CACHE && window.__HUB_CACHE.data) ? window.__HUB_CACHE.data : null;
+    const clientes = Array.isArray(hubData?.clientes) ? hubData.clientes : (Array.isArray(window.CLIENTES) ? window.CLIENTES : []);
+    const cBase = clientes.find(c=>String(c?.id||c?.cli_id||'').trim() === cid) || null;
+    let ofs = Array.isArray(hubData?.ofs) ? hubData.ofs : _hubGetOfsBase();
+    ofs = Array.isArray(ofs) ? ofs : [];
+    let ofsCli = ofs.filter(o=>String(_hubOfCliId(o)).trim() === cid);
+
+    try{
+      if(_apiConectado && CURRENT_USER){
+        const r = await apiFetch('/api/ofs?cliente_id=' + encodeURIComponent(cid) + '&incluir_excluidas=1&limit=1500&nocache=1', { method:'GET' });
+        const j = r ? await r.json().catch(()=>null) : null;
+        const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+        if(Array.isArray(arr) && arr.length) ofsCli = arr;
+      }
+    }catch(e){}
+
+    let vend = null;
+    try{
+      if(_apiConectado && CURRENT_USER){
+        const rv = await apiFetch('/api/clientes/' + encodeURIComponent(cid) + '/vendedor', { method:'GET' });
+        const jv = rv ? await rv.json().catch(()=>null) : null;
+        vend = (jv && (jv.data || jv.vendedor || jv)) ? (jv.data || jv.vendedor || jv) : null;
+      }
+    }catch(e){}
+
+    const out = { cliente: cBase, vendedor: vend, ofs: Array.isArray(ofsCli)?ofsCli:[] };
+    window.__HUB_CLI_CACHE[cid] = { ts: Date.now(), data: out };
+    st.data = out;
+    st.loading = false;
+    hubCliPanelRender();
+  }catch(e){}
+}
+
+function hubCliPanelRender(){
+  try{
+    const st = window.__HUB_CLI_PANEL || { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false };
+    const title = document.getElementById('hub-cli-title');
+    const sub = document.getElementById('hub-cli-sub');
+    const tabs = document.getElementById('hub-cli-tabs');
+    const body = document.getElementById('hub-cli-body');
+    if(!title || !sub || !tabs || !body) return;
+
+    const tab = String(st.tab || 'resumo');
+    const tabList = [
+      { id:'resumo', lbl:'Resumo' },
+      { id:'abertas', lbl:'OFs Abertas' },
+      { id:'historico', lbl:'Histórico' },
+      { id:'dados', lbl:'Dados' },
+    ];
+    tabs.innerHTML = tabList.map(t=>`<button class="tab ${t.id===tab?'active':''}" onclick="hubCliPanelSetTab('${escAttr(t.id)}')">${escH(t.lbl)}</button>`).join('');
+
+    if(st.loading || !st.data){
+      title.textContent = 'Carregando cliente…';
+      sub.textContent = '—';
+      body.innerHTML = `<div class="hub-kbox hub-skel" style="height:96px"></div><div class="hub-kbox hub-skel" style="height:140px"></div><div class="hub-kbox hub-skel" style="height:140px"></div>`;
+      return;
+    }
+
+    const c = st.data.cliente || {};
+    const vend = st.data.vendedor || null;
+    const ofs = Array.isArray(st.data.ofs) ? st.data.ofs : [];
+    const cli = _hubCliPick(c);
+    const vendNome = String(vend?.nome || vend?.vendedor || vend?.name || '').trim();
+
+    title.textContent = cli.nome;
+    sub.textContent = [cli.cidade, cli.uf, (cli.doc ? ('Doc: ' + cli.doc) : '')].filter(Boolean).join(' · ') || '—';
+
+    const hoje = new Date();
+    const mes = hoje.toISOString().slice(0,7);
+    const prev = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1).toISOString().slice(0,7);
+    const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? o?.total ?? 0) || 0;
+    const dtOf = (o)=> String(o?.created_at || o?.data_pedido || o?.updated_at || '').slice(0,10);
+    const mesOf = (o)=> String(dtOf(o) || '').slice(0,7);
+    const isConcl = (o)=>_hubIsConcl(_hubOfStatus(o));
+    const isCanc = (o)=>_hubIsCancel(_hubOfStatus(o));
+    const abertas = ofs.filter(o=>!isConcl(o) && !isCanc(o));
+    const concluidas = ofs.filter(o=>isConcl(o) && !isCanc(o));
+
+    const curMes = ofs.filter(o=>mesOf(o) === mes);
+    const prevMes = ofs.filter(o=>mesOf(o) === prev);
+    const curQtd = curMes.length;
+    const prevQtd = prevMes.length;
+    const curVal = curMes.reduce((s,o)=>s+valOf(o),0);
+    const prevVal = prevMes.reduce((s,o)=>s+valOf(o),0);
+    const cresc = prevVal > 0 ? Math.round(((curVal - prevVal)/prevVal)*100) : (curVal > 0 ? 100 : 0);
+
+    const prodAgg = new Map();
+    ofs.forEach(o=>{
+      const p = _hubOfProduto(o);
+      const k = _hubNorm(p);
+      if(!k) return;
+      const cur = prodAgg.get(k) || { produto: p, qtd:0 };
+      cur.qtd += 1;
+      if(!cur.produto && p) cur.produto = p;
+      prodAgg.set(k, cur);
+    });
+    const topProd = Array.from(prodAgg.values()).sort((a,b)=>b.qtd-a.qtd).slice(0,3);
+
+    const lastBuy = ofs.slice().sort((a,b)=>String(dtOf(b)).localeCompare(String(dtOf(a)),'pt-BR'))[0] || null;
+    const lastTxt = lastBuy ? `${fmtD(dtOf(lastBuy))} · ${_hubOfProduto(lastBuy) || '—'} · ${fmtR(valOf(lastBuy))}` : '—';
+
+    const totalOfs = ofs.length;
+    const totalVal = ofs.reduce((s,o)=>s+valOf(o),0);
+    const ticket = totalOfs ? (totalVal/totalOfs) : 0;
+    const dates = ofs.map(o=>dtOf(o)).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    let freq = null;
+    if(dates.length >= 2){
+      let sum = 0;
+      let n = 0;
+      for(let i=1;i<dates.length;i++){
+        const a = Date.parse(dates[i-1]+'T00:00:00Z');
+        const b = Date.parse(dates[i]+'T00:00:00Z');
+        if(Number.isFinite(a) && Number.isFinite(b) && b >= a){
+          sum += Math.round((b-a)/(24*60*60*1000));
+          n += 1;
+        }
+      }
+      freq = n ? Math.round(sum/n) : null;
+    }
+
+    const maquinaAtual = (o)=>{
+      try{
+        if(typeof getMaquinaAtual === 'function') return String(getMaquinaAtual(o) || '').trim();
+      }catch(e){}
+      return String(o?.maquina_atual || o?.maquina || o?.maq_atual || '').trim();
+    };
+    const prioridade = (o)=>{
+      const v = o?.seq ?? o?.ordem ?? o?.prioridade_producao ?? o?.prioridade ?? null;
+      const n = Math.trunc(Number(v));
+      return Number.isFinite(n) && n > 0 ? n : null;
+    };
+
+    if(tab === 'resumo'){
+      body.innerHTML = `
+        <div class="hub-grid-2">
+          <div class="hub-kbox">
+            <div class="k">Indicadores do mês</div>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              <div class="hub-row"><div><div style="font-weight:950">OFs este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Valor este mês</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(curVal))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Mês passado</div><div class="m">${escH(prev.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(prevQtd))} · ${escH(fmtR(prevVal))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Crescimento</div><div class="m">Comparativo</div></div><div style="font-weight:1000;color:${cresc<0?'#ef4444':'var(--green)'}">${escH((cresc>0?'+':'') + String(cresc) + '%')}</div></div>
+            </div>
+          </div>
+          <div class="hub-kbox">
+            <div class="k">Cliente</div>
+            <div class="v">${escH(cli.nome)}</div>
+            <div class="m">${escH([cli.cidade, cli.uf].filter(Boolean).join(' / ') || '—')}</div>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              ${cli.doc?`<span class="hub-pill">Doc: <b>${escH(cli.doc)}</b></span>`:''}
+              ${cli.tel?`<span class="hub-pill">Tel: <b>${escH(cli.tel)}</b></span>`:''}
+              ${cli.email?`<span class="hub-pill">Email: <b>${escH(cli.email)}</b></span>`:''}
+              ${vendNome?`<span class="hub-pill">Vendedor: <b>${escH(vendNome)}</b></span>`:''}
+            </div>
+            <div style="margin-top:10px" class="m"><b>Última compra:</b> ${escH(lastTxt)}</div>
+          </div>
+        </div>
+
+        <div class="hub-kbox">
+          <div class="k">Top produtos/caixas</div>
+          <div style="margin-top:10px;display:grid;gap:8px">
+            ${topProd.length ? topProd.map((p,i)=>`<div class="hub-row"><div style="min-width:0"><div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(String(i+1)+'. '+(p.produto||'—'))}</div><div class="m">Pedidos</div></div><div style="font-weight:1000">${escH(String(p.qtd))}</div></div>`).join('') : `<div style="color:var(--text3)">Sem dados de produtos.</div>`}
+          </div>
+        </div>
+
+        <div class="hub-grid-2">
+          <div class="hub-kbox">
+            <div class="k">OFs em aberto</div>
+            <div class="v">${escH(String(abertas.length))}</div>
+            <div class="m">Clique na aba "OFs Abertas" para detalhes</div>
+          </div>
+          <div class="hub-kbox">
+            <div class="k">Histórico geral</div>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              <div class="hub-row"><div><div style="font-weight:950">Total de OFs</div><div class="m">Desde o início</div></div><div style="font-weight:1000">${escH(String(totalOfs))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Valor acumulado</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(totalVal))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Ticket médio</div><div class="m">Valor/OF</div></div><div style="font-weight:1000">${escH(fmtR(ticket))}</div></div>
+              <div class="hub-row"><div><div style="font-weight:950">Frequência média</div><div class="m">Dias entre pedidos</div></div><div style="font-weight:1000">${escH(freq!=null?String(freq)+' dias':'—')}</div></div>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if(tab === 'abertas'){
+      const rows = abertas.slice().sort((a,b)=>String(_hubOfEnt(a)).localeCompare(String(_hubOfEnt(b)),'pt-BR')).map(o=>{
+        const id = String(o?.id||'').trim();
+        const num = _hubOfNumeroLabel(o);
+        const prod = _hubOfProduto(o) || '—';
+        const ent = _hubOfEnt(o);
+        const stt = _hubOfStatus(o);
+        const maq = maquinaAtual(o) || '—';
+        const pr = prioridade(o);
+        return `<div class="hub-row">
+          <div style="min-width:0">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <div style="font-weight:1000">${escH(num)}</div>
+              ${_hubStatusPill(stt)}
+              ${pr!=null?`<span class="hub-badge">Pri: <b>${escH(String(pr))}</b></span>`:''}
+            </div>
+            <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(prod)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · Máquina: <b>${escH(maq)}</b></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+        </div>`;
+      }).join('');
+      body.innerHTML = rows || `<div style="color:var(--text3)">Sem OFs em aberto.</div>`;
+      return;
+    }
+
+    if(tab === 'historico'){
+      const pageSize = 20;
+      const page = Math.max(0, Math.trunc(Number(st.histPage||0)||0));
+      const list = concluidas.slice().sort((a,b)=>String(_hubOfConcl(b)||dtOf(b)).localeCompare(String(_hubOfConcl(a)||dtOf(a)),'pt-BR'));
+      const start = page*pageSize;
+      const slice = list.slice(start, start+pageSize);
+      const rows = slice.map(o=>{
+        const id = String(o?.id||'').trim();
+        const num = _hubOfNumeroLabel(o);
+        const prod = _hubOfProduto(o) || '—';
+        const dt = _hubOfConcl(o) || dtOf(o);
+        const v = valOf(o);
+        return `<div class="hub-row">
+          <div style="min-width:0">
+            <div style="font-weight:1000">${escH(num)}</div>
+            <div class="m">${escH(prod)} · Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+        </div>`;
+      }).join('');
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      const pager = `<div class="hub-pager">
+        <button class="pbtn" onclick="hubCliPanelHistPage(-1)" ${page<=0?'disabled':''}>◀</button>
+        <span class="hub-pill">Página <b>${escH(String(page+1))}</b> / <b>${escH(String(totalPages))}</b></span>
+        <button class="pbtn" onclick="hubCliPanelHistPage(1)" ${page>=totalPages-1?'disabled':''}>▶</button>
+      </div>`;
+      body.innerHTML = (rows || `<div style="color:var(--text3)">Sem OFs concluídas.</div>`) + pager;
+      return;
+    }
+
+    if(tab === 'dados'){
+      body.innerHTML = `
+        <div class="hub-kbox">
+          <div class="k">Cadastro</div>
+          <div style="margin-top:10px;display:grid;gap:10px">
+            <div class="hub-row"><div><div style="font-weight:950">Nome</div><div class="m">${escH([cli.cidade, cli.uf].filter(Boolean).join(' / ') || '—')}</div></div><div style="font-weight:1000">${escH(cli.nome)}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">CNPJ/CPF</div><div class="m">Documento</div></div><div style="font-weight:1000">${escH(cli.doc || '—')}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Telefone</div><div class="m">Contato</div></div><div style="font-weight:1000">${escH(cli.tel || '—')}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Email</div><div class="m">Contato</div></div><div style="font-weight:1000">${escH(cli.email || '—')}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Vendedor</div><div class="m">Responsável</div></div><div style="font-weight:1000">${escH(vendNome || '—')}</div></div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+  }catch(e){}
+}
+
 function _hubStartPolling(){
   if(window.__HUB_POLL) return;
   window.__HUB_POLL = setInterval(()=>{
