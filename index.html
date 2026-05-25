@@ -11956,7 +11956,17 @@ function validarCamposObrigatoriosOF(payload, itens){
   const cli = String(p.cliId || p.cli_id || p.cliente_id || '').trim();
   if (!cli) erros.push('Cliente é obrigatório');
 
-  const vend = String(p.vendId || p.vendedor_id || p.vend_id || '').trim();
+  let vend = String(p.vendId || p.vendedor_id || p.vend_id || '').trim();
+  if(!vend){
+    try{
+      const arr = Array.isArray(itens) ? itens : [];
+      for(const it of arr){
+        if(!it) continue;
+        const v = String(it?.vendId || it?.vendedor_id || it?.vend_id || it?.vendedor || '').trim();
+        if(v){ vend = v; break; }
+      }
+    }catch(e){}
+  }
   if (!vend) erros.push('Vendedor é obrigatório');
 
   const titulo = String(p.prodDesc || p.descricao || p.produto || '').trim();
@@ -41369,6 +41379,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         cliId: p.cliId,
         cli_id: p.cliId,
         cliente_id: p.cliId,
+        vendId: p.vendId,
+        vendedor_id: p.vendId,
+        vend_id: p.vendId,
         prodDesc: (p.prodDesc||'') || (it.desc||it.descricao||''),
         descricao: (p.prodDesc||'') || (it.desc||it.descricao||''),
         ent: p.ent,
