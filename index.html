@@ -99,6 +99,7 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .tb-red{background:var(--red-soft);border:1px solid var(--red);color:var(--red);}
 .tb-yellow{background:var(--yellow-soft);border:1px solid var(--yellow);color:var(--yellow);}
 .tb-green{background:var(--green-soft);border:1px solid var(--green);color:var(--green);}
+.live-badge{display:none;align-items:center;gap:6px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.35);color:var(--green);border-radius:999px;padding:4px 10px;font-size:.66rem;font-weight:900;font-family:var(--mono);white-space:nowrap;}
 .clock{font-family:var(--mono);font-size:.78rem;color:var(--text2);padding:4px 8px;background:var(--s2);border-radius:6px;border:1px solid var(--border);}
 
 /* ===== THEME TOGGLE ===== */
@@ -3374,17 +3375,83 @@ let _ofsMaqAtiva = false;
 
 function iniciarPollingOFsMaquina() {
   _ofsMaqAtiva = true;
-  if (_ofsMaqTimer) clearInterval(_ofsMaqTimer);
-  Promise.resolve()
-    .then(()=>carregarOFsUnico(false))
-    .then(()=>renderOFsPorMaquina())
-    .catch(()=>renderOFsPorMaquina());
-  _ofsMaqTimer = setInterval(() => { if (!_ofsMaqAtiva) return; if (document.hidden) return; renderOFsPorMaquina(); }, 30000);
+  if (_ofsMaqTimer) { try{ clearInterval(_ofsMaqTimer); }catch(e){} _ofsMaqTimer = null; }
+  Promise.resolve().then(()=>renderOFsPorMaquina()).catch(()=>renderOFsPorMaquina());
+  try{ livePollingStart(); }catch(e){}
 }
 
 function pararPollingOFsMaquina() {
   _ofsMaqAtiva = false;
   if (_ofsMaqTimer) { clearInterval(_ofsMaqTimer); _ofsMaqTimer = null; }
+}
+
+let _livePollTimer = null;
+let _livePollBusy = false;
+let _liveLastToastAt = 0;
+let _liveLastSig = null;
+function _liveSigFromOFs(list){
+  const map = new Map();
+  (Array.isArray(list) ? list : []).forEach((o)=>{
+    const id = String(o?.id || o?.of || o?.numero || '').trim();
+    if(!id) return;
+    const s = [
+      String(o?.updated_at||o?.updatedAt||''),
+      String(o?.status||''),
+      String(o?.prioridade||o?.prioridade_producao||''),
+      String(o?.seq||''),
+      String(o?.dia||o?.data_producao||''),
+      String(o?.ent||o?.data_entrega||''),
+    ].join('|');
+    map.set(id, s);
+  });
+  return map;
+}
+function _liveCountChanged(prev, next){
+  if(!(prev instanceof Map) || !(next instanceof Map)) return 0;
+  let changed = 0;
+  next.forEach((v,k)=>{ if(prev.get(k) !== v) changed++; });
+  return changed;
+}
+function _liveSetBadge(pid, on){
+  const el = document.getElementById('live-badge-' + pid);
+  if(el) el.style.display = on ? 'inline-flex' : 'none';
+}
+async function livePollingTick(){
+  if(_livePollBusy) return;
+  if(document.hidden) return;
+  const pid = String(window._PAGE_ATUAL || '').trim();
+  const isLive = (pid === 'pcp' || pid === 'dashboard' || pid === 'ofmaq');
+  _liveSetBadge('pcp', isLive && pid === 'pcp');
+  _liveSetBadge('ofmaq', isLive && pid === 'ofmaq');
+  _liveSetBadge('dashboard', isLive && pid === 'dashboard');
+  if(!isLive) return;
+  if(!_apiConectado || !CURRENT_USER) return;
+  _livePollBusy = true;
+  try{
+    if(pid === 'ofmaq'){
+      await renderOFsPorMaquina();
+      return;
+    }
+    const before = _liveLastSig instanceof Map ? _liveLastSig : _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
+    await carregarOFs({ forcar: true });
+    const after = _liveSigFromOFs(Array.isArray(window.OFS)?window.OFS:OFs);
+    const changed = _liveCountChanged(before, after);
+    _liveLastSig = after;
+    if(changed > 0){
+      if(Date.now() - _liveLastToastAt > 15000){
+        _liveLastToastAt = Date.now();
+        toast(`🔄 ${changed} OF${changed!==1?'s':''} atualizada${changed!==1?'s':''}`, 'var(--accent)');
+      }
+      if(pid === 'pcp'){ try{ renderPCP(); }catch(e){} }
+      if(pid === 'dashboard'){ try{ renderDashboard(); }catch(e){} }
+    }
+  }catch(e){}
+  finally{ _livePollBusy = false; }
+}
+function livePollingStart(){
+  if(_livePollTimer) return;
+  _livePollTimer = setInterval(()=>{ try{ livePollingTick(); }catch(e){} }, 30000);
+  setTimeout(()=>{ try{ livePollingTick(); }catch(e){} }, 1200);
 }
 
 function _goBase(id){
@@ -3401,16 +3468,8 @@ function _goBase(id){
     const telaEl = document.getElementById('tela-'+id);
     if(telaEl) telaEl.style.display = '';
   }
-  try{
-    const bn = document.getElementById('mobile-bottom-nav');
-    if(bn){
-      bn.querySelectorAll('.mbn-item').forEach(b=>b.classList.remove('active'));
-      const map = { dashboard:'mbn-home', pcp:'mbn-pcp', estoque:'mbn-estoque', clientes:'mbn-clientes', configuracoes:'mbn-config' };
-      const btnId = map[id] || (id === 'relatorios' || id === 'relmensal' ? 'mbn-home' : '');
-      const btn = btnId ? document.getElementById(btnId) : null;
-      if(btn) btn.classList.add('active');
-    }
-  }catch(e){}
+  try{ if(typeof updateBottomNavActive === 'function') updateBottomNavActive(id); }catch(e){}
+  try{ livePollingStart(); }catch(e){}
   try{ document.getElementById('page-'+id)?.querySelector('.no-perm-overlay')?.remove(); }catch(e){}
   document.querySelectorAll('.nav-item').forEach(n=>{if((n.getAttribute('onclick')||'').includes(`go('${id}')`))n.classList.add('active');});
   openNavGroupForPage(id);
@@ -24714,7 +24773,10 @@ function _renderDashboardBase(){
 
   root.innerHTML = `
     <div class="ptoolbar" style="flex-wrap:wrap;gap:10px;align-items:center">
-      <div style="font-weight:950;color:var(--accent);font-size:1.05rem">🏆 Top Clientes</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-weight:950;color:var(--accent);font-size:1.05rem">🏆 Top Clientes</div>
+        <span id="live-badge-dashboard" class="live-badge">● ao vivo</span>
+      </div>
       <div style="flex:1"></div>
       <select id="dash-topcli-period" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.85rem;font-family:var(--font);min-width:170px">
         ${periodOpts.map(p=>`<option value="${p.v}"${p.v===period?' selected':''}>${p.t}</option>`).join('')}
@@ -37964,6 +38026,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="PCP_DIA_ATUAL='__todas__';renderPCP()" title="Mostrar todas as OFs">📋 Todas</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpNavDia(1)" title="Próximo dia">Próximo ›</button>
     <div id="pcp-dia-label" style="font-family:var(--mono);font-weight:700;font-size:.88rem;color:var(--accent);padding:4px 12px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:8px;white-space:nowrap;"></div>
+    <span id="live-badge-pcp" class="live-badge">● ao vivo</span>
     <input type="date" id="pcp-dia-input" onchange="pcpSetDia(this.value)" style="width:140px;" title="Ir para data específica">
     <div style="width:1px;background:var(--border);height:24px;margin:0 4px;"></div>
     <input id="pcp-busca" placeholder="🔍 OF, cliente..." oninput="renderPCP()" style="width:150px;">
@@ -38019,6 +38082,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div id="page-ofmaq" class="page">
   <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
     <span style="font-size:.78rem;color:var(--text2)">🏭 OFs agrupadas por máquina</span>
+    <span id="live-badge-ofmaq" class="live-badge">● ao vivo</span>
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="ofmaqSetView('dia')" id="ofmaq-v-dia">DIA</button>
       <button class="btn btn-ghost btn-sm" onclick="ofmaqSetView('semana')" id="ofmaq-v-semana">SEMANA</button>
