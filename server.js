@@ -909,7 +909,9 @@ app.post('/api/usuarios', requireAdmin, async (req, res) => {
     const perfil = String(req.body?.perfil || 'custom').trim();
     const ativo = req.body?.ativo !== undefined ? !!req.body.ativo : true;
     const avatar_cor = String(req.body?.avatar_cor || '').trim();
-    const permissoes = Array.isArray(req.body?.permissoes) ? req.body.permissoes : [];
+    let permissoes = req.body?.permissoes;
+    if (typeof permissoes === 'string') { try { permissoes = JSON.parse(permissoes); } catch (_) { permissoes = []; } }
+    if (!Array.isArray(permissoes)) permissoes = [];
     const canais_chat = Array.isArray(req.body?.canais_chat) ? req.body.canais_chat : undefined;
 
     if (!nome || !email || !senha) return res.status(400).json({ ok: false, error: 'nome, email e senha são obrigatórios' });
@@ -991,6 +993,32 @@ app.put('/api/usuarios/:id/senha', requireAdmin, async (req, res) => {
 app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
   try {
     const dryRun = String(req.body?.dry_run || req.query?.dry_run || '').trim() === '1';
+    const isMissingColumnErr = (err) => {
+      const msg = String(err?.message || err || '').toLowerCase();
+      return msg.includes('could not find the') || msg.includes('does not exist');
+    };
+    const extractMissingCol = (err) => {
+      const msg = String(err?.message || err || '');
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      return (m1 && m1[1]) || (m2 && m2[1]) || null;
+    };
+    const updateDroppingUnknown = async (id, patch) => {
+      let cur = { ...(patch || {}) };
+      let lastErr = null;
+      for (let tentativa = 0; tentativa < 10; tentativa++) {
+        const { error: e2 } = await supabase.from('usuarios').update(cur).eq('id', id);
+        if (!e2) return { ok: true, patch: cur };
+        lastErr = e2;
+        if (!isMissingColumnErr(e2)) throw e2;
+        const col = extractMissingCol(e2);
+        if (col && Object.prototype.hasOwnProperty.call(cur, col)) { delete cur[col]; continue; }
+        throw e2;
+      }
+      if (lastErr) throw lastErr;
+      return { ok: false };
+    };
+
     let rows = null;
     let error = null;
     try {
@@ -1026,14 +1054,38 @@ app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
       if (u?.permissoes == null || (typeof u?.permissoes === 'string') || !Array.isArray(u?.permissoes)) patch.permissoes = perms;
 
       const senhaHash = String(u?.senha_hash || '').trim();
-      if (!senhaHash) {
-        const alt = String(u?.senha || '').trim();
-        if (alt.startsWith('$2')) patch.senha_hash = alt;
+      const senhaAlt = String(u?.senha || '').trim();
+      const hashLooksBcrypt = (h) => typeof h === 'string' && h.trim().startsWith('$2');
+      const hashIsOk = hashLooksBcrypt(senhaHash);
+
+      if (!hashIsOk) {
+        if (hashLooksBcrypt(senhaAlt)) {
+          patch.senha_hash = senhaAlt;
+          patch.senha = null;
+          patch.precisa_trocar_senha = true;
+          patch.trocar_senha = true;
+        } else if (senhaAlt) {
+          try {
+            patch.senha_hash = bcrypt.hashSync(senhaAlt, 10);
+            patch.senha = null;
+            patch.precisa_trocar_senha = true;
+            patch.trocar_senha = true;
+          } catch (_) {}
+        } else {
+          const tmp = 'Tmp@' + crypto.randomBytes(6).toString('hex');
+          try {
+            patch.senha_hash = bcrypt.hashSync(tmp, 10);
+            patch.precisa_trocar_senha = true;
+            patch.trocar_senha = true;
+            patch._senha_tmp = tmp;
+          } catch (_) {}
+        }
       }
 
       if (Object.keys(patch).length) {
         updates.push({ id, patch });
-        affected.push({ id, email: u?.email || null, patch });
+        const { _senha_tmp, ...patchOut } = patch;
+        affected.push({ id, email: u?.email || null, patch: patchOut, ...(patch._senha_tmp ? { senha_tmp: patch._senha_tmp } : {}) });
       }
     });
 
@@ -1043,8 +1095,8 @@ app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
 
     let okCount = 0;
     for (const u of updates) {
-      const { error: e2 } = await supabase.from('usuarios').update(u.patch).eq('id', u.id);
-      if (e2) throw e2;
+      const { _senha_tmp, ...patch } = u.patch || {};
+      await updateDroppingUnknown(u.id, patch);
       okCount++;
     }
     return res.json({ ok: true, updated: okCount, total: updates.length, affected: affected.slice(0, 50) });
