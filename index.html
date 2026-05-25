@@ -16957,6 +16957,33 @@ async function _mapcliCarregarRoteiroSemana(){
   }
 }
 
+function mapcliSetAba(tab){
+  const t = (String(tab||'').trim().toLowerCase() === 'roteiro') ? 'roteiro' : 'mapa';
+  window._mapCliStartTab = t;
+  const aMapa = document.getElementById('mapcli-aba-mapa');
+  const aRot = document.getElementById('mapcli-aba-roteiro');
+  if(aMapa) aMapa.style.display = (t === 'mapa') ? 'grid' : 'none';
+  if(aRot) aRot.style.display = (t === 'roteiro') ? '' : 'none';
+  const bMapa = document.getElementById('mapcli-tab-mapa');
+  const bRot = document.getElementById('mapcli-tab-roteiro');
+  if(bMapa){
+    bMapa.classList.toggle('btn-accent', t === 'mapa');
+    bMapa.classList.toggle('btn-ghost', t !== 'mapa');
+  }
+  if(bRot){
+    bRot.classList.toggle('btn-accent', t === 'roteiro');
+    bRot.classList.toggle('btn-ghost', t !== 'roteiro');
+  }
+  const host = document.getElementById('mapcli-roteiro-embed');
+  const pg = document.getElementById('page-roteiro-entrega');
+  if(t === 'roteiro'){
+    if(host && pg && pg.parentElement !== host) host.appendChild(pg);
+    if(pg) pg.style.display = '';
+  } else {
+    if(pg) pg.style.display = 'none';
+  }
+}
+
 function _mapcliRenderRoteiroSemana(){
   const box = document.getElementById('mapcli-roteiro');
   if(!box) return;
@@ -34682,6 +34709,10 @@ function go(id){
   if(id==='chapas1') id='estoque';
   if(id==='mapaclientes') id='mapa-clientes';
   if(id==='simulador') id='simd';
+  if(id==='roteiro-entrega'){
+    try{ window._mapCliStartTab = 'roteiro'; }catch(e){}
+    id = 'mapa-clientes';
+  }
   // Ocultar todas as views
   const todasViews = document.querySelectorAll('[id^="view-"], [id^="page-"], .view-content, .page-content');
   todasViews.forEach(v => { try{ v.style.display = 'none'; }catch(e){} });
@@ -34709,6 +34740,9 @@ function go(id){
   }
   if(id === 'hub'){
     try{ if(typeof renderHub === 'function') renderHub(); }catch(e){}
+  }
+  if(id === 'mapa-clientes'){
+    try{ if(typeof mapcliSetAba === 'function') mapcliSetAba(window._mapCliStartTab || 'mapa'); }catch(e){}
   }
 
   // No mobile, garantir que a tela anterior fique 100% oculta
@@ -37434,6 +37468,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <!-- ========== 3A. MAPA DE CLIENTES ========== -->
 <div id="page-mapa-clientes" class="page">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
+    <button id="mapcli-tab-mapa" class="btn btn-ghost btn-sm" onclick="mapcliSetAba('mapa')">Mapa</button>
+    <button id="mapcli-tab-roteiro" class="btn btn-ghost btn-sm" onclick="mapcliSetAba('roteiro')">Roteiro</button>
     <select id="mapcli-emp" onchange="renderMapaClientes(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas as empresas</option>
     </select>
@@ -37449,7 +37485,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="mapaClientesRecarregar(true)">↻ Atualizar</button>
   </div>
   <div class="page-body">
-    <div style="display:grid;grid-template-columns:1.6fr .8fr;gap:12px;align-items:stretch">
+    <div id="mapcli-aba-mapa" style="display:grid;grid-template-columns:1.6fr .8fr;gap:12px;align-items:stretch">
       <div class="sbox">
         <div class="sbox-h">🗺 Mapa <span id="mapcli-progress" style="margin-left:auto;font-family:var(--mono);font-weight:900;color:var(--text2);font-size:.72rem"></span></div>
         <div class="sbox-b" style="padding:0">
@@ -37477,6 +37513,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="sbox-b" id="mapcli-roteiro"></div>
         </div>
       </div>
+    </div>
+    <div id="mapcli-aba-roteiro" style="display:none">
+      <div id="mapcli-roteiro-embed"></div>
     </div>
   </div>
 </div>
