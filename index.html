@@ -27994,11 +27994,44 @@ function _normalizeOFRowFromApi(o){
 function _dispatchOfsAtualizadas(){
   try{ window.dispatchEvent(new Event('ofs_atualizadas')); }catch(e){}
 }
+function _ofValIsEmpty(v){
+  if(v === null || v === undefined) return true;
+  if(typeof v === 'string') return String(v).trim() === '';
+  if(Array.isArray(v)) return v.length === 0;
+  return false;
+}
+function _mergeOFPreferFilled(base, incoming){
+  const a = (base && typeof base === 'object') ? base : {};
+  const b = (incoming && typeof incoming === 'object') ? incoming : {};
+  const out = { ...a, ...b };
+  Object.keys(out).forEach((k)=>{
+    const bv = b[k];
+    if(_ofValIsEmpty(bv)){
+      const av = a[k];
+      if(!_ofValIsEmpty(av)) out[k] = av;
+    }
+  });
+  return out;
+}
 function _setOFSArquivoGlobal(all){
   const arr = Array.isArray(all) ? all : [];
   const norm = arr.map(_normalizeOFRowFromApi);
-  try{ window.OFS_ARQUIVO = norm; }catch(e){}
-  const ativas = norm.filter(o => !o.deleted_at);
+  try{
+    const prev = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
+    if(prev.length){
+      const byId = new Map(prev.map((o)=>[String(o?.id||'').trim(), o]));
+      window.OFS_ARQUIVO = norm.map((o)=>{
+        const id = String(o?.id||'').trim();
+        const old = id ? (byId.get(id) || null) : null;
+        return old ? normalizeOF(_mergeOFPreferFilled(old, o)) : o;
+      });
+    } else {
+      window.OFS_ARQUIVO = norm;
+    }
+  }catch(e){
+    try{ window.OFS_ARQUIVO = norm; }catch(_){}
+  }
+  const ativas = (Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : norm).filter(o => o && !o.deleted_at);
   try{ window.OFS = ativas; }catch(e){}
   try{ window.OFs = ativas; }catch(e){}
   try{ OFs = ativas; }catch(e){}
@@ -28013,7 +28046,7 @@ function _upsertOFSArquivoLocal(ofRow){
   const arr = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : null;
   if(arr){
     const i = arr.findIndex(x => String(x?.id||'').trim() === sid);
-    if(i >= 0){ arr[i] = o; changed = true; }
+    if(i >= 0){ arr[i] = normalizeOF(_mergeOFPreferFilled(arr[i], o)); changed = true; }
     else { arr.unshift(o); changed = true; }
   }
   if(changed){
@@ -28186,6 +28219,7 @@ function _inserirOFLocal(nova){
   try{ if(Array.isArray(window.OFS_ARQUIVO)) _upsertOFSArquivoLocal(o); }catch(e){}
   window._ofsCarregadasEm = null;
   _ultimaCargaOFs = 0;
+  _ofsArquivoLastLoad = 0;
   return o;
 }
 function _atualizarOFLocal(id, patch){
@@ -28207,6 +28241,7 @@ function _atualizarOFLocal(id, patch){
   try{ if(updated && Array.isArray(window.OFS_ARQUIVO)) _upsertOFSArquivoLocal(updated); }catch(e){}
   window._ofsCarregadasEm = Date.now();
   _ultimaCargaOFs = window._ofsCarregadasEm;
+  _ofsArquivoLastLoad = 0;
   return updated;
 }
 function _removerOFAtivaLocal(id){

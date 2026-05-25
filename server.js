@@ -2430,7 +2430,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const cliIds = Array.from(new Set(
         arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
-      )).slice(0, 500);
+      )).slice(0, 1000);
       const vendIdsFromRows = Array.from(new Set(
         arr.map((o) => String(
           o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? o?.vendId ?? ''
@@ -2440,7 +2440,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         arr.map((o) => String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim())
           .filter((v) => isUuid(v))
       ));
-      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 500);
+      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 1000);
       if (!cliIds.length && !preVendIds.length) return arr;
       try {
         let cls = [];
@@ -2456,13 +2456,14 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const vendIdsFromClients = Array.from(new Set(
           cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
         ));
-        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 500);
+        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 1000);
         const byVendId = new Map();
         if (vendIds.length) {
           const { data: vds } = await supabase
             .from('vendedores')
             .select('id,nome')
-            .in('id', vendIds);
+            .in('id', vendIds)
+            .limit(1000);
           (Array.isArray(vds) ? vds : []).forEach((v) => { if (v?.id) byVendId.set(String(v.id), v); });
         }
         return arr.map((o) => {
