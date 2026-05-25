@@ -27180,6 +27180,10 @@ function getDeviceLabel(device){
 function aplicarDispositivo(device){
   const d=(device==='tablet'||device==='mobile')?device:'desktop';
   document.body.setAttribute('data-device',d);
+  try{
+    const isMob = (d === 'mobile') || (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:768px)').matches);
+    document.body && document.body.classList && document.body.classList.toggle('is-mobile', !!isMob);
+  }catch(e){}
   try{ localStorage.setItem('erp_device', d); }catch(e){}
   const pill=document.getElementById('login-device-pill');
   if(pill) pill.textContent=getDeviceLabel(d);
