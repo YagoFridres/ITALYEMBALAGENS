@@ -38134,39 +38134,125 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <span style="font-size:.78rem;color:var(--text2)">✨ Hub Inicial</span>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="go('home')">↩ Home</button>
-    <button class="btn btn-ghost btn-sm" onclick="hubToggleInicial()">⭐ Usar como inicial</button>
+    <button class="btn btn-ghost btn-sm" onclick="hubToggleInicial()" id="hub-btn-inicial">⭐ Usar como inicial</button>
     <button class="btn btn-ghost btn-sm" onclick="renderHub(true)">↻ Atualizar</button>
   </div>
-  <div class="page-body" style="padding:18px 14px;max-width:1400px">
-    <div id="hub-top" style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-      <div>
-        <div id="hub-sub" style="font-size:.78rem;color:var(--text3)">—</div>
-        <div id="hub-title" style="font-size:1.2rem;font-weight:900">Carregando…</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-accent btn-sm" onclick="go('pcp')">Abrir PCP</button>
-        <button class="btn btn-ghost btn-sm" onclick="go('ofmaq')">OFs por Máquina</button>
-        <button class="btn btn-ghost btn-sm" onclick="go('lancamento')">Armazenamento</button>
-      </div>
-    </div>
-    <div id="hub-cards" class="cards-row" style="margin-bottom:14px"></div>
-    <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:start">
-      <div class="sbox">
-        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <span>📊 OFs por status (últimos 30 dias)</span>
-          <span id="hub-status-sub" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)"></span>
+  <style>
+    .hub-shell{max-width:1400px;margin:0 auto;padding:18px 14px;display:grid;gap:12px}
+    .hub-header{display:grid;grid-template-columns:1fr minmax(280px,640px) 1fr;gap:12px;align-items:end}
+    .hub-greet{font-size:1.15rem;font-weight:950;letter-spacing:.2px}
+    .hub-sub{font-size:.78rem;color:var(--text3);margin-top:2px}
+    .hub-updated{font-family:var(--mono);font-size:.72rem;color:var(--text2);text-align:right}
+    .hub-search{width:100%;padding:12px 14px;border-radius:12px;background:var(--s2);color:var(--text);border:1px solid var(--border);font-size:1rem;font-weight:800}
+    .hub-search:focus{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
+    .hub-search-wrap{position:relative}
+    .hub-search-results{position:absolute;left:0;right:0;top:calc(100% + 8px);background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;z-index:50;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+    .hub-search-results .sec{padding:12px 14px;border-top:1px solid var(--border)}
+    .hub-search-results .sec:first-child{border-top:none}
+    .hub-search-results .h{font-size:.72rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px}
+    .hub-search-results .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0}
+    .hub-search-results .row + .row{border-top:1px dashed rgba(255,255,255,.08)}
+    .hub-search-results .btnlink{background:transparent;border:none;color:var(--accent);font-weight:950;cursor:pointer;padding:0;font-family:var(--font)}
+    .hub-kpis{display:grid;grid-template-columns:repeat(6,minmax(160px,1fr));gap:10px}
+    .hub-kpi{padding:14px;border-radius:14px;background:var(--bg2);border:1px solid var(--border);min-width:0}
+    .hub-kpi .l{font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:950;letter-spacing:.08em;text-transform:uppercase}
+    .hub-kpi .v{margin-top:8px;font-size:1.25rem;font-weight:1000}
+    .hub-kpi .s{margin-top:6px;font-size:.76rem;color:var(--text2)}
+    .hub-main{display:grid;grid-template-columns:1.4fr .9fr;gap:12px;align-items:start}
+    .hub-chart-wrap{height:240px}
+    .hub-chart-controls{display:flex;gap:6px;flex-wrap:wrap}
+    .hub-chart-summary{margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;color:var(--text2);font-family:var(--mono);font-size:.72rem}
+    .hub-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--border)}
+    .hub-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .hub-qbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;border-radius:14px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-weight:1000;cursor:pointer;min-height:54px}
+    .hub-qbtn:hover{filter:brightness(1.05)}
+    .hub-qbtn.primary{background:var(--accent);border-color:rgba(0,0,0,.12);color:#0b1020}
+    .hub-list{display:grid;gap:8px}
+    .hub-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:var(--s2);border:1px solid var(--border)}
+    .hub-item .t{font-weight:950}
+    .hub-item .m{font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-top:2px}
+    .hub-item .r{font-family:var(--mono);font-size:.72rem;color:var(--text2);white-space:nowrap}
+    .hub-footer{display:flex;flex-direction:column;gap:6px;margin-top:2px;padding:12px 4px;color:var(--text3);font-size:.74rem}
+    .hub-footer-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+    .hub-footer-top .mono{font-family:var(--mono);color:var(--text2)}
+    .hub-footer-phrase{color:var(--text2);font-weight:900}
+    .hub-skel{background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.10), rgba(255,255,255,.05));background-size:200% 100%;animation:hubSk 1.3s linear infinite;border-radius:12px}
+    @keyframes hubSk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    @media (max-width: 980px){
+      .hub-header{grid-template-columns:1fr}
+      .hub-updated{text-align:left}
+      .hub-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .hub-main{grid-template-columns:1fr}
+      .hub-quick{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .hub-chart-wrap{height:210px}
+    }
+  </style>
+  <div class="page-body">
+    <div class="hub-shell">
+      <div class="hub-header">
+        <div>
+          <div class="hub-greet" id="hub-greet">Carregando…</div>
+          <div class="hub-sub" id="hub-sub">—</div>
         </div>
-        <div class="sbox-b" id="hub-status"></div>
+        <div class="hub-search-wrap">
+          <input id="hub-search" class="hub-search" placeholder="Buscar cliente, OF, produto..." autocomplete="off" />
+          <div id="hub-search-results" class="hub-search-results" style="display:none"></div>
+        </div>
+        <div class="hub-updated" id="hub-updated">—</div>
       </div>
-      <div style="display:grid;gap:12px">
-        <div class="sbox">
-          <div class="sbox-h">🏆 Ranking vendedores (mês)</div>
-          <div class="sbox-b" id="hub-ranking"></div>
+
+      <div id="hub-kpis" class="hub-kpis"></div>
+
+      <div class="hub-main">
+        <div style="display:grid;gap:12px">
+          <div class="sbox">
+            <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+              <span>📈 OFs por dia</span>
+              <div class="hub-chart-controls">
+                <button class="btn btn-ghost btn-sm" id="hub-chart-7d" onclick="hubSetChartRange('7d')">Esta semana</button>
+                <button class="btn btn-ghost btn-sm" id="hub-chart-30d" onclick="hubSetChartRange('30d')">Este mês</button>
+              </div>
+            </div>
+            <div class="sbox-b">
+              <div class="hub-chart-wrap">
+                <canvas id="hub-chart" style="width:100%;height:100%"></canvas>
+              </div>
+              <div id="hub-chart-summary" class="hub-chart-summary"></div>
+            </div>
+          </div>
+
+          <div class="sbox">
+            <div class="sbox-h">🚀 Acesso rápido</div>
+            <div class="sbox-b">
+              <div id="hub-quick" class="hub-quick"></div>
+            </div>
+          </div>
         </div>
-        <div class="sbox">
-          <div class="sbox-h">🔔 Pendências</div>
-          <div class="sbox-b" id="hub-pendencias"></div>
+
+        <div style="display:grid;gap:12px">
+          <div class="sbox">
+            <div class="sbox-h">🕒 Atividades recentes</div>
+            <div class="sbox-b">
+              <div id="hub-recent" class="hub-list"></div>
+            </div>
+          </div>
+          <div class="sbox">
+            <div class="sbox-h">🔔 Avisos e pendências</div>
+            <div class="sbox-b">
+              <div id="hub-warnings" class="hub-list"></div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="hub-footer">
+        <div class="hub-footer-top">
+          <div style="font-weight:1000">Italy Embalagens</div>
+          <div class="mono" id="hub-version">—</div>
+          <div class="mono" id="hub-clock">—</div>
+          <div class="mono" id="hub-last-access">—</div>
+        </div>
+        <div class="hub-footer-phrase" id="hub-motiv">—</div>
       </div>
     </div>
   </div>
@@ -49010,15 +49096,60 @@ function hubToggleInicial(){
   }catch(e){}
 }
 
-function hubCard(lbl, val, sub, color){
+function _hubNorm(s){
+  try{ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+  catch(e){ return String(s||'').toLowerCase().trim(); }
+}
+function _hubIso(v){ return String(v||'').slice(0,10); }
+function _hubOfCreated(o){ return _hubIso(o?.created_at ?? o?.createdAt ?? o?.data_criacao ?? o?.criado_em ?? ''); }
+function _hubOfProg(o){ return _hubIso(o?.data_producao ?? o?.dia ?? o?.data_programacao ?? o?.dia_programacao ?? ''); }
+function _hubOfEnt(o){ return _hubIso(o?.data_entrega ?? o?.ent ?? o?.entrega ?? ''); }
+function _hubOfConcl(o){ return _hubIso(o?.data_conclusao ?? o?.conclusao ?? o?.concluido_em ?? o?.data_faturamento ?? ''); }
+function _hubOfValor(o){ return Number(o?.valor_total ?? o?.valor_venda ?? o?.total ?? o?.val ?? 0) || 0; }
+function _hubOfNumero(o){ return String(o?.numero ?? o?.of_num ?? o?.of ?? '').trim(); }
+function _hubOfCliId(o){ return String(o?.cliente_id ?? o?.cli_id ?? o?.cliId ?? o?.cliente ?? '').trim(); }
+function _hubCliNome(o){ return String(o?.cliente_nome ?? o?.cliNome ?? o?.cliente ?? o?.clienteNome ?? '').trim(); }
+function _hubOfStatus(o){ return String(o?.status ?? '').trim(); }
+function _hubIsConcl(s){ const n=_hubNorm(s); return n.includes('conclu') || n==='pedido pronto' || n.includes('finaliz') || n.includes('faturad'); }
+function _hubIsCancel(s){ const n=_hubNorm(s); return n.includes('cancel'); }
+function _hubParseArr(v){
+  if(Array.isArray(v)) return v;
+  if(typeof v === 'string'){
+    const s = v.trim();
+    if(!s) return [];
+    try{
+      const j = JSON.parse(s);
+      if(Array.isArray(j)) return j;
+    }catch(e){}
+    return s.split(',').map(x=>String(x||'').trim()).filter(Boolean);
+  }
+  return [];
+}
+function _hubAgo(ts){
+  const t = (ts instanceof Date) ? ts.getTime() : (Number.isFinite(Number(ts)) ? Number(ts) : Date.parse(String(ts||'')));
+  if(!Number.isFinite(t)) return '—';
+  const sec = Math.max(0, Math.floor((Date.now() - t)/1000));
+  if(sec < 60) return `há ${sec}s`;
+  const min = Math.floor(sec/60);
+  if(min < 60) return `há ${min}min`;
+  const hr = Math.floor(min/60);
+  if(hr < 24) return `há ${hr}h`;
+  const d = Math.floor(hr/24);
+  return `há ${d}d`;
+}
+function _hubFmtPct(delta, base){
+  if(!base) return delta ? `+${delta}` : '0';
+  const pct = Math.round((delta/base)*100);
+  return (pct>0?`+${pct}%`:(pct<0?`${pct}%`:'0%'));
+}
+function _hubKpi(label, value, sub, color){
   const c = color || 'var(--accent)';
-  return `<div class="card" style="min-width:160px">
-    <div class="card-lbl">${escH(lbl)}</div>
-    <div class="card-val" style="color:${escH(c)}">${escH(val)}</div>
-    <div class="card-sub">${escH(sub || '')}</div>
+  return `<div class="hub-kpi">
+    <div class="l">${escH(label)}</div>
+    <div class="v" style="color:${escH(c)}">${escH(value)}</div>
+    <div class="s">${escH(sub||'')}</div>
   </div>`;
 }
-
 function _hubGetOfsBase(){
   const a = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : null;
   if(a && a.length) return a;
@@ -49030,61 +49161,441 @@ function _hubGetOfsBase(){
   if(d && d.length) return d;
   return [];
 }
-
-async function renderHub(forcar=false){
+async function _hubLoadData(forcar){
   try{
-    const title = document.getElementById('hub-title');
-    const sub = document.getElementById('hub-sub');
-    const cards = document.getElementById('hub-cards');
-    const rank = document.getElementById('hub-ranking');
-    const stBox = document.getElementById('hub-status');
-    const stSub = document.getElementById('hub-status-sub');
-    const pend = document.getElementById('hub-pendencias');
-    if(!title || !cards || !rank || !stBox || !pend) return;
+    if(!window.__HUB_CACHE) window.__HUB_CACHE = { ts:0, data:null };
+    const now = Date.now();
+    if(!forcar && window.__HUB_CACHE.data && (now - window.__HUB_CACHE.ts) < 60000) return window.__HUB_CACHE.data;
 
-    const nome = String((window.CURRENT_USER?.nome || window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador') || 'Administrador');
-    const first = nome.split(' ')[0] || 'Administrador';
-    title.textContent = `Bem-vindo, ${first}`;
-    if(sub) sub.textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const needsApi = !!(window._apiConectado && window.CURRENT_USER);
+    const empId = String(window.EMP_FILTRO || window.EMPRESA_ATIVA || '').trim();
+    const from = new Date(Date.now() - (40*24*60*60*1000)).toISOString().slice(0,10);
 
+    const loadCli = (typeof carregarClientes === 'function') ? carregarClientes(false).catch(()=>null) : Promise.resolve(null);
+    const loadAm = (typeof carregarAmostras === 'function') ? carregarAmostras({ forcar:false }).catch(()=>[]) : Promise.resolve([]);
     let ofs = _hubGetOfsBase();
-    const hoje = new Date().toISOString().slice(0,10);
-    const corte = new Date(); corte.setDate(corte.getDate() - 30);
-    const from = corte.toISOString().slice(0,10);
-    if((!ofs || ofs.length < 50) && _apiConectado && CURRENT_USER){
+
+    if(needsApi && (!Array.isArray(ofs) || ofs.length < 80)){
       try{
-        const token = localStorage.getItem('token') || '';
-        const empId = window.EMP_FILTRO || window.EMPRESA_ATIVA || '';
-        const r = await fetch('/api/ofs?lite=1&limit=300&nocache=1&from='+encodeURIComponent(from)+'&date_field=created_at' + (empId ? '&emp_id='+encodeURIComponent(empId) : ''), { headers:{'Authorization':'Bearer '+token} });
-        const d = await r.json().catch(()=>null);
+        const url = '/api/ofs?lite=1&limit=900&nocache=1&from='+encodeURIComponent(from)+'&date_field=created_at' + (empId ? '&emp_id='+encodeURIComponent(empId) : '');
+        const r = await apiFetch(url, { method:'GET' });
+        const d = r ? await r.json().catch(()=>null) : null;
         const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
-        if(arr.length) ofs = arr;
+        if(Array.isArray(arr) && arr.length) ofs = arr;
       }catch(e){}
     }
 
-    const nrm = (s)=>{ try{ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }catch(e){ return String(s||'').toLowerCase().trim(); } };
-    const entOf = (o)=> String(o?.data_entrega ?? o?.ent ?? '').slice(0,10);
-    const createdOf = (o)=> String(o?.created_at ?? o?.createdAt ?? '').slice(0,10);
-    const conclOf = (o)=> String(o?.data_conclusao ?? o?.conclusao ?? '').slice(0,10);
-    const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.total ?? o?.val ?? 0) || 0;
-    const vendNome = (o)=> String(o?.vendNome ?? o?.vendedor_nome ?? o?.vendedor ?? '').trim();
+    await loadCli;
+    const amostras = await loadAm;
+    const clientes = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
 
-    const arr30 = (Array.isArray(ofs)?ofs:[]).filter(o=>{
-      const c = createdOf(o);
-      return !c || (c >= from && c <= hoje);
+    const out = { ofs: Array.isArray(ofs)?ofs:[], clientes, amostras: Array.isArray(amostras)?amostras:[] };
+    window.__HUB_CACHE = { ts: now, data: out };
+    return out;
+  }catch(e){
+    return { ofs: _hubGetOfsBase(), clientes: Array.isArray(window.CLIENTES)?window.CLIENTES:[], amostras: Array.isArray(window.AMOSTRAS)?window.AMOSTRAS:[] };
+  }
+}
+function hubSetChartRange(r){
+  try{
+    window.__HUB_CHART_RANGE = (r === '30d') ? '30d' : '7d';
+    try{ renderHub(false); }catch(e){}
+  }catch(e){}
+}
+function _hubDrawChart(canvas, buckets, theme){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width = Math.max(600, Math.floor(canvas.clientWidth || 900));
+  const h = canvas.height = Math.max(180, Math.floor(canvas.clientHeight || 240));
+
+  ctx.clearRect(0,0,w,h);
+
+  const padL = 46, padR = 16, padT = 14, padB = 32;
+  const cw = w - padL - padR;
+  const ch = h - padT - padB;
+  const maxV = Math.max(1, ...buckets.map(b=>b.n));
+
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = theme.grid;
+  ctx.lineWidth = 1;
+  for(let i=0;i<=4;i++){
+    const y = padT + (ch * (i/4));
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL+cw, y); ctx.stroke();
+    const val = Math.round(maxV * (1 - (i/4)));
+    ctx.fillStyle = theme.text2;
+    ctx.font = '900 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(val), padL-8, y);
+  }
+
+  const barW = cw / Math.max(1, buckets.length);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for(let i=0;i<buckets.length;i++){
+    const b = buckets[i];
+    const x = padL + i*barW;
+    const bh = Math.round((b.n/maxV) * (ch-8));
+    const y = padT + (ch - bh);
+    ctx.fillStyle = theme.bar;
+    const rx = 8;
+    const bw = Math.max(10, barW - 8);
+    const bx = x + 4;
+    const by = y;
+    const hh = bh;
+    const rr = Math.min(rx, bw/2, hh/2);
+    ctx.beginPath();
+    ctx.moveTo(bx+rr, by);
+    ctx.arcTo(bx+bw, by, bx+bw, by+hh, rr);
+    ctx.arcTo(bx+bw, by+hh, bx, by+hh, rr);
+    ctx.arcTo(bx, by+hh, bx, by, rr);
+    ctx.arcTo(bx, by, bx+bw, by, rr);
+    ctx.closePath();
+    ctx.fill();
+
+    if(buckets.length <= 12 || i % Math.ceil(buckets.length/10) === 0){
+      ctx.fillStyle = theme.text3;
+      ctx.font = '900 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+      ctx.fillText(b.lbl, bx + bw/2, padT+ch+8);
+    }
+  }
+}
+function _hubClockTick(){
+  const el = document.getElementById('hub-clock');
+  if(!el) return;
+  const d = new Date();
+  el.textContent = d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function _hubBindSearch(){
+  if(window.__HUB_SEARCH_BOUND) return;
+  window.__HUB_SEARCH_BOUND = 1;
+  const input = document.getElementById('hub-search');
+  const box = document.getElementById('hub-search-results');
+  if(!input || !box) return;
+  let t = null;
+  const close = ()=>{ box.style.display='none'; box.innerHTML=''; };
+  document.addEventListener('click', (e)=>{
+    const inside = (e.target === input) || box.contains(e.target);
+    if(!inside) close();
+  });
+  input.addEventListener('input', ()=>{
+    try{ if(t) clearTimeout(t); }catch(e){}
+    t = setTimeout(()=>{ try{ hubRenderSearch(); }catch(e){} }, 140);
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape'){ close(); input.blur(); }
+  });
+}
+function _hubBuildIndex(data){
+  const clientes = Array.isArray(data?.clientes) ? data.clientes : [];
+  const ofs = Array.isArray(data?.ofs) ? data.ofs : [];
+  const cliById = new Map();
+  clientes.forEach(c=>{
+    const id = String(c?.id ?? c?.cli_id ?? '').trim();
+    if(!id) return;
+    cliById.set(id, c);
+  });
+  return { clientes, ofs, cliById };
+}
+function hubRenderSearch(){
+  const input = document.getElementById('hub-search');
+  const box = document.getElementById('hub-search-results');
+  if(!input || !box) return;
+  const qRaw = String(input.value || '').trim();
+  const q = _hubNorm(qRaw);
+  if(q.length < 2){ box.style.display='none'; box.innerHTML=''; return; }
+  const data = (window.__HUB_CACHE && window.__HUB_CACHE.data) ? window.__HUB_CACHE.data : null;
+  if(!data){ box.style.display='none'; box.innerHTML=''; return; }
+  const idx = _hubBuildIndex(data);
+  const matchCli = idx.clientes.find(c=>{
+    const hay = _hubNorm([c?.nome, c?.razao, c?.cnpj, c?.cidade, c?.uf].map(x=>String(x||'')).join(' '));
+    return hay.includes(q);
+  }) || null;
+  const matchOfs = idx.ofs.filter(o=>{
+    const hay = _hubNorm([_hubOfNumero(o), _hubCliNome(o), o?.descricao, o?.prodDesc, o?.obs].map(x=>String(x||'')).join(' '));
+    return hay.includes(q);
+  }).slice(0,8);
+  if(!matchCli && !matchOfs.length){
+    box.innerHTML = `<div class="sec"><div class="h">RESULTADOS</div><div style="color:var(--text3)">Nada encontrado.</div></div>`;
+    box.style.display = '';
+    return;
+  }
+  const cliSec = (()=>{
+    if(!matchCli) return '';
+    const cid = String(matchCli?.id ?? matchCli?.cli_id ?? '').trim();
+    const nome = String(matchCli?.nome ?? matchCli?.razao ?? '—').trim() || '—';
+    const cidade = String(matchCli?.cidade ?? '').trim();
+    const uf = String(matchCli?.uf ?? '').trim();
+    const cliOfs = idx.ofs.filter(o=>_hubOfCliId(o) === cid);
+    const cliAbertas = cliOfs.filter(o=>{
+      const st = _hubOfStatus(o);
+      return !_hubIsConcl(st) && !_hubIsCancel(st);
+    });
+    const totalComprado = cliOfs.reduce((s,o)=>s+_hubOfValor(o),0);
+    const ultima = cliOfs.slice().sort((a,b)=>String(_hubOfCreated(b)).localeCompare(String(_hubOfCreated(a)),'pt-BR')).find(Boolean) || null;
+    const ultimaDt = ultima ? _hubOfCreated(ultima) : '';
+    const ultimaProd = String(ultima?.descricao ?? ultima?.prodDesc ?? '').trim();
+    const openRows = cliAbertas.slice().sort((a,b)=>String(_hubOfEnt(a)).localeCompare(String(_hubOfEnt(b)),'pt-BR')).slice(0,5).map(o=>{
+      const oid = String(o?.id||'').trim();
+      const num = _hubOfNumero(o) || '—';
+      const prod = String(o?.descricao ?? o?.prodDesc ?? '').trim() || '—';
+      const ent = _hubOfEnt(o);
+      const st = _hubOfStatus(o) || '—';
+      return `<div class="row">
+        <div style="min-width:0">
+          <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(num)} · ${escH(prod)}</div>
+          <div class="m">Entrega: <b>${escH(ent ? fmtD(ent) : '—')}</b> · Status: <b>${escH(st)}</b></div>
+        </div>
+        <button class="btnlink" onclick="abrirModalOF('${escAttr(oid)}')">Abrir</button>
+      </div>`;
+    }).join('');
+    const header = `<div class="sec">
+      <div class="h">CLIENTE</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-weight:1000;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(nome)}</div>
+          <div class="m">${escH([cidade, uf].filter(Boolean).join(' / ') || '—')}</div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <span class="hub-pill">OFs em aberto: <b>${escH(String(cliAbertas.length))}</b></span>
+            <span class="hub-pill">Histórico: <b>${escH(String(cliOfs.length))}</b></span>
+            <span class="hub-pill">Total comprado: <b style="color:var(--green)">${escH(fmtR(totalComprado))}</b></span>
+          </div>
+          <div style="margin-top:10px;color:var(--text2);font-family:var(--mono);font-size:.72rem">
+            OF mais recente: <b>${escH(ultima ? (_hubOfNumero(ultima) || '—') : '—')}</b>
+            · Última compra: <b>${escH(ultimaDt ? fmtD(ultimaDt) : '—')}</b>
+            ${ultimaProd?`· ${escH(ultimaProd)}`:''}
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="go('clientes')">Ver clientes</button>
+          <button class="btn btn-accent btn-sm" onclick="abrirModalOF('')">Nova OF</button>
+        </div>
+      </div>
+    </div>`;
+    const openSec = openRows ? `<div class="sec"><div class="h">OFs EM ABERTO</div>${openRows}</div>` : '';
+    return header + openSec;
+  })();
+  const ofSec = (()=>{
+    if(!matchOfs.length) return '';
+    const rows = matchOfs.map(o=>{
+      const oid = String(o?.id||'').trim();
+      const num = _hubOfNumero(o) || '—';
+      const cli = _hubCliNome(o) || '—';
+      const prod = String(o?.descricao ?? o?.prodDesc ?? '').trim();
+      const ent = _hubOfEnt(o);
+      const st = _hubOfStatus(o) || '—';
+      return `<div class="row">
+        <div style="min-width:0">
+          <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(num)} · ${escH(cli)}</div>
+          <div class="m">${escH(prod || '—')} · Entrega: <b>${escH(ent ? fmtD(ent) : '—')}</b> · <b>${escH(st)}</b></div>
+        </div>
+        <button class="btnlink" onclick="abrirModalOF('${escAttr(oid)}')">Abrir</button>
+      </div>`;
+    }).join('');
+    return `<div class="sec"><div class="h">OFs / ITENS</div>${rows}</div>`;
+  })();
+  box.innerHTML = cliSec + ofSec;
+  box.style.display = '';
+}
+function _hubStartPolling(){
+  if(window.__HUB_POLL) return;
+  window.__HUB_POLL = setInterval(()=>{
+    try{
+      if(String(window._PAGE_ATUAL||'') !== 'hub') return;
+      renderHub(false);
+    }catch(e){}
+  }, 30000);
+}
+async function renderHub(forcar=false){
+  try{
+    const greet = document.getElementById('hub-greet');
+    const sub = document.getElementById('hub-sub');
+    const kpis = document.getElementById('hub-kpis');
+    const recent = document.getElementById('hub-recent');
+    const warns = document.getElementById('hub-warnings');
+    const updated = document.getElementById('hub-updated');
+    const verEl = document.getElementById('hub-version');
+    const lastEl = document.getElementById('hub-last-access');
+    const chart = document.getElementById('hub-chart');
+    const chartSum = document.getElementById('hub-chart-summary');
+    const quick = document.getElementById('hub-quick');
+    const btnInit = document.getElementById('hub-btn-inicial');
+
+    if(!greet || !kpis || !recent || !warns || !updated || !verEl || !lastEl || !chart || !chartSum || !quick) return;
+
+    _hubBindSearch();
+    _hubStartPolling();
+    if(!window.__HUB_CLOCK){
+      window.__HUB_CLOCK = setInterval(()=>{ try{ if(String(window._PAGE_ATUAL||'') === 'hub') _hubClockTick(); }catch(e){} }, 1000);
+    }
+    _hubClockTick();
+
+    const nome = String((window.CURRENT_USER?.nome || window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador') || 'Administrador');
+    const first = nome.split(' ')[0] || 'Administrador';
+    greet.textContent = `Bem-vindo, ${first}`;
+    if(sub) sub.textContent = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+    const curStart = String(localStorage.getItem('italy_start_page') || '').trim().toLowerCase();
+    if(btnInit) btnInit.textContent = (curStart === 'hub') ? '⭐ Hub é inicial' : '⭐ Usar como inicial';
+
+    const lastKey = 'italy_last_access_ts';
+    const prevTs = Number(localStorage.getItem(lastKey) || 0) || 0;
+    const prevTxt = prevTs ? new Date(prevTs).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+    lastEl.textContent = `Último acesso: ${prevTxt}`;
+    localStorage.setItem(lastKey, String(Date.now()));
+
+    const phrases = [
+      'Foco no essencial. O resto vira rotina.',
+      'Qualidade é consistência em detalhes.',
+      'Hoje é dia de reduzir atrasos e aumentar fluxo.',
+      'Processo claro, time rápido, cliente feliz.',
+      'Menos retrabalho. Mais entrega.'
+    ];
+    const day = Math.floor(Date.now() / (24*60*60*1000));
+    const ph = phrases[day % phrases.length];
+    const motiv = document.getElementById('hub-motiv');
+    if(motiv) motiv.textContent = ph;
+    verEl.textContent = 'PCP Pro v12 — Multiempresa';
+
+    if(!window.__HUB_CHART_RANGE) window.__HUB_CHART_RANGE = '7d';
+    const range = window.__HUB_CHART_RANGE;
+    const b7 = document.getElementById('hub-chart-7d');
+    const b30 = document.getElementById('hub-chart-30d');
+    if(b7 && b30){
+      const a7 = range === '7d';
+      b7.classList.toggle('btn-accent', a7);
+      b7.classList.toggle('btn-ghost', !a7);
+      b30.classList.toggle('btn-accent', !a7);
+      b30.classList.toggle('btn-ghost', a7);
+    }
+
+    kpis.innerHTML = Array.from({length:6}).map(()=>`<div class="hub-kpi hub-skel" style="height:92px"></div>`).join('');
+    recent.innerHTML = `<div class="hub-item hub-skel" style="height:64px"></div><div class="hub-item hub-skel" style="height:64px"></div><div class="hub-item hub-skel" style="height:64px"></div>`;
+    warns.innerHTML = `<div class="hub-item hub-skel" style="height:64px"></div><div class="hub-item hub-skel" style="height:64px"></div>`;
+    quick.innerHTML = Array.from({length:6}).map(()=>`<div class="hub-qbtn hub-skel" style="height:54px"></div>`).join('');
+    chartSum.innerHTML = '';
+
+    const data = await _hubLoadData(!!forcar);
+    const ofs = Array.isArray(data?.ofs) ? data.ofs : [];
+    const clientes = Array.isArray(data?.clientes) ? data.clientes : [];
+    const amostras = Array.isArray(data?.amostras) ? data.amostras : [];
+
+    const cliById = new Map();
+    clientes.forEach(c=>{
+      const id = String(c?.id || '').trim();
+      if(!id) return;
+      cliById.set(id, c);
     });
 
-    const abertas = arr30.filter(o=>{
-      const s = nrm(o?.status);
-      return !(s.includes('conclu') || s === 'pedido pronto' || s.includes('cancel'));
+    const hoje = new Date().toISOString().slice(0,10);
+    const ontemD = new Date(); ontemD.setDate(ontemD.getDate()-1);
+    const ontem = ontemD.toISOString().slice(0,10);
+    const mes = hoje.slice(0,7);
+
+    const abertas = ofs.filter(o=>{
+      const st = _hubOfStatus(o);
+      return !_hubIsConcl(st) && !_hubIsCancel(st);
     });
+    const abertasHoje = abertas.filter(o=>{
+      const p = _hubOfProg(o);
+      return p ? (p === hoje) : (_hubOfEnt(o) === hoje);
+    });
+    const abertasOntem = abertas.filter(o=>{
+      const p = _hubOfProg(o);
+      return p ? (p === ontem) : (_hubOfEnt(o) === ontem);
+    });
+    const delta = abertasHoje.length - abertasOntem.length;
+    const pctTxt = _hubFmtPct(delta, abertasOntem.length);
+
     const atrasadas = abertas.filter(o=>{
-      const e = entOf(o);
-      return e && e < hoje;
+      const ent = _hubOfEnt(o);
+      return ent && ent < hoje;
     });
-    const conclHoje = arr30.filter(o=>conclOf(o) === hoje);
 
-    const empId = String(window.EMP_FILTRO || '').trim();
+    const conclMes = ofs.filter(o=>{
+      const c = _hubOfConcl(o);
+      return c && c.slice(0,7) === mes;
+    });
+    const faturMes = conclMes.reduce((s,o)=>s+_hubOfValor(o),0);
+
+    const clientesAtivos = clientes.filter(c=>{
+      const st = _hubNorm(c?.situacao ?? c?.status ?? c?.ativo);
+      if(st === 'false' || st.includes('inativ')) return false;
+      return true;
+    }).length;
+
+    const amPend = amostras.filter(a=>_hubNorm(a?.status) === 'pendente').length;
+
+    kpis.innerHTML = [
+      _hubKpi('OFs Abertas hoje', String(abertasHoje.length), `${pctTxt} vs ontem`, '#60A5FA'),
+      _hubKpi('OFs Atrasadas', String(atrasadas.length), 'Entrega vencida', '#EF4444'),
+      _hubKpi('Concluídas no mês', String(conclMes.length), mes.split('-').reverse().join('/'), '#10B981'),
+      _hubKpi('Faturamento do mês', fmtR(faturMes), 'OFs concluídas', '#10B981'),
+      _hubKpi('Clientes Ativos', String(clientesAtivos), 'Cadastro', '#A78BFA'),
+      _hubKpi('Amostras Pendentes', String(amPend), 'Aguardando retorno', '#F59E0B'),
+    ].join('');
+
+    const nowTxt = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+    updated.textContent = `Atualizado às ${nowTxt}`;
+
+    quick.innerHTML = [
+      `<button class="hub-qbtn primary" onclick="abrirModalOF('')">＋ Nova OF</button>`,
+      `<button class="hub-qbtn" onclick="abrirModalAmostra()">＋ Nova Amostra</button>`,
+      `<button class="hub-qbtn" onclick="go('orcamentos')">＋ Novo Orçamento</button>`,
+      `<button class="hub-qbtn" onclick="go('ofmaq')">⚙️ OFs por Máquina</button>`,
+      `<button class="hub-qbtn" onclick="go('lancamento')">📦 Armazenamento</button>`,
+      `<button class="hub-qbtn" onclick="go('clientes')">👥 Clientes</button>`,
+    ].join('');
+
+    const createdSorted = ofs.slice().filter(o=>_hubOfCreated(o)).sort((a,b)=>String(_hubOfCreated(b)).localeCompare(String(_hubOfCreated(a)),'pt-BR')).slice(0,5);
+    const amSorted = amostras.slice().filter(a=>String(a?.data_pedido||a?.created_at||'')).sort((a,b)=>String(b?.data_pedido||b?.created_at||'').localeCompare(String(a?.data_pedido||a?.created_at||''),'pt-BR')).slice(0,2);
+
+    const recentItems = [];
+    if(createdSorted.length){
+      createdSorted.forEach(o=>{
+        const oid = String(o?.id||'').trim();
+        const num = _hubOfNumero(o) || '—';
+        const cid = _hubOfCliId(o);
+        const c = cid ? (cliById.get(cid) || null) : null;
+        const cli = (c && (c.nome || c.razao)) ? String(c.nome||c.razao) : (_hubCliNome(o) || '—');
+        const ts = o?.created_at || o?.createdAt || '';
+        recentItems.push(`<div class="hub-item">
+          <div style="min-width:0">
+            <div class="t">${escH(num)} · ${escH(cli)}</div>
+            <div class="m">${escH(String(o?.descricao ?? o?.prodDesc ?? '').trim() || '—')}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+            <div class="r">${escH(_hubAgo(ts))}</div>
+            <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(oid)}')">Abrir</button>
+          </div>
+        </div>`);
+      });
+    }
+    if(amSorted.length){
+      amSorted.forEach(a=>{
+        const prod = String(a?.produto || a?.descricao || 'Amostra').trim();
+        const cli = String(a?.cliente_nome || a?.cliente || '—').trim();
+        const ts = a?.data_pedido || a?.created_at || '';
+        recentItems.push(`<div class="hub-item">
+          <div style="min-width:0">
+            <div class="t">🧪 ${escH(prod)}</div>
+            <div class="m">${escH(cli)} · ${escH(String(a?.status||'Pendente'))}</div>
+          </div>
+          <div class="r">${escH(_hubAgo(ts))}</div>
+        </div>`);
+      });
+    }
+    recent.innerHTML = recentItems.length ? recentItems.join('') : `<div style="color:var(--text3)">Sem atividades recentes.</div>`;
+
+    const semPapelao = abertas.filter(o=>_hubNorm(o?.obs).includes('sem papel')).length;
+    const am3d = amostras.filter(a=>{
+      const st = _hubNorm(a?.status);
+      if(st !== 'pendente') return false;
+      const dt = String(a?.data_pedido || a?.created_at || '').slice(0,10);
+      if(!dt) return false;
+      const dd = Date.parse(dt + 'T00:00:00Z');
+      if(!Number.isFinite(dd)) return false;
+      return (Date.now() - dd) >= (3*24*60*60*1000);
+    }).length;
     const estoque = Array.isArray(window.ESTOQUE) ? window.ESTOQUE : (Array.isArray(window.CHAPAS) ? window.CHAPAS : []);
     const estBaixo = (Array.isArray(estoque)?estoque:[]).filter(i=>{
       const q = Number(i?.qtd ?? i?.estoque ?? i?.quantidade ?? 0) || 0;
@@ -49092,66 +49603,77 @@ async function renderHub(forcar=false){
       return mn > 0 && q > 0 && q <= mn;
     }).length;
 
-    const cardsHtml = [
-      hubCard('OFs em aberto', String(abertas.length), 'Últimos 30 dias', '#60A5FA'),
-      hubCard('Atrasadas', String(atrasadas.length), 'Precisa atenção', '#EF4444'),
-      hubCard('Concluídas hoje', String(conclHoje.length), hoje.split('-').reverse().join('/'), '#10B981'),
-      hubCard('Estoque baixo', String(estBaixo || 0), 'Chapas com mínimo', '#F59E0B'),
-    ].join('');
-    cards.innerHTML = cardsHtml;
-
-    const byStatus = new Map();
-    arr30.forEach(o=>{
-      const sRaw = String(o?.status || '—').trim() || '—';
-      const k = nrm(sRaw) || '—';
-      const cur = byStatus.get(k) || { label: sRaw, n: 0 };
-      cur.n += 1;
-      if(cur.label === '—' && sRaw !== '—') cur.label = sRaw;
-      byStatus.set(k, cur);
-    });
-    const stArr = Array.from(byStatus.values()).sort((a,b)=>b.n-a.n).slice(0, 8);
-    const max = Math.max(1, ...stArr.map(x=>x.n));
-    if(stSub) stSub.textContent = `${String(arr30.length)} OF(s)`;
-    stBox.innerHTML = stArr.map(x=>{
-      const w = Math.round((x.n / max) * 100);
-      return `<div style="display:flex;align-items:center;gap:10px;margin:8px 0">
-        <div style="min-width:140px;font-size:.78rem;color:var(--text2)">${escH(x.label)}</div>
-        <div style="flex:1;height:10px;border-radius:999px;background:var(--s3);overflow:hidden;border:1px solid var(--border)">
-          <div style="height:100%;width:${w}%;background:var(--accent)"></div>
-        </div>
-        <div style="width:56px;text-align:right;font-family:var(--mono);font-weight:900;color:var(--text2)">${escH(String(x.n))}</div>
-      </div>`;
-    }).join('') || `<div style="color:var(--text3)">Sem dados.</div>`;
-
-    const mes = hoje.slice(0,7);
-    const conclMes = (Array.isArray(ofs)?ofs:[]).filter(o=>String(conclOf(o)).slice(0,7) === mes);
-    const vendMap = new Map();
-    conclMes.forEach(o=>{
-      const nomeV = vendNome(o) || '—';
-      const k = nomeV.toLowerCase().trim();
-      const cur = vendMap.get(k) || { nome: nomeV, valor: 0, n: 0 };
-      cur.valor += valOf(o);
-      cur.n += 1;
-      vendMap.set(k, cur);
-    });
-    const top = Array.from(vendMap.values()).filter(x=>x.nome !== '—').sort((a,b)=>b.valor-a.valor).slice(0,3);
-    rank.innerHTML = top.length ? top.map((x,i)=>`
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+    warns.innerHTML = [
+      `<div class="hub-item">
         <div style="min-width:0">
-          <div style="font-weight:900">${i+1}. ${escH(x.nome)}</div>
-          <div style="font-size:.74rem;color:var(--text3)">${escH(String(x.n))} OF(s)</div>
+          <div class="t">OFs atrasadas</div>
+          <div class="m">${escH(String(atrasadas.length))} pendência(s) com entrega vencida</div>
         </div>
-        <div style="font-family:var(--mono);font-weight:900;color:var(--green)">${escH(fmtR(x.valor))}</div>
-      </div>`).join('')
-      : `<div style="color:var(--text3)">Sem dados do mês.</div>`;
+        <button class="btn btn-ghost btn-sm" onclick="go('lancamento')">Ver</button>
+      </div>`,
+      `<div class="hub-item">
+        <div style="min-width:0">
+          <div class="t">OFs sem papelão</div>
+          <div class="m">${escH(String(semPapelao))} marcada(s) como "sem papelão"</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="go('pcp')">Ver</button>
+      </div>`,
+      `<div class="hub-item">
+        <div style="min-width:0">
+          <div class="t">Amostras sem resposta</div>
+          <div class="m">${escH(String(am3d))} pendente(s) há mais de 3 dias</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="go('amostras')">Ver</button>
+      </div>`,
+      `<div class="hub-item">
+        <div style="min-width:0">
+          <div class="t">Estoque de papelão baixo</div>
+          <div class="m">${escH(String(estBaixo))} chapa(s) no mínimo</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="go('estoque')">Ver</button>
+      </div>`,
+    ].join('');
 
-    const pendArr = [];
-    if(atrasadas.length) pendArr.push(`OFs atrasadas: ${atrasadas.length}`);
-    if(typeof window._homeIaStatus === 'function'){ }
-    if(!Array.isArray(window.CLIENTES) || !window.CLIENTES.length) pendArr.push('Clientes ainda não carregados');
-    if(!Array.isArray(window.VENDEDORES) || !window.VENDEDORES.length) pendArr.push('Vendedores ainda não carregados');
-    if(!Array.isArray(window.MAQUINAS) || !window.MAQUINAS.length) pendArr.push('Máquinas ainda não carregadas');
-    pend.innerHTML = pendArr.length ? `<ul style="margin:0;padding-left:18px;color:var(--text2)">${pendArr.map(t=>`<li>${escH(t)}</li>`).join('')}</ul>` : `<div style="color:var(--text3)">Nenhuma pendência.</div>`;
+    const days = (range === '30d') ? 30 : 7;
+    const start = new Date(); start.setDate(start.getDate() - (days-1));
+    const buckets = [];
+    for(let i=0;i<days;i++){
+      const d = new Date(start.getTime()); d.setDate(start.getDate()+i);
+      const iso = d.toISOString().slice(0,10);
+      const lbl = iso.slice(8,10) + '/' + iso.slice(5,7);
+      buckets.push({ iso, lbl, n: 0 });
+    }
+    const byIso = new Map(buckets.map(b=>[b.iso, b]));
+    ofs.forEach(o=>{
+      const c = _hubOfCreated(o);
+      const b = byIso.get(c);
+      if(b) b.n += 1;
+    });
+
+    const isDark = true;
+    const theme = {
+      grid: isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)',
+      bar: isDark ? 'rgba(99,102,241,.9)' : 'rgba(37,99,235,.9)',
+      text2: isDark ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.55)',
+      text3: isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)',
+    };
+    _hubDrawChart(chart, buckets, theme);
+
+    const periodStart = buckets[0]?.iso || hoje;
+    const periodEnd = buckets[buckets.length-1]?.iso || hoje;
+    const conclPeriodo = ofs.filter(o=>{
+      const c = _hubOfConcl(o);
+      return c && c >= periodStart && c <= periodEnd;
+    });
+    const totalPeriodo = conclPeriodo.reduce((s,o)=>s+_hubOfValor(o),0);
+    const ticket = conclPeriodo.length ? (totalPeriodo / conclPeriodo.length) : 0;
+    chartSum.innerHTML = [
+      `<span class="hub-pill">Período: <b>${escH(fmtD(periodStart))}</b> → <b>${escH(fmtD(periodEnd))}</b></span>`,
+      `<span class="hub-pill">Total: <b style="color:var(--green)">${escH(fmtR(totalPeriodo))}</b></span>`,
+      `<span class="hub-pill">Ticket médio: <b>${escH(fmtR(ticket))}</b></span>`,
+      `<span class="hub-pill">Qtd OFs: <b>${escH(String(conclPeriodo.length))}</b></span>`,
+      `<span class="hub-pill">Atualização: <b>30s</b></span>`,
+    ].join('');
   }catch(e){}
 }
 </script>
