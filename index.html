@@ -3719,7 +3719,7 @@ function renderPCP(){
 
     updateBadges();
     document.getElementById('pcp-tbody').innerHTML=lista.length===0
-    ?`<tr><td colspan="17" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF para ${pcpDiaLabel(PCP_DIA_ATUAL)} — <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="abrirModalOF()">＋ Nova OF</button></td></tr>`
+    ?`<tr><td colspan="19" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF para ${pcpDiaLabel(PCP_DIA_ATUAL)} — <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="abrirModalOF()">＋ Nova OF</button></td></tr>`
     :lista.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
     const vend=getV(o.vendId)||{nome:'—'};
@@ -3746,6 +3746,20 @@ function renderPCP(){
       ?`<img src="${firstImg}" class="img-thumb" onclick="event.stopPropagation();zoomImg('${firstImg}')" title="Clique para ampliar">`
       :`<span class="img-ph" onclick="event.stopPropagation();abrirModalOF()" title="Adicionar imagem">📷</span>`;
     const fluxoLinha = ofFluxoLinha(o);
+    const qtdTotal = (typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(o) : (Number(o.qtd || o.quantidade || 0) || 0);
+    const unitRaw =
+      (o.preco ?? o.valor_unitario ?? o.vl_unit ?? o.vl_unitario ?? o.valorUnitario ?? o.vunit ?? null);
+    const unitItemRaw = (o.itens && o.itens[0])
+      ? (o.itens[0].preco ?? o.itens[0].valor_unitario ?? o.itens[0].vl_unit ?? o.itens[0].vl_unitario ?? o.itens[0].valorUnitario ?? o.itens[0].vunit ?? o.itens[0].valor ?? null)
+      : null;
+    const unitVal = (unitRaw !== null && unitRaw !== undefined && unitRaw !== '') ? Number(unitRaw) : ((unitItemRaw !== null && unitItemRaw !== undefined && unitItemRaw !== '') ? Number(unitItemRaw) : null);
+    const unitTxt = (unitVal !== null && Number.isFinite(unitVal) && unitVal > 0)
+      ? ('R$ ' + unitVal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}))
+      : '—';
+    const totalVal = (unitVal !== null && Number.isFinite(unitVal) && unitVal > 0) ? (unitVal * (Number(qtdTotal) || 0)) : null;
+    const totalTxt = (totalVal !== null && Number.isFinite(totalVal) && totalVal > 0)
+      ? ('R$ ' + totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}))
+      : '—';
     // Status row background highlight
     const rowBg=o.status==='Em produção'?'background:rgba(202,138,4,.04);':isConcluida(o)?'background:rgba(22,163,74,.04);':o.ent&&o.ent<today()&&!isConcluida(o)?'background:rgba(220,38,38,.05);':'';
     const isEditNumero = String(window._pcpEditNumeroId || '') === String(o.id || '');
@@ -3768,6 +3782,8 @@ function renderPCP(){
       <td>${escH(cliTxt)} ${empBadge(o.empId)}</td>
       <td style="color:var(--text2)">${escH(vendTxt)}</td>
       <td class="tc">${(o.qtd||0).toLocaleString()}${(o.itens&&o.itens.length>1)?`<br><span style="font-size:.6rem;color:var(--purple);font-family:var(--mono)">${o.itens.length} itens</span>`:''}</td>
+      <td class="tc" style="font-family:var(--mono);font-weight:900">${escH(unitTxt)}</td>
+      <td class="tc" style="font-family:var(--mono);font-weight:900;color:var(--green)">${escH(totalTxt)}</td>
       ${mCells}
       <td class="tc">${stTag(o.status)}</td>
       <td><div style="display:flex;gap:3px;flex-wrap:wrap">
@@ -37977,7 +37993,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <th style="width:32px;padding:4px 8px"></th>
           <th class="th-seq">SEQ</th>
           <th>DIA PEDIDO</th><th>ENTREGA</th><th>Nº OF</th><th>IMG</th>
-          <th>CLIENTE</th><th>VENDEDOR</th><th>QUANTIDADE</th>
+          <th>CLIENTE</th><th>VENDEDOR</th><th>QUANTIDADE</th><th>VL. UNIT.</th><th>TOTAL</th>
           <th>CORTE VINCO ROTATIVA</th>
           <th>IMP 01</th><th>IMP 02</th><th>IMP 03</th><th>IMP 04</th><th>IMP 05</th>
           <th>STATUS</th><th>AÇÕES</th>
