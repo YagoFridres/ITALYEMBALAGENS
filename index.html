@@ -802,6 +802,31 @@ body.mobile-mode .mobile-only{display:flex!important;}
   padding:14px;
   margin-bottom:10px;
 }
+.mobile-input{
+  border:1px solid #2a2a4a;
+  background:#0f0f1a;
+  color:#fff;
+  border-radius:10px;
+  padding:10px 12px;
+  font-weight:800;
+  outline:none;
+}
+.mobile-kpi{
+  background:#1a1a2e;
+  border:1px solid #2a2a4a;
+  border-radius:12px;
+  padding:12px;
+}
+.mobile-kpi .k{font-size:11px;color:#8b93a7;font-weight:900;text-transform:uppercase;letter-spacing:.6px}
+.mobile-kpi .v{font-size:18px;font-weight:900;color:#fff;font-family:var(--mono);margin-top:4px}
+.mobile-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  padding:8px 0;
+  border-bottom:1px solid #2a2a4a;
+}
+.mobile-row:last-child{border-bottom:none;}
 .mobile-of-card{border-left:4px solid #4a9eff;}
 .mobile-of-card.atrasada{border-left-color:#ff4444;}
 .mobile-of-card.proxima{border-left-color:#ff9800;}
@@ -46391,6 +46416,15 @@ window.atualizarChapas = async function(){
   function renderShell(){
     const root = byId('mobile-app-root');
     if(!root) return;
+    const isAdmin = (()=>{
+      try{
+        const u = window.CURRENT_USER || window._currentUser || window._usuarioLogado || {};
+        const p = String(u?.perfil || '').toLowerCase();
+        if(p.includes('admin')) return true;
+        const perms = Array.isArray(u?.permissoes) ? u.permissoes : (typeof u?.permissoes === 'string' ? (JSON.parse(u.permissoes||'[]')||[]) : []);
+        return Array.isArray(perms) && perms.includes('tudo');
+      }catch(e){ return false; }
+    })();
     root.innerHTML = `
       <div class="mobile-app">
         <div class="mobile-header">
@@ -46432,6 +46466,7 @@ window.atualizarChapas = async function(){
           <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('jarvis')">🤖 JARVIS</button>
           <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('maquinas')">🏭 Máquinas</button>
           <button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('orcamentos')">📋 Orçamentos</button>
+          ${isAdmin ? `<button class="mobile-btn primary" onclick="window.__mobSetTab && window.__mobSetTab('admin_clientes')">🔎 Consulta cliente</button>` : ``}
         </div>
       `);
     });
@@ -47350,6 +47385,143 @@ window.atualizarChapas = async function(){
     content.addEventListener('touchend', onTouchEnd, { passive:true });
   }
 
+  async function adminLoadClientes(){
+    if(mobileState._adminClientesLoading) return;
+    if(Array.isArray(mobileState.adminClientes) && mobileState.adminClientes.length) return;
+    mobileState._adminClientesLoading = true;
+    try{
+      const qs = new URLSearchParams();
+      qs.set('limit','500');
+      qs.set('lite','1');
+      const r = await api('GET','/clientes?' + qs.toString());
+      const arr = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+      mobileState.adminClientes = arr;
+    }catch(e){
+      mobileState.adminClientes = [];
+    }finally{
+      mobileState._adminClientesLoading = false;
+    }
+  }
+
+  async function adminLoadClienteOfs(cliId){
+    const id = String(cliId || '').trim();
+    if(!id) return [];
+    const empId = String(mobileState.maqEmp || '').trim();
+    const qs = new URLSearchParams();
+    qs.set('cliente_id', id);
+    qs.set('limit','500');
+    qs.set('lite','1');
+    qs.set('order_by','created_at');
+    qs.set('order','desc');
+    if(empId) qs.set('empId', empId);
+    const r = await api('GET','/ofs?' + qs.toString());
+    const arr = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+    return arr;
+  }
+
+  function renderAdminClientes(){
+    const title = byId('mob-title'); if(title) title.textContent = '🔎 Consulta cliente';
+    const input = byId('mob-jarvis-input'); if(input) input.style.display = 'none';
+    const content = byId('mob-content');
+    if(!content) return;
+
+    const u = window.CURRENT_USER || window._currentUser || window._usuarioLogado || {};
+    const perfil = String(u?.perfil || '').toLowerCase();
+    const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
+    const isAdmin = perfil.includes('admin') || perms.includes('tudo');
+    if(!isAdmin){
+      content.innerHTML = `<div style="padding:14px;color:#cbd5e1">Disponível apenas para administrador.</div>`;
+      return;
+    }
+
+    const q = String(mobileState.adminCliQuery || '').trim().toLowerCase();
+    const clientes = Array.isArray(mobileState.adminClientes) ? mobileState.adminClientes : [];
+    const selId = String(mobileState.adminCliSelId || '').trim();
+    const sel = selId ? (clientes.find(c=>String(c?.id||'').trim()===selId) || null) : null;
+
+    if(!sel){
+      const filtrados = q
+        ? clientes.filter(c=>String(c?.nome||'').toLowerCase().includes(q)).slice(0, 50)
+        : clientes.slice(0, 50);
+      content.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <input class="mobile-input" placeholder="Buscar cliente..." value="${esc(q)}" oninput="window.__mobAdminCliBusca && window.__mobAdminCliBusca(this.value)" style="flex:1">
+          <button class="mobile-btn primary" onclick="window.__mobAdminCliReload && window.__mobAdminCliReload()">↻</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${filtrados.map(c=>`
+            <button class="mobile-btn" style="text-align:left" onclick="window.__mobAdminCliPick && window.__mobAdminCliPick('${esc(String(c?.id||''))}')">
+              <div style="font-weight:900">${esc(String(c?.nome||'—'))}</div>
+              <div style="font-size:12px;color:#94a3b8">${esc(String(c?.cidade||''))}${c?.estado||c?.uf ? ' · '+esc(String(c?.estado||c?.uf)) : ''}</div>
+            </button>`).join('') || `<div style="padding:14px;color:#94a3b8">Nenhum cliente encontrado.</div>`}
+        </div>
+      `;
+      return;
+    }
+
+    const ofs = Array.isArray(mobileState.adminCliOfs) ? mobileState.adminCliOfs : [];
+    const normSt = (s)=>{ try{ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){ return String(s||'').toLowerCase(); } };
+    const isCancel = (o)=>normSt(o?.status).includes('cancel');
+    const isConclu = (o)=>{ const s=normSt(o?.status); return s.includes('conclu') || s==='pedido pronto'; };
+    const ativas = ofs.filter(o=>o && !o.deleted_at && !isCancel(o));
+    const abertas = ativas.filter(o=>!isConclu(o));
+    const emProd = abertas.filter(o=>normSt(o?.status).includes('produc'));
+    const concl = ativas.filter(isConclu);
+    const ultima = concl.slice().sort((a,b)=>String((b?.data_conclusao||b?.updated_at||b?.created_at||'')).localeCompare(String((a?.data_conclusao||a?.updated_at||a?.created_at||''))))[0] || null;
+    const ultimaProduto = ultima ? getOfProduto(ultima) : '—';
+    const ultimaData = ultima ? String(ultima?.data_conclusao||ultima?.updated_at||ultima?.created_at||'').slice(0,10) : '';
+
+    const prog = abertas
+      .map(o=>{
+        const mk = String(getOfMaquinaAtual(o) || '').trim() || '—';
+        let d = '';
+        try{ d = (typeof ofmaqDiaProgramadoISO === 'function') ? ofmaqDiaProgramadoISO(o) : ''; }catch(e){}
+        return { o, mk, d };
+      })
+      .filter(x=>x.mk && x.mk !== '—')
+      .slice(0, 30);
+
+    content.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+        <button class="mobile-btn" onclick="window.__mobAdminCliBack && window.__mobAdminCliBack()">←</button>
+        <div style="font-weight:900;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(String(sel?.nome||'—'))}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="mobile-kpi"><div class="k">OFs em aberto</div><div class="v">${esc(String(abertas.length))}</div></div>
+        <div class="mobile-kpi"><div class="k">Em produção</div><div class="v">${esc(String(emProd.length))}</div></div>
+        <div class="mobile-kpi"><div class="k">Total concluídas</div><div class="v">${esc(String(concl.length))}</div></div>
+        <div class="mobile-kpi"><div class="k">Total OFs</div><div class="v">${esc(String(ativas.length))}</div></div>
+      </div>
+
+      <div class="mobile-card" style="margin-bottom:10px">
+        <div style="font-weight:900;margin-bottom:6px">Última compra</div>
+        <div style="font-size:12px;color:#94a3b8">${ultimaData ? esc(ultimaData.split('-').reverse().join('/')) : '—'}</div>
+        <div style="margin-top:4px">${esc(String(ultimaProduto||'—'))}</div>
+      </div>
+
+      <div class="mobile-card" style="margin-bottom:10px">
+        <div style="font-weight:900;margin-bottom:6px">OFs em aberto (até 12)</div>
+        ${abertas.slice(0,12).map(o=>`
+          <div class="mobile-row">
+            <div style="font-family:var(--mono);font-weight:900">#${esc(getOfNum(o))}</div>
+            <div style="flex:1;opacity:.95">${esc(getOfProduto(o))}</div>
+            <div style="opacity:.75">${esc(String(o?.status||'—'))}</div>
+          </div>`).join('') || `<div style="color:#94a3b8">Nenhuma.</div>`}
+      </div>
+
+      <div class="mobile-card">
+        <div style="font-weight:900;margin-bottom:6px">Programadas em máquina (até 12)</div>
+        ${prog.slice(0,12).map(x=>`
+          <div class="mobile-row">
+            <div style="font-family:var(--mono);font-weight:900">#${esc(getOfNum(x.o))}</div>
+            <div style="flex:1">${esc(x.mk)}</div>
+            <div style="opacity:.75">${x.d ? esc(x.d.split('-').reverse().join('/')) : '—'}</div>
+          </div>`).join('') || `<div style="color:#94a3b8">Nenhuma.</div>`}
+      </div>
+    `;
+  }
+
   function renderOrcamentos(){
     const title = byId('mob-title'); if(title) title.textContent = '📋 Orçamentos';
     const input = byId('mob-jarvis-input'); if(input) input.style.display = 'none';
@@ -47531,6 +47703,7 @@ window.atualizarChapas = async function(){
     navs.forEach((n)=>n.classList.toggle('active', n.getAttribute('data-tab') === mobileState.view));
     if(mobileState.view === 'maquinas') renderMaquinas();
     else if(mobileState.view === 'orcamentos') renderOrcamentos();
+    else if(mobileState.view === 'admin_clientes') renderAdminClientes();
     else renderJarvis();
   }
 
@@ -47546,6 +47719,20 @@ window.atualizarChapas = async function(){
         ]);
       }
     }catch(e){}
+    render();
+  };
+
+  window.__mobAdminCliBusca = (v)=>{ mobileState.adminCliQuery = String(v||''); render(); };
+  window.__mobAdminCliBack = ()=>{ mobileState.adminCliSelId = ''; mobileState.adminCliOfs = []; render(); };
+  window.__mobAdminCliReload = async ()=>{ await adminLoadClientes(); render(); };
+  window.__mobAdminCliPick = async (id)=>{
+    mobileState.adminCliSelId = String(id||'').trim();
+    render();
+    try{
+      mobileState.adminCliOfs = await adminLoadClienteOfs(mobileState.adminCliSelId);
+    }catch(e){
+      mobileState.adminCliOfs = [];
+    }
     render();
   };
 
