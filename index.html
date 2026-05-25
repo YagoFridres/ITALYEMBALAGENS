@@ -4427,53 +4427,41 @@ function getSemanaAtiva(){
   window._ofmaqSemanaAtual = semana;
   return semana;
 }
+function ofmaqDiaProgramadoISO(of){
+  const o = of || {};
+  const hoje = new Date().toISOString().slice(0,10);
+  let st = String(o?.status || '').toLowerCase();
+  try{ st = st.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){}
+  st = st.trim();
+  const concluida = st.includes('conclu') || st === 'pedido pronto';
+  let d = String(
+    o?.dia_programacao ??
+    o?.diaProgramacao ??
+    o?.data_producao ??
+    o?.dataProducao ??
+    o?.dia ??
+    ''
+  ).slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) d = '';
+  if(!d){
+    const ent = String(o?.ent || o?.data_entrega || o?.dataEntrega || '').slice(0,10);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(ent)){
+      d = subtrairDiasUteis(ent, 3) || ent;
+    }
+  }
+  if(!concluida && d && d < hoje) d = hoje;
+  return d;
+}
 function ofsParaDia(diaProd){
   if(!diaProd || !(diaProd instanceof Date) || isNaN(diaProd.getTime())) return [];
   const base = Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : (Array.isArray(OFs) ? OFs : []);
-  const hoje = new Date();
-  hoje.setHours(0,0,0,0);
-  let diaUtil = new Date(hoje);
-  let seg = 0;
-  while((diaUtil.getDay() === 0 || diaUtil.getDay() === 6) && seg < 10){
-    diaUtil.setDate(diaUtil.getDate() + 1);
-    seg++;
-  }
   const diaProdStr = diaProd.toISOString().slice(0,10);
   return (base || []).filter(of=>{
     try{
       const st = String(of?.status || '').trim();
       if(st === 'Concluído' || st === 'Concluido' || st === 'Cancelado' || st === 'Cancelada') return false;
-
-      const hoje = new Date().toISOString().slice(0,10);
-      // Para cada OF, calcular o dia de exibição:
-      const statusOf = String(of.status || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-      const concluida = statusOf.includes('conclu') || statusOf === 'pedido pronto';
-      const diaOf = of.dia_programacao || of.dia || of.ent || of.data_entrega || '';
-      const diaExibicao = (!concluida && diaOf && diaOf < hoje) ? hoje : diaOf;
-      if(diaExibicao && String(diaExibicao).slice(0,10) === diaProdStr) return true;
-
-      const prodRaw = String(of?.data_producao || of?.dataProducao || of?.dia || '').slice(0,10);
-      let dtProg = null;
-      if(/^\d{4}-\d{2}-\d{2}$/.test(prodRaw)){
-        const dtP = new Date(prodRaw + 'T00:00:00');
-        if(!isNaN(dtP.getTime())) dtProg = dtP;
-      }
-      if(!dtProg){
-        const strEntrega = String(of?.ent || of?.data_entrega || of?.dataEntrega || '').slice(0,10);
-        if(!strEntrega) return false;
-        if(!/^\d{4}-\d{2}-\d{2}$/.test(strEntrega)) return false;
-        const dtProgStr = subtrairDiasUteis(strEntrega, 3);
-        if(!dtProgStr) return false;
-        const dtP = new Date(dtProgStr + 'T00:00:00');
-        if(isNaN(dtP.getTime())) return false;
-        dtProg = dtP;
-      }
-      dtProg.setHours(0,0,0,0);
-
-      const dtProgStr2 = dtProg.toISOString().slice(0,10);
-      const diaExibicao2 = (!concluida && dtProgStr2 && dtProgStr2 < hoje) ? hoje : dtProgStr2;
-      if(diaExibicao2 && diaExibicao2 === diaProdStr) return true;
-      return false;
+      const d = ofmaqDiaProgramadoISO(of);
+      return !!d && d === diaProdStr;
     }catch(e){
       try{ console.warn('[ofsParaDia] erro na OF:', of?.numero, e?.message); }catch(_){}
       return false;
@@ -46559,13 +46547,17 @@ window.atualizarChapas = async function(){
     const empId = String(mobileState.maqEmp || '').trim();
     const hoje = todayIso();
     const isHoje = iso === hoje;
+    const mkKey = (s)=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
     const matchPerm = (mkUpper)=>{
-      const mku = String(mkUpper || '').trim().toUpperCase();
+      const raw = String(mkUpper || '').trim();
+      if(!raw) return '';
+      const mku = mkKey(raw);
       if(!mku) return '';
       for(const p of MAQUINAS_MOBILE_PERMITIDAS){
-        const pu = String(p||'').trim().toUpperCase();
+        const pu0 = String(p||'').trim();
+        const pu = mkKey(pu0);
         if(!pu) continue;
-        if(mku === pu || mku.includes(pu) || pu.includes(mku)) return String(p||'').trim();
+        if(mku === pu || mku.includes(pu) || pu.includes(mku)) return pu0;
       }
       return '';
     };
@@ -46577,11 +46569,20 @@ window.atualizarChapas = async function(){
     const showAll = !!mobileState.maqShowAll;
     const todasOfs = mobileState.ofs || [];
     const dataSelecionada = iso;
+    const diaProg = (of)=>{
+      try{
+        if(typeof ofmaqDiaProgramadoISO === 'function') return ofmaqDiaProgramadoISO(of);
+      }catch(e){}
+      const e = String(of?.ent || of?.data_entrega || '').slice(0,10);
+      return e;
+    };
     let ofsBase = (todasOfs || []).filter(o => {
       if (!o || o.deleted_at) return false;
       const s = String(o.status || '').toLowerCase();
       if (s.includes('cancel')) return false;
       if (s.includes('conclu')) return false;
+      const d = diaProg(o);
+      if(dataSelecionada && d && d !== dataSelecionada) return false;
       return true;
     });
     const ofs = ofsBase.filter((of)=>{
@@ -46591,7 +46592,13 @@ window.atualizarChapas = async function(){
     });
     const SEM_MAQ_KEY = '📋 Sem máquina definida';
     const ofsSemMaq = ofsBase.filter((of)=>!String(getOfMaquinaAtual(of) || '').trim());
-    const ofsShown = ofs.concat(ofsSemMaq);
+    const OUTRAS_MAQ_KEY = '🧩 Outras máquinas';
+    const ofsOutras = ofsBase.filter((of)=>{
+      const mk = String(getOfMaquinaAtual(of) || '').trim();
+      if(!mk) return false;
+      return !matchPerm(mk);
+    });
+    const ofsShown = ofs.concat(ofsSemMaq).concat(ofsOutras);
     const totalOfs = ofsShown.length;
     const totalCaixas = ofsShown.reduce((acc, o)=>acc + Math.trunc(toNum(o?.qtd || o?.quantidade || 0)), 0);
 
@@ -46626,6 +46633,7 @@ window.atualizarChapas = async function(){
       byMaq.get(key).push(of);
     });
     byMaq.set(SEM_MAQ_KEY, ofsSemMaq);
+    byMaq.set(OUTRAS_MAQ_KEY, ofsOutras);
     byMaq.forEach((arr)=>{
       arr.sort((a,b)=>{
         const pa = Number(a?.prioridade); const pb = Number(b?.prioridade);
@@ -46637,7 +46645,7 @@ window.atualizarChapas = async function(){
       });
     });
 
-    const nomes = maquinasFiltradas.map((x)=>x.perm).concat([SEM_MAQ_KEY]);
+    const nomes = maquinasFiltradas.map((x)=>x.perm).concat([SEM_MAQ_KEY, OUTRAS_MAQ_KEY]);
 
     const maqByPerm = new Map(maquinasFiltradas.map((x)=>[String(x.perm||'').trim().toUpperCase(), x.obj]));
     const getMaqObj = (nome)=>{
