@@ -45709,37 +45709,41 @@ window.atualizarChapas = async function(){
     if(document.getElementById('assist-fab')) return;
     const st = document.createElement('style');
     st.textContent = `
-      #assist-fab{position:fixed;right:16px;bottom:16px;z-index:10000}
-      #assist-fab button{width:56px;height:56px;border-radius:16px;border:1px solid var(--border);background:var(--accent);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-      #assist-mini{position:fixed;right:16px;bottom:86px;z-index:10003;display:none;touch-action:none}
+      #assist-fab{position:fixed;right:20px;bottom:20px;z-index:10000}
+      #assist-fab button{width:56px;height:56px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 18px 55px rgba(0,0,0,.55);animation:jarvisPulse 1.8s ease-in-out infinite}
+      @keyframes jarvisPulse{0%{transform:scale(1);box-shadow:0 18px 55px rgba(0,0,0,.55)}50%{transform:scale(1.05);box-shadow:0 22px 70px rgba(37,99,235,.32)}100%{transform:scale(1);box-shadow:0 18px 55px rgba(0,0,0,.55)}}
+      #assist-mini{position:fixed;right:20px;bottom:96px;z-index:10003;display:none;touch-action:none}
       #assist-mini button{width:56px;height:56px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:6px;font-family:var(--mono);font-weight:900}
       #assist-mini .mini-dot{width:10px;height:10px;border-radius:999px;background:rgba(34,197,94,.95);box-shadow:0 0 10px rgba(34,197,94,.55)}
-      #assist-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:10001;display:none}
-      #assist-panel{position:fixed;top:0;right:0;height:100vh;width:min(380px,92vw);background:#0f0f1a;border-left:1px solid var(--border);z-index:10002;transform:translateX(110%);transition:transform .22s ease;display:flex;flex-direction:column;box-shadow:-4px 0 20px rgba(0,0,0,.55)}
-      #assist-panel.open{transform:translateX(0)}
-      #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid var(--border);background:#0f0f1a}
-      #assist-title{display:flex;align-items:center;gap:10px;font-weight:900}
-      #assist-title img{width:28px;height:28px;border-radius:10px;object-fit:contain;background:#fff;padding:3px}
+      #assist-overlay{position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:10001;display:none}
+      #assist-panel{position:fixed;right:16px;bottom:80px;width:360px;max-width:calc(100vw - 24px);max-height:calc(100vh - 140px);background:#0d1526;border:1px solid rgba(255,255,255,0.10);z-index:10002;border-radius:18px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6);overflow:hidden;opacity:0;transform:translateY(10px) scale(.98);pointer-events:none;transition:opacity .18s ease,transform .18s ease}
+      #assist-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+      #assist-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 12px;border-bottom:1px solid rgba(255,255,255,0.08);background:#0d1526}
+      #assist-title{display:flex;align-items:center;gap:10px;font-weight:1000}
+      .jarvis-ava{width:34px;height:34px;border-radius:999px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2563eb,#7c3aed);border:1px solid rgba(255,255,255,.18);font-size:18px}
+      .jarvis-title{display:flex;flex-direction:column;line-height:1.05}
+      .jarvis-title .nm{font-weight:1000}
       #jarvis-online{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-weight:900;font-size:.72rem;color:rgba(34,197,94,.95)}
       #jarvis-online .dot{width:8px;height:8px;border-radius:999px;background:rgba(34,197,94,.95);box-shadow:0 0 10px rgba(34,197,94,.55)}
-      #assist-ia{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#0f0f1a}
+      #assist-ia{padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;flex-wrap:wrap;background:#0d1526}
       .ia-badge{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:6px 10px;font-size:.7rem;font-weight:900;font-family:var(--mono);white-space:nowrap}
       .ia-badge.on{border-color:rgba(34,197,94,.45);background:rgba(34,197,94,.12);color:rgba(187,247,208,.95)}
       .ia-badge.turbo{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98)}
       #assist-actions{display:flex;gap:8px;align-items:center}
-      #assist-actions button{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:10px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
-      #assist-sug{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;background:#0f0f1a}
-      .assist-chip{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:800}
-      #assist-body{flex:1;overflow:auto;padding:12px;background:#0f0f1a}
+      #assist-actions button{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.86);border-radius:12px;padding:7px 10px;cursor:pointer;font-family:var(--mono);font-weight:900;font-size:.72rem}
+      #assist-body{flex:1;overflow:auto;padding:12px;background:#0d1526}
+      #assist-sug{padding:10px 12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;background:#0d1526}
+      #assist-sug::-webkit-scrollbar{height:6px}
+      .assist-chip{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.86);border-radius:999px;padding:7px 10px;cursor:pointer;font-size:.72rem;font-weight:900;white-space:nowrap}
       .assist-row{display:flex;gap:8px;margin:8px 0}
       .assist-row.user{justify-content:flex-end}
       .assist-row.assistant{justify-content:flex-start}
       .assist-avatar{width:30px;height:30px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);overflow:hidden}
       .assist-avatar img{width:100%;height:100%;object-fit:contain;padding:3px}
-      .assist-avatar.jarvis{background:linear-gradient(135deg,#0ea5e9,#1d4ed8);color:#eaf6ff;border-color:rgba(59,130,246,.55);font-family:var(--mono);font-weight:900}
-      .assist-bubble{max-width:82%;border-radius:14px;padding:10px 12px;border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;line-height:1.28}
-      .assist-row.user .assist-bubble{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.35)}
-      .assist-row.assistant .assist-bubble{background:var(--bg3)}
+      .assist-avatar.jarvis{background:linear-gradient(135deg,#2563eb,#7c3aed);color:#eaf6ff;border-color:rgba(59,130,246,.55);font-family:var(--mono);font-weight:900}
+      .assist-bubble{max-width:82%;border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,0.10);white-space:pre-wrap;word-break:break-word;line-height:1.28}
+      .assist-row.user .assist-bubble{background:linear-gradient(135deg, rgba(37,99,235,.85), rgba(124,58,237,.78));border-color:rgba(37,99,235,.45);border-bottom-right-radius:6px}
+      .assist-row.assistant .assist-bubble{background:rgba(255,255,255,0.06);border-top-left-radius:6px}
       .assist-bubble-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
       .assist-tts{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:10px;padding:4px 8px;cursor:pointer;font-weight:900;font-family:var(--mono);font-size:.75rem;line-height:1}
       .assist-img{max-width:100%;border-radius:8px;margin-top:10px;border:1px solid var(--border);display:block}
@@ -45755,11 +45759,11 @@ window.atualizarChapas = async function(){
       .jarvis-table tr:last-child td{border-bottom:none}
       .jarvis-chart{width:100%;height:150px;max-height:150px;display:block;margin-top:10px;border:1px solid var(--border);border-radius:10px;background:rgba(0,0,0,.15);padding:8px}
       .assist-meta{margin-top:6px;font-size:.65rem;color:var(--text3);font-family:var(--mono)}
-      #assist-input{padding:10px 12px;border-top:1px solid var(--border);background:#0f0f1a;display:flex;gap:8px;align-items:flex-end}
-      #assist-text{flex:1;min-height:40px;max-height:120px;resize:none;border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--font);outline:none}
-      #assist-send{border:1px solid var(--border);background:var(--accent);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
-      #assist-mic{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
-      #assist-turbo{border:1px solid var(--border);background:var(--bg3);color:var(--text);border-radius:12px;padding:10px 12px;cursor:pointer;font-weight:900}
+      #assist-input{padding:10px 12px;border-top:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);display:flex;gap:8px;align-items:flex-end}
+      #assist-text{flex:1;min-height:44px;max-height:120px;resize:none;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.92);border-radius:14px;padding:10px 12px;font-family:var(--font);outline:none}
+      #assist-send{border:1px solid rgba(37,99,235,.45);background:rgba(37,99,235,.95);color:#fff;border-radius:999px;width:44px;height:44px;cursor:pointer;font-weight:1000;display:flex;align-items:center;justify-content:center}
+      #assist-mic{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);border-radius:999px;width:44px;height:44px;cursor:pointer;font-weight:1000;display:flex;align-items:center;justify-content:center}
+      #assist-turbo{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);border-radius:999px;width:44px;height:44px;cursor:pointer;font-weight:1000;display:flex;align-items:center;justify-content:center}
       #assist-turbo.on{border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.14);color:rgba(253,230,138,.98)}
       #assist-turbo.off{opacity:.55;cursor:not-allowed}
       .jarvis-msg-badge{border:1px solid var(--border);background:var(--s2);color:var(--text);border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:900;font-family:var(--mono);white-space:nowrap}
@@ -45772,9 +45776,9 @@ window.atualizarChapas = async function(){
       .jarvis-typing span:nth-child(3){animation-delay:.3s}
       @keyframes jarvisDot{0%,80%,100%{transform:translateY(0);opacity:.45}40%{transform:translateY(-3px);opacity:1}}
       @media (max-width:768px){
-        #assist-fab{right:14px;bottom:76px}
-        #assist-mini{right:14px;bottom:76px}
-        #assist-panel{width:100vw;height:calc(100vh - 60px);top:0;right:0;border-left:none}
+        #assist-fab{right:20px;bottom:76px}
+        #assist-mini{right:20px;bottom:76px}
+        #assist-panel{left:12px;right:12px;bottom:76px;width:auto;max-height:calc(100vh - 120px)}
         #assist-input{position:sticky;bottom:0}
         #assist-actions button{padding:9px 12px;font-size:.78rem}
         #assist-close{font-size:1rem}
@@ -45784,7 +45788,7 @@ window.atualizarChapas = async function(){
 
     const fab = document.createElement('div');
     fab.id = 'assist-fab';
-    fab.innerHTML = `<button type="button" title="JARVIS">⚙️</button>`;
+    fab.innerHTML = `<button type="button" title="Jarvis IA">🤖</button>`;
     document.body.appendChild(fab);
 
     const mini = document.createElement('div');
@@ -45802,23 +45806,29 @@ window.atualizarChapas = async function(){
     const logoImg = logo ? `<img src="${esc(logo)}" alt="Italy">` : '';
     panel.innerHTML = `
       <div id="assist-header">
-        <div id="assist-title">${logoImg}<span>⚙️ JARVIS</span> <span id="jarvis-online"><span class="dot"></span>online</span></div>
+        <div id="assist-title">
+          <div class="jarvis-ava">🤖</div>
+          <div class="jarvis-title">
+            <div class="nm">Jarvis IA</div>
+            <div id="jarvis-online"><span class="dot"></span>Conectado</div>
+          </div>
+        </div>
         <div id="assist-actions">
-          <button type="button" id="assist-clear">Limpar</button>
-          <button type="button" id="assist-min">—</button>
-          <button type="button" id="assist-close">✕</button>
+          <button type="button" id="assist-clear" title="Limpar">🧹</button>
+          <button type="button" id="assist-min" title="Minimizar">▁</button>
+          <button type="button" id="assist-close" title="Fechar">✕</button>
         </div>
       </div>
       <div id="assist-ia"></div>
-      <div id="assist-sug"></div>
       <div id="assist-body"></div>
+      <div id="assist-sug"></div>
       <div id="assist-input">
-        <textarea id="assist-text" placeholder="Digite sua pergunta..."></textarea>
+        <textarea id="assist-text" placeholder="Pergunte qualquer coisa..."></textarea>
         <input type="file" id="jarvis-img-input" accept="image/*" style="display:none" onchange="enviarImagemJarvis(this.files[0]); this.value='';">
-        <button type="button" onclick="document.getElementById('jarvis-img-input').click()" title="Enviar imagem">📎</button>
-        <button type="button" id="assist-mic" title="Falar">🎤</button>
-        <button type="button" id="assist-turbo" title="Modo Turbo">⚡</button>
-        <button type="button" id="assist-send">Enviar</button>
+        <button type="button" onclick="document.getElementById('jarvis-img-input').click()" title="Enviar imagem" style="border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.90);border-radius:999px;width:44px;height:44px;cursor:pointer;font-weight:1000;display:flex;align-items:center;justify-content:center">📎</button>
+        <button type="button" id="assist-mic" title="Voz">🎤</button>
+        <button type="button" id="assist-turbo" title="Turbo">⚡</button>
+        <button type="button" id="assist-send" title="Enviar">➤</button>
       </div>
     `;
     document.body.appendChild(panel);
