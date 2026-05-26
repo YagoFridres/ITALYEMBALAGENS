@@ -445,6 +445,33 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/manifest.json', (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    const fpPub = path.join(__dirname, 'public', 'manifest.json');
+    const fpRoot = path.join(__dirname, 'manifest.json');
+    const fp = fs.existsSync(fpPub) ? fpPub : fpRoot;
+    return res.sendFile(fp);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'manifest_failed' });
+  }
+});
+
+app.get('/sw.js', (req, res) => {
+  try {
+    res.setHeader('Content-Type', 'application/javascript');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Service-Worker-Allowed', '/');
+    const fpPub = path.join(__dirname, 'public', 'sw.js');
+    const fpRoot = path.join(__dirname, 'sw.js');
+    const fp = fs.existsSync(fpPub) ? fpPub : fpRoot;
+    return res.sendFile(fp);
+  } catch (e) {
+    return res.status(500).end();
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
