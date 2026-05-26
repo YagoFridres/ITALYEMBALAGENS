@@ -49494,17 +49494,45 @@ async function _hubLoadData(forcar){
 
     if(needsApi && (!Array.isArray(ofs) || ofs.length < 80)){
       try{
-        const url = '/api/ofs?lite=1&limit=900&nocache=1&from='+encodeURIComponent(from)+'&date_field=created_at' + (empId ? '&emp_id='+encodeURIComponent(empId) : '');
-        const r = await apiFetch(url, { method:'GET' });
-        const d = r ? await r.json().catch(()=>null) : null;
-        const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
-        if(Array.isArray(arr) && arr.length) ofs = arr;
+        const all = [];
+        const chunkLimit = 300;
+        for(let page=0; page<3; page++){
+          const url = '/api/ofs?lite=1&limit=' + chunkLimit + '&offset=' + (page*chunkLimit) + '&nocache=1&from='+encodeURIComponent(from)+'&date_field=created_at' + (empId ? '&emp_id='+encodeURIComponent(empId) : '');
+          const r = await apiFetch(url, { method:'GET' });
+          const d = r ? await r.json().catch(()=>null) : null;
+          const arr = Array.isArray(d) ? d : (Array.isArray(d?.data) ? d.data : []);
+          if(Array.isArray(arr) && arr.length) all.push(...arr);
+          if(!Array.isArray(arr) || arr.length < chunkLimit) break;
+        }
+        if(all.length) ofs = all;
       }catch(e){}
     }
 
     await loadCli;
     const amostras = await loadAm;
-    const clientes = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
+    let clientes = Array.isArray(window.CLIENTES) ? window.CLIENTES : [];
+    if(needsApi && (!Array.isArray(clientes) || !clientes.length)){
+      try{
+        const allCli = [];
+        for(let page=0; page<4; page++){
+          const qs = new URLSearchParams();
+          qs.set('lite','1');
+          qs.set('limit','500');
+          qs.set('offset', String(page * 500));
+          qs.set('nocache','1');
+          if(empId) qs.set('empId', empId);
+          const r = await apiFetch('/api/clientes?' + qs.toString(), { method:'GET' });
+          const j = r ? await r.json().catch(()=>null) : null;
+          const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+          if(Array.isArray(arr) && arr.length) allCli.push(...arr);
+          if(!Array.isArray(arr) || arr.length < 500) break;
+        }
+        if(allCli.length){
+          clientes = allCli;
+          try{ window.CLIENTES = clientes; }catch(e){}
+        }
+      }catch(e){}
+    }
 
     const out = { ofs: Array.isArray(ofs)?ofs:[], clientes, amostras: Array.isArray(amostras)?amostras:[] };
     window.__HUB_CACHE = { ts: now, data: out };

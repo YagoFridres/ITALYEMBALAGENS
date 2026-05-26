@@ -2827,11 +2827,12 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       let r = null;
       try {
+        const timeoutMs = limitFinal > 500 ? 25000 : (limitFinal > 200 ? 15000 : 8000);
         if (typeof q.timeout === 'function') {
-          r = await q.timeout(8000);
+          r = await q.timeout(timeoutMs);
         } else if (typeof q.abortSignal === 'function') {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
           try {
             r = await q.abortSignal(controller.signal);
           } finally {
@@ -15039,76 +15040,124 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
   try {
-    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
-    const list = Array.isArray(req.body?.clientes) ? req.body.clientes : [];
-    const limit = Math.max(1, Math.min(25, Math.trunc(Number(req.body?.limit || 10) || 10)));
-    const empId = String(req.body?.empId || req.body?.emp_id || req.query?.empId || '').trim();
-
-    const hasColCli = async (col) => {
-      const { error } = await supabase.from('clientes').select(col).limit(1);
-      if (!error) return true;
-      const msg = String(error.message || error);
-      if (msg.includes('column') || msg.includes('Could not find')) return false;
-      throw error;
-    };
-    const hasLat = await hasColCli('lat');
-    const hasLng = await hasColCli('lng');
-    if (!(hasLat && hasLng)) return res.status(500).json({ ok: false, error: 'clientes_sem_lat_lng' });
-
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-    const out = [];
-    const seen = new Set();
+    const limit = Math.max(1, Math.min(25, Math.trunc(Number(req.body?.limit || 10) || 10)));
+    const cidadesIn = Array.isArray(req.body?.cidades) ? req.body.cidades : null;
+    const list = Array.isArray(req.body?.clientes) ? req.body.clientes : [];
 
-    for (const c of list.slice(0, limit)) {
-      const id = String(c?.id || '').trim();
-      const cidade = String(c?.cidade || '').trim();
-      const estado = String(c?.estado || c?.uf || 'SC').trim();
-      if (!id || !cidade) continue;
-      if (seen.has(id)) continue;
-      seen.add(id);
-
+    const geocode = async (cidade, estado) => {
+      const cidadeOk = String(cidade || '').trim();
+      const estadoOk = String(estado || '').trim();
+      if (!cidadeOk) return null;
+      const qStr = [cidadeOk, estadoOk, 'Brasil'].filter(Boolean).join(', ');
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        q: qStr,
+        format: 'jsonv2',
+        limit: '1',
+        countrycodes: 'br',
+      }).toString();
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 5000);
       try {
-        let q = supabase.from('clientes').select('id,lat,lng,emp_id,cidade,estado,uf').eq('id', id).limit(1);
-        if (empId) q = q.eq('emp_id', empId);
-        const { data: row, error: er } = await q.maybeSingle();
-        if (er) throw er;
-
-        const curLat = row?.lat != null ? Number(row.lat) : null;
-        const curLng = row?.lng != null ? Number(row.lng) : null;
-        if (Number.isFinite(curLat) && Number.isFinite(curLng)) {
-          out.push({ id, lat: curLat, lng: curLng, cidade, estado });
-          continue;
-        }
-
-        const qStr = [cidade, estado, 'Brasil'].filter(Boolean).join(', ');
-        const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-          q: qStr,
-          format: 'jsonv2',
-          limit: '1',
-          countrycodes: 'br',
-        }).toString();
-
         const r = await fetch(url, {
           headers: {
             'Accept': 'application/json',
             'Accept-Language': 'pt-BR,pt;q=0.9',
-            'User-Agent': 'ItalyEmbalagensERP/1.0 (admin geocode)',
-          }
+            'User-Agent': 'ItalyEmbalagens/1.0',
+          },
+          signal: controller.signal,
         });
         const j = await r.json().catch(() => null);
         const hit = Array.isArray(j) && j[0] ? j[0] : null;
         const lat = hit?.lat != null ? Number(hit.lat) : NaN;
         const lng = hit?.lon != null ? Number(hit.lon) : NaN;
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-        if (lat < -33 || lat > 5 || lng < -74 || lng > -28) continue;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        if (lat < -33 || lat > 5 || lng < -74 || lng > -28) return null;
+        return { lat, lng };
+      } catch (_) {
+        return null;
+      } finally {
+        clearTimeout(t);
+      }
+    };
 
-        await supabase.from('clientes').update({ lat, lng }).eq('id', id);
-        out.push({ id, lat, lng, cidade, estado });
+    if (cidadesIn) {
+      const coordenadas = {};
+      const seen = new Set();
+      for (const raw of cidadesIn.slice(0, Math.min(20, limit))) {
+        const cidade = String(raw || '').trim();
+        if (!cidade) continue;
+        const k = cidade.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const g = await geocode(cidade, '');
+        if (g) coordenadas[cidade] = [g.lat, g.lng];
         await sleep(1100);
-      } catch (_) {}
+      }
+      return res.json({ ok: true, coordenadas });
     }
 
-    return res.json({ ok: true, data: out });
+    if (!list.length) return res.json({ ok: true, data: [], coordenadas: {} });
+
+    const coordenadas = {};
+    const byCity = new Map();
+    for (const c of list.slice(0, limit)) {
+      const cidade = String(c?.cidade || '').trim();
+      const estado = String(c?.estado || c?.uf || 'SC').trim();
+      if (!cidade) continue;
+      const key = cidade.toLowerCase() + '|' + estado.toLowerCase();
+      if (byCity.has(key)) continue;
+      byCity.set(key, { cidade, estado, lat: null, lng: null });
+    }
+    const keys = Array.from(byCity.keys()).slice(0, 20);
+    for (const key of keys) {
+      const it = byCity.get(key);
+      if (!it) continue;
+      const g = await geocode(it.cidade, it.estado);
+      if (g) {
+        it.lat = g.lat;
+        it.lng = g.lng;
+        coordenadas[it.cidade] = [g.lat, g.lng];
+      }
+      await sleep(1100);
+    }
+
+    const out = [];
+    const seenId = new Set();
+    for (const c of list.slice(0, limit)) {
+      const id = String(c?.id || '').trim();
+      const cidade = String(c?.cidade || '').trim();
+      const estado = String(c?.estado || c?.uf || 'SC').trim();
+      if (!id || !cidade) continue;
+      if (seenId.has(id)) continue;
+      seenId.add(id);
+      const key = cidade.toLowerCase() + '|' + estado.toLowerCase();
+      const it = byCity.get(key);
+      const lat = it?.lat;
+      const lng = it?.lng;
+      if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) out.push({ id, lat: Number(lat), lng: Number(lng), cidade, estado });
+    }
+
+    try {
+      if (supabase && out.length) {
+        const canUpdate = async () => {
+          try {
+            const { error: e1 } = await supabase.from('clientes').select('lat').limit(1);
+            const { error: e2 } = await supabase.from('clientes').select('lng').limit(1);
+            if (!e1 && !e2) return true;
+            const msg = String((e1 || e2)?.message || '');
+            if (msg.includes('column') || msg.includes('Could not find')) return false;
+            return false;
+          } catch (_) { return false; }
+        };
+        const okCols = await canUpdate();
+        if (okCols) {
+          await Promise.allSettled(out.slice(0, 20).map((g) => supabase.from('clientes').update({ lat: g.lat, lng: g.lng }).eq('id', g.id)));
+        }
+      }
+    } catch (_) {}
+
+    return res.json({ ok: true, data: out, coordenadas });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
