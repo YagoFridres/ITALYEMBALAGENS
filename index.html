@@ -27689,6 +27689,11 @@ function _mobRunMenuAction(action){
     if(typeof action === 'function'){ return _mobTryCall(action); }
     const s = String(action||'').trim();
     if(!s) return false;
+    if(s.startsWith('mapcli:')){
+      const tab = s.slice(7);
+      try{ window._mapCliStartTab = (String(tab||'').trim().toLowerCase() === 'roteiro') ? 'roteiro' : 'mapa'; }catch(e){}
+      return _mobNavTo('mapa-clientes');
+    }
     if(s.startsWith('go:')) return _mobNavTo(s.slice(3));
     const fn = window[s];
     if(typeof fn === 'function') return _mobTryCall(fn);
@@ -27718,7 +27723,7 @@ function _renderMobMoreDrawer(){
       { ico:'💼', lbl:'Vendedores', act:'go:vendedores' },
       { ico:'👷', lbl:'Operadores', act:'go:operadores' },
       { ico:'👤', lbl:'Usuários', act:'go:usuarios' },
-      { ico:'🚚', lbl:'Roteiro', act:'go:roteiro-entrega' },
+      { ico:'🚚', lbl:'Roteiro', act:'mapcli:roteiro' },
     ]},
     { lbl:'Estoques', items:[
       { ico:'📦', lbl:'Est. Chapas', act:'go:estoque' },
@@ -37874,7 +37879,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
-      <div id="menu-roteiro" class="nav-item" onclick="go('roteiro-entrega');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Roteiro de Entrega</div>
+      <div id="menu-roteiro" class="nav-item" onclick="window._mapCliStartTab='roteiro';go('mapa-clientes');setTimeout(()=>{try{mapcliSetAba('roteiro')}catch(e){}},200);closeNavGroupsExcept('ng-cadastros');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))closeMobMenu();"><span class="ico">🗺</span>Roteiro de Entrega</div>
     </div>
   </div>
 
@@ -38718,7 +38723,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <span>🗺️ Roteiro da Semana</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-ghost btn-sm" onclick="go('roteiro-entrega')">Cidades</button>
+              <button class="btn btn-ghost btn-sm" onclick="mapcliSetAba('roteiro')">Cidades</button>
               <button class="btn btn-ghost btn-sm" onclick="_mapcliCarregarRoteiroSemana()">Atualizar</button>
               <button class="btn btn-ghost btn-sm" onclick="_mapcliImprimirRoteiroSemana()">Imprimir</button>
             </div>
