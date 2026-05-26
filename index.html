@@ -198,6 +198,33 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:10px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:18px;cursor:grab;user-select:none;touch-action:none}
 .of-drag-ghost{opacity:0.4;background:#2a2a4e !important;}
 .of-drag-chosen{transform:scale(1.02);box-shadow:0 4px 20px rgba(0,100,255,0.3);}
+.of-ghost{opacity:0.35 !important;background:rgba(37,99,235,0.08) !important;border:1px dashed var(--blue2) !important}
+.of-chosen{transform:scale(1.02) !important;box-shadow:0 8px 24px rgba(37,99,235,0.3) !important;z-index:100 !important;background:var(--card2) !important}
+
+@media (max-width: 767px){
+  .emp-sel-bar,.empresa-selector,.empresa-tabs,[data-empresa-selector],.tab-empresas{display:none !important}
+  #page-ofmaq .ofmaq-toprow{flex-direction:column !important;align-items:stretch !important}
+  #page-ofmaq #ofmaq-dias-bar{min-width:0 !important}
+  #page-ofmaq #ofsmaq-select-maquina{margin-left:0 !important;width:100% !important;max-width:100% !important}
+  #page-ofmaq .ofmaq-dias-grid{display:flex !important;overflow-x:auto !important;-webkit-overflow-scrolling:touch !important;scrollbar-width:none;gap:6px !important}
+  #page-ofmaq .ofmaq-dias-grid::-webkit-scrollbar{display:none}
+  #page-ofmaq .btn-dia,#page-ofmaq .dia-btn,#page-ofmaq [id^="btn-dia-"]{min-width:60px !important;width:auto !important;padding:6px 8px !important;font-size:11px !important;border-radius:8px !important;white-space:nowrap !important;overflow:visible !important;text-overflow:unset !important}
+  #page-ofmaq .btn-dia{display:inline-flex !important;flex-direction:column !important;align-items:center !important}
+  #page-ofmaq .ptoolbar input[type="date"],#page-ofmaq #ofmaq-busca,#page-ofmaq #ofmaq-status,#page-ofmaq #ofmaq-prioridade{width:100% !important}
+  #page-ofmaq .of-card-maquina{padding:10px 12px !important;margin-bottom:8px !important}
+  #page-ofmaq .ofmaq-card-head{gap:8px !important;flex-wrap:nowrap !important;overflow-x:auto !important;-webkit-overflow-scrolling:touch !important}
+  #page-ofmaq .ofmaq-card-head::-webkit-scrollbar{display:none}
+  #page-ofmaq .drag-handle{min-width:28px !important;min-height:28px !important;border-radius:8px !important;font-size:16px !important;padding:4px !important}
+  #page-ofmaq .ofmaq-move-btn{min-width:28px !important;min-height:28px !important;border-radius:8px !important;font-size:12px !important}
+  #page-ofmaq .ofmaq-thumb{width:44px !important;height:44px !important;min-width:44px !important;min-height:44px !important;max-width:44px !important;max-height:44px !important;border-radius:8px !important}
+  #page-ofmaq .ofmaq-thumb img{width:44px !important;height:44px !important;object-fit:cover !important}
+  #page-ofmaq .ofmaq-ellipsis,#page-ofmaq .of-produto,#page-ofmaq .of-descricao{white-space:normal !important;overflow:visible !important;text-overflow:unset !important;word-break:break-word !important;line-height:1.3 !important;font-size:13px !important;font-weight:700 !important;margin-bottom:4px !important}
+  #page-ofmaq .of-cliente{font-size:11px !important;color:var(--text3) !important;white-space:normal !important;word-break:break-word !important}
+  #page-ofmaq .ofmaq-progresso{margin-bottom:8px !important;line-height:1.4 !important}
+  #page-ofmaq .maq-header{padding:12px 14px !important;min-height:0 !important}
+  #page-ofmaq .maq-header-name{font-size:13px !important;font-weight:900 !important}
+  #page-ofmaq .maq-header-count{font-size:11px !important;color:var(--text3) !important}
+}
 #cidade-drawer{right:-480px;width:460px}
 @media (max-width: 768px){#cidade-drawer{width:100vw;right:-100vw}}
 
@@ -4660,7 +4687,7 @@ function renderBotoesDias(){
       const dataFmt = d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
       const qtdOFs = ofsParaDia(d).length;
       const isAtivo = (ativoIdx === i || (ativoIdx == null && (Number(window._ofmaqSemanaOffset||0)||0)===0 && ehHoje));
-      return `<button onclick="ofsMaqFiltroDia(${i})" id="btn-dia-${i}" style="padding:7px 10px;background:${isAtivo?'var(--accent)':'var(--s3)'};color:${isAtivo?'#fff':'var(--text)'};border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+      return `<button onclick="ofsMaqFiltroDia(${i})" id="btn-dia-${i}" class="btn-dia dia-btn" style="padding:7px 10px;background:${isAtivo?'var(--accent)':'var(--s3)'};color:${isAtivo?'#fff':'var(--text)'};border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
         <span>${nomes[i]}</span>
         <span style="font-size:.68rem;opacity:.8">${escH(dataFmt)}</span>
         ${qtdOFs > 0 ? `<span style="font-size:.65rem;background:var(--red);color:#fff;border-radius:10px;padding:1px 6px">${qtdOFs} OF${qtdOFs>1?'s':''}</span>` : `<span style="font-size:.65rem;color:var(--text3)">—</span>`}
@@ -7167,7 +7194,7 @@ function cardOFMaquina(of, maquinaAtual){
     : null;
 
   return '<div class="of-card-maquina" draggable="true" data-of-id="'+escAttr(of.id||'')+'" data-maquina="'+escAttr(maqCtx)+'" data-ofmaq-bucket="'+escAttr(String(bucket))+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+leftBorder+'border-radius:10px;padding:16px;margin-bottom:10px;cursor:grab">'
-    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
+    +'<div class="ofmaq-card-head" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
     +'<span class="drag-handle" title="Arrastar" onclick="event.stopPropagation()">⠿</span>'
     +priBadge
     +(badgeHtml?('<div>'+badgeHtml+'</div>'):'')
@@ -7175,13 +7202,13 @@ function cardOFMaquina(of, maquinaAtual){
     +moveBtns
     +(dropdownActions || '')
     +'</div>'
-    +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
+    +'<div class="ofmaq-card-main" style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">'
     +thumb
     +'<div style="flex:1;min-width:0">'
-    +'<div class="ofmaq-ellipsis" title="'+escAttr(produto)+'" style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(produto)+'</div>'
+    +'<div class="ofmaq-ellipsis of-produto of-descricao" title="'+escAttr(produto)+'" style="font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escH(produto)+'</div>'
     +'<div style="display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap">'
     +'<span style="font-size:13px;color:#4A90D9"><b>'+escH(numeroLabel)+'</b></span>'
-    +'<span class="ofmaq-ellipsis" title="'+escAttr(nomeCliente)+'" style="font-size:13px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
+    +'<span class="ofmaq-ellipsis of-cliente" title="'+escAttr(nomeCliente)+'" style="font-size:13px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>Cliente:</b> '+escH(nomeCliente)+'</span>'
     +'<span style="font-size:13px"><b>Qtd:</b> '+fmtN(of.qtd||of.quantidade||0)+'</span>'
     +'<span style="font-size:13px;color:var(--text2);font-family:var(--mono)">'+escH(tempoInfo)+' | '+escH(velInfo)+'</span>'
     +'</div>'
@@ -7191,11 +7218,11 @@ function cardOFMaquina(of, maquinaAtual){
     +'</div>'
     +'</div>'
     +'</div>'
-    +'<div style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
+    +'<div class="ofmaq-progresso" style="margin-bottom:12px;line-height:2">'+progressoHtml+'</div>'
     +(dropdownActions != null
       ? '</div>'
-      : ('<div class="of-actions-wrap" style="display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button class="ofmaq-action-btn" onclick="event.stopPropagation();ofmaqAbrirAcoesSheet(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:900;min-height:44px">⚡ Ações</button>'
+      : ('<div class="of-actions-wrap of-actions" style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button class="ofmaq-action-btn btn-acoes" onclick="event.stopPropagation();ofmaqAbrirAcoesSheet(\''+escAttr(of.id)+'\',\''+escAttr(maqCtx)+'\')" style="background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:900;min-height:44px">⚡ Ações</button>'
         +'</div></div>'))
   ;
 }
@@ -7307,6 +7334,9 @@ function ofmaqBindDragDrop(container){
           draggable: '.of-card-maquina',
           ghostClass: 'of-drag-ghost',
           chosenClass: 'of-drag-chosen',
+          delay: 200,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 5,
           onStart: function(evt){
             try{
               startOrder = getIds();
@@ -8048,14 +8078,14 @@ async function renderOFsPorMaquina(){
       const exp = (window._ofmaqExpanded[maq] === undefined) ? true : !!window._ofmaqExpanded[maq];
       const bodyId = 'ofmaq-body-' + encodeURIComponent(maq).replace(/%/g,'_');
       return `<div style="margin-bottom:20px">
-        <div onclick="ofmaqToggleGrupo('${escAttr(maq)}')" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+        <div class="maq-header" onclick="ofmaqToggleGrupo('${escAttr(maq)}')" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
           <div>
-            <div style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px">🏭 ${escH(maq)}</div>
-            <div style="font-size:13px;color:var(--text2);margin-top:2px">${ofs.length} OF${ofs.length>1?'s':''} na fila</div>
+            <div class="maq-header-name" style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px">🏭 ${escH(maq)}</div>
+            <div class="maq-header-count" style="font-size:13px;color:var(--text2);margin-top:2px">${ofs.length} OF${ofs.length>1?'s':''} na fila</div>
           </div>
-          <div style="display:flex;align-items:center;gap:14px">
-            <div style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
-            <div style="font-size:22px;color:var(--text2)">${exp ? '▾' : '▸'}</div>
+          <div class="maq-header-right" style="display:flex;align-items:center;gap:14px">
+            <div class="maq-header-stat" style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
+            <div class="maq-header-expand" style="font-size:22px;color:var(--text2)">${exp ? '▾' : '▸'}</div>
           </div>
         </div>
         <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" style="display:${exp?'block':'none'}">
