@@ -16672,6 +16672,72 @@ function _mapcliColorByRecencia(ultimaOfIso){
   return '#94a3b8';
 }
 
+function _mapcliCityColorByCount(n){
+  const q = Math.trunc(Number(n||0)||0);
+  if(q <= 2) return '#2563eb';
+  if(q <= 5) return '#16a34a';
+  return '#f59e0b';
+}
+
+function _mapcliCityPopupHtml(g){
+  const cidade = String(g?.cidade||'').trim() || '—';
+  const estado = String(g?.estado||g?.uf||'').trim();
+  const local = estado ? `${cidade} / ${estado}` : cidade;
+  const clientes = Array.isArray(g?.clientes) ? g.clientes : [];
+  const qtd = clientes.length;
+  const periodo = String(document.getElementById('mapcli-periodo')?.value || 'mes').trim() || 'mes';
+  const valor = clientes.reduce((s,c)=>{
+    const v = (periodo === 'ano') ? Number(c?.valor_ano||0)||0 : (periodo === '3m' ? (Number(c?.valor_3m||0)||0) : (Number(c?.valor_mes||0)||0));
+    return s + v;
+  }, 0);
+  const ofs = clientes.reduce((s,c)=>{
+    const n = (periodo === 'ano') ? Math.trunc(Number(c?.total_ofs_ano||0)||0) : (periodo === '3m' ? (Math.trunc(Number(c?.total_ofs_3m||0)||0)) : (Math.trunc(Number(c?.total_ofs_mes||0)||0)));
+    return s + n;
+  }, 0);
+  const list = clientes.slice(0, 10).map(c=>String(c?.nome||'').trim()).filter(Boolean);
+  const rest = Math.max(0, qtd - list.length);
+  const btn = `<button onclick="_cidadeDrawer_abrir('${escAttr(cidade)}','${escAttr(estado)}')" style="margin-top:10px;padding:8px 10px;border-radius:10px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:900;width:100%">Ver clientes</button>`;
+  return `<div style="min-width:220px;color:#0f172a">
+    <div style="font-weight:900;font-size:14px">📍 ${escH(local)}</div>
+    <div style="margin-top:6px;font-size:12px">👥 Clientes: ${escH(String(qtd))}</div>
+    <div style="margin-top:4px;font-size:12px">📦 Total OFs: ${escH(String(ofs))}</div>
+    <div style="margin-top:4px;font-size:12px">💰 Total vendido: ${escH(fmtR(valor))}</div>
+    <div style="margin-top:8px;font-size:12px">${escH(list.join(', ') || '—')}${rest?(' e +' + escH(String(rest))):''}</div>
+    ${btn}
+  </div>`;
+}
+
+function _mapcliUpsertCityMarker(g){
+  try{
+    const st = window._mapCliState || null;
+    if(!st || !st.map || !st.layer || !window.L) return;
+    const cidade = String(g?.cidade||'').trim();
+    const estado = String(g?.estado||g?.uf||'').trim();
+    const key = _mapcliCoordKey(cidade, estado || 'SC');
+    const lat = Number(g?.lat);
+    const lng = Number(g?.lng);
+    if(!key || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    if(!_mapcliIsBrasilLatLng(lat, lng)) return;
+    const qtd = Array.isArray(g?.clientes) ? g.clientes.length : (Math.trunc(Number(g?.qtd||0)||0));
+    const cor = _mapcliCityColorByCount(qtd);
+    const icon = window.L.divIcon({
+      className: '',
+      html: `<div style="background:${cor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)">${qtd}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+    const mk = window.L.marker([lat, lng], { icon });
+    mk.bindPopup(_mapcliCityPopupHtml(g), { maxWidth: 320 });
+    try{
+      mk.on('click', function(){
+        try{ _cidadeDrawer_abrir(cidade, estado); }catch(e){}
+      });
+    }catch(e){}
+    mk.addTo(st.layer);
+    st.markers.set(key, mk);
+  }catch(e){}
+}
+
 function _mapcliInitMap(){
   const el = document.getElementById('mapcli-map');
   if(!el) return null;
@@ -16692,8 +16758,8 @@ function _mapcliInitMap(){
     window._mapCliState = {};
   }
   const m = window.L.map(el, { zoomControl:true, preferCanvas:true }).setView([-15, -55], 4);
-  window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap'
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CartoDB'
   }).addTo(m);
   const layer = (window.L.markerClusterGroup ? window.L.markerClusterGroup({
     showCoverageOnHover: false,
@@ -16832,14 +16898,24 @@ async function _mapcliGeocodeMissing(list){
       const g = byCity[key];
       const cached = cache[key] && typeof cache[key] === 'object' ? cache[key] : null;
       if(cached && _mapcliIsBrasilLatLng(cached.lat, cached.lng)){
-        g.clientes.forEach((c)=>{
-          c.lat = Number(cached.lat);
-          c.lng = Number(cached.lng);
-          _mapcliUpsertMarker(c);
-        });
+        const gg = { cidade: g.cidade, estado: g.estado, clientes: g.clientes, lat: Number(cached.lat), lng: Number(cached.lng) };
+        _mapcliUpsertCityMarker(gg);
         return;
       }
       if(cached) delete cache[key];
+      const hasCoord = (g && Array.isArray(g.clientes)) ? g.clientes.find((c)=>{
+        const lat = parseFloat(String(c?.lat ?? ''));
+        const lng = parseFloat(String(c?.lng ?? ''));
+        return Number.isFinite(lat) && Number.isFinite(lng) && _mapcliIsBrasilLatLng(lat, lng);
+      }) : null;
+      if(hasCoord){
+        const lat = parseFloat(String(hasCoord.lat));
+        const lng = parseFloat(String(hasCoord.lng));
+        cache[key] = { lat, lng, at: Date.now() };
+        const gg = { cidade: g.cidade, estado: g.estado, clientes: g.clientes, lat, lng };
+        _mapcliUpsertCityMarker(gg);
+        return;
+      }
       const first = g && Array.isArray(g.clientes) ? g.clientes[0] : null;
       const firstId = first ? String(first.id||'').trim() : '';
       if(firstId) toSend.push({ id: firstId, cidade: g.cidade, estado: g.estado });
@@ -16866,12 +16942,8 @@ async function _mapcliGeocodeMissing(list){
           if(!_mapcliIsBrasilLatLng(lat, lng)) return;
           cache[key] = { lat, lng, cidade, estado, ts: Date.now() };
           const group = byCity[key];
-          const targets = group && Array.isArray(group.clientes) ? group.clientes : ((list||[]).filter(x=>String(x?.id||'').trim()===id));
-          (targets||[]).forEach((c)=>{
-            c.lat = lat;
-            c.lng = lng;
-            _mapcliUpsertMarker(c);
-          });
+          const gg = { cidade: cidade, estado: estado, clientes: (group && Array.isArray(group.clientes)) ? group.clientes : [], lat, lng };
+          _mapcliUpsertCityMarker(gg);
         });
         _mapcliGeoCacheSet(cache);
       }catch(e){}
@@ -16912,9 +16984,9 @@ async function _mapcliGeocodeMissing(list){
           if(Number.isFinite(lat) && Number.isFinite(lng) && key && _mapcliIsBrasilLatLng(lat, lng)){
             cache[key] = { lat, lng, cidade, estado, ts: Date.now() };
             _mapcliGeoCacheSet(cache);
-            c.lat = lat;
-            c.lng = lng;
-            _mapcliUpsertMarker(c);
+            const group = byCity[key] || { cidade, estado, clientes: [] };
+            const gg = { cidade, estado, clientes: Array.isArray(group.clientes) ? group.clientes : [], lat, lng };
+            _mapcliUpsertCityMarker(gg);
           }
         }catch(e){}
         await sleep(1100);
@@ -17392,16 +17464,8 @@ async function renderMapaClientes(force){
     if(!force && ttlOk && Array.isArray(window._mapCliCache)) {
       const filtered = _mapcliApplyFilters(window._mapCliCache);
       _mapcliClearMarkers();
-      filtered.forEach(_mapcliUpsertMarker);
       _mapcliRenderSide(filtered);
-      _mapcliGeocodeMissing(filtered.filter(c=>{
-        const latRaw = c?.lat;
-        const lngRaw = c?.lng;
-        if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return true;
-        const lat = parseFloat(String(latRaw));
-        const lng = parseFloat(String(lngRaw));
-        return !_mapcliIsBrasilLatLng(lat, lng);
-      }));
+      _mapcliGeocodeMissing(filtered);
       return;
     }
 
@@ -17489,16 +17553,8 @@ async function renderMapaClientes(force){
     });
     const filtered = _mapcliApplyFilters(merged);
     _mapcliClearMarkers();
-    filtered.forEach(_mapcliUpsertMarker);
     _mapcliRenderSide(filtered);
-    _mapcliGeocodeMissing(filtered.filter(c=>{
-      const latRaw = c?.lat;
-      const lngRaw = c?.lng;
-      if(latRaw == null || lngRaw == null || latRaw === '' || lngRaw === '') return true;
-      const lat = parseFloat(String(latRaw));
-      const lng = parseFloat(String(lngRaw));
-      return !_mapcliIsBrasilLatLng(lat, lng);
-    }));
+    _mapcliGeocodeMissing(filtered);
     try{
       const st = window._mapCliState || {};
       const last = Number(st.roteiroLoadedAt||0) || 0;
