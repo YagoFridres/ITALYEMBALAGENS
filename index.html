@@ -27924,6 +27924,8 @@ let _pwaInstallPrompt = null;
 function pwaDismissInstall(){
   try{ document.getElementById('pwa-install-banner').style.display='none'; }catch(e){}
   try{ document.getElementById('btn-instalar-app').style.display='none'; }catch(e){}
+  try{ document.getElementById('cfg-pwa-btn').style.display='none'; }catch(e){}
+  try{ document.getElementById('cfg-pwa-desktop-btn').style.display='none'; }catch(e){}
   try{ _pwaInstallPrompt = null; }catch(e){}
 }
 async function pwaDoInstall(){
@@ -27934,6 +27936,7 @@ async function pwaDoInstall(){
   }catch(e){}
   pwaDismissInstall();
 }
+try{ window._pwaInstall = pwaDoInstall; }catch(e){}
 
 try{
   window.addEventListener('beforeinstallprompt', (e)=>{
@@ -27944,10 +27947,19 @@ try{
       if(b) b.style.display = 'flex';
       const btn = document.getElementById('btn-instalar-app');
       if(btn) btn.style.display = 'inline-flex';
+      const cfgBtn = document.getElementById('cfg-pwa-btn');
+      if(cfgBtn) cfgBtn.style.display = 'block';
+      const cfgDeskBtn = document.getElementById('cfg-pwa-desktop-btn');
+      if(cfgDeskBtn) cfgDeskBtn.style.display = 'block';
     }catch(_){}
   });
   window.addEventListener('appinstalled', ()=>{
-    try{ pwaDismissInstall(); }catch(e){}
+    try{
+      pwaDismissInstall();
+      ['cfg-pwa-btn','cfg-pwa-desktop-btn','btn-instalar-app'].forEach(id=>{ try{ const el=document.getElementById(id); if(el) el.style.display='none'; }catch(e){} });
+      const inst = document.getElementById('cfg-pwa-instalado');
+      if(inst) inst.style.display = 'block';
+    }catch(e){}
   });
 }catch(e){}
 
@@ -38441,6 +38453,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     .hub-search:focus{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.18)}
     .hub-search-wrap{position:relative}
     .hub-search-results{position:absolute;left:0;right:0;top:calc(100% + 8px);background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;z-index:50;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+    #hub-search-results{background:var(--bg2, #0d1320) !important;border:1px solid var(--border, rgba(255,255,255,0.1)) !important;border-radius:12px !important;box-shadow:0 20px 50px rgba(0,0,0,0.7) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;opacity:1 !important;z-index:9999 !important}
     .hub-search-results .sec{padding:12px 14px;border-top:1px solid var(--border)}
     .hub-search-results .sec:first-child{border-top:none}
     .hub-search-results .h{font-size:.72rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px}
@@ -38473,6 +38486,8 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     .hub-skel{background:linear-gradient(90deg, rgba(255,255,255,.05), rgba(255,255,255,.10), rgba(255,255,255,.05));background-size:200% 100%;animation:hubSk 1.3s linear infinite;border-radius:12px}
     .hub-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);z-index:950;padding:18px}
     .hub-modal .panel{width:min(1080px,100%);max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+    #hub-cli-modal .panel{background:var(--bg2, #0d1320) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+    #modal-cliente .modal,#modal-cliente-body,.painel-cliente{background:var(--bg2, #0d1320) !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
     .hub-modal .ph{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .hub-modal .pt{font-weight:1000;font-size:1.05rem}
     .hub-modal .ps{font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-top:4px}
@@ -40119,6 +40134,56 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div class="sbox-h">⌨️ Atalhos</div>
       <div class="sbox-b" style="font-size:.78rem;color:var(--text2)">
         Ctrl+N (Nova OF) · Ctrl+K (Busca) · Ctrl+P (PCP) · Ctrl+E (Estoque) · Ctrl+C (Clientes) · ? (Ajuda)
+      </div>
+    </div>
+
+    <div class="sbox" style="margin-top:12px">
+      <div class="sbox-h">📲 Aplicativo Mobile e Desktop</div>
+      <div class="sbox-b">
+        <div style="margin-bottom:14px">
+          <div style="font-weight:900;margin-bottom:6px">Como instalar o app</div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.6">Instale o sistema como aplicativo no seu celular ou computador para acesso rápido, sem precisar abrir o navegador.</div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:28px">🤖</span>
+            <div>
+              <div style="font-weight:1000">Android / Chrome</div>
+              <div style="font-size:12px;color:var(--text3)">Clique no botão abaixo quando disponível</div>
+            </div>
+          </div>
+          <button id="cfg-pwa-btn" onclick="window._pwaInstall?.()" style="display:none;width:100%;padding:12px;background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:1000;cursor:pointer;font-family:inherit">📲 Instalar App no Android</button>
+          <div id="cfg-pwa-instalado" style="display:none;text-align:center;color:var(--green);font-weight:900;font-size:13px;padding:8px">✓ App já instalado!</div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:28px">🍎</span>
+            <div>
+              <div style="font-weight:1000">iPhone / iPad (Safari)</div>
+              <div style="font-size:12px;color:var(--text3)">Siga os passos abaixo</div>
+            </div>
+          </div>
+          <div style="background:var(--bg3);border-radius:8px;padding:12px;font-size:13px;line-height:1.8">
+            <div>1. Abra o site no <b>Safari</b></div>
+            <div>2. Toque em <b>Compartilhar ↑</b></div>
+            <div>3. Role e toque em <b>Adicionar à Tela de Início</b></div>
+            <div>4. Toque em <b>Adicionar</b></div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:28px">🖥️</span>
+            <div>
+              <div style="font-weight:1000">PC / Mac (Chrome ou Edge)</div>
+              <div style="font-size:12px;color:var(--text3)">Instale como app no desktop</div>
+            </div>
+          </div>
+          <button id="cfg-pwa-desktop-btn" onclick="window._pwaInstall?.()" style="display:none;width:100%;padding:12px;background:linear-gradient(135deg,#6d28d9,#8b5cf6);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:1000;cursor:pointer;font-family:inherit;margin-bottom:10px">🖥️ Instalar App no PC</button>
+          <div style="font-size:12px;color:var(--text3);text-align:center">Ou clique no ícone <b>⊕</b> na barra de endereços do Chrome/Edge</div>
+        </div>
       </div>
     </div>
 
@@ -49752,6 +49817,17 @@ function hubCliPanelSetTab(tab){
   }catch(e){}
 }
 
+function filtrarPainelCliente(){
+  try{
+    const sel = document.getElementById('painel-cli-mes');
+    if(!sel) return;
+    const st = window.__HUB_CLI_PANEL;
+    if(!st) return;
+    st.mes = String(sel.value || 'todos');
+    hubCliPanelRender();
+  }catch(e){}
+}
+
 function hubCliPanelHistPage(dir){
   try{
     const st = window.__HUB_CLI_PANEL;
@@ -49813,6 +49889,7 @@ async function hubAbrirPainelCliente(clienteId, nomeCliente){
     st.clienteId = cid;
     st.tab = st.tab || 'resumo';
     st.histPage = 0;
+    st.mes = 'todos';
     st.loading = true;
     st.data = null;
     hubCliPanelRender();
@@ -49910,6 +49987,7 @@ function hubCliPanelRender(){
     const c = st.data.cliente || {};
     const vend = st.data.vendedor || null;
     const ofs = Array.isArray(st.data.ofs) ? st.data.ofs : [];
+    try{ window._painelClienteOfs = ofs; }catch(e){}
     const cli = _hubCliPick(c);
     const vendNome = String(vend?.nome || vend?.vendedor || vend?.name || '').trim();
 
@@ -49920,15 +49998,30 @@ function hubCliPanelRender(){
     const mes = hoje.toISOString().slice(0,7);
     const prev = new Date(hoje.getFullYear(), hoje.getMonth()-1, 1).toISOString().slice(0,7);
     const valOf = (o)=> Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? o?.total ?? 0) || 0;
-    const dtOf = (o)=> String(o?.created_at || o?.data_pedido || o?.updated_at || '').slice(0,10);
+    const dtOf = (o)=> String(o?.created_at || o?.data_entrega || o?.data_pedido || o?.updated_at || '').slice(0,10);
     const mesOf = (o)=> String(dtOf(o) || '').slice(0,7);
+    const periodo = String(st.mes || 'todos');
+    const allMeses = Array.from(new Set(ofs.map(mesOf).filter(m=>/^\d{4}-\d{2}$/.test(m)))).sort().reverse();
+    const optMes = (m)=>{
+      if(m === 'todos') return 'Todo o histórico';
+      const [a,mm] = String(m).split('-');
+      const nomes = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const mi = Math.max(1, Math.min(12, Math.trunc(Number(mm)||0)));
+      return `${nomes[mi]} ${a}`;
+    };
+    const selectOptsHtml = [
+      `<option value="todos"${periodo==='todos'?' selected':''}>${escH(optMes('todos'))}</option>`,
+      ...allMeses.map(m=>`<option value="${escAttr(m)}"${m===periodo?' selected':''}>${escH(optMes(m))}</option>`)
+    ].join('');
+    const ofsBase = ofs;
+    const ofsFiltradas = (periodo !== 'todos') ? ofsBase.filter(o=>mesOf(o) === periodo) : ofsBase;
     const isConcl = (o)=>_hubIsConcl(_hubOfStatus(o));
     const isCanc = (o)=>_hubIsCancel(_hubOfStatus(o));
-    const abertas = ofs.filter(o=>!isConcl(o) && !isCanc(o));
-    const concluidas = ofs.filter(o=>isConcl(o) && !isCanc(o));
+    const abertas = ofsFiltradas.filter(o=>!isConcl(o) && !isCanc(o));
+    const concluidas = ofsFiltradas.filter(o=>isConcl(o) && !isCanc(o));
 
-    const curMes = ofs.filter(o=>mesOf(o) === mes);
-    const prevMes = ofs.filter(o=>mesOf(o) === prev);
+    const curMes = ofsBase.filter(o=>mesOf(o) === mes);
+    const prevMes = ofsBase.filter(o=>mesOf(o) === prev);
     const curQtd = curMes.length;
     const prevQtd = prevMes.length;
     const curVal = curMes.reduce((s,o)=>s+valOf(o),0);
@@ -49936,7 +50029,7 @@ function hubCliPanelRender(){
     const cresc = prevVal > 0 ? Math.round(((curVal - prevVal)/prevVal)*100) : (curVal > 0 ? 100 : 0);
 
     const prodAgg = new Map();
-    ofs.forEach(o=>{
+    ofsFiltradas.forEach(o=>{
       const p = _hubOfProduto(o);
       const k = _hubNorm(p);
       if(!k) return;
@@ -49947,13 +50040,13 @@ function hubCliPanelRender(){
     });
     const topProd = Array.from(prodAgg.values()).sort((a,b)=>b.qtd-a.qtd).slice(0,3);
 
-    const lastBuy = ofs.slice().sort((a,b)=>String(dtOf(b)).localeCompare(String(dtOf(a)),'pt-BR'))[0] || null;
+    const lastBuy = ofsFiltradas.slice().sort((a,b)=>String(dtOf(b)).localeCompare(String(dtOf(a)),'pt-BR'))[0] || null;
     const lastTxt = lastBuy ? `${fmtD(dtOf(lastBuy))} · ${_hubOfProduto(lastBuy) || '—'} · ${fmtR(valOf(lastBuy))}` : '—';
 
-    const totalOfs = ofs.length;
-    const totalVal = ofs.reduce((s,o)=>s+valOf(o),0);
+    const totalOfs = ofsFiltradas.length;
+    const totalVal = ofsFiltradas.reduce((s,o)=>s+valOf(o),0);
     const ticket = totalOfs ? (totalVal/totalOfs) : 0;
-    const dates = ofs.map(o=>dtOf(o)).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+    const dates = ofsFiltradas.map(o=>dtOf(o)).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
     let freq = null;
     if(dates.length >= 2){
       let sum = 0;
@@ -50001,11 +50094,11 @@ function hubCliPanelRender(){
       const n = Math.trunc(Number(v));
       return Number.isFinite(n) && n > 0 ? n : 0;
     };
-    const totalPerdas = ofs.reduce((s,o)=>s+qtdPerdidaOf(o),0);
+    const totalPerdas = ofsFiltradas.reduce((s,o)=>s+qtdPerdidaOf(o),0);
     const maquinas = (()=>{
       try{
         const set = new Set();
-        ofs.forEach(o=>{
+        ofsFiltradas.forEach(o=>{
           const m = String(maquinaAtual(o) || '').trim();
           if(m) set.add(m);
           const raw = o?.fluxo_maquinas ?? o?.maquinas_fluxo ?? null;
@@ -50031,6 +50124,7 @@ function hubCliPanelRender(){
     })();
 
     if(tab === 'resumo'){
+      const periodoTxt = periodo === 'todos' ? `${String(ofsBase.length)} OFs no total` : `${String(ofsFiltradas.length)} OFs neste mês`;
       body.innerHTML = `
         <div class="hub-grid-2">
           <div class="hub-kbox">
@@ -50041,11 +50135,13 @@ function hubCliPanelRender(){
               <div class="hub-kbox" style="background:rgba(168,85,247,0.10);border-color:rgba(168,85,247,0.20)"><div class="k">Ticket Médio</div><div class="v" style="color:#A78BFA">${escH(fmtR(ticket))}</div></div>
               <div class="hub-kbox" style="background:rgba(244,63,94,0.10);border-color:rgba(244,63,94,0.22)"><div class="k">Total Perdas</div><div class="v" style="color:var(--red2)">${escH(String(totalPerdas || 0))} cx</div></div>
             </div>
-            <div style="margin-top:12px;display:grid;gap:8px">
-              <div class="hub-row"><div><div style="font-weight:950">Este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))} · <span style="color:var(--green)">${escH(fmtR(curVal))}</span></div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Mês passado</div><div class="m">${escH(prev.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(prevQtd))} · ${escH(fmtR(prevVal))}</div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Crescimento</div><div class="m">Comparativo</div></div><div style="font-weight:1000;color:${cresc<0?'#ef4444':'var(--green)'}">${escH((cresc>0?'+':'') + String(cresc) + '%')}</div></div>
-            </div>
+            ${periodo==='todos' ? `
+              <div style="margin-top:12px;display:grid;gap:8px">
+                <div class="hub-row"><div><div style="font-weight:950">Este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))} · <span style="color:var(--green)">${escH(fmtR(curVal))}</span></div></div>
+                <div class="hub-row"><div><div style="font-weight:950">Mês passado</div><div class="m">${escH(prev.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(prevQtd))} · ${escH(fmtR(prevVal))}</div></div>
+                <div class="hub-row"><div><div style="font-weight:950">Crescimento</div><div class="m">Comparativo</div></div><div style="font-weight:1000;color:${cresc<0?'#ef4444':'var(--green)'}">${escH((cresc>0?'+':'') + String(cresc) + '%')}</div></div>
+              </div>
+            ` : ''}
           </div>
           <div class="hub-kbox">
             <div class="k">Cliente</div>
@@ -50060,6 +50156,14 @@ function hubCliPanelRender(){
             ${maquinas.length?`<div style="margin-top:12px"><div class="k">Máquinas utilizadas</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${maquinas.map(m=>`<span class="hub-pill" style="background:rgba(37,99,235,0.10);border-color:rgba(37,99,235,0.22);color:#60A5FA"><b>${escH(m)}</b></span>`).join('')}</div></div>`:''}
             <div style="margin-top:10px" class="m"><b>Última compra:</b> ${escH(lastTxt)}</div>
           </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:700;color:var(--text3)">Período:</span>
+          <select id="painel-cli-mes" onchange="filtrarPainelCliente()" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);font-size:13px;outline:none;cursor:pointer;font-family:inherit">
+            ${selectOptsHtml}
+          </select>
+          <span id="painel-cli-total-mes" style="font-size:12px;color:var(--text3)">${escH(periodoTxt)}</span>
         </div>
 
         <div class="hub-kbox">
