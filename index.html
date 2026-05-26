@@ -46965,38 +46965,35 @@ window.atualizarChapas = async function(){
     }
     try{
       try{
-        const wantImg = /imagem|foto|print|ver\s+a\s*of|mostra\s+a?\s*of/i.test(String(text||''));
-        if(wantImg){
-          const mNum = String(text||'').match(/\b(\d{3,4})\b/);
-          const num = mNum ? String(mNum[1] || '').trim() : '';
-          if(num){
-            const rOf = await apiFetch('/api/ofs?numero=' + encodeURIComponent(num) + '&limit=1&nocache=1', { method:'GET' });
-            const jOf = rOf ? await rOf.json().catch(()=>null) : null;
-            const arr = Array.isArray(jOf) ? jOf : (Array.isArray(jOf?.data) ? jOf.data : (Array.isArray(jOf?.ofs) ? jOf.ofs : []));
-            const of = (Array.isArray(arr) && arr.length) ? (arr[0] || null) : null;
-            const imgUrl = of ? String(of.imagem_url || (Array.isArray(of.imgs) ? of.imgs[0] : '') || of.img || of.imagem || '').trim() : '';
-            if(of && imgUrl){
-              const numero = String(of.of || of.numero || of.of_num || num).trim() || num;
-              const cliente = String(of.clinome || of.cliNome || of.cliente_nome || of.cliente || '—').trim() || '—';
-              const produto = String(of.descricao || of.prodDesc || of.produto || '').trim();
-              const safeImg = imgUrl.replace(/'/g, '%27');
-              const htmlImg = `<div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)">
-                <div style="font-weight:900">OF Nº ${esc(numero)} — ${esc(cliente)}</div>
-                <img src="${esc(safeImg)}" style="max-width:100%;border-radius:8px;cursor:pointer;margin-top:8px;border:1px solid var(--border)" onclick="window.open('${esc(safeImg)}','_blank')" />
-                ${produto ? `<div style="margin-top:8px;color:var(--text3);font-size:.78rem">${esc(produto)}</div>` : ''}
-              </div>`;
-              const el = document.getElementById(typingId);
-              if(el && el.parentNode) el.parentNode.remove();
-              addMsg('assistant', `Imagem da OF ${numero}:`, { html: htmlImg });
-              return;
-            }
-            if(of && !imgUrl){
-              const el = document.getElementById(typingId);
-              if(el && el.parentNode) el.parentNode.remove();
-              addMsg('assistant', `A OF Nº ${num} não possui imagem cadastrada.`);
-              return;
-            }
+        const pedidoImagem = /imagem|foto|print|ver\s+a?\s*of|mostra\s+a?\s*of|imagem\s+da|foto\s+da/i.test(String(text||''));
+        const numOf = String(text||'').match(/\b(\d{3,4})\b/)?.[1];
+        if(pedidoImagem && numOf){
+          const rOf = await apiFetch('/api/ofs?numero=' + encodeURIComponent(String(numOf)) + '&limit=1&nocache=1', { method:'GET' });
+          const jOf = rOf ? await rOf.json().catch(()=>null) : null;
+          const of = (jOf && Array.isArray(jOf.data) && jOf.data[0]) ? jOf.data[0]
+            : ((Array.isArray(jOf) && jOf[0]) ? jOf[0]
+              : ((jOf && Array.isArray(jOf.ofs) && jOf.ofs[0]) ? jOf.ofs[0] : null));
+          if(!of){
+            const el = document.getElementById(typingId);
+            if(el && el.parentNode) el.parentNode.remove();
+            addMsg('assistant', `Não encontrei a OF Nº ${String(numOf)}. Verifique se o número está correto.`);
+            return;
           }
+          const rawImg = of?.imagem_url || (Array.isArray(of?.imgs) ? of.imgs[0] : null) || of?.img || of?.imagem || of?.foto || null;
+          const imgUrl = String(rawImg || '').trim();
+          if(!imgUrl){
+            const el = document.getElementById(typingId);
+            if(el && el.parentNode) el.parentNode.remove();
+            addMsg('assistant', `A OF Nº ${String(numOf)} não possui imagem cadastrada.`);
+            return;
+          }
+          const numero = String(of?.of || of?.numero || of?.of_num || numOf).trim() || String(numOf);
+          const cliente = String(of?.clinome || of?.cliNome || of?.cliente_nome || of?.cliente || '').trim();
+          const produto = String(of?.descricao || of?.prodDesc || of?.produto || '').trim();
+          const el = document.getElementById(typingId);
+          if(el && el.parentNode) el.parentNode.remove();
+          addMsg('assistant', `🖼 OF Nº ${numero}${cliente ? ' — ' + cliente : ''}${produto ? ' · ' + produto : ''}`, { images: [imgUrl] });
+          return;
         }
       }catch(e){}
       try{
