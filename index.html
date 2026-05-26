@@ -49680,20 +49680,6 @@ function hubRenderSearch(){
     const ultima = cliOfs.slice().sort((a,b)=>String(_hubOfCreated(b)).localeCompare(String(_hubOfCreated(a)),'pt-BR')).find(Boolean) || null;
     const ultimaDt = ultima ? _hubOfCreated(ultima) : '';
     const ultimaProd = String(ultima?.descricao ?? ultima?.prodDesc ?? '').trim();
-    const openRows = cliAbertas.slice().sort((a,b)=>String(_hubOfEnt(a)).localeCompare(String(_hubOfEnt(b)),'pt-BR')).slice(0,5).map(o=>{
-      const oid = String(o?.id||'').trim();
-      const num = _hubOfNumero(o) || '—';
-      const prod = String(o?.descricao ?? o?.prodDesc ?? '').trim() || '—';
-      const ent = _hubOfEnt(o);
-      const st = _hubOfStatus(o) || '—';
-      return `<div class="row">
-        <div style="min-width:0">
-          <div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(num)} · ${escH(prod)}</div>
-          <div class="m">Entrega: <b>${escH(ent ? fmtD(ent) : '—')}</b> · Status: <b>${escH(st)}</b></div>
-        </div>
-        <button class="btnlink" onclick="abrirModalOF('${escAttr(oid)}')">Abrir</button>
-      </div>`;
-    }).join('');
     const header = `<div class="sec">
       <div class="h">CLIENTE</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
@@ -49718,8 +49704,7 @@ function hubRenderSearch(){
         </div>
       </div>
     </div>`;
-    const openSec = openRows ? `<div class="sec"><div class="h">OFs EM ABERTO</div>${openRows}</div>` : '';
-    return header + openSec;
+    return header;
   })();
   const ofSec = (()=>{
     if(!matchOfs.length) return '';
@@ -49822,6 +49807,8 @@ async function hubAbrirPainelCliente(clienteId, nomeCliente){
     const nomeCliRaw = String(nomeCliente || '').trim();
     const modal = document.getElementById('hub-cli-modal');
     if(modal) modal.style.display = 'flex';
+    const sr = document.getElementById('hub-search-results');
+    if(sr){ sr.style.display='none'; sr.innerHTML=''; }
     const st = window.__HUB_CLI_PANEL || (window.__HUB_CLI_PANEL = { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false });
     st.clienteId = cid;
     st.tab = st.tab || 'resumo';
@@ -49848,17 +49835,33 @@ async function hubAbrirPainelCliente(clienteId, nomeCliente){
 
     try{
       if(_apiConectado && CURRENT_USER){
-        const r = await apiFetch('/api/ofs?cliente_id=' + encodeURIComponent(cid) + '&incluir_excluidas=1&limit=1500&nocache=1', { method:'GET' });
-        const j = r ? await r.json().catch(()=>null) : null;
-        const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
-        if(Array.isArray(arr) && arr.length) ofsCli = arr;
-        if((!Array.isArray(ofsCli) || !ofsCli.length) && nomeCliRaw){
-          const qs = new URLSearchParams({ cliente_nome: nomeCliRaw, limit: '200', incluir_excluidas: '0', nocache: '1' }).toString();
-          const r2 = await apiFetch('/api/ofs?' + qs, { method:'GET' });
-          const j2 = r2 ? await r2.json().catch(()=>null) : null;
-          const arr2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.data) ? j2.data : []);
-          if(Array.isArray(arr2) && arr2.length) ofsCli = arr2;
+        const limit = 200;
+        const maxOffset = 600;
+        const fetchPaged = async (base) => {
+          const all = [];
+          let offset = 0;
+          while(true){
+            const qs = new URLSearchParams(base || {});
+            qs.set('limit', String(limit));
+            qs.set('offset', String(offset));
+            const r = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
+            const j = r ? await r.json().catch(()=>null) : null;
+            const lote = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+            if(Array.isArray(lote) && lote.length) all.push(...lote);
+            if(!Array.isArray(lote) || lote.length < limit) break;
+            offset += limit;
+            if(offset > maxOffset) break;
+          }
+          return all;
+        };
+        let arr = [];
+        if(nomeCliRaw){
+          arr = await fetchPaged({ cliente_nome: nomeCliRaw, incluir_excluidas: '0', nocache: '1', lite: '1' });
         }
+        if(!arr.length){
+          arr = await fetchPaged({ cliente_id: cid, incluir_excluidas: '0', nocache: '1', lite: '1' });
+        }
+        if(Array.isArray(arr) && arr.length) ofsCli = arr;
       }
     }catch(e){}
 
@@ -49993,6 +49996,28 @@ function hubCliPanelRender(){
       const obs = _hubNorm(o?.obs);
       return s.includes('urg') || obs.includes('urg');
     };
+    const qtdPerdidaOf = (o)=>{
+      const v = o?.qtd_perdida ?? o?.qtdPerdida ?? 0;
+      const n = Math.trunc(Number(v));
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
+    const totalPerdas = ofs.reduce((s,o)=>s+qtdPerdidaOf(o),0);
+    const maquinas = (()=>{
+      try{
+        const set = new Set();
+        ofs.forEach(o=>{
+          const m = String(maquinaAtual(o) || '').trim();
+          if(m) set.add(m);
+          const raw = o?.fluxo_maquinas ?? o?.maquinas_fluxo ?? null;
+          if(!raw) return;
+          let arr = [];
+          if(Array.isArray(raw)) arr = raw;
+          else if(typeof raw === 'string') { try{ arr = JSON.parse(raw||'[]')||[]; }catch(e){ arr = []; } }
+          if(Array.isArray(arr)) arr.forEach(x=>{ const s = String(x||'').trim(); if(s) set.add(s); });
+        });
+        return Array.from(set.values()).filter(Boolean);
+      }catch(e){ return []; }
+    })();
     const mesesAtivo = (()=>{
       try{
         if(!dates.length) return 0;
@@ -50014,7 +50039,7 @@ function hubCliPanelRender(){
               <div class="hub-kbox" style="background:rgba(37,99,235,0.10);border-color:rgba(37,99,235,0.25)"><div class="k">OFs Total</div><div class="v" style="color:#60A5FA">${escH(String(totalOfs))}</div></div>
               <div class="hub-kbox" style="background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.22)"><div class="k">Valor Total</div><div class="v" style="color:var(--green)">${escH(fmtR(totalVal))}</div></div>
               <div class="hub-kbox" style="background:rgba(168,85,247,0.10);border-color:rgba(168,85,247,0.20)"><div class="k">Ticket Médio</div><div class="v" style="color:#A78BFA">${escH(fmtR(ticket))}</div></div>
-              <div class="hub-kbox" style="background:rgba(245,158,11,0.10);border-color:rgba(245,158,11,0.22)"><div class="k">Meses Ativo</div><div class="v" style="color:#F59E0B">${escH(String(mesesAtivo || 0))}</div></div>
+              <div class="hub-kbox" style="background:rgba(244,63,94,0.10);border-color:rgba(244,63,94,0.22)"><div class="k">Total Perdas</div><div class="v" style="color:var(--red2)">${escH(String(totalPerdas || 0))} cx</div></div>
             </div>
             <div style="margin-top:12px;display:grid;gap:8px">
               <div class="hub-row"><div><div style="font-weight:950">Este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))} · <span style="color:var(--green)">${escH(fmtR(curVal))}</span></div></div>
@@ -50032,6 +50057,7 @@ function hubCliPanelRender(){
               ${cli.email?`<span class="hub-pill">Email: <b>${escH(cli.email)}</b></span>`:''}
               ${vendNome?`<span class="hub-pill">Vendedor: <b>${escH(vendNome)}</b></span>`:''}
             </div>
+            ${maquinas.length?`<div style="margin-top:12px"><div class="k">Máquinas utilizadas</div><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${maquinas.map(m=>`<span class="hub-pill" style="background:rgba(37,99,235,0.10);border-color:rgba(37,99,235,0.22);color:#60A5FA"><b>${escH(m)}</b></span>`).join('')}</div></div>`:''}
             <div style="margin-top:10px" class="m"><b>Última compra:</b> ${escH(lastTxt)}</div>
           </div>
         </div>
@@ -50050,6 +50076,7 @@ function hubCliPanelRender(){
                 const img = imgUrlOf(o);
                 const urg = isUrgente(o);
                 const atr = isAtrasada(o);
+                const perd = qtdPerdidaOf(o);
                 const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
                 const imgHtml = img
                   ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
@@ -50061,7 +50088,7 @@ function hubCliPanelRender(){
                       <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
                       ${extra}
                     </div>
-                    <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · ${escH(stt||'—')}</div>
+                    <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · ${escH(stt||'—')}${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
                   </div>
                   <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
                 </div>`;
@@ -50082,6 +50109,8 @@ function hubCliPanelRender(){
                 const prod = _hubOfProduto(o) || '—';
                 const dt = _hubOfConcl(o) || dtOf(o);
                 const v = valOf(o);
+                const qtdProd = Math.trunc(Number(o?.qtd_produzida ?? o?.qtdProduzida ?? o?.qtd_real ?? 0)) || 0;
+                const perd = qtdPerdidaOf(o);
                 const img = imgUrlOf(o);
                 const imgHtml = img
                   ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
@@ -50090,7 +50119,7 @@ function hubCliPanelRender(){
                   ${imgHtml}
                   <div style="min-width:0;flex:1">
                     <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
-                    <div class="m">Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b></div>
+                    <div class="m">Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b>${qtdProd?` · ${escH(String(qtdProd))} cx`:''}${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
                   </div>
                   <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
                 </div>`;
@@ -50115,6 +50144,7 @@ function hubCliPanelRender(){
             <div class="hub-row"><div><div style="font-weight:950">Valor acumulado</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(totalVal))}</div></div>
             <div class="hub-row"><div><div style="font-weight:950">Ticket médio</div><div class="m">Valor/OF</div></div><div style="font-weight:1000">${escH(fmtR(ticket))}</div></div>
             <div class="hub-row"><div><div style="font-weight:950">Frequência média</div><div class="m">Dias entre pedidos</div></div><div style="font-weight:1000">${escH(freq!=null?String(freq)+' dias':'—')}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Meses ativo</div><div class="m">Desde a 1ª compra</div></div><div style="font-weight:1000">${escH(String(mesesAtivo || 0))}</div></div>
           </div>
         </div>
       `;
@@ -50133,6 +50163,7 @@ function hubCliPanelRender(){
         const img = imgUrlOf(o);
         const urg = isUrgente(o);
         const atr = isAtrasada(o);
+        const perd = qtdPerdidaOf(o);
         const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
         const imgHtml = img
           ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
@@ -50146,7 +50177,7 @@ function hubCliPanelRender(){
               ${_hubStatusPill(stt)}
               ${pr!=null?`<span class="hub-badge">Pri: <b>${escH(String(pr))}</b></span>`:''}
             </div>
-            <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b></div>
+            <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b>${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
         </div>`;

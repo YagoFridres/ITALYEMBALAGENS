@@ -2557,6 +2557,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       clienteId: q_clienteId,
       cli_id: q_cli_id,
       cliId: q_cliId,
+      cliente_nome: q_cliente_nome,
+      clienteNome: q_clienteNome,
+      cliente: q_cliente,
       numero: q_numero,
       of_num: q_of_num,
       of: q_of,
@@ -2596,6 +2599,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
     const empId = String(q_empId || q_emp_id || '').trim();
     const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
+    let clienteNomeRaw = String(q_cliente_nome || q_clienteNome || q_cliente || '').trim();
+    try { clienteNomeRaw = decodeURIComponent(clienteNomeRaw); } catch (_) {}
+    const clienteNome = clienteNomeRaw ? String(clienteNomeRaw).replace(/%/g, '').trim() : '';
     const numeroRaw = String(q_numero || q_of_num || q_of || '').trim();
     const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
     let statusRaw = q_status ? String(q_status).trim() : '';
@@ -2618,7 +2624,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
     const temFiltroData = !!(from || to);
-    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!status;
+    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status;
     const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
 
     const CACHE_VERSION = 'ofs_v4';
@@ -2817,6 +2823,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (clienteId && Array.isArray(cliCols) && cliCols.length) {
         const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
         if (expr) q = q.or(expr);
+      }
+
+      if (clienteNome) {
+        const termo = String(clienteNome || '').replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+        const cols = ['cliente_nome', 'cliNome', 'clinome'].filter((c) => _ofsSelectableHas(c));
+        if (termo && cols.length) {
+          const like = '%' + termo + '%';
+          const expr = cols.map((c) => `${c}.ilike.${like}`).join(',');
+          if (expr) q = q.or(expr);
+        }
       }
 
       if (numero && Array.isArray(numCols) && numCols.length) {
