@@ -688,6 +688,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .mbn-ico{font-size:24px;line-height:1;}
 .mbn-lbl{font-size:.62rem;font-weight:800;letter-spacing:.2px;}
 .mbn-item.active{background:rgba(37,99,235,0.18);color:var(--accent);border:1px solid color-mix(in srgb, var(--accent) 70%, var(--border));}
+.mob-more-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:910}
+.mob-more-overlay.show{display:block}
+.mob-more-drawer{position:fixed;left:0;right:0;bottom:0;transform:translateY(102%);transition:transform .18s ease;z-index:911;background:var(--surface);border-top:1px solid var(--border);border-top-left-radius:16px;border-top-right-radius:16px;max-height:70vh;display:flex;flex-direction:column;overflow:hidden}
+.mob-more-drawer.open{transform:translateY(0)}
+.mob-more-h{padding:12px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mob-more-h .t{font-weight:1000}
+.mob-more-b{padding:10px 12px;overflow:auto}
+.mob-more-sec{margin-bottom:12px}
+.mob-more-sec:last-child{margin-bottom:0}
+.mob-more-sec .lbl{font-family:var(--mono);font-size:.7rem;color:var(--text3);font-weight:950;letter-spacing:.08em;text-transform:uppercase;margin:10px 2px 8px}
+.mob-more-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.mob-more-it{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px 8px;min-height:72px;border-radius:14px;border:1px solid var(--border);background:var(--s2);cursor:pointer}
+.mob-more-it:active{transform:scale(.99)}
+.mob-more-it .ico{font-size:22px;line-height:1}
+.mob-more-it .tx{font-size:.68rem;font-weight:950;color:var(--text2);text-align:center;line-height:1.05}
 .pwa-install-banner{display:none;position:fixed;left:12px;right:12px;bottom:74px;z-index:881;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);padding:12px 12px;gap:10px;align-items:center;}
 .pwa-install-title{font-weight:900;color:var(--text);font-size:.78rem;}
 .pwa-install-sub{color:var(--text3);font-size:.7rem;line-height:1.25;}
@@ -738,6 +753,7 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
   .ofmaq-thumb img{width:48px !important;height:48px !important;object-fit:cover !important;}
   .ofmaq-drop-ind{height:3px;background:#4a9eff;border-radius:999px;margin:6px 0;}
   .mobile-bottom-nav{display:flex;}
+  .mob-more-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 
 /* ===== MOBILE APP (LEGADO, NÃO USADO) ===== */
@@ -27617,19 +27633,120 @@ function toggleMobMenu(){
   const isMobileAttr = document.body.getAttribute('data-device')==='mobile';
   const isNarrow = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width:768px)').matches;
   if(!isMobileAttr && !isNarrow) return;
-  const sb=document.querySelector('.sidebar');
-  const ov=document.getElementById('sidebar-overlay');
-  if(sb) { sb.classList.toggle('open'); sb.classList.toggle('mob-open'); }
-  if(ov) ov.classList.toggle('show');
+  try{ _ensureMobMoreDrawer(); }catch(e){}
+  const dr=document.getElementById('mob-more-drawer');
+  const ov=document.getElementById('mob-more-overlay');
+  const isOpen = !!(dr && dr.classList && dr.classList.contains('open'));
+  if(dr) dr.classList.toggle('open', !isOpen);
+  if(ov) ov.classList.toggle('show', !isOpen);
 }
 function closeMobMenu(){
-  const sb=document.querySelector('.sidebar');
-  const ov=document.getElementById('sidebar-overlay');
-  if(sb) { sb.classList.remove('open'); sb.classList.remove('mob-open'); }
+  const dr=document.getElementById('mob-more-drawer');
+  const ov=document.getElementById('mob-more-overlay');
+  if(dr) dr.classList.remove('open');
   if(ov) ov.classList.remove('show');
 }
 function toggleSidebar(){ toggleMobMenu(); }
 function closeSidebar(){ closeMobMenu(); }
+
+function _ensureMobMoreDrawer(){
+  const already = document.getElementById('mob-more-drawer');
+  if(already) return;
+  const body = document.body;
+  if(!body) return;
+  const ov = document.createElement('div');
+  ov.id = 'mob-more-overlay';
+  ov.className = 'mob-more-overlay';
+  ov.addEventListener('click', ()=>{ try{ closeMobMenu(); }catch(e){} }, true);
+  const dr = document.createElement('div');
+  dr.id = 'mob-more-drawer';
+  dr.className = 'mob-more-drawer';
+  dr.innerHTML = `<div class="mob-more-h"><div class="t">Mais</div><button class="btn btn-ghost btn-sm" onclick="closeMobMenu()">Fechar</button></div><div class="mob-more-b" id="mob-more-body"></div>`;
+  body.appendChild(ov);
+  body.appendChild(dr);
+  _renderMobMoreDrawer();
+}
+
+function _mobTryCall(fn){
+  try{
+    if(typeof fn === 'function'){ fn(); return true; }
+  }catch(e){}
+  return false;
+}
+
+function _mobNavTo(pageId){
+  try{
+    const id = String(pageId||'').trim();
+    if(!id) return false;
+    if(typeof go === 'function'){ go(id); return true; }
+  }catch(e){}
+  return false;
+}
+
+function _mobRunMenuAction(action){
+  try{
+    closeMobMenu();
+    if(typeof action === 'function'){ return _mobTryCall(action); }
+    const s = String(action||'').trim();
+    if(!s) return false;
+    if(s.startsWith('go:')) return _mobNavTo(s.slice(3));
+    const fn = window[s];
+    if(typeof fn === 'function') return _mobTryCall(fn);
+    return false;
+  }catch(e){ return false; }
+}
+
+function _renderMobMoreDrawer(){
+  const root = document.getElementById('mob-more-body');
+  if(!root) return;
+  const mkItem = (ico, lbl, action)=>`<button class="mob-more-it" onclick="_mobRunMenuAction(${typeof action === 'string' ? `'${action.replace(/'/g, "\\'")}'` : 'null'})"><div class="ico">${ico}</div><div class="tx">${escH(lbl)}</div></button>`;
+
+  const sections = [
+    { lbl:'Produção', items:[
+      { ico:'✨', lbl:'Hub Inicial', act:'go:hub' },
+      { ico:'📋', lbl:'PCP', act:'go:pcp' },
+      { ico:'🏭', lbl:'OFs Máquina', act:'go:ofmaq' },
+      { ico:'🗂', lbl:'Armazenamento', act:'go:lancamento' },
+      { ico:'🔬', lbl:'Amostras', act:'go:amostras' },
+      { ico:'📝', lbl:'Orçamentos', act:'go:orcamentos' },
+    ]},
+    { lbl:'Cadastros', items:[
+      { ico:'👥', lbl:'Clientes', act:'go:clientes' },
+      { ico:'🗺', lbl:'Mapa Clientes', act:'go:mapa-clientes' },
+      { ico:'🔄', lbl:'Ped. Recorrentes', act:'go:pedidos-recorrentes' },
+      { ico:'🚚', lbl:'Fornecedores', act:'go:fornecedores' },
+      { ico:'💼', lbl:'Vendedores', act:'go:vendedores' },
+      { ico:'👷', lbl:'Operadores', act:'go:operadores' },
+      { ico:'👤', lbl:'Usuários', act:'go:usuarios' },
+      { ico:'🚚', lbl:'Roteiro', act:'go:roteiro-entrega' },
+    ]},
+    { lbl:'Estoques', items:[
+      { ico:'📦', lbl:'Est. Chapas', act:'go:estoque' },
+      { ico:'🔪', lbl:'Est. Facas', act:'go:facas1' },
+      { ico:'🏷', lbl:'Est. Clichês', act:'go:cliches' },
+    ]},
+    { lbl:'Papelão', items:[
+      { ico:'🛒', lbl:'Compra Papelão', act:'papelaoAbrirComprasChapas' },
+      { ico:'📐', lbl:'Sel. Chapas', act:'go:sel-chapas' },
+      { ico:'💡', lbl:'Inteligência', act:'go:papelao-ia' },
+      { ico:'📊', lbl:'Simulador', act:'go:simd' },
+    ]},
+    { lbl:'Análises', items:[
+      { ico:'📊', lbl:'Dashboard', act:'go:dashboard' },
+      { ico:'📄', lbl:'Relatórios', act:'go:relatorios' },
+      { ico:'💰', lbl:'Comissões', act:'go:comissoes' },
+      { ico:'📦', lbl:'Cx Perdidas', act:'go:caixas-perdidas' },
+      { ico:'⚠️', lbl:'Inconformidades', act:'go:inconformidades' },
+      { ico:'📋', lbl:'Rel. Mensal', act:'go:relmensal' },
+      { ico:'⚙️', lbl:'Config', act:'go:configuracoes' },
+    ]},
+  ];
+
+  root.innerHTML = sections.map(sec=>{
+    const items = sec.items.map(it=>mkItem(it.ico, it.lbl, it.act)).join('');
+    return `<div class="mob-more-sec"><div class="lbl">${escH(sec.lbl)}</div><div class="mob-more-grid">${items}</div></div>`;
+  }).join('');
+}
 function initDevice(){
   const saved=(function(){try{return localStorage.getItem('erp_device');}catch(e){return null;}})();
   const ds=document.getElementById('device-screen');
