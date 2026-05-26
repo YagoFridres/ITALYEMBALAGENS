@@ -47282,34 +47282,85 @@ window.atualizarChapas = async function(){
     }
     try{
       try{
-        const pedidoImagem = /imagem|foto|print|ver\s+a?\s*of|mostra\s+a?\s*of|imagem\s+da|foto\s+da/i.test(String(text||''));
-        const numOf = String(text||'').match(/\b(\d{3,4})\b/)?.[1];
-        if(pedidoImagem && numOf){
-          const rOf = await apiFetch('/api/ofs?numero=' + encodeURIComponent(String(numOf)) + '&limit=1&nocache=1', { method:'GET' });
-          const jOf = rOf ? await rOf.json().catch(()=>null) : null;
-          const of = (jOf && Array.isArray(jOf.data) && jOf.data[0]) ? jOf.data[0]
-            : ((Array.isArray(jOf) && jOf[0]) ? jOf[0]
-              : ((jOf && Array.isArray(jOf.ofs) && jOf.ofs[0]) ? jOf.ofs[0] : null));
-          if(!of){
-            const el = document.getElementById(typingId);
-            if(el && el.parentNode) el.parentNode.remove();
-            addMsg('assistant', `Não encontrei a OF Nº ${String(numOf)}. Verifique se o número está correto.`);
-            return;
-          }
-          const rawImg = of?.imagem_url || (Array.isArray(of?.imgs) ? of.imgs[0] : null) || of?.img || of?.imagem || of?.foto || null;
-          const imgUrl = String(rawImg || '').trim();
-          if(!imgUrl){
-            const el = document.getElementById(typingId);
-            if(el && el.parentNode) el.parentNode.remove();
-            addMsg('assistant', `A OF Nº ${String(numOf)} não possui imagem cadastrada.`);
-            return;
-          }
-          const numero = String(of?.of || of?.numero || of?.of_num || numOf).trim() || String(numOf);
-          const cliente = String(of?.clinome || of?.cliNome || of?.cliente_nome || of?.cliente || '').trim();
-          const produto = String(of?.descricao || of?.prodDesc || of?.produto || '').trim();
+        const msg = String(text || '');
+        const matchOf = msg.match(/\b(\d{3,4})\b/);
+        const pedindoImagem = /imagem|foto|print|mostra|ver\s+of/i.test(msg);
+        const pedindoOf = /\bof\b|ordem|fabricaç/i.test(msg) || !!matchOf;
+
+        if(matchOf && pedindoOf){
+          const numBuscado = matchOf[1];
+
+          const resp = await apiFetch(`/api/ofs?numero=${encodeURIComponent(String(numBuscado))}&limit=5&nocache=1`, { method:'GET' });
+          const data = resp ? await resp.json().catch(()=>null) : null;
+          const lista = (data && Array.isArray(data.data)) ? data.data
+            : (data && Array.isArray(data.ofs)) ? data.ofs
+              : Array.isArray(data) ? data : [];
+
+          const of = lista.find(o =>
+            String(o?.numero||'') === String(numBuscado)
+            || String(o?.of_num||'') === String(numBuscado)
+            || String(o?.of||'') === String(numBuscado)
+            || String(o?.numero||'').includes(String(numBuscado))
+          ) || lista[0] || null;
+
           const el = document.getElementById(typingId);
           if(el && el.parentNode) el.parentNode.remove();
-          addMsg('assistant', `🖼 OF Nº ${numero}${cliente ? ' — ' + cliente : ''}${produto ? ' · ' + produto : ''}`, { images: [imgUrl] });
+
+          if(!of){
+            addMsg('assistant', `Não encontrei a OF Nº ${String(numBuscado)}. Verifique se o número está correto.`);
+            return;
+          }
+
+          const imgUrl = String(
+            of?.imagem_url
+            || (Array.isArray(of?.imgs) ? of.imgs[0] : (typeof of?.imgs === 'string' ? of.imgs : ''))
+            || of?.img
+            || of?.foto
+            || ''
+          ).trim();
+
+          const numero = String(of?.numero || of?.of_num || of?.of || numBuscado).trim() || String(numBuscado);
+          const prod = String(of?.descricao || of?.produto || '—').trim();
+          const cli = String(of?.cliNome || of?.clinome || of?.cliente_nome || '—').trim();
+          const status = String(of?.status || '—').trim();
+          const entrega = of?.data_entrega ? new Date(of.data_entrega).toLocaleDateString('pt-BR') : '—';
+          const maq = String(of?.maquina_atual || of?.maq || '—').trim();
+          const qtd = String(of?.quantidade || of?.qtd || '—').trim();
+
+          let resposta = `
+            <div style="font-size:13px">
+              <div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#38bdf8">
+                OF Nº ${String(numero).replace(/</g,'&lt;')}
+              </div>
+          `;
+
+          if(pedindoImagem && imgUrl){
+            resposta += `
+              <img src="${imgUrl.replace(/"/g,'&quot;')}"
+                style="width:100%;max-width:260px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:block;margin-bottom:10px"
+                onclick="window.open(this.src,'_blank')"
+                onerror="this.outerHTML='<div style=padding:12px;text-align:center;color:#666;font-size:12px>📷 Sem imagem cadastrada</div>'"
+              />
+            `;
+          } else if(pedindoImagem && !imgUrl){
+            resposta += `<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.5)">📷 OF Nº ${String(numBuscado).replace(/</g,'&lt;')} não possui imagem cadastrada</div>`;
+          }
+
+          resposta += `
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">PRODUTO</span><br>${prod.replace(/</g,'&lt;')}</div>
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">CLIENTE</span><br>${cli.replace(/</g,'&lt;')}</div>
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">STATUS</span><br>
+                  <span style="background:${status==='Concluído'?'rgba(16,185,129,0.2)':'rgba(37,99,235,0.2)'};color:${status==='Concluído'?'#10b981':'#38bdf8'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">${status.replace(/</g,'&lt;')}</span>
+                </div>
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">MÁQUINA</span><br>${maq.replace(/</g,'&lt;')}</div>
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">QUANTIDADE</span><br>${qtd.replace(/</g,'&lt;')} cx</div>
+                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">ENTREGA</span><br>${String(entrega).replace(/</g,'&lt;')}</div>
+              </div>
+            </div>
+          `;
+
+          addMsg('assistant', `OF Nº ${numero}`, { html: resposta });
           return;
         }
       }catch(e){}
