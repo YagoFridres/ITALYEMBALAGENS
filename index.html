@@ -7646,8 +7646,134 @@ function ofmaqBindDragDrop(container){
 }
 
 function initDragDrop(container){
-  try{ ofmaqBindDragDrop(container); }catch(e){}
+  try{
+    if(typeof window.initDragDrop === 'function'){
+      window.initDragDrop(container);
+      return;
+    }
+    ofmaqBindDragDrop(container);
+  }catch(e){}
 }
+
+window.initDragDrop = function() {
+  if (typeof Sortable === 'undefined') {
+    console.error('[DRAG] SortableJS não carregado!');
+    return;
+  }
+
+  if(!document.getElementById('drag-style-ofs')){
+    const dragStyle = document.createElement('style');
+    dragStyle.id = 'drag-style-ofs';
+    dragStyle.textContent = `
+      .of-ghost { opacity:0.3 !important; border:2px dashed #3b82f6 !important; }
+      .of-chosen { box-shadow:0 8px 24px rgba(37,99,235,0.4) !important; transform:scale(1.01) !important; z-index:999 !important; }
+      .drag-handle,.of-drag { cursor:grab !important; touch-action:none !important; }
+      .drag-handle:active,.of-drag:active { cursor:grabbing !important; }
+    `;
+    document.head.appendChild(dragStyle);
+  }
+
+  const SELETORES = [
+    '.maq-ofs',
+    '.maq-body',
+    '[data-maquina-lista]',
+    '[class*="ofs-lista"]',
+    '[class*="maquina-ofs"]',
+    '[class*="of-lista"]',
+  ];
+
+  const uniq = new Set();
+  SELETORES.forEach((sel)=>{
+    document.querySelectorAll(sel).forEach((lista)=>uniq.add(lista));
+  });
+
+  let total = 0;
+  uniq.forEach((lista)=>{
+    if(!lista) return;
+    if (lista._s) {
+      try { lista._s.destroy(); } catch(e) {}
+    }
+
+    lista._s = new Sortable(lista, {
+      animation: 150,
+      handle: '.drag-handle, .of-drag, [class*="drag"]',
+      ghostClass: 'of-ghost',
+      chosenClass: 'of-chosen',
+      delay: 150,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 3,
+
+      onEnd: async function(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+
+        let ids = [...lista.children]
+          .map(el =>
+            el?.dataset?.ofId ||
+            el?.dataset?.id ||
+            el?.getAttribute?.('data-of-id') ||
+            el?.getAttribute?.('data-id')
+          )
+          .filter(Boolean)
+          .map((x)=>String(x||'').trim())
+          .filter(Boolean);
+
+        if(!ids.length){
+          ids = Array.from(lista.querySelectorAll('[data-of-id], [data-id]'))
+            .map((el)=>String(el?.dataset?.ofId || el?.dataset?.id || el?.getAttribute?.('data-of-id') || el?.getAttribute?.('data-id') || '').trim())
+            .filter(Boolean);
+        }
+
+        console.log('[DRAG] Nova ordem:', ids);
+
+        if (!ids.length) {
+          console.warn('[DRAG] Sem IDs! Verificar data-of-id nos cards');
+          return;
+        }
+
+        const maqId = lista.dataset?.maquinaId
+          || lista.closest('[data-maquina-id]')?.dataset?.maquinaId
+          || '';
+
+        if(!maqId){
+          console.warn('[DRAG] Sem maquina_id na lista');
+          return;
+        }
+
+        try{
+          if(typeof salvarOrdemOFs === 'function'){
+            await salvarOrdemOFs(maqId, ids);
+            return;
+          }
+        }catch(_){}
+
+        try {
+          const token = localStorage.getItem('token')
+            || sessionStorage.getItem('token') || '';
+
+          const r = await fetch('/api/ofs/reordenar', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? {'Authorization':'Bearer '+token} : {})
+            },
+            body: JSON.stringify({
+              maquina_id: maqId,
+              ordem: ids
+            })
+          });
+
+          const data = await r.json().catch(()=>null);
+          console.log('[DRAG] Salvo:', data);
+        } catch(e) {
+          console.error('[DRAG] Erro ao salvar:', e);
+        }
+      }
+    });
+    total++;
+  });
+
+  console.log('[DRAG] Iniciado em', total, 'listas');
+};
 
 async function abrirModalMoverOFMaq(ofId, maquinaOrigem){
   try{
@@ -8198,7 +8324,7 @@ async function renderOFsPorMaquina(){
       </div>`;
     }).join('');
 
-    try{ setTimeout(()=>{ try{ initDragDrop(container); }catch(e){} }, 150); }catch(e){}
+    try{ setTimeout(()=>{ try{ window.initDragDrop && window.initDragDrop(); }catch(e){} }, 200); }catch(e){}
     container.scrollTop = scroll;
   } catch(e){
     try{ console.error('[renderOFsPorMaquina]', e); }catch(_){}
