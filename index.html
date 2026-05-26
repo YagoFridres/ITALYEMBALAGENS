@@ -38409,6 +38409,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     .hub-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:950;font-size:.72rem;border:1px solid var(--border);background:var(--s2);white-space:nowrap}
     .hub-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:var(--s2);border:1px solid var(--border)}
     .hub-row .m{font-family:var(--mono);font-size:.72rem;color:var(--text3);margin-top:2px}
+    .cli-of-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;border:1px solid var(--border);background:var(--s2)}
+    .cli-of-img{width:52px;height:52px;border-radius:10px;object-fit:cover;border:1px solid var(--border);flex:0 0 auto}
+    .cli-of-img-fb{width:52px;height:52px;border-radius:10px;display:none;align-items:center;justify-content:center;border:1px solid var(--border);background:rgba(255,255,255,.06);color:rgba(255,255,255,.7);flex:0 0 auto;font-size:22px}
+    .badge-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:1000;font-size:.72rem;border:1px solid var(--border);background:rgba(37,99,235,0.18);color:rgba(255,255,255,.92);white-space:nowrap}
+    .badge-urg{background:rgba(245,158,11,0.18);border-color:rgba(245,158,11,0.38)}
+    .badge-atr{background:rgba(239,68,68,0.16);border-color:rgba(239,68,68,0.35)}
     .hub-pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
     .hub-pager .pbtn{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--s2);color:var(--text);font-weight:950;cursor:pointer}
     @media (max-width: 980px){
@@ -49914,15 +49920,47 @@ function hubCliPanelRender(){
       const n = Math.trunc(Number(v));
       return Number.isFinite(n) && n > 0 ? n : null;
     };
+    const imgUrlOf = (o)=>{
+      try{
+        const u = String(o?.imagem_url || (Array.isArray(o?.imgs) ? o.imgs[0] : '') || o?.img || o?.imagem || '').trim();
+        return u || '';
+      }catch(e){ return ''; }
+    };
+    const isAtrasada = (o)=>{
+      const ent = _hubOfEnt(o);
+      const hoje = new Date().toISOString().slice(0,10);
+      return !!(ent && ent < hoje);
+    };
+    const isUrgente = (o)=>{
+      const s = _hubNorm(_hubOfStatus(o));
+      const obs = _hubNorm(o?.obs);
+      return s.includes('urg') || obs.includes('urg');
+    };
+    const mesesAtivo = (()=>{
+      try{
+        if(!dates.length) return 0;
+        const a = dates[0];
+        const b = dates[dates.length-1];
+        const da = new Date(a+'T00:00:00Z');
+        const db = new Date(b+'T00:00:00Z');
+        const m = (db.getUTCFullYear()*12 + db.getUTCMonth()) - (da.getUTCFullYear()*12 + da.getUTCMonth());
+        return Math.max(1, m + 1);
+      }catch(e){ return 0; }
+    })();
 
     if(tab === 'resumo'){
       body.innerHTML = `
         <div class="hub-grid-2">
           <div class="hub-kbox">
-            <div class="k">Indicadores do mês</div>
-            <div style="margin-top:10px;display:grid;gap:8px">
-              <div class="hub-row"><div><div style="font-weight:950">OFs este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))}</div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Valor este mês</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(curVal))}</div></div>
+            <div class="k">Indicadores</div>
+            <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="hub-kbox" style="background:rgba(37,99,235,0.10);border-color:rgba(37,99,235,0.25)"><div class="k">OFs Total</div><div class="v" style="color:#60A5FA">${escH(String(totalOfs))}</div></div>
+              <div class="hub-kbox" style="background:rgba(16,185,129,0.10);border-color:rgba(16,185,129,0.22)"><div class="k">Valor Total</div><div class="v" style="color:var(--green)">${escH(fmtR(totalVal))}</div></div>
+              <div class="hub-kbox" style="background:rgba(168,85,247,0.10);border-color:rgba(168,85,247,0.20)"><div class="k">Ticket Médio</div><div class="v" style="color:#A78BFA">${escH(fmtR(ticket))}</div></div>
+              <div class="hub-kbox" style="background:rgba(245,158,11,0.10);border-color:rgba(245,158,11,0.22)"><div class="k">Meses Ativo</div><div class="v" style="color:#F59E0B">${escH(String(mesesAtivo || 0))}</div></div>
+            </div>
+            <div style="margin-top:12px;display:grid;gap:8px">
+              <div class="hub-row"><div><div style="font-weight:950">Este mês</div><div class="m">${escH(mes.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(curQtd))} · <span style="color:var(--green)">${escH(fmtR(curVal))}</span></div></div>
               <div class="hub-row"><div><div style="font-weight:950">Mês passado</div><div class="m">${escH(prev.split('-').reverse().join('/'))}</div></div><div style="font-weight:1000">${escH(String(prevQtd))} · ${escH(fmtR(prevVal))}</div></div>
               <div class="hub-row"><div><div style="font-weight:950">Crescimento</div><div class="m">Comparativo</div></div><div style="font-weight:1000;color:${cresc<0?'#ef4444':'var(--green)'}">${escH((cresc>0?'+':'') + String(cresc) + '%')}</div></div>
             </div>
@@ -49942,26 +49980,84 @@ function hubCliPanelRender(){
         </div>
 
         <div class="hub-kbox">
+          <div class="k">OFs em aberto</div>
+          <div style="margin-top:10px;display:grid;gap:10px">
+            ${
+              abertas.slice().sort((a,b)=>String(_hubOfEnt(a)).localeCompare(String(_hubOfEnt(b)),'pt-BR')).slice(0,6).map(o=>{
+                const id = String(o?.id||'').trim();
+                const num = _hubOfNumeroLabel(o);
+                const prod = _hubOfProduto(o) || '—';
+                const ent = _hubOfEnt(o);
+                const maq = maquinaAtual(o) || '—';
+                const stt = _hubOfStatus(o);
+                const img = imgUrlOf(o);
+                const urg = isUrgente(o);
+                const atr = isAtrasada(o);
+                const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
+                const imgHtml = img
+                  ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
+                  : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+                return `<div class="cli-of-card">
+                  ${imgHtml}
+                  <div style="min-width:0;flex:1">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                      <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
+                      ${extra}
+                    </div>
+                    <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · ${escH(stt||'—')}</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+                </div>`;
+              }).join('')
+              || `<div style="color:var(--text3)">Sem OFs em aberto.</div>`
+            }
+            ${abertas.length>6?`<div style="display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="hubCliPanelSetTab('abertas')">Ver todas</button></div>`:''}
+          </div>
+        </div>
+
+        <div class="hub-kbox">
+          <div class="k">OFs concluídas (últimas 5)</div>
+          <div style="margin-top:10px;display:grid;gap:10px">
+            ${
+              concluidas.slice().sort((a,b)=>String(_hubOfConcl(b)||dtOf(b)).localeCompare(String(_hubOfConcl(a)||dtOf(a)),'pt-BR')).slice(0,5).map(o=>{
+                const id = String(o?.id||'').trim();
+                const num = _hubOfNumeroLabel(o);
+                const prod = _hubOfProduto(o) || '—';
+                const dt = _hubOfConcl(o) || dtOf(o);
+                const v = valOf(o);
+                const img = imgUrlOf(o);
+                const imgHtml = img
+                  ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
+                  : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+                return `<div class="cli-of-card">
+                  ${imgHtml}
+                  <div style="min-width:0;flex:1">
+                    <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
+                    <div class="m">Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b></div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+                </div>`;
+              }).join('')
+              || `<div style="color:var(--text3)">Sem OFs concluídas.</div>`
+            }
+            ${concluidas.length>5?`<div style="display:flex;justify-content:flex-end"><button class="btn btn-ghost btn-sm" onclick="hubCliPanelSetTab('historico')">Ver mais</button></div>`:''}
+          </div>
+        </div>
+
+        <div class="hub-kbox">
           <div class="k">Top produtos/caixas</div>
           <div style="margin-top:10px;display:grid;gap:8px">
             ${topProd.length ? topProd.map((p,i)=>`<div class="hub-row"><div style="min-width:0"><div style="font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(String(i+1)+'. '+(p.produto||'—'))}</div><div class="m">Pedidos</div></div><div style="font-weight:1000">${escH(String(p.qtd))}</div></div>`).join('') : `<div style="color:var(--text3)">Sem dados de produtos.</div>`}
           </div>
         </div>
 
-        <div class="hub-grid-2">
-          <div class="hub-kbox">
-            <div class="k">OFs em aberto</div>
-            <div class="v">${escH(String(abertas.length))}</div>
-            <div class="m">Clique na aba "OFs Abertas" para detalhes</div>
-          </div>
-          <div class="hub-kbox">
-            <div class="k">Histórico geral</div>
-            <div style="margin-top:10px;display:grid;gap:8px">
-              <div class="hub-row"><div><div style="font-weight:950">Total de OFs</div><div class="m">Desde o início</div></div><div style="font-weight:1000">${escH(String(totalOfs))}</div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Valor acumulado</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(totalVal))}</div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Ticket médio</div><div class="m">Valor/OF</div></div><div style="font-weight:1000">${escH(fmtR(ticket))}</div></div>
-              <div class="hub-row"><div><div style="font-weight:950">Frequência média</div><div class="m">Dias entre pedidos</div></div><div style="font-weight:1000">${escH(freq!=null?String(freq)+' dias':'—')}</div></div>
-            </div>
+        <div class="hub-kbox">
+          <div class="k">Histórico geral</div>
+          <div style="margin-top:10px;display:grid;gap:8px">
+            <div class="hub-row"><div><div style="font-weight:950">Total de OFs</div><div class="m">Desde o início</div></div><div style="font-weight:1000">${escH(String(totalOfs))}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Valor acumulado</div><div class="m">Somatório</div></div><div style="font-weight:1000;color:var(--green)">${escH(fmtR(totalVal))}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Ticket médio</div><div class="m">Valor/OF</div></div><div style="font-weight:1000">${escH(fmtR(ticket))}</div></div>
+            <div class="hub-row"><div><div style="font-weight:950">Frequência média</div><div class="m">Dias entre pedidos</div></div><div style="font-weight:1000">${escH(freq!=null?String(freq)+' dias':'—')}</div></div>
           </div>
         </div>
       `;
@@ -49977,14 +50073,23 @@ function hubCliPanelRender(){
         const stt = _hubOfStatus(o);
         const maq = maquinaAtual(o) || '—';
         const pr = prioridade(o);
-        return `<div class="hub-row">
-          <div style="min-width:0">
+        const img = imgUrlOf(o);
+        const urg = isUrgente(o);
+        const atr = isAtrasada(o);
+        const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
+        const imgHtml = img
+          ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
+          : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+        return `<div class="cli-of-card">
+          ${imgHtml}
+          <div style="min-width:0;flex:1">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-              <div style="font-weight:1000">${escH(num)}</div>
+              <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
+              ${extra}
               ${_hubStatusPill(stt)}
               ${pr!=null?`<span class="hub-badge">Pri: <b>${escH(String(pr))}</b></span>`:''}
             </div>
-            <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(prod)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · Máquina: <b>${escH(maq)}</b></div>
+            <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b></div>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
         </div>`;
