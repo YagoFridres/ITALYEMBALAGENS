@@ -330,6 +330,7 @@ app.use((req, res, next) => {
     const p = String(req.path || '');
     if (p === '/sw.js') {
       res.setHeader('Content-Type', 'application/javascript');
+      res.setHeader('Service-Worker-Allowed', '/');
       res.setHeader('Cache-Control', 'no-cache');
     } else if (p === '/manifest.json') {
       res.setHeader('Content-Type', 'application/manifest+json');
