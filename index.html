@@ -49669,7 +49669,7 @@ function hubRenderSearch(){
       <div class="h">CLIENTE</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="min-width:0">
-          <div style="font-weight:1000;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(nome)}</div>
+          <div onclick="hubAbrirPainelCliente('${escAttr(cid)}','${escAttr(nome)}')" style="font-weight:1000;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${escH(nome)}</div>
           <div class="m">${escH([cidade, uf].filter(Boolean).join(' / ') || '—')}</div>
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <span class="hub-pill">OFs em aberto: <b>${escH(String(cliAbertas.length))}</b></span>
@@ -49683,7 +49683,7 @@ function hubRenderSearch(){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">
-          <button class="btn btn-accent btn-sm" onclick="hubAbrirPainelCliente('${escAttr(cid)}')">Abrir painel</button>
+          <button class="btn btn-accent btn-sm" onclick="hubAbrirPainelCliente('${escAttr(cid)}','${escAttr(nome)}')">Abrir painel</button>
           <button class="btn btn-ghost btn-sm" onclick="go('clientes')">Ver clientes</button>
           <button class="btn btn-accent btn-sm" onclick="abrirModalOF('')">Nova OF</button>
         </div>
@@ -49786,10 +49786,11 @@ function _hubStatusPill(st){
   return `<span class="hub-badge" style="background:${bg};border-color:rgba(255,255,255,.12);color:#fff">${escH(lbl)}</span>`;
 }
 
-async function hubAbrirPainelCliente(clienteId){
+async function hubAbrirPainelCliente(clienteId, nomeCliente){
   try{
     const cid = String(clienteId||'').trim();
     if(!cid) return;
+    const nomeCliRaw = String(nomeCliente || '').trim();
     const modal = document.getElementById('hub-cli-modal');
     if(modal) modal.style.display = 'flex';
     const st = window.__HUB_CLI_PANEL || (window.__HUB_CLI_PANEL = { clienteId:null, tab:'resumo', histPage:0, data:null, loading:false });
@@ -49822,6 +49823,13 @@ async function hubAbrirPainelCliente(clienteId){
         const j = r ? await r.json().catch(()=>null) : null;
         const arr = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
         if(Array.isArray(arr) && arr.length) ofsCli = arr;
+        if((!Array.isArray(ofsCli) || !ofsCli.length) && nomeCliRaw){
+          const qs = new URLSearchParams({ cliente_nome: nomeCliRaw, limit: '200', incluir_excluidas: '0', nocache: '1' }).toString();
+          const r2 = await apiFetch('/api/ofs?' + qs, { method:'GET' });
+          const j2 = r2 ? await r2.json().catch(()=>null) : null;
+          const arr2 = Array.isArray(j2) ? j2 : (Array.isArray(j2?.data) ? j2.data : []);
+          if(Array.isArray(arr2) && arr2.length) ofsCli = arr2;
+        }
       }
     }catch(e){}
 
