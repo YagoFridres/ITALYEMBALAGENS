@@ -472,14 +472,24 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
+// Forçar no-cache para o index.html
+app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/index.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
-
-app.get('/', (req, res) => {
-  setNoCache(res);
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
 
 app.get('/api/health', (req, res) => {
   res.json({
