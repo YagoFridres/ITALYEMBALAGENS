@@ -46126,16 +46126,10 @@ window.atualizarChapas = async function(){
 
     const updateVisibility = ()=>{
       try{
-        const hide = !!(document.body && document.body.classList && document.body.classList.contains('mobile-mode')) || (Number(window.innerWidth||0) < 768);
-        fab.style.display = hide ? 'none' : '';
-        if(hide) mini.style.display = 'none';
-        if(hide){
-          try{ panel.classList.remove('open'); }catch(e){}
-          panel.style.display = 'none';
-          overlay.style.display = 'none';
-        }else{
-          panel.style.display = 'flex';
-        }
+        const miniOn = (()=>{ try{ return localStorage.getItem('jarvis_mini_v1') === '1'; }catch(e){ return false; } })();
+        fab.style.display = miniOn ? 'none' : 'block';
+        mini.style.display = miniOn ? 'block' : 'none';
+        panel.style.display = 'flex';
       }catch(e){}
     };
     updateVisibility();
