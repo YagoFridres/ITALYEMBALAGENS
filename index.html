@@ -3126,6 +3126,137 @@ function zoomImg(src){
   if(pr){ pr.onclick = ()=>{ if(url) imprimirUrlImagem(url); }; }
   abrir('modal-img');
 }
+window.abrirLightbox = function(url, numOf){
+  try{ document.getElementById('lightbox-of')?.remove(); }catch(e){}
+  try{ document.getElementById('lightbox-ov')?.remove(); }catch(e){}
+
+  const u = String(url || '').trim();
+  if(!u){ try{ toast('Sem imagem','var(--orange)'); }catch(e){}; return; }
+
+  const ov = document.createElement('div');
+  ov.id = 'lightbox-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+  ov.onclick = ()=>{
+    try{ ov.remove(); }catch(e){}
+    try{ document.getElementById('lightbox-of')?.remove(); }catch(e){}
+  };
+
+  const lb = document.createElement('div');
+  lb.id = 'lightbox-of';
+  lb.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;pointer-events:none';
+  const n = String(numOf || '').trim();
+  const fileNum = n.replace(/[^\d]/g,'') || n || 'OF';
+  lb.innerHTML = `
+    <div style="pointer-events:all;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:90vw">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px">
+        <span style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.7)">OF Nº ${String(n).replace(/</g,'&lt;')}</span>
+        <div style="display:flex;gap:8px">
+          <a href="${u.replace(/"/g,'&quot;')}" download="OF-${String(fileNum).replace(/"/g,'')}.jpg" style="padding:7px 14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;text-decoration:none;font-size:12px;font-weight:700">⬇ Baixar</a>
+          <button type="button" onclick="document.getElementById('lightbox-of')?.remove();document.getElementById('lightbox-ov')?.remove();" style="width:34px;height:34px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;font-size:16px;cursor:pointer">✕</button>
+        </div>
+      </div>
+      <img src="${u.replace(/"/g,'&quot;')}" style="max-width:88vw;max-height:75vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,0.8);object-fit:contain" />
+      <div style="font-size:11px;color:rgba(255,255,255,0.3)">Toque fora para fechar</div>
+    </div>`;
+
+  document.body.appendChild(ov);
+  document.body.appendChild(lb);
+
+  const esc = (e) => {
+    if (e && e.key === 'Escape') {
+      try{ ov.remove(); }catch(_){}
+      try{ lb.remove(); }catch(_){}
+      document.removeEventListener('keydown', esc);
+    }
+  };
+  document.addEventListener('keydown', esc);
+};
+
+window.concluirOfPainel = async function(ofId, ofNum, btn){
+  const id = String(ofId||'').trim();
+  const num = String(ofNum||'').trim();
+  if(!id) return;
+  if(!confirm(`Concluir a OF Nº ${num}?\n\nIsso marca a OF como concluída definitivamente.`)) return;
+  try{
+    if(btn){
+      btn.textContent = '...';
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+    }
+  }catch(e){}
+
+  let ok2 = false;
+  try{
+    const r = await apiFetch(`/api/ofs/${encodeURIComponent(id)}/concluir`, { method:'POST', body:{} });
+    if(r && r.ok) ok2 = true;
+  }catch(e){}
+
+  if(!ok2){
+    try{
+      const usuario = window.CURRENT_USER?.nome || window._usuario?.nome || 'Sistema';
+      const r2 = await apiFetch(`/api/ofs/${encodeURIComponent(id)}`, {
+        method:'PATCH',
+        body:{
+          status: 'Concluído',
+          data_conclusao: new Date().toISOString(),
+          usuario_conclusao: usuario,
+        }
+      });
+      if(r2 && r2.ok) ok2 = true;
+    }catch(e){}
+  }
+
+  if(ok2){
+    try{
+      if(btn){
+        btn.textContent = '✓ Concluída';
+        btn.style.background = 'rgba(16,185,129,0.2)';
+        btn.style.borderColor = 'rgba(16,185,129,0.4)';
+        btn.style.opacity = '1';
+      }
+    }catch(e){}
+    try{
+      const card = (btn && btn.closest('.cli-of-card')) || document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
+      if(card){
+        card.style.transition = 'opacity 0.4s';
+        card.style.opacity = '0.4';
+      }
+    }catch(e){}
+    try{
+      if(Array.isArray(window.OFS_ARQUIVO)){
+        const idx = window.OFS_ARQUIVO.findIndex(o=>String(o?.id||'')===id);
+        if(idx !== -1){
+          window.OFS_ARQUIVO[idx].status = 'Concluído';
+          window.OFS_ARQUIVO[idx].data_conclusao = new Date().toISOString();
+        }
+      }
+    }catch(e){}
+    try{
+      const st = window.__HUB_CLI_PANEL || null;
+      if(st && st.clienteId){
+        try{ if(window.__HUB_CLI_CACHE) delete window.__HUB_CLI_CACHE[st.clienteId]; }catch(e){}
+        setTimeout(()=>{ try{ hubAbrirPainelCliente(st.clienteId, document.getElementById('hub-cli-title')?.textContent || ''); }catch(e){} }, 900);
+      }
+    }catch(e){}
+    return;
+  }
+
+  try{
+    if(btn){
+      btn.textContent = '✗ Erro';
+      btn.style.color = '#f43f5e';
+      btn.style.opacity = '1';
+      setTimeout(()=>{
+        try{
+          btn.textContent = '✓ Concluir';
+          btn.disabled = false;
+          btn.style.color = '#10b981';
+          btn.style.opacity = '1';
+        }catch(e){}
+      }, 2500);
+    }
+  }catch(e){}
+};
 function verImagemOF(url){
   if(!url){ toast('Sem imagem cadastrada','var(--orange)'); return; }
   zoomImg(url);
@@ -6194,16 +6325,10 @@ function abrirAcoesPc(ofId, ofNum){
   pop.style.cssText = 'position:fixed;z-index:9999;min-width:240px;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px';
 
   const id = String(ofId||'').trim();
-  const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : null;
-  const maqAtual = of && typeof getMaquinaAtual === 'function' ? (getMaquinaAtual(of) || '') : '';
   const acts = [
-    { icon:'▶️', label:'Iniciar produção', on: ()=>ofmaqIniciarProducaoPC(id) },
-    { icon:'🏁', label:'Concluir OF', on: ()=>{ try{ concluirOFComBaixa(String(id||'')); }catch(e){} } },
-    { icon:'🧾', label:'Baixa parcial', on: ()=>baixaPorMaquinaPC(id, ofNum) },
-    { icon:'↔', label:'Alterar máquina', on: ()=>{ try{ abrirModalMoverOFMaq(String(id||''), String(maqAtual||'')); }catch(e){} } },
-    { icon:'📋', label:'Ver detalhes', on: ()=>{ try{ abrirModalOF(String(id||'')); }catch(e){} } },
-    { icon:'✏️', label:'Editar OF', on: ()=>{ try{ abrirModalOF(String(id||'')); }catch(e){} } },
-    { icon:'❌', label:'Cancelar OF', on: ()=>{ try{ cancelarOF(String(id||''), String(ofNum||'')); }catch(e){} } },
+    { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, ofNum) },
+    { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, ofNum) },
+    { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, ofNum) },
   ];
 
   pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">Ações ▾ — OF #${escH(ofNum||'')}</div>` +
@@ -6258,6 +6383,140 @@ function fecharOfmaqAcoesSheet(){
   try{ document.getElementById('ofmaq-acoes-sheet').style.display = 'none'; }catch(e){}
 }
 
+async function alterarMaquinaOf(ofId, ofNum){
+  const id = String(ofId||'').trim();
+  const num = String(ofNum||'').trim();
+  if(!id) return;
+
+  const maqsPermitidas = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05'];
+  const opcoes = maqsPermitidas.map((m)=>`<option value="${String(m).replace(/"/g,'&quot;')}">${String(m).replace(/</g,'&lt;')}</option>`).join('');
+
+  const sel = document.createElement('div');
+  sel.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  sel.innerHTML = `
+    <div style="background:#111929;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:24px;width:100%;max-width:380px" onclick="event.stopPropagation()">
+      <div style="font-weight:800;font-size:16px;margin-bottom:16px">OF Nº ${num.replace(/</g,'&lt;')} — Alterar Máquina</div>
+      <select id="sel-nova-maq" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#e8f0fe;font-size:14px;outline:none;margin-bottom:16px">${opcoes}</select>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="btn-cancelar-maq" style="flex:1;padding:11px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#7a9ab8;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button type="button" id="btn-confirmar-maq" style="flex:1;padding:11px;background:#0ea5e9;border:none;border-radius:8px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar</button>
+      </div>
+    </div>
+  `;
+  sel.addEventListener('click', ()=>{ try{ sel.remove(); }catch(e){} });
+  document.body.appendChild(sel);
+
+  sel.querySelector('#btn-cancelar-maq').onclick = ()=>{ try{ sel.remove(); }catch(e){} };
+  sel.querySelector('#btn-confirmar-maq').onclick = async ()=>{
+    const novaMaq = String(sel.querySelector('#sel-nova-maq')?.value || '').trim();
+    try{ sel.remove(); }catch(e){}
+    if(!novaMaq) return;
+    try{
+      showSaveIndicator('Salvando...','var(--yellow)');
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ maquina_atual: novaMaq } });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao mover');
+      const row = j?.data || j;
+      try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
+      try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
+      showSaveIndicator('✓ salvo','var(--green)');
+      toast('✓ Máquina alterada','var(--green)');
+      try{ document.querySelector(`[data-of-id="${CSS.escape(id)}"]`)?.remove(); }catch(_){}
+      try{ renderOFsPorMaquina(); }catch(_){}
+    }catch(e){
+      showSaveIndicator('✖ erro','var(--red)');
+      toast('Erro: '+String(e?.message||e), 'var(--red)');
+    }
+  };
+}
+
+async function registrarTempoOf(ofId, ofNum){
+  const id = String(ofId||'').trim();
+  const num = String(ofNum||'').trim();
+  if(!id) return;
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#111929;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:24px;width:100%;max-width:380px" onclick="event.stopPropagation()">
+      <div style="font-weight:800;font-size:16px;margin-bottom:16px">⏱️ OF Nº ${num.replace(/</g,'&lt;')} — Registrar Tempo</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:11px;font-weight:700;color:#7a9ab8;text-transform:uppercase;display:block;margin-bottom:6px">Tempo de Setup (minutos)</label>
+        <input id="inp-setup" type="number" placeholder="Ex: 15" min="0" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#e8f0fe;font-size:15px;outline:none">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:11px;font-weight:700;color:#7a9ab8;text-transform:uppercase;display:block;margin-bottom:6px">Tempo de Produção (minutos)</label>
+        <input id="inp-prod-time" type="number" placeholder="Ex: 45" min="0" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#e8f0fe;font-size:15px;outline:none">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="button" id="btn-cancelar-tempo" style="flex:1;padding:11px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#7a9ab8;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button type="button" id="btn-salvar-tempo" style="flex:1;padding:11px;background:#0ea5e9;border:none;border-radius:8px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Salvar</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', ()=>{ try{ modal.remove(); }catch(e){} });
+  document.body.appendChild(modal);
+
+  modal.querySelector('#btn-cancelar-tempo').onclick = ()=>{ try{ modal.remove(); }catch(e){} };
+  modal.querySelector('#btn-salvar-tempo').onclick = async ()=>{
+    const setup = Math.max(0, Math.trunc(Number(modal.querySelector('#inp-setup')?.value || 0) || 0));
+    const prod = Math.max(0, Math.trunc(Number(modal.querySelector('#inp-prod-time')?.value || 0) || 0));
+    try{ modal.remove(); }catch(e){}
+    try{
+      showSaveIndicator('Salvando...','var(--yellow)');
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ tempo_setup_real: setup, tempo_producao_real: prod } });
+      const j = r ? await r.json().catch(()=>null) : null;
+      if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao salvar');
+      const row = j?.data || j;
+      try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
+      try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
+      showSaveIndicator('✓ salvo','var(--green)');
+      toast('✓ Tempo registrado','var(--green)');
+      try{ renderOFsPorMaquina(); }catch(_){}
+    }catch(e){
+      showSaveIndicator('✖ erro','var(--red)');
+      toast('Erro: '+String(e?.message||e), 'var(--red)');
+    }
+  };
+}
+
+async function passouPelaMaquina(ofId, ofNum){
+  const id = String(ofId||'').trim();
+  const num = String(ofNum||'').trim();
+  if(!id) return;
+  const ok = confirm(`OF Nº ${num}\n\nConfirma que esta OF passou pela máquina?\n\nA OF será removida desta fila mas continuará ativa no sistema.`);
+  if(!ok) return;
+
+  try{
+    const card = document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
+    if(card){
+      card.style.transition = 'opacity 0.3s, height 0.3s, margin 0.3s, padding 0.3s';
+      card.style.opacity = '0';
+      setTimeout(()=>{ try{ card.remove(); }catch(e){} }, 320);
+    }
+  }catch(e){}
+
+  try{
+    showSaveIndicator('Salvando...','var(--yellow)');
+    let ok2 = false;
+    try{
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method:'POST' });
+      if(r && r.ok) ok2 = true;
+    }catch(e){}
+    if(!ok2){
+      const r2 = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
+      if(r2 && r2.ok) ok2 = true;
+    }
+    if(!ok2) throw new Error('Falha ao registrar');
+    showSaveIndicator('✓ salvo','var(--green)');
+    toast('✓ Removida da fila','var(--green)');
+    try{ renderOFsPorMaquina(); }catch(_){}
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: '+String(e?.message||e), 'var(--red)');
+  }
+}
+
 function ofmaqAbrirAcoesSheet(ofId, maqCtx){
   _ensureOfmaqAcoesSheet();
   const id = String(ofId||'').trim();
@@ -6270,19 +6529,10 @@ function ofmaqAbrirAcoesSheet(ofId, maqCtx){
 
   const body = document.getElementById('ofmaq-acoes-body');
   if(!body) return;
-  const temImagem = !!(of && (of.imagem_url || (Array.isArray(of.imgs)&&of.imgs.length)));
   const acts = [
-    { icon:'⬆', label:'Subir na fila', on: ()=>ofmaqMoverPosicao(maq, id, -1) },
-    { icon:'⬇', label:'Descer na fila', on: ()=>ofmaqMoverPosicao(maq, id, 1) },
-    { icon:'▶️', label:'Iniciar produção', on: ()=>ofmaqIniciarProducaoPC(id) },
-    { icon:'📦', label:'Sem Papelão', on: ()=>ofmaqAbrirSemPapelaoModal(id, numDigits) },
-    { icon:'📅', label:'Alterar Entrega', on: ()=>abrirModalAlterarEntrega(id) },
-    { icon:'↔', label:'Mover', on: ()=>abrirModalMoverOFMaq(id, maq) },
-    ...(temImagem ? [{ icon:'🖼', label:'Imprimir Imagem', on: ()=>imprimirImagemOF(String(id||num||'')) }] : []),
-    { icon:'✓', label:'Concluir etapa (máquina)', on: ()=>concluirEtapaOF(id, maq) },
-    { icon:'📋', label:'Ver detalhes', on: ()=>abrirModalOF(id) },
-    { icon:'✏️', label:'Editar OF', on: ()=>abrirModalOF(id) },
-    { icon:'❌', label:'Cancelar OF', on: ()=>cancelarOF(id, num) },
+    { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, numDigits || num) },
+    { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, numDigits || num) },
+    { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, numDigits || num) },
   ];
   body.innerHTML = acts.map((a,i)=>`<button data-i="${i}" class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:10px;min-height:44px;font-weight:900">
     <span style="width:24px;text-align:center">${a.icon}</span> ${escH(a.label)}
@@ -48023,61 +48273,55 @@ window.atualizarChapas = async function(){
   try{ window.mobileMaqAlterarPrioridade = mobileMaqAlterarPrioridade; }catch(e){}
 
   function abrirAcoesOf(ofId, ofNum, maqNome) {
-    const todasOfs = mobileState.ofs || [];
-    const of = todasOfs.find(o => String(o?.id) === String(ofId));
-    if (!of) return;
+    const id = String(ofId || '').trim();
+    const num = String(ofNum || '').trim();
+    if (!id) return;
+    try{ document.getElementById('acoes-sheet')?.remove(); }catch(e){}
+    try{ document.getElementById('acoes-overlay')?.remove(); }catch(e){}
 
     const sheet = document.createElement('div');
     sheet.id = 'acoes-sheet';
-    sheet.style.cssText = `
-      position:fixed;bottom:0;left:0;right:0;z-index:9999;
-      background:var(--surface, #1e2333);
-      border-radius:16px 16px 0 0;
-      border-top:1px solid rgba(255,255,255,0.1);
-      padding:20px 16px 32px;
-      box-shadow:0 -8px 40px rgba(0,0,0,0.5);
-      animation:slideUp .2s ease;
-    `;
+    sheet.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:var(--surface, #1e2333);border-radius:16px 16px 0 0;border-top:1px solid rgba(255,255,255,0.1);padding:20px 16px 32px;box-shadow:0 -8px 40px rgba(0,0,0,0.5);animation:slideUp .2s ease;';
 
-    const mk = String(maqNome || '').trim();
     const acoes = [
-      { icon:'✅', label:'Baixa por Máquina', action:`baixarPorMaquina('${ofId}','${ofNum}')` },
-      { icon:'✓', label:'Concluir etapa (máquina)', action:`try{concluirEtapaOF('${ofId}','${escAttr(mk)}')}catch(e){}` },
-      { icon:'⬆️', label:'Mover para cima', action:`window.mobileMaqMoverPosicao && window.mobileMaqMoverPosicao('${ofId}',-1,'${escAttr(mk)}')` },
-      { icon:'⬇️', label:'Mover para baixo', action:`window.mobileMaqMoverPosicao && window.mobileMaqMoverPosicao('${ofId}',1,'${escAttr(mk)}')` },
-      { icon:'⭐', label:'Alterar prioridade', action:`window.mobileMaqAlterarPrioridade && window.mobileMaqAlterarPrioridade('${ofId}')` },
-      { icon:'🏁', label:'Concluir OF', action:`concluirOfModal('${ofId}','${ofNum}')` },
-      { icon:'📅', label:'Alterar Entrega', action:`alterarEntregaOf('${ofId}','${ofNum}')` },
-      { icon:'📷', label:'Ver / Trocar Imagem', action:`verImagemOf('${ofId}','${ofNum}')` },
-      { icon:'⚠️', label:'Registrar Inconformidade', action:`registrarInconformidade('${ofId}','${ofNum}')` },
-      { icon:'📋', label:'Ver Detalhes', action:`abrirDrawer('${ofId}')` },
-      { icon:'❌', label:'Cancelar OF', action:`cancelarOf('${ofId}','${ofNum}')` },
-    ].filter(a=>a.label !== 'Concluir etapa (máquina)' || !!mk);
+      { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, num) },
+      { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, num) },
+      { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, num) },
+    ];
 
     sheet.innerHTML = `
       <div style="text-align:center;margin-bottom:16px">
         <div style="width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;margin:0 auto 12px"></div>
-        <strong style="font-size:15px">OF #${esc(ofNum)}</strong>
+        <strong style="font-size:15px">OF #${esc(num)}</strong>
       </div>
-      ${acoes.map(a => `
-        <button onclick="${a.action};document.getElementById('acoes-sheet').remove();document.getElementById('acoes-overlay').remove()"
-          style="width:100%;padding:14px 16px;margin-bottom:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:inherit;font-size:14px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px">
+      ${acoes.map((a,i)=>`
+        <button data-i="${i}" style="width:100%;padding:14px 16px;margin-bottom:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:inherit;font-size:14px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px">
           <span style="font-size:20px">${a.icon}</span> ${a.label}
         </button>
       `).join('')}
-      <button onclick="document.getElementById('acoes-sheet').remove();document.getElementById('acoes-overlay').remove()"
-        style="width:100%;padding:12px;margin-top:4px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:var(--muted,#6b7399);font-size:14px;cursor:pointer">
-        Cancelar
-      </button>
+      <button data-close="1" style="width:100%;padding:12px;margin-top:4px;background:transparent;border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:var(--muted,#6b7399);font-size:14px;cursor:pointer">Cancelar</button>
     `;
 
     const overlay = document.createElement('div');
     overlay.id = 'acoes-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.5)';
-    overlay.onclick = () => { sheet.remove(); overlay.remove(); };
+    overlay.onclick = () => { try{ sheet.remove(); }catch(e){}; try{ overlay.remove(); }catch(e){}; };
 
     document.body.appendChild(overlay);
     document.body.appendChild(sheet);
+
+    sheet.querySelectorAll('button[data-i]').forEach((b)=>{
+      b.addEventListener('click', ()=>{
+        const i = Math.trunc(Number(b.getAttribute('data-i')||0) || 0);
+        try{ sheet.remove(); }catch(e){}
+        try{ overlay.remove(); }catch(e){}
+        try{ acoes[i]?.on(); }catch(e){}
+      });
+    });
+    sheet.querySelector('button[data-close="1"]')?.addEventListener('click', ()=>{
+      try{ sheet.remove(); }catch(e){}
+      try{ overlay.remove(); }catch(e){}
+    });
   }
 
   function _headersAuthSimple(){
@@ -50122,7 +50366,7 @@ function _hubDrawChart(canvas, buckets, theme){
   const padL = 46, padR = 16, padT = 14, padB = 32;
   const cw = w - padL - padR;
   const ch = h - padT - padB;
-  const maxV = Math.max(1, ...buckets.map(b=>b.n));
+  const maxV = Math.max(1, ...buckets.map(b=>Math.max(Number(b.nA||0)||0, Number(b.nC||0)||0)));
 
   ctx.globalAlpha = 1;
   ctx.strokeStyle = theme.grid;
@@ -50144,28 +50388,38 @@ function _hubDrawChart(canvas, buckets, theme){
   for(let i=0;i<buckets.length;i++){
     const b = buckets[i];
     const x = padL + i*barW;
-    const bh = Math.round((b.n/maxV) * (ch-8));
-    const y = padT + (ch - bh);
-    ctx.fillStyle = theme.bar;
-    const rx = 8;
-    const bw = Math.max(10, barW - 8);
-    const bx = x + 4;
-    const by = y;
-    const hh = bh;
-    const rr = Math.min(rx, bw/2, hh/2);
-    ctx.beginPath();
-    ctx.moveTo(bx+rr, by);
-    ctx.arcTo(bx+bw, by, bx+bw, by+hh, rr);
-    ctx.arcTo(bx+bw, by+hh, bx, by+hh, rr);
-    ctx.arcTo(bx, by+hh, bx, by, rr);
-    ctx.arcTo(bx, by, bx+bw, by, rr);
-    ctx.closePath();
-    ctx.fill();
+    const bwOuter = Math.max(10, barW - 8);
+    const bxOuter = x + 4;
+    const gap = 2;
+    const bw = Math.max(4, Math.floor((bwOuter - gap) / 2));
+    const bxA = bxOuter;
+    const bxC = bxOuter + bw + gap;
+    const bhA = Math.round(((Number(b.nA||0)||0)/maxV) * (ch-8));
+    const bhC = Math.round(((Number(b.nC||0)||0)/maxV) * (ch-8));
+
+    const drawBar = (bx, bh, color)=>{
+      const y = padT + (ch - bh);
+      const rx = 6;
+      const hh = bh;
+      const rr = Math.min(rx, bw/2, hh/2);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(bx+rr, y);
+      ctx.arcTo(bx+bw, y, bx+bw, y+hh, rr);
+      ctx.arcTo(bx+bw, y+hh, bx, y+hh, rr);
+      ctx.arcTo(bx, y+hh, bx, y, rr);
+      ctx.arcTo(bx, y, bx+bw, y, rr);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    drawBar(bxA, bhA, theme.barA);
+    drawBar(bxC, bhC, theme.barC);
 
     if(buckets.length <= 12 || i % Math.ceil(buckets.length/10) === 0){
       ctx.fillStyle = theme.text3;
       ctx.font = '900 11px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
-      ctx.fillText(b.lbl, bx + bw/2, padT+ch+8);
+      ctx.fillText(b.lbl, bxOuter + bwOuter/2, padT+ch+8);
     }
   }
 }
@@ -50681,11 +50935,19 @@ function hubCliPanelRender(){
                 const atr = isAtrasada(o);
                 const perd = qtdPerdidaOf(o);
                 const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
-                const imgHtml = img
-                  ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
-                  : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+                const imgEl = img ? `
+                  <img src="${escH(img)}"
+                    style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);transition:transform 0.15s;-webkit-tap-highlight-color:transparent"
+                    onclick="abrirLightbox('${escAttr(img)}','${escAttr(num)}')"
+                    onmouseover="this.style.transform='scale(1.08)'"
+                    onmouseout="this.style.transform='scale(1)'"
+                    onerror="this.parentElement.innerHTML='<div onclick=abrirLightbox(\\'${escAttr(img)}\\',\\'${escAttr(num)}\\') style=width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer>📦</div>'"
+                  />
+                ` : `
+                  <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>
+                `;
                 return `<div class="cli-of-card">
-                  ${imgHtml}
+                  ${imgEl}
                   <div style="min-width:0;flex:1">
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                       <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
@@ -50693,7 +50955,10 @@ function hubCliPanelRender(){
                     </div>
                     <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b> · ${escH(stt||'—')}${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
                   </div>
-                  <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+                  <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+                    <button onclick="window.open('/of/${escAttr(id)}','_blank') || abrirOf?.('${escAttr(id)}') || abrirModalOF('${escAttr(id)}')" style="padding:6px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Abrir</button>
+                    <button id="btn-concluir-${escAttr(id)}" onclick="concluirOfPainel('${escAttr(id)}','${escAttr(num)}',this)" style="padding:6px 12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:7px;color:#10b981;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ Concluir</button>
+                  </div>
                 </div>`;
               }).join('')
               || `<div style="color:var(--text3)">Sem OFs em aberto.</div>`
@@ -50715,11 +50980,19 @@ function hubCliPanelRender(){
                 const qtdProd = Math.trunc(Number(o?.qtd_produzida ?? o?.qtdProduzida ?? o?.qtd_real ?? 0)) || 0;
                 const perd = qtdPerdidaOf(o);
                 const img = imgUrlOf(o);
-                const imgHtml = img
-                  ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
-                  : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+                const imgEl = img ? `
+                  <img src="${escH(img)}"
+                    style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);transition:transform 0.15s;-webkit-tap-highlight-color:transparent"
+                    onclick="abrirLightbox('${escAttr(img)}','${escAttr(num)}')"
+                    onmouseover="this.style.transform='scale(1.08)'"
+                    onmouseout="this.style.transform='scale(1)'"
+                    onerror="this.parentElement.innerHTML='<div onclick=abrirLightbox(\\'${escAttr(img)}\\',\\'${escAttr(num)}\\') style=width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer>📦</div>'"
+                  />
+                ` : `
+                  <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>
+                `;
                 return `<div class="cli-of-card">
-                  ${imgHtml}
+                  ${imgEl}
                   <div style="min-width:0;flex:1">
                     <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
                     <div class="m">Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b>${qtdProd?` · ${escH(String(qtdProd))} cx`:''}${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
@@ -50768,11 +51041,19 @@ function hubCliPanelRender(){
         const atr = isAtrasada(o);
         const perd = qtdPerdidaOf(o);
         const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
-        const imgHtml = img
-          ? `<img class="cli-of-img" src="${escH(img)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="cli-of-img-fb">📦</div>`
-          : `<div class="cli-of-img-fb" style="display:flex">📦</div>`;
+        const imgEl = img ? `
+          <img src="${escH(img)}"
+            style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);transition:transform 0.15s;-webkit-tap-highlight-color:transparent"
+            onclick="abrirLightbox('${escAttr(img)}','${escAttr(num)}')"
+            onmouseover="this.style.transform='scale(1.08)'"
+            onmouseout="this.style.transform='scale(1)'"
+            onerror="this.parentElement.innerHTML='<div onclick=abrirLightbox(\\'${escAttr(img)}\\',\\'${escAttr(num)}\\') style=width:52px;height:52px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer>📦</div>'"
+          />
+        ` : `
+          <div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;font-size:22px">📦</div>
+        `;
         return `<div class="cli-of-card">
-          ${imgHtml}
+          ${imgEl}
           <div style="min-width:0;flex:1">
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <div style="font-weight:1000">${escH(num)} · ${escH(prod)}</div>
@@ -50782,7 +51063,10 @@ function hubCliPanelRender(){
             </div>
             <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b>${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
+          <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+            <button onclick="window.open('/of/${escAttr(id)}','_blank') || abrirOf?.('${escAttr(id)}') || abrirModalOF('${escAttr(id)}')" style="padding:6px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Abrir</button>
+            <button id="btn-concluir-${escAttr(id)}" onclick="concluirOfPainel('${escAttr(id)}','${escAttr(num)}',this)" style="padding:6px 12px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:7px;color:#10b981;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">✓ Concluir</button>
+          </div>
         </div>`;
       }).join('');
       body.innerHTML = rows || `<div style="color:var(--text3)">Sem OFs em aberto.</div>`;
@@ -51082,19 +51366,23 @@ async function renderHub(forcar=false){
       const d = new Date(start.getTime()); d.setDate(start.getDate()+i);
       const iso = d.toISOString().slice(0,10);
       const lbl = iso.slice(8,10) + '/' + iso.slice(5,7);
-      buckets.push({ iso, lbl, n: 0 });
+      buckets.push({ iso, lbl, nA: 0, nC: 0 });
     }
     const byIso = new Map(buckets.map(b=>[b.iso, b]));
     ofs.forEach(o=>{
       const c = _hubOfCreated(o);
       const b = byIso.get(c);
-      if(b) b.n += 1;
+      if(b) b.nA += 1;
+      const cc = _hubOfConcl(o);
+      const bc = cc ? byIso.get(cc) : null;
+      if(bc) bc.nC += 1;
     });
 
     const isDark = true;
     const theme = {
       grid: isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)',
-      bar: isDark ? 'rgba(99,102,241,.9)' : 'rgba(37,99,235,.9)',
+      barA: isDark ? 'rgba(59,130,246,.9)' : 'rgba(37,99,235,.9)',
+      barC: isDark ? 'rgba(16,185,129,.9)' : 'rgba(16,185,129,.9)',
       text2: isDark ? 'rgba(255,255,255,.55)' : 'rgba(0,0,0,.55)',
       text3: isDark ? 'rgba(255,255,255,.38)' : 'rgba(0,0,0,.38)',
     };
@@ -51109,6 +51397,7 @@ async function renderHub(forcar=false){
     const totalPeriodo = conclPeriodo.reduce((s,o)=>s+_hubOfValor(o),0);
     const ticket = conclPeriodo.length ? (totalPeriodo / conclPeriodo.length) : 0;
     chartSum.innerHTML = [
+      `<div style="display:flex;gap:12px;font-size:11px;color:var(--text3);margin-bottom:8px"><span><span style="color:#3b82f6">■</span> Abertas</span><span><span style="color:#10b981">■</span> Concluídas</span></div>`,
       `<span class="hub-pill">Período: <b>${escH(fmtD(periodStart))}</b> → <b>${escH(fmtD(periodEnd))}</b></span>`,
       `<span class="hub-pill">Total: <b style="color:var(--green)">${escH(fmtR(totalPeriodo))}</b></span>`,
       `<span class="hub-pill">Ticket médio: <b>${escH(fmtR(ticket))}</b></span>`,

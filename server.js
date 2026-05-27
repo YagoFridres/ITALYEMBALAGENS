@@ -5143,6 +5143,25 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('ofs')
+      .update({ passou_maquina: true, maquina_atual: null, maquina_atual_index: null, updated_at: nowIso })
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    return res.json({ ok: true, data: data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
