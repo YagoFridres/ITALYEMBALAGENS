@@ -3359,18 +3359,28 @@ async function proximoNumeroOf() {
     const d = r ? await r.json().catch(()=>null) : null;
     const lista = (d && Array.isArray(d.data)) ? d.data : (d && Array.isArray(d.ofs)) ? d.ofs : (Array.isArray(d) ? d : []);
     if (lista.length) {
-      const maior = Math.max(...lista.map(o => parseInt(o?.numero || o?.of_num || o?.of || 0, 10)).filter(n => !Number.isNaN(n)));
-      if (maior > 0) return maior + 1;
+      const maiorStr = String(lista[0]?.numero || lista[0]?.of_num || lista[0]?.of || '0');
+      const maiorNum = parseInt(maiorStr, 10);
+      if (!isNaN(maiorNum) && maiorNum > 0) {
+        const prox = maiorNum + 1;
+        const casas = Math.max(3, maiorStr.length >= 3 ? maiorStr.length : 3);
+        return String(prox).padStart(casas, '0');
+      }
     }
   } catch(e) {}
 
   const cache = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
   if (cache.length) {
-    const maior = Math.max(...cache.map(o => parseInt(o?.numero || o?.of_num || o?.of || 0, 10)).filter(n => !Number.isNaN(n)));
-    if (maior > 0) return maior + 1;
+    const numeros = cache
+      .map(o => parseInt(o?.numero || o?.of_num || o?.of || '0', 10))
+      .filter(n => !isNaN(n) && n > 0);
+    if (numeros.length) {
+      const maior = Math.max(...numeros);
+      return String(maior + 1).padStart(3, '0');
+    }
   }
 
-  return '?';
+  return '001';
 }
 
 function abrirNovaOfRapida(){
@@ -3543,36 +3553,12 @@ function abrirNovaOfRapida(){
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-num-display');
   if (numDisplay) numDisplay.textContent = 'Nº ...';
-  const _tkn = localStorage.getItem('token') || '';
-  fetch(
-    '/api/ofs?limit=1&order_by=numero&order=desc&nocache=1&incluir_excluidas=1',
-    { headers: _tkn ? { Authorization: 'Bearer ' + _tkn } : {} }
-  )
-    .then((r) => r.json())
-    .then((d) => {
-      const lista = d.data || d.ofs || (Array.isArray(d) ? d : []);
-      const maior = lista.length ? parseInt(lista[0].numero || lista[0].of_num || 0) : 0;
-      const prox =
-        maior > 0
-          ? maior + 1
-          : (() => {
-              const cache = window.OFS_ARQUIVO || [];
-              const nums = cache
-                .map((o) => parseInt(o.numero || 0))
-                .filter((n) => n > 0 && !isNaN(n));
-              return nums.length ? Math.max(...nums) + 1 : null;
-            })();
+  try{
+    proximoNumeroOf().then((num)=>{
       const el = document.getElementById('of-r-num-display');
-      if (el && prox) {
-        el.textContent = 'Nº ' + prox;
-      } else if (el) {
-        el.textContent = '';
-      }
-    })
-    .catch(() => {
-      const el = document.getElementById('of-r-num-display');
-      if (el) el.textContent = '';
-    });
+      if (el) el.textContent = num ? ('Nº ' + String(num)) : '';
+    }).catch(()=>{});
+  }catch(e){}
   try{
     const chk = document.getElementById('of-r-urgente');
     const track = document.getElementById('of-r-urg-track');
