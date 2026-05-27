@@ -5149,6 +5149,9 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = req.body || {};
     const maquinaNome = String(body.maquina_nome || body.maquinaNome || body.maquina || '').trim();
+    console.log('[PASSOU] id recebido:', id);
+    console.log('[PASSOU] body:', body);
+    console.log('[PASSOU] usuario:', req.usuario?.nome);
     console.log('[PASSOU MAQUINA]', id, maquinaNome);
 
     const { data: of, error: errBusca } = await supabase
@@ -5162,20 +5165,38 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     const nowIso = new Date().toISOString();
     const passouNome = maquinaNome || String(of.maquina_atual || '').trim() || '';
 
-    const { data, error } = await supabase
+    let updateData = { updated_at: nowIso };
+    updateData = {
+      ...updateData,
+      passou_maquina: true,
+      passou_em: nowIso,
+      passou_maquina_nome: passouNome,
+      maquina_atual: null,
+      maquina_atual_index: null,
+    };
+
+    let updateResult = await supabase
       .from('ofs')
-      .update({
-        passou_maquina: true,
-        passou_em: nowIso,
-        passou_maquina_nome: passouNome,
-        maquina_atual: null,
-        maquina_atual_index: null,
-        updated_at: nowIso,
-      })
+      .update(updateData)
       .eq('id', id)
       .select('*')
       .maybeSingle();
-    if (error) throw error;
+
+    if (updateResult.error) {
+      console.error('[PASSOU] Erro:', updateResult.error);
+      const msg = String(updateResult.error.message || '').toLowerCase();
+      const missingColumn = msg.includes('column') && msg.includes('does not exist');
+      if (missingColumn) {
+        updateResult = await supabase
+          .from('ofs')
+          .update({ updated_at: nowIso, maquina_atual: null })
+          .eq('id', id)
+          .select('*')
+          .maybeSingle();
+      }
+    }
+
+    console.log('[PASSOU] Resultado:', updateResult.error ? ('ERRO: ' + updateResult.error.message) : 'OK');
     try {
       await supabase
         .from('of_passagens')
@@ -5193,7 +5214,13 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       if (!missing) console.log('[PASSOU] of_passagens skip:', String(e?.message || e));
     }
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({ ok: true, of_numero: of.numero, passou_maquina_nome: passouNome, data: data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
+    return res.json({
+      ok: !updateResult.error,
+      error: updateResult.error?.message,
+      of_numero: of.numero,
+      passou_maquina_nome: passouNome,
+      data: updateResult.data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null }
+    });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
