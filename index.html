@@ -3176,91 +3176,532 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
   const id = String(ofId||'').trim();
   const num = String(ofNum||'').trim();
   if(!id) return;
-  if(!confirm(`Concluir a OF Nº ${num}?\n\nIsso marca a OF como concluída definitivamente.`)) return;
-  try{
-    if(btn){
-      btn.textContent = '...';
-      btn.disabled = true;
-      btn.style.opacity = '0.6';
+
+  try{ document.getElementById('modal-concluir-of')?.remove(); }catch(e){}
+  try{ document.getElementById('modal-concluir-ov')?.remove(); }catch(e){}
+
+  const ov = document.createElement('div');
+  ov.id = 'modal-concluir-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-concluir-of';
+  modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9001;background:#111929;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:26px 24px;width:92%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.7)';
+
+  const ofCache = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO.find(o => String(o?.id||'') === id) : null;
+  const qtdOriginal = ofCache?.quantidade || ofCache?.qtd || '';
+
+  modal.innerHTML = `
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:36px;margin-bottom:8px">✅</div>
+      <div style="font-weight:800;font-size:17px">Concluir OF Nº ${num.replace(/</g,'&lt;')}</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px">Informe os dados de produção</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Quantidade Produzida *</label>
+        <input id="conc-qtd-prod" type="number" min="0" placeholder="${String(qtdOriginal||'Total produzido').replace(/"/g,'&quot;')}" value="${String(qtdOriginal||'').replace(/"/g,'&quot;')}"
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#10b981;font-size:16px;font-weight:700;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Quantidade Perdida / Defeito</label>
+        <input id="conc-qtd-perd" type="number" min="0" placeholder="0"
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#f43f5e;font-size:16px;font-weight:700;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#f43f5e'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Observação (opcional)</label>
+        <input id="conc-obs" placeholder="Alguma observação..."
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px">
+      <button id="btn-canc-conc" style="flex:1;padding:13px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:rgba(255,255,255,0.5);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button id="btn-conf-conc" style="flex:2;padding:13px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:9px;color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(16,185,129,0.3)">✓ Confirmar Conclusão</button>
+    </div>
+  `;
+
+  document.body.appendChild(ov);
+  document.body.appendChild(modal);
+
+  const fechar = () => { try{ ov.remove(); }catch(e){}; try{ modal.remove(); }catch(e){}; };
+  ov.onclick = fechar;
+  modal.querySelector('#btn-canc-conc').onclick = fechar;
+
+  modal.querySelector('#btn-conf-conc').onclick = async ()=>{
+    const qtdProd = Math.trunc(Number(modal.querySelector('#conc-qtd-prod')?.value || 0) || 0);
+    const qtdPerd = Math.trunc(Number(modal.querySelector('#conc-qtd-perd')?.value || 0) || 0);
+    const obs = String(modal.querySelector('#conc-obs')?.value || '');
+
+    if(!qtdProd){
+      try{
+        const inp = modal.querySelector('#conc-qtd-prod');
+        inp.style.borderColor = '#f43f5e';
+        inp.focus();
+      }catch(e){}
+      return;
     }
-  }catch(e){}
 
-  let ok2 = false;
-  try{
-    const r = await apiFetch(`/api/ofs/${encodeURIComponent(id)}/concluir`, { method:'POST', body:{} });
-    if(r && r.ok) ok2 = true;
-  }catch(e){}
+    const confirmBtn = modal.querySelector('#btn-conf-conc');
+    confirmBtn.textContent = 'Salvando...';
+    confirmBtn.disabled = true;
 
-  if(!ok2){
+    fechar();
+
+    let ok2 = false;
     try{
       const usuario = window.CURRENT_USER?.nome || window._usuario?.nome || 'Sistema';
-      const r2 = await apiFetch(`/api/ofs/${encodeURIComponent(id)}`, {
-        method:'PATCH',
+      const r = await apiFetch(`/api/ofs/${encodeURIComponent(id)}/concluir`, {
+        method:'POST',
         body:{
-          status: 'Concluído',
-          data_conclusao: new Date().toISOString(),
+          qtd_produzida: qtdProd,
+          qtd_perdida: qtdPerd,
+          obs_conclusao: obs,
           usuario_conclusao: usuario,
+          data_conclusao: new Date().toISOString(),
         }
       });
-      if(r2 && r2.ok) ok2 = true;
+      if(r && r.ok) ok2 = true;
     }catch(e){}
-  }
 
-  if(ok2){
+    if(!ok2){
+      try{
+        const usuario = window.CURRENT_USER?.nome || window._usuario?.nome || 'Sistema';
+        const r2 = await apiFetch(`/api/ofs/${encodeURIComponent(id)}`, {
+          method:'PATCH',
+          body:{
+            status: 'Concluído',
+            qtd_produzida: qtdProd,
+            qtd_perdida: qtdPerd,
+            obs2: obs,
+            usuario_conclusao: usuario,
+            data_conclusao: new Date().toISOString(),
+          }
+        });
+        if(r2 && r2.ok) ok2 = true;
+      }catch(e){}
+    }
+
+    if(ok2){
+      try{
+        if(Array.isArray(window.OFS_ARQUIVO)){
+          const idx = window.OFS_ARQUIVO.findIndex(o=>String(o?.id||'')===id);
+          if(idx !== -1){
+            window.OFS_ARQUIVO[idx].status = 'Concluído';
+            window.OFS_ARQUIVO[idx].qtd_produzida = qtdProd;
+            window.OFS_ARQUIVO[idx].qtd_perdida = qtdPerd;
+            window.OFS_ARQUIVO[idx].data_conclusao = new Date().toISOString();
+          }
+        }
+      }catch(e){}
+
+      try{
+        const toastEl = document.createElement('div');
+        toastEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 20px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;box-shadow:0 4px 20px rgba(16,185,129,0.4)';
+        toastEl.textContent = `✓ OF Nº ${num} concluída! ${qtdProd}cx prod. / ${qtdPerd}cx perdas`;
+        document.body.appendChild(toastEl);
+        setTimeout(()=>{ try{ toastEl.remove(); }catch(e){} }, 4000);
+      }catch(e){}
+
+      try{
+        if(btn){
+          btn.textContent = '✓ Concluída';
+          btn.style.background = 'rgba(16,185,129,0.2)';
+          btn.disabled = true;
+          const card = btn.closest('.cli-of-card') || btn.closest('[data-of-id]');
+          if(card){
+            card.style.transition = 'opacity 0.4s';
+            card.style.opacity = '0.4';
+          }
+        }
+      }catch(e){}
+
+      try{
+        const st = window.__HUB_CLI_PANEL || null;
+        if(st && st.clienteId){
+          try{ if(window.__HUB_CLI_CACHE) delete window.__HUB_CLI_CACHE[st.clienteId]; }catch(e){}
+          setTimeout(()=>{ try{ hubAbrirPainelCliente(st.clienteId, document.getElementById('hub-cli-title')?.textContent || ''); }catch(e){} }, 900);
+        }
+      }catch(e){}
+      return;
+    }
+
     try{
       if(btn){
-        btn.textContent = '✓ Concluída';
-        btn.style.background = 'rgba(16,185,129,0.2)';
-        btn.style.borderColor = 'rgba(16,185,129,0.4)';
+        btn.textContent = '✗ Erro';
+        btn.style.color = '#f43f5e';
         btn.style.opacity = '1';
+        setTimeout(()=>{
+          try{
+            btn.textContent = '✓ Concluir';
+            btn.disabled = false;
+            btn.style.color = '#10b981';
+            btn.style.opacity = '1';
+          }catch(e){}
+        }, 2500);
       }
     }catch(e){}
-    try{
-      const card = (btn && btn.closest('.cli-of-card')) || document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
-      if(card){
-        card.style.transition = 'opacity 0.4s';
-        card.style.opacity = '0.4';
-      }
-    }catch(e){}
-    try{
-      if(Array.isArray(window.OFS_ARQUIVO)){
-        const idx = window.OFS_ARQUIVO.findIndex(o=>String(o?.id||'')===id);
-        if(idx !== -1){
-          window.OFS_ARQUIVO[idx].status = 'Concluído';
-          window.OFS_ARQUIVO[idx].data_conclusao = new Date().toISOString();
-        }
-      }
-    }catch(e){}
-    try{
-      const st = window.__HUB_CLI_PANEL || null;
-      if(st && st.clienteId){
-        try{ if(window.__HUB_CLI_CACHE) delete window.__HUB_CLI_CACHE[st.clienteId]; }catch(e){}
-        setTimeout(()=>{ try{ hubAbrirPainelCliente(st.clienteId, document.getElementById('hub-cli-title')?.textContent || ''); }catch(e){} }, 900);
-      }
-    }catch(e){}
-    return;
-  }
-
-  try{
-    if(btn){
-      btn.textContent = '✗ Erro';
-      btn.style.color = '#f43f5e';
-      btn.style.opacity = '1';
-      setTimeout(()=>{
-        try{
-          btn.textContent = '✓ Concluir';
-          btn.disabled = false;
-          btn.style.color = '#10b981';
-          btn.style.opacity = '1';
-        }catch(e){}
-      }, 2500);
-    }
-  }catch(e){}
+  };
 };
 function verImagemOF(url){
   if(!url){ toast('Sem imagem cadastrada','var(--orange)'); return; }
   zoomImg(url);
 }
+
+function abrirNovaOfRapida(){
+  try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
+  try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
+
+  try{
+    const needsApi = _apiConectado && CURRENT_USER;
+    if(needsApi){
+      if((!Array.isArray(CLIENTES) || CLIENTES.length===0) && typeof carregarClientes === 'function') carregarClientes(false).catch(()=>null);
+      if((!Array.isArray(VENDEDORES) || VENDEDORES.length===0) && typeof carregarVendedores === 'function') carregarVendedores(false).catch(()=>null);
+    }
+  }catch(e){}
+
+  const ov = document.createElement('div');
+  ov.id = 'modal-of-rapida-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
+  ov.onclick = (e)=>{ if(e && e.target === ov) fecharNovaOfRapida(); };
+
+  const modal = document.createElement('div');
+  modal.id = 'modal-of-rapida';
+  modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9001;background:#0d1320;border:1px solid rgba(255,255,255,0.1);border-radius:16px;width:95%;max-width:520px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,0.7)';
+  if(window.innerWidth < 768){
+    modal.style.cssText = 'position:fixed;bottom:0;left:0;right:0;top:auto;transform:none;z-index:9001;background:#0d1320;border:1px solid rgba(255,255,255,0.1);border-radius:16px 16px 0 0;width:100%;max-width:100%;max-height:95vh;overflow-y:auto;box-shadow:0 -12px 40px rgba(0,0,0,0.7)';
+  }
+
+  const baseArr = Array.isArray(window.OFS_ARQUIVO) && window.OFS_ARQUIVO.length ? window.OFS_ARQUIVO
+    : (Array.isArray(OFs) && OFs.length ? OFs : []);
+  const proximoNum = baseArr.length
+    ? (Math.max(...baseArr.map(o => Math.trunc(Number(o?.numero || o?.of || o?.of_num || 0) || 0))) + 1)
+    : '?';
+
+  const clientes = (Array.isArray(CLIENTES) ? CLIENTES : [])
+    .map(c => String(c.nome || c.razao_social || c.razao || c.cliente_nome || '').trim())
+    .filter(Boolean)
+    .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+  const vendedores = (Array.isArray(VENDEDORES) ? VENDEDORES : []);
+  const vendedoresHtml = vendedores.length
+    ? vendedores.map(v => `<option value="${escAttr(String(v.id||''))}">${escH(String(v.nome||v.name||''))}</option>`).join('')
+    : `<option value="">Sem vendedor</option><option value="">Roni Venda Cheia</option><option value="">Eleomar</option><option value="">Roni Meia Venda</option><option value="">Vendedor 03</option>`;
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const em3 = new Date(Date.now() + 3*864e5).toISOString().split('T')[0];
+  const em5 = new Date(Date.now() + 5*864e5).toISOString().split('T')[0];
+
+  modal.innerHTML = `
+    <div style="width:34px;height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin:12px auto 0"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.07)">
+      <div>
+        <div style="font-weight:800;font-size:16px">⚡ Nova OF Rápida</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">Nº ${escH(String(proximoNum))} · Preencha só o essencial</div>
+      </div>
+      <button type="button" onclick="fecharNovaOfRapida()" style="width:32px;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);font-size:16px;cursor:pointer">✕</button>
+    </div>
+
+    <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Cliente *</label>
+        <input id="of-r-cliente" list="of-r-clientes-list" placeholder="Nome do cliente..." autocomplete="off"
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;transition:border 0.2s;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <datalist id="of-r-clientes-list">${clientes.map(c=>`<option value="${escAttr(c)}"></option>`).join('')}</datalist>
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Produto / Descrição *</label>
+        <input id="of-r-produto" placeholder="Ex: Caixa 30×20×15 onda B"
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Empresa *</label>
+          <select id="of-r-empresa" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:13px;outline:none;cursor:pointer;appearance:none;font-family:inherit">
+            <option value="E1">Italy Embalagens</option>
+            <option value="E2">Cartoeste</option>
+            <option value="E3">Oestepack</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Vendedor *</label>
+          <select id="of-r-vendedor" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:13px;outline:none;cursor:pointer;appearance:none;font-family:inherit">
+            <option value="">Sem vendedor</option>
+            ${vendedoresHtml}
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Qtd *</label>
+          <input id="of-r-qtd" type="number" placeholder="0" min="1" oninput="calcTotalOf()"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Vl. Unit *</label>
+          <input id="of-r-vlunit" type="number" placeholder="0,00" step="0.01" min="0" oninput="calcTotalOf()"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Total</label>
+          <input id="of-r-total" type="number" placeholder="0,00" step="0.01" min="0"
+            style="width:100%;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:9px;padding:11px 10px;color:#10b981;font-size:14px;font-weight:700;outline:none;font-family:inherit">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Referência</label>
+        <input id="of-r-ref" placeholder="Código de referência..."
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Imagem da OF</label>
+        <label for="of-r-img" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#080c14;border:1.5px dashed rgba(255,255,255,0.15);border-radius:9px;cursor:pointer;transition:all 0.2s;color:rgba(255,255,255,0.4);font-size:13px"
+          onmouseover="this.style.borderColor='rgba(14,165,233,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)'">
+          <span style="font-size:20px">📷</span>
+          <span id="of-r-img-label">Foto ou arquivo da OF</span>
+        </label>
+        <input id="of-r-img" type="file" accept="image/*" capture="environment" style="display:none" onchange="previewImgOf(this)">
+        <div id="of-r-img-preview" style="margin-top:8px;display:none">
+          <img id="of-r-img-thumb" style="width:80px;height:80px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1)">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Data de Entrega *</label>
+          <input id="of-r-entrega" type="date"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:13px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <div style="display:flex;gap:4px;margin-top:5px">
+            <button type="button" onclick="document.getElementById('of-r-entrega').value='${escAttr(em3)}'" style="flex:1;padding:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:9px;cursor:pointer;font-family:inherit">+3 dias</button>
+            <button type="button" onclick="document.getElementById('of-r-entrega').value='${escAttr(em5)}'" style="flex:1;padding:4px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:9px;cursor:pointer;font-family:inherit">+5 dias</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Dia do Pedido</label>
+          <input id="of-r-pedido" type="date" value="${escAttr(hoje)}"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:13px;outline:none;font-family:inherit">
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:9px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:18px">🚨</span>
+          <div>
+            <div style="font-weight:700;font-size:13px">Urgente</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.4)">Prioridade máxima na fila</div>
+          </div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer">
+          <input id="of-r-urgente" type="checkbox" style="opacity:0;width:0;height:0">
+          <span id="of-r-urg-track" style="position:absolute;inset:0;background:rgba(255,255,255,0.15);border-radius:24px;transition:background 0.2s">
+            <span id="of-r-urg-knob" style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:white;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.3)"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div style="padding:12px 20px 20px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,0.06);position:sticky;bottom:0;background:#0d1320">
+      <button type="button" onclick="fecharNovaOfRapida()" style="flex:1;padding:13px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:rgba(255,255,255,0.5);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button type="button" onclick="salvarOfRapida()" id="btn-salvar-of-rapida" style="flex:2;padding:13px;background:linear-gradient(135deg,#0284c7,#0ea5e9);border:none;border-radius:9px;color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(14,165,233,0.3)">⚡ Salvar OF</button>
+    </div>
+  `;
+
+  document.body.appendChild(ov);
+  document.body.appendChild(modal);
+
+  setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
+  try{
+    const chk = document.getElementById('of-r-urgente');
+    const track = document.getElementById('of-r-urg-track');
+    const knob = document.getElementById('of-r-urg-knob');
+    if(chk && track && knob){
+      const sync = ()=>{
+        track.style.background = chk.checked ? '#f59e0b' : 'rgba(255,255,255,0.15)';
+        knob.style.transform = chk.checked ? 'translateX(20px)' : 'translateX(0)';
+      };
+      chk.addEventListener('change', sync);
+      sync();
+    }
+  }catch(e){}
+}
+
+window.calcTotalOf = function(){
+  const qtd = parseFloat(String(document.getElementById('of-r-qtd')?.value || '0').replace(',','.')) || 0;
+  const vl = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',','.')) || 0;
+  const totalEl = document.getElementById('of-r-total');
+  if(!totalEl) return;
+  const manual = totalEl.dataset && totalEl.dataset.manual === '1';
+  if(manual) return;
+  if(qtd > 0 && vl > 0) totalEl.value = (qtd * vl).toFixed(2);
+};
+
+window.previewImgOf = function(input){
+  const file = input?.files?.[0];
+  if(!file) return;
+  const label = document.getElementById('of-r-img-label');
+  const preview = document.getElementById('of-r-img-preview');
+  const thumb = document.getElementById('of-r-img-thumb');
+  if(label) label.textContent = file.name;
+  if(preview) preview.style.display = 'block';
+  if(thumb) thumb.src = URL.createObjectURL(file);
+};
+
+window.fecharNovaOfRapida = function(){
+  try{ document.getElementById('modal-of-rapida')?.remove(); }catch(e){}
+  try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
+};
+
+window.salvarOfRapida = async function(){
+  const clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
+  const produto = String(document.getElementById('of-r-produto')?.value || '').trim();
+  const empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
+  const vendId = String(document.getElementById('of-r-vendedor')?.value || '').trim();
+  const qtd = Math.trunc(Number(document.getElementById('of-r-qtd')?.value || 0) || 0);
+  const vlunit = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',','.')) || 0;
+  const totalManualEl = document.getElementById('of-r-total');
+  const total = parseFloat(String(totalManualEl?.value || '0').replace(',','.')) || (qtd * vlunit);
+  const ref = String(document.getElementById('of-r-ref')?.value || '').trim();
+  const entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
+  const pedido = String(document.getElementById('of-r-pedido')?.value || new Date().toISOString().split('T')[0]).slice(0,10);
+  const urgente = !!document.getElementById('of-r-urgente')?.checked;
+
+  const erros = [];
+  if(!clienteNome) erros.push('Cliente');
+  if(!produto) erros.push('Produto');
+  if(!(qtd > 0)) erros.push('Quantidade');
+  if(!(vlunit > 0)) erros.push('Valor Unit.');
+  if(!entrega) erros.push('Data de Entrega');
+  if(erros.length){
+    alert('Preencha: ' + erros.join(', '));
+    return;
+  }
+
+  const btn = document.getElementById('btn-salvar-of-rapida');
+  try{ if(btn){ btn.textContent='Salvando...'; btn.disabled=true; } }catch(e){}
+
+  const cli = (Array.isArray(CLIENTES)?CLIENTES:[]).find(c=>{
+    const n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
+    if(!n) return false;
+    return n.toLowerCase() === clienteNome.toLowerCase();
+  }) || null;
+  const cliId = String(cli?.id || '').trim();
+  if(!cliId){
+    alert('Selecione um cliente válido da lista.');
+    try{ if(btn){ btn.textContent='⚡ Salvar OF'; btn.disabled=false; } }catch(e){}
+    return;
+  }
+
+  let imgUrl = '';
+  try{
+    const imgInput = document.getElementById('of-r-img');
+    const file = imgInput?.files?.[0] || null;
+    if(file){
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      const fd = new FormData();
+      fd.append('file', file);
+      const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      const r = await fetch(base + '/api/ofs/upload', { method:'POST', headers: token ? { Authorization: 'Bearer ' + token } : {}, body: fd });
+      const d = await r.json().catch(()=>null);
+      imgUrl = String(d?.data?.url || d?.url || d?.data?.publicUrl || d?.publicUrl || '').trim();
+    }
+  }catch(e){}
+
+  const itens = [{
+    desc: produto,
+    descricao: produto,
+    ref: ref,
+    qtd: qtd,
+    quantidade: qtd,
+    vunit: vlunit,
+    valor_unitario: vlunit,
+    valor_total: total,
+    img: imgUrl || null,
+    maquina: '',
+    maquinas_fluxo: [],
+    maquinas_fluxo_ids: [],
+  }];
+
+  const payload = {
+    cli_id: cliId,
+    cliId: cliId,
+    cliente_id: cliId,
+    vendedor_id: vendId,
+    vendId: vendId,
+    vend_id: vendId,
+    prodDesc: produto,
+    descricao: produto,
+    produto: produto,
+    quantidade: qtd,
+    qtd: qtd,
+    valor_total: total,
+    valor_venda: total,
+    ent: entrega,
+    data_entrega: entrega,
+    data_pedido: pedido,
+    dia: pedido,
+    status: 'Em aberto',
+    urg: urgente,
+    urgente: urgente,
+    emp_id: empId,
+    empId: empId,
+    itens: itens,
+    imgs: imgUrl ? [imgUrl] : [],
+    imagem_url: imgUrl || null,
+  };
+
+  try{
+    const r = await apiFetch('/api/ofs', { method:'POST', body: payload });
+    const d = r ? await r.json().catch(()=>null) : null;
+    if(!(r && r.ok) || (d && d.ok === false)) throw new Error(d?.error || d?.message || 'Erro ao salvar');
+    const ofCriada = d?.data || d;
+    try{
+      if(Array.isArray(window.OFS_ARQUIVO) && ofCriada) window.OFS_ARQUIVO.unshift(ofCriada);
+    }catch(e){}
+    fecharNovaOfRapida();
+    toast('✓ OF criada com sucesso!', 'var(--green)');
+    try{ if(typeof renderHub === 'function') renderHub(true); }catch(e){}
+    try{ if(typeof carregarOFs === 'function') carregarOFs(); }catch(e){}
+    try{ if(typeof renderPCP === 'function') renderPCP(); }catch(e){}
+    try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
+  }catch(e){
+    try{ console.error('[OF RAPIDA]', e); }catch(_){}
+    if(btn){
+      btn.textContent = '✗ Erro ao salvar';
+      btn.style.background = '#ef4444';
+      setTimeout(()=>{
+        try{
+          btn.textContent = '⚡ Salvar OF';
+          btn.disabled = false;
+          btn.style.background = '';
+        }catch(_){}
+      }, 2500);
+    }
+    return;
+  }finally{
+    try{
+      if(btn && btn.textContent === 'Salvando...'){
+        btn.textContent = '⚡ Salvar OF';
+        btn.disabled = false;
+      }
+    }catch(e){}
+  }
+};
 
 function imprimirUrlImagem(url){
   try{
@@ -39064,6 +39505,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="abrirModalRelatorioPCP()" title="Relatório por período">📄 Relatório</button>
     <button class="btn btn-ghost btn-sm" onclick="pcpAbrirRoteiroEntregas()" title="Roteiro de entregas por cidade/dia (sugestão)">🚚 Roteiro de Entregas</button>
     <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
+    <button id="btn-nova-of-rapida" class="btn btn-accent btn-sm" onclick="abrirNovaOfRapida()" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);border:none;box-shadow:0 4px 16px rgba(14,165,233,0.25)">⚡ OF Rápida</button>
   </div>
   <div class="page-body" style="padding:0;">
     <div id="pcp-table-wrap" class="table-wrap" style="height:100%;">
@@ -51434,6 +51876,7 @@ async function renderHub(forcar=false){
 
     quick.innerHTML = [
       `<button class="hub-qbtn primary" onclick="abrirModalOF('')">＋ Nova OF</button>`,
+      `<button class="hub-qbtn primary" onclick="abrirNovaOfRapida()">⚡ OF Rápida</button>`,
       `<button class="hub-qbtn" onclick="abrirModalAmostra()">＋ Nova Amostra</button>`,
       `<button class="hub-qbtn" onclick="go('orcamentos')">＋ Novo Orçamento</button>`,
       `<button class="hub-qbtn" onclick="go('ofmaq')">⚙️ OFs por Máquina</button>`,
