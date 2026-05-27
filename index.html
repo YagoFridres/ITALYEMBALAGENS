@@ -29310,6 +29310,7 @@ async function doLogin(){
   authSave(AUTH_TOKEN, CURRENT_USER);
   if (typeof aplicarPermissoes === 'function') aplicarPermissoes(CURRENT_USER.permissoes || [], CURRENT_USER.perfil);
   iniciarSistema(CURRENT_USER);
+  setTimeout(() => { try{ window.jarvisCarregarTodasOfs?.(); }catch(e){} }, 5000);
   try{
     const isMobileScreen = (typeof window !== 'undefined') ? (Number(window.innerWidth || 0) < 768) : false;
     const perfil = String((CURRENT_USER && CURRENT_USER.perfil) || '').trim().toLowerCase();
@@ -48202,81 +48203,81 @@ window.atualizarChapas = async function(){
     }
   };
 
-  async function jarvisEncontrarOf(numero) {
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-    const h = token ? { Authorization: 'Bearer ' + token } : {};
-    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  window.jarvisCarregarTodasOfs = async function(){
+    try{
+      if ((window.OFS_ARQUIVO?.length || 0) > 100) {
+        console.log('[JARVIS] Cache OK:', window.OFS_ARQUIVO.length);
+        return window.OFS_ARQUIVO;
+      }
+    }catch(e){}
 
-    const nRaw = String(numero || '').trim();
-    const nCmp = nRaw.replace(/^0+/, '') || nRaw;
+    console.log('[JARVIS] Carregando OFs para cache...');
+    let todas = [];
+    let offset = 0;
+    const limit = 200;
+    let tentativas = 0;
 
-    const sameNum = (a, b) => {
-      const aa = String(a == null ? '' : a).trim();
-      const bb = String(b == null ? '' : b).trim();
-      if(!aa || !bb) return false;
-      if(aa === bb) return true;
-      return (aa.replace(/^0+/, '') || aa) === (bb.replace(/^0+/, '') || bb);
-    };
-    const matchOf = (o) => {
+    while (tentativas < 5) {
       try{
-        return sameNum(o?.numero, nRaw) || sameNum(o?.of_num, nRaw) || sameNum(o?.of, nRaw);
-      }catch(e){ return false; }
-    };
-
-    const caches = [
-      window.OFS_ARQUIVO,
-      window.OFS_CACHE,
-      window._ofsCache,
-      window.todasOfs,
-      window.OFS,
-      (typeof OFs !== 'undefined' ? OFs : null),
-    ];
-
-    for (const cache of caches) {
-      if (!Array.isArray(cache) || !cache.length) continue;
-      const found = cache.find(matchOf) || null;
-      if (found) {
-        try{ console.log('[JARVIS] OF no cache:', found.numero || found.of_num || found.of); }catch(e){}
-        return found;
+        const r = await apiFetch(`/api/ofs?limit=${limit}&offset=${offset}&incluir_excluidas=1&nocache=1`, { method:'GET' });
+        if(!r || !r.ok) break;
+        const d = await r.json().catch(()=>null);
+        const lote = (d && Array.isArray(d.data)) ? d.data : (d && Array.isArray(d.ofs)) ? d.ofs : (Array.isArray(d) ? d : []);
+        if(!lote.length) break;
+        todas = todas.concat(lote);
+        console.log('[JARVIS] Lote:', lote.length, 'Total:', todas.length);
+        if(lote.length < limit) break;
+        offset += limit;
+        tentativas++;
+      }catch(e){
+        console.error('[JARVIS] Erro lote:', e);
+        break;
       }
     }
 
-    const urls = [
-      `/api/ofs?numero=${encodeURIComponent(nCmp)}&limit=10&nocache=1&incluir_excluidas=1`,
-      `/api/ofs?of_num=${encodeURIComponent(nCmp)}&limit=10&nocache=1`,
-      `/api/ofs?q=${encodeURIComponent(nCmp)}&limit=10&nocache=1`,
-    ];
-
-    for (const url of urls) {
-      try {
-        const r = await fetch(base + url, { headers: h });
-        if (!r.ok) continue;
-        const d = await r.json().catch(()=>null);
-        const lista = (d && Array.isArray(d.data)) ? d.data
-          : (d && Array.isArray(d.ofs)) ? d.ofs
-            : (Array.isArray(d) ? d : []);
-        if(!lista.length) continue;
-        const of = (lista.find(matchOf) || (lista.length === 1 ? lista[0] : null)) || null;
-        if (of) {
-          try{ console.log('[JARVIS] OF via API:', of.numero || of.of_num || of.of); }catch(e){}
-          return of;
-        }
-      } catch(e) {}
+    if(todas.length > 0){
+      window.OFS_ARQUIVO = todas;
+      console.log('[JARVIS] Cache atualizado:', todas.length, 'OFs');
     }
 
-    try {
-      const r = await fetch(base + `/api/ofs?limit=500&nocache=1&incluir_excluidas=1`, { headers: h });
-      if(!r.ok) return null;
-      const d = await r.json().catch(()=>null);
-      const lista = (d && Array.isArray(d.data)) ? d.data
-        : (d && Array.isArray(d.ofs)) ? d.ofs
-          : (Array.isArray(d) ? d : []);
-      const found = Array.isArray(lista) ? (lista.find(matchOf) || null) : null;
-      return found;
-    } catch(e) {}
+    return window.OFS_ARQUIVO || [];
+  };
 
+  window.jarvisEncontrarOf = async function(numero){
+    const num = String(numero || '').trim();
+    console.log('[JARVIS] Buscando OF:', num);
+    await window.jarvisCarregarTodasOfs?.();
+    const ofs = Array.isArray(window.OFS_ARQUIVO) ? window.OFS_ARQUIVO : [];
+    console.log('[JARVIS] Cache size:', ofs.length || 0);
+
+    let found = ofs.find(o => String(o?.numero || '') === num || String(o?.of_num || '') === num || String(o?.of || '') === num) || null;
+    if(!found){
+      const a = String(parseInt(num, 10) || '').trim();
+      if(a) found = ofs.find(o => String(parseInt(o?.numero || 0, 10) || '') === a || String(parseInt(o?.of_num || 0, 10) || '') === a) || null;
+    }
+    if(!found){
+      found = ofs.find(o => String(o?.numero || '').includes(num) || String(o?.of_num || '').includes(num) || String(o?.of || '').includes(num)) || null;
+    }
+    if(found){
+      console.log('[JARVIS] Encontrou:', found.numero || found.of_num || found.of);
+      return found;
+    }
+
+    try{
+      const r = await apiFetch(`/api/ofs?numero=${encodeURIComponent(num)}&limit=5&nocache=1&incluir_excluidas=1`, { method:'GET' });
+      const d = r ? await r.json().catch(()=>null) : null;
+      const lista = (d && Array.isArray(d.data)) ? d.data : (d && Array.isArray(d.ofs)) ? d.ofs : (Array.isArray(d) ? d : []);
+      const of = lista.find(o => String(o?.numero || '') === num || String(parseInt(o?.numero || 0, 10) || '') === String(parseInt(num, 10) || '')) || lista[0] || null;
+      if(of){
+        if(!Array.isArray(window.OFS_ARQUIVO)) window.OFS_ARQUIVO = [];
+        if(!window.OFS_ARQUIVO.find(x => String(x?.id||'') === String(of?.id||''))) window.OFS_ARQUIVO.push(of);
+        return of;
+      }
+    }catch(e){}
+
+    console.log('[JARVIS] OF não encontrada:', num, '| Total cache:', ofs.length);
     return null;
-  }
+  };
 
   const send = async (raw)=>{
     const text = String(raw || '').trim();
@@ -48313,7 +48314,7 @@ window.atualizarChapas = async function(){
           const typingEl = document.getElementById(typingId);
           if(typingEl) typingEl.textContent = '🔍 Buscando OF Nº ' + num + '...';
 
-          const of = await jarvisEncontrarOf(num);
+          const of = await (window.jarvisEncontrarOf ? window.jarvisEncontrarOf(num) : null);
 
           const el = document.getElementById(typingId);
           if(el && el.parentNode) el.parentNode.remove();
