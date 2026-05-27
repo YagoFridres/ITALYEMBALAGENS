@@ -165,7 +165,43 @@ if (!_supabaseEnvOk) {
   console.error('index.html fallback:', !!frontSb);
   console.error('Aviso: iniciando servidor SEM Supabase configurado (rotas que dependem do banco vão falhar).');
 } else {
-  supabase = createClient(supabaseUrl, supabaseKey);
+  const _sbFetch = async (url, options = {}) => {
+    const method = String(options?.method || 'GET').toUpperCase();
+    const canRetry = method === 'GET' || method === 'HEAD';
+    const maxAttempts = canRetry ? 3 : 1;
+    let attempt = 0;
+    let lastErr = null;
+    while (attempt < maxAttempts) {
+      attempt++;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      try {
+        const resp = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeout);
+        return resp;
+      } catch (e) {
+        clearTimeout(timeout);
+        lastErr = e;
+        const isAbort = e?.name === 'AbortError' || String(e?.message || '').toLowerCase().includes('abort');
+        if (!canRetry || attempt >= maxAttempts) throw e;
+        if (!isAbort && String(e?.message || '').toLowerCase().includes('fetch')) {
+          await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 750));
+          continue;
+        }
+        await new Promise((r) => setTimeout(r, attempt === 1 ? 250 : 750));
+      }
+    }
+    throw lastErr;
+  };
+
+  supabase = createClient(
+    supabaseUrl,
+    supabaseKey,
+    {
+      auth: { persistSession: false },
+      global: { fetch: _sbFetch },
+    }
+  );
   // Conexão Supabase verificada no startup sem query ao banco
   console.log('✅ Supabase conectado:', supabaseUrl);
 }
@@ -2602,6 +2638,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let clienteNomeRaw = String(q_cliente_nome || q_clienteNome || q_cliente || '').trim();
     try { clienteNomeRaw = decodeURIComponent(clienteNomeRaw); } catch (_) {}
     const clienteNome = clienteNomeRaw ? String(clienteNomeRaw).replace(/%/g, '').trim() : '';
+    const passouRaw =
+      (req.query && (req.query.passou_maqu || req.query.passou_maquina || req.query.passouMaquina)) || '';
+    let filtrarPassou = false;
+    try {
+      const pv = String(passouRaw || '').trim().toLowerCase();
+      filtrarPassou = !!pv && pv !== '0' && pv !== 'false' && pv !== 'nao' && pv !== 'não';
+    } catch (_) { filtrarPassou = false; }
     const numeroRaw = String(q_numero || q_of_num || q_of || '').trim();
     const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
     let statusRaw = q_status ? String(q_status).trim() : '';
@@ -2644,6 +2687,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
       incluirCanceladas ? 'incl_can1' : 'incl_can0',
       excluirCanceladas ? 'exc_can1' : 'exc_can0',
+      filtrarPassou ? 'passou1' : 'passou0',
       String(limitFinal),
       String(offset),
     ].join('|');
@@ -2840,6 +2884,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (expr) q = q.or(expr);
       }
 
+      if (filtrarPassou && _ofsSelectableHas('passou_maquina')) {
+        q = q.eq('passou_maquina', true);
+      } else if (filtrarPassou && !_ofsSelectableHas('passou_maquina')) {
+        filtrarPassou = false;
+        console.log('[OFS] passou_maquina skip');
+      }
+
       if (useDeletedAtFilter) q = q.is('deleted_at', null);
       if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
       if (from) {
@@ -2903,6 +2954,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const colProb = colMatch[1];
         console.warn('[OFS GET] removendo coluna:', colProb);
         colsArr = colsArr.filter((c) => c !== colProb);
+        if (colProb === 'passou_maquina') filtrarPassou = false;
         if (orderBy === colProb) {
           if (colProb !== 'created_at' && _ofsSelectableHas('created_at')) orderBy = 'created_at';
           else if (colProb !== 'updated_at' && _ofsSelectableHas('updated_at')) orderBy = 'updated_at';
@@ -4412,7 +4464,10 @@ app.get('/api/amostras', authMiddleware, async (req, res) => {
     const { data, error } = await q;
     if (error) throw error;
     return ok(res, data || []);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    console.error('[AMOSTRAS] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.post('/api/amostras', authMiddleware, async (req, res) => {
@@ -5154,73 +5209,44 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     console.log('[PASSOU] usuario:', req.usuario?.nome);
     console.log('[PASSOU MAQUINA]', id, maquinaNome);
 
-    const { data: of, error: errBusca } = await supabase
-      .from('ofs')
-      .select('id,numero,maquina_atual')
-      .eq('id', id)
-      .maybeSingle();
-    if (errBusca) return res.status(500).json({ ok: false, error: errBusca.message || String(errBusca) });
-    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
-
     const nowIso = new Date().toISOString();
-    const passouNome = maquinaNome || String(of.maquina_atual || '').trim() || '';
 
-    let updateData = { updated_at: nowIso };
-    updateData = {
-      ...updateData,
-      passou_maquina: true,
-      passou_em: nowIso,
-      passou_maquina_nome: passouNome,
-      maquina_atual: null,
-      maquina_atual_index: null,
-    };
-
-    let updateResult = await supabase
+    const { error: e1 } = await supabase
       .from('ofs')
-      .update(updateData)
-      .eq('id', id)
-      .select('*')
-      .maybeSingle();
+      .update({
+        maquina_atual: null,
+        maquina_atual_index: null,
+        updated_at: nowIso,
+      })
+      .eq('id', id);
 
-    if (updateResult.error) {
-      console.error('[PASSOU] Erro:', updateResult.error);
-      const msg = String(updateResult.error.message || '').toLowerCase();
-      const missingColumn = msg.includes('column') && msg.includes('does not exist');
-      if (missingColumn) {
-        updateResult = await supabase
-          .from('ofs')
-          .update({ updated_at: nowIso, maquina_atual: null })
-          .eq('id', id)
-          .select('*')
-          .maybeSingle();
-      }
+    if (e1) {
+      console.error('[PASSOU] erro básico:', e1.message);
+      return res.status(500).json({ ok: false, error: e1.message });
     }
 
-    console.log('[PASSOU] Resultado:', updateResult.error ? ('ERRO: ' + updateResult.error.message) : 'OK');
     try {
-      await supabase
-        .from('of_passagens')
-        .insert({
-          of_id: id,
-          of_numero: String(of.numero || ''),
-          maquina: passouNome,
-          saiu_em: nowIso,
-          usuario: req.usuario?.nome || 'Sistema',
-        });
-    } catch (e) {
-      const code = String(e?.code || e?.error?.code || '').trim();
-      const msg = String(e?.message || e?.error?.message || '').toLowerCase();
-      const missing = code === '42P01' || msg.includes('does not exist') || (msg.includes('relation') && msg.includes('of_passagens'));
-      if (!missing) console.log('[PASSOU] of_passagens skip:', String(e?.message || e));
+      const r2 = await supabase
+        .from('ofs')
+        .update({
+          passou_maquina: true,
+          passou_em: nowIso,
+          passou_maquina_nome: maquinaNome,
+        })
+        .eq('id', id);
+      if (r2?.error) {
+        const msg = String(r2.error.message || '').toLowerCase();
+        const missing = msg.includes('column') && msg.includes('does not exist');
+        if (!missing) console.error('[PASSOU] campos extras erro:', r2.error.message);
+        else console.log('[PASSOU] campos extras skip');
+      }
+    } catch (_) {
+      console.log('[PASSOU] campos extras skip');
     }
+
+    console.log('[PASSOU] OK:', id);
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({
-      ok: !updateResult.error,
-      error: updateResult.error?.message,
-      of_numero: of.numero,
-      passou_maquina_nome: passouNome,
-      data: updateResult.data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null }
-    });
+    return res.json({ ok: true });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -6096,7 +6122,10 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
       throw error;
     }
     throw lastErr;
-  } catch (e) { err(res, e); }
+  } catch (e) {
+    console.error('[VENDEDORES] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.post('/api/vendedores', authMiddleware, async (req, res) => {
@@ -6191,9 +6220,15 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
     if (req.query.cliente) q = q.ilike('cliente_nome', `%${String(req.query.cliente)}%`);
     if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
     const { data, error } = await q.limit(50);
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) {
+      console.error('[ORCAMENTOS] error:', error.message);
+      return ok(res, []);
+    }
     return ok(res, data || []);
-  } catch (e) { return res.status(500).json({ error: String(e.message || e) }); }
+  } catch (e) {
+    console.error('[ORCAMENTOS] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
@@ -7222,7 +7257,10 @@ app.get('/api/fornecedores', authMiddleware, async (req, res) => {
       throw error;
     }
     throw lastErr;
-  } catch (e) { err(res, e); }
+  } catch (e) {
+    console.error('[FORNECEDORES] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.post('/api/fornecedores', authMiddleware, async (req, res) => {
@@ -10295,7 +10333,10 @@ app.get('/api/notificacoes', async (req, res) => {
     const { data, error } = await q;
     if (error) throw error;
     ok(res, data || []);
-  } catch (e) { err(res, e); }
+  } catch (e) {
+    console.error('[NOTIFICACOES] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.post('/api/notificacoes', async (req, res) => {
@@ -10679,7 +10720,10 @@ app.get('/api/chapas_categorias', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('chapas_categorias').select('*').order('ordem');
     if (error) throw error;
     ok(res, data || []);
-  } catch (e) { err(res, e); }
+  } catch (e) {
+    console.error('[CHAPAS_CATEGORIAS] catch:', String(e?.message || e));
+    return ok(res, []);
+  }
 });
 
 app.post('/api/chapas_categorias', authMiddleware, async (req, res) => {
@@ -14742,7 +14786,10 @@ app.get('/api/analytics/padroes_perda', authMiddleware, async (req, res) => {
     const meses = Math.max(1, Math.min(12, Math.trunc(Number(req.query.meses || 3) || 3)));
     const r = await _analyticsPadroesPerdaCompute({ empId: empId || null, meses });
     return res.json(r);
-  }catch(e){ return err(res, e); }
+  }catch(e){
+    console.error('[ANALYTICS padroes_perda] catch:', String(e?.message || e));
+    return res.json({ ok: true, data: [] });
+  }
 });
 
 app.get('/api/analytics/previsao_atrasos', authMiddleware, async (req, res) => {
