@@ -51987,10 +51987,20 @@ function _hubStartPolling(){
 }
 
 async function carregarPassagensHoje(ofsOverride){
-  const listaEl = document.getElementById('passagens-lista');
-  const cntEl = document.getElementById('passagens-count');
+  const listaEl =
+    document.getElementById('passagens-hoje-lista')
+    || document.getElementById('hub-passagens-lista')
+    || document.getElementById('passagens-lista')
+    || document.querySelector('[data-hub="passagens-hoje"]')
+    || document.querySelector('.passagens-hoje-container');
+  const cntEl =
+    document.getElementById('passagens-hoje-count')
+    || document.getElementById('passagens-count')
+    || null;
   if(!listaEl) return;
   const hoje = new Date().toISOString().split('T')[0];
+
+  try{ listaEl.innerHTML = '<div style="padding:16px;text-align:center;color:rgba(255,255,255,0.35);font-size:13px">Carregando...</div>'; }catch(e){}
 
   try{
     const r = await apiFetch(`/api/passagens/hoje?nocache=${Date.now()}`, { method:'GET' });
@@ -52180,6 +52190,7 @@ async function renderHub(forcar=false){
 
     try{
       carregarPassagensHoje(ofs);
+      carregarPassagensHoje();
       if(!window.__PASSAGENS_TIMER){
         window.__PASSAGENS_TIMER = setInterval(()=>{
           try{ if(String(window._PAGE_ATUAL||'') === 'hub') carregarPassagensHoje(); }catch(e){}

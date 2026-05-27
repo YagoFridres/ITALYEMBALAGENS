@@ -5299,6 +5299,18 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
 
+    try {
+      const usuario = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
+      const ofNumero = String(ofRow?.numero || ofRow?.of_num || ofRow?.of || '').trim() || null;
+      await supabase.from('of_passagens').insert({
+        of_id: id,
+        of_numero: ofNumero,
+        maquina: maquinaNome || null,
+        saiu_em: nowIso,
+        usuario,
+      });
+    } catch (_) {}
+
     console.log('[PASSOU] OK:', id);
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true });
@@ -5370,7 +5382,31 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
       const code = String(r.error.code || '').trim();
       const msg = String(r.error.message || '').toLowerCase();
       const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
-      if (missing) return res.json({ ok: true, passagens: [] });
+      if (missing) {
+        const fromIso = hoje + 'T00:00:00.000Z';
+        const toIso = hoje + 'T23:59:59.999Z';
+        const r2 = await supabase
+          .from('of_passagens')
+          .select('*')
+          .gte('saiu_em', fromIso)
+          .lte('saiu_em', toIso)
+          .order('saiu_em', { ascending: false })
+          .limit(200);
+        if (r2?.error) {
+          const code2 = String(r2.error.code || '').trim();
+          const msg2 = String(r2.error.message || '').toLowerCase();
+          const missing2 = code2 === '42P01' || (msg2.includes('relation') && msg2.includes('of_passagens')) || msg2.includes('does not exist');
+          if (missing2) return res.json({ ok: true, passagens: [] });
+          return res.status(500).json({ ok: false, error: r2.error.message || String(r2.error) });
+        }
+        const mapped = (Array.isArray(r2.data) ? r2.data : []).map((p) => ({
+          ...p,
+          hora_passagem: p.saiu_em,
+          data_passagem: hoje,
+          operador: p.usuario,
+        }));
+        return res.json({ ok: true, passagens: mapped });
+      }
       return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
     }
 
