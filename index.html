@@ -7045,6 +7045,11 @@ window.passouPelaMaquina = async function(ofId, ofNum, nomeMaquina) {
       console.log('[PASSOU] Resposta:', data);
 
       if (r.ok && data.ok) {
+        try{
+          if (!window._ofsPassaram) window._ofsPassaram = new Set();
+          window._ofsPassaram.add(String(ofId || '').trim());
+        }catch(e){}
+
         const card = document.querySelector(`[data-of-id="${CSS.escape(String(ofId||''))}"]`);
         if (card) {
           card.style.transition = 'opacity 0.3s, max-height 0.3s, padding 0.3s, margin 0.3s';
@@ -9117,6 +9122,18 @@ async function renderOFsPorMaquina(){
     }
     lista = (lista||[]).map(normalizeOF);
     try{
+      if (window._ofsPassaram && typeof window._ofsPassaram.has === 'function') {
+        lista = (lista || []).filter((o) => {
+          const id = String(o?.id || '').trim();
+          if (id && window._ofsPassaram.has(id)) return false;
+          if (o?.passou_maquina === true) return false;
+          return true;
+        });
+      } else {
+        lista = (lista || []).filter((o) => o?.passou_maquina !== true);
+      }
+    }catch(e){}
+    try{
       const sig = new Map();
       (lista||[]).forEach((o)=>{
         const id = String(o?.id || o?.of || o?.numero || '').trim();
@@ -9362,6 +9379,11 @@ async function renderOFsPorMaquina(){
 
     const gruposAll = {};
     lista.forEach(of=>{
+      try{
+        const sid = String(of?.id || '').trim();
+        if (sid && window._ofsPassaram && typeof window._ofsPassaram.has === 'function' && window._ofsPassaram.has(sid)) return;
+        if (of?.passou_maquina === true) return;
+      }catch(e){}
       const mk = String(getMaquinaAtual(of) || '').trim();
       const canon = mk ? String(maqAtivaFromNome(mk) || mk).trim() : '';
       if(canon && !maquinaPermitida(canon)) return;
@@ -9428,7 +9450,7 @@ async function renderOFsPorMaquina(){
           </div>
           <div class="maq-header-right" style="display:flex;align-items:center;gap:14px">
             <div class="maq-header-stat" style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
-            <span class="maq-seta" style="display:inline-block;font-size:14px;transition:transform 0.25s;color:rgba(255,255,255,0.5);margin-left:8px;transform:rotate(0deg)">▶</span>
+            <span class="maq-seta" style="display:inline-block;transition:transform 0.25s;margin-left:auto;color:rgba(255,255,255,0.4);font-size:13px;transform:rotate(0deg)">▶</span>
           </div>
         </div>
         <div id="${escAttr(bodyId)}" class="maq-ofs-lista maq-ofs maq-body" data-maquina-id="${escAttr(maqNome)}" data-maquina="${escAttr(maqNome)}" data-maquina-name="${escAttr(maqNome)}" data-maquina-nome="${escAttr(maqNome)}" data-maquina-lista="1" style="display:none;flex-direction:column;gap:8px;padding:10px">
@@ -9450,74 +9472,84 @@ async function renderOFsPorMaquina(){
 }
 
 function toggleMaq(maqId, headerEl) {
-  const header = headerEl?.closest
-    ? (headerEl.closest('.maq-header') || headerEl)
-    : headerEl;
-
-  const parent = header?.parentElement;
-
-  const lista =
-    header?.nextElementSibling ||
-    parent?.querySelector(
-      '.maq-ofs-lista, .ofs-lista, [data-maq-lista], .maq-ofs, .maq-body'
-    ) ||
-    header?.parentElement?.nextElementSibling;
-
+  const maqEl = headerEl?.closest?.('[data-maq-id], .maq-block, .maq-section') || headerEl?.parentElement?.parentElement;
+  let lista = maqEl?.querySelector?.('.maq-ofs-lista, .maq-body, .maq-ofs, [class*="ofs-lista"]') || null;
   if (!lista) {
-    console.warn('[TOGGLE] Lista não encontrada', maqId);
+    const header = headerEl?.closest?.('.maq-header') || headerEl?.closest?.('[class*="maq-hd"]') || null;
+    lista = header?.nextElementSibling || null;
+  }
+  if (!lista) {
+    console.warn('[TOGGLE] Lista não encontrada:', maqId, headerEl);
     return;
   }
 
   const aberta = lista.style.display !== 'none';
 
-  lista.style.display = aberta ? 'none' : 'flex';
-  if (!aberta) {
+  if (aberta) {
+    lista.style.maxHeight = lista.scrollHeight + 'px';
+    lista.style.overflow = 'hidden';
+    lista.style.transition = 'max-height 0.3s ease';
+    setTimeout(() => { try{ lista.style.maxHeight = '0'; }catch(e){} }, 10);
+    setTimeout(() => {
+      try{
+        lista.style.display = 'none';
+        lista.style.maxHeight = '';
+        lista.style.overflow = '';
+        lista.style.transition = '';
+      }catch(e){}
+    }, 310);
+  } else {
+    lista.style.display = 'flex';
     lista.style.flexDirection = 'column';
     lista.style.gap = '8px';
-  }
-
-  const seta = headerEl?.querySelector?.('.maq-seta') || header?.querySelector?.('.maq-seta');
-  if (seta) {
-    seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
-  }
-
-  if (!aberta && typeof Sortable !== 'undefined') {
+    lista.style.padding = '10px';
+    lista.style.overflow = 'hidden';
+    lista.style.maxHeight = '0';
+    lista.style.transition = 'max-height 0.4s ease';
+    setTimeout(() => { try{ lista.style.maxHeight = lista.scrollHeight + 'px'; }catch(e){} }, 10);
     setTimeout(() => {
-      if (!lista._sort) {
-        lista._sort = new Sortable(lista, {
-          animation: 150,
-          handle: '.drag-handle, .of-drag',
-          ghostClass: 'of-ghost',
-          chosenClass: 'of-chosen',
-          delay: 150,
-          delayOnTouchOnly: true,
-          onEnd: function () {
-            const ids = [...lista.querySelectorAll('[data-of-id]')]
-              .map((el) => el.dataset.ofId)
-              .filter(Boolean);
-            if (!ids.length) return;
-            const token =
-              localStorage.getItem('token') ||
-              sessionStorage.getItem('token') ||
-              localStorage.getItem('access_token') ||
-              '';
-            fetch('/api/ofs/reordenar', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: 'Bearer ' + token } : {}),
-              },
-              body: JSON.stringify({
-                ordem: ids,
-                maquina_id: String(maqId || '').trim(),
-              }),
-            }).catch((e) => console.error('[DRAG]', e));
-          },
-        });
-        console.log('[DRAG] Sortable iniciado:', maqId);
-      }
-    }, 100);
+      try{
+        lista.style.maxHeight = '';
+        lista.style.overflow = '';
+        lista.style.transition = '';
+      }catch(e){}
+    }, 410);
+
+    if (typeof Sortable !== 'undefined') {
+      setTimeout(() => {
+        if (!lista._sortInst) {
+          lista._sortInst = new Sortable(lista, {
+            animation: 150,
+            handle: '.drag-handle, .of-drag',
+            ghostClass: 'of-ghost',
+            chosenClass: 'of-chosen',
+            delay: 150,
+            delayOnTouchOnly: true,
+            onEnd: async function () {
+              const ids = [...lista.querySelectorAll('[data-of-id]')].map(c => c.dataset.ofId).filter(Boolean);
+              if (!ids.length) return;
+              const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '';
+              try {
+                await fetch('/api/ofs/reordenar', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: 'Bearer ' + token } : {})
+                  },
+                  body: JSON.stringify({ ordem: ids, maquina_id: String(maqId || '').trim() })
+                });
+              } catch (e) {}
+            }
+          });
+        }
+      }, 420);
+    }
   }
+
+  const seta = headerEl?.querySelector?.('.maq-seta')
+    || maqEl?.querySelector?.('.maq-seta')
+    || headerEl?.closest?.('[class*="maq"]')?.querySelector?.('.maq-seta');
+  if (seta) seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
 }
 window.toggleMaq = toggleMaq;
 
@@ -52180,6 +52212,7 @@ async function renderHub(forcar=false){
       `<button class="hub-qbtn" onclick="abrirModalAmostra()">＋ Nova Amostra</button>`,
       `<button class="hub-qbtn" onclick="go('orcamentos')">＋ Novo Orçamento</button>`,
       `<button class="hub-qbtn" onclick="go('ofmaq')">⚙️ OFs por Máquina</button>`,
+      `<button class="hub-qbtn" onclick="renderConfiguracoes?.() || go?.('configuracoes')">⚙️ Configurações</button>`,
       `<button class="hub-qbtn" onclick="go('lancamento')">📦 Armazenamento</button>`,
       `<button class="hub-qbtn" onclick="go('clientes')">👥 Clientes</button>`,
     ].join('');
