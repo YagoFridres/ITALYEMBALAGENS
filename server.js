@@ -5162,6 +5162,55 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
   }
 });
 
+app.post('/api/of-passagens', authMiddleware, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const of_id = String(body.of_id || body.ofId || '').trim() || null;
+    const of_numero = String(body.of_numero || body.ofNumero || body.numero || '').trim() || null;
+    const maquina = String(body.maquina || body.nomeMaquina || '').trim() || null;
+    const saiu_em = String(body.saiu_em || body.saiuEm || '').trim() || new Date().toISOString();
+    const usuario = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Sistema';
+
+    const { error } = await supabase
+      .from('of_passagens')
+      .insert({
+        of_id,
+        of_numero,
+        maquina,
+        saiu_em,
+        usuario,
+      });
+
+    if (error) {
+      const code = String(error.code || '').trim();
+      const msg = String(error.message || '').toLowerCase();
+      const missing = code === '42P01' || msg.includes('does not exist') || msg.includes('relation') && msg.includes('of_passagens');
+      if (missing) {
+        if (!globalThis.__OF_PASSAGENS_SQL_LOGGED) {
+          globalThis.__OF_PASSAGENS_SQL_LOGGED = true;
+          console.log('[PASSAGENS] Para ativar histórico, execute no Supabase SQL Editor:\n' +
+            'CREATE TABLE IF NOT EXISTS of_passagens (\n' +
+            '  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n' +
+            '  of_id uuid,\n' +
+            '  of_numero text,\n' +
+            '  maquina text,\n' +
+            '  saiu_em timestamptz DEFAULT now(),\n' +
+            '  usuario text,\n' +
+            '  created_at timestamptz DEFAULT now()\n' +
+            ');'
+          );
+        }
+        return res.json({ ok: true, criada: false });
+      }
+      return res.status(500).json({ ok: false, error: error.message || String(error) });
+    }
+
+    return res.json({ ok: true, criada: true });
+  } catch (e) {
+    return res.json({ ok: true });
+  }
+});
+
 app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;

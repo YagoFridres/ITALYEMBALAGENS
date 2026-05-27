@@ -6325,10 +6325,17 @@ function abrirAcoesPc(ofId, ofNum){
   pop.style.cssText = 'position:fixed;z-index:9999;min-width:240px;max-width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-lg);padding:10px';
 
   const id = String(ofId||'').trim();
+  let maqAtual = '';
+  try{
+    const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+    if(of){
+      maqAtual = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : String(of?.maquina_atual || '').trim();
+    }
+  }catch(e){}
   const acts = [
     { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, ofNum) },
     { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, ofNum) },
-    { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, ofNum) },
+    { icon:'✅', label:'Passou pela Máquina', on: ()=>window.passouPelaMaquina && window.passouPelaMaquina(id, ofNum, maqAtual) },
   ];
 
   pop.innerHTML = `<div style="font-weight:900;margin-bottom:8px">Ações ▾ — OF #${escH(ofNum||'')}</div>` +
@@ -6480,42 +6487,104 @@ async function registrarTempoOf(ofId, ofNum){
   };
 }
 
-async function passouPelaMaquina(ofId, ofNum){
+window.passouPelaMaquina = async function(ofId, ofNum, nomeMaquina){
+  try{ document.getElementById('modal-passou')?.remove(); }catch(e){}
+  try{ document.getElementById('modal-passou-ov')?.remove(); }catch(e){}
+
   const id = String(ofId||'').trim();
   const num = String(ofNum||'').trim();
+  const maqNome = String(nomeMaquina || '').trim();
   if(!id) return;
-  const ok = confirm(`OF Nº ${num}\n\nConfirma que esta OF passou pela máquina?\n\nA OF será removida desta fila mas continuará ativa no sistema.`);
-  if(!ok) return;
 
-  try{
-    const card = document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
-    if(card){
-      card.style.transition = 'opacity 0.3s, height 0.3s, margin 0.3s, padding 0.3s';
-      card.style.opacity = '0';
-      setTimeout(()=>{ try{ card.remove(); }catch(e){} }, 320);
-    }
-  }catch(e){}
+  const ov = document.createElement('div');
+  ov.id = 'modal-passou-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)';
 
-  try{
-    showSaveIndicator('Salvando...','var(--yellow)');
-    let ok2 = false;
+  const modal = document.createElement('div');
+  modal.id = 'modal-passou';
+  modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9001;background:#111929;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:28px 24px;width:90%;max-width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.7)';
+
+  modal.innerHTML = `
+    <div style="font-size:40px;margin-bottom:14px">✅</div>
+    <div style="font-weight:800;font-size:17px;margin-bottom:8px;color:#e8f0fe">Concluir na Máquina?</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:6px">
+      OF Nº <strong style="color:#38bdf8">${num.replace(/</g,'&lt;')}</strong>
+    </div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:24px">${(maqNome || 'Máquina').replace(/</g,'&lt;')}</div>
+    <div style="font-size:11px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.15);border-radius:8px;padding:10px;color:rgba(255,255,255,0.5);margin-bottom:20px;line-height:1.5">
+      A OF será removida desta fila.<br>
+      <strong style="color:rgba(255,255,255,0.7)">Não conclui o pedido definitivamente.</strong>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="btn-passou-nao" style="flex:1;padding:12px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:rgba(255,255,255,0.5);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Cancelar</button>
+      <button id="btn-passou-sim" style="flex:2;padding:12px;background:linear-gradient(135deg,#059669,#10b981);border:none;border-radius:9px;color:white;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(16,185,129,0.3)">✓ Confirmar</button>
+    </div>
+  `;
+
+  document.body.appendChild(ov);
+  document.body.appendChild(modal);
+
+  const fechar = ()=>{
+    try{ ov.remove(); }catch(e){}
+    try{ modal.remove(); }catch(e){}
+  };
+  ov.onclick = fechar;
+  modal.querySelector('#btn-passou-nao').onclick = fechar;
+
+  modal.querySelector('#btn-passou-sim').onclick = async ()=>{
+    const btn = modal.querySelector('#btn-passou-sim');
+    btn.textContent = '...';
+    btn.disabled = true;
+
     try{
-      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id) + '/passou-maquina', { method:'POST' });
-      if(r && r.ok) ok2 = true;
-    }catch(e){}
-    if(!ok2){
-      const r2 = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
-      if(r2 && r2.ok) ok2 = true;
+      const nowIso = new Date().toISOString();
+      await apiFetch('/api/ofs/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        body: {
+          maquina_atual: null,
+          maquina_atual_index: null,
+          passou_maquina: true,
+          passou_em: nowIso,
+          passou_maquina_nome: maqNome || '',
+        }
+      });
+      try{
+        await apiFetch('/api/of-passagens', {
+          method: 'POST',
+          body: {
+            of_id: id,
+            of_numero: num,
+            maquina: maqNome || '',
+            saiu_em: nowIso,
+          }
+        });
+      }catch(e){}
+    }catch(e){
+      try{ console.error('[PASSOU]', e); }catch(_){}
     }
-    if(!ok2) throw new Error('Falha ao registrar');
-    showSaveIndicator('✓ salvo','var(--green)');
-    toast('✓ Removida da fila','var(--green)');
-    try{ renderOFsPorMaquina(); }catch(_){}
-  }catch(e){
-    showSaveIndicator('✖ erro','var(--red)');
-    toast('Erro: '+String(e?.message||e), 'var(--red)');
-  }
-}
+
+    fechar();
+
+    try{
+      const card = document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
+      if(card){
+        card.style.transition = 'opacity 0.3s, transform 0.3s, height 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'translateX(20px)';
+        card.style.height = card.offsetHeight + 'px';
+        card.style.overflow = 'hidden';
+        setTimeout(() => {
+          card.style.height = '0';
+          card.style.padding = '0';
+          card.style.margin = '0';
+          setTimeout(() => { try{ card.remove(); }catch(e){} }, 300);
+        }, 300);
+      }
+    }catch(e){}
+
+    try{ renderOFsPorMaquina(); }catch(e){}
+  };
+};
 
 function ofmaqAbrirAcoesSheet(ofId, maqCtx){
   _ensureOfmaqAcoesSheet();
@@ -6532,7 +6601,7 @@ function ofmaqAbrirAcoesSheet(ofId, maqCtx){
   const acts = [
     { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, numDigits || num) },
     { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, numDigits || num) },
-    { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, numDigits || num) },
+    { icon:'✅', label:'Passou pela Máquina', on: ()=>window.passouPelaMaquina && window.passouPelaMaquina(id, numDigits || num, maq) },
   ];
   body.innerHTML = acts.map((a,i)=>`<button data-i="${i}" class="btn btn-ghost" style="width:100%;justify-content:flex-start;gap:10px;min-height:44px;font-weight:900">
     <span style="width:24px;text-align:center">${a.icon}</span> ${escH(a.label)}
@@ -39216,6 +39285,19 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             </div>
           </div>
           <div class="sbox">
+            <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <span>✅ Passagens de Hoje</span>
+              <span id="passagens-count" style="background:rgba(16,185,129,0.15);color:#10b981;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:700">0</span>
+            </div>
+            <div class="sbox-b">
+              <div id="passagens-lista" style="max-height:300px;overflow-y:auto">
+                <div style="padding:20px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px">
+                  Nenhuma passagem registrada hoje
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="sbox">
             <div class="sbox-h">🔔 Avisos e pendências</div>
             <div class="sbox-b">
               <div id="hub-warnings" class="hub-list"></div>
@@ -48286,7 +48368,7 @@ window.atualizarChapas = async function(){
     const acoes = [
       { icon:'⚙️', label:'Alterar Máquina', on: ()=>alterarMaquinaOf(id, num) },
       { icon:'⏱️', label:'Registrar Tempo', on: ()=>registrarTempoOf(id, num) },
-      { icon:'✅', label:'Passou pela Máquina', on: ()=>passouPelaMaquina(id, num) },
+      { icon:'✅', label:'Passou pela Máquina', on: ()=>window.passouPelaMaquina && window.passouPelaMaquina(id, num, String(maqNome||'').trim()) },
     ];
 
     sheet.innerHTML = `
@@ -51041,6 +51123,7 @@ function hubCliPanelRender(){
         const atr = isAtrasada(o);
         const perd = qtdPerdidaOf(o);
         const extra = `${atr?`<span class="badge-status badge-atr">ATRASADA</span>`:''}${urg?`<span class="badge-status badge-urg">URGENTE</span>`:''}`;
+        const passouBadge = o.passou_maquina_nome ? `<div style="font-size:10px;margin-top:4px;color:rgba(255,255,255,0.4)">✅ Passou por: <span style="color:#10b981;font-weight:600">${escH(String(o.passou_maquina_nome))}</span>${o.passou_em ? (' · ' + escH(new Date(o.passou_em).toLocaleDateString('pt-BR'))) : ''}</div>` : '';
         const imgEl = img ? `
           <img src="${escH(img)}"
             style="width:52px;height:52px;border-radius:8px;object-fit:cover;flex-shrink:0;cursor:zoom-in;border:1px solid rgba(255,255,255,0.1);transition:transform 0.15s;-webkit-tap-highlight-color:transparent"
@@ -51062,6 +51145,7 @@ function hubCliPanelRender(){
               ${pr!=null?`<span class="hub-badge">Pri: <b>${escH(String(pr))}</b></span>`:''}
             </div>
             <div class="m" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(maq)} · Entrega: <b>${escH(ent?fmtD(ent):'—')}</b>${perd?` · <span style="color:var(--red2);font-weight:900">${escH(String(perd))} perdas</span>`:''}</div>
+            ${passouBadge}
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
             <button onclick="window.open('/of/${escAttr(id)}','_blank') || abrirOf?.('${escAttr(id)}') || abrirModalOF('${escAttr(id)}')" style="padding:6px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:7px;color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">Abrir</button>
@@ -51085,10 +51169,12 @@ function hubCliPanelRender(){
         const prod = _hubOfProduto(o) || '—';
         const dt = _hubOfConcl(o) || dtOf(o);
         const v = valOf(o);
+        const passouBadge = o.passou_maquina_nome ? `<div style="font-size:10px;margin-top:4px;color:rgba(255,255,255,0.4)">✅ Passou por: <span style="color:#10b981;font-weight:600">${escH(String(o.passou_maquina_nome))}</span>${o.passou_em ? (' · ' + escH(new Date(o.passou_em).toLocaleDateString('pt-BR'))) : ''}</div>` : '';
         return `<div class="hub-row">
           <div style="min-width:0">
             <div style="font-weight:1000">${escH(num)}</div>
             <div class="m">${escH(prod)} · Conclusão: <b>${escH(dt?fmtD(dt):'—')}</b> · Valor: <b style="color:var(--green)">${escH(fmtR(v))}</b></div>
+            ${passouBadge}
           </div>
           <button class="btn btn-ghost btn-sm" onclick="abrirModalOF('${escAttr(id)}')">Abrir</button>
         </div>`;
@@ -51130,6 +51216,77 @@ function _hubStartPolling(){
     }catch(e){}
   }, 30000);
 }
+
+async function carregarPassagensHoje(ofsOverride){
+  const listaEl = document.getElementById('passagens-lista');
+  const cntEl = document.getElementById('passagens-count');
+  if(!listaEl) return;
+  const hoje = new Date().toISOString().split('T')[0];
+
+  const mapFromOfs = (arr)=>{
+    const all = Array.isArray(arr) ? arr : [];
+    const passagens = all.filter((o)=>{
+      try{
+        if(o?.passou_maquina !== true) return false;
+        const p = String(o?.passou_em || o?.updated_at || '').trim();
+        if(!p) return false;
+        return p.startsWith(hoje);
+      }catch(e){ return false; }
+    });
+    passagens.sort((a,b)=>String(b?.passou_em||b?.updated_at||'').localeCompare(String(a?.passou_em||a?.updated_at||''),'pt-BR'));
+    return passagens.slice(0, 50);
+  };
+
+  let passagens = mapFromOfs(ofsOverride);
+  if(!passagens.length){
+    try{
+      const r = await apiFetch(`/api/ofs?passou_maquina=true&passou_em_from=${encodeURIComponent(hoje)}&limit=50&nocache=1`, { method:'GET' });
+      const d = r ? await r.json().catch(()=>null) : null;
+      const lista = (d && Array.isArray(d.data)) ? d.data : (d && Array.isArray(d.ofs)) ? d.ofs : (Array.isArray(d) ? d : []);
+      passagens = mapFromOfs(lista);
+    }catch(e){}
+  }
+  if(!passagens.length){
+    try{
+      const r = await apiFetch(`/api/ofs?limit=500&nocache=1&incluir_excluidas=1`, { method:'GET' });
+      const d = r ? await r.json().catch(()=>null) : null;
+      const lista = (d && Array.isArray(d.data)) ? d.data : (d && Array.isArray(d.ofs)) ? d.ofs : (Array.isArray(d) ? d : []);
+      passagens = mapFromOfs(lista);
+    }catch(e){}
+  }
+
+  if(cntEl) cntEl.textContent = String(passagens.length);
+
+  if(!passagens.length){
+    listaEl.innerHTML = `<div style="padding:20px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px">Nenhuma passagem registrada hoje</div>`;
+    return;
+  }
+
+  listaEl.innerHTML = passagens.map((o)=>{
+    const hora = o.passou_em ? new Date(o.passou_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const maq = o.passou_maquina_nome || o.maquina_anterior || '—';
+    const cli = o.cliNome || o.clinome || o.cliente_nome || '—';
+    const prod = o.descricao || o.produto || '—';
+    const num = String(o.numero || o.of_num || o.of || '').trim() || '—';
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);transition:background 0.15s"
+        onmouseover="this.style.background='rgba(255,255,255,0.02)'"
+        onmouseout="this.style.background=''">
+
+        <div style="width:36px;height:36px;border-radius:9px;flex-shrink:0;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);display:flex;align-items:center;justify-content:center;font-size:16px">✅</div>
+
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;margin-bottom:2px">
+            <span style="color:#38bdf8">Nº${String(num).replace(/</g,'&lt;')}</span> · ${String(prod).replace(/</g,'&lt;')}
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.45)">${String(cli).replace(/</g,'&lt;')} · ${String(maq).replace(/</g,'&lt;')}</div>
+        </div>
+
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;font-family:monospace">${String(hora).replace(/</g,'&lt;')}</div>
+      </div>
+    `;
+  }).join('');
+}
 async function renderHub(forcar=false){
   try{
     const greet = document.getElementById('hub-greet');
@@ -51144,6 +51301,8 @@ async function renderHub(forcar=false){
     const chartSum = document.getElementById('hub-chart-summary');
     const quick = document.getElementById('hub-quick');
     const btnInit = document.getElementById('hub-btn-inicial');
+    const passagensLista = document.getElementById('passagens-lista');
+    const passagensCount = document.getElementById('passagens-count');
 
     if(!greet || !kpis || !recent || !warns || !updated || !verEl || !lastEl || !chart || !chartSum || !quick) return;
 
@@ -51198,6 +51357,8 @@ async function renderHub(forcar=false){
     warns.innerHTML = `<div class="hub-item hub-skel" style="height:64px"></div><div class="hub-item hub-skel" style="height:64px"></div>`;
     quick.innerHTML = Array.from({length:6}).map(()=>`<div class="hub-qbtn hub-skel" style="height:54px"></div>`).join('');
     chartSum.innerHTML = '';
+    if(passagensLista) passagensLista.innerHTML = `<div class="hub-item hub-skel" style="height:64px"></div><div class="hub-item hub-skel" style="height:64px"></div>`;
+    if(passagensCount) passagensCount.textContent = '0';
 
     const data = await _hubLoadData(!!forcar);
     const ofs = Array.isArray(data?.ofs) ? data.ofs : [];
@@ -51215,6 +51376,15 @@ async function renderHub(forcar=false){
     const ontemD = new Date(); ontemD.setDate(ontemD.getDate()-1);
     const ontem = ontemD.toISOString().slice(0,10);
     const mes = hoje.slice(0,7);
+
+    try{
+      carregarPassagensHoje(ofs);
+      if(!window.__PASSAGENS_TIMER){
+        window.__PASSAGENS_TIMER = setInterval(()=>{
+          try{ if(String(window._PAGE_ATUAL||'') === 'hub') carregarPassagensHoje(); }catch(e){}
+        }, 60000);
+      }
+    }catch(e){}
 
     const abertas = ofs.filter(o=>{
       const st = _hubOfStatus(o);
