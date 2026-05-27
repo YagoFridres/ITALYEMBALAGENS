@@ -5778,8 +5778,11 @@ function renderModalTodasOFs(){
       const m = (typeof ofFluxoGetMaquinaAtualAtiva === 'function') ? String(ofFluxoGetMaquinaAtualAtiva(of)||'').trim() : '';
       if(m) return m;
     }catch(e){}
-    const m2 = String(of?.maquina_atual || of?.maqAtual || of?.maq || '').trim();
-    return m2 || 'Sem Máquina';
+    try{
+      const m2 = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : '';
+      if(m2) return m2;
+    }catch(e){}
+    return 'Sem Máquina';
   };
   let lista = ativos.slice();
   if(busca){
@@ -6819,7 +6822,7 @@ function abrirAcoesPc(ofId, ofNum){
   try{
     const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
     if(of){
-      maqAtual = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : String(of?.maquina_atual || '').trim();
+      maqAtual = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : '';
       dataEntregaAtual = String(of?.data_entrega || of?.ent || '').trim();
       const numRaw = String(of?.numero || of?.of || of?.of_num || of?.numero_of || ofNum || '').trim();
       const dig = numRaw.replace(/\D/g,'');
@@ -6915,7 +6918,7 @@ async function alterarMaquinaOf(ofId, ofNum){
     if(!novaMaq) return;
     try{
       showSaveIndicator('Salvando...','var(--yellow)');
-      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ maquina_atual: novaMaq } });
+      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ maq: [novaMaq], maquina_atual_index: 0 } });
       const j = r ? await r.json().catch(()=>null) : null;
       if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao mover');
       const row = j?.data || j;
@@ -7064,7 +7067,8 @@ window.passouPelaMaquina = async function(ofId, ofNum, nomeMaquina) {
         if (window.OFS_ARQUIVO) {
           const of = window.OFS_ARQUIVO.find(o => o.id === ofId);
           if (of) {
-            of.maquina_atual = null;
+            of.maq = null;
+            of.maquina_atual_index = null;
             of.passou_maquina = true;
           }
         }
@@ -48580,7 +48584,8 @@ window.atualizarChapas = async function(){
           const status = of.status || '—';
           const qtd = of.quantidade || of.qtd || '—';
           const ent = of.data_entrega ? new Date(of.data_entrega).toLocaleDateString('pt-BR') : '—';
-          const maq = of.maquina_atual || of.maq || '—';
+          let maq = '—';
+          try { if (typeof getMaquinaAtual === 'function') maq = String(getMaquinaAtual(of) || '').trim() || '—'; } catch (_) {}
 
           let html = `
             <div style="font-size:13px">
@@ -51638,7 +51643,7 @@ function hubCliPanelRender(){
       try{
         if(typeof getMaquinaAtual === 'function') return String(getMaquinaAtual(o) || '').trim();
       }catch(e){}
-      return String(o?.maquina_atual || o?.maquina || o?.maq_atual || '').trim();
+      return String(o?.maquina || o?.maq_atual || '').trim();
     };
     const prioridade = (o)=>{
       const v = o?.seq ?? o?.ordem ?? o?.prioridade_producao ?? o?.prioridade ?? null;

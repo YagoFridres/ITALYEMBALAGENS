@@ -5211,37 +5211,40 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
 
     const nowIso = new Date().toISOString();
 
-    const { error: e1 } = await supabase
-      .from('ofs')
-      .update({
-        maquina_atual: null,
-        maquina_atual_index: null,
-        updated_at: nowIso,
-      })
-      .eq('id', id);
-
-    if (e1) {
-      console.error('[PASSOU] erro básico:', e1.message);
-      return res.status(500).json({ ok: false, error: e1.message });
+    let payload = {
+      maq: null,
+      maquina_atual_index: null,
+      updated_at: nowIso,
+      passou_maquina: true,
+      passou_maquina_nome: maquinaNome,
+      passou_em: nowIso,
+    };
+    let lastErr = null;
+    for (let tentativa = 0; tentativa < 6; tentativa++) {
+      const r = await supabase.from('ofs').update(payload).eq('id', id);
+      if (!r?.error) { lastErr = null; break; }
+      lastErr = r.error;
+      const msg = String(r.error.message || r.error).toLowerCase();
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+      const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+        delete payload[col];
+        continue;
+      }
+      break;
     }
 
-    try {
-      const r2 = await supabase
+    if (lastErr) {
+      console.error('[PASSOU] erro:', lastErr.message || String(lastErr));
+      const rMin = await supabase
         .from('ofs')
-        .update({
-          passou_maquina: true,
-          passou_em: nowIso,
-          passou_maquina_nome: maquinaNome,
-        })
+        .update({ maq: null, maquina_atual_index: null, updated_at: nowIso })
         .eq('id', id);
-      if (r2?.error) {
-        const msg = String(r2.error.message || '').toLowerCase();
-        const missing = msg.includes('column') && msg.includes('does not exist');
-        if (!missing) console.error('[PASSOU] campos extras erro:', r2.error.message);
-        else console.log('[PASSOU] campos extras skip');
+      if (rMin?.error) {
+        return res.status(500).json({ ok: false, error: rMin.error.message || String(rMin.error) });
       }
-    } catch (_) {
-      console.log('[PASSOU] campos extras skip');
+      return res.json({ ok: true });
     }
 
     console.log('[PASSOU] OK:', id);
