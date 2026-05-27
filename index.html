@@ -203,6 +203,7 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .drag-chosen{box-shadow:0 8px 28px rgba(37,99,235,0.4) !important;transform:scale(1.015) rotate(0.5deg) !important;z-index:999 !important;opacity:0.95 !important}
 .of-ghost{opacity:0.35 !important;background:rgba(37,99,235,0.08) !important;border:1px dashed var(--blue2) !important}
 .of-chosen{transform:scale(1.02) !important;box-shadow:0 8px 24px rgba(37,99,235,0.3) !important;z-index:100 !important;background:var(--card2) !important}
+.maq-seta{display:inline-block;transition:transform 0.25s;}
 
 @media (max-width: 767px){
   .emp-sel-bar,.empresa-selector,.empresa-tabs,[data-empresa-selector],.tab-empresas{display:none !important}
@@ -3416,7 +3417,7 @@ function abrirNovaOfRapida(){
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.07)">
       <div>
         <div style="font-weight:800;font-size:16px">⚡ Nova OF Rápida</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"><span id="of-r-numero">Calculando...</span> · Preencha só o essencial</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"><span id="of-r-num-display">Nº ...</span> · Preencha só o essencial</div>
       </div>
       <button type="button" onclick="fecharNovaOfRapida()" style="width:32px;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);font-size:16px;cursor:pointer">✕</button>
     </div>
@@ -3540,10 +3541,38 @@ function abrirNovaOfRapida(){
   document.body.appendChild(modal);
 
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
-  proximoNumeroOf().then((num)=>{
-    const el = document.getElementById('of-r-numero');
-    if(el) el.textContent = 'Nº ' + String(num);
-  });
+  const numDisplay = document.getElementById('of-r-num-display');
+  if (numDisplay) numDisplay.textContent = 'Nº ...';
+  const _tkn = localStorage.getItem('token') || '';
+  fetch(
+    '/api/ofs?limit=1&order_by=numero&order=desc&nocache=1&incluir_excluidas=1',
+    { headers: _tkn ? { Authorization: 'Bearer ' + _tkn } : {} }
+  )
+    .then((r) => r.json())
+    .then((d) => {
+      const lista = d.data || d.ofs || (Array.isArray(d) ? d : []);
+      const maior = lista.length ? parseInt(lista[0].numero || lista[0].of_num || 0) : 0;
+      const prox =
+        maior > 0
+          ? maior + 1
+          : (() => {
+              const cache = window.OFS_ARQUIVO || [];
+              const nums = cache
+                .map((o) => parseInt(o.numero || 0))
+                .filter((n) => n > 0 && !isNaN(n));
+              return nums.length ? Math.max(...nums) + 1 : null;
+            })();
+      const el = document.getElementById('of-r-num-display');
+      if (el && prox) {
+        el.textContent = 'Nº ' + prox;
+      } else if (el) {
+        el.textContent = '';
+      }
+    })
+    .catch(() => {
+      const el = document.getElementById('of-r-num-display');
+      if (el) el.textContent = '';
+    });
   try{
     const chk = document.getElementById('of-r-urgente');
     const track = document.getElementById('of-r-urg-track');
@@ -8128,8 +8157,8 @@ function cardOFMaquina(of, maquinaAtual){
       <span class="drag-handle" style="
         font-size:16px;color:rgba(255,255,255,0.2);
         cursor:grab;flex-shrink:0;
-        touch-action:none;padding:0 2px;
-        line-height:1;user-select:none" onclick="event.stopPropagation()">⠿</span>
+        touch-action:none;padding:0 6px;
+        line-height:1;user-select:none;-webkit-user-select:none" onclick="event.stopPropagation()">⠿</span>
 
       <div style="
         width:44px;height:44px;flex-shrink:0;
@@ -8166,7 +8195,7 @@ function cardOFMaquina(of, maquinaAtual){
 
   return '<div class="of-card-maquina of-card" draggable="true" data-of-id="'+escAttr(of.id||'')+'" data-maquina="'+escAttr(maqCtx)+'" data-ofmaq-bucket="'+escAttr(String(bucket))+'" data-ofmaq-maquina-atual="'+escAttr(maqCtx)+'" onclick="ofmaqSelecionarOF(\''+escAttr(ofSelNum)+'\')" style="background:var(--bg2);border:2px solid var(--border);'+leftBorder+'border-radius:10px;padding:16px;margin-bottom:10px;cursor:grab">'
     +'<div class="ofmaq-card-head" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">'
-    +'<span class="drag-handle" title="Arrastar" onclick="event.stopPropagation()">⠿</span>'
+    +'<span class="drag-handle" title="Arrastar" onclick="event.stopPropagation()" style="cursor:grab;color:rgba(255,255,255,0.2);font-size:16px;padding:0 6px;flex-shrink:0;touch-action:none;user-select:none;-webkit-user-select:none">⠿</span>'
     +priBadge
     +(badgeHtml?('<div>'+badgeHtml+'</div>'):'')
     +statusBadge
@@ -9252,12 +9281,12 @@ async function renderOFsPorMaquina(){
       });
       try{ window._ofmaqLastGroupOfs[maq] = ofs.slice(); }catch(e){}
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
-      const exp = !!window._ofmaqExpanded[maq];
-      const maqId = encodeURIComponent(maq).replace(/%/g,'_');
-      const bodyId = 'ofs-maq-' + maqId;
-      const setaId = 'seta-maq-' + maqId;
+      const exp = false;
+      const maqNome = String(maq || '');
+      const maqDomId = encodeURIComponent(maqNome).replace(/%/g,'_');
+      const bodyId = 'ofs-maq-' + maqDomId;
       return `<div style="margin-bottom:20px">
-        <div class="maq-header" onclick="toggleMaq('${escAttr(maqId)}', this)" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+        <div class="maq-header" onclick="toggleMaq('${escAttr(maqNome)}', this)" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none"
           onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background=''">
           <div>
             <div class="maq-header-name" style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px">🏭 ${escH(maq)}</div>
@@ -9265,18 +9294,15 @@ async function renderOFsPorMaquina(){
           </div>
           <div class="maq-header-right" style="display:flex;align-items:center;gap:14px">
             <div class="maq-header-stat" style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
-            <span id="${escAttr(setaId)}" class="maq-seta" style="transition:transform 0.25s;margin-left:auto;color:rgba(255,255,255,0.4);font-size:22px;transform:${exp ? 'rotate(90deg)' : 'rotate(0deg)'}">▶</span>
+            <span class="maq-seta" style="display:inline-block;font-size:14px;transition:transform 0.25s;color:rgba(255,255,255,0.5);margin-left:8px;transform:rotate(0deg)">▶</span>
           </div>
         </div>
-        <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" data-maquina-name="${escAttr(maq)}" data-maquina-nome="${escAttr(maq)}" style="display:${exp?'flex':'none'};flex-direction:column;gap:8px;padding:10px">
-          <div class="of-cards-container maq-ofs maq-body" data-maquina-id="${escAttr(maq)}" data-maquina-lista="1" data-maquina-nome="${escAttr(maq)}">
-            ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
-          </div>
+        <div id="${escAttr(bodyId)}" class="maq-ofs-lista maq-ofs maq-body" data-maquina-id="${escAttr(maqNome)}" data-maquina="${escAttr(maqNome)}" data-maquina-name="${escAttr(maqNome)}" data-maquina-nome="${escAttr(maqNome)}" data-maquina-lista="1" style="display:none;flex-direction:column;gap:8px;padding:10px">
+          ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
         </div>
       </div>`;
     }).join('');
 
-    try{ setTimeout(()=>{ try{ window.initDragDrop && window.initDragDrop(); }catch(e){} }, 200); }catch(e){}
     container.scrollTop = scroll;
   } catch(e){
     try{ console.error('[renderOFsPorMaquina]', e); }catch(_){}
@@ -9289,42 +9315,77 @@ async function renderOFsPorMaquina(){
   } finally { _ofsMaqRenderizando=false; }
 }
 
-window.toggleMaq = function(maqId, headerEl){
-  const id = String(maqId || '').trim();
-  if(!id) return;
-  const container = document.getElementById('ofs-maq-' + id);
-  if (!container) {
-    const parent = headerEl?.closest?.('.maq-card, .maq-block, [data-maq-id]') || headerEl?.parentElement || null;
-    const body = parent?.querySelector?.('.maq-ofs, .maq-body, [class*="ofs-lista"]') || null;
-    if(!body) return;
-    const aberta = body.style.display !== 'none';
-    body.style.display = aberta ? 'none' : '';
-    const seta = headerEl?.querySelector?.('.maq-seta');
-    if(seta) seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
+function toggleMaq(maqId, headerEl) {
+  const header = headerEl?.closest
+    ? (headerEl.closest('.maq-header') || headerEl)
+    : headerEl;
+
+  const parent = header?.parentElement;
+
+  const lista =
+    header?.nextElementSibling ||
+    parent?.querySelector(
+      '.maq-ofs-lista, .ofs-lista, [data-maq-lista], .maq-ofs, .maq-body'
+    ) ||
+    header?.parentElement?.nextElementSibling;
+
+  if (!lista) {
+    console.warn('[TOGGLE] Lista não encontrada', maqId);
     return;
   }
 
-  const aberta = container.style.display !== 'none';
-  container.style.display = aberta ? 'none' : 'flex';
-  container.style.flexDirection = 'column';
-  container.style.gap = '8px';
-  container.style.padding = '10px';
+  const aberta = lista.style.display !== 'none';
 
-  const seta = headerEl?.querySelector?.('.maq-seta') || document.getElementById('seta-maq-' + id);
-  if (seta) seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
-
-  try{
-    const nome = String(container.dataset?.maquinaNome || container.dataset?.maquinaName || container.getAttribute?.('data-maquina-nome') || container.getAttribute?.('data-maquina-name') || '').trim();
-    if(nome){
-      if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
-      window._ofmaqExpanded[nome] = !aberta;
-    }
-  }catch(e){}
-
-  if (!aberta && typeof window.initDragDrop === 'function') {
-    setTimeout(() => { try{ window.initDragDrop?.(); }catch(e){} }, 100);
+  lista.style.display = aberta ? 'none' : 'flex';
+  if (!aberta) {
+    lista.style.flexDirection = 'column';
+    lista.style.gap = '8px';
   }
-};
+
+  const seta = headerEl?.querySelector?.('.maq-seta') || header?.querySelector?.('.maq-seta');
+  if (seta) {
+    seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
+  }
+
+  if (!aberta && typeof Sortable !== 'undefined') {
+    setTimeout(() => {
+      if (!lista._sort) {
+        lista._sort = new Sortable(lista, {
+          animation: 150,
+          handle: '.drag-handle, .of-drag',
+          ghostClass: 'of-ghost',
+          chosenClass: 'of-chosen',
+          delay: 150,
+          delayOnTouchOnly: true,
+          onEnd: function () {
+            const ids = [...lista.querySelectorAll('[data-of-id]')]
+              .map((el) => el.dataset.ofId)
+              .filter(Boolean);
+            if (!ids.length) return;
+            const token =
+              localStorage.getItem('token') ||
+              sessionStorage.getItem('token') ||
+              localStorage.getItem('access_token') ||
+              '';
+            fetch('/api/ofs/reordenar', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: 'Bearer ' + token } : {}),
+              },
+              body: JSON.stringify({
+                ordem: ids,
+                maquina_id: String(maqId || '').trim(),
+              }),
+            }).catch((e) => console.error('[DRAG]', e));
+          },
+        });
+        console.log('[DRAG] Sortable iniciado:', maqId);
+      }
+    }, 100);
+  }
+}
+window.toggleMaq = toggleMaq;
 
 let _ofmaqBuscaTimer = null;
 function ofmaqOnBuscaInput(){
