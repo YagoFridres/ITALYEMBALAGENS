@@ -5211,6 +5211,16 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
 
     const nowIso = new Date().toISOString();
 
+    let ofRow = null;
+    try {
+      const rOf = await supabase
+        .from('ofs')
+        .select('id,numero,of_num,of,emp_id,empId,empresa_id')
+        .eq('id', id)
+        .maybeSingle();
+      if (!rOf?.error) ofRow = rOf?.data || null;
+    } catch (_) {}
+
     let payload = {
       maq: null,
       maquina_atual_index: null,
@@ -5244,8 +5254,50 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       if (rMin?.error) {
         return res.status(500).json({ ok: false, error: rMin.error.message || String(rMin.error) });
       }
-      return res.json({ ok: true });
     }
+
+    try {
+      const empId = String(ofRow?.emp_id ?? ofRow?.empId ?? ofRow?.empresa_id ?? 'E1').trim() || 'E1';
+      const empresa = (empId === 'E2') ? 'Cartoeste' : (empId === 'E3') ? 'Oestepack' : 'Italy Embalagens';
+      const operador = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
+      const ofNumero = String(ofRow?.numero || ofRow?.of_num || ofRow?.of || '').trim() || null;
+      const dataHoje = nowIso.split('T')[0];
+
+      const rIns = await supabase.from('passagens_maquina').insert({
+        of_id: id,
+        of_numero: ofNumero,
+        maquina: maquinaNome || null,
+        operador,
+        data_passagem: dataHoje,
+        hora_passagem: nowIso,
+        empresa,
+      });
+
+      if (rIns?.error) {
+        const code = String(rIns.error.code || '').trim();
+        const msg = String(rIns.error.message || '').toLowerCase();
+        const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
+        if (missing) {
+          if (!globalThis.__PASSAGENS_MAQ_SQL_LOGGED) {
+            globalThis.__PASSAGENS_MAQ_SQL_LOGGED = true;
+            console.log('[PASSAGENS] Para ativar passagens no Hub, execute no Supabase SQL Editor:\n' +
+              'CREATE TABLE IF NOT EXISTS passagens_maquina (\n' +
+              '  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n' +
+              '  of_id uuid REFERENCES ofs(id) ON DELETE CASCADE,\n' +
+              '  of_numero text,\n' +
+              '  maquina text,\n' +
+              '  operador text,\n' +
+              '  data_passagem date DEFAULT CURRENT_DATE,\n' +
+              '  hora_passagem timestamptz DEFAULT NOW(),\n' +
+              '  empresa text\n' +
+              ');'
+            );
+          }
+        } else {
+          console.error('[PASSAGENS] erro insert:', rIns.error.message || String(rIns.error));
+        }
+      }
+    } catch (_) {}
 
     console.log('[PASSOU] OK:', id);
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
@@ -5301,6 +5353,30 @@ app.post('/api/of-passagens', authMiddleware, async (req, res) => {
     return res.json({ ok: true, criada: true });
   } catch (e) {
     return res.json({ ok: true });
+  }
+});
+
+app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
+  try {
+    const hoje = new Date().toISOString().split('T')[0];
+    const r = await supabase
+      .from('passagens_maquina')
+      .select('*')
+      .eq('data_passagem', hoje)
+      .order('hora_passagem', { ascending: false })
+      .limit(200);
+
+    if (r?.error) {
+      const code = String(r.error.code || '').trim();
+      const msg = String(r.error.message || '').toLowerCase();
+      const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
+      if (missing) return res.json({ ok: true, passagens: [] });
+      return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
+    }
+
+    return res.json({ ok: true, passagens: Array.isArray(r.data) ? r.data : [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
