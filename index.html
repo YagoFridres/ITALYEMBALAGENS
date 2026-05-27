@@ -7340,8 +7340,8 @@ function cardOFMaquina(of, maquinaAtual){
 
       <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;align-items:center">
         <div style="display:flex;gap:2px">
-          <button onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',-1)" style="width:24px;height:24px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">▲</button>
-          <button onclick="event.stopPropagation();ofmaqMoverPosicao('${escAttr(maqCtx)}','${escAttr(String(of.id||''))}',1)" style="width:24px;height:24px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">▼</button>
+          <button onclick="event.stopPropagation();moverOfCima('${escAttr(String(of.id||''))}')" style="width:24px;height:24px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">▲</button>
+          <button onclick="event.stopPropagation();moverOfBaixo('${escAttr(String(of.id||''))}')" style="width:24px;height:24px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.5);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center">▼</button>
         </div>
         <button onclick="event.stopPropagation();typeof abrirBottomSheetAcoes==='function'?abrirBottomSheetAcoes('${escAttr(String(of.id||''))}','${escAttr(String(_num||''))}',{}):null" style="padding:4px 7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:5px;color:rgba(255,255,255,0.65);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Ações▾</button>
       </div>
@@ -7744,6 +7744,56 @@ window.initDragDrop = function() {
     document.head.appendChild(dragStyle);
   }
 
+  function bindDragMaquina(lista, maqId) {
+    const el = lista || null;
+    const mk = String(maqId || '').trim() || String(el?.dataset?.maquinaId || el?.closest?.('[data-maquina-id]')?.dataset?.maquinaId || '').trim();
+    if (!el || !mk) return false;
+
+    try{
+      el.dataset.maquinaId = mk;
+    }catch(e){}
+
+    if (el._sortable) { try { el._sortable.destroy(); } catch(e) {} }
+    if (el._s) { try { el._s.destroy(); } catch(e) {} }
+
+    let startBucket = null;
+    const bucketOf = (node)=>{
+      try{
+        const v = node?.getAttribute?.('data-ofmaq-bucket');
+        const n = Math.trunc(Number(v));
+        return Number.isFinite(n) ? n : null;
+      }catch(e){ return null; }
+    };
+
+    el._sortable = new Sortable(el, {
+      animation: 150,
+      handle: '.drag-handle, .of-drag, [class*="drag"]',
+      ghostClass: 'of-ghost',
+      chosenClass: 'of-chosen',
+      delay: 150,
+      delayOnTouchOnly: true,
+      touchStartThreshold: 3,
+      onStart: function(evt){
+        try{ startBucket = bucketOf(evt?.item); }catch(e){ startBucket = null; }
+      },
+      onMove: function(evt){
+        try{
+          const bRel = bucketOf(evt?.related);
+          if(startBucket != null && bRel != null && bRel !== startBucket) return false;
+        }catch(e){}
+        return true;
+      },
+      onEnd: async function() {
+        await salvarOrdemListaMaq(el);
+      }
+    });
+
+    el._s = el._sortable;
+    return true;
+  }
+
+  try{ window.bindDragMaquina = bindDragMaquina; }catch(e){}
+
   const SELETORES = [
     '.maq-ofs',
     '.maq-body',
@@ -7761,86 +7811,8 @@ window.initDragDrop = function() {
   let total = 0;
   uniq.forEach((lista)=>{
     if(!lista) return;
-    if (lista._s) {
-      try { lista._s.destroy(); } catch(e) {}
-    }
-
-    lista._s = new Sortable(lista, {
-      animation: 150,
-      handle: '.drag-handle, .of-drag, [class*="drag"]',
-      ghostClass: 'of-ghost',
-      chosenClass: 'of-chosen',
-      delay: 150,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 3,
-
-      onEnd: async function(evt) {
-        if (evt.oldIndex === evt.newIndex) return;
-
-        let ids = [...lista.children]
-          .map(el =>
-            el?.dataset?.ofId ||
-            el?.dataset?.id ||
-            el?.getAttribute?.('data-of-id') ||
-            el?.getAttribute?.('data-id')
-          )
-          .filter(Boolean)
-          .map((x)=>String(x||'').trim())
-          .filter(Boolean);
-
-        if(!ids.length){
-          ids = Array.from(lista.querySelectorAll('[data-of-id], [data-id]'))
-            .map((el)=>String(el?.dataset?.ofId || el?.dataset?.id || el?.getAttribute?.('data-of-id') || el?.getAttribute?.('data-id') || '').trim())
-            .filter(Boolean);
-        }
-
-        console.log('[DRAG] Nova ordem:', ids);
-
-        if (!ids.length) {
-          console.warn('[DRAG] Sem IDs! Verificar data-of-id nos cards');
-          return;
-        }
-
-        const maqId = lista.dataset?.maquinaId
-          || lista.closest('[data-maquina-id]')?.dataset?.maquinaId
-          || '';
-
-        if(!maqId){
-          console.warn('[DRAG] Sem maquina_id na lista');
-          return;
-        }
-
-        try{
-          if(typeof salvarOrdemOFs === 'function'){
-            await salvarOrdemOFs(maqId, ids);
-            return;
-          }
-        }catch(_){}
-
-        try {
-          const token = localStorage.getItem('token')
-            || sessionStorage.getItem('token') || '';
-
-          const r = await fetch('/api/ofs/reordenar', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? {'Authorization':'Bearer '+token} : {})
-            },
-            body: JSON.stringify({
-              maquina_id: maqId,
-              ordem: ids
-            })
-          });
-
-          const data = await r.json().catch(()=>null);
-          console.log('[DRAG] Salvo:', data);
-        } catch(e) {
-          console.error('[DRAG] Erro ao salvar:', e);
-        }
-      }
-    });
-    total++;
+    const mk = String(lista?.dataset?.maquinaId || lista?.closest?.('[data-maquina-id]')?.dataset?.maquinaId || '').trim();
+    if(bindDragMaquina(lista, mk)) total++;
   });
 
   console.log('[DRAG] Iniciado em', total, 'listas');
@@ -8031,6 +8003,92 @@ async function _ofmaqBuscarOFsRange(from, to, limite, empId){
   });
 }
 
+const MAQUINAS_PERMITIDAS = [
+  'CORTE VINCO ROTATIVA',
+  'CORTE VINCO',
+  'IMP 01', 'IMP 02', 'IMP 03',
+  'IMP 04', 'IMP 05',
+  'IMPRESSORA 01', 'IMPRESSORA 02',
+  'IMPRESSORA 03', 'IMPRESSORA 04',
+  'IMPRESSORA 05',
+];
+
+function maquinaPermitida(nomeMaq) {
+  if (!nomeMaq) return false;
+  const n = String(nomeMaq).toUpperCase().trim();
+  return MAQUINAS_PERMITIDAS.some((p) => n.includes(p) || p.includes(n)) || /^IMP\s*0?[1-5]$/i.test(n) || /CORTE.*VINCO/i.test(n);
+}
+
+function ofmaqToggleMaquina(maqId){
+  const id = String(maqId || '').trim();
+  if(!id) return;
+  const body = document.getElementById('maq-body-' + id);
+  const chevron = document.getElementById('maq-chevron-' + id);
+  if (!body) return;
+  const aberta = body.style.display !== 'none';
+  body.style.display = aberta ? 'none' : 'block';
+  if (chevron) chevron.textContent = aberta ? '▶' : '▼';
+  try{
+    const nome = String(body.dataset?.maquinaName || body.getAttribute('data-maquina-name') || '').trim();
+    if(nome){
+      if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
+      window._ofmaqExpanded[nome] = !aberta;
+    }
+  }catch(e){}
+}
+
+async function salvarOrdemListaMaq(lista){
+  const el = lista || null;
+  if(!el) return;
+  const ids = [...el.querySelectorAll('[data-of-id]')].map(x=>String(x?.dataset?.ofId||'').trim()).filter(Boolean);
+  if (!ids.length) return;
+  const maqId = el.dataset?.maquinaId || el.closest('[data-maquina-id]')?.dataset?.maquinaId || '';
+  if(!maqId) return;
+  try{
+    if(typeof salvarOrdemOFs === 'function'){
+      await salvarOrdemOFs(maqId, ids);
+      return;
+    }
+  }catch(e){}
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  try{
+    await fetch('/api/ofs/reordenar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {})
+      },
+      body: JSON.stringify({ maquina_id: maqId, ordem: ids })
+    });
+  }catch(e){
+    try{ console.error('[MOVER]', e); }catch(_){}
+  }
+}
+
+async function moverOfCima(ofId){
+  const id = String(ofId||'').trim();
+  if(!id) return;
+  const card = document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
+  if (!card) return;
+  const lista = card.parentElement;
+  const anterior = card.previousElementSibling;
+  if (!lista || !anterior) return;
+  lista.insertBefore(card, anterior);
+  await salvarOrdemListaMaq(lista);
+}
+
+async function moverOfBaixo(ofId){
+  const id = String(ofId||'').trim();
+  if(!id) return;
+  const card = document.querySelector(`[data-of-id="${CSS.escape(id)}"]`);
+  if (!card) return;
+  const lista = card.parentElement;
+  const proximo = card.nextElementSibling;
+  if (!lista || !proximo) return;
+  lista.insertBefore(proximo, card);
+  await salvarOrdemListaMaq(lista);
+}
+
 async function renderOFsPorMaquina(){
   if(document.hidden) return;
   if(_ofsMaqRenderizando) return;
@@ -8151,7 +8209,7 @@ async function renderOFsPorMaquina(){
     const statusSelRaw = String((document.getElementById('ofmaq-status')||{}).value||'').trim();
     const statusSel = ofmaqNorm(statusSelRaw);
     const priSel = String((document.getElementById('ofmaq-prioridade')||{}).value||'').trim();
-    const maqsBase = ofmaqMaquinasValidas();
+    const maqsBase = ofmaqMaquinasValidas().filter(maquinaPermitida);
 
     if(window._ofmaqView === 'lista'){
       lista = lista;
@@ -8324,6 +8382,7 @@ async function renderOFsPorMaquina(){
     lista.forEach(of=>{
       const mk = String(getMaquinaAtual(of) || '').trim();
       const canon = mk ? String(maqAtivaFromNome(mk) || mk).trim() : '';
+      if(canon && !maquinaPermitida(canon)) return;
       const k = canon && maqsBase.includes(canon) ? canon : 'Sem Máquina';
       if(!gruposAll[k]) gruposAll[k] = [];
       gruposAll[k].push(of);
@@ -8355,6 +8414,7 @@ async function renderOFsPorMaquina(){
     if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
     if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
     if(!window._ofmaqLastGroupOfs || typeof window._ofmaqLastGroupOfs !== 'object') window._ofmaqLastGroupOfs = {};
+    const primeiraComOfs = maquinas.find((m)=>Array.isArray(grupos[m]) && (grupos[m] || []).length > 0) || '';
     container.innerHTML = maquinas.filter(m=>grupos[m]).map(maq=>{
       const baseSorted = ordenarOFsPorPrioridade(grupos[maq] || []);
       const pos = new Map();
@@ -8374,21 +8434,23 @@ async function renderOFsPorMaquina(){
       });
       try{ window._ofmaqLastGroupOfs[maq] = ofs.slice(); }catch(e){}
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
-      const exp = (window._ofmaqExpanded[maq] === undefined) ? true : !!window._ofmaqExpanded[maq];
-      const bodyId = 'ofmaq-body-' + encodeURIComponent(maq).replace(/%/g,'_');
+      const exp = (window._ofmaqExpanded[maq] === undefined) ? (maq === primeiraComOfs) : !!window._ofmaqExpanded[maq];
+      const maqId = encodeURIComponent(maq).replace(/%/g,'_');
+      const bodyId = 'maq-body-' + maqId;
+      const chevId = 'maq-chevron-' + maqId;
       return `<div style="margin-bottom:20px">
-        <div class="maq-header" onclick="ofmaqToggleGrupo('${escAttr(maq)}')" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+        <div class="maq-header" onclick="ofmaqToggleMaquina('${escAttr(maqId)}')" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
           <div>
             <div class="maq-header-name" style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px">🏭 ${escH(maq)}</div>
             <div class="maq-header-count" style="font-size:13px;color:var(--text2);margin-top:2px">${ofs.length} OF${ofs.length>1?'s':''} na fila</div>
           </div>
           <div class="maq-header-right" style="display:flex;align-items:center;gap:14px">
             <div class="maq-header-stat" style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
-            <div class="maq-header-expand" style="font-size:22px;color:var(--text2)">${exp ? '▾' : '▸'}</div>
+            <div id="${escAttr(chevId)}" class="maq-header-expand" style="font-size:22px;color:var(--text2)">${exp ? '▼' : '▶'}</div>
           </div>
         </div>
-        <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" style="display:${exp?'block':'none'}">
-          <div class="of-cards-container maq-ofs" data-maquina-id="${escAttr(maq)}">
+        <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" data-maquina-name="${escAttr(maq)}" style="display:${exp?'block':'none'}">
+          <div class="of-cards-container maq-ofs maq-body" data-maquina-id="${escAttr(maq)}" data-maquina-lista="1">
             ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
           </div>
         </div>
@@ -47328,6 +47390,82 @@ window.atualizarChapas = async function(){
     }
   };
 
+  async function jarvisEncontrarOf(numero) {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const h = token ? { Authorization: 'Bearer ' + token } : {};
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+
+    const nRaw = String(numero || '').trim();
+    const nCmp = nRaw.replace(/^0+/, '') || nRaw;
+
+    const sameNum = (a, b) => {
+      const aa = String(a == null ? '' : a).trim();
+      const bb = String(b == null ? '' : b).trim();
+      if(!aa || !bb) return false;
+      if(aa === bb) return true;
+      return (aa.replace(/^0+/, '') || aa) === (bb.replace(/^0+/, '') || bb);
+    };
+    const matchOf = (o) => {
+      try{
+        return sameNum(o?.numero, nRaw) || sameNum(o?.of_num, nRaw) || sameNum(o?.of, nRaw);
+      }catch(e){ return false; }
+    };
+
+    const caches = [
+      window.OFS_ARQUIVO,
+      window.OFS_CACHE,
+      window._ofsCache,
+      window.todasOfs,
+      window.OFS,
+      (typeof OFs !== 'undefined' ? OFs : null),
+    ];
+
+    for (const cache of caches) {
+      if (!Array.isArray(cache) || !cache.length) continue;
+      const found = cache.find(matchOf) || null;
+      if (found) {
+        try{ console.log('[JARVIS] OF no cache:', found.numero || found.of_num || found.of); }catch(e){}
+        return found;
+      }
+    }
+
+    const urls = [
+      `/api/ofs?numero=${encodeURIComponent(nCmp)}&limit=10&nocache=1&incluir_excluidas=1`,
+      `/api/ofs?of_num=${encodeURIComponent(nCmp)}&limit=10&nocache=1`,
+      `/api/ofs?q=${encodeURIComponent(nCmp)}&limit=10&nocache=1`,
+    ];
+
+    for (const url of urls) {
+      try {
+        const r = await fetch(base + url, { headers: h });
+        if (!r.ok) continue;
+        const d = await r.json().catch(()=>null);
+        const lista = (d && Array.isArray(d.data)) ? d.data
+          : (d && Array.isArray(d.ofs)) ? d.ofs
+            : (Array.isArray(d) ? d : []);
+        if(!lista.length) continue;
+        const of = (lista.find(matchOf) || (lista.length === 1 ? lista[0] : null)) || null;
+        if (of) {
+          try{ console.log('[JARVIS] OF via API:', of.numero || of.of_num || of.of); }catch(e){}
+          return of;
+        }
+      } catch(e) {}
+    }
+
+    try {
+      const r = await fetch(base + `/api/ofs?limit=500&nocache=1&incluir_excluidas=1`, { headers: h });
+      if(!r.ok) return null;
+      const d = await r.json().catch(()=>null);
+      const lista = (d && Array.isArray(d.data)) ? d.data
+        : (d && Array.isArray(d.ofs)) ? d.ofs
+          : (Array.isArray(d) ? d : []);
+      const found = Array.isArray(lista) ? (lista.find(matchOf) || null) : null;
+      return found;
+    } catch(e) {}
+
+    return null;
+  }
+
   const send = async (raw)=>{
     const text = String(raw || '').trim();
     const ta = document.getElementById('assist-text');
@@ -47354,84 +47492,72 @@ window.atualizarChapas = async function(){
     try{
       try{
         const msg = String(text || '');
-        const matchOf = msg.match(/\b(\d{3,4})\b/);
-        const pedindoImagem = /imagem|foto|print|mostra|ver\s+of/i.test(msg);
-        const pedindoOf = /\bof\b|ordem|fabricaç/i.test(msg) || !!matchOf;
+        const numMatch = msg.match(/\b(\d{3,4})\b/);
+        const querImagem = /imagem|foto|print|mostra|ver/i.test(msg);
+        const querOf = /\bof\b|ordem|pedido/i.test(msg) || !!numMatch;
 
-        if(matchOf && pedindoOf){
-          const numBuscado = matchOf[1];
+        if (numMatch && querOf) {
+          const num = numMatch[1];
+          const typingEl = document.getElementById(typingId);
+          if(typingEl) typingEl.textContent = '🔍 Buscando OF Nº ' + num + '...';
 
-          const resp = await apiFetch(`/api/ofs?numero=${encodeURIComponent(String(numBuscado))}&limit=5&nocache=1`, { method:'GET' });
-          const data = resp ? await resp.json().catch(()=>null) : null;
-          const lista = (data && Array.isArray(data.data)) ? data.data
-            : (data && Array.isArray(data.ofs)) ? data.ofs
-              : Array.isArray(data) ? data : [];
-
-          const of = lista.find(o =>
-            String(o?.numero||'') === String(numBuscado)
-            || String(o?.of_num||'') === String(numBuscado)
-            || String(o?.of||'') === String(numBuscado)
-            || String(o?.numero||'').includes(String(numBuscado))
-          ) || lista[0] || null;
+          const of = await jarvisEncontrarOf(num);
 
           const el = document.getElementById(typingId);
           if(el && el.parentNode) el.parentNode.remove();
 
-          if(!of){
-            addMsg('assistant', `Não encontrei a OF Nº ${String(numBuscado)}. Verifique se o número está correto.`);
+          if (!of) {
+            const total = (window.OFS_ARQUIVO && Array.isArray(window.OFS_ARQUIVO)) ? window.OFS_ARQUIVO.length : '?';
+            addMsg('assistant', `Não encontrei a OF Nº ${num} no sistema. Verifique se o número está correto. Total de OFs no sistema: ${total}`);
             return;
           }
 
-          const imgUrl = String(
-            of?.imagem_url
-            || (Array.isArray(of?.imgs) ? of.imgs[0] : (typeof of?.imgs === 'string' ? of.imgs : ''))
-            || of?.img
-            || of?.foto
-            || ''
-          ).trim();
+          const imgUrl = of.imagem_url || (Array.isArray(of.imgs) ? of.imgs[0] : (of.imgs || null)) || of.img || of.imagem || null;
+          const prod = of.descricao || of.produto || '—';
+          const cli = of.cliNome || of.clinome || of.cliente_nome || '—';
+          const status = of.status || '—';
+          const qtd = of.quantidade || of.qtd || '—';
+          const ent = of.data_entrega ? new Date(of.data_entrega).toLocaleDateString('pt-BR') : '—';
+          const maq = of.maquina_atual || of.maq || '—';
 
-          const numero = String(of?.numero || of?.of_num || of?.of || numBuscado).trim() || String(numBuscado);
-          const prod = String(of?.descricao || of?.produto || '—').trim();
-          const cli = String(of?.cliNome || of?.clinome || of?.cliente_nome || '—').trim();
-          const status = String(of?.status || '—').trim();
-          const entrega = of?.data_entrega ? new Date(of.data_entrega).toLocaleDateString('pt-BR') : '—';
-          const maq = String(of?.maquina_atual || of?.maq || '—').trim();
-          const qtd = String(of?.quantidade || of?.qtd || '—').trim();
-
-          let resposta = `
+          let html = `
             <div style="font-size:13px">
-              <div style="font-weight:700;font-size:14px;margin-bottom:8px;color:#38bdf8">
-                OF Nº ${String(numero).replace(/</g,'&lt;')}
+              <div style="font-weight:800;font-size:15px;color:#38bdf8;margin-bottom:10px">
+                OF Nº ${String(of.numero || of.of_num || of.of || num).replace(/</g,'&lt;')}
               </div>
           `;
 
-          if(pedindoImagem && imgUrl){
-            resposta += `
-              <img src="${imgUrl.replace(/"/g,'&quot;')}"
-                style="width:100%;max-width:260px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:block;margin-bottom:10px"
-                onclick="window.open(this.src,'_blank')"
-                onerror="this.outerHTML='<div style=padding:12px;text-align:center;color:#666;font-size:12px>📷 Sem imagem cadastrada</div>'"
-              />
-            `;
-          } else if(pedindoImagem && !imgUrl){
-            resposta += `<div style="padding:12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.5)">📷 OF Nº ${String(numBuscado).replace(/</g,'&lt;')} não possui imagem cadastrada</div>`;
+          if (querImagem) {
+            if (imgUrl) {
+              html += `
+                <img src="${String(imgUrl||'').replace(/"/g,'&quot;')}"
+                  style="width:100%;max-width:280px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;display:block;margin-bottom:12px"
+                  onclick="window.open(this.src,'_blank')"
+                  onerror="this.style.display='none'"
+                />
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:10px">Clique para ampliar</div>
+              `;
+            } else {
+              html += `
+                <div style="padding:14px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:10px;font-size:12px;color:rgba(255,255,255,0.4);text-align:center">
+                  📷 OF Nº ${String(num).replace(/</g,'&lt;')} não possui imagem
+                </div>
+              `;
+            }
           }
 
-          resposta += `
-              <div style="display:flex;flex-direction:column;gap:5px">
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">PRODUTO</span><br>${prod.replace(/</g,'&lt;')}</div>
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">CLIENTE</span><br>${cli.replace(/</g,'&lt;')}</div>
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">STATUS</span><br>
-                  <span style="background:${status==='Concluído'?'rgba(16,185,129,0.2)':'rgba(37,99,235,0.2)'};color:${status==='Concluído'?'#10b981':'#38bdf8'};padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700">${status.replace(/</g,'&lt;')}</span>
-                </div>
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">MÁQUINA</span><br>${maq.replace(/</g,'&lt;')}</div>
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">QUANTIDADE</span><br>${qtd.replace(/</g,'&lt;')} cx</div>
-                <div><span style="color:rgba(255,255,255,0.4);font-size:11px">ENTREGA</span><br>${String(entrega).replace(/</g,'&lt;')}</div>
+          html += `
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px">
+                <div>📦 <strong>${String(prod).replace(/</g,'&lt;')}</strong></div>
+                <div>👤 ${String(cli).replace(/</g,'&lt;')}</div>
+                <div>⚙️ ${String(maq).replace(/</g,'&lt;')}</div>
+                <div>📅 Entrega: ${String(ent).replace(/</g,'&lt;')}</div>
+                <div>📊 ${String(qtd).replace(/</g,'&lt;')} cx · <span style="color:${status==='Concluído'?'#10b981':'#38bdf8'};font-weight:700">${String(status).replace(/</g,'&lt;')}</span></div>
               </div>
             </div>
           `;
 
-          addMsg('assistant', `OF Nº ${numero}`, { html: resposta });
+          addMsg('assistant', `OF Nº ${String(of.numero || of.of_num || of.of || num).trim()}`, { html });
           return;
         }
       }catch(e){}
