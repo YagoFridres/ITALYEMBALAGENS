@@ -5147,16 +5147,53 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const body = req.body || {};
+    const maquinaNome = String(body.maquina_nome || body.maquinaNome || body.maquina || '').trim();
+    console.log('[PASSOU MAQUINA]', id, maquinaNome);
+
+    const { data: of, error: errBusca } = await supabase
+      .from('ofs')
+      .select('id,numero,maquina_atual')
+      .eq('id', id)
+      .maybeSingle();
+    if (errBusca) return res.status(500).json({ ok: false, error: errBusca.message || String(errBusca) });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
     const nowIso = new Date().toISOString();
+    const passouNome = maquinaNome || String(of.maquina_atual || '').trim() || '';
+
     const { data, error } = await supabase
       .from('ofs')
-      .update({ passou_maquina: true, maquina_atual: null, maquina_atual_index: null, updated_at: nowIso })
+      .update({
+        passou_maquina: true,
+        passou_em: nowIso,
+        passou_maquina_nome: passouNome,
+        maquina_atual: null,
+        maquina_atual_index: null,
+        updated_at: nowIso,
+      })
       .eq('id', id)
       .select('*')
       .maybeSingle();
     if (error) throw error;
+    try {
+      await supabase
+        .from('of_passagens')
+        .insert({
+          of_id: id,
+          of_numero: String(of.numero || ''),
+          maquina: passouNome,
+          saiu_em: nowIso,
+          usuario: req.usuario?.nome || 'Sistema',
+        });
+    } catch (e) {
+      const code = String(e?.code || e?.error?.code || '').trim();
+      const msg = String(e?.message || e?.error?.message || '').toLowerCase();
+      const missing = code === '42P01' || msg.includes('does not exist') || (msg.includes('relation') && msg.includes('of_passagens'));
+      if (!missing) console.log('[PASSOU] of_passagens skip:', String(e?.message || e));
+    }
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({ ok: true, data: data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
+    return res.json({ ok: true, of_numero: of.numero, passou_maquina_nome: passouNome, data: data || { id, passou_maquina: true, maquina_atual: null, maquina_atual_index: null } });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

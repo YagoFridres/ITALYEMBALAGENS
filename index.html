@@ -6996,25 +6996,45 @@ window.passouPelaMaquina = async function(ofId, ofNum, nomeMaquina){
     btn.disabled = true;
 
     try{
-      const nowIso = new Date().toISOString();
-      await apiFetch('/api/ofs/' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: {
-          maquina_atual: null,
-          maquina_atual_index: null,
-          passou_maquina: true,
-          passou_em: nowIso,
-          passou_maquina_nome: maqNome || '',
-        }
-      });
+      const nomeMaq = maqNome
+        || document.querySelector(`[data-of-id="${CSS.escape(id)}"]`)?.closest('[data-maquina-nome]')?.dataset?.maquinaNome
+        || document.querySelector(`[data-of-id="${CSS.escape(id)}"]`)?.closest('[data-maquina-name]')?.dataset?.maquinaName
+        || '';
+
+      console.log('[PASSOU] Enviando:', id, nomeMaq);
+
+      let ok = false;
+      try{
+        const r = await apiFetch(`/api/ofs/${encodeURIComponent(id)}/passou-maquina`, { method:'POST', body:{ maquina_nome: nomeMaq } });
+        const resultado = r ? await r.json().catch(()=>null) : null;
+        console.log('[PASSOU] Resultado:', resultado);
+        if(r && r.ok && (resultado?.ok === true)) ok = true;
+      }catch(e){}
+
+      if(!ok){
+        const nowIso = new Date().toISOString();
+        const r2 = await apiFetch('/api/ofs/' + encodeURIComponent(id), {
+          method: 'PATCH',
+          body: {
+            maquina_atual: null,
+            maquina_atual_index: null,
+            passou_maquina: true,
+            passou_em: nowIso,
+            passou_maquina_nome: nomeMaq || '',
+          }
+        });
+        if(r2 && r2.ok) ok = true;
+      }
+
+      if(!ok) throw new Error('Falha ao salvar');
       try{
         await apiFetch('/api/of-passagens', {
           method: 'POST',
           body: {
             of_id: id,
             of_numero: num,
-            maquina: maqNome || '',
-            saiu_em: nowIso,
+            maquina: nomeMaq || '',
+            saiu_em: new Date().toISOString(),
           }
         });
       }catch(e){}
@@ -9227,8 +9247,8 @@ async function renderOFsPorMaquina(){
             <div id="${escAttr(chevId)}" class="maq-header-expand" style="font-size:22px;color:var(--text2)">${exp ? '▼' : '▶'}</div>
           </div>
         </div>
-        <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" data-maquina-name="${escAttr(maq)}" style="display:${exp?'block':'none'}">
-          <div class="of-cards-container maq-ofs maq-body" data-maquina-id="${escAttr(maq)}" data-maquina-lista="1">
+        <div id="${escAttr(bodyId)}" class="of-cards-maquina" data-maquina="${escAttr(maq)}" data-maquina-name="${escAttr(maq)}" data-maquina-nome="${escAttr(maq)}" style="display:${exp?'block':'none'}">
+          <div class="of-cards-container maq-ofs maq-body" data-maquina-id="${escAttr(maq)}" data-maquina-lista="1" data-maquina-nome="${escAttr(maq)}">
             ${ofs.map(of=>cardOFMaquina(of,maq)).join('')}
           </div>
         </div>
