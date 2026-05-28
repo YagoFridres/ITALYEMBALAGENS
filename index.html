@@ -3201,16 +3201,35 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
 
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
       <div>
-        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Quantidade Produzida *</label>
-        <input id="conc-qtd-prod" type="number" min="0" placeholder="${String(qtdOriginal||'Total produzido').replace(/"/g,'&quot;')}" value="${String(qtdOriginal||'').replace(/"/g,'&quot;')}"
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Setor de Finalização</label>
+        <select id="setor-finalizacao" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;font-weight:700;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <option value="">-- Selecionar setor --</option>
+          <option value="Acabamento">Acabamento</option>
+          <option value="Riscador 01">Riscador 01</option>
+          <option value="Riscador 02">Riscador 02</option>
+          <option value="Corte Plana">Corte Plana</option>
+          <option value="Coladeira 01">Coladeira 01</option>
+          <option value="Coladeira 02">Coladeira 02</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Caixas Boas *</label>
+        <input id="caixas-boas" type="number" min="0" placeholder="${String(qtdOriginal||'Total produzido').replace(/"/g,'&quot;')}" value="${String(qtdOriginal||'').replace(/"/g,'&quot;')}"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#10b981;font-size:16px;font-weight:700;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
-        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Quantidade Perdida / Defeito</label>
-        <input id="conc-qtd-perd" type="number" min="0" placeholder="0"
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Caixas Perdidas</label>
+        <input id="caixas-perdidas" type="number" min="0" placeholder="0"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#f43f5e;font-size:16px;font-weight:700;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#f43f5e'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Motivo da Perda (opcional)</label>
+        <input id="motivo-perda" placeholder="Ex: ajuste, setup, troca de papelão..."
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Observação (opcional)</label>
@@ -3234,13 +3253,15 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
   modal.querySelector('#btn-canc-conc').onclick = fechar;
 
   modal.querySelector('#btn-conf-conc').onclick = async ()=>{
-    const qtdProd = Math.trunc(Number(modal.querySelector('#conc-qtd-prod')?.value || 0) || 0);
-    const qtdPerd = Math.trunc(Number(modal.querySelector('#conc-qtd-perd')?.value || 0) || 0);
+    const caixasBoas = Math.trunc(Number(modal.querySelector('#caixas-boas')?.value || 0) || 0);
+    const caixasPerdidas = Math.trunc(Number(modal.querySelector('#caixas-perdidas')?.value || 0) || 0);
+    const setorFinalizacao = String(modal.querySelector('#setor-finalizacao')?.value || '');
+    const motivoPerda = String(modal.querySelector('#motivo-perda')?.value || '');
     const obs = String(modal.querySelector('#conc-obs')?.value || '');
 
-    if(!qtdProd){
+    if(!caixasBoas){
       try{
-        const inp = modal.querySelector('#conc-qtd-prod');
+        const inp = modal.querySelector('#caixas-boas');
         inp.style.borderColor = '#f43f5e';
         inp.focus();
       }catch(e){}
@@ -3259,8 +3280,12 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
       const r = await apiFetch(`/api/ofs/${encodeURIComponent(id)}/concluir`, {
         method:'POST',
         body:{
-          qtd_produzida: qtdProd,
-          qtd_perdida: qtdPerd,
+          setor_finalizacao: setorFinalizacao,
+          caixas_boas: caixasBoas,
+          caixas_perdidas: caixasPerdidas,
+          motivo_perda: motivoPerda,
+          qtd_produzida: caixasBoas,
+          qtd_perdida: caixasPerdidas,
           obs_conclusao: obs,
           usuario_conclusao: usuario,
           data_conclusao: new Date().toISOString(),
@@ -3276,8 +3301,12 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
           method:'PATCH',
           body:{
             status: 'Concluído',
-            qtd_produzida: qtdProd,
-            qtd_perdida: qtdPerd,
+            setor_finalizacao: setorFinalizacao,
+            caixas_boas: caixasBoas,
+            caixas_perdidas: caixasPerdidas,
+            motivo_perda: motivoPerda,
+            qtd_produzida: caixasBoas,
+            qtd_perdida: caixasPerdidas,
             obs2: obs,
             usuario_conclusao: usuario,
             data_conclusao: new Date().toISOString(),
@@ -3293,8 +3322,12 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
           const idx = window.OFS_ARQUIVO.findIndex(o=>String(o?.id||'')===id);
           if(idx !== -1){
             window.OFS_ARQUIVO[idx].status = 'Concluído';
-            window.OFS_ARQUIVO[idx].qtd_produzida = qtdProd;
-            window.OFS_ARQUIVO[idx].qtd_perdida = qtdPerd;
+            window.OFS_ARQUIVO[idx].qtd_produzida = caixasBoas;
+            window.OFS_ARQUIVO[idx].qtd_perdida = caixasPerdidas;
+            window.OFS_ARQUIVO[idx].setor_finalizacao = setorFinalizacao;
+            window.OFS_ARQUIVO[idx].caixas_boas = caixasBoas;
+            window.OFS_ARQUIVO[idx].caixas_perdidas = caixasPerdidas;
+            window.OFS_ARQUIVO[idx].motivo_perda = motivoPerda;
             window.OFS_ARQUIVO[idx].data_conclusao = new Date().toISOString();
           }
         }
@@ -3303,7 +3336,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
       try{
         const toastEl = document.createElement('div');
         toastEl.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 20px;border-radius:10px;font-weight:700;font-size:14px;z-index:9999;box-shadow:0 4px 20px rgba(16,185,129,0.4)';
-        toastEl.textContent = `✓ OF Nº ${num} concluída! ${qtdProd}cx prod. / ${qtdPerd}cx perdas`;
+        toastEl.textContent = `✓ OF Nº ${num} concluída! ${caixasBoas}cx boas / ${caixasPerdidas}cx perdas`;
         document.body.appendChild(toastEl);
         setTimeout(()=>{ try{ toastEl.remove(); }catch(e){} }, 4000);
       }catch(e){}
