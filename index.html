@@ -3431,7 +3431,7 @@ function abrirNovaOfRapida(){
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.07)">
       <div>
         <div style="font-weight:800;font-size:16px">⚡ Nova OF Rápida</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"><span id="of-r-num-display">Nº ...</span> · Preencha só o essencial</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"><span id="of-r-numero">Nº ...</span> · Preencha só o essencial</div>
       </div>
       <button type="button" onclick="fecharNovaOfRapida()" style="width:32px;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);font-size:16px;cursor:pointer">✕</button>
     </div>
@@ -3555,11 +3555,11 @@ function abrirNovaOfRapida(){
   document.body.appendChild(modal);
 
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
-  const numDisplay = document.getElementById('of-r-num-display');
+  const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
   if (numDisplay) numDisplay.textContent = 'Nº ...';
   try{
     proximoNumeroOf().then((num)=>{
-      const el = document.getElementById('of-r-num-display');
+      const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
       const v = String(num || '').trim();
       try { window._ofRapidaNumero = v; } catch (e) {}
       if (el) el.textContent = v ? ('Nº ' + v) : '';
