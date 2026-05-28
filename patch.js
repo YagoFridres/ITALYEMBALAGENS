@@ -24,10 +24,17 @@
         // Tentar todos os campos possíveis de número 
         var maior = 0; 
         lista.forEach(function(o) { 
-          ['numero','of_num','numero_of','num','number','of'].forEach(function(campo) { 
-            if (o && o[campo]) { 
-              var n = parseInt(String(o[campo]).replace(/\\D/g,''), 10); 
-              if (!isNaN(n) && n > maior) maior = n; 
+          // Log para ver TODOS os campos retornados 
+          if (lista.indexOf(o) === 0) console.log('[PATCH] campos da primeira OF:', Object.keys(o)); 
+          // Tentar TODOS os campos possíveis 
+          var valoresTentados = [o.numero, o.of_num, o.numero_of, o.num, o.seq, o.sequencia, o.cod, o.codigo, o.of]; 
+          valoresTentados.forEach(function(v) { 
+            if (v !== null && v !== undefined && v !== '') { 
+              var n = parseInt(String(v).replace(/\D/g,''), 10); 
+              if (!isNaN(n) && n > maior) { 
+                maior = n; 
+                console.log('[PATCH] campo com número válido encontrado: valor=' + v + ' n=' + n); 
+              } 
             } 
           }); 
         }); 
@@ -46,7 +53,7 @@
       cache.forEach(function(o) { 
         ['numero','of_num','numero_of','num','of'].forEach(function(campo) { 
           if (o && o[campo]) { 
-            var n = parseInt(String(o[campo]).replace(/\\D/g,''), 10); 
+            var n = parseInt(String(o[campo]).replace(/\D/g,''), 10); 
             if (!isNaN(n) && n > 0) nums.push(n); 
           } 
         }); 
