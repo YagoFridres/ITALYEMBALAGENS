@@ -5370,49 +5370,94 @@ app.post('/api/of-passagens', authMiddleware, async (req, res) => {
 
 app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
   try {
-    const hoje = new Date().toISOString().split('T')[0];
-    const r = await supabase
-      .from('passagens_maquina')
-      .select('*')
-      .eq('data_passagem', hoje)
-      .order('hora_passagem', { ascending: false })
-      .limit(200);
+    const { maquina, cliente, periodo } = req.query || {};
+    const hoje = new Date();
 
-    if (r?.error) {
-      const code = String(r.error.code || '').trim();
-      const msg = String(r.error.message || '').toLowerCase();
-      const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
-      if (missing) {
-        const fromIso = hoje + 'T00:00:00.000Z';
-        const toIso = hoje + 'T23:59:59.999Z';
-        const r2 = await supabase
-          .from('of_passagens')
-          .select('*')
-          .gte('saiu_em', fromIso)
-          .lte('saiu_em', toIso)
-          .order('saiu_em', { ascending: false })
-          .limit(200);
-        if (r2?.error) {
-          const code2 = String(r2.error.code || '').trim();
-          const msg2 = String(r2.error.message || '').toLowerCase();
-          const missing2 = code2 === '42P01' || (msg2.includes('relation') && msg2.includes('of_passagens')) || msg2.includes('does not exist');
-          if (missing2) return res.json({ ok: true, passagens: [] });
-          return res.status(500).json({ ok: false, error: r2.error.message || String(r2.error) });
-        }
-        const mapped = (Array.isArray(r2.data) ? r2.data : []).map((p) => ({
-          ...p,
-          hora_passagem: p.saiu_em,
-          data_passagem: hoje,
-          operador: p.usuario,
-        }));
-        return res.json({ ok: true, passagens: mapped });
-      }
-      return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
+    const startOfDay = (d) => {
+      const dt = new Date(d);
+      dt.setHours(0, 0, 0, 0);
+      return dt;
+    };
+    const endOfDay = (d) => {
+      const dt = new Date(d);
+      dt.setHours(23, 59, 59, 999);
+      return dt;
+    };
+    const toDateStr = (d) => new Date(d).toISOString().split('T')[0];
+
+    let ini = startOfDay(hoje);
+    let fim = endOfDay(hoje);
+    if (String(periodo || '').trim() === 'semana') {
+      const d0 = new Date(hoje);
+      d0.setDate(d0.getDate() - d0.getDay());
+      ini = startOfDay(d0);
+      fim = endOfDay(hoje);
+    } else if (String(periodo || '').trim() === 'mes') {
+      const d0 = new Date(hoje);
+      d0.setDate(1);
+      ini = startOfDay(d0);
+      fim = endOfDay(hoje);
     }
 
-    return res.json({ ok: true, passagens: Array.isArray(r.data) ? r.data : [] });
+    const iniDate = toDateStr(ini);
+    const fimDate = toDateStr(fim);
+    const iniIso = ini.toISOString();
+    const fimIso = fim.toISOString();
+
+    let query = supabase.from('passagens_maquina').select('*');
+    if (iniDate === fimDate) query = query.eq('data_passagem', iniDate);
+    else query = query.gte('data_passagem', iniDate).lte('data_passagem', fimDate);
+    if (String(maquina || '').trim()) query = query.eq('maquina', String(maquina).trim());
+    if (String(cliente || '').trim()) query = query.ilike('cliente', `%${String(cliente).trim()}%`);
+
+    const { data, error } = await query.order('hora_passagem', { ascending: false }).limit(100);
+
+    if (error) {
+      const msg = String(error.message || '').toLowerCase();
+      const code = String(error.code || '').trim();
+      const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
+      if (!missing) {
+        console.warn('[PASSAGENS HOJE] erro query passagens_maquina:', error.message || String(error));
+      } else {
+        console.warn('[PASSAGENS HOJE] tabela pendente:', error.message || String(error));
+      }
+
+      let q2 = supabase.from('of_passagens').select('*').gte('saiu_em', iniIso).lte('saiu_em', fimIso);
+      if (String(maquina || '').trim()) q2 = q2.eq('maquina', String(maquina).trim());
+      const r2 = await q2.order('saiu_em', { ascending: false }).limit(100);
+
+      if (r2?.error) {
+        const msg2 = String(r2.error.message || '').toLowerCase();
+        const code2 = String(r2.error.code || '').trim();
+        const missing2 = code2 === '42P01' || (msg2.includes('relation') && msg2.includes('of_passagens')) || msg2.includes('does not exist');
+        if (!missing2) console.warn('[PASSAGENS HOJE] erro query of_passagens:', r2.error.message || String(r2.error));
+        return res.json({ ok: true, passagens: [], aviso: 'tabela_pendente' });
+      }
+
+      const mapped = (Array.isArray(r2.data) ? r2.data : []).map((p) => {
+        const ts = p.saiu_em || p.created_at || null;
+        return {
+          of_id: p.of_id || null,
+          of_numero: p.of_numero || null,
+          cliente: null,
+          maquina: p.maquina || null,
+          operador: p.usuario || null,
+          data_passagem: ts ? String(ts).split('T')[0] : null,
+          hora_passagem: ts,
+          quantidade: null,
+          status: 'Concluída',
+          empresa: null,
+          created_at: p.created_at || null,
+        };
+      });
+
+      return res.json({ ok: true, passagens: mapped, aviso: missing ? 'tabela_pendente' : 'fallback_of_passagens' });
+    }
+
+    return res.json({ ok: true, passagens: Array.isArray(data) ? data : [] });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    console.error('[PASSAGENS HOJE] Erro:', e?.message || e);
+    return res.json({ ok: true, passagens: [], erro: String(e?.message || e) });
   }
 });
 
