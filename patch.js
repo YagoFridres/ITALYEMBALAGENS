@@ -46,6 +46,11 @@
       if (r0.ok) { 
         var d0 = await r0.json(); 
         if (d0 && d0.ok && Number(d0.maior) > 0 && d0.proximo) { 
+          var proximoNum = parseInt(d0.proximo, 10); 
+          var maiorNum = parseInt(d0.maior, 10); 
+          if (!isNaN(proximoNum) && !isNaN(maiorNum) && proximoNum === maiorNum) { 
+            d0.proximo = String(maiorNum + 1).padStart(String(d0.proximo).length, '0'); 
+          } 
           console.log('[PATCH] proximoNumeroOf via rota dedicada: maior=' + d0.maior + ' proximo=' + d0.proximo); 
           return String(d0.proximo); 
         } 
