@@ -149,36 +149,37 @@
     opts = opts || {}; 
     var periodo = opts.periodo || 'hoje'; 
     var container = document.getElementById('passagens-lista'); 
-    if (!container) { console.warn('[PATCH] #passagens-lista nao encontrado'); return; } 
+    if (!container) return; 
     container.innerHTML = '<p style="color:#64748b;text-align:center;padding:16px;font-size:13px">Carregando...</p>'; 
-    var token = getToken(); 
+    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
     var h = token ? { 'Authorization': 'Bearer ' + token } : {}; 
     try { 
       var r = await fetch('/api/passagens/hoje?periodo=' + periodo + '&t=' + Date.now(), { headers: h }); 
       if (!r.ok) throw new Error('HTTP ' + r.status); 
       var d = await r.json(); 
       var lista = d.passagens || []; 
-      console.log('[PATCH] passagens:', lista.length, 'registros (' + periodo + ')'); 
       function bs(p) { 
-        return 'border:none;border-radius:20px;padding:4px 14px;cursor:pointer;font-size:12px;font-weight:500;background:' + 
-          (periodo===p ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';color:' + 
-          (periodo===p ? '#fff' : '#94a3b8'); 
+        return 'border:none;border-radius:20px;padding:4px 12px;cursor:pointer;font-size:12px;' + 
+          'background:' + (periodo===p ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';' + 
+          'color:' + (periodo===p ? '#fff' : '#94a3b8'); 
       } 
-      var html = '<div style="display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + 
+      var html = 
+        '<div style="display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + 
         '<button style="' + bs('hoje')   + '" onclick="carregarPassagensHoje({periodo:\'hoje\'})">Hoje</button>' + 
-        '<button style="' + bs('semana') + '" onclick="carregarPassagensHoje({periodo:\'semana\'})">Esta semana</button>' + 
-        '<button style="' + bs('mes')    + '" onclick="carregarPassagensHoje({periodo:\'mes\'})">Este mes</button>' + 
+        '<button style="' + bs('ontem')  + '" onclick="carregarPassagensHoje({periodo:\'ontem\'})">Ontem</button>' + 
+        '<button style="' + bs('semana') + '" onclick="carregarPassagensHoje({periodo:\'semana\'})">Semana</button>' + 
+        '<button style="' + bs('mes')    + '" onclick="carregarPassagensHoje({periodo:\'mes\'})">Mes</button>' + 
         '</div>'; 
       if (!lista.length) { 
-        html += '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Nenhuma passagem registrada neste periodo.</p>'; 
+        html += '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Nenhuma passagem neste periodo.</p>'; 
       } else { 
-        html += '<div style="overflow-y:auto;max-height:300px">' + lista.map(function(p) { 
+        html += '<div style="overflow-y:auto;max-height:280px">' + lista.map(function(p) { 
           var hora = p.hora_passagem ? new Date(p.hora_passagem).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''; 
-          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">' + 
+          return '<div style="display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">' + 
             '<span style="font-weight:700;color:#10b981;min-width:55px">OF #' + (p.of_numero||'-') + '</span>' + 
             '<span style="color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.cliente||'-') + '</span>' + 
-            '<span style="color:#94a3b8;min-width:80px">' + (p.maquina||'-') + '</span>' + 
-            '<span style="color:#64748b;min-width:75px;text-align:right">' + hora + '</span>' + 
+            '<span style="color:#94a3b8;min-width:70px;text-align:right">' + (p.maquina||'-') + '</span>' + 
+            '<span style="color:#64748b;min-width:70px;text-align:right">' + hora + '</span>' + 
             '</div>'; 
         }).join('') + '</div>'; 
       } 

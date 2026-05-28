@@ -5299,58 +5299,25 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       }
     }
 
-    try {
-      const empId = String(ofRow?.emp_id ?? ofRow?.empId ?? ofRow?.empresa_id ?? 'E1').trim() || 'E1';
-      const empresa = (empId === 'E2') ? 'Cartoeste' : (empId === 'E3') ? 'Oestepack' : 'Italy Embalagens';
-      const operador = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
-      const ofNumero = String(ofRow?.numero || ofRow?.of_num || ofRow?.of || '').trim() || null;
-      const cliente = String(ofRow?.cliente_nome || ofRow?.cliente || ofRow?.cliNome || ofRow?.clinome || '').trim() || null;
-      const quantidade = (() => {
-        const v = ofRow?.quantidade ?? ofRow?.qtd ?? body?.quantidade ?? body?.qtd ?? null;
-        const n = Number(v);
-        return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
-      })();
-      const status = String(ofRow?.status || '').trim() || 'Concluída';
-      const dataHoje = nowIso.split('T')[0];
-
-      const rIns = await supabase.from('passagens_maquina').insert({
-        of_id: id,
-        of_numero: ofNumero,
-        cliente,
-        maquina: maquinaNome || null,
-        operador,
-        data_passagem: dataHoje,
-        hora_passagem: nowIso,
-        quantidade,
-        status,
-        empresa,
-      });
-
-      if (rIns?.error) {
-        const code = String(rIns.error.code || '').trim();
-        const msg = String(rIns.error.message || '').toLowerCase();
-        const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
-        if (missing) {
-          if (!globalThis.__PASSAGENS_MAQ_SQL_LOGGED) {
-            globalThis.__PASSAGENS_MAQ_SQL_LOGGED = true;
-            console.log('[PASSAGENS] Para ativar passagens no Hub, execute no Supabase SQL Editor:\n' +
-              'CREATE TABLE IF NOT EXISTS passagens_maquina (\n' +
-              '  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n' +
-              '  of_id uuid REFERENCES ofs(id) ON DELETE CASCADE,\n' +
-              '  of_numero text,\n' +
-              '  maquina text,\n' +
-              '  operador text,\n' +
-              '  data_passagem date DEFAULT CURRENT_DATE,\n' +
-              '  hora_passagem timestamptz DEFAULT NOW(),\n' +
-              '  empresa text\n' +
-              ');'
-            );
-          }
-        } else {
-          console.error('[PASSAGENS] erro insert:', rIns.error.message || String(rIns.error));
-        }
-      }
-    } catch (_) {}
+    try { 
+      const { data: ofAtual } = await supabase.from('ofs').select('*').eq('id',req.params.id).single(); 
+      const of = ofAtual || {}; 
+      const fluxo = of.fluxo_maquinas || []; 
+      const idx = Math.max(0,(of.maquina_atual_index||0)-1); 
+      const maqPassou = req.body.maquina || fluxo[idx] || 'Nao informada'; 
+      await supabase.from('passagens_maquina').insert({ 
+        of_id: req.params.id, 
+        of_numero: of.numero || of.of_num || '', 
+        cliente: of.cliente || '', 
+        maquina: maqPassou, 
+        operador: (req.usuario&&req.usuario.nome) || req.body.operador || null, 
+        quantidade: req.body.quantidade ? parseInt(req.body.quantidade) : (of.quantidade||null), 
+        data_passagem: new Date().toISOString().split('T')[0], 
+        hora_passagem: new Date().toISOString(), 
+        status: 'Concluida', 
+        empresa: of.empresa || 'Italy Embalagens' 
+      }); 
+    } catch(ep){ console.warn('[passou-maquina] passagens_maquina:', ep.message); } 
 
     try {
       const usuario = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
@@ -5425,27 +5392,29 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
   try { 
     const { periodo, maquina, cliente } = req.query; 
     let query = supabase.from('passagens_maquina').select('*'); 
-    if (periodo === 'semana') { 
-      const ini = new Date(); ini.setDate(ini.getDate() - ini.getDay()); 
-      query = query.gte('data_passagem', ini.toISOString().split('T')[0]); 
+
+    if (periodo === 'ontem') { 
+      const d = new Date(); d.setDate(d.getDate()-1); 
+      query = query.eq('data_passagem', d.toISOString().split('T')[0]); 
+    } else if (periodo === 'semana') { 
+      const d = new Date(); d.setDate(d.getDate()-d.getDay()); 
+      query = query.gte('data_passagem', d.toISOString().split('T')[0]); 
     } else if (periodo === 'mes') { 
-      const ini = new Date(); ini.setDate(1); 
-      query = query.gte('data_passagem', ini.toISOString().split('T')[0]); 
+      const d = new Date(); d.setDate(1); 
+      query = query.gte('data_passagem', d.toISOString().split('T')[0]); 
     } else { 
       query = query.eq('data_passagem', new Date().toISOString().split('T')[0]); 
     } 
+
     if (maquina) query = query.eq('maquina', maquina); 
-    if (cliente) query = query.ilike('cliente', '%' + cliente + '%'); 
+    if (cliente) query = query.ilike('cliente', '%'+cliente+'%'); 
+
     const { data, error } = await query 
-      .order('hora_passagem', { ascending: false }) 
-      .limit(100); 
-    if (error) { 
-      console.warn('[passagens/hoje] erro Supabase:', error.message); 
-      return res.json({ ok: true, passagens: [] }); 
-    } 
+      .order('hora_passagem', { ascending: false }).limit(100); 
+
+    if (error) { console.warn('[passagens/hoje]', error.message); return res.json({ ok:true, passagens:[] }); } 
     res.json({ ok: true, passagens: data || [] }); 
   } catch(e) { 
-    console.error('[passagens/hoje]', e.message); 
     res.json({ ok: true, passagens: [], erro: e.message }); 
   } 
 });
