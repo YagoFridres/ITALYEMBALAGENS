@@ -9436,8 +9436,8 @@ async function renderOFsPorMaquina(){
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       const exp = false;
       const maqNome = String(maq || '');
-      const maqDomId = encodeURIComponent(maqNome).replace(/%/g,'_');
-      const bodyId = 'ofs-maq-' + maqDomId;
+      const maqDomId = String(maqNome || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'') || 'sem-maquina';
+      const bodyId = 'maq-bloco-' + maqDomId;
       return `<div style="margin-bottom:20px">
         <div class="maq-header" onclick="var c=document.getElementById('${escAttr(bodyId)}');var a=this.querySelector('.maq-seta');if(c){var open=c.style.display!=='none';c.style.display=open?'none':'flex';if(!open){c.style.flexDirection='column';c.style.gap='8px';c.style.padding='10px';}if(a)a.style.transform=open?'rotate(0deg)':'rotate(90deg)';if(!open && typeof Sortable!=='undefined' && !c._sortInst){c._sortInst=new Sortable(c,{animation:150,handle:'.drag-handle, .of-drag',ghostClass:'of-ghost',chosenClass:'of-chosen',delay:150,delayOnTouchOnly:true,onEnd:function(){var ids=[].slice.call(c.querySelectorAll('[data-of-id]')).map(function(el){return el.dataset.ofId;}).filter(Boolean);if(!ids.length)return;var token=localStorage.getItem('token')||sessionStorage.getItem('token')||localStorage.getItem('access_token')||'';fetch('/api/ofs/reordenar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},(token?{Authorization:'Bearer '+token}:{})),body:JSON.stringify({ordem:ids,maquina_id:'${escAttr(maqNome)}'})}).catch(function(e){});}});} }" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none"
           onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background=''">
