@@ -15222,6 +15222,14 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
     }
     if(!ids.length) return res.status(400).json({ ok:false, error:'ordem_required' });
     const ordem = ids.slice(0, 5000).map((id, idx)=>({ of_id: id, posicao: idx + 1 }));
+    try{
+      const ids2 = ids.slice(0, 5000);
+      await Promise.all(ids2.map((id, idx)=>{
+        const ordem_maquina = idx + 1;
+        return supabase.from('ofs').update({ ordem_maquina }).eq('id', id);
+      }));
+      try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    }catch(_){}
     const r = await _sequenciamentoSalvarOrdem({ maquina, ordem });
     return res.json({ ok:true, data:r });
   }catch(e){ return err(res, e); }

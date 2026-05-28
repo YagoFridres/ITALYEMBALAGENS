@@ -9607,6 +9607,33 @@ function iniciarDragDrop(maqId) {
   if (container._dndBound) return;
   container._dndBound = true;
 
+  if (typeof Sortable !== 'undefined' && !container._sortInst) {
+    container._sortInst = new Sortable(container, {
+      animation: 150,
+      handle: '.drag-handle, .of-drag, .of-ordem-badge, .ordem-badge',
+      ghostClass: 'of-drag-ghost',
+      chosenClass: 'of-drag-chosen',
+      delay: 100,
+      delayOnTouchOnly: true,
+      onEnd: function () {
+        try {
+          const ids = Array.from(container.querySelectorAll('[data-of-id]')).map((el) => el.dataset.ofId).filter(Boolean);
+          if (!ids.length) return;
+          container.querySelectorAll('.of-ordem-badge, .ordem-badge').forEach((b, i) => { try { b.textContent = String(i + 1); } catch (_) {} });
+          const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '';
+          fetch('/api/ofs/reordenar', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ ordem: ids, maquina_id: String(container.dataset.maquina || container.dataset.maquinaId || container.dataset.maquinaNome || '').trim() })
+          }).catch(()=>{});
+        } catch (_) {}
+      }
+    });
+  }
+
   const cards = Array.from(container.querySelectorAll('[data-of-id]'));
   cards.forEach((card, i) => {
     card.classList.add('of-drag-card');
@@ -9614,9 +9641,9 @@ function iniciarDragDrop(maqId) {
     card.dataset.ordem = String(i);
     if (!card.querySelector('.of-ordem-badge')) {
       const badge = document.createElement('div');
-      badge.className = 'of-ordem-badge';
+      badge.className = 'of-ordem-badge ordem-badge drag-handle';
       badge.textContent = String(i + 1);
-      badge.style.cssText = 'min-width:28px;height:28px;border-radius:50%;background:#4A90D9;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;position:absolute;left:10px;top:10px;z-index:5';
+      badge.style.cssText = 'min-width:28px;height:28px;border-radius:50%;background:#4A90D9;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;position:absolute;left:10px;top:10px;z-index:5;cursor:grab;user-select:none;touch-action:none';
       const pos = getComputedStyle(card).position;
       if (!pos || pos === 'static') card.style.position = 'relative';
       card.prepend(badge);
@@ -9677,18 +9704,16 @@ async function salvarOrdemMaquina(container) {
 
   const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '';
   if (!token) return;
+  const ids = cards.map((c) => String(c.dataset.ofId || '').trim()).filter(Boolean);
+  if (!ids.length) return;
   const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
-
-  const promises = cards.map((c, i) => {
-    const id = String(c.dataset.ofId || '').trim();
-    if (!id) return Promise.resolve(null);
-    return fetch(`/api/ofs/${encodeURIComponent(id)}/ordem`, {
-      method: 'PATCH',
+  try {
+    await fetch('/api/ofs/reordenar', {
+      method: 'POST',
       headers,
-      body: JSON.stringify({ ordem_maquina: i })
+      body: JSON.stringify({ ordem: ids, maquina_id: String(container.dataset.maquina || container.dataset.maquinaId || container.dataset.maquinaNome || '').trim() })
     });
-  });
-  try { await Promise.all(promises); } catch (e) { try { console.warn('[DRAG] Erro ao salvar ordem:', e); } catch (_) {} }
+  } catch (e) { try { console.warn('[DRAG] Erro ao salvar ordem:', e); } catch (_) {} }
 }
 window.salvarOrdemMaquina = salvarOrdemMaquina;
 
