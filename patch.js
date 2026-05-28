@@ -54,9 +54,9 @@
         return 'border:1px solid ' + (a?'rgba(74,144,217,0.5)':'rgba(255,255,255,0.1)') + ';background:' + (a?'rgba(74,144,217,0.2)':'rgba(255,255,255,0.04)') + ';color:' + (a?'#4A90D9':'#94a3b8') + ';border-radius:20px;padding:3px 12px;cursor:pointer;font-size:12px'; 
       } 
       var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + 
-        '<button style="' + bs('hoje')   + '" onclick="carregarPassagensHoje({periodo:\\'hoje\\'})">Hoje</button>' + 
-        '<button style="' + bs('semana') + '" onclick="carregarPassagensHoje({periodo:\\'semana\\'})">Esta semana</button>' + 
-        '<button style="' + bs('mes')    + '" onclick="carregarPassagensHoje({periodo:\\'mes\\'})">Este mês</button>' + 
+        '<button style="' + bs('hoje')   + '" onclick="carregarPassagensHoje({periodo:\'hoje\'})">Hoje</button>' + 
+        '<button style="' + bs('semana') + '" onclick="carregarPassagensHoje({periodo:\'semana\'})">Esta semana</button>' + 
+        '<button style="' + bs('mes')    + '" onclick="carregarPassagensHoje({periodo:\'mes\'})">Este mês</button>' + 
         '</div>'; 
       if (!lista.length) { 
         html += '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Nenhuma passagem registrada neste período.</p>'; 
