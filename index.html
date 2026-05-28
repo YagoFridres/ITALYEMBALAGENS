@@ -3464,7 +3464,7 @@ function abrirNovaOfRapida(){
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid rgba(255,255,255,0.07)">
       <div>
         <div style="font-weight:800;font-size:16px">⚡ Nova OF Rápida</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px"><span id="of-r-numero">Nº ...</span> · Preencha só o essencial</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px">Nº <span id="of-r-numero">...</span> · Preencha só o essencial</div>
       </div>
       <button type="button" onclick="fecharNovaOfRapida()" style="width:32px;height:32px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.6);font-size:16px;cursor:pointer">✕</button>
     </div>
@@ -3589,13 +3589,13 @@ function abrirNovaOfRapida(){
 
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
-  if (numDisplay) numDisplay.textContent = 'Nº ...';
+  if (numDisplay) numDisplay.textContent = '...';
   try{
     proximoNumeroOf().then((num)=>{
       const el = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
       const v = String(num || '').trim();
       try { window._ofRapidaNumero = v; } catch (e) {}
-      if (el) el.textContent = v ? ('Nº ' + v) : '';
+      if (el) el.textContent = v ? v : '';
       try { console.log('[OF RÁPIDA] Próximo número calculado:', v); } catch (e) {}
     }).catch(()=>{});
   }catch(e){}
@@ -3653,7 +3653,10 @@ window.salvarOfRapida = async function(){
   const entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
   const pedido = String(document.getElementById('of-r-pedido')?.value || new Date().toISOString().split('T')[0]).slice(0,10);
   const urgente = !!document.getElementById('of-r-urgente')?.checked;
-  const numeroOf = String(window._ofRapidaNumero || '').trim();
+  const numeroOf =
+    String(window._ofRapidaNumero || '').trim()
+    || String((document.getElementById('of-r-numero') || document.getElementById('of-r-num-display'))?.textContent || '').replace(/[^\d]/g,'').trim()
+    || '001';
 
   const erros = [];
   if(!clienteNome) erros.push('Cliente');
@@ -3712,7 +3715,9 @@ window.salvarOfRapida = async function(){
   }];
 
   const payload = {
-    ...(numeroOf ? { numero: numeroOf, of_num: numeroOf, of: numeroOf } : {}),
+    numero: numeroOf,
+    of_num: numeroOf,
+    of: numeroOf,
     cli_id: cliId,
     cliId: cliId,
     cliente_id: cliId,
