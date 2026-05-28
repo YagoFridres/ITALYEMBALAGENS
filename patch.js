@@ -344,8 +344,6 @@
     try{ if (typeof _origUpdateBottomNavActive === 'function') _origUpdateBottomNavActive(pageId); }catch(e){} 
     try{ atualizarAbaAtiva(); }catch(e){} 
   }; 
-
-  setTimeout(renderHotbar, 600); 
  
   function aplicarAccordion() { 
     var headers = document.querySelectorAll('.maq-header'); 
@@ -432,9 +430,102 @@
     }); 
     if (temNovos) setTimeout(aplicarAccordion, 200); 
   }).observe(document.body, { childList: true, subtree: true }); 
+
+  function aplicarTodosPatchesComDelay() { 
+    function proteger(nome, fn) { 
+      try { 
+        Object.defineProperty(window, nome, { 
+          configurable: true, 
+          get: function(){ return fn; }, 
+          set: function(){}, 
+        }); 
+        return; 
+      } catch(e) {} 
+      try { window[nome] = fn; } catch(e) {} 
+    } 
  
-  setTimeout(aplicarAccordion, 800); 
+    (function(){ 
+      var fnOrigAbrir = window.abrirNovaOfRapida; 
+      var wrapped = function() { 
+        if (typeof fnOrigAbrir === 'function') fnOrigAbrir.apply(this, arguments); 
+        setTimeout(function() { 
+          var el = document.getElementById('of-r-numero'); 
+          if (!el) return; 
+          if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; } 
+          else el.textContent = '...'; 
+          window.proximoNumeroOf().then(function(num) { 
+            window._ofRapidaNumero = num; 
+            if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; } 
+            else el.textContent = num; 
+            console.log('[PATCH] numero injetado:', num); 
+          }); 
+        }, 120); 
+      }; 
+      proteger('abrirNovaOfRapida', wrapped); 
+      console.log('[PATCH] abrirNovaOfRapida reprotegida'); 
+    })(); 
  
-  console.log('[PATCH] OK patch.js v2 ativo - Italy Embalagens ERP'); 
+    (function(){ 
+      var fnOrigHub = window.renderHub; 
+      var wrapped = function() { 
+        var res = typeof fnOrigHub === 'function' ? fnOrigHub.apply(this, arguments) : undefined; 
+        setTimeout(function() { 
+          try { window.carregarPassagensHoje(); } catch(e) {} 
+          try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(e) {} 
+        }, 400); 
+        return res; 
+      }; 
+      proteger('renderHub', wrapped); 
+      console.log('[PATCH] renderHub reprotegida'); 
+    })(); 
+ 
+    (function(){ 
+      var fnOrigGo = window.go; 
+      var wrapped = function(page) { 
+        var res = typeof fnOrigGo === 'function' ? fnOrigGo.apply(this, arguments) : undefined; 
+        setTimeout(function(){ try { atualizarAbaAtiva(); } catch(e) {} }, 150); 
+        if (String(page) === 'hub') { 
+          setTimeout(function() { 
+            try { window.carregarPassagensHoje(); } catch(e) {} 
+            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(e) {} 
+          }, 400); 
+        } 
+        if (String(page).toLowerCase().indexOf('maq') >= 0) { 
+          setTimeout(function(){ try { aplicarAccordion(); } catch(e) {} }, 400); 
+        } 
+        return res; 
+      }; 
+      proteger('go', wrapped); 
+      console.log('[PATCH] go() reprotegida'); 
+    })(); 
+ 
+    try { aplicarAccordion(); } catch(e) {} 
+    try { renderHotbar(); } catch(e) {} 
+    console.log('[PATCH] v3 COMPLETO - todos os patches aplicados'); 
+  } 
+ 
+  console.log('[PATCH] v3 ativo - Italy Embalagens ERP'); 
+  aplicarTodosPatchesComDelay(); 
+  setTimeout(aplicarTodosPatchesComDelay, 1000); 
+  setTimeout(aplicarTodosPatchesComDelay, 2000); 
+  setTimeout(aplicarTodosPatchesComDelay, 3000); 
+ 
+  var _ultimaUrl = location.href; 
+  setInterval(function() { 
+    if (location.href !== _ultimaUrl) { 
+      _ultimaUrl = location.href; 
+      setTimeout(aplicarTodosPatchesComDelay, 300); 
+    } 
+    try { 
+      var f = window.abrirNovaOfRapida; 
+      if (typeof f === 'function') { 
+        var s = String(f.toString ? f.toString() : ''); 
+        if (s.indexOf('numero injetado') === -1 && s.indexOf('_ofRapidaNumero') === -1) { 
+          console.log('[PATCH] abrirNovaOfRapida foi sobrescrita, reaplicando...'); 
+          aplicarTodosPatchesComDelay(); 
+        } 
+      } 
+    } catch(e) {} 
+  }, 2000); 
  
 })(); 
