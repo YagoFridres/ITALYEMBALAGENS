@@ -15182,6 +15182,23 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
   }catch(e){ return err(res, e); }
 });
 
+app.patch('/api/ofs/:id/ordem', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const ordem_maquina = Number(req.body?.ordem_maquina);
+    if (!Number.isFinite(ordem_maquina)) return res.status(400).json({ ok: false, error: 'ordem_maquina inválida' });
+
+    const r = await supabase.from('ofs').update({ ordem_maquina: Math.trunc(ordem_maquina) }).eq('id', id);
+    if (r?.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/sequenciamento/auto', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });

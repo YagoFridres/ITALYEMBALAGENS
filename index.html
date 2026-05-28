@@ -9422,7 +9422,7 @@ async function renderOFsPorMaquina(){
       ordArr.forEach((id, idx)=>{ const k = String(id||'').trim(); if(k) pos.set(k, idx); });
       const buckets = [[],[],[],[]];
       baseSorted.forEach((o)=>{ buckets[ofmaqPrioridadeBucket(o) || 3].push(o); });
-      const ofs = buckets.flatMap((arr)=>{
+      let ofs = buckets.flatMap((arr)=>{
         if(!arr.length) return [];
         if(!pos.size) return arr;
         return arr.slice().sort((a,b)=>{
@@ -9432,6 +9432,12 @@ async function renderOFsPorMaquina(){
           return 0;
         });
       });
+      try{
+        const hasOrdem = (ofs || []).some((o)=>Number.isFinite(Number(o?.ordem_maquina)) && Number(o?.ordem_maquina) !== 0);
+        if(hasOrdem){
+          ofs = ofs.slice().sort((a,b)=>Number(a?.ordem_maquina||0) - Number(b?.ordem_maquina||0));
+        }
+      }catch(e){}
       try{ window._ofmaqLastGroupOfs[maq] = ofs.slice(); }catch(e){}
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       const exp = false;
@@ -9439,7 +9445,7 @@ async function renderOFsPorMaquina(){
       const maqDomId = String(maqNome || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'') || 'sem-maquina';
       const bodyId = 'maq-bloco-' + maqDomId;
       return `<div style="margin-bottom:20px">
-        <div class="maq-header" onclick="var c=document.getElementById('${escAttr(bodyId)}');var a=this.querySelector('.maq-seta');if(c){var open=c.style.display!=='none';c.style.display=open?'none':'flex';if(!open){c.style.flexDirection='column';c.style.gap='8px';c.style.padding='10px';}if(a)a.style.transform=open?'rotate(0deg)':'rotate(90deg)';if(!open && typeof Sortable!=='undefined' && !c._sortInst){c._sortInst=new Sortable(c,{animation:150,handle:'.drag-handle, .of-drag',ghostClass:'of-ghost',chosenClass:'of-chosen',delay:150,delayOnTouchOnly:true,onEnd:function(){var ids=[].slice.call(c.querySelectorAll('[data-of-id]')).map(function(el){return el.dataset.ofId;}).filter(Boolean);if(!ids.length)return;var token=localStorage.getItem('token')||sessionStorage.getItem('token')||localStorage.getItem('access_token')||'';fetch('/api/ofs/reordenar',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},(token?{Authorization:'Bearer '+token}:{})),body:JSON.stringify({ordem:ids,maquina_id:'${escAttr(maqNome)}'})}).catch(function(e){});}});} }" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none"
+        <div class="maq-header" onclick="var c=document.getElementById('${escAttr(bodyId)}');var a=this.querySelector('.maq-seta');if(c){var open=c.style.display!=='none';c.style.display=open?'none':'flex';if(!open){c.style.flexDirection='column';c.style.gap='8px';c.style.padding='10px';if(typeof iniciarDragDrop==='function') iniciarDragDrop('${escAttr(bodyId)}');}if(a)a.style.transform=open?'rotate(0deg)':'rotate(90deg)';}" style="background:var(--bg3);border:2px solid var(--accent);border-radius:10px;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none"
           onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background=''">
           <div>
             <div class="maq-header-name" style="font-size:28px;font-weight:900;color:var(--accent);letter-spacing:1px;display:flex;align-items:center;gap:12px">
@@ -9556,6 +9562,97 @@ function toggleMaq(maqId, headerEl) {
   if (seta) seta.style.transform = aberta ? 'rotate(0deg)' : 'rotate(90deg)';
 }
 window.toggleMaq = toggleMaq;
+
+function iniciarDragDrop(maqId) {
+  const container = document.getElementById(String(maqId || '').trim());
+  if (!container) return;
+  if (container._dndBound) return;
+  container._dndBound = true;
+
+  const cards = Array.from(container.querySelectorAll('[data-of-id]'));
+  cards.forEach((card, i) => {
+    card.classList.add('of-drag-card');
+    card.setAttribute('draggable', 'true');
+    card.dataset.ordem = String(i);
+    if (!card.querySelector('.of-ordem-badge')) {
+      const badge = document.createElement('div');
+      badge.className = 'of-ordem-badge';
+      badge.textContent = String(i + 1);
+      badge.style.cssText = 'min-width:28px;height:28px;border-radius:50%;background:#4A90D9;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;position:absolute;left:10px;top:10px;z-index:5';
+      const pos = getComputedStyle(card).position;
+      if (!pos || pos === 'static') card.style.position = 'relative';
+      card.prepend(badge);
+    }
+  });
+
+  const bindCard = (card) => {
+    if (card._dndCardBound) return;
+    card._dndCardBound = true;
+
+    card.addEventListener('dragstart', (e) => {
+      try {
+        e.dataTransfer.setData('text/plain', String(card.dataset.ofId || ''));
+        e.dataTransfer.effectAllowed = 'move';
+      } catch (_) {}
+      card.style.opacity = '0.5';
+    });
+
+    card.addEventListener('dragend', () => {
+      card.style.opacity = '1';
+      card.style.borderTop = '';
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      card.style.borderTop = '2px solid #4A90D9';
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.style.borderTop = '';
+    });
+
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.style.borderTop = '';
+      let draggedId = '';
+      try { draggedId = String(e.dataTransfer.getData('text/plain') || '').trim(); } catch (_) {}
+      if (!draggedId) return;
+      const draggedCard = container.querySelector(`[data-of-id="${CSS.escape(draggedId)}"]`);
+      if (draggedCard && draggedCard !== card) {
+        container.insertBefore(draggedCard, card);
+        salvarOrdemMaquina(container);
+      }
+    });
+  };
+
+  Array.from(container.querySelectorAll('.of-drag-card')).forEach(bindCard);
+}
+window.iniciarDragDrop = iniciarDragDrop;
+
+async function salvarOrdemMaquina(container) {
+  if (!container) return;
+  const cards = Array.from(container.querySelectorAll('.of-drag-card'));
+  cards.forEach((c, i) => {
+    const badge = c.querySelector('.of-ordem-badge');
+    if (badge) badge.textContent = String(i + 1);
+  });
+
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || '';
+  if (!token) return;
+  const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token };
+
+  const promises = cards.map((c, i) => {
+    const id = String(c.dataset.ofId || '').trim();
+    if (!id) return Promise.resolve(null);
+    return fetch(`/api/ofs/${encodeURIComponent(id)}/ordem`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ ordem_maquina: i })
+    });
+  });
+  try { await Promise.all(promises); } catch (e) { try { console.warn('[DRAG] Erro ao salvar ordem:', e); } catch (_) {} }
+}
+window.salvarOrdemMaquina = salvarOrdemMaquina;
 
 let _ofmaqBuscaTimer = null;
 function ofmaqOnBuscaInput(){
