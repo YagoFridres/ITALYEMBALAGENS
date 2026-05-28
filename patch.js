@@ -346,64 +346,69 @@
 
   setTimeout(renderHotbar, 600); 
  
-  // ── PATCH 6: accordion OFs por Máquina ────────────────────────── 
-  function aplicarAccordion() { 
-    // Seletor real do header (index.html usa .maq-header) 
+  function aplicarAccordionV3() { 
     var headers = document.querySelectorAll('.maq-header'); 
-    console.log('[PATCH] aplicarAccordion: ' + headers.length + ' headers encontrados'); 
+    console.log('[PATCH] accordion v3:', headers.length, 'headers'); 
  
     headers.forEach(function(header) { 
-      if (header._patchAcordeon) return; // não duplicar 
-      header._patchAcordeon = true; 
+      if (header._pv3) return; 
+      header._pv3 = true; 
       try { header.setAttribute('data-patch-acordeon', '1'); } catch(_) {} 
  
-      // O conteúdo fica no próximo elemento irmão 
       var body = header.nextElementSibling; 
       if (!body) return; 
  
-      // Remover onclick inline para não dar toggle duplo 
       try { if (header.getAttribute && header.getAttribute('onclick')) header.removeAttribute('onclick'); } catch(_) {} 
  
-      // Fechar inicialmente 
+      var seta = header.querySelector('.maq-seta') || header.querySelector('.patch-seta') || null; 
+      if (!seta) { 
+        seta = document.createElement('span'); 
+        seta.className = 'patch-seta'; 
+        seta.textContent = '▶'; 
+        seta.style.cssText = 'display:inline-block;transition:transform 0.25s;margin-left:auto;color:rgba(255,255,255,0.4);font-size:13px;transform:rotate(0deg)'; 
+        try { header.appendChild(seta); } catch(_) {} 
+      } 
+ 
       body.style.display = 'none'; 
- 
-      // Adicionar indicador visual no header 
-      var seta = header.querySelector('.maq-seta') || header.querySelector('svg') || null; 
- 
+      try { body.style.flexDirection = 'column'; body.style.gap = '8px'; } catch(_) {} 
       header.style.cursor = 'pointer'; 
+ 
       header.addEventListener('click', function(e) { 
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || 
-            e.target.closest('button') || e.target.closest('select')) return; 
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.tagName === 'SELECT' || 
+            e.target.closest('button') || e.target.closest('a') || e.target.closest('select')) return; 
  
         var aberto = body.style.display !== 'none'; 
         body.style.display = aberto ? 'none' : 'flex'; 
-        try { 
-          body.style.flexDirection = 'column'; 
-          body.style.gap = '8px'; 
-          if (!aberto) body.style.padding = '10px'; 
-        } catch(_) {} 
-        if (seta) seta.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'; 
-        console.log('[PATCH] accordion:', header.textContent.trim().substring(0,20), aberto ? 'fechou' : 'abriu'); 
+        try { body.style.padding = aberto ? '' : '10px'; } catch(_) {} 
+        try { if (seta) seta.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'; } catch(_) {} 
  
-        // Iniciar Sortable ao abrir (se disponível) 
         if (!aberto && typeof Sortable !== 'undefined' && !body._sortInst) { 
           body._sortInst = new Sortable(body, { 
             animation: 150, 
-            delay: 100, 
+            delay: 150, 
             delayOnTouchOnly: true, 
+            ghostClass: 'of-ghost', 
+            handle: '.drag-handle', 
             onEnd: function() { 
-              var ids = Array.from(body.querySelectorAll('[data-of-id]')) 
-                .map(function(el){ return el.dataset.ofId; }).filter(Boolean); 
-              if (!ids.length) return; 
-              var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
-              var maq = body.dataset.maquinaId || body.dataset.maquina || body.dataset.maquinaNome || body.dataset.maquinaName || ''; 
-              fetch('/api/ofs/reordenar', { 
-                method: 'POST', 
-                headers: Object.assign({'Content-Type':'application/json'}, token ? {Authorization:'Bearer '+token} : {}), 
-                body: JSON.stringify({ ordem: ids, maquina_id: String(maq || '').trim() }) 
-              }).catch(function(e){ console.warn('[PATCH] reordenar:', e); }); 
+              try { 
+                var cards = body.querySelectorAll('[data-of-id]'); 
+                Array.prototype.forEach.call(cards, function(c, i) { 
+                  var badge = c.querySelector('.of-ordem-badge, .ordem-badge'); 
+                  if (badge) badge.textContent = String(i + 1); 
+                }); 
+                var ids = Array.from(cards).map(function(c){ return c.dataset.ofId; }).filter(Boolean); 
+                if (!ids.length) return; 
+                var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+                var maq = body.dataset.maquinaId || body.dataset.maquina || body.dataset.maquinaNome || body.dataset.maquinaName || ''; 
+                fetch('/api/ofs/reordenar', { 
+                  method: 'POST', 
+                  headers: Object.assign({'Content-Type':'application/json'}, token ? {Authorization:'Bearer '+token} : {}), 
+                  body: JSON.stringify({ ordem: ids, maquina_id: String(maq || '').trim() }) 
+                }).catch(function(){}); 
+              } catch(_) {} 
             } 
           }); 
+          console.log('[PATCH] Sortable iniciado'); 
         } 
       }); 
     }); 
@@ -415,7 +420,7 @@
   if (typeof _origRenderMaq === 'function') { 
     window[_nomeFuncRender] = function() { 
       var res = _origRenderMaq.apply(this, arguments); 
-      setTimeout(aplicarAccordion, 300); 
+      setTimeout(aplicarAccordionV3, 300); 
       return res; 
     }; 
     console.log('[PATCH] interceptou ' + _nomeFuncRender); 
@@ -424,7 +429,7 @@
     // Fallback: observar mudanças no DOM da tela de máquinas 
     var _observer = new MutationObserver(function() { 
       var headers2 = document.querySelectorAll('.maq-header:not([data-patch-acordeon])'); 
-      if (headers2.length > 0) aplicarAccordion(); 
+      if (headers2.length > 0) aplicarAccordionV3(); 
     }); 
     _observer.observe(document.body, { childList: true, subtree: true }); 
   } 

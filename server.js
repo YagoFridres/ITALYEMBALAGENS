@@ -4723,7 +4723,17 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         }
       }
     } catch (_) {}
-    const payload = { ...ofIn(req.body || {}), updated_at: new Date().toISOString() };
+    const bodyIn = req.body || {};
+    const mapped =
+      (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
+        ? {
+          ...bodyIn,
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina_atual') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
+            ? { maq: bodyIn.maquina_atual }
+            : {}),
+        }
+        : bodyIn;
+    const payload = { ...ofIn(mapped || {}), updated_at: new Date().toISOString() };
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
       const stAtual = String(ofAtual2?.status || '').trim().toLowerCase();
