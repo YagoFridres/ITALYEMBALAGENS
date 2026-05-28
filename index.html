@@ -3203,7 +3203,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
     <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Setor de Finalização</label>
-        <select id="setor-finalizacao" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;font-weight:700;outline:none;font-family:inherit"
+        <select id="mconc-setor-finalizacao" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;font-weight:700;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
           <option value="">-- Selecionar setor --</option>
           <option value="Acabamento">Acabamento</option>
@@ -3216,25 +3216,25 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
       </div>
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Caixas Boas *</label>
-        <input id="caixas-boas" type="number" min="0" placeholder="${String(qtdOriginal||'Total produzido').replace(/"/g,'&quot;')}" value="${String(qtdOriginal||'').replace(/"/g,'&quot;')}"
+        <input id="mconc-caixas-boas" type="number" min="0" placeholder="${String(qtdOriginal||'Total produzido').replace(/"/g,'&quot;')}" value="${String(qtdOriginal||'').replace(/"/g,'&quot;')}"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#10b981;font-size:16px;font-weight:700;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Caixas Perdidas</label>
-        <input id="caixas-perdidas" type="number" min="0" placeholder="0"
+        <input id="mconc-caixas-perdidas" type="number" min="0" placeholder="0"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#f43f5e;font-size:16px;font-weight:700;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#f43f5e'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Motivo da Perda (opcional)</label>
-        <input id="motivo-perda" placeholder="Ex: ajuste, setup, troca de papelão..."
+        <input id="mconc-motivo-perda" placeholder="Ex: ajuste, setup, troca de papelão..."
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Operador (opcional)</label>
-        <input id="conc-operador" placeholder="Nome do operador" value="${escAttr(String(window.CURRENT_USER?.nome || window._usuario?.nome || '').trim())}"
+        <input id="mconc-operador" placeholder="Nome do operador" value="${escAttr(String(window.CURRENT_USER?.nome || window._usuario?.nome || '').trim())}"
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
@@ -3260,16 +3260,16 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
   modal.querySelector('#btn-canc-conc').onclick = fechar;
 
   modal.querySelector('#btn-conf-conc').onclick = async ()=>{
-    const caixasBoas = Math.trunc(Number(modal.querySelector('#caixas-boas')?.value || 0) || 0);
-    const caixasPerdidas = Math.trunc(Number(modal.querySelector('#caixas-perdidas')?.value || 0) || 0);
-    const setorFinalizacao = String(modal.querySelector('#setor-finalizacao')?.value || '');
-    const motivoPerda = String(modal.querySelector('#motivo-perda')?.value || '');
-    const operadorConclusao = String(modal.querySelector('#conc-operador')?.value || '');
+    const caixasBoas = Math.trunc(Number(modal.querySelector('#mconc-caixas-boas')?.value || 0) || 0);
+    const caixasPerdidas = Math.trunc(Number(modal.querySelector('#mconc-caixas-perdidas')?.value || 0) || 0);
+    const setorFinalizacao = String(modal.querySelector('#mconc-setor-finalizacao')?.value || '');
+    const motivoPerda = String(modal.querySelector('#mconc-motivo-perda')?.value || '');
+    const operadorConclusao = String(modal.querySelector('#mconc-operador')?.value || '');
     const obs = String(modal.querySelector('#conc-obs')?.value || '');
 
     if(!caixasBoas){
       try{
-        const inp = modal.querySelector('#caixas-boas');
+        const inp = modal.querySelector('#mconc-caixas-boas');
         inp.style.borderColor = '#f43f5e';
         inp.focus();
       }catch(e){}
@@ -9847,17 +9847,23 @@ function abrirModalBaixaConclusao(opts){
   const modal = document.getElementById('modal-baixa-conclusao');
   if(!modal) return Promise.resolve(null);
   const titulo = document.getElementById('baixa-conc-titulo');
-  const qtdEl = document.getElementById('baixa-conc-qtd');
-  const perdEl = document.getElementById('qtd-perdida');
+  const qtdEl = document.getElementById('caixas-boas');
+  const perdEl = document.getElementById('caixas-perdidas');
   const fatEl = document.getElementById('baixa-conc-fat');
   const prodSel = document.getElementById('modal-maq-producao');
   const maqWrap = document.getElementById('modal-maq-perda-wrap');
   const maqSel = document.getElementById('modal-maq-perda');
+  const setorSel = document.getElementById('setor-finalizacao');
+  const opEl = document.getElementById('conc-operador');
+  const motivoEl = document.getElementById('motivo-perda');
   const sub = document.getElementById('baixa-conc-sub');
   const info = document.getElementById('baixa-conc-info');
   if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
   if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
   if(perdEl) perdEl.value = String((opts && opts.qtdPerdida)!=null ? opts.qtdPerdida : 0);
+  if(setorSel) setorSel.value = String(opts?.setor_finalizacao || '').trim();
+  if(opEl) opEl.value = String(opts?.operador_conclusao || (CURRENT_USER?.nome || '') || '').trim();
+  if(motivoEl) motivoEl.value = String(opts?.motivo_perda || '').trim();
   if(fatEl) fatEl.value = String(opts?.data_faturamento || today()).slice(0,10);
   if(maqSel){
     const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
@@ -9937,15 +9943,21 @@ function fecharModalBaixaConclusao(ret){
   }
 }
 function confirmarModalBaixaConclusao(){
-  const qtdEl = document.getElementById('baixa-conc-qtd');
-  const perdEl = document.getElementById('qtd-perdida');
+  const qtdEl = document.getElementById('caixas-boas');
+  const perdEl = document.getElementById('caixas-perdidas');
   const maqSel = document.getElementById('modal-maq-perda');
   const fatEl = document.getElementById('baixa-conc-fat');
   const prodSel = document.getElementById('modal-maq-producao');
+  const setorSel = document.getElementById('setor-finalizacao');
+  const opEl = document.getElementById('conc-operador');
+  const motivoEl = document.getElementById('motivo-perda');
   const qtdReal = Number(String(qtdEl?.value||'').replace(',', '.'));
   const qtdPerdida = Math.trunc(Number(String(perdEl?.value||'').replace(',', '.')));
   if(!Number.isFinite(qtdReal) || qtdReal < 0){ toast('Quantidade produzida inválida','var(--red)'); return; }
   if(!Number.isFinite(qtdPerdida) || qtdPerdida < 0){ toast('Quantidade perdida inválida','var(--red)'); return; }
+  const setorFinalizacao = String(setorSel?.value || '').trim();
+  const operadorConclusao = String(opEl?.value || '').trim();
+  const motivoPerda = String(motivoEl?.value || '').trim();
   let maquinaId = '';
   let maquinaNome = '';
   if(qtdPerdida > 0){
@@ -9987,6 +9999,11 @@ function confirmarModalBaixaConclusao(){
   fecharModalBaixaConclusao({
     qtd_real: qtdReal,
     qtd_perdida: qtdPerdida,
+    setor_finalizacao: setorFinalizacao || null,
+    caixas_boas: Math.trunc(qtdReal || 0),
+    caixas_perdidas: Math.trunc(qtdPerdida || 0),
+    motivo_perda: motivoPerda || null,
+    operador_conclusao: operadorConclusao || null,
     maquina_id: maquinaId || null,
     maquina: maquinaNome || null,
     maquina_producao_id: prodId || null,
@@ -10072,6 +10089,11 @@ async function concluirOFComBaixa(ofId){
     if(!respModal) return;
     qtdProd = Math.trunc(Number(respModal.qtd_real || 0));
     qtdPerd = Math.trunc(Number(respModal.qtd_perdida || 0));
+    const setorFinalizacao = String(respModal.setor_finalizacao || '').trim();
+    const caixasBoas = Math.trunc(Number((respModal.caixas_boas != null ? respModal.caixas_boas : qtdProd) || 0));
+    const caixasPerdidas = Math.trunc(Number((respModal.caixas_perdidas != null ? respModal.caixas_perdidas : qtdPerd) || 0));
+    const motivoPerda = String(respModal.motivo_perda || '').trim();
+    const operadorConclusao = String(respModal.operador_conclusao || '').trim();
     const dataFaturamento = String(respModal.data_faturamento || '').trim();
     const maqPerdaId = String(respModal.maquina_id || '').trim();
     const maqPerdaNome = String(respModal.maquina || '').trim();
@@ -10107,6 +10129,11 @@ async function concluirOFComBaixa(ofId){
     const concluirBody = {
       qtd_produzida: qtdProd,
       qtd_perdida: qtdPerd,
+      setor_finalizacao: setorFinalizacao || null,
+      caixas_boas: caixasBoas,
+      caixas_perdidas: caixasPerdidas,
+      motivo_perda: motivoPerda || null,
+      operador_conclusao: operadorConclusao || null,
       maquina_producao: (maqProdNome || nomeMaquinaAtual || null),
       maquina_perda: nomeMaquinaAtual || null,
       maquina_perda_id: idMaquinaAtual || null
@@ -10149,6 +10176,11 @@ async function concluirOFComBaixa(ofId){
       status: 'Concluído',
       qtd_produzida: qtdSalva,
       qtd_perdida: qtdPerdSalva,
+      setor_finalizacao: setorFinalizacao || null,
+      caixas_boas: caixasBoas,
+      caixas_perdidas: caixasPerdidas,
+      motivo_perda: motivoPerda || null,
+      operador_conclusao: operadorConclusao || null,
       maquina_perda: concluirBody.maquina_perda || null,
       maquina_perda_id: concluirBody.maquina_perda_id || null,
       usuario_conclusao: (concData && concData.usuario_conclusao) ? concData.usuario_conclusao : ((CURRENT_USER && CURRENT_USER.nome) ? CURRENT_USER.nome : undefined),
@@ -42654,8 +42686,24 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div id="baixa-conc-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Setor de finalização</label>
+        <select id="setor-finalizacao" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
+          <option value="">-- Selecionar setor --</option>
+          <option value="Acabamento">Acabamento</option>
+          <option value="Riscador 01">Riscador 01</option>
+          <option value="Riscador 02">Riscador 02</option>
+          <option value="Corte Plana">Corte Plana</option>
+          <option value="Coladeira 01">Coladeira 01</option>
+          <option value="Coladeira 02">Coladeira 02</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">Operador (opcional)</label>
+        <input id="conc-operador" type="text" placeholder="Nome do operador" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text2);text-transform:uppercase">📦 Caixas produzidas</label>
-        <input id="baixa-conc-qtd" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
+        <input id="caixas-boas" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text3);text-transform:uppercase">📅 Data de Faturamento</label>
@@ -42669,7 +42717,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🗑 Caixas perdidas</label>
-        <input id="qtd-perdida" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:700">
+        <input id="caixas-perdidas" type="number" min="0" step="1" value="0" style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:700">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <label style="font-size:11px;color:var(--text3);text-transform:uppercase">Motivo da perda (opcional)</label>
+        <input id="motivo-perda" type="text" placeholder="Ex: ajuste, setup, troca de papelão..." style="padding:10px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
       </div>
       <div id="modal-maq-perda-wrap" style="display:none;flex-direction:column;gap:6px">
         <label style="font-size:11px;color:var(--text3);text-transform:uppercase">🏭 Máquina da perda (opcional)</label>
