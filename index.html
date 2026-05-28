@@ -2314,6 +2314,7 @@ window.abrirFotoModal = function(url, titulo) {
     modal.addEventListener('click', () => { modal.style.display='none'; });
     document.body.appendChild(modal);
   }
+  const operadorPref = String(window.CURRENT_USER?.nome || window._usuario?.nome || '').trim();
   modal.innerHTML = `
     <div style="color:#fff;font-size:1rem;font-weight:600;text-align:center;padding:0 20px;max-width:90vw">${escH(titulo || '')}</div>
     <img src="${escAttr(src)}" style="max-width:90vw;max-height:82vh;object-fit:contain;border-radius:10px;border:2px solid rgba(255,255,255,.15)" onclick="event.stopPropagation()">
@@ -3232,6 +3233,12 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Operador (opcional)</label>
+        <input id="conc-operador" placeholder="Nome do operador" value="${escAttr(String(window.CURRENT_USER?.nome || window._usuario?.nome || '').trim())}"
+          style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Observação (opcional)</label>
         <input id="conc-obs" placeholder="Alguma observação..."
           style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:12px 14px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
@@ -3257,6 +3264,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
     const caixasPerdidas = Math.trunc(Number(modal.querySelector('#caixas-perdidas')?.value || 0) || 0);
     const setorFinalizacao = String(modal.querySelector('#setor-finalizacao')?.value || '');
     const motivoPerda = String(modal.querySelector('#motivo-perda')?.value || '');
+    const operadorConclusao = String(modal.querySelector('#conc-operador')?.value || '');
     const obs = String(modal.querySelector('#conc-obs')?.value || '');
 
     if(!caixasBoas){
@@ -3284,6 +3292,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
           caixas_boas: caixasBoas,
           caixas_perdidas: caixasPerdidas,
           motivo_perda: motivoPerda,
+          operador_conclusao: operadorConclusao || usuario,
           qtd_produzida: caixasBoas,
           qtd_perdida: caixasPerdidas,
           obs_conclusao: obs,
@@ -3305,6 +3314,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
             caixas_boas: caixasBoas,
             caixas_perdidas: caixasPerdidas,
             motivo_perda: motivoPerda,
+            operador_conclusao: operadorConclusao || usuario,
             qtd_produzida: caixasBoas,
             qtd_perdida: caixasPerdidas,
             obs2: obs,
@@ -3328,6 +3338,7 @@ window.concluirOfPainel = async function(ofId, ofNum, btn){
             window.OFS_ARQUIVO[idx].caixas_boas = caixasBoas;
             window.OFS_ARQUIVO[idx].caixas_perdidas = caixasPerdidas;
             window.OFS_ARQUIVO[idx].motivo_perda = motivoPerda;
+            window.OFS_ARQUIVO[idx].operador_conclusao = operadorConclusao || window.OFS_ARQUIVO[idx].operador_conclusao || '';
             window.OFS_ARQUIVO[idx].data_conclusao = new Date().toISOString();
           }
         }
