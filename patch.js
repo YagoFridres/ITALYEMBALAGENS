@@ -1,59 +1,126 @@
-/* patch.js — Italy Embalagens ERP — carregado após index.html */ 
+/* patch.js — Italy Embalagens ERP v2 */ 
 (function() { 
   'use strict'; 
-
-  // PATCH 1 — proximoNumeroOf: busca último número e soma +1 
+ 
+  // ── UTIL: pegar token ────────────────────────────────────────── 
+  function getToken() { 
+    return localStorage.getItem('token') || 
+           sessionStorage.getItem('token') || 
+           localStorage.getItem('access_token') || ''; 
+  } 
+ 
+  // ── PATCH 1: proximoNumeroOf ─────────────────────────────────── 
+  // Busca a OF com maior número e retorna número + 1 formatado 
   window.proximoNumeroOf = async function() { 
-    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+    var token = getToken(); 
     var h = token ? { 'Authorization': 'Bearer ' + token } : {}; 
     try { 
-      var r = await fetch('/api/ofs?limit=1&order_by=numero&order=desc&t=' + Date.now(), { headers: h }); 
-      if (!r.ok) throw new Error('HTTP ' + r.status); 
-      var d = await r.json(); 
-      var lista = d.data || d.ofs || (Array.isArray(d) ? d : []); 
-      if (lista.length) { 
-        var raw = String(lista[0].numero || lista[0].of_num || '0').trim(); 
-        var n = parseInt(raw, 10); 
-        if (!isNaN(n) && n > 0) { 
-          var proximo = String(n + 1).padStart(Math.max(raw.length, 3), '0'); 
-          console.log('[PATCH] proximoNumeroOf: último=' + raw + ' próximo=' + proximo); 
+      // Tentar com order_by=numero 
+      var r = await fetch('/api/ofs?limit=5&order_by=numero&order=desc&t=' + Date.now(), { headers: h }); 
+      if (r.ok) { 
+        var d = await r.json(); 
+        var lista = d.data || d.ofs || (Array.isArray(d) ? d : []); 
+        console.log('[PATCH] OFs recebidas para calcular próximo número:', lista.slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id}; })); 
+        // Tentar todos os campos possíveis de número 
+        var maior = 0; 
+        lista.forEach(function(o) { 
+          ['numero','of_num','numero_of','num','number','of'].forEach(function(campo) { 
+            if (o && o[campo]) { 
+              var n = parseInt(String(o[campo]).replace(/\\D/g,''), 10); 
+              if (!isNaN(n) && n > maior) maior = n; 
+            } 
+          }); 
+        }); 
+        if (maior > 0) { 
+          var proximo = String(maior + 1).padStart(String(maior).length >= 3 ? String(maior).length : 3, '0'); 
+          console.log('[PATCH] proximoNumeroOf: maior=' + maior + ' próximo=' + proximo); 
           return proximo; 
         } 
       } 
-    } catch(e) { console.warn('[PATCH] proximoNumeroOf falhou:', e.message); } 
-    var cache = window.OFS_ARQUIVO || []; 
+    } catch(e) { console.warn('[PATCH] proximoNumeroOf API falhou:', e.message); } 
+ 
+    // Fallback: usar OFs já carregadas em memória 
+    var cache = window.OFS_ARQUIVO || window._ofs_cache || []; 
     if (cache.length) { 
-      var nums = cache.map(function(o){ return parseInt(o.numero || o.of_num || '0', 10); }).filter(function(n){ return !isNaN(n) && n > 0; }); 
-      if (nums.length) return String(Math.max.apply(null, nums) + 1).padStart(3, '0'); 
+      var nums = []; 
+      cache.forEach(function(o) { 
+        ['numero','of_num','numero_of','num','of'].forEach(function(campo) { 
+          if (o && o[campo]) { 
+            var n = parseInt(String(o[campo]).replace(/\\D/g,''), 10); 
+            if (!isNaN(n) && n > 0) nums.push(n); 
+          } 
+        }); 
+      }); 
+      if (nums.length) { 
+        var max = Math.max.apply(null, nums); 
+        return String(max + 1).padStart(3, '0'); 
+      } 
     } 
+    console.warn('[PATCH] proximoNumeroOf: usando fallback 001'); 
     return '001'; 
   }; 
-
-  // PATCH 2 — carregarPassagensHoje: lista com filtros Hoje/Semana/Mês 
+ 
+  // ── PATCH 2: injetar número ao abrir modal OF Rápida ────────── 
+  var _origAbrir = window.abrirNovaOfRapida; 
+  window.abrirNovaOfRapida = function() { 
+    if (typeof _origAbrir === 'function') _origAbrir.apply(this, arguments); 
+    setTimeout(function() { 
+      var el = document.getElementById('of-r-numero'); 
+      if (!el) { console.warn('[PATCH] #of-r-numero não encontrado'); return; } 
+      var setVal = function(v) { 
+        if (el.tagName === 'INPUT') el.value = v; 
+        else el.textContent = v; 
+      }; 
+      try { el.disabled = true; } catch(_) {} 
+      setVal('...'); 
+      window.proximoNumeroOf().then(function(num) { 
+        window._ofRapidaNumero = num; 
+        setVal(num); 
+        try { el.disabled = false; } catch(_) {} 
+        console.log('[PATCH] OF Rápida número:', num); 
+      }); 
+    }, 100); 
+  }; 
+ 
+  // ── PATCH 3: garantir número no payload ao salvar OF Rápida ─── 
+  var _origSalvar1 = window.salvarOfRapida; 
+  var _origSalvar2 = window.salvarNovaOfRapida; 
+  var _wrapSalvar = function(orig) { 
+    return function() { 
+      var el = document.getElementById('of-r-numero'); 
+      var num = window._ofRapidaNumero || 
+                (el ? (el.value || el.textContent || '').replace(/[^0-9]/g,'') : '') || 
+                '001'; 
+      window._ofRapidaNumero = num; 
+      if (el) { if (el.tagName === 'INPUT') el.value = num; else el.textContent = num; } 
+      console.log('[PATCH] salvar OF Rápida número:', num); 
+      if (typeof orig === 'function') return orig.apply(this, arguments); 
+    }; 
+  }; 
+  if (typeof _origSalvar1 === 'function') window.salvarOfRapida = _wrapSalvar(_origSalvar1); 
+  if (typeof _origSalvar2 === 'function') window.salvarNovaOfRapida = _wrapSalvar(_origSalvar2); 
+ 
+  // ── PATCH 4: carregarPassagensHoje com filtros ───────────────── 
   window.carregarPassagensHoje = async function(opts) { 
     opts = opts || {}; 
     var periodo = opts.periodo || 'hoje'; 
-    var maquina = opts.maquina || ''; 
-    var cliente = opts.cliente || ''; 
     var container = document.getElementById('passagens-lista'); 
     if (!container) { console.warn('[PATCH] #passagens-lista não encontrado'); return; } 
     container.innerHTML = '<p style="color:#64748b;text-align:center;padding:16px;font-size:13px">Carregando...</p>'; 
-    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+    var token = getToken(); 
     var h = token ? { 'Authorization': 'Bearer ' + token } : {}; 
-    var params = 'periodo=' + periodo + '&t=' + Date.now(); 
-    if (maquina) params += '&maquina=' + encodeURIComponent(maquina); 
-    if (cliente) params += '&cliente=' + encodeURIComponent(cliente); 
     try { 
-      var r = await fetch('/api/passagens/hoje?' + params, { headers: h }); 
+      var r = await fetch('/api/passagens/hoje?periodo=' + periodo + '&t=' + Date.now(), { headers: h }); 
       if (!r.ok) throw new Error('HTTP ' + r.status); 
       var d = await r.json(); 
       var lista = d.passagens || []; 
-      console.log('[PATCH] carregarPassagensHoje: ' + lista.length + ' registros (' + periodo + ')'); 
+      console.log('[PATCH] passagens:', lista.length, 'registros (' + periodo + ')'); 
       function bs(p) { 
-        var a = periodo === p; 
-        return 'border:1px solid ' + (a?'rgba(74,144,217,0.5)':'rgba(255,255,255,0.1)') + ';background:' + (a?'rgba(74,144,217,0.2)':'rgba(255,255,255,0.04)') + ';color:' + (a?'#4A90D9':'#94a3b8') + ';border-radius:20px;padding:3px 12px;cursor:pointer;font-size:12px'; 
+        return 'border:none;border-radius:20px;padding:4px 14px;cursor:pointer;font-size:12px;font-weight:500;background:' + 
+          (periodo===p ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';color:' + 
+          (periodo===p ? '#fff' : '#94a3b8'); 
       } 
-      var html = '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + 
+      var html = '<div style="display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06)">' + 
         '<button style="' + bs('hoje')   + '" onclick="carregarPassagensHoje({periodo:\'hoje\'})">Hoje</button>' + 
         '<button style="' + bs('semana') + '" onclick="carregarPassagensHoje({periodo:\'semana\'})">Esta semana</button>' + 
         '<button style="' + bs('mes')    + '" onclick="carregarPassagensHoje({periodo:\'mes\'})">Este mês</button>' + 
@@ -61,48 +128,79 @@
       if (!lista.length) { 
         html += '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Nenhuma passagem registrada neste período.</p>'; 
       } else { 
-        html += lista.map(function(p) { 
+        html += '<div style="overflow-y:auto;max-height:300px">' + lista.map(function(p) { 
           var hora = p.hora_passagem ? new Date(p.hora_passagem).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''; 
-          return '<div style="display:grid;grid-template-columns:70px 1fr 110px 85px;gap:6px;align-items:center;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px">' + 
-            '<span style="font-weight:700;color:#10b981">OF #' + (p.of_numero||'—') + '</span>' + 
-            '<span style="color:#e2e8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.cliente||'—') + '</span>' + 
-            '<span style="color:#94a3b8">' + (p.maquina||'—') + '</span>' + 
-            '<span style="color:#64748b;white-space:nowrap">' + hora + '</span>' + 
+          return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">' + 
+            '<span style="font-weight:700;color:#10b981;min-width:55px">OF #' + (p.of_numero||'—') + '</span>' + 
+            '<span style="color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (p.cliente||'—') + '</span>' + 
+            '<span style="color:#94a3b8;min-width:80px">' + (p.maquina||'—') + '</span>' + 
+            '<span style="color:#64748b;min-width:75px;text-align:right">' + hora + '</span>' + 
             '</div>'; 
-        }).join(''); 
+        }).join('') + '</div>'; 
       } 
       container.innerHTML = html; 
     } catch(e) { 
       container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px">Erro ao carregar passagens.</p>'; 
-      console.error('[PATCH] carregarPassagensHoje erro:', e); 
+      console.error('[PATCH] carregarPassagensHoje:', e); 
     } 
   }; 
-
-  // PATCH 3 — Interceptar abrirNovaOfRapida para injetar número correto 
-  var _origAbrir = window.abrirNovaOfRapida; 
-  window.abrirNovaOfRapida = function() { 
-    if (typeof _origAbrir === 'function') _origAbrir.apply(this, arguments); 
-    setTimeout(function() { 
-      var el = document.getElementById('of-r-numero'); 
-      if (!el) { console.warn('[PATCH] #of-r-numero não encontrado'); return; } 
-      if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; } 
-      else el.textContent = '...'; 
-      window.proximoNumeroOf().then(function(num) { 
-        window._ofRapidaNumero = num; 
-        if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; } 
-        else el.textContent = num; 
-        console.log('[PATCH] OF Rápida número injetado:', num); 
-      }); 
-    }, 80); 
-  }; 
-
-  // PATCH 4 — Interceptar renderHub para sempre chamar carregarPassagensHoje 
-  var _origRenderHub = window.renderHub; 
+ 
+  // ── PATCH 5: interceptar renderHub ──────────────────────────── 
+  var _origHub = window.renderHub; 
   window.renderHub = function() { 
-    var res = typeof _origRenderHub === 'function' ? _origRenderHub.apply(this, arguments) : undefined; 
-    setTimeout(function() { window.carregarPassagensHoje(); }, 300); 
+    var res = typeof _origHub === 'function' ? _origHub.apply(this, arguments) : undefined; 
+    setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
     return res; 
   }; 
-
-  console.log('[PATCH] ✅ patch.js ativo — Italy Embalagens ERP'); 
- })(); 
+ 
+  // ── PATCH 6: accordion nas OFs por Máquina ──────────────────── 
+  var _patchAccordion = function() { 
+    var headers = document.querySelectorAll('.maq-header'); 
+    Array.prototype.forEach.call(headers, function(header) { 
+      if (!header) return; 
+      if (header._accordionPatch) return; 
+      if (header.getAttribute && String(header.getAttribute('onclick') || '').trim()) return; 
+      header._accordionPatch = true; 
+      var body = header.nextElementSibling; 
+      if (!body) return; 
+      try { if (!body.style.display) body.style.display = 'none'; } catch(_) {} 
+      header.addEventListener('click', function(e) { 
+        try { if (e && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return; } catch(_) {} 
+        var isOpen = body.style.display !== 'none'; 
+        body.style.display = isOpen ? 'none' : 'flex'; 
+        body.style.flexDirection = 'column'; 
+        body.style.gap = '8px'; 
+        body.style.padding = isOpen ? '' : '10px'; 
+        var seta = header.querySelector('.maq-seta'); 
+        if (seta) seta.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)'; 
+      }, true); 
+    }); 
+  }; 
+ 
+  var _origRenderMaq = window.renderOFsPorMaquina; 
+  if (typeof _origRenderMaq === 'function') { 
+    window.renderOFsPorMaquina = function() { 
+      var res = _origRenderMaq.apply(this, arguments); 
+      setTimeout(_patchAccordion, 200); 
+      return res; 
+    }; 
+  } 
+ 
+  var _origGo = window.go; 
+  if (typeof _origGo === 'function') { 
+    window.go = function(page) { 
+      var res = _origGo.apply(this, arguments); 
+      var pid = String(page || '').toLowerCase(); 
+      if (pid === 'ofmaq' || pid.indexOf('maquin') !== -1) { 
+        setTimeout(_patchAccordion, 500); 
+      } 
+      if (pid === 'hub') { 
+        setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
+      } 
+      return res; 
+    }; 
+  } 
+ 
+  console.log('[PATCH] ✅ patch.js v2 ativo — Italy Embalagens ERP'); 
+ 
+})(); 
