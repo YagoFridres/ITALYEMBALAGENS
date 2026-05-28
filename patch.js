@@ -104,28 +104,6 @@
     return '001'; 
   }; 
  
-  // ── PATCH 2: injetar numero ao abrir modal OF Rapida ────────── 
-  var _origAbrir = window.abrirNovaOfRapida; 
-  window.abrirNovaOfRapida = function() { 
-    if (typeof _origAbrir === 'function') _origAbrir.apply(this, arguments); 
-    setTimeout(function() { 
-      var el = document.getElementById('of-r-numero'); 
-      if (!el) { console.warn('[PATCH] #of-r-numero nao encontrado'); return; } 
-      var setVal = function(v) { 
-        if (el.tagName === 'INPUT') el.value = v; 
-        else el.textContent = v; 
-      }; 
-      try { el.disabled = true; } catch(_) {} 
-      setVal('...'); 
-      window.proximoNumeroOf().then(function(num) { 
-        window._ofRapidaNumero = num; 
-        setVal(num); 
-        try { el.disabled = false; } catch(_) {} 
-        console.log('[PATCH] OF Rapida numero:', num); 
-      }); 
-    }, 100); 
-  }; 
- 
   // ── PATCH 3: garantir numero no payload ao salvar OF Rapida ─── 
   var _origSalvar1 = window.salvarOfRapida; 
   var _origSalvar2 = window.salvarNovaOfRapida; 
@@ -188,14 +166,6 @@
       container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px">Erro ao carregar passagens.</p>'; 
       console.error('[PATCH] carregarPassagensHoje:', e); 
     } 
-  }; 
- 
-  // ── PATCH 5: interceptar renderHub ──────────────────────────── 
-  var _origHub = window.renderHub; 
-  window.renderHub = function() { 
-    var res = typeof _origHub === 'function' ? _origHub.apply(this, arguments) : undefined; 
-    setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
-    return res; 
   }; 
 
   var HOTBAR_TODAS_ABAS = [ 
@@ -339,12 +309,6 @@
     salvarHotbarConfig(cur); 
   }; 
 
-  var _origUpdateBottomNavActive = window.updateBottomNavActive; 
-  window.updateBottomNavActive = function(pageId){ 
-    try{ if (typeof _origUpdateBottomNavActive === 'function') _origUpdateBottomNavActive(pageId); }catch(e){} 
-    try{ atualizarAbaAtiva(); }catch(e){} 
-  }; 
- 
   function aplicarAccordion() { 
     var headers = document.querySelectorAll('.maq-header'); 
     if (!headers.length) return; 
@@ -431,101 +395,180 @@
     if (temNovos) setTimeout(aplicarAccordion, 200); 
   }).observe(document.body, { childList: true, subtree: true }); 
 
-  function aplicarTodosPatchesComDelay() { 
-    function proteger(nome, fn) { 
+  function patchToggleMobMenu() { 
+    if (window.toggleMobMenu && !window.toggleMobMenu._patched) { 
+      var _origToggleMob = window.toggleMobMenu; 
+      window.toggleMobMenu = function() { 
+        var res = typeof _origToggleMob === 'function' ? _origToggleMob.apply(this, arguments) : undefined; 
+        setTimeout(function() { 
+          var menu = document.getElementById('mob-more-body') || 
+            document.querySelector('.mob-more-b') || 
+            document.querySelector('.mob-menu, #mob-menu, [id*="mob-menu"], [class*="mob-menu"]'); 
+          if (menu && !menu.querySelector('#btn-personalizar-hotbar')) { 
+            var btn = document.createElement('button'); 
+            btn.id = 'btn-personalizar-hotbar'; 
+            btn.textContent = 'Personalizar barra de navegacao'; 
+            btn.style.cssText = 'width:100%;padding:12px;background:rgba(74,144,217,0.15);color:#4A90D9;' + 
+              'border:1px solid rgba(74,144,217,0.3);border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px'; 
+            btn.onclick = function() { try { window.abrirPersonalizarHotbar(); } catch(e) {} }; 
+            menu.appendChild(btn); 
+          } 
+        }, 100); 
+        return res; 
+      }; 
+      window.toggleMobMenu._patched = true; 
+    } 
+  } 
+
+  window.abrirPersonalizarHotbar = function() { 
+    try { 
+      var old = document.getElementById('modal-hotbar-personalizar'); 
+      if (old) old.remove(); 
+    } catch(e) {} 
+ 
+    var overlay = document.createElement('div'); 
+    overlay.id = 'modal-hotbar-personalizar'; 
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
+ 
+    function getHidden() { 
       try { 
-        Object.defineProperty(window, nome, { 
-          configurable: true, 
-          get: function(){ return fn; }, 
-          set: function(){}, 
-        }); 
-        return; 
-      } catch(e) {} 
-      try { window[nome] = fn; } catch(e) {} 
+        var raw = localStorage.getItem('mbn_hidden'); 
+        var arr = raw ? JSON.parse(raw) : []; 
+        return Array.isArray(arr) ? arr : []; 
+      } catch(e) { return []; } 
+    } 
+    function setHidden(arr) { 
+      try { localStorage.setItem('mbn_hidden', JSON.stringify(arr || [])); } catch(e) {} 
+    } 
+    function applyHidden() { 
+      var hidden = getHidden(); 
+      ['hub','pcp','ofmaq','estoque'].forEach(function(k){ 
+        var el = document.getElementById('mbn-' + k); 
+        if (el) el.style.display = hidden.indexOf(k) >= 0 ? 'none' : ''; 
+      }); 
     } 
  
-    (function(){ 
-      var fnOrigAbrir = window.abrirNovaOfRapida; 
-      var wrapped = function() { 
-        if (typeof fnOrigAbrir === 'function') fnOrigAbrir.apply(this, arguments); 
+    var hidden = getHidden(); 
+    var sheet = document.createElement('div'); 
+    sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
+    sheet.innerHTML = 
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' + 
+        '<span style="color:#e2e8f0;font-weight:800;font-size:15px">Personalizar barra</span>' + 
+        '<button id="btn-fechar-hotbar" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">X</button>' + 
+      '</div>' + 
+      ['hub','pcp','ofmaq','estoque'].map(function(k){ 
+        var checked = hidden.indexOf(k) === -1 ? 'checked' : ''; 
+        return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer">' + 
+          '<input type="checkbox" data-k="' + k + '" ' + checked + ' style="width:18px;height:18px">' + 
+          '<span style="color:#e2e8f0;font-size:14px">' + k + '</span>' + 
+        '</label>'; 
+      }).join(''); 
+ 
+    overlay.appendChild(sheet); 
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); }); 
+    document.body.appendChild(overlay); 
+ 
+    var fecharBtn = document.getElementById('btn-fechar-hotbar'); 
+    if (fecharBtn) fecharBtn.onclick = function(){ overlay.remove(); }; 
+ 
+    Array.prototype.forEach.call(sheet.querySelectorAll('input[type="checkbox"][data-k]'), function(cb) { 
+      cb.addEventListener('change', function() { 
+        var k = String(cb.getAttribute('data-k') || '').trim(); 
+        if (!k) return; 
+        var cur = getHidden(); 
+        if (cb.checked) cur = cur.filter(function(x){ return x !== k; }); 
+        else if (cur.indexOf(k) === -1) cur.push(k); 
+        setHidden(cur); 
+        applyHidden(); 
+      }); 
+    }); 
+ 
+    applyHidden(); 
+  }; 
+
+  var _fnOrigOfRapida = null; 
+  function patchAbrirOfRapida() { 
+    if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
+      _fnOrigOfRapida = window.abrirNovaOfRapida; 
+      window.abrirNovaOfRapida = function() { 
+        if (typeof _fnOrigOfRapida === 'function') _fnOrigOfRapida.apply(this, arguments); 
         setTimeout(function() { 
           var el = document.getElementById('of-r-numero'); 
-          if (!el) return; 
+          if (!el) { 
+            console.warn('[PATCH] #of-r-numero nao encontrado apos abrir modal'); 
+            return; 
+          } 
           if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; } 
           else el.textContent = '...'; 
           window.proximoNumeroOf().then(function(num) { 
             window._ofRapidaNumero = num; 
             if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; } 
             else el.textContent = num; 
-            console.log('[PATCH] numero injetado:', num); 
+            console.log('[PATCH] OF Rapida numero injetado:', num); 
           }); 
-        }, 120); 
+        }, 150); 
       }; 
-      proteger('abrirNovaOfRapida', wrapped); 
-      console.log('[PATCH] abrirNovaOfRapida reprotegida'); 
-    })(); 
+      window.abrirNovaOfRapida._patched = true; 
+      console.log('[PATCH] abrirNovaOfRapida interceptada'); 
+    } 
+  } 
  
-    (function(){ 
-      var fnOrigHub = window.renderHub; 
-      var wrapped = function() { 
-        var res = typeof fnOrigHub === 'function' ? fnOrigHub.apply(this, arguments) : undefined; 
-        setTimeout(function() { 
-          try { window.carregarPassagensHoje(); } catch(e) {} 
-          try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(e) {} 
-        }, 400); 
+  function patchRenderHub() { 
+    if (window.renderHub && !window.renderHub._patched) { 
+      var _orig = window.renderHub; 
+      window.renderHub = async function() { 
+        var res = await _orig.apply(this, arguments); 
+        setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
         return res; 
       }; 
-      proteger('renderHub', wrapped); 
-      console.log('[PATCH] renderHub reprotegida'); 
-    })(); 
+      window.renderHub._patched = true; 
+      console.log('[PATCH] renderHub interceptada'); 
+    } 
+  } 
  
-    (function(){ 
-      var fnOrigGo = window.go; 
-      var wrapped = function(page) { 
-        var res = typeof fnOrigGo === 'function' ? fnOrigGo.apply(this, arguments) : undefined; 
-        setTimeout(function(){ try { atualizarAbaAtiva(); } catch(e) {} }, 150); 
-        if (String(page) === 'hub') { 
-          setTimeout(function() { 
-            try { window.carregarPassagensHoje(); } catch(e) {} 
-            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(e) {} 
-          }, 400); 
+  function patchGoAcordeon() { 
+    if (window.go && !window.go._patched) { 
+      var _origGoAcordeon = window.go; 
+      window.go = function(page) { 
+        var res = typeof _origGoAcordeon === 'function' ? _origGoAcordeon.apply(this, arguments) : undefined; 
+        var p = String(page || ''); 
+        if (p === 'ofmaq' || p.indexOf('maq') >= 0) { 
+          [300, 600, 1000, 1500, 2000].forEach(function(delay) { 
+            setTimeout(function() { 
+              var headers = document.querySelectorAll('.maq-header'); 
+              if (headers.length > 0) { 
+                aplicarAccordion(); 
+                console.log('[PATCH] accordion aplicado em ofmaq apos ' + delay + 'ms: ' + headers.length + ' headers'); 
+              } 
+            }, delay); 
+          }); 
         } 
-        if (String(page).toLowerCase().indexOf('maq') >= 0) { 
-          setTimeout(function(){ try { aplicarAccordion(); } catch(e) {} }, 400); 
+        if (p === 'hub') { 
+          setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
         } 
         return res; 
       }; 
-      proteger('go', wrapped); 
-      console.log('[PATCH] go() reprotegida'); 
-    })(); 
- 
-    try { aplicarAccordion(); } catch(e) {} 
-    try { renderHotbar(); } catch(e) {} 
-    console.log('[PATCH] v3 COMPLETO - todos os patches aplicados'); 
+      window.go._patched = true; 
+    } 
   } 
  
   console.log('[PATCH] v3 ativo - Italy Embalagens ERP'); 
-  aplicarTodosPatchesComDelay(); 
-  setTimeout(aplicarTodosPatchesComDelay, 1000); 
-  setTimeout(aplicarTodosPatchesComDelay, 2000); 
-  setTimeout(aplicarTodosPatchesComDelay, 3000); 
+  patchToggleMobMenu(); 
+  patchAbrirOfRapida(); 
+  patchRenderHub(); 
+  patchGoAcordeon(); 
+  setTimeout(function(){ try { aplicarAccordion(); } catch(e) {} }, 800); 
  
-  var _ultimaUrl = location.href; 
   setInterval(function() { 
-    if (location.href !== _ultimaUrl) { 
-      _ultimaUrl = location.href; 
-      setTimeout(aplicarTodosPatchesComDelay, 300); 
-    } 
     try { 
-      var f = window.abrirNovaOfRapida; 
-      if (typeof f === 'function') { 
-        var s = String(f.toString ? f.toString() : ''); 
-        if (s.indexOf('numero injetado') === -1 && s.indexOf('_ofRapidaNumero') === -1) { 
-          console.log('[PATCH] abrirNovaOfRapida foi sobrescrita, reaplicando...'); 
-          aplicarTodosPatchesComDelay(); 
-        } 
+      patchToggleMobMenu(); 
+      patchRenderHub(); 
+      patchGoAcordeon(); 
+      if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
+        console.log('[PATCH] abrirNovaOfRapida foi sobrescrita! Reaplicando...'); 
+        patchAbrirOfRapida(); 
       } 
     } catch(e) {} 
-  }, 2000); 
+  }, 1000); 
  
 })(); 
