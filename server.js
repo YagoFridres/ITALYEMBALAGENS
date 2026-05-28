@@ -4969,6 +4969,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const nowIso = new Date().toISOString();
     const updateData = {
       status: 'Concluído',
+      setor_finalizacao: body.setor_finalizacao || null,
+      caixas_boas: body.caixas_boas != null ? parseInt(body.caixas_boas, 10) : null,
+      caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
+      motivo_perda: body.motivo_perda || null,
+      operador_conclusao: body.operador_conclusao || (req.usuario?.nome || null),
       qtd_produzida: qtdFinal,
       qtd: qtdFinal,
       qtd_perdida: qtdPerdida,
@@ -5379,96 +5384,32 @@ app.post('/api/of-passagens', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
-  try {
-    const { maquina, cliente, periodo } = req.query || {};
-    const hoje = new Date();
-
-    const startOfDay = (d) => {
-      const dt = new Date(d);
-      dt.setHours(0, 0, 0, 0);
-      return dt;
-    };
-    const endOfDay = (d) => {
-      const dt = new Date(d);
-      dt.setHours(23, 59, 59, 999);
-      return dt;
-    };
-    const toDateStr = (d) => new Date(d).toISOString().split('T')[0];
-
-    let ini = startOfDay(hoje);
-    let fim = endOfDay(hoje);
-    if (String(periodo || '').trim() === 'semana') {
-      const d0 = new Date(hoje);
-      d0.setDate(d0.getDate() - d0.getDay());
-      ini = startOfDay(d0);
-      fim = endOfDay(hoje);
-    } else if (String(periodo || '').trim() === 'mes') {
-      const d0 = new Date(hoje);
-      d0.setDate(1);
-      ini = startOfDay(d0);
-      fim = endOfDay(hoje);
-    }
-
-    const iniDate = toDateStr(ini);
-    const fimDate = toDateStr(fim);
-    const iniIso = ini.toISOString();
-    const fimIso = fim.toISOString();
-
-    let query = supabase.from('passagens_maquina').select('*');
-    if (iniDate === fimDate) query = query.eq('data_passagem', iniDate);
-    else query = query.gte('data_passagem', iniDate).lte('data_passagem', fimDate);
-    if (String(maquina || '').trim()) query = query.eq('maquina', String(maquina).trim());
-    if (String(cliente || '').trim()) query = query.ilike('cliente', `%${String(cliente).trim()}%`);
-
-    const { data, error } = await query.order('hora_passagem', { ascending: false }).limit(100);
-
-    if (error) {
-      const msg = String(error.message || '').toLowerCase();
-      const code = String(error.code || '').trim();
-      const missing = code === '42P01' || (msg.includes('relation') && msg.includes('passagens_maquina')) || msg.includes('does not exist');
-      if (!missing) {
-        console.warn('[PASSAGENS HOJE] erro query passagens_maquina:', error.message || String(error));
-      } else {
-        console.warn('[PASSAGENS HOJE] tabela pendente:', error.message || String(error));
-      }
-
-      let q2 = supabase.from('of_passagens').select('*').gte('saiu_em', iniIso).lte('saiu_em', fimIso);
-      if (String(maquina || '').trim()) q2 = q2.eq('maquina', String(maquina).trim());
-      const r2 = await q2.order('saiu_em', { ascending: false }).limit(100);
-
-      if (r2?.error) {
-        const msg2 = String(r2.error.message || '').toLowerCase();
-        const code2 = String(r2.error.code || '').trim();
-        const missing2 = code2 === '42P01' || (msg2.includes('relation') && msg2.includes('of_passagens')) || msg2.includes('does not exist');
-        if (!missing2) console.warn('[PASSAGENS HOJE] erro query of_passagens:', r2.error.message || String(r2.error));
-        return res.json({ ok: true, passagens: [], aviso: 'tabela_pendente' });
-      }
-
-      const mapped = (Array.isArray(r2.data) ? r2.data : []).map((p) => {
-        const ts = p.saiu_em || p.created_at || null;
-        return {
-          of_id: p.of_id || null,
-          of_numero: p.of_numero || null,
-          cliente: null,
-          maquina: p.maquina || null,
-          operador: p.usuario || null,
-          data_passagem: ts ? String(ts).split('T')[0] : null,
-          hora_passagem: ts,
-          quantidade: null,
-          status: 'Concluída',
-          empresa: null,
-          created_at: p.created_at || null,
-        };
-      });
-
-      return res.json({ ok: true, passagens: mapped, aviso: missing ? 'tabela_pendente' : 'fallback_of_passagens' });
-    }
-
-    return res.json({ ok: true, passagens: Array.isArray(data) ? data : [] });
-  } catch (e) {
-    console.error('[PASSAGENS HOJE] Erro:', e?.message || e);
-    return res.json({ ok: true, passagens: [], erro: String(e?.message || e) });
-  }
+  try { 
+    const { periodo, maquina, cliente } = req.query; 
+    let query = supabase.from('passagens_maquina').select('*'); 
+    if (periodo === 'semana') { 
+      const ini = new Date(); ini.setDate(ini.getDate() - ini.getDay()); 
+      query = query.gte('data_passagem', ini.toISOString().split('T')[0]); 
+    } else if (periodo === 'mes') { 
+      const ini = new Date(); ini.setDate(1); 
+      query = query.gte('data_passagem', ini.toISOString().split('T')[0]); 
+    } else { 
+      query = query.eq('data_passagem', new Date().toISOString().split('T')[0]); 
+    } 
+    if (maquina) query = query.eq('maquina', maquina); 
+    if (cliente) query = query.ilike('cliente', '%' + cliente + '%'); 
+    const { data, error } = await query 
+      .order('hora_passagem', { ascending: false }) 
+      .limit(100); 
+    if (error) { 
+      console.warn('[passagens/hoje] erro Supabase:', error.message); 
+      return res.json({ ok: true, passagens: [] }); 
+    } 
+    res.json({ ok: true, passagens: data || [] }); 
+  } catch(e) { 
+    console.error('[passagens/hoje]', e.message); 
+    res.json({ ok: true, passagens: [], erro: e.message }); 
+  } 
 });
 
 app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
