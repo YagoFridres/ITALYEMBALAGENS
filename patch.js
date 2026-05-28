@@ -170,6 +170,155 @@
     setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
     return res; 
   }; 
+
+  var HOTBAR_TODAS_ABAS = [ 
+    { id: 'hub',        label: 'Hub',        icon: '🏠', fixo: true  }, 
+    { id: 'pcp',        label: 'PCP',        icon: '📋', fixo: false }, 
+    { id: 'ofmaq',      label: 'Máquinas',   icon: '⚙️', fixo: true  }, 
+    { id: 'estoque',    label: 'Estoque',    icon: '📦', fixo: false }, 
+    { id: 'orcamentos', label: 'Orçamentos', icon: '💰', fixo: false }, 
+    { id: 'amostras',   label: 'Amostras',   icon: '🔬', fixo: false }, 
+    { id: 'clientes',   label: 'Clientes',   icon: '👥', fixo: false }, 
+    { id: 'analises',   label: 'Análises',   icon: '📊', fixo: false }, 
+    { id: 'papelao',    label: 'Papelão',    icon: '🗃️', fixo: false }, 
+  ]; 
+
+  function getHotbarConfig() { 
+    try { 
+      var salvo = localStorage.getItem('hotbar_config'); 
+      if (salvo) { 
+        var arr = JSON.parse(salvo); 
+        if (Array.isArray(arr)) return arr.map(function(x){ return String(x||'').trim(); }).filter(Boolean); 
+      } 
+    } catch(e) {} 
+    return ['hub', 'pcp', 'ofmaq', 'estoque']; 
+  } 
+
+  function salvarHotbarConfig(ids) { 
+    var arr = Array.isArray(ids) ? ids.map(function(x){ return String(x||'').trim(); }).filter(Boolean) : []; 
+    if (arr.indexOf('hub') === -1) arr.unshift('hub'); 
+    if (arr.indexOf('ofmaq') === -1) arr.push('ofmaq'); 
+    var uniq = []; 
+    arr.forEach(function(x){ if (uniq.indexOf(x) === -1) uniq.push(x); }); 
+    localStorage.setItem('hotbar_config', JSON.stringify(uniq)); 
+    renderHotbar(); 
+  } 
+
+  function _hotbarPaginaAtiva() { 
+    var id = String(window._PAGE_ATUAL || '').trim(); 
+    var m = { 
+      hub: ['hub','home'], 
+      pcp: ['pcp'], 
+      ofmaq: ['ofmaq','maquinas','fluxos','tipos-caixa','tempos-reais','ofs-maquina'], 
+      estoque: ['estoque','facas1','cliches','lancamento','estoques'], 
+      analises: ['dashboard','relatorios','comissoes','caixas-perdidas','caixas_perdidas','configuracoes','configurações'], 
+    }; 
+    for (var k in m) { 
+      if (!Object.prototype.hasOwnProperty.call(m, k)) continue; 
+      if ((m[k] || []).indexOf(id) !== -1) return k; 
+    } 
+    return id; 
+  } 
+
+  function atualizarAbaAtiva() { 
+    var active = _hotbarPaginaAtiva(); 
+    var nav = document.getElementById('mobile-bottom-nav'); 
+    if (!nav) return; 
+    Array.prototype.forEach.call(nav.querySelectorAll('.mbn-item'), function(btn){ 
+      var tab = String(btn.getAttribute('data-tab') || btn.id || '').trim(); 
+      tab = tab.indexOf('mbn-') === 0 ? tab.slice(4) : tab; 
+      btn.classList.toggle('active', tab && tab === active); 
+    }); 
+  } 
+
+  function renderHotbar() { 
+    var nav = document.getElementById('mobile-bottom-nav'); 
+    if (!nav) { console.warn('[PATCH] hotbar não encontrada'); return; } 
+    var ativos = getHotbarConfig(); 
+    var abas = ativos.slice(0, 4); 
+    var html = abas.map(function(id) { 
+      var aba = HOTBAR_TODAS_ABAS.find(function(a){ return a.id === id; }) || { id: id, label: id, icon: '📄' }; 
+      return '<button class="mbn-item" id="mbn-' + aba.id + '" data-tab="' + aba.id + '" onclick="go(\\'' + aba.id + '\\')">' + 
+        '<div class="mbn-ico">' + aba.icon + '</div><div class="mbn-lbl">' + aba.label + '</div></button>'; 
+    }).join(''); 
+    html += '<button class="mbn-item" id="mbn-mais" onclick="abrirMenuMais()"><div class="mbn-ico">☰</div><div class="mbn-lbl">Mais</div></button>'; 
+    nav.innerHTML = html; 
+    atualizarAbaAtiva(); 
+  } 
+
+  window.abrirMenuMais = function() { 
+    try{ document.getElementById('modal-menu-mais')?.remove(); }catch(e){} 
+    var overlay = document.createElement('div'); 
+    overlay.id = 'modal-menu-mais'; 
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
+ 
+    var ativos = getHotbarConfig(); 
+    var sheet = document.createElement('div'); 
+    sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
+ 
+    var grid = HOTBAR_TODAS_ABAS.filter(function(a){ return ativos.indexOf(a.id) === -1; }).map(function(aba) { 
+      return '<div onclick="go(\\'' + aba.id + '\\');document.getElementById(\\'modal-menu-mais\\').remove()" style="' + 
+        'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">' + 
+        '<div style="font-size:26px;margin-bottom:4px">' + aba.icon + '</div>' + 
+        '<div style="color:#e2e8f0;font-size:12px">' + aba.label + '</div>' + 
+      '</div>'; 
+    }).join(''); 
+ 
+    var checks = HOTBAR_TODAS_ABAS.map(function(aba) { 
+      var fixo = !!aba.fixo; 
+      var ativo = ativos.indexOf(aba.id) !== -1; 
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:' + (fixo?'default':'pointer') + '">' + 
+        '<input type="checkbox" ' + (ativo?'checked':'') + ' ' + (fixo?'disabled':'') + ' onchange="toggleHotbarAba(\\'' + aba.id + '\\',this.checked)" style="width:18px;height:18px">' + 
+        '<span style="font-size:18px">' + aba.icon + '</span>' + 
+        '<span style="color:' + (fixo?'#64748b':'#e2e8f0') + ';font-size:14px">' + aba.label + (fixo?' (fixo)':'') + '</span>' + 
+      '</label>'; 
+    }).join(''); 
+ 
+    sheet.innerHTML = 
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' + 
+        '<span style="color:#e2e8f0;font-weight:800;font-size:15px">Menu</span>' + 
+        '<button onclick="document.getElementById(\\'modal-menu-mais\\').remove()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">✕</button>' + 
+      '</div>' + 
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">' + grid + '</div>' + 
+      '<div style="border-top:1px solid rgba(255,255,255,0.12);padding-top:12px">' + 
+        '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Personalizar barra (máx. 4 abas)</div>' + 
+        '<div>' + checks + '</div>' + 
+      '</div>'; 
+ 
+    overlay.appendChild(sheet); 
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); }); 
+    document.body.appendChild(overlay); 
+  }; 
+
+  window.toggleHotbarAba = function(id, ativo) { 
+    var cur = getHotbarConfig(); 
+    id = String(id || '').trim(); 
+    if (!id) return; 
+    if (ativo && cur.indexOf(id) === -1) { 
+      if (cur.length >= 4) { 
+        alert('Máximo 4 abas na barra. Desmarque uma para adicionar outra.'); 
+        try{ 
+          var q = document.querySelectorAll('#modal-menu-mais input[type="checkbox"]'); 
+          Array.prototype.forEach.call(q, function(cb){ 
+            try{ if(cb && cb.getAttribute('onchange') && cb.getAttribute('onchange').indexOf(id) !== -1) cb.checked = false; }catch(_){} 
+          }); 
+        }catch(_){} 
+        return; 
+      } 
+      cur.push(id); 
+    } else if (!ativo) { 
+      cur = cur.filter(function(a){ return a !== id; }); 
+    } 
+    salvarHotbarConfig(cur); 
+  }; 
+
+  var _origUpdateBottomNavActive = window.updateBottomNavActive; 
+  window.updateBottomNavActive = function(pageId){ 
+    try{ if (typeof _origUpdateBottomNavActive === 'function') _origUpdateBottomNavActive(pageId); }catch(e){} 
+    try{ atualizarAbaAtiva(); }catch(e){} 
+  }; 
+
+  setTimeout(renderHotbar, 600); 
  
   // ── PATCH 6: accordion OFs por Máquina ────────────────────────── 
   function aplicarAccordion() { 
