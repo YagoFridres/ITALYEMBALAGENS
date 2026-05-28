@@ -15,6 +15,17 @@
     var token = getToken(); 
     var h = token ? { 'Authorization': 'Bearer ' + token } : {}; 
     try { 
+      // Rota dedicada (mais confiável) 
+      var r0 = await fetch('/api/ofs/proximo-numero?t=' + Date.now(), { headers: h }); 
+      if (r0.ok) { 
+        var d0 = await r0.json(); 
+        if (d0 && d0.ok && Number(d0.maior) > 0 && d0.proximo) { 
+          console.log('[PATCH] proximoNumeroOf via rota dedicada: maior=' + d0.maior + ' próximo=' + d0.proximo); 
+          return String(d0.proximo); 
+        } 
+      } 
+    } catch(e0) { console.warn('[PATCH] rota dedicada falhou:', e0.message); } 
+    try { 
       // Tentar com order_by=numero 
       var r = await fetch('/api/ofs?limit=5&order_by=numero&order=desc&t=' + Date.now(), { headers: h }); 
       if (r.ok) { 

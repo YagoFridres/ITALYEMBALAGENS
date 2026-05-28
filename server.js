@@ -3035,6 +3035,34 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
   }
 });
+
+// Rota dedicada para próximo número de OF
+app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('numero, of_num, of, id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    let maior = 0;
+    (data || []).forEach((of) => {
+      ['numero', 'of_num', 'numero_of', 'of'].forEach((campo) => {
+        const v = of?.[campo];
+        if (v === null || v === undefined || v === '') return;
+        const n = parseInt(String(v).replace(/\D/g, ''), 10);
+        if (!isNaN(n) && n > maior) maior = n;
+      });
+    });
+
+    const proximo = String(maior + 1).padStart(String(maior).length >= 3 ? String(maior).length : 3, '0');
+    return res.json({ ok: true, proximo, maior });
+  } catch (e) {
+    return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
+  }
+});
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vendedor_id ?? body?.vend_id ?? body?.vendId ?? ofRow?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? '').trim();
