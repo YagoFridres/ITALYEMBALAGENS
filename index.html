@@ -37365,6 +37365,7 @@ function go(id){
   }
   if(id === 'hub'){
     try{ if(typeof renderHub === 'function') renderHub(); }catch(e){}
+    try{ if(typeof carregarPassagensHoje === 'function') carregarPassagensHoje(); }catch(e){}
   }
   if(id === 'mapa-clientes'){
     try{ if(typeof mapcliSetAba === 'function') mapcliSetAba(window._mapCliStartTab || 'mapa'); }catch(e){}
