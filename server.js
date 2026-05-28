@@ -5215,7 +5215,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     try {
       const rOf = await supabase
         .from('ofs')
-        .select('id,numero,of_num,of,emp_id,empId,empresa_id')
+        .select('id,numero,of_num,of,emp_id,empId,empresa_id,cliente_nome,cliente,cliNome,clinome,quantidade,qtd,status')
         .eq('id', id)
         .maybeSingle();
       if (!rOf?.error) ofRow = rOf?.data || null;
@@ -5261,15 +5261,25 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       const empresa = (empId === 'E2') ? 'Cartoeste' : (empId === 'E3') ? 'Oestepack' : 'Italy Embalagens';
       const operador = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
       const ofNumero = String(ofRow?.numero || ofRow?.of_num || ofRow?.of || '').trim() || null;
+      const cliente = String(ofRow?.cliente_nome || ofRow?.cliente || ofRow?.cliNome || ofRow?.clinome || '').trim() || null;
+      const quantidade = (() => {
+        const v = ofRow?.quantidade ?? ofRow?.qtd ?? body?.quantidade ?? body?.qtd ?? null;
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+      })();
+      const status = String(ofRow?.status || '').trim() || 'Concluída';
       const dataHoje = nowIso.split('T')[0];
 
       const rIns = await supabase.from('passagens_maquina').insert({
         of_id: id,
         of_numero: ofNumero,
+        cliente,
         maquina: maquinaNome || null,
         operador,
         data_passagem: dataHoje,
         hora_passagem: nowIso,
+        quantidade,
+        status,
         empresa,
       });
 
