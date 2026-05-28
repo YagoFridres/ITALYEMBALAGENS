@@ -347,93 +347,93 @@
 
   setTimeout(renderHotbar, 600); 
  
-  function aplicarAccordionV3() { 
+  function aplicarAccordion() { 
     var headers = document.querySelectorAll('.maq-header'); 
-    console.log('[PATCH] accordion v3:', headers.length, 'headers'); 
+    if (!headers.length) return; 
+    console.log('[PATCH] accordion: ' + headers.length + ' headers'); 
  
     headers.forEach(function(header) { 
-      if (header._pv3) return; 
-      header._pv3 = true; 
-      try { header.setAttribute('data-patch-acordeon', '1'); } catch(_) {} 
+      if (header._patchAcordeon) return; 
+      header._patchAcordeon = true; 
  
       var body = header.nextElementSibling; 
       if (!body) return; 
  
-      try { if (header.getAttribute && header.getAttribute('onclick')) header.removeAttribute('onclick'); } catch(_) {} 
+      header.removeAttribute('onclick'); 
+      body.style.display = 'none'; 
  
-      var seta = header.querySelector('.maq-seta') || header.querySelector('.patch-seta') || null; 
-      if (!seta) { 
-        seta = document.createElement('span'); 
-        seta.className = 'patch-seta'; 
-        seta.textContent = 'v'; 
-        seta.style.cssText = 'display:inline-block;margin-left:auto;color:rgba(255,255,255,0.4);font-size:13px'; 
-        try { header.appendChild(seta); } catch(_) {} 
+      if (!header.querySelector('.patch-arrow')) { 
+        var arrow = document.createElement('span'); 
+        arrow.className = 'patch-arrow'; 
+        arrow.textContent = ' v'; 
+        arrow.style.cssText = 'display:inline-block;transition:transform 0.25s;font-size:11px;opacity:0.6'; 
+        header.appendChild(arrow); 
       } 
  
-      body.style.display = 'none'; 
-      try { body.style.flexDirection = 'column'; body.style.gap = '8px'; } catch(_) {} 
-      header.style.cursor = 'pointer'; 
- 
+      var aberto = false; 
       header.addEventListener('click', function(e) { 
-        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.tagName === 'SELECT' || 
-            e.target.closest('button') || e.target.closest('a') || e.target.closest('select')) return; 
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || 
+            e.target.closest('button') || e.target.closest('a')) return; 
  
-        var aberto = body.style.display !== 'none'; 
-        body.style.display = aberto ? 'none' : 'flex'; 
-        try { body.style.padding = aberto ? '' : '10px'; } catch(_) {} 
-        try { if (seta) seta.textContent = aberto ? 'v' : '^'; } catch(_) {} 
+        aberto = !aberto; 
+        body.style.display = aberto ? 'flex' : 'none'; 
+        if (aberto) { 
+          body.style.flexDirection = 'column'; 
+          body.style.gap = '8px'; 
+          body.style.padding = '10px'; 
+        } 
+        var arr = header.querySelector('.patch-arrow'); 
+        if (arr) arr.style.transform = aberto ? 'rotate(180deg)' : 'rotate(0deg)'; 
  
-        if (!aberto && typeof Sortable !== 'undefined' && !body._sortInst) { 
+        if (aberto && typeof Sortable !== 'undefined' && !body._sortInst) { 
           body._sortInst = new Sortable(body, { 
             animation: 150, 
-            delay: 150, 
+            delay: 120, 
             delayOnTouchOnly: true, 
-            ghostClass: 'of-ghost', 
-            handle: '.drag-handle', 
             onEnd: function() { 
-              try { 
-                var cards = body.querySelectorAll('[data-of-id]'); 
-                Array.prototype.forEach.call(cards, function(c, i) { 
-                  var badge = c.querySelector('.of-ordem-badge, .ordem-badge'); 
-                  if (badge) badge.textContent = String(i + 1); 
-                }); 
-                var ids = Array.from(cards).map(function(c){ return c.dataset.ofId; }).filter(Boolean); 
-                if (!ids.length) return; 
-                var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
-                var maq = body.dataset.maquinaId || body.dataset.maquina || body.dataset.maquinaNome || body.dataset.maquinaName || ''; 
-                fetch('/api/ofs/reordenar', { 
-                  method: 'POST', 
-                  headers: Object.assign({'Content-Type':'application/json'}, token ? {Authorization:'Bearer '+token} : {}), 
-                  body: JSON.stringify({ ordem: ids, maquina_id: String(maq || '').trim() }) 
-                }).catch(function(){}); 
-              } catch(_) {} 
+              var ids = Array.from(body.querySelectorAll('[data-of-id]')) 
+                .map(function(el){ return el.dataset.ofId; }).filter(Boolean); 
+              if (!ids.length) return; 
+              body.querySelectorAll('[data-of-id]').forEach(function(el, i) { 
+                var badge = el.querySelector('.ordem-badge'); 
+                if (badge) badge.textContent = i + 1; 
+              }); 
+              var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+              fetch('/api/ofs/reordenar', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+                body: JSON.stringify({ ordem: ids }) 
+              }).catch(function(e){ console.warn('[PATCH] reordenar:', e); }); 
             } 
           }); 
-          console.log('[PATCH] Sortable iniciado'); 
         } 
       }); 
     }); 
   } 
  
-  // Interceptar a funcao de render real (renderOFsPorMaquina) 
-  var _nomeFuncRender = 'renderOFsPorMaquina'; 
-  var _origRenderMaq = window[_nomeFuncRender]; 
-  if (typeof _origRenderMaq === 'function') { 
-    window[_nomeFuncRender] = function() { 
-      var res = _origRenderMaq.apply(this, arguments); 
-      setTimeout(aplicarAccordionV3, 300); 
-      return res; 
-    }; 
-    console.log('[PATCH] interceptou ' + _nomeFuncRender); 
-  } else { 
-    console.warn('[PATCH] funcao', _nomeFuncRender, 'nao encontrada - tentando MutationObserver'); 
-    // Fallback: observar mudancas no DOM da tela de maquinas 
-    var _observer = new MutationObserver(function() { 
-      var headers2 = document.querySelectorAll('.maq-header:not([data-patch-acordeon])'); 
-      if (headers2.length > 0) aplicarAccordionV3(); 
+  ['renderOFsPorMaquina','renderMaquinas','renderOfmaq','renderOFsMaquina'].forEach(function(nome) { 
+    if (typeof window[nome] === 'function') { 
+      var orig = window[nome]; 
+      window[nome] = function() { 
+        var res = orig.apply(this, arguments); 
+        setTimeout(aplicarAccordion, 350); 
+        return res; 
+      }; 
+    } 
+  }); 
+ 
+  new MutationObserver(function(muts) { 
+    var temNovos = muts.some(function(m) { 
+      return Array.from(m.addedNodes).some(function(n) { 
+        return n.nodeType === 1 && 
+          ((n.classList && n.classList.contains('maq-header')) || 
+           (n.querySelector && n.querySelector('.maq-header'))); 
+      }); 
     }); 
-    _observer.observe(document.body, { childList: true, subtree: true }); 
-  } 
+    if (temNovos) setTimeout(aplicarAccordion, 200); 
+  }).observe(document.body, { childList: true, subtree: true }); 
+ 
+  setTimeout(aplicarAccordion, 800); 
  
   console.log('[PATCH] OK patch.js v2 ativo - Italy Embalagens ERP'); 
  
