@@ -160,52 +160,87 @@
     return res; 
   }; 
  
-  // ── PATCH 6: accordion nas OFs por Máquina ──────────────────── 
-  var _patchAccordion = function() { 
+  // ── PATCH 6: accordion OFs por Máquina ────────────────────────── 
+  function aplicarAccordion() { 
+    // Seletor real do header (index.html usa .maq-header) 
     var headers = document.querySelectorAll('.maq-header'); 
-    Array.prototype.forEach.call(headers, function(header) { 
-      if (!header) return; 
-      if (header._accordionPatch) return; 
-      if (header.getAttribute && String(header.getAttribute('onclick') || '').trim()) return; 
-      header._accordionPatch = true; 
+    console.log('[PATCH] aplicarAccordion: ' + headers.length + ' headers encontrados'); 
+ 
+    headers.forEach(function(header) { 
+      if (header._patchAcordeon) return; // não duplicar 
+      header._patchAcordeon = true; 
+      try { header.setAttribute('data-patch-acordeon', '1'); } catch(_) {} 
+ 
+      // O conteúdo fica no próximo elemento irmão 
       var body = header.nextElementSibling; 
       if (!body) return; 
-      try { if (!body.style.display) body.style.display = 'none'; } catch(_) {} 
-      header.addEventListener('click', function(e) { 
-        try { if (e && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return; } catch(_) {} 
-        var isOpen = body.style.display !== 'none'; 
-        body.style.display = isOpen ? 'none' : 'flex'; 
-        body.style.flexDirection = 'column'; 
-        body.style.gap = '8px'; 
-        body.style.padding = isOpen ? '' : '10px'; 
-        var seta = header.querySelector('.maq-seta'); 
-        if (seta) seta.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)'; 
-      }, true); 
-    }); 
-  }; 
  
-  var _origRenderMaq = window.renderOFsPorMaquina; 
-  if (typeof _origRenderMaq === 'function') { 
-    window.renderOFsPorMaquina = function() { 
-      var res = _origRenderMaq.apply(this, arguments); 
-      setTimeout(_patchAccordion, 200); 
-      return res; 
-    }; 
+      // Remover onclick inline para não dar toggle duplo 
+      try { if (header.getAttribute && header.getAttribute('onclick')) header.removeAttribute('onclick'); } catch(_) {} 
+ 
+      // Fechar inicialmente 
+      body.style.display = 'none'; 
+ 
+      // Adicionar indicador visual no header 
+      var seta = header.querySelector('.maq-seta') || header.querySelector('svg') || null; 
+ 
+      header.style.cursor = 'pointer'; 
+      header.addEventListener('click', function(e) { 
+        if (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || 
+            e.target.closest('button') || e.target.closest('select')) return; 
+ 
+        var aberto = body.style.display !== 'none'; 
+        body.style.display = aberto ? 'none' : 'flex'; 
+        try { 
+          body.style.flexDirection = 'column'; 
+          body.style.gap = '8px'; 
+          if (!aberto) body.style.padding = '10px'; 
+        } catch(_) {} 
+        if (seta) seta.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'; 
+        console.log('[PATCH] accordion:', header.textContent.trim().substring(0,20), aberto ? 'fechou' : 'abriu'); 
+ 
+        // Iniciar Sortable ao abrir (se disponível) 
+        if (!aberto && typeof Sortable !== 'undefined' && !body._sortInst) { 
+          body._sortInst = new Sortable(body, { 
+            animation: 150, 
+            delay: 100, 
+            delayOnTouchOnly: true, 
+            onEnd: function() { 
+              var ids = Array.from(body.querySelectorAll('[data-of-id]')) 
+                .map(function(el){ return el.dataset.ofId; }).filter(Boolean); 
+              if (!ids.length) return; 
+              var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+              var maq = body.dataset.maquinaId || body.dataset.maquina || body.dataset.maquinaNome || body.dataset.maquinaName || ''; 
+              fetch('/api/ofs/reordenar', { 
+                method: 'POST', 
+                headers: Object.assign({'Content-Type':'application/json'}, token ? {Authorization:'Bearer '+token} : {}), 
+                body: JSON.stringify({ ordem: ids, maquina_id: String(maq || '').trim() }) 
+              }).catch(function(e){ console.warn('[PATCH] reordenar:', e); }); 
+            } 
+          }); 
+        } 
+      }); 
+    }); 
   } 
  
-  var _origGo = window.go; 
-  if (typeof _origGo === 'function') { 
-    window.go = function(page) { 
-      var res = _origGo.apply(this, arguments); 
-      var pid = String(page || '').toLowerCase(); 
-      if (pid === 'ofmaq' || pid.indexOf('maquin') !== -1) { 
-        setTimeout(_patchAccordion, 500); 
-      } 
-      if (pid === 'hub') { 
-        setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
-      } 
+  // Interceptar a função de render real (renderOFsPorMaquina) 
+  var _nomeFuncRender = 'renderOFsPorMaquina'; 
+  var _origRenderMaq = window[_nomeFuncRender]; 
+  if (typeof _origRenderMaq === 'function') { 
+    window[_nomeFuncRender] = function() { 
+      var res = _origRenderMaq.apply(this, arguments); 
+      setTimeout(aplicarAccordion, 300); 
       return res; 
     }; 
+    console.log('[PATCH] interceptou ' + _nomeFuncRender); 
+  } else { 
+    console.warn('[PATCH] função', _nomeFuncRender, 'não encontrada — tentando MutationObserver'); 
+    // Fallback: observar mudanças no DOM da tela de máquinas 
+    var _observer = new MutationObserver(function() { 
+      var headers2 = document.querySelectorAll('.maq-header:not([data-patch-acordeon])'); 
+      if (headers2.length > 0) aplicarAccordion(); 
+    }); 
+    _observer.observe(document.body, { childList: true, subtree: true }); 
   } 
  
   console.log('[PATCH] ✅ patch.js v2 ativo — Italy Embalagens ERP'); 
