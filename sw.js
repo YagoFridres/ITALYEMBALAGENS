@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'italy-erp-pwa-v1';
+const CACHE_VERSION = 'italy-erp-pwa-v2';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -63,6 +63,30 @@ self.addEventListener('fetch', (event) => {
 
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(req));
+    return;
+  }
+
+  if (
+    url.pathname === '/patch.js' ||
+    url.pathname === '/sw.js' ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css')
+  ) {
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(req);
+          if (fresh && fresh.ok && (url.origin === self.location.origin)) {
+            const cache = await caches.open(CACHE_VERSION);
+            cache.put(req, fresh.clone());
+          }
+          return fresh;
+        } catch (e) {
+          const cached = await caches.match(req);
+          return cached || new Response('', { status: 504 });
+        }
+      })()
+    );
     return;
   }
 
