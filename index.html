@@ -9854,28 +9854,67 @@ var TODAS_MAQUINAS = [
   'Corte Plana',
   'Coladeira 01', 'Coladeira 02'
 ];
-function adicionarLinhaPerdaConc(maquina, qtd) {
+async function getOperadoresConc() {
+  try {
+    if (typeof OPERADORES !== 'undefined' && Array.isArray(OPERADORES) && OPERADORES.length) return OPERADORES;
+  } catch (_) {}
+  try {
+    if (typeof carregarOperadores === 'function') {
+      await carregarOperadores();
+      if (typeof OPERADORES !== 'undefined' && Array.isArray(OPERADORES) && OPERADORES.length) return OPERADORES;
+    }
+  } catch (_) {}
+  try {
+    if (window.listaOperadores && window.listaOperadores.length) return window.listaOperadores;
+  } catch (_) {}
+  try {
+    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    var r = await fetch('/api/operadores?t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + token } });
+    if (r.ok) {
+      var d = await r.json();
+      return d.data || d.operadores || d || [];
+    }
+  } catch (e) {
+    try { console.warn('[CONCLUSAO] erro ao buscar operadores:', e.message); } catch (_) {}
+  }
+  return [];
+}
+async function adicionarLinhaPerdaConc(maquina, qtd, operador) {
   var lista = document.getElementById('conc-perdas-lista');
   if (!lista) return;
+  var ops = await getOperadoresConc();
+  var opcoesOp = '<option value="">-- Operador --</option>' +
+    (ops || []).map(function(op) {
+      var nome = op && (op.nome || op.name || op.label) ? (op.nome || op.name || op.label) : String(op);
+      var val = op && (op.id || op.nome || op.name) ? (op.id || op.nome || op.name) : String(op);
+      return '<option value="' + val + '"' + (val === operador ? ' selected' : '') + '>' + nome + '</option>';
+    }).join('');
   var opcoesMaq = TODAS_MAQUINAS.map(function(m) {
     return '<option value="' + m + '"' + (m === maquina ? ' selected' : '') + '>' + m + '</option>';
   }).join('');
   var div = document.createElement('div');
   div.className = 'linha-perda-conc';
-  div.style.cssText = 'display:flex;gap:8px;align-items:center';
+  div.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px';
   div.innerHTML =
-    '<select class="perda-maquina" onchange="atualizarTotalPerdas()" ' +
-      'style="flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
+    '<div style="display:flex;gap:8px;align-items:center">' +
+      '<select class="perda-maquina" onchange="atualizarTotalPerdas()" style="' +
+        'flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
+        'border-radius:6px;padding:8px;font-size:13px">' +
+        '<option value="">-- Maquina --</option>' + opcoesMaq +
+      '</select>' +
+      '<input type="number" class="perda-qtd" min="0" value="' + (qtd || '') + '" ' +
+        'placeholder="Qtd" oninput="atualizarTotalPerdas()" style="' +
+        'width:72px;background:#080c14;color:#f43f5e;border:1px solid rgba(255,255,255,0.1);' +
+        'border-radius:6px;padding:8px;font-size:14px">' +
+      '<button type="button" onclick="this.closest(&quot;.linha-perda-conc&quot;).remove();atualizarTotalPerdas()" style="' +
+        'background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:6px;' +
+        'padding:6px 10px;cursor:pointer;font-size:14px;flex-shrink:0">X</button>' +
+    '</div>' +
+    '<select class="perda-operador" style="' +
+      'width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
       'border-radius:6px;padding:8px;font-size:13px">' +
-      '<option value="">-- Máquina --</option>' + opcoesMaq +
-    '</select>' +
-    '<input type="number" class="perda-qtd" min="0" value="' + (qtd || '') + '" ' +
-      'placeholder="Qtd" onchange="atualizarTotalPerdas()" oninput="atualizarTotalPerdas()" ' +
-      'style="width:80px;background:#080c14;color:#f43f5e;border:1px solid rgba(255,255,255,0.1);' +
-      'border-radius:6px;padding:8px;font-size:14px">' +
-    '<button type="button" onclick="this.parentElement.remove();atualizarTotalPerdas()" ' +
-      'style="background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:6px;' +
-      'padding:6px 8px;cursor:pointer;font-size:14px">✕</button>';
+      opcoesOp +
+    '</select>';
   lista.appendChild(div);
 }
 function atualizarTotalPerdas() {
@@ -9889,11 +9928,10 @@ function atualizarTotalPerdas() {
 function coletarPerdasConc() {
   var perdas = [];
   document.querySelectorAll('#conc-perdas-lista .linha-perda-conc').forEach(function(linha) {
-    var maqEl = linha.querySelector('.perda-maquina');
-    var qtdEl = linha.querySelector('.perda-qtd');
-    var maq = maqEl ? maqEl.value : '';
-    var qtd = parseInt((qtdEl ? qtdEl.value : '0') || '0', 10) || 0;
-    if (maq && qtd > 0) perdas.push({ maquina: maq, quantidade: qtd });
+    var maq = linha.querySelector('.perda-maquina')?.value;
+    var qtd = parseInt(linha.querySelector('.perda-qtd')?.value || '0', 10) || 0;
+    var op = linha.querySelector('.perda-operador')?.value || '';
+    if (maq && qtd > 0) perdas.push({ maquina: maq, quantidade: qtd, operador: op });
   });
   return perdas;
 }
@@ -9902,14 +9940,12 @@ function abrirModalBaixaConclusao(opts){
   if(!modal) return Promise.resolve(null);
   const titulo = document.getElementById('baixa-conc-titulo');
   const qtdEl = document.getElementById('caixas-boas');
-  const setorSel = document.getElementById('setor-finalizacao');
   const opEl = document.getElementById('conc-operador');
   const fatEl = document.getElementById('conc-data-faturamento');
   const sub = document.getElementById('baixa-conc-sub');
   const info = document.getElementById('baixa-conc-info');
   if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
   if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
-  if(setorSel) setorSel.value = String(opts?.setor_finalizacao || '').trim();
   if(opEl) opEl.value = String(opts?.operador_conclusao || (CURRENT_USER?.nome || '') || '').trim();
   if(fatEl) fatEl.value = String(opts?.data_faturamento || new Date().toISOString().split('T')[0]).slice(0,10);
   var listaP = document.getElementById('conc-perdas-lista');
@@ -9960,11 +9996,6 @@ function confirmarModalBaixaConclusao(){
     document.getElementById('conc-data-faturamento')?.focus();
     return;
   }
-  var setor = document.getElementById('setor-finalizacao')?.value;
-  if (!setor) {
-    alert('Selecione o setor de finalização.');
-    return;
-  }
   var caixasBoas = parseInt(document.getElementById('caixas-boas')?.value || '0');
   if (!caixasBoas || caixasBoas <= 0) {
     alert('Informe a quantidade de caixas produzidas.');
@@ -9976,7 +10007,6 @@ function confirmarModalBaixaConclusao(){
   var totalPerdas = perdasArray.reduce(function(s, p){ return s + p.quantidade; }, 0);
 
   var payload = {
-    setor_finalizacao:  setor,
     caixas_boas:        caixasBoas,
     caixas_perdidas:    totalPerdas,
     perdas_por_maquina: JSON.stringify(perdasArray),
@@ -9987,7 +10017,6 @@ function confirmarModalBaixaConclusao(){
   fecharModalBaixaConclusao({
     qtd_real: caixasBoas,
     qtd_perdida: totalPerdas,
-    setor_finalizacao: payload.setor_finalizacao || null,
     caixas_boas: payload.caixas_boas,
     caixas_perdidas: payload.caixas_perdidas,
     perdas_por_maquina: payload.perdas_por_maquina,
@@ -10074,7 +10103,6 @@ async function concluirOFComBaixa(ofId){
     if(!respModal) return;
     qtdProd = Math.trunc(Number(respModal.qtd_real || 0));
     qtdPerd = Math.trunc(Number(respModal.qtd_perdida || 0));
-    const setorFinalizacao = String(respModal.setor_finalizacao || '').trim();
     const caixasBoas = Math.trunc(Number((respModal.caixas_boas != null ? respModal.caixas_boas : qtdProd) || 0));
     const caixasPerdidas = Math.trunc(Number((respModal.caixas_perdidas != null ? respModal.caixas_perdidas : qtdPerd) || 0));
     const operadorConclusao = String(respModal.operador_conclusao || '').trim();
@@ -10112,7 +10140,6 @@ async function concluirOFComBaixa(ofId){
     const concluirBody = {
       qtd_produzida: qtdProd,
       qtd_perdida: qtdPerd,
-      setor_finalizacao: setorFinalizacao || null,
       caixas_boas: caixasBoas,
       caixas_perdidas: caixasPerdidas,
       operador_conclusao: operadorConclusao || null,
@@ -10154,7 +10181,6 @@ async function concluirOFComBaixa(ofId){
       status: 'Concluído',
       qtd_produzida: qtdSalva,
       qtd_perdida: qtdPerdSalva,
-      setor_finalizacao: setorFinalizacao || null,
       caixas_boas: caixasBoas,
       caixas_perdidas: caixasPerdidas,
       operador_conclusao: operadorConclusao || null,
@@ -42782,29 +42808,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </div>
     <div id="baixa-conc-sub" style="font-size:.74rem;color:var(--text3);margin-bottom:10px"></div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      <!-- SETOR DE FINALIZAÇÃO -->
-      <div style="margin-bottom:14px">
-        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">
-          SETOR DE FINALIZAÇÃO *
-        </label>
-        <select id="setor-finalizacao" required
-          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:14px">
-          <option value="">-- Selecionar setor --</option>
-          <option value="Acabamento">Acabamento</option>
-          <option value="Riscador 01">Riscador 01</option>
-          <option value="Riscador 02">Riscador 02</option>
-          <option value="Corte Plana">Corte Plana</option>
-          <option value="Coladeira 01">Coladeira 01</option>
-          <option value="Coladeira 02">Coladeira 02</option>
-          <option value="IMP 01">IMP 01</option>
-          <option value="IMP 02">IMP 02</option>
-          <option value="IMP 03">IMP 03</option>
-          <option value="IMP 04">IMP 04</option>
-          <option value="IMP 05">IMP 05</option>
-          <option value="Corte Vinco Rotativa">Corte Vinco Rotativa</option>
-        </select>
-      </div>
-
       <!-- OPERADOR -->
       <div style="margin-bottom:14px">
         <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">OPERADOR (OPCIONAL)</label>
