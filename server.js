@@ -2619,7 +2619,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const testeRapido = await supabase.from('ofs').select('id').limit(1);
     console.log('[OFS TESTE RAPIDO]', testeRapido.error?.message || 'OK');
     if (testeRapido.error) {
-      return res.status(500).json({ ok: false, error: testeRapido.error.message });
+      return res.json({ ok: false, data: [], total: 0, error: testeRapido.error.message, rid: req._rid || null });
     }
     try {
       console.log('[OFS COLS]', JSON.stringify({
@@ -2991,7 +2991,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!data && rawErr) {
       try { console.error('[OFS GET QUERY ERROR]', rawErr?.message || rawErr); } catch (_) {}
       _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit: limitFinal, offset, empId, status, from, to, lite });
-      return res.status(500).json({ ok: false, error: String(rawErr.message || rawErr), rid: req._rid || null });
+      return res.json({ ok: false, data: [], total: 0, error: String(rawErr.message || rawErr), rid: req._rid || null });
     }
 
     try {
@@ -3030,9 +3030,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     return res.json({ ok: true, ...payload });
   } catch (e) {
     try { console.error('[OFS 500 FULL]', e); } catch (_) {}
-    console.error('[OFS 500]', e?.message, String(e?.stack || '').slice(0, 200));
+    console.error('[OFS ERROR]', e?.message, String(e?.stack || '').slice(0, 200));
     _logApiError('OFS GET', req, e, { query: req.query });
-    return res.status(500).json({ ok: false, error: String(e.message || e), rid: req._rid || null });
+    return res.json({ ok: false, data: [], total: 0, error: String(e.message || e), rid: req._rid || null });
   }
 });
 
