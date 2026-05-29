@@ -686,7 +686,6 @@
         var res = await _orig.apply(this, arguments); 
         setTimeout(function() { 
           try { window.carregarPassagensHoje(); } catch(_) {} 
-          try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {} 
         }, 400); 
         return res; 
       }; 
@@ -701,6 +700,11 @@
       window.go = function(page) { 
         var res = typeof _origGoAcordeon === 'function' ? _origGoAcordeon.apply(this, arguments) : undefined; 
         var p = String(page || ''); 
+        if (String(page || '').toLowerCase() === 'dashboard') { 
+          setTimeout(function() { 
+            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {} 
+          }, 400); 
+        } 
         if (p === 'ofmaq' || p.indexOf('maq') >= 0) { 
           [300, 600, 1000, 1500, 2000, 3000].forEach(function(delay) { 
             setTimeout(function() { 
