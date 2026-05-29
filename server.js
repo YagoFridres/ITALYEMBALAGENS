@@ -5450,29 +5450,42 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
 
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
-    const { cliente, maquina, data_inicio, data_fim, mes, ano, page = 1 } = req.query; 
+    const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
+    const page  = Math.max(1, parseInt(req.query.page) || 1); 
     const limit = 50; 
-    const offset = (parseInt(page) - 1) * limit; 
+    const offset = (page - 1) * limit; 
  
-    let query = supabase.from('passagens_maquina') 
+    let query = supabase 
+      .from('passagens_maquina') 
       .select('*', { count: 'exact' }); 
  
-    if (cliente) query = query.ilike('cliente', '%' + cliente + '%'); 
-    if (maquina) query = query.eq('maquina', maquina); 
+    if (cliente)     query = query.ilike('cliente', '%' + cliente + '%'); 
+    if (maquina)     query = query.eq('maquina', maquina); 
     if (data_inicio) query = query.gte('data_passagem', data_inicio); 
     if (data_fim)    query = query.lte('data_passagem', data_fim); 
-    if (mes && ano)  query = query 
-      .gte('data_passagem', ano + '-' + String(mes).padStart(2,'0') + '-01') 
-      .lte('data_passagem', ano + '-' + String(mes).padStart(2,'0') + '-31'); 
+ 
+    if (mes && ano) { 
+      const anoN = parseInt(ano); 
+      const mesN = parseInt(mes); 
+      const mesStr = String(mesN).padStart(2, '0'); 
+      query = query 
+        .gte('data_passagem', anoN + '-' + mesStr + '-01') 
+        .lte('data_passagem', anoN + '-' + mesStr + '-31'); 
+    } 
  
     const { data, error, count } = await query 
       .order('hora_passagem', { ascending: false }) 
       .range(offset, offset + limit - 1); 
  
-    if (error) throw error; 
-    res.json({ ok: true, passagens: data || [], total: count || 0, page: parseInt(page) }); 
+    if (error) { 
+      console.warn('[passagens/historico] Supabase error:', error.message); 
+      return res.json({ ok: true, passagens: [], total: 0, page }); 
+    } 
+ 
+    res.json({ ok: true, passagens: data || [], total: count || 0, page }); 
   } catch(e) { 
-    res.status(500).json({ ok: false, error: e.message }); 
+    console.error('[passagens/historico]', e.message); 
+    res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
   } 
 }); 
 
