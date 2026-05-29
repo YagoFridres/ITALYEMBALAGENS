@@ -4315,6 +4315,9 @@ function _goBase(id){
     try{ if(_apiConectado && CURRENT_USER) carregarTiposCaixa(false).catch(()=>null); }catch(e){}
     iniciarPollingOFsMaquina();
   }
+  if(id==='historico-passagens'){
+    try{ setTimeout(()=>{ try{ buscarHistoricoPassagens(1); }catch(e){} }, 0); }catch(_){}
+  }
   if(id==='lancamento'){
     if(_apiConectado && CURRENT_USER){
       Promise.resolve().then(()=>lancCarregarHistorico()).catch(()=>renderLancamento());
@@ -10203,6 +10206,76 @@ async function concluirOFComBaixa(ofId){
       return;
     }
     toast('⚠ Concluída, mas ocorreu um aviso no processo','var(--orange)');
+  }
+}
+
+async function buscarHistoricoPassagens(page) {
+  page = page || 1;
+  var container = document.getElementById('hist-passagens-resultado');
+  if (!container) return;
+  container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
+
+  var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  var params = new URLSearchParams({ page: page });
+  var cli = document.getElementById('hist-filtro-cliente')?.value;
+  var maq = document.getElementById('hist-filtro-maquina')?.value;
+  var ini = document.getElementById('hist-filtro-data-ini')?.value;
+  var fim = document.getElementById('hist-filtro-data-fim')?.value;
+  if (cli) params.set('cliente', cli);
+  if (maq) params.set('maquina', maq);
+  if (ini) params.set('data_inicio', ini);
+  if (fim) params.set('data_fim', fim);
+
+  try {
+    var r = await fetch('/api/passagens/historico?' + params + '&t=' + Date.now(),
+      { headers: { Authorization: 'Bearer ' + token } });
+    var d = await r.json();
+    var lista = d.passagens || [];
+
+    if (!lista.length) {
+      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
+      return;
+    }
+
+    var html = '<div style="color:#64748b;font-size:12px;margin-bottom:8px">' + d.total + ' passagens encontradas</div>';
+    html += lista.map(function(p) {
+      var hora = p.hora_passagem
+        ? new Date(p.hora_passagem).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
+        : '';
+      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);' +
+        'border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:center">' +
+        (p.imagem_url ? '<img src="' + p.imagem_url + '" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0">' : '') +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">' +
+            '<span style="font-weight:700;color:#4A90D9">OF #' + (p.of_numero||'—') + '</span>' +
+            '<span style="color:#e2e8f0">' + (p.cliente||'—') + '</span>' +
+            (p.produto ? '<span style="color:#94a3b8;font-size:12px">' + p.produto + '</span>' : '') +
+          '</div>' +
+          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
+            '<span style="color:#10b981;font-size:13px">⚙ ' + (p.maquina||'—') + '</span>' +
+            (p.quantidade ? '<span style="color:#94a3b8;font-size:12px">📦 ' + p.quantidade + ' cx</span>' : '') +
+            (p.operador ? '<span style="color:#94a3b8;font-size:12px">👤 ' + p.operador + '</span>' : '') +
+            '<span style="color:#64748b;font-size:12px">🕐 ' + hora + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    if (d.total > 50) {
+      var totalPages = Math.ceil(d.total / 50);
+      html += '<div style="display:flex;justify-content:center;gap:8px;margin-top:12px">';
+      for (var i = 1; i <= Math.min(totalPages, 10); i++) {
+        html += '<button onclick="buscarHistoricoPassagens(' + i + ')" style="' +
+          'background:' + (i === page ? '#4A90D9' : 'rgba(255,255,255,0.05)') + ';' +
+          'color:' + (i === page ? '#fff' : '#94a3b8') + ';' +
+          'border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">' + i + '</button>';
+      }
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
   }
 }
 
@@ -39592,6 +39665,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
+  <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
 <div id="menu-amostras" class="nav-item" onclick="go('amostras')"><span class="ico">🧪</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
   <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
@@ -40093,6 +40167,45 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="ofmaq-fab-nova-of" class="btn btn-accent" onclick="abrirModalOF()" style="display:none">＋ Nova OF</button>
   </div>
 </div>
+
+<section id="page-historico-passagens" class="page" style="display:none">
+  <h2 style="color:#e2e8f0;margin-bottom:16px">Histórico de Passagens por Máquina</h2>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,0.03);
+              border-radius:12px;padding:14px">
+    <input id="hist-filtro-cliente" type="text" placeholder="Buscar cliente..."
+      style="flex:1;min-width:150px;background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);
+             border-radius:8px;padding:8px 12px;font-size:13px"
+      oninput="buscarHistoricoPassagens()">
+    <select id="hist-filtro-maquina" onchange="buscarHistoricoPassagens()"
+      style="background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);
+             border-radius:8px;padding:8px 12px;font-size:13px">
+      <option value="">Todas as máquinas</option>
+      <option>Corte Vinco Rotativa</option>
+      <option>IMP 01</option><option>IMP 02</option>
+      <option>IMP 03</option><option>IMP 04</option><option>IMP 05</option>
+      <option>Acabamento</option>
+      <option>Riscador 01</option><option>Riscador 02</option>
+      <option>Corte Plana</option>
+      <option>Coladeira 01</option><option>Coladeira 02</option>
+    </select>
+    <input id="hist-filtro-data-ini" type="date" onchange="buscarHistoricoPassagens()"
+      style="background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);
+             border-radius:8px;padding:8px 12px;font-size:13px">
+    <input id="hist-filtro-data-fim" type="date" onchange="buscarHistoricoPassagens()"
+      style="background:#0b1220;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);
+             border-radius:8px;padding:8px 12px;font-size:13px">
+    <button onclick="buscarHistoricoPassagens()"
+      style="background:#4A90D9;color:#fff;border:none;border-radius:8px;
+             padding:8px 16px;cursor:pointer;font-size:13px">Buscar</button>
+  </div>
+
+  <div id="hist-passagens-resultado">
+    <p style="color:#64748b;text-align:center;padding:40px">
+      Use os filtros acima para buscar passagens.
+    </p>
+  </div>
+</section>
 
 <div id="page-hub" class="page" style="display:none">
   <div class="ptoolbar" style="gap:8px;flex-wrap:wrap;">
