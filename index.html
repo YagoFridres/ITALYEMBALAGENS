@@ -39252,25 +39252,53 @@ salvarCompra = async function(){
 // ── Operadores ───────────────────────────────────────────────
 const _salvarOp_orig = salvarOperador;
 salvarOperador = async function(){
-  const nome=(document.getElementById('opr-nome')||{}).value||'';
-  if(!nome.trim()){toast('Informe o nome','var(--red)');return;}
-  const payload={nome:nome.trim(),mat:(document.getElementById('opr-mat')||{}).value||'',maq_principal:(document.getElementById('opr-maq')||{}).value||'',funcao:(document.getElementById('opr-setor')||{}).value||'',admissao:(document.getElementById('opr-admissao')||{}).value||'',ativo:(document.getElementById('opr-st')||{}).value!=='Inativo'?1:0,obs:(document.getElementById('opr-obs')||{}).value||''};
-  const r=await salvarViaApiOuLocal('operador', ()=>api('POST','/operadores',payload), _salvarOp_orig);
-  if(r.ok && !r.local){
-    OPERADORES.push({
-      ...payload,
-      id:r.data.id,
-      status:payload.ativo?'Ativo':'Inativo',
-      maqId: payload.maq_principal,
-      setor: payload.funcao,
-      maqPrincipal: payload.maq_principal
+  var nome = (document.getElementById('opr-nome') || {}).value || '';
+  nome = String(nome || '').trim();
+  if(!nome){ toast('Informe o nome','var(--red)'); return; }
+
+  var payload = {
+    nome: nome,
+    mat: (document.getElementById('opr-mat') || {}).value || '',
+    maqId: (document.getElementById('opr-maq') || {}).value || '',
+    setor: (document.getElementById('opr-setor') || {}).value || '',
+    admissao: (document.getElementById('opr-admissao') || {}).value || '',
+    status: (document.getElementById('opr-st') || {}).value || 'Ativo',
+    obs: (document.getElementById('opr-obs') || {}).value || '',
+    empId: (typeof EMP_FILTRO !== 'undefined' ? (EMP_FILTRO || '') : ''),
+  };
+
+  var idEdicao = window._operadorEditandoId || null;
+  var token = '';
+  try { token = String((typeof getStoredToken === 'function' ? getStoredToken() : '') || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch(e) { token = ''; }
+
+  try{
+    var url = idEdicao ? ('/api/operadores/' + encodeURIComponent(String(idEdicao))) : '/api/operadores';
+    var metodo = idEdicao ? 'PATCH' : 'POST';
+    var full = (window.API_BASE || '') + url;
+
+    var r = await fetch(full, {
+      method: metodo,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(payload)
     });
-    fechar('modal-operador');
-    renderOperadores&&renderOperadores();
-    autoSaveTrigger();
-    toast('✓ Operador cadastrado!');
+    var d = await r.json().catch(()=>null);
+    if(d && d.ok){
+      try{ window._operadorEditandoId = null; }catch(_){}
+      fechar('modal-operador');
+      try{ await carregarOperadores(); }catch(e){}
+      try{ if(typeof renderOperadores === 'function') renderOperadores(); }catch(e){}
+      autoSaveTrigger();
+      toast('✓ Operador salvo!','var(--green)');
+      return;
+    }
+    toast('Erro: ' + (d && (d.error || d.message) ? (d.error || d.message) : 'falha'), 'var(--red)');
+  }catch(e){
+    try{ console.error('[OPERADORES] erro:', e); }catch(_){}
+    toast('Erro de conexão ao salvar operador.','var(--red)');
   }
-  else if(!r.ok){toast('Erro: '+(r.error||''),'var(--red)');}
 };
 
 // ── Inconformidades ──────────────────────────────────────────

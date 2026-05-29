@@ -6966,6 +6966,102 @@ app.put('/api/apontamentos/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // OPERADORES
 // ══════════════════════════════════════════════════════════════
+function _operadoresPayload(body, req) {
+  const b = body && typeof body === 'object' ? body : {};
+  const nome = String(b.nome ?? b.name ?? '').trim();
+  const empresa = String(b.empresa ?? b.company ?? req?.usuario?.empresa ?? 'Italy Embalagens').trim() || 'Italy Embalagens';
+  const empId = String(b.empId ?? b.emp_id ?? b.empresa_id ?? b.empresaId ?? '').trim();
+  const mat = String(b.mat ?? b.matricula ?? b.matrícula ?? '').trim();
+  const setor = String(b.setor ?? b.funcao ?? b.função ?? b.area ?? '').trim();
+  const maq = String(b.maqId ?? b.maq_id ?? b.maquina_id ?? b.maquinaId ?? b.maq_principal ?? b.maqPrincipal ?? '').trim();
+  const admissao = String(b.admissao ?? b.admissão ?? b.admission ?? '').trim();
+  const obs = String(b.obs ?? b.observacoes ?? b.observações ?? '').trim();
+  const statusRaw = b.status != null ? String(b.status).trim() : '';
+  const ativoRaw = b.ativo != null ? b.ativo : (statusRaw ? statusRaw : undefined);
+  let ativo = true;
+  if (ativoRaw !== undefined) {
+    const s = String(ativoRaw).trim().toLowerCase();
+    ativo = !(ativoRaw === 0 || ativoRaw === false || s === '0' || s === 'false' || s === 'inativo' || s === 'inativa');
+  }
+  const out = {
+    nome,
+    empresa,
+    ativo,
+  };
+  if (statusRaw) out.status = statusRaw;
+  if (empId) {
+    out.empId = empId;
+    out.emp_id = empId;
+    out.empresa_id = empId;
+    out.empresaId = empId;
+  }
+  if (mat) {
+    out.mat = mat;
+    out.matricula = mat;
+  }
+  if (setor) {
+    out.setor = setor;
+    out.funcao = setor;
+  }
+  if (maq) {
+    out.maqId = maq;
+    out.maq_id = maq;
+    out.maq_principal = maq;
+    out.maqPrincipal = maq;
+  }
+  if (admissao) {
+    out.admissao = admissao;
+    out.admissão = admissao;
+  }
+  if (obs) {
+    out.obs = obs;
+    out.observacoes = obs;
+    out.observações = obs;
+  }
+  Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+  return out;
+}
+
+async function _operadoresInsertCompat(payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 12; tentativa++) {
+    const { data, error } = await supabase.from('operadores').insert([cur]).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    break;
+  }
+  return { data: null, error: lastErr };
+}
+
+async function _operadoresUpdateCompat(id, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 12; tentativa++) {
+    const { data, error } = await supabase.from('operadores').update(cur).eq('id', id).select();
+    if (!error) return { data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error);
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    break;
+  }
+  return { data: null, error: lastErr };
+}
+
 app.get('/api/operadores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -6975,23 +7071,29 @@ app.get('/api/operadores', authMiddleware, async (req, res) => {
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     for (const col of cols) {
-      let q = supabase.from('operadores').select('*').order('nome');
-      if (col) q = q.eq(col, empId);
-      const { data, error } = await q;
-      if (!error) {
-        const rows = data || [];
-        cacheSet(cacheKey, rows);
-        return ok(res, rows);
+      const filtrosAtivo = ['ativo', 'status', null];
+      for (const fAtivo of filtrosAtivo) {
+        let q = supabase.from('operadores').select('*').order('nome');
+        if (fAtivo === 'ativo') q = q.eq('ativo', true);
+        if (fAtivo === 'status') q = q.eq('status', 'Ativo');
+        if (col) q = q.eq(col, empId);
+        const { data, error } = await q;
+        if (!error) {
+          const rows = data || [];
+          cacheSet(cacheKey, rows);
+          return res.json({ ok: true, data: rows, operadores: rows });
+        }
+        lastErr = error;
+        const msg = String(error.message || error);
+        const m = msg.toLowerCase();
+        if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
+          cacheSet(cacheKey, []);
+          return res.json({ ok: true, data: [], operadores: [] });
+        }
+        if ((fAtivo === 'ativo' || fAtivo === 'status') && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        throw error;
       }
-      lastErr = error;
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
-        cacheSet(cacheKey, []);
-        return ok(res, []);
-      }
-      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
-      throw error;
     }
     throw lastErr;
   } catch (e) { err(res, e); }
@@ -6999,30 +7101,71 @@ app.get('/api/operadores', authMiddleware, async (req, res) => {
 
 app.post('/api/operadores', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase.from('operadores').insert([req.body]).select();
+    const payload = _operadoresPayload(req.body, req);
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    const { data, error } = await _operadoresInsertCompat(payload);
     if (error) throw error;
     cacheClearPrefix('operadores_');
-    ok(res, data[0]);
+    return res.json({ ok: true, data: (data && data[0]) ? data[0] : null });
   } catch (e) { err(res, e); }
 });
 
-app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
+app.patch('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
-    const payload = { ...req.body }; delete payload.id;
-    const { data, error } = await supabase.from('operadores')
-      .update(payload).eq('id', req.params.id).select();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const base = _operadoresPayload(body, req);
+    const payload = { ...base };
+    delete payload.id;
+    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    const { data, error } = await _operadoresUpdateCompat(id, payload);
     if (error) throw error;
     cacheClearPrefix('operadores_');
-    ok(res, data[0]);
+    return res.json({ ok: true, data: (data && data[0]) ? data[0] : null });
   } catch (e) { err(res, e); }
 });
 
 app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase.from('operadores').delete().eq('id', req.params.id);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    let attemptedDelete = false;
+    try {
+      const upd = await _operadoresUpdateCompat(id, { ativo: false, status: 'Inativo' });
+      if (!upd.error) {
+        cacheClearPrefix('operadores_');
+        return res.json({ ok: true });
+      }
+      const msg = String(upd.error?.message || upd.error || '');
+      if (msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('column')) {
+        attemptedDelete = true;
+      } else {
+        throw upd.error;
+      }
+    } catch (e) {
+      if (!attemptedDelete) throw e;
+    }
+    const { error } = await supabase.from('operadores').delete().eq('id', id);
     if (error) throw error;
     cacheClearPrefix('operadores_');
     res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const base = _operadoresPayload(body, req);
+    const payload = { ...base };
+    delete payload.id;
+    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    const { data, error } = await _operadoresUpdateCompat(id, payload);
+    if (error) throw error;
+    cacheClearPrefix('operadores_');
+    return res.json({ ok: true, data: (data && data[0]) ? data[0] : null });
   } catch (e) { err(res, e); }
 });
 
