@@ -347,10 +347,23 @@
       header._pv4 = true; 
       try { header.setAttribute('data-pv4', '1'); } catch(e) {} 
  
-      var body = header.nextElementSibling; 
-      if (!body) return; 
+      var body = null; 
+      var next = header.nextElementSibling; 
+      while (next) { 
+        if (next.tagName !== 'SCRIPT' && next.tagName !== 'STYLE') { 
+          body = next; 
+          break; 
+        } 
+        next = next.nextElementSibling; 
+      } 
+      if (!body) { 
+        console.warn('[PATCH] accordion: body nao encontrado'); 
+        return; 
+      } 
  
-      header.removeAttribute('onclick'); 
+      var onclickOriginal = header.getAttribute('onclick'); 
+      if (onclickOriginal) header.removeAttribute('onclick'); 
+      header.style.userSelect = 'none'; 
  
       body.style.display = 'none'; 
       var aberto = false; 
@@ -375,13 +388,14 @@
  
         aberto = !aberto; 
  
-        if (aberto) { 
+        body.style.display = aberto ? '' : 'none'; 
+        if (aberto && getComputedStyle(body).display === 'none') { 
           body.style.display = 'flex'; 
+        } 
+        if (aberto) { 
           body.style.flexDirection = 'column'; 
           body.style.gap = '8px'; 
           body.style.padding = '10px'; 
-        } else { 
-          body.style.display = 'none'; 
         } 
  
         var s = header.querySelector('.patch-seta-v4'); 
@@ -416,14 +430,16 @@
           }); 
           console.log('[PATCH] Sortable ativo em:', String(header.textContent || '').trim().substring(0, 25)); 
         } 
-      }); 
+      }, true); 
     }); 
   } 
  
   if (!document.getElementById('patch-sort-style')) { 
     var st = document.createElement('style'); 
     st.id = 'patch-sort-style'; 
-    st.textContent = '.of-sort-ghost{opacity:0.4!important;background:rgba(74,144,217,0.2)!important;}'; 
+    st.textContent = '.of-sort-ghost{opacity:0.4!important;background:rgba(74,144,217,0.2)!important;}' + 
+      '.maq-header{cursor:pointer!important;user-select:none!important}' + 
+      '.maq-header:hover{opacity:0.9}'; 
     document.head.appendChild(st); 
   } 
  
