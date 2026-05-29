@@ -6005,6 +6005,129 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
+  try {
+    const diasInativo = parseInt(req.query.dias_inativo) || 30;
+    const limite = parseInt(req.query.limite) || 20;
+    const pageSize = 1000;
+    const maxRows = Math.min(parseInt(req.query.max_rows) || 8000, 20000);
+
+    const hoje = new Date();
+    const mapaClientes = Object.create(null);
+
+    const pickCliente = (of) => {
+      return String(
+        of?.cliente
+          ?? of?.cliente_nome
+          ?? of?.cliNome
+          ?? of?.clienteNome
+          ?? of?.cli_nome
+          ?? of?.nome_cliente
+          ?? ''
+      ).trim();
+    };
+
+    const pickData = (of) => {
+      return of?.created_at ?? of?.dia ?? of?.data_pedido ?? of?.data_entrega ?? of?.data_conclusao ?? null;
+    };
+
+    const pickValor = (of) => {
+      const direto = parseFloat(of?.vl_total ?? of?.valor_total ?? of?.valor_venda ?? of?.val ?? of?.total ?? of?.valor ?? 0) || 0;
+      if (direto > 0) return direto;
+      const qtd = parseFloat(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
+      const unit = parseFloat(of?.vl_unit ?? of?.valor_unit ?? of?.vlUnit ?? of?.valorUnit ?? 0) || 0;
+      const calc = qtd * unit;
+      return calc > 0 ? calc : 0;
+    };
+
+    let offset = 0;
+    while (offset < maxRows) {
+      const { data: ofs, error } = await supabase
+        .from('ofs')
+        .select('id,cliNome,cliente_nome,cli_id,cliente_id,created_at,dia,quantidade,qtd,qtd_pedida,valor_total,valor_venda,val,status,deleted_at')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+      const rows = Array.isArray(ofs) ? ofs : [];
+      if (!rows.length) break;
+
+      rows.forEach((of) => {
+        const nome = pickCliente(of);
+        if (!nome) return;
+
+        const valor = pickValor(of);
+
+        if (!mapaClientes[nome]) {
+          mapaClientes[nome] = {
+            nome,
+            totalOfs: 0,
+            totalCaixas: 0,
+            totalValor: 0,
+            ultimoPedido: null,
+            diasSemPedir: null,
+            statusUltimo: null,
+          };
+        }
+
+        const c = mapaClientes[nome];
+        c.totalOfs += 1;
+        c.totalCaixas += parseInt(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
+        c.totalValor += valor;
+
+        const dtRaw = pickData(of);
+        const dt = dtRaw ? new Date(dtRaw) : null;
+        if (dt && !isNaN(dt.getTime())) {
+          const prev = c.ultimoPedido ? new Date(c.ultimoPedido) : null;
+          if (!prev || dt.getTime() > prev.getTime()) {
+            c.ultimoPedido = dtRaw;
+            c.statusUltimo = of?.status ?? null;
+          }
+        }
+      });
+
+      offset += rows.length;
+      if (rows.length < pageSize) break;
+    }
+
+    Object.values(mapaClientes).forEach((c) => {
+      if (c.ultimoPedido) {
+        const diff = hoje - new Date(c.ultimoPedido);
+        c.diasSemPedir = Math.floor(diff / (1000 * 60 * 60 * 24));
+      }
+    });
+
+    const todos = Object.values(mapaClientes);
+
+    const inativos = todos
+      .filter((c) => c.diasSemPedir !== null && c.diasSemPedir >= diasInativo)
+      .sort((a, b) => b.diasSemPedir - a.diasSemPedir)
+      .slice(0, limite);
+
+    const maisAtivos = todos
+      .filter((c) => c.totalOfs > 0)
+      .sort((a, b) => b.totalOfs - a.totalOfs)
+      .slice(0, limite);
+
+    const maiorValor = todos
+      .filter((c) => c.totalValor > 0)
+      .sort((a, b) => b.totalValor - a.totalValor)
+      .slice(0, limite);
+
+    res.json({
+      ok: true,
+      inativos,
+      mais_ativos: maisAtivos,
+      maior_valor: maiorValor,
+      total_clientes: todos.length,
+    });
+  } catch (e) {
+    console.error('[clientes/analise]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();

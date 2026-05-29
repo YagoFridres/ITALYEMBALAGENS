@@ -18336,6 +18336,113 @@ function renderClientes(){
   }).join('');
 }
 
+async function carregarAnaliseClientes(tipo){
+  tipo = String(tipo || 'inativos').trim() || 'inativos';
+  const container = document.getElementById('analise-clientes-resultado');
+  if(!container) return;
+
+  ['inativos','ativos','valor'].forEach(function(t){
+    const btn = document.getElementById('btn-analise-' + t);
+    if(!btn) return;
+    btn.style.background = (t === tipo) ? '#4A90D9' : 'rgba(255,255,255,0.07)';
+    btn.style.color = (t === tipo) ? '#fff' : '#94a3b8';
+    btn.style.fontWeight = (t === tipo) ? '600' : '400';
+  });
+
+  const selDias = document.getElementById('sel-dias-inativo');
+  if(selDias) selDias.style.display = (tipo === 'inativos') ? 'block' : 'none';
+
+  container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Carregando...</p>';
+
+  const dias = String((selDias && selDias.value) ? selDias.value : '30');
+  try{
+    const resp = await fetch('/api/clientes/analise?dias_inativo=' + encodeURIComponent(dias) + '&t=' + Date.now(), {
+      headers: headersAuth ? headersAuth() : {}
+    });
+    const d = await resp.json().catch(()=>null);
+
+    const lista = (d && d.ok !== false)
+      ? (tipo === 'inativos' ? d.inativos : (tipo === 'valor' ? d.maior_valor : d.mais_ativos))
+      : null;
+
+    if(!Array.isArray(lista) || !lista.length){
+      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Nenhum cliente encontrado.</p>';
+      return;
+    }
+
+    const fmt = function(v){
+      const n = Number(v || 0) || 0;
+      if(n >= 1000000) return 'R$ ' + (n/1000000).toFixed(1) + 'M';
+      if(n >= 1000) return 'R$ ' + (n/1000).toFixed(0) + 'k';
+      return 'R$ ' + n.toFixed(0);
+    };
+
+    container.innerHTML =
+      '<div style="color:#64748b;font-size:11px;margin-bottom:8px">' + escH(String(d?.total_clientes || 0)) + ' clientes no total</div>' +
+      lista.map(function(c, i){
+        const nome = String(c?.nome || '').trim();
+        const ultData = c?.ultimoPedido ? new Date(c.ultimoPedido).toLocaleDateString('pt-BR') : '-';
+        const diasSem = (c && Object.prototype.hasOwnProperty.call(c, 'diasSemPedir')) ? c.diasSemPedir : null;
+        const corDias = (diasSem > 60) ? '#f43f5e' : (diasSem > 30) ? '#f59e0b' : '#10b981';
+        const encNome = encodeURIComponent(nome);
+        return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);' +
+          'border-radius:10px;padding:12px 14px;margin-bottom:8px;' +
+          'display:flex;align-items:center;gap:12px;cursor:pointer" ' +
+          'data-nome="' + escAttr(encNome) + '" ' +
+          'onclick="buscarClienteEAbrir(this.getAttribute(\\'data-nome\\'))">' +
+          '<div style="min-width:28px;height:28px;border-radius:50%;background:rgba(74,144,217,0.2);' +
+            'display:flex;align-items:center;justify-content:center;' +
+            'color:#4A90D9;font-weight:700;font-size:12px">' + (i+1) + '</div>' +
+          '<div style="flex:1;min-width:0">' +
+            '<div style="color:#e2e8f0;font-weight:600;font-size:13px;' +
+              'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(nome || '—') + '</div>' +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:3px">' +
+              '<span style="color:#94a3b8;font-size:11px">' + escH(String(c?.totalOfs || 0)) + ' OFs</span>' +
+              ((Number(c?.totalValor || 0) > 0) ? '<span style="color:#10b981;font-size:11px">' + escH(fmt(c.totalValor)) + '</span>' : '') +
+              '<span style="color:#64748b;font-size:11px">ultimo: ' + escH(ultData) + '</span>' +
+            '</div>' +
+          '</div>' +
+          ((tipo === 'inativos' && diasSem != null) ?
+            '<div style="text-align:center;flex-shrink:0">' +
+              '<div style="color:' + corDias + ';font-weight:700;font-size:16px">' + escH(String(diasSem)) + '</div>' +
+              '<div style="color:#64748b;font-size:10px">dias</div>' +
+            '</div>' : '') +
+        '</div>';
+      }).join('');
+  }catch(e){
+    container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao carregar analise.</p>';
+    try{ console.error('[ANALISE CLIENTES]', e); }catch(_){}
+  }
+}
+
+function buscarClienteEAbrir(nomeEnc){
+  const nome = (() => {
+    try{ return decodeURIComponent(String(nomeEnc || '')); }catch(e){ return String(nomeEnc || ''); }
+  })().trim();
+  const inp = document.getElementById('cli-busca');
+  if(inp){
+    inp.value = nome;
+    try{ renderClientes(); }catch(e){}
+  }
+
+  const norm = (s) => {
+    try{
+      return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    }catch(e){
+      return String(s || '').trim().toLowerCase();
+    }
+  };
+  const alvo = norm(nome);
+  const arr = Array.isArray(CLIENTES) ? CLIENTES : [];
+  let cli = arr.find(c => norm(c?.nome) === alvo) || null;
+  if(!cli && alvo){
+    cli = arr.find(c => norm(c?.nome).includes(alvo) || alvo.includes(norm(c?.nome))) || null;
+  }
+  if(cli && cli.id && typeof abrirHistCli === 'function'){
+    try{ abrirHistCli(cli.id); }catch(e){}
+  }
+}
+
 function mapaClientesRecarregar(force){
   try{ window._mapCliCacheAt = 0; }catch(e){}
   return renderMapaClientes(!!force);
@@ -37644,6 +37751,12 @@ function go(id){
     try{ if(typeof renderHub === 'function') renderHub(); }catch(e){}
     try{ if(typeof carregarPassagensHoje === 'function') carregarPassagensHoje(); }catch(e){}
   }
+  if(id === 'clientes'){
+    try{ if(typeof renderClientes === 'function') renderClientes(); }catch(e){}
+    setTimeout(function(){
+      try{ if(typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); }catch(e){}
+    }, 300);
+  }
   if(id === 'mapa-clientes'){
     try{ if(typeof mapcliSetAba === 'function') mapcliSetAba(window._mapCliStartTab || 'mapa'); }catch(e){}
     try{ window._mapCliStartTab = null; }catch(e){}
@@ -40579,7 +40692,40 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent" onclick="abrirModalCliente()">＋ Novo Cliente</button>
     <input id="cli-import-file" type="file" accept=".xlsx,.xls" style="display:none" onchange="clientesHandleImportExcelFile(this.files[0]); this.value='';">
   </div>
-  <div class="page-body"><div class="cli-grid" id="cli-grid"></div></div>
+  <div class="page-body">
+    <div id="widget-analise-clientes" style="margin-bottom:16px">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button onclick="carregarAnaliseClientes('inativos')"
+          id="btn-analise-inativos"
+          style="background:#4A90D9;color:#fff;border:none;border-radius:20px;
+                 padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">
+          Sem pedir há +30 dias
+        </button>
+        <button onclick="carregarAnaliseClientes('ativos')"
+          id="btn-analise-ativos"
+          style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;
+                 border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">
+          Quem mais pede
+        </button>
+        <button onclick="carregarAnaliseClientes('valor')"
+          id="btn-analise-valor"
+          style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;
+                 border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">
+          Maior valor
+        </button>
+        <select id="sel-dias-inativo" onchange="carregarAnaliseClientes('inativos')"
+          style="background:#0b1220;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);
+                 border-radius:20px;padding:4px 10px;font-size:12px;display:none">
+          <option value="15">15 dias</option>
+          <option value="30" selected>30 dias</option>
+          <option value="60">60 dias</option>
+          <option value="90">90 dias</option>
+        </select>
+      </div>
+      <div id="analise-clientes-resultado"></div>
+    </div>
+    <div class="cli-grid" id="cli-grid"></div>
+  </div>
 </div>
 
 <!-- ========== 3A. MAPA DE CLIENTES ========== -->
