@@ -23,6 +23,10 @@
         '.of-card,[class*=\"of-card\"]{padding:10px !important;font-size:13px !important;}' +
         '.of-img,[class*=\"of-img\"]{width:48px !important;height:48px !important;}' +
         '.truncate-mobile{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;max-width:150px !important;}' +
+        '#page-historico-passagens{padding:8px!important;}' +
+        '#hist-passagens-resultado .of-card{font-size:12px!important;}' +
+        '.hist-filtros{flex-direction:column!important;}' +
+        '#hist-filtros input,#hist-filtros select{width:100%!important;font-size:16px!important;}' +
         '}';
       document.head.appendChild(styleEl);
     }
@@ -266,26 +270,16 @@
       '</div>'; 
     }).join(''); 
  
-    var checks = HOTBAR_TODAS_ABAS.map(function(aba) { 
-      var fixo = !!aba.fixo; 
-      var ativo = ativos.indexOf(aba.id) !== -1; 
-      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:' + (fixo?'default':'pointer') + '">' + 
-        '<input type="checkbox" ' + (ativo?'checked':'') + ' ' + (fixo?'disabled':'') + ' onchange="toggleHotbarAba(&quot;' + aba.id + '&quot;,this.checked)" style="width:18px;height:18px">' + 
-        '<span style="font-size:18px">' + aba.icon + '</span>' + 
-        '<span style="color:' + (fixo?'#64748b':'#e2e8f0') + ';font-size:14px">' + aba.label + (fixo?' (fixo)':'') + '</span>' + 
-      '</label>'; 
-    }).join(''); 
- 
     sheet.innerHTML = 
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' + 
         '<span style="color:#e2e8f0;font-weight:800;font-size:15px">Menu</span>' + 
         '<button onclick="document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">X</button>' + 
       '</div>' + 
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">' + grid + '</div>' + 
-      '<div style="border-top:1px solid rgba(255,255,255,0.12);padding-top:12px">' + 
-        '<div style="color:#94a3b8;font-size:13px;margin-bottom:10px">Personalizar barra (max. 4 abas)</div>' + 
-        '<div>' + checks + '</div>' + 
-      '</div>'; 
+      '<div style="background:rgba(74,144,217,0.1);border:1px solid rgba(74,144,217,0.2);border-radius:10px;padding:12px;margin-bottom:14px;cursor:pointer" onclick="window.abrirPersonalizarHotbar()">' + 
+        '<div style="color:#4A90D9;font-weight:600;font-size:13px;margin-bottom:2px">Personalizar barra de navegacao</div>' + 
+        '<div style="color:#64748b;font-size:11px">Escolha quais abas aparecem embaixo</div>' + 
+      '</div>' + 
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">' + grid + '</div>'; 
  
     overlay.appendChild(sheet); 
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); }); 
@@ -300,7 +294,7 @@
       if (cur.length >= 4) { 
         alert('Maximo 4 abas na barra. Desmarque uma para adicionar outra.'); 
         try{ 
-          var q = document.querySelectorAll('#modal-menu-mais input[type="checkbox"]'); 
+          var q = document.querySelectorAll('#modal-personalizar-hotbar input[type="checkbox"]'); 
           Array.prototype.forEach.call(q, function(cb){ 
             try{ if(cb && cb.getAttribute('onchange') && cb.getAttribute('onchange').indexOf(id) !== -1) cb.checked = false; }catch(_){} 
           }); 
@@ -448,9 +442,9 @@
             btn.id = 'btn-personalizar-hotbar'; 
             btn.textContent = 'Personalizar barra de navegacao'; 
             btn.style.cssText = 'width:100%;padding:12px;background:rgba(74,144,217,0.15);color:#4A90D9;' + 
-              'border:1px solid rgba(74,144,217,0.3);border-radius:8px;cursor:pointer;font-size:13px;margin-top:8px'; 
+              'border:1px solid rgba(74,144,217,0.3);border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:10px'; 
             btn.onclick = function() { try { window.abrirPersonalizarHotbar(); } catch(e) {} }; 
-            menu.appendChild(btn); 
+            try { menu.insertBefore(btn, menu.firstChild); } catch(_) { menu.appendChild(btn); } 
           } 
         }, 100); 
         return res; 
@@ -460,69 +454,41 @@
   } 
 
   window.abrirPersonalizarHotbar = function() { 
+    try { var m = document.getElementById('modal-menu-mais'); if (m) m.remove(); } catch(_) {} 
     try { 
-      var old = document.getElementById('modal-hotbar-personalizar'); 
-      if (old) old.remove(); 
+      var old = document.getElementById('modal-personalizar-hotbar'); 
+      if (old) { old.remove(); return; } 
     } catch(e) {} 
  
+    var ativos = getHotbarConfig(); 
     var overlay = document.createElement('div'); 
-    overlay.id = 'modal-hotbar-personalizar'; 
+    overlay.id = 'modal-personalizar-hotbar'; 
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
  
-    function getHidden() { 
-      try { 
-        var raw = localStorage.getItem('mbn_hidden'); 
-        var arr = raw ? JSON.parse(raw) : []; 
-        return Array.isArray(arr) ? arr : []; 
-      } catch(e) { return []; } 
-    } 
-    function setHidden(arr) { 
-      try { localStorage.setItem('mbn_hidden', JSON.stringify(arr || [])); } catch(e) {} 
-    } 
-    function applyHidden() { 
-      var hidden = getHidden(); 
-      ['hub','pcp','ofmaq','estoque'].forEach(function(k){ 
-        var el = document.getElementById('mbn-' + k); 
-        if (el) el.style.display = hidden.indexOf(k) >= 0 ? 'none' : ''; 
-      }); 
-    } 
+    var configHtml = HOTBAR_TODAS_ABAS.map(function(aba) { 
+      var fixo = !!aba.fixo; 
+      var ativo = ativos.indexOf(aba.id) !== -1; 
+      return '<label style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:' + (fixo?'default':'pointer') + '">' + 
+        '<input type="checkbox" ' + (ativo?'checked':'') + ' ' + (fixo?'disabled':'') + 
+        ' onchange="toggleHotbarAba(&quot;' + aba.id + '&quot;,this.checked)" style="width:20px;height:20px;cursor:' + (fixo?'default':'pointer') + '">' + 
+        '<span style="font-size:15px;font-weight:700;min-width:36px">' + aba.icon + '</span>' + 
+        '<span style="color:' + (fixo?'#64748b':'#e2e8f0') + ';font-size:15px">' + aba.label + (fixo?' (fixo)':'') + '</span>' + 
+      '</label>'; 
+    }).join(''); 
  
-    var hidden = getHidden(); 
     var sheet = document.createElement('div'); 
-    sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
+    sheet.style.cssText = 'background:#0b1220;border-radius:20px 20px 0 0;width:100%;padding:20px 16px 40px;max-height:80vh;overflow-y:auto'; 
     sheet.innerHTML = 
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' + 
-        '<span style="color:#e2e8f0;font-weight:800;font-size:15px">Personalizar barra</span>' + 
-        '<button id="btn-fechar-hotbar" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">X</button>' + 
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' + 
+        '<span style="color:#e2e8f0;font-weight:700;font-size:16px">Personalizar navegacao</span>' + 
+        '<button onclick="document.getElementById(&quot;modal-personalizar-hotbar&quot;).remove()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">X</button>' + 
       '</div>' + 
-      ['hub','pcp','ofmaq','estoque'].map(function(k){ 
-        var checked = hidden.indexOf(k) === -1 ? 'checked' : ''; 
-        return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer">' + 
-          '<input type="checkbox" data-k="' + k + '" ' + checked + ' style="width:18px;height:18px">' + 
-          '<span style="color:#e2e8f0;font-size:14px">' + k + '</span>' + 
-        '</label>'; 
-      }).join(''); 
+      '<p style="color:#64748b;font-size:13px;margin-bottom:12px">Maximo 4 abas. Hub e Maquinas sao fixos.</p>' + 
+      configHtml; 
  
     overlay.appendChild(sheet); 
-    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); }); 
+    overlay.addEventListener('click', function(e2){ if(e2.target===overlay) overlay.remove(); }); 
     document.body.appendChild(overlay); 
- 
-    var fecharBtn = document.getElementById('btn-fechar-hotbar'); 
-    if (fecharBtn) fecharBtn.onclick = function(){ overlay.remove(); }; 
- 
-    Array.prototype.forEach.call(sheet.querySelectorAll('input[type="checkbox"][data-k]'), function(cb) { 
-      cb.addEventListener('change', function() { 
-        var k = String(cb.getAttribute('data-k') || '').trim(); 
-        if (!k) return; 
-        var cur = getHidden(); 
-        if (cb.checked) cur = cur.filter(function(x){ return x !== k; }); 
-        else if (cur.indexOf(k) === -1) cur.push(k); 
-        setHidden(cur); 
-        applyHidden(); 
-      }); 
-    }); 
- 
-    applyHidden(); 
   }; 
 
   var _fnOrigOfRapida = null; 
@@ -552,12 +518,176 @@
     } 
   } 
  
+  window.renderProjecaoVendas = async function(anoExibir) { 
+    var container = document.getElementById('widget-projecao-vendas'); 
+    if (!container) return; 
+    anoExibir = anoExibir || new Date().getFullYear(); 
+    container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px;font-size:13px">Carregando projecao...</p>'; 
+    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+    var h = token ? { 'Authorization': 'Bearer ' + token } : {}; 
+    try { 
+      var r = await fetch('/api/dashboard/faturamento-mensal?t=' + Date.now(), { headers: h }); 
+      var d = await r.json(); 
+      var meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']; 
+      var hoje = new Date(); 
+      var anoAtual = hoje.getFullYear(); 
+      var mesAtual = hoje.getMonth() + 1; 
+      var mapa = {}; 
+      (d.dados || []).forEach(function(m){ mapa[m.ano + '-' + m.mes] = m; }); 
+      (d.futuros || []).forEach(function(m){ mapa[m.ano + '-' + m.mes] = m; }); 
+ 
+      var maxVal = 1; 
+      for (var mm = 1; mm <= 12; mm++) { 
+        var v = (mapa[anoExibir + '-' + mm] || {}).valor || 0; 
+        if (v > maxVal) maxVal = v; 
+      } 
+      var totalAno = 0; 
+      for (var mm2 = 1; mm2 <= 12; mm2++) { 
+        totalAno += (mapa[anoExibir + '-' + mm2] || {}).valor || 0; 
+      } 
+      function fmt(v){ 
+        if(!v) return 'R$ 0'; 
+        if(v >= 1000000) return 'R$ ' + (v/1000000).toFixed(1) + 'M'; 
+        if(v >= 1000) return 'R$ ' + (v/1000).toFixed(0) + 'k'; 
+        return 'R$ ' + parseFloat(v).toFixed(0); 
+      } 
+ 
+      var anos = []; 
+      for (var a = anoAtual - 2; a <= anoAtual + 2; a++) anos.push(a); 
+      var botoesAno = anos.map(function(a2){ 
+        return '<button onclick="window.renderProjecaoVendas(' + a2 + ')" style="border:none;border-radius:20px;padding:3px 10px;cursor:pointer;font-size:11px;background:' + (a2 === anoExibir ? '#4A90D9' : 'rgba(255,255,255,0.07)') + ';color:' + (a2 === anoExibir ? '#fff' : '#94a3b8') + '">' + a2 + (a2 > anoAtual ? '*' : '') + '</button>'; 
+      }).join(''); 
+ 
+      var barras = ''; 
+      for (var mm3 = 1; mm3 <= 12; mm3++) { 
+        var k = anoExibir + '-' + mm3; 
+        var item = mapa[k] || { valor: 0, fonte: 'vazio' }; 
+        var val = item.valor || 0; 
+        var fonte = item.fonte || 'vazio'; 
+        var ehAtual = (anoExibir === anoAtual && mm3 === mesAtual); 
+        var pct = Math.round((val / maxVal) * 100); 
+        var cor = fonte === 'of' ? '#10b981' : (fonte === 'manual' ? '#f59e0b' : (fonte === 'projecao' ? 'rgba(74,144,217,0.6)' : 'rgba(255,255,255,0.04)')); 
+        var lbl = val > 0 ? (fonte === 'projecao' ? '~' + fmt(val) : fmt(val)) : '-'; 
+        var obs = item.obs || ''; 
+        barras += '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:0">' + 
+          '<span style="font-size:8px;color:#94a3b8;white-space:nowrap;overflow:hidden;max-width:100%;text-align:center">' + lbl + '</span>' + 
+          '<div style="width:100%;background:rgba(255,255,255,0.05);border-radius:4px 4px 0 0;height:80px;display:flex;align-items:flex-end;position:relative;cursor:pointer" onclick="window.editarMesFaturamento(' + anoExibir + ',' + mm3 + ',' + val + ',&quot;' + String(obs).replace(/&/g,'&amp;').replace(/\"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '&quot;)" title="Clique para editar">' + 
+            (ehAtual ? '<div style="position:absolute;inset:0;border:2px solid #f59e0b;border-radius:4px;pointer-events:none"></div>' : '') + 
+            '<div style="width:100%;border-radius:4px 4px 0 0;background:' + cor + ';height:' + Math.max(pct, val > 0 ? 3 : 0) + '%"></div>' + 
+          '</div>' + 
+          '<span style="font-size:9px;color:' + (ehAtual ? '#f59e0b' : '#64748b') + ';font-weight:' + (ehAtual ? '700' : '400') + '">' + meses[mm3-1] + '</span>' + 
+        '</div>'; 
+      } 
+ 
+      container.innerHTML = 
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px">' + 
+          '<span style="color:#e2e8f0;font-weight:700;font-size:14px">Projecao de Vendas</span>' + 
+          '<div style="display:flex;gap:4px;flex-wrap:wrap">' + botoesAno + '</div>' + 
+        '</div>' + 
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' + 
+          '<div style="background:rgba(16,185,129,0.1);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Total ' + anoExibir + '</div><div style="color:#10b981;font-size:14px;font-weight:700">' + fmt(totalAno) + '</div></div>' + 
+          '<div style="background:rgba(74,144,217,0.1);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Tend. mensal</div><div style="color:#4A90D9;font-size:14px;font-weight:700">' + ((d.crescimento_pct >= 0) ? '+' : '') + d.crescimento_pct + '%</div></div>' + 
+          '<div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:8px 12px;flex:1;min-width:90px"><div style="color:#64748b;font-size:10px">Base</div><div style="color:#94a3b8;font-size:13px;font-weight:600">' + (d.base_meses || 0) + ' meses</div></div>' + 
+        '</div>' + 
+        '<div style="display:flex;gap:3px;align-items:flex-end;height:120px;padding:0 2px">' + barras + '</div>' + 
+        '<div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">' + 
+          '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:#10b981;border-radius:2px"></div><span style="color:#64748b;font-size:10px">Sistema</span></div>' + 
+          '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:#f59e0b;border-radius:2px"></div><span style="color:#64748b;font-size:10px">Manual</span></div>' + 
+          '<div style="display:flex;align-items:center;gap:4px"><div style="width:10px;height:10px;background:rgba(74,144,217,0.6);border-radius:2px"></div><span style="color:#64748b;font-size:10px">Projecao</span></div>' + 
+          '<span style="color:#4A90D9;font-size:10px;cursor:pointer;margin-left:auto" onclick="window.renderProjecaoVendas(' + anoExibir + ')">Atualizar</span>' + 
+        '</div>'; 
+    } catch(e) { 
+      container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:16px;font-size:13px">Erro ao carregar projecao.</p>'; 
+      console.error('[PATCH] projecaoVendas:', e); 
+    } 
+  }; 
+ 
+  window.editarMesFaturamento = function(ano, mes, valorAtual, obsAtual) { 
+    try { 
+      var old = document.getElementById('modal-fat-manual'); 
+      if (old) old.remove(); 
+    } catch(e) {} 
+    var mesesNomes = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']; 
+    var overlay = document.createElement('div'); 
+    overlay.id = 'modal-fat-manual'; 
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px'; 
+    overlay.innerHTML = 
+      '<div style="background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;width:100%;max-width:360px">' + 
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' + 
+          '<span style="color:#e2e8f0;font-weight:700">' + mesesNomes[mes-1] + '/' + ano + '</span>' + 
+          '<button id="fat-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer">X</button>' + 
+        '</div>' + 
+        '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">Valor do mes (R$)</label>' + 
+        '<input id="fat-val" type="number" min="0" step="0.01" value="' + (valorAtual || '') + '" placeholder="Ex: 150000" style="width:100%;background:#1e293b;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:16px;box-sizing:border-box;margin-bottom:12px">' + 
+        '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">Observacao (opcional)</label>' + 
+        '<input id="fat-obs" type="text" value="' + (obsAtual || '') + '" placeholder="Ex: dados estimados" style="width:100%;background:#1e293b;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px;font-size:14px;box-sizing:border-box;margin-bottom:16px">' + 
+        '<div style="display:flex;gap:8px">' + 
+          '<button id="fat-save" style="flex:1;background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:10px;cursor:pointer;font-size:14px;font-weight:600">Salvar</button>' + 
+          (valorAtual > 0 ? '<button id="fat-del" style="background:rgba(239,68,68,0.15);color:#f43f5e;border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px;cursor:pointer;font-size:13px">Remover</button>' : '') + 
+        '</div>' + 
+      '</div>'; 
+    overlay.addEventListener('click', function(e2){ if (e2.target === overlay) overlay.remove(); }); 
+    document.body.appendChild(overlay); 
+    var c = document.getElementById('fat-close'); 
+    if (c) c.onclick = function(){ overlay.remove(); }; 
+    var s = document.getElementById('fat-save'); 
+    if (s) s.onclick = function(){ window.salvarFatManual(ano, mes); }; 
+    var d = document.getElementById('fat-del'); 
+    if (d) d.onclick = function(){ window.deletarFatManual(ano, mes); }; 
+    setTimeout(function(){ 
+      var el = document.getElementById('fat-val'); 
+      if (el) { try { el.focus(); el.select(); } catch(_) {} } 
+    }, 100); 
+  }; 
+ 
+  window.salvarFatManual = async function(ano, mes) { 
+    var vEl = document.getElementById('fat-val'); 
+    var oEl = document.getElementById('fat-obs'); 
+    var valor = parseFloat(vEl ? (vEl.value || '0') : '0'); 
+    var obs = oEl ? (oEl.value || '') : ''; 
+    if (isNaN(valor) || valor < 0) { alert('Valor invalido'); return; } 
+    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+    try { 
+      var r = await fetch('/api/dashboard/faturamento-manual', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, 
+        body: JSON.stringify({ ano: ano, mes: mes, valor: valor, observacao: obs }) 
+      }); 
+      var d = await r.json(); 
+      if (d && d.ok) { 
+        try { var m = document.getElementById('modal-fat-manual'); if (m) m.remove(); } catch(_) {} 
+        window.renderProjecaoVendas(ano); 
+      } else { 
+        alert('Erro: ' + ((d && d.error) ? d.error : 'Tente novamente')); 
+      } 
+    } catch(e) { alert('Erro de conexao'); } 
+  }; 
+ 
+  window.deletarFatManual = async function(ano, mes) { 
+    if (!confirm('Remover valor manual de ' + mes + '/' + ano + '?')) return; 
+    var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
+    try { 
+      var r = await fetch('/api/dashboard/faturamento-manual/' + ano + '/' + mes, { 
+        method: 'DELETE', 
+        headers: { 'Authorization': 'Bearer ' + token } 
+      }); 
+      var d = await r.json(); 
+      if (d && d.ok) { 
+        try { var m = document.getElementById('modal-fat-manual'); if (m) m.remove(); } catch(_) {} 
+        window.renderProjecaoVendas(ano); 
+      } 
+    } catch(e) { alert('Erro de conexao'); } 
+  }; 
+ 
   function patchRenderHub() { 
     if (window.renderHub && !window.renderHub._patched) { 
       var _orig = window.renderHub; 
       window.renderHub = async function() { 
         var res = await _orig.apply(this, arguments); 
-        setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
+        setTimeout(function() { 
+          try { window.carregarPassagensHoje(); } catch(_) {} 
+          try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {} 
+        }, 400); 
         return res; 
       }; 
       window.renderHub._patched = true; 

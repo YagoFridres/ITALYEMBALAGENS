@@ -16263,6 +16263,111 @@ if(cron && cron.validate('0 18 * * *')){
   }, { scheduled:true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
 }
 
+app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) => {
+  try {
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const dataInicio = new Date();
+    dataInicio.setFullYear(anoAtual - 3);
+
+    async function fetchOfsConcluidas() {
+      const selectPreferido = 'data_conclusao,data_entrega,vl_total,valor_total,total,quantidade,vl_unit,status,created_at';
+      const statusList = ['Concluida','Concluída','Faturada','faturada'];
+      let r = await supabase.from('ofs')
+        .select(selectPreferido)
+        .in('status', statusList)
+        .gte('created_at', dataInicio.toISOString());
+      if (!r?.error) return r.data || [];
+
+      const msg = String(r.error.message || r.error || '').toLowerCase();
+      if (msg.includes('does not exist') || msg.includes('could not find')) {
+        r = await supabase.from('ofs')
+          .select('*')
+          .in('status', statusList)
+          .gte('created_at', dataInicio.toISOString());
+        if (!r?.error) return r.data || [];
+      }
+      throw r.error;
+    }
+
+    const [ofsRes, manuaisRes] = await Promise.allSettled([
+      fetchOfsConcluidas(),
+      supabase.from('faturamento_manual').select('*'),
+    ]);
+
+    const ofs = ofsRes.status === 'fulfilled' ? (ofsRes.value || []) : [];
+    const manuais = manuaisRes.status === 'fulfilled' ? (manuaisRes.value?.data || []) : [];
+
+    const gruposOf = {};
+    (ofs || []).forEach(of => {
+      const valor = parseFloat(of.vl_total||of.valor_total||of.total||0) ||
+                    (parseFloat(of.quantidade||0) * parseFloat(of.vl_unit||0));
+      if (!valor || valor <= 0) return;
+      const d = new Date(of.data_conclusao || of.data_entrega || of.created_at);
+      if (isNaN(d)) return;
+      const k = d.getFullYear() + '-' + (d.getMonth()+1);
+      if (!gruposOf[k]) gruposOf[k] = { ano: d.getFullYear(), mes: d.getMonth()+1, valor: 0, fonte: 'of' };
+      gruposOf[k].valor += valor;
+    });
+
+    (manuais || []).forEach(m => {
+      const k = m.ano + '-' + m.mes;
+      if (!gruposOf[k]) gruposOf[k] = { ano: m.ano, mes: m.mes, valor: parseFloat(m.valor), fonte: 'manual', obs: m.observacao };
+    });
+
+    const dados = Object.values(gruposOf).sort((a,b) => (a.ano*100+a.mes)-(b.ano*100+b.mes));
+
+    const comDados = dados.filter(m => m.valor > 0).slice(-6);
+    let crescimento = 0;
+    if (comDados.length >= 2) {
+      const taxas = [];
+      for (let i = 1; i < comDados.length; i++) {
+        if (comDados[i-1].valor > 0)
+          taxas.push((comDados[i].valor - comDados[i-1].valor) / comDados[i-1].valor);
+      }
+      if (taxas.length) {
+        crescimento = taxas.reduce((s,t) => s+t, 0) / taxas.length;
+        crescimento = Math.max(-0.30, Math.min(0.50, crescimento));
+      }
+    }
+
+    const mapaExistente = new Set(dados.map(d => d.ano+'-'+d.mes));
+    const futuros = [];
+    let base = comDados.length ? comDados[comDados.length-1].valor : 0;
+    for (let i = 1; i <= 18; i++) {
+      base = base * (1 + crescimento);
+      base = Math.max(base, comDados.length ? comDados[comDados.length-1].valor * 0.5 : 0);
+      const d = new Date(hoje.getFullYear(), hoje.getMonth()+i, 1);
+      const k = d.getFullYear()+'-'+(d.getMonth()+1);
+      if (!mapaExistente.has(k))
+        futuros.push({ ano: d.getFullYear(), mes: d.getMonth()+1, valor: Math.round(base*100)/100, fonte: 'projecao' });
+    }
+
+    res.json({ ok: true, dados, futuros, crescimento_pct: Math.round(crescimento*10000)/100, base_meses: comDados.length });
+  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) => {
+  try {
+    const { ano, mes, valor, observacao } = req.body || {};
+    if (!ano || !mes || valor === undefined) return res.status(400).json({ ok:false, error:'ano, mes e valor obrigatorios' });
+    const { data, error } = await supabase.from('faturamento_manual')
+      .upsert({ ano: parseInt(ano), mes: parseInt(mes), valor: parseFloat(valor), observacao: observacao||null, updated_at: new Date().toISOString() }, { onConflict: 'ano,mes' })
+      .select().single();
+    if (error) throw error;
+    res.json({ ok: true, data });
+  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('faturamento_manual')
+      .delete().eq('ano', parseInt(req.params.ano)).eq('mes', parseInt(req.params.mes));
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);
