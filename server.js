@@ -5058,6 +5058,15 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (body.data_faturamento) {
       updateData.data_faturamento = String(body.data_faturamento).trim();
     }
+    if (Object.prototype.hasOwnProperty.call(body, 'perdas_por_maquina')) {
+      let parsed = [];
+      try {
+        if (typeof body.perdas_por_maquina === 'string') parsed = JSON.parse(body.perdas_por_maquina || '[]');
+        else if (Array.isArray(body.perdas_por_maquina)) parsed = body.perdas_por_maquina;
+        else if (body.perdas_por_maquina && typeof body.perdas_por_maquina === 'object') parsed = body.perdas_por_maquina;
+      } catch (_) { parsed = []; }
+      updateData.perdas_por_maquina = Array.isArray(parsed) ? parsed : [];
+    }
 
     const mprodRaw =
       body.maquina_producao != null ? String(body.maquina_producao).trim()
