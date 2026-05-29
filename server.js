@@ -5318,6 +5318,9 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         of_id: req.params.id, 
         of_numero: of.numero || of.of_num || '', 
         cliente: of.cliente || '', 
+        produto: of.produto || of.descricao || of.prodDesc || '', 
+        referencia: of.referencia || of.ref || '', 
+        imagem_url: of.imagem || of.img || of.imagem_url || null, 
         maquina: maqPassou, 
         operador: (req.usuario&&req.usuario.nome) || req.body.operador || null, 
         quantidade: req.body.quantidade ? parseInt(req.body.quantidade) : (of.quantidade||null), 
@@ -5427,6 +5430,34 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
     res.json({ ok: true, passagens: [], erro: e.message }); 
   } 
 });
+
+app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
+  try { 
+    const { cliente, maquina, data_inicio, data_fim, mes, ano, page = 1 } = req.query; 
+    const limit = 50; 
+    const offset = (parseInt(page) - 1) * limit; 
+ 
+    let query = supabase.from('passagens_maquina') 
+      .select('*', { count: 'exact' }); 
+ 
+    if (cliente) query = query.ilike('cliente', '%' + cliente + '%'); 
+    if (maquina) query = query.eq('maquina', maquina); 
+    if (data_inicio) query = query.gte('data_passagem', data_inicio); 
+    if (data_fim)    query = query.lte('data_passagem', data_fim); 
+    if (mes && ano)  query = query 
+      .gte('data_passagem', ano + '-' + String(mes).padStart(2,'0') + '-01') 
+      .lte('data_passagem', ano + '-' + String(mes).padStart(2,'0') + '-31'); 
+ 
+    const { data, error, count } = await query 
+      .order('hora_passagem', { ascending: false }) 
+      .range(offset, offset + limit - 1); 
+ 
+    if (error) throw error; 
+    res.json({ ok: true, passagens: data || [], total: count || 0, page: parseInt(page) }); 
+  } catch(e) { 
+    res.status(500).json({ ok: false, error: e.message }); 
+  } 
+}); 
 
 app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   try {
