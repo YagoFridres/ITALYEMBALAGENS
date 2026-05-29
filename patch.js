@@ -177,16 +177,32 @@
     } 
   }; 
 
-  var HOTBAR_TODAS_ABAS = [ 
-    { id: 'hub',        label: 'Hub',       icon: '[Hub]', fixo: true  }, 
-    { id: 'pcp',        label: 'PCP',       icon: '[PCP]', fixo: false }, 
-    { id: 'ofmaq',      label: 'Maquinas',  icon: '[Maq]', fixo: true  }, 
-    { id: 'estoque',    label: 'Estoque',   icon: '[Est]', fixo: false }, 
-    { id: 'orcamentos', label: 'Orcamentos',icon: '[Orc]', fixo: false }, 
-    { id: 'amostras',   label: 'Amostras',  icon: '[Amo]', fixo: false }, 
-    { id: 'clientes',   label: 'Clientes',  icon: '[Cli]', fixo: false }, 
-    { id: 'analises',   label: 'Analises',  icon: '[Ana]', fixo: false }, 
-    { id: 'papelao',    label: 'Papelao',   icon: '[Pap]', fixo: false }, 
+  var HOTBAR_ABAS = [ 
+    { id: 'hub',                label: 'Hub',        icone: 'Hub',  fixo: true  }, 
+    { id: 'pcp',                label: 'PCP',        icone: 'PCP',  fixo: false }, 
+    { id: 'ofmaq',              label: 'Maquinas',   icone: 'Maq',  fixo: true  }, 
+    { id: 'estoque',            label: 'Estoque',    icone: 'Est',  fixo: false }, 
+    { id: 'orcamentos',         label: 'Orcamentos', icone: 'Orc',  fixo: false }, 
+    { id: 'amostras',           label: 'Amostras',   icone: 'Amo',  fixo: false }, 
+    { id: 'clientes',           label: 'Clientes',   icone: 'Cli',  fixo: false }, 
+    { id: 'dashboard',          label: 'Dashboard',  icone: 'Dash', fixo: false }, 
+    { id: 'relatorios',         label: 'Relatorios', icone: 'Rel',  fixo: false }, 
+    { id: 'comissoes',          label: 'Comissoes',  icone: 'Com',  fixo: false }, 
+    { id: 'caixas-perdidas',    label: 'Perdas',     icone: 'Per',  fixo: false }, 
+    { id: 'papelao-ia',         label: 'Papelao',    icone: 'Pap',  fixo: false }, 
+    { id: 'lancamento',         label: 'Armazem',    icone: 'Arm',  fixo: false }, 
+    { id: 'historico-passagens',label: 'Historico',  icone: 'His',  fixo: false }, 
+    { id: 'usuarios',           label: 'Usuarios',   icone: 'Usr',  fixo: false }, 
+    { id: 'vendedores',         label: 'Vendas',     icone: 'Ven',  fixo: false }, 
+    { id: 'fornecedores',       label: 'Fornec',     icone: 'For',  fixo: false }, 
+    { id: 'compras',            label: 'Compras',    icone: 'Com',  fixo: false }, 
+    { id: 'configuracoes',      label: 'Config',     icone: 'Cfg',  fixo: false }, 
+    { id: 'mapa-clientes',      label: 'Mapa',       icone: 'Map',  fixo: false }, 
+    { id: 'tempos-reais',       label: 'Tempos',     icone: 'Tmp',  fixo: false }, 
+    { id: 'tipos-caixa',        label: 'Tipos',      icone: 'Tip',  fixo: false }, 
+    { id: 'fluxos',             label: 'Fluxos',     icone: 'Flx',  fixo: false }, 
+    { id: 'facas1',             label: 'Facas',      icone: 'Fac',  fixo: false }, 
+    { id: 'cliches',            label: 'Cliches',    icone: 'Cli',  fixo: false }, 
   ]; 
 
   function getHotbarConfig() { 
@@ -217,7 +233,7 @@
       pcp: ['pcp'], 
       ofmaq: ['ofmaq','maquinas','fluxos','tipos-caixa','tempos-reais','ofs-maquina'], 
       estoque: ['estoque','facas1','cliches','lancamento','estoques'], 
-      analises: ['dashboard','relatorios','comissoes','caixas-perdidas','caixas_perdidas','configuracoes'], 
+      dashboard: ['dashboard','relatorios','relmensal','comissoes','caixas-perdidas','caixas_perdidas'], 
     }; 
     for (var k in m) { 
       if (!Object.prototype.hasOwnProperty.call(m, k)) continue; 
@@ -241,13 +257,23 @@
     var nav = document.getElementById('mobile-bottom-nav'); 
     if (!nav) { console.warn('[PATCH] hotbar nao encontrada'); return; }       
     var ativos = getHotbarConfig(); 
-    var abas = ativos.slice(0, 4); 
-    var html = abas.map(function(id) { 
-      var aba = HOTBAR_TODAS_ABAS.find(function(a){ return a.id === id; }) || { id: id, label: id, icon: '[Doc]' }; 
-      return '<button class="mbn-item" id="mbn-' + aba.id + '" data-tab="' + aba.id + '" onclick="go(&quot;' + aba.id + '&quot;)">' + 
-        '<div class="mbn-ico">' + aba.icon + '</div><div class="mbn-lbl">' + aba.label + '</div></button>'; 
+    var html = ativos.slice(0, 4).map(function(id) { 
+      var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || { id: id, label: id, icone: id, fixo: false }; 
+      return '<button class="mbn-item" data-tab="' + aba.id + '" onclick="go(&quot;' + aba.id + '&quot;)" ' + 
+        'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
+        'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
+        '<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.08);' + 
+        'display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#e2e8f0">' + 
+        String(aba.icone || '').replace(/</g,'').replace(/>/g,'') + '</div>' + 
+        '<span style="font-size:9px">' + String(aba.label || '').replace(/</g,'').replace(/>/g,'') + '</span>' + 
+        '</button>'; 
     }).join(''); 
-    html += '<button class="mbn-item" id="mbn-mais" onclick="abrirMenuMais()"><div class="mbn-ico">=</div><div class="mbn-lbl">Mais</div></button>'; 
+    html += '<button onclick="abrirMenuMais()" ' + 
+      'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
+      'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
+      '<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.08);' + 
+      'display:flex;align-items:center;justify-content:center;font-size:14px">☰</div>' + 
+      '<span style="font-size:9px">Mais</span></button>'; 
     nav.innerHTML = html; 
     atualizarAbaAtiva(); 
   } 
@@ -262,10 +288,10 @@
     var sheet = document.createElement('div'); 
     sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
  
-    var grid = HOTBAR_TODAS_ABAS.filter(function(a){ return ativos.indexOf(a.id) === -1; }).map(function(aba) { 
+    var grid = HOTBAR_ABAS.filter(function(a){ return ativos.indexOf(a.id) === -1; }).map(function(aba) { 
       return '<div onclick="go(&quot;' + aba.id + '&quot;);document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="' + 
         'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">' + 
-        '<div style="font-size:26px;margin-bottom:4px">' + aba.icon + '</div>' + 
+        '<div style="font-size:16px;margin-bottom:4px;color:#e2e8f0;font-weight:800">' + aba.icone + '</div>' + 
         '<div style="color:#e2e8f0;font-size:12px">' + aba.label + '</div>' + 
       '</div>'; 
     }).join(''); 
@@ -290,22 +316,25 @@
     var cur = getHotbarConfig(); 
     id = String(id || '').trim(); 
     if (!id) return; 
-    if (ativo && cur.indexOf(id) === -1) { 
+    if (ativo) { 
       if (cur.length >= 4) { 
-        alert('Maximo 4 abas na barra. Desmarque uma para adicionar outra.'); 
-        try{ 
-          var q = document.querySelectorAll('#modal-personalizar-hotbar input[type="checkbox"]'); 
-          Array.prototype.forEach.call(q, function(cb){ 
-            try{ if(cb && cb.getAttribute('onchange') && cb.getAttribute('onchange').indexOf(id) !== -1) cb.checked = false; }catch(_){} 
-          }); 
-        }catch(_){} 
+        alert('Maximo 4 abas. Desmarque uma primeiro.'); 
+        setTimeout(function() { 
+          try { 
+            var cb = document.querySelector('#modal-personalizar-hotbar input[onchange*=\"' + id + '\"]'); 
+            if (cb) cb.checked = false; 
+          } catch(_) {} 
+        }, 50); 
         return; 
       } 
-      cur.push(id); 
-    } else if (!ativo) { 
+      if (cur.indexOf(id) === -1) cur.push(id); 
+    } else { 
+      var aba = HOTBAR_ABAS.find(function(a){ return a.id === id; }); 
+      if (aba && aba.fixo) return; 
       cur = cur.filter(function(a){ return a !== id; }); 
     } 
     salvarHotbarConfig(cur); 
+    console.log('[PATCH] hotbar salva:', cur); 
   }; 
 
   function aplicarAccordion() { 
@@ -465,13 +494,13 @@
     overlay.id = 'modal-personalizar-hotbar'; 
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
  
-    var configHtml = HOTBAR_TODAS_ABAS.map(function(aba) { 
+    var configHtml = HOTBAR_ABAS.map(function(aba) { 
       var fixo = !!aba.fixo; 
       var ativo = ativos.indexOf(aba.id) !== -1; 
       return '<label style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:' + (fixo?'default':'pointer') + '">' + 
         '<input type="checkbox" ' + (ativo?'checked':'') + ' ' + (fixo?'disabled':'') + 
         ' onchange="toggleHotbarAba(&quot;' + aba.id + '&quot;,this.checked)" style="width:20px;height:20px;cursor:' + (fixo?'default':'pointer') + '">' + 
-        '<span style="font-size:15px;font-weight:700;min-width:36px">' + aba.icon + '</span>' + 
+        '<span style="font-size:13px;font-weight:800;min-width:40px;color:#e2e8f0">' + aba.icone + '</span>' + 
         '<span style="color:' + (fixo?'#64748b':'#e2e8f0') + ';font-size:15px">' + aba.label + (fixo?' (fixo)':'') + '</span>' + 
       '</label>'; 
     }).join(''); 
