@@ -5309,27 +5309,44 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     }
 
     try { 
-      const { data: ofAtual } = await supabase.from('ofs').select('*').eq('id',req.params.id).single(); 
-      const of = ofAtual || {}; 
-      const fluxo = of.fluxo_maquinas || []; 
-      const idx = Math.max(0,(of.maquina_atual_index||0)-1); 
-      const maqPassou = req.body.maquina || fluxo[idx] || 'Nao informada'; 
+      const { data: ofData } = await supabase 
+        .from('ofs') 
+        .select('*') 
+        .eq('id', req.params.id) 
+        .single(); 
+      const of = ofData || {}; 
+ 
+      let fluxo = []; 
+      try { 
+        if (Array.isArray(of.fluxo_maquinas)) fluxo = of.fluxo_maquinas; 
+        else if (typeof of.fluxo_maquinas === 'string') fluxo = JSON.parse(of.fluxo_maquinas || '[]'); 
+      } catch (_) { fluxo = []; } 
+ 
+      const idxAtual = parseInt(of.maquina_atual_index, 10) || 0; 
+      const maqPassou = req.body.maquina || 
+                        fluxo[Math.max(0, idxAtual - 1)] || 
+                        fluxo[idxAtual] || 
+                        'Nao informada'; 
+ 
       await supabase.from('passagens_maquina').insert({ 
-        of_id: req.params.id, 
-        of_numero: of.numero || of.of_num || '', 
-        cliente: of.cliente || '', 
-        produto: of.produto || of.descricao || of.prodDesc || '', 
-        referencia: of.referencia || of.ref || '', 
-        imagem_url: of.imagem || of.img || of.imagem_url || null, 
-        maquina: maqPassou, 
-        operador: (req.usuario&&req.usuario.nome) || req.body.operador || null, 
-        quantidade: req.body.quantidade ? parseInt(req.body.quantidade) : (of.quantidade||null), 
+        of_id:         req.params.id, 
+        of_numero:     of.numero || of.of_num || '', 
+        cliente:       of.cliente || '', 
+        produto:       of.produto || of.descricao || of.produto_desc || '', 
+        referencia:    of.referencia || of.ref || '', 
+        imagem_url:    of.imagem || of.img || of.imagem_url || null, 
+        maquina:       maqPassou, 
+        operador:      req.usuario?.nome || req.body.operador || null, 
+        quantidade:    req.body.quantidade 
+                         ? parseInt(req.body.quantidade) 
+                         : (of.quantidade || null), 
         data_passagem: new Date().toISOString().split('T')[0], 
         hora_passagem: new Date().toISOString(), 
-        status: 'Concluida', 
-        empresa: of.empresa || 'Italy Embalagens' 
+        status:        'Concluida', 
+        empresa:       of.empresa || 'Italy Embalagens' 
       }); 
-    } catch(ep){ console.warn('[passou-maquina] passagens_maquina:', ep.message); } 
+      console.log('[passou-maquina] passagem registrada:', maqPassou); 
+    } catch(ep){ console.warn('[passou-maquina] erro ao registrar passagem:', ep.message); } 
 
     try {
       const usuario = String(req.usuario?.nome || req.usuario?.email || '').trim() || 'Operador';
