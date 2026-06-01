@@ -1564,7 +1564,11 @@ const chatUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: function (req, file, cb) {
-    const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.xlsx', '.docx', '.txt']);
+    const okExt = new Set([
+      '.jpg', '.jpeg', '.png', '.gif', '.webp',
+      '.mp3', '.wav', '.ogg', '.m4a', '.webm', '.aac',
+      '.pdf', '.xlsx', '.docx', '.txt'
+    ]);
     const ext = path.extname(file.originalname || '').toLowerCase();
     if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
     return cb(null, true);
@@ -4032,6 +4036,140 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
     const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
     return ok(res, { url: urlData?.publicUrl || '' });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.post('/api/chat/upload', authMiddleware, chatUpload.single('file'), async (req, res) => {
+  try {
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const filename = `chat/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+    if (error) throw error;
+    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
+    return res.json({ ok: true, url: urlData?.publicUrl || '' });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.get('/api/chat/usuarios', authMiddleware, async (req, res) => {
+  try {
+    const uid = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,ativo')
+      .order('nome', { ascending: true })
+      .limit(300);
+    if (error) throw error;
+    const rows = (data || []).filter((u) => String(u?.id || '').trim() && String(u.id).trim() !== uid);
+    res.json({ ok: true, usuarios: rows });
+  } catch (e) { res.json({ ok: true, usuarios: [], erro: String(e.message || e) }); }
+});
+
+app.get('/api/chat/mensagens', authMiddleware, async (req, res) => {
+  try {
+    const { para, limite = 50, antes } = req.query || {};
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+
+    let query = supabase.from('chat_mensagens').select('*');
+    if (para) {
+      const other = String(para || '').trim();
+      query = query.or(
+        `and(de_usuario.eq.${userId},para_usuario.eq.${other}),and(de_usuario.eq.${other},para_usuario.eq.${userId})`
+      );
+    } else {
+      query = query.is('para_usuario', null);
+    }
+    if (antes) query = query.lt('created_at', String(antes));
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limite, 10) || 50);
+    if (error) throw error;
+    res.json({ ok: true, mensagens: (data || []).reverse() });
+  } catch (e) { res.json({ ok: true, mensagens: [], erro: String(e.message || e) }); }
+});
+
+app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
+  try {
+    const { conteudo, para_usuario, tipo, url_arquivo } = req.body || {};
+    if (!conteudo && !url_arquivo) return res.status(400).json({ ok: false, error: 'sem conteúdo' });
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const nome = String(req.usuario?.nome || req.usuario?.email || 'Usuário').trim() || 'Usuário';
+    const { data, error } = await supabase.from('chat_mensagens').insert({
+      de_usuario: userId,
+      de_nome: nome,
+      para_usuario: para_usuario || null,
+      conteudo: conteudo || null,
+      tipo: tipo || 'texto',
+      url_arquivo: url_arquivo || null,
+      lida: false,
+    }).select().single();
+    if (error) throw error;
+    res.json({ ok: true, mensagem: data });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.patch('/api/chat/mensagens/:id/lida', authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.json({ ok: true });
+    await supabase.from('chat_mensagens').update({ lida: true }).eq('id', id).eq('para_usuario', userId);
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: true }); }
+});
+
+app.get('/api/chat/nao-lidas', authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const { count } = await supabase.from('chat_mensagens')
+      .select('id', { count: 'exact', head: true })
+      .eq('para_usuario', userId)
+      .eq('lida', false);
+    res.json({ ok: true, total: Math.trunc(Number(count || 0)) });
+  } catch (e) { res.json({ ok: true, total: 0 }); }
+});
+
+app.get('/api/avisos', authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const { data, error } = await supabase.from('avisos_usuarios')
+      .select('*')
+      .or(`para_usuario.eq.${userId},para_usuario.is.null`)
+      .eq('lido', false)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ ok: true, avisos: data || [] });
+  } catch (e) { res.json({ ok: true, avisos: [] }); }
+});
+
+app.post('/api/avisos', authMiddleware, async (req, res) => {
+  try {
+    const { mensagem, para_usuario } = req.body || {};
+    if (!mensagem) return res.status(400).json({ ok: false, error: 'mensagem obrigatória' });
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const nome = String(req.usuario?.nome || req.usuario?.email || 'Sistema').trim() || 'Sistema';
+    const { data, error } = await supabase.from('avisos_usuarios').insert({
+      de_usuario: userId || null,
+      de_nome: nome,
+      para_usuario: para_usuario || null,
+      mensagem: String(mensagem),
+      lido: false,
+    }).select().single();
+    if (error) throw error;
+    res.json({ ok: true, aviso: data });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.patch('/api/avisos/:id/lido', authMiddleware, async (req, res) => {
+  try {
+    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.json({ ok: true });
+    await supabase.from('avisos_usuarios').update({ lido: true }).eq('id', id).or(`para_usuario.eq.${userId},para_usuario.is.null`);
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: true }); }
 });
 
 app.post('/api/of/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {

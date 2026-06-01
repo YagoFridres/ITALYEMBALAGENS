@@ -53768,11 +53768,442 @@ async function kbOfmaqSalvar(body, novaMaquina){
   <div>Para instalar:<br>Toque em <strong>compartilhar ↑</strong> depois<br><strong>&quot;Adicionar à Tela de Início&quot;</strong></div>
 </div>
 
+<div id="chat-btn" onclick="toggleChat()" style="position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:8000;box-shadow:0 4px 16px rgba(74,144,217,0.4)">
+  <span style="font-size:22px">💬</span>
+  <div id="chat-badge" style="position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center">0</div>
+</div>
+
+<div id="chat-painel" style="display:none;position:fixed;bottom:136px;right:16px;width:340px;max-width:calc(100vw - 32px);height:480px;background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:14px;z-index:8001;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+  <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;gap:8px;align-items:center;min-width:0">
+      <span id="chat-titulo" style="color:#e2e8f0;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Chat Geral</span>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button onclick="abrirListaUsuariosChat()" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">Privado</button>
+      <button onclick="abrirEnviarAviso()" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px">Aviso</button>
+      <button onclick="fecharChatPainel()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px">✕</button>
+    </div>
+  </div>
+  <div id="chat-msgs" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px"></div>
+  <div style="padding:8px 10px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:6px;align-items:flex-end">
+    <button id="btn-audio-chat" onclick="toggleGravarAudio()" style="background:rgba(255,255,255,0.07);border:none;border-radius:8px;padding:8px;cursor:pointer;font-size:16px;flex-shrink:0">🎙</button>
+    <label style="background:rgba(255,255,255,0.07);border:none;border-radius:8px;padding:8px;cursor:pointer;font-size:16px;flex-shrink:0">
+      📎<input type="file" accept="image/*,audio/*" style="display:none" onchange="enviarArquivoChat(this)">
+    </label>
+    <textarea id="chat-input" placeholder="Mensagem..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarMsgChat();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'" style="flex:1;background:rgba(255,255,255,0.06);color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;font-size:13px;resize:none;min-height:36px;font-family:inherit"></textarea>
+    <button onclick="enviarMsgChat()" style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;flex-shrink:0">Enviar</button>
+  </div>
+</div>
+
+<div id="modal-avisos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;align-items:center;justify-content:center">
+  <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:20px;width:90%;max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+      <div style="color:#e2e8f0;font-weight:700;font-size:16px">Avisos pendentes</div>
+      <button onclick="fecharAvisos()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div id="avisos-lista" style="max-height:300px;overflow-y:auto"></div>
+  </div>
+</div>
+
 <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
   <button class="mbn-item" id="mbn-hub" onclick="go('hub')"><div class="mbn-ico">🏠</div><div class="mbn-lbl">Hub</div></button>
   <button class="mbn-item" id="mbn-pcp" onclick="go('pcp')"><div class="mbn-ico">📋</div><div class="mbn-lbl">PCP</div></button>
   <button class="mbn-item" id="mbn-ofmaq" onclick="go('ofmaq')"><div class="mbn-ico">⚙️</div><div class="mbn-lbl">Máquinas</div></button>
   <button class="mbn-item" id="mbn-estoque" onclick="go('estoque')"><div class="mbn-ico">📦</div><div class="mbn-lbl">Estoque</div></button>
   <button class="mbn-item" id="mbn-mais" onclick="toggleMobMenu()"><div class="mbn-ico">☰</div><div class="mbn-lbl">Mais</div></button>
-</nav><script src="/patch.js?v=1"></script>
+</nav>
+
+<script>
+window._chatState = window._chatState || { para: null, paraNome: '', aberto: false, _timer: null, _timerBadge: null, _rec: null, _recChunks: [], _avisosTimer: null };
+
+function _chatToken(){
+  try{ return localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''; }catch(e){ return ''; }
+}
+
+function _chatApiBase(){
+  try{
+    if(window.location && window.location.protocol === 'file:' && typeof API_BASE === 'string') return API_BASE;
+  }catch(e){}
+  return '';
+}
+
+function _chatAuthHeaders(extra){
+  const t = _chatToken();
+  return Object.assign({}, extra || {}, t ? { Authorization: 'Bearer ' + t } : {});
+}
+
+function _chatDecodeJwt(token){
+  try{
+    const p = String(token||'').split('.')[1] || '';
+    const b64 = p.replace(/-/g,'+').replace(/_/g,'/');
+    const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+    const json = atob(b64 + pad);
+    return JSON.parse(json);
+  }catch(e){ return null; }
+}
+
+function _chatMyId(){
+  const t = _chatToken();
+  const p = _chatDecodeJwt(t);
+  const id = p && (p.id || p.sub || p.user_id);
+  return id ? String(id).trim() : '';
+}
+
+async function _chatFetchJson(path, opt){
+  const url = _chatApiBase() + String(path || '');
+  const o = opt || {};
+  const headers = _chatAuthHeaders(o.headers || {});
+  const init = Object.assign({}, o, { headers });
+  if(init.body && init.headers && init.headers['Content-Type'] === 'application/json' && typeof init.body !== 'string'){
+    init.body = JSON.stringify(init.body);
+  }
+  const r = await fetch(url, init);
+  const j = await r.json().catch(()=>null);
+  return { r, j };
+}
+
+function toggleChat(){
+  const painel = document.getElementById('chat-painel');
+  if(!painel) return;
+  const st = window._chatState;
+  if(painel.style.display === 'none' || painel.style.display === ''){
+    painel.style.display = 'flex';
+    st.aberto = true;
+    carregarMensagensChat(true);
+    atualizarChatBadge();
+    carregarAvisos();
+    if(st._timer) clearInterval(st._timer);
+    st._timer = setInterval(function(){
+      if(!st.aberto) return;
+      carregarMensagensChat(false);
+      atualizarChatBadge();
+      carregarAvisos();
+    }, 3500);
+    return;
+  }
+  fecharChatPainel();
+}
+
+function fecharChatPainel(){
+  const painel = document.getElementById('chat-painel');
+  if(painel) painel.style.display = 'none';
+  try{
+    const st = window._chatState;
+    st.aberto = false;
+    if(st._timer) clearInterval(st._timer);
+    st._timer = null;
+  }catch(e){}
+}
+
+async function atualizarChatBadge(){
+  try{
+    const badge = document.getElementById('chat-badge');
+    if(!badge) return;
+    const { j } = await _chatFetchJson('/api/chat/nao-lidas', { method:'GET' });
+    const n = Math.trunc(Number(j && j.total || 0));
+    if(n > 0){
+      badge.textContent = String(n);
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }catch(e){}
+}
+
+function _chatSetDestino(paraId, paraNome){
+  const st = window._chatState;
+  st.para = paraId ? String(paraId).trim() : null;
+  st.paraNome = String(paraNome || '').trim();
+  const t = document.getElementById('chat-titulo');
+  if(t) t.textContent = st.para ? ('Privado: ' + (st.paraNome || 'Usuário')) : 'Chat Geral';
+  const msgs = document.getElementById('chat-msgs');
+  if(msgs) msgs.innerHTML = '';
+  carregarMensagensChat(true);
+}
+
+async function carregarMensagensChat(force){
+  try{
+    const st = window._chatState;
+    const msgs = document.getElementById('chat-msgs');
+    if(!msgs) return;
+    if(!st.aberto && !force) return;
+    const qs = new URLSearchParams({ limite:'80' });
+    if(st.para) qs.set('para', st.para);
+    const { j } = await _chatFetchJson('/api/chat/mensagens?' + qs.toString(), { method:'GET' });
+    const list = Array.isArray(j && j.mensagens) ? j.mensagens : [];
+    msgs.innerHTML = list.map(_chatRenderMsg).join('');
+    try{ msgs.scrollTop = msgs.scrollHeight; }catch(e){}
+    try{ _chatMarcarLidas(list); }catch(e){}
+  }catch(e){}
+}
+
+function _chatRenderMsg(m){
+  const me = _chatMyId();
+  const fromId = String(m && m.de_usuario || '').trim();
+  const mine = me && fromId && me === fromId;
+  const nome = String(m && m.de_nome || 'Usuário');
+  const tipo = String(m && m.tipo || 'texto');
+  const txt = String(m && m.conteudo || '').trim();
+  const url = String(m && m.url_arquivo || '').trim();
+  const when = String(m && m.created_at || '').trim();
+  const hora = when ? new Date(when).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '';
+  const baseBox = 'max-width:82%;border-radius:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.12);';
+  const boxStyle = mine
+    ? (baseBox + 'background:rgba(74,144,217,0.22);margin-left:auto;color:#fff;')
+    : (baseBox + 'background:rgba(255,255,255,0.06);margin-right:auto;color:#e2e8f0;');
+  let body = '';
+  if(tipo === 'imagem' && url){
+    body = '<img src="' + escAttr(url) + '" style="max-width:220px;width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.12);display:block" onerror="this.style.display=&#39;none&#39;">' +
+      (txt ? '<div style="margin-top:6px;white-space:pre-wrap">' + escH(txt) + '</div>' : '') +
+      '<div style="margin-top:6px"><a href="' + escAttr(url) + '" target="_blank" style="color:#93c5fd;font-size:11px;text-decoration:none">Abrir</a></div>';
+  } else if(tipo === 'audio' && url){
+    body = '<audio controls src="' + escAttr(url) + '" style="width:240px;max-width:100%"></audio>' +
+      (txt ? '<div style="margin-top:6px;white-space:pre-wrap">' + escH(txt) + '</div>' : '');
+  } else if(url){
+    body = (txt ? '<div style="white-space:pre-wrap">' + escH(txt) + '</div>' : '') +
+      '<div style="margin-top:6px"><a href="' + escAttr(url) + '" target="_blank" style="color:#93c5fd;font-size:12px;text-decoration:none">Arquivo</a></div>';
+  } else {
+    body = '<div style="white-space:pre-wrap;word-break:break-word">' + escH(txt) + '</div>';
+  }
+  return '<div style="display:flex;flex-direction:column;gap:3px">' +
+    '<div style="font-size:10px;color:rgba(255,255,255,0.35);' + (mine ? 'text-align:right' : 'text-align:left') + '">' + escH(nome) + (hora ? ' · ' + escH(hora) : '') + '</div>' +
+    '<div style="' + boxStyle + '">' + body + '</div>' +
+  '</div>';
+}
+
+async function _chatMarcarLidas(list){
+  const me = _chatMyId();
+  if(!me) return;
+  const st = window._chatState;
+  const promises = [];
+  (list || []).forEach(function(m){
+    const pid = String(m && m.para_usuario || '').trim();
+    if(!pid || pid !== me) return;
+    if(m && m.lida === true) return;
+    if(st.para && String(m.de_usuario||'').trim() !== String(st.para||'').trim()) return;
+    const id = String(m && m.id || '').trim();
+    if(!id) return;
+    promises.push(_chatFetchJson('/api/chat/mensagens/' + encodeURIComponent(id) + '/lida', { method:'PATCH' }));
+  });
+  if(promises.length) await Promise.allSettled(promises);
+}
+
+async function enviarMsgChat(){
+  const inp = document.getElementById('chat-input');
+  if(!inp) return;
+  const txt = String(inp.value || '').trim();
+  if(!txt) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+  const st = window._chatState;
+  try{
+    const { j } = await _chatFetchJson('/api/chat/mensagens', {
+      method:'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: { conteudo: txt, para_usuario: st.para || null, tipo:'texto' }
+    });
+    if(!(j && j.ok)) throw new Error(j && (j.error || j.erro) || 'erro');
+    carregarMensagensChat(true);
+  }catch(e){
+    try{ toast('Erro ao enviar', 'var(--red)'); }catch(_){}
+  }
+}
+
+async function enviarArquivoChat(input){
+  try{
+    const f = input && input.files ? (input.files[0] || null) : null;
+    if(!f) return;
+    input.value = '';
+    const fd = new FormData();
+    fd.append('file', f);
+    const { j: up } = await _chatFetchJson('/api/chat/upload', { method:'POST', body: fd });
+    const url = String(up && (up.url || up.data?.url || up.data?.publicUrl) || '').trim();
+    if(!url) throw new Error('upload');
+    const st = window._chatState;
+    const t = String(f.type || '').toLowerCase();
+    const tipo = t.startsWith('image/') ? 'imagem' : (t.startsWith('audio/') ? 'audio' : 'arquivo');
+    const { j } = await _chatFetchJson('/api/chat/mensagens', {
+      method:'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: { conteudo: null, para_usuario: st.para || null, tipo: tipo, url_arquivo: url }
+    });
+    if(!(j && j.ok)) throw new Error('envio');
+    carregarMensagensChat(true);
+  }catch(e){
+    try{ toast('Erro ao enviar arquivo', 'var(--red)'); }catch(_){}
+  }
+}
+
+async function toggleGravarAudio(){
+  const st = window._chatState;
+  const btn = document.getElementById('btn-audio-chat');
+  try{
+    if(st._rec && st._rec.state === 'recording'){
+      st._rec.stop();
+      return;
+    }
+  }catch(e){}
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const rec = new MediaRecorder(stream);
+    st._rec = rec;
+    st._recChunks = [];
+    if(btn) btn.textContent = '⏹';
+    rec.ondataavailable = function(ev){
+      try{ if(ev.data && ev.data.size > 0) st._recChunks.push(ev.data); }catch(e){}
+    };
+    rec.onstop = async function(){
+      try{ stream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      if(btn) btn.textContent = '🎙';
+      try{
+        const blob = new Blob(st._recChunks, { type: rec.mimeType || 'audio/webm' });
+        st._recChunks = [];
+        const fd = new FormData();
+        fd.append('file', blob, 'audio.webm');
+        const { j: up } = await _chatFetchJson('/api/chat/upload', { method:'POST', body: fd });
+        const url = String(up && up.url || '').trim();
+        if(!url) throw new Error('upload');
+        const { j } = await _chatFetchJson('/api/chat/mensagens', {
+          method:'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: { conteudo: null, para_usuario: st.para || null, tipo:'audio', url_arquivo: url }
+        });
+        if(!(j && j.ok)) throw new Error('envio');
+        carregarMensagensChat(true);
+      }catch(e2){
+        try{ toast('Erro ao enviar áudio', 'var(--red)'); }catch(_){}
+      }
+    };
+    rec.start();
+  }catch(e){
+    if(btn) btn.textContent = '🎙';
+    try{ toast('Permissão de microfone negada', 'var(--yellow)'); }catch(_){}
+  }
+}
+
+async function abrirListaUsuariosChat(mode){
+  try{
+    const st = window._chatState;
+    const { j } = await _chatFetchJson('/api/chat/usuarios', { method:'GET' });
+    const users = Array.isArray(j && j.usuarios) ? j.usuarios : [];
+    const ov = document.createElement('div');
+    ov.id = 'chat-users-ov';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9001;display:flex;align-items:center;justify-content:center;padding:14px';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:14px;width:92vw;max-width:420px;max-height:75vh;overflow:hidden;display:flex;flex-direction:column';
+    box.innerHTML =
+      '<div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+        '<div style="color:#e2e8f0;font-weight:700">Escolher usuário</div>' +
+        '<button id="chat-users-close" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:16px">✕</button>' +
+      '</div>' +
+      '<div style="padding:10px 12px;overflow:auto;display:grid;gap:8px" id="chat-users-list"></div>' +
+      '<div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,0.08);display:flex;gap:8px;justify-content:space-between">' +
+        '<button id="chat-users-geral" style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">Chat Geral</button>' +
+        '<button id="chat-users-todos-aviso" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:12px">Aviso p/ todos</button>' +
+      '</div>';
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    const close = function(){ try{ ov.remove(); }catch(e){} };
+    box.querySelector('#chat-users-close').onclick = close;
+    ov.addEventListener('click', function(e){ if(e.target === ov) close(); });
+    box.querySelector('#chat-users-geral').onclick = function(){
+      close();
+      _chatSetDestino(null, '');
+    };
+    box.querySelector('#chat-users-todos-aviso').onclick = function(){
+      close();
+      _enviarAvisoPara(null);
+    };
+    const listEl = box.querySelector('#chat-users-list');
+    users.forEach(function(u){
+      const id = String(u && u.id || '').trim();
+      const nome = String(u && (u.nome || u.email || '') || '').trim() || id;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.style.cssText = 'text-align:left;background:rgba(255,255,255,0.06);color:#e2e8f0;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 10px;cursor:pointer';
+      btn.innerHTML = '<div style="font-weight:700;font-size:13px">' + escH(nome) + '</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.45)">' + escH(id) + '</div>';
+      btn.onclick = function(){
+        close();
+        if(mode === 'aviso'){
+          _enviarAvisoPara(id);
+          return;
+        }
+        _chatSetDestino(id, nome);
+      };
+      listEl.appendChild(btn);
+    });
+  }catch(e){
+    try{ toast('Erro ao listar usuários', 'var(--red)'); }catch(_){}
+  }
+}
+
+async function abrirEnviarAviso(){
+  abrirListaUsuariosChat('aviso');
+}
+
+async function _enviarAvisoPara(paraUsuario){
+  const msg = String(prompt('Digite o aviso:', '') || '').trim();
+  if(!msg) return;
+  try{
+    const { j } = await _chatFetchJson('/api/avisos', {
+      method:'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: { mensagem: msg, para_usuario: paraUsuario || null }
+    });
+    if(!(j && j.ok)) throw new Error('erro');
+    try{ toast('Aviso enviado', 'var(--green)'); }catch(_){}
+  }catch(e){
+    try{ toast('Erro ao enviar aviso', 'var(--red)'); }catch(_){}
+  }
+}
+
+async function carregarAvisos(){
+  try{
+    const { j } = await _chatFetchJson('/api/avisos', { method:'GET' });
+    const avisos = Array.isArray(j && j.avisos) ? j.avisos : [];
+    if(!avisos.length) return;
+    const modal = document.getElementById('modal-avisos');
+    const lista = document.getElementById('avisos-lista');
+    if(!modal || !lista) return;
+    lista.innerHTML = avisos.map(function(a){
+      const id = String(a && a.id || '');
+      const de = String(a && a.de_nome || 'Sistema');
+      const txt = String(a && a.mensagem || '');
+      const when = String(a && a.created_at || '');
+      const dt = when ? new Date(when).toLocaleString('pt-BR') : '';
+      return '<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 12px;margin-bottom:8px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+          '<div style="font-size:12px;color:#94a3b8">' + escH(de) + (dt ? ' · ' + escH(dt) : '') + '</div>' +
+          '<button onclick="marcarAvisoLido(&quot;' + escAttr(id) + '&quot;)" style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.25);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap">Marcar lido</button>' +
+        '</div>' +
+        '<div style="margin-top:6px;color:#e2e8f0;white-space:pre-wrap;word-break:break-word">' + escH(txt) + '</div>' +
+      '</div>';
+    }).join('');
+    modal.style.display = 'flex';
+  }catch(e){}
+}
+
+function fecharAvisos(){
+  const modal = document.getElementById('modal-avisos');
+  if(modal) modal.style.display = 'none';
+}
+
+async function marcarAvisoLido(id){
+  try{
+    await _chatFetchJson('/api/avisos/' + encodeURIComponent(String(id||'')) + '/lido', { method:'PATCH' });
+    carregarAvisos();
+  }catch(e){}
+}
+
+try{
+  setTimeout(function(){
+    atualizarChatBadge();
+    setInterval(function(){ atualizarChatBadge(); }, 12000);
+    setInterval(function(){ carregarAvisos(); }, 20000);
+  }, 1200);
+}catch(e){}
+</script>
+
+<script src="/patch.js?v=1"></script>
 </body></html>
