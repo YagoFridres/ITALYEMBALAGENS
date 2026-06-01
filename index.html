@@ -53815,6 +53815,11 @@ async function kbOfmaqSalvar(body, novaMaquina){
 
 <script>
 window._chatState = window._chatState || { para: null, paraNome: '', aberto: false, _timer: null, _timerBadge: null, _rec: null, _recChunks: [], _avisosTimer: null };
+var _chatAberto = false;
+var _chatPara = null;
+var _chatPollInterval = null;
+var _mediaRecorder = null;
+var _audioChunks = [];
 
 function _chatToken(){
   try{ return localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''; }catch(e){ return ''; }
@@ -53869,6 +53874,8 @@ function toggleChat(){
   if(painel.style.display === 'none' || painel.style.display === ''){
     painel.style.display = 'flex';
     st.aberto = true;
+    _chatAberto = true;
+    _chatPara = st.para;
     carregarMensagensChat(true);
     atualizarChatBadge();
     carregarAvisos();
@@ -53879,6 +53886,15 @@ function toggleChat(){
       atualizarChatBadge();
       carregarAvisos();
     }, 3500);
+    try{
+      if(_chatPollInterval) clearInterval(_chatPollInterval);
+      _chatPollInterval = setInterval(function(){
+        if(!_chatAberto) return;
+        carregarMensagensChat(true);
+        atualizarChatBadge();
+        carregarAvisos();
+      }, 5000);
+    }catch(e){}
     return;
   }
   fecharChatPainel();
@@ -53890,8 +53906,11 @@ function fecharChatPainel(){
   try{
     const st = window._chatState;
     st.aberto = false;
+    _chatAberto = false;
     if(st._timer) clearInterval(st._timer);
     st._timer = null;
+    if(_chatPollInterval) clearInterval(_chatPollInterval);
+    _chatPollInterval = null;
   }catch(e){}
 }
 
@@ -53914,6 +53933,7 @@ function _chatSetDestino(paraId, paraNome){
   const st = window._chatState;
   st.para = paraId ? String(paraId).trim() : null;
   st.paraNome = String(paraNome || '').trim();
+  _chatPara = st.para;
   const t = document.getElementById('chat-titulo');
   if(t) t.textContent = st.para ? ('Privado: ' + (st.paraNome || 'Usuário')) : 'Chat Geral';
   const msgs = document.getElementById('chat-msgs');
@@ -54016,6 +54036,7 @@ async function enviarArquivoChat(input){
     input.value = '';
     const fd = new FormData();
     fd.append('file', f);
+    fd.append('arquivo', f);
     const { j: up } = await _chatFetchJson('/api/chat/upload', { method:'POST', body: fd });
     const url = String(up && (up.url || up.data?.url || up.data?.publicUrl) || '').trim();
     if(!url) throw new Error('upload');
@@ -54047,7 +54068,9 @@ async function toggleGravarAudio(){
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const rec = new MediaRecorder(stream);
     st._rec = rec;
+    _mediaRecorder = rec;
     st._recChunks = [];
+    _audioChunks = st._recChunks;
     if(btn) btn.textContent = '⏹';
     rec.ondataavailable = function(ev){
       try{ if(ev.data && ev.data.size > 0) st._recChunks.push(ev.data); }catch(e){}
@@ -54060,6 +54083,7 @@ async function toggleGravarAudio(){
         st._recChunks = [];
         const fd = new FormData();
         fd.append('file', blob, 'audio.webm');
+        fd.append('arquivo', blob, 'audio.webm');
         const { j: up } = await _chatFetchJson('/api/chat/upload', { method:'POST', body: fd });
         const url = String(up && up.url || '').trim();
         if(!url) throw new Error('upload');
@@ -54189,9 +54213,14 @@ function fecharAvisos(){
   if(modal) modal.style.display = 'none';
 }
 
-async function marcarAvisoLido(id){
+async function marcarAvisoLido(id, el){
   try{
     await _chatFetchJson('/api/avisos/' + encodeURIComponent(String(id||'')) + '/lido', { method:'PATCH' });
+    try{ if(el && el.remove) el.remove(); }catch(e){}
+    try{
+      const lista = document.getElementById('avisos-lista');
+      if(lista && !lista.children.length) fecharAvisos();
+    }catch(e){}
     carregarAvisos();
   }catch(e){}
 }

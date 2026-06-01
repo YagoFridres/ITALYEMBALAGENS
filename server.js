@@ -1667,20 +1667,7 @@ app.post('/api/estoque_fotos/upload', authMiddleware, estoqueFotosUpload.single(
   }
 });
 
-app.post('/api/chat/upload', authMiddleware, chatUpload.single('file'), async (req, res) => {
-  try {
-    const f = req.file || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
-    const ext = path.extname(f.originalname || '').toLowerCase();
-    const filename = `chat/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const { error } = await supabase.storage
-      .from('uploads')
-      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
-    return ok(res, { url: urlData?.publicUrl || '' });
-  } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
-});
+// Chat upload (legacy placeholder removed; rota oficial fica abaixo, perto do bloco de chat)
 
 function chatPermForCanal(nome) {
   const n = String(nome || '').trim().toLowerCase();
@@ -4038,18 +4025,28 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
-app.post('/api/chat/upload', authMiddleware, chatUpload.single('file'), async (req, res) => {
+app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', maxCount: 1 }, { name: 'arquivo', maxCount: 1 }]), async (req, res) => {
   try {
-    const f = req.file || null;
+    const f = (req && req.file)
+      || (req && req.files && req.files.file && req.files.file[0])
+      || (req && req.files && req.files.arquivo && req.files.arquivo[0])
+      || null;
     if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
     const ext = path.extname(f.originalname || '').toLowerCase();
     const filename = `chat/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const { error } = await supabase.storage
-      .from('uploads')
-      .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
-    return res.json({ ok: true, url: urlData?.publicUrl || '' });
+    const tryUpload = async (bucket) => {
+      const b = String(bucket || '').trim();
+      const r = await supabase.storage
+        .from(b)
+        .upload(filename, f.buffer, { contentType: f.mimetype, upsert: false });
+      if (r.error) throw r.error;
+      const { data: urlData } = supabase.storage.from(b).getPublicUrl(filename);
+      return String(urlData?.publicUrl || '').trim();
+    };
+    let url = '';
+    try { url = await tryUpload('chat-arquivos'); } catch (_) {}
+    if (!url) url = await tryUpload('uploads');
+    return res.json({ ok: true, url });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
