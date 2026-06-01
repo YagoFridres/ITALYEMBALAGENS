@@ -9554,9 +9554,6 @@ async function renderOFsPorMaquina(){
         if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
       }catch(e){}
       window._ofmaqBaseList = lista;
-      container.innerHTML = renderOfmaqSemanaView(lista, weekFrom, weekTo, filtroMaq);
-      _ofsMaqRenderizando=false;
-      return;
     }
 
     if(view === 'mes'){
@@ -9573,19 +9570,26 @@ async function renderOFsPorMaquina(){
           const fetched = await _ofmaqBuscarOFsRange(from, to, 800, empId);
           if(Array.isArray(fetched) && fetched.length) lista = fetched.map(normalizeOF);
           window._ofmaqBaseList = lista;
-          container.innerHTML = renderOfmaqMesView(lista, from, to);
-          _ofsMaqRenderizando=false;
-          return;
         }
       }catch(e){}
-      container.innerHTML = renderOfmaqMesView(lista, '', '');
-      _ofsMaqRenderizando=false;
-      return;
     }
 
     const modoDias = view === 'dia';
     const sel = selMaqEl;
     if(modoDias){
+      try{
+        const hojeD = new Date(); hojeD.setHours(0,0,0,0);
+        const dw = hojeD.getDay();
+        const idxHoje = (dw >= 1 && dw <= 5) ? (dw - 1) : 0;
+        if(!Number.isFinite(Number(window._ofmaqDiaIdx))) window._ofmaqDiaIdx = idxHoje;
+        window._diaAtualIdx = window._ofmaqDiaIdx;
+        const semana = getSemanaAtiva();
+        const i = Math.max(0, Math.min(4, Number(window._ofmaqDiaIdx || 0)));
+        const dia = semana[i] || semana[0];
+        const ofsDia = (typeof ofsParaDia === 'function' && dia) ? (ofsParaDia(dia) || []) : [];
+        lista = (ofsDia || []).map(normalizeOF);
+        window._ofmaqBaseList = lista;
+      }catch(e){}
       if(sel){
         const cur=sel.value||'';
         const counts = Object.fromEntries(maqsBase.map(m=>[m,0]));
@@ -9604,21 +9608,6 @@ async function renderOFsPorMaquina(){
           ofsMaqFiltroDia(idxAtual);
         });
       }
-      const scroll = container.scrollTop;
-      let gruposDia = document.getElementById('ofsmaq-grupos');
-      if(!gruposDia){
-        container.innerHTML = `<div id="ofsmaq-grupos"></div>`;
-        gruposDia = document.getElementById('ofsmaq-grupos');
-      }
-      const hojeD = new Date(); hojeD.setHours(0,0,0,0);
-      const dw = hojeD.getDay();
-      const idxHoje = (dw >= 1 && dw <= 5) ? (dw - 1) : 0;
-      if(!Number.isFinite(Number(window._ofmaqDiaIdx))) window._ofmaqDiaIdx = idxHoje;
-      window._diaAtualIdx = window._ofmaqDiaIdx;
-      gruposDia.innerHTML = renderOfmaqDiaSelecionado(lista, window._ofmaqDiaIdx, filtroMaq);
-      container.scrollTop = scroll;
-      _ofsMaqRenderizando=false;
-      return;
     }
 
     const gruposAll = {};
@@ -9660,7 +9649,7 @@ async function renderOFsPorMaquina(){
     ];
 
     if(typeof renderKanbanOfmaq === 'function'){
-      renderKanbanOfmaq(grupos, maquinasOrdenadas);
+      renderKanbanOfmaq(grupos, maquinasOrdenadas, container);
       container.scrollTop = scroll;
       _ofsMaqRenderizando=false;return;
     }
@@ -53394,8 +53383,8 @@ async function renderHub(forcar=false){
 
 var _kbDragEl = null, _kbDragSrcCol = null;
 
-function renderKanbanOfmaq(grupos, maquinasOrdenadas){
-  var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
+function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
+  if(!container) container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
   if(!container) return;
   var html = '<div class="kb-board-ofmaq">';
   (maquinasOrdenadas || []).filter(function(maq){ return grupos[maq] && grupos[maq].length; }).forEach(function(maquina){
