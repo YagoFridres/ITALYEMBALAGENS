@@ -26,6 +26,23 @@
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js?v=2"></script>
 <title>📦 Italy Embalagens — PCP Pro</title>
+<style id="kanban-ofmaq-css">
+.kb-board-ofmaq{display:flex;gap:12px;overflow-x:auto;padding:4px 0 16px;align-items:flex-start}
+.kb-col-ofmaq{min-width:290px;max-width:310px;flex-shrink:0;background:var(--bg3,rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px}
+.kb-col-ofmaq.kb-col-dragover{border-color:rgba(74,144,217,0.6);background:rgba(74,144,217,0.05)}
+.kb-col-ofmaq-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.07);cursor:pointer;user-select:none}
+.kb-card-ofmaq{background:rgba(10,15,28,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px;margin-bottom:7px;cursor:grab;transition:opacity 0.15s,transform 0.15s}
+.kb-card-ofmaq:active{cursor:grabbing}
+.kb-card-ofmaq.kb-dragging{opacity:0.3;transform:rotate(1.5deg) scale(0.97)}
+.kb-card-ofmaq.kb-dropbefore{border-top:2px solid #4A90D9}
+.kb-card-ofmaq.kb-urgente{border-left:3px solid #dc2626}
+.kb-card-ofmaq.kb-atrasada{border-left:3px solid #f59e0b}
+.kb-of-img{width:42px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1)}
+.kb-of-img-ph{width:42px;height:42px;border-radius:6px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.2)}
+.kb-ordem{width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.kb-carga{height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin:4px 0 6px;overflow:hidden}
+.kb-carga-fill{height:100%;border-radius:2px;transition:width 0.3s}
+</style>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
 
@@ -9481,6 +9498,17 @@ async function renderOFsPorMaquina(){
       ...maqsBase.filter(m=>grupos[m]),
       ...(grupos['Sem Máquina'] ? ['Sem Máquina'] : [])
     ];
+
+    try{
+      const btn = document.getElementById('btn-toggle-kanban-ofmaq');
+      if(btn) btn.textContent = (typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo) ? 'Lista' : 'Kanban';
+    }catch(e){}
+
+    if(typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo && typeof renderKanbanOfmaq === 'function'){
+      renderKanbanOfmaq(grupos, maquinas);
+      container.scrollTop = scroll;
+      _ofsMaqRenderizando=false;return;
+    }
 
     if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
     if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
@@ -40645,6 +40673,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="ofmaq-btn-todas-ofs" onclick="abrirModalTodasOFs()" style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap">📋 Todas as OFs</button>
     <button id="ofmaq-btn-relatorio" onclick="abrirModalRelatorioMaquina()" style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap">🖨️ Relatório</button>
     <button id="ofmaq-btn-atualizar" class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
+    <button id="btn-toggle-kanban-ofmaq" onclick="toggleKanbanOfmaq()"
+      style="background:rgba(74,144,217,0.15);color:#4A90D9;
+             border:1px solid rgba(74,144,217,0.3);border-radius:6px;
+             padding:6px 12px;cursor:pointer;font-size:12px;
+             display:inline-flex;align-items:center;gap:4px">
+      Kanban
+    </button>
   </div>
   <div class="page-body">
     <div class="ofmaq-toprow" style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
@@ -53207,6 +53242,238 @@ async function renderHub(forcar=false){
     ].join('');
   }catch(e){}
 }
+
+var _kbOfmaqAtivo = localStorage.getItem('kb_ofmaq') === '1';
+var _kbDragEl = null, _kbDragSrcCol = null;
+
+function toggleKanbanOfmaq(){
+  _kbOfmaqAtivo = !_kbOfmaqAtivo;
+  localStorage.setItem('kb_ofmaq', _kbOfmaqAtivo ? '1' : '0');
+  try{
+    var btn = document.getElementById('btn-toggle-kanban-ofmaq');
+    if(btn) btn.textContent = _kbOfmaqAtivo ? 'Lista' : 'Kanban';
+  }catch(e){}
+  try{ renderOFsPorMaquina(); }catch(e){}
+}
+
+function renderKanbanOfmaq(grupos, maquinasOrdenadas){
+  var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
+  if(!container) return;
+  var html = '<div class="kb-board-ofmaq">';
+  (maquinasOrdenadas || []).filter(function(maq){ return grupos[maq] && grupos[maq].length; }).forEach(function(maquina){
+    var ofs = grupos[maquina] || [];
+    var urgQty = ofs.filter(function(o){ return o && (o.urgente || o.urg); }).length;
+    var totalCx = ofs.reduce(function(s,o){ return s + (parseInt(o && o.quantidade, 10) || 0); }, 0);
+    var maqKey = String(maquina || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
+    var colId = 'kbcol-' + (maqKey || 'sem-maquina');
+    var bodyId = 'kbbody-' + (maqKey || 'sem-maquina');
+    var totalMin = ofs.reduce(function(s,o){
+      var a = parseInt(o && o.tempo_estimado_min, 10) || 0;
+      var b = parseInt(o && o.horas_estimadas, 10);
+      var c = Number.isFinite(b) ? (b * 60) : 0;
+      return s + (a || c || 0);
+    }, 0);
+    var pct = Math.min(Math.round((totalMin / (8*60)) * 100), 100);
+    var corCarga = pct > 90 ? '#dc2626' : pct > 70 ? '#f59e0b' : '#10b981';
+
+    html += '<div class="kb-col-ofmaq" id="' + escAttr(colId) + '" data-maq="' + escAttr(maquina) + '"' +
+      ' ondragover="kbOfmaqDragOver(event,this)" ondrop="kbOfmaqDrop(event,this)" ondragleave="kbOfmaqDragLeave(this)">';
+
+    html += '<div class="kb-col-ofmaq-header" onclick="kbOfmaqToggleBody(&quot;' + escAttr(bodyId) + '&quot;)">' +
+      '<div style="display:flex;align-items:center;gap:7px">' +
+        '<span style="font-weight:600;color:#e2e8f0;font-size:13px">' + escH(maquina) + '</span>' +
+        '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px">' + String(ofs.length) + '</span>' +
+        (urgQty > 0 ? '<span style="background:rgba(220,38,38,0.15);color:#f43f5e;border-radius:20px;padding:1px 7px;font-size:10px">' + String(urgQty) + ' urg</span>' : '') +
+      '</div>' +
+      '<span style="font-size:10px;color:#64748b">' + totalCx.toLocaleString('pt-BR') + ' cx</span>' +
+    '</div>';
+
+    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(pct) + '%;background:' + corCarga + '"></div></div>';
+
+    html += '<div id="' + escAttr(bodyId) + '">';
+    ofs.forEach(function(of, idx){
+      if(!of) return;
+      var urgente = !!(of.urgente || of.urg);
+      var ent = String(of.data_entrega || of.ent || '').slice(0,10);
+      var atrasada = false;
+      try{
+        var hoje = new Date().toISOString().slice(0,10);
+        var concl = (typeof _assistIsConcluida === 'function') ? !!_assistIsConcluida(of) : false;
+        atrasada = !!(ent && ent < hoje && !urgente && !concl);
+      }catch(e){
+        try{
+          var hoje2 = new Date().toISOString().slice(0,10);
+          atrasada = !!(ent && ent < hoje2 && !urgente);
+        }catch(_){}
+      }
+      var imgUrl = of.imagem_url || (Array.isArray(of.imgs) && of.imgs.length ? of.imgs[0] : '') || of.img || of.imagem || '';
+      var dataEnt = ent ? new Date(ent + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+      var fluxo = Array.isArray(of.fluxo_maquinas) ? of.fluxo_maquinas : (Array.isArray(of.maq) ? of.maq : []);
+      var idxFluxo = parseInt(of.maquina_atual_index, 10) || 0;
+      var numRaw = String(of.numero || of.of || of.of_num || of.numero_of || '').trim();
+      var numDigits = numRaw ? numRaw.replace(/\\D/g,'') : '';
+      var numLbl = numDigits ? ('Nº ' + numDigits.padStart(3,'0')) : 'Nº —';
+
+      html += '<div class="kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
+        ' draggable="true" data-of-id="' + escAttr(String(of.id||'')) + '" data-maq="' + escAttr(maquina) + '"' +
+        ' ondragstart="kbOfmaqDragStart(event,this)" ondragend="kbOfmaqDragEnd(event,this)"' +
+        ' ondragover="kbOfmaqDragOverCard(event,this)" ondrop="kbOfmaqDropCard(event,this)" ondragleave="kbOfmaqDragLeaveCard(this)">';
+
+      html += '<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:7px">';
+      html += '<div class="kb-ordem">' + String(idx + 1) + '</div>';
+      if(imgUrl){
+        html += '<img src="' + escAttr(String(imgUrl)) + '" class="kb-of-img" onerror="this.style.display=&#39;none&#39;;if(this.nextElementSibling)this.nextElementSibling.style.display=&#39;flex&#39;">' +
+          '<div class="kb-of-img-ph" style="display:none">?</div>';
+      } else {
+        html += '<div class="kb-of-img-ph">?</div>';
+      }
+      html += '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:2px">' +
+          '<span style="font-weight:700;color:#4A90D9;font-size:13px">' + escH(numLbl) + '</span>' +
+          (urgente ? '<span style="background:rgba(220,38,38,0.2);color:#f43f5e;font-size:9px;padding:1px 5px;border-radius:3px">URGENTE</span>' : '') +
+          (atrasada ? '<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;padding:1px 5px;border-radius:3px">ATRASADA</span>' : '') +
+        '</div>' +
+        '<div style="color:#e2e8f0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || '—')) + '</div>' +
+        '<div style="color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(String(of.prodDesc || of.produto || of.descricao || '—')) + '</div>' +
+      '</div>';
+      html += '</div>';
+
+      html += '<div style="display:flex;gap:8px;font-size:11px;color:#64748b;margin-bottom:7px;flex-wrap:wrap">' +
+        '<span>' + escH(String((typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (of.quantidade || of.qtd || of.qtd_pedida || '—'))) + ' cx</span>' +
+        (dataEnt ? '<span style="margin-left:auto;color:' + (atrasada ? '#f59e0b' : '#64748b') + '">' + escH(dataEnt) + '</span>' : '') +
+      '</div>';
+
+      if(fluxo && fluxo.length){
+        html += '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px">';
+        fluxo.forEach(function(m, i){
+          var bg = i < idxFluxo ? 'rgba(16,185,129,0.15)' : (i === idxFluxo ? 'rgba(74,144,217,0.2)' : 'rgba(255,255,255,0.04)');
+          var txt = i < idxFluxo ? '#10b981' : (i === idxFluxo ? '#4A90D9' : '#64748b');
+          html += '<span style="background:' + bg + ';color:' + txt + ';font-size:9px;padding:1px 5px;border-radius:3px">' + escH(String(m||'')) + '</span>';
+        });
+        html += '</div>';
+      }
+
+      html += '<div style="text-align:right">' +
+        '<button onclick="event.stopPropagation();abrirBottomSheetAcoes(&quot;' + escAttr(String(of.id||'')) + '&quot;,&quot;' + escAttr(String(numRaw||'')) + '&quot;)" style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Ações ▾</button>' +
+      '</div>';
+
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function kbOfmaqDragStart(e, el){
+  _kbDragEl = el;
+  _kbDragSrcCol = el.closest('.kb-col-ofmaq');
+  setTimeout(function(){ try{ el.classList.add('kb-dragging'); }catch(_){} }, 0);
+  try{ e.dataTransfer.effectAllowed = 'move'; }catch(_){}
+}
+function kbOfmaqDragEnd(e, el){
+  try{ el.classList.remove('kb-dragging'); }catch(_){}
+  try{ document.querySelectorAll('.kb-dropbefore').forEach(function(c){ c.classList.remove('kb-dropbefore'); }); }catch(_){}
+}
+function kbOfmaqDragOver(e, col){ try{ e.preventDefault(); }catch(_){}; try{ col.classList.add('kb-col-dragover'); }catch(_){} }
+function kbOfmaqDragLeave(col){ try{ col.classList.remove('kb-col-dragover'); }catch(_){} }
+function kbOfmaqDragOverCard(e, card){
+  try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+  try{ document.querySelectorAll('.kb-dropbefore').forEach(function(c){ c.classList.remove('kb-dropbefore'); }); }catch(_){}
+  if(card !== _kbDragEl) try{ card.classList.add('kb-dropbefore'); }catch(_){}
+}
+function kbOfmaqDragLeaveCard(card){ try{ card.classList.remove('kb-dropbefore'); }catch(_){} }
+
+function kbOfmaqDrop(e, col){
+  try{ e.preventDefault(); }catch(_){}
+  kbOfmaqDragLeave(col);
+  if(!_kbDragEl) return;
+  var maq = String(col && col.dataset ? (col.dataset.maq || '') : '').trim();
+  if(!maq) return;
+  var key = String(maq).replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
+  var bodyId = 'kbbody-' + (key || 'sem-maquina');
+  var body = document.getElementById(bodyId);
+  if(!body) return;
+  try{ body.appendChild(_kbDragEl); }catch(_){}
+  try{ _kbDragEl.classList.remove('kb-dragging'); }catch(_){}
+  kbOfmaqAtualizarOrdens(body);
+  kbOfmaqSalvar(body, maq);
+  _kbDragEl = null;
+}
+
+function kbOfmaqDropCard(e, cardDest){
+  try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+  kbOfmaqDragLeaveCard(cardDest);
+  if(!_kbDragEl || _kbDragEl === cardDest) return;
+  var col = cardDest.closest('.kb-col-ofmaq');
+  var body = cardDest.parentElement;
+  if(!col || !body) return;
+  var maq = String(col.dataset ? (col.dataset.maq || '') : '').trim();
+  try{ body.insertBefore(_kbDragEl, cardDest); }catch(_){}
+  try{ _kbDragEl.classList.remove('kb-dragging'); }catch(_){}
+  kbOfmaqAtualizarOrdens(body);
+  kbOfmaqSalvar(body, maq);
+  _kbDragEl = null;
+}
+
+function kbOfmaqAtualizarOrdens(body){
+  try{
+    body.querySelectorAll('.kb-card-ofmaq').forEach(function(c, i){
+      var badge = c.querySelector('.kb-ordem');
+      if(badge) badge.textContent = i + 1;
+    });
+  }catch(_){}
+}
+
+async function kbOfmaqSalvar(body, novaMaquina){
+  var maqOrigem = _kbDragSrcCol && _kbDragSrcCol.dataset ? String(_kbDragSrcCol.dataset.maq||'') : '';
+  var ofId = _kbDragEl && _kbDragEl.dataset ? String(_kbDragEl.dataset.ofId||'') : '';
+
+  if(ofId && maqOrigem && novaMaquina && maqOrigem !== novaMaquina){
+    try{
+      var ofObj = null;
+      try{ ofObj = (typeof ofmaqGetOFById === 'function') ? (ofmaqGetOFById(ofId) || null) : null; }catch(_){}
+      var idx = null;
+      try{
+        if(ofObj){
+          var fluxo2 = (typeof ofFluxoGetNamesAtivas === 'function') ? (ofFluxoGetNamesAtivas(ofObj) || []) : (Array.isArray(ofObj.fluxo_maquinas) ? ofObj.fluxo_maquinas : []);
+          var norm = (typeof _normMaqNome === 'function') ? _normMaqNome : function(v){ return String(v||'').trim().toUpperCase(); };
+          var nn = norm(novaMaquina);
+          for(var i=0;i<(fluxo2||[]).length;i++){
+            if(norm(fluxo2[i]) === nn){ idx = i; break; }
+          }
+        }
+      }catch(_){}
+      var bodyPatch = { maquina_atual: novaMaquina };
+      if(idx != null) bodyPatch.maquina_atual_index = idx;
+      await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PATCH', body: bodyPatch });
+    }catch(e){
+      try{ console.warn('[KB OFMAQ] erro mover:', e && e.message ? e.message : e); }catch(_){}
+    }
+  }
+
+  var ids = [];
+  try{
+    ids = Array.from(body.querySelectorAll('[data-of-id]')).map(function(c){ return String(c.dataset.ofId||'').trim(); }).filter(Boolean);
+  }catch(_){}
+  if(!ids.length) return;
+  try{
+    await apiFetch('/api/ofs/reordenar', { method:'POST', body:{ ordem: ids, maquina_id: novaMaquina } });
+  }catch(e){
+    try{ console.warn('[KB OFMAQ] erro reordenar:', e && e.message ? e.message : e); }catch(_){}
+  }
+}
+
+function kbOfmaqToggleBody(bodyId){
+  var el = document.getElementById(bodyId);
+  if(!el) return;
+  el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+try{
+  var _kbBtnInit = document.getElementById('btn-toggle-kanban-ofmaq');
+  if(_kbBtnInit) _kbBtnInit.textContent = _kbOfmaqAtivo ? 'Lista' : 'Kanban';
+}catch(e){}
 </script>
 
 <div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
