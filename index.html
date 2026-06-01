@@ -3604,6 +3604,16 @@ function abrirNovaOfRapida(){
           </span>
         </label>
       </div>
+
+      <div style="margin-bottom:12px">
+        <button type="button" id="btn-mais-itens-rapida" onclick="abrirMaisItensOfRapida()"
+          style="width:100%;background:rgba(74,144,217,0.1);color:#4A90D9;
+                 border:1px solid rgba(74,144,217,0.3);border-radius:8px;
+                 padding:8px;cursor:pointer;font-size:13px">
+          + Mais itens
+        </button>
+      </div>
+      <div id="painel-mais-itens" style="display:none"></div>
     </div>
 
     <div style="padding:12px 20px 20px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,0.06);position:sticky;bottom:0;background:#0d1320">
@@ -3661,6 +3671,87 @@ window.previewImgOf = function(input){
   if(label) label.textContent = file.name;
   if(preview) preview.style.display = 'block';
   if(thumb) thumb.src = URL.createObjectURL(file);
+};
+
+window.abrirMaisItensOfRapida = function(){
+  var painel = document.getElementById('painel-mais-itens');
+  var btn = document.getElementById('btn-mais-itens-rapida');
+  if(!painel) return;
+
+  if(painel.style.display !== 'none' && painel.style.display !== ''){
+    painel.style.display = 'none';
+    if(btn) btn.textContent = '+ Mais itens';
+    return;
+  }
+
+  var qtd = parseInt(prompt('Quantos itens adicionais deseja criar?', '3'), 10) || 0;
+  if(!qtd || qtd < 1 || qtd > 50) return;
+
+  var html = '<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;margin-top:4px">' +
+    '<div style="color:#94a3b8;font-size:12px;margin-bottom:10px">' + String(qtd) + ' itens adicionais — preencha os dados:</div>';
+
+  for(var i = 1; i <= qtd; i++){
+    html += '<div class="ofr-item-card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;margin-bottom:8px">' +
+      '<div style="color:#4A90D9;font-size:11px;font-weight:600;margin-bottom:8px">Item ' + String(i) + '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
+        '<div style="grid-column:1/-1">' +
+          '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Ref / Produto</label>' +
+          '<input type="text" class="item-ref" placeholder="Referência ou descrição" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Qtd (cx) *</label>' +
+          '<input type="number" class="item-qtd" min="1" placeholder="0" oninput="calcTotalItem(this)" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Vl. Unit. (R$)</label>' +
+          '<input type="number" class="item-vl-unit" min="0" step="0.01" placeholder="0,00" oninput="calcTotalItem(this)" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
+        '</div>' +
+        '<div>' +
+          '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Vl. Total (R$)</label>' +
+          '<input type="number" class="item-vl-total" min="0" step="0.01" placeholder="0,00" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  html += '</div>';
+  painel.innerHTML = html;
+  painel.style.display = 'block';
+  if(btn) btn.textContent = 'Fechar itens';
+};
+
+window.calcTotalItem = function(inputEl){
+  try{
+    var row = inputEl && inputEl.closest ? inputEl.closest('.ofr-item-card') : null;
+    if(!row) return;
+    var qtdEl = row.querySelector('.item-qtd');
+    var unitEl = row.querySelector('.item-vl-unit');
+    var totalEl = row.querySelector('.item-vl-total');
+    if(!qtdEl || !unitEl || !totalEl) return;
+    var qtd = parseFloat(String(qtdEl.value || '0').replace(',','.')) || 0;
+    var unit = parseFloat(String(unitEl.value || '0').replace(',','.')) || 0;
+    totalEl.value = (qtd > 0 && unit > 0) ? (qtd * unit).toFixed(2) : '';
+  }catch(e){}
+};
+
+window.coletarItensAdicionais = function(){
+  var itens = [];
+  try{
+    var painel = document.getElementById('painel-mais-itens');
+    if(!painel) return itens;
+    painel.querySelectorAll('.ofr-item-card').forEach(function(row){
+      var ref = '';
+      var qtd = 0;
+      var unit = 0;
+      var total = 0;
+      try{ ref = String((row.querySelector('.item-ref') || {}).value || '').trim(); }catch(e){ ref=''; }
+      try{ qtd = parseInt(String((row.querySelector('.item-qtd') || {}).value || '0').trim(), 10) || 0; }catch(e){ qtd=0; }
+      try{ unit = parseFloat(String((row.querySelector('.item-vl-unit') || {}).value || '0').replace(',','.')) || 0; }catch(e){ unit=0; }
+      try{ total = parseFloat(String((row.querySelector('.item-vl-total') || {}).value || '0').replace(',','.')) || 0; }catch(e){ total=0; }
+      if(qtd > 0) itens.push({ referencia: ref, quantidade: qtd, vl_unit: unit, vl_total: total || (qtd * unit) });
+    });
+  }catch(e){}
+  return itens;
 };
 
 window.fecharNovaOfRapida = function(){
@@ -3780,6 +3871,75 @@ window.salvarOfRapida = async function(){
     const ofCriada = d?.data || d;
     try{
       if(Array.isArray(window.OFS_ARQUIVO) && ofCriada) window.OFS_ARQUIVO.unshift(ofCriada);
+    }catch(e){}
+    try{
+      var extras = (typeof coletarItensAdicionais === 'function') ? coletarItensAdicionais() : [];
+      if(Array.isArray(extras) && extras.length){
+        var baseNum = parseInt(String(numeroOf || '').replace(/\D/g,''), 10) || 0;
+        var nextNum = baseNum;
+        var okN = 0;
+        var totalN = extras.length;
+        for(var i=0;i<extras.length;i++){
+          var it = extras[i] || {};
+          nextNum += 1;
+          var numStr = String(nextNum).padStart(3,'0');
+          var prod2 = String(it.referencia || '').trim() || produto;
+          var qtd2 = Math.trunc(Number(it.quantidade || 0) || 0);
+          var unit2 = parseFloat(String(it.vl_unit || 0).replace(',','.')) || 0;
+          var tot2 = parseFloat(String(it.vl_total || 0).replace(',','.')) || (qtd2 * unit2);
+          if(!(qtd2 > 0)) continue;
+          var itens2 = [{
+            desc: prod2,
+            descricao: prod2,
+            ref: String(it.referencia || '').trim(),
+            qtd: qtd2,
+            quantidade: qtd2,
+            vunit: unit2,
+            valor_unitario: unit2,
+            valor_total: tot2,
+            img: imgUrl || null,
+            maquina: '',
+            maquinas_fluxo: [],
+            maquinas_fluxo_ids: [],
+          }];
+          var payload2 = {
+            numero: numStr,
+            of_num: numStr,
+            of: numStr,
+            cli_id: cliId,
+            cliId: cliId,
+            cliente_id: cliId,
+            vendedor_id: vendId,
+            vendId: vendId,
+            vend_id: vendId,
+            prodDesc: prod2,
+            descricao: prod2,
+            produto: prod2,
+            quantidade: qtd2,
+            qtd: qtd2,
+            valor_total: tot2,
+            valor_venda: tot2,
+            ent: entrega,
+            data_entrega: entrega,
+            data_pedido: pedido,
+            dia: pedido,
+            status: 'Em aberto',
+            urg: urgente,
+            urgente: urgente,
+            emp_id: empId,
+            empId: empId,
+            itens: itens2,
+            imgs: imgUrl ? [imgUrl] : [],
+            imagem_url: imgUrl || null,
+          };
+          try{
+            var r2 = await apiFetch('/api/ofs', { method:'POST', body: payload2 });
+            var d2 = r2 ? await r2.json().catch(()=>null) : null;
+            if((r2 && r2.ok) && !(d2 && d2.ok === false)) okN += 1;
+          }catch(e2){}
+        }
+        if(okN > 0) toast('✓ Itens adicionais criados: ' + okN + '/' + totalN, 'var(--green)');
+      }
     }catch(e){}
     fecharNovaOfRapida();
     toast('✓ OF criada com sucesso!', 'var(--green)');
