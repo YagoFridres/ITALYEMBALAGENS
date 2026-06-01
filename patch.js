@@ -3,221 +3,362 @@
   'use strict'; 
 
   try {
-    var cssM = [
-      /* ═══ BREAKPOINTS ═══════════════════════════════════════════
-         sm  = 480px  (celular pequeno)
-         md  = 768px  (celular grande / tablet)
-         lg  = 1024px (tablet landscape)
-      ═══════════════════════════════════════════════════════════ */
+    var cssM = `
+/* ════════════════════════════════════════════════════
+   CSS RESPONSIVO — Italy Embalagens ERP
+   Adapta o sistema existente para mobile/tablet.
+   NÃO cria novo sistema. NÃO esconde funcionalidades.
+   ════════════════════════════════════════════════════ */
 
-      /* ─── LAYOUT BASE MOBILE ──────────────────────────────────── */
-      '@media(max-width:768px){',
+/* ── MOBILE (até 768px) ─────────────────────────────── */
+@media (max-width: 768px) {
 
-        /* Sidebar: ocultar no mobile, acessar pelo menu hamburguer */
-        '.sidebar,#sidebar,[class*="sidebar"],nav.side,.side-nav,.nav-lateral{',
-          'display:none!important;',
-        '}',
+  /* 1. LAYOUT PRINCIPAL */
+  /* Sidebar oculta — navegação pela hotbar existente */
+  .sidebar, #sidebar, nav.side, .side-nav,
+  [class*="sidebar"]:not(.mobile-bottom-nav) {
+    display: none !important;
+  }
 
-        /* Conteúdo ocupa tela toda */
-        '.main-content,#main-content,[class*="main-content"],.page-content,.content-area,.content-wrap{',
-          'margin-left:0!important;',
-          'padding:8px 8px 72px!important;',
-          'width:100%!important;max-width:100%!important;',
-        '}',
+  /* Conteúdo ocupa tela toda */
+  .main-content, #main-content, .content-area,
+  [class*="main-content"], [class*="content-wrap"],
+  .app-content, #app-content {
+    margin-left: 0 !important;
+    padding: 8px 8px 70px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+  }
 
-        /* Header compacto */
-        '.top-bar,.header,#header,[class*="top-bar"]{',
-          'padding:6px 10px!important;flex-wrap:wrap!important;gap:4px!important;',
-        '}',
+  /* Header do sistema — compactar */
+  .top-bar, #top-bar, .header-bar, #header-bar,
+  [class*="top-bar"], [class*="header-bar"] {
+    padding: 6px 10px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    font-size: 12px !important;
+  }
 
-        /* Esconder elementos não essenciais no header */
-        '.header-empresa-selector,.emp-sel-bar,[data-empresa-selector]{display:none!important;}',
+  /* Esconder itens não essenciais do header no mobile */
+  .emp-sel-bar, .empresa-selector, [data-empresa-selector],
+  .empresa-tabs, [class*="empresa-tab"] {
+    display: none !important;
+  }
 
-        /* Inputs sem zoom no iOS (CRÍTICO) */
-        'input,select,textarea,input[type="text"],input[type="number"],input[type="date"],input[type="email"]{',
-          'font-size:16px!important;',
-        '}',
+  /* Hotbar do sistema — sempre visível */
+  .mobile-bottom-nav, #mobile-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+  }
 
-        /* Botões maiores para toque */
-        'button,.btn,[class*="btn-"]{min-height:40px!important;padding:8px 12px!important;font-size:13px!important;}',
+  /* Espaço para a hotbar */
+  body { padding-bottom: 65px !important; }
 
-        /* Espaço para hotbar na parte de baixo */
-        '.mobile-bottom-nav,.mobile-nav,[id*="bottom-nav"]{display:flex!important;}',
-        'body{padding-bottom:62px!important;}',
 
-      '}',
+  /* 2. FORMULÁRIOS E INPUTS */
+  /* CRÍTICO: evitar zoom automático no iOS */
+  input, select, textarea,
+  input[type="text"], input[type="number"],
+  input[type="email"], input[type="password"],
+  input[type="date"], input[type="tel"],
+  input[type="search"] {
+    font-size: 16px !important;
+    min-height: 40px !important;
+  }
 
-      /* ─── TABELAS → CARDS ─────────────────────────────────────── */
-      '@media(max-width:768px){',
+  /* Botões maiores para toque */
+  button, .btn, [class*="btn-"],
+  [role="button"] {
+    min-height: 40px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    touch-action: manipulation !important;
+  }
 
-        /* Tabela principal de OFs */
-        'table.tabela-ofs,table[class*="tabela-of"],[class*="pcp-tabela"],[class*="tabela-pcp"]{',
-          'display:block!important;width:100%!important;',
-        '}',
-        'table.tabela-ofs thead,[class*="tabela-of"] thead{display:none!important;}',
-        'table.tabela-ofs tbody,[class*="tabela-of"] tbody{display:block!important;}',
-        'table.tabela-ofs tr,[class*="tabela-of"] tr{',
-          'display:block!important;',
-          'background:rgba(255,255,255,0.03)!important;',
-          'border:1px solid rgba(255,255,255,0.08)!important;',
-          'border-radius:10px!important;',
-          'margin-bottom:10px!important;',
-          'padding:10px!important;',
-          'position:relative!important;',
-        '}',
-        'table.tabela-ofs td,[class*="tabela-of"] td{',
-          'display:flex!important;justify-content:space-between!important;align-items:center!important;',
-          'padding:3px 0!important;border:none!important;font-size:12px!important;',
-        '}',
-        /* Esconder colunas menos importantes no mobile */
-        'table.tabela-ofs td:nth-child(n+8),[class*="tabela-of"] td:nth-child(n+8){display:none!important;}',
+  /* Selects maiores */
+  select { min-height: 40px !important; padding: 8px !important; }
 
-      '}',
 
-      /* ─── MODAIS → BOTTOM SHEET ───────────────────────────────── */
-      '@media(max-width:768px){',
+  /* 3. TABELA DE OFS → CARDS */
+  /* Tabela principal do PCP */
+  table, .tabela-ofs, [class*="tabela-of"],
+  [class*="pcp-tabela"], [class*="tabela-pcp"] {
+    display: block !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
 
-        /* Qualquer modal vira bottom sheet */
-        '[id*="modal"],[class*="modal"]{',
-          'align-items:flex-end!important;',
-        '}',
-        '[id*="modal"] > div:first-of-type,',
-        '[id*="modal"] > .modal-content,',
-        '[class*="modal-content"],[class*="modal-body"]{',
-          'position:fixed!important;',
-          'bottom:0!important;left:0!important;right:0!important;top:auto!important;',
-          'width:100%!important;max-width:100%!important;',
-          'border-radius:16px 16px 0 0!important;',
-          'max-height:92vh!important;overflow-y:auto!important;',
-          'margin:0!important;',
-        '}',
+  /* Thead oculto — labels via data-label */
+  .tabela-ofs thead, [class*="tabela-of"] thead,
+  [class*="pcp-tabela"] thead { display: none !important; }
 
-        /* Modal de OF (específico) */
-        '#modal-of-detalhe > div,#modal-nova-of > div,#modal-baixa-conclusao > div{',
-          'max-height:95vh!important;',
-        '}',
+  /* Cada linha vira card */
+  .tabela-ofs tr, [class*="tabela-of"] tr,
+  [class*="pcp-tabela"] tr {
+    display: block !important;
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+    padding: 10px !important;
+    position: relative !important;
+  }
+  .tabela-ofs tbody, [class*="tabela-of"] tbody { display: block !important; }
 
-      '}',
+  /* Células em flex */
+  .tabela-ofs td, [class*="tabela-of"] td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 3px 0 !important;
+    border: none !important;
+    font-size: 12px !important;
+    min-height: 22px !important;
+  }
 
-      /* ─── KANBAN OFs POR MÁQUINA ──────────────────────────────── */
-      '@media(max-width:768px){',
+  /* Esconder colunas menos importantes */
+  .tabela-ofs td:nth-child(n+9),
+  [class*="tabela-of"] td:nth-child(n+9),
+  .col-hide-mobile { display: none !important; }
 
-        '.kb-board,.kb-board-ofmaq,.kb-maq-board{',
-          'overflow-x:auto!important;',
-          '-webkit-overflow-scrolling:touch!important;',
-          'gap:10px!important;',
-          'padding-bottom:16px!important;',
-        '}',
-        '.kb-col,.kb-col-ofmaq,.kb-maq-col{',
-          'min-width:260px!important;max-width:280px!important;',
-        '}',
-        '.kb-card,.kb-of-card,.kb-card-ofmaq{',
-          'padding:10px!important;cursor:pointer!important;',
-        '}',
+  /* Coluna de ações sempre visível e no final */
+  .tabela-ofs td:last-child,
+  [class*="tabela-of"] td:last-child {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding-top: 8px !important;
+    margin-top: 4px !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+  }
 
-      '}',
 
-      /* ─── PCP / PROGRAMAÇÃO ───────────────────────────────────── */
-      '@media(max-width:768px){',
+  /* 4. MODAIS → BOTTOM SHEET */
+  /* Qualquer overlay de modal */
+  [id*="modal"][style*="display: flex"],
+  [id*="modal"][style*="display:flex"],
+  [class*="modal"][style*="display: flex"],
+  [class*="modal"][style*="display:flex"] {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
 
-        /* Toolbar do PCP */
-        '[class*="pcp-toolbar"],[class*="toolbar-pcp"],[id*="pcp-acoes"]{',
-          'flex-wrap:wrap!important;gap:6px!important;',
-        '}',
-        '[class*="pcp-toolbar"] button,[id*="pcp-acoes"] button{',
-          'flex:1 1 calc(50% - 6px)!important;min-width:0!important;font-size:12px!important;',
-        '}',
+  /* Conteúdo do modal sobe de baixo */
+  [id*="modal"] > div,
+  [id*="modal"] > .modal-content,
+  [class*="modal-content"],
+  [class*="modal-body"],
+  [class*="modal-inner"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+    position: relative !important;
+  }
 
-        /* Filtros do PCP em linha */
-        '.pcp-filtros,[class*="filtros-pcp"]{',
-          'flex-direction:column!important;gap:6px!important;',
-        '}',
 
-        /* Card de OF no PCP */
-        '[class*="linha-of"],[class*="row-of"],[class*="of-row"]{',
-          'display:block!important;border-radius:10px!important;',
-          'padding:10px!important;margin-bottom:8px!important;',
-          'background:rgba(255,255,255,0.03)!important;',
-          'border:1px solid rgba(255,255,255,0.08)!important;',
-        '}',
+  /* 5. KANBAN (OFs por Máquina) */
+  .kb-board, .kb-board-ofmaq, .kb-maq-board,
+  [class*="kb-board"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scroll-snap-type: x mandatory !important;
+    gap: 10px !important;
+    padding-bottom: 16px !important;
+  }
+  .kb-col, .kb-col-ofmaq, .kb-maq-col,
+  [class*="kb-col"] {
+    min-width: 270px !important;
+    max-width: 290px !important;
+    scroll-snap-align: start !important;
+    flex-shrink: 0 !important;
+  }
+  /* Cards do kanban maiores para toque */
+  .kb-card, .kb-of-card, .kb-card-ofmaq,
+  [class*="kb-card"] {
+    padding: 12px !important;
+    margin-bottom: 8px !important;
+  }
 
-      '}',
 
-      /* ─── DASHBOARD / GRÁFICOS ────────────────────────────────── */
-      '@media(max-width:768px){',
+  /* 6. TOOLBAR DO PCP */
+  /* Botões de ação em grid 2 colunas */
+  [class*="pcp-acoes"], [class*="acoes-pcp"],
+  [class*="toolbar-pcp"], [class*="pcp-toolbar"],
+  [id*="pcp-acoes"], [id*="acoes-pcp"] {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  [class*="pcp-acoes"] > button,
+  [class*="toolbar-pcp"] > button,
+  [id*="pcp-acoes"] > button {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 0 !important;
+    font-size: 12px !important;
+  }
 
-        /* Gráficos responsivos */
-        'canvas,[class*="chart"],[class*="grafico"]{',
-          'max-width:100%!important;height:auto!important;',
-        '}',
+  /* Filtros do PCP em coluna */
+  .pcp-filtros, [class*="filtros-pcp"],
+  [class*="filter-bar"] {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+  .pcp-filtros select, [class*="filtros-pcp"] select,
+  [class*="filter-bar"] select {
+    width: 100% !important;
+  }
 
-        /* Cards de KPI em grid */
-        '[class*="kpi-cards"],[class*="stats-cards"],[class*="dashboard-cards"]{',
-          'grid-template-columns:repeat(2,1fr)!important;gap:8px!important;',
-        '}',
 
-      '}',
+  /* 7. CHAT */
+  #chat-painel {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 62px !important;
+    height: 65vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
 
-      /* ─── CHAT ────────────────────────────────────────────────── */
-      '@media(max-width:768px){',
 
-        '#chat-painel{',
-          'width:100%!important;max-width:100%!important;',
-          'bottom:62px!important;left:0!important;right:0!important;',
-          'height:70vh!important;border-radius:16px 16px 0 0!important;',
-        '}',
-        '#chat-btn{bottom:72px!important;right:12px!important;}',
+  /* 8. DASHBOARD / GRÁFICOS */
+  canvas, [class*="chart"], [class*="grafico"] {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  [class*="dashboard-cards"], [class*="kpi-cards"],
+  [class*="stats-grid"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
 
-      '}',
 
-      /* ─── ESTOQUE / TABELAS GERAIS ────────────────────────────── */
-      '@media(max-width:768px){',
+  /* 9. ESTOQUE E OUTRAS TABELAS */
+  /* Tabelas genéricas com scroll horizontal */
+  table:not(.tabela-ofs):not([class*="tabela-of"]) {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+  }
 
-        /* Tabelas genéricas */
-        'table:not(.tabela-ofs):not([class*="tabela-of"]){',
-          'display:block!important;overflow-x:auto!important;',
-          '-webkit-overflow-scrolling:touch!important;',
-          'white-space:nowrap!important;',
-        '}',
 
-        /* Imagens de OF menores */
-        '[class*="of-img"],[class*="img-of"]{',
-          'width:40px!important;height:40px!important;',
-        '}',
+  /* 10. TIPOGRAFIA */
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 16px !important; }
+  h3 { font-size: 15px !important; }
+  p, span, div { max-width: 100% !important; }
 
-      '}',
+  /* Texto longo com ellipsis em elementos de lista */
+  .tabela-ofs td span,
+  [class*="tabela-of"] td span,
+  [class*="of-cliente"],
+  [class*="cliente-nome"] {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 160px !important;
+  }
 
-      /* ─── CELULAR PEQUENO ─────────────────────────────────────── */
-      '@media(max-width:480px){',
 
-        'body{font-size:13px!important;}',
+  /* 11. AGENDA */
+  #agenda-grid {
+    gap: 2px !important;
+  }
+  #agenda-grid > div {
+    min-height: 60px !important;
+    font-size: 11px !important;
+    padding: 4px !important;
+  }
 
-        /* Esconder textos não essenciais */
-        '[class*="hide-sm"]{display:none!important;}',
 
-        /* Headers ainda mais compactos */
-        'h1{font-size:16px!important;}h2{font-size:15px!important;}h3{font-size:14px!important;}',
+  /* 12. IMAGENS DE OF */
+  [class*="of-img"], [class*="img-of"],
+  .kb-img, .kb-of-img {
+    width: 44px !important;
+    height: 44px !important;
+    flex-shrink: 0 !important;
+  }
 
-        /* Cards de KPI em 2 colunas compactas */
-        '[class*="kpi-cards"],[class*="stats-cards"]{',
-          'grid-template-columns:repeat(2,1fr)!important;',
-        '}',
 
-      '}',
+  /* 13. PROJEÇÃO DE VENDAS */
+  #widget-projecao-vendas {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
 
-      /* ─── TABLET ──────────────────────────────────────────────── */
-      '@media(min-width:769px) and (max-width:1024px){',
 
-        /* Sidebar mais estreita */
-        '.sidebar,#sidebar{width:200px!important;}',
-        '.main-content,#main-content{margin-left:200px!important;}',
+  /* 14. CLIENTES */
+  #analise-clientes-resultado .m-card,
+  [id*="analise"] [class*="card"] {
+    padding: 10px !important;
+  }
 
-        /* Tabelas com scroll */
-        'table{display:block!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}',
 
-      '}',
+  /* 15. SCROLLBAR FINA NO MOBILE */
+  ::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
+  ::-webkit-scrollbar-track { background: transparent !important; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2) !important; border-radius: 3px !important; }
+}
 
-    ].join('\n');
+
+/* ── CELULAR PEQUENO (até 480px) ─────────────────────── */
+@media (max-width: 480px) {
+  body { font-size: 13px !important; }
+
+  /* Uma coluna em grids */
+  [class*="dashboard-cards"], [class*="kpi-cards"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Kanban ainda mais compacto */
+  .kb-col, [class*="kb-col"] {
+    min-width: 240px !important;
+    max-width: 260px !important;
+  }
+
+  /* Header ainda mais compacto */
+  .top-bar, #top-bar { padding: 4px 8px !important; }
+
+  /* Esconder labels de texto em botões de ícone */
+  [class*="btn-icon"] span,
+  [class*="icon-btn"] span { display: none !important; }
+
+  /* Modal quase full screen */
+  [id*="modal"] > div {
+    max-height: 96vh !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+}
+
+
+/* ── TABLET (769px – 1024px) ────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  /* Sidebar mais estreita */
+  .sidebar, #sidebar, [class*="sidebar"]:not(.mobile-bottom-nav) {
+    width: 200px !important;
+    font-size: 12px !important;
+  }
+  .main-content, #main-content, [class*="main-content"] {
+    margin-left: 200px !important;
+  }
+
+  /* Tabelas com scroll horizontal no tablet */
+  table { overflow-x: auto !important; display: block !important; }
+
+  /* Kanban com colunas um pouco menores */
+  .kb-col, [class*="kb-col"] {
+    min-width: 260px !important;
+  }
+}
+`;
 
     var elCSS = document.getElementById('patch-css-mobile');
     if (!elCSS) {
@@ -226,7 +367,7 @@
       document.head.appendChild(elCSS);
     }
     elCSS.textContent = cssM;
-    console.log('[PATCH] CSS responsivo mobile injetado');
+    console.log('[PATCH] CSS responsivo aplicado');
   } catch (_) {}
  
   // ── UTIL: pegar token ────────────────────────────────────────── 
