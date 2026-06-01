@@ -2177,7 +2177,6 @@ const MODULOS_SISTEMA = [
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
   { key:'operadores',     label:'Operadores',          grupo:'Cadastros', menuId:'menu-operadores',      paginaId:'operadores' },
-  { key:'roteiro',        label:'Roteiro de Entrega',  grupo:'Cadastros', menuId:'menu-roteiro',         paginaId:'roteiro-entrega' },
   { key:'estoque_chapas', label:'Estoque Chapas',      grupo:'Estoques',  menuId:'menu-estoque',         paginaId:'estoques' },
   { key:'sel_chapas',     label:'Seleção de Chapas',   grupo:'Papelão',   menuId:'menu-papelao-sel-chapas', paginaId:'sel-chapas' },
   { key:'papelao_ia',     label:'Inteligência do Papelão', grupo:'Papelão', menuId:'menu-papelao-ia',     paginaId:'papelao-ia' },
@@ -2223,7 +2222,6 @@ const PERMISSOES_SISTEMA = {
       vendedores: 'Vendedores',
       usuarios: 'Usuários',
       operadores: 'Operadores',
-      roteiro: 'Roteiro de Entrega',
     }
   },
   estoques: {
@@ -39954,7 +39952,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
-      <div id="menu-roteiro" class="nav-item" onclick="window._mapCliStartTab='roteiro';go('mapa-clientes');setTimeout(()=>{try{mapcliSetAba('roteiro')}catch(e){}},200);closeNavGroupsExcept('ng-cadastros');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))closeMobMenu();"><span class="ico">🗺</span>Roteiro de Entrega</div>
     </div>
   </div>
 
@@ -40340,9 +40337,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-red btn-sm" onclick="atravessarSel()">⬆ Atravessar</button>
     <button id="btn-cancelar-of" class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
     <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
-    <button class="btn btn-ghost btn-sm" onclick="abrirRelatorioOQueVaiSemana()" title="Relatório de entregas (segunda a sexta)">📋 O que vai essa semana</button>
-    <button class="btn btn-ghost btn-sm" onclick="abrirModalRelatorioPCP()" title="Relatório por período">📄 Relatório</button>
-    <button class="btn btn-ghost btn-sm" onclick="pcpAbrirRoteiroEntregas()" title="Roteiro de entregas por cidade/dia (sugestão)">🚚 Roteiro de Entregas</button>
     <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
     <button id="btn-nova-of-rapida" class="btn btn-accent btn-sm" onclick="abrirNovaOfRapida()" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);border:none;box-shadow:0 4px 16px rgba(14,165,233,0.25)">⚡ OF Rápida</button>
   </div>
@@ -40852,6 +40846,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
     <button id="mapcli-tab-mapa" class="btn btn-ghost btn-sm" onclick="mapcliSetAba('mapa')">Mapa</button>
     <button id="mapcli-tab-roteiro" class="btn btn-ghost btn-sm" onclick="mapcliSetAba('roteiro')">Roteiro</button>
+    <button onclick="mapcliSetAba('roteiro')" style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.3);border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px">🚚 Roteiro de Entregas</button>
     <select id="mapcli-emp" onchange="renderMapaClientes(true)" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas as empresas</option>
     </select>
