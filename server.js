@@ -16657,85 +16657,100 @@ if(cron && cron.validate('0 18 * * *')){
 app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) => {
   try {
     const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
     const dataInicio = new Date();
-    dataInicio.setFullYear(anoAtual - 3);
+    dataInicio.setFullYear(hoje.getFullYear() - 3);
 
-    async function fetchOfsConcluidas() {
-      const selectPreferido = 'data_conclusao,data_entrega,vl_total,valor_total,total,quantidade,vl_unit,status,created_at';
-      const statusList = ['Concluida','Concluída','Faturada','faturada'];
-      let r = await supabase.from('ofs')
-        .select(selectPreferido)
-        .in('status', statusList)
-        .gte('created_at', dataInicio.toISOString());
-      if (!r?.error) return r.data || [];
+    const { data: ofs, error: ofErr } = await supabase
+      .from('ofs')
+      .select('created_at,vl_total,valor_total,valor_venda,total,quantidade,qtd,qtd_pedida,vl_unit,vl_unitario,valor_unitario,status,data_conclusao,data_entrega')
+      .gte('created_at', dataInicio.toISOString())
+      .order('created_at', { ascending: true });
 
-      const msg = String(r.error.message || r.error || '').toLowerCase();
-      if (msg.includes('does not exist') || msg.includes('could not find')) {
-        r = await supabase.from('ofs')
-          .select('*')
-          .in('status', statusList)
-          .gte('created_at', dataInicio.toISOString());
-        if (!r?.error) return r.data || [];
-      }
-      throw r.error;
-    }
+    if (ofErr) throw ofErr;
 
-    const [ofsRes, manuaisRes] = await Promise.allSettled([
-      fetchOfsConcluidas(),
-      supabase.from('faturamento_manual').select('*'),
-    ]);
+    const grupos = {};
+    (ofs || []).forEach((of) => {
+      const valor =
+        parseFloat(of?.vl_total) ||
+        parseFloat(of?.valor_total) ||
+        parseFloat(of?.valor_venda) ||
+        parseFloat(of?.total) ||
+        ((parseFloat(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0) *
+          (parseFloat(of?.vl_unit ?? of?.vl_unitario ?? of?.valor_unitario ?? 0) || 0)) ||
+        0;
 
-    const ofs = ofsRes.status === 'fulfilled' ? (ofsRes.value || []) : [];
-    const manuais = manuaisRes.status === 'fulfilled' ? (manuaisRes.value?.data || []) : [];
-
-    const gruposOf = {};
-    (ofs || []).forEach(of => {
-      const valor = parseFloat(of.vl_total||of.valor_total||of.total||0) ||
-                    (parseFloat(of.quantidade||0) * parseFloat(of.vl_unit||0));
       if (!valor || valor <= 0) return;
-      const d = new Date(of.data_conclusao || of.data_entrega || of.created_at);
-      if (isNaN(d)) return;
-      const k = d.getFullYear() + '-' + (d.getMonth()+1);
-      if (!gruposOf[k]) gruposOf[k] = { ano: d.getFullYear(), mes: d.getMonth()+1, valor: 0, fonte: 'of' };
-      gruposOf[k].valor += valor;
+
+      const dt = new Date(of?.data_conclusao || of?.data_entrega || of?.created_at);
+      if (isNaN(dt.getTime())) return;
+
+      const k = dt.getFullYear() + '-' + (dt.getMonth() + 1);
+      if (!grupos[k]) grupos[k] = { ano: dt.getFullYear(), mes: dt.getMonth() + 1, valor: 0, valor_of: 0, valor_manual: null, fonte: 'of', ofs: 0 };
+      grupos[k].valor += valor;
+      grupos[k].valor_of += valor;
+      grupos[k].ofs += 1;
     });
 
-    (manuais || []).forEach(m => {
-      const k = m.ano + '-' + m.mes;
-      if (!gruposOf[k]) gruposOf[k] = { ano: m.ano, mes: m.mes, valor: parseFloat(m.valor), fonte: 'manual', obs: m.observacao };
+    const { data: manuais, error: manErr } = await supabase.from('faturamento_manual').select('*');
+    if (manErr) throw manErr;
+
+    (manuais || []).forEach((m) => {
+      const ano = parseInt(m?.ano, 10);
+      const mes = parseInt(m?.mes, 10);
+      if (!ano || !mes) return;
+      const k = ano + '-' + mes;
+      const v = parseFloat(m?.valor ?? 0) || 0;
+      if (!grupos[k]) grupos[k] = { ano, mes, valor: 0, valor_of: 0, valor_manual: null, fonte: 'manual', ofs: 0, obs: m?.observacao ?? null };
+      grupos[k].valor_manual = v;
+      grupos[k].obs = m?.observacao ?? grupos[k].obs ?? null;
+      grupos[k].fonte = 'manual';
+      grupos[k].valor = v;
     });
 
-    const dados = Object.values(gruposOf).sort((a,b) => (a.ano*100+a.mes)-(b.ano*100+b.mes));
+    const dados = Object.values(grupos).sort((a, b) => (a.ano * 100 + a.mes) - (b.ano * 100 + b.mes));
 
-    const comDados = dados.filter(m => m.valor > 0).slice(-6);
+    const comDados = dados.filter((m) => (Number(m.valor) || 0) > 0).slice(-6);
     let crescimento = 0;
     if (comDados.length >= 2) {
       const taxas = [];
       for (let i = 1; i < comDados.length; i++) {
-        if (comDados[i-1].valor > 0)
-          taxas.push((comDados[i].valor - comDados[i-1].valor) / comDados[i-1].valor);
+        const prev = Number(comDados[i - 1].valor) || 0;
+        const cur = Number(comDados[i].valor) || 0;
+        if (prev > 0) taxas.push((cur - prev) / prev);
       }
       if (taxas.length) {
-        crescimento = taxas.reduce((s,t) => s+t, 0) / taxas.length;
-        crescimento = Math.max(-0.30, Math.min(0.50, crescimento));
+        crescimento = taxas.reduce((s, t) => s + t, 0) / taxas.length;
+        crescimento = Math.max(-0.20, Math.min(0.30, crescimento));
       }
     }
 
-    const mapaExistente = new Set(dados.map(d => d.ano+'-'+d.mes));
+    const mapaExistente = new Set(dados.map((d) => d.ano + '-' + d.mes));
     const futuros = [];
-    let base = comDados.length ? comDados[comDados.length-1].valor : 0;
+    const baseValor = comDados.length ? (Number(comDados[comDados.length - 1].valor) || 0) : 0;
+    let proj = baseValor;
     for (let i = 1; i <= 18; i++) {
-      base = base * (1 + crescimento);
-      base = Math.max(base, comDados.length ? comDados[comDados.length-1].valor * 0.5 : 0);
-      const d = new Date(hoje.getFullYear(), hoje.getMonth()+i, 1);
-      const k = d.getFullYear()+'-'+(d.getMonth()+1);
-      if (!mapaExistente.has(k))
-        futuros.push({ ano: d.getFullYear(), mes: d.getMonth()+1, valor: Math.round(base*100)/100, fonte: 'projecao' });
+      proj = proj * (1 + crescimento);
+      proj = Math.max(proj, baseValor * 0.5);
+      proj = Math.max(proj, 0);
+      const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+      const k = d.getFullYear() + '-' + (d.getMonth() + 1);
+      if (!mapaExistente.has(k)) {
+        futuros.push({ ano: d.getFullYear(), mes: d.getMonth() + 1, valor: Math.round(proj * 100) / 100, fonte: 'projecao' });
+      }
     }
 
-    res.json({ ok: true, dados, futuros, crescimento_pct: Math.round(crescimento*10000)/100, base_meses: comDados.length });
-  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+    res.json({
+      ok: true,
+      dados,
+      futuros,
+      crescimento_pct: Math.round(crescimento * 10000) / 100,
+      base_meses: comDados.length,
+      debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length },
+    });
+  } catch (e) {
+    console.error('[faturamento-mensal]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) => {
