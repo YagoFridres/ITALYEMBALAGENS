@@ -2162,6 +2162,8 @@ function escH(str) {
 // ═══════════════════════════════════════════════
 const MODULOS_SISTEMA = [
   { key:'pcp',            label:'PCP / Programação',   grupo:'Produção',  menuId:'menu-pcp',             paginaId:'pcp' },
+  { key:'amostras',       label:'Amostras',            grupo:'Produção',  menuId:'menu-pcp-amostras',    paginaId:'amostras' },
+  { key:'pedidos_recorrentes',label:'Pedidos Recorrentes',grupo:'Produção',  menuId:'menu-pcp-pedidos-recorrentes', paginaId:'pedidos-recorrentes' },
   { key:'ofs_maquina',    label:'OFs por Máquina',     grupo:'Produção',  menuId:'menu-ofs-maquina',     paginaId:'ofs-maquina' },
   { key:'lancar_pedido',  label:'Armazenamento de OFs',grupo:'Produção',  menuId:'menu-pedidos',         paginaId:'lancar-pedido' },
   { key:'orcamentos',     label:'Orçamentos',          grupo:'Produção',  menuId:'menu-orcamentos',      paginaId:'orcamentos' },
@@ -2172,7 +2174,6 @@ const MODULOS_SISTEMA = [
   { key:'tempos_reais',   label:'Tempos Reais',        grupo:'Máquinas',  menuId:'menu-tempos-reais',    paginaId:'tempos-reais' },
   { key:'clientes',       label:'Clientes',            grupo:'Cadastros', menuId:'menu-clientes',        paginaId:'clientes' },
   { key:'mapa_clientes',  label:'Mapa de Clientes',    grupo:'Cadastros', menuId:'menu-mapa-clientes',   paginaId:'mapa-clientes' },
-  { key:'pedidos_recorrentes',label:'Pedidos Recorrentes',grupo:'Cadastros', menuId:'menu-pedidos-recorrentes', paginaId:'pedidos-recorrentes' },
   { key:'fornecedores',   label:'Fornecedores',        grupo:'Cadastros', menuId:'menu-fornecedores',    paginaId:'fornecedores' },
   { key:'vendedores',     label:'Vendedores',          grupo:'Cadastros', menuId:'menu-vendedores',      paginaId:'vendedores' },
   { key:'usuarios',       label:'Usuários',            grupo:'Cadastros', menuId:'menu-usuarios',        paginaId:'usuarios' },
@@ -38343,19 +38344,70 @@ function renderOperadores() {
       <div style="margin-top:10px;display:flex;gap:6px;">
         <button class="btn btn-ghost btn-sm" onclick="abrirHistOp('${op.id}')">📋 Histórico</button>
         <button class="btn btn-accent btn-sm" onclick="abrirModalInconfPre('${op.id}')">+ Inconformidade</button>
+        <button class="btn btn-ghost btn-sm" onclick="editarOperador('${op.id}')">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="excluirOperador('${op.id}')">Excluir</button>
       </div>
     </div>`;
   }).join('');
 }
 
 function abrirModalOperador() {
+  try{ window._operadorEditandoId = null; }catch(e){}
   ['opr-nome','opr-mat','opr-setor','opr-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('opr-admissao').value = today();
   document.getElementById('opr-st').value = 'Ativo';
   const ms = document.getElementById('opr-maq');
   ms.innerHTML = '<option value="">—</option>';
   MAQUINAS.forEach(m=>ms.innerHTML+=`<option value="${m.id}">${m.col}</option>`);
+  try{
+    const h = document.querySelector('#modal-operador h2');
+    if(h) h.textContent = '👷 Cadastrar Operador';
+  }catch(e){}
   abrir('modal-operador');
+}
+
+function editarOperador(opId){
+  const op = getOp(opId);
+  if(!op){ toast('Operador não encontrado','var(--red)'); return; }
+  abrirModalOperador();
+  try{ window._operadorEditandoId = String(op.id||'').trim(); }catch(e){}
+  try{
+    const h = document.querySelector('#modal-operador h2');
+    if(h) h.textContent = '👷 Editar Operador';
+  }catch(e){}
+  try{ document.getElementById('opr-nome').value = String(op.nome||''); }catch(e){}
+  try{ document.getElementById('opr-mat').value = String(op.mat||''); }catch(e){}
+  try{ document.getElementById('opr-setor').value = String(op.setor||''); }catch(e){}
+  try{ document.getElementById('opr-obs').value = String(op.obs||''); }catch(e){}
+  try{ document.getElementById('opr-admissao').value = String(op.admissao||''); }catch(e){}
+  try{
+    const st = String(op.status||'').trim();
+    const ativo = (op.ativo === false) ? 'Inativo' : 'Ativo';
+    document.getElementById('opr-st').value = st || ativo;
+  }catch(e){}
+  try{ document.getElementById('opr-maq').value = String(op.maqId||''); }catch(e){}
+  try{ document.getElementById('opr-nome').focus(); }catch(e){}
+}
+
+async function excluirOperador(opId){
+  const op = getOp(opId);
+  const nome = op ? String(op.nome||'') : '';
+  const id = op ? String(op.id||'') : String(opId||'');
+  if(!id) return;
+  if(!confirm('Excluir o operador \"' + (nome||id) + '\"?\nEssa ação não pode ser desfeita.')) return;
+  try{
+    const resp = await apiFetch('/api/operadores/' + encodeURIComponent(id), { method:'DELETE' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j || !j.ok){
+      toast('Erro ao excluir: ' + (j && j.error ? j.error : ''),'var(--red)');
+      return;
+    }
+    try{ await carregarOperadores(); }catch(e){}
+    try{ renderOperadores(); }catch(e){}
+    toast('Operador excluído','var(--orange)');
+  }catch(e){
+    toast('Erro de conexão ao excluir','var(--red)');
+  }
 }
 
 async function salvarOperador() {
