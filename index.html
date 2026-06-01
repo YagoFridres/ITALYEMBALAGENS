@@ -22589,7 +22589,7 @@ function _renderEstoqueBase(chapas) {
     if(th) th.style.display = showTon ? 'table-cell' : 'none';
   }catch(e){}
 
-  const colsCount = showTon ? 17 : 16;
+  const colsCount = showTon ? 18 : 17;
   if(!filtrada.length){
     bodyEl.innerHTML = `<tr><td colspan="${colsCount}" style="padding:24px;text-align:center;color:var(--text3);border:1px solid var(--border)">Nenhum item encontrado.</td></tr>`;
     if(footEl) footEl.innerHTML = '';
@@ -22673,6 +22673,7 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
+        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:90px;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
         <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
           <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;console.log('[EMPRESA-INLINE] id:',id,'val:',val);if(!id||!val){console.warn('[EMPRESA-INLINE] id ou val vazio!');return;}const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_vinculada:val,qual_cnpj:val})});console.log('[EMPRESA-INLINE] status:',r&&r.status);const d=await (r?r.json().catch(e=>{console.error('[EMPRESA-INLINE] json error:',e);return null;}):Promise.resolve(null));console.log('[EMPRESA-INLINE] resposta:',d);if(!d||!d.ok){const emsg=(d&&d.error)?d.error:'falha';try{toast('Erro ao salvar empresa: '+emsg,'var(--red)');}catch(e){}alert('Erro: '+emsg);el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>String(x.id)===String(id));if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;console.log('[EMPRESA-INLINE] atualizado no array índice',i);}else{console.warn('[EMPRESA-INLINE] item não encontrado no array, id:',id);}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);console.log('[EMPRESA-INLINE] salvo com sucesso!');try{toast('Empresa/CNPJ salvo ✓','var(--green)');}catch(e){} })(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
@@ -22795,6 +22796,7 @@ function renderTabelaEstoque(itens) {
       <th style="padding:8px;text-align:left">NOME/USO</th>
       <th style="padding:8px;color:#4A90D9">NOMENCLATURA</th>
       <th style="padding:8px;color:#4A90D9">FORNECEDOR</th>
+      <th style="padding:8px;white-space:nowrap;text-align:center">GRAMATURA</th>
       <th style="padding:8px;color:#9B59B6">EMPRESA/CNPJ</th>
       <th style="padding:8px">TAMANHO (MM)</th>
       <th style="padding:8px">N° NF</th>
@@ -22823,6 +22825,7 @@ function renderTabelaEstoque(itens) {
           <td style="padding:8px">${escH(nomeExibir||'—')}</td>
           <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
           <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
+          <td style="padding:8px;text-align:center;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
           <td style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
           <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
           <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
@@ -41182,6 +41185,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
                 <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>
                 <th onclick="estOrdenar('nomenclatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">NOMENCLATURA</th>
                 <th onclick="estOrdenar('fornecedor')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--accent);white-space:nowrap">FORNECEDOR</th>
+                <th onclick="estOrdenar('gramatura')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap;text-align:center">GRAMATURA</th>
                 <th onclick="estOrdenar('empresa_vinculada')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--purple);white-space:nowrap">EMPRESA/CNPJ</th>
                 <th onclick="estOrdenar('tamanho')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--teal);white-space:nowrap">TAMANHO</th>
                 <th onclick="estOrdenar('nf')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NF</th>
