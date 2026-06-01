@@ -38642,7 +38642,7 @@ function renderOperadores() {
         <div class="op-stat">Total hist.: <b>${icTotal}</b></div>
         <div class="op-stat">Perdas mês: <b>${perdMes.toLocaleString()} un</b></div>
       </div>
-      <div style="margin-top:10px;display:flex;gap:6px;">
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-ghost btn-sm" onclick="abrirHistOp('${op.id}')">📋 Histórico</button>
         <button class="btn btn-accent btn-sm" onclick="abrirModalInconfPre('${op.id}')">+ Inconformidade</button>
         <button class="btn btn-ghost btn-sm" onclick="editarOperador('${op.id}')">Editar</button>
