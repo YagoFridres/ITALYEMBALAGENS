@@ -54246,36 +54246,59 @@ async function carregarMensagensChat(force){
 }
 
 function _chatRenderMsg(m){
-  const me = _chatMyId();
-  const fromId = String(m && m.de_usuario || '').trim();
-  const mine = me && fromId && me === fromId;
-  const nome = String(m && m.de_nome || 'Usuário');
-  const tipo = String(m && m.tipo || 'texto');
-  const txt = String(m && m.conteudo || '').trim();
-  const url = String(m && m.url_arquivo || '').trim();
-  const when = String(m && m.created_at || '').trim();
-  const hora = when ? new Date(when).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '';
-  const baseBox = 'max-width:82%;border-radius:12px;padding:8px 10px;border:1px solid rgba(255,255,255,0.12);';
-  const boxStyle = mine
-    ? (baseBox + 'background:rgba(74,144,217,0.22);margin-left:auto;color:#fff;')
-    : (baseBox + 'background:rgba(255,255,255,0.06);margin-right:auto;color:#e2e8f0;');
-  let body = '';
-  if(tipo === 'imagem' && url){
-    body = '<img src="' + escAttr(url) + '" style="max-width:220px;width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.12);display:block" onerror="this.style.display=&#39;none&#39;">' +
-      (txt ? '<div style="margin-top:6px;white-space:pre-wrap">' + escH(txt) + '</div>' : '') +
-      '<div style="margin-top:6px"><a href="' + escAttr(url) + '" target="_blank" style="color:#93c5fd;font-size:11px;text-decoration:none">Abrir</a></div>';
-  } else if(tipo === 'audio' && url){
-    body = '<audio controls src="' + escAttr(url) + '" style="width:240px;max-width:100%"></audio>' +
-      (txt ? '<div style="margin-top:6px;white-space:pre-wrap">' + escH(txt) + '</div>' : '');
-  } else if(url){
-    body = (txt ? '<div style="white-space:pre-wrap">' + escH(txt) + '</div>' : '') +
+  var meuId = _chatMyId();
+  var fromId = String(m && m.de_usuario || '').trim();
+  var eu = meuId && fromId && meuId === fromId;
+  var when = String(m && m.created_at || '').trim();
+  var data = when ? new Date(when) : null;
+  var hora = data ? data.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : '';
+  var dataStr = data ? data.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' }) : '';
+  var hoje = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  var dataLabel = (dataStr && dataStr !== hoje) ? (dataStr + ' ') : '';
+  var nome = String(m && m.de_nome || 'Usuário');
+  var avatar = String(m && m.de_avatar || '').trim();
+  var iniciais = String(nome || 'U').charAt(0).toUpperCase();
+  var tipo = String(m && m.tipo || 'texto');
+  var txt = String(m && m.conteudo || '');
+  var url = String(m && m.url_arquivo || '').trim();
+  var lida = !!(m && m.lida);
+  var priv = false;
+  try{ priv = !!(window._chatState && window._chatState.para); }catch(_){}
+  try{ if(typeof _chatPara !== 'undefined' && _chatPara) priv = true; }catch(_){}
+
+  var avatarHtml = avatar
+    ? '<img src="' + escAttr(avatar) + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+    : '<div style="width:32px;height:32px;border-radius:50%;background:' + (eu?'#4A90D9':'rgba(255,255,255,0.15)') + ';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">' + escH(iniciais) + '</div>';
+
+  var conteudoHtml = '';
+  if (tipo === 'imagem' && url) {
+    conteudoHtml = '<img src="' + escAttr(url) + '" data-url="' + escAttr(url) + '" onclick="kbAbrirImagem(this.getAttribute(&quot;data-url&quot;))" style="max-width:200px;max-height:200px;border-radius:8px;display:block;cursor:pointer" onerror="this.style.display=&#39;none&#39;">' +
+      (txt && String(txt).trim() ? '<div style="margin-top:6px;white-space:pre-wrap;font-size:13px;line-height:1.4">' + escH(String(txt)) + '</div>' : '');
+  } else if (tipo === 'audio' && url) {
+    conteudoHtml = '<audio controls src="' + escAttr(url) + '" style="max-width:200px;min-width:160px"></audio>' +
+      (txt && String(txt).trim() ? '<div style="margin-top:6px;white-space:pre-wrap;font-size:13px;line-height:1.4">' + escH(String(txt)) + '</div>' : '');
+  } else if (url) {
+    conteudoHtml = (txt && String(txt).trim() ? '<div style="white-space:pre-wrap;font-size:13px;line-height:1.4">' + escH(String(txt)) + '</div>' : '') +
       '<div style="margin-top:6px"><a href="' + escAttr(url) + '" target="_blank" style="color:#93c5fd;font-size:12px;text-decoration:none">Arquivo</a></div>';
   } else {
-    body = '<div style="white-space:pre-wrap;word-break:break-word">' + escH(txt) + '</div>';
+    conteudoHtml = '<span style="white-space:pre-wrap;font-size:13px;line-height:1.4;word-break:break-word">' + escH(String(txt || '')) + '</span>';
   }
-  return '<div style="display:flex;flex-direction:column;gap:3px">' +
-    '<div style="font-size:10px;color:rgba(255,255,255,0.35);' + (mine ? 'text-align:right' : 'text-align:left') + '">' + escH(nome) + (hora ? ' · ' + escH(hora) : '') + '</div>' +
-    '<div style="' + boxStyle + '">' + body + '</div>' +
+
+  return '<div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:8px;' +
+    (eu ? 'flex-direction:row-reverse' : 'flex-direction:row') + '">' +
+    (!eu ? avatarHtml : '') +
+    '<div style="max-width:75%;display:flex;flex-direction:column;align-items:' + (eu?'flex-end':'flex-start') + '">' +
+      (!eu && !priv ? '<span style="font-size:11px;color:#4A90D9;font-weight:600;margin-bottom:2px;margin-left:4px">' + escH(nome) + '</span>' : '') +
+      '<div style="background:' + (eu ? 'rgba(74,144,217,0.35)' : 'rgba(255,255,255,0.08)') + ';' +
+        'border-radius:' + (eu ? '14px 4px 14px 14px' : '4px 14px 14px 14px') + ';' +
+        'padding:8px 12px;position:relative">' +
+        conteudoHtml +
+        '<div style="font-size:10px;color:rgba(255,255,255,0.4);text-align:right;margin-top:3px">' +
+          escH(dataLabel + hora) + (eu ? (lida ? ' ✓✓' : ' ✓') : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    (eu ? avatarHtml : '') +
   '</div>';
 }
 

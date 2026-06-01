@@ -4090,6 +4090,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
 
     const userId = req.usuario?.id || req.usuario?.sub || req.usuario?.user_id || null;
     const nome = req.usuario?.nome || req.usuario?.name || req.usuario?.email || 'Usuário';
+    const avatar = req.usuario?.avatar || req.usuario?.foto || null;
 
     if (!userId) {
       return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
@@ -4098,6 +4099,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
     const insert = {
       de_usuario: userId,
       de_nome: nome,
+      de_avatar: avatar,
       para_usuario: para_usuario || null,
       conteudo: conteudo || null,
       tipo: tipo || 'texto',
