@@ -4555,6 +4555,9 @@ function _goBase(id){
   if(id==='amostras'){
     renderAmostras();
   }
+  if(id==='agenda'){
+    try{ setTimeout(function(){ try{ carregarAgenda(); }catch(e){} }, 300); }catch(e){}
+  }
   if(id==='comissoes'){
     initComissoesUI();
     calcularComissoes();
@@ -38339,11 +38342,17 @@ window.mudarAbaPCP = function(aba){
 
     try{
       var pgA2 = document.getElementById('page-amostras');
-      if(pgA2) pgA2.style.display = (a === 'amostras') ? '' : 'none';
+      if(pgA2){
+        pgA2.style.display = (a === 'amostras') ? 'flex' : 'none';
+        try{ pgA2.classList.toggle('active', a === 'amostras'); }catch(e){}
+      }
     }catch(e){}
     try{
       var pgR2 = document.getElementById('page-pedidos-recorrentes');
-      if(pgR2) pgR2.style.display = (a === 'recorrentes') ? '' : 'none';
+      if(pgR2){
+        pgR2.style.display = (a === 'recorrentes') ? 'flex' : 'none';
+        try{ pgR2.classList.toggle('active', a === 'recorrentes'); }catch(e){}
+      }
     }catch(e){}
 
     if(a === 'amostras'){
@@ -38351,8 +38360,9 @@ window.mudarAbaPCP = function(aba){
     }
     if(a === 'recorrentes'){
       try{
+        try{ if(typeof carregarPedidosRecorrentes === 'function') carregarPedidosRecorrentes(); }catch(e){}
         if(typeof recorrentesRecarregar === 'function') recorrentesRecarregar(true);
-        else if(typeof renderPedidosRecorrentes === 'function') renderPedidosRecorrentes();
+        else if(typeof renderPedidosRecorrentes === 'function') renderPedidosRecorrentes(true);
       }catch(e){}
     }
     if(a === 'ofs'){
@@ -40468,6 +40478,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="sidebar-section">Produção</div>
   <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
+  <div id="menu-agenda" class="nav-item" onclick="go('agenda');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📅</span>Agenda</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
@@ -41012,6 +41023,34 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       Use os filtros acima para buscar passagens.
     </p>
   </div>
+</section>
+
+<section id="page-agenda" class="page" style="padding:16px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="agendaMes(-1)" style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">←</button>
+      <span id="agenda-titulo-mes" style="color:#e2e8f0;font-weight:600;font-size:15px;min-width:140px;text-align:center"></span>
+      <button onclick="agendaMes(1)"  style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">→</button>
+      <button onclick="agendaMes(0)"  style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.3);border-radius:6px;padding:6px 10px;cursor:pointer;font-size:12px">Hoje</button>
+    </div>
+    <button onclick="abrirNovoEvento()"
+      style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600">
+      + Novo evento
+    </button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px">
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Dom</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Seg</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Ter</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Qua</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Qui</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Sex</div>
+    <div style="text-align:center;color:#64748b;font-size:11px;padding:4px">Sáb</div>
+  </div>
+  <div id="agenda-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+
+  <div id="agenda-dia-painel" style="margin-top:16px"></div>
 </section>
 
 <div id="page-hub" class="page" style="display:none">
@@ -48022,6 +48061,218 @@ if(_origGoBase){
     _origGoBase(id);
     if(id==='vendedores') try{ renderAgenda(); }catch(e){}
   };
+}
+</script>
+
+<script>
+var _agendaAno  = new Date().getFullYear();
+var _agendaMes  = new Date().getMonth() + 1;
+var _agendaDia  = null;
+var _agendaEventos = [];
+
+function agendaMes(delta) {
+  if (delta === 0) {
+    _agendaAno = new Date().getFullYear();
+    _agendaMes = new Date().getMonth() + 1;
+  } else {
+    _agendaMes += delta;
+    if (_agendaMes > 12) { _agendaMes = 1; _agendaAno++; }
+    if (_agendaMes < 1)  { _agendaMes = 12; _agendaAno--; }
+  }
+  carregarAgenda();
+}
+
+async function carregarAgenda() {
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var tituloEl = document.getElementById('agenda-titulo-mes');
+  if (tituloEl) tituloEl.textContent = meses[_agendaMes-1] + ' ' + _agendaAno;
+
+  try {
+    var r = await apiFetch('/api/agenda?mes=' + _agendaMes + '&ano=' + _agendaAno + '&t=' + Date.now(), { method:'GET' });
+    var d = r ? await r.json().catch(function(){ return null; }) : null;
+    _agendaEventos = (d && Array.isArray(d.eventos)) ? d.eventos : [];
+    renderAgendaGrid();
+  } catch(e) { console.error('[AGENDA]', e); }
+}
+
+function renderAgendaGrid() {
+  var grid = document.getElementById('agenda-grid');
+  if (!grid) return;
+
+  var primeiroDia = new Date(_agendaAno, _agendaMes - 1, 1).getDay();
+  var totalDias   = new Date(_agendaAno, _agendaMes, 0).getDate();
+  var hoje        = new Date().toISOString().split('T')[0];
+
+  var mapaEvt = {};
+  _agendaEventos.forEach(function(e) {
+    var k = e.data_evento;
+    if (!mapaEvt[k]) mapaEvt[k] = [];
+    mapaEvt[k].push(e);
+  });
+
+  var html = '';
+  for (var i = 0; i < primeiroDia; i++) {
+    html += '<div style="min-height:80px;background:rgba(255,255,255,0.01);border-radius:6px"></div>';
+  }
+  for (var d = 1; d <= totalDias; d++) {
+    var dataStr = _agendaAno + '-' + String(_agendaMes).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    var eHoje   = dataStr === hoje;
+    var eSelect = dataStr === _agendaDia;
+    var evts    = mapaEvt[dataStr] || [];
+
+    html += '<div onclick="selecionarDiaAgenda(\'' + dataStr + '\')" style="' +
+      'min-height:80px;background:' + (eHoje?'rgba(74,144,217,0.12)':eSelect?'rgba(74,144,217,0.08)':'rgba(255,255,255,0.02)') + ';' +
+      'border:1px solid ' + (eHoje?'rgba(74,144,217,0.5)':eSelect?'rgba(74,144,217,0.3)':'rgba(255,255,255,0.06)') + ';' +
+      'border-radius:8px;padding:6px;cursor:pointer;transition:background .15s"' +
+      ' onmouseover="this.style.background=\'rgba(74,144,217,0.08)\'"' +
+      ' onmouseout="this.style.background=\'' + (eHoje?'rgba(74,144,217,0.12)':eSelect?'rgba(74,144,217,0.08)':'rgba(255,255,255,0.02)') + '\'">' +
+      '<div style="font-weight:' + (eHoje?'700':'400') + ';color:' + (eHoje?'#4A90D9':'#e2e8f0') + ';font-size:13px;margin-bottom:4px">' + d + '</div>' +
+      evts.slice(0,3).map(function(e) {
+        return '<div style="font-size:10px;background:' + (e.cor||'#4A90D9') + '33;color:' + (e.cor||'#4A90D9') + ';' +
+          'border-radius:3px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
+          (e.concluido?'text-decoration:line-through;opacity:0.5;':'') + '">' +
+          e.titulo + '</div>';
+      }).join('') +
+      (evts.length > 3 ? '<div style="font-size:10px;color:#64748b">+' + (evts.length-3) + ' mais</div>' : '') +
+    '</div>';
+  }
+  grid.innerHTML = html;
+
+  if (_agendaDia) renderAgendaDia(_agendaDia);
+}
+
+function selecionarDiaAgenda(data) {
+  _agendaDia = data;
+  renderAgendaGrid();
+}
+
+function renderAgendaDia(data) {
+  var painel = document.getElementById('agenda-dia-painel');
+  if (!painel) return;
+
+  var evts = _agendaEventos.filter(function(e){ return e.data_evento === data; });
+  var partes = data.split('-');
+  var dataFmt = partes[2] + '/' + partes[1] + '/' + partes[0];
+
+  painel.innerHTML = '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+      '<span style="color:#e2e8f0;font-weight:600">Eventos de ' + dataFmt + '</span>' +
+      '<button onclick="abrirNovoEvento(\'' + data + '\')" style="background:#4A90D9;color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">+ Adicionar</button>' +
+    '</div>' +
+    (!evts.length
+      ? '<p style="color:#64748b;font-size:13px;text-align:center;padding:16px">Nenhum evento neste dia.</p>'
+      : evts.map(function(e) {
+          return '<div style="background:rgba(255,255,255,0.03);border-left:3px solid ' + (e.cor||'#4A90D9') + ';border-radius:6px;padding:10px;margin-bottom:8px">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between">' +
+              '<div>' +
+                '<span style="font-weight:600;color:#e2e8f0;font-size:13px' + (e.concluido?';text-decoration:line-through;opacity:0.6':'') + '">' + e.titulo + '</span>' +
+                (e.hora_inicio ? '<span style="color:#64748b;font-size:11px;margin-left:8px">' + String(e.hora_inicio).substring(0,5) + (e.hora_fim?' - '+String(e.hora_fim).substring(0,5):'') + '</span>' : '') +
+                '<span style="margin-left:6px;font-size:10px;padding:1px 6px;border-radius:10px;background:' + (e.cor||'#4A90D9') + '33;color:' + (e.cor||'#4A90D9') + '">' + (e.tipo||'tarefa') + '</span>' +
+              '</div>' +
+              '<div style="display:flex;gap:4px">' +
+                '<button onclick="toggleEventoConcluido(\'' + e.id + '\',' + !e.concluido + ')" style="background:rgba(16,185,129,0.15);color:#10b981;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px">' + (e.concluido?'Reabrir':'OK') + '</button>' +
+                '<button onclick="excluirEvento(\'' + e.id + '\')" style="background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px">X</button>' +
+              '</div>' +
+            '</div>' +
+            (e.descricao ? '<div style="color:#94a3b8;font-size:12px;margin-top:4px">' + e.descricao + '</div>' : '') +
+            '<div style="color:#64748b;font-size:10px;margin-top:4px">Por: ' + (e.de_nome||'Sistema') + '</div>' +
+          '</div>';
+        }).join('')
+    ) +
+  '</div>';
+}
+
+function abrirNovoEvento(dataPreSel) {
+  var old = document.getElementById('modal-novo-evento');
+  if (old) old.remove();
+
+  var overlay = document.createElement('div');
+  overlay.id = 'modal-novo-evento';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  overlay.innerHTML = '<div style="background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:20px;width:100%;max-width:420px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+      '<span style="color:#e2e8f0;font-weight:700;font-size:15px">Novo evento</span>' +
+      '<button onclick="document.getElementById(\'modal-novo-evento\').remove()" style="background:none;border:none;color:#64748b;font-size:20px;cursor:pointer">X</button>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Título *</label>' +
+        '<input id="evt-titulo" type="text" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box"></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Data *</label>' +
+          '<input id="evt-data" type="date" value="' + (dataPreSel||new Date().toISOString().split('T')[0]) + '" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box"></div>' +
+        '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Tipo</label>' +
+          '<select id="evt-tipo" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">' +
+            '<option value="tarefa">Tarefa</option>' +
+            '<option value="aviso">Aviso</option>' +
+            '<option value="reuniao">Reunião</option>' +
+            '<option value="prazo">Prazo</option>' +
+          '</select></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+        '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Início</label>' +
+          '<input id="evt-hora-ini" type="time" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box"></div>' +
+        '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Fim</label>' +
+          '<input id="evt-hora-fim" type="time" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box"></div>' +
+      '</div>' +
+      '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Descrição</label>' +
+        '<textarea id="evt-desc" rows="2" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;resize:none;box-sizing:border-box"></textarea></div>' +
+      '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">' +
+        '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Cor</label>' +
+          '<input id="evt-cor" type="color" value="#4A90D9" style="width:100%;height:38px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:#080c14;cursor:pointer"></div>' +
+        '<button onclick="salvarEvento()" style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-size:14px;font-weight:600;height:38px">Salvar</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  try{ document.getElementById('evt-titulo').focus(); }catch(e){}
+}
+
+async function salvarEvento() {
+  var tituloEl = document.getElementById('evt-titulo');
+  var dataEl = document.getElementById('evt-data');
+  var titulo = tituloEl ? String(tituloEl.value || '').trim() : '';
+  var data = dataEl ? dataEl.value : '';
+  if (!titulo || !data) { alert('Título e data são obrigatórios.'); return; }
+
+  try {
+    var r = await apiFetch('/api/agenda', {
+      method: 'POST',
+      body: {
+        titulo: titulo,
+        descricao: (document.getElementById('evt-desc')||{}).value || '',
+        data_evento: data,
+        hora_inicio: (document.getElementById('evt-hora-ini')||{}).value || null,
+        hora_fim: (document.getElementById('evt-hora-fim')||{}).value || null,
+        tipo: (document.getElementById('evt-tipo')||{}).value || 'tarefa',
+        cor: (document.getElementById('evt-cor')||{}).value || '#4A90D9'
+      }
+    });
+    var d = r ? await r.json().catch(function(){ return null; }) : null;
+    if (d && d.ok) {
+      var m = document.getElementById('modal-novo-evento');
+      if(m) m.remove();
+      _agendaDia = data;
+      carregarAgenda();
+    } else alert('Erro: ' + ((d && d.error) || 'Tente novamente'));
+  } catch(e) { alert('Erro de conexão'); }
+}
+
+async function toggleEventoConcluido(id, concluido) {
+  await apiFetch('/api/agenda/' + encodeURIComponent(id), {
+    method: 'PATCH',
+    body: { concluido: concluido }
+  });
+  carregarAgenda();
+}
+
+async function excluirEvento(id) {
+  if (!confirm('Remover este evento?')) return;
+  await apiFetch('/api/agenda/' + encodeURIComponent(id), { method: 'DELETE' });
+  carregarAgenda();
 }
 </script>
 

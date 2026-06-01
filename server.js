@@ -575,27 +575,20 @@ function _getTokenFromReq(req) {
 
 function authMiddleware(req, res, next) {
   try {
-    try { console.log('[AUTH]', req.method, req.path); } catch (_) {}
     if (req && req.usuario && typeof req.usuario === 'object') {
-      try { console.log('[AUTH] skip (req.usuario já existe)'); } catch (_) {}
       return next();
     }
     const token = _getTokenFromReq(req);
     if (!token) {
-      try { console.log('[AUTH FAIL] token missing', req.path); } catch (_) {}
       return res.status(401).json({ ok: false, error: 'token_missing', redirect: '/login' });
     }
     try {
       req.usuario = jwt.verify(token, JWT_SECRET);
-      try { console.log('[AUTH] OK', req.usuario?.email); } catch (_) {}
       return next();
     } catch (e) {
-      try { console.log('[AUTH FAIL] token invalid', req.path, e?.message); } catch (_) {}
       return res.status(401).json({ ok: false, error: 'token_invalid', redirect: '/login' });
     }
   } catch (e) {
-    try { console.error('[AUTH FATAL]', e?.message); } catch (_) {}
-    try { console.error('[AUTH STACK]', e?.stack?.split('\n')?.slice(0, 5)?.join(' | ')); } catch (_) {}
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 }
@@ -16907,6 +16900,69 @@ app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, async 
     if (error) throw error;
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get('/api/agenda', authMiddleware, async (req, res) => {
+  try {
+    const { mes, ano, usuario_id } = req.query || {};
+    const userId = String(usuario_id || req.usuario?.id || req.usuario?.sub || '').trim();
+    let query = supabase.from('agenda_eventos').select('*')
+      .or(`para_usuario.eq.${userId},para_usuario.is.null`);
+    if (mes && ano) {
+      const ini = `${ano}-${String(mes).padStart(2,'0')}-01`;
+      const fim = new Date(ano, mes, 0).toISOString().split('T')[0];
+      query = query.gte('data_evento', ini).lte('data_evento', fim);
+    }
+    const { data, error } = await query.order('data_evento').order('hora_inicio');
+    if (error) throw error;
+    res.json({ ok: true, eventos: data || [] });
+  } catch(e) { res.json({ ok: true, eventos: [], erro: e.message }); }
+});
+
+app.post('/api/agenda', authMiddleware, async (req, res) => {
+  try {
+    const { titulo, descricao, data_evento, hora_inicio, hora_fim, para_usuario, cor, tipo } = req.body || {};
+    if (!titulo || !data_evento) return res.status(400).json({ ok:false, error:'titulo e data obrigatorios' });
+    const userId = req.usuario?.id || req.usuario?.sub;
+    const nome = req.usuario?.nome || 'Usuário';
+    const para = Object.prototype.hasOwnProperty.call((req.body || {}), 'para_usuario')
+      ? (para_usuario === '' ? userId : para_usuario)
+      : userId;
+    const { data, error } = await supabase.from('agenda_eventos').insert({
+      titulo,
+      descricao: descricao || null,
+      data_evento,
+      hora_inicio: hora_inicio || null,
+      hora_fim: hora_fim || null,
+      para_usuario: para,
+      de_usuario: userId,
+      de_nome: nome,
+      cor: cor || '#4A90D9',
+      tipo: tipo || 'tarefa',
+      concluido: false
+    }).select().single();
+    if (error) throw error;
+    res.json({ ok: true, evento: data });
+  } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
+});
+
+app.patch('/api/agenda/:id', authMiddleware, async (req, res) => {
+  try {
+    const updates = {};
+    ['titulo','descricao','data_evento','hora_inicio','hora_fim','cor','tipo','concluido','para_usuario']
+      .forEach(function(k){ if(req.body && req.body[k]!==undefined) updates[k]=req.body[k]; });
+    const { data, error } = await supabase.from('agenda_eventos').update(updates).eq('id',req.params.id).select().single();
+    if (error) throw error;
+    res.json({ ok:true, evento: data });
+  } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
+});
+
+app.delete('/api/agenda/:id', authMiddleware, async (req, res) => {
+  try {
+    const { error } = await supabase.from('agenda_eventos').delete().eq('id',req.params.id);
+    if (error) throw error;
+    res.json({ ok:true });
+  } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
 });
 
 app.use((e, req, res, next) => {
