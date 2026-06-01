@@ -27,21 +27,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js?v=2"></script>
 <title>📦 Italy Embalagens — PCP Pro</title>
 <style id="kanban-ofmaq-css">
-.kb-board-ofmaq{display:flex;gap:12px;overflow-x:auto;padding:4px 0 16px;align-items:flex-start}
-.kb-col-ofmaq{min-width:290px;max-width:310px;flex-shrink:0;background:var(--bg3,rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px}
+.kb-board-ofmaq{display:flex;gap:14px;overflow-x:auto;padding:8px 4px 24px;align-items:flex-start;min-height:400px}
+.kb-col-ofmaq{min-width:320px;max-width:340px;flex-shrink:0;background:var(--bg3,rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px}
 .kb-col-ofmaq.kb-col-dragover{border-color:rgba(74,144,217,0.6);background:rgba(74,144,217,0.05)}
 .kb-col-ofmaq-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.07);cursor:pointer;user-select:none}
-.kb-card-ofmaq{background:rgba(10,15,28,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px;margin-bottom:7px;cursor:grab;transition:opacity 0.15s,transform 0.15s}
+.kb-card-ofmaq{background:rgba(10,15,28,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px;margin-bottom:10px;cursor:grab;transition:opacity 0.15s,transform 0.15s}
 .kb-card-ofmaq:active{cursor:grabbing}
 .kb-card-ofmaq.kb-dragging{opacity:0.3;transform:rotate(1.5deg) scale(0.97)}
 .kb-card-ofmaq.kb-dropbefore{border-top:2px solid #4A90D9}
-.kb-card-ofmaq.kb-urgente{border-left:3px solid #dc2626}
-.kb-card-ofmaq.kb-atrasada{border-left:3px solid #f59e0b}
-.kb-of-img{width:42px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1)}
-.kb-of-img-ph{width:42px;height:42px;border-radius:6px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:16px;color:rgba(255,255,255,0.2)}
-.kb-ordem{width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.kb-carga{height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin:4px 0 6px;overflow:hidden}
+.kb-card-ofmaq.kb-urgente{border-left:4px solid #dc2626}
+.kb-card-ofmaq.kb-atrasada{border-left:4px solid #f59e0b}
+.kb-of-img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.15);cursor:pointer;transition:opacity .15s}
+.kb-of-img:hover{opacity:.85}
+.kb-of-img-ph{width:64px;height:64px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.2)}
+.kb-ordem{width:26px;height:26px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.kb-carga{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;margin:4px 0 10px;overflow:hidden}
 .kb-carga-fill{height:100%;border-radius:2px;transition:width 0.3s}
+#kb-lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
+#kb-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px}
 </style>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
@@ -53584,7 +53587,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
       html += '<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:7px">';
       html += '<div class="kb-ordem">' + String(idx + 1) + '</div>';
       if(imgUrl){
-        html += '<img src="' + escAttr(String(imgUrl)) + '" class="kb-of-img" onerror="this.style.display=&#39;none&#39;;if(this.nextElementSibling)this.nextElementSibling.style.display=&#39;flex&#39;">' +
+        html += '<img src="' + escAttr(String(imgUrl)) + '" class="kb-of-img" onclick="event.stopPropagation();kbAbrirImagem(this.getAttribute(&quot;src&quot;))" onerror="this.style.display=&#39;none&#39;;if(this.nextElementSibling)this.nextElementSibling.style.display=&#39;flex&#39;">' +
           '<div class="kb-of-img-ph" style="display:none">?</div>';
       } else {
         html += '<div class="kb-of-img-ph">?</div>';
@@ -53625,6 +53628,42 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
   });
   html += '</div>';
   container.innerHTML = html;
+  try{ kbOfmaqBindEventos(); }catch(_){}
+}
+
+function kbAbrirImagem(url){
+  try{
+    var u = String(url || '').trim();
+    if(!u) return;
+    var old = document.getElementById('kb-lightbox');
+    if(old) old.remove();
+    var div = document.createElement('div');
+    div.id = 'kb-lightbox';
+    div.innerHTML = '<img src="' + escAttr(u) + '" alt="Imagem da OF">';
+    div.addEventListener('click', function(){ try{ div.remove(); }catch(e){} });
+    document.body.appendChild(div);
+  }catch(e){}
+}
+
+function kbOfmaqBindEventos(){
+  try{
+    document.querySelectorAll('.kb-col-ofmaq').forEach(function(col){
+      if(col.dataset && col.dataset.kbBound === '1') return;
+      if(col.dataset) col.dataset.kbBound = '1';
+      col.addEventListener('dragover', function(e){ kbOfmaqDragOver(e, col); });
+      col.addEventListener('dragleave', function(){ kbOfmaqDragLeave(col); });
+      col.addEventListener('drop', function(e){ kbOfmaqDrop(e, col); });
+    });
+    document.querySelectorAll('.kb-card-ofmaq').forEach(function(card){
+      if(card.dataset && card.dataset.kbBound === '1') return;
+      if(card.dataset) card.dataset.kbBound = '1';
+      card.addEventListener('dragstart', function(e){ kbOfmaqDragStart(e, card); });
+      card.addEventListener('dragend', function(e){ kbOfmaqDragEnd(e, card); });
+      card.addEventListener('dragover', function(e){ kbOfmaqDragOverCard(e, card); });
+      card.addEventListener('dragleave', function(){ kbOfmaqDragLeaveCard(card); });
+      card.addEventListener('drop', function(e){ kbOfmaqDropCard(e, card); });
+    });
+  }catch(e){}
 }
 
 function kbOfmaqDragStart(e, el){
