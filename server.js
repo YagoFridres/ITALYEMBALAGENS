@@ -6236,7 +6236,7 @@ app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     console.error('[clientes/analise]', e.message);
-    res.status(500).json({ ok: false, error: e.message });
+    res.json({ ok: true, inativos: [], mais_ativos: [], maior_valor: [], total_clientes: 0, error: e.message });
   }
 });
 
