@@ -4083,21 +4083,51 @@ app.get('/api/chat/mensagens', authMiddleware, async (req, res) => {
 app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
   try {
     const { conteudo, para_usuario, tipo, url_arquivo } = req.body || {};
-    if (!conteudo && !url_arquivo) return res.status(400).json({ ok: false, error: 'sem conteúdo' });
-    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
-    const nome = String(req.usuario?.nome || req.usuario?.email || 'Usuário').trim() || 'Usuário';
-    const { data, error } = await supabase.from('chat_mensagens').insert({
+
+    if (!conteudo && !url_arquivo) {
+      return res.status(400).json({ ok: false, error: 'conteudo obrigatorio' });
+    }
+
+    const userId = req.usuario?.id || req.usuario?.sub || req.usuario?.user_id || null;
+    const nome = req.usuario?.nome || req.usuario?.name || req.usuario?.email || 'Usuário';
+
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
+    }
+
+    const insert = {
       de_usuario: userId,
       de_nome: nome,
       para_usuario: para_usuario || null,
       conteudo: conteudo || null,
       tipo: tipo || 'texto',
-      url_arquivo: url_arquivo || null,
       lida: false,
-    }).select().single();
-    if (error) throw error;
+    };
+    if (url_arquivo) insert.url_arquivo = url_arquivo;
+
+    const { data, error } = await supabase
+      .from('chat_mensagens')
+      .insert(insert)
+      .select()
+      .single();
+
+    if (error) {
+      try { console.error('[chat/mensagens POST]', error.message, error.details); } catch (_) {}
+      if (String(error.message || '').includes('does not exist') || error.code === '42P01') {
+        return res.status(500).json({
+          ok: false,
+          error: 'Tabela chat_mensagens nao existe. Execute o SQL de criacao no Supabase.',
+          sql: "CREATE TABLE IF NOT EXISTS chat_mensagens (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, de_usuario uuid, de_nome text, para_usuario uuid, conteudo text, tipo text DEFAULT 'texto', url_arquivo text, lida boolean DEFAULT false, created_at timestamptz DEFAULT NOW());"
+        });
+      }
+      throw error;
+    }
+
     res.json({ ok: true, mensagem: data });
-  } catch (e) { res.status(500).json({ ok: false, error: String(e.message || e) }); }
+  } catch (e) {
+    try { console.error('[chat/mensagens POST] catch:', String(e?.message || e)); } catch (_) {}
+    res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
 });
 
 app.patch('/api/chat/mensagens/:id/lida', authMiddleware, async (req, res) => {
