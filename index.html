@@ -10244,35 +10244,6 @@ async function getOperadoresList() {
   }
 }
 
-async function adicionarOperadorConc(valorPreSelecionado) {
-  var lista = document.getElementById('conc-operadores-lista');
-  if (!lista) return;
-
-  var ops = await getOperadoresList();
-  var opcoesHtml = '<option value="">-- Selecionar operador --</option>' +
-    (ops || []).map(function(op) {
-      var nome = (op && (op.nome || op.name || op.label)) ? (op.nome || op.name || op.label) : String(op || '');
-      nome = String(nome || '').trim();
-      if (!nome) return '';
-      return '<option value="' + escAttr(nome) + '"' + (nome === valorPreSelecionado ? ' selected' : '') + '>' + escH(nome) + '</option>';
-    }).filter(Boolean).join('');
-  opcoesHtml += '<option value="__manual__">Digitar nome...</option>';
-
-  var div = document.createElement('div');
-  div.className = 'linha-operador-conc';
-  div.style.cssText = 'display:flex;gap:6px;align-items:center';
-  div.innerHTML =
-    '<select class="op-select" onchange="verificarOpManual(this)" style="' +
-      'flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
-      'border-radius:6px;padding:8px;font-size:13px">' +
-      opcoesHtml +
-    '</select>' +
-    '<button type="button" onclick="this.parentElement.remove()" style="' +
-      'background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:6px;' +
-      'padding:6px 10px;cursor:pointer">X</button>';
-  lista.appendChild(div);
-}
-
 function verificarOpManual(select) {
   if (!select || select.value !== '__manual__') return;
   var nome = prompt('Digite o nome do operador:');
@@ -10288,46 +10259,30 @@ function verificarOpManual(select) {
     select.value = '';
   }
 }
-
-function coletarOperadoresConc() {
-  var ops = [];
-  document.querySelectorAll('#conc-operadores-lista .op-select').forEach(function(sel) {
-    var v = String(sel.value || '').trim();
-    if (v && v !== '__manual__' && !ops.includes(v)) ops.push(v);
-  });
-  return ops;
-}
 function abrirModalBaixaConclusao(opts){
   const modal = document.getElementById('modal-baixa-conclusao');
   if(!modal) return Promise.resolve(null);
   const titulo = document.getElementById('baixa-conc-titulo');
   const qtdEl = document.getElementById('caixas-boas');
   const fatEl = document.getElementById('conc-data-faturamento');
+  const opEl = document.getElementById('conc-operador-conclusao');
   const sub = document.getElementById('baixa-conc-sub');
   const info = document.getElementById('baixa-conc-info');
   if(titulo) titulo.textContent = (opts && opts.titulo) ? String(opts.titulo) : 'Confirmar conclusão';
   if(qtdEl) qtdEl.value = String((opts && opts.qtdPadrao)!=null ? opts.qtdPadrao : 0);
   if(fatEl) fatEl.value = String(opts?.data_faturamento || new Date().toISOString().split('T')[0]).slice(0,10);
-  var listaOp = document.getElementById('conc-operadores-lista');
-  if (listaOp) listaOp.innerHTML = '';
   _operadoresCache = null;
-  try {
-    var pre = [];
-    if (opts && opts.operadores_conclusao) {
-      try {
-        pre = typeof opts.operadores_conclusao === 'string' ? JSON.parse(opts.operadores_conclusao || '[]') : opts.operadores_conclusao;
-      } catch (_) { pre = []; }
-    } else if (opts && opts.operador_conclusao) {
-      pre = [String(opts.operador_conclusao || '').trim()].filter(Boolean);
-    } else if (CURRENT_USER && CURRENT_USER.nome) {
-      pre = [String(CURRENT_USER.nome || '').trim()].filter(Boolean);
+  try{
+    if (opEl) {
+      var nomeUsuario =
+        window.CURRENT_USER?.nome ||
+        window.CURRENT_USER?.name ||
+        window.CURRENT_USER?.email ||
+        localStorage.getItem('usuario_nome') ||
+        'Administrador';
+      opEl.value = String(nomeUsuario || 'Administrador');
     }
-    if (!Array.isArray(pre)) pre = [];
-    if (!pre.length) pre = [''];
-    pre.forEach(function(v){ adicionarOperadorConc(v); });
-  } catch (_) {
-    adicionarOperadorConc();
-  }
+  }catch(_){}
   var listaP = document.getElementById('conc-perdas-lista');
   if (listaP) listaP.innerHTML = '';
   atualizarTotalPerdas();
@@ -10385,13 +10340,14 @@ function confirmarModalBaixaConclusao(){
 
   var perdasArray = coletarPerdasConc();
   var totalPerdas = perdasArray.reduce(function(s, p){ return s + p.quantidade; }, 0);
-  var operadoresArray = coletarOperadoresConc();
+  var operadorConclusao = String(document.getElementById('conc-operador-conclusao')?.value || '').trim();
+  var operadoresArray = operadorConclusao ? [operadorConclusao] : [];
 
   var payload = {
     caixas_boas:        caixasBoas,
     caixas_perdidas:    totalPerdas,
     perdas_por_maquina: JSON.stringify(perdasArray),
-    operador_conclusao: operadoresArray[0] || '',
+    operador_conclusao: operadorConclusao || '',
     operadores_conclusao: JSON.stringify(operadoresArray),
     data_faturamento:   dataFat,
     data_conclusao:     new Date().toISOString()
@@ -43683,14 +43639,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <!-- OPERADOR -->
       <div style="margin-bottom:14px">
         <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">
-          OPERADORES DA OF
+          CONCLUÍDO POR
         </label>
-        <div id="conc-operadores-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:6px"></div>
-        <button type="button" onclick="adicionarOperadorConc()"
-          style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.3);
-                 border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;width:100%">
-          + Adicionar Operador
-        </button>
+        <input id="conc-operador-conclusao" type="text" readonly
+          style="width:100%;background:rgba(255,255,255,0.04);color:#e2e8f0;
+                 border:1px solid rgba(255,255,255,0.1);border-radius:8px;
+                 padding:10px;font-size:14px;box-sizing:border-box;cursor:default">
       </div>
 
       <!-- CAIXAS PRODUZIDAS -->
