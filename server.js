@@ -5005,6 +5005,22 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     const nowIso = new Date().toISOString();
+    let operadoresConclusao = [];
+    try {
+      if (Object.prototype.hasOwnProperty.call(body, 'operadores_conclusao')) {
+        const raw = body.operadores_conclusao;
+        if (typeof raw === 'string') operadoresConclusao = JSON.parse(raw || '[]');
+        else if (Array.isArray(raw)) operadoresConclusao = raw;
+        else if (raw && typeof raw === 'object') operadoresConclusao = raw;
+      } else if (body.operador_conclusao) {
+        operadoresConclusao = [String(body.operador_conclusao || '').trim()];
+      }
+    } catch (_) { operadoresConclusao = []; }
+    operadoresConclusao = (Array.isArray(operadoresConclusao) ? operadoresConclusao : [])
+      .map((x) => String(x || '').trim())
+      .filter(Boolean);
+    operadoresConclusao = [...new Set(operadoresConclusao)];
+
     const updateData = {
       status: 'Concluído',
       setor_finalizacao: body.setor_finalizacao || null,
@@ -5023,6 +5039,10 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       updated_at: nowIso,
       maquina_atual_index: Math.max(fluxo.length, Number(of.maquina_atual_index || 0) || 0),
     };
+    if (operadoresConclusao.length) {
+      updateData.operadores_conclusao = operadoresConclusao;
+      if (!updateData.operador_conclusao) updateData.operador_conclusao = operadoresConclusao[0];
+    }
     const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
     const fluxoPickMaquina = () => {
       try {
@@ -5231,6 +5251,30 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         usuario,
       }]);
     } catch (e) {}
+
+    try {
+      const ops = Array.isArray(operadoresConclusao) ? operadoresConclusao : [];
+      if (ops.length) {
+        const ofRel = (upd && upd.data) ? upd.data : of;
+        const ofNumero = String(ofRel?.numero ?? ofRel?.of ?? ofRel?.of_num ?? of?.numero ?? of?.of ?? of?.of_num ?? '').trim();
+        const clienteNome = String(ofRel?.cliente_nome ?? ofRel?.cliNome ?? ofRel?.cliente ?? of?.cliente_nome ?? of?.cliNome ?? of?.cliente ?? '').trim();
+        const empresaNome = String(ofRel?.empresa ?? of?.empresa ?? 'Italy Embalagens').trim() || 'Italy Embalagens';
+        const historicos = ops.map((op) => ({
+          operador_nome: String(op || '').trim(),
+          of_id: sid,
+          of_numero: ofNumero || null,
+          cliente: clienteNome || null,
+          tipo: 'conclusao',
+          caixas_produzidas: Math.trunc(Number(body.caixas_boas ?? qtdFinal ?? 0) || 0),
+          caixas_perdidas: Math.trunc(Number(body.caixas_perdidas ?? qtdPerdida ?? 0) || 0),
+          data_registro: nowIso,
+          empresa: empresaNome,
+        }));
+        await supabase.from('historico_operadores').insert(historicos);
+      }
+    } catch (eOp) {
+      try { console.warn('[conclusao] historico operadores:', eOp.message); } catch (_) {}
+    }
 
     const dataOut = upd?.data ? { ...upd.data, ...updateData } : { id: sid, ...updateData };
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
