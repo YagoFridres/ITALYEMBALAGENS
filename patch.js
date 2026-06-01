@@ -612,6 +612,10 @@
               }); 
               var ids = cards.map(function(c) { return c.dataset.ofId; }).filter(Boolean); 
               if (!ids.length) return; 
+              var maq = '';
+              try{
+                maq = String((header && header.dataset && (header.dataset.maq || header.dataset.maquina)) || (body && body.dataset && (body.dataset.maq || body.dataset.maquina)) || '').trim();
+              }catch(_){}
               var token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''; 
               fetch('/api/ofs/reordenar', { 
                 method: 'POST', 
@@ -619,7 +623,7 @@
                   'Content-Type': 'application/json', 
                   'Authorization': 'Bearer ' + token 
                 }, 
-                body: JSON.stringify({ ordem: ids }) 
+                body: JSON.stringify(maq ? { ordem: ids, maquina_id: maq } : { ordem: ids }) 
               }).then(function(r) { return r.json(); }) 
               .then(function(d) { console.log('[PATCH] ordem salva:', d && d.ok ? 'OK' : 'ERRO'); }) 
               .catch(function(e) { console.warn('[PATCH] reordenar:', e && e.message ? e.message : e); }); 

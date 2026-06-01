@@ -53952,6 +53952,7 @@ function kbOfmaqDrop(e, col){
   try{ e.preventDefault(); }catch(_){}
   kbOfmaqDragLeave(col);
   if(!_kbDragEl) return;
+  var movedId = _kbDragEl && _kbDragEl.dataset ? String(_kbDragEl.dataset.ofId||'').trim() : '';
   var maq = String(col && col.dataset ? (col.dataset.maq || '') : '').trim();
   if(!maq) return;
   var key = String(maq).replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
@@ -53961,7 +53962,7 @@ function kbOfmaqDrop(e, col){
   try{ body.appendChild(_kbDragEl); }catch(_){}
   try{ _kbDragEl.classList.remove('kb-dragging'); }catch(_){}
   kbOfmaqAtualizarOrdens(body);
-  kbOfmaqSalvar(body, maq);
+  kbOfmaqSalvar(body, maq, movedId);
   _kbDragEl = null;
 }
 
@@ -53969,6 +53970,7 @@ function kbOfmaqDropCard(e, cardDest){
   try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
   kbOfmaqDragLeaveCard(cardDest);
   if(!_kbDragEl || _kbDragEl === cardDest) return;
+  var movedId = _kbDragEl && _kbDragEl.dataset ? String(_kbDragEl.dataset.ofId||'').trim() : '';
   var col = cardDest.closest('.kb-col-ofmaq');
   var body = cardDest.parentElement;
   if(!col || !body) return;
@@ -53976,7 +53978,7 @@ function kbOfmaqDropCard(e, cardDest){
   try{ body.insertBefore(_kbDragEl, cardDest); }catch(_){}
   try{ _kbDragEl.classList.remove('kb-dragging'); }catch(_){}
   kbOfmaqAtualizarOrdens(body);
-  kbOfmaqSalvar(body, maq);
+  kbOfmaqSalvar(body, maq, movedId);
   _kbDragEl = null;
 }
 
@@ -53989,9 +53991,9 @@ function kbOfmaqAtualizarOrdens(body){
   }catch(_){}
 }
 
-async function kbOfmaqSalvar(body, novaMaquina){
+async function kbOfmaqSalvar(body, novaMaquina, ofIdMovido){
   var maqOrigem = _kbDragSrcCol && _kbDragSrcCol.dataset ? String(_kbDragSrcCol.dataset.maq||'') : '';
-  var ofId = _kbDragEl && _kbDragEl.dataset ? String(_kbDragEl.dataset.ofId||'') : '';
+  var ofId = String(ofIdMovido || '').trim();
 
   if(ofId && maqOrigem && novaMaquina && maqOrigem !== novaMaquina){
     try{

@@ -15783,25 +15783,35 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
     const maquina = String(req.body?.maquina_id || req.body?.maquina || '').trim();
     const ordemIn = req.body?.ordem;
-    if(!maquina) return res.status(400).json({ ok:false, error:'maquina_id_required' });
     let ids = [];
     if(Array.isArray(ordemIn)){
       ids = ordemIn.map((x)=>String((typeof x === 'string' ? x : (x?.of_id || x?.id || x?.ofId || '')) || '').trim()).filter(Boolean);
     } else if(typeof ordemIn === 'string'){
       ids = ordemIn.split(',').map((x)=>String(x||'').trim()).filter(Boolean);
     }
-    if(!ids.length) return res.status(400).json({ ok:false, error:'ordem_required' });
-    const ordem = ids.slice(0, 5000).map((id, idx)=>({ of_id: id, posicao: idx + 1 }));
-    try{
-      const ids2 = ids.slice(0, 5000);
-      await Promise.all(ids2.map((id, idx)=>{
-        const ordem_maquina = idx + 1;
-        return supabase.from('ofs').update({ ordem_maquina }).eq('id', id);
-      }));
-      try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    }catch(_){}
-    const r = await _sequenciamentoSalvarOrdem({ maquina, ordem });
-    return res.json({ ok:true, data:r });
+    if(!Array.isArray(ids) || !ids.length) return res.status(400).json({ ok:false, error:'ordem deve ser array nao vazio' });
+
+    try { console.log('[reordenar] maquina:', maquina || '(vazio)', '| ofs:', ids.length); } catch (_) {}
+
+    const ids2 = ids.slice(0, 5000);
+    const updates = ids2.map((id, idx) => {
+      const ordem_maquina = idx;
+      const patch = maquina ? { ordem_maquina, maq: maquina, maquina_atual: maquina } : { ordem_maquina };
+      return supabase.from('ofs').update(patch).eq('id', id);
+    });
+    const results = await Promise.all(updates);
+    const erros = (results || []).filter((r) => r && r.error);
+    if (erros.length) {
+      try { console.warn('[reordenar] erros parciais:', erros.map(r => r.error?.message)); } catch (_) {}
+    }
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+
+    let saved = null;
+    if (maquina) {
+      const ordem = ids2.map((id, idx) => ({ of_id: id, posicao: idx + 1 }));
+      try { saved = await _sequenciamentoSalvarOrdem({ maquina, ordem }); } catch (_) { saved = null; }
+    }
+    return res.json({ ok:true, atualizadas: ids2.length - erros.length, erros: erros.length, data: saved });
   }catch(e){ return err(res, e); }
 });
 
