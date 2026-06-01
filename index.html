@@ -4410,6 +4410,7 @@ function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
     clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
+    operadores:'ng-qualidade', inconformidades:'ng-qualidade',
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     'sel-chapas':'ng-papelao',
     simd:'ng-papelao',
@@ -40765,6 +40766,17 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
+    </div>
+  </div>
+
+  <!-- GRUPO: QUALIDADE -->
+  <div class="nav-group" id="ng-qualidade">
+    <div class="nav-group-header" onclick="toggleNavGroup('ng-qualidade')">
+      <span class="ng-ico">⚠</span>Qualidade<span class="ng-arr">▶</span>
+    </div>
+    <div class="nav-group-items">
+      <div id="menu-qualidade-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-qualidade');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">👷</span>Operadores</div>
+      <div id="menu-qualidade-inconformidades" class="nav-item" onclick="go('inconformidades');closeNavGroupsExcept('ng-qualidade');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">⚠️</span>Inconformidades</div>
     </div>
   </div>
 
