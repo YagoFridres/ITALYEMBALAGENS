@@ -3698,6 +3698,11 @@ window.abrirMaisItensOfRapida = function(){
           '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Ref / Produto</label>' +
           '<input type="text" class="item-ref" placeholder="Referência ou descrição" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
         '</div>' +
+        '<div style="grid-column:1/-1;margin-top:4px">' +
+          '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Imagem (opcional)</label>' +
+          '<input type="file" class="item-img-input" accept="image/*" onchange="previewItemImg(this)" style="width:100%;background:#080c14;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px;font-size:12px;box-sizing:border-box">' +
+          '<img class="item-img-preview" style="display:none;width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:6px;border:1px solid rgba(255,255,255,0.1)">' +
+        '</div>' +
         '<div>' +
           '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Qtd (cx) *</label>' +
           '<input type="number" class="item-qtd" min="1" placeholder="0" oninput="calcTotalItem(this)" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:7px;font-size:13px;box-sizing:border-box">' +
@@ -3734,6 +3739,29 @@ window.calcTotalItem = function(inputEl){
   }catch(e){}
 };
 
+window.previewItemImg = function(input){
+  try{
+    var row = input && input.closest ? input.closest('.ofr-item-card') : null;
+    if(!row) return;
+    var preview = row.querySelector('.item-img-preview');
+    var file = input && input.files ? (input.files[0] || null) : null;
+    if(!preview) return;
+    if(!file){
+      preview.style.display = 'none';
+      preview.src = '';
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        preview.src = String(e && e.target ? (e.target.result || '') : '');
+        preview.style.display = 'block';
+      }catch(_){}
+    };
+    reader.readAsDataURL(file);
+  }catch(e){}
+};
+
 window.coletarItensAdicionais = function(){
   var itens = [];
   try{
@@ -3744,11 +3772,16 @@ window.coletarItensAdicionais = function(){
       var qtd = 0;
       var unit = 0;
       var total = 0;
+      var imagemFile = null;
       try{ ref = String((row.querySelector('.item-ref') || {}).value || '').trim(); }catch(e){ ref=''; }
       try{ qtd = parseInt(String((row.querySelector('.item-qtd') || {}).value || '0').trim(), 10) || 0; }catch(e){ qtd=0; }
       try{ unit = parseFloat(String((row.querySelector('.item-vl-unit') || {}).value || '0').replace(',','.')) || 0; }catch(e){ unit=0; }
       try{ total = parseFloat(String((row.querySelector('.item-vl-total') || {}).value || '0').replace(',','.')) || 0; }catch(e){ total=0; }
-      if(qtd > 0) itens.push({ referencia: ref, quantidade: qtd, vl_unit: unit, vl_total: total || (qtd * unit) });
+      try{
+        var imgIn = row.querySelector('.item-img-input');
+        imagemFile = imgIn && imgIn.files ? (imgIn.files[0] || null) : null;
+      }catch(e){ imagemFile = null; }
+      if(qtd > 0) itens.push({ referencia: ref, quantidade: qtd, vl_unit: unit, vl_total: total || (qtd * unit), imagemFile: imagemFile });
     });
   }catch(e){}
   return itens;
@@ -3888,6 +3921,20 @@ window.salvarOfRapida = async function(){
           var unit2 = parseFloat(String(it.vl_unit || 0).replace(',','.')) || 0;
           var tot2 = parseFloat(String(it.vl_total || 0).replace(',','.')) || (qtd2 * unit2);
           if(!(qtd2 > 0)) continue;
+          var itemImgUrl = '';
+          try{
+            var f2 = it.imagemFile || null;
+            if(f2){
+              var token2 = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+              var fd2 = new FormData();
+              fd2.append('file', f2);
+              var base2 = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+              var up2 = await fetch(base2 + '/api/ofs/upload', { method:'POST', headers: token2 ? { Authorization: 'Bearer ' + token2 } : {}, body: fd2 });
+              var j2 = await up2.json().catch(()=>null);
+              itemImgUrl = String(j2?.data?.url || j2?.url || j2?.data?.publicUrl || j2?.publicUrl || '').trim();
+            }
+          }catch(e){}
+          var imgFinal = (itemImgUrl || imgUrl || '').trim();
           var itens2 = [{
             desc: prod2,
             descricao: prod2,
@@ -3897,7 +3944,7 @@ window.salvarOfRapida = async function(){
             vunit: unit2,
             valor_unitario: unit2,
             valor_total: tot2,
-            img: imgUrl || null,
+            img: imgFinal || null,
             maquina: '',
             maquinas_fluxo: [],
             maquinas_fluxo_ids: [],
@@ -3929,8 +3976,8 @@ window.salvarOfRapida = async function(){
             emp_id: empId,
             empId: empId,
             itens: itens2,
-            imgs: imgUrl ? [imgUrl] : [],
-            imagem_url: imgUrl || null,
+            imgs: imgFinal ? [imgFinal] : [],
+            imagem_url: imgFinal || null,
           };
           try{
             var r2 = await apiFetch('/api/ofs', { method:'POST', body: payload2 });
