@@ -43,6 +43,7 @@
 .kb-ordem{width:26px;height:26px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .kb-carga{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;margin:4px 0 10px;overflow:hidden}
 .kb-carga-fill{height:100%;border-radius:2px;transition:width 0.3s}
+@keyframes kbPulse{0%,100%{opacity:1}50%{opacity:0.5}}
 #kb-lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
 #kb-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px}
 </style>
@@ -53795,28 +53796,57 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
     var maqKey = String(maquina || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
     var colId = 'kbcol-' + (maqKey || 'sem-maquina');
     var bodyId = 'kbbody-' + (maqKey || 'sem-maquina');
-    var totalMin = ofs.reduce(function(s,o){
-      var a = parseInt(o && o.tempo_estimado_min, 10) || 0;
-      var b = parseInt(o && o.horas_estimadas, 10);
-      var c = Number.isFinite(b) ? (b * 60) : 0;
-      return s + (a || c || 0);
+    var CAPACIDADE_MIN = 480;
+    var tempoTotal = ofs.reduce(function(s, of){
+      var tempo = parseInt(of && of.tempo_estimado_min, 10) ||
+                  (parseInt(of && of.horas_estimadas, 10) * 60) ||
+                  parseInt(of && of.setup_medio, 10) ||
+                  parseInt(of && of.passagem_media, 10) || 0;
+      if (!tempo && of && of.quantidade && (of.velocidade || of.cxh)) {
+        var qtd = parseInt(of.quantidade, 10) || 0;
+        var vel = parseInt(of.velocidade || of.cxh, 10) || 0;
+        if (qtd > 0 && vel > 0) tempo = Math.ceil((qtd / vel) * 60);
+      }
+      return s + (tempo || 0);
     }, 0);
-    var pct = Math.min(Math.round((totalMin / (8*60)) * 100), 100);
-    var corCarga = pct > 90 ? '#dc2626' : pct > 70 ? '#f59e0b' : '#10b981';
+    var pctCarga = Math.round((tempoTotal / CAPACIDADE_MIN) * 100);
+    var corCarga = pctCarga > 100 ? '#dc2626' : pctCarga > 85 ? '#f59e0b' : '#10b981';
+    var labelCarga = pctCarga > 100 ? 'SOBRECARREGADA' : pctCarga > 85 ? 'Quase cheia' : 'OK';
+    function fmtTempo(min){
+      if(!min) return '-';
+      var h = Math.floor(min / 60);
+      var m = min % 60;
+      return h > 0 ? (h + 'h' + (m > 0 ? (' ' + m + 'min') : '')) : (m + 'min');
+    }
 
     html += '<div class="kb-col-ofmaq" id="' + escAttr(colId) + '" data-maq="' + escAttr(maquina) + '"' +
       ' ondragover="kbOfmaqDragOver(event,this)" ondrop="kbOfmaqDrop(event,this)" ondragleave="kbOfmaqDragLeave(this)">';
 
     html += '<div class="kb-col-ofmaq-header">' +
-      '<div style="display:flex;align-items:center;gap:7px">' +
-        '<span style="font-weight:600;color:#e2e8f0;font-size:13px">' + escH(maquina) + '</span>' +
-        '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px">' + String(ofs.length) + '</span>' +
-        (urgQty > 0 ? '<span style="background:rgba(220,38,38,0.15);color:#f43f5e;border-radius:20px;padding:1px 7px;font-size:10px">' + String(urgQty) + ' urg</span>' : '') +
+      '<div style="display:flex;align-items:center;justify-content:space-between;width:100%">' +
+        '<div style="display:flex;align-items:center;gap:7px;min-width:0">' +
+          '<span style="font-weight:600;color:#e2e8f0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">' + escH(maquina) + '</span>' +
+          '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px">' + String(ofs.length) + ' OFs</span>' +
+          (urgQty > 0 ? '<span style="background:rgba(220,38,38,0.15);color:#f43f5e;border-radius:20px;padding:1px 6px;font-size:10px">' + String(urgQty) + ' urg</span>' : '') +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          '<div style="font-size:10px;font-weight:600;color:' + corCarga + '">' + labelCarga + '</div>' +
+          '<div style="font-size:10px;color:#64748b">' + fmtTempo(tempoTotal) + ' / 8h</div>' +
+        '</div>' +
       '</div>' +
-      '<span style="font-size:10px;color:#64748b">' + totalCx.toLocaleString('pt-BR') + ' cx</span>' +
     '</div>';
 
-    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(pct) + '%;background:' + corCarga + '"></div></div>';
+    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(Math.min(pctCarga, 100)) + '%;background:' + corCarga + ';' + (pctCarga > 100 ? 'animation:kbPulse 1s ease-in-out infinite;' : '') + '"></div></div>';
+
+    html += (pctCarga > 100
+      ? '<div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:5px 8px;font-size:11px;color:#f43f5e;margin-bottom:8px;display:flex;align-items:center;gap:5px">⚠ Excede em ' + fmtTempo(tempoTotal - CAPACIDADE_MIN) + ' (' + String(pctCarga - 100) + '%)</div>'
+      : '');
+
+    html += '<div style="font-size:10px;color:#64748b;margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">' +
+      '<span>' + totalCx.toLocaleString('pt-BR') + ' cx total</span>' +
+      '<span>' + fmtTempo(tempoTotal) + ' estimado</span>' +
+      '<span>' + String(pctCarga) + '% ocupação</span>' +
+    '</div>';
 
     html += '<div id="' + escAttr(bodyId) + '">';
     ofs.forEach(function(of, idx){
