@@ -3063,6 +3063,54 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
     return res.json({ ok: true, proximo: '001', maior: 0, erro: String(e?.message || e) });
   }
 });
+
+app.get('/api/ofs/recorrentes', authMiddleware, async (req, res) => {
+  try {
+    const limite = Math.max(1, Math.trunc(Number(req.query.limite || 30)) || 30);
+    const { data, error } = await supabase
+      .from('ofs')
+      .select('cliente,cliente_nome,cliNome,clinome,produto,prodDesc,descricao,referencia,ref,quantidade,qtd,qtd_pedida,vl_unit,vl_unitario,valor_unitario,preco,vl_total,valor_total,valor_venda,total,fluxo_maquinas,maq,created_at')
+      .order('created_at', { ascending: false })
+      .limit(500);
+
+    if (error) throw error;
+
+    const grupos = {};
+    (data || []).forEach((of) => {
+      const cliente =
+        String(of?.cliente_nome || of?.cliNome || of?.clinome || of?.cliente || '').trim();
+      const produto =
+        String(of?.produto || of?.prodDesc || of?.descricao || '').trim();
+      if (!cliente || !produto) return;
+      const chave = cliente + '||' + produto;
+      if (!grupos[chave]) {
+        const qtd = Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
+        const vlUnit =
+          Number(of?.vl_unit ?? of?.vl_unitario ?? of?.valor_unitario ?? of?.preco ?? 0) || 0;
+        const referencia = String(of?.referencia ?? of?.ref ?? '').trim() || null;
+        grupos[chave] = {
+          cliente,
+          produto,
+          referencia,
+          quantidade: qtd || null,
+          vl_unit: vlUnit || null,
+          fluxo_maquinas: of?.fluxo_maquinas ?? of?.maq ?? null,
+          total: 0,
+        };
+      }
+      grupos[chave].total++;
+    });
+
+    const recorrentes = Object.values(grupos)
+      .filter((g) => (Number(g.total) || 0) >= 2)
+      .sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0))
+      .slice(0, limite);
+
+    return res.json({ ok: true, recorrentes });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {
   try {
     const vendedorId = String(body?.vendedor_id ?? body?.vend_id ?? body?.vendId ?? ofRow?.vendedor_id ?? ofRow?.vend_id ?? ofRow?.vendId ?? '').trim();
@@ -4777,6 +4825,26 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true, data });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const urgente = !!(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
+    const payload = {
+      urgente,
+      urg: urgente,
+      prioridade_ordem: urgente ? 1 : 999,
+      updated_at: new Date().toISOString(),
+    };
+    const upd = await ofsUpdateWithRetry(id, payload);
+    if (upd.error) throw upd.error;
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    return res.json({ ok: true, data: upd.data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/admin/ofs_sem_valor', requireAdmin, async (req, res) => {

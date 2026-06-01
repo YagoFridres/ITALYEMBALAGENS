@@ -4180,7 +4180,7 @@ function closeNavGroupsExcept(id){
 function openNavGroupForPage(pageId){
   const map={
     fluxos:'ng-maquinas', maquinas:'ng-maquinas',
-    clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', 'pedidos-recorrentes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
+    clientes:'ng-cadastros', 'mapa-clientes':'ng-cadastros', fornecedores:'ng-cadastros', vendedores:'ng-cadastros', usuarios:'ng-cadastros',
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     'sel-chapas':'ng-papelao',
     simd:'ng-papelao',
@@ -4351,7 +4351,10 @@ function _goBase(id){
     }
   }
   if(id==='pedidos-recorrentes'){
-    const doRender = ()=>{ try{ renderPedidosRecorrentes(); }catch(e){} };
+    const doRender = ()=>{
+      try{ renderPedidosRecorrentes(); }catch(e){}
+      try{ if(typeof carregarPedidosRecorrentes === 'function') carregarPedidosRecorrentes(); }catch(e){}
+    };
     if(_apiConectado && CURRENT_USER){
       Promise.all([
         carregarClientes(false).catch(()=>null),
@@ -4523,6 +4526,10 @@ function renderPCP(){
   else lista = lista.filter(o=>String(o.status||'').trim()===String(fs||'').trim());
   if(isTodas){
     lista.sort((a,b)=>{
+      const ua = !!(a && (a.urg || a.urgente));
+      const ub = !!(b && (b.urg || b.urgente));
+      if (ua && !ub) return -1;
+      if (!ua && ub) return 1;
       const aa=String(a.created_at||'');
       const bb=String(b.created_at||'');
       if(bb && aa && bb!==aa) return bb.localeCompare(aa);
@@ -4530,13 +4537,23 @@ function renderPCP(){
     });
   } else if(isSemana){
     lista.sort((a,b)=>{
+      const ua = !!(a && (a.urg || a.urgente));
+      const ub = !!(b && (b.urg || b.urgente));
+      if (ua && !ub) return -1;
+      if (!ua && ub) return 1;
       const da=String(a.dia||'');
       const db=String(b.dia||'');
       if(da!==db) return da.localeCompare(db);
       return (a.seq||0)-(b.seq||0);
     });
   } else {
-    lista.sort((a,b)=>a.seq-b.seq);
+    lista.sort((a,b)=>{
+      const ua = !!(a && (a.urg || a.urgente));
+      const ub = !!(b && (b.urg || b.urgente));
+      if (ua && !ub) return -1;
+      if (!ua && ub) return 1;
+      return (a.seq||0)-(b.seq||0);
+    });
   }
 
   const semanaRange = ()=>{
@@ -4615,7 +4632,8 @@ function renderPCP(){
       : (String(o.cliNome || o.cliente || o.cliente_nome || o.clinome || '').trim() || '—');
     const vendRaw = String(o.vendNome || o.vendedor_nome || o.vendedor || '').trim();
     const vendTxt = (vendRaw && !isUuid(vendRaw)) ? vendRaw : (String(vend.nome || '').trim() || '—');
-    const rc=[o.urg?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
+    const ehUrgente = !!(o && (o.urg || o.urgente));
+    const rc=[ehUrgente?'row-urg':'',ofSel===o.of?'row-sel':''].join(' ').trim();
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
     const fluxoAtivas = (fluxoNames||[]).map(maqAtivaFromNome).filter(Boolean);
@@ -4664,7 +4682,7 @@ function renderPCP(){
       <td class="tc"><input class="seq-inp" type="number" value="${o.seq}" min="1" onclick="event.stopPropagation()" onchange="moverPos('${o.of}',parseInt(this.value))" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="tc" style="${(!isTodas && !isSemana && o.dia===PCP_DIA_ATUAL)?'color:var(--accent);font-weight:700':''}">${fmtDataBR(o.dia||'')}</td>
       <td class="tc ${prazoC(o.ent)}">${fmtDataBR(o.ent||'')}</td>
-      <td class="tc">${numHtml}${o.urg?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
+      <td class="tc">${numHtml}${ehUrgente?'<br><span class="tag t-ug">URG</span>':''}${o.prodDesc?`<br><span style="font-size:.62rem;color:var(--text2);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;display:block" title="${o.prodDesc}">${o.prodDesc}</span>`:''}${fluxoLinha?`<br><span style="font-size:.6rem;color:var(--text3);font-family:var(--mono);display:block;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escAttr(fluxoLinha.replace(/<[^>]+>/g,''))}">${fluxoLinha}</span>`:''}</td>
       <td class="tc">${imgC}</td>
       <td>${escH(cliTxt)} ${empBadge(o.empId)}</td>
       <td style="color:var(--text2)">${escH(vendTxt)}</td>
@@ -4677,7 +4695,7 @@ function renderPCP(){
         <button class="btn-icon" onclick="event.stopPropagation();moverOF('${o.of}',-1)" title="Subir">↑</button>
         <button class="btn-icon" onclick="event.stopPropagation();moverOF('${o.of}',1)" title="Descer">↓</button>
         <button class="btn-icon" onclick="event.stopPropagation();nextStatus('${o.of}')" title="Próx. status">▶</button>
-        <button class="btn-icon" onclick="event.stopPropagation();togUrg('${o.of}')" style="color:${o.urg?'var(--red)':'var(--text3)'}" title="Urgente">🔴</button>
+        <button onclick="event.stopPropagation();toggleUrgente('${escAttr(String(o.id||''))}',${ehUrgente?'false':'true'},this)" style="background:${ehUrgente?'#dc2626':'rgba(220,38,38,0.15)'};color:${ehUrgente?'#fff':'#f43f5e'};border:1px solid rgba(220,38,38,0.4);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:600" title="Marcar/Desmarcar urgente">${ehUrgente?'🔴 URGENTE':'Urgente'}</button>
         ${(!o.deleted_at && String(o.status||'').trim()!=='Cancelada' && String(o.status||'').trim()!=='Cancelado') ? `<button class="btn-icon" onclick="event.stopPropagation();pcpAbrirModalClonarOF('${escAttr(String(o.id||''))}','${escAttr(String(o.of||''))}')" title="Clonar">Clonar</button>` : ''}
         ${isConcluida(o) ? `<button class="btn-icon" onclick="event.stopPropagation();abrirModalReconcluirOF('${escAttr(String(o.id||''))}')" title="Reconcluir">🔄</button>` : ''}
         ${imgPrintUrl ? `<button class="btn-icon" onclick="event.stopPropagation();imprimirImagemOF('${escAttr(String(o.id||o.of||''))}')" title="🖼 Imprimir Imagem">🖼</button>` : ''}
@@ -10725,7 +10743,60 @@ async function moverPos(num,dest){
 function atravessarSel(){if(!ofSel){toast('Selecione uma OF','var(--yellow)');return;}abrirAtv(ofSel);}
 function abrirAtv(num){atvAlvo=num;document.getElementById('atv-lbl').textContent=num;document.getElementById('atv-pos').value=1;abrir('modal-atv');}
 function confirmAtv(){const p=parseInt(document.getElementById('atv-pos').value)||1;fechar('modal-atv');moverPos(atvAlvo,p);}
-function togUrg(num){const o=OFs.find(x=>x.of===num);if(o){o.urg=!o.urg;renderPCP();autoSaveTrigger();toast(o.urg?'🔴 URGENTE':'Urgente removido');}}
+async function toggleUrgente(ofId, novoValor, btn){
+  const id = String(ofId || '').trim();
+  if(!id) return;
+  const v = !!novoValor;
+  try{
+    const h = headersAuth ? headersAuth() : {};
+    h['Content-Type'] = 'application/json';
+    const r = await fetch('/api/ofs/' + encodeURIComponent(id) + '/urgente', {
+      method: 'PATCH',
+      headers: h,
+      body: JSON.stringify({ urgente: v })
+    });
+    const d = await r.json().catch(()=>null);
+    if(d && d.ok){
+      try{
+        const o = (OFs||[]).find(x=>String(x && x.id || '').trim() === id) || null;
+        if(o){
+          o.urg = v;
+          o.urgente = v;
+          o.prioridade_ordem = v ? 1 : 999;
+        }
+      }catch(e){}
+      if(btn){
+        try{
+          btn.style.background = v ? '#dc2626' : 'rgba(220,38,38,0.15)';
+          btn.style.color = v ? '#fff' : '#f43f5e';
+          btn.textContent = v ? '🔴 URGENTE' : 'Urgente';
+          btn.setAttribute('onclick', 'event.stopPropagation();toggleUrgente(\\'' + id + '\\',' + (!v) + ',this)');
+        }catch(e){}
+      }
+      try{ renderPCP(); }catch(e){}
+      try{ autoSaveTrigger(); }catch(e){}
+      toast(v ? '🔴 URGENTE' : 'Urgente removido', v ? 'var(--red)' : 'var(--text2)');
+      return;
+    }
+    toast('Erro ao marcar urgente', 'var(--red)');
+  }catch(e){
+    toast('Erro ao marcar urgente', 'var(--red)');
+  }
+}
+function togUrg(num){
+  const o = OFs.find(x=>x.of===num);
+  if(!o) return;
+  const atual = !!(o.urg || o.urgente);
+  if(!o.id){
+    o.urg = !atual;
+    o.urgente = !atual;
+    renderPCP();
+    autoSaveTrigger();
+    toast(o.urg ? '🔴 URGENTE' : 'Urgente removido');
+    return;
+  }
+  toggleUrgente(String(o.id||''), !atual, null);
+}
 function nextStatus(num){const s=['Em aberto','Em produção','Concluído'];const o=OFs.find(x=>x.of===num);if(!o)return;o.status=s[(s.indexOf(o.status)+1)%s.length];renderPCP();autoSaveTrigger();toast('→ '+o.status);}
 
 // ===================== PCP — PEDIDO PRONTO =====================
@@ -20196,6 +20267,75 @@ function _renderPedidosRecorrentesList(list){
         </tbody>
       </table>
     </div>`;
+}
+
+async function carregarPedidosRecorrentes(){
+  var container = document.getElementById('lista-recorrentes');
+  if(!container) return;
+  container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Carregando...</p>';
+  try{
+    var r = await fetch('/api/ofs/recorrentes?t=' + Date.now(), { headers: (headersAuth ? headersAuth() : {}) });
+    var d = await r.json().catch(()=>null);
+    var lista = (d && d.ok && Array.isArray(d.recorrentes)) ? d.recorrentes : [];
+    if(!lista.length){
+      container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhum pedido recorrente encontrado.</p>';
+      return;
+    }
+    container.innerHTML = lista.map(function(p){
+      var cliente = String(p?.cliente || '—');
+      var produto = String(p?.produto || '—');
+      var ref = p?.referencia ? String(p.referencia) : '';
+      var qtd = p?.quantidade != null ? String(p.quantidade) : '';
+      var tot = Math.trunc(Number(p?.total || 0) || 0);
+      var payloadStr = '';
+      try{ payloadStr = JSON.stringify(p).replace(/</g,'\\u003c').replace(/>/g,'\\u003e'); }catch(e){ payloadStr = '{}'; }
+      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);' +
+        'border-radius:10px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px">' +
+        '<div style="min-width:36px;height:36px;border-radius:50%;background:rgba(74,144,217,0.2);' +
+          'display:flex;align-items:center;justify-content:center;color:#4A90D9;font-weight:700">' + escH(String(tot||0)) + 'x</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="color:#e2e8f0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(cliente) + '</div>' +
+          '<div style="color:#94a3b8;font-size:12px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+            escH(produto) +
+            (ref ? (' · Ref: ' + escH(ref)) : '') +
+            (qtd ? (' · ' + escH(qtd) + ' cx') : '') +
+          '</div>' +
+        '</div>' +
+        '<button onclick="clonarPedidoRecorrente(JSON.parse(this.getAttribute(\\'data-payload\\')))" data-payload="' + escAttr(payloadStr) + '" style="' +
+          'background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);' +
+          'border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;white-space:nowrap">' +
+          '+ Nova OF igual</button>' +
+      '</div>';
+    }).join('');
+  }catch(e){
+    container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao carregar.</p>';
+  }
+}
+
+async function clonarPedidoRecorrente(pedido){
+  try{
+    await abrirModalOF('');
+    try{
+      var cli = String(pedido?.cliente || '').trim();
+      var prod = String(pedido?.produto || pedido?.descricao || '').trim();
+      var ref = String(pedido?.referencia || '').trim();
+      if(cli){
+        var inp = document.getElementById('f-cli-search');
+        if(inp) inp.value = cli;
+        try{ ofResolveCliIdFromModal(); }catch(e){}
+      }
+      if(prod) setVal('f-prod-desc', prod);
+      if(ref){
+        var cur = String(document.getElementById('f-obs')?.value || '').trim();
+        setVal('f-obs', (cur ? (cur + ' · ') : '') + ('Ref: ' + ref));
+      }
+    }catch(e){}
+  }catch(e){
+    try{ go('pcp'); }catch(_){}
+    setTimeout(function(){
+      alert('Cliente: ' + (pedido?.cliente||'') + '\nProduto: ' + (pedido?.produto||'') + '\nQuantidade: ' + (pedido?.quantidade||''));
+    }, 300);
+  }
 }
 
 var _CLI_IMPORT = null;
@@ -39970,10 +40110,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="sidebar-section">Produção</div>
   <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
+  <div id="menu-pcp-amostras" class="nav-item" onclick="go('amostras');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();" style="padding-left:34px;font-size:12px;color:#94a3b8"><span class="ico">🔬</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
+  <div id="menu-pcp-pedidos-recorrentes" class="nav-item" onclick="go('pedidos-recorrentes');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();" style="padding-left:34px;font-size:12px;color:#94a3b8"><span class="ico">🔁</span>Pedidos Recorrentes</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
-<div id="menu-amostras" class="nav-item" onclick="go('amostras')"><span class="ico">🧪</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
   <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
 
   <!-- GRUPO: MÁQUINAS -->
@@ -39997,7 +40138,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-clientes" class="nav-item" onclick="go('clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👥</span>Clientes</div>
       <div id="menu-mapa-clientes" class="nav-item" onclick="go('mapa-clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Mapa de Clientes</div>
-      <div id="menu-pedidos-recorrentes" class="nav-item" onclick="go('pedidos-recorrentes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🔁</span>Pedidos Recorrentes</div>
       <div id="menu-fornecedores" class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
       <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
@@ -40384,7 +40524,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     </select>
     <div style="flex:1"></div>
     <div id="pcp-dia-resumo" style="font-size:.72rem;color:var(--text2);font-family:var(--mono);"></div>
-    <button class="btn btn-red btn-sm" onclick="atravessarSel()">⬆ Atravessar</button>
     <button id="btn-cancelar-of" class="btn btn-orange btn-sm" onclick="cancelarOFSel()">✕ Cancelar OF</button>
     <button id="btn-alterar-of" class="btn btn-purple btn-sm" onclick="alterarOFSel()">✏ Alterar OF</button>
     <button id="btn-nova-of" class="btn btn-accent btn-sm" onclick="abrirModalOF()">＋ Nova OF</button>
@@ -40959,6 +41098,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-accent" onclick="abrirModalRecorrente()">＋ Novo recorrente</button>
   </div>
   <div class="page-body">
+    <div class="sbox" style="margin-bottom:12px">
+      <div class="sbox-h">📌 Recorrentes (por frequência)</div>
+      <div class="sbox-b" id="lista-recorrentes"></div>
+    </div>
     <div class="sbox">
       <div class="sbox-h">🔁 Pedidos Recorrentes</div>
       <div class="sbox-b" id="recorrentes-list"></div>
