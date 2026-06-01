@@ -8031,9 +8031,18 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    let q = supabase.from('inconformidades').select('*').order('created_at', { ascending: false });
+    const { maquina, operador, data_ini, data_fim, status } = req.query || {};
+    const limit = Math.max(1, Math.min(500, parseInt(req.query?.limit, 10) || 100));
+
+    let q = supabase.from('inconformidades').select('*').order('created_at', { ascending: false }).limit(limit);
     if (req.query.cliente_id) q = q.eq('cliente_id', String(req.query.cliente_id));
     if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    if (maquina) q = q.eq('maquina', String(maquina));
+    if (operador) q = q.ilike('operador_nome', '%' + String(operador) + '%');
+    if (status) q = q.eq('status', String(status));
+    if (data_ini) q = q.gte('created_at', String(data_ini));
+    if (data_fim) q = q.lte('created_at', String(data_fim));
+
     const { data, error } = await q;
     if (error) {
       const msg = String(error.message || error);
@@ -8043,7 +8052,7 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
       }
       throw error;
     }
-    ok(res, data);
+    res.json({ ok: true, data, inconformidades: data || [] });
   } catch (e) { err(res, e); }
 });
 
@@ -8094,9 +8103,85 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     delete payload.empId;
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
-    const { data, error } = await supabase.from('inconformidades').insert([payload]).select();
+    if (payload.operador && !payload.operador_nome) payload.operador_nome = payload.operador;
+    if (payload.responsavel && !payload.operador_nome) payload.operador_nome = payload.responsavel;
+    if (payload.obs && !payload.descricao) payload.descricao = payload.obs;
+    if (payload.qtd_perdida != null && payload.caixas_perdidas == null) payload.caixas_perdidas = payload.qtd_perdida;
+    if (payload.imagem_problema_url && !payload.foto_url) payload.foto_url = payload.imagem_problema_url;
+    if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
+    if (payload.imagem_url && !payload.foto_url) payload.foto_url = payload.imagem_url;
+
+    delete payload.operador;
+    delete payload.responsavel;
+    delete payload.obs;
+    delete payload.qtd_perdida;
+    delete payload.imagem_problema_url;
+    delete payload.cliente_nome;
+    delete payload.imagem_url;
+
+    let toInsert = { ...payload };
+    const table = 'inconformidades';
+    let lastError = null;
+    for (let i = 0; i < 8; i++) {
+      const { data, error } = await supabase.from(table).insert([toInsert]).select();
+      if (!error) return ok(res, data && data[0] ? data[0] : null);
+      lastError = error;
+      const msg = String(error.message || '');
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+        delete toInsert[m[1]];
+        continue;
+      }
+      throw error;
+    }
+    throw lastError || new Error('Falha ao inserir inconformidade');
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
+  try {
+    const { data_ini, data_fim } = req.query || {};
+    let q = supabase.from('inconformidades').select('*').order('created_at', { ascending: false });
+    if (data_ini) q = q.gte('created_at', String(data_ini));
+    if (data_fim) q = q.lte('created_at', String(data_fim));
+    const { data, error } = await q;
     if (error) throw error;
-    ok(res, data[0]);
+
+    const itens = data || [];
+    const porMotivo = {};
+    const porMaquina = {};
+    const porOperador = {};
+    let totalPerdas = 0;
+
+    itens.forEach((i) => {
+      const perdas = Number(i?.caixas_perdidas ?? i?.qtd_perdida ?? 0) || 0;
+      totalPerdas += perdas;
+      if (i?.motivo) porMotivo[i.motivo] = (porMotivo[i.motivo] || 0) + 1;
+      if (i?.maquina) porMaquina[i.maquina] = (porMaquina[i.maquina] || 0) + perdas;
+      if (i?.operador_nome) porOperador[i.operador_nome] = (porOperador[i.operador_nome] || 0) + 1;
+    });
+
+    return ok(res, {
+      total: itens.length,
+      total_caixas_perdidas: totalPerdas,
+      por_motivo: porMotivo,
+      por_maquina: porMaquina,
+      por_operador: porOperador,
+      itens,
+    });
+  } catch (e) { err(res, e); }
+});
+
+app.patch('/api/inconformidades/:id', authMiddleware, async (req, res) => {
+  try {
+    const updates = {};
+    ['status', 'resolvido_por', 'data_resolucao', 'descricao'].forEach((k) => {
+      if (req.body && req.body[k] !== undefined) updates[k] = req.body[k];
+    });
+    const { data, error } = await supabase.from('inconformidades')
+      .update(updates).eq('id', req.params.id).select();
+    if (error) throw error;
+    ok(res, data && data[0] ? data[0] : null);
   } catch (e) { err(res, e); }
 });
 

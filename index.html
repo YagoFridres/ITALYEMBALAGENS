@@ -6733,6 +6733,9 @@ async function handleInconfFoto(input) {
 }
 
 async function salvarInconformidade() {
+  if (document.getElementById('inc-motivo')) {
+    return salvarInconformidadeNova();
+  }
   const obs = String((document.getElementById('inconf-obs') || {}).value || '').trim();
   if (!obs) { alert('Descreva o problema'); return; }
   const operador = String((document.getElementById('inconf-operador') || {}).value || '').trim();
@@ -6759,13 +6762,13 @@ async function salvarInconformidade() {
         of_id: inconfAtual.ofId,
         of_numero: inconfAtual.ofNum,
         maquina: inconfAtual.maquina,
-        operador: operador || 'Não informado',
-        obs,
-        qtd_perdida: qtdPerdida,
-        imagem_url: imagemOf || null,
-        imagem_problema_url: inconfAtual.fotoUrl || null,
-        cliente_nome: clienteNome,
+        operador_nome: operador || 'Não informado',
+        descricao: obs,
+        caixas_perdidas: qtdPerdida,
+        foto_url: inconfAtual.fotoUrl || null,
+        cliente: clienteNome || null,
         status: 'Aberta',
+        imagem_url: imagemOf || null
       })
     });
     const j = await r.json().catch(() => null);
@@ -6779,6 +6782,289 @@ async function salvarInconformidade() {
   } catch (e) {
     alert('Erro ao salvar: ' + String(e?.message || e));
   }
+}
+
+var _incFotoUrl = '';
+var _incFotoUploading = false;
+
+function previewIncFoto(input) {
+  const file = input?.files?.[0];
+  if (!file) return;
+  const prev = document.getElementById('inc-foto-preview');
+  try {
+    if (prev) {
+      prev.src = URL.createObjectURL(file);
+      prev.style.display = 'block';
+    }
+  } catch (_) {}
+  uploadIncFoto(file).finally(function(){
+    try { input.value = ''; } catch (_) {}
+  });
+}
+
+async function uploadIncFoto(file) {
+  if (!file || _incFotoUploading) return;
+  _incFotoUploading = true;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    const r = await fetch('/api/chat/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+    const j = await r.json().catch(() => null);
+    if (j?.ok && j?.data?.url) {
+      _incFotoUrl = String(j.data.url || '').trim();
+      const prev = document.getElementById('inc-foto-preview');
+      if (prev && _incFotoUrl) {
+        prev.src = _incFotoUrl;
+        prev.style.display = 'block';
+      }
+    }
+  } catch (_) {}
+  _incFotoUploading = false;
+}
+
+function abaInconformidade(aba) {
+  var a = String(aba || '').trim().toLowerCase();
+  if (a !== 'registrar' && a !== 'lista' && a !== 'relatorio') a = 'registrar';
+
+  var r = document.getElementById('inc-aba-registrar');
+  var l = document.getElementById('inc-aba-lista');
+  var rel = document.getElementById('inc-aba-relatorio');
+  if (r) r.style.display = (a === 'registrar') ? '' : 'none';
+  if (l) l.style.display = (a === 'lista') ? '' : 'none';
+  if (rel) rel.style.display = (a === 'relatorio') ? '' : 'none';
+
+  var b1 = document.getElementById('aba-inc-registrar');
+  var b2 = document.getElementById('aba-inc-lista');
+  var b3 = document.getElementById('aba-inc-relatorio');
+  [b1,b2,b3].forEach(function(b){
+    if(!b) return;
+    b.style.background = 'rgba(255,255,255,0.07)';
+    b.style.color = '#94a3b8';
+    b.style.fontWeight = '400';
+  });
+  var ativa = (a === 'registrar') ? b1 : (a === 'lista') ? b2 : b3;
+  if (ativa) {
+    ativa.style.background = '#4A90D9';
+    ativa.style.color = '#fff';
+    ativa.style.fontWeight = '600';
+  }
+}
+
+async function initInconformidadesPage() {
+  try {
+    abaInconformidade('registrar');
+    await incCarregarOperadores();
+    var hoje = new Date().toISOString().slice(0, 10);
+    var ini = document.getElementById('inc-rel-ini');
+    var fim = document.getElementById('inc-rel-fim');
+    if (fim && !fim.value) fim.value = hoje;
+    if (ini && !ini.value) {
+      var d = new Date();
+      d.setDate(d.getDate() - 7);
+      ini.value = d.toISOString().slice(0, 10);
+    }
+  } catch (_) {}
+}
+
+async function incCarregarOperadores() {
+  var sel = document.getElementById('inc-operador');
+  if (!sel) return;
+  if (sel.dataset.loaded === '1') return;
+  sel.dataset.loaded = '1';
+  try {
+    var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    var r = await fetch('/api/operadores?t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token } });
+    var d = await r.json().catch(() => null);
+    var ops = (d && d.ok && Array.isArray(d.data)) ? d.data : (Array.isArray(d?.data) ? d.data : []);
+    var html = '<option value="">-- Selecionar operador --</option>';
+    html += (ops || []).map(function(o){
+      var id = String(o?.id || '').trim();
+      var nome = String(o?.nome || o?.name || '').trim();
+      if (!nome) return '';
+      return '<option value="' + escAttr(nome) + '" data-id="' + escAttr(id) + '">' + escH(nome) + '</option>';
+    }).filter(Boolean).join('');
+    sel.innerHTML = html;
+  } catch (_) {
+    sel.dataset.loaded = '';
+  }
+}
+
+async function salvarInconformidadeNova() {
+  var operadorNome = String((document.getElementById('inc-operador') || {}).value || '').trim();
+  var motivo = String((document.getElementById('inc-motivo') || {}).value || '').trim();
+  if (!operadorNome) { alert('Selecione o operador responsável.'); return; }
+  if (!motivo) { alert('Selecione o motivo.'); return; }
+
+  var ofNumero = String((document.getElementById('inc-of-numero') || {}).value || '').trim();
+  var maq = String((document.getElementById('inc-maquina') || {}).value || '').trim();
+  var desc = String((document.getElementById('inc-descricao') || {}).value || '').trim();
+  var caixas = parseInt((document.getElementById('inc-caixas') || {}).value, 10);
+  if (!Number.isFinite(caixas)) caixas = 0;
+
+  var sel = document.getElementById('inc-operador');
+  var operadorId = '';
+  try {
+    var opt = sel && sel.selectedOptions && sel.selectedOptions[0];
+    operadorId = String(opt?.getAttribute('data-id') || '').trim();
+  } catch (_) {}
+
+  var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+  try {
+    var r = await fetch('/api/inconformidades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        of_numero: ofNumero || null,
+        maquina: maq || null,
+        operador_id: operadorId || null,
+        operador_nome: operadorNome || null,
+        motivo,
+        descricao: desc || null,
+        caixas_perdidas: caixas || 0,
+        foto_url: _incFotoUrl || null,
+        status: 'Aberta'
+      })
+    });
+    var d = await r.json().catch(() => null);
+    if (d?.ok) {
+      alert('✅ Inconformidade registrada!');
+      try { _incFotoUrl = ''; } catch (_) {}
+      try {
+        var prev = document.getElementById('inc-foto-preview');
+        if (prev) { prev.style.display = 'none'; prev.src = ''; }
+      } catch (_) {}
+      try { (document.getElementById('inc-of-numero') || {}).value = ''; } catch (_) {}
+      try { (document.getElementById('inc-caixas') || {}).value = ''; } catch (_) {}
+      try { (document.getElementById('inc-descricao') || {}).value = ''; } catch (_) {}
+      try { (document.getElementById('inc-motivo') || {}).value = ''; } catch (_) {}
+      try { (document.getElementById('inc-maquina') || {}).value = ''; } catch (_) {}
+      abaInconformidade('lista');
+      carregarInconformidades();
+      return;
+    }
+    alert('Erro: ' + String(d?.error || 'Tente novamente'));
+  } catch (e) {
+    alert('Erro: ' + String(e?.message || e));
+  }
+}
+
+async function carregarInconformidades() {
+  var out = document.getElementById('inc-lista-resultado');
+  if (!out) return;
+  out.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Carregando...</p>';
+  try {
+    var operador = String((document.getElementById('inc-filtro-op') || {}).value || '').trim();
+    var maq = String((document.getElementById('inc-filtro-maq') || {}).value || '').trim();
+    var qs = [];
+    if (operador) qs.push('operador=' + encodeURIComponent(operador));
+    if (maq) qs.push('maquina=' + encodeURIComponent(maq));
+    qs.push('limit=100');
+    var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    var r = await fetch('/api/inconformidades?' + qs.join('&') + '&t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token } });
+    var d = await r.json().catch(() => null);
+    var itens = (d && d.ok && Array.isArray(d.data)) ? d.data : (Array.isArray(d?.inconformidades) ? d.inconformidades : []);
+    if (!Array.isArray(itens) || !itens.length) {
+      out.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Nenhuma inconformidade encontrada.</p>';
+      return;
+    }
+    out.innerHTML = itens.map(function(i){
+      var st = String(i?.status || '—');
+      var cor = st === 'Resolvida' ? '#10b981' : st === 'Em Análise' ? '#f59e0b' : '#f43f5e';
+      var dt = i?.created_at ? new Date(i.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+      var foto = String(i?.foto_url || i?.imagem_problema_url || '').trim();
+      var perder = Number(i?.caixas_perdidas ?? i?.qtd_perdida ?? 0) || 0;
+      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:10px">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">' +
+          '<span style="font-weight:700;color:#e2e8f0">OF ' + escH(String(i?.of_numero || '—')) + '</span>' +
+          '<span style="font-size:11px;padding:2px 8px;border-radius:999px;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '33">' + escH(st) + '</span>' +
+          (dt ? '<span style="margin-left:auto;color:#64748b;font-size:11px">' + escH(dt) + '</span>' : '') +
+        '</div>' +
+        '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px">' +
+          (i?.operador_nome ? ('Operador: <b style=\"color:#e2e8f0\">' + escH(String(i.operador_nome)) + '</b> · ') : '') +
+          (i?.maquina ? ('Máquina: <b style=\"color:#e2e8f0\">' + escH(String(i.maquina)) + '</b> · ') : '') +
+          'Perdas: <b style=\"color:#e2e8f0\">' + escH(String(perder)) + '</b>' +
+        '</div>' +
+        (i?.motivo ? '<div style="color:#e2e8f0;font-size:13px;font-weight:700;margin-bottom:6px">' + escH(String(i.motivo)) + '</div>' : '') +
+        (i?.descricao ? '<div style="color:#94a3b8;font-size:12px;white-space:pre-wrap;margin-bottom:8px">' + escH(String(i.descricao)) + '</div>' : '') +
+        (foto ? '<img src="' + escAttr(foto) + '" data-url="' + escAttr(foto) + '" onclick="kbAbrirImagem(this.getAttribute(&quot;data-url&quot;))" style="width:100%;max-width:320px;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;margin-bottom:10px" onerror="this.style.display=&#39;none&#39;">' : '') +
+        '<div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">' +
+          (st !== 'Resolvida'
+            ? '<button onclick="incMarcarResolvida(\'' + escAttr(String(i.id || '')) + '\')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.35);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px">Marcar resolvida</button>'
+            : '') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    out.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao carregar.</p>';
+  }
+}
+
+async function incMarcarResolvida(id) {
+  var incId = String(id || '').trim();
+  if (!incId) return;
+  var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+  var nome = window.CURRENT_USER?.nome || window.CURRENT_USER?.name || window.CURRENT_USER?.email || 'Usuário';
+  try {
+    await fetch('/api/inconformidades/' + encodeURIComponent(incId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ status: 'Resolvida', resolvido_por: nome, data_resolucao: new Date().toISOString() })
+    });
+  } catch (_) {}
+  carregarInconformidades();
+}
+
+async function gerarRelatorioInconformidades() {
+  var out = document.getElementById('inc-relatorio-resultado');
+  if (!out) return;
+  out.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Carregando...</p>';
+  try {
+    var ini = String((document.getElementById('inc-rel-ini') || {}).value || '').trim();
+    var fim = String((document.getElementById('inc-rel-fim') || {}).value || '').trim();
+    var qs = [];
+    if (ini) qs.push('data_ini=' + encodeURIComponent(ini));
+    if (fim) qs.push('data_fim=' + encodeURIComponent(fim));
+    var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+    var r = await fetch('/api/inconformidades/relatorio?' + qs.join('&') + '&t=' + Date.now(), { headers: { Authorization: 'Bearer ' + token } });
+    var d = await r.json().catch(() => null);
+    if (!d || !d.ok) {
+      out.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao gerar relatório.</p>';
+      return;
+    }
+    var data = d.data || d;
+    var porMotivo = data.por_motivo || {};
+    var porMaquina = data.por_maquina || {};
+    var porOperador = data.por_operador || {};
+    out.innerHTML =
+      '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px">' +
+        '<div style="font-weight:800;color:#e2e8f0;margin-bottom:6px">Resumo</div>' +
+        '<div style="color:#94a3b8;font-size:13px">Total: <b style="color:#e2e8f0">' + escH(String(data.total || 0)) + '</b></div>' +
+        '<div style="color:#94a3b8;font-size:13px">Caixas perdidas: <b style="color:#e2e8f0">' + escH(String(data.total_caixas_perdidas || 0)) + '</b></div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' +
+        incRenderKvs('Por motivo', porMotivo) +
+        incRenderKvs('Perdas por máquina', porMaquina) +
+        incRenderKvs('Por operador', porOperador) +
+      '</div>';
+  } catch (e) {
+    out.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao gerar relatório.</p>';
+  }
+}
+
+function incRenderKvs(titulo, obj) {
+  var keys = Object.keys(obj || {});
+  keys.sort(function(a,b){ return (obj[b]||0) - (obj[a]||0); });
+  var rows = keys.slice(0, 12).map(function(k){
+    return '<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+      '<span style="color:#94a3b8;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">' + escH(String(k)) + '</span>' +
+      '<span style="color:#e2e8f0;font-family:var(--mono);font-size:12px">' + escH(String(obj[k])) + '</span>' +
+    '</div>';
+  }).join('');
+  return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px">' +
+    '<div style="font-weight:800;color:#e2e8f0;margin-bottom:10px">' + escH(String(titulo)) + '</div>' +
+    (rows || '<div style="color:#64748b;font-size:13px">Sem dados.</div>') +
+  '</div>';
 }
 
 function fecharModalInconformidadeManual(){
@@ -38250,7 +38536,7 @@ function go(id){
   if(id==='simd'){ try{ if(typeof _simdRestoreState === 'function') _simdRestoreState(); }catch(e){} try{ if(typeof _simdVerificarCampos === 'function') _simdVerificarCampos(); }catch(e){} }
   if(id==='papelao-ia'){ try{ if(typeof renderPapelaoIA === 'function') renderPapelaoIA(true); }catch(e){} }
   if(id==='operadores'){ try{ if(typeof carregarOperadores === 'function') carregarOperadores(); }catch(e){} try{ if(typeof renderOperadores === 'function') renderOperadores(); }catch(e){} }
-  if(id==='inconformidades')carregarInconformidadesControle();
+  if(id==='inconformidades'){ try{ setTimeout(function(){ if(typeof initInconformidadesPage === 'function') initInconformidadesPage(); }, 200); }catch(e){} }
   if(id==='logistica')setTimeout(renderRotaMapa,200);
   try{ applyMobileAccessRules(); }catch(e){}
   try{ if(typeof updateBottomNavActive === 'function') updateBottomNavActive(id); }catch(e){}
@@ -42653,30 +42939,134 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
 </div>
 
-<div id="page-inconformidades" class="page">
-  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
-    <span style="font-size:.78rem;color:var(--text2)">⚠️ Inconformidades</span>
-    <select id="inc-status" style="width:190px" onchange="renderInconformidades()">
-      <option value="">Todas</option>
-      <option value="Aberta">Aberta</option>
-      <option value="Em Análise">Em Análise</option>
-      <option value="Resolvida">Resolvida</option>
-    </select>
-    <select id="inc-maquina" style="width:220px" onchange="renderInconformidades()">
-      <option value="">Todas as máquinas</option>
-    </select>
-    <input id="inc-de" type="date" style="width:150px" onchange="renderInconformidades()">
-    <input id="inc-ate" type="date" style="width:150px" onchange="renderInconformidades()">
-    <input id="inc-busca" placeholder="🔍 Cliente ou OF" style="width:220px" oninput="renderInconformidades()">
-    <div style="flex:1"></div>
-    <span id="inc-contador" style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">—</span>
-    <button class="btn btn-green btn-sm" onclick="abrirModalInconformidadeManual()">＋ Registrar Inconformidade</button>
-    <button class="btn btn-accent btn-sm" onclick="carregarInconformidadesControle()">Atualizar</button>
+<section id="page-inconformidades" class="page" style="padding:16px">
+  <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:10px">
+    <button onclick="abaInconformidade('registrar')" id="aba-inc-registrar"
+      style="background:#4A90D9;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:500">
+      + Registrar
+    </button>
+    <button onclick="abaInconformidade('lista')" id="aba-inc-lista"
+      style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px">
+      Lista
+    </button>
+    <button onclick="abaInconformidade('relatorio')" id="aba-inc-relatorio"
+      style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px">
+      Relatório
+    </button>
   </div>
-  <div class="page-body" style="display:grid;gap:10px">
-    <div id="inc-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;"></div>
+
+  <div id="inc-aba-registrar">
+    <div style="display:flex;flex-direction:column;gap:10px;max-width:600px">
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Nº DA OF (opcional)</label>
+        <input id="inc-of-numero" type="text" placeholder="Ex: 875"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box">
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">OPERADOR RESPONSÁVEL *</label>
+        <select id="inc-operador"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">
+          <option value="">-- Selecionar operador --</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">MÁQUINA</label>
+        <select id="inc-maquina"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">
+          <option value="">-- Selecionar máquina --</option>
+          <option>Corte Vinco Rotativa</option>
+          <option>IMP 01</option><option>IMP 02</option>
+          <option>IMP 03</option><option>IMP 04</option><option>IMP 05</option>
+          <option>Acabamento</option><option>Riscador 01</option><option>Riscador 02</option>
+          <option>Corte Plana</option><option>Coladeira 01</option><option>Coladeira 02</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">MOTIVO *</label>
+        <select id="inc-motivo"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">
+          <option value="">-- Selecionar motivo --</option>
+          <option>Erro de impressão</option>
+          <option>Corte incorreto</option>
+          <option>Dobra errada</option>
+          <option>Cola mal aplicada</option>
+          <option>Matéria-prima com defeito</option>
+          <option>Configuração incorreta</option>
+          <option>Acidente operacional</option>
+          <option>Outro</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">CAIXAS PERDIDAS</label>
+        <input id="inc-caixas" type="number" min="0" placeholder="0"
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box">
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">DESCRIÇÃO (opcional)</label>
+        <textarea id="inc-descricao" rows="3" placeholder="Descreva o problema em detalhes..."
+          style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;resize:none;box-sizing:border-box"></textarea>
+      </div>
+
+      <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">FOTO DO DEFEITO (opcional)</label>
+        <input id="inc-foto" type="file" accept="image/*" capture="environment"
+          onchange="previewIncFoto(this)"
+          style="width:100%;background:#080c14;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+        <img id="inc-foto-preview" style="display:none;width:120px;height:120px;object-fit:cover;border-radius:8px;margin-top:8px;border:1px solid rgba(255,255,255,0.1)">
+      </div>
+
+      <button onclick="salvarInconformidade()"
+        style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer;font-size:14px;font-weight:600;width:100%">
+        Registrar Inconformidade
+      </button>
+    </div>
   </div>
-</div>
+
+  <div id="inc-aba-lista" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <input id="inc-filtro-op" type="text" placeholder="Filtrar por operador..."
+        style="flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;font-size:13px">
+      <select id="inc-filtro-maq" onchange="carregarInconformidades()"
+        style="background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;font-size:13px">
+        <option value="">Todas máquinas</option>
+        <option>IMP 01</option><option>IMP 02</option><option>IMP 03</option>
+        <option>IMP 04</option><option>IMP 05</option><option>Acabamento</option>
+      </select>
+      <button onclick="carregarInconformidades()"
+        style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">
+        Buscar
+      </button>
+    </div>
+    <div id="inc-lista-resultado">
+      <p style="color:#64748b;text-align:center;padding:30px">Clique em "Buscar" para carregar.</p>
+    </div>
+  </div>
+
+  <div id="inc-aba-relatorio" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">De</label>
+        <input id="inc-rel-ini" type="date"
+          style="background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px;font-size:13px">
+      </div>
+      <div>
+        <label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Até</label>
+        <input id="inc-rel-fim" type="date"
+          style="background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:7px;font-size:13px">
+      </div>
+      <button onclick="gerarRelatorioInconformidades()"
+        style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">
+        Gerar Relatório
+      </button>
+    </div>
+    <div id="inc-relatorio-resultado"></div>
+  </div>
+</section>
 
 <div id="page-relmensal" class="page">
   <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
