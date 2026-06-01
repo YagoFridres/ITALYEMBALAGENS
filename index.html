@@ -9494,18 +9494,12 @@ async function renderOFsPorMaquina(){
       _ofsMaqRenderizando=false;return;
     }
 
-    const maquinas = [
+    const maquinasOrdenadas = [
       ...maqsBase.filter(m=>grupos[m]),
       ...(grupos['Sem Máquina'] ? ['Sem Máquina'] : [])
     ];
-    const maquinasOrdenadas = maquinas;
 
-    try{
-      const btn = document.getElementById('btn-toggle-kanban-ofmaq');
-      if(btn) btn.textContent = (typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo) ? 'Lista' : 'Kanban';
-    }catch(e){}
-
-    if(typeof renderKanbanOfmaq === 'function' && typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo){
+    if(typeof renderKanbanOfmaq === 'function'){
       renderKanbanOfmaq(grupos, maquinasOrdenadas);
       container.scrollTop = scroll;
       _ofsMaqRenderizando=false;return;
@@ -9514,6 +9508,7 @@ async function renderOFsPorMaquina(){
     if(!window._ofmaqExpanded || typeof window._ofmaqExpanded !== 'object') window._ofmaqExpanded = {};
     if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
     if(!window._ofmaqLastGroupOfs || typeof window._ofmaqLastGroupOfs !== 'object') window._ofmaqLastGroupOfs = {};
+    const maquinas = maquinasOrdenadas;
     container.innerHTML = maquinas.filter(m=>grupos[m]).map(maq=>{
       const baseSorted = ordenarOFsPorPrioridade(grupos[maq] || []);
       const pos = new Map();
@@ -40674,13 +40669,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="ofmaq-btn-todas-ofs" onclick="abrirModalTodasOFs()" style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap">📋 Todas as OFs</button>
     <button id="ofmaq-btn-relatorio" onclick="abrirModalRelatorioMaquina()" style="padding:6px 14px;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:600;white-space:nowrap">🖨️ Relatório</button>
     <button id="ofmaq-btn-atualizar" class="btn btn-ghost btn-sm" onclick="renderOFsPorMaquina()">↻ Atualizar</button>
-    <button id="btn-toggle-kanban-ofmaq" onclick="toggleKanbanOfmaq()"
-      style="background:rgba(74,144,217,0.15);color:#4A90D9;
-             border:1px solid rgba(74,144,217,0.3);border-radius:6px;
-             padding:6px 12px;cursor:pointer;font-size:12px;
-             display:inline-flex;align-items:center;gap:4px">
-      Kanban
-    </button>
   </div>
   <div class="page-body">
     <div class="ofmaq-toprow" style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
@@ -53244,20 +53232,7 @@ async function renderHub(forcar=false){
   }catch(e){}
 }
 
-var _kbOfmaqAtivo = localStorage.getItem('kb_ofmaq') === '1';
 var _kbDragEl = null, _kbDragSrcCol = null;
-
-function toggleKanbanOfmaq(){
-  _kbOfmaqAtivo = !_kbOfmaqAtivo;
-  localStorage.setItem('kb_ofmaq', _kbOfmaqAtivo ? '1' : '0');
-  try{
-    var btn = document.getElementById('btn-toggle-kanban-ofmaq');
-    if(btn) btn.textContent = _kbOfmaqAtivo ? 'Lista' : 'Kanban';
-  }catch(e){}
-  try{ _ofsMaqUltimaRender = 0; }catch(e){}
-  try{ _ofsMaqRenderizando = false; }catch(e){}
-  try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
-}
 
 function renderKanbanOfmaq(grupos, maquinasOrdenadas){
   var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
@@ -53282,7 +53257,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas){
     html += '<div class="kb-col-ofmaq" id="' + escAttr(colId) + '" data-maq="' + escAttr(maquina) + '"' +
       ' ondragover="kbOfmaqDragOver(event,this)" ondrop="kbOfmaqDrop(event,this)" ondragleave="kbOfmaqDragLeave(this)">';
 
-    html += '<div class="kb-col-ofmaq-header" onclick="kbOfmaqToggleBody(&quot;' + escAttr(bodyId) + '&quot;)">' +
+    html += '<div class="kb-col-ofmaq-header">' +
       '<div style="display:flex;align-items:center;gap:7px">' +
         '<span style="font-weight:600;color:#e2e8f0;font-size:13px">' + escH(maquina) + '</span>' +
         '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px">' + String(ofs.length) + '</span>' +
@@ -53467,16 +53442,6 @@ async function kbOfmaqSalvar(body, novaMaquina){
   }
 }
 
-function kbOfmaqToggleBody(bodyId){
-  var el = document.getElementById(bodyId);
-  if(!el) return;
-  el.style.display = (el.style.display === 'none') ? '' : 'none';
-}
-
-try{
-  var _kbBtnInit = document.getElementById('btn-toggle-kanban-ofmaq');
-  if(_kbBtnInit) _kbBtnInit.textContent = _kbOfmaqAtivo ? 'Lista' : 'Kanban';
-}catch(e){}
 </script>
 
 <div id="cidade-drawer" style="position:fixed;top:0;height:100vh;background:#0f1623;border-left:0.5px solid rgba(255,255,255,0.1);z-index:9999;transition:right 0.3s ease;overflow-y:auto;display:flex;flex-direction:column;">
