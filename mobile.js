@@ -1,3 +1,5 @@
+// DESATIVADO — substituído por CSS responsivo no patch.js
+(function(){ 'use strict'; console.log('[MOBILE] mobile.js desativado — usando CSS responsivo'); return; })();
 /* mobile.js — Italy Embalagens ERP
    Interface mobile completa. Ativa apenas em dispositivos <= 768px.
    Desktop não é afetado. Mesmas APIs, mesmos dados, mesma autenticação. */
