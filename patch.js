@@ -3,83 +3,230 @@
   'use strict'; 
 
   try {
-    var cssM =
-      '@media (max-width: 768px) {' +
-      '.sidebar, #sidebar, [class*="sidebar"], nav.side, .side-nav { display: none !important; }' +
-      '.main-content, #main-content, [class*="main-content"], .page-content {' +
-      '  margin-left: 0 !important;' +
-      '  padding: 8px 8px 80px !important;' +
-      '  width: 100% !important;' +
-      '  max-width: 100% !important;' +
-      '}' +
-      '.top-bar, .header, #header, [class*="top-bar"] {' +
-      '  padding: 6px 10px !important;' +
-      '  flex-wrap: wrap !important;' +
-      '  gap: 4px !important;' +
-      '}' +
-      'input, select, textarea { font-size: 16px !important; }' +
-      'button, .btn, [class*="btn-"] {' +
-      '  min-height: 38px !important;' +
-      '  padding: 8px 12px !important;' +
-      '  font-size: 13px !important;' +
-      '}' +
-      'table.tabela-ofs, .tabela-pcp, [class*="tabela-of"] { display: block !important; width: 100% !important; }' +
-      'table.tabela-ofs thead, .tabela-pcp thead { display: none !important; }' +
-      'table.tabela-ofs tr, .tabela-pcp tr {' +
-      '  display: block !important;' +
-      '  background: rgba(255,255,255,0.03) !important;' +
-      '  border: 1px solid rgba(255,255,255,0.08) !important;' +
-      '  border-radius: 10px !important;' +
-      '  margin-bottom: 10px !important;' +
-      '  padding: 10px !important;' +
-      '}' +
-      'table.tabela-ofs td, .tabela-pcp td {' +
-      '  display: flex !important;' +
-      '  justify-content: space-between !important;' +
-      '  padding: 3px 0 !important;' +
-      '  border: none !important;' +
-      '  font-size: 12px !important;' +
-      '}' +
-      '.modal, [id*="modal"] > div:first-child, [class*="modal-content"] {' +
-      '  position: fixed !important;' +
-      '  bottom: 0 !important;' +
-      '  left: 0 !important;' +
-      '  right: 0 !important;' +
-      '  top: auto !important;' +
-      '  width: 100% !important;' +
-      '  max-width: 100% !important;' +
-      '  border-radius: 16px 16px 0 0 !important;' +
-      '  max-height: 90vh !important;' +
-      '  overflow-y: auto !important;' +
-      '  margin: 0 !important;' +
-      '}' +
-      '.cards-grid, [class*="cards-grid"] { grid-template-columns: 1fr !important; }' +
-      '.kb-board, .kb-maq-board, .kb-board-ofmaq {' +
-      '  overflow-x: auto !important;' +
-      '  -webkit-overflow-scrolling: touch !important;' +
-      '  padding-bottom: 20px !important;' +
-      '}' +
-      '.empresa-selector, .emp-sel-bar, [data-empresa-selector] { display: none !important; }' +
-      '.acoes-toolbar, [class*="toolbar-acoes"] { flex-wrap: wrap !important; gap: 6px !important; }' +
-      '.acoes-toolbar button, [class*="toolbar-acoes"] button { flex: 1 1 calc(50% - 6px) !important; min-width: 0 !important; }' +
-      '.truncar-mobile {' +
-      '  white-space: nowrap !important;' +
-      '  overflow: hidden !important;' +
-      '  text-overflow: ellipsis !important;' +
-      '  max-width: 150px !important;' +
-      '}' +
-      'body { padding-bottom: 64px !important; }' +
-      '}';
+    var cssM = [
+      /* ═══ BREAKPOINTS ═══════════════════════════════════════════
+         sm  = 480px  (celular pequeno)
+         md  = 768px  (celular grande / tablet)
+         lg  = 1024px (tablet landscape)
+      ═══════════════════════════════════════════════════════════ */
 
-    var styleEl = document.getElementById('patch-css-mobile') || document.getElementById('patch-mobile-css');
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'patch-css-mobile';
-      document.head.appendChild(styleEl);
-    } else if (styleEl.id !== 'patch-css-mobile') {
-      styleEl.id = 'patch-css-mobile';
+      /* ─── LAYOUT BASE MOBILE ──────────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Sidebar: ocultar no mobile, acessar pelo menu hamburguer */
+        '.sidebar,#sidebar,[class*="sidebar"],nav.side,.side-nav,.nav-lateral{',
+          'display:none!important;',
+        '}',
+
+        /* Conteúdo ocupa tela toda */
+        '.main-content,#main-content,[class*="main-content"],.page-content,.content-area,.content-wrap{',
+          'margin-left:0!important;',
+          'padding:8px 8px 72px!important;',
+          'width:100%!important;max-width:100%!important;',
+        '}',
+
+        /* Header compacto */
+        '.top-bar,.header,#header,[class*="top-bar"]{',
+          'padding:6px 10px!important;flex-wrap:wrap!important;gap:4px!important;',
+        '}',
+
+        /* Esconder elementos não essenciais no header */
+        '.header-empresa-selector,.emp-sel-bar,[data-empresa-selector]{display:none!important;}',
+
+        /* Inputs sem zoom no iOS (CRÍTICO) */
+        'input,select,textarea,input[type="text"],input[type="number"],input[type="date"],input[type="email"]{',
+          'font-size:16px!important;',
+        '}',
+
+        /* Botões maiores para toque */
+        'button,.btn,[class*="btn-"]{min-height:40px!important;padding:8px 12px!important;font-size:13px!important;}',
+
+        /* Espaço para hotbar na parte de baixo */
+        '.mobile-bottom-nav,.mobile-nav,[id*="bottom-nav"]{display:flex!important;}',
+        'body{padding-bottom:62px!important;}',
+
+      '}',
+
+      /* ─── TABELAS → CARDS ─────────────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Tabela principal de OFs */
+        'table.tabela-ofs,table[class*="tabela-of"],[class*="pcp-tabela"],[class*="tabela-pcp"]{',
+          'display:block!important;width:100%!important;',
+        '}',
+        'table.tabela-ofs thead,[class*="tabela-of"] thead{display:none!important;}',
+        'table.tabela-ofs tbody,[class*="tabela-of"] tbody{display:block!important;}',
+        'table.tabela-ofs tr,[class*="tabela-of"] tr{',
+          'display:block!important;',
+          'background:rgba(255,255,255,0.03)!important;',
+          'border:1px solid rgba(255,255,255,0.08)!important;',
+          'border-radius:10px!important;',
+          'margin-bottom:10px!important;',
+          'padding:10px!important;',
+          'position:relative!important;',
+        '}',
+        'table.tabela-ofs td,[class*="tabela-of"] td{',
+          'display:flex!important;justify-content:space-between!important;align-items:center!important;',
+          'padding:3px 0!important;border:none!important;font-size:12px!important;',
+        '}',
+        /* Esconder colunas menos importantes no mobile */
+        'table.tabela-ofs td:nth-child(n+8),[class*="tabela-of"] td:nth-child(n+8){display:none!important;}',
+
+      '}',
+
+      /* ─── MODAIS → BOTTOM SHEET ───────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Qualquer modal vira bottom sheet */
+        '[id*="modal"],[class*="modal"]{',
+          'align-items:flex-end!important;',
+        '}',
+        '[id*="modal"] > div:first-of-type,',
+        '[id*="modal"] > .modal-content,',
+        '[class*="modal-content"],[class*="modal-body"]{',
+          'position:fixed!important;',
+          'bottom:0!important;left:0!important;right:0!important;top:auto!important;',
+          'width:100%!important;max-width:100%!important;',
+          'border-radius:16px 16px 0 0!important;',
+          'max-height:92vh!important;overflow-y:auto!important;',
+          'margin:0!important;',
+        '}',
+
+        /* Modal de OF (específico) */
+        '#modal-of-detalhe > div,#modal-nova-of > div,#modal-baixa-conclusao > div{',
+          'max-height:95vh!important;',
+        '}',
+
+      '}',
+
+      /* ─── KANBAN OFs POR MÁQUINA ──────────────────────────────── */
+      '@media(max-width:768px){',
+
+        '.kb-board,.kb-board-ofmaq,.kb-maq-board{',
+          'overflow-x:auto!important;',
+          '-webkit-overflow-scrolling:touch!important;',
+          'gap:10px!important;',
+          'padding-bottom:16px!important;',
+        '}',
+        '.kb-col,.kb-col-ofmaq,.kb-maq-col{',
+          'min-width:260px!important;max-width:280px!important;',
+        '}',
+        '.kb-card,.kb-of-card,.kb-card-ofmaq{',
+          'padding:10px!important;cursor:pointer!important;',
+        '}',
+
+      '}',
+
+      /* ─── PCP / PROGRAMAÇÃO ───────────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Toolbar do PCP */
+        '[class*="pcp-toolbar"],[class*="toolbar-pcp"],[id*="pcp-acoes"]{',
+          'flex-wrap:wrap!important;gap:6px!important;',
+        '}',
+        '[class*="pcp-toolbar"] button,[id*="pcp-acoes"] button{',
+          'flex:1 1 calc(50% - 6px)!important;min-width:0!important;font-size:12px!important;',
+        '}',
+
+        /* Filtros do PCP em linha */
+        '.pcp-filtros,[class*="filtros-pcp"]{',
+          'flex-direction:column!important;gap:6px!important;',
+        '}',
+
+        /* Card de OF no PCP */
+        '[class*="linha-of"],[class*="row-of"],[class*="of-row"]{',
+          'display:block!important;border-radius:10px!important;',
+          'padding:10px!important;margin-bottom:8px!important;',
+          'background:rgba(255,255,255,0.03)!important;',
+          'border:1px solid rgba(255,255,255,0.08)!important;',
+        '}',
+
+      '}',
+
+      /* ─── DASHBOARD / GRÁFICOS ────────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Gráficos responsivos */
+        'canvas,[class*="chart"],[class*="grafico"]{',
+          'max-width:100%!important;height:auto!important;',
+        '}',
+
+        /* Cards de KPI em grid */
+        '[class*="kpi-cards"],[class*="stats-cards"],[class*="dashboard-cards"]{',
+          'grid-template-columns:repeat(2,1fr)!important;gap:8px!important;',
+        '}',
+
+      '}',
+
+      /* ─── CHAT ────────────────────────────────────────────────── */
+      '@media(max-width:768px){',
+
+        '#chat-painel{',
+          'width:100%!important;max-width:100%!important;',
+          'bottom:62px!important;left:0!important;right:0!important;',
+          'height:70vh!important;border-radius:16px 16px 0 0!important;',
+        '}',
+        '#chat-btn{bottom:72px!important;right:12px!important;}',
+
+      '}',
+
+      /* ─── ESTOQUE / TABELAS GERAIS ────────────────────────────── */
+      '@media(max-width:768px){',
+
+        /* Tabelas genéricas */
+        'table:not(.tabela-ofs):not([class*="tabela-of"]){',
+          'display:block!important;overflow-x:auto!important;',
+          '-webkit-overflow-scrolling:touch!important;',
+          'white-space:nowrap!important;',
+        '}',
+
+        /* Imagens de OF menores */
+        '[class*="of-img"],[class*="img-of"]{',
+          'width:40px!important;height:40px!important;',
+        '}',
+
+      '}',
+
+      /* ─── CELULAR PEQUENO ─────────────────────────────────────── */
+      '@media(max-width:480px){',
+
+        'body{font-size:13px!important;}',
+
+        /* Esconder textos não essenciais */
+        '[class*="hide-sm"]{display:none!important;}',
+
+        /* Headers ainda mais compactos */
+        'h1{font-size:16px!important;}h2{font-size:15px!important;}h3{font-size:14px!important;}',
+
+        /* Cards de KPI em 2 colunas compactas */
+        '[class*="kpi-cards"],[class*="stats-cards"]{',
+          'grid-template-columns:repeat(2,1fr)!important;',
+        '}',
+
+      '}',
+
+      /* ─── TABLET ──────────────────────────────────────────────── */
+      '@media(min-width:769px) and (max-width:1024px){',
+
+        /* Sidebar mais estreita */
+        '.sidebar,#sidebar{width:200px!important;}',
+        '.main-content,#main-content{margin-left:200px!important;}',
+
+        /* Tabelas com scroll */
+        'table{display:block!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch!important;}',
+
+      '}',
+
+    ].join('\n');
+
+    var elCSS = document.getElementById('patch-css-mobile');
+    if (!elCSS) {
+      elCSS = document.createElement('style');
+      elCSS.id = 'patch-css-mobile';
+      document.head.appendChild(elCSS);
     }
-    styleEl.textContent = cssM;
+    elCSS.textContent = cssM;
+    console.log('[PATCH] CSS responsivo mobile injetado');
   } catch (_) {}
  
   // ── UTIL: pegar token ────────────────────────────────────────── 

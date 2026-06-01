@@ -4118,7 +4118,10 @@ app.get('/api/chat/nao-lidas', authMiddleware, async (req, res) => {
       .eq('para_usuario', userId)
       .eq('lida', false);
     res.json({ ok: true, total: Math.trunc(Number(count || 0)) });
-  } catch (e) { res.json({ ok: true, total: 0 }); }
+  } catch (e) {
+    try { console.error('[chat/nao-lidas]', String(e?.message || e)); } catch (_) {}
+    res.json({ ok: true, total: 0 });
+  }
 });
 
 app.get('/api/avisos', authMiddleware, async (req, res) => {
@@ -4131,7 +4134,10 @@ app.get('/api/avisos', authMiddleware, async (req, res) => {
       .order('created_at', { ascending: false });
     if (error) throw error;
     res.json({ ok: true, avisos: data || [] });
-  } catch (e) { res.json({ ok: true, avisos: [] }); }
+  } catch (e) {
+    try { console.error('[avisos]', String(e?.message || e)); } catch (_) {}
+    res.json({ ok: true, avisos: [] });
+  }
 });
 
 app.post('/api/avisos', authMiddleware, async (req, res) => {

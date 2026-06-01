@@ -4413,6 +4413,7 @@ function openNavGroupForPage(pageId){
     'sel-chapas':'ng-papelao',
     simd:'ng-papelao',
     dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
+    agenda:'ng-comunicacoes',
   };
   const gId=map[pageId];
   if(gId){
@@ -40478,12 +40479,23 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="sidebar-section">Produção</div>
   <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
-  <div id="menu-agenda" class="nav-item" onclick="go('agenda');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📅</span>Agenda</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
   <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
+
+  <!-- GRUPO: COMUNICAÇÕES -->
+  <div class="nav-group" id="ng-comunicacoes">
+    <div class="nav-group-header" onclick="toggleNavGroup('ng-comunicacoes')">
+      <span class="ng-ico">💬</span>Comunicações<span class="ng-arr">▶</span>
+    </div>
+    <div class="nav-group-items">
+      <div id="menu-chat" class="nav-item" onclick="try{toggleChat();}catch(e){};closeNavGroupsExcept('ng-comunicacoes');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">💬</span>Chat</div>
+      <div id="menu-agenda" class="nav-item" onclick="go('agenda');closeNavGroupsExcept('ng-comunicacoes');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">📅</span>Agenda</div>
+      <div id="menu-jarvis" class="nav-item" onclick="go('hub');closeNavGroupsExcept('ng-comunicacoes');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();setTimeout(function(){try{if(typeof _jarvisAbrir==='function')_jarvisAbrir();}catch(e){}},80);"><span class="ico">🤖</span>Jarvis IA</div>
+    </div>
+  </div>
 
   <!-- GRUPO: MÁQUINAS -->
   <div class="nav-group" id="ng-maquinas">
