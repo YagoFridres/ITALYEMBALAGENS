@@ -9881,25 +9881,35 @@ async function getOperadoresConc() {
 async function adicionarLinhaPerdaConc(maquina, qtd, operador) {
   var lista = document.getElementById('conc-perdas-lista');
   if (!lista) return;
-  var ops = await getOperadoresConc();
-  var opcoesOp = '<option value="">-- Operador --</option>' +
-    (ops || []).map(function(op) {
-      var nome = op && (op.nome || op.name || op.label) ? (op.nome || op.name || op.label) : String(op);
-      var val = op && (op.id || op.nome || op.name) ? (op.id || op.nome || op.name) : String(op);
-      return '<option value="' + val + '"' + (val === operador ? ' selected' : '') + '>' + nome + '</option>';
-    }).join('');
+  var ops = await getOperadoresList();
+  function makeOpSelect(valorSel) {
+    var opts = '<option value="">-- Operador --</option>' +
+      (ops || []).map(function(op) {
+        var n = op && (op.nome || op.name || op.label) ? (op.nome || op.name || op.label) : String(op);
+        n = String(n || '').trim();
+        if (!n) return '';
+        return '<option value="' + escAttr(n) + '"' + (n === valorSel ? ' selected' : '') + '>' + escH(n) + '</option>';
+      }).filter(Boolean).join('') +
+      '<option value="__manual__">Digitar nome...</option>';
+    return '<select class="perda-op-sel" onchange="verificarOpManual(this)" style="' +
+      'flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
+      'border-radius:6px;padding:7px;font-size:12px">' + opts + '</select>';
+  }
+
   var opcoesMaq = TODAS_MAQUINAS.map(function(m) {
-    return '<option value="' + m + '"' + (m === maquina ? ' selected' : '') + '>' + m + '</option>';
-  }).join('');
+    var mm = String(m || '').trim();
+    if (!mm) return '';
+    return '<option value="' + escAttr(mm) + '"' + (mm === maquina ? ' selected' : '') + '>' + escH(mm) + '</option>';
+  }).filter(Boolean).join('');
   var div = document.createElement('div');
   div.className = 'linha-perda-conc';
   div.style.cssText = 'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;flex-direction:column;gap:8px';
   div.innerHTML =
-    '<div style="display:flex;gap:8px;align-items:center">' +
+    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">' +
       '<select class="perda-maquina" onchange="atualizarTotalPerdas()" style="' +
         'flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
         'border-radius:6px;padding:8px;font-size:13px">' +
-        '<option value="">-- Maquina --</option>' + opcoesMaq +
+        '<option value="">-- Máquina --</option>' + opcoesMaq +
       '</select>' +
       '<input type="number" class="perda-qtd" min="0" value="' + (qtd || '') + '" ' +
         'placeholder="Qtd" oninput="atualizarTotalPerdas()" style="' +
@@ -9909,12 +9919,47 @@ async function adicionarLinhaPerdaConc(maquina, qtd, operador) {
         'background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:6px;' +
         'padding:6px 10px;cursor:pointer;font-size:14px;flex-shrink:0">X</button>' +
     '</div>' +
-    '<select class="perda-operador" style="' +
-      'width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
-      'border-radius:6px;padding:8px;font-size:13px">' +
-      opcoesOp +
-    '</select>';
+    '<div style="font-size:11px;color:#64748b;margin-bottom:2px">Operadores desta perda:</div>' +
+    '<div class="perda-ops-lista" style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px">' +
+      '<div style="display:flex;gap:4px">' + makeOpSelect(String(operador || '').trim()) +
+        '<button type="button" onclick="this.parentElement.remove()" style="' +
+          'background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:4px;' +
+          'padding:4px 7px;cursor:pointer;font-size:11px">X</button>' +
+      '</div>' +
+    '</div>' +
+    '<button type="button" onclick="adicionarOpPerda(this)" style="' +
+      'background:rgba(74,144,217,0.1);color:#4A90D9;border:1px solid rgba(74,144,217,0.2);' +
+      'border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;width:100%">' +
+      '+ Operador nesta perda</button>';
   lista.appendChild(div);
+}
+
+async function adicionarOpPerda(btn) {
+  try {
+    var linha = btn ? btn.closest('.linha-perda-conc') : null;
+    if (!linha) return;
+    var listaOps = linha.querySelector('.perda-ops-lista');
+    if (!listaOps) return;
+    var ops = await getOperadoresList();
+    var opts = '<option value="">-- Operador --</option>' +
+      (ops || []).map(function(op) {
+        var n = op && (op.nome || op.name || op.label) ? (op.nome || op.name || op.label) : String(op);
+        n = String(n || '').trim();
+        if (!n) return '';
+        return '<option value="' + escAttr(n) + '">' + escH(n) + '</option>';
+      }).filter(Boolean).join('') +
+      '<option value="__manual__">Digitar nome...</option>';
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:4px';
+    div.innerHTML =
+      '<select class="perda-op-sel" onchange="verificarOpManual(this)" style="' +
+        'flex:1;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);' +
+        'border-radius:6px;padding:7px;font-size:12px">' + opts + '</select>' +
+      '<button type="button" onclick="this.parentElement.remove()" style="' +
+        'background:rgba(239,68,68,0.1);color:#f43f5e;border:none;border-radius:4px;' +
+        'padding:4px 7px;cursor:pointer;font-size:11px">X</button>';
+    listaOps.appendChild(div);
+  } catch (e) {}
 }
 function atualizarTotalPerdas() {
   var total = 0;
@@ -9929,8 +9974,10 @@ function coletarPerdasConc() {
   document.querySelectorAll('#conc-perdas-lista .linha-perda-conc').forEach(function(linha) {
     var maq = linha.querySelector('.perda-maquina')?.value;
     var qtd = parseInt(linha.querySelector('.perda-qtd')?.value || '0', 10) || 0;
-    var op = linha.querySelector('.perda-operador')?.value || '';
-    if (maq && qtd > 0) perdas.push({ maquina: maq, quantidade: qtd, operador: op });
+    var operadores = Array.from(linha.querySelectorAll('.perda-op-sel'))
+      .map(function(s){ return String(s && s.value || '').trim(); })
+      .filter(function(v){ return v && v !== '__manual__'; });
+    if (maq && qtd > 0) perdas.push({ maquina: maq, quantidade: qtd, operadores: operadores });
   });
   return perdas;
 }
