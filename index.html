@@ -18532,6 +18532,9 @@ function buscarClienteEAbrir(nomeEnc){
   }
 }
 
+try{ window.carregarAnaliseClientes = carregarAnaliseClientes; }catch(e){}
+try{ window.buscarClienteEAbrir = buscarClienteEAbrir; }catch(e){}
+
 function mapaClientesRecarregar(force){
   try{ window._mapCliCacheAt = 0; }catch(e){}
   return renderMapaClientes(!!force);
