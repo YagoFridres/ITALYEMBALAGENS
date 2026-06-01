@@ -38211,6 +38211,14 @@ function go(id){
   if(id==='chapas1') id='estoque';
   if(id==='mapaclientes') id='mapa-clientes';
   if(id==='simulador') id='simd';
+  if(id==='amostras'){
+    try{ window._pcpStartAba = 'amostras'; }catch(e){}
+    id = 'pcp';
+  }
+  if(id==='pedidos-recorrentes'){
+    try{ window._pcpStartAba = 'recorrentes'; }catch(e){}
+    id = 'pcp';
+  }
   if(id==='roteiro-entrega'){
     try{ window._mapCliStartTab = 'roteiro'; }catch(e){}
     id = 'mapa-clientes';
@@ -38254,6 +38262,14 @@ function go(id){
     try{ if(typeof renderHub === 'function') renderHub(); }catch(e){}
     try{ if(typeof carregarPassagensHoje === 'function') carregarPassagensHoje(); }catch(e){}
   }
+  if(id === 'pcp'){
+    try{
+      setTimeout(function(){
+        try{ if(typeof mudarAbaPCP === 'function') mudarAbaPCP(String(window._pcpStartAba || 'ofs')); }catch(e){}
+        try{ window._pcpStartAba = null; }catch(e){}
+      }, 0);
+    }catch(e){}
+  }
   if(id === 'clientes'){
     try{ if(typeof renderClientes === 'function') renderClientes(); }catch(e){}
     setTimeout(function(){
@@ -38276,6 +38292,71 @@ function go(id){
   try{ if(typeof updateBottomNavActive === 'function') updateBottomNavActive(id); }catch(e){}
   try{ setTimeout(()=>{ tryHandleScanParam(); }, 0); }catch(e){}
 }
+
+window.mudarAbaPCP = function(aba){
+  try{
+    var a = String(aba || '').trim().toLowerCase();
+    if(a === 'of') a = 'ofs';
+    if(a !== 'ofs' && a !== 'amostras' && a !== 'recorrentes') a = 'ofs';
+
+    var contOfs = document.getElementById('pcp-aba-conteudo-ofs');
+    var contAm = document.getElementById('pcp-aba-conteudo-amostras');
+    var contRec = document.getElementById('pcp-aba-conteudo-recorrentes');
+    if(contOfs) contOfs.style.display = (a === 'ofs') ? '' : 'none';
+    if(contAm) contAm.style.display = (a === 'amostras') ? '' : 'none';
+    if(contRec) contRec.style.display = (a === 'recorrentes') ? '' : 'none';
+
+    ['ofs','amostras','recorrentes'].forEach(function(k){
+      var btn = document.getElementById('aba-pcp-' + k);
+      if(!btn) return;
+      btn.style.background = 'rgba(255,255,255,0.06)';
+      btn.style.color = '#94a3b8';
+      btn.style.fontWeight = '400';
+    });
+    var btnAt = document.getElementById('aba-pcp-' + a);
+    if(btnAt){
+      btnAt.style.background = '#4A90D9';
+      btnAt.style.color = '#fff';
+      btnAt.style.fontWeight = '600';
+    }
+
+    try{
+      if(!window._pcpTabsMounted){
+        window._pcpTabsMounted = true;
+        if(contAm){
+          var pgA = document.getElementById('page-amostras');
+          if(pgA) contAm.appendChild(pgA);
+        }
+        if(contRec){
+          var pgR = document.getElementById('page-pedidos-recorrentes');
+          if(pgR) contRec.appendChild(pgR);
+        }
+      }
+    }catch(e){}
+
+    try{
+      var pgA2 = document.getElementById('page-amostras');
+      if(pgA2) pgA2.style.display = (a === 'amostras') ? '' : 'none';
+    }catch(e){}
+    try{
+      var pgR2 = document.getElementById('page-pedidos-recorrentes');
+      if(pgR2) pgR2.style.display = (a === 'recorrentes') ? '' : 'none';
+    }catch(e){}
+
+    if(a === 'amostras'){
+      try{ if(typeof carregarAmostras === 'function') carregarAmostras({forcar:true}).then(function(){ try{ if(typeof renderAmostras === 'function') renderAmostras(); }catch(e){} }); }catch(e){}
+    }
+    if(a === 'recorrentes'){
+      try{
+        if(typeof recorrentesRecarregar === 'function') recorrentesRecarregar(true);
+        else if(typeof renderPedidosRecorrentes === 'function') renderPedidosRecorrentes();
+      }catch(e){}
+    }
+    if(a === 'ofs'){
+      try{ if(typeof renderPCP === 'function') renderPCP(); }catch(e){}
+    }
+  }catch(e){}
+};
 
 function updateBottomNavActive(pageId){
   const isMob = (typeof _isMobileLike === 'function') ? _isMobileLike() : (window.innerWidth <= 768);
@@ -40385,8 +40466,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="sidebar-section">Produção</div>
   <div id="menu-hub" class="nav-item" onclick="go('hub')"><span class="ico">✨</span>Hub Inicial</div>
   <div id="menu-pcp" class="nav-item active" onclick="go('pcp')"><span class="ico">📋</span>PCP / Programação</div>
-  <div id="menu-pcp-amostras" class="nav-item" onclick="go('amostras');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();" style="cursor:pointer;padding:5px 12px 5px 32px;color:#94a3b8;font-size:12px;display:flex;align-items:center;gap:6px;border-radius:6px" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''"><span class="ico">🔬</span>Amostras<span id="amostras-badge" class="badge-n" style="display:none">0</span></div>
-  <div id="menu-pcp-pedidos-recorrentes" class="nav-item" onclick="go('pedidos-recorrentes');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();" style="cursor:pointer;padding:5px 12px 5px 32px;color:#94a3b8;font-size:12px;display:flex;align-items:center;gap:6px;border-radius:6px" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''"><span class="ico">🔁</span>Pedidos Recorrentes</div>
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
@@ -40805,31 +40884,40 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button id="btn-nova-of-rapida" class="btn btn-accent btn-sm" onclick="abrirNovaOfRapida()" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);border:none;box-shadow:0 4px 16px rgba(14,165,233,0.25)">⚡ OF Rápida</button>
   </div>
   <div class="page-body" style="padding:0;">
-    <div id="pcp-table-wrap" class="table-wrap" style="height:100%;">
-      <table class="pcp-table">
-        <thead><tr>
-          <th style="width:32px;padding:4px 8px"></th>
-          <th class="th-seq">SEQ</th>
-          <th>DIA PEDIDO</th><th>ENTREGA</th><th>Nº OF</th><th>IMG</th>
-          <th>CLIENTE</th><th>VENDEDOR</th><th>QUANTIDADE</th><th>VL. UNIT.</th><th>TOTAL</th>
-          <th>CORTE VINCO ROTATIVA</th>
-          <th>IMP 01</th><th>IMP 02</th><th>IMP 03</th><th>IMP 04</th><th>IMP 05</th>
-          <th>STATUS</th><th>AÇÕES</th>
-        </tr></thead>
-        <tbody id="pcp-tbody"></tbody>
-      </table>
+    <div id="pcp-abas" style="display:flex;gap:4px;padding:10px 10px 10px 10px;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:12px">
+      <button onclick="mudarAbaPCP('ofs')" id="aba-pcp-ofs" style="background:#4A90D9;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:500">OFs</button>
+      <button onclick="mudarAbaPCP('amostras')" id="aba-pcp-amostras" style="background:rgba(255,255,255,0.06);color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px">Amostras</button>
+      <button onclick="mudarAbaPCP('recorrentes')" id="aba-pcp-recorrentes" style="background:rgba(255,255,255,0.06);color:#94a3b8;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:13px">Pedidos Recorrentes</button>
     </div>
-    <div id="pcp-roteiro-wrap" style="display:none;padding:10px 10px 14px 10px">
-      <div class="ptoolbar" style="margin:0 0 10px 0;gap:8px;flex-wrap:wrap;">
-        <div style="font-weight:900;color:var(--text2)">🚚 Roteiro de Entregas</div>
-        <div id="pcp-roteiro-sub" style="font-size:.72rem;color:var(--text3);font-family:var(--mono)"></div>
-        <div style="flex:1"></div>
-        <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRoteiroSemana()">🖨 Imprimir roteiro da semana</button>
-        <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRomaneio()">🧾 Imprimir romaneio</button>
-        <button class="btn btn-ghost btn-sm" onclick="pcpFecharRoteiroEntregas()">↩ Voltar</button>
+    <div id="pcp-aba-conteudo-ofs">
+      <div id="pcp-table-wrap" class="table-wrap" style="height:100%;">
+        <table class="pcp-table">
+          <thead><tr>
+            <th style="width:32px;padding:4px 8px"></th>
+            <th class="th-seq">SEQ</th>
+            <th>DIA PEDIDO</th><th>ENTREGA</th><th>Nº OF</th><th>IMG</th>
+            <th>CLIENTE</th><th>VENDEDOR</th><th>QUANTIDADE</th><th>VL. UNIT.</th><th>TOTAL</th>
+            <th>CORTE VINCO ROTATIVA</th>
+            <th>IMP 01</th><th>IMP 02</th><th>IMP 03</th><th>IMP 04</th><th>IMP 05</th>
+            <th>STATUS</th><th>AÇÕES</th>
+          </tr></thead>
+          <tbody id="pcp-tbody"></tbody>
+        </table>
       </div>
-      <div id="pcp-roteiro-body"></div>
+      <div id="pcp-roteiro-wrap" style="display:none;padding:10px 10px 14px 10px">
+        <div class="ptoolbar" style="margin:0 0 10px 0;gap:8px;flex-wrap:wrap;">
+          <div style="font-weight:900;color:var(--text2)">🚚 Roteiro de Entregas</div>
+          <div id="pcp-roteiro-sub" style="font-size:.72rem;color:var(--text3);font-family:var(--mono)"></div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRoteiroSemana()">🖨 Imprimir roteiro da semana</button>
+          <button class="btn btn-ghost btn-sm" onclick="pcpImprimirRomaneio()">🧾 Imprimir romaneio</button>
+          <button class="btn btn-ghost btn-sm" onclick="pcpFecharRoteiroEntregas()">↩ Voltar</button>
+        </div>
+        <div id="pcp-roteiro-body"></div>
+      </div>
     </div>
+    <div id="pcp-aba-conteudo-amostras" style="display:none;padding:10px 10px 14px 10px"></div>
+    <div id="pcp-aba-conteudo-recorrentes" style="display:none;padding:10px 10px 14px 10px"></div>
   </div>
 </div>
 
