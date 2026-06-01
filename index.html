@@ -9498,14 +9498,15 @@ async function renderOFsPorMaquina(){
       ...maqsBase.filter(m=>grupos[m]),
       ...(grupos['Sem Máquina'] ? ['Sem Máquina'] : [])
     ];
+    const maquinasOrdenadas = maquinas;
 
     try{
       const btn = document.getElementById('btn-toggle-kanban-ofmaq');
       if(btn) btn.textContent = (typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo) ? 'Lista' : 'Kanban';
     }catch(e){}
 
-    if(typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo && typeof renderKanbanOfmaq === 'function'){
-      renderKanbanOfmaq(grupos, maquinas);
+    if(typeof renderKanbanOfmaq === 'function' && typeof _kbOfmaqAtivo !== 'undefined' && _kbOfmaqAtivo){
+      renderKanbanOfmaq(grupos, maquinasOrdenadas);
       container.scrollTop = scroll;
       _ofsMaqRenderizando=false;return;
     }
@@ -53253,7 +53254,9 @@ function toggleKanbanOfmaq(){
     var btn = document.getElementById('btn-toggle-kanban-ofmaq');
     if(btn) btn.textContent = _kbOfmaqAtivo ? 'Lista' : 'Kanban';
   }catch(e){}
-  try{ renderOFsPorMaquina(); }catch(e){}
+  try{ _ofsMaqUltimaRender = 0; }catch(e){}
+  try{ _ofsMaqRenderizando = false; }catch(e){}
+  try{ if(typeof renderOFsPorMaquina === 'function') renderOFsPorMaquina(); }catch(e){}
 }
 
 function renderKanbanOfmaq(grupos, maquinasOrdenadas){
