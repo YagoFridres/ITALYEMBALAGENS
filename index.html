@@ -10769,13 +10769,13 @@ async function toggleUrgente(ofId, novoValor, btn){
         try{
           btn.style.background = v ? '#dc2626' : 'rgba(220,38,38,0.15)';
           btn.style.color = v ? '#fff' : '#f43f5e';
-          btn.textContent = v ? '🔴 URGENTE' : 'Urgente';
-          btn.setAttribute('onclick', 'event.stopPropagation();toggleUrgente(\\'' + id + '\\',' + (!v) + ',this)');
+          btn.textContent = v ? 'URGENTE' : 'Urgente';
+          btn.setAttribute('onclick', "event.stopPropagation();toggleUrgente('" + id + "'," + (!v) + ",this)");
         }catch(e){}
       }
       try{ renderPCP(); }catch(e){}
       try{ autoSaveTrigger(); }catch(e){}
-      toast(v ? '🔴 URGENTE' : 'Urgente removido', v ? 'var(--red)' : 'var(--text2)');
+      toast(v ? 'URGENTE' : 'Urgente removido', v ? 'var(--red)' : 'var(--text2)');
       return;
     }
     toast('Erro ao marcar urgente', 'var(--red)');
@@ -10792,7 +10792,7 @@ function togUrg(num){
     o.urgente = !atual;
     renderPCP();
     autoSaveTrigger();
-    toast(o.urg ? '🔴 URGENTE' : 'Urgente removido');
+    toast(o.urg ? 'URGENTE' : 'Urgente removido');
     return;
   }
   toggleUrgente(String(o.id||''), !atual, null);
@@ -20301,7 +20301,7 @@ async function carregarPedidosRecorrentes(){
             (qtd ? (' · ' + escH(qtd) + ' cx') : '') +
           '</div>' +
         '</div>' +
-        '<button onclick="clonarPedidoRecorrente(JSON.parse(this.getAttribute(\\'data-payload\\')))" data-payload="' + escAttr(payloadStr) + '" style="' +
+        '<button onclick="clonarPedidoRecorrente(JSON.parse(this.getAttribute(&quot;data-payload&quot;)))" data-payload="' + escAttr(payloadStr) + '" style="' +
           'background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);' +
           'border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;white-space:nowrap">' +
           '+ Nova OF igual</button>' +
