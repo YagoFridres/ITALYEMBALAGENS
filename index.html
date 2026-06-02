@@ -4425,29 +4425,24 @@ function openNavGroupForPage(pageId){
   }
 }
 
-var _financeiroDesbloqueado = false;
-try { _financeiroDesbloqueado = sessionStorage.getItem('fin_ok') === '1'; } catch (e) {}
-function abrirMenuFinanceiro() {
-  var el = document.getElementById('nav-group-financeiro');
-  if (!el) return;
+window.abrirMenuFinanceiro = function() {
+  var grupo = document.getElementById('nav-group-financeiro');
+  if (!grupo) return;
 
-  if (_financeiroDesbloqueado) {
-    el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
-    try { closeNavGroupsExcept('ng-financeiro'); } catch (e) {}
+  if (sessionStorage.getItem('fin_ok') === '1') {
+    grupo.style.display = grupo.style.display === 'none' ? 'block' : 'none';
     return;
   }
 
-  var senha = prompt('Digite a senha para acessar o Financeiro:');
+  var senha = prompt('Senha do financeiro:');
+  if (senha === null) return;
   if (senha === '1234') {
-    _financeiroDesbloqueado = true;
-    try { sessionStorage.setItem('fin_ok', '1'); } catch (e) {}
-    el.style.display = 'block';
-    try { closeNavGroupsExcept('ng-financeiro'); } catch (e) {}
-  } else if (senha !== null) {
+    sessionStorage.setItem('fin_ok', '1');
+    grupo.style.display = 'block';
+  } else {
     alert('Senha incorreta.');
   }
-}
-try{ window.abrirMenuFinanceiro = abrirMenuFinanceiro; }catch(e){}
+};
 
 
 let _ofsMaqTimer = null;
@@ -40749,8 +40744,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div id="menu-ofs-maquina" class="nav-item" onclick="go('ofmaq');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">🏭</span>OFs por Máquina</div>
   <div id="menu-historico-passagens" class="nav-item" onclick="go('historico-passagens');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Histórico de Passagens</div>
   <div id="menu-pedidos" class="nav-item" onclick="go('lancamento')"><span class="ico">🗃️</span>Armazenamento de OFs</div>
-  <div id="menu-orcamentos" class="nav-item" onclick="go('orcamentos');if(document.body && document.body.classList && document.body.classList.contains('is-mobile')) toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
-
   <!-- GRUPO: COMUNICAÇÕES -->
   <div class="nav-group" id="ng-comunicacoes">
     <div class="nav-group-header" onclick="toggleNavGroup('ng-comunicacoes')">
@@ -40843,7 +40836,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-dashboard" class="nav-item" onclick="go('dashboard');closeNavGroupsExcept('ng-analises')"><span class="ico">📊</span>Dashboard</div>
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
-      <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
       <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-config" class="nav-item" onclick="go('configuracoes');closeNavGroupsExcept('ng-analises')"><span class="ico">⚙️</span>Configurações</div>
@@ -53956,7 +53948,6 @@ async function renderHub(forcar=false){
       `<button class="hub-qbtn primary" onclick="abrirModalOF('')">＋ Nova OF</button>`,
       `<button class="hub-qbtn primary" onclick="abrirNovaOfRapida()">⚡ OF Rápida</button>`,
       `<button class="hub-qbtn" onclick="abrirModalAmostra()">＋ Nova Amostra</button>`,
-      `<button class="hub-qbtn" onclick="go('orcamentos')">＋ Novo Orçamento</button>`,
       `<button class="hub-qbtn" onclick="go('ofmaq')">⚙️ OFs por Máquina</button>`,
       `<button class="hub-qbtn" onclick="renderConfiguracoes?.() || go?.('configuracoes')">⚙️ Configurações</button>`,
       `<button class="hub-qbtn" onclick="go('lancamento')">📦 Armazenamento</button>`,
@@ -54963,8 +54954,13 @@ async function _enviarAvisoPara(paraUsuario){
 async function carregarAvisos(){
   try{
     const { j } = await _chatFetchJson('/api/avisos', { method:'GET' });
-    const avisos = Array.isArray(j && j.avisos) ? j.avisos : [];
-    if(!avisos.length) return;
+    var avisos = Array.isArray(j && j.avisos) ? j.avisos : [];
+    try{
+      var vistos = JSON.parse(localStorage.getItem('avisos_vistos') || '[]');
+      if(!Array.isArray(vistos)) vistos = [];
+      avisos = avisos.filter(function(a){ return a && a.id && !vistos.includes(a.id); });
+    }catch(e){}
+    if(!avisos.length) { try{ fecharAvisos(); }catch(e){} return; }
     const modal = document.getElementById('modal-avisos');
     const lista = document.getElementById('avisos-lista');
     if(!modal || !lista) return;
@@ -54974,10 +54970,10 @@ async function carregarAvisos(){
       const txt = String(a && a.mensagem || '');
       const when = String(a && a.created_at || '');
       const dt = when ? new Date(when).toLocaleString('pt-BR') : '';
-      return '<div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 12px;margin-bottom:8px">' +
+      return '<div data-aviso-id="' + escAttr(id) + '" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 12px;margin-bottom:8px">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px">' +
           '<div style="font-size:12px;color:#94a3b8">' + escH(de) + (dt ? ' · ' + escH(dt) : '') + '</div>' +
-          '<button onclick="marcarAvisoLido(&quot;' + escAttr(id) + '&quot;)" style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.25);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap">Marcar lido</button>' +
+          '<button onclick="marcarAvisoLidoPainel(&quot;' + escAttr(id) + '&quot;, this)" style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.25);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;white-space:nowrap">Marcar lido</button>' +
         '</div>' +
         '<div style="margin-top:6px;color:#e2e8f0;white-space:pre-wrap;word-break:break-word">' + escH(txt) + '</div>' +
       '</div>';
@@ -54991,16 +54987,34 @@ function fecharAvisos(){
   if(modal) modal.style.display = 'none';
 }
 
-async function marcarAvisoLido(id, el){
+async function marcarAvisoLidoPainel(id, btn){
+  var avisoId = String(id || '').trim();
+  if(!avisoId) return;
+
   try{
-    await _chatFetchJson('/api/avisos/' + encodeURIComponent(String(id||'')) + '/lido', { method:'PATCH' });
-    try{ if(el && el.remove) el.remove(); }catch(e){}
-    try{
-      const lista = document.getElementById('avisos-lista');
-      if(lista && !lista.children.length) fecharAvisos();
-    }catch(e){}
-    carregarAvisos();
+    var vistos = JSON.parse(localStorage.getItem('avisos_vistos') || '[]');
+    if(!Array.isArray(vistos)) vistos = [];
+    if(!vistos.includes(avisoId)){
+      vistos.push(avisoId);
+      localStorage.setItem('avisos_vistos', JSON.stringify(vistos));
+    }
   }catch(e){}
+
+  try{
+    await _chatFetchJson('/api/avisos/' + encodeURIComponent(avisoId) + '/lido', { method:'PATCH' });
+  }catch(e){}
+
+  try{
+    var card = btn && btn.closest ? btn.closest('[data-aviso-id]') : null;
+    if(card && card.remove) card.remove();
+  }catch(e){}
+
+  try{
+    var lista = document.getElementById('avisos-lista');
+    if(!lista || !lista.children || lista.children.length === 0) fecharAvisos();
+  }catch(e){}
+
+  try{ carregarAvisos(); }catch(e){}
 }
 
 try{

@@ -4205,12 +4205,16 @@ app.post('/api/avisos', authMiddleware, async (req, res) => {
 
 app.patch('/api/avisos/:id/lido', authMiddleware, async (req, res) => {
   try {
-    const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
-    const id = String(req.params.id || '').trim();
-    if (!id) return res.json({ ok: true });
-    await supabase.from('avisos_usuarios').update({ lido: true }).eq('id', id).or(`para_usuario.eq.${userId},para_usuario.is.null`);
+    const { error } = await supabase
+      .from('avisos_usuarios')
+      .update({ lido: true })
+      .eq('id', req.params.id);
+    if (error) throw error;
     res.json({ ok: true });
-  } catch (e) { res.json({ ok: true }); }
+  } catch (e) {
+    console.error('[avisos/lido]', e.message);
+    res.json({ ok: true });
+  }
 });
 
 app.post('/api/of/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
