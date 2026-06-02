@@ -1301,11 +1301,32 @@ app.get('/api/usuarios', requireAdmin, async (req, res) => {
 
 app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const isMissingColumnErr = (err) => {
+      const msg = String(err?.message || err || '').toLowerCase();
+      return msg.includes('could not find the') || msg.includes('does not exist');
+    };
+    const extractMissingCol = (err) => {
+      const msg = String(err?.message || err || '');
+      const m1 = msg.match(/Could not find the '([^']+)' column/i);
+      const m2 = msg.match(/column\s+"?(\w+)"?\s+does not exist/i);
+      return (m1 && m1[1]) || (m2 && m2[1]) || null;
+    };
+
+    let r = await supabase
       .from('usuarios')
       .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor')
+      .or('ativo.is.null,ativo.eq.true')
       .order('nome', { ascending: true });
-    if (error) throw error;
+
+    if (r?.error && isMissingColumnErr(r.error) && extractMissingCol(r.error) === 'ativo') {
+      r = await supabase
+        .from('usuarios')
+        .select('id,nome,email,perfil,avatar_url,avatar_iniciais,avatar_cor')
+        .order('nome', { ascending: true });
+    }
+
+    if (r?.error) throw r.error;
+    const data = r?.data || [];
     res.json({ ok: true, data: data || [], usuarios: data || [] });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
