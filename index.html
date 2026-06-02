@@ -22730,6 +22730,225 @@ function qrEstoqueImprimir(){
   if(dataUrl) openPrint(dataUrl);
 }
 
+async function abrirLeitorQRChapa() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('Câmera não disponível neste dispositivo/browser.');
+    return;
+  }
+
+  var old = document.getElementById('modal-qr-chapa');
+  if (old) { try{ fecharLeitorQR(); }catch(e){} return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'modal-qr-chapa';
+  overlay.style.cssText = 'position:fixed;inset:0;background:#000;z-index:10000;display:flex;flex-direction:column';
+
+  overlay.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(0,0,0,0.8);color:#fff;flex-shrink:0">' +
+      '<span style="font-weight:600">📷 Escanear Chapa</span>' +
+      '<button onclick="fecharLeitorQR()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="position:relative;flex:1">' +
+      '<video id="qr-video" style="width:100%;height:100%;object-fit:cover" autoplay muted playsinline></video>' +
+      '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #4A90D9;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)">' +
+        '<div style="position:absolute;top:-2px;left:-2px;width:30px;height:30px;border-top:4px solid #4A90D9;border-left:4px solid #4A90D9;border-radius:4px 0 0 0"></div>' +
+        '<div style="position:absolute;top:-2px;right:-2px;width:30px;height:30px;border-top:4px solid #4A90D9;border-right:4px solid #4A90D9;border-radius:0 4px 0 0"></div>' +
+        '<div style="position:absolute;bottom:-2px;left:-2px;width:30px;height:30px;border-bottom:4px solid #4A90D9;border-left:4px solid #4A90D9;border-radius:0 0 0 4px"></div>' +
+        '<div style="position:absolute;bottom:-2px;right:-2px;width:30px;height:30px;border-bottom:4px solid #4A90D9;border-right:4px solid #4A90D9;border-radius:0 0 4px 0"></div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="padding:12px;background:rgba(0,0,0,0.8);flex-shrink:0;text-align:center">' +
+      '<p id="qr-hint" style="color:#94a3b8;font-size:13px;margin:0">Aponte para o QR Code da chapa</p>' +
+      '<div style="display:flex;gap:8px;margin-top:8px">' +
+        '<input id="qr-manual-input" type="text" placeholder="Ou digitar código da chapa..." style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px;color:#fff;font-size:14px">' +
+        '<button onclick="buscarChapaManual()" style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">Buscar</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    var video = document.getElementById('qr-video');
+    if (!video) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    video.srcObject = stream;
+    window._qrStream = stream;
+
+    if ('BarcodeDetector' in window) {
+      var detector = new BarcodeDetector({ formats: ['qr_code'] });
+      var scanInterval = setInterval(async function() {
+        if (!document.getElementById('modal-qr-chapa')) { clearInterval(scanInterval); return; }
+        try {
+          var codes = await detector.detect(video);
+          if (codes && codes.length > 0 && codes[0] && codes[0].rawValue) {
+            clearInterval(scanInterval);
+            fecharLeitorQR();
+            mostrarResultadoChapa(String(codes[0].rawValue || '').trim());
+          }
+        } catch(e) {}
+      }, 500);
+      window._qrScanInterval = scanInterval;
+    } else {
+      var hint = document.getElementById('qr-hint');
+      if (hint) hint.textContent = 'BarcodeDetector não disponível. Digite o código manualmente.';
+    }
+  } catch(e) {
+    alert('Não foi possível acessar a câmera: ' + String(e && e.message ? e.message : e));
+    fecharLeitorQR();
+  }
+}
+
+function fecharLeitorQR() {
+  try { if (window._qrScanInterval) clearInterval(window._qrScanInterval); } catch(e) {}
+  try { window._qrScanInterval = null; } catch(e) {}
+  try {
+    if (window._qrStream) {
+      window._qrStream.getTracks().forEach(function(t){ try{ t.stop(); }catch(e){} });
+      window._qrStream = null;
+    }
+  } catch(e) {}
+  var modal = document.getElementById('modal-qr-chapa');
+  if (modal) modal.remove();
+}
+
+async function buscarChapaManual() {
+  var codigo = String(document.getElementById('qr-manual-input') && document.getElementById('qr-manual-input').value || '').trim();
+  if (!codigo) return;
+  fecharLeitorQR();
+  mostrarResultadoChapa(codigo);
+}
+
+async function mostrarResultadoChapa(codigo) {
+  var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  if (!token) { alert('Faça login novamente.'); return; }
+  try {
+    var r = await fetch('/api/chapas/qr/' + encodeURIComponent(String(codigo || '').trim()), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    var d = await r.json().catch(function(){ return null; });
+    if (!d || !d.ok || !d.chapa) { alert('Chapa não encontrada: ' + String(codigo || '').trim()); return; }
+
+    var chapa = d.chapa || {};
+    var similares = Array.isArray(d.similares) ? d.similares : [];
+
+    var nome = chapa.nome_uso || chapa.nome || chapa.descricao || chapa.nomenclatura || chapa.nom || 'Chapa';
+    var tamanho = chapa.tamanho || chapa.tam || '';
+    var gram = (chapa.gramatura != null ? chapa.gramatura : chapa.grammage);
+    var qtd = (chapa.quantidade != null ? chapa.quantidade : (chapa.qtd != null ? chapa.qtd : 0));
+    var vunit = (chapa.valor_unitario != null ? chapa.valor_unitario : (chapa.vl_un != null ? chapa.vl_un : (chapa.val != null ? chapa.val : 0)));
+
+    var overlay = document.createElement('div');
+    overlay.id = 'modal-chapa-resultado';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:flex-end;padding:0';
+
+    overlay.innerHTML =
+      '<div style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:20px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+          '<span style="color:#4A90D9;font-weight:700;font-size:16px">📋 ' + escH(String(nome || 'Chapa')) + '</span>' +
+          '<button onclick="document.getElementById(&quot;modal-chapa-resultado&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button>' +
+        '</div>' +
+
+        '<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:14px;margin-bottom:14px">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+            '<div><div style="color:#64748b;font-size:11px">Tamanho</div><div style="color:#e2e8f0;font-size:14px;font-weight:600">' + escH(String(tamanho || '—')) + '</div></div>' +
+            '<div><div style="color:#64748b;font-size:11px">Gramatura</div><div style="color:#e2e8f0;font-size:14px;font-weight:600">' + escH(String(gram != null ? gram : '—')) + '</div></div>' +
+            '<div><div style="color:#64748b;font-size:11px">Em estoque</div><div style="color:' + ((Number(qtd||0) > 0) ? '#10b981' : '#f43f5e') + ';font-size:18px;font-weight:700">' + escH(String(Number(qtd||0)||0)) + '</div></div>' +
+            '<div><div style="color:#64748b;font-size:11px">Vl/un</div><div style="color:#e2e8f0;font-size:14px;font-weight:600">R$ ' + escH((Number(vunit||0)||0).toFixed(2)) + '</div></div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="margin-bottom:14px">' +
+          '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">📐 Simular para qual caixa?</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Comp (mm)</label><input id="sim-comp" type="number" placeholder="ex: 300" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Larg (mm)</label><input id="sim-larg" type="number" placeholder="ex: 200" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+            '<div><label style="color:#64748b;font-size:11px;display:block;margin-bottom:3px">Alt (mm)</label><input id="sim-alt" type="number" placeholder="ex: 150" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:8px;font-size:14px;box-sizing:border-box"></div>' +
+          '</div>' +
+          '<button id="btn-simular-chapa" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:12px;cursor:pointer;font-size:14px;font-weight:600">▶ Simular Desperdício</button>' +
+          '<div id="sim-resultado" style="margin-top:10px"></div>' +
+        '</div>' +
+
+        (similares.length > 0 ?
+          '<div>' +
+            '<div style="color:#94a3b8;font-size:13px;font-weight:600;margin-bottom:10px">Outras chapas disponíveis</div>' +
+            similares.map(function(s) {
+              var st = s.tamanho || s.tam || s.nome_uso || s.nome || '—';
+              var sg = (s.gramatura != null ? s.gramatura : s.grammage);
+              var sq = (s.quantidade != null ? s.quantidade : (s.qtd != null ? s.qtd : 0));
+              var sv = (s.valor_unitario != null ? s.valor_unitario : (s.vl_un != null ? s.vl_un : (s.val != null ? s.val : 0)));
+              return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">' +
+                '<div><div style="color:#e2e8f0;font-size:13px;font-weight:600">' + escH(String(st||'—')) + '</div>' +
+                '<div style="color:#64748b;font-size:11px">' + escH(String(sg != null ? sg : '—')) + ' · ' + escH(String(Number(sq||0)||0)) + ' em estoque</div></div>' +
+                '<span style="color:#4A90D9;font-size:13px">R$ ' + escH((Number(sv||0)||0).toFixed(2)) + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>' : '') +
+      '</div>';
+
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+
+    try{
+      var btn = document.getElementById('btn-simular-chapa');
+      if(btn) btn.onclick = function(){ simularDesperdicioChapa(String(chapa.id||''), String(tamanho||'')); };
+    }catch(e){}
+  } catch(e) {
+    alert('Erro ao buscar chapa: ' + String(e && e.message ? e.message : e));
+  }
+}
+
+function simularDesperdicioChapa(chapaId, tamChapa) {
+  var comp = parseInt(String(document.getElementById('sim-comp') && document.getElementById('sim-comp').value || '0'), 10) || 0;
+  var larg = parseInt(String(document.getElementById('sim-larg') && document.getElementById('sim-larg').value || '0'), 10) || 0;
+  var alt  = parseInt(String(document.getElementById('sim-alt') && document.getElementById('sim-alt').value || '0'), 10) || 0;
+  var resultado = document.getElementById('sim-resultado');
+  if (!resultado) return;
+
+  if (!comp || !larg || !alt) {
+    resultado.innerHTML = '<p style="color:#f59e0b;font-size:12px">Preencha as 3 dimensões.</p>';
+    return;
+  }
+
+  var compPlan = (comp + larg) * 2 + 40;
+  var largPlan = alt + larg + alt + 20;
+  var areaCaixa = compPlan * largPlan;
+
+  var parts = String(tamChapa || '').split(/[xX×]/);
+  var chapW = parseInt(String(parts[0] || '0'), 10) || 0;
+  var chapH = parseInt(String(parts[1] || '0'), 10) || 0;
+  var areaChapa = chapW * chapH;
+
+  var desperdicio = 0;
+  var cabem = 0;
+
+  if (areaChapa > 0 && areaCaixa > 0) {
+    var pCols = Math.floor(chapW / compPlan);
+    var pRows = Math.floor(chapH / largPlan);
+    cabem = pCols * pRows;
+
+    if (cabem > 0) {
+      var areaUtil = areaCaixa * cabem;
+      desperdicio = Math.round((1 - areaUtil / areaChapa) * 100);
+    } else {
+      desperdicio = 100;
+    }
+  }
+
+  var cor = desperdicio > 30 ? '#f43f5e' : desperdicio > 15 ? '#f59e0b' : '#10b981';
+  var avaliacao = desperdicio > 30 ? 'Ruim — busque alternativa' : desperdicio > 15 ? 'Razoável' : 'Ótimo aproveitamento';
+
+  resultado.innerHTML =
+    '<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;margin-top:8px">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">' +
+        '<div><div style="color:#64748b;font-size:11px">Caixas por chapa</div><div style="color:#e2e8f0;font-size:20px;font-weight:700">' + escH(String(cabem)) + '</div></div>' +
+        '<div><div style="color:#64748b;font-size:11px">Desperdício</div><div style="color:' + cor + ';font-size:20px;font-weight:700">' + escH(String(desperdicio)) + '%</div></div>' +
+      '</div>' +
+      '<div style="background:' + cor + '22;border:1px solid ' + cor + '44;border-radius:6px;padding:8px;font-size:13px;color:' + cor + ';font-weight:600">' +
+        escH(String(avaliacao)) +
+      '</div>' +
+    '</div>';
+}
+
 async function estoqueUploadFoto(tipo, itemId, file){
   const fd = new FormData();
   fd.append('tipo', String(tipo||''));
@@ -41932,6 +42151,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <button class="btn btn-ghost btn-sm" onclick="estoqueGerarInventario()">📄 Gerar Inventário</button>
     <button class="btn btn-ghost btn-sm" onclick="estoqueTriggerImportInventario()">📤 Importar Inventário</button>
     <button class="btn btn-green btn-sm" onclick="abrirModalReceberPlacaChapas()">🚛 Receber por Placa</button>
+    <button onclick="abrirLeitorQRChapa()"
+      style="background:rgba(74,144,217,0.15);color:#4A90D9;border:1px solid rgba(74,144,217,0.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px">
+      📷 Escanear Chapa
+    </button>
     <button class="btn btn-ghost btn-sm" onclick="abrirModalAjuste()">✏ Ajuste</button>
     <button class="btn btn-purple btn-sm" onclick="novaMovEstoque()">＋ Movimentação</button>
     <button class="btn btn-purple btn-sm" onclick="abrirModalEntradaXML()">📄 XML NF</button>

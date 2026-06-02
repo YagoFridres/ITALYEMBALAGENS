@@ -999,38 +999,42 @@
   }
 
   function getHotbarConfig() {
-    var base = ['hub', 'pcp', 'ofmaq'];
-    var extra = 'estoque';
+    var def = ['hub', 'pcp', 'ofmaq'];
+    var arr = null;
     try {
       var salvo = localStorage.getItem('hotbar_config');
       if (salvo) {
-        var arr = JSON.parse(salvo);
-        if (Array.isArray(arr)) {
-          arr = arr.map(function(x){ return String(x||'').trim(); }).filter(Boolean);
-          for (var i = 0; i < arr.length; i++) {
-            var it = arr[i];
-            if (base.indexOf(it) !== -1) continue;
-            if (_isValidPageId(it)) { extra = it; break; }
-          }
-        }
+        var x = JSON.parse(salvo);
+        if (Array.isArray(x)) arr = x;
       }
     } catch(e) {}
-    var out = base.slice();
-    if (extra && out.indexOf(extra) === -1 && _isValidPageId(extra)) out.push(extra);
+    if (!Array.isArray(arr) || arr.length === 0) return def.slice();
+    var out = [];
+    arr.forEach(function(id){
+      var pid = String(id || '').trim();
+      if (!pid) return;
+      if (out.indexOf(pid) !== -1) return;
+      if (!_isValidPageId(pid)) return;
+      out.push(pid);
+    });
+    if (out.indexOf('hub') === -1) out.unshift('hub');
+    if (out[0] !== 'hub') out = ['hub'].concat(out.filter(function(x){ return x !== 'hub'; }));
     return out.slice(0, 4);
   }
 
   function salvarHotbarConfig(ids) {
-    var base = ['hub', 'pcp', 'ofmaq'];
-    var arr = Array.isArray(ids) ? ids.map(function(x){ return String(x||'').trim(); }).filter(Boolean) : [];
-    var extra = '';
-    for (var i = 0; i < arr.length; i++) {
-      var it = arr[i];
-      if (base.indexOf(it) !== -1) continue;
-      if (_isValidPageId(it)) { extra = it; break; }
-    }
-    var out = base.slice();
-    if (extra && out.indexOf(extra) === -1) out.push(extra);
+    var arr = Array.isArray(ids) ? ids : [];
+    var out = [];
+    arr.forEach(function(id){
+      var pid = String(id || '').trim();
+      if (!pid) return;
+      if (out.indexOf(pid) !== -1) return;
+      if (!_isValidPageId(pid)) return;
+      out.push(pid);
+    });
+    if (out.indexOf('hub') === -1) out.unshift('hub');
+    if (out[0] !== 'hub') out = ['hub'].concat(out.filter(function(x){ return x !== 'hub'; }));
+    out = out.slice(0, 4);
     try{ localStorage.setItem('hotbar_config', JSON.stringify(out)); }catch(e){}
     renderHotbar();
   }
@@ -1068,9 +1072,7 @@
     var ativos = getHotbarConfig(); 
     var html = ativos.slice(0, 4).map(function(id) { 
       var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || _findPaginaById(id) || { id: id, label: id, icone: '📌', fixo: false }; 
-      var on = (aba.id === 'orcamentos' || aba.id === 'comissoes')
-        ? 'goFinanceiro(&quot;' + aba.id + '&quot;)'
-        : 'go(&quot;' + aba.id + '&quot;)';
+      var on = 'mobileGoPage(&quot;' + aba.id + '&quot;)';
       return '<button class="mbn-item" data-tab="' + aba.id + '" onclick="' + on + '" ' + 
         'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
         'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
@@ -1089,6 +1091,7 @@
     nav.innerHTML = html; 
     atualizarAbaAtiva(); 
   } 
+  window.renderHotbarPatch = renderHotbar;
 
   window.abrirMenuMais = function() {
     var old = document.getElementById('mob-menu-mais');
@@ -1126,6 +1129,12 @@
         '<span style="color:#e2e8f0;font-weight:700;font-size:16px">Menu</span>' +
         '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:24px;cursor:pointer">✕</button>' +
       '</div>';
+    html += '<button onclick="abrirPersonalizarHotbar()" style="' +
+      'width:100%;background:rgba(74,144,217,0.1);color:#4A90D9;' +
+      'border:1px solid rgba(74,144,217,0.25);border-radius:10px;' +
+      'padding:12px;cursor:pointer;font-size:13px;font-weight:600;' +
+      'display:flex;align-items:center;gap:8px;margin-bottom:14px;justify-content:center">' +
+      '⚙ Personalizar barra de navegação</button>';
 
     Object.keys(grupos).forEach(function(grupo) {
       html += '<div style="margin-bottom:16px">' +
@@ -1151,6 +1160,81 @@
     overlay.innerHTML = html;
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
     document.body.appendChild(overlay);
+  };
+
+  window.abrirPersonalizarHotbar = function() {
+    var menu = document.getElementById('mob-menu-mais');
+    if (menu) menu.remove();
+
+    var old = document.getElementById('modal-personalizar-hotbar');
+    if (old) { old.remove(); return; }
+
+    var configuradas = [];
+    try{
+      var x = JSON.parse(localStorage.getItem('hotbar_config') || '["hub","pcp","ofmaq"]');
+      if (Array.isArray(x)) configuradas = x.map(function(a){ return String(a||'').trim(); }).filter(Boolean);
+    }catch(e){ configuradas = ['hub','pcp','ofmaq']; }
+    if (configuradas.indexOf('hub') === -1) configuradas.unshift('hub');
+
+    var paginas = (window._todasPaginas || PAGINAS_REAIS_DESKTOP || []).filter(function(p){
+      if (!p || !p.id) return false;
+      if (p.id === 'hub') return false;
+      var elPage = document.getElementById('page-' + p.id) || document.querySelector('[data-page="' + p.id + '"]');
+      return !!elPage;
+    });
+
+    var overlay = document.createElement('div');
+    overlay.id = 'modal-personalizar-hotbar';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9600;display:flex;align-items:flex-end';
+
+    overlay.innerHTML =
+      '<div style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:6px;align-items:center">' +
+          '<span style="color:#e2e8f0;font-weight:700;font-size:15px">Personalizar Hotbar</span>' +
+          '<button onclick="document.getElementById(&quot;modal-personalizar-hotbar&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<p style="color:#64748b;font-size:12px;margin:0 0 16px">Máximo 4 atalhos. Hub é fixo.</p>' +
+        '<div style="display:flex;flex-direction:column;gap:8px">' +
+          paginas.map(function(p){
+            var selecionado = configuradas.indexOf(p.id) !== -1;
+            var ic = String(p.icone || '📌').replace(/</g,'').replace(/>/g,'');
+            var lb = String(p.label || p.id).replace(/</g,'').replace(/>/g,'');
+            return '<label style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (selecionado?'0.15':'0.07') + ');border-radius:10px;cursor:pointer">' +
+              '<input type="checkbox" ' + (selecionado?'checked':'') + ' data-id="' + p.id + '" onchange="toggleHotbarItem(this)" style="width:20px;height:20px;accent-color:#4A90D9;flex-shrink:0">' +
+              '<span style="font-size:18px">' + ic + '</span>' +
+              '<span style="color:#e2e8f0;font-size:14px">' + lb + '</span>' +
+            '</label>';
+          }).join('') +
+        '</div>' +
+        '<button onclick="salvarHotbarConfig()" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:10px;padding:14px;cursor:pointer;font-size:14px;font-weight:600;margin-top:16px">Salvar configuração</button>' +
+      '</div>';
+
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  };
+
+  window.toggleHotbarItem = function(checkbox) {
+    try{
+      var selecionados = Array.prototype.slice.call(document.querySelectorAll('#modal-personalizar-hotbar input[type="checkbox"]:checked'))
+        .map(function(cb){ return String(cb.dataset && cb.dataset.id || '').trim(); })
+        .filter(Boolean);
+      if (selecionados.length > 3 && checkbox && checkbox.checked) {
+        checkbox.checked = false;
+        alert('Máximo 3 atalhos além do Hub.');
+      }
+    }catch(e){}
+  };
+
+  window.salvarHotbarConfig = function() {
+    var selecionados = ['hub'].concat(
+      Array.prototype.slice.call(document.querySelectorAll('#modal-personalizar-hotbar input[type="checkbox"]:checked'))
+        .map(function(cb){ return String(cb.dataset && cb.dataset.id || '').trim(); })
+        .filter(Boolean)
+        .slice(0, 3)
+    );
+    salvarHotbarConfig(selecionados);
+    try{ document.getElementById('modal-personalizar-hotbar') && document.getElementById('modal-personalizar-hotbar').remove(); }catch(e){}
+    alert('Hotbar salva! ✓');
   };
 
   window.toggleHotbarAba = function(id, ativo) {
