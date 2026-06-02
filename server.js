@@ -787,7 +787,7 @@ app.post('/api/auth/login', async (req, res) => {
       let q = supabase.from('usuarios').select('*');
       if (colName === 'email') q = q.ilike(colName, String(value || '').trim().toLowerCase());
       else q = q.eq(colName, value);
-      q = q.or('ativo.is.null,ativo.eq.true').limit(1);
+      q = q.limit(1);
       const r1 = await q;
       if (!r1?.error) return r1;
       if (isMissingColumnErr(r1.error) && extractMissingCol(r1.error) === 'ativo') {
@@ -845,8 +845,8 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const usuario = rows[0];
-    console.log('[LOGIN USUARIO ENCONTRADO]', !!usuario);
-    console.log('[LOGIN ATIVO]', usuario?.ativo);
+    console.log('[LOGIN] usuario encontrado:', !!usuario, String(usuario?.email || ''), usuario?.ativo, usuario?.perfil);
+    console.log('[LOGIN] empresa:', usuario?.empresa_id, usuario?.canais_chat);
     if (usuario?.ativo === false) {
       try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'usuario_inativo' }); } catch (_) {}
       return res.status(401).json({ ok: false, error: 'Usuário inativo' });
