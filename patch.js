@@ -25,14 +25,14 @@
     margin-left: 0 !important;
     padding: 8px 8px 68px !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
 
   /* Todas as pages sem overflow lateral */
   [id^="page-"], .page, [data-page] {
-    max-width: 100vw !important;
+    max-width: 100% !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
@@ -271,11 +271,13 @@
     margin-left: initial !important;
   }
 
-  body {
+  html, body {
     overflow-x: hidden !important;
-    padding-bottom: 64px !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
+  }
+  body {
+    padding-bottom: 64px !important;
   }
 
   .sidebar, #sidebar, nav.side, .side-nav,
@@ -298,7 +300,7 @@
   .layout, .content, .page, .page-body {
     margin-left: 0 !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
   }
 
   .main-content, #main-content,
@@ -317,8 +319,8 @@
     padding-left: 10px !important;
     padding-right: 10px !important;
     padding-bottom: 72px !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: hidden !important;
     position: relative !important;
@@ -328,20 +330,52 @@
   section, [id^="page-"], .page,
   [data-page], .tab-content {
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
     overflow-x: hidden !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
   }
 
+  .topbar, #topbar,
   .top-bar, #top-bar, .header-bar,
   [class*="top-bar"], [class*="header-bar"],
   header, #header {
-    padding: 6px 10px !important;
     flex-wrap: wrap !important;
+    padding: 6px 8px !important;
     gap: 4px !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
+  }
+
+  .topbar .logo-icon,
+  .topbar img, #topbar img,
+  .top-bar img, #top-bar img,
+  header img, #header img,
+  [class*="logo"] img {
+    height: 28px !important;
+    width: auto !important;
+  }
+
+  .topbar-badges { flex-wrap: wrap !important; gap: 4px !important; }
+  .tbadge,
+  [class*="badge-status"], [class*="status-badge"],
+  .badge-atrasados, .badge-urgentes, .badge-concluidos,
+  [id*="badge"], [class*="badge"] {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    min-width: 0 !important;
+  }
+
+  [class*="busca-global"], [id*="busca-global"],
+  input[placeholder*="Buscar"], input[placeholder*="buscar"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    order: 10 !important;
+  }
+
+  .clock, #clock,
+  [class*="hora-atual"], [id*="hora-atual"] {
+    display: none !important;
   }
 
   .empresa-tabs, [class*="empresa-tab"],
@@ -434,7 +468,7 @@
     -webkit-overflow-scrolling: touch !important;
     gap: 10px !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
   }
   .kb-col, [class*="kb-col"] {
     min-width: 270px !important;
@@ -495,7 +529,7 @@
   }
 
   div, section, article, aside, nav, main, header, footer {
-    max-width: 100vw !important;
+    max-width: 100% !important;
     min-width: 0 !important;
   }
 }
@@ -1537,11 +1571,11 @@
     margin-left: 0 !important;
     padding: 8px 12px 80px !important;
     width: 100% !important;
-    max-width: 100vw !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
   }
   [id^="page-"] {
-    max-width: 100vw !important;
+    max-width: 100% !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
