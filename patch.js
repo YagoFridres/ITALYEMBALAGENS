@@ -4,367 +4,257 @@
 
   try {
     var cssM = `
-/* ════════════════════════════════════════════════════
-   CSS RESPONSIVO — Italy Embalagens ERP
-   Adapta o sistema existente para mobile/tablet.
-   NÃO cria novo sistema. NÃO esconde funcionalidades.
-   ════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════
+   ITALY EMBALAGENS ERP — CSS RESPONSIVO
+   Adapta o sistema PC para mobile/tablet.
+   Não cria novo sistema. Mesmas APIs/dados.
+   ════════════════════════════════════════════ */
 
-/* ── MOBILE (até 768px) ─────────────────────────────── */
+/* ── MOBILE ATÉ 768px ─────────────────────── */
 @media (max-width: 768px) {
 
-  /* 1. LAYOUT PRINCIPAL */
-  /* Sidebar oculta — navegação pela hotbar existente */
+  /* 1. ESTRUTURA: sidebar oculta, conteúdo full width */
   .sidebar, #sidebar, nav.side, .side-nav,
-  [class*="sidebar"]:not(.mobile-bottom-nav) {
+  [class*="sidebar-"]:not(#mobile-bottom-nav),
+  [id*="sidebar"]:not(#mobile-bottom-nav) {
     display: none !important;
   }
-
-  /* Conteúdo ocupa tela toda */
-  .main-content, #main-content, .content-area,
-  [class*="main-content"], [class*="content-wrap"],
-  .app-content, #app-content {
+  .main-content, #main-content, .content,
+  #content, [class*="main-content"],
+  [class*="content-area"], .app-body, #app-body {
     margin-left: 0 !important;
-    padding: 8px 8px 70px !important;
+    padding: 8px 8px 68px !important;
     width: 100% !important;
     max-width: 100vw !important;
     box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
-  
-  /* Todas as telas/páginas (page-*) não estouram horizontal */
-  [id^="page-"], section[id^="page-"], div[id^="page-"],
-  .page, section.page, div.page {
+
+  /* Todas as pages sem overflow lateral */
+  [id^="page-"], .page, [data-page] {
     max-width: 100vw !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
 
-  /* Header do sistema — compactar */
+  /* 2. HEADER COMPACTO */
   .top-bar, #top-bar, .header-bar, #header-bar,
-  [class*="top-bar"], [class*="header-bar"] {
+  [class*="top-bar"], [class*="topbar"] {
     padding: 6px 10px !important;
     flex-wrap: wrap !important;
     gap: 4px !important;
     font-size: 12px !important;
   }
+  .empresa-tabs, [class*="empresa-tab"],
+  .emp-sel-bar { display: none !important; }
 
-  /* Esconder itens não essenciais do header no mobile */
-  .emp-sel-bar, .empresa-selector, [data-empresa-selector],
-  .empresa-tabs, [class*="empresa-tab"] {
-    display: none !important;
-  }
-
-  /* Hotbar do sistema — sempre visível */
-  .mobile-bottom-nav, #mobile-bottom-nav {
+  /* 3. HOTBAR — sempre visível no rodapé */
+  #mobile-bottom-nav, .mobile-bottom-nav {
     display: flex !important;
     position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
+    bottom: 0 !important; left: 0 !important; right: 0 !important;
     z-index: 1000 !important;
+    background: #0b1220 !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
   }
+  body { padding-bottom: 64px !important; }
 
-  /* Espaço para a hotbar */
-  body { padding-bottom: 65px !important; }
+  /* 4. INPUTS — sem zoom no iOS */
+  input, select, textarea { font-size: 16px !important; }
+  input[type="date"], input[type="time"] { font-size: 14px !important; }
 
-
-  /* 2. FORMULÁRIOS E INPUTS */
-  /* CRÍTICO: evitar zoom automático no iOS */
-  input, select, textarea,
-  input[type="text"], input[type="number"],
-  input[type="email"], input[type="password"],
-  input[type="date"], input[type="tel"],
-  input[type="search"] {
-    font-size: 16px !important;
+  /* 5. BOTÕES MAIORES PARA TOQUE */
+  button, .btn, [class*="btn-"], [role="button"] {
     min-height: 40px !important;
-  }
-
-  /* Botões maiores para toque */
-  button, .btn, [class*="btn-"],
-  [role="button"] {
-    min-height: 40px !important;
-    padding: 8px 14px !important;
+    padding: 8px 12px !important;
     font-size: 13px !important;
     touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
   }
 
-  /* Selects maiores */
-  select { min-height: 40px !important; padding: 8px !important; }
-
-
-  /* 3. TABELA DE OFS → CARDS */
-  /* Tabela principal do PCP */
-  table, .tabela-ofs, [class*="tabela-of"],
-  [class*="pcp-tabela"], [class*="tabela-pcp"] {
-    display: block !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+  /* 6. TABELAS → CARDS */
+  table:not(.no-card):not([class*="kanban"]) {
+    display: block !important; width: 100% !important;
   }
-
-  /* Thead oculto — labels via data-label */
-  .tabela-ofs thead, [class*="tabela-of"] thead,
-  [class*="pcp-tabela"] thead { display: none !important; }
-
-  /* Cada linha vira card */
-  .tabela-ofs tr, [class*="tabela-of"] tr,
-  [class*="pcp-tabela"] tr {
+  table:not(.no-card) thead { display: none !important; }
+  table:not(.no-card) tbody { display: block !important; }
+  table:not(.no-card) tr {
     display: block !important;
     background: rgba(255,255,255,0.03) !important;
     border: 1px solid rgba(255,255,255,0.08) !important;
     border-radius: 10px !important;
     margin-bottom: 8px !important;
     padding: 10px !important;
-    position: relative !important;
   }
-  .tabela-ofs tbody, [class*="tabela-of"] tbody { display: block !important; }
-
-  /* Células em flex */
-  .tabela-ofs td, [class*="tabela-of"] td {
+  table:not(.no-card) td {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
     padding: 3px 0 !important;
     border: none !important;
     font-size: 12px !important;
-    min-height: 22px !important;
+    min-height: 20px !important;
   }
-
   /* Esconder colunas menos importantes */
-  .tabela-ofs td:nth-child(n+9),
-  [class*="tabela-of"] td:nth-child(n+9),
-  .col-hide-mobile { display: none !important; }
-
-  /* Coluna de ações sempre visível e no final */
-  .tabela-ofs td:last-child,
-  [class*="tabela-of"] td:last-child {
+  table:not(.no-card) td:nth-child(n+8) { display: none !important; }
+  /* Coluna de ações sempre visível */
+  table:not(.no-card) td:last-child {
     display: flex !important;
     justify-content: flex-end !important;
     padding-top: 8px !important;
-    margin-top: 4px !important;
     border-top: 1px solid rgba(255,255,255,0.06) !important;
+    margin-top: 4px !important;
   }
 
-
-  /* 4. MODAIS → BOTTOM SHEET */
-  /* Qualquer overlay de modal */
-  [id*="modal"][style*="display: flex"],
-  [id*="modal"][style*="display:flex"],
-  [class*="modal"][style*="display: flex"],
-  [class*="modal"][style*="display:flex"] {
+  /* 7. MODAIS → BOTTOM SHEET */
+  [id*="modal"] {
     align-items: flex-end !important;
     padding: 0 !important;
   }
-
-  /* Conteúdo do modal sobe de baixo */
   [id*="modal"] > div,
   [id*="modal"] > .modal-content,
-  [class*="modal-content"],
-  [class*="modal-body"],
-  [class*="modal-inner"] {
+  .modal-content, .modal-body {
     width: 100% !important;
     max-width: 100% !important;
     border-radius: 18px 18px 0 0 !important;
-    max-height: 92vh !important;
+    max-height: 93vh !important;
     overflow-y: auto !important;
     margin: 0 !important;
-    position: relative !important;
   }
 
-
-  /* 5. KANBAN (OFs por Máquina) */
-  .kb-board, .kb-board-ofmaq, .kb-maq-board,
-  [class*="kb-board"] {
+  /* 8. KANBAN — scroll horizontal */
+  .kb-board, .kb-maq-board, [class*="kb-board"] {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    scroll-snap-type: x mandatory !important;
+    scroll-snap-type: x proximity !important;
     gap: 10px !important;
-    padding-bottom: 16px !important;
   }
-  .kb-col, .kb-col-ofmaq, .kb-maq-col,
-  [class*="kb-col"] {
+  .kb-col, [class*="kb-col"] {
     min-width: 270px !important;
-    max-width: 290px !important;
-    scroll-snap-align: start !important;
     flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
   }
-  /* Cards do kanban maiores para toque */
-  .kb-card, .kb-of-card, .kb-card-ofmaq,
-  [class*="kb-card"] {
+  .kb-card, [class*="kb-card"] {
     padding: 12px !important;
-    margin-bottom: 8px !important;
+    cursor: pointer !important;
   }
+  .kb-img, .of-ln-img { width: 44px !important; height: 44px !important; }
 
-
-  /* 6. TOOLBAR DO PCP */
-  /* Botões de ação em grid 2 colunas */
-  [class*="pcp-acoes"], [class*="acoes-pcp"],
-  [class*="toolbar-pcp"], [class*="pcp-toolbar"],
-  [id*="pcp-acoes"], [id*="acoes-pcp"] {
-    flex-wrap: wrap !important;
-    gap: 6px !important;
+  /* 9. TOOLBAR DO PCP */
+  [class*="pcp-acoes"], [id*="pcp-acoes"],
+  [class*="toolbar-pcp"], [class*="pcp-toolbar"] {
+    flex-wrap: wrap !important; gap: 6px !important;
   }
   [class*="pcp-acoes"] > button,
-  [class*="toolbar-pcp"] > button,
   [id*="pcp-acoes"] > button {
     flex: 1 1 calc(50% - 6px) !important;
     min-width: 0 !important;
-    font-size: 12px !important;
   }
 
-  /* Filtros do PCP em coluna */
-  .pcp-filtros, [class*="filtros-pcp"],
+  /* 10. FILTROS EM COLUNA */
+  [class*="filtros-"], [class*="-filtros"],
   [class*="filter-bar"] {
-    flex-direction: column !important;
-    gap: 6px !important;
+    flex-direction: column !important; gap: 6px !important;
   }
-  .pcp-filtros select, [class*="filtros-pcp"] select,
-  [class*="filter-bar"] select {
-    width: 100% !important;
-  }
+  [class*="filtros-"] select,
+  [class*="filter-bar"] select { width: 100% !important; }
 
-
-  /* 7. CHAT */
-  #chat-painel {
+  /* 11. CHAT */
+  #chat-painel, #painel-chat-grande > div {
     width: 100% !important;
     max-width: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
+    left: 0 !important; right: 0 !important;
     bottom: 62px !important;
-    height: 65vh !important;
     border-radius: 16px 16px 0 0 !important;
+    max-height: 70vh !important;
   }
 
-
-  /* 8. DASHBOARD / GRÁFICOS */
-  canvas, [class*="chart"], [class*="grafico"] {
-    max-width: 100% !important;
-    height: auto !important;
+  /* 12. DASHBOARD */
+  canvas, [class*="chart"] {
+    max-width: 100% !important; height: auto !important;
   }
-  [class*="dashboard-cards"], [class*="kpi-cards"],
-  [class*="stats-grid"] {
-    grid-template-columns: repeat(2, 1fr) !important;
+  [class*="kpi-cards"], [class*="stats-grid"],
+  [class*="dashboard-cards"] {
+    grid-template-columns: repeat(2,1fr) !important;
     gap: 8px !important;
   }
 
-
-  /* 9. ESTOQUE E OUTRAS TABELAS */
-  /* Tabelas genéricas com scroll horizontal */
-  table:not(.tabela-ofs):not([class*="tabela-of"]) {
-    display: block !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    white-space: nowrap !important;
+  /* 13. AGENDA */
+  #agenda-grid { gap: 2px !important; }
+  #agenda-grid > div {
+    min-height: 55px !important;
+    font-size: 10px !important;
+    padding: 3px !important;
   }
 
+  /* 14. PROJEÇÃO / GRÁFICOS COM SCROLL */
+  #widget-projecao-vendas,
+  [id*="grafico"], [id*="chart"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
 
-  /* 10. TIPOGRAFIA */
+  /* 15. IMAGENS */
+  img { max-width: 100% !important; height: auto !important; }
+
+  /* 16. TEXTOS */
   h1 { font-size: 18px !important; }
   h2 { font-size: 16px !important; }
   h3 { font-size: 15px !important; }
-  p, span, div { max-width: 100% !important; }
 
-  /* Texto longo com ellipsis em elementos de lista */
-  .tabela-ofs td span,
-  [class*="tabela-of"] td span,
-  [class*="of-cliente"],
-  [class*="cliente-nome"] {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-    max-width: 160px !important;
+  /* 17. SCROLLBAR FINA */
+  ::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2) !important;
+    border-radius: 3px !important;
   }
 
+  /* 18. FAB não sobrepor hotbar */
+  #fab-menu-container { bottom: 72px !important; }
 
-  /* 11. AGENDA */
-  #agenda-grid {
-    gap: 2px !important;
-  }
-  #agenda-grid > div {
-    min-height: 60px !important;
-    font-size: 11px !important;
-    padding: 4px !important;
-  }
+  /* 19. LINHAS OFs POR MÁQUINA */
+  .of-linha-row { gap: 6px !important; padding: 8px !important; }
+  .of-ln-prod { display: none !important; }
 
-
-  /* 12. IMAGENS DE OF */
-  [class*="of-img"], [class*="img-of"],
-  .kb-img, .kb-of-img {
-    width: 44px !important;
-    height: 44px !important;
-    flex-shrink: 0 !important;
-  }
-
-
-  /* 13. PROJEÇÃO DE VENDAS */
-  #widget-projecao-vendas {
+  /* 20. SELETOR DE MÁQUINA */
+  #ofmaq-seletor-maquinas {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
   }
-
-
-  /* 14. CLIENTES */
-  #analise-clientes-resultado .m-card,
-  [id*="analise"] [class*="card"] {
-    padding: 10px !important;
+  #ofmaq-seletor-maquinas button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
   }
-
-
-  /* 15. SCROLLBAR FINA NO MOBILE */
-  ::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
-  ::-webkit-scrollbar-track { background: transparent !important; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2) !important; border-radius: 3px !important; }
 }
 
-
-/* ── CELULAR PEQUENO (até 480px) ─────────────────────── */
+/* ── CELULAR PEQUENO ATÉ 480px ───────────────── */
 @media (max-width: 480px) {
-  body { font-size: 13px !important; }
-
-  /* Uma coluna em grids */
-  [class*="dashboard-cards"], [class*="kpi-cards"] {
-    grid-template-columns: 1fr 1fr !important;
+  body { font-size: 12px !important; }
+  .main-content, #main-content {
+    padding: 6px 6px 68px !important;
   }
-
-  /* Kanban ainda mais compacto */
-  .kb-col, [class*="kb-col"] {
-    min-width: 240px !important;
-    max-width: 260px !important;
+  [class*="kpi-cards"], [class*="stats-grid"] {
+    grid-template-columns: repeat(2,1fr) !important;
   }
-
-  /* Header ainda mais compacto */
-  .top-bar, #top-bar { padding: 4px 8px !important; }
-
-  /* Esconder labels de texto em botões de ícone */
-  [class*="btn-icon"] span,
-  [class*="icon-btn"] span { display: none !important; }
-
-  /* Modal quase full screen */
-  [id*="modal"] > div {
-    max-height: 96vh !important;
-    border-radius: 12px 12px 0 0 !important;
-  }
+  .kb-col, [class*="kb-col"] { min-width: 250px !important; }
+  [id*="modal"] > div { max-height: 96vh !important; }
+  h1 { font-size: 16px !important; }
 }
 
-
-/* ── TABLET (769px – 1024px) ────────────────────────── */
+/* ── TABLET 769px – 1024px ──────────────────── */
 @media (min-width: 769px) and (max-width: 1024px) {
-  /* Sidebar mais estreita */
-  .sidebar, #sidebar, [class*="sidebar"]:not(.mobile-bottom-nav) {
+  .sidebar, #sidebar, [class*="sidebar"] {
     width: 200px !important;
-    font-size: 12px !important;
   }
   .main-content, #main-content, [class*="main-content"] {
     margin-left: 200px !important;
   }
-
-  /* Tabelas com scroll horizontal no tablet */
   table { overflow-x: auto !important; display: block !important; }
-
-  /* Kanban com colunas um pouco menores */
-  .kb-col, [class*="kb-col"] {
-    min-width: 260px !important;
-  }
 }
 `;
 
@@ -375,7 +265,7 @@
       document.head.appendChild(elCSS);
     }
     elCSS.textContent = cssM;
-    console.log('[PATCH] CSS responsivo aplicado');
+    console.log('[PATCH] CSS responsivo mobile v3 aplicado — ' + cssM.length + ' chars');
   } catch (_) {}
  
   // ── UTIL: pegar token ────────────────────────────────────────── 
@@ -586,6 +476,62 @@
       });
     }catch(e){}
   }
+
+  function autoDiscoverPages() {
+    var paginasConhecidas = [
+      { id: 'hub',                  label: 'Hub',            icone: '🏠' },
+      { id: 'pcp',                  label: 'PCP',            icone: '📋' },
+      { id: 'ofmaq',                label: 'Máquinas',       icone: '⚙' },
+      { id: 'clientes',             label: 'Clientes',       icone: '👥' },
+      { id: 'estoque',              label: 'Estoque',        icone: '📦' },
+      { id: 'orcamentos',           label: 'Orçamentos',     icone: '💰' },
+      { id: 'dashboard',            label: 'Dashboard',      icone: '📊' },
+      { id: 'agenda',               label: 'Agenda',         icone: '📅' },
+      { id: 'historico-passagens',  label: 'Histórico',      icone: '🕒' },
+      { id: 'inconformidades',      label: 'Inconformidades',icone: '⚠' },
+      { id: 'operadores',           label: 'Operadores',     icone: '👤' },
+      { id: 'mapa-clientes',        label: 'Mapa',           icone: '🗺' },
+      { id: 'relatorios',           label: 'Relatórios',     icone: '📄' },
+      { id: 'papelao-ia',           label: 'Papelão IA',     icone: '🤖' },
+      { id: 'comissoes',            label: 'Comissões',      icone: '💵' },
+      { id: 'compras',              label: 'Compras',        icone: '🛒' },
+      { id: 'fornecedores',         label: 'Fornecedores',   icone: '🏭' },
+      { id: 'amostras',             label: 'Amostras',       icone: '🔬' },
+      { id: 'pedidos-recorrentes',  label: 'Recorrentes',    icone: '🔄' },
+      { id: 'caixas-perdidas',      label: 'Caixas Perdidas',icone: '📉' },
+      { id: 'configuracoes',        label: 'Config.',        icone: '⚙' }
+    ];
+
+    try{
+      var nodes = document.querySelectorAll('[id^="page-"]');
+      Array.prototype.forEach.call(nodes, function(el){
+        var pageId = String(el && el.id || '').replace(/^page-/, '').trim();
+        if(!pageId) return;
+        var existe = paginasConhecidas.some(function(p){ return p.id === pageId; });
+        if(!existe) paginasConhecidas.push({ id: pageId, label: pageId, icone: '📌' });
+      });
+    }catch(e){}
+
+    return paginasConhecidas;
+  }
+
+  try{ window._todasPaginas = autoDiscoverPages(); }catch(e){}
+
+  window.mobileGoPage = function(page) {
+    var pid = String(page || '').trim();
+    if(!pid) return;
+    var paginasFinanceiro = ['orcamentos', 'comissoes'];
+    if (paginasFinanceiro.indexOf(pid) !== -1) {
+      try{
+        if (sessionStorage.getItem('fin_ok') !== '1') {
+          var senha = prompt('Senha do Financeiro:');
+          if (senha !== '1234') { if(senha!==null) alert('Senha incorreta.'); return; }
+          sessionStorage.setItem('fin_ok', '1');
+        }
+      }catch(e){}
+    }
+    try{ if (typeof window.go === 'function') window.go(pid); }catch(e){}
+  };
   
   function goFinanceiro(pageId){
     var pid = String(pageId || '').trim();
@@ -685,43 +631,40 @@
     atualizarAbaAtiva(); 
   } 
 
-  window.abrirMenuMais = function() { 
-    try{ var old = document.getElementById('modal-menu-mais'); if(old) old.remove(); }catch(e){}      
-    var overlay = document.createElement('div'); 
-    overlay.id = 'modal-menu-mais'; 
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
- 
-    _hotbarEnsureAllPagesFromDom();
-    var ativos = getHotbarConfig(); 
-    var sheet = document.createElement('div'); 
-    sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
- 
-    var grid = HOTBAR_ABAS.filter(function(a){ return ativos.indexOf(a.id) === -1; }).map(function(aba) { 
-      var on = (aba.id === 'orcamentos' || aba.id === 'comissoes')
-        ? 'goFinanceiro(&quot;' + aba.id + '&quot;)'
-        : 'go(&quot;' + aba.id + '&quot;)';
-      return '<div onclick="' + on + ';document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="' + 
-        'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">' + 
-        '<div style="font-size:16px;margin-bottom:4px;color:#e2e8f0;font-weight:800">' + aba.icone + '</div>' + 
-        '<div style="color:#e2e8f0;font-size:12px">' + aba.label + '</div>' + 
-      '</div>'; 
-    }).join(''); 
- 
-    sheet.innerHTML = 
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' + 
-        '<span style="color:#e2e8f0;font-weight:800;font-size:15px">Menu</span>' + 
-        '<button onclick="document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">X</button>' + 
-      '</div>' + 
-      '<div style="background:rgba(74,144,217,0.1);border:1px solid rgba(74,144,217,0.2);border-radius:10px;padding:12px;margin-bottom:14px;cursor:pointer" onclick="window.abrirPersonalizarHotbar()">' + 
-        '<div style="color:#4A90D9;font-weight:600;font-size:13px;margin-bottom:2px">Personalizar barra de navegacao</div>' + 
-        '<div style="color:#64748b;font-size:11px">Escolha quais abas aparecem embaixo</div>' + 
-      '</div>' + 
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">' + grid + '</div>'; 
- 
-    overlay.appendChild(sheet); 
-    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); }); 
-    document.body.appendChild(overlay); 
-  }; 
+  window.abrirMenuMais = function() {
+    var old = document.getElementById('mob-menu-mais');
+    if (old) { old.remove(); return; }
+
+    var paginas = window._todasPaginas || autoDiscoverPages();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'mob-menu-mais';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end';
+
+    var painel = document.createElement('div');
+    painel.style.cssText = 'background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:16px 12px 70px';
+
+    painel.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
+        '<span style="color:#e2e8f0;font-weight:700;font-size:15px">Todas as áreas</span>' +
+        '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' +
+      paginas.map(function(p) {
+        return '<button onclick="mobileGoPage(&quot;' + p.id + '&quot;);document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="' +
+          'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);' +
+          'border-radius:10px;padding:12px 8px;cursor:pointer;color:#e2e8f0;font-size:12px;' +
+          'display:flex;flex-direction:column;align-items:center;gap:4px;touch-action:manipulation">' +
+          '<span style="font-size:20px">' + (p.icone||'📌') + '</span>' +
+          '<span style="font-size:11px;color:#94a3b8">' + p.label + '</span>' +
+        '</button>';
+      }).join('') +
+      '</div>';
+
+    overlay.appendChild(painel);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  };
 
   window.toggleHotbarAba = function(id, ativo) { 
     var cur = getHotbarConfig(); 
@@ -1215,7 +1158,7 @@
  
 })(); 
 
-(function(){
+(function(){ return;
   try{
     var cssM = `
 @media (max-width: 768px) {
@@ -1703,6 +1646,8 @@
 })();
 
 (function initMobileNav() {
+  return;
+  if (typeof isMobile !== 'function' || !isMobile()) return;
   if (typeof isMobile !== 'function' || !isMobile()) return;
 
   function buildBottomNav() {
@@ -1904,11 +1849,14 @@
 
 window._mbnActive = function(id) {
   document.querySelectorAll('.mbn-item').forEach(function(el) {
-    el.classList.toggle('ativo', el.id === id);
+    var on = el.id === id;
+    el.classList.toggle('ativo', on);
+    el.classList.toggle('active', on);
   });
 };
 
 (function initMobilePCP() {
+  return;
   if (typeof isMobile !== 'function' || !isMobile()) return;
 
   function fmtData(str) {
@@ -2067,7 +2015,8 @@ window._mbnActive = function(id) {
 })();
 
 (function initMobileSearch() {
-  if (typeof isMobile !== 'function' || !isMobile()) return;
+  return;
+  return;
 
   function buildSearchUI() {
     if (document.getElementById('mob-search-overlay')) return;
