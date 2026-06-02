@@ -641,6 +641,7 @@ app.use((req, res, next) => {
   if (req.path === '/api/ofs_test') return next();
   if (req.path === '/api/auth/login' || req.path === '/api/auth/login/') return next();
   if (req.path === '/api/auth/refresh' || req.path === '/api/auth/refresh/') return next();
+  if (req.path === '/api/auth/me' || req.path === '/api/auth/me/') return next();
   return authMiddleware(req, res, next);
 });
 
