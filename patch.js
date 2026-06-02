@@ -447,6 +447,99 @@
     margin-top: 4px !important;
   }
 
+  #page-estoque #est-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 10px !important;
+  }
+  #page-estoque #est-table-wrap:after {
+    content: '→ deslize para ver mais' !important;
+    display: block !important;
+    text-align: right !important;
+    font-size: 10px !important;
+    color: #4A90D9 !important;
+    padding: 4px !important;
+  }
+  #page-estoque #est-table-wrap table {
+    display: table !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+  }
+  #page-estoque #est-table-wrap table thead { display: table-header-group !important; }
+  #page-estoque #est-table-wrap table tbody { display: table-row-group !important; }
+  #page-estoque #est-table-wrap table tfoot { display: table-footer-group !important; }
+  #page-estoque #est-table-wrap table tr { display: table-row !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border-radius: 0 !important; border: none !important; }
+  #page-estoque #est-table-wrap table th,
+  #page-estoque #est-table-wrap table td {
+    display: table-cell !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    width: auto !important;
+  }
+  #page-estoque #est-table-wrap table th:first-child,
+  #page-estoque #est-table-wrap table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2 !important;
+    background: #0b1220 !important;
+  }
+
+  #page-pcp #pcp-table-wrap,
+  #pcp-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  #page-pcp table.pcp-table,
+  table.pcp-table {
+    display: table !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+  }
+  #page-pcp table.pcp-table thead,
+  table.pcp-table thead { display: table-header-group !important; }
+  #page-pcp table.pcp-table tbody,
+  table.pcp-table tbody { display: table-row-group !important; }
+  #page-pcp table.pcp-table tr,
+  table.pcp-table tr { display: table-row !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; border-radius: 0 !important; }
+  #page-pcp table.pcp-table th,
+  #page-pcp table.pcp-table td,
+  table.pcp-table th,
+  table.pcp-table td {
+    display: table-cell !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
+  #page-facas1 table,
+  #page-facas2 table,
+  #page-cliches table {
+    display: table !important;
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+  }
+  #page-facas1 table thead,
+  #page-facas2 table thead,
+  #page-cliches table thead { display: table-header-group !important; }
+  #page-facas1 table tbody,
+  #page-facas2 table tbody,
+  #page-cliches table tbody { display: table-row-group !important; }
+  #page-facas1 table tr,
+  #page-facas2 table tr,
+  #page-cliches table tr { display: table-row !important; padding: 0 !important; margin: 0 !important; background: transparent !important; border: none !important; border-radius: 0 !important; }
+  #page-facas1 table th,
+  #page-facas1 table td,
+  #page-facas2 table th,
+  #page-facas2 table td,
+  #page-cliches table th,
+  #page-cliches table td {
+    display: table-cell !important;
+    white-space: nowrap !important;
+    width: auto !important;
+  }
+
   #page-estoque [class*="toolbar"],
   #page-estoque [class*="acoes"],
   #page-estoque [class*="btn-group"],
@@ -470,61 +563,6 @@
   [id*="page-estoque"] select {
     width: 100% !important;
     margin-bottom: 6px !important;
-  }
-  #page-estoque table,
-  [id*="page-estoque"] table,
-  [id*="chapas"] table {
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  #page-estoque table thead,
-  [id*="page-estoque"] table thead { display: none !important; }
-  #page-estoque table tbody,
-  [id*="page-estoque"] table tbody { display: block !important; width: 100% !important; }
-  #page-estoque table tr,
-  [id*="page-estoque"] table tr {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 4px 12px !important;
-    background: rgba(255,255,255,0.03) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    border-radius: 10px !important;
-    padding: 10px !important;
-    margin-bottom: 8px !important;
-  }
-  #page-estoque table td,
-  [id*="page-estoque"] table td {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-start !important;
-    align-items: flex-start !important;
-    font-size: 12px !important;
-    border: none !important;
-    padding: 2px 0 !important;
-    width: auto !important;
-  }
-  #page-estoque table td[data-label]:before,
-  [id*="page-estoque"] table td[data-label]:before {
-    content: attr(data-label) !important;
-    font-size: 10px !important;
-    color: #64748b !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    margin-bottom: 1px !important;
-  }
-  #page-estoque table td:last-child,
-  [id*="page-estoque"] table td:last-child {
-    grid-column: 1 / -1 !important;
-    display: flex !important;
-    flex-direction: row !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    gap: 6px !important;
-    padding-top: 8px !important;
-    border-top: 1px solid rgba(255,255,255,0.06) !important;
-    margin-top: 4px !important;
   }
 
   #page-orcamentos table td:nth-child(n+8) { display: flex !important; }
@@ -558,6 +596,14 @@
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
+  }
+
+  #modal-calculadora .ondas,
+  #modal-calculadora [class*="onda"],
+  #modal-calculadora .calc-row-valores,
+  #modal-calculadora .calc-row-dims {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
   [id*="modal"] {

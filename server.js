@@ -9630,6 +9630,54 @@ app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+app.get('/api/chapas/qr/:codigo', authMiddleware, async (req, res) => {
+  try {
+    const raw = String(req.params.codigo || '').trim();
+    if (!raw) return res.status(400).json({ ok: false, error: 'Código obrigatório' });
+    const candidates = [raw, raw.replace(/^CHAPA-/i, '')].map((s) => String(s || '').trim()).filter(Boolean);
+    const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s || '').trim());
+    const tables = ['chapas', 'chapas_estoque_v2', 'chapas_estoque'];
+
+    let chapa = null;
+    let tableUsed = null;
+
+    for (const table of tables) {
+      for (const codigo of candidates) {
+        if (chapa) break;
+        try {
+          const r1 = await supabase.from(table).select('*').eq('qr_code', codigo).maybeSingle();
+          if (!r1.error && r1.data) { chapa = r1.data; tableUsed = table; break; }
+        } catch (_) {}
+        if (isUuid(codigo)) {
+          try {
+            const r2 = await supabase.from(table).select('*').eq('id', codigo).maybeSingle();
+            if (!r2.error && r2.data) { chapa = r2.data; tableUsed = table; break; }
+          } catch (_) {}
+        }
+      }
+      if (chapa) break;
+    }
+
+    if (!chapa || !tableUsed) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+
+    let similares = [];
+    try {
+      const gram = Number(chapa.gramatura ?? chapa.grammage ?? 0) || 0;
+      const qtdCol = (tableUsed === 'chapas') ? 'quantidade' : 'quantidade';
+      let q = supabase.from(tableUsed).select('*').neq('id', chapa.id).limit(10);
+      if (gram > 0) q = q.eq('gramatura', gram);
+      try { q = q.gt(qtdCol, 0); } catch (_) {}
+      const r3 = await q.order('tamanho', { ascending: true });
+      if (!r3.error && Array.isArray(r3.data)) similares = r3.data;
+    } catch (_) {}
+
+    return res.json({ ok: true, chapa, similares: similares || [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
