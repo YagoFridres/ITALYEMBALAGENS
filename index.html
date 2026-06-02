@@ -22732,7 +22732,27 @@ function qrEstoqueImprimir(){
 
 async function abrirLeitorQRChapa() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('Câmera não disponível neste dispositivo/browser.');
+    alert('Câmera não disponível. Use o campo manual abaixo.');
+    var old0 = document.getElementById('modal-qr-chapa');
+    if (!old0) {
+      var overlay0 = document.createElement('div');
+      overlay0.id = 'modal-qr-chapa';
+      overlay0.style.cssText = 'position:fixed;inset:0;background:#000;z-index:10000;display:flex;flex-direction:column';
+      overlay0.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(0,0,0,0.8);color:#fff;flex-shrink:0">' +
+          '<span style="font-weight:600">📷 Escanear Chapa</span>' +
+          '<button onclick="fecharLeitorQR()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="padding:12px;background:rgba(0,0,0,0.85);flex-shrink:0;text-align:center">' +
+          '<p id="qr-hint" style="color:#94a3b8;font-size:13px;margin:0">Câmera indisponível — digite o código da chapa</p>' +
+          '<div style="display:flex;gap:8px;margin-top:8px">' +
+            '<input id="qr-manual-input" type="text" placeholder="Digite o código da chapa..." style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:10px;color:#fff;font-size:14px">' +
+            '<button onclick="buscarChapaManual()" style="background:#4A90D9;color:#fff;border:none;border-radius:8px;padding:10px 16px;cursor:pointer;font-size:13px">Buscar</button>' +
+          '</div>' +
+        '</div>';
+      overlay0.addEventListener('click', function(e){ if(e.target===overlay0) overlay0.remove(); });
+      document.body.appendChild(overlay0);
+    }
     return;
   }
 
@@ -22750,6 +22770,7 @@ async function abrirLeitorQRChapa() {
     '</div>' +
     '<div style="position:relative;flex:1">' +
       '<video id="qr-video" style="width:100%;height:100%;object-fit:cover" autoplay muted playsinline></video>' +
+      '<canvas id="qr-canvas" style="display:none"></canvas>' +
       '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #4A90D9;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5)">' +
         '<div style="position:absolute;top:-2px;left:-2px;width:30px;height:30px;border-top:4px solid #4A90D9;border-left:4px solid #4A90D9;border-radius:4px 0 0 0"></div>' +
         '<div style="position:absolute;top:-2px;right:-2px;width:30px;height:30px;border-top:4px solid #4A90D9;border-right:4px solid #4A90D9;border-radius:0 4px 0 0"></div>' +
@@ -22770,31 +22791,59 @@ async function abrirLeitorQRChapa() {
   try {
     var stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
     var video = document.getElementById('qr-video');
-    if (!video) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    var canvas = document.getElementById('qr-canvas');
+    if (!video || !canvas) { stream.getTracks().forEach(function(t){ t.stop(); }); return; }
     video.srcObject = stream;
     window._qrStream = stream;
 
-    if ('BarcodeDetector' in window) {
-      var detector = new BarcodeDetector({ formats: ['qr_code'] });
-      var scanInterval = setInterval(async function() {
-        if (!document.getElementById('modal-qr-chapa')) { clearInterval(scanInterval); return; }
-        try {
-          var codes = await detector.detect(video);
-          if (codes && codes.length > 0 && codes[0] && codes[0].rawValue) {
-            clearInterval(scanInterval);
-            fecharLeitorQR();
-            mostrarResultadoChapa(String(codes[0].rawValue || '').trim());
-          }
-        } catch(e) {}
-      }, 500);
-      window._qrScanInterval = scanInterval;
-    } else {
-      var hint = document.getElementById('qr-hint');
-      if (hint) hint.textContent = 'BarcodeDetector não disponível. Digite o código manualmente.';
+    try { await video.play(); } catch (_) {}
+
+    if (!window.jsQR) {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
     }
+
+    var ctx = canvas.getContext('2d');
+    var scanInterval = setInterval(function() {
+      if (!document.getElementById('modal-qr-chapa')) { clearInterval(scanInterval); return; }
+      if (!video || video.readyState < 2) return;
+      if (!window.jsQR) return;
+
+      canvas.width = video.videoWidth || 0;
+      canvas.height = video.videoHeight || 0;
+      if (!canvas.width || !canvas.height) return;
+
+      try {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data) {
+          clearInterval(scanInterval);
+          fecharLeitorQR();
+          mostrarResultadoChapa(String(code.data || '').trim());
+        }
+      } catch (_) {}
+    }, 300);
+    window._qrScanInterval = scanInterval;
   } catch(e) {
-    alert('Não foi possível acessar a câmera: ' + String(e && e.message ? e.message : e));
-    fecharLeitorQR();
+    try { console.error('[QR]', e); } catch (_) {}
+    try {
+      if (window._qrStream) {
+        window._qrStream.getTracks().forEach(function(t){ try{ t.stop(); }catch(_){ } });
+        window._qrStream = null;
+      }
+    } catch (_) {}
+    try {
+      var v = document.getElementById('qr-video');
+      if (v) v.style.display = 'none';
+      var hint2 = document.getElementById('qr-hint');
+      if (hint2) hint2.textContent = 'Câmera indisponível — use o campo manual';
+    } catch (_) {}
   }
 }
 
