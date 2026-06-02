@@ -30,6 +30,14 @@
     max-width: 100vw !important;
     box-sizing: border-box !important;
   }
+  
+  /* Todas as telas/páginas (page-*) não estouram horizontal */
+  [id^="page-"], section[id^="page-"], div[id^="page-"],
+  .page, section.page, div.page {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
 
   /* Header do sistema — compactar */
   .top-bar, #top-bar, .header-bar, #header-bar,
@@ -542,6 +550,63 @@
     { id: 'facas1',             label: 'Facas',      icone: 'Fac',  fixo: false }, 
     { id: 'cliches',            label: 'Cliches',    icone: 'Cli',  fixo: false }, 
   ]; 
+  
+  function _hotbarCap(s){
+    var t = String(s || '').trim();
+    if(!t) return '';
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  function _hotbarLabelFromId(id){
+    var s = String(id || '').trim().replace(/^page-/, '');
+    if(!s) return '';
+    return s.split('-').map(_hotbarCap).join(' ');
+  }
+  function _hotbarIconFromLabel(label){
+    var t = String(label || '').trim();
+    if(!t) return '';
+    var parts = t.split(/\s+/).filter(Boolean);
+    var one = parts[0] || t;
+    return one.slice(0, 3);
+  }
+  function _hotbarEnsureAllPagesFromDom(){
+    try{
+      var nodes = document.querySelectorAll('[id^="page-"]');
+      if(!nodes || !nodes.length) return;
+      var known = {};
+      HOTBAR_ABAS.forEach(function(a){ if(a && a.id) known[String(a.id)] = true; });
+      Array.prototype.forEach.call(nodes, function(el){
+        var pid = String(el && el.id || '').trim();
+        if(!pid) return;
+        var id = pid.replace(/^page-/, '');
+        if(!id) return;
+        if(known[id]) return;
+        known[id] = true;
+        var label = _hotbarLabelFromId(id) || id;
+        HOTBAR_ABAS.push({ id: id, label: label, icone: _hotbarIconFromLabel(label) || id, fixo: false });
+      });
+    }catch(e){}
+  }
+  
+  function goFinanceiro(pageId){
+    var pid = String(pageId || '').trim();
+    if(!pid) return;
+    try{
+      if (sessionStorage.getItem('fin_ok') === '1') { try{ go(pid); }catch(e){} return; }
+    }catch(e){}
+    var senha = prompt('Senha do financeiro:');
+    if (senha === null) return;
+    if (senha === '1234') {
+      try { sessionStorage.setItem('fin_ok', '1'); } catch (e) {}
+      try{
+        var grupo = document.getElementById('nav-group-financeiro');
+        if(grupo) grupo.style.display = 'block';
+      }catch(e){}
+      try{ go(pid); }catch(e){}
+    } else {
+      alert('Senha incorreta.');
+    }
+  }
+  window.goFinanceiro = goFinanceiro;
 
   function getHotbarConfig() { 
     try { 
@@ -594,10 +659,14 @@
   function renderHotbar() { 
     var nav = document.getElementById('mobile-bottom-nav'); 
     if (!nav) { console.warn('[PATCH] hotbar nao encontrada'); return; }       
+    _hotbarEnsureAllPagesFromDom();
     var ativos = getHotbarConfig(); 
     var html = ativos.slice(0, 4).map(function(id) { 
       var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || { id: id, label: id, icone: id, fixo: false }; 
-      return '<button class="mbn-item" data-tab="' + aba.id + '" onclick="go(&quot;' + aba.id + '&quot;)" ' + 
+      var on = (aba.id === 'orcamentos' || aba.id === 'comissoes')
+        ? 'goFinanceiro(&quot;' + aba.id + '&quot;)'
+        : 'go(&quot;' + aba.id + '&quot;)';
+      return '<button class="mbn-item" data-tab="' + aba.id + '" onclick="' + on + '" ' + 
         'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
         'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
         '<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.08);' + 
@@ -622,12 +691,16 @@
     overlay.id = 'modal-menu-mais'; 
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:flex-end'; 
  
+    _hotbarEnsureAllPagesFromDom();
     var ativos = getHotbarConfig(); 
     var sheet = document.createElement('div'); 
     sheet.style.cssText = 'background:#0b1220;border:1px solid rgba(255,255,255,0.12);border-radius:20px 20px 0 0;width:100%;padding:18px 16px;max-height:80vh;overflow-y:auto'; 
  
     var grid = HOTBAR_ABAS.filter(function(a){ return ativos.indexOf(a.id) === -1; }).map(function(aba) { 
-      return '<div onclick="go(&quot;' + aba.id + '&quot;);document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="' + 
+      var on = (aba.id === 'orcamentos' || aba.id === 'comissoes')
+        ? 'goFinanceiro(&quot;' + aba.id + '&quot;)'
+        : 'go(&quot;' + aba.id + '&quot;)';
+      return '<div onclick="' + on + ';document.getElementById(&quot;modal-menu-mais&quot;).remove()" style="' + 
         'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer">' + 
         '<div style="font-size:16px;margin-bottom:4px;color:#e2e8f0;font-weight:800">' + aba.icone + '</div>' + 
         '<div style="color:#e2e8f0;font-size:12px">' + aba.label + '</div>' + 
@@ -1117,6 +1190,15 @@
   patchAbrirOfRapida(); 
   patchRenderHub(); 
   patchGoAcordeon(); 
+  try{ setTimeout(function(){ try{ renderHotbar(); }catch(e){} }, 200); }catch(e){}
+  try{
+    setTimeout(function(){
+      try{
+        atualizarAbaAtiva();
+        setInterval(function(){ try{ atualizarAbaAtiva(); }catch(e){} }, 1200);
+      }catch(e){}
+    }, 700);
+  }catch(e){}
   setTimeout(function(){ try { aplicarAccordion(); } catch(e) {} }, 800); 
  
   setInterval(function() { 
