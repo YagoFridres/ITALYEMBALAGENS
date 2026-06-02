@@ -1300,7 +1300,7 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true, data: data || [], usuarios: data || [] });
   } catch (e) {
-    res.json({ ok: true, data: [], usuarios: [], erro: String(e?.message || e) });
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
@@ -4229,7 +4229,7 @@ app.get('/api/chat/usuarios', authMiddleware, async (req, res) => {
     if (error) throw error;
     const rows = (data || []).filter((u) => String(u?.id || '').trim() && String(u.id).trim() !== uid);
     res.json({ ok: true, usuarios: rows });
-  } catch (e) { res.json({ ok: true, usuarios: [], erro: String(e.message || e) }); }
+  } catch (e) { res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
 app.get('/api/chat/mensagens', authMiddleware, async (req, res) => {

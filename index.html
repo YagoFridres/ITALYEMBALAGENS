@@ -55329,6 +55329,10 @@ async function abrirListaUsuariosChat(mode){
   try{
     const st = window._chatState;
     const { j } = await _chatFetchJson('/api/chat/usuarios', { method:'GET' });
+    if (!j || j.ok === false) {
+      try{ toast('Erro ao listar usuários', 'var(--red)'); }catch(_){}
+      return;
+    }
     const users = Array.isArray(j && j.usuarios) ? j.usuarios : [];
     const ov = document.createElement('div');
     ov.id = 'chat-users-ov';
