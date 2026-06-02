@@ -264,7 +264,12 @@
 
 @media (max-width: 768px) {
 
-  * { box-sizing: border-box !important; }
+  * { box-sizing: border-box !important; margin-left: 0 !important; }
+
+  .page-body, .ptoolbar, .page-header,
+  .content > *, .page > * {
+    margin-left: initial !important;
+  }
 
   body {
     overflow-x: hidden !important;
@@ -278,6 +283,17 @@
   [id="sidebar"], .left-nav, #left-nav,
   .nav-lateral, #nav-lateral {
     display: none !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+  }
+
+  .layout, .content, .page, .page-body {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
   }
 
   .main-content, #main-content,

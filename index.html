@@ -4427,18 +4427,43 @@ function openNavGroupForPage(pageId){
 
 window.abrirMenuFinanceiro = function() {
   var grupo = document.getElementById('nav-group-financeiro');
-  if (!grupo) return;
-
-  if (sessionStorage.getItem('fin_ok') === '1') {
-    grupo.style.display = grupo.style.display === 'none' ? 'block' : 'none';
+  if (!grupo) {
+    console.warn('[FINANCEIRO] nav-group-financeiro não encontrado');
     return;
   }
 
-  var senha = prompt('Senha do financeiro:');
-  if (senha === null) return;
-  if (senha === '1234') {
-    sessionStorage.setItem('fin_ok', '1');
+  var wrap = document.getElementById('ng-financeiro');
+
+  function abrir() {
+    try { if (wrap) wrap.classList.add('open'); } catch (e) {}
     grupo.style.display = 'block';
+    grupo.style.maxHeight = '400px';
+  }
+  function fechar() {
+    try { if (wrap) wrap.classList.remove('open'); } catch (e) {}
+    grupo.style.display = 'none';
+    grupo.style.maxHeight = '0';
+  }
+
+  var jaDesbloqueado = sessionStorage.getItem('fin_ok') === '1';
+
+  if (jaDesbloqueado) {
+    var isOpen = false;
+    try { isOpen = !!(wrap && wrap.classList && wrap.classList.contains('open')); } catch (e) {}
+    if (!isOpen) {
+      var d = String(grupo.style.display || '');
+      isOpen = (d && d !== 'none');
+    }
+    if (isOpen) fechar();
+    else abrir();
+    return;
+  }
+
+  var senha = prompt('Senha do Financeiro:');
+  if (senha === null) return;
+  if (String(senha).trim() === '1234') {
+    sessionStorage.setItem('fin_ok', '1');
+    abrir();
   } else {
     alert('Senha incorreta.');
   }
