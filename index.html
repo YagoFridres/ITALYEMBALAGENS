@@ -23178,7 +23178,7 @@ function _renderEstoqueBase(chapas) {
       const fotoUrl = estFotoUrlFromItem(c);
       const fotoHtml = fotoUrl ? `<img src="${escAttr(fotoUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)" loading="lazy">` : '';
       return `<tr style="background:${trBg}">
-        <td style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
+        <td data-label="Nome/Uso" style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
           <div style="display:flex;gap:10px;align-items:center">
             ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
             <div style="min-width:0">
@@ -23187,20 +23187,20 @@ function _renderEstoqueBase(chapas) {
             </div>
           </div>
         </td>
-        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:90px;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
-        <td style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
+        <td data-label="Nomenclatura" style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
+        <td data-label="Fornecedor" style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
+        <td data-label="Gramatura" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:90px;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
+        <td data-label="Empresa/CNPJ" style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
           <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;console.log('[EMPRESA-INLINE] id:',id,'val:',val);if(!id||!val){console.warn('[EMPRESA-INLINE] id ou val vazio!');return;}const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_vinculada:val,qual_cnpj:val})});console.log('[EMPRESA-INLINE] status:',r&&r.status);const d=await (r?r.json().catch(e=>{console.error('[EMPRESA-INLINE] json error:',e);return null;}):Promise.resolve(null));console.log('[EMPRESA-INLINE] resposta:',d);if(!d||!d.ok){const emsg=(d&&d.error)?d.error:'falha';try{toast('Erro ao salvar empresa: '+emsg,'var(--red)');}catch(e){}alert('Erro: '+emsg);el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>String(x.id)===String(id));if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;console.log('[EMPRESA-INLINE] atualizado no array índice',i);}else{console.warn('[EMPRESA-INLINE] item não encontrado no array, id:',id);}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);console.log('[EMPRESA-INLINE] salvo com sucesso!');try{toast('Empresa/CNPJ salvo ✓','var(--green)');}catch(e){} })(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
             <option value="Cartoeste" ${empSel === 'Cartoeste' ? 'selected' : ''}>Cartoeste</option>
             <option value="Oestepack" ${empSel === 'Oestepack' ? 'selected' : ''}>Oestepack</option>
           </select>
         </td>
-        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:90px">${escH(nf)}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:90px">${fmtR(vunit)}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:110px">
+        <td data-label="Tamanho" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:center;min-width:110px">${escH(c.tamanho||c.tam||'—')}</td>
+        <td data-label="NF" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2);min-width:90px">${escH(nf)}</td>
+        <td data-label="R$/un" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:90px">${fmtR(vunit)}</td>
+        <td data-label="Qtd" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:110px">
           <span style="font-weight:900;color:${zerado?'var(--red)':baixoEst?'var(--orange)':'var(--green)'}">${qtd.toLocaleString()}</span>
           ${(zerado||baixoEst)?`<div style="font-size:.62rem;color:${zerado?'var(--red)':'var(--orange)'};font-weight:900">${zerado?'ZERADO':`BAIXO (mín ${min})`}</div>`:''}
         </td>
@@ -23210,20 +23210,20 @@ function _renderEstoqueBase(chapas) {
           const tonLinha = (qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0;
           const txt = (qtd > 0 && pesoKg > 0) ? (tonLinha.toFixed(3) + ' t') : '—';
           const tip = 'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²' + '\n' + 'Peso/chapa: ' + (pesoKg > 0 ? pesoKg.toFixed(4) : '?') + ' kg';
-          return `<td title="${escAttr(tip)}" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:120px">${escH(txt)}</td>`;
+          return `<td data-label="Ton." title="${escAttr(tip)}" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:120px">${escH(txt)}</td>`;
         })() : ''}
-        <td style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:150px">${ultimoHtml}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:120px">${consumoHtml}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:80px">${diasHtml}</td>
-        <td style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
-        <td title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
-        <td style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
+        <td data-label="Total R$" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
+        <td data-label="Último" style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:150px">${ultimoHtml}</td>
+        <td data-label="Cons./mês" style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:120px">${consumoHtml}</td>
+        <td data-label="Dias" style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:80px">${diasHtml}</td>
+        <td data-label="Vincos" style="padding:8px 10px;border:1px solid var(--border);font-size:.72rem;color:var(--text2);min-width:140px">${escH(String(c.vincos||'').trim()||'—')}</td>
+        <td data-label="Riscada" title="${escAttr(risDesc)}" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:160px">${riscHtml}</td>
+        <td data-label="Categoria" style="padding:6px 10px;border:1px solid var(--border);min-width:140px">
           <select class="est-cat-sel" data-id="${escAttr(c.id)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',body:JSON.stringify({categoria:val})});const d=await r.json().catch(()=>null);if(!d||!d.ok){alert('Erro: '+(d&&d.error?d.error:'falha'));return;}const upd=(arr)=>{const i=(arr||[]).findIndex(x=>x.id===id);if(i>=0)arr[i].categoria=val;};upd(_estoqueBase);upd(ESTOQUE);})(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             ${buildCatOptions(c)}
           </select>
         </td>
-        <td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
+        <td data-label="Ações" style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
           <div style="display:flex;gap:4px;justify-content:center">
             <button class="btn-icon btn-sm" data-acao-chapa="saida" data-id="${escAttr(c.id)}" title="Saída" style="color:var(--red)">-</button>
             <button class="btn-icon btn-sm" data-acao-chapa="entrada" data-id="${escAttr(c.id)}" title="Entrada" style="color:var(--green)">+</button>
@@ -23338,21 +23338,21 @@ function renderTabelaEstoque(itens) {
         const tonTxt = (qtd > 0 && pesoKg > 0) ? (tonLinha.toFixed(3) + ' t') : '—';
         const tonTip = 'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²' + '\n' + 'Peso/chapa: ' + (pesoKg > 0 ? pesoKg.toFixed(4) : '?') + ' kg';
         return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:8px">${escH(nomeExibir||'—')}</td>
-          <td style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
-          <td style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
-          <td style="padding:8px;text-align:center;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
-          <td style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
-          <td style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
-          <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
-          <td style="padding:8px;text-align:right">${fmtR(vunit)}</td>
-          <td style="padding:8px;text-align:center;color:${baixo?'#ff9800':'#4CAF50'}">
+          <td data-label="Nome/Uso" style="padding:8px">${escH(nomeExibir||'—')}</td>
+          <td data-label="Nomenclatura" style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
+          <td data-label="Fornecedor" style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
+          <td data-label="Gramatura" style="padding:8px;text-align:center;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
+          <td data-label="Empresa/CNPJ" style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
+          <td data-label="Tamanho" style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
+          <td data-label="NF" style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
+          <td data-label="R$/un" style="padding:8px;text-align:right">${fmtR(vunit)}</td>
+          <td data-label="Qtd" style="padding:8px;text-align:center;color:${baixo?'#ff9800':'#4CAF50'}">
             ${fmtN(qtd)}${baixo?'<br><span style="font-size:10px">⚠ Baixo</span>':''}
           </td>
-          ${showTon ? `<td title="${escAttr(tonTip)}" style="padding:8px;text-align:right;font-family:var(--mono)">${escH(tonTxt)}</td>` : ''}
-          <td style="padding:8px;text-align:right;color:#4CAF50;font-weight:500">${fmtR(total)}</td>
-          <td style="padding:8px;font-size:11px;color:var(--text2)">${escH(c.vincos||c.vinculos||'—')}</td>
-          <td style="padding:8px;text-align:center">
+          ${showTon ? `<td data-label="Ton." title="${escAttr(tonTip)}" style="padding:8px;text-align:right;font-family:var(--mono)">${escH(tonTxt)}</td>` : ''}
+          <td data-label="Total R$" style="padding:8px;text-align:right;color:#4CAF50;font-weight:500">${fmtR(total)}</td>
+          <td data-label="Vincos" style="padding:8px;font-size:11px;color:var(--text2)">${escH(c.vincos||c.vinculos||'—')}</td>
+          <td data-label="Ações" style="padding:8px;text-align:center">
             <div style="display:flex;gap:3px;justify-content:center">
               <button onclick="abrirModalMovLinha('saida','${escAttr(c.id)}')" title="Remover" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;color:#f44336">—</button>
               <button onclick="abrirModalMovLinha('entrada','${escAttr(c.id)}')" title="Adicionar" style="padding:3px 7px;border-radius:4px;background:var(--bg3);border:1px solid var(--border);cursor:pointer;color:#4CAF50">+</button>
@@ -30215,39 +30215,7 @@ function hasPerm(keyOrList){
 }
 
 function aplicarPermissoes() {
-  const u = window.CURRENT_USER || window._currentUser;
-  if (!u) return;
-
-  const perms = Array.isArray(u.permissoes) ? u.permissoes : [];
-  const isAdmin = String(u.perfil || '').trim().toLowerCase() === 'admin' || perms.includes('tudo');
-
-  if (isAdmin) return;
-
-  document.querySelectorAll('[data-perm-required]').forEach(el => {
-    const perm = el.getAttribute('data-perm-required');
-    if (perm && !perms.includes(perm) && !perms.includes('tudo')) {
-      try{ el.remove(); }catch(e){ el.style.display = 'none'; }
-    }
-  });
-
-  try{
-    (MODULOS_SISTEMA||[]).forEach(m=>{
-      const mid = String(m && m.menuId || '').trim();
-      if(!mid) return;
-      const el = document.getElementById(mid);
-      if(!el) return;
-      if(!hasPerm(m.key)) {
-        try{ el.remove(); }catch(e){ el.style.display = 'none'; }
-      }
-    });
-  }catch(e){}
-
-  try{
-    document.querySelectorAll('.nav-group').forEach(g=>{
-      const hasAny = !!g.querySelector('.nav-item');
-      if(!hasAny) { try{ g.remove(); }catch(e){} }
-    });
-  }catch(e){}
+  return;
 }
 
 function mostrarSemPermissao(paginaId){
@@ -30280,33 +30248,15 @@ function temPermPagina(paginaId){
   const u = CURRENT_USER || window._currentUser;
   if(!u) return false;
   const pid = String(paginaId||'').trim();
-  if(pid === 'sel-chapas') return podeSelecionarChapas();
-  const map = {
-    pcp: ['pcp','ver_pedidos','pcp_completo'],
-    lancamento: ['lancamento','lancar_pedido','lancar_pedidos','pcp'],
-    ofmaq: ['ofs_maquina','ofmaq','pcp'],
-    estoque: ['estoque','estoque_chapas','estoque_facas','estoque_cliches'],
-    facas1: ['estoque','estoque_facas'],
-    cliches: ['estoque','estoque_cliches'],
-    maquinas: ['pcp'],
-    fluxos: ['pcp'],
-    'tipos-caixa': ['pcp'],
-    clientes: ['cadastros','clientes'],
-    fornecedores: ['cadastros','fornecedores'],
-    vendedores: ['cadastros','vendedores'],
-    usuarios: ['cadastros','usuarios'],
-    orcamentos: ['orcamentos'],
-    relatorios: ['relatorios','imprimir_relatorio'],
-    comissoes: ['comissoes','ver_comissoes'],
-    dashboard: ['dashboard','ver_dashboard','relatorios'],
-    'caixas-perdidas': ['caixas_perdidas','caixas-perdidas','relatorios'],
-    relmensal: ['relatorio_mensal','relmensal','relatorios'],
-    sistema: ['sistema'],
-    configuracoes: ['sistema','configuracoes'],
-  };
-  const needed = map[pid];
-  if(!needed) return true;
-  return hasPerm(needed) || hasPerm('tudo');
+  if(pid === 'orcamentos' || pid === 'comissoes') {
+    if (sessionStorage.getItem('fin_ok') === '1') return true;
+    const s = prompt('Senha do Financeiro:');
+    if (s === null) return false;
+    if (String(s).trim() === '1234') { sessionStorage.setItem('fin_ok', '1'); return true; }
+    if (String(s).trim() !== '') alert('Senha incorreta.');
+    return false;
+  }
+  return true;
 }
 
 function podeSelecionarChapas(){
@@ -36255,14 +36205,20 @@ function abrirCalculadora(){
     if (!modal) return;
 
     if(isMobile){
-      modal.style.width = '100vw';
-      modal.style.maxWidth = '100vw';
-      modal.style.height = '100dvh';
-      modal.style.maxHeight = '100dvh';
+      modal.style.position = 'fixed';
+      modal.style.left = '0';
+      modal.style.right = '0';
+      modal.style.bottom = '0';
+      modal.style.top = 'auto';
+      modal.style.width = '100%';
+      modal.style.maxWidth = '100%';
+      modal.style.height = 'auto';
+      modal.style.maxHeight = '92vh';
       modal.style.margin = '0';
-      modal.style.borderRadius = '0';
+      modal.style.borderRadius = '18px 18px 0 0';
       modal.style.display = 'flex';
       modal.style.flexDirection = 'column';
+      modal.style.zIndex = '9000';
     } else {
       modal.style.width = 'calc(100vw - 32px)';
       modal.style.maxWidth = '1300px';

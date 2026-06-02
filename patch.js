@@ -447,6 +447,119 @@
     margin-top: 4px !important;
   }
 
+  #page-estoque [class*="toolbar"],
+  #page-estoque [class*="acoes"],
+  #page-estoque [class*="btn-group"],
+  [id*="page-estoque"] > div:first-of-type {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  #page-estoque button,
+  [id*="page-estoque"] button {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 0 !important;
+    font-size: 12px !important;
+    padding: 8px 6px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  #page-estoque [class*="filtro"],
+  #page-estoque select,
+  [id*="page-estoque"] select {
+    width: 100% !important;
+    margin-bottom: 6px !important;
+  }
+  #page-estoque table,
+  [id*="page-estoque"] table,
+  [id*="chapas"] table {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  #page-estoque table thead,
+  [id*="page-estoque"] table thead { display: none !important; }
+  #page-estoque table tbody,
+  [id*="page-estoque"] table tbody { display: block !important; width: 100% !important; }
+  #page-estoque table tr,
+  [id*="page-estoque"] table tr {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px 12px !important;
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    padding: 10px !important;
+    margin-bottom: 8px !important;
+  }
+  #page-estoque table td,
+  [id*="page-estoque"] table td {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+    font-size: 12px !important;
+    border: none !important;
+    padding: 2px 0 !important;
+    width: auto !important;
+  }
+  #page-estoque table td[data-label]:before,
+  [id*="page-estoque"] table td[data-label]:before {
+    content: attr(data-label) !important;
+    font-size: 10px !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    margin-bottom: 1px !important;
+  }
+  #page-estoque table td:last-child,
+  [id*="page-estoque"] table td:last-child {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    margin-top: 4px !important;
+  }
+
+  #page-orcamentos table td:nth-child(n+8) { display: flex !important; }
+  #page-orcamentos table td:last-child { display: flex !important; }
+  #modal-calc { align-items: flex-end !important; }
+  #modal-calculadora, #modal-orcamento-calc, .modal-calculadora,
+  [id*="modal-calculadora"], [id*="calculadora-modal"], [class*="calculadora"] {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+  [id*="calculadora"] .row, [class*="calculadora"] .row,
+  [id*="calculadora"] [class*="campo"], [class*="calculadora"] [class*="campo"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  [id*="calculadora"] input, [class*="calculadora"] input {
+    width: 100% !important;
+    font-size: 16px !important;
+  }
+  [id*="calculadora"] [class*="ondas"], [class*="calculadora"] [class*="ondas"],
+  [id*="calculadora"] [class*="onda-check"] {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
   [id*="modal"] {
     align-items: flex-end !important;
     padding: 0 !important;

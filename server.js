@@ -1295,7 +1295,7 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,ativo,avatar_iniciais,avatar_cor')
+      .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor')
       .order('nome', { ascending: true });
     if (error) throw error;
     res.json({ ok: true, data: data || [], usuarios: data || [] });
@@ -4223,7 +4223,7 @@ app.get('/api/chat/usuarios', authMiddleware, async (req, res) => {
     const uid = String(req.usuario?.id || req.usuario?.sub || '').trim();
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,ativo')
+      .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor,avatar,foto')
       .order('nome', { ascending: true })
       .limit(300);
     if (error) throw error;
@@ -4251,7 +4251,30 @@ app.get('/api/chat/mensagens', authMiddleware, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(parseInt(limite, 10) || 50);
     if (error) throw error;
-    res.json({ ok: true, mensagens: (data || []).reverse() });
+    const mensagens = (data || []).reverse();
+    try {
+      const userIds = [...new Set((mensagens || []).map(m => String(m?.de_usuario || '').trim()).filter(Boolean))];
+      if (userIds.length) {
+        const { data: users, error: uerr } = await supabase
+          .from('usuarios')
+          .select('id,avatar_url,avatar,foto')
+          .in('id', userIds);
+        if (!uerr && Array.isArray(users) && users.length) {
+          const avatarMap = {};
+          users.forEach(u => {
+            const id = String(u?.id || '').trim();
+            if (!id) return;
+            avatarMap[id] = u.avatar_url || u.avatar || u.foto || null;
+          });
+          mensagens.forEach(m => {
+            const uid = String(m?.de_usuario || '').trim();
+            const av = uid ? avatarMap[uid] : null;
+            if (av) m.de_avatar = av;
+          });
+        }
+      }
+    } catch (_) {}
+    res.json({ ok: true, mensagens });
   } catch (e) { res.json({ ok: true, mensagens: [], erro: String(e.message || e) }); }
 });
 
@@ -4265,7 +4288,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
 
     const userId = req.usuario?.id || req.usuario?.sub || req.usuario?.user_id || null;
     const nome = req.usuario?.nome || req.usuario?.name || req.usuario?.email || 'Usuário';
-    const avatar = req.usuario?.avatar || req.usuario?.foto || null;
+    const avatar = req.usuario?.avatar_url || req.usuario?.avatar || req.usuario?.foto || null;
 
     if (!userId) {
       return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
