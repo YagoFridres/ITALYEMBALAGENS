@@ -635,13 +635,20 @@ async function requireAdmin(req, res, next) {
 }
 
 app.use((req, res, next) => {
-  if (!req.path.startsWith('/api')) return next();
+  const fullUrl = String(req.originalUrl || req.url || '');
+  const fullPath = fullUrl.split('?')[0].replace(/\/+$/, '');
+  const path = String(req.path || '').replace(/\/+$/, '');
+  if (!fullPath.startsWith('/api') && !path.startsWith('/api')) return next();
   if (req.method === 'OPTIONS') return next();
-  if (req.path === '/api/health') return next();
-  if (req.path === '/api/ofs_test') return next();
-  if (req.path === '/api/auth/login' || req.path === '/api/auth/login/') return next();
-  if (req.path === '/api/auth/refresh' || req.path === '/api/auth/refresh/') return next();
-  if (req.path === '/api/auth/me' || req.path === '/api/auth/me/') return next();
+  const publicRoutes = [
+    '/api/health',
+    '/api/ofs_test',
+    '/api/auth/login',
+    '/api/auth/refresh',
+    '/api/auth/me',
+  ];
+  const isPublic = publicRoutes.some((r) => fullPath === r || fullPath.startsWith(r + '/') || path === r || path.startsWith(r + '/'));
+  if (isPublic) return next();
   return authMiddleware(req, res, next);
 });
 
