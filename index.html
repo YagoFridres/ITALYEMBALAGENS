@@ -896,7 +896,8 @@ body[data-device="tablet"] .clock,body[data-device="tablet"] .topbar-badges{disp
   .ofmaq-drop-ind{height:3px;background:#4a9eff;border-radius:999px;margin:6px 0;}
   .mobile-bottom-nav{display:flex;}
   .mob-more-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
-  #assist-fab{display:block !important;}
+  #assist-fab{display:none !important;}
+  #assist-mini{display:none !important;}
   #page-orcamentos #orc-fil-emp{display:none !important;}
   #page-orcamentos .orc-actions{flex-wrap:wrap !important;}
   #page-orcamentos .orc-actions button{flex:1 1 auto !important;}
@@ -4414,7 +4415,8 @@ function openNavGroupForPage(pageId){
     estoque:'ng-estoques', facas1:'ng-estoques', cliches:'ng-estoques',
     'sel-chapas':'ng-papelao',
     simd:'ng-papelao',
-    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', comissoes:'ng-analises', 'caixas-perdidas':'ng-analises',
+    dashboard:'ng-analises', relatorios:'ng-analises', relmensal:'ng-analises', configuracoes:'ng-analises', 'caixas-perdidas':'ng-analises',
+    orcamentos:'ng-financeiro', comissoes:'ng-financeiro',
     agenda:'ng-comunicacoes',
   };
   const gId=map[pageId];
@@ -4422,6 +4424,29 @@ function openNavGroupForPage(pageId){
     document.querySelectorAll('.nav-group').forEach(x=>x.classList.remove('open'));
     const g=document.getElementById(gId);
     if(g) g.classList.add('open');
+  }
+}
+
+var _financeiroDesbloqueado = false;
+try { _financeiroDesbloqueado = sessionStorage.getItem('fin_ok') === '1'; } catch (e) {}
+function abrirMenuFinanceiro() {
+  var el = document.getElementById('nav-group-financeiro');
+  if (!el) return;
+
+  if (_financeiroDesbloqueado) {
+    el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'block' : 'none';
+    try { closeNavGroupsExcept('ng-financeiro'); } catch (e) {}
+    return;
+  }
+
+  var senha = prompt('Digite a senha para acessar o Financeiro:');
+  if (senha === '1234') {
+    _financeiroDesbloqueado = true;
+    try { sessionStorage.setItem('fin_ok', '1'); } catch (e) {}
+    el.style.display = 'block';
+    try { closeNavGroupsExcept('ng-financeiro'); } catch (e) {}
+  } else if (senha !== null) {
+    alert('Senha incorreta.');
   }
 }
 
@@ -30395,7 +30420,6 @@ function _renderMobMoreDrawer(){
       { ico:'🔄', lbl:'Ped. Recorrentes', act:'go:pedidos-recorrentes' },
       { ico:'🚚', lbl:'Fornecedores', act:'go:fornecedores' },
       { ico:'💼', lbl:'Vendedores', act:'go:vendedores' },
-      { ico:'👷', lbl:'Operadores', act:'go:operadores' },
       { ico:'👤', lbl:'Usuários', act:'go:usuarios' },
       { ico:'🚚', lbl:'Roteiro', act:'mapcli:roteiro' },
     ]},
@@ -30415,7 +30439,6 @@ function _renderMobMoreDrawer(){
       { ico:'📄', lbl:'Relatórios', act:'go:relatorios' },
       { ico:'💰', lbl:'Comissões', act:'go:comissoes' },
       { ico:'📦', lbl:'Cx Perdidas', act:'go:caixas-perdidas' },
-      { ico:'⚠️', lbl:'Inconformidades', act:'go:inconformidades' },
       { ico:'📋', lbl:'Rel. Mensal', act:'go:relmensal' },
       { ico:'⚙️', lbl:'Config', act:'go:configuracoes' },
     ]},
@@ -40764,7 +40787,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-mapa-clientes" class="nav-item" onclick="go('mapa-clientes');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🗺</span>Mapa de Clientes</div>
       <div id="menu-fornecedores" class="nav-item" onclick="go('fornecedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🏭</span>Fornecedores</div>
       <div id="menu-vendedores" class="nav-item" onclick="go('vendedores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">🤝</span>Vendedores</div>
-      <div id="menu-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👷</span>Operadores</div>
       <div id="menu-usuarios" class="nav-item" onclick="go('usuarios');closeNavGroupsExcept('ng-cadastros')"><span class="ico">👤</span>Usuários</div>
     </div>
   </div>
@@ -40777,6 +40799,16 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="nav-group-items">
       <div id="menu-qualidade-operadores" class="nav-item" onclick="go('operadores');closeNavGroupsExcept('ng-qualidade');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">👷</span>Operadores</div>
       <div id="menu-qualidade-inconformidades" class="nav-item" onclick="go('inconformidades');closeNavGroupsExcept('ng-qualidade');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">⚠️</span>Inconformidades</div>
+    </div>
+  </div>
+
+  <div class="nav-group" id="ng-financeiro">
+    <div class="nav-group-header" onclick="abrirMenuFinanceiro()">
+      <span class="ng-ico">🔒</span>Financeiro<span class="ng-arr">▶</span>
+    </div>
+    <div class="nav-group-items" id="nav-group-financeiro" style="display:none">
+      <div id="menu-fin-orcamentos" class="nav-item" onclick="go('orcamentos');closeNavGroupsExcept('ng-financeiro');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">📋</span>Orçamentos</div>
+      <div id="menu-fin-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-financeiro');if(document.body&&document.body.classList&&document.body.classList.contains('is-mobile'))toggleMobMenu();"><span class="ico">💰</span>Comissões</div>
     </div>
   </div>
 
@@ -40814,7 +40846,6 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-relatorio" class="nav-item" onclick="go('relatorios');closeNavGroupsExcept('ng-analises')"><span class="ico">🖨</span>Relatórios</div>
       <div id="menu-comissoes" class="nav-item" onclick="go('comissoes');closeNavGroupsExcept('ng-analises')"><span class="ico">💰</span>Comissões</div>
       <div id="menu-caixas-perdidas" class="nav-item" onclick="go('caixas-perdidas');closeNavGroupsExcept('ng-analises')"><span class="ico">📦</span>Caixas Perdidas</div>
-      <div id="menu-inconformidades" class="nav-item" onclick="go('inconformidades');closeNavGroupsExcept('ng-analises')"><span class="ico">⚠️</span>Inconformidades</div>
       <div id="menu-relatorio-mensal" class="nav-item" onclick="go('relmensal');closeNavGroupsExcept('ng-analises')"><span class="ico">📅</span>Relatório Mensal</div>
       <div id="menu-config" class="nav-item" onclick="go('configuracoes');closeNavGroupsExcept('ng-analises')"><span class="ico">⚙️</span>Configurações</div>
     </div>
@@ -48579,6 +48610,12 @@ function abrirNovoEvento(dataPreSel) {
             '<option value="prazo">Prazo</option>' +
           '</select></div>' +
       '</div>' +
+      '<div>' +
+        '<label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Para quem</label>' +
+        '<select id="evt-para-usuario" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">' +
+          '<option value="">Para mim</option>' +
+        '</select>' +
+      '</div>' +
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
         '<div><label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">Início</label>' +
           '<input id="evt-hora-ini" type="time" style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px;box-sizing:border-box"></div>' +
@@ -48597,6 +48634,35 @@ function abrirNovoEvento(dataPreSel) {
 
   overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
   document.body.appendChild(overlay);
+  try{
+    var selPara = document.getElementById('evt-para-usuario');
+    if(selPara){
+      selPara.innerHTML = '<option value="">Para mim</option>';
+      var meuId = '';
+      try{ meuId = String((window.CURRENT_USER && (window.CURRENT_USER.id || window.CURRENT_USER.sub || window.CURRENT_USER.user_id)) || localStorage.getItem('usuario_id') || '').trim(); }catch(e){}
+      Promise.resolve()
+        .then(function(){ return apiFetch('/api/usuarios/lista', { method:'GET' }); })
+        .then(function(r){ return r ? r.json().catch(function(){ return null; }) : null; })
+        .then(function(d){
+          var usuarios = (d && (d.data || d.usuarios)) || [];
+          if(!Array.isArray(usuarios)) usuarios = [];
+          selPara.innerHTML = '<option value="">Para mim</option>' +
+            usuarios
+              .filter(function(u){
+                var id = String(u && u.id || '').trim();
+                if(!id) return false;
+                if(meuId && id === meuId) return false;
+                if(u && u.ativo === false) return false;
+                return true;
+              })
+              .map(function(u){
+                return '<option value="' + escAttr(String(u.id || '')) + '">' + escH(u.nome || u.email || 'Usuário') + '</option>';
+              })
+              .join('');
+        })
+        .catch(function(){});
+    }
+  }catch(e){}
   try{ document.getElementById('evt-titulo').focus(); }catch(e){}
 }
 
@@ -48616,6 +48682,7 @@ async function salvarEvento() {
         data_evento: data,
         hora_inicio: (document.getElementById('evt-hora-ini')||{}).value || null,
         hora_fim: (document.getElementById('evt-hora-fim')||{}).value || null,
+        para_usuario: (document.getElementById('evt-para-usuario')||{}).value || null,
         tipo: (document.getElementById('evt-tipo')||{}).value || 'tarefa',
         cor: (document.getElementById('evt-cor')||{}).value || '#4A90D9'
       }
@@ -49478,6 +49545,9 @@ window.atualizarChapas = async function(){
       overlay.style.display = 'none';
       panel.classList.remove('open');
     };
+    try{ window._jarvisAbrir = open; }catch(e){}
+    try{ window.abrirJarvis = open; }catch(e){}
+    try{ window._jarvisFechar = close; }catch(e){}
     fab.querySelector('button').onclick = open;
     overlay.onclick = close;
     mini.querySelector('button').onclick = open;
@@ -54458,9 +54528,23 @@ async function kbOfmaqSalvar(body, novaMaquina, ofIdMovido){
   <div>Para instalar:<br>Toque em <strong>compartilhar ↑</strong> depois<br><strong>&quot;Adicionar à Tela de Início&quot;</strong></div>
 </div>
 
-<div id="chat-btn" onclick="toggleChat()" style="position:fixed;bottom:80px;right:16px;width:48px;height:48px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:8000;box-shadow:0 4px 16px rgba(74,144,217,0.4)">
-  <span style="font-size:22px">💬</span>
-  <div id="chat-badge" style="position:absolute;top:-2px;right:-2px;width:18px;height:18px;border-radius:50%;background:#dc2626;color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center">0</div>
+<div id="fab-menu-container" style="position:fixed;bottom:80px;right:16px;z-index:8000;display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+  <div id="fab-opcoes" style="display:none;flex-direction:column;gap:8px;align-items:flex-end">
+    <div onclick="fabAbrirChat()" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <span style="background:#1e293b;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:13px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Chat</span>
+      <div style="width:44px;height:44px;border-radius:50%;background:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(74,144,217,0.4)">💬</div>
+    </div>
+    <div onclick="fabAbrirJarvis()" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <span style="background:#1e293b;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:13px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3)">Jarvis IA</span>
+      <div style="width:44px;height:44px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(124,58,237,0.4)">🤖</div>
+    </div>
+  </div>
+
+  <div id="fab-principal" onclick="toggleFabMenu()" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#4A90D9,#7c3aed);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(74,144,217,0.5);transition:transform 0.2s;font-size:24px">
+    ✦
+  </div>
+
+  <div id="fab-badge" style="display:none;position:absolute;top:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:#dc2626;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center">0</div>
 </div>
 
 <div id="chat-painel" style="display:none;position:fixed;bottom:136px;right:16px;width:340px;max-width:calc(100vw - 32px);height:480px;background:#0b1220;border:1px solid rgba(255,255,255,0.1);border-radius:14px;z-index:8001;flex-direction:column;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
@@ -54607,16 +54691,107 @@ function fecharChatPainel(){
 async function atualizarChatBadge(){
   try{
     const badge = document.getElementById('chat-badge');
-    if(!badge) return;
+    const fabBadge = document.getElementById('fab-badge');
+    if(!badge && !fabBadge) return;
     const { j } = await _chatFetchJson('/api/chat/nao-lidas', { method:'GET' });
     const n = Math.trunc(Number(j && j.total || 0));
     if(n > 0){
-      badge.textContent = String(n);
-      badge.style.display = 'flex';
+      if(badge){ badge.textContent = String(n); badge.style.display = 'flex'; }
+      if(fabBadge){ fabBadge.textContent = (n > 99 ? '99+' : String(n)); fabBadge.style.display = 'flex'; }
     } else {
-      badge.style.display = 'none';
+      if(badge) badge.style.display = 'none';
+      if(fabBadge) fabBadge.style.display = 'none';
     }
   }catch(e){}
+}
+
+var _fabAberto = false;
+function toggleFabMenu() {
+  _fabAberto = !_fabAberto;
+  var opcoes = document.getElementById('fab-opcoes');
+  var btn = document.getElementById('fab-principal');
+  if (opcoes) opcoes.style.display = _fabAberto ? 'flex' : 'none';
+  if (btn) btn.style.transform = _fabAberto ? 'rotate(45deg)' : 'rotate(0deg)';
+}
+
+function fabAbrirChat() {
+  _fabAberto = false;
+  var opcoes = document.getElementById('fab-opcoes');
+  var btn = document.getElementById('fab-principal');
+  if (opcoes) opcoes.style.display = 'none';
+  if (btn) btn.style.transform = 'rotate(0deg)';
+  abrirPainelChat();
+}
+
+function fabAbrirJarvis() {
+  _fabAberto = false;
+  var opcoes = document.getElementById('fab-opcoes');
+  var btn = document.getElementById('fab-principal');
+  if (opcoes) opcoes.style.display = 'none';
+  if (btn) btn.style.transform = 'rotate(0deg)';
+  abrirPainelJarvis();
+}
+
+document.addEventListener('click', function(e) {
+  if (_fabAberto && !(e && e.target && e.target.closest && e.target.closest('#fab-menu-container'))) {
+    _fabAberto = false;
+    var opcoes = document.getElementById('fab-opcoes');
+    var btn = document.getElementById('fab-principal');
+    if (opcoes) opcoes.style.display = 'none';
+    if (btn) btn.style.transform = 'rotate(0deg)';
+  }
+});
+
+function abrirPainelChat() {
+  var painel = document.getElementById('chat-painel');
+  if (!painel) return;
+
+  var existing = document.getElementById('painel-chat-grande');
+  if (existing) {
+    try { existing.remove(); } catch (_) {}
+    try { fecharChatPainel(); } catch (_) {}
+    try {
+      if (painel.dataset && painel.dataset.prevCssText != null) {
+        painel.style.cssText = painel.dataset.prevCssText;
+        delete painel.dataset.prevCssText;
+      }
+    } catch (_) {}
+    return;
+  }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'painel-chat-grande';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.addEventListener('click', function(ev){ if(ev && ev.target === overlay){ abrirPainelChat(); } });
+  document.body.appendChild(overlay);
+
+  try {
+    if (painel.dataset) painel.dataset.prevCssText = painel.style.cssText || '';
+  } catch (_) {}
+
+  try { if (!(window._chatState && window._chatState.aberto)) toggleChat(); } catch (_) { try { toggleChat(); } catch (_) {} }
+
+  painel.style.display = 'flex';
+  painel.style.position = 'fixed';
+  painel.style.left = '50%';
+  painel.style.top = '50%';
+  painel.style.right = 'auto';
+  painel.style.bottom = 'auto';
+  painel.style.transform = 'translate(-50%,-50%)';
+  painel.style.width = 'min(600px, calc(100vw - 32px))';
+  painel.style.maxWidth = 'calc(100vw - 32px)';
+  painel.style.height = 'min(80vh, 700px)';
+  painel.style.borderRadius = '16px';
+  painel.style.zIndex = '9001';
+}
+
+function abrirPainelJarvis() {
+  try { go('hub'); } catch (_) {}
+  try { closeNavGroupsExcept('ng-comunicacoes'); } catch (_) {}
+  setTimeout(function(){
+    try { if (typeof _jarvisAbrir === 'function') _jarvisAbrir(); } catch (_) {}
+    try { if (typeof abrirJarvis === 'function') abrirJarvis(); } catch (_) {}
+  }, 80);
 }
 
 function _chatSetDestino(paraId, paraNome){

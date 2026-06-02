@@ -1129,6 +1129,19 @@ app.get('/api/usuarios', requireAdmin, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
+app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,ativo,avatar_iniciais,avatar_cor')
+      .order('nome', { ascending: true });
+    if (error) throw error;
+    res.json({ ok: true, data: data || [], usuarios: data || [] });
+  } catch (e) {
+    res.json({ ok: true, data: [], usuarios: [], erro: String(e?.message || e) });
+  }
+});
+
 app.post('/api/usuarios', requireAdmin, async (req, res) => {
   try {
     const nome = String(req.body?.nome || '').trim();
@@ -4119,7 +4132,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
         return res.status(500).json({
           ok: false,
           error: 'Tabela chat_mensagens nao existe. Execute o SQL de criacao no Supabase.',
-          sql: "CREATE TABLE IF NOT EXISTS chat_mensagens (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, de_usuario uuid, de_nome text, para_usuario uuid, conteudo text, tipo text DEFAULT 'texto', url_arquivo text, lida boolean DEFAULT false, created_at timestamptz DEFAULT NOW());"
+          sql: "CREATE TABLE IF NOT EXISTS chat_mensagens (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, de_usuario uuid, de_nome text NOT NULL DEFAULT 'Usuário', de_avatar text, para_usuario uuid, conteudo text, tipo text DEFAULT 'texto', url_arquivo text, lida boolean DEFAULT false, created_at timestamptz DEFAULT NOW());"
         });
       }
       throw error;
@@ -17059,7 +17072,7 @@ app.post('/api/agenda', authMiddleware, async (req, res) => {
     const userId = req.usuario?.id || req.usuario?.sub;
     const nome = req.usuario?.nome || 'Usuário';
     const para = Object.prototype.hasOwnProperty.call((req.body || {}), 'para_usuario')
-      ? (para_usuario === '' ? userId : para_usuario)
+      ? (!para_usuario ? userId : para_usuario)
       : userId;
     const { data, error } = await supabase.from('agenda_eventos').insert({
       titulo,
@@ -17074,7 +17087,16 @@ app.post('/api/agenda', authMiddleware, async (req, res) => {
       tipo: tipo || 'tarefa',
       concluido: false
     }).select().single();
-    if (error) throw error;
+    if (error) {
+      if (String(error.message || '').includes('does not exist') || error.code === '42P01') {
+        return res.status(500).json({
+          ok: false,
+          error: 'Tabela agenda_eventos nao existe. Execute o SQL de criacao no Supabase.',
+          sql: "CREATE TABLE IF NOT EXISTS agenda_eventos (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, titulo text NOT NULL, descricao text, data_evento date NOT NULL, hora_inicio time, hora_fim time, para_usuario uuid, de_usuario uuid, de_nome text, cor text DEFAULT '#4A90D9', tipo text DEFAULT 'tarefa', concluido boolean DEFAULT false, created_at timestamptz DEFAULT NOW()); CREATE INDEX IF NOT EXISTS idx_agenda_data ON agenda_eventos(data_evento); CREATE INDEX IF NOT EXISTS idx_agenda_para ON agenda_eventos(para_usuario);"
+        });
+      }
+      throw error;
+    }
     res.json({ ok: true, evento: data });
   } catch(e) { res.status(500).json({ ok:false, error:e.message }); }
 });
