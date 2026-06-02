@@ -258,6 +258,237 @@
 }
 `;
 
+    cssM = `
+/* ITALY ERP — CSS MOBILE DEFINITIVO v4
+   Fonte: sistema PC adaptado. Sem dados mock. Sem páginas legadas. */
+
+@media (max-width: 768px) {
+
+  * { box-sizing: border-box !important; }
+
+  body {
+    overflow-x: hidden !important;
+    padding-bottom: 64px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .sidebar, #sidebar, nav.side, .side-nav,
+  [class*="sidebar"]:not(#mobile-bottom-nav),
+  [id="sidebar"], .left-nav, #left-nav,
+  .nav-lateral, #nav-lateral {
+    display: none !important;
+  }
+
+  .main-content, #main-content,
+  .content-wrapper, #content-wrapper,
+  .app-content, #app-content,
+  .page-wrapper, #page-wrapper,
+  [class*="main-content"],
+  [class*="content-area"] {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 8px 10px 72px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  section, [id^="page-"], .page,
+  [data-page], .tab-content {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .top-bar, #top-bar, .header-bar,
+  [class*="top-bar"], [class*="header-bar"],
+  header, #header {
+    padding: 6px 10px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+
+  .empresa-tabs, [class*="empresa-tab"],
+  .emp-sel-bar, [data-empresa-selector] {
+    display: none !important;
+  }
+
+  #mobile-bottom-nav, .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 1000 !important;
+    background: #0b1220 !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+    height: 58px !important;
+  }
+
+  input, select, textarea {
+    font-size: 16px !important;
+    max-width: 100% !important;
+  }
+  input[type="date"], input[type="time"] {
+    font-size: 14px !important;
+  }
+
+  button, .btn, [class*="btn-"], [role="button"] {
+    min-height: 40px !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+    touch-action: manipulation !important;
+  }
+
+  table:not(.no-card) {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  table:not(.no-card) thead { display: none !important; }
+  table:not(.no-card) tbody { display: block !important; width: 100% !important; }
+  table:not(.no-card) tr {
+    display: block !important;
+    background: rgba(255,255,255,0.03) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
+    border-radius: 10px !important;
+    margin-bottom: 8px !important;
+    padding: 10px !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+  table:not(.no-card) td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 3px 0 !important;
+    border: none !important;
+    font-size: 12px !important;
+    width: 100% !important;
+    word-break: break-word !important;
+  }
+  table:not(.no-card) td:nth-child(n+8) { display: none !important; }
+  table:not(.no-card) td:last-child {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding-top: 8px !important;
+    border-top: 1px solid rgba(255,255,255,0.06) !important;
+    margin-top: 4px !important;
+  }
+
+  [id*="modal"] {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  [id*="modal"] > div,
+  .modal-content, .modal-body,
+  [class*="modal-content"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 93vh !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+  }
+
+  .kb-board, [class*="kb-board"] {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 10px !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  .kb-col, [class*="kb-col"] {
+    min-width: 270px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #fab-menu-container { bottom: 68px !important; right: 12px !important; }
+
+  #painel-chat-grande {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+  #painel-chat-grande > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 90vh !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  canvas, [class*="chart"] {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  [class*="kpi-cards"], [class*="stats-grid"],
+  [class*="dashboard-cards"] {
+    grid-template-columns: repeat(2,1fr) !important;
+    gap: 8px !important;
+  }
+
+  #agenda-grid > div {
+    min-height: 55px !important;
+    font-size: 10px !important;
+    padding: 3px !important;
+  }
+
+  img { max-width: 100% !important; height: auto !important; }
+
+  #ofmaq-seletor-maquinas {
+    display: flex !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 6px !important;
+    padding-bottom: 6px !important;
+    width: 100% !important;
+  }
+  #ofmaq-seletor-maquinas button {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    min-height: 36px !important;
+    padding: 6px 14px !important;
+  }
+
+  ::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15) !important;
+    border-radius: 3px !important;
+  }
+
+  div, section, article, aside, nav, main, header, footer {
+    max-width: 100vw !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content, #main-content { padding: 6px 8px 68px !important; }
+  [class*="kpi-cards"] { grid-template-columns: 1fr 1fr !important; }
+  .kb-col { min-width: 250px !important; }
+  h1 { font-size: 16px !important; }
+  h2 { font-size: 15px !important; }
+  h3 { font-size: 14px !important; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar, #sidebar, [class*="sidebar"] {
+    width: 200px !important;
+  }
+  .main-content, #main-content {
+    margin-left: 200px !important;
+  }
+}
+`;
+
     var elCSS = document.getElementById('patch-css-mobile');
     if (!elCSS) {
       elCSS = document.createElement('style');
@@ -265,7 +496,7 @@
       document.head.appendChild(elCSS);
     }
     elCSS.textContent = cssM;
-    console.log('[PATCH] CSS responsivo mobile v3 aplicado — ' + cssM.length + ' chars');
+    console.log('[PATCH] CSS mobile v4 — ' + cssM.length + ' chars');
   } catch (_) {}
  
   // ── UTIL: pegar token ────────────────────────────────────────── 
@@ -413,33 +644,55 @@
     } 
   }; 
 
-  var HOTBAR_ABAS = [ 
-    { id: 'hub',                label: 'Hub',        icone: 'Hub',  fixo: true  }, 
-    { id: 'pcp',                label: 'PCP',        icone: 'PCP',  fixo: false }, 
-    { id: 'ofmaq',              label: 'Maquinas',   icone: 'Maq',  fixo: true  }, 
-    { id: 'estoque',            label: 'Estoque',    icone: 'Est',  fixo: false }, 
-    { id: 'orcamentos',         label: 'Orcamentos', icone: 'Orc',  fixo: false }, 
-    { id: 'amostras',           label: 'Amostras',   icone: 'Amo',  fixo: false }, 
-    { id: 'clientes',           label: 'Clientes',   icone: 'Cli',  fixo: false }, 
-    { id: 'dashboard',          label: 'Dashboard',  icone: 'Dash', fixo: false }, 
-    { id: 'relatorios',         label: 'Relatorios', icone: 'Rel',  fixo: false }, 
-    { id: 'comissoes',          label: 'Comissoes',  icone: 'Com',  fixo: false }, 
-    { id: 'caixas-perdidas',    label: 'Perdas',     icone: 'Per',  fixo: false }, 
-    { id: 'papelao-ia',         label: 'Papelao',    icone: 'Pap',  fixo: false }, 
-    { id: 'lancamento',         label: 'Armazem',    icone: 'Arm',  fixo: false }, 
-    { id: 'historico-passagens',label: 'Historico',  icone: 'His',  fixo: false }, 
-    { id: 'usuarios',           label: 'Usuarios',   icone: 'Usr',  fixo: false }, 
-    { id: 'vendedores',         label: 'Vendas',     icone: 'Ven',  fixo: false }, 
-    { id: 'fornecedores',       label: 'Fornec',     icone: 'For',  fixo: false }, 
-    { id: 'compras',            label: 'Compras',    icone: 'Com',  fixo: false }, 
-    { id: 'configuracoes',      label: 'Config',     icone: 'Cfg',  fixo: false }, 
-    { id: 'mapa-clientes',      label: 'Mapa',       icone: 'Map',  fixo: false }, 
-    { id: 'tempos-reais',       label: 'Tempos',     icone: 'Tmp',  fixo: false }, 
-    { id: 'tipos-caixa',        label: 'Tipos',      icone: 'Tip',  fixo: false }, 
-    { id: 'fluxos',             label: 'Fluxos',     icone: 'Flx',  fixo: false }, 
-    { id: 'facas1',             label: 'Facas',      icone: 'Fac',  fixo: false }, 
-    { id: 'cliches',            label: 'Cliches',    icone: 'Cli',  fixo: false }, 
-  ]; 
+  var HOTBAR_ABAS = [
+    { id: 'hub',   label: 'Hub',      icone: '🏠', fixo: true  },
+    { id: 'pcp',   label: 'PCP',      icone: '📋', fixo: false },
+    { id: 'ofmaq', label: 'Máquinas', icone: '⚙',  fixo: true  },
+  ];
+
+  var PAGINAS_REAIS_DESKTOP = [
+    { id: 'hub',                 label: 'Hub Inicial',         icone: '🏠', grupo: 'Produção' },
+    { id: 'pcp',                 label: 'PCP',                 icone: '📋', grupo: 'Produção' },
+    { id: 'ofmaq',               label: 'OFs por Máquina',     icone: '⚙',  grupo: 'Produção' },
+    { id: 'historico-passagens', label: 'Histórico Passagens', icone: '🕒', grupo: 'Produção' },
+    { id: 'lancamento',          label: 'Armazenamento',       icone: '📦', grupo: 'Produção' },
+    { id: 'amostras',            label: 'Amostras',            icone: '🔬', grupo: 'Produção' },
+    { id: 'pedidos-recorrentes', label: 'Recorrentes',         icone: '🔄', grupo: 'Produção' },
+    { id: 'roteiro-entrega',     label: 'Roteiro Entrega',     icone: '🚚', grupo: 'Produção' },
+
+    { id: 'clientes',            label: 'Clientes',            icone: '👥', grupo: 'Cadastros' },
+    { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: '🗺', grupo: 'Cadastros' },
+    { id: 'fornecedores',        label: 'Fornecedores',        icone: '🏭', grupo: 'Cadastros' },
+    { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
+    { id: 'usuarios',            label: 'Usuários',            icone: '👤', grupo: 'Cadastros' },
+
+    { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro', senha: true },
+    { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
+
+    { id: 'estoque',             label: 'Estoque Chapas',      icone: '📦', grupo: 'Estoques' },
+    { id: 'facas1',              label: 'Estoque Facas',       icone: '🔧', grupo: 'Estoques' },
+    { id: 'cliches',             label: 'Estoque Clichês',     icone: '🖼', grupo: 'Estoques' },
+    { id: 'compras',             label: 'Compras',             icone: '🛒', grupo: 'Estoques' },
+    { id: 'sel-chapas',          label: 'Seleção de Chapas',   icone: '🧾', grupo: 'Estoques' },
+    { id: 'papelao-ia',          label: 'Papelão IA',          icone: '🧠', grupo: 'Estoques' },
+    { id: 'simd',                label: 'Simulador (SIMD)',    icone: '♻',  grupo: 'Estoques' },
+
+    { id: 'fluxos',              label: 'Fluxos',              icone: '🔀', grupo: 'Máquinas' },
+    { id: 'maquinas',            label: 'Cadastro Máquinas',   icone: '🖨', grupo: 'Máquinas' },
+    { id: 'tipos-caixa',         label: 'Tipos de Caixa',      icone: '📦', grupo: 'Máquinas' },
+    { id: 'tempos-reais',        label: 'Tempos Reais',        icone: '⏱',  grupo: 'Máquinas' },
+
+    { id: 'agenda',              label: 'Agenda',              icone: '📅', grupo: 'Comunicações' },
+
+    { id: 'operadores',          label: 'Operadores',          icone: '👷', grupo: 'Qualidade' },
+    { id: 'inconformidades',     label: 'Inconformidades',     icone: '⚠',  grupo: 'Qualidade' },
+
+    { id: 'dashboard',           label: 'Dashboard',           icone: '📊', grupo: 'Análises' },
+    { id: 'relatorios',          label: 'Relatórios',          icone: '🖨', grupo: 'Análises' },
+    { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Análises' },
+    { id: 'relmensal',           label: 'Relatório Mensal',    icone: '📅', grupo: 'Análises' },
+    { id: 'configuracoes',       label: 'Configurações',       icone: '⚙',  grupo: 'Análises' },
+  ];
   
   function _hotbarCap(s){
     var t = String(s || '').trim();
@@ -458,66 +711,23 @@
     var one = parts[0] || t;
     return one.slice(0, 3);
   }
-  function _hotbarEnsureAllPagesFromDom(){
-    try{
-      var nodes = document.querySelectorAll('[id^="page-"]');
-      if(!nodes || !nodes.length) return;
-      var known = {};
-      HOTBAR_ABAS.forEach(function(a){ if(a && a.id) known[String(a.id)] = true; });
-      Array.prototype.forEach.call(nodes, function(el){
-        var pid = String(el && el.id || '').trim();
-        if(!pid) return;
-        var id = pid.replace(/^page-/, '');
-        if(!id) return;
-        if(known[id]) return;
-        known[id] = true;
-        var label = _hotbarLabelFromId(id) || id;
-        HOTBAR_ABAS.push({ id: id, label: label, icone: _hotbarIconFromLabel(label) || id, fixo: false });
-      });
-    }catch(e){}
+  function _hotbarEnsureAllPagesFromDom(){ return; }
+
+  function _findPaginaById(pid){
+    var id = String(pid || '').trim();
+    if(!id) return null;
+    for (var i = 0; i < (PAGINAS_REAIS_DESKTOP || []).length; i++) {
+      var p = PAGINAS_REAIS_DESKTOP[i];
+      if (p && p.id === id) return p;
+    }
+    return null;
   }
 
-  function autoDiscoverPages() {
-    var paginasConhecidas = [
-      { id: 'hub',                  label: 'Hub',            icone: '🏠' },
-      { id: 'pcp',                  label: 'PCP',            icone: '📋' },
-      { id: 'ofmaq',                label: 'Máquinas',       icone: '⚙' },
-      { id: 'clientes',             label: 'Clientes',       icone: '👥' },
-      { id: 'estoque',              label: 'Estoque',        icone: '📦' },
-      { id: 'orcamentos',           label: 'Orçamentos',     icone: '💰' },
-      { id: 'dashboard',            label: 'Dashboard',      icone: '📊' },
-      { id: 'agenda',               label: 'Agenda',         icone: '📅' },
-      { id: 'historico-passagens',  label: 'Histórico',      icone: '🕒' },
-      { id: 'inconformidades',      label: 'Inconformidades',icone: '⚠' },
-      { id: 'operadores',           label: 'Operadores',     icone: '👤' },
-      { id: 'mapa-clientes',        label: 'Mapa',           icone: '🗺' },
-      { id: 'relatorios',           label: 'Relatórios',     icone: '📄' },
-      { id: 'papelao-ia',           label: 'Papelão IA',     icone: '🤖' },
-      { id: 'comissoes',            label: 'Comissões',      icone: '💵' },
-      { id: 'compras',              label: 'Compras',        icone: '🛒' },
-      { id: 'fornecedores',         label: 'Fornecedores',   icone: '🏭' },
-      { id: 'amostras',             label: 'Amostras',       icone: '🔬' },
-      { id: 'pedidos-recorrentes',  label: 'Recorrentes',    icone: '🔄' },
-      { id: 'caixas-perdidas',      label: 'Caixas Perdidas',icone: '📉' },
-      { id: 'configuracoes',        label: 'Config.',        icone: '⚙' }
-    ];
-
-    try{
-      var nodes = document.querySelectorAll('[id^="page-"]');
-      Array.prototype.forEach.call(nodes, function(el){
-        var pageId = String(el && el.id || '').replace(/^page-/, '').trim();
-        if(!pageId) return;
-        var existe = paginasConhecidas.some(function(p){ return p.id === pageId; });
-        if(!existe) paginasConhecidas.push({ id: pageId, label: pageId, icone: '📌' });
-      });
-    }catch(e){}
-
-    return paginasConhecidas;
-  }
-
-  try{ window._todasPaginas = autoDiscoverPages(); }catch(e){}
+  try{ window._todasPaginas = PAGINAS_REAIS_DESKTOP; }catch(e){}
 
   window.mobileGoPage = function(page) {
+    var menu = document.getElementById('mob-menu-mais');
+    if (menu) menu.remove();
     var pid = String(page || '').trim();
     if(!pid) return;
     var paginasFinanceiro = ['orcamentos', 'comissoes'];
@@ -554,26 +764,53 @@
   }
   window.goFinanceiro = goFinanceiro;
 
-  function getHotbarConfig() { 
-    try { 
-      var salvo = localStorage.getItem('hotbar_config'); 
-      if (salvo) { 
-        var arr = JSON.parse(salvo); 
-        if (Array.isArray(arr)) return arr.map(function(x){ return String(x||'').trim(); }).filter(Boolean); 
-      } 
-    } catch(e) {} 
-    return ['hub', 'pcp', 'ofmaq', 'estoque']; 
-  } 
+  function _hotbarValidIds(){
+    try{
+      return (PAGINAS_REAIS_DESKTOP || []).map(function(p){ return String(p && p.id || '').trim(); }).filter(Boolean);
+    }catch(e){ return []; }
+  }
+  function _isValidPageId(id){
+    var pid = String(id || '').trim();
+    if(!pid) return false;
+    return _hotbarValidIds().indexOf(pid) !== -1;
+  }
 
-  function salvarHotbarConfig(ids) { 
-    var arr = Array.isArray(ids) ? ids.map(function(x){ return String(x||'').trim(); }).filter(Boolean) : []; 
-    if (arr.indexOf('hub') === -1) arr.unshift('hub'); 
-    if (arr.indexOf('ofmaq') === -1) arr.push('ofmaq'); 
-    var uniq = []; 
-    arr.forEach(function(x){ if (uniq.indexOf(x) === -1) uniq.push(x); }); 
-    localStorage.setItem('hotbar_config', JSON.stringify(uniq)); 
-    renderHotbar(); 
-  } 
+  function getHotbarConfig() {
+    var base = ['hub', 'pcp', 'ofmaq'];
+    var extra = 'estoque';
+    try {
+      var salvo = localStorage.getItem('hotbar_config');
+      if (salvo) {
+        var arr = JSON.parse(salvo);
+        if (Array.isArray(arr)) {
+          arr = arr.map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+          for (var i = 0; i < arr.length; i++) {
+            var it = arr[i];
+            if (base.indexOf(it) !== -1) continue;
+            if (_isValidPageId(it)) { extra = it; break; }
+          }
+        }
+      }
+    } catch(e) {}
+    var out = base.slice();
+    if (extra && out.indexOf(extra) === -1 && _isValidPageId(extra)) out.push(extra);
+    return out.slice(0, 4);
+  }
+
+  function salvarHotbarConfig(ids) {
+    var base = ['hub', 'pcp', 'ofmaq'];
+    var arr = Array.isArray(ids) ? ids.map(function(x){ return String(x||'').trim(); }).filter(Boolean) : [];
+    var extra = '';
+    for (var i = 0; i < arr.length; i++) {
+      var it = arr[i];
+      if (base.indexOf(it) !== -1) continue;
+      if (_isValidPageId(it)) { extra = it; break; }
+    }
+    var out = base.slice();
+    if (extra && out.indexOf(extra) === -1) out.push(extra);
+    try{ localStorage.setItem('hotbar_config', JSON.stringify(out)); }catch(e){}
+    renderHotbar();
+  }
 
   function _hotbarPaginaAtiva() { 
     var id = String(window._PAGE_ATUAL || '').trim(); 
@@ -605,10 +842,9 @@
   function renderHotbar() { 
     var nav = document.getElementById('mobile-bottom-nav'); 
     if (!nav) { console.warn('[PATCH] hotbar nao encontrada'); return; }       
-    _hotbarEnsureAllPagesFromDom();
     var ativos = getHotbarConfig(); 
     var html = ativos.slice(0, 4).map(function(id) { 
-      var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || { id: id, label: id, icone: id, fixo: false }; 
+      var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || _findPaginaById(id) || { id: id, label: id, icone: '📌', fixo: false }; 
       var on = (aba.id === 'orcamentos' || aba.id === 'comissoes')
         ? 'goFinanceiro(&quot;' + aba.id + '&quot;)'
         : 'go(&quot;' + aba.id + '&quot;)';
@@ -616,7 +852,7 @@
         'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
         'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
         '<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.08);' + 
-        'display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#e2e8f0">' + 
+        'display:flex;align-items:center;justify-content:center;font-size:14px">' + 
         String(aba.icone || '').replace(/</g,'').replace(/>/g,'') + '</div>' + 
         '<span style="font-size:9px">' + String(aba.label || '').replace(/</g,'').replace(/>/g,'') + '</span>' + 
         '</button>'; 
@@ -635,61 +871,78 @@
     var old = document.getElementById('mob-menu-mais');
     if (old) { old.remove(); return; }
 
-    var paginas = window._todasPaginas || autoDiscoverPages();
+    var naHotbar = Array.from(document.querySelectorAll('#mobile-bottom-nav [data-tab]'))
+      .map(function(b){ return String(b && b.dataset ? b.dataset.tab : '').trim(); })
+      .filter(Boolean);
+
+    var paginas = (PAGINAS_REAIS_DESKTOP || []).filter(function(p) {
+      if (!p || !p.id) return false;
+      if (naHotbar.indexOf(p.id) !== -1) return false;
+      var elPage = document.getElementById('page-' + p.id) || document.querySelector('[data-page="' + p.id + '"]');
+      if (!elPage) return false;
+      try{
+        var st = String(elPage.getAttribute('style') || '');
+        if (/display\s*:\s*none\s*!important/i.test(st)) return false;
+      }catch(e){}
+      return true;
+    });
+
+    var grupos = {};
+    paginas.forEach(function(p) {
+      var g = p.grupo || 'Outros';
+      if (!grupos[g]) grupos[g] = [];
+      grupos[g].push(p);
+    });
 
     var overlay = document.createElement('div');
     overlay.id = 'mob-menu-mais';
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.7);display:flex;align-items:flex-end';
 
-    var painel = document.createElement('div');
-    painel.style.cssText = 'background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:16px 12px 70px';
-
-    painel.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">' +
-        '<span style="color:#e2e8f0;font-weight:700;font-size:15px">Todas as áreas</span>' +
-        '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' +
-      paginas.map(function(p) {
-        return '<button onclick="mobileGoPage(&quot;' + p.id + '&quot;);document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="' +
-          'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);' +
-          'border-radius:10px;padding:12px 8px;cursor:pointer;color:#e2e8f0;font-size:12px;' +
-          'display:flex;flex-direction:column;align-items:center;gap:4px;touch-action:manipulation">' +
-          '<span style="font-size:20px">' + (p.icone||'📌') + '</span>' +
-          '<span style="font-size:11px;color:#94a3b8">' + p.label + '</span>' +
-        '</button>';
-      }).join('') +
+    var html = '<div style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:82vh;overflow-y:auto;padding:16px 14px 72px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
+        '<span style="color:#e2e8f0;font-weight:700;font-size:16px">Menu</span>' +
+        '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:24px;cursor:pointer">✕</button>' +
       '</div>';
 
-    overlay.appendChild(painel);
+    Object.keys(grupos).forEach(function(grupo) {
+      html += '<div style="margin-bottom:16px">' +
+        '<div style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">' + grupo + '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">';
+
+      grupos[grupo].forEach(function(p) {
+        html += '<button onclick="mobileGoPage(&quot;' + p.id + '&quot;)" style="' +
+          'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.09);' +
+          'border-radius:12px;padding:14px 8px;cursor:pointer;color:#e2e8f0;' +
+          'display:flex;flex-direction:column;align-items:center;gap:5px;' +
+          'touch-action:manipulation;-webkit-tap-highlight-color:transparent">' +
+          '<span style="font-size:22px">' + (p.icone||'📌') + '</span>' +
+          '<span style="font-size:11px;color:#94a3b8;text-align:center;line-height:1.2">' + p.label + '</span>' +
+          (p.senha ? '<span style="font-size:9px;color:#f59e0b">🔒</span>' : '') +
+        '</button>';
+      });
+
+      html += '</div></div>';
+    });
+
+    html += '</div>';
+    overlay.innerHTML = html;
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
     document.body.appendChild(overlay);
   };
 
-  window.toggleHotbarAba = function(id, ativo) { 
-    var cur = getHotbarConfig(); 
-    id = String(id || '').trim(); 
-    if (!id) return; 
-    if (ativo) { 
-      if (cur.length >= 4) { 
-        alert('Maximo 4 abas. Desmarque uma primeiro.'); 
-        setTimeout(function() { 
-          try { 
-            var cb = document.querySelector('#modal-personalizar-hotbar input[onchange*=\"' + id + '\"]'); 
-            if (cb) cb.checked = false; 
-          } catch(_) {} 
-        }, 50); 
-        return; 
-      } 
-      if (cur.indexOf(id) === -1) cur.push(id); 
-    } else { 
-      var aba = HOTBAR_ABAS.find(function(a){ return a.id === id; }); 
-      if (aba && aba.fixo) return; 
-      cur = cur.filter(function(a){ return a !== id; }); 
-    } 
-    salvarHotbarConfig(cur); 
-    console.log('[PATCH] hotbar salva:', cur); 
-  }; 
+  window.toggleHotbarAba = function(id, ativo) {
+    var base = ['hub', 'pcp', 'ofmaq'];
+    id = String(id || '').trim();
+    if (!id) return;
+    if (!_isValidPageId(id)) return;
+    if (ativo) {
+      if (base.indexOf(id) !== -1) { salvarHotbarConfig(getHotbarConfig()); return; }
+      salvarHotbarConfig(base.concat([id]));
+      return;
+    }
+    if (base.indexOf(id) !== -1) return;
+    salvarHotbarConfig(base);
+  };
 
   function aplicarAccordion() { 
     var headers = document.querySelectorAll('.maq-header'); 
