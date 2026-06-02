@@ -55377,12 +55377,22 @@ async function toggleGravarAudio(){
 async function abrirListaUsuariosChat(mode){
   try{
     const st = window._chatState;
-    const { j } = await _chatFetchJson('/api/chat/usuarios', { method:'GET' });
+    let j = null;
+    try{
+      const r1 = await _chatFetchJson('/api/usuarios/lista?t=' + Date.now(), { method:'GET' });
+      j = r1 && r1.j;
+    }catch(_){}
+    if (!j || j.ok === false || !(j.data || j.usuarios)) {
+      try{
+        const r2 = await _chatFetchJson('/api/chat/usuarios?t=' + Date.now(), { method:'GET' });
+        j = r2 && r2.j;
+      }catch(_){}
+    }
     if (!j || j.ok === false) {
       try{ toast('Erro ao listar usuários', 'var(--red)'); }catch(_){}
       return;
     }
-    const users = Array.isArray(j && j.usuarios) ? j.usuarios : [];
+    const users = Array.isArray(j && (j.data || j.usuarios)) ? (j.data || j.usuarios) : [];
     const ov = document.createElement('div');
     ov.id = 'chat-users-ov';
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9001;display:flex;align-items:center;justify-content:center;padding:14px';

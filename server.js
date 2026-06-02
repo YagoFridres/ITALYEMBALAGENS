@@ -594,7 +594,14 @@ function authMiddleware(req, res, next) {
 }
 
 async function requireAdmin(req, res, next) {
-  try {
+  const fullUrl = String(req.originalUrl || req.url || '');
+  const fullPath = fullUrl.split('?')[0].replace(/\/+$/, '');
+  const path = String(req.path || '').replace(/\/+$/, '');
+  const p = fullPath || path || '';
+  const needsAdmin = p.startsWith('/api/usuarios') || p.startsWith('/api/configuracoes');
+  const _afterAuth = async () => {
+    if (!needsAdmin) return next();
+
     const u = req.usuario || null;
     const uid = String(u?.id || '').trim();
     if (!uid) return res.status(403).json({ ok: false, error: 'Sem permissão' });
@@ -622,9 +629,18 @@ async function requireAdmin(req, res, next) {
       return next();
     }
     return res.status(403).json({ ok: false, error: 'Sem permissão — requer perfil admin' });
+  };
+
+  try {
+    if (!req.usuario) return authMiddleware(req, res, () => _afterAuth().catch((e) => {
+      console.error('[REQUIRE ADMIN] erro:', e?.message);
+      return res.status(403).json({ ok: false, error: 'Sem permissão' });
+    }));
+    return _afterAuth();
   } catch (e) {
     console.error('[REQUIRE ADMIN] erro:', e?.message);
     try {
+      if (!needsAdmin) return next();
       const u = req.usuario || null;
       const perfil = String(u?.perfil || '').trim().toLowerCase();
       const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
@@ -1314,8 +1330,7 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
 
     let r = await supabase
       .from('usuarios')
-      .select('id,nome,email,perfil,ativo,avatar_url,avatar_iniciais,avatar_cor')
-      .or('ativo.is.null,ativo.eq.true')
+      .select('id,nome,email,perfil,avatar_url,ativo,avatar_iniciais,avatar_cor')
       .order('nome', { ascending: true });
 
     if (r?.error && isMissingColumnErr(r.error) && extractMissingCol(r.error) === 'ativo') {
@@ -1325,9 +1340,14 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
         .order('nome', { ascending: true });
     }
 
-    if (r?.error) throw r.error;
-    const data = r?.data || [];
-    res.json({ ok: true, data: data || [], usuarios: data || [] });
+    if (r?.error) {
+      console.error('[usuarios/lista]', String(r.error?.message || r.error));
+      throw r.error;
+    }
+
+    const lista = (r?.data || []).filter((u) => u && u.ativo !== false);
+    console.log('[usuarios/lista] retornando:', lista.length, 'usuarios');
+    res.json({ ok: true, data: lista, usuarios: lista });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
