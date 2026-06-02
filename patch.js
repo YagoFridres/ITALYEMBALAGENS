@@ -279,15 +279,20 @@
   }
 
   .sidebar, #sidebar, nav.side, .side-nav,
-  [class*="sidebar"]:not(#mobile-bottom-nav),
-  [id="sidebar"], .left-nav, #left-nav,
-  .nav-lateral, #nav-lateral {
+  [class*="sidebar"]:not(#mobile-bottom-nav):not(.mobile-bottom-nav),
+  .left-panel, #left-panel, .left-menu, #left-menu,
+  .nav-left, #nav-left, .left-nav, #left-nav,
+  .nav-lateral, #nav-lateral, aside {
     display: none !important;
     width: 0 !important;
     min-width: 0 !important;
     max-width: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
     overflow: hidden !important;
-    position: absolute !important;
+    flex: 0 !important;
+    position: fixed !important;
+    left: -9999px !important;
   }
 
   .layout, .content, .page, .page-body {
@@ -298,17 +303,26 @@
 
   .main-content, #main-content,
   .content-wrapper, #content-wrapper,
+  .app-main, #app-main,
+  .page-content, #page-content,
   .app-content, #app-content,
   .page-wrapper, #page-wrapper,
   [class*="main-content"],
+  [class*="content-wrap"],
+  [class*="app-content"],
   [class*="content-area"] {
     margin-left: 0 !important;
     margin-right: 0 !important;
     padding: 8px 10px 72px !important;
-    width: 100% !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: 72px !important;
+    width: 100vw !important;
     max-width: 100vw !important;
     min-width: 0 !important;
     overflow-x: hidden !important;
+    position: relative !important;
+    left: 0 !important;
   }
 
   section, [id^="page-"], .page,
@@ -1402,6 +1416,88 @@
   patchAbrirOfRapida(); 
   patchRenderHub(); 
   patchGoAcordeon(); 
+  try{
+    function _bindSwipeMaquinas(){
+      try{
+        if (typeof window._isMobileLike === 'function' && !window._isMobileLike()) return;
+      }catch(_){}
+      if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
+      var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
+      if (!container) return;
+      if (container.dataset && container.dataset._swipeMaqBound === '1') return;
+      if (container.dataset) container.dataset._swipeMaqBound = '1';
+
+      if (!document.getElementById('patch-swipe-style')) {
+        var st = document.createElement('style');
+        st.id = 'patch-swipe-style';
+        st.textContent = '@keyframes patchSwipeFade{0%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-60%) scale(.92)}}';
+        document.head.appendChild(st);
+      }
+
+      var sx = 0;
+      var sy = 0;
+      container.addEventListener('touchstart', function(e){
+        try{
+          var t = e.touches && e.touches[0];
+          if(!t) return;
+          sx = t.clientX;
+          sy = t.clientY;
+        }catch(_){}
+      }, { passive:true });
+
+      container.addEventListener('touchend', function(e){
+        try{
+          if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
+          var view = String(window._ofmaqView || 'dia').trim().toLowerCase() || 'dia';
+          if (view !== 'dia') return;
+
+          var t = e.changedTouches && e.changedTouches[0];
+          if(!t) return;
+          var dx = t.clientX - sx;
+          var dy = t.clientY - sy;
+          if (Math.abs(dx) < 60) return;
+          if (Math.abs(dy) > Math.abs(dx) * 0.7) return;
+
+          var sel = document.getElementById('ofsmaq-select-maquina') || document.getElementById('ofsmaq-filtro-maquina');
+          if (!sel || !sel.options || sel.options.length < 2) return;
+          var opts = Array.prototype.slice.call(sel.options).map(function(o){ return String(o && o.value || '').trim(); }).filter(Boolean);
+          if (!opts.length) return;
+          var cur = String(sel.value || '').trim();
+          var idx = opts.indexOf(cur);
+          if (idx < 0) idx = (dx < 0 ? -1 : opts.length);
+          var next = dx < 0 ? opts[idx + 1] : opts[idx - 1];
+          if (!next) return;
+
+          sel.value = next;
+          try{ sel.dispatchEvent(new Event('change', { bubbles:true })); }catch(_){
+            try{ if(typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); }catch(__){}
+          }
+
+          var indicator = document.createElement('div');
+          indicator.textContent = (dx < 0 ? '→ ' : '← ') + next;
+          indicator.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(74,144,217,0.92);color:#fff;padding:10px 18px;border-radius:20px;font-size:15px;font-weight:700;z-index:9999;pointer-events:none;animation:patchSwipeFade .85s forwards';
+          document.body.appendChild(indicator);
+          setTimeout(function(){ try{ indicator.remove(); }catch(_){ } }, 900);
+        }catch(_){}
+      }, { passive:true });
+    }
+
+    ['renderOFsPorMaquina','ofsMaqFiltroDia','ofmaqNav'].forEach(function(nome){
+      try{
+        var fn = window[nome];
+        if (typeof fn !== 'function') return;
+        if (fn._patchedSwipeMaq) return;
+        window[nome] = function(){
+          var r = fn.apply(this, arguments);
+          setTimeout(_bindSwipeMaquinas, 280);
+          return r;
+        };
+        window[nome]._patchedSwipeMaq = true;
+      }catch(_){}
+    });
+
+    setTimeout(_bindSwipeMaquinas, 900);
+  }catch(_){}
   try{ setTimeout(function(){ try{ renderHotbar(); }catch(e){} }, 200); }catch(e){}
   try{
     setTimeout(function(){

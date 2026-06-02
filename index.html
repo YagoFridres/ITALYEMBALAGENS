@@ -30545,11 +30545,14 @@ function _bindMobileUX(){
     try{ obs.observe(root, { subtree:true, childList:true }); }catch(_){}
   }
   try{
-    let sx = 0, sy = 0;
+    let sx = 0, sy = 0, ignore = false;
     document.addEventListener('touchstart', (e)=>{
       try{
         if(!_isMobileLike()) return;
         if(String(window._PAGE_ATUAL||'') !== 'ofmaq') return;
+        const elMaq = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body');
+        ignore = !!(elMaq && elMaq.contains(e?.target));
+        if (ignore) return;
         const t = e?.touches && e.touches[0];
         if(!t) return;
         sx = t.clientX; sy = t.clientY;
@@ -30559,6 +30562,7 @@ function _bindMobileUX(){
       try{
         if(!_isMobileLike()) return;
         if(String(window._PAGE_ATUAL||'') !== 'ofmaq') return;
+        if(ignore) { ignore = false; return; }
         const t = e?.changedTouches && e.changedTouches[0];
         if(!t) return;
         const dx = t.clientX - sx;

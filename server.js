@@ -918,6 +918,7 @@ app.post('/api/auth/login', async (req, res) => {
         email: usuario.email,
         perfil: usuario.perfil,
         permissoes: perms,
+        avatar_url: usuario.avatar_url || usuario.avatar || usuario.foto || null,
       },
       JWT_SECRET,
       { expiresIn: '30d' }
@@ -944,6 +945,7 @@ app.post('/api/auth/login', async (req, res) => {
         canais_chat: usuario.canais_chat,
         avatar_iniciais: usuario.avatar_iniciais || 'AD',
         avatar_cor: usuario.avatar_cor || '#4A90D9',
+        avatar_url: usuario.avatar_url || usuario.avatar || usuario.foto || null,
       },
     });
   } catch (err) {
@@ -999,6 +1001,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
         canais_chat: req.usuario?.canais_chat,
         avatar_iniciais: req.usuario?.avatar_iniciais,
         avatar_cor: req.usuario?.avatar_cor,
+        avatar_url: req.usuario?.avatar_url || null,
       });
     }
     let perms = usuario.permissoes != null ? usuario.permissoes : [];
@@ -1015,9 +1018,168 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
       canais_chat: usuario.canais_chat,
       avatar_iniciais: usuario.avatar_iniciais || 'AD',
       avatar_cor: usuario.avatar_cor || '#4A90D9',
+      avatar_url: usuario.avatar_url || usuario.avatar || usuario.foto || null,
     });
   } catch(err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/usuarios/me', authMiddleware, async (req, res) => {
+  try {
+    const uid = String(req.usuario?.id || req.usuario?.sub || '').trim();
+    if (!uid) return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id,nome,email,perfil,permissoes,canais_chat,ativo,avatar_iniciais,avatar_cor,avatar_url,avatar,foto')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error || !data) {
+      return res.json({
+        ok: true,
+        usuario: {
+          id: req.usuario?.id,
+          nome: req.usuario?.nome,
+          email: req.usuario?.email,
+          perfil: req.usuario?.perfil,
+          permissoes: req.usuario?.permissoes || [],
+          canais_chat: req.usuario?.canais_chat,
+          avatar_iniciais: req.usuario?.avatar_iniciais,
+          avatar_cor: req.usuario?.avatar_cor,
+          avatar_url: req.usuario?.avatar_url || null,
+        },
+        source: 'jwt',
+      });
+    }
+    let perms = data.permissoes != null ? data.permissoes : [];
+    if (typeof perms === 'string') { try { perms = JSON.parse(perms); } catch (_) { perms = []; } }
+    if (!Array.isArray(perms)) perms = [];
+    const perfilNorm = String(data.perfil || '').trim().toLowerCase();
+    if ((perfilNorm === 'admin' || perfilNorm.includes('admin')) && !perms.includes('tudo')) perms = ['tudo', ...perms];
+    return res.json({
+      ok: true,
+      usuario: {
+        id: data.id,
+        nome: data.nome,
+        email: data.email,
+        perfil: data.perfil,
+        permissoes: perms,
+        canais_chat: data.canais_chat,
+        ativo: data.ativo,
+        avatar_iniciais: data.avatar_iniciais || initialsFromName(data.nome),
+        avatar_cor: data.avatar_cor || avatarColorFromText(data.email),
+        avatar_url: data.avatar_url || data.avatar || data.foto || null,
+      },
+      source: 'db',
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/usuarios/avatar', authMiddleware, async (req, res) => {
+  try {
+    const uploadAv = multer({
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: function (_req, file, cb) {
+        const mt = String(file?.mimetype || '').toLowerCase();
+        if (mt.startsWith('image/')) return cb(null, true);
+        return cb(new Error('Apenas imagens'));
+      },
+    });
+
+    uploadAv.single('avatar')(req, res, async function (err) {
+      try {
+        if (err) {
+          try { console.error('[avatar] multer error:', String(err.message || err)); } catch (_) {}
+          return res.status(400).json({ ok: false, error: String(err.message || err) });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ ok: false, error: 'Nenhum arquivo recebido' });
+        }
+
+        const userId = req.usuario?.id || req.usuario?.sub;
+        if (!userId) return res.status(401).json({ ok: false, error: 'usuario nao identificado' });
+
+        const mime = String(req.file.mimetype || 'image/jpeg');
+        let ext = String((mime.split('/')[1] || 'jpg')).toLowerCase();
+        if (ext === 'jpeg') ext = 'jpg';
+        if (!/^[a-z0-9]+$/i.test(ext)) ext = 'jpg';
+        const fileName = 'avatares/' + String(userId) + '.' + ext;
+
+        const tryUpload = async (bucket) => {
+          const b = String(bucket || '').trim();
+          const { error: upErr } = await supabase.storage
+            .from(b)
+            .upload(fileName, req.file.buffer, { contentType: mime, upsert: true });
+          if (upErr) throw upErr;
+          const { data: urlData } = supabase.storage.from(b).getPublicUrl(fileName);
+          const publicUrl = String(urlData?.publicUrl || '').trim();
+          if (!publicUrl) throw new Error('Falha ao obter URL pública');
+          return { publicUrl, bucket: b };
+        };
+
+        let publicUrl = '';
+        let bucketUsed = 'chat-arquivos';
+        try {
+          const r1 = await tryUpload('chat-arquivos');
+          publicUrl = r1.publicUrl;
+          bucketUsed = r1.bucket;
+        } catch (upErr) {
+          const msg = String(upErr?.message || upErr || '');
+          const bucketNotFound = msg.toLowerCase().includes('bucket') && msg.toLowerCase().includes('not');
+          if (bucketNotFound) {
+            try {
+              await supabase.storage.createBucket('chat-arquivos', { public: true });
+              const r2 = await tryUpload('chat-arquivos');
+              publicUrl = r2.publicUrl;
+              bucketUsed = r2.bucket;
+            } catch (e2) {
+              try {
+                const r3 = await tryUpload('uploads');
+                publicUrl = r3.publicUrl;
+                bucketUsed = r3.bucket;
+              } catch (e3) {
+                return res.status(500).json({
+                  ok: false,
+                  error: 'Bucket não encontrado. Crie o bucket "chat-arquivos" no Supabase Storage (Public) ou use "uploads".',
+                });
+              }
+            }
+          } else {
+            try {
+              const r3 = await tryUpload('uploads');
+              publicUrl = r3.publicUrl;
+              bucketUsed = r3.bucket;
+            } catch (e3) {
+              return res.status(500).json({ ok: false, error: msg || 'Falha no upload' });
+            }
+          }
+        }
+
+        const avatarUrl = publicUrl + '?v=' + Date.now();
+
+        const { error: dbErr } = await supabase
+          .from('usuarios')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', userId);
+
+        if (dbErr) {
+          try { console.error('[avatar] db error:', String(dbErr.message || dbErr)); } catch (_) {}
+          return res.json({ ok: true, avatar_url: avatarUrl, bucket: bucketUsed, aviso: 'URL salva temporariamente' });
+        }
+
+        return res.json({ ok: true, avatar_url: avatarUrl, bucket: bucketUsed });
+      } catch (e) {
+        try { console.error('[avatar] inner catch:', String(e?.message || e)); } catch (_) {}
+        return res.status(500).json({ ok: false, error: String(e?.message || e) });
+      }
+    });
+  } catch (e) {
+    try { console.error('[avatar] catch:', String(e?.message || e)); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
