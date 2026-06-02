@@ -4140,8 +4140,8 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
 
     res.json({ ok: true, mensagem: data });
   } catch (e) {
-    try { console.error('[chat/mensagens POST] catch:', String(e?.message || e)); } catch (_) {}
-    res.status(500).json({ ok: false, error: String(e.message || e) });
+    try { console.error('[chat POST]', String(e?.message || e)); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
