@@ -7915,12 +7915,19 @@ async function _resolveEmpresaUuid(req) {
   ).trim();
   const empIdBase = (empId ? empId.split(':')[0] : '').trim().toUpperCase();
   if (_isUuid(empIdBase)) return empIdBase;
-  const empIdEff = (empIdBase === 'E1' ? 'ITALY' : empIdBase) || 'ITALY';
+  const empIdEff =
+    (empIdBase === 'E1' ? 'ITALY' :
+     empIdBase === 'E2' ? 'CARTO' :
+     empIdBase === 'E3' ? 'OESTE' :
+     empIdBase) || 'ITALY';
   try {
     const { data, error } = await supabase.from('empresas').select('id').eq('sigla', empIdEff).maybeSingle();
-    if (error) return '';
     const id = String(data?.id || '').trim();
-    return _isUuid(id) ? id : '';
+    if (!error && _isUuid(id)) return id;
+    const { data: data2, error: error2 } = await supabase.from('empresas').select('id').eq('codigo', empIdEff).maybeSingle();
+    const id2 = String(data2?.id || '').trim();
+    if (!error2 && _isUuid(id2)) return id2;
+    return '';
   } catch (_) {
     return '';
   }

@@ -2715,6 +2715,8 @@ function empIdSanitize(v){
   if(!s) return '';
   const base = String(s.split(':')[0] || '').trim().toUpperCase();
   if(base === 'E1') return 'ITALY';
+  if(base === 'E2') return 'CARTO';
+  if(base === 'E3') return 'OESTE';
   return base;
 }
 
@@ -2867,6 +2869,7 @@ function renderSeletorCoresItemOFRapida(index){
       <span>${escH(nome)}</span>
     </button>`;
   }).join('');
+  atualizarBotaoCores(sel, 'btnCoresLabelItemOFRapida_' + idx, 'resumoCoresItemOFRapida_' + idx);
 }
 
 function toggleCorItemOFRapida(index, corId){
@@ -4289,7 +4292,16 @@ window.abrirMaisItensOfRapida = function(){
         '</div>' +
         '<div style="grid-column:1/-1;margin-top:6px">' +
           '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:4px">Cores de Impressão *</label>' +
-          '<div id="seletorCoresItemOFRapida_' + String(idx) + '" class="cores-grid"></div>' +
+          '<div class="cores-picker-wrapper" style="position:relative">' +
+            '<button type="button" id="btnAbrirCoresItemOFRapida_' + String(idx) + '" class="btn-cores-picker" onclick="toggleDropdownCores(\'dropdownCoresItemOFRapida_' + String(idx) + '\', \'btnAbrirCoresItemOFRapida_' + String(idx) + '\')">' +
+              '<span id="btnCoresLabelItemOFRapida_' + String(idx) + '">🎨 Selecionar Cores</span>' +
+              '<span class="picker-arrow">▾</span>' +
+            '</button>' +
+            '<div id="dropdownCoresItemOFRapida_' + String(idx) + '" class="cores-dropdown" style="display:none">' +
+              '<div id="seletorCoresItemOFRapida_' + String(idx) + '" class="cores-grid-dropdown"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div id="resumoCoresItemOFRapida_' + String(idx) + '" class="cores-resumo" style="margin-top:4px;display:none"></div>' +
         '</div>' +
         '<div style="grid-column:1/-1;margin-top:4px">' +
           '<label style="color:#94a3b8;font-size:11px;display:block;margin-bottom:3px">Imagem (opcional)</label>' +
