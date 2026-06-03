@@ -2520,7 +2520,7 @@ function ofmaqMaquinasValidas(){
     out.push(n);
   };
   src.forEach(m=>{
-    if(!m || m.ativo === false) return;
+    if(!m || m.ativa === false) return;
     const base = String(m.col || m.nome || '').trim();
     if(!base) return;
     const canon = maqAtivaFromNome(base) || base;
@@ -27972,7 +27972,7 @@ function _renderDashboardBase(){
 
   const prodPorMaquina = (()=>{
     const maqs = (Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []))
-      .filter(m=>m && m.ativo !== false)
+      .filter(m=>m && m.ativa !== false)
       .map(m=>({ nome: String(m.col || m.nome || '').trim(), id: String(m.id || '').trim() }))
       .filter(m=>m.nome);
     const by = {};
@@ -28590,7 +28590,7 @@ function _renderRelatorioBase(){
     const deIso = de.toISOString().slice(0,10);
     const ateIso = ate.toISOString().slice(0,10);
     const dias = 5;
-    const maquinas = (Array.isArray(MAQUINAS) ? MAQUINAS : []).filter(m=>m && m.ativo !== false);
+    const maquinas = (Array.isArray(MAQUINAS) ? MAQUINAS : []).filter(m=>m && m.ativa !== false);
     const concl = (o)=>{
       const st = String(o.status||'').toLowerCase();
       return st.includes('conclu') || st.includes('concluí') || st === 'feito' || st === 'finalizado' || st.includes('cancel');
@@ -28607,12 +28607,12 @@ function _renderRelatorioBase(){
       const disp = calcMaquinaDisponibilidade(m || {});
       const horasDia = (Number(disp.tempoProdMin||0) || 0) / 60;
       const capHoras = horasDia * dias;
-      const capUn = capHoras * (Number(m.phora || m.producao || 0) || 0);
+      const capUn = capHoras * (Number(m.caixas_hora || m.producao || m.phora || 0) || 0);
       const lista = ofsSemana.filter(o=> norm(maqNomeDeOF(o)) === norm(m.col || m.nome || ''));
       const cargaHoras = lista.reduce((s,o)=>{
         const qtd = Number(o.qtd || o.quantidade || 0) || 0;
-        const ph = Number(m.phora || m.producao || 0) || 0;
-        const setupMin = Number(m.setup || m.setup_medio || 0) || 0;
+        const ph = Number(m.caixas_hora || m.producao || m.phora || 0) || 0;
+        const setupMin = Number(m.tempo_setup_padrao_min || m.setup || m.setup_medio || 0) || 0;
         const hProd = ph > 0 ? (qtd / ph) : 0;
         const hSetup = setupMin > 0 ? (setupMin/60) : 0;
         return s + hProd + hSetup;
@@ -32015,7 +32015,7 @@ function normalizeEst(r) {
 }
 function normalizeAp(r){ return {id:r.id,ofId:r.of_id,maqId:r.maq_id,opId:r.operador_id,inicio:r.inicio,fim:r.fim,tempReal:r.temp_real,obs:r.obs,status:r.status}; }
 function normalizeMaq(r){
-  const ativo = r.ativo===undefined ? true : !!r.ativo;
+  const ativa = (r.ativa === undefined) ? (r.ativo===undefined ? true : !!r.ativo) : !!r.ativa;
   const toNum = (v)=>{
     if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
     if(v == null) return 0;
@@ -32027,8 +32027,8 @@ function normalizeMaq(r){
       .replace(',', '.');
     return Number(cleaned) || 0;
   };
-  const producaoBase = r.producao ?? r.caixas_hora ?? r.producao_hora ?? r.producao_por_hora ?? r.phora ?? r.por_hora ?? r.velocidade_media ?? r.velocidade ?? 0;
-  const setupBase = r.setup_medio ?? r.tempo_setup_padrao_min ?? r.setup ?? r.setup_min ?? r.tempo_setup ?? r.setup_tempo ?? 0;
+  const caixasHora = toNum(r.caixas_hora ?? r.producao_hora ?? r.producao ?? r.producao_por_hora ?? r.phora ?? r.por_hora ?? r.velocidade_media ?? r.velocidade ?? 0);
+  const setupPadrao = toNum(r.tempo_setup_padrao_min ?? r.setup_min ?? r.setup_medio ?? r.setup ?? r.tempo_setup ?? r.setup_tempo ?? 0);
   const horario_inicio = r.horario_inicio ?? r.hi ?? r.inicio ?? '07:00';
   const horario_fim = r.horario_fim ?? r.hf ?? r.fim ?? '18:00';
   const puxada_min = r.puxada_min ?? 0;
@@ -32047,10 +32047,12 @@ function normalizeMaq(r){
     nome:r.nome||r.col||r.name||'',
     ordem:(r.ordem!=null?Number(r.ordem):null),
     ico:r.ico||r.icon||r.icone||'⚙',
-    phora:toNum(producaoBase),
-    producao:toNum(producaoBase),
-    setup:toNum(setupBase),
-    setup_medio:toNum(setupBase),
+    caixas_hora: caixasHora,
+    tempo_setup_padrao_min: setupPadrao,
+    phora: caixasHora,
+    producao: caixasHora,
+    setup: setupPadrao,
+    setup_medio: setupPadrao,
     passagem:toNum(r.passagem_media ?? r.passagem ?? 0),
     passagem_media:toNum(r.passagem_media ?? r.passagem ?? 0),
     meta_perda_pct: (r.meta_perda_pct != null && String(r.meta_perda_pct).trim() !== '') ? toNum(r.meta_perda_pct) : null,
@@ -32068,7 +32070,8 @@ function normalizeMaq(r){
     intervalo_tarde_min: Number.isFinite(Number(intervalo_tarde_min)) ? Number(intervalo_tarde_min) : 15,
     setup_manha_min: Number.isFinite(Number(setup_manha_min)) ? Number(setup_manha_min) : 20,
     setup_tarde_min: Number.isFinite(Number(setup_tarde_min)) ? Number(setup_tarde_min) : 10,
-    ativo
+    ativa,
+    ativo: ativa
   };
 }
 function normalizeOp(r){
@@ -32690,7 +32693,7 @@ async function carregarMaquinas(forcar=false){
       return true;
     });
     MAQUINAS = MAQUINAS
-      .filter(m=>m && m.ativo !== false)
+      .filter(m=>m && m.ativa !== false)
       .map(m=>{
         const canon = maqAtivaFromNome(m.nome || m.col || m.id);
         if(!canon) return null;
@@ -33407,7 +33410,7 @@ function renderMaquinasConf(){
   });
   grid.innerHTML = MAQUINAS_ATIVAS.map((nome)=>{
     const ref = byNome[nome] || null;
-    const m = ref ? ref.m : { col:nome, nome:nome, ativo:false };
+    const m = ref ? ref.m : { col:nome, nome:nome, ativa:false };
     const mi = ref ? ref.idx : null;
     const tipo = (String(nome).toUpperCase().startsWith('IMP')) ? 'tipo-impressao' : 'tipo-corte';
     const badgeCls = (tipo === 'tipo-impressao') ? 'badge-impressao' : 'badge-corte';
@@ -33415,21 +33418,21 @@ function renderMaquinasConf(){
     const hi = String(m.horario_inicio || '07:00').trim() || '07:00';
     const hf = String(m.horario_fim || '18:00').trim() || '18:00';
     const disp = calcMaquinaDisponibilidade(m);
-    const prod = Number(m.producao ?? m.phora ?? 0) || 0;
-    const setup = Math.trunc(Number(m.setup_medio ?? m.passagem_media ?? m.tempo_setup_padrao_min ?? m.tempo_setup_min ?? m.setup_min ?? m.setup ?? 15) || 15);
+    const prod = Number(m.caixas_hora ?? m.producao ?? m.phora ?? 0) || 0;
+    const setup = Math.trunc(Number(m.tempo_setup_padrao_min ?? m.setup_medio ?? m.passagem_media ?? m.setup_min ?? m.setup ?? 15) || 15);
     const passagem = Math.trunc(Number(m.passagem_media ?? m.passagem ?? 0) || 0);
     const apsSrc = Array.isArray(APONTAMENTOS) ? APONTAMENTOS : [];
     const aps = (ref && m.id) ? apsSrc.filter(a=>a.maqId===m.id && a.tempReal) : [];
     const apontN = aps.length;
     const ico = String(m.icone || m.ico || '⚙');
 
-    return '<div class="maquina-card '+tipo+'" style="'+(m.ativo===false?'opacity:.55':'')+'">'+
+    return '<div class="maquina-card '+tipo+'" style="'+(m.ativa===false?'opacity:.55':'')+'">'+
       '<div class="maquina-card-header">'+
         '<div class="maquina-nome">'+escH(ico)+' '+escH(nome)+'</div>'+
         (mi!==null
           ? ('<div style="display:flex;gap:6px;flex-shrink:0">'+
               '<button class="btn-icon" onclick="editarMaquina('+mi+')" title="Editar">✏</button>'+
-              '<button class="btn-icon" style="color:'+(m.ativo===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativo===false?'Ativar':'Desativar')+'">'+(m.ativo===false?'▶':'⏸')+'</button>'+
+              '<button class="btn-icon" style="color:'+(m.ativa===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativa===false?'Ativar':'Desativar')+'">'+(m.ativa===false?'▶':'⏸')+'</button>'+
               '<button class="btn-icon" onclick="excluirMaquina('+mi+')" title="Excluir" style="color:var(--red)">🗑</button>'+
             '</div>')
           : '')+
@@ -33439,7 +33442,7 @@ function renderMaquinasConf(){
         '<div><span class="maquina-setor-badge '+badgeCls+'">🏭 '+escH(setorLabel)+'</span></div>'+
         '<div>'+
           '<div class="maquina-producao-label">📊 PRODUÇÃO</div>'+
-          '<div class="maquina-producao-valor">'+escH(prod ? prod.toLocaleString('pt-BR') : '—')+' <span style="font-size:.95rem;font-weight:700;color:#60a5fa">un/h</span></div>'+
+          '<div class="maquina-producao-valor">'+escH(prod ? prod.toLocaleString('pt-BR') : '—')+' <span style="font-size:.95rem;font-weight:700;color:#60a5fa">cx/h</span></div>'+
         '</div>'+
         '<div class="maquina-info-row"><span>⏱ Setup</span><span class="valor">'+escH(String(setup))+' min</span></div>'+
         '<div class="maquina-info-row"><span>📋 Passagem média</span><span class="valor">'+(passagem?escH(String(passagem)+' min'):'—')+'</span></div>'+
@@ -33462,7 +33465,7 @@ function calcMaquinaDisponibilidade(maquina){
   const intervalo_tarde_min = Math.max(0, Math.trunc(Number(m.intervalo_tarde_min ?? 15) || 0));
   const setup_manha_min = Math.max(0, Math.trunc(Number(m.setup_manha_min ?? 20) || 0));
   const setup_tarde_min = Math.max(0, Math.trunc(Number(m.setup_tarde_min ?? 10) || 0));
-  const setupMedio = Math.max(1, Math.trunc(Number(m.setup ?? 30) || 30));
+  const setupMedio = Math.max(1, Math.trunc(Number(m.tempo_setup_padrao_min ?? m.setup ?? 30) || 30));
   const parse = (t)=>{
     const m = String(t||'').match(/^(\d{1,2}):(\d{2})$/);
     if(!m) return null;
@@ -33599,15 +33602,15 @@ function editarMaquina(mi){abrirModalMaquina(mi);}
 async function toggleMaquina(mi){
   const m = MAQUINAS[mi];
   if(!m) return;
-  const novo = (m.ativo===false)?true:false;
-  const payload = {...m, ativo: novo};
+  const novo = (m.ativa===false)?true:false;
+  const payload = {...m, ativa: novo};
   const r = await salvarViaApiOuLocal('maquina',
     ()=>api('PUT','/maquinas/'+encodeURIComponent(m.id), payload),
-    ()=>{ m.ativo = novo; return {ok:true, local:true}; }
+    ()=>{ m.ativa = novo; m.ativo = novo; return {ok:true, local:true}; }
   );
   if(r && r.ok){
     if(!r.local){ try{ await carregarMaquinas(); }catch(e){} }
-    else m.ativo = novo;
+    else { m.ativa = novo; m.ativo = novo; }
     renderMaquinasConf();
     autoSaveTrigger();
   }
@@ -33674,8 +33677,8 @@ async function salvarMaquina(){
     })(),
     setor: String(lerInput('maq-e-setor','maq-setor','setor') || '').trim() || null,
     icone: String(lerInput('maq-e-ico','maq-icone','icone') || '').trim() || null,
-    producao: toInt(lerInput('maq-e-phora','maq-producao','producao','phora','prod','producao_hora','caixas_hora'), 0),
-    setup_medio: toInt(lerInput('maq-e-setup','maq-setup','setup_medio','setup','tempo_setup_padrao_min'), 0),
+    caixas_hora: toInt(lerInput('maq-e-phora','maq-producao','caixas_hora','producao_hora','producao','phora','prod'), 0),
+    tempo_setup_padrao_min: toInt(lerInput('maq-e-setup','maq-setup','tempo_setup_padrao_min','setup_min','setup_medio','setup'), 0),
     passagem_media: toInt(lerInput('maq-e-passagem','maq-passagem','passagem_media','passagem'), 0),
     meta_perda_pct: (()=>{
       const raw = lerInput('maq-e-meta-perda','meta_perda_pct');
@@ -33698,7 +33701,7 @@ async function salvarMaquina(){
     puxada_max: toFloat(lerInput('maq-e-puxmax','maq-puxada-max','puxada_max'), null),
     boca_max: toFloat(lerInput('maq-e-bocamax','maq-boca-max','boca_max'), null),
     altura_max: toFloat(lerInput('maq-altura-max','maq-altura-max','altura_max'), null),
-    ativo: true,
+    ativa: true,
   };
   Object.keys(payload).forEach((k)=>{
     if(payload[k] === undefined) delete payload[k];
@@ -51443,7 +51446,7 @@ window.atualizarChapas = async function(){
 
     const maq = await api('GET','/maquinas');
     const maquinas = Array.isArray(maq?.data) ? maq.data : (Array.isArray(maq) ? maq : []);
-    mobileState.maquinas = maquinas.filter(m=>m && (m.ativo === undefined || m.ativo === true || m.ativo === 'true' || m.ativo === 1 || m.ativo === '1'));
+    mobileState.maquinas = maquinas.filter(m=>m && (m.ativa === undefined || m.ativa === true || m.ativa === 'true' || m.ativa === 1 || m.ativa === '1'));
 
     try{
       const ofs = await mobileFetchOfsApi(empId);

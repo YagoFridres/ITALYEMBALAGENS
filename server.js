@@ -1675,11 +1675,11 @@ app.get('/api/admin/maquinas_validas_ofs', requireAdmin, async (req, res) => {
       return { data: data || [], error: null };
     };
 
-    const { data: maquinasRaw, error: maqErr } = await selectCompat('maquinas', 'id,nome,col,ativo');
+    const { data: maquinasRaw, error: maqErr } = await selectCompat('maquinas', 'id,nome,col,ativa');
     if (maqErr) return res.status(500).json({ ok: false, error: String(maqErr.message || maqErr) });
     const validSet = new Set();
     (maquinasRaw || []).forEach((m) => {
-      if (m && m.ativo === false) return;
+      if (m && m.ativa === false) return;
       const a = norm(m?.nome);
       const b = norm(m?.col);
       if (a) validSet.add(a);
@@ -3470,8 +3470,8 @@ async function _autoPickSugestaoMaquinaNome(body){
 
     const { data: maquinas, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
-      .eq('ativo', true)
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
     if (error || !Array.isArray(maquinas) || !maquinas.length) {
@@ -3479,7 +3479,7 @@ async function _autoPickSugestaoMaquinaNome(body){
     }
     const maquinasAtivas = maquinas.filter(m => {
       const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
-      if (!m || m.ativo !== true) return false;
+      if (!m || m.ativa !== true) return false;
       if (!nome || nome === 'NULL') return false;
       return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
     });
@@ -3629,8 +3629,8 @@ async function _autoSugerirMaquinaParaOF(body, created){
 
     const { data: maquinas, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
-      .eq('ativo', true)
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
 
@@ -3640,7 +3640,7 @@ async function _autoSugerirMaquinaParaOF(body, created){
 
     const maquinasAtivas = maquinas.filter(m => {
       const nome = String(m.nome || m.col || '').trim().toUpperCase();
-      if (!m || m.ativo !== true) return false;
+      if (!m || m.ativa !== true) return false;
       if (!nome) return false;
       return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
     });
@@ -7785,9 +7785,9 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     const cached = cacheGet(cacheKey);
     if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
     const selectBase =
-      'id,nome,codigo,setor,ativo,' +
-      'phora,producao,' +
-      'tempo_setup_min,setup_min,setup_medio,passagem_media,' +
+      'id,nome,codigo,setor,ativa,' +
+      'caixas_hora,' +
+      'tempo_setup_padrao_min,passagem_media,' +
       'horario_inicio,horario_fim,horas_dia,tempo_disponivel,' +
       'almoco_inicio,almoco_min,intervalo_manha_min,intervalo_tarde_min,setup_manha_min,setup_tarde_min,' +
       'meta_perda_pct,descricao,icone,ordem,' +
@@ -7796,8 +7796,7 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     let data = null;
     let error = null;
     let q = supabase.from('maquinas').select(selectBase).order('nome', { ascending: true });
-    q = q.eq('ativo', true);
-    try { q = q.is('deleted_at', null); } catch (_) {}
+    q = q.eq('ativa', true);
     let r0 = await q;
     data = r0?.data;
     error = r0?.error;
@@ -7806,12 +7805,7 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
       const low = msg.toLowerCase();
       if (low.includes('does not exist') || low.includes('column')) {
         let q2 = supabase.from('maquinas').select('*').order('nome', { ascending: true });
-        const hasAtivo = !(low.includes('ativo') && low.includes('does not exist'));
-        const hasDeletedAt = !(low.includes('deleted_at') && low.includes('does not exist'));
-        if (hasAtivo) q2 = q2.eq('ativo', true);
-        if (hasDeletedAt) {
-          try { q2 = q2.is('deleted_at', null); } catch (_) {}
-        }
+        q2 = q2.eq('ativa', true);
         const r2 = await q2;
         data = r2?.data;
         error = r2?.error;
@@ -7822,7 +7816,7 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     const pick = {};
     const score = (m) => {
       let s = 0;
-      const prod = Number(m?.producao ?? m?.phora ?? 0) || 0;
+      const prod = Number(m?.caixas_hora ?? m?.producao ?? m?.phora ?? 0) || 0;
       s += Math.min(999999, Math.max(0, prod));
       const t = Date.parse(String(m?.updated_at || m?.created_at || ''));
       if (Number.isFinite(t)) s += Math.trunc(t / 1000);
@@ -7831,7 +7825,7 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     for (const m of lista) {
       const canon = _canonMaqNome(m?.nome || m?.col || m?.codigo || '');
       if (!canon || !_MAQUINAS_ATIVAS.includes(canon)) continue;
-      if (apenasAtivas && m?.ativo === false) continue;
+      if (apenasAtivas && m?.ativa === false) continue;
       if (!pick[canon] || score(m) > score(pick[canon])) pick[canon] = m;
     }
     const out = _MAQUINAS_ATIVAS.map((n) => pick[n]).filter(Boolean);
@@ -7883,6 +7877,7 @@ function _capacidadeConfFromMaquina(maqData) {
     _capInt(maqData?.setup, NaN) ||
     15;
   const cxHora =
+    _capInt(maqData?.caixas_hora, NaN) ||
     _capInt(maqData?.producao, NaN) ||
     _capInt(maqData?.phora, NaN) ||
     _capInt(maqData?.velocidade, NaN) ||
@@ -8045,8 +8040,8 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
 
     const { data: maquinasRaw, error } = await supabase
       .from('maquinas')
-      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativo,ordem')
-      .eq('ativo', true)
+      .select('id,nome,col,puxada_min,puxada_max,boca_max,ativa,ordem')
+      .eq('ativa', true)
       .order('ordem', { ascending: true })
       .limit(50);
     if (error) throw error;
@@ -8067,7 +8062,7 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
     const resultadoFinal = (Array.isArray(maquinasRaw) ? maquinasRaw : [])
       .filter(m => {
         const nome = String(m?.nome || m?.col || '').trim().toUpperCase();
-        if (!m || m.ativo !== true) return false;
+        if (!m || m.ativa !== true) return false;
         if (!nome || nome === 'NULL') return false;
         return MAQUINAS_VALIDAS_NOMES.some(v => nome === String(v).toUpperCase() || nome.includes(String(v).toUpperCase()));
       })
@@ -8111,9 +8106,9 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       nome: String(b.nome ?? b.col ?? b.name ?? '').trim(),
       ordem: b.ordem != null ? Number(b.ordem) : undefined,
       setor: String(b.setor ?? '').trim() || null,
-      producao: b.producao != null ? Number(b.producao) : (b.phora != null ? Number(b.phora) : 0),
-      setup_medio: b.setup_medio != null ? Number(b.setup_medio) : (b.setup != null ? Number(b.setup) : 0),
-      passagem_media: b.passagem_media != null ? Number(b.passagem_media) : (b.passagem != null ? Number(b.passagem) : 0),
+      caixas_hora: b.caixas_hora != null ? Number(b.caixas_hora) : (b.producao_hora != null ? Number(b.producao_hora) : (b.producao != null ? Number(b.producao) : (b.phora != null ? Number(b.phora) : 0))),
+      tempo_setup_padrao_min: b.tempo_setup_padrao_min != null ? Number(b.tempo_setup_padrao_min) : (b.setup_min != null ? Number(b.setup_min) : (b.setup_medio != null ? Number(b.setup_medio) : (b.setup != null ? Number(b.setup) : 0))),
+      passagem_media: b.passagem_media != null ? Number(b.passagem_media) : (b.passagem_media_min != null ? Number(b.passagem_media_min) : (b.passagem != null ? Number(b.passagem) : 0)),
       meta_perda_pct: b.meta_perda_pct != null ? Number(b.meta_perda_pct) : undefined,
       descricao: String(b.descricao ?? b.desc ?? '').trim() || null,
       icone: String(b.icone ?? b.ico ?? '').trim() || null,
@@ -8130,7 +8125,7 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
       intervalo_tarde_min: b.intervalo_tarde_min != null ? Math.trunc(Number(b.intervalo_tarde_min) || 0) : undefined,
       setup_manha_min: b.setup_manha_min != null ? Math.trunc(Number(b.setup_manha_min) || 0) : undefined,
       setup_tarde_min: b.setup_tarde_min != null ? Math.trunc(Number(b.setup_tarde_min) || 0) : undefined,
-      ativo: (b.ativo === undefined) ? true : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
+      ativa: (b.ativa === undefined && b.ativo === undefined) ? true : ((b.ativa ?? b.ativo) === true || (b.ativa ?? b.ativo) === 'true' || (b.ativa ?? b.ativo) === 1 || (b.ativa ?? b.ativo) === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
     console.log('[maquinas POST] payload:', payload);
@@ -8151,9 +8146,9 @@ async function _maquinaUpdateHandler(req, res) {
       nome: b.nome !== undefined || b.col !== undefined || b.name !== undefined ? String(b.nome ?? b.col ?? b.name ?? '').trim() : undefined,
       ordem: b.ordem != null ? Number(b.ordem) : undefined,
       setor: b.setor !== undefined ? (String(b.setor ?? '').trim() || null) : undefined,
-      producao: b.producao !== undefined || b.phora !== undefined ? Number(b.producao ?? b.phora ?? 0) : undefined,
-      setup_medio: b.setup_medio !== undefined || b.setup !== undefined ? Number(b.setup_medio ?? b.setup ?? 0) : undefined,
-      passagem_media: b.passagem_media !== undefined || b.passagem !== undefined ? Number(b.passagem_media ?? b.passagem ?? 0) : undefined,
+      caixas_hora: (b.caixas_hora !== undefined || b.producao_hora !== undefined || b.producao !== undefined || b.phora !== undefined) ? Number(b.caixas_hora ?? b.producao_hora ?? b.producao ?? b.phora ?? 0) : undefined,
+      tempo_setup_padrao_min: (b.tempo_setup_padrao_min !== undefined || b.setup_min !== undefined || b.setup_medio !== undefined || b.setup !== undefined) ? Number(b.tempo_setup_padrao_min ?? b.setup_min ?? b.setup_medio ?? b.setup ?? 0) : undefined,
+      passagem_media: (b.passagem_media !== undefined || b.passagem_media_min !== undefined || b.passagem !== undefined) ? Number(b.passagem_media ?? b.passagem_media_min ?? b.passagem ?? 0) : undefined,
       meta_perda_pct: b.meta_perda_pct !== undefined ? (b.meta_perda_pct === null ? null : Number(b.meta_perda_pct)) : undefined,
       descricao: b.descricao !== undefined || b.desc !== undefined ? (String(b.descricao ?? b.desc ?? '').trim() || null) : undefined,
       icone: b.icone !== undefined || b.ico !== undefined ? (String(b.icone ?? b.ico ?? '').trim() || null) : undefined,
@@ -8170,7 +8165,7 @@ async function _maquinaUpdateHandler(req, res) {
       intervalo_tarde_min: b.intervalo_tarde_min !== undefined ? Math.trunc(Number(b.intervalo_tarde_min) || 0) : undefined,
       setup_manha_min: b.setup_manha_min !== undefined ? Math.trunc(Number(b.setup_manha_min) || 0) : undefined,
       setup_tarde_min: b.setup_tarde_min !== undefined ? Math.trunc(Number(b.setup_tarde_min) || 0) : undefined,
-      ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
+      ativa: (b.ativa === undefined && b.ativo === undefined) ? undefined : (((b.ativa ?? b.ativo) === true || (b.ativa ?? b.ativo) === 'true' || (b.ativa ?? b.ativo) === 1 || (b.ativa ?? b.ativo) === '1'))
     };
     Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
     console.log('[MAQUINA UPDATE] fields a salvar:', Object.keys(payload), payload);
@@ -14229,7 +14224,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     if (hasAny('máquina mais livre','maquina mais livre','qual máquina','qual maquina') && hasAny('livre','disponível','disponivel','menos ocupada','menos carregada')) {
-      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativo',true);
+      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativa',true);
       const {data:ofsAb}=await supabase.from('ofs').select('fluxo_maquinas,maq,maquina_atual_index,status,deleted_at').is('deleted_at',null).limit(500);
       const contagem=new Map();
       (Array.isArray(maqAll)?maqAll:[]).forEach(m=>{const n=String(m.nome||m.col||'').trim();if(n) contagem.set(n,0);});
@@ -14357,7 +14352,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     if (hasAny('modo fábrica','modo fabrica','modo operador','modo producao','modo produção')) {
-      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativo',true).order('ordem',{ascending:true});
+      const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativa',true).order('ordem',{ascending:true});
       const maquinas=(Array.isArray(maqAll)?maqAll:[]).map(m=>String(m.nome||m.col||'').trim()).filter(Boolean);
       return res.json({
         ok:true,
@@ -15268,9 +15263,9 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     }
 
     if (hasAny('quantas maquinas temos', 'quantas máquinas temos', 'quantas maquinas', 'quantas máquinas')) {
-      const { data } = await supabase.from('maquinas').select('id,ativo,nome').limit(5000);
+      const { data } = await supabase.from('maquinas').select('id,ativa,nome').limit(5000);
       const rows = Array.isArray(data) ? data : [];
-      const ativas = rows.filter((m) => (m.ativo === undefined ? true : !!m.ativo));
+      const ativas = rows.filter((m) => (m.ativa === undefined ? true : !!m.ativa));
       return respond(`${nome}, temos ${ativas.length} máquina(s) ativa(s).`);
     }
 
@@ -16137,12 +16132,12 @@ async function _analyticsPrevisaoAtrasosCompute({ empId }){
   const empFilter = String(empId||'').trim();
   const ativos = empFilter ? ofs.filter(o=>String(o?.emp_id||o?.empId||o?.empresa_id||'').trim()===empFilter) : ofs;
 
-  const { data: maqsRaw } = await supabase.from('maquinas').select('id,nome,producao,phora,setup_medio,setup').eq('ativo', true).limit(500);
+  const { data: maqsRaw } = await supabase.from('maquinas').select('id,nome,caixas_hora,tempo_setup_padrao_min').eq('ativa', true).limit(500);
   const maqs = Array.isArray(maqsRaw) ? maqsRaw : [];
   const maqMap = new Map(maqs.map(m=>{
     const nome = String(m?.nome||'').trim();
-    const prod = Number(m?.producao ?? m?.phora ?? 0) || 0;
-    const setup = Number(m?.setup_medio ?? m?.setup ?? 0) || 0;
+    const prod = Number(m?.caixas_hora ?? 0) || 0;
+    const setup = Number(m?.tempo_setup_padrao_min ?? 0) || 0;
     return [nome, { prodHora: prod, setupMin: setup }];
   }));
 
