@@ -54785,19 +54785,20 @@ function calcularCapacidadeMaquina(maqData, ofs){
   var minOcupados = 0;
   (ofs || []).forEach(function(of){
     if(!of) return;
-    var tempo = parseInt(of.tempo_estimado_min, 10) || 0;
-    if(!(tempo > 0)) tempo = parseInt(of.passagem_media, 10) || 0;
-    if(tempo > 0){
-      minOcupados += tempo;
-      return;
-    }
-    var vel = parseInt(of.caixas_hora || of.velocidade || of.cx_hora || of.cxh || cxHora, 10) || cxHora;
-    var qtd = parseInt(of.quantidade || of.qtd || 0, 10) || 0;
-    if(vel > 0 && qtd > 0){
-      minOcupados += Math.ceil((qtd / vel) * 60) + setupMedio;
+    var tempo = 0;
+    if (of.tempo_estimado_min && parseInt(of.tempo_estimado_min, 10) > 0) {
+      tempo = parseInt(of.tempo_estimado_min, 10);
     } else {
-      minOcupados += setupMedio;
+      var qtd = parseInt(of.quantidade || of.qtd || 0, 10) || 0;
+      var vel = parseInt(of.velocidade || of.caixas_hora || of.cx_hora || of.cxh || cxHora, 10) || cxHora;
+      var setup = setupMedio;
+      if (qtd > 0 && vel > 0) {
+        tempo = Math.ceil((qtd / vel) * 60) + setup;
+      } else {
+        tempo = setupMedio;
+      }
     }
+    minOcupados += tempo;
   });
 
   var pct = minTotal > 0 ? Math.round((minOcupados / minTotal) * 100) : 0;
@@ -54821,19 +54822,21 @@ function calcularCapacidadeMaquina(maqData, ofs){
 }
 
 function calcularTempoOf(of, maqDados){
-  try{
-    var t0 = parseInt(of && of.tempo_estimado_min, 10) || 0;
-    if(t0 > 0) return t0;
-  }catch(e){}
-  var cxHora = parseInt((maqDados && (maqDados.caixas_hora || maqDados.cx_hora || maqDados.velocidade || maqDados.producao)) || 500, 10) || 500;
-  var setup = parseInt((maqDados && (maqDados.tempo_setup_min || maqDados.setup_min || maqDados.setup_medio || maqDados.passagem_media)) || 15, 10) || 15;
-  var qtd = parseInt((of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0, 10) || 0;
-  var velOf = parseInt((of && (of.caixas_hora || of.velocidade || of.cx_hora || of.cxh)) || 0, 10) || 0;
-  var vel = velOf > 0 ? velOf : cxHora;
-  if(qtd > 0 && vel > 0){
-    return Math.ceil((qtd / vel) * 60) + setup;
+  if (of && of.tempo_estimado_min && parseInt(of.tempo_estimado_min, 10) > 0) {
+    return parseInt(of.tempo_estimado_min, 10);
   }
-  return 0;
+  var qtd = parseInt((of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0, 10) || 0;
+  var cxHora = parseInt(
+    (maqDados && (maqDados.caixas_hora || maqDados.cx_hora || maqDados.velocidade)) ||
+    (of && (of.caixas_hora || of.velocidade)) ||
+    500,
+    10
+  ) || 500;
+  var setup = parseInt((maqDados && (maqDados.tempo_setup_min || maqDados.setup_min)) || 15, 10) || 15;
+  if (qtd <= 0 || cxHora <= 0) return 0;
+  var minProducao = Math.ceil((qtd / cxHora) * 60);
+  var minTotal = minProducao + setup;
+  return minTotal;
 }
 
 function recalcularSaudeMaquina(nomeMaquina){
@@ -55020,7 +55023,14 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
 
       html += '<div style="display:flex;gap:8px;font-size:11px;color:#64748b;margin-bottom:7px;flex-wrap:wrap">' +
         '<span>' + escH(String((typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (of.quantidade || of.qtd || of.qtd_pedida || '—'))) + ' cx</span>' +
-        (tempoOf > 0 ? '<span style="color:#4A90D9;font-size:11px">⏱ ' + escH(fmtTempoCap(tempoOf)) + '</span>' : '') +
+        (tempoOf > 0 ? (function(){
+          var tempoMin = tempoOf;
+          var tempoStr = fmtTempoCap(tempoMin);
+          var cxH = parseInt(String((maqDados && (maqDados.caixas_hora || maqDados.velocidade || 0)) || 0), 10) || 0;
+          var qtd = parseInt(String(of && (of.quantidade || of.qtd || 0) || 0), 10) || 0;
+          var ttl = (qtd > 0 && cxH > 0) ? (' title="' + escAttr(String(qtd) + ' cx ÷ ' + String(cxH) + ' cx/h = ' + String(tempoStr)) + '"') : '';
+          return '<span style="color:#4A90D9;font-size:11px"' + ttl + '>⏱ ' + escH(tempoStr) + '</span>';
+        })() : '') +
         (dataEnt ? '<span style="margin-left:auto;color:' + (atrasada ? '#f59e0b' : '#64748b') + '">' + escH(dataEnt) + '</span>' : '') +
       '</div>';
 
