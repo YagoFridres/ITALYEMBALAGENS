@@ -7913,9 +7913,10 @@ async function _resolveEmpresaUuid(req) {
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
     ''
   ).trim();
-  const empIdEff = (empId ? empId.split(':')[0] : '').trim().toUpperCase() || 'E1';
+  const empIdBase = (empId ? empId.split(':')[0] : '').trim().toUpperCase();
+  const empIdEff = (empIdBase === 'E1' ? 'ITALY' : empIdBase) || 'ITALY';
   try {
-    const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empIdEff).maybeSingle();
+    const { data, error } = await supabase.from('empresas').select('id').eq('sigla', empIdEff).maybeSingle();
     if (error) return '';
     const id = String(data?.id || '').trim();
     return _isUuid(id) ? id : '';

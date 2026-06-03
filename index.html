@@ -2591,7 +2591,7 @@ function empIdSanitize(v){
   const s = String(v ?? '').trim();
   if(!s) return '';
   const base = String(s.split(':')[0] || '').trim().toUpperCase();
-  if(/^E[1-3]$/.test(base)) return base;
+  if(base === 'E1') return 'ITALY';
   return base;
 }
 
@@ -30885,6 +30885,7 @@ async function bootAuthAndData(){
   try{ localStorage.setItem('auth_user', JSON.stringify(CURRENT_USER)); }catch(e){}
   try{ iniciarSistema(CURRENT_USER); }catch(e){}
   try{ await loadCoreData(); }catch(e){}
+  try{ await carregarCoresImpressao(); }catch(e){}
   try{ await dedupeClientePorNome('Beethoven Agropet'); }catch(e){}
 }
 
