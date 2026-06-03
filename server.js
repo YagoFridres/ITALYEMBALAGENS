@@ -7913,9 +7913,9 @@ async function _resolveEmpresaUuid(req) {
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
     ''
   ).trim();
-  if (!empId) return '';
+  const empIdEff = empId || 'E1';
   try {
-    const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empId).maybeSingle();
+    const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empIdEff).maybeSingle();
     if (error) return '';
     const id = String(data?.id || '').trim();
     return _isUuid(id) ? id : '';
