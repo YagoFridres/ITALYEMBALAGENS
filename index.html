@@ -593,6 +593,11 @@ td.tc{text-align:center;}
 .badge-maquina-alocada{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);white-space:nowrap}
 .badge-maquina-alocada.badge-cvr{background:rgba(168,85,247,0.2);color:#c084fc;border-color:rgba(168,85,247,0.3)}
 
+.cores-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.btn-cor{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;font-size:0.8rem;transition:all 0.15s}
+.btn-cor.selecionado{border-color:rgba(59,130,246,0.6);background:rgba(59,130,246,0.15);color:#93c5fd}
+.circulo-cor{width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);flex-shrink:0}
+
 /* LOGÍSTICA MAPA */
 #mapa-container{width:100%;height:460px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:12px;}
 .mapa-svg{width:100%;height:100%;}
@@ -2577,6 +2582,190 @@ const MAQUINAS_FLUXO = [
 
 let MAQUINAS_FLUXO_ITENS = null;
 
+let coresDisponiveis = [];
+let coresSelecionadasOF = [];
+let coresSelecionadasOFRapida = [];
+
+async function carregarCoresImpressao(empIdOverride){
+  try{
+    const emp = String(empIdOverride || EMP_FILTRO || '').trim();
+    const r = await api('GET', '/cores-impressao' + (emp ? ('?empId=' + encodeURIComponent(emp)) : ''));
+    const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
+    coresDisponiveis = Array.isArray(rows) ? rows : [];
+    return coresDisponiveis;
+  }catch(e){
+    coresDisponiveis = [];
+    return [];
+  }
+}
+
+function renderSeletorCores(containerId, selecionadas){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const sel = Array.isArray(selecionadas) ? selecionadas : [];
+  const cores = Array.isArray(coresDisponiveis) ? coresDisponiveis : [];
+  el.innerHTML = cores.map((cor)=>{
+    const id = String(cor?.id || '').trim();
+    const nome = String(cor?.nome || '').trim();
+    const hex = String(cor?.hex || '#888').trim() || '#888';
+    const on = id && sel.includes(id);
+    return `<button type="button" class="btn-cor ${on ? 'selecionado' : ''}" onclick="toggleCorSelecionada('${escAttr(id)}','${escAttr(containerId)}')" title="${escAttr(nome)}">
+      <span class="circulo-cor" style="background:${escAttr(hex)}"></span>
+      <span>${escH(nome)}</span>
+    </button>`;
+  }).join('');
+}
+
+function toggleCorSelecionada(corId, containerId){
+  const id = String(corId || '').trim();
+  const cid = String(containerId || '').trim();
+  if(!id) return;
+  const list = (cid === 'seletorCoresOFRapida') ? coresSelecionadasOFRapida : coresSelecionadasOF;
+  const idx = list.indexOf(id);
+  if(idx >= 0) list.splice(idx, 1);
+  else list.push(id);
+  renderSeletorCores(cid || 'seletorCoresOF', list);
+}
+
+function coresPayloadFromSelecionadas(selecionadas){
+  const ids = Array.isArray(selecionadas) ? selecionadas : [];
+  const cores = Array.isArray(coresDisponiveis) ? coresDisponiveis : [];
+  return ids.map((id)=>{
+    const c = cores.find(x=>String(x?.id||'').trim()===String(id||'').trim()) || null;
+    if(!c) return null;
+    return { id: c.id, nome: c.nome, hex: c.hex };
+  }).filter(Boolean);
+}
+
+async function renderCoresImpressao(){
+  const body = document.getElementById('cores-impressao-body');
+  if(!body) return;
+  body.innerHTML = '<div style="color:var(--text3);font-size:.78rem;padding:10px 2px">Carregando…</div>';
+  const emp = String(EMP_FILTRO || '').trim();
+  try{ await carregarCoresImpressao(emp); }catch(e){}
+  const rows = Array.isArray(coresDisponiveis) ? coresDisponiveis : [];
+  if(!rows.length){
+    body.innerHTML = '<div style="color:var(--text3);font-size:.8rem;padding:12px 2px">Nenhuma cor cadastrada.</div>';
+    return;
+  }
+  const html =
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">' +
+      '<div style="color:var(--text3);font-size:.72rem;font-family:var(--mono)">EMP: ' + escH(emp || '—') + '</div>' +
+      '<div style="color:var(--text3);font-size:.72rem;font-family:var(--mono)">' + String(rows.length) + ' cor(es)</div>' +
+    '</div>' +
+    '<div style="overflow-x:auto">' +
+      '<table style="width:100%;border-collapse:collapse;min-width:520px">' +
+        '<thead><tr style="background:var(--s2)">' +
+          '<th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);width:56px">COR</th>' +
+          '<th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">NOME</th>' +
+          '<th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);width:160px">HEX</th>' +
+          '<th style="padding:8px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);width:160px;text-align:center">AÇÕES</th>' +
+        '</tr></thead>' +
+        '<tbody>' +
+          rows.map((c)=>{
+            const id = String(c?.id || '').trim();
+            const nome = String(c?.nome || '').trim();
+            const hex = String(c?.hex || '').trim();
+            const cor = hex || '#64748b';
+            return '<tr>' +
+              '<td style="padding:8px 10px;border:1px solid var(--border)"><span style="display:inline-block;width:24px;height:24px;border-radius:7px;background:' + escAttr(cor) + ';border:1px solid rgba(255,255,255,0.18)"></span></td>' +
+              '<td style="padding:8px 10px;border:1px solid var(--border);color:var(--text);font-weight:800">' + escH(nome) + '</td>' +
+              '<td style="padding:8px 10px;border:1px solid var(--border);color:var(--text2);font-family:var(--mono)">' + escH(hex || '—') + '</td>' +
+              '<td style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">' +
+                '<button class="btn btn-ghost btn-sm" onclick="abrirModalCorImpressao(&quot;' + escAttr(id) + '&quot;)">Editar</button> ' +
+                '<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="excluirCorImpressao(&quot;' + escAttr(id) + '&quot;)">Excluir</button>' +
+              '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>' +
+    '</div>';
+  body.innerHTML = html;
+}
+
+function abrirModalCorImpressao(id){
+  try{ document.getElementById('modal-cor-impressao')?.remove(); }catch(e){}
+  const sid = String(id || '').trim();
+  const edit = sid ? (Array.isArray(coresDisponiveis) ? coresDisponiveis.find(x=>String(x?.id||'').trim()===sid) : null) : null;
+  window._corImpEditId = sid || '';
+  const nome = String(edit?.nome || '').trim();
+  const hex = String(edit?.hex || '').trim();
+  const html = `
+    <div id="modal-cor-impressao" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px" onclick="try{document.getElementById('modal-cor-impressao')?.remove();}catch(e){}">
+      <div style="background:var(--s2);border:1px solid var(--border);border-radius:12px;max-width:520px;width:100%;padding:16px" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <div>
+            <div style="font-weight:1000;color:var(--text);font-size:1rem">${sid ? 'Editar cor' : 'Nova cor'}</div>
+            <div style="font-size:.72rem;color:var(--text3);font-family:var(--mono)">Cores de impressão</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="try{document.getElementById('modal-cor-impressao')?.remove();}catch(e){}">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 180px;gap:10px">
+          <div>
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">NOME</div>
+            <input id="cor-imp-nome" value="${escAttr(nome)}" placeholder="Ex: Preto" style="width:100%;padding:10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text);font-weight:800">
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:var(--text3);font-family:var(--mono);font-weight:900;margin-bottom:6px">HEX</div>
+            <input id="cor-imp-hex" value="${escAttr(hex)}" placeholder="#000000" style="width:100%;padding:10px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-weight:900">
+          </div>
+        </div>
+        <div id="cor-imp-err" style="min-height:18px;color:var(--red);font-size:.78rem;margin-top:10px;font-weight:700"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-ghost" onclick="try{document.getElementById('modal-cor-impressao')?.remove();}catch(e){}">Cancelar</button>
+          <button class="btn btn-accent" onclick="salvarCorImpressao()">Salvar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  try{ setTimeout(()=>{ document.getElementById('cor-imp-nome')?.focus(); }, 0); }catch(e){}
+}
+
+async function salvarCorImpressao(){
+  const errEl = document.getElementById('cor-imp-err');
+  if(errEl) errEl.textContent = '';
+  const sid = String(window._corImpEditId || '').trim();
+  const nome = String(document.getElementById('cor-imp-nome')?.value || '').trim();
+  const hex = String(document.getElementById('cor-imp-hex')?.value || '').trim();
+  if(!nome){
+    if(errEl) errEl.textContent = 'Nome obrigatório.';
+    return;
+  }
+  try{
+    const r = await api(sid ? 'PUT' : 'POST', sid ? ('/cores-impressao/' + encodeURIComponent(sid)) : '/cores-impressao', { nome, hex: hex || null });
+    if(!(r && r.ok)) throw new Error(r?.error || 'Falha ao salvar');
+    try{ document.getElementById('modal-cor-impressao')?.remove(); }catch(e){}
+    await renderCoresImpressao();
+    try{
+      if(document.getElementById('seletorCoresOF')) renderSeletorCores('seletorCoresOF', coresSelecionadasOF);
+      if(document.getElementById('seletorCoresOFRapida')) renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida);
+    }catch(e){}
+    toast('✓ Cor salva', 'var(--green)');
+  }catch(e){
+    if(errEl) errEl.textContent = String(e?.message || e);
+  }
+}
+
+async function excluirCorImpressao(id){
+  const sid = String(id || '').trim();
+  if(!sid) return;
+  if(!confirm('Excluir esta cor?')) return;
+  try{
+    const r = await api('DELETE', '/cores-impressao/' + encodeURIComponent(sid));
+    if(!(r && r.ok)) throw new Error(r?.error || 'Falha ao excluir');
+    await renderCoresImpressao();
+    try{
+      coresSelecionadasOF = (coresSelecionadasOF||[]).filter(x=>String(x||'').trim()!==sid);
+      coresSelecionadasOFRapida = (coresSelecionadasOFRapida||[]).filter(x=>String(x||'').trim()!==sid);
+      if(document.getElementById('seletorCoresOF')) renderSeletorCores('seletorCoresOF', coresSelecionadasOF);
+      if(document.getElementById('seletorCoresOFRapida')) renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida);
+    }catch(e){}
+    toast('🗑️ Cor excluída', 'var(--orange)');
+  }catch(e){
+    toast('Erro: ' + String(e?.message || e), 'var(--red)');
+  }
+}
+
 const MAQ_CODIGO_PARA_NOME = {
   'RISC01': 'Riscador 01',
   'RISC02': 'Riscador 02',
@@ -3600,6 +3789,32 @@ function abrirNovaOfRapida(){
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
 
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Compr. (mm) *</label>
+          <input id="of-r-comp" type="number" placeholder="0" min="1"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Larg. (mm) *</label>
+          <input id="of-r-larg" type="number" placeholder="0" min="1"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Alt. (mm) *</label>
+          <input id="of-r-alt" type="number" placeholder="0" min="1"
+            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
+            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+      </div>
+
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Cores de Impressão *</label>
+        <div id="seletorCoresOFRapida" class="cores-grid"></div>
+      </div>
+
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Imagem da OF</label>
         <label for="of-r-img" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#080c14;border:1.5px dashed rgba(255,255,255,0.15);border-radius:9px;cursor:pointer;transition:all 0.2s;color:rgba(255,255,255,0.4);font-size:13px"
@@ -3685,6 +3900,25 @@ function abrirNovaOfRapida(){
       if(st) st.innerHTML = '';
     }catch(e){}
     try{ if(typeof carregarMaquinasOfRapida === 'function') carregarMaquinasOfRapida(); }catch(e){}
+    try{
+      coresSelecionadasOFRapida = [];
+      const empSel = document.getElementById('of-r-empresa');
+      const empId = String(empSel?.value || EMP_FILTRO || 'E1').trim() || 'E1';
+      Promise.resolve()
+        .then(()=>carregarCoresImpressao(empId))
+        .then(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} })
+        .catch(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} });
+      if(empSel){
+        empSel.addEventListener('change', function(){
+          const v = String(empSel.value || '').trim();
+          coresSelecionadasOFRapida = [];
+          Promise.resolve()
+            .then(()=>carregarCoresImpressao(v))
+            .then(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} })
+            .catch(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} });
+        });
+      }
+    }catch(e){}
     try{
       const sel = document.getElementById('of-r-maquina');
       if(sel){
@@ -3979,6 +4213,9 @@ window.salvarOfRapida = async function(){
   const totalManualEl = document.getElementById('of-r-total');
   const total = parseFloat(String(totalManualEl?.value || '0').replace(',','.')) || (qtd * vlunit);
   const ref = String(document.getElementById('of-r-ref')?.value || '').trim();
+  const comp = parseFloat(String(document.getElementById('of-r-comp')?.value || '').replace(',','.')) || 0;
+  const larg = parseFloat(String(document.getElementById('of-r-larg')?.value || '').replace(',','.')) || 0;
+  const alt = parseFloat(String(document.getElementById('of-r-alt')?.value || '').replace(',','.')) || 0;
   const entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
   const pedido = String(document.getElementById('of-r-pedido')?.value || new Date().toISOString().split('T')[0]).slice(0,10);
   const urgente = !!document.getElementById('of-r-urgente')?.checked;
@@ -4004,6 +4241,12 @@ window.salvarOfRapida = async function(){
   if(!produto) erros.push('Produto');
   if(!(qtd > 0)) erros.push('Quantidade');
   if(!(vlunit > 0)) erros.push('Valor Unit.');
+  if(!(comp > 0 && larg > 0 && alt > 0)) erros.push('Dimensões (C×L×A)');
+  try{
+    if(!Array.isArray(coresDisponiveis) || !coresDisponiveis.length) await carregarCoresImpressao(empId);
+  }catch(e){}
+  const coresPayload = (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOFRapida) : [];
+  if(!coresPayload.length) erros.push('Cores de Impressão');
   if(!entrega) erros.push('Data de Entrega');
   if(erros.length){
     alert('Preencha: ' + erros.join(', '));
@@ -4081,6 +4324,13 @@ window.salvarOfRapida = async function(){
     urgente: urgente,
     emp_id: empId,
     empId: empId,
+    caixa_comprimento: comp,
+    caixa_largura: larg,
+    caixa_altura: alt,
+    dim_comprimento: comp,
+    dim_largura: larg,
+    dim_altura: alt,
+    cores_impressao: coresPayload,
     itens: itens,
     imgs: imgUrl ? [imgUrl] : [],
     imagem_url: imgUrl || null,
@@ -4788,7 +5038,10 @@ function _goBase(id){
     iniciarPollingOFsMaquina();
   }
   if(id==='historico-passagens'){
-    try{ setTimeout(()=>{ try{ buscarHistoricoPassagens(1); }catch(e){} }, 0); }catch(_){}
+    try{ setTimeout(()=>{ try{ carregarGraficosPassagens(); }catch(e){}; try{ buscarHistoricoPassagens(1); }catch(e){} }, 0); }catch(_){}
+  }
+  if(id==='cores-impressao'){
+    try{ setTimeout(()=>{ try{ renderCoresImpressao(); }catch(e){} }, 0); }catch(_){}
   }
   if(id==='lancamento'){
     if(_apiConectado && CURRENT_USER){
@@ -11236,6 +11489,14 @@ async function buscarHistoricoPassagens(page) {
         ''
       ).trim();
       var cliente = String(p.cliente || p.nome_cliente || '—').trim() || '—';
+      var produto = String(p.produto || p.prod_desc || p.prodDesc || p.descricao || p.produto_desc || '').trim();
+      var qtd = Number(p.quantidade ?? p.qtd ?? p.caixas_produzidas ?? 0) || 0;
+      var vlUnit = Number(p.vl_unit ?? p.valor_unitario ?? p.vunit ?? 0) || 0;
+      var total = Number(p.total ?? p.valor_total ?? p.valor_venda ?? 0) || 0;
+      var money = function(v){
+        var n = Number(v || 0) || 0;
+        try{ return n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' }); }catch(e){ return String(n.toFixed(2)); }
+      };
       var hora = p.hora_passagem
         ? new Date(p.hora_passagem).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : (p.data_passagem || '—');
@@ -11252,10 +11513,13 @@ async function buscarHistoricoPassagens(page) {
             '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + escH(String(p.of_numero||p.numero||'—')) + '</span>' +
             '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(cliente) + '</span>' +
           '</div>' +
+          (produto ? '<div style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">' + escH(produto) + '</div>' : '') +
           '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b">' +
             (p.maquina ? '<span>⚙ ' + escH(String(p.maquina)) + '</span>' : '') +
             ((p.operador || p.operador_nome) ? '<span>👤 ' + escH(String(p.operador||p.operador_nome)) + '</span>' : '') +
-            (p.caixas_produzidas ? '<span>📦 ' + escH(String(p.caixas_produzidas)) + ' cx</span>' : '') +
+            (qtd ? '<span>📦 ' + escH(String(qtd)) + ' cx</span>' : '') +
+            (vlUnit ? '<span>R$ ' + escH(String(money(vlUnit))) + '/cx</span>' : '') +
+            (total ? '<span>Total ' + escH(String(money(total))) + '</span>' : '') +
           '</div>' +
         '</div>' +
         '<div style="text-align:right;flex-shrink:0">' +
@@ -11279,6 +11543,108 @@ async function buscarHistoricoPassagens(page) {
     container.innerHTML = html;
   } catch(e) {
     container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
+  }
+}
+
+async function carregarGraficosPassagens(){
+  const wrap = document.getElementById('hist-graficos-wrap');
+  const resumoEl = document.getElementById('hist-resumo');
+  const cSemana = document.getElementById('hist-chart-semana');
+  const cMes = document.getElementById('hist-chart-mes');
+  if(!wrap || !resumoEl || !cSemana || !cMes) return;
+
+  wrap.style.display = '';
+  resumoEl.innerHTML = '<div style="color:#64748b;font-size:12px">Carregando gráficos…</div>';
+
+  const okChart = await ensureChartJsLoaded();
+  if(!okChart || !window.Chart){
+    resumoEl.innerHTML = '<div style="color:#f59e0b;font-size:12px">Chart.js não carregou.</div>';
+    return;
+  }
+
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const emp = String(EMP_FILTRO || '').trim();
+
+  try{
+    const sp = new URLSearchParams();
+    if(emp) sp.set('empId', emp);
+    sp.set('t', String(Date.now()));
+    const r = await fetch('/api/passagens/graficos?' + sp.toString(), { headers: { Authorization: 'Bearer ' + token } });
+    const d = await r.json().catch(()=>null);
+    if(!(r && r.ok) || !d || d.ok === false) throw new Error(d?.error || d?.message || 'Falha ao carregar gráficos');
+
+    const labels = Array.isArray(d?.semana?.labels) ? d.semana.labels : [];
+    const porMaquina = d?.semana?.porMaquina && typeof d.semana.porMaquina === 'object' ? d.semana.porMaquina : {};
+    const mes = d?.mes && typeof d.mes === 'object' ? d.mes : {};
+    const maqs = ['IMP 01','IMP 02','IMP 03','IMP 04','IMP 05','CORTE VINCO ROTATIVA'];
+    const colors = {
+      'IMP 01':'#38bdf8',
+      'IMP 02':'#22c55e',
+      'IMP 03':'#f59e0b',
+      'IMP 04':'#a78bfa',
+      'IMP 05':'#fb7185',
+      'CORTE VINCO ROTATIVA':'#94a3b8'
+    };
+
+    try{ if(window._histChartSemana){ window._histChartSemana.destroy(); window._histChartSemana = null; } }catch(e){}
+    try{ if(window._histChartMes){ window._histChartMes.destroy(); window._histChartMes = null; } }catch(e){}
+
+    const dsSemana = maqs.map((m)=>({
+      label: m,
+      data: Array.isArray(porMaquina?.[m]) ? porMaquina[m] : new Array(labels.length).fill(0),
+      backgroundColor: colors[m] || '#64748b',
+      borderColor: colors[m] || '#64748b',
+      borderWidth: 1
+    }));
+
+    window._histChartSemana = new Chart(cSemana.getContext('2d'), {
+      type: 'bar',
+      data: { labels, datasets: dsSemana },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', boxWidth: 10, boxHeight: 10 } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.15)' } },
+          y: { ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(148,163,184,0.15)' }, beginAtZero: true }
+        }
+      }
+    });
+
+    const mesLabels = maqs.slice();
+    const mesData = mesLabels.map((m)=> Number(mes?.[m] || 0) || 0);
+    window._histChartMes = new Chart(cMes.getContext('2d'), {
+      type: 'bar',
+      data: { labels: mesLabels, datasets: [{ label: 'Passagens no mês', data: mesData, backgroundColor: mesLabels.map(m=>colors[m]||'#64748b') }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.15)' } },
+          y: { ticks: { color: '#94a3b8', precision: 0 }, grid: { color: 'rgba(148,163,184,0.15)' }, beginAtZero: true }
+        }
+      }
+    });
+
+    const idxHoje = Math.max(0, labels.length - 1);
+    const totalHoje = maqs.reduce((s,m)=> s + (Number((porMaquina?.[m] || [])[idxHoje] || 0) || 0), 0);
+    const totalMes = mesLabels.reduce((s,m)=> s + (Number(mes?.[m] || 0) || 0), 0);
+    resumoEl.innerHTML =
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+        '<div style="flex:1;min-width:220px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">' +
+          '<div style="color:#94a3b8;font-size:11px">Hoje</div>' +
+          '<div style="color:#e2e8f0;font-size:22px;font-weight:800;margin-top:2px">' + String(totalHoje) + '</div>' +
+          '<div style="color:#64748b;font-size:12px;margin-top:2px">passagens</div>' +
+        '</div>' +
+        '<div style="flex:1;min-width:220px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">' +
+          '<div style="color:#94a3b8;font-size:11px">Mês</div>' +
+          '<div style="color:#e2e8f0;font-size:22px;font-weight:800;margin-top:2px">' + String(totalMes) + '</div>' +
+          '<div style="color:#64748b;font-size:12px;margin-top:2px">passagens</div>' +
+        '</div>' +
+      '</div>';
+  }catch(e){
+    resumoEl.innerHTML = '<div style="color:#f43f5e;font-size:12px">Erro ao carregar gráficos: ' + escH(String(e?.message || e)) + '</div>';
   }
 }
 
@@ -14358,6 +14724,14 @@ async function abrirModalOF(id){
   setVal('of-caixa-comp', oEdit ? (oEdit.caixa_comprimento ?? '') : '');
   setVal('of-caixa-larg', oEdit ? (oEdit.caixa_largura ?? '') : '');
   setVal('of-caixa-alt', oEdit ? (oEdit.caixa_altura ?? '') : '');
+  try{ coresSelecionadasOF = []; }catch(e){}
+  try{
+    await carregarCoresImpressao();
+    if(oEdit && Array.isArray(oEdit.cores_impressao)){
+      coresSelecionadasOF = oEdit.cores_impressao.map(c=>String(c?.id||'').trim()).filter(Boolean);
+    }
+    renderSeletorCores('seletorCoresOF', coresSelecionadasOF);
+  }catch(e){}
   setVal('f-urg', oEdit ? (oEdit.urg?'1':'0') : '0');
   try{
     const tg = document.getElementById('f-urg-toggle');
@@ -15490,6 +15864,14 @@ function validarCamposObrigatoriosOF(payload, itens){
     if(!(u > 0)) erros.push('Valor unitário é obrigatório');
   }
 
+  const comp = Number(p.caixa_comprimento ?? p.comprimento_mm ?? p.dim_comprimento ?? 0) || 0;
+  const larg = Number(p.caixa_largura ?? p.largura_mm ?? p.dim_largura ?? 0) || 0;
+  const alt = Number(p.caixa_altura ?? p.altura_mm ?? p.dim_altura ?? 0) || 0;
+  if(!(comp > 0 && larg > 0 && alt > 0)) erros.push('Dimensões (C×L×A) são obrigatórias');
+
+  const cores = Array.isArray(p.cores_impressao) ? p.cores_impressao : [];
+  if(!cores.length) erros.push('Cores de impressão são obrigatórias');
+
   return erros;
 }
 
@@ -15604,6 +15986,10 @@ async function salvarOF(){
   const tcSel = (typeof ofGetTipoCaixaSelecionado === 'function') ? ofGetTipoCaixaSelecionado() : { id:null, nome:null };
   const dims = (typeof ofDimensoesGet === 'function') ? ofDimensoesGet() : { comprimento:null, largura:null, altura:null };
   const payloadLocal={seq:ms+1,of:seguro('f-of',''),prodDesc:titulo,descricao:titulo,cliId,vendId:vendIdSel,vend_id:vendIdSel,vendedor_id:vendIdSel,tipo_caixa_id:tcSel.id,tipo_caixa:tcSel.nome,caixa_comprimento:dims.comprimento,caixa_largura:dims.largura,caixa_altura:dims.altura,qtd:toInt(qtdTotal),itens:itensSan,dia:sanitizeDateInput(dia),data_producao:sanitizeDateInput(dia),ent:entregaSel,data_entrega:entregaSel,fluxo:seguro('f-fl',''),maq:getMaqSel(),status:seguro('f-st',''),urg:seguro('f-urg','')==='1',valor_venda:toDec(valTotal),valor_total:toDec(valTotal),pagto,obs:seguro('f-obs',''),imgs,imagem_url:imgs.length?imgs[0]:null,empId:empCode,_estoqueJaBaixadoCriacao,modo_programacao,dia_programacao:sanitizeDateInput(dia_programacao),cidade_entrega,data_pedido:sanitizeDateInput(data_pedido),maquina_atual_index:0,maquina_por_item};
+  payloadLocal.dim_comprimento = dims.comprimento;
+  payloadLocal.dim_largura = dims.largura;
+  payloadLocal.dim_altura = dims.altura;
+  payloadLocal.cores_impressao = (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOF) : [];
   payloadLocal.quantidade = toInt(qtdTotal);
   payloadLocal.valor_venda = toDec(valTotal);
   payloadLocal.valor_total = toDec(valTotal);
@@ -15835,6 +16221,10 @@ async function salvarEdicaoOFId(id){
     caixa_comprimento: dims.comprimento,
     caixa_largura: dims.largura,
     caixa_altura: dims.altura,
+    dim_comprimento: dims.comprimento,
+    dim_largura: dims.largura,
+    dim_altura: dims.altura,
+    cores_impressao: (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOF) : [],
     itens: itensSan,
     qtd: toInt(qtdTotal),
     quantidade: toInt(qtdTotal),
@@ -32314,7 +32704,8 @@ const OF_ALLOWED_FIELDS = new Set([
   'id','numero','cliente_id','status','data_entrega','data_producao','urgente','quantidade','descricao','obs','itens','created_at','updated_at','seq','chp','maq','cli_id','vendedor','fluxo','qtd_chapas','cond_pagamento','empresa_id','of_num','imgs','urg','dia','of','cli_nome','obs2','ramo','pagto','ent','qtd','preco','total','smp_id','emp_id','vendedor_id','cliente_nome','of_seq',
   'fluxo_maquinas','maquina_atual_index','imagem_url','data_conclusao',
   'valor_total','valor_venda',
-  'tipo_caixa_id','tipo_caixa','caixa_comprimento','caixa_largura','caixa_altura'
+  'tipo_caixa_id','tipo_caixa','caixa_comprimento','caixa_largura','caixa_altura',
+  'cores_impressao','dim_comprimento','dim_largura','dim_altura'
 ]);
 function filtrarPayloadOF(payload){
   const out = {};
@@ -41584,6 +41975,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <div id="menu-fluxos" class="nav-item" onclick="go('fluxos');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🔀</span>Fluxos</div>
       <div id="menu-maquinas" class="nav-item" onclick="go('maquinas');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⚙</span>Máquinas</div>
       <div id="menu-tipos-caixa" class="nav-item" onclick="go('tipos-caixa');closeNavGroupsExcept('ng-maquinas')"><span class="ico">📦</span>Tipos de Caixa</div>
+      <div id="menu-cores-impressao" class="nav-item" onclick="go('cores-impressao');closeNavGroupsExcept('ng-maquinas')"><span class="ico">🎨</span>Cores de Impressão</div>
       <div id="menu-tempos-reais" class="nav-item" onclick="go('tempos-reais');closeNavGroupsExcept('ng-maquinas')"><span class="ico">⏱</span>Tempos Reais</div>
     </div>
   </div>
@@ -42096,6 +42488,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 <section id="page-historico-passagens" class="page" style="display:none">
   <h2 style="color:#e2e8f0;margin-bottom:16px">Histórico de Passagens por Máquina</h2>
+
+  <div id="hist-graficos-wrap" style="display:none;margin-bottom:16px">
+    <div id="hist-resumo" style="margin-bottom:12px"></div>
+    <div style="display:grid;grid-template-columns:1fr;gap:12px">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">
+        <div style="color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:10px">Últimos 7 dias</div>
+        <div style="height:260px"><canvas id="hist-chart-semana"></canvas></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px">
+        <div style="color:#94a3b8;font-size:12px;font-weight:700;margin-bottom:10px">Este mês</div>
+        <div style="height:240px"><canvas id="hist-chart-mes"></canvas></div>
+      </div>
+    </div>
+  </div>
 
   <div id="hist-filtros" class="hist-filtros" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:rgba(255,255,255,0.03);
               border-radius:12px;padding:14px">
@@ -42995,6 +43401,21 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div class="page-body">
     <div class="maquinas-grid" id="maq-conf-grid"></div>
+  </div>
+</div>
+
+<div id="page-cores-impressao" class="page">
+  <div class="ptoolbar" style="flex-wrap:wrap;gap:8px">
+    <span style="font-size:.78rem;color:var(--text2)">🎨 Cores de Impressão</span>
+    <div style="flex:1"></div>
+    <button class="btn btn-accent btn-sm" onclick="abrirModalCorImpressao()">＋ Nova Cor</button>
+    <button class="btn btn-ghost btn-sm" onclick="renderCoresImpressao()">↻ Atualizar</button>
+  </div>
+  <div class="page-body">
+    <div class="sbox">
+      <div class="sbox-h">Cadastro de Cores</div>
+      <div class="sbox-b" id="cores-impressao-body"></div>
+    </div>
   </div>
 </div>
 
@@ -44568,6 +44989,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
             <div id="of-auto-maq-badge" style="display:none;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.35);color:var(--text2);font-size:12px;font-weight:900">💡 Máquina será sugerida automaticamente ao salvar</div>
             <div id="tempo-estimado-sugestao" style="margin-top:10px;font-size:12px;color:var(--text2);display:none"></div>
             <div id="of-tempo-estimado" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
+          </div>
+
+          <div class="mf fgf" style="grid-column:1/-1">
+            <label>CORES DE IMPRESSÃO <span style="color:#ef4444">*</span></label>
+            <div id="seletorCoresOF" class="cores-grid"></div>
+            <div style="color:var(--text2);font-size:.72rem;margin-top:6px">Selecione uma ou mais cores</div>
           </div>
 
           <div class="mf"><label>FLUXO</label><select id="f-fl"><option value="">Selecionar fluxo...</option></select></div>
@@ -46727,6 +47154,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       caixa_comprimento: dims.comprimento || null,
       caixa_largura: dims.largura || null,
       caixa_altura: dims.altura || null,
+      dim_comprimento: dims.comprimento || null,
+      dim_largura: dims.largura || null,
+      dim_altura: dims.altura || null,
+      cores_impressao: (typeof coresPayloadFromSelecionadas === 'function') ? coresPayloadFromSelecionadas(coresSelecionadasOF) : [],
       imagem_url: imgTemp || null,
       imgs
     };
@@ -46788,7 +47219,11 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       tipo_caixa: ofObj.tipo_caixa ?? ofObj.tipoCaixa ?? null,
       caixa_comprimento: ofObj.caixa_comprimento ?? ofObj.caixaComprimento ?? null,
       caixa_largura: ofObj.caixa_largura ?? ofObj.caixaLargura ?? null,
-      caixa_altura: ofObj.caixa_altura ?? ofObj.caixaAltura ?? null
+      caixa_altura: ofObj.caixa_altura ?? ofObj.caixaAltura ?? null,
+      dim_comprimento: ofObj.dim_comprimento ?? ofObj.dimComprimento ?? ofObj.caixa_comprimento ?? null,
+      dim_largura: ofObj.dim_largura ?? ofObj.dimLargura ?? ofObj.caixa_largura ?? null,
+      dim_altura: ofObj.dim_altura ?? ofObj.dimAltura ?? ofObj.caixa_altura ?? null,
+      cores_impressao: ofObj.cores_impressao ?? ofObj.coresImpressao ?? null
     };
     return filtrarPayloadOF(common);
   }
@@ -46816,6 +47251,13 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         emp_id: p.empId,
         qtd: Number(p.qtdTotal || (parseFloat(it.qtd)||0) || 0),
         quantidade: Number(p.qtdTotal || (parseFloat(it.qtd)||0) || 0),
+        caixa_comprimento: p.caixa_comprimento,
+        caixa_largura: p.caixa_largura,
+        caixa_altura: p.caixa_altura,
+        dim_comprimento: p.dim_comprimento,
+        dim_largura: p.dim_largura,
+        dim_altura: p.dim_altura,
+        cores_impressao: p.cores_impressao,
         imagem_url: p.imagem_url || null,
         imgs: imgsEff
       };
@@ -46859,6 +47301,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           caixa_comprimento: p.caixa_comprimento || null,
           caixa_largura: p.caixa_largura || null,
           caixa_altura: p.caixa_altura || null,
+          dim_comprimento: p.dim_comprimento || p.caixa_comprimento || null,
+          dim_largura: p.dim_largura || p.caixa_largura || null,
+          dim_altura: p.dim_altura || p.caixa_altura || null,
+          cores_impressao: p.cores_impressao || null,
           imgs: (Array.isArray(p.imgs) && p.imgs.length) ? p.imgs : (it.img?[it.img]:[]),
           imagem_url: p.imagem_url || null,
           pagto: p.pagto || '',
@@ -46918,6 +47364,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         caixa_comprimento: p.caixa_comprimento || null,
         caixa_largura: p.caixa_largura || null,
         caixa_altura: p.caixa_altura || null,
+        dim_comprimento: p.dim_comprimento || p.caixa_comprimento || null,
+        dim_largura: p.dim_largura || p.caixa_largura || null,
+        dim_altura: p.dim_altura || p.caixa_altura || null,
+        cores_impressao: p.cores_impressao || null,
         empId: p.empId||o.empId||'',
         itens: p.itens,
         imgs: (Array.isArray(p.imgs) && p.imgs.length) ? p.imgs : (firstImgAlt?[firstImgAlt]:(o.imgs||[])),
