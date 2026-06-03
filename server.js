@@ -7914,6 +7914,7 @@ async function _resolveEmpresaUuid(req) {
     ''
   ).trim();
   const empIdBase = (empId ? empId.split(':')[0] : '').trim().toUpperCase();
+  if (_isUuid(empIdBase)) return empIdBase;
   const empIdEff = (empIdBase === 'E1' ? 'ITALY' : empIdBase) || 'ITALY';
   try {
     const { data, error } = await supabase.from('empresas').select('id').eq('sigla', empIdEff).maybeSingle();
