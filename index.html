@@ -33696,13 +33696,10 @@ async function salvarMaquina(){
       try{ window.MAQUINAS = null; }catch(e){}
       try{ window._listaMaquinas = null; }catch(e){}
       try{ _ultimaCargaMaquinas = 0; }catch(e){}
-      try{ await carregarMaquinas(true); }catch(e){}
       try{
-        const maqId = savedId;
+        if(typeof recarregarEAtualizarMaquina === 'function') await recarregarEAtualizarMaquina(savedId);
         const src = (Array.isArray(window.MAQUINAS) && window.MAQUINAS.length) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
-        const maqAtualizada = (src || []).find(function(m){
-          return String(m?.id || '').trim() === String(maqId || '').trim();
-        }) || null;
+        const maqAtualizada = (src || []).find(function(m){ return String(m?.id||'').trim() === String(savedId||'').trim(); }) || null;
         console.log('[VERIFICAR SAVE] maq após reload:', maqAtualizada ? String(maqAtualizada.nome || maqAtualizada.col || maqAtualizada.id || '') : 'não encontrada');
       }catch(e){}
       MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
@@ -33728,6 +33725,38 @@ async function salvarMaquina(){
   }catch(e){
     try{ showSaveIndicator('✖ erro','var(--red)'); }catch(_){}
     toast('Erro ao salvar: '+(e.message||e),'var(--red)');
+  }
+}
+
+async function recarregarEAtualizarMaquina(maqId){
+  const id = String(maqId || '').trim();
+  try{
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/maquinas?t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+    const d = await r.json().catch(()=>null);
+    const lista = (d && (d.data || d.maquinas)) ? (d.data || d.maquinas) : [];
+    const src = Array.isArray(lista) ? lista : [];
+    const norm = (typeof normalizeMaq === 'function') ? normalizeMaq : function(x){ return x; };
+    MAQUINAS = src.map(norm);
+    try{ window._MAQUINAS = MAQUINAS; }catch(e){}
+    try{ window.MAQUINAS = MAQUINAS; }catch(e){}
+    try{ window._listaMaquinas = MAQUINAS; }catch(e){}
+    try{ _ultimaCargaMaquinas = Date.now(); }catch(e){}
+    try{
+      if(typeof window._cacheMaquinas !== 'undefined') window._cacheMaquinas = {};
+      if(typeof window._cacheMaquinasLoaded !== 'undefined') window._cacheMaquinasLoaded = false;
+      if(typeof window._cacheMaquinasLoading !== 'undefined') window._cacheMaquinasLoading = null;
+    }catch(e){}
+    const maqAtualizada = id ? (src.find(function(m){ return String(m?.id||'').trim() === id; }) || null) : null;
+    try{
+      console.log('[POS-SAVE] máquina:', String(maqAtualizada?.nome || maqAtualizada?.col || ''), '| producao:', maqAtualizada?.producao, '| setup_medio:', maqAtualizada?.setup_medio);
+    }catch(e){}
+    try{ if(typeof renderMaquinasConf === 'function') renderMaquinasConf(); }catch(e){}
+    return { ok: true, maq: maqAtualizada, lista: src };
+  }catch(e){
+    try{ console.warn('[POS-SAVE] erro reload:', e && e.message ? e.message : e); }catch(_){}
+    return { ok: false };
   }
 }
 
