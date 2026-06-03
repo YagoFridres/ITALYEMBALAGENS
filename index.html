@@ -557,9 +557,31 @@ td.tc{text-align:center;}
 .agenda-aviso-yellow{background:#ffd60018;border-color:var(--yellow);color:var(--yellow);}
 
 /* MAQUINAS CONF */
-.maq-conf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
-.maq-conf-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
-.maq-conf-nome{font-weight:800;font-size:.88rem;color:var(--accent);font-family:var(--mono);margin-bottom:6px;}
+.maquinas-page-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:12px}
+.maquinas-page-header h2{margin:0;font-size:1.05rem;font-weight:800;color:var(--text)}
+.maquinas-subtitulo{display:block;font-size:.78rem;color:var(--text2);margin-top:2px}
+.btn-primary{background:var(--accent);color:#06101b;border:1px solid #00d4ff44;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}
+.btn-primary:hover{filter:brightness(1.05)}
+
+.maquinas-grid,.maq-conf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:4px}
+@media (max-width:1200px){.maquinas-grid,.maq-conf-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:768px){.maquinas-grid,.maq-conf-grid{grid-template-columns:1fr;gap:12px;padding:0}}
+
+.maquina-card,.maq-conf-card{background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:0;overflow:hidden;transition:transform 0.2s,box-shadow 0.2s;min-height:260px}
+.maquina-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.maquina-card-header{padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06)}
+.maquina-card.tipo-impressao .maquina-card-header{background:linear-gradient(135deg,rgba(59,130,246,0.25),rgba(37,99,235,0.15));border-left:3px solid #3b82f6}
+.maquina-card.tipo-corte .maquina-card-header{background:linear-gradient(135deg,rgba(168,85,247,0.25),rgba(126,34,206,0.15));border-left:3px solid #a855f7}
+.maquina-nome{font-size:1.1rem;font-weight:700;letter-spacing:0.5px;color:#f1f5f9}
+.maquina-card-body{padding:16px;display:flex;flex-direction:column;gap:10px}
+.maquina-producao-valor{font-size:1.5rem;font-weight:800;color:#22d3ee;line-height:1}
+.maquina-producao-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:2px}
+.maquina-info-row{display:flex;align-items:center;gap:8px;font-size:0.82rem;color:#94a3b8}
+.maquina-info-row .valor{margin-left:auto;color:#cbd5e1;font-weight:500}
+.maquina-card-footer{padding:10px 16px;background:rgba(0,0,0,0.2);font-size:0.75rem;color:#475569;border-top:1px solid rgba(255,255,255,0.04)}
+.maquina-setor-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;letter-spacing:0.5px;text-transform:uppercase}
+.badge-impressao{background:rgba(59,130,246,0.2);color:#60a5fa}
+.badge-corte{background:rgba(168,85,247,0.2);color:#c084fc}
 
 /* LOGÍSTICA MAPA */
 #mapa-container{width:100%;height:460px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:12px;}
@@ -2477,12 +2499,12 @@ function empSelect(selId, required, currentVal){
 
 // ===================== DADOS =====================
 const MAQUINAS_ATIVAS = [
-  'CORTE VINCO ROTATIVA',
   'IMP 01',
   'IMP 02',
   'IMP 03',
   'IMP 04',
   'IMP 05',
+  'CORTE VINCO ROTATIVA',
 ];
 
 function ofmaqMaquinasValidas(){
@@ -2527,27 +2549,20 @@ function maqAtivaFromNome(nome){
   }
   if(s.includes('corte') && s.includes('vinco') && (s.includes('rotat') || s.includes('rotativ') || s.includes('cvr'))) return 'CORTE VINCO ROTATIVA';
   if(s.includes('rotat') && (s.includes('vinco') || s.includes('corte'))) return 'CORTE VINCO ROTATIVA';
+  if(s === 'cvr') return 'CORTE VINCO ROTATIVA';
   if(s === 'rotativa') return 'CORTE VINCO ROTATIVA';
   return '';
 }
 
-const MAQUINAS_FALLBACK = [
-  {id:'CVR',   col:'CORTE VINCO ROTATIVA', ico:'✂',phora:4000,setup:60},
-  {id:'IMP01', col:'IMP 01',        ico:'🖨',phora:2000,setup:30},
-  {id:'IMP02', col:'IMP 02',        ico:'🖨',phora:2500,setup:30},
-  {id:'IMP03', col:'IMP 03',        ico:'🖨',phora:1800,setup:45},
-  {id:'IMP04', col:'IMP 04',        ico:'🖨',phora:2200,setup:30},
-  {id:'IMP05', col:'IMP 05',        ico:'🖨',phora:3000,setup:20},
-];
-let MAQUINAS = MAQUINAS_FALLBACK.slice();
+let MAQUINAS = [];
 
 const MAQUINAS_FLUXO = [
-  'CORTE VINCO ROTATIVA',
   'IMP 01',
   'IMP 02',
   'IMP 03',
   'IMP 04',
   'IMP 05',
+  'CORTE VINCO ROTATIVA',
 ];
 
 let MAQUINAS_FLUXO_ITENS = null;
@@ -31164,6 +31179,16 @@ function iniciarSistema(user){
     CURRENT_USER = user.user;
   }
   CURRENT_USER = normalizarUsuario(CURRENT_USER);
+  try{
+    localStorage.removeItem('maquinas_cache');
+    localStorage.removeItem('maquinas');
+    sessionStorage.removeItem('maquinas');
+  }catch(e){}
+  try{
+    window._MAQUINAS = [];
+    window.MAQUINAS = [];
+    _ultimaCargaMaquinas = 0;
+  }catch(e){}
   try{ window.CURRENT_USER = CURRENT_USER; }catch(e){}
   try{ window._currentUser = CURRENT_USER; }catch(e){}
   const ls=document.getElementById('login-screen');
@@ -32638,6 +32663,16 @@ async function carregarMaquinas(forcar=false){
   if(!forcar && (now - _ultimaCargaMaquinas) < CACHE_TTL && Array.isArray(MAQUINAS) && MAQUINAS.length > 0) return { ok:true, cached:true, data:MAQUINAS };
   const r = await api('GET','/maquinas');
   try{ console.log('[MAQUINAS RAW] primeira:', JSON.stringify(((r && r.data) || [])[0])); }catch(e){}
+  if(!r || r.ok === false || r.error){
+    MAQUINAS = [];
+    try{ window._MAQUINAS = MAQUINAS; }catch(e){}
+    try{ window.MAQUINAS = MAQUINAS; }catch(e){}
+    try{ _ultimaCargaMaquinas = 0; }catch(e){}
+    try{
+      if(String(window._PAGE_ATUAL||'') === 'maquinas') toast('Erro ao carregar máquinas', 'var(--red)');
+    }catch(e){}
+    return r || { ok:false, data:[] };
+  }
   if(r && r.ok && r.data && r.data.length) {
     MAQUINAS = r.data.map(normalizeMaq);
     MAQUINAS.sort((a,b)=>{
@@ -32678,6 +32713,8 @@ async function carregarMaquinas(forcar=false){
       if(oa !== ob) return oa - ob;
       return String(a.col||a.nome||'').localeCompare(String(b.col||b.nome||''),'pt-BR');
     });
+  } else {
+    MAQUINAS = [];
   }
   if(r && r.ok) _ultimaCargaMaquinas = Date.now();
   try{ window._MAQUINAS = MAQUINAS; }catch(e){}
@@ -33359,35 +33396,59 @@ setInterval(async () => {
 
 // ===================== MÁQUINAS CRUD =====================
 function renderMaquinasConf(){
-  const toolbar=document.querySelector('#page-maquinas .ptoolbar');
-  if(toolbar&&!toolbar.querySelector('.btn-accent'))toolbar.innerHTML+='<button class="btn btn-accent btn-sm" onclick="abrirModalMaquina()">＋ Nova Máquina</button>';
-  document.getElementById('maq-conf-grid').innerHTML=MAQUINAS.map((m,mi)=>{
-    const aps=APONTAMENTOS.filter(a=>a.maqId===m.id&&a.tempReal);
-    const med=aps.length?Math.round(aps.reduce((s,a)=>s+a.tempReal,0)/aps.length):null;
-    const eff=efic(m.id);
+  const grid = document.getElementById('maq-conf-grid');
+  if(!grid) return;
+  const src = Array.isArray(MAQUINAS) ? MAQUINAS : [];
+  const byNome = {};
+  src.forEach((m, idx)=>{
+    const nome = String(m?.col || m?.nome || '').trim();
+    if(!nome) return;
+    byNome[nome] = { m, idx };
+  });
+  grid.innerHTML = MAQUINAS_ATIVAS.map((nome)=>{
+    const ref = byNome[nome] || null;
+    const m = ref ? ref.m : { col:nome, nome:nome, ativo:false };
+    const mi = ref ? ref.idx : null;
+    const tipo = (String(nome).toUpperCase().startsWith('IMP')) ? 'tipo-impressao' : 'tipo-corte';
+    const badgeCls = (tipo === 'tipo-impressao') ? 'badge-impressao' : 'badge-corte';
+    const setorLabel = String(m.setor || (tipo === 'tipo-impressao' ? 'IMPRESSÃO' : 'CORTE')).trim() || '—';
     const hi = String(m.horario_inicio || '07:00').trim() || '07:00';
     const hf = String(m.horario_fim || '18:00').trim() || '18:00';
     const disp = calcMaquinaDisponibilidade(m);
-    return '<div class="maq-conf-card" style="'+(m.ativo===false?'opacity:.5':'')+'">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
-      '<div class="maq-conf-nome">'+m.ico+' '+m.col+'</div>'+
-      '<div style="margin-left:auto;display:flex;gap:4px">'+
-      '<button class="btn-icon" onclick="editarMaquina('+mi+')" title="Editar">✏</button>'+
-      '<button class="btn-icon" style="color:'+(m.ativo===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativo===false?'Ativar':'Desativar')+'">'+(m.ativo===false?'▶':'⏸')+'</button>'+
-      '<button class="btn-icon" onclick="excluirMaquina('+mi+')" title="Excluir" style="color:var(--red)">🗑</button>'+
-      '</div></div>'+
-      '<div style="font-size:.72rem;color:var(--text2);display:flex;flex-direction:column;gap:4px">'+
-      '<div>Produção: <b>'+m.phora.toLocaleString()+' un/h</b></div>'+
-      '<div>Setup: <b>'+m.setup+' min</b></div>'+
-      '<div>Passagem média: <b>'+(m.passagem||'—')+' min</b></div>'+
-      '<div>Horário: <b>'+escH(hi)+' às '+escH(hf)+'</b></div>'+
-      '<div>Tempo produtivo: <b>'+escH(disp.tempoTxt)+'</b></div>'+
-      '<div>Setups possíveis: <b>'+escH(String(disp.setupsDia))+'</b></div>'+
-      (m.setor?'<div>Setor: <b>'+m.setor+'</b></div>':'')+
-      (med!==null?'<div>Tempo médio real: <b style="color:var(--green)">'+fmtMin(med)+'</b></div>':'')+
-      (eff!==null?'<div>Eficiência: <b style="color:'+(eff>=100?'var(--green)':eff>=80?'var(--yellow)':'var(--red)')+'">'+eff+'%</b></div>':'')+
-      '<div style="color:var(--text3)">'+aps.length+' apontamentos</div>'+
-      '</div></div>';
+    const prod = Number(m.producao ?? m.phora ?? 0) || 0;
+    const setup = Math.trunc(Number(m.setup_medio ?? m.passagem_media ?? m.tempo_setup_padrao_min ?? m.tempo_setup_min ?? m.setup_min ?? m.setup ?? 15) || 15);
+    const passagem = Math.trunc(Number(m.passagem_media ?? m.passagem ?? 0) || 0);
+    const apsSrc = Array.isArray(APONTAMENTOS) ? APONTAMENTOS : [];
+    const aps = (ref && m.id) ? apsSrc.filter(a=>a.maqId===m.id && a.tempReal) : [];
+    const apontN = aps.length;
+    const ico = String(m.icone || m.ico || '⚙');
+
+    return '<div class="maquina-card '+tipo+'" style="'+(m.ativo===false?'opacity:.55':'')+'">'+
+      '<div class="maquina-card-header">'+
+        '<div class="maquina-nome">'+escH(ico)+' '+escH(nome)+'</div>'+
+        (mi!==null
+          ? ('<div style="display:flex;gap:6px;flex-shrink:0">'+
+              '<button class="btn-icon" onclick="editarMaquina('+mi+')" title="Editar">✏</button>'+
+              '<button class="btn-icon" style="color:'+(m.ativo===false?'var(--green)':'var(--red)')+'" onclick="toggleMaquina('+mi+')" title="'+(m.ativo===false?'Ativar':'Desativar')+'">'+(m.ativo===false?'▶':'⏸')+'</button>'+
+              '<button class="btn-icon" onclick="excluirMaquina('+mi+')" title="Excluir" style="color:var(--red)">🗑</button>'+
+            '</div>')
+          : '')+
+      '</div>'+
+
+      '<div class="maquina-card-body">'+
+        '<div><span class="maquina-setor-badge '+badgeCls+'">🏭 '+escH(setorLabel)+'</span></div>'+
+        '<div>'+
+          '<div class="maquina-producao-label">📊 PRODUÇÃO</div>'+
+          '<div class="maquina-producao-valor">'+escH(prod ? prod.toLocaleString('pt-BR') : '—')+' <span style="font-size:.95rem;font-weight:700;color:#60a5fa">un/h</span></div>'+
+        '</div>'+
+        '<div class="maquina-info-row"><span>⏱ Setup</span><span class="valor">'+escH(String(setup))+' min</span></div>'+
+        '<div class="maquina-info-row"><span>📋 Passagem média</span><span class="valor">'+(passagem?escH(String(passagem)+' min'):'—')+'</span></div>'+
+        '<div class="maquina-info-row"><span>🕐 Horário</span><span class="valor">'+escH(hi)+' às '+escH(hf)+'</span></div>'+
+        '<div class="maquina-info-row"><span>✅ Tempo produtivo</span><span class="valor">'+escH(disp.tempoTxt)+'</span></div>'+
+        '<div class="maquina-info-row"><span>📅 Setups possíveis</span><span class="valor">'+escH(String(disp.setupsDia))+'</span></div>'+
+      '</div>'+
+      '<div class="maquina-card-footer">'+escH(String(apontN))+' apontamentos</div>'+
+    '</div>';
   }).join('');
 }
 
@@ -33457,6 +33518,7 @@ function maqEditRecalc(){
   const hitEl = document.getElementById('maq-e-hit');
   if(hitEl && r.iniTardeTxt) hitEl.value = r.iniTardeTxt;
 }
+function abrirModalNovaMaquina(){abrirModalMaquina();}
 function abrirModalMaquina(mi){
   const m=mi!==undefined?MAQUINAS[mi]:null;
   const defaultsDim = (nome)=>{
@@ -33598,9 +33660,14 @@ async function salvarMaquina(){
   let id = String(window._editandoMaquinaId || lerInput('maq-id', 'id') || '').trim();
   const nome = String(lerInput('maq-e-col', 'maq-nome', 'nome') || '').trim();
   if(!nome){ toast('Informe o nome da máquina','var(--red)'); return; }
+  const canonNome = maqAtivaFromNome(nome);
+  if(!canonNome || MAQUINAS_ATIVAS.indexOf(canonNome) < 0){
+    toast('Máquina inválida. Use apenas: ' + MAQUINAS_ATIVAS.join(', '), 'var(--red)');
+    return;
+  }
 
   const payload = {
-    nome,
+    nome: canonNome,
     ordem: (()=>{
       const v = lerInput('maq-ordem','ordem');
       return v === '' ? undefined : (toInt(v, 0));
@@ -42841,13 +42908,15 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
 <!-- ========== 6. MÁQUINAS ========== -->
 <div id="page-maquinas" class="page">
-  <div class="ptoolbar">
-    <span style="font-size:.78rem;color:var(--text2)">Cadastro e performance das máquinas</span>
-    <div style="flex:1"></div>
-    <button class="btn btn-accent btn-sm" onclick="abrirModalMaquina()">＋ Nova Máquina</button>
+  <div class="maquinas-page-header">
+    <div>
+      <h2>⚙ Máquinas</h2>
+      <span class="maquinas-subtitulo">6 máquinas ativas no fluxo de produção</span>
+    </div>
+    <button onclick="abrirModalNovaMaquina()" class="btn-primary">+ Nova Máquina</button>
   </div>
   <div class="page-body">
-    <div class="maq-conf-grid" id="maq-conf-grid"></div>
+    <div class="maquinas-grid" id="maq-conf-grid"></div>
   </div>
 </div>
 

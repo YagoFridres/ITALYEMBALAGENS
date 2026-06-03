@@ -7750,11 +7750,38 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // MÁQUINAS
 // ══════════════════════════════════════════════════════════════
+const _MAQUINAS_ATIVAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+function _normMaqNome(v) {
+  try {
+    return String(v || '')
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  } catch (_) {
+    return String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+}
+function _canonMaqNome(v) {
+  const s = _normMaqNome(v);
+  if (!s) return '';
+  const m = s.match(/\b(imp|impressora)\s*0*([1-5])\b/);
+  if (m) {
+    const n = Number(m[2]);
+    return `IMP ${String(n).padStart(2, '0')}`;
+  }
+  if (s.includes('corte') && s.includes('vinco') && (s.includes('rotat') || s.includes('rotativ') || s.includes('cvr'))) return 'CORTE VINCO ROTATIVA';
+  if (s.includes('rotat') && (s.includes('vinco') || s.includes('corte'))) return 'CORTE VINCO ROTATIVA';
+  if (s === 'cvr') return 'CORTE VINCO ROTATIVA';
+  if (s === 'rotativa') return 'CORTE VINCO ROTATIVA';
+  return '';
+}
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
     const ativasRaw = String(req.query?.ativas ?? req.query?.ativa ?? req.query?.ativo ?? '').trim().toLowerCase();
     const apenasAtivas = (ativasRaw === '1' || ativasRaw === 'true' || ativasRaw === 'sim' || ativasRaw === 's');
-    const cacheKey = apenasAtivas ? 'maquinas_ativas' : 'maquinas';
+    const cacheKey = apenasAtivas ? 'maquinas_fluxo_ativas' : 'maquinas_fluxo';
     const cached = cacheGet(cacheKey);
     if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
     const selectBase =
@@ -7766,22 +7793,50 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
       'meta_perda_pct,descricao,icone,ordem,' +
       'puxada_min,puxada_max,boca_max,altura_max';
 
+    let data = null;
+    let error = null;
     let q = supabase.from('maquinas').select(selectBase).order('nome', { ascending: true });
-    if (apenasAtivas) q = q.eq('ativo', true);
-    let { data, error } = await q;
+    q = q.eq('ativo', true);
+    try { q = q.is('deleted_at', null); } catch (_) {}
+    let r0 = await q;
+    data = r0?.data;
+    error = r0?.error;
     if (error) {
       const msg = String(error?.message || error || '');
-      if (msg.toLowerCase().includes('does not exist')) {
+      const low = msg.toLowerCase();
+      if (low.includes('does not exist') || low.includes('column')) {
         let q2 = supabase.from('maquinas').select('*').order('nome', { ascending: true });
-        if (apenasAtivas) q2 = q2.eq('ativo', true);
+        const hasAtivo = !(low.includes('ativo') && low.includes('does not exist'));
+        const hasDeletedAt = !(low.includes('deleted_at') && low.includes('does not exist'));
+        if (hasAtivo) q2 = q2.eq('ativo', true);
+        if (hasDeletedAt) {
+          try { q2 = q2.is('deleted_at', null); } catch (_) {}
+        }
         const r2 = await q2;
         data = r2?.data;
         error = r2?.error;
       }
     }
     if (error) throw error;
-    cacheSet(cacheKey, data || [], 60 * 1000);
-    return res.json({ ok: true, data: data || [], maquinas: data || [] });
+    const lista = Array.isArray(data) ? data : [];
+    const pick = {};
+    const score = (m) => {
+      let s = 0;
+      const prod = Number(m?.producao ?? m?.phora ?? 0) || 0;
+      s += Math.min(999999, Math.max(0, prod));
+      const t = Date.parse(String(m?.updated_at || m?.created_at || ''));
+      if (Number.isFinite(t)) s += Math.trunc(t / 1000);
+      return s;
+    };
+    for (const m of lista) {
+      const canon = _canonMaqNome(m?.nome || m?.col || m?.codigo || '');
+      if (!canon || !_MAQUINAS_ATIVAS.includes(canon)) continue;
+      if (apenasAtivas && m?.ativo === false) continue;
+      if (!pick[canon] || score(m) > score(pick[canon])) pick[canon] = m;
+    }
+    const out = _MAQUINAS_ATIVAS.map((n) => pick[n]).filter(Boolean);
+    cacheSet(cacheKey, out, 60 * 1000);
+    return res.json({ ok: true, data: out, maquinas: out });
   } catch (e) { err(res, e); }
 });
 
