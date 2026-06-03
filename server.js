@@ -7901,11 +7901,18 @@ function _isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 async function _resolveEmpresaUuid(req) {
+  const bEmp = String(req?.body?.empresa_id || req?.body?.empresaId || '').trim();
   const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
   const uEmp = String(req?.usuario?.empresa_id || req?.usuario?.empresaId || '').trim();
   if (_isUuid(uEmp)) return uEmp;
+  if (_isUuid(bEmp)) return bEmp;
   if (_isUuid(qEmp)) return qEmp;
-  const empId = String(req?.query?.emp_id ?? req?.query?.empId ?? req?.usuario?.emp_id ?? req?.usuario?.empId ?? '').trim();
+  const empId = String(
+    req?.body?.emp_id ?? req?.body?.empId ??
+    req?.query?.emp_id ?? req?.query?.empId ??
+    req?.usuario?.emp_id ?? req?.usuario?.empId ??
+    ''
+  ).trim();
   if (!empId) return '';
   try {
     const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empId).maybeSingle();

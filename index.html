@@ -2732,7 +2732,11 @@ async function salvarCorImpressao(){
     return;
   }
   try{
-    const r = await api(sid ? 'PUT' : 'POST', sid ? ('/cores-impressao/' + encodeURIComponent(sid)) : '/cores-impressao', { nome, hex: hex || null });
+    const emp = String(EMP_FILTRO || '').trim();
+    const sp = new URLSearchParams();
+    if(emp) sp.set('empId', emp);
+    const url = (sid ? ('/cores-impressao/' + encodeURIComponent(sid)) : '/cores-impressao') + (sp.toString() ? ('?' + sp.toString()) : '');
+    const r = await api(sid ? 'PUT' : 'POST', url, { nome, hex: hex || null });
     if(!(r && r.ok)) throw new Error(r?.error || 'Falha ao salvar');
     try{ document.getElementById('modal-cor-impressao')?.remove(); }catch(e){}
     await renderCoresImpressao();
@@ -2751,7 +2755,11 @@ async function excluirCorImpressao(id){
   if(!sid) return;
   if(!confirm('Excluir esta cor?')) return;
   try{
-    const r = await api('DELETE', '/cores-impressao/' + encodeURIComponent(sid));
+    const emp = String(EMP_FILTRO || '').trim();
+    const sp = new URLSearchParams();
+    if(emp) sp.set('empId', emp);
+    const url = '/cores-impressao/' + encodeURIComponent(sid) + (sp.toString() ? ('?' + sp.toString()) : '');
+    const r = await api('DELETE', url);
     if(!(r && r.ok)) throw new Error(r?.error || 'Falha ao excluir');
     await renderCoresImpressao();
     try{
@@ -3789,13 +3797,7 @@ function abrirNovaOfRapida(){
           onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div>
-          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Compr. (mm) *</label>
-          <input id="of-r-comp" type="number" placeholder="0" min="1"
-            style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
-            onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div>
           <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Larg. (mm) *</label>
           <input id="of-r-larg" type="number" placeholder="0" min="1"
@@ -3803,8 +3805,8 @@ function abrirNovaOfRapida(){
             onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
         <div>
-          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Alt. (mm) *</label>
-          <input id="of-r-alt" type="number" placeholder="0" min="1"
+          <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px">Compr. (mm) *</label>
+          <input id="of-r-comp" type="number" placeholder="0" min="1"
             style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 10px;color:#e8f0fe;font-size:14px;outline:none;font-family:inherit"
             onfocus="this.style.borderColor='#0ea5e9'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
@@ -4215,7 +4217,6 @@ window.salvarOfRapida = async function(){
   const ref = String(document.getElementById('of-r-ref')?.value || '').trim();
   const comp = parseFloat(String(document.getElementById('of-r-comp')?.value || '').replace(',','.')) || 0;
   const larg = parseFloat(String(document.getElementById('of-r-larg')?.value || '').replace(',','.')) || 0;
-  const alt = parseFloat(String(document.getElementById('of-r-alt')?.value || '').replace(',','.')) || 0;
   const entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
   const pedido = String(document.getElementById('of-r-pedido')?.value || new Date().toISOString().split('T')[0]).slice(0,10);
   const urgente = !!document.getElementById('of-r-urgente')?.checked;
@@ -4241,7 +4242,7 @@ window.salvarOfRapida = async function(){
   if(!produto) erros.push('Produto');
   if(!(qtd > 0)) erros.push('Quantidade');
   if(!(vlunit > 0)) erros.push('Valor Unit.');
-  if(!(comp > 0 && larg > 0 && alt > 0)) erros.push('Dimensões (C×L×A)');
+  if(!(larg > 0 && comp > 0)) erros.push('Dimensões (L×C)');
   try{
     if(!Array.isArray(coresDisponiveis) || !coresDisponiveis.length) await carregarCoresImpressao(empId);
   }catch(e){}
@@ -4326,10 +4327,10 @@ window.salvarOfRapida = async function(){
     empId: empId,
     caixa_comprimento: comp,
     caixa_largura: larg,
-    caixa_altura: alt,
+    caixa_altura: null,
     dim_comprimento: comp,
     dim_largura: larg,
-    dim_altura: alt,
+    dim_altura: null,
     cores_impressao: coresPayload,
     itens: itens,
     imgs: imgUrl ? [imgUrl] : [],
@@ -13129,11 +13130,10 @@ async function escolherMaquinaAutomatica(comprimento, largura, altura, dataProd)
 function ofDimensoesGet(){
   const c = parseFloat(document.getElementById('of-caixa-comp')?.value || '');
   const l = parseFloat(document.getElementById('of-caixa-larg')?.value || '');
-  const a = parseFloat(document.getElementById('of-caixa-alt')?.value || '');
   return {
     comprimento: Number.isFinite(c) ? c : null,
     largura: Number.isFinite(l) ? l : null,
-    altura: Number.isFinite(a) ? a : null
+    altura: null
   };
 }
 
@@ -13153,10 +13153,9 @@ function _sugestaoChapa_verificarMostrarBotao(){
   };
   const comp = getVal('#of-caixa-comp','[name="caixa_comprimento"]','#f-comp','[name="comprimento_mm"]');
   const larg = getVal('#of-caixa-larg','[name="caixa_largura"]','#f-larg','[name="largura_mm"]');
-  const alt  = getVal('#of-caixa-alt','[name="caixa_altura"]','#f-alt','[name="altura_mm"]');
   const container = document.getElementById('sugestao-chapa-container');
   if (container) {
-    container.style.display = (comp > 0 && larg > 0 && alt > 0) ? 'block' : 'none';
+    container.style.display = (comp > 0 && larg > 0) ? 'block' : 'none';
   }
 }
 
@@ -13175,18 +13174,11 @@ async function _sugestaoChapa_buscar(){
     document.querySelector('[name="largura_mm"]')?.value ||
     0
   );
-  const alt = Number(
-    document.getElementById('of-caixa-alt')?.value ||
-    document.getElementById('f-alt')?.value ||
-    document.querySelector('[name="caixa_altura"]')?.value ||
-    document.querySelector('[name="altura_mm"]')?.value ||
-    0
-  );
   const empId = String(document.getElementById('f-emp')?.value || EMP_FILTRO || '').trim();
   const onda = String(document.getElementById('of-onda')?.value || '').trim();
 
-  if (!(comp > 0 && larg > 0 && alt > 0)) {
-    alert('Preencha comprimento, largura e altura da caixa primeiro.');
+  if (!(comp > 0 && larg > 0)) {
+    alert('Preencha largura e comprimento da caixa primeiro.');
     return;
   }
 
@@ -13210,7 +13202,7 @@ async function _sugestaoChapa_buscar(){
     const data = await api('POST','/chapas_estoque/sugerir_menor_desperdicio', {
       comprimento_mm: comp,
       largura_mm: larg,
-      altura_mm: alt,
+      altura_mm: 0,
       onda: onda || null,
       emp_id: empId || null
     });
@@ -15459,7 +15451,7 @@ function ofUpdateProgress(){
   stepProd.classList.toggle('done', false);
   stepDet.classList.toggle('done', false);
 
-  const prodOk = !!(Number(document.getElementById('of-caixa-comp')?.value || 0) > 0 && Number(document.getElementById('of-caixa-larg')?.value || 0) > 0 && Number(document.getElementById('of-caixa-alt')?.value || 0) > 0);
+  const prodOk = !!(Number(document.getElementById('of-caixa-comp')?.value || 0) > 0 && Number(document.getElementById('of-caixa-larg')?.value || 0) > 0);
   if(prodOk) stepProd.classList.add('done');
   const detOk = !!(String(document.getElementById('f-obs')?.value || '').trim() || (Array.isArray(ofImgsTemp) && ofImgsTemp.length));
   if(detOk) stepDet.classList.add('done');
@@ -15866,8 +15858,7 @@ function validarCamposObrigatoriosOF(payload, itens){
 
   const comp = Number(p.caixa_comprimento ?? p.comprimento_mm ?? p.dim_comprimento ?? 0) || 0;
   const larg = Number(p.caixa_largura ?? p.largura_mm ?? p.dim_largura ?? 0) || 0;
-  const alt = Number(p.caixa_altura ?? p.altura_mm ?? p.dim_altura ?? 0) || 0;
-  if(!(comp > 0 && larg > 0 && alt > 0)) erros.push('Dimensões (C×L×A) são obrigatórias');
+  if(!(larg > 0 && comp > 0)) erros.push('Dimensões (L×C) são obrigatórias');
 
   const cores = Array.isArray(p.cores_impressao) ? p.cores_impressao : [];
   if(!cores.length) erros.push('Cores de impressão são obrigatórias');
@@ -44980,10 +44971,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           </div>
           <div class="mf" style="grid-column:1/-1">
             <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:900">📐 MEDIDAS DA CAIXA (mm)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-              <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
               <div class="mf" style="margin:0"><label>Largura</label><input id="of-caixa-larg" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
-              <div class="mf" style="margin:0"><label>Altura</label><input id="of-caixa-alt" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
+              <div class="mf" style="margin:0"><label>Comprimento</label><input id="of-caixa-comp" type="number" step="0.1" placeholder="0" oninput="ofDimensoesChange()"></div>
             </div>
             <div id="sugestao-maquinas" style="margin-top:10px;font-size:12px;color:var(--text2)"></div>
             <div id="of-auto-maq-badge" style="display:none;margin-top:8px;padding:8px 10px;border-radius:10px;background:rgba(74,158,255,.12);border:1px solid rgba(74,158,255,.35);color:var(--text2);font-size:12px;font-weight:900">💡 Máquina será sugerida automaticamente ao salvar</div>
