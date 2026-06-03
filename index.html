@@ -635,6 +635,92 @@ td.tc{text-align:center;}
   display:inline-block;
 }
 
+.btn-cores-picker{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  width:100%;
+  padding:8px 12px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:8px;
+  color:#94a3b8;
+  font-size:0.85rem;
+  font-family:inherit;
+  cursor:pointer;
+  transition:all 0.15s;
+  text-align:left;
+}
+.btn-cores-picker:hover{
+  border-color:rgba(255,255,255,0.25);
+  color:#cbd5e1;
+}
+.btn-cores-picker.aberto{
+  border-color:rgba(59,130,246,0.5);
+  color:#93c5fd;
+}
+.picker-arrow{
+  font-size:0.7rem;
+  margin-left:8px;
+  opacity:0.6;
+}
+.cores-dropdown{
+  position:absolute;
+  top:calc(100% + 4px);
+  left:0;
+  right:0;
+  background:#1e293b;
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  padding:12px;
+  z-index:999;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+.cores-grid-dropdown{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.cores-grid-dropdown .btn-cor{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 10px 4px 6px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.05);
+  color:#94a3b8;
+  cursor:pointer;
+  font-size:0.78rem;
+  font-family:inherit;
+  transition:all 0.15s;
+  white-space:nowrap;
+}
+.cores-grid-dropdown .btn-cor:hover{
+  background:rgba(255,255,255,0.09);
+  color:#cbd5e1;
+}
+.cores-grid-dropdown .btn-cor.selecionado{
+  font-weight:600;
+}
+.cores-resumo{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  align-items:center;
+}
+.cor-resumo-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:2px 8px 2px 5px;
+  border-radius:12px;
+  font-size:0.73rem;
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.1);
+  color:#94a3b8;
+}
+
 /* LOGÍSTICA MAPA */
 #mapa-container{width:100%;height:460px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:12px;}
 .mapa-svg{width:100%;height:100%;}
@@ -2645,6 +2731,84 @@ async function carregarCoresImpressao(empIdOverride){
   }
 }
 
+function toggleDropdownCores(dropdownId, btnId){
+  try{ if(window.event && typeof window.event.stopPropagation === 'function') window.event.stopPropagation(); }catch(e){}
+  const dropdown = document.getElementById(dropdownId);
+  const btn = document.getElementById(btnId);
+  if(!dropdown) return;
+  const aberto = dropdown.style.display !== 'none';
+  dropdown.style.display = aberto ? 'none' : 'block';
+  if(btn) btn.classList.toggle('aberto', !aberto);
+
+  try{
+    if(dropdown._outsideHandler){
+      document.removeEventListener('click', dropdown._outsideHandler, true);
+      dropdown._outsideHandler = null;
+    }
+  }catch(e){}
+
+  if(!aberto){
+    setTimeout(()=>{
+      const handler = function(e){
+        try{
+          const t = e && e.target ? e.target : null;
+          if(!t) return;
+          const btnEl = document.getElementById(btnId);
+          const ddEl = document.getElementById(dropdownId);
+          if(!ddEl) return;
+          if(ddEl.contains(t)) return;
+          if(btnEl && (t === btnEl || btnEl.contains(t))) return;
+          ddEl.style.display = 'none';
+          if(btnEl) btnEl.classList.remove('aberto');
+          document.removeEventListener('click', handler, true);
+          ddEl._outsideHandler = null;
+        }catch(_){}
+      };
+      try{
+        dropdown._outsideHandler = handler;
+        document.addEventListener('click', handler, true);
+      }catch(e){}
+    }, 10);
+  }
+}
+
+function atualizarBotaoCores(selecionadas, btnLabelId, resumoId){
+  const ids = Array.isArray(selecionadas) ? selecionadas : [];
+  const btnLabel = document.getElementById(btnLabelId);
+  const resumo = document.getElementById(resumoId);
+  if(!ids.length){
+    if(btnLabel) btnLabel.textContent = '🎨 Selecionar Cores';
+    if(resumo) resumo.style.display = 'none';
+    return;
+  }
+  const cores = Array.isArray(coresDisponiveis) ? coresDisponiveis : [];
+  const picked = ids.map((id)=>{
+    const sid = String(id || '').trim();
+    if(!sid) return null;
+    const c = cores.find(x=>String(x?.id||'').trim()===sid) || null;
+    if(!c) return null;
+    return { id: sid, nome: String(c.nome||'').trim(), hex: String(c.hex||'#888').trim() || '#888' };
+  }).filter(Boolean);
+
+  if(btnLabel){
+    if(picked.length === 1 && picked[0].nome){
+      btnLabel.textContent = '🎨 ' + picked[0].nome;
+    } else {
+      btnLabel.textContent = '🎨 ' + String(picked.length) + ' cores selecionadas';
+    }
+  }
+
+  if(resumo){
+    resumo.style.display = 'flex';
+    resumo.innerHTML = picked.map((c)=>{
+      return `<span class="cor-resumo-badge">
+        <span style="width:8px;height:8px;border-radius:50%;background:${escAttr(c.hex)};display:inline-block;border:1px solid rgba(255,255,255,0.2)"></span>
+        ${escH(c.nome)}
+      </span>`;
+    }).join('');
+  }
+}
+
 function renderSeletorCores(containerId, selecionadas){
   const el = document.getElementById(containerId);
   if(!el) return;
@@ -2661,6 +2825,8 @@ function renderSeletorCores(containerId, selecionadas){
       <span>${escH(nome)}</span>
     </button>`;
   }).join('');
+  if(containerId === 'seletorCoresOF') atualizarBotaoCores(sel, 'btnCoresLabel', 'resumoCoresSelecionadas');
+  if(containerId === 'seletorCoresOFRapida') atualizarBotaoCores(sel, 'btnCoresLabelRapida', 'resumoCoresSelecionadasRapida');
 }
 
 function toggleCorSelecionada(corId, containerId){
@@ -3893,7 +4059,20 @@ function abrirNovaOfRapida(){
 
       <div>
         <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px">Cores de Impressão *</label>
-        <div id="seletorCoresOFRapida" class="cores-grid"></div>
+        <div class="cores-picker-wrapper" style="position:relative">
+          <button type="button"
+            id="btnAbrirCoresRapida"
+            class="btn-cores-picker"
+            onclick="toggleDropdownCores('dropdownCoresOFRapida', 'btnAbrirCoresRapida')"
+          >
+            <span id="btnCoresLabelRapida">🎨 Selecionar Cores</span>
+            <span class="picker-arrow">▾</span>
+          </button>
+          <div id="dropdownCoresOFRapida" class="cores-dropdown" style="display:none">
+            <div id="seletorCoresOFRapida" class="cores-grid-dropdown"></div>
+          </div>
+        </div>
+        <div id="resumoCoresSelecionadasRapida" class="cores-resumo" style="margin-top:6px;display:none"></div>
       </div>
 
       <div>
@@ -45144,7 +45323,20 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 
           <div class="mf fgf" style="grid-column:1/-1">
             <label>CORES DE IMPRESSÃO <span style="color:#ef4444">*</span></label>
-            <div id="seletorCoresOF" class="cores-grid"></div>
+            <div class="cores-picker-wrapper" style="position:relative">
+              <button type="button"
+                id="btnAbrirCores"
+                class="btn-cores-picker"
+                onclick="toggleDropdownCores('dropdownCoresOF', 'btnAbrirCores')"
+              >
+                <span id="btnCoresLabel">🎨 Selecionar Cores</span>
+                <span class="picker-arrow">▾</span>
+              </button>
+              <div id="dropdownCoresOF" class="cores-dropdown" style="display:none">
+                <div id="seletorCoresOF" class="cores-grid-dropdown"></div>
+              </div>
+            </div>
+            <div id="resumoCoresSelecionadas" class="cores-resumo" style="margin-top:6px;display:none"></div>
             <div style="color:var(--text2);font-size:.72rem;margin-top:6px">Selecione uma ou mais cores</div>
           </div>
 
