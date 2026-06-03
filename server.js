@@ -8077,10 +8077,10 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
   } catch (e) { console.error('[maquinas POST] catch:', e && e.message ? e.message : e); err(res, e); }
 });
 
-app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
+async function _maquinaUpdateHandler(req, res) {
   try {
     console.log('[MAQUINA UPDATE] id recebido:', req.params.id, typeof req.params.id);
-    try{ console.log('[MAQUINA UPDATE] body:', JSON.stringify(req.body).substring(0, 200)); }catch(_){}
+    try { console.log('[MAQUINA UPDATE] body:', JSON.stringify(req.body).substring(0, 200)); } catch (_) {}
     const b = req.body || {};
     const payload = {
       nome: b.nome !== undefined || b.col !== undefined || b.name !== undefined ? String(b.nome ?? b.col ?? b.name ?? '').trim() : undefined,
@@ -8107,21 +8107,31 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
       setup_tarde_min: b.setup_tarde_min !== undefined ? Math.trunc(Number(b.setup_tarde_min) || 0) : undefined,
       ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
-    Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+    Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
+    console.log('[MAQUINA UPDATE] fields a salvar:', Object.keys(payload), payload);
+    if (!Object.keys(payload).length) return res.status(400).json({ ok: false, error: 'Nenhum campo para atualizar' });
+
     const idRaw = String(req.params.id || '').trim();
-    const isUUID = (v)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||'').trim());
+    const isUUID = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || '').trim());
     let q = supabase.from('maquinas').update(payload);
+    let idReal = idRaw;
     if (isUUID(idRaw)) {
       q = q.eq('id', idRaw);
     } else {
       q = q.or(`codigo.eq.${idRaw},nome.eq.${idRaw},col.eq.${idRaw}`);
     }
     const { data, error } = await q.select();
+    const count = Array.isArray(data) ? data.length : 0;
+    console.log('[MAQUINA UPDATE] resultado:', { count, idReal, error: error ? (error.message || error) : null });
     if (error) throw error;
+    if (count === 0) return res.status(404).json({ ok: false, error: 'Máquina não encontrada', id: idReal });
     cacheClear('maquinas');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
-});
+}
+
+app.put('/api/maquinas/:id', authMiddleware, _maquinaUpdateHandler);
+app.patch('/api/maquinas/:id', authMiddleware, _maquinaUpdateHandler);
 
 app.delete('/api/maquinas/:id', async (req, res) => {
   try {

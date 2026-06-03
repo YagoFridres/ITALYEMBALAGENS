@@ -33655,6 +33655,7 @@ async function salvarMaquina(){
       const idUuid = (id && isUUID(id)) ? id : '';
       const method = idUuid ? 'PUT' : 'POST';
       const url = idUuid ? ('/api/maquinas/' + encodeURIComponent(idUuid)) : '/api/maquinas';
+      console.log('[SALVAR MÁQUINA] método:', method, 'id:', idUuid || '(novo)');
       const resp = await fetch(url, {
         method,
         headers: {
