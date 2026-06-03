@@ -7756,13 +7756,23 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     const apenasAtivas = (ativasRaw === '1' || ativasRaw === 'true' || ativasRaw === 'sim' || ativasRaw === 's');
     const cacheKey = apenasAtivas ? 'maquinas_ativas' : 'maquinas';
     const cached = cacheGet(cacheKey);
-    if (cached != null) return ok(res, cached);
-    let q = supabase.from('maquinas').select('*').order('ordem', { ascending: true });
+    if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
+    let q = supabase
+      .from('maquinas')
+      .select(
+        'id,nome,codigo,setor,ativo,' +
+        'caixas_hora,cx_hora,velocidade,' +
+        'tempo_setup_min,setup_min,passagem_media,' +
+        'horario_inicio,horario_fim,horas_dia,' +
+        'caixas_hora_min,caixas_hora_max,setups_possiveis,' +
+        'ordem,producao,setup_medio,tempo_disponivel'
+      )
+      .order('nome', { ascending: true });
     if (apenasAtivas) q = q.eq('ativo', true);
     const { data, error } = await q;
     if (error) throw error;
     cacheSet(cacheKey, data || [], 60 * 1000);
-    ok(res, data || []);
+    return res.json({ ok: true, data: data || [], maquinas: data || [] });
   } catch (e) { err(res, e); }
 });
 

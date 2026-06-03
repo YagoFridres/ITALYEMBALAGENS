@@ -9913,6 +9913,7 @@ async function renderOFsPorMaquina(){
     }catch(e){}
     try{ await carregarMaquinas(false); }catch(e){}
     try{ window._listaMaquinas = Array.isArray(MAQUINAS) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []); }catch(e){}
+    try{ if(typeof carregarDadosMaquinas === 'function') await carregarDadosMaquinas(); }catch(e){}
 
     const modo = window._filtroOFsMaqData || (document.querySelector('.btn-filtro-maquina.ativo')?.id?.replace('filtro-maq-','')) || 'todas';
     const hoje = new Date().toISOString().slice(0,10);
@@ -10192,6 +10193,8 @@ async function renderOFsPorMaquina(){
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       const exp = false;
       const maqNome = String(maq || '');
+      const maqDados = (typeof getDadosMaquina === 'function') ? getDadosMaquina(maqNome) : null;
+      const cap = (typeof calcularCapacidadeMaquina === 'function') ? calcularCapacidadeMaquina(maqDados, ofs) : null;
       const maqDomId = String(maqNome || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'') || 'sem-maquina';
       const bodyId = 'maq-bloco-' + maqDomId;
       return `<div style="margin-bottom:20px">
@@ -10209,7 +10212,12 @@ async function renderOFsPorMaquina(){
             <div class="maq-header-count" style="font-size:13px;color:var(--text2);margin-top:2px">${ofs.length} OF${ofs.length>1?'s':''} na fila</div>
           </div>
           <div class="maq-header-right" style="display:flex;align-items:center;gap:14px">
-            <div class="maq-header-stat" style="font-size:22px">${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
+            <div class="maq-header-stat" style="font-size:22px;display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+              <div>${urgCount > 0 ? ('🔴 '+urgCount+' URGENTE(S)') : '✅ Normal'}</div>
+              ${cap ? `<div style="font-size:12px;font-weight:700;color:${escAttr(String(cap.cor||'#10b981'))}">${escH(String(cap.label||''))} — ${escH(String(cap.pct||0))}%</div>` : ``}
+              ${cap ? `<div style="font-size:11px;color:var(--text3)">${escH(String(fmtTempoCap(cap.minOcupados))) } usado de ${escH(String(fmtTempoCap(cap.minTotal)))}</div>` : ``}
+              ${cap && cap.pct > 100 ? `<div style="height:4px;width:180px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden"><div style="height:100%;background:${escAttr(String(cap.cor||'#dc2626'))};width:${escAttr(String(Math.min(cap.pct,100)))}%;animation:kbPulse 1s ease-in-out infinite;"></div></div>` : (cap ? `<div style="height:4px;width:180px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden"><div style="height:100%;background:${escAttr(String(cap.cor||'#10b981'))};width:${escAttr(String(Math.min(cap.pct,100)))}%;"></div></div>` : ``)}
+            </div>
             <span class="maq-seta" style="display:inline-block;transition:transform 0.25s;margin-left:auto;color:rgba(255,255,255,0.4);font-size:13px;transform:rotate(0deg)">▶</span>
           </div>
         </div>
@@ -54619,9 +54627,125 @@ async function renderHub(forcar=false){
 
 var _kbDragEl = null, _kbDragSrcCol = null;
 
+var _cacheMaquinas = null;
+var _cacheMaquinasLoaded = false;
+var _cacheMaquinasLoading = null;
+
+async function carregarDadosMaquinas(force){
+  try{
+    if(!_cacheMaquinas || typeof _cacheMaquinas !== 'object') _cacheMaquinas = {};
+    if(!force && _cacheMaquinasLoaded) return _cacheMaquinas;
+    if(!force && _cacheMaquinasLoading) return _cacheMaquinasLoading;
+    _cacheMaquinasLoading = (async function(){
+      var token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      var base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+      var r = await fetch(base + '/api/maquinas?ativas=1&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var d = await r.json().catch(()=>null);
+      var arr = (d && (d.data || d.maquinas)) ? (d.data || d.maquinas) : (Array.isArray(d) ? d : []);
+      arr = Array.isArray(arr) ? arr : [];
+      arr.forEach(function(m){
+        if(!m) return;
+        var nome = String(m.nome || m.codigo || m.col || '').trim();
+        if(nome){
+          _cacheMaquinas[nome.toUpperCase()] = m;
+        }
+        if(m.id) _cacheMaquinas[String(m.id)] = m;
+      });
+      _cacheMaquinasLoaded = true;
+      _cacheMaquinasLoading = null;
+      return _cacheMaquinas;
+    })();
+    return _cacheMaquinasLoading;
+  }catch(e){
+    try{ _cacheMaquinasLoading = null; }catch(_){}
+    return (_cacheMaquinas && typeof _cacheMaquinas === 'object') ? _cacheMaquinas : {};
+  }
+}
+
+function getDadosMaquina(nomeMaquina){
+  if(!_cacheMaquinas || typeof _cacheMaquinas !== 'object') return null;
+  var chave = String(nomeMaquina || '').trim().toUpperCase();
+  return chave ? (_cacheMaquinas[chave] || null) : null;
+}
+
+function fmtTempoCap(min){
+  var n = Math.round(Number(min) || 0);
+  if(!(n > 0)) return '0min';
+  var h = Math.floor(n / 60);
+  var m = n % 60;
+  return h > 0 ? (h + 'h' + (m > 0 ? (' ' + m + 'min') : '')) : (m + 'min');
+}
+
+function calcularCapacidadeMaquina(maqData, ofs){
+  var cxHora = parseInt((maqData && (maqData.caixas_hora || maqData.cx_hora || maqData.velocidade || maqData.producao)) || 500, 10) || 500;
+  var setupMedio = parseInt((maqData && (maqData.tempo_setup_min || maqData.setup_min || maqData.setup_medio || maqData.passagem_media)) || 15, 10) || 15;
+  var horaInicio = String((maqData && (maqData.horario_inicio)) || '07:00').trim() || '07:00';
+  var horaFim = String((maqData && (maqData.horario_fim)) || '18:00').trim() || '18:00';
+  var horasDisponiveis = Number((maqData && (maqData.horas_dia || maqData.tempo_disponivel)) || 0) || 0;
+  try{
+    if(horaInicio && horaFim && horaInicio.includes(':') && horaFim.includes(':')){
+      var a = horaInicio.split(':').map(Number);
+      var b = horaFim.split(':').map(Number);
+      var iniMin = (Number(a[0]) || 0) * 60 + (Number(a[1]) || 0);
+      var fimMin = (Number(b[0]) || 0) * 60 + (Number(b[1]) || 0);
+      var diffMin = fimMin - iniMin;
+      if (diffMin > 0) {
+        horasDisponiveis = diffMin / 60;
+        if (horasDisponiveis > 6) horasDisponiveis -= 1;
+      }
+    }
+  }catch(e){}
+  if(!(horasDisponiveis > 0)) horasDisponiveis = 8;
+  var minTotal = Math.max(1, Math.round(horasDisponiveis * 60));
+
+  var minOcupados = 0;
+  (ofs || []).forEach(function(of){
+    if(!of) return;
+    var tempo = parseInt(of.tempo_estimado_min, 10) || 0;
+    if(!(tempo > 0)) tempo = parseInt(of.passagem_media, 10) || 0;
+    if(tempo > 0){
+      minOcupados += tempo;
+      return;
+    }
+    var vel = parseInt(of.caixas_hora || of.velocidade || of.cx_hora || of.cxh || cxHora, 10) || cxHora;
+    var qtd = parseInt(of.quantidade || of.qtd || 0, 10) || 0;
+    if(vel > 0 && qtd > 0){
+      minOcupados += Math.ceil((qtd / vel) * 60) + setupMedio;
+    } else {
+      minOcupados += setupMedio;
+    }
+  });
+
+  var pct = minTotal > 0 ? Math.round((minOcupados / minTotal) * 100) : 0;
+  var cor = '#10b981', label = 'OK';
+  if (pct > 100) { cor = '#dc2626'; label = 'SOBRECARREGADA'; }
+  else if (pct > 85) { cor = '#f59e0b'; label = 'Quase cheia'; }
+  else if (pct > 50) { cor = '#4A90D9'; label = 'Em uso'; }
+  return {
+    pct: pct,
+    minOcupados: minOcupados,
+    minTotal: minTotal,
+    cor: cor,
+    label: label,
+    cxHora: cxHora,
+    horasDisponiveis: String(horasDisponiveis.toFixed(1)),
+    horaInicio: horaInicio,
+    horaFim: horaFim,
+    setupMedio: setupMedio,
+    setups: (ofs && ofs.length) ? ofs.length : 0
+  };
+}
+
 function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
   if(!container) container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
   if(!container) return;
+  try{
+    if(!_cacheMaquinasLoaded && !_cacheMaquinasLoading && typeof carregarDadosMaquinas === 'function'){
+      carregarDadosMaquinas().then(function(){
+        try{ renderKanbanOfmaq(grupos, maquinasOrdenadas, container); }catch(e){}
+      });
+    }
+  }catch(e){}
   var html = '<div class="kb-board-ofmaq">';
   (maquinasOrdenadas || []).filter(function(maq){ return grupos[maq] && grupos[maq].length; }).forEach(function(maquina){
     var ofs = grupos[maquina] || [];
@@ -54630,28 +54754,8 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
     var maqKey = String(maquina || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
     var colId = 'kbcol-' + (maqKey || 'sem-maquina');
     var bodyId = 'kbbody-' + (maqKey || 'sem-maquina');
-    var CAPACIDADE_MIN = 480;
-    var tempoTotal = ofs.reduce(function(s, of){
-      var tempo = parseInt(of && of.tempo_estimado_min, 10) ||
-                  (parseInt(of && of.horas_estimadas, 10) * 60) ||
-                  parseInt(of && of.setup_medio, 10) ||
-                  parseInt(of && of.passagem_media, 10) || 0;
-      if (!tempo && of && of.quantidade && (of.velocidade || of.cxh)) {
-        var qtd = parseInt(of.quantidade, 10) || 0;
-        var vel = parseInt(of.velocidade || of.cxh, 10) || 0;
-        if (qtd > 0 && vel > 0) tempo = Math.ceil((qtd / vel) * 60);
-      }
-      return s + (tempo || 0);
-    }, 0);
-    var pctCarga = Math.round((tempoTotal / CAPACIDADE_MIN) * 100);
-    var corCarga = pctCarga > 100 ? '#dc2626' : pctCarga > 85 ? '#f59e0b' : '#10b981';
-    var labelCarga = pctCarga > 100 ? 'SOBRECARREGADA' : pctCarga > 85 ? 'Quase cheia' : 'OK';
-    function fmtTempo(min){
-      if(!min) return '-';
-      var h = Math.floor(min / 60);
-      var m = min % 60;
-      return h > 0 ? (h + 'h' + (m > 0 ? (' ' + m + 'min') : '')) : (m + 'min');
-    }
+    var maqDados = (typeof getDadosMaquina === 'function') ? getDadosMaquina(maquina) : null;
+    var cap = (typeof calcularCapacidadeMaquina === 'function') ? calcularCapacidadeMaquina(maqDados, ofs) : { pct: 0, minOcupados: 0, minTotal: 480, cor: '#10b981', label: 'OK', cxHora: 500, horaInicio: '07:00', horaFim: '18:00', setups: ofs.length };
 
     html += '<div class="kb-col-ofmaq" id="' + escAttr(colId) + '" data-maq="' + escAttr(maquina) + '"' +
       ' ondragover="kbOfmaqDragOver(event,this)" ondrop="kbOfmaqDrop(event,this)" ondragleave="kbOfmaqDragLeave(this)">';
@@ -54664,22 +54768,22 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
           (urgQty > 0 ? '<span style="background:rgba(220,38,38,0.15);color:#f43f5e;border-radius:20px;padding:1px 6px;font-size:10px">' + String(urgQty) + ' urg</span>' : '') +
         '</div>' +
         '<div style="text-align:right;flex-shrink:0">' +
-          '<div style="font-size:10px;font-weight:600;color:' + corCarga + '">' + labelCarga + '</div>' +
-          '<div style="font-size:10px;color:#64748b">' + fmtTempo(tempoTotal) + ' / 8h</div>' +
+          '<div style="font-size:10px;font-weight:600;color:' + escAttr(String(cap.cor||'#10b981')) + '">' + escH(String(cap.label||'')) + '</div>' +
+          '<div style="font-size:10px;color:#64748b">' + escH(fmtTempoCap(cap.minOcupados)) + ' / ' + escH(fmtTempoCap(cap.minTotal)) + '</div>' +
         '</div>' +
       '</div>' +
     '</div>';
 
-    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(Math.min(pctCarga, 100)) + '%;background:' + corCarga + ';' + (pctCarga > 100 ? 'animation:kbPulse 1s ease-in-out infinite;' : '') + '"></div></div>';
+    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(Math.min(cap.pct, 100)) + '%;background:' + escAttr(String(cap.cor||'#10b981')) + ';' + (cap.pct > 100 ? 'animation:kbPulse 1s ease-in-out infinite;' : '') + '"></div></div>';
 
-    html += (pctCarga > 100
-      ? '<div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:5px 8px;font-size:11px;color:#f43f5e;margin-bottom:8px;display:flex;align-items:center;gap:5px">⚠ Excede em ' + fmtTempo(tempoTotal - CAPACIDADE_MIN) + ' (' + String(pctCarga - 100) + '%)</div>'
+    html += (cap.pct > 100
+      ? '<div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:5px 8px;font-size:11px;color:#f43f5e;margin-bottom:8px;display:flex;align-items:center;gap:5px">⚠ Excede em ' + escH(fmtTempoCap(cap.minOcupados - cap.minTotal)) + ' (' + String((cap.pct || 0) - 100) + '%)</div>'
       : '');
 
     html += '<div style="font-size:10px;color:#64748b;margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">' +
       '<span>' + totalCx.toLocaleString('pt-BR') + ' cx total</span>' +
-      '<span>' + fmtTempo(tempoTotal) + ' estimado</span>' +
-      '<span>' + String(pctCarga) + '% ocupação</span>' +
+      '<span>' + escH(String(cap.pct || 0)) + '% ocupação</span>' +
+      (maqDados ? ('<span>' + escH(String(cap.cxHora)) + ' cx/h</span>' + '<span>' + escH(String(cap.horaInicio)) + '–' + escH(String(cap.horaFim)) + '</span>' + '<span>' + escH(String(cap.setups)) + ' setups</span>') : '') +
     '</div>';
 
     html += '<div id="' + escAttr(bodyId) + '">';
