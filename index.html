@@ -27,21 +27,35 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js?v=2"></script>
 <title>📦 Italy Embalagens — PCP Pro</title>
 <style id="kanban-ofmaq-css">
-.kb-board-ofmaq{display:flex;gap:14px;overflow-x:auto;padding:8px 4px 24px;align-items:flex-start;min-height:400px}
-.kb-col-ofmaq{min-width:320px;max-width:340px;flex-shrink:0;background:var(--bg3,rgba(255,255,255,0.03));border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px}
-.kb-col-ofmaq.kb-col-dragover{border-color:rgba(74,144,217,0.6);background:rgba(74,144,217,0.05)}
-.kb-col-ofmaq-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.07);cursor:pointer;user-select:none}
-.kb-card-ofmaq{background:rgba(10,15,28,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px;margin-bottom:10px;cursor:grab;transition:opacity 0.15s,transform 0.15s}
-.kb-card-ofmaq:active{cursor:grabbing}
-.kb-card-ofmaq.kb-dragging{opacity:0.3;transform:rotate(1.5deg) scale(0.97)}
-.kb-card-ofmaq.kb-dropbefore{border-top:2px solid #4A90D9}
-.kb-card-ofmaq.kb-urgente{border-left:4px solid #dc2626}
-.kb-card-ofmaq.kb-atrasada{border-left:4px solid #f59e0b}
-.kb-of-img{width:64px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.15);cursor:pointer;transition:opacity .15s}
-.kb-of-img:hover{opacity:.85}
-.kb-of-img-ph{width:64px;height:64px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-size:22px;color:rgba(255,255,255,0.2)}
-.kb-ordem{width:26px;height:26px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-.kb-carga{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;margin:4px 0 10px;overflow:hidden}
+.kb-board-ofmaq{display:flex;gap:14px;overflow-x:auto;padding:8px 4px 20px;align-items:flex-start;min-height:400px}
+.kb-col-ofmaq{min-width:300px;max-width:320px;flex-shrink:0;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px}
+.kb-col-ofmaq.kb-col-dragover{border-color:rgba(74,144,217,0.6);background:rgba(74,144,217,0.04)}
+
+.kb-card-ofmaq,.kb-card{background:rgba(10,14,26,0.95);border:1px solid rgba(255,255,255,0.09);border-radius:10px;padding:10px;margin-bottom:8px;cursor:grab;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+.kb-card-ofmaq:hover,.kb-card:hover{border-color:rgba(74,144,217,0.4)}
+.kb-card-ofmaq:active,.kb-card:active{cursor:grabbing}
+.kb-card-ofmaq.kb-dragging,.kb-card.kb-drag{opacity:0.25;transform:rotate(1.5deg) scale(0.97)}
+.kb-card-ofmaq.kb-dropbefore,.kb-card.kb-before{border-top:2px solid #4A90D9}
+.kb-card-ofmaq.kb-urgente,.kb-card.kb-urg{border-left:3px solid #dc2626}
+.kb-card-ofmaq.kb-atrasada,.kb-card.kb-late{border-left:3px solid #f59e0b}
+
+.kb-card-top{display:flex;align-items:flex-start;gap:8px;width:100%;min-width:0}
+.kb-badge,.kb-ordem{width:22px;height:22px;border-radius:50%;background:rgba(74,144,217,0.2);color:#4A90D9;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+
+.kb-img,.kb-of-img{width:44px;height:44px;object-fit:cover;border-radius:7px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);cursor:pointer}
+.kb-img-ph,.kb-of-img-ph{width:44px;height:44px;border-radius:7px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:18px}
+
+.kb-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.kb-num{font-weight:700;color:#4A90D9;font-size:13px;white-space:nowrap}
+.kb-cliente{color:#e2e8f0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kb-produto{color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.kb-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#64748b}
+.kb-fluxo{display:flex;gap:3px;flex-wrap:wrap}
+.kb-fluxo-tag{font-size:9px;padding:1px 5px;border-radius:3px}
+.kb-acoes{display:flex;justify-content:flex-end;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)}
+
+.kb-carga{height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden}
 .kb-carga-fill{height:100%;border-radius:2px;transition:width 0.3s}
 @keyframes kbPulse{0%,100%{opacity:1}50%{opacity:0.5}}
 #kb-lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:zoom-out}
@@ -55037,63 +55051,61 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
       var numLbl = numDigits ? ('Nº ' + numDigits.padStart(3,'0')) : 'Nº —';
       var tempoOf = (typeof calcularTempoOf === 'function') ? calcularTempoOf(of, maqDados) : 0;
       var qtdOf = parseInt(String(of.quantidade || of.qtd || of.qtd_pedida || 0), 10) || 0;
-      var cxHoraCard = parseInt(String((maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade)) || 0), 10) || 0;
+      var cxHoraCard = parseInt(String((maqDados && (maqDados.producao || maqDados.phora || maqDados.velocidade)) || 0), 10) || 0;
 
-      html += '<div class="kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
+      var tempoHtml = '';
+      if (tempoOf > 0) {
+        var tempoStr = fmtTempoCap(tempoOf);
+        var cxH = parseInt(String((maqDados && (maqDados.producao || maqDados.phora || maqDados.velocidade || 0)) || 0), 10) || 0;
+        var qtdT = parseInt(String(of && (of.quantidade || of.qtd || 0) || 0), 10) || 0;
+        var ttl = (qtdT > 0 && cxH > 0) ? (' title="' + escAttr(String(qtdT) + ' cx ÷ ' + String(cxH) + ' cx/h = ' + String(tempoStr)) + '"') : '';
+        tempoHtml = '<span style="color:#4A90D9;font-size:11px"' + ttl + '>⏱ ' + escH(tempoStr) + '</span>';
+      }
+
+      html += '<div class="kb-card kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
         ' draggable="true" data-of-id="' + escAttr(String(of.id||'')) + '" data-maq="' + escAttr(maquina) + '"' +
         ' data-tempo-min="' + escAttr(String(tempoOf || 0)) + '"' +
         ' data-qtd="' + escAttr(String(qtdOf || 0)) + '"' +
         ' data-cx-hora="' + escAttr(String(cxHoraCard || 0)) + '"' +
         ' ondragstart="kbOfmaqDragStart(event,this)" ondragend="kbOfmaqDragEnd(event,this)"' +
-        ' ondragover="kbOfmaqDragOverCard(event,this)" ondrop="kbOfmaqDropCard(event,this)" ondragleave="kbOfmaqDragLeaveCard(this)">';
+        ' ondragover="kbOfmaqDragOverCard(event,this)" ondrop="kbOfmaqDropCard(event,this)" ondragleave="kbOfmaqDragLeaveCard(this)">' +
 
-      html += '<div style="display:flex;gap:7px;align-items:flex-start;margin-bottom:7px">';
-      html += '<div class="kb-ordem">' + String(idx + 1) + '</div>';
-      if(imgUrl){
-        html += '<img src="' + escAttr(String(imgUrl)) + '" class="kb-of-img" onclick="event.stopPropagation();kbAbrirImagem(this.getAttribute(&quot;src&quot;))" onerror="this.style.display=&#39;none&#39;;if(this.nextElementSibling)this.nextElementSibling.style.display=&#39;flex&#39;">' +
-          '<div class="kb-of-img-ph" style="display:none">?</div>';
-      } else {
-        html += '<div class="kb-of-img-ph">?</div>';
-      }
-      html += '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:2px">' +
-          '<span style="font-weight:700;color:#4A90D9;font-size:13px">' + escH(numLbl) + '</span>' +
-          (urgente ? '<span style="background:rgba(220,38,38,0.2);color:#f43f5e;font-size:9px;padding:1px 5px;border-radius:3px">URGENTE</span>' : '') +
-          (atrasada ? '<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;padding:1px 5px;border-radius:3px">ATRASADA</span>' : '') +
+        '<div class="kb-card-top">' +
+          '<div class="kb-badge kb-ordem">' + String(idx + 1) + '</div>' +
+          (imgUrl
+            ? ('<img src="' + escAttr(String(imgUrl)) + '" class="kb-img kb-of-img" onclick="event.stopPropagation();kbAbrirImagem(this.getAttribute(&quot;src&quot;))" onerror="this.style.display=&#39;none&#39;;var p=this.nextElementSibling;if(p)p.style.display=&#39;flex&#39;;">' +
+               '<div class="kb-img-ph kb-of-img-ph" style="display:none">?</div>')
+            : '<div class="kb-img-ph kb-of-img-ph">?</div>') +
+          '<div class="kb-info">' +
+            '<div class="kb-num">' + escH(numLbl) +
+              (urgente ? ' <span style="background:rgba(220,38,38,0.2);color:#f43f5e;font-size:9px;padding:1px 4px;border-radius:3px">URG</span>' : '') +
+              (atrasada ? ' <span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;padding:1px 4px;border-radius:3px">ATRAS</span>' : '') +
+            '</div>' +
+            '<div class="kb-cliente">' + escH(String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || '—')) + '</div>' +
+            '<div class="kb-produto">' + escH(String(of.prodDesc || of.produto || of.descricao || '—')) + '</div>' +
+          '</div>' +
         '</div>' +
-        '<div style="color:#e2e8f0;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || '—')) + '</div>' +
-        '<div style="color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(String(of.prodDesc || of.produto || of.descricao || '—')) + '</div>' +
+
+        '<div class="kb-meta">' +
+          '<span>' + escH(String((typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (of.quantidade || of.qtd || of.qtd_pedida || '—'))) + ' cx</span>' +
+          tempoHtml +
+          (dataEnt ? '<span style="margin-left:auto;color:' + (atrasada ? '#f59e0b' : '#64748b') + '">' + escH(dataEnt) + '</span>' : '') +
+        '</div>' +
+
+        (fluxo && fluxo.length
+          ? ('<div class="kb-fluxo">' +
+              fluxo.map(function(m, i){
+                var bg = i < idxFluxo ? 'rgba(16,185,129,0.15)' : (i === idxFluxo ? 'rgba(74,144,217,0.2)' : 'rgba(255,255,255,0.04)');
+                var txt = i < idxFluxo ? '#10b981' : (i === idxFluxo ? '#4A90D9' : '#64748b');
+                return '<span class="kb-fluxo-tag" style="background:' + bg + ';color:' + txt + '">' + escH(String(m||'')) + '</span>';
+              }).join('') +
+            '</div>')
+          : '') +
+
+        '<div class="kb-acoes">' +
+          '<button onclick="event.stopPropagation();abrirBottomSheetAcoes(&quot;' + escAttr(String(of.id||'')) + '&quot;,&quot;' + escAttr(String(numRaw||'')) + '&quot;)" style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:11px">Ações ▾</button>' +
+        '</div>' +
       '</div>';
-      html += '</div>';
-
-      html += '<div style="display:flex;gap:8px;font-size:11px;color:#64748b;margin-bottom:7px;flex-wrap:wrap">' +
-        '<span>' + escH(String((typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (of.quantidade || of.qtd || of.qtd_pedida || '—'))) + ' cx</span>' +
-        (tempoOf > 0 ? (function(){
-          var tempoMin = tempoOf;
-          var tempoStr = fmtTempoCap(tempoMin);
-          var cxH = parseInt(String((maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade || 0)) || 0), 10) || 0;
-          var qtd = parseInt(String(of && (of.quantidade || of.qtd || 0) || 0), 10) || 0;
-          var ttl = (qtd > 0 && cxH > 0) ? (' title="' + escAttr(String(qtd) + ' cx ÷ ' + String(cxH) + ' cx/h = ' + String(tempoStr)) + '"') : '';
-          return '<span style="color:#4A90D9;font-size:11px"' + ttl + '>⏱ ' + escH(tempoStr) + '</span>';
-        })() : '') +
-        (dataEnt ? '<span style="margin-left:auto;color:' + (atrasada ? '#f59e0b' : '#64748b') + '">' + escH(dataEnt) + '</span>' : '') +
-      '</div>';
-
-      if(fluxo && fluxo.length){
-        html += '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px">';
-        fluxo.forEach(function(m, i){
-          var bg = i < idxFluxo ? 'rgba(16,185,129,0.15)' : (i === idxFluxo ? 'rgba(74,144,217,0.2)' : 'rgba(255,255,255,0.04)');
-          var txt = i < idxFluxo ? '#10b981' : (i === idxFluxo ? '#4A90D9' : '#64748b');
-          html += '<span style="background:' + bg + ';color:' + txt + ';font-size:9px;padding:1px 5px;border-radius:3px">' + escH(String(m||'')) + '</span>';
-        });
-        html += '</div>';
-      }
-
-      html += '<div style="text-align:right">' +
-        '<button onclick="event.stopPropagation();abrirBottomSheetAcoes(&quot;' + escAttr(String(of.id||'')) + '&quot;,&quot;' + escAttr(String(numRaw||'')) + '&quot;)" style="background:rgba(255,255,255,0.07);color:#e2e8f0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">Ações ▾</button>' +
-      '</div>';
-
-      html += '</div>';
     });
     html += '</div></div>';
   });
