@@ -6031,7 +6031,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       if (ofIds.length) { 
         const { data: ofsData } = await supabase 
           .from('ofs') 
-          .select('id,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd') 
+          .select('id,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd,valor_total,valor_venda,valor_unitario,vunit,vl_unit') 
           .in('id', ofIds) 
           .limit(1000); 
         const byId = new Map(); 
@@ -6050,12 +6050,16 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
           const imgOf = String(of?.imagem_url || (imgsOf[0] || '') || '').trim(); 
           const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim(); 
           const qtdOf = (of?.quantidade ?? of?.qtd); 
+          const vlUnit = (of?.valor_unitario ?? of?.vunit ?? of?.vl_unit); 
+          const totalOf = (of?.valor_total ?? of?.valor_venda); 
           return { 
             ...p, 
             ...(p?.cliente ? {} : (clienteOf ? { cliente: clienteOf } : {})), 
             ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})), 
             ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})), 
             ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf } : {})), 
+            ...(p?.vl_unit != null ? {} : ((vlUnit != null) ? { vl_unit: vlUnit } : {})),
+            ...(p?.total != null ? {} : ((totalOf != null) ? { total: totalOf } : {})),
           }; 
         }); 
       } 
@@ -6066,6 +6070,122 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
   } 
 }); 
+
+app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
+  try {
+    const empId = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
+    const empresaUuid = await _resolveEmpresaUuid(req);
+
+    const hoje = new Date();
+    const hojeISO = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12, 0, 0).toISOString().slice(0, 10);
+
+    const seteDiasAtras = new Date(hoje);
+    seteDiasAtras.setDate(hoje.getDate() - 6);
+    const seteISO = new Date(seteDiasAtras.getFullYear(), seteDiasAtras.getMonth(), seteDiasAtras.getDate(), 0, 0, 0).toISOString().slice(0, 10);
+
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const inicioMesISO = new Date(inicioMes.getFullYear(), inicioMes.getMonth(), inicioMes.getDate(), 0, 0, 0).toISOString().slice(0, 10);
+
+    const MAQS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
+
+    const labels = [];
+    const labelToIdx = new Map();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoje);
+      d.setDate(hoje.getDate() - i);
+      const iso = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0).toISOString().slice(0, 10);
+      const lbl = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      labels.push(lbl);
+      labelToIdx.set(iso, labels.length - 1);
+    }
+
+    const porMaquina = {};
+    MAQS.forEach((m) => { porMaquina[m] = new Array(7).fill(0); });
+
+    const baseWeek = () => supabase
+      .from('passagens_maquina')
+      .select('data_passagem,maquina,hora_passagem,emp_id,empresa_id')
+      .gte('data_passagem', seteISO)
+      .lte('data_passagem', hojeISO)
+      .order('data_passagem', { ascending: true });
+
+    let weekRows = [];
+    {
+      let q = baseWeek();
+      if (empId) q = q.eq('emp_id', empId);
+      else if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
+      let r = await q;
+      if (r?.error) {
+        const msg = String(r.error.message || r.error || '');
+        if (msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('column')) {
+          let q2 = supabase
+            .from('passagens_maquina')
+            .select('data_passagem,maquina,hora_passagem')
+            .gte('data_passagem', seteISO)
+            .lte('data_passagem', hojeISO)
+            .order('data_passagem', { ascending: true });
+          const r2 = await q2;
+          if (r2?.error) throw r2.error;
+          weekRows = Array.isArray(r2.data) ? r2.data : [];
+        } else {
+          throw r.error;
+        }
+      } else {
+        weekRows = Array.isArray(r.data) ? r.data : [];
+      }
+    }
+
+    weekRows.forEach((p) => {
+      const iso = String(p?.data_passagem || '').slice(0, 10);
+      const idx = labelToIdx.get(iso);
+      if (idx == null) return;
+      const canon = _canonMaqNome(p?.maquina || '');
+      if (!canon || !porMaquina[canon]) return;
+      porMaquina[canon][idx] = (porMaquina[canon][idx] || 0) + 1;
+    });
+
+    const baseMonth = () => supabase
+      .from('passagens_maquina')
+      .select('maquina,emp_id,empresa_id,data_passagem')
+      .gte('data_passagem', inicioMesISO)
+      .lte('data_passagem', hojeISO);
+
+    let mesRows = [];
+    {
+      let q = baseMonth();
+      if (empId) q = q.eq('emp_id', empId);
+      else if (empresaUuid) q = q.eq('empresa_id', empresaUuid);
+      let r = await q;
+      if (r?.error) {
+        const msg = String(r.error.message || r.error || '');
+        if (msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('column')) {
+          let q2 = supabase
+            .from('passagens_maquina')
+            .select('maquina,data_passagem')
+            .gte('data_passagem', inicioMesISO)
+            .lte('data_passagem', hojeISO);
+          const r2 = await q2;
+          if (r2?.error) throw r2.error;
+          mesRows = Array.isArray(r2.data) ? r2.data : [];
+        } else {
+          throw r.error;
+        }
+      } else {
+        mesRows = Array.isArray(r.data) ? r.data : [];
+      }
+    }
+
+    const totalMes = {};
+    MAQS.forEach((m) => { totalMes[m] = 0; });
+    mesRows.forEach((p) => {
+      const canon = _canonMaqNome(p?.maquina || '');
+      if (!canon || totalMes[canon] === undefined) return;
+      totalMes[canon] = (totalMes[canon] || 0) + 1;
+    });
+
+    return res.json({ ok: true, semana: { labels, porMaquina }, mes: totalMes });
+  } catch (e) { err(res, e); }
+});
 
 app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   try {
@@ -7777,6 +7897,96 @@ function _canonMaqNome(v) {
   if (s === 'rotativa') return 'CORTE VINCO ROTATIVA';
   return '';
 }
+function _isUuid(v) {
+  return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+}
+async function _resolveEmpresaUuid(req) {
+  const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
+  const uEmp = String(req?.usuario?.empresa_id || req?.usuario?.empresaId || '').trim();
+  if (_isUuid(uEmp)) return uEmp;
+  if (_isUuid(qEmp)) return qEmp;
+  const empId = String(req?.query?.emp_id ?? req?.query?.empId ?? req?.usuario?.emp_id ?? req?.usuario?.empId ?? '').trim();
+  if (!empId) return '';
+  try {
+    const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empId).maybeSingle();
+    if (error) return '';
+    const id = String(data?.id || '').trim();
+    return _isUuid(id) ? id : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const { data, error } = await supabase
+      .from('cores_impressao')
+      .select('id,nome,hex,ativo')
+      .eq('empresa_id', empresa_id)
+      .eq('ativo', true)
+      .order('nome', { ascending: true });
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const nome = String(req.body?.nome || '').trim();
+    const hexRaw = String(req.body?.hex || '').trim();
+    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    const payload = { empresa_id, nome, hex: hexRaw ? hexRaw : null, ativo: true };
+    const { data, error } = await supabase
+      .from('cores_impressao')
+      .insert([payload])
+      .select('id,nome,hex,ativo')
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const nome = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'nome')) ? String(req.body.nome || '').trim() : '';
+    const hexRaw = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'hex')) ? String(req.body.hex || '').trim() : '';
+    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    const { data, error } = await supabase
+      .from('cores_impressao')
+      .update({ nome, hex: hexRaw ? hexRaw : null })
+      .eq('id', id)
+      .eq('empresa_id', empresa_id)
+      .select('id,nome,hex,ativo')
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { error } = await supabase
+      .from('cores_impressao')
+      .update({ ativo: false })
+      .eq('id', id)
+      .eq('empresa_id', empresa_id);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
     const ativasRaw = String(req.query?.ativas ?? req.query?.ativa ?? req.query?.ativo ?? '').trim().toLowerCase();
