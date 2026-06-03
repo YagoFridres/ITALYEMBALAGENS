@@ -7820,14 +7820,16 @@ function _capacidadeConfFromMaquina(maqData) {
     _capNum(maqData?.tempo_disponivel, NaN) ||
     8;
   const setupMedio =
-    _capInt(maqData?.tempo_setup_min, NaN) ||
     _capInt(maqData?.setup_medio, NaN) ||
+    _capInt(maqData?.passagem_media, NaN) ||
+    _capInt(maqData?.tempo_setup_padrao_min, NaN) ||
+    _capInt(maqData?.tempo_setup_min, NaN) ||
     _capInt(maqData?.setup_min, NaN) ||
     _capInt(maqData?.setup, NaN) ||
     15;
   const cxHora =
-    _capInt(maqData?.phora, NaN) ||
     _capInt(maqData?.producao, NaN) ||
+    _capInt(maqData?.phora, NaN) ||
     _capInt(maqData?.velocidade, NaN) ||
     500;
   const capMin = Math.max(1, Math.round(horasDia * 60));

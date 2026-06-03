@@ -33698,9 +33698,12 @@ async function salvarMaquina(){
       try{ _ultimaCargaMaquinas = 0; }catch(e){}
       try{ await carregarMaquinas(true); }catch(e){}
       try{
+        const maqId = savedId;
         const src = (Array.isArray(window.MAQUINAS) && window.MAQUINAS.length) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
-        const maqAtualizada = src.find(m=>String(m?.id||'').trim()===savedId) || null;
-        console.log('[VERIFICAR SAVE] maq após reload:', JSON.stringify(maqAtualizada));
+        const maqAtualizada = (src || []).find(function(m){
+          return String(m?.id || '').trim() === String(maqId || '').trim();
+        }) || null;
+        console.log('[VERIFICAR SAVE] maq após reload:', maqAtualizada ? String(maqAtualizada.nome || maqAtualizada.col || maqAtualizada.id || '') : 'não encontrada');
       }catch(e){}
       MAQUINAS_FLUXO_ITENS=null; try{ renderMaqChks(); }catch(e){}
     }else{
@@ -54774,8 +54777,8 @@ function fmtTempoCap(min){
 }
 
 function calcularCapacidadeMaquina(maqData, ofs){
-  var cxHora = parseInt((maqData && (maqData.phora || maqData.producao || maqData.velocidade)) || 500, 10) || 500;
-  var setupMedio = parseInt((maqData && (maqData.tempo_setup_min || maqData.setup_min || maqData.setup_medio || maqData.passagem_media)) || 15, 10) || 15;
+  var cxHora = parseInt((maqData && (maqData.producao || maqData.phora || maqData.caixas_hora || maqData.velocidade)) || 500, 10) || 500;
+  var setupMedio = parseInt((maqData && (maqData.setup_medio || maqData.passagem_media || maqData.tempo_setup_padrao_min || maqData.tempo_setup_min || maqData.setup_min || maqData.setup)) || 15, 10) || 15;
   var horaInicio = String((maqData && (maqData.horario_inicio)) || '07:00').trim() || '07:00';
   var horaFim = String((maqData && (maqData.horario_fim)) || '18:00').trim() || '18:00';
   var horasDisponiveis = Number((maqData && (maqData.horas_dia || maqData.tempo_disponivel)) || 0) || 0;
@@ -54840,12 +54843,12 @@ function calcularTempoOf(of, maqDados){
   }
   var qtd = parseInt((of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0, 10) || 0;
   var cxHora = parseInt(
-    (maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade)) ||
-    (of && (of.phora || of.velocidade || of.caixas_hora || of.cxh)) ||
+    (maqDados && (maqDados.producao || maqDados.phora || maqDados.caixas_hora || maqDados.velocidade)) ||
+    (of && (of.producao || of.phora || of.velocidade || of.caixas_hora || of.cxh)) ||
     500,
     10
   ) || 500;
-  var setup = parseInt((maqDados && (maqDados.tempo_setup_min || maqDados.setup_min)) || 15, 10) || 15;
+  var setup = parseInt((maqDados && (maqDados.setup_medio || maqDados.passagem_media || maqDados.tempo_setup_padrao_min || maqDados.tempo_setup_min || maqDados.setup_min)) || 15, 10) || 15;
   if (qtd <= 0 || cxHora <= 0) return 0;
   var minProducao = Math.ceil((qtd / cxHora) * 60);
   var minTotal = minProducao + setup;
