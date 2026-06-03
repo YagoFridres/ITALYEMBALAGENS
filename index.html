@@ -2587,9 +2587,17 @@ let coresSelecionadasOF = [];
 let coresSelecionadasOFRapida = [];
 let coresSelecionadasOFRapidaItens = {};
 
+function empIdSanitize(v){
+  const s = String(v ?? '').trim();
+  if(!s) return '';
+  const base = String(s.split(':')[0] || '').trim().toUpperCase();
+  if(/^E[1-3]$/.test(base)) return base;
+  return base;
+}
+
 async function carregarCoresImpressao(empIdOverride){
   try{
-    const emp = String(empIdOverride || EMP_FILTRO || '').trim();
+    const emp = empIdSanitize(empIdOverride || EMP_FILTRO || '');
     const r = await api('GET', '/cores-impressao' + (emp ? ('?empId=' + encodeURIComponent(emp)) : ''));
     const rows = (r && r.ok && Array.isArray(r.data)) ? r.data : (Array.isArray(r) ? r : []);
     coresDisponiveis = Array.isArray(rows) ? rows : [];
@@ -2764,7 +2772,7 @@ async function salvarCorImpressao(){
     return;
   }
   try{
-    const emp = String(EMP_FILTRO || '').trim();
+    const emp = empIdSanitize(EMP_FILTRO || '');
     const sp = new URLSearchParams();
     if(emp) sp.set('empId', emp);
     const url = (sid ? ('/cores-impressao/' + encodeURIComponent(sid)) : '/cores-impressao') + (sp.toString() ? ('?' + sp.toString()) : '');
@@ -2787,7 +2795,7 @@ async function excluirCorImpressao(id){
   if(!sid) return;
   if(!confirm('Excluir esta cor?')) return;
   try{
-    const emp = String(EMP_FILTRO || '').trim();
+    const emp = empIdSanitize(EMP_FILTRO || '');
     const sp = new URLSearchParams();
     if(emp) sp.set('empId', emp);
     const url = '/cores-impressao/' + encodeURIComponent(sid) + (sp.toString() ? ('?' + sp.toString()) : '');
@@ -3937,14 +3945,14 @@ function abrirNovaOfRapida(){
     try{
       coresSelecionadasOFRapida = [];
       const empSel = document.getElementById('of-r-empresa');
-      const empId = String(empSel?.value || EMP_FILTRO || 'E1').trim() || 'E1';
+      const empId = empIdSanitize(empSel?.value || EMP_FILTRO || 'E1') || 'E1';
       Promise.resolve()
         .then(()=>carregarCoresImpressao(empId))
         .then(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} })
         .catch(()=>{ try{ renderSeletorCores('seletorCoresOFRapida', coresSelecionadasOFRapida); }catch(e){} });
       if(empSel){
         empSel.addEventListener('change', function(){
-          const v = String(empSel.value || '').trim();
+          const v = empIdSanitize(empSel.value || '');
           coresSelecionadasOFRapida = [];
           Promise.resolve()
             .then(()=>carregarCoresImpressao(v))
@@ -4092,7 +4100,7 @@ window.abrirMaisItensOfRapida = function(){
   if(btn) btn.textContent = 'Fechar itens';
 
   try{
-    var empId = String(document.getElementById('of-r-empresa')?.value || EMP_FILTRO || 'E1').trim() || 'E1';
+    var empId = empIdSanitize(document.getElementById('of-r-empresa')?.value || EMP_FILTRO || 'E1') || 'E1';
     Promise.resolve()
       .then(()=>carregarCoresImpressao(empId))
       .then(()=>{

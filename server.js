@@ -7913,7 +7913,7 @@ async function _resolveEmpresaUuid(req) {
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
     ''
   ).trim();
-  const empIdEff = empId || 'E1';
+  const empIdEff = (empId ? empId.split(':')[0] : '').trim().toUpperCase() || 'E1';
   try {
     const { data, error } = await supabase.from('empresas').select('id').eq('emp_id', empIdEff).maybeSingle();
     if (error) return '';
