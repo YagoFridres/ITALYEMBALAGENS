@@ -2083,6 +2083,15 @@ function ofIn(p) {
   if (has('ent')) out.ent = sanitizeDate(p.ent);
   if (has('data_producao')) out.data_producao = sanitizeDate(p.data_producao);
   if (has('data_entrega')) out.data_entrega = sanitizeDate(p.data_entrega);
+  if (has('data_agendamento')) out.data_agendamento = sanitizeDate(p.data_agendamento);
+  if (has('maquina_agendada')) {
+    const s = p.maquina_agendada == null ? '' : String(p.maquina_agendada).trim();
+    out.maquina_agendada = s ? s : null;
+  }
+  if (has('agendamento_auto')) {
+    const v = p.agendamento_auto;
+    out.agendamento_auto = (v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true');
+  }
   if (has('data_conclusao')) out.data_conclusao = sanitizeDate(p.data_conclusao);
   if (has('data_faturamento')) out.data_faturamento = sanitizeDate(p.data_faturamento);
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -2124,6 +2133,7 @@ const OFS_TABLE_COLS = [
   'vendedor_id', 'vendId', 'vendid', 'vendedor', 'vendNome',
   'emp_id', 'empId', 'empresa_id', 'empNome',
   'data_entrega', 'ent', 'dia', 'data_producao',
+  'data_agendamento', 'maquina_agendada', 'agendamento_auto',
   'data_conclusao', 'data_faturamento', 'dia_programacao',
   'urgente', 'urg',
   'quantidade', 'qtd', 'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
@@ -2867,7 +2877,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const orderAsc = orderRaw === 'asc';
     const orderDir = orderAsc ? 'asc' : 'desc';
     const ALLOWED_ORDER_BY = new Set([
-      'created_at', 'updated_at', 'data_entrega', 'ent', 'dia',
+      'created_at', 'updated_at', 'data_entrega', 'ent', 'dia', 'data_agendamento',
       'numero', 'of', 'status', 'valor_total',
     ]);
     let orderBy = orderByRaw || 'created_at';
@@ -3037,6 +3047,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (requested === 'entrega' || requested === 'data_entrega' || requested === 'ent') {
         if (_ofsSelectableHas('data_entrega')) dateCol = 'data_entrega';
         else if (_ofsSelectableHas('ent')) dateCol = 'ent';
+        else dateCol = fallback;
+      } else if (requested === 'agendamento' || requested === 'data_agendamento') {
+        if (_ofsSelectableHas('data_agendamento')) dateCol = 'data_agendamento';
         else dateCol = fallback;
       } else if (requested === 'producao' || requested === 'data_producao' || requested === 'dia') {
         if (_ofsSelectableHas('data_producao')) dateCol = 'data_producao';
@@ -6011,7 +6024,43 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
       return res.json({ ok: true, passagens: [], total: 0, page }); 
     } 
  
-    res.json({ ok: true, passagens: data || [], total: count || 0, page }); 
+    let passagens = Array.isArray(data) ? data : []; 
+    try { 
+      const normId = (v) => String(v || '').trim(); 
+      const ofIds = Array.from(new Set(passagens.map((p) => normId(p?.of_id ?? p?.ofId ?? '')).filter(Boolean))); 
+      if (ofIds.length) { 
+        const { data: ofsData } = await supabase 
+          .from('ofs') 
+          .select('id,cliNome,clinome,cliente_nome,imagem_url,imgs,prodDesc,descricao,produto,quantidade,qtd') 
+          .in('id', ofIds) 
+          .limit(1000); 
+        const byId = new Map(); 
+        (Array.isArray(ofsData) ? ofsData : []).forEach((o) => { if (o?.id) byId.set(String(o.id), o); }); 
+        const parseImgs = (v) => { 
+          if (Array.isArray(v)) return v; 
+          if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } } 
+          return []; 
+        }; 
+        passagens = passagens.map((p) => { 
+          const oid = normId(p?.of_id ?? p?.ofId ?? ''); 
+          const of = oid ? (byId.get(oid) || null) : null; 
+          if (!of) return p; 
+          const clienteOf = String(of?.cliNome || of?.clinome || of?.cliente_nome || '').trim(); 
+          const imgsOf = parseImgs(of?.imgs); 
+          const imgOf = String(of?.imagem_url || (imgsOf[0] || '') || '').trim(); 
+          const prodOf = String(of?.prodDesc || of?.produto || of?.descricao || '').trim(); 
+          const qtdOf = (of?.quantidade ?? of?.qtd); 
+          return { 
+            ...p, 
+            ...(p?.cliente ? {} : (clienteOf ? { cliente: clienteOf } : {})), 
+            ...(p?.imagem_url ? {} : (imgOf ? { imagem_url: imgOf, imgs: imgsOf } : {})), 
+            ...(p?.produto ? {} : (prodOf ? { produto: prodOf } : {})), 
+            ...(p?.quantidade ? {} : ((qtdOf != null) ? { quantidade: qtdOf } : {})), 
+          }; 
+        }); 
+      } 
+    } catch (_) {} 
+    res.json({ ok: true, passagens: passagens, total: count || 0, page }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
@@ -7703,14 +7752,213 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/maquinas', authMiddleware, async (req, res) => {
   try {
-    const cached = cacheGet('maquinas');
+    const ativasRaw = String(req.query?.ativas ?? req.query?.ativa ?? req.query?.ativo ?? '').trim().toLowerCase();
+    const apenasAtivas = (ativasRaw === '1' || ativasRaw === 'true' || ativasRaw === 'sim' || ativasRaw === 's');
+    const cacheKey = apenasAtivas ? 'maquinas_ativas' : 'maquinas';
+    const cached = cacheGet(cacheKey);
     if (cached != null) return ok(res, cached);
-    const { data, error } = await supabase.from('maquinas').select('*').order('ordem', { ascending: true });
+    let q = supabase.from('maquinas').select('*').order('ordem', { ascending: true });
+    if (apenasAtivas) q = q.eq('ativo', true);
+    const { data, error } = await q;
     if (error) throw error;
-    cacheSet('maquinas', data || [], 60 * 1000);
-    ok(res, data);
+    cacheSet(cacheKey, data || [], 60 * 1000);
+    ok(res, data || []);
   } catch (e) { err(res, e); }
 });
+
+function _capNum(v, def) {
+  const n = Number(String(v ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : def;
+}
+function _capInt(v, def) {
+  const n = Math.trunc(Number(v));
+  return Number.isFinite(n) ? n : def;
+}
+function _capStr(v) {
+  return String(v ?? '').trim();
+}
+async function _buscarMaquinaPorNomeOuId(maquinaKey) {
+  const key = _capStr(maquinaKey);
+  if (!key) return null;
+  const { data, error } = await supabase.from('maquinas').select('*').limit(1000);
+  if (error) throw error;
+  const lista = Array.isArray(data) ? data : [];
+  const norm = (s) => {
+    try { return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) { return String(s || '').trim().toLowerCase(); }
+  };
+  const k = norm(key);
+  return lista.find((m) => {
+    if (!m) return false;
+    const id = _capStr(m.id);
+    const nome = _capStr(m.nome || m.col || m.codigo || '');
+    const cod = _capStr(m.codigo || '');
+    return (id && norm(id) === k) || (nome && norm(nome) === k) || (cod && norm(cod) === k);
+  }) || null;
+}
+function _capacidadeConfFromMaquina(maqData) {
+  const horasDia =
+    _capNum(maqData?.horas_dia, NaN) ||
+    _capNum(maqData?.tempo_disponivel, NaN) ||
+    8;
+  const setupMedio =
+    _capInt(maqData?.tempo_setup_min, NaN) ||
+    _capInt(maqData?.setup_medio, NaN) ||
+    _capInt(maqData?.setup_min, NaN) ||
+    _capInt(maqData?.setup, NaN) ||
+    15;
+  const cxHora =
+    _capInt(maqData?.caixas_hora, NaN) ||
+    _capInt(maqData?.cx_hora, NaN) ||
+    _capInt(maqData?.velocidade, NaN) ||
+    _capInt(maqData?.producao, NaN) ||
+    500;
+  const capMin = Math.max(1, Math.round(horasDia * 60));
+  return { horasDia, setupMedio, cxHora, capMin };
+}
+async function _calcularCapacidadeMaquinaDia(maquinaKey, data) {
+  const maquina = _capStr(maquinaKey);
+  const dia = _capStr(data).slice(0, 10);
+  if (!maquina || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) {
+    return { disponivel: true, ocupacao_pct: 0, minutos_ocupados: 0, minutos_total: 480, ofs_agendadas: 0, capacidade_conf: { horas_dia: 8, setup_medio: 15, cx_hora: 500 } };
+  }
+  const maqData = await _buscarMaquinaPorNomeOuId(maquina);
+  const conf = _capacidadeConfFromMaquina(maqData || {});
+  const { data: ofsAg, error } = await supabase
+    .from('ofs')
+    .select('*')
+    .eq('data_agendamento', dia)
+    .not('status', 'in', '("Concluída","Cancelada","Cancelado")')
+    .limit(2000);
+  if (error) throw error;
+  const ofsHoje = (Array.isArray(ofsAg) ? ofsAg : []).filter((of) => {
+    const m1 = _capStr(of?.maq);
+    const m2 = _capStr(of?.maquina_agendada);
+    const m3 = _capStr(of?.maquina_atual);
+    if (m2 && m2 === maquina) return true;
+    if (m3 && m3 === maquina) return true;
+    if (m1) {
+      try {
+        const parsed = Array.isArray(m1) ? m1 : (typeof m1 === 'string' ? JSON.parse(m1 || '[]') : []);
+        if (Array.isArray(parsed) && parsed.map(_capStr).includes(maquina)) return true;
+      } catch (_) {
+        if (m1 === maquina) return true;
+      }
+    }
+    return false;
+  });
+  let minOcupados = 0;
+  for (const of of (ofsHoje || [])) {
+    const t = _capInt(of?.tempo_estimado_min, 0);
+    if (t > 0) {
+      minOcupados += t;
+      continue;
+    }
+    const qtd = _capInt(of?.quantidade ?? of?.qtd ?? 0, 0);
+    const vel = _capInt(of?.caixas_hora ?? of?.velocidade ?? conf.cxHora, conf.cxHora);
+    if (qtd > 0 && vel > 0) {
+      minOcupados += Math.ceil((qtd / vel) * 60) + conf.setupMedio;
+    }
+  }
+  const pct = Math.round((minOcupados / conf.capMin) * 100);
+  return {
+    disponivel: pct < 90,
+    ocupacao_pct: pct,
+    minutos_ocupados: minOcupados,
+    minutos_total: conf.capMin,
+    ofs_agendadas: ofsHoje.length,
+    capacidade_conf: { horas_dia: conf.horasDia, setup_medio: conf.setupMedio, cx_hora: conf.cxHora }
+  };
+}
+
+app.get('/api/maquinas/capacidade', authMiddleware, async (req, res) => {
+  try {
+    const maquina = _capStr(req.query?.maquina);
+    const data = _capStr(req.query?.data).slice(0, 10);
+    if (!maquina || !data) {
+      return res.status(400).json({ ok: false, error: 'maquina e data obrigatorios' });
+    }
+    const r = await _calcularCapacidadeMaquinaDia(maquina, data);
+    return res.json({ ok: true, maquina, data, ...r });
+  } catch (e) {
+    return res.json({ ok: true, disponivel: true, ocupacao_pct: 0, erro_calculo: String(e?.message || e) });
+  }
+});
+
+let _agendamentoAutoDesativado = false;
+let _agendamentoAutoLastErrAt = 0;
+
+async function agendarOFsAutomaticamente() {
+  if (_agendamentoAutoDesativado) return;
+  if (!supabase) return;
+  try {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const hojeIso = hoje.toISOString().split('T')[0];
+
+    const { data: ofs, error } = await supabase
+      .from('ofs')
+      .select('id,of,numero,data_entrega,ent,maquina_agendada,fluxo_maquinas,maq,data_agendamento,status,quantidade,qtd')
+      .not('data_entrega', 'is', null)
+      .is('data_agendamento', null)
+      .or('maquina_agendada.not.is.null,fluxo_maquinas.not.is.null,maq.not.is.null')
+      .not('status', 'in', '("Concluída","Cancelada","Cancelado")')
+      .limit(200);
+
+    if (error) throw error;
+    if (!Array.isArray(ofs) || !ofs.length) return;
+
+    let agendadas = 0;
+    for (const of of ofs) {
+      const entrega = String(of?.data_entrega ?? of?.ent ?? '').slice(0, 10);
+      if (!entrega) continue;
+
+      const maquina = _capStr(of?.maquina_agendada) || (() => {
+        try {
+          const f = typeof parseFluxo === 'function' ? parseFluxo(of?.fluxo_maquinas ?? of?.maq ?? []) : [];
+          return _capStr(Array.isArray(f) && f.length ? f[0] : '');
+        } catch (_) { return ''; }
+      })();
+      if (!maquina) continue;
+
+      const dtEntrega = new Date(entrega + 'T00:00:00');
+      if (dtEntrega < hoje) continue;
+      const dtAlvo2 = new Date(dtEntrega); dtAlvo2.setDate(dtAlvo2.getDate() - 2);
+      const dtAlvo1 = new Date(dtEntrega); dtAlvo1.setDate(dtAlvo1.getDate() - 1);
+      if (dtAlvo2 < hoje) dtAlvo2.setTime(hoje.getTime());
+      if (dtAlvo1 < hoje) dtAlvo1.setTime(hoje.getTime());
+      const dia2 = dtAlvo2.toISOString().split('T')[0];
+      const dia1 = dtAlvo1.toISOString().split('T')[0];
+
+      const cap2 = await _calcularCapacidadeMaquinaDia(maquina, dia2);
+      let dataEscolhida = cap2 && cap2.disponivel ? dia2 : dia1;
+      if (dataEscolhida < hojeIso) dataEscolhida = hojeIso;
+
+      const upd = await updateOne('ofs', of.id, ofIn({
+        data_agendamento: dataEscolhida,
+        maquina_agendada: maquina,
+        agendamento_auto: true,
+        maq: [maquina],
+        fluxo_maquinas: [maquina],
+        maquina_atual_index: 0
+      }));
+      if (upd) agendadas += 1;
+    }
+    if (agendadas > 0) {
+      try { console.log('[AGENDAMENTO AUTO] OFs agendadas:', agendadas); } catch (_) {}
+      try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    }
+  } catch (e) {
+    const msg = String(e?.message || e);
+    const now = Date.now();
+    if (now - _agendamentoAutoLastErrAt > 60000) {
+      _agendamentoAutoLastErrAt = now;
+      try { console.error('[AGENDAMENTO AUTO] erro:', msg); } catch (_) {}
+    }
+    if (msg.match(/data_agendamento|maquina_agendada|agendamento_auto/i) && msg.match(/does not exist|Could not find/i)) {
+      _agendamentoAutoDesativado = true;
+    }
+  }
+}
 
 app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
   try {
@@ -17413,6 +17661,9 @@ app.use((e, req, res, next) => {
   if (msg.includes('Tipo de arquivo não permitido')) return res.status(400).json({ ok: false, error: msg });
   return res.status(500).json({ ok: false, error: msg });
 });
+
+setInterval(agendarOFsAutomaticamente, 30 * 60 * 1000);
+setTimeout(agendarOFsAutomaticamente, 10 * 1000);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));

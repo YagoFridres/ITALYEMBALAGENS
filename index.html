@@ -3592,6 +3592,17 @@ function abrirNovaOfRapida(){
         </div>
       </div>
 
+      <div>
+        <label style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.08em;display:flex;gap:6px;align-items:baseline;margin-bottom:5px">
+          <span>Máquina Principal</span>
+          <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,0.35);text-transform:none;letter-spacing:0">(opcional — agendamento automático)</span>
+        </label>
+        <select id="of-r-maquina" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:11px 13px;color:#e8f0fe;font-size:13px;outline:none;cursor:pointer;appearance:none;font-family:inherit">
+          <option value="">-- Sem máquina definida --</option>
+        </select>
+        <div id="of-r-maquina-status" style="margin-top:6px;font-size:12px;min-height:18px;color:rgba(255,255,255,0.55)"></div>
+      </div>
+
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:9px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:18px">🚨</span>
@@ -3627,6 +3638,25 @@ function abrirNovaOfRapida(){
 
   document.body.appendChild(ov);
   document.body.appendChild(modal);
+
+  setTimeout(()=>{ 
+    try{
+      window._ofRapidaDataAgendamento = null;
+      const st = document.getElementById('of-r-maquina-status');
+      if(st) st.innerHTML = '';
+    }catch(e){}
+    try{ if(typeof carregarMaquinasOfRapida === 'function') carregarMaquinasOfRapida(); }catch(e){}
+    try{
+      const sel = document.getElementById('of-r-maquina');
+      if(sel){
+        sel.addEventListener('change', function(){ try{ verificarDisponibilidadeMaquinaOfRapida(); }catch(e){} });
+      }
+      const ent = document.getElementById('of-r-entrega');
+      if(ent){
+        ent.addEventListener('change', function(){ try{ verificarDisponibilidadeMaquinaOfRapida(); }catch(e){} });
+      }
+    }catch(e){}
+  }, 200);
 
   setTimeout(()=>{ try{ document.getElementById('of-r-cliente')?.focus(); }catch(e){} }, 100);
   const numDisplay = document.getElementById('of-r-numero') || document.getElementById('of-r-num-display');
@@ -3795,6 +3825,77 @@ window.fecharNovaOfRapida = function(){
   try{ document.getElementById('modal-of-rapida-ov')?.remove(); }catch(e){}
 };
 
+window.carregarMaquinasOfRapida = async function(){
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const sel = document.getElementById('of-r-maquina');
+  if(!sel) return;
+  try{
+    const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+    const r = await fetch(base + '/api/maquinas?ativas=1&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+    const d = await r.json().catch(()=>null);
+    const maquinas = (d && (d.data || d.maquinas)) ? (d.data || d.maquinas) : (Array.isArray(d) ? d : []);
+    sel.innerHTML = '<option value="">-- Sem máquina definida --</option>' + (Array.isArray(maquinas) ? maquinas : []).map(function(m){
+      const nome = String(m?.nome || m?.col || m?.codigo || m?.id || '').trim();
+      if(!nome) return '';
+      return '<option value="' + escAttr(nome) + '" data-id="' + escAttr(String(m?.id || '')) + '">' + escH(nome) + '</option>';
+    }).filter(Boolean).join('');
+  }catch(e){
+    try{ console.warn('[OF RÁPIDA] erro ao carregar máquinas:', e?.message || e); }catch(_){}
+  }
+};
+
+window.verificarDisponibilidadeMaquinaOfRapida = async function(){
+  const sel = document.getElementById('of-r-maquina');
+  const statusEl = document.getElementById('of-r-maquina-status');
+  const dataEntrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
+  if(!sel || !statusEl) return;
+  const maquina = String(sel.value || '').trim();
+  if(!maquina || !dataEntrega) return;
+  statusEl.innerHTML = '<span style="color:rgba(255,255,255,0.45)">Verificando disponibilidade...</span>';
+
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+  const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+  const dtEntrega = new Date(dataEntrega + 'T00:00:00');
+  var hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  if (dtEntrega < hoje) {
+    statusEl.innerHTML = '<span style="color:#f43f5e">⚠ Data de entrega já passou</span>';
+    window._ofRapidaDataAgendamento = hoje.toISOString().split('T')[0];
+    return;
+  }
+  let dtAlvo2 = new Date(dtEntrega); dtAlvo2.setDate(dtAlvo2.getDate() - 2);
+  let dtAlvo1 = new Date(dtEntrega); dtAlvo1.setDate(dtAlvo1.getDate() - 1);
+  if (dtAlvo2 < hoje) dtAlvo2 = new Date(hoje);
+  if (dtAlvo1 < hoje) dtAlvo1 = new Date(hoje);
+  const fmtDate = (d) => d.toISOString().split('T')[0];
+
+  try{
+    const r = await fetch(base + '/api/maquinas/capacidade?maquina=' + encodeURIComponent(maquina) + '&data=' + encodeURIComponent(fmtDate(dtAlvo2)), {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    const d = await r.json().catch(()=>null);
+    if(d && d.disponivel){
+      statusEl.innerHTML = '<span style="color:#10b981">✓ ' + escH(maquina) + ' disponível em ' + dtAlvo2.toLocaleDateString('pt-BR') + ' (' + escH(String(d.ocupacao_pct ?? 0)) + '% ocupada)</span>';
+      window._ofRapidaDataAgendamento = fmtDate(dtAlvo2);
+      return;
+    }
+    const r2 = await fetch(base + '/api/maquinas/capacidade?maquina=' + encodeURIComponent(maquina) + '&data=' + encodeURIComponent(fmtDate(dtAlvo1)), {
+      headers: token ? { Authorization: 'Bearer ' + token } : {}
+    });
+    const d2 = await r2.json().catch(()=>null);
+    if(d2 && d2.disponivel){
+      statusEl.innerHTML = '<span style="color:#f59e0b">⚠ ' + escH(maquina) + ' cheia em ' + dtAlvo2.toLocaleDateString('pt-BR') + ' — agendando para ' + dtAlvo1.toLocaleDateString('pt-BR') + ' (' + escH(String(d2.ocupacao_pct ?? 0)) + '% ocupada)</span>';
+      window._ofRapidaDataAgendamento = fmtDate(dtAlvo1);
+      return;
+    }
+    statusEl.innerHTML = '<span style="color:#f43f5e">⚠ ' + escH(maquina) + ' com alta ocupação nos dois dias — OF será agendada para ' + dtAlvo2.toLocaleDateString('pt-BR') + ' mesmo assim</span>';
+    window._ofRapidaDataAgendamento = fmtDate(dtAlvo2);
+  }catch(e){
+    window._ofRapidaDataAgendamento = fmtDate(dtAlvo2);
+    statusEl.innerHTML = '<span style="color:rgba(255,255,255,0.5)">Agendamento: ' + dtAlvo2.toLocaleDateString('pt-BR') + '</span>';
+  }
+};
+
 window.salvarOfRapida = async function(){
   const clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
   const produto = String(document.getElementById('of-r-produto')?.value || '').trim();
@@ -3808,6 +3909,9 @@ window.salvarOfRapida = async function(){
   const entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0,10);
   const pedido = String(document.getElementById('of-r-pedido')?.value || new Date().toISOString().split('T')[0]).slice(0,10);
   const urgente = !!document.getElementById('of-r-urgente')?.checked;
+  const maquinaSel = String(document.getElementById('of-r-maquina')?.value || '').trim();
+  const dataAgend = String(window._ofRapidaDataAgendamento || '').slice(0,10);
+  const agendamentoAuto = !!(maquinaSel && dataAgend);
   const numeroOf =
     String(window._ofRapidaNumero || '').trim()
     || String((document.getElementById('of-r-numero') || document.getElementById('of-r-num-display'))?.textContent || '').replace(/[^\d]/g,'').trim()
@@ -3864,7 +3968,7 @@ window.salvarOfRapida = async function(){
     valor_unitario: vlunit,
     valor_total: total,
     img: imgUrl || null,
-    maquina: '',
+    maquina: maquinaSel || '',
     maquinas_fluxo: [],
     maquinas_fluxo_ids: [],
   }];
@@ -3898,6 +4002,11 @@ window.salvarOfRapida = async function(){
     itens: itens,
     imgs: imgUrl ? [imgUrl] : [],
     imagem_url: imgUrl || null,
+    maquina_agendada: maquinaSel || undefined,
+    data_agendamento: agendamentoAuto ? dataAgend : undefined,
+    agendamento_auto: agendamentoAuto ? true : undefined,
+    fluxo_maquinas: maquinaSel ? [maquinaSel] : [],
+    maq: maquinaSel ? [maquinaSel] : undefined,
   };
 
   try{
@@ -3948,7 +4057,7 @@ window.salvarOfRapida = async function(){
             valor_unitario: unit2,
             valor_total: tot2,
             img: imgFinal || null,
-            maquina: '',
+            maquina: maquinaSel || '',
             maquinas_fluxo: [],
             maquinas_fluxo_ids: [],
           }];
@@ -3981,6 +4090,11 @@ window.salvarOfRapida = async function(){
             itens: itens2,
             imgs: imgFinal ? [imgFinal] : [],
             imagem_url: imgFinal || null,
+            maquina_agendada: maquinaSel || undefined,
+            data_agendamento: agendamentoAuto ? dataAgend : undefined,
+            agendamento_auto: agendamentoAuto ? true : undefined,
+            fluxo_maquinas: maquinaSel ? [maquinaSel] : [],
+            maq: maquinaSel ? [maquinaSel] : undefined,
           };
           try{
             var r2 = await apiFetch('/api/ofs', { method:'POST', body: payload2 });
@@ -9551,13 +9665,17 @@ async function _ofmaqBuscarOFs(dataSel, limite, empId){
     return (rows || []).map(normalizeOF);
   };
 
+  const agRows = await fetchDia('data_agendamento', data, data);
+  if(agRows.length >= lim) return agRows;
+
   const entRows = await fetchDia('data_entrega', data, data);
   if(entRows.length >= lim) return entRows;
 
   const prodRows = await fetchDia('data_producao', data, data);
+  const agOf = (o) => String((o?.data_agendamento || o?.dataAgendamento || '') || '').slice(0,10);
   const entOf = (o) => String((o?.ent || o?.data_entrega || o?.dataEntrega || '') || '').slice(0,10);
   const diaOf = (o) => String((o?.dia || o?.data_producao || o?.dataProducao || '') || '').slice(0,10);
-  const prodOnly = (prodRows || []).filter((o)=> (!entOf(o)) && diaOf(o) === data);
+  const prodOnly = (prodRows || []).filter((o)=> (!agOf(o)) && (!entOf(o)) && diaOf(o) === data);
 
   const d0 = new Date(data + 'T00:00:00');
   const dow = d0.getDay();
@@ -9570,11 +9688,11 @@ async function _ofmaqBuscarOFs(dataSel, limite, empId){
   let semData = [];
   try{
     const createdRows = await fetchDia('created_at', weekFrom, weekTo);
-    semData = (createdRows || []).filter((o)=>!entOf(o) && !diaOf(o));
+    semData = (createdRows || []).filter((o)=>!agOf(o) && !entOf(o) && !diaOf(o));
   }catch(e){}
 
   const seen = new Set();
-  const merged = [...(entRows||[]), ...(prodOnly||[]), ...(semData||[])].filter((o)=>{
+  const merged = [...(agRows||[]), ...(entRows||[]), ...(prodOnly||[]), ...(semData||[])].filter((o)=>{
     const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
     if(!id) return false;
     if(seen.has(id)) return false;
@@ -9608,10 +9726,11 @@ async function _ofmaqBuscarOFsRange(from, to, limite, empId){
     const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
     return (rows || []).map(normalizeOF);
   };
+  const agRows = await fetchRange('data_agendamento');
   const entRows = await fetchRange('data_entrega');
   const prodRows = await fetchRange('data_producao');
   const seen = new Set();
-  return [...entRows, ...prodRows].filter((o)=>{
+  return [...agRows, ...entRows, ...prodRows].filter((o)=>{
     const id = String(o?.id||'').trim() || String(o?.of||o?.numero||'').trim();
     if(!id) return false;
     if(seen.has(id)) return false;
@@ -9809,9 +9928,10 @@ async function renderOFsPorMaquina(){
       s = s.trim();
       return s.includes('conclu') || s === 'pedido pronto';
     };
+    const agOf = (o) => String((o.data_agendamento || o.dataAgendamento || '') || '').slice(0,10);
     const diaOf = (o) => String((o.dia || o.data_producao || o.dataProducao || '') || '').slice(0,10);
     const entOf = (o) => String((o.ent || o.data_entrega || o.dataEntrega || '') || '').slice(0,10);
-    const diaBaseOf = (o) => String((o.dia_programacao || o.diaProgramacao || '') || '').slice(0,10) || diaOf(o) || entOf(o) || String(o.created_at || '').slice(0,10);
+    const diaBaseOf = (o) => String((o.dia_programacao || o.diaProgramacao || '') || '').slice(0,10) || agOf(o) || diaOf(o) || entOf(o) || String(o.created_at || '').slice(0,10);
     const diaExibicaoOF = (o) => {
       const d = diaBaseOf(o);
       if(!d) return '';
@@ -9885,9 +10005,10 @@ async function renderOFsPorMaquina(){
 
     if (modo === 'data' && dataSelecionada) {
       ofsFiltradas = ofsFiltradas.filter((o)=>{
+        const a = agOf(o);
         const e = entOf(o);
         const p = diaOf(o);
-        return (e && e === dataSelecionada) || ((!e) && p === dataSelecionada);
+        return (a && a === dataSelecionada) || (e && e === dataSelecionada) || ((!a && !e) && p === dataSelecionada);
       });
     }
 
@@ -10935,24 +11056,42 @@ async function buscarHistoricoPassagens(page) {
 
     var html = '<div style="color:#64748b;font-size:12px;margin-bottom:8px">' + d.total + ' passagens encontradas</div>';
     html += lista.map(function(p) {
+      var imgsArr = [];
+      try{
+        if (Array.isArray(p.imgs)) imgsArr = p.imgs;
+        else if (typeof p.imgs === 'string') imgsArr = JSON.parse(p.imgs || '[]');
+      }catch(e){ imgsArr = []; }
+      if (!Array.isArray(imgsArr)) imgsArr = [];
+      var imgUrl = String(
+        p.imagem_url || p.img || p.imagem || p.foto ||
+        (imgsArr.length ? imgsArr[0] : '') ||
+        ''
+      ).trim();
+      var cliente = String(p.cliente || p.nome_cliente || '—').trim() || '—';
       var hora = p.hora_passagem
-        ? new Date(p.hora_passagem).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})
-        : '';
-      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);' +
-        'border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;gap:12px;align-items:center">' +
-        (p.imagem_url ? '<img src="' + p.imagem_url + '" style="width:48px;height:48px;object-fit:cover;border-radius:6px;flex-shrink:0">' : '') +
+        ? new Date(p.hora_passagem).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+        : (p.data_passagem || '—');
+
+      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);' +
+        'border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">' +
+        (imgUrl
+          ? '<img src="' + escAttr(imgUrl) + '" onclick="kbAbrirImagem(\'' + escAttr(imgUrl) + '\')" ' +
+            'style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);cursor:pointer" ' +
+            'onerror="this.style.display=\'none\'">'
+          : '<div style="width:52px;height:52px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);font-size:20px">?</div>') +
         '<div style="flex:1;min-width:0">' +
-          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px">' +
-            '<span style="font-weight:700;color:#4A90D9">OF #' + (p.of_numero||'—') + '</span>' +
-            '<span style="color:#e2e8f0">' + (p.cliente||'—') + '</span>' +
-            (p.produto ? '<span style="color:#94a3b8;font-size:12px">' + p.produto + '</span>' : '') +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">' +
+            '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + escH(String(p.of_numero||p.numero||'—')) + '</span>' +
+            '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(cliente) + '</span>' +
           '</div>' +
-          '<div style="display:flex;gap:12px;flex-wrap:wrap">' +
-            '<span style="color:#10b981;font-size:13px">⚙ ' + (p.maquina||'—') + '</span>' +
-            (p.quantidade ? '<span style="color:#94a3b8;font-size:12px">📦 ' + p.quantidade + ' cx</span>' : '') +
-            (p.operador ? '<span style="color:#94a3b8;font-size:12px">👤 ' + p.operador + '</span>' : '') +
-            '<span style="color:#64748b;font-size:12px">🕐 ' + hora + '</span>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:#64748b">' +
+            (p.maquina ? '<span>⚙ ' + escH(String(p.maquina)) + '</span>' : '') +
+            ((p.operador || p.operador_nome) ? '<span>👤 ' + escH(String(p.operador||p.operador_nome)) + '</span>' : '') +
+            (p.caixas_produzidas ? '<span>📦 ' + escH(String(p.caixas_produzidas)) + ' cx</span>' : '') +
           '</div>' +
+        '</div>' +
+        '<div style="text-align:right;flex-shrink:0">' +
+          '<div style="color:#64748b;font-size:11px">' + escH(String(hora || '—')) + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
