@@ -7682,6 +7682,11 @@ async function alterarMaquinaOf(ofId, ofNum){
 
   const maqsPermitidas = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05'];
   const opcoes = maqsPermitidas.map((m)=>`<option value="${String(m).replace(/"/g,'&quot;')}">${String(m).replace(/</g,'&lt;')}</option>`).join('');
+  let maquinaAnterior = '';
+  try{
+    const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+    if(of) maquinaAnterior = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : '';
+  }catch(e){ maquinaAnterior = ''; }
 
   const sel = document.createElement('div');
   sel.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
@@ -7714,6 +7719,12 @@ async function alterarMaquinaOf(ofId, ofNum){
       showSaveIndicator('✓ salvo','var(--green)');
       toast('✓ Máquina alterada','var(--green)');
       try{ document.querySelector(`[data-of-id="${CSS.escape(id)}"]`)?.remove(); }catch(_){}
+      try{
+        if(typeof recalcularSaudeMaquina === 'function'){
+          recalcularSaudeMaquina(novaMaq);
+          if(maquinaAnterior && maquinaAnterior !== novaMaq) recalcularSaudeMaquina(maquinaAnterior);
+        }
+      }catch(_){}
       try{ renderOFsPorMaquina(); }catch(_){}
     }catch(e){
       showSaveIndicator('✖ erro','var(--red)');
@@ -54781,6 +54792,92 @@ function calcularCapacidadeMaquina(maqData, ofs){
   };
 }
 
+function calcularTempoOf(of, maqDados){
+  try{
+    var t0 = parseInt(of && of.tempo_estimado_min, 10) || 0;
+    if(t0 > 0) return t0;
+  }catch(e){}
+  var cxHora = parseInt((maqDados && (maqDados.caixas_hora || maqDados.cx_hora || maqDados.velocidade || maqDados.producao)) || 500, 10) || 500;
+  var setup = parseInt((maqDados && (maqDados.tempo_setup_min || maqDados.setup_min || maqDados.setup_medio || maqDados.passagem_media)) || 15, 10) || 15;
+  var qtd = parseInt((of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0, 10) || 0;
+  var velOf = parseInt((of && (of.caixas_hora || of.velocidade || of.cx_hora || of.cxh)) || 0, 10) || 0;
+  var vel = velOf > 0 ? velOf : cxHora;
+  if(qtd > 0 && vel > 0){
+    return Math.ceil((qtd / vel) * 60) + setup;
+  }
+  return 0;
+}
+
+function recalcularSaudeMaquina(nomeMaquina){
+  try{
+    var nome = String(nomeMaquina || '').trim();
+    if(!nome) return;
+    var maqKey = nome.replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'') || 'sem-maquina';
+    var colId = 'kbcol-' + maqKey;
+    var col = document.getElementById(colId) || null;
+    if(!col){
+      try{
+        var esc = (window.CSS && typeof window.CSS.escape === 'function') ? window.CSS.escape(nome) : nome.replace(/["\\]/g,'\\$&');
+        col = document.querySelector('.kb-col-ofmaq[data-maq="' + esc + '"]');
+      }catch(_){}
+    }
+    if(!col) return;
+
+    var base = 'kbc-' + maqKey;
+    var maqDados = (typeof getDadosMaquina === 'function') ? getDadosMaquina(nome) : null;
+    var cards = [];
+    try{ cards = Array.from(col.querySelectorAll('.kb-card-ofmaq[data-of-id]')); }catch(_){ cards = []; }
+    var ofsNaCol = (cards || []).map(function(card){
+      var t = parseInt(String(card?.dataset?.tempoMin || '0'), 10) || 0;
+      var q = parseInt(String(card?.dataset?.qtd || '0'), 10) || 0;
+      var v = parseInt(String(card?.dataset?.cxHora || '0'), 10) || 0;
+      return {
+        tempo_estimado_min: t,
+        quantidade: q,
+        velocidade: v
+      };
+    });
+    var cap = (typeof calcularCapacidadeMaquina === 'function') ? calcularCapacidadeMaquina(maqDados, ofsNaCol) : null;
+    if(!cap) return;
+
+    var elCount = document.getElementById('hdr-count-' + base);
+    var elLabel = document.getElementById('hdr-label-' + base);
+    var elPct = document.getElementById('hdr-pct-' + base);
+    var elTempos = document.getElementById('hdr-tempos-' + base);
+    var elBarra = document.getElementById('hdr-barra-' + base);
+    var elAviso = document.getElementById('hdr-aviso-' + base);
+
+    if(elCount) elCount.textContent = String(cards.length) + ' OFs';
+    if(elLabel){
+      elLabel.textContent = String(cap.label || '');
+      elLabel.style.color = String(cap.cor || '#10b981');
+    }
+    if(elPct){
+      elPct.textContent = '(' + String(cap.pct || 0) + '%)';
+      elPct.style.color = String(cap.cor || '#10b981');
+    }
+    if(elTempos){
+      elTempos.innerHTML =
+        '<span>' + escH(fmtTempoCap(cap.minOcupados)) + ' / ' + escH(fmtTempoCap(cap.minTotal)) + '</span>' +
+        (maqDados ? ('<span>' + escH(String(cap.cxHora)) + ' cx/h</span><span>' + escH(String(cap.horaInicio)) + '–' + escH(String(cap.horaFim)) + '</span>') : '');
+    }
+    if(elBarra){
+      elBarra.style.width = String(Math.min(Number(cap.pct || 0), 100)) + '%';
+      elBarra.style.background = String(cap.cor || '#10b981');
+      elBarra.style.animation = (Number(cap.pct || 0) > 100) ? 'kbPulse 1s ease-in-out infinite' : '';
+    }
+    if(elAviso){
+      if(Number(cap.pct || 0) > 100){
+        elAviso.style.display = 'block';
+        elAviso.textContent = '⚠ Excede em ' + fmtTempoCap((cap.minOcupados || 0) - (cap.minTotal || 0));
+      } else {
+        elAviso.style.display = 'none';
+        elAviso.textContent = '';
+      }
+    }
+  }catch(e){}
+}
+
 function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
   if(!container) container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
   if(!container) return;
@@ -54799,6 +54896,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
     var maqKey = String(maquina || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
     var colId = 'kbcol-' + (maqKey || 'sem-maquina');
     var bodyId = 'kbbody-' + (maqKey || 'sem-maquina');
+    var colIdBase = 'kbc-' + (maqKey || 'sem-maquina');
     var maqDados = (typeof getDadosMaquina === 'function') ? getDadosMaquina(maquina) : null;
     var cap = (typeof calcularCapacidadeMaquina === 'function') ? calcularCapacidadeMaquina(maqDados, ofs) : { pct: 0, minOcupados: 0, minTotal: 480, cor: '#10b981', label: 'OK', cxHora: 500, horaInicio: '07:00', horaFim: '18:00', setups: ofs.length };
 
@@ -54806,29 +54904,36 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
       ' ondragover="kbOfmaqDragOver(event,this)" ondrop="kbOfmaqDrop(event,this)" ondragleave="kbOfmaqDragLeave(this)">';
 
     html += '<div class="kb-col-ofmaq-header">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;width:100%">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.07);width:100%">' +
         '<div style="display:flex;align-items:center;gap:7px;min-width:0">' +
           '<span style="font-weight:600;color:#e2e8f0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">' + escH(maquina) + '</span>' +
-          '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px">' + String(ofs.length) + ' OFs</span>' +
+          '<span style="background:rgba(74,144,217,0.15);color:#4A90D9;border-radius:20px;padding:1px 7px;font-size:11px" id="hdr-count-' + escAttr(colIdBase) + '">' + String(ofs.length) + ' OFs</span>' +
           (urgQty > 0 ? '<span style="background:rgba(220,38,38,0.15);color:#f43f5e;border-radius:20px;padding:1px 6px;font-size:10px">' + String(urgQty) + ' urg</span>' : '') +
         '</div>' +
         '<div style="text-align:right;flex-shrink:0">' +
-          '<div style="font-size:10px;font-weight:600;color:' + escAttr(String(cap.cor||'#10b981')) + '">' + escH(String(cap.label||'')) + '</div>' +
-          '<div style="font-size:10px;color:#64748b">' + escH(fmtTempoCap(cap.minOcupados)) + ' / ' + escH(fmtTempoCap(cap.minTotal)) + '</div>' +
+          '<span class="kb-col-label" id="hdr-label-' + escAttr(colIdBase) + '" style="font-size:11px;font-weight:600;color:' + escAttr(String(cap.cor||'#10b981')) + '">' + escH(String(cap.label||'')) + '</span>' +
+          ' <span class="kb-col-pct" id="hdr-pct-' + escAttr(colIdBase) + '" style="font-size:11px;color:' + escAttr(String(cap.cor||'#10b981')) + '">(' + escH(String(cap.pct || 0)) + '%)</span>' +
         '</div>' +
       '</div>' +
-    '</div>';
 
-    html += '<div class="kb-carga"><div class="kb-carga-fill" style="width:' + String(Math.min(cap.pct, 100)) + '%;background:' + escAttr(String(cap.cor||'#10b981')) + ';' + (cap.pct > 100 ? 'animation:kbPulse 1s ease-in-out infinite;' : '') + '"></div></div>';
+      '<div style="height:4px;background:rgba(255,255,255,0.07);border-radius:2px;margin-bottom:4px;overflow:hidden">' +
+        '<div class="kb-col-barra" id="hdr-barra-' + escAttr(colIdBase) + '" style="height:100%;border-radius:2px;background:' + escAttr(String(cap.cor||'#10b981')) + ';width:' + String(Math.min(cap.pct, 100)) + '%;transition:width 0.4s;' + (cap.pct>100?'animation:kbPulse 1s ease-in-out infinite;':'') + '"></div>' +
+      '</div>' +
 
-    html += (cap.pct > 100
-      ? '<div style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:5px 8px;font-size:11px;color:#f43f5e;margin-bottom:8px;display:flex;align-items:center;gap:5px">⚠ Excede em ' + escH(fmtTempoCap(cap.minOcupados - cap.minTotal)) + ' (' + String((cap.pct || 0) - 100) + '%)</div>'
-      : '');
+      '<div class="kb-col-tempos" id="hdr-tempos-' + escAttr(colIdBase) + '" style="font-size:10px;color:#64748b;margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap">' +
+        '<span>' + escH(fmtTempoCap(cap.minOcupados)) + ' / ' + escH(fmtTempoCap(cap.minTotal)) + '</span>' +
+        (maqDados ? ('<span>' + escH(String(cap.cxHora)) + ' cx/h</span><span>' + escH(String(cap.horaInicio)) + '–' + escH(String(cap.horaFim)) + '</span>') : '') +
+      '</div>' +
 
-    html += '<div style="font-size:10px;color:#64748b;margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">' +
-      '<span>' + totalCx.toLocaleString('pt-BR') + ' cx total</span>' +
-      '<span>' + escH(String(cap.pct || 0)) + '% ocupação</span>' +
-      (maqDados ? ('<span>' + escH(String(cap.cxHora)) + ' cx/h</span>' + '<span>' + escH(String(cap.horaInicio)) + '–' + escH(String(cap.horaFim)) + '</span>' + '<span>' + escH(String(cap.setups)) + ' setups</span>') : '') +
+      '<div class="kb-col-aviso" id="hdr-aviso-' + escAttr(colIdBase) + '" style="display:' + (cap.pct>100?'block':'none') + ';background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);border-radius:6px;padding:5px 8px;font-size:11px;color:#f43f5e;margin-bottom:8px">' +
+        (cap.pct>100 ? ('⚠ Excede em ' + escH(fmtTempoCap(cap.minOcupados - cap.minTotal))) : '') +
+      '</div>' +
+
+      '<div style="font-size:10px;color:#64748b;margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">' +
+        '<span>' + totalCx.toLocaleString('pt-BR') + ' cx total</span>' +
+        '<span>' + escH(String(cap.pct || 0)) + '% ocupação</span>' +
+        (maqDados ? ('<span>' + escH(String(cap.cxHora)) + ' cx/h</span>' + '<span>' + escH(String(cap.horaInicio)) + '–' + escH(String(cap.horaFim)) + '</span>' + '<span>' + escH(String(cap.setups)) + ' setups</span>') : '') +
+      '</div>' +
     '</div>';
 
     html += '<div id="' + escAttr(bodyId) + '">';
@@ -54854,9 +54959,15 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
       var numRaw = String(of.numero || of.of || of.of_num || of.numero_of || '').trim();
       var numDigits = numRaw ? numRaw.replace(/\\D/g,'') : '';
       var numLbl = numDigits ? ('Nº ' + numDigits.padStart(3,'0')) : 'Nº —';
+      var tempoOf = (typeof calcularTempoOf === 'function') ? calcularTempoOf(of, maqDados) : 0;
+      var qtdOf = parseInt(String(of.quantidade || of.qtd || of.qtd_pedida || 0), 10) || 0;
+      var cxHoraCard = parseInt(String((maqDados && (maqDados.caixas_hora || maqDados.velocidade || maqDados.cx_hora || maqDados.producao)) || 0), 10) || 0;
 
       html += '<div class="kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
         ' draggable="true" data-of-id="' + escAttr(String(of.id||'')) + '" data-maq="' + escAttr(maquina) + '"' +
+        ' data-tempo-min="' + escAttr(String(tempoOf || 0)) + '"' +
+        ' data-qtd="' + escAttr(String(qtdOf || 0)) + '"' +
+        ' data-cx-hora="' + escAttr(String(cxHoraCard || 0)) + '"' +
         ' ondragstart="kbOfmaqDragStart(event,this)" ondragend="kbOfmaqDragEnd(event,this)"' +
         ' ondragover="kbOfmaqDragOverCard(event,this)" ondrop="kbOfmaqDropCard(event,this)" ondragleave="kbOfmaqDragLeaveCard(this)">';
 
@@ -54881,6 +54992,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
 
       html += '<div style="display:flex;gap:8px;font-size:11px;color:#64748b;margin-bottom:7px;flex-wrap:wrap">' +
         '<span>' + escH(String((typeof ofGetQtdTotal === 'function') ? ofGetQtdTotal(of) : (of.quantidade || of.qtd || of.qtd_pedida || '—'))) + ' cx</span>' +
+        (tempoOf > 0 ? '<span style="color:#4A90D9;font-size:11px">⏱ ' + escH(fmtTempoCap(tempoOf)) + '</span>' : '') +
         (dataEnt ? '<span style="margin-left:auto;color:' + (atrasada ? '#f59e0b' : '#64748b') + '">' + escH(dataEnt) + '</span>' : '') +
       '</div>';
 
@@ -55023,8 +55135,14 @@ async function kbOfmaqSalvar(body, novaMaquina, ofIdMovido){
           }
         }
       }catch(_){}
-      var bodyPatch = { maquina_atual: novaMaquina };
-      if(idx != null) bodyPatch.maquina_atual_index = idx;
+      var bodyPatch = {};
+      if(idx != null) {
+        bodyPatch.maquina_atual_index = idx;
+      } else {
+        bodyPatch.fluxo_maquinas = [novaMaquina];
+        bodyPatch.maq = [novaMaquina];
+        bodyPatch.maquina_atual_index = 0;
+      }
       await apiFetch('/api/ofs/' + encodeURIComponent(ofId), { method:'PATCH', body: bodyPatch });
     }catch(e){
       try{ console.warn('[KB OFMAQ] erro mover:', e && e.message ? e.message : e); }catch(_){}
@@ -55041,6 +55159,12 @@ async function kbOfmaqSalvar(body, novaMaquina, ofIdMovido){
   }catch(e){
     try{ console.warn('[KB OFMAQ] erro reordenar:', e && e.message ? e.message : e); }catch(_){}
   }
+  try{
+    if(typeof recalcularSaudeMaquina === 'function'){
+      recalcularSaudeMaquina(novaMaquina);
+      if(maqOrigem && maqOrigem !== novaMaquina) recalcularSaudeMaquina(maqOrigem);
+    }
+  }catch(_){}
 }
 
 </script>
