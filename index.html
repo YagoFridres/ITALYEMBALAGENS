@@ -593,10 +593,47 @@ td.tc{text-align:center;}
 .badge-maquina-alocada{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);white-space:nowrap}
 .badge-maquina-alocada.badge-cvr{background:rgba(168,85,247,0.2);color:#c084fc;border-color:rgba(168,85,247,0.3)}
 
-.cores-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.btn-cor{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;font-size:0.8rem;transition:all 0.15s}
-.btn-cor.selecionado{border-color:rgba(59,130,246,0.6);background:rgba(59,130,246,0.15);color:#93c5fd}
-.circulo-cor{width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);flex-shrink:0}
+.cores-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:6px;
+}
+.btn-cor{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 10px 4px 6px;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.05);
+  color:#94a3b8;
+  cursor:pointer;
+  font-size:0.78rem;
+  font-family:inherit;
+  transition:all 0.15s ease;
+  white-space:nowrap;
+  user-select:none;
+}
+.btn-cor:hover{
+  background:rgba(255,255,255,0.09);
+  border-color:rgba(255,255,255,0.22);
+  color:#cbd5e1;
+}
+.btn-cor.selecionado{
+  background:rgba(255,255,255,0.12);
+  border-color:rgba(255,255,255,0.35);
+  color:#f1f5f9;
+  font-weight:600;
+}
+.circulo-cor{
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,0.3);
+  flex-shrink:0;
+  display:inline-block;
+}
 
 /* LOGÍSTICA MAPA */
 #mapa-container{width:100%;height:460px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:12px;}
@@ -2618,7 +2655,8 @@ function renderSeletorCores(containerId, selecionadas){
     const nome = String(cor?.nome || '').trim();
     const hex = String(cor?.hex || '#888').trim() || '#888';
     const on = id && sel.includes(id);
-    return `<button type="button" class="btn-cor ${on ? 'selecionado' : ''}" onclick="toggleCorSelecionada('${escAttr(id)}','${escAttr(containerId)}')" title="${escAttr(nome)}">
+    const styleExtra = on ? `border-color:${escAttr(hex)};color:${escAttr(hex)};background:${escAttr(hex)}18;` : '';
+    return `<button type="button" class="btn-cor ${on ? 'selecionado' : ''}" style="${styleExtra}" onclick="toggleCorSelecionada('${escAttr(id)}','${escAttr(containerId)}')" title="${escAttr(nome)}">
       <span class="circulo-cor" style="background:${escAttr(hex)}"></span>
       <span>${escH(nome)}</span>
     </button>`;
@@ -2657,7 +2695,8 @@ function renderSeletorCoresItemOFRapida(index){
     const nome = String(cor?.nome || '').trim();
     const hex = String(cor?.hex || '#888').trim() || '#888';
     const on = id && sel.includes(id);
-    return `<button type="button" class="btn-cor ${on ? 'selecionado' : ''}" onclick="toggleCorItemOFRapida('${escAttr(idx)}','${escAttr(id)}')" title="${escAttr(nome)}">
+    const styleExtra = on ? `border-color:${escAttr(hex)};color:${escAttr(hex)};background:${escAttr(hex)}18;` : '';
+    return `<button type="button" class="btn-cor ${on ? 'selecionado' : ''}" style="${styleExtra}" onclick="toggleCorItemOFRapida('${escAttr(idx)}','${escAttr(id)}')" title="${escAttr(nome)}">
       <span class="circulo-cor" style="background:${escAttr(hex)}"></span>
       <span>${escH(nome)}</span>
     </button>`;
