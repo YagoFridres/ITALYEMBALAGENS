@@ -33547,6 +33547,10 @@ async function excluirMaquina(mi){
   toast('🗑 Máquina excluída','var(--orange)');
 }
 async function salvarMaquina(){
+  const isUUID = (v)=>{
+    const s = String(v ?? '').trim();
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+  };
   const lerInput = (...seletores)=>{
     for(const sel of seletores){
       if(!sel) continue;
@@ -33614,10 +33618,16 @@ async function salvarMaquina(){
     else if(payload[k] === null && k !== 'meta_perda_pct') delete payload[k];
   });
 
-  console.log('[MAQUINA SAVE] payload final:', JSON.stringify(payload));
-  console.log('[MAQUINA SAVE] producao:', payload.producao, typeof payload.producao);
-  console.log('[MAQUINA SAVE] passagem_media:', payload.passagem_media, typeof payload.passagem_media);
-  console.log('[MAQUINA SAVE] setup_medio:', payload.setup_medio, typeof payload.setup_medio);
+  try{
+    if(payload.setor && !isUUID(payload.setor)) delete payload.setor;
+    if(payload.icone && !isUUID(payload.icone)) delete payload.icone;
+    if(payload.grupo_id && !isUUID(payload.grupo_id)) delete payload.grupo_id;
+    if(payload.setor_id && !isUUID(payload.setor_id)) delete payload.setor_id;
+    if(payload.icone_id && !isUUID(payload.icone_id)) delete payload.icone_id;
+    if(payload.empresa_id && !isUUID(payload.empresa_id)) delete payload.empresa_id;
+  }catch(e){}
+
+  console.log('[SALVAR MÁQUINA] payload:', JSON.stringify(payload, null, 2));
 
   try{
     showSaveIndicator('Salvando...','var(--yellow)');
