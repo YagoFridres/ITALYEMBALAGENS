@@ -33460,6 +33460,12 @@ function abrirModalMaquina(mi){
     const idEl = document.getElementById('maq-id');
     if(idEl) idEl.value = m && m.id ? String(m.id) : '';
   }catch(e){}
+  try{
+    window._editandoMaquinaId = (m && (m.id || m.uuid)) ? String(m.id || m.uuid) : null;
+    window._editandoMaquinaNome = m ? String(m.col || m.nome || '').trim() : '';
+    window._editandoMaquinaCodigo = m ? String(m.codigo || '').trim() : '';
+    console.log('[EDITAR MAQUINA] id:', window._editandoMaquinaId);
+  }catch(e){}
   document.getElementById('maq-e-col').value=m?m.col:'';
   document.getElementById('maq-e-ico').value=m?m.ico:'⚙';
   const def = defaultsDim(m?.col || m?.nome || '');
@@ -33575,7 +33581,7 @@ async function salvarMaquina(){
     return Number.isFinite(n) ? n : fb;
   };
 
-  let id = String(lerInput('maq-id', 'id') || '').trim();
+  let id = String(window._editandoMaquinaId || lerInput('maq-id', 'id') || '').trim();
   const nome = String(lerInput('maq-e-col', 'maq-nome', 'nome') || '').trim();
   if(!nome){ toast('Informe o nome da máquina','var(--red)'); return; }
 
@@ -33635,6 +33641,8 @@ async function salvarMaquina(){
   try{
     if(_apiConectado && CURRENT_USER){
       const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+      const editIdx = String(document.getElementById('maq-edit-idx')?.value || '').trim();
+      const isEditing = !!(editIdx !== '' || window._editandoMaquinaId);
       if(id && !isUUID(id)){
         try{
           const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
@@ -33653,7 +33661,11 @@ async function salvarMaquina(){
         }catch(e){}
       }
       const idUuid = (id && isUUID(id)) ? id : '';
-      const method = idUuid ? 'PUT' : 'POST';
+      if(isEditing && !idUuid){
+        alert('Erro: ID (UUID) da máquina não encontrado para atualizar.');
+        return;
+      }
+      const method = idUuid ? 'PATCH' : 'POST';
       const url = idUuid ? ('/api/maquinas/' + encodeURIComponent(idUuid)) : '/api/maquinas';
       console.log('[SALVAR MÁQUINA] método:', method, 'id:', idUuid || '(novo)');
       const resp = await fetch(url, {
