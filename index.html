@@ -7787,7 +7787,25 @@ async function confirmarAlteracaoMaquinaOfmaq(){
   if(alterarData && !novaData){ toast('Informe a nova data de entrega.', 'var(--red)'); return; }
   try{
     showSaveIndicator('Salvando...','var(--yellow)');
-    const body = { maq: [novaMaquina], maquina_atual_index: 0 };
+    const ofRef = (ctx && ctx.ofRef && typeof ctx.ofRef === 'object') ? ctx.ofRef : null;
+    const idx0 = Number(ofRef?.maquina_atual_index != null ? ofRef.maquina_atual_index : 0);
+    const idx = (Number.isFinite(idx0) && idx0 >= 0) ? idx0 : 0;
+    let fluxo = (ofRef?.fluxo_maquinas != null ? ofRef.fluxo_maquinas : (ofRef?.maq != null ? ofRef.maq : []));
+    if(typeof fluxo === 'string'){ try{ fluxo = JSON.parse(fluxo || '[]'); }catch(e){ fluxo = []; } }
+    if(!Array.isArray(fluxo)) fluxo = [];
+    const fluxoNovo = (fluxo.length ? fluxo.slice() : [novaMaquina]).map((item, i)=>{
+      if(i !== Math.min(idx, Math.max(0, fluxo.length - 1))) return item;
+      if(item && typeof item === 'object' && !Array.isArray(item)){
+        return { ...item, nome: novaMaquina, maquina: novaMaquina, name: novaMaquina };
+      }
+      return novaMaquina;
+    });
+    const body = {
+      maquina: novaMaquina,
+      maq: [novaMaquina],
+      fluxo_maquinas: fluxoNovo,
+      maquina_atual_index: idx,
+    };
     if(alterarData && novaData){
       body.data_entrega = novaData;
       body.ent = novaData;
@@ -7807,7 +7825,8 @@ async function confirmarAlteracaoMaquinaOfmaq(){
         if(ctx?.maquinaAnterior && ctx.maquinaAnterior !== novaMaquina) recalcularSaudeMaquina(ctx.maquinaAnterior);
       }
     }catch(_){}
-    try{ renderOFsPorMaquina(); }catch(_){}
+    try{ window._ofmaqForceReload = true; window._ofmaqBaseList = null; window._ofmaqCache = {}; }catch(_){}
+    try{ await renderOFsPorMaquina(); }catch(_){}
     try{ if(typeof renderPCP==='function' && document.getElementById('page-pcp')) renderPCP(); }catch(_){}
   }catch(e){
     showSaveIndicator('✖ erro','var(--red)');
