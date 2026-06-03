@@ -54774,7 +54774,7 @@ function fmtTempoCap(min){
 }
 
 function calcularCapacidadeMaquina(maqData, ofs){
-  var cxHora = parseInt((maqData && (maqData.caixas_hora || maqData.cx_hora || maqData.velocidade || maqData.producao)) || 500, 10) || 500;
+  var cxHora = parseInt((maqData && (maqData.phora || maqData.producao || maqData.velocidade)) || 500, 10) || 500;
   var setupMedio = parseInt((maqData && (maqData.tempo_setup_min || maqData.setup_min || maqData.setup_medio || maqData.passagem_media)) || 15, 10) || 15;
   var horaInicio = String((maqData && (maqData.horario_inicio)) || '07:00').trim() || '07:00';
   var horaFim = String((maqData && (maqData.horario_fim)) || '18:00').trim() || '18:00';
@@ -54803,7 +54803,7 @@ function calcularCapacidadeMaquina(maqData, ofs){
       tempo = parseInt(of.tempo_estimado_min, 10);
     } else {
       var qtd = parseInt(of.quantidade || of.qtd || 0, 10) || 0;
-      var vel = parseInt(of.velocidade || of.caixas_hora || of.cx_hora || of.cxh || cxHora, 10) || cxHora;
+      var vel = parseInt(of.phora || of.velocidade || of.caixas_hora || of.cx_hora || of.cxh || cxHora, 10) || cxHora;
       var setup = setupMedio;
       if (qtd > 0 && vel > 0) {
         tempo = Math.ceil((qtd / vel) * 60) + setup;
@@ -54840,8 +54840,8 @@ function calcularTempoOf(of, maqDados){
   }
   var qtd = parseInt((of && (of.quantidade || of.qtd || of.qtd_pedida)) || 0, 10) || 0;
   var cxHora = parseInt(
-    (maqDados && (maqDados.caixas_hora || maqDados.cx_hora || maqDados.velocidade)) ||
-    (of && (of.caixas_hora || of.velocidade)) ||
+    (maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade)) ||
+    (of && (of.phora || of.velocidade || of.caixas_hora || of.cxh)) ||
     500,
     10
   ) || 500;
@@ -55005,7 +55005,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
       var numLbl = numDigits ? ('Nº ' + numDigits.padStart(3,'0')) : 'Nº —';
       var tempoOf = (typeof calcularTempoOf === 'function') ? calcularTempoOf(of, maqDados) : 0;
       var qtdOf = parseInt(String(of.quantidade || of.qtd || of.qtd_pedida || 0), 10) || 0;
-      var cxHoraCard = parseInt(String((maqDados && (maqDados.caixas_hora || maqDados.velocidade || maqDados.cx_hora || maqDados.producao)) || 0), 10) || 0;
+      var cxHoraCard = parseInt(String((maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade)) || 0), 10) || 0;
 
       html += '<div class="kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
         ' draggable="true" data-of-id="' + escAttr(String(of.id||'')) + '" data-maq="' + escAttr(maquina) + '"' +
@@ -55039,7 +55039,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
         (tempoOf > 0 ? (function(){
           var tempoMin = tempoOf;
           var tempoStr = fmtTempoCap(tempoMin);
-          var cxH = parseInt(String((maqDados && (maqDados.caixas_hora || maqDados.velocidade || 0)) || 0), 10) || 0;
+          var cxH = parseInt(String((maqDados && (maqDados.phora || maqDados.producao || maqDados.velocidade || 0)) || 0), 10) || 0;
           var qtd = parseInt(String(of && (of.quantidade || of.qtd || 0) || 0), 10) || 0;
           var ttl = (qtd > 0 && cxH > 0) ? (' title="' + escAttr(String(qtd) + ' cx ÷ ' + String(cxH) + ' cx/h = ' + String(tempoStr)) + '"') : '';
           return '<span style="color:#4A90D9;font-size:11px"' + ttl + '>⏱ ' + escH(tempoStr) + '</span>';

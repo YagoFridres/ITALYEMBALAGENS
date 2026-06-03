@@ -7757,19 +7757,28 @@ app.get('/api/maquinas', authMiddleware, async (req, res) => {
     const cacheKey = apenasAtivas ? 'maquinas_ativas' : 'maquinas';
     const cached = cacheGet(cacheKey);
     if (cached != null) return res.json({ ok: true, data: cached, maquinas: cached });
-    let q = supabase
-      .from('maquinas')
-      .select(
-        'id,nome,codigo,setor,ativo,' +
-        'caixas_hora,cx_hora,velocidade,' +
-        'tempo_setup_min,setup_min,passagem_media,' +
-        'horario_inicio,horario_fim,horas_dia,' +
-        'caixas_hora_min,caixas_hora_max,setups_possiveis,' +
-        'ordem,producao,setup_medio,tempo_disponivel'
-      )
-      .order('nome', { ascending: true });
+    const selectBase =
+      'id,nome,codigo,setor,ativo,' +
+      'phora,producao,' +
+      'tempo_setup_min,setup_min,setup_medio,passagem_media,' +
+      'horario_inicio,horario_fim,horas_dia,tempo_disponivel,' +
+      'almoco_inicio,almoco_min,intervalo_manha_min,intervalo_tarde_min,setup_manha_min,setup_tarde_min,' +
+      'meta_perda_pct,descricao,icone,ordem,' +
+      'puxada_min,puxada_max,boca_max,altura_max';
+
+    let q = supabase.from('maquinas').select(selectBase).order('nome', { ascending: true });
     if (apenasAtivas) q = q.eq('ativo', true);
-    const { data, error } = await q;
+    let { data, error } = await q;
+    if (error) {
+      const msg = String(error?.message || error || '');
+      if (msg.toLowerCase().includes('does not exist')) {
+        let q2 = supabase.from('maquinas').select('*').order('nome', { ascending: true });
+        if (apenasAtivas) q2 = q2.eq('ativo', true);
+        const r2 = await q2;
+        data = r2?.data;
+        error = r2?.error;
+      }
+    }
     if (error) throw error;
     cacheSet(cacheKey, data || [], 60 * 1000);
     return res.json({ ok: true, data: data || [], maquinas: data || [] });
@@ -7817,10 +7826,9 @@ function _capacidadeConfFromMaquina(maqData) {
     _capInt(maqData?.setup, NaN) ||
     15;
   const cxHora =
-    _capInt(maqData?.caixas_hora, NaN) ||
-    _capInt(maqData?.cx_hora, NaN) ||
-    _capInt(maqData?.velocidade, NaN) ||
+    _capInt(maqData?.phora, NaN) ||
     _capInt(maqData?.producao, NaN) ||
+    _capInt(maqData?.velocidade, NaN) ||
     500;
   const capMin = Math.max(1, Math.round(horasDia * 60));
   return { horasDia, setupMedio, cxHora, capMin };
@@ -7864,7 +7872,7 @@ async function _calcularCapacidadeMaquinaDia(maquinaKey, data) {
       continue;
     }
     const qtd = _capInt(of?.quantidade ?? of?.qtd ?? 0, 0);
-    const vel = _capInt(of?.caixas_hora ?? of?.velocidade ?? conf.cxHora, conf.cxHora);
+    const vel = _capInt(of?.phora ?? of?.velocidade ?? of?.caixas_hora ?? conf.cxHora, conf.cxHora);
     if (qtd > 0 && vel > 0) {
       minOcupados += Math.ceil((qtd / vel) * 60) + conf.setupMedio;
     }
