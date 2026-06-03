@@ -583,6 +583,16 @@ td.tc{text-align:center;}
 .badge-impressao{background:rgba(59,130,246,0.2);color:#60a5fa}
 .badge-corte{background:rgba(168,85,247,0.2);color:#c084fc}
 
+.toggle-switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:#334155;border-radius:24px;cursor:pointer;transition:0.2s}
+.toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s}
+.toggle-switch input:checked + .toggle-slider{background:#3b82f6}
+.toggle-switch input:checked + .toggle-slider:before{transform:translateX(18px)}
+
+.badge-maquina-alocada{display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;border-radius:6px;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;background:rgba(59,130,246,0.2);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);white-space:nowrap}
+.badge-maquina-alocada.badge-cvr{background:rgba(168,85,247,0.2);color:#c084fc;border-color:rgba(168,85,247,0.3)}
+
 /* LOGÍSTICA MAPA */
 #mapa-container{width:100%;height:460px;background:var(--s2);border-radius:8px;border:1px solid var(--border);position:relative;overflow:hidden;margin-bottom:12px;}
 .mapa-svg{width:100%;height:100%;}
@@ -5103,11 +5113,28 @@ function renderPCP(){
     const selMulti = Array.isArray(window.OF_MULTI_SEL) && window.OF_MULTI_SEL.includes(o.of);
     const fluxoNames = ofFluxoGetNames(o);
     const fluxoAtivas = (fluxoNames||[]).map(maqAtivaFromNome).filter(Boolean);
-    const mCells=MAQUINAS.map(m=>{
-      const mId = String(m.id||'').trim();
-      const mNome = String(m.nome||m.col||mId).trim();
-      const ativa = fluxoAtivas.includes(mNome) || (Array.isArray(o.maq) && mId && o.maq.map(x=>String(x)).includes(mId));
-      return `<td class="tc" onclick="event.stopPropagation();return false;"><span class="mq ${ativa?'mq-on':'mq-off'}">${ativa?'✓':'—'}</span></td>`;
+    const colsMaq = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05'];
+    const idToNome = new Map((Array.isArray(MAQUINAS)?MAQUINAS:[]).map(m=>[String(m?.id||'').trim(), String(m?.col||m?.nome||'').trim()]).filter(([k,v])=>k&&v));
+    const setMaq = new Set();
+    fluxoAtivas.forEach((n)=>{ if(n) setMaq.add(n); });
+    if(Array.isArray(o.maq)){
+      o.maq.forEach((x)=>{
+        const raw = String(x||'').trim();
+        if(!raw) return;
+        if(idToNome.has(raw)) { setMaq.add(idToNome.get(raw)); return; }
+        const canon = (typeof maqAtivaFromNome === 'function') ? (maqAtivaFromNome(raw) || '') : '';
+        if(canon) setMaq.add(canon);
+      });
+    }
+    const abreviar = (nome)=>{
+      const mapa = { 'CORTE VINCO ROTATIVA':'CVR','IMP 01':'I01','IMP 02':'I02','IMP 03':'I03','IMP 04':'I04','IMP 05':'I05' };
+      return mapa[nome] || nome;
+    };
+    const mCells = colsMaq.map((col)=>{
+      const ativo = setMaq.has(col);
+      if(!ativo) return `<td class="tc" onclick="event.stopPropagation();return false;"></td>`;
+      const extra = (col === 'CORTE VINCO ROTATIVA') ? ' badge-cvr' : '';
+      return `<td class="tc" onclick="event.stopPropagation();return false;"><span class="badge-maquina-alocada${extra}">${abreviar(col)}</span></td>`;
     }).join('');
     const imgPrintUrl = ofGetImagemUrl(o);
     // Build imgs from item images too
@@ -7704,62 +7731,91 @@ function fecharOfmaqAcoesSheet(){
   try{ document.getElementById('ofmaq-acoes-sheet').style.display = 'none'; }catch(e){}
 }
 
-async function alterarMaquinaOf(ofId, ofNum){
+let ofEmEdicaoMaquina = null;
+function ofmaqToggleAlterarData(mostrar){
+  try{ document.getElementById('ofmaq-altmaq-grp-data').style.display = mostrar ? '' : 'none'; }catch(e){}
+}
+function abrirModalAlterarMaquinaOfmaq(ofId, ofNum){
   const id = String(ofId||'').trim();
   const num = String(ofNum||'').trim();
   if(!id) return;
-
-  const maqsPermitidas = ['CORTE VINCO ROTATIVA','IMP 01','IMP 02','IMP 03','IMP 04','IMP 05'];
-  const opcoes = maqsPermitidas.map((m)=>`<option value="${String(m).replace(/"/g,'&quot;')}">${String(m).replace(/</g,'&lt;')}</option>`).join('');
-  let maquinaAnterior = '';
+  let of = null;
   try{
-    const of = id && typeof ofmaqGetOFById === 'function' ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
-    if(of) maquinaAnterior = (typeof getMaquinaAtual === 'function') ? String(getMaquinaAtual(of) || '').trim() : '';
-  }catch(e){ maquinaAnterior = ''; }
-
-  const sel = document.createElement('div');
-  sel.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px';
-  sel.innerHTML = `
-    <div style="background:#111929;border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:24px;width:100%;max-width:380px" onclick="event.stopPropagation()">
-      <div style="font-weight:800;font-size:16px;margin-bottom:16px">OF Nº ${num.replace(/</g,'&lt;')} — Alterar Máquina</div>
-      <select id="sel-nova-maq" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;color:#e8f0fe;font-size:14px;outline:none;margin-bottom:16px">${opcoes}</select>
-      <div style="display:flex;gap:8px">
-        <button type="button" id="btn-cancelar-maq" style="flex:1;padding:11px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#7a9ab8;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
-        <button type="button" id="btn-confirmar-maq" style="flex:1;padding:11px;background:#0ea5e9;border:none;border-radius:8px;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar</button>
-      </div>
-    </div>
-  `;
-  sel.addEventListener('click', ()=>{ try{ sel.remove(); }catch(e){} });
-  document.body.appendChild(sel);
-
-  sel.querySelector('#btn-cancelar-maq').onclick = ()=>{ try{ sel.remove(); }catch(e){} };
-  sel.querySelector('#btn-confirmar-maq').onclick = async ()=>{
-    const novaMaq = String(sel.querySelector('#sel-nova-maq')?.value || '').trim();
-    try{ sel.remove(); }catch(e){}
-    if(!novaMaq) return;
+    of = (typeof ofmaqGetOFById === 'function') ? (ofmaqGetOFById(id) || null) : ((OFs||[]).find(o=>String(o?.id||'').trim()===id) || null);
+  }catch(e){ of = null; }
+  const maquinaAtual = (()=>{
     try{
-      showSaveIndicator('Salvando...','var(--yellow)');
-      const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body:{ maq: [novaMaq], maquina_atual_index: 0 } });
-      const j = r ? await r.json().catch(()=>null) : null;
-      if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao mover');
-      const row = j?.data || j;
-      try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
-      try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
-      showSaveIndicator('✓ salvo','var(--green)');
-      toast('✓ Máquina alterada','var(--green)');
-      try{ document.querySelector(`[data-of-id="${CSS.escape(id)}"]`)?.remove(); }catch(_){}
-      try{
-        if(typeof recalcularSaudeMaquina === 'function'){
-          recalcularSaudeMaquina(novaMaq);
-          if(maquinaAnterior && maquinaAnterior !== novaMaq) recalcularSaudeMaquina(maquinaAnterior);
-        }
-      }catch(_){}
-      try{ renderOFsPorMaquina(); }catch(_){}
-    }catch(e){
-      showSaveIndicator('✖ erro','var(--red)');
-      toast('Erro: '+String(e?.message||e), 'var(--red)');
+      if(of && typeof getMaquinaAtual === 'function'){
+        const v = String(getMaquinaAtual(of) || '').trim();
+        if(v) return v;
+      }
+    }catch(e){}
+    const raw = of ? (of.maquina || of.maquina_agendada || (Array.isArray(of.maq) ? of.maq[0] : '') || '') : '';
+    const canon = (typeof maqAtivaFromNome === 'function') ? (maqAtivaFromNome(String(raw||'')) || '') : '';
+    return canon || String(raw||'').trim();
+  })();
+  const dataEntregaAtual = String(of?.data_entrega || of?.ent || '').slice(0,10);
+  const cli = (()=>{
+    const cliId = of?.cliId || of?.cliente_id || of?.clienteId || null;
+    const cliObj = cliId ? (typeof getCli === 'function' ? (getCli(cliId) || null) : null) : null;
+    const cliNome = String(cliObj?.nome || of?.cliNome || of?.cliente || of?.cliente_nome || '').trim();
+    return cliNome || '—';
+  })();
+  ofEmEdicaoMaquina = { id, num, maquinaAnterior: maquinaAtual || '', ofRef: of || null };
+  try{ document.getElementById('ofmaq-altmaq-ref').textContent = `OF #${num || '—'} — ${cli}`; }catch(e){}
+  try{ document.getElementById('ofmaq-altmaq-sel').value = maqAtivaFromNome(maquinaAtual) || maquinaAtual || ''; }catch(e){}
+  try{
+    const tg = document.getElementById('ofmaq-altmaq-tg');
+    if(tg) tg.checked = false;
+  }catch(e){}
+  ofmaqToggleAlterarData(false);
+  try{ document.getElementById('ofmaq-altmaq-data').value = dataEntregaAtual || ''; }catch(e){}
+  try{ abrir('modal-alterar-maquina-ofmaq'); }catch(e){}
+}
+function fecharModalAlterarMaquinaOfmaq(){
+  try{ fechar('modal-alterar-maquina-ofmaq'); }catch(e){}
+  ofEmEdicaoMaquina = null;
+}
+async function confirmarAlteracaoMaquinaOfmaq(){
+  const ctx = ofEmEdicaoMaquina;
+  const id = String(ctx?.id || '').trim();
+  if(!id) return;
+  const novaMaquina = String(document.getElementById('ofmaq-altmaq-sel')?.value || '').trim();
+  const alterarData = !!document.getElementById('ofmaq-altmaq-tg')?.checked;
+  const novaData = String(document.getElementById('ofmaq-altmaq-data')?.value || '').slice(0,10);
+  if(!novaMaquina){ toast('Selecione uma máquina.', 'var(--red)'); return; }
+  if(alterarData && !novaData){ toast('Informe a nova data de entrega.', 'var(--red)'); return; }
+  try{
+    showSaveIndicator('Salvando...','var(--yellow)');
+    const body = { maq: [novaMaquina], maquina_atual_index: 0 };
+    if(alterarData && novaData){
+      body.data_entrega = novaData;
+      body.ent = novaData;
     }
-  };
+    const r = await apiFetch('/api/ofs/' + encodeURIComponent(id), { method:'PATCH', body });
+    const j = r ? await r.json().catch(()=>null) : null;
+    if(!r?.ok || (j && j.ok === false)) throw new Error(j?.error || j?.message || 'Falha ao salvar');
+    const row = j?.data || j;
+    try{ _atualizarOFLocal && _atualizarOFLocal(id, row); }catch(_){}
+    try{ _upsertOFHistLocal && _upsertOFHistLocal(row); }catch(_){}
+    showSaveIndicator('✓ salvo','var(--green)');
+    toast('✓ Alteração aplicada','var(--green)');
+    fecharModalAlterarMaquinaOfmaq();
+    try{
+      if(typeof recalcularSaudeMaquina === 'function'){
+        recalcularSaudeMaquina(novaMaquina);
+        if(ctx?.maquinaAnterior && ctx.maquinaAnterior !== novaMaquina) recalcularSaudeMaquina(ctx.maquinaAnterior);
+      }
+    }catch(_){}
+    try{ renderOFsPorMaquina(); }catch(_){}
+    try{ if(typeof renderPCP==='function' && document.getElementById('page-pcp')) renderPCP(); }catch(_){}
+  }catch(e){
+    showSaveIndicator('✖ erro','var(--red)');
+    toast('Erro: '+String(e?.message||e), 'var(--red)');
+  }
+}
+async function alterarMaquinaOf(ofId, ofNum){
+  abrirModalAlterarMaquinaOfmaq(ofId, ofNum);
 }
 
 async function registrarTempoOf(ofId, ofNum){
@@ -45544,6 +45600,42 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="modal-footer">
     <button class="btn btn-ghost" onclick="fechar('modal-maquina')">Cancelar</button>
     <button class="btn btn-accent" onclick="salvarMaquina()">Salvar Máquina</button>
+  </div>
+</div></div>
+
+<div class="modal-overlay" id="modal-alterar-maquina-ofmaq" data-no-backdrop-close="1">
+<div class="modal" style="width:min(420px,98vw)">
+  <button class="close-btn" onclick="fecharModalAlterarMaquinaOfmaq()">✕</button>
+  <h2>⚙ Alterar Máquina</h2>
+  <div id="ofmaq-altmaq-ref" style="font-size:.78rem;color:var(--text2);margin-top:-10px;margin-bottom:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+  <div class="fg">
+    <div class="mf fgf">
+      <label>NOVA MÁQUINA</label>
+      <select id="ofmaq-altmaq-sel" style="width:100%;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none">
+        <option value="">Selecionar...</option>
+        <option value="IMP 01">IMP 01</option>
+        <option value="IMP 02">IMP 02</option>
+        <option value="IMP 03">IMP 03</option>
+        <option value="IMP 04">IMP 04</option>
+        <option value="IMP 05">IMP 05</option>
+        <option value="CORTE VINCO ROTATIVA">CORTE VINCO ROTATIVA</option>
+      </select>
+    </div>
+    <div class="mf fgf" style="display:flex;align-items:center;gap:10px">
+      <label class="toggle-switch">
+        <input type="checkbox" id="ofmaq-altmaq-tg" onchange="ofmaqToggleAlterarData(this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+      <span style="font-size:0.9rem;color:var(--text2)">Alterar data de entrega também?</span>
+    </div>
+    <div class="mf fgf" id="ofmaq-altmaq-grp-data" style="display:none">
+      <label>NOVA DATA DE ENTREGA</label>
+      <input type="date" id="ofmaq-altmaq-data" style="width:100%;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);outline:none">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-ghost" onclick="fecharModalAlterarMaquinaOfmaq()">Cancelar</button>
+    <button class="btn btn-accent" onclick="confirmarAlteracaoMaquinaOfmaq()">✓ Confirmar alteração</button>
   </div>
 </div></div>
 
