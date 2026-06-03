@@ -33575,7 +33575,7 @@ async function salvarMaquina(){
     return Number.isFinite(n) ? n : fb;
   };
 
-  const id = String(lerInput('maq-id', 'id') || '').trim();
+  let id = String(lerInput('maq-id', 'id') || '').trim();
   const nome = String(lerInput('maq-e-col', 'maq-nome', 'nome') || '').trim();
   if(!nome){ toast('Informe o nome da máquina','var(--red)'); return; }
 
@@ -33635,8 +33635,26 @@ async function salvarMaquina(){
   try{
     if(_apiConectado && CURRENT_USER){
       const token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-      const method = id ? 'PUT' : 'POST';
-      const url = id ? ('/api/maquinas/' + encodeURIComponent(id)) : '/api/maquinas';
+      if(id && !isUUID(id)){
+        try{
+          const base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
+          const rr = await fetch(base + '/api/maquinas?t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+          const jj = await rr.json().catch(()=>null);
+          const lista = (jj && (jj.data || jj.maquinas)) ? (jj.data || jj.maquinas) : [];
+          const match = (Array.isArray(lista) ? lista : []).find((m)=>{
+            const cod = String(m?.codigo || '').trim();
+            const nm = String(m?.nome || m?.col || '').trim();
+            if(cod && cod === id) return true;
+            if(nm && nm.toUpperCase() === nome.toUpperCase()) return true;
+            return false;
+          }) || null;
+          const resolved = String(match?.id || '').trim();
+          if(resolved && isUUID(resolved)) id = resolved;
+        }catch(e){}
+      }
+      const idUuid = (id && isUUID(id)) ? id : '';
+      const method = idUuid ? 'PUT' : 'POST';
+      const url = idUuid ? ('/api/maquinas/' + encodeURIComponent(idUuid)) : '/api/maquinas';
       const resp = await fetch(url, {
         method,
         headers: {

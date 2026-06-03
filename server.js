@@ -8079,8 +8079,8 @@ app.post('/api/maquinas', authMiddleware, async (req, res) => {
 
 app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
   try {
-    console.log('[PUT MAQUINA] body recebido:', JSON.stringify(req.body));
-    console.log('[PUT MAQUINA] id:', req.params.id);
+    console.log('[MAQUINA UPDATE] id recebido:', req.params.id, typeof req.params.id);
+    try{ console.log('[MAQUINA UPDATE] body:', JSON.stringify(req.body).substring(0, 200)); }catch(_){}
     const b = req.body || {};
     const payload = {
       nome: b.nome !== undefined || b.col !== undefined || b.name !== undefined ? String(b.nome ?? b.col ?? b.name ?? '').trim() : undefined,
@@ -8108,8 +8108,15 @@ app.put('/api/maquinas/:id', authMiddleware, async (req, res) => {
       ativo: b.ativo === undefined ? undefined : (b.ativo === true || b.ativo === 'true' || b.ativo === 1 || b.ativo === '1')
     };
     Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
-    const { data, error } = await supabase.from('maquinas')
-      .update(payload).eq('id', req.params.id).select();
+    const idRaw = String(req.params.id || '').trim();
+    const isUUID = (v)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v||'').trim());
+    let q = supabase.from('maquinas').update(payload);
+    if (isUUID(idRaw)) {
+      q = q.eq('id', idRaw);
+    } else {
+      q = q.or(`codigo.eq.${idRaw},nome.eq.${idRaw},col.eq.${idRaw}`);
+    }
+    const { data, error } = await q.select();
     if (error) throw error;
     cacheClear('maquinas');
     ok(res, data[0]);
