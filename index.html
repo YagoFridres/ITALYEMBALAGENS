@@ -7704,6 +7704,11 @@ function abaInconformidade(aba) {
   var a = String(aba || '').trim().toLowerCase();
   if (a !== 'registrar' && a !== 'lista' && a !== 'relatorio') a = 'registrar';
 
+  if (a === 'registrar') {
+    try { abrirModalRegistrarInconformidade(); } catch (_) {}
+    a = 'lista';
+  }
+
   var r = document.getElementById('inc-aba-registrar');
   var l = document.getElementById('inc-aba-lista');
   var rel = document.getElementById('inc-aba-relatorio');
@@ -7728,9 +7733,57 @@ function abaInconformidade(aba) {
   }
 }
 
+var _incRegistrarAnchor = null;
+var _incRegistrarPlaceholder = null;
+
+function abrirModalRegistrarInconformidade(){
+  let modal = document.getElementById('modalRegistrarInconformidade');
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = 'modalRegistrarInconformidade';
+    modal.className = 'modal-overlay';
+    modal.style.display = 'none';
+    modal.onclick = function(e){ if(e && e.target === modal) fecharModalRegistrarInconformidade(); };
+    modal.innerHTML = `
+      <div class="modal-box" style="max-width:720px">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <h3 style="margin:0">⚠ Registrar Inconformidade</h3>
+          <button class="btn btn-ghost btn-sm" onclick="fecharModalRegistrarInconformidade()">✕</button>
+        </div>
+        <div class="modal-body" id="inc-registrar-modal-host"></div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  const form = document.getElementById('inc-aba-registrar');
+  const host = document.getElementById('inc-registrar-modal-host');
+  if(form && host){
+    if(!_incRegistrarAnchor){
+      _incRegistrarAnchor = form.parentNode;
+      _incRegistrarPlaceholder = document.createElement('div');
+      _incRegistrarPlaceholder.id = 'inc-aba-registrar-placeholder';
+      try { _incRegistrarAnchor.insertBefore(_incRegistrarPlaceholder, form); } catch (_) {}
+    }
+    host.appendChild(form);
+    form.style.display = '';
+  }
+  modal.style.display = 'flex';
+}
+
+function fecharModalRegistrarInconformidade(){
+  const modal = document.getElementById('modalRegistrarInconformidade');
+  if(modal) modal.style.display = 'none';
+  const form = document.getElementById('inc-aba-registrar');
+  if(form && _incRegistrarAnchor && _incRegistrarPlaceholder){
+    try { _incRegistrarAnchor.insertBefore(form, _incRegistrarPlaceholder.nextSibling); } catch (_) {}
+    form.style.display = 'none';
+  }
+}
+
 async function initInconformidadesPage() {
   try {
-    abaInconformidade('registrar');
+    abaInconformidade('lista');
     await incCarregarOperadores();
     var hoje = new Date().toISOString().slice(0, 10);
     var ini = document.getElementById('inc-rel-ini');
@@ -24202,9 +24255,7 @@ async function estoqueAplicarAjustesInventario(){
     }
     toast('Ajustes aplicados ✓','var(--green)');
     document.getElementById('modal-inv-div').style.display='none';
-    await carregarChapas(true);
-    try{ await carregarMetricasChapas(true); }catch(e){}
-    renderEstoque();
+    await chapasForcarReload();
   } catch(e){
     toast('Erro: '+String(e?.message||e),'var(--red)');
   } finally {
@@ -24331,9 +24382,7 @@ async function entradaLoteConfirmar(){
     }
     toast('Entradas registradas ✓','var(--green)');
     document.getElementById('modal-entrada-lote').style.display='none';
-    await carregarChapas(true);
-    try{ await carregarMetricasChapas(true); }catch(e){}
-    renderEstoque();
+    await chapasForcarReload();
   } catch(e){
     toast('Erro: '+String(e?.message||e),'var(--red)');
   } finally {
@@ -24540,14 +24589,262 @@ async function confirmarSaidaLoteChapas(){
     }
     toast(`Saída registrada: ${rows.length} tipo(s)`,'var(--green)');
     fecharModalSaidaLoteChapas();
-    await carregarChapas(true);
-    try{ await carregarMetricasChapas(true); }catch(e){}
-    renderEstoque();
+    await chapasForcarReload();
   }catch(e){
     toast('Erro ao registrar saída. '+String(e?.message||e),'var(--red)');
   }finally{
     estSetBusy(false);
   }
+}
+
+function _chpToNum(v){
+  if(v == null) return 0;
+  if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const s = String(v).trim().replace(',', '.');
+  const n = Number(s);
+  if(Number.isFinite(n)) return n;
+  const s2 = String(v).replace(/[^\d.]+/g,'');
+  const n2 = Number(s2);
+  return Number.isFinite(n2) ? n2 : 0;
+}
+function _chpParseTamanhoMm(v){
+  const s = String(v||'').trim().toLowerCase();
+  if(!s) return { a:0, b:0 };
+  const nums = s.replace(/,/g,'.').match(/(\d+(?:\.\d+)?)/g) || [];
+  if(nums.length < 2) return { a:0, b:0 };
+  const a = _chpToNum(nums[0]);
+  const b = _chpToNum(nums[1]);
+  return (a > 0 && b > 0) ? { a, b } : { a:0, b:0 };
+}
+function calcTonChapa(c){
+  const qtd = Math.trunc(_chpToNum(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0);
+  if(!(qtd > 0)) return { ok:false, ton:0, kg:0, txt:'—', tip:'' };
+  const pesoKgUn = _chpToNum(c?.peso_kg_unidade ?? 0) || 0;
+  const gram = _chpToNum(c?.gramatura ?? c?.espessura_mm ?? 0) || 0;
+  const tipBase = [
+    'Qtd: ' + qtd,
+    'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²',
+    'Peso/chapa: ' + (pesoKgUn > 0 ? pesoKgUn.toFixed(4) : '?') + ' kg'
+  ].join('\n');
+  let kg = 0;
+  if(pesoKgUn > 0){
+    kg = qtd * pesoKgUn;
+  } else {
+    let larg = _chpToNum(c?.largura_mm ?? c?.largura ?? c?.larg ?? 0) || 0;
+    let comp = _chpToNum(c?.comprimento_mm ?? c?.comprimento ?? c?.comp ?? 0) || 0;
+    if(!(larg > 0 && comp > 0)){
+      const t = _chpParseTamanhoMm(c?.tamanho ?? c?.tam ?? '');
+      larg = t.a;
+      comp = t.b;
+    }
+    if(!(larg > 0 && comp > 0 && gram > 0)) return { ok:false, ton:0, kg:0, txt:'—', tip: tipBase };
+    const areaM2 = (larg/1000) * (comp/1000);
+    kg = areaM2 * (gram/1000) * qtd;
+  }
+  if(!(kg > 0)) return { ok:false, ton:0, kg:0, txt:'—', tip: tipBase };
+  const ton = kg / 1000;
+  return { ok:true, ton, kg, txt: ton.toFixed(3) + ' t', tip: tipBase };
+}
+
+let _chapaAtivaPainel = null;
+
+function _ensurePainelDetalheChapa(){
+  let modal = document.getElementById('painelDetalheChapa');
+  if(modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'painelDetalheChapa';
+  modal.className = 'modal-overlay';
+  modal.style.display = 'none';
+  modal.onclick = function(e){ if(e && e.target === modal) fecharPainelChapa(); };
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <div>
+          <h3 id="painelChapaNome" style="margin:0;font-size:1rem"></h3>
+          <span id="painelChapaSub" style="color:#64748b;font-size:0.8rem"></span>
+        </div>
+        <button onclick="fecharPainelChapa()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:rgba(255,255,255,0.03);border-radius:10px;padding:14px">
+          <div style="text-align:center">
+            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Estoque Atual</div>
+            <div id="painelQtdAtual" style="font-size:1.8rem;font-weight:800;color:#22d3ee"></div>
+            <div style="font-size:0.7rem;color:#64748b">unidades</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Vlr Unit.</div>
+            <div id="painelVlrUnit" style="font-size:1.1rem;font-weight:700;color:#e2e8f0"></div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Toneladas</div>
+            <div id="painelToneladas" style="font-size:1.1rem;font-weight:700;color:#a78bfa"></div>
+          </div>
+        </div>
+        <div id="painelDadosGerais" style="font-size:0.83rem;display:flex;flex-direction:column;gap:6px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button id="btnEntradaPainel" onclick="entradaRapidaDoPainel()" style="padding:10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:8px;color:#4ade80;font-weight:600;cursor:pointer;font-size:0.85rem">➕ Entrada</button>
+          <button id="btnSaidaPainel" onclick="saidaRapidaDoPainel()" style="padding:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#f87171;font-weight:600;cursor:pointer;font-size:0.85rem">➖ Saída</button>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Histórico por Mês</div>
+          <div id="painelHistoricoMes" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Últimos Movimentos</div>
+          <div id="painelUltimosMovimentos" style="display:flex;flex-direction:column;gap:4px"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+function chpRowClick(e, chapaId){
+  if(e && e.target && e.target.closest && e.target.closest('button,select,input,textarea,a,label')) return;
+  abrirPainelChapa(chapaId);
+}
+
+async function abrirPainelChapa(chapaId){
+  const id = String(chapaId||'').trim();
+  if(!id) return;
+  const modal = _ensurePainelDetalheChapa();
+  const chapas = (Array.isArray(window._chapasCachedList) && window._chapasCachedList.length) ? window._chapasCachedList : (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+  const chapa = (chapas||[]).find(c => String(c?.id||'').trim() === id);
+  if(!chapa) return;
+  _chapaAtivaPainel = chapa;
+
+  const nomeTopo = chapa.nome_uso || chapa.nome || chapa.categoria || chapa.nomenclatura || chapa.nom || '—';
+  const subTopo = [
+    (chapa.nomenclatura || chapa.nom || ''),
+    (chapa.tamanho || chapa.tam || ''),
+    (chapa.fornecedor || chapa.forn || '')
+  ].filter(Boolean).join(' · ');
+
+  const qtd = Math.trunc(_chpToNum(chapa.quantidade_atual ?? chapa.quantidade ?? chapa.qtd ?? 0) || 0);
+  const vu = _chpToNum(chapa.valor_unitario ?? chapa.val ?? 0) || 0;
+  const vtot = _chpToNum(chapa.valor_total ?? 0) || (qtd * vu);
+  const ton = calcTonChapa(chapa);
+
+  const elNome = document.getElementById('painelChapaNome');
+  const elSub = document.getElementById('painelChapaSub');
+  const elQtd = document.getElementById('painelQtdAtual');
+  const elVu = document.getElementById('painelVlrUnit');
+  const elTon = document.getElementById('painelToneladas');
+  if(elNome) elNome.textContent = String(nomeTopo);
+  if(elSub) elSub.textContent = String(subTopo);
+  if(elQtd) elQtd.textContent = String(qtd);
+  if(elVu) elVu.textContent = (vu > 0) ? ('R$ ' + vu.toFixed(2)) : '—';
+  if(elTon) elTon.textContent = ton.ok ? ton.txt : '—';
+
+  const dados = [
+    ['Gramatura', (chapa.gramatura != null && String(chapa.gramatura).trim() !== '') ? (String(chapa.gramatura) + ' g/m²') : '—'],
+    ['NF', chapa.nf || chapa.numero_nf || '—'],
+    ['Categoria', chapa.categoria || '—'],
+    ['Empresa/CNPJ', chapa.empresa_vinculada || chapa.qual_cnpj || chapa.qual || '—'],
+    ['Tamanho', chapa.tamanho || chapa.tam || '—'],
+    ['Estoque mínimo', (chapa.estoque_minimo != null) ? String(chapa.estoque_minimo) : '—'],
+    ['Valor total', (vtot > 0) ? ('R$ ' + vtot.toFixed(2)) : '—'],
+  ];
+  const elDados = document.getElementById('painelDadosGerais');
+  if(elDados){
+    elDados.innerHTML = dados.map(([k,v])=>`
+      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <span style="color:#64748b">${escH(k)}</span>
+        <span style="color:#e2e8f0">${escH(v)}</span>
+      </div>
+    `).join('');
+  }
+
+  try{
+    document.getElementById('painelHistoricoMes').innerHTML = '<p style="color:#475569;font-size:0.8rem">Carregando...</p>';
+    document.getElementById('painelUltimosMovimentos').innerHTML = '';
+  }catch(e){}
+
+  await carregarHistoricoPainelChapa(id);
+  modal.style.display = 'flex';
+}
+
+async function carregarHistoricoPainelChapa(chapaId){
+  try{
+    const id = String(chapaId||'').trim();
+    const empId = EMP_FILTRO ? String(EMP_FILTRO) : '';
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    qs.set('limit', '50');
+    const resp = await apiFetch('/api/chapas/historico/' + encodeURIComponent(id) + (qs.toString()?('?'+qs.toString()):''), { method:'GET' });
+    const j = resp ? await resp.json().catch(()=>null) : null;
+    if(!resp || !resp.ok || !j || j.ok === false) throw new Error((j && j.error) ? j.error : 'Falha ao carregar histórico');
+    const movimentos = Array.isArray(j.movimentos) ? j.movimentos : [];
+
+    const porMes = {};
+    movimentos.forEach(m=>{
+      const dt = String(m.created_at || m.data_hora || '').slice(0,7);
+      const mes = dt || '—';
+      if(!porMes[mes]) porMes[mes] = { entradas:0, saidas:0 };
+      const tipo = String(m.tipo || '').toLowerCase();
+      const delta = Math.abs(Math.trunc(_chpToNum(m.delta ?? 0) || 0));
+      if(tipo === 'entrada') porMes[mes].entradas += delta;
+      else if(tipo === 'saida') porMes[mes].saidas += delta;
+    });
+
+    const histMesEl = document.getElementById('painelHistoricoMes');
+    if(histMesEl){
+      const rows = Object.entries(porMes).sort((a,b)=>String(b[0]).localeCompare(String(a[0]))).slice(0,6);
+      histMesEl.innerHTML = rows.length ? rows.map(([mes,v])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:6px;font-size:0.8rem">
+          <span style="color:#94a3b8">${escH(mes)}</span>
+          <span style="color:#4ade80">+${escH(String(v.entradas||0))}</span>
+          <span style="color:#f87171">-${escH(String(v.saidas||0))}</span>
+        </div>
+      `).join('') : '<p style="color:#475569;font-size:0.8rem">Sem movimentos.</p>';
+    }
+
+    const ultEl = document.getElementById('painelUltimosMovimentos');
+    if(ultEl){
+      ultEl.innerHTML = (movimentos||[]).slice(0,10).map(m=>{
+        const tipo = String(m.tipo||'').toLowerCase();
+        const delta = Math.abs(Math.trunc(_chpToNum(m.delta ?? 0) || 0));
+        const data = String(m.created_at || m.data_hora || '').slice(0,10) || '—';
+        const usuario = String(m.usuario || m.criado_por || m.atualizado_por || '—');
+        const cor = (tipo === 'entrada') ? '#4ade80' : (tipo === 'saida') ? '#f87171' : '#eab308';
+        const ic = (tipo === 'entrada') ? '▲' : (tipo === 'saida') ? '▼' : '•';
+        return `
+          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem">
+            <span style="color:${cor}">${ic} ${escH(String(delta||0))}</span>
+            <span style="color:#64748b">${escH(data)}</span>
+            <span style="color:#94a3b8">${escH(usuario)}</span>
+          </div>
+        `;
+      }).join('') || '<p style="color:#475569;font-size:0.8rem">Sem movimentos.</p>';
+    }
+  }catch(e){
+    try{
+      const histMesEl = document.getElementById('painelHistoricoMes');
+      if(histMesEl) histMesEl.innerHTML = '<p style="color:#475569;font-size:0.8rem">Sem movimentos.</p>';
+      const ultEl = document.getElementById('painelUltimosMovimentos');
+      if(ultEl) ultEl.innerHTML = '';
+    }catch(_){}
+  }
+}
+
+function fecharPainelChapa(){
+  const modal = document.getElementById('painelDetalheChapa');
+  if(modal) modal.style.display = 'none';
+  _chapaAtivaPainel = null;
+}
+
+function entradaRapidaDoPainel(){
+  const id = String(_chapaAtivaPainel?.id || '').trim();
+  fecharPainelChapa();
+  if(id) abrirModalMovLinha('entrada', id);
+}
+
+function saidaRapidaDoPainel(){
+  const id = String(_chapaAtivaPainel?.id || '').trim();
+  fecharPainelChapa();
+  if(id) abrirModalMovLinha('saida', id);
 }
 
 function _renderEstoqueBase(chapas) {
@@ -24624,8 +24921,8 @@ function _renderEstoqueBase(chapas) {
   });
 
   const showTon = lista.some((c)=>{
-    const g = Number(c?.gramatura ?? 0) || 0;
-    const p = Number(c?.peso_kg_unidade ?? 0) || 0;
+    const g = _chpToNum(c?.gramatura ?? c?.espessura_mm ?? 0) || 0;
+    const p = _chpToNum(c?.peso_kg_unidade ?? 0) || 0;
     return (g > 0) || (p > 0);
   });
   try{
@@ -24704,7 +25001,8 @@ function _renderEstoqueBase(chapas) {
       </div>${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(risDescShort)}</div>`:''}`;
       const fotoUrl = estFotoUrlFromItem(c);
       const fotoHtml = fotoUrl ? `<img src="${escAttr(fotoUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)" loading="lazy">` : '';
-      return `<tr>
+      const tonLinha = calcTonChapa(c);
+      return `<tr onclick="chpRowClick(event,'${escAttr(cid)}')" style="cursor:pointer">
         <td data-label="Nome/Uso" style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
           <div style="display:flex;gap:10px;align-items:center">
             ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
@@ -24731,14 +25029,7 @@ function _renderEstoqueBase(chapas) {
           <span style="font-weight:900;color:${zerado?'var(--red)':baixoEst?'var(--orange)':'var(--green)'}">${qtd.toLocaleString()}</span>
           ${(zerado||baixoEst)?`<div style="font-size:.62rem;color:${zerado?'var(--red)':'var(--orange)'};font-weight:900">${zerado?'ZERADO':`BAIXO (mín ${min})`}</div>`:''}
         </td>
-        ${showTon ? (() => {
-          const gram = Number(c.gramatura ?? 0) || 0;
-          const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
-          const tonLinha = (qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0;
-          const txt = (qtd > 0 && pesoKg > 0) ? (tonLinha.toFixed(3) + ' t') : '—';
-          const tip = 'Gramatura: ' + (gram > 0 ? gram : '?') + ' g/m²' + '\n' + 'Peso/chapa: ' + (pesoKg > 0 ? pesoKg.toFixed(4) : '?') + ' kg';
-          return `<td data-label="Ton." title="${escAttr(tip)}" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:120px">${escH(txt)}</td>`;
-        })() : ''}
+        ${showTon ? `<td data-label="Ton." title="${escAttr(tonLinha.tip||'')}" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;min-width:120px">${escH(tonLinha.ok ? tonLinha.txt : '—')}</td>` : ''}
         <td data-label="Total R$" style="padding:8px 10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;color:var(--green);font-weight:900;min-width:110px">${fmtR(total)}</td>
         <td data-label="Último" style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:150px">${ultimoHtml}</td>
         <td data-label="Cons./mês" style="padding:8px 10px;border:1px solid var(--border);text-align:right;min-width:120px">${consumoHtml}</td>
@@ -24771,11 +25062,7 @@ function _renderEstoqueBase(chapas) {
         const total = Number(c.valor_total ?? (qtd*vunit) ?? 0) || 0;
         return s + total;
       },0);
-      const totalTon = showTon ? filtrada.reduce((s,c)=>{
-        const qtd = Number(c.quantidade??c.qtd??0)||0;
-        const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
-        return s + ((qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0);
-      }, 0) : 0;
+      const totalTon = showTon ? filtrada.reduce((s,c)=> s + (calcTonChapa(c).ton || 0), 0) : 0;
       footEl.innerHTML = `<tr style="background:var(--s3)">
         <td colspan="7" style="padding:10px;border:1px solid var(--border);font-weight:900;color:var(--text2);font-family:var(--mono)">TOTAIS (${filtrada.length} item${filtrada.length!==1?'s':''})</td>
         <td style="padding:10px;border:1px solid var(--border);font-family:var(--mono);text-align:right;font-weight:900">${totalQtd.toLocaleString()}</td>
@@ -25599,10 +25886,7 @@ async function confirmarModalMovLinha(){
     try{ if(window._chapasCache) delete window._chapasCache; }catch(e){}
     window._estoqueCarregadoEm = null;
     _ultimaCargaChapas = 0;
-    if(!atualizouAlgum){
-      try{ await carregarChapas(true); }catch(e){}
-    }
-    renderEstoque();
+    await chapasForcarReload();
     try{ carregarHistoricoEstoque(); }catch(e){}
     toast('Movimentação registrada ✓','var(--green)');
   } finally {
@@ -25705,6 +25989,7 @@ async function atualizarChapa(id){
     try{ await carregarChapas(true); }catch(e){}
   }
   _ultimaCargaChapas = 0;
+  await chapasForcarReload();
   const cc=getCh(id); if(cc) Object.assign(cc,payload);
   if(novaQtd!==oldQtd){HIST_EST.unshift({tipo:'ajuste',chp:id,qtd:Math.abs(novaQtd-oldQtd),of:'—',data:today(),obs:'Edição de cadastro'});}
   // Reset button back
@@ -25832,8 +26117,7 @@ async function salvarChapa(){
       }
       toast('Chapa salva ✓','var(--green)');
       modalNova.style.display='none';
-      _ultimaCargaChapas = Date.now();
-      renderEstoque();
+      await chapasForcarReload();
       return;
     } finally {
       estSetBusy(false);
@@ -25867,12 +26151,20 @@ async function salvarChapa(){
   );
   if(!r || !r.ok){toast('Erro ao cadastrar chapa','var(--red)');return;}
   if(!r.local){
-    try{ await carregarChapas(); }catch(e){}
+    try{ await chapasForcarReload(); }catch(e){}
   } else {
     if(!ESTOQUE.find(x=>x.id===row.id)) ESTOQUE.push(row);
   }
   if(qtd>0)HIST_EST.unshift({tipo:'entrada',chp:id,qtd,of:'—',data:today(),obs:'Cadastro inicial'});
   fechar('modal-chp');autoSaveTrigger();renderEstoque();toast('✓ Chapa cadastrada!');
+}
+
+async function chapasForcarReload(){
+  try{ window._chapasCachedList = null; }catch(e){}
+  try{ _ultimaCargaChapas = 0; }catch(e){}
+  try{ await carregarChapas(true); }catch(e){}
+  try{ await _chapasCarregarToneladas(true); }catch(e){}
+  try{ renderEstoque(); }catch(e){}
 }
 function abrirModalEntrada(){const s=document.getElementById('en-chp');s.innerHTML=ESTOQUE.map(c=>`<option value="${c.id}">${chapaLabel(c)}</option>`).join('');['en-qtd','en-nf','en-obs'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});abrir('modal-ent');}
 async function salvarEntrada(){
@@ -25884,8 +26176,7 @@ async function salvarEntrada(){
   const r=await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento',{tipo:'entrada',delta:qtd,nf,obs});
   if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
   fechar('modal-ent');
-  await carregarChapas();
-  renderEstoque();
+  await chapasForcarReload();
   toast(`✓ +${qtd.toLocaleString()} unidades`,'var(--green)');
 }
 function abrirModalAjuste(){const s=document.getElementById('aj-chp');s.innerHTML=ESTOQUE.map(c=>`<option value="${c.id}">${chapaLabel(c)}</option>`).join('');abrir('modal-aj');}
@@ -25897,8 +26188,7 @@ async function salvarAjuste(){
   const r=await api('POST','/chapas_estoque/'+encodeURIComponent(id)+'/movimento',{tipo:'ajuste',quantidade:n,obs});
   if(r && r.ok===false){toast('Erro: '+(r.error||'falha'),'var(--red)');return;}
   fechar('modal-aj');
-  await carregarChapas();
-  renderEstoque();
+  await chapasForcarReload();
   toast('✓ Ajuste registrado','var(--green)');
 }
 

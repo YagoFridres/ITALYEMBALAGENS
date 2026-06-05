@@ -792,6 +792,75 @@
   #graficosHistoricoBox {
     grid-template-columns: 1fr !important;
   }
+
+  [id*="calculadora"], [id*="calc-"], .calc-container,
+  [class*="calculadora"] {
+    padding: 10px !important;
+    overflow-y: auto !important;
+    max-height: calc(100vh - 120px) !important;
+  }
+  [id*="calculadora"] .row,
+  [id*="calculadora"] .flex,
+  [id*="calculadora"] [style*="display:flex"],
+  [id*="calculadora"] [style*="display: flex"] {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  [id*="calculadora"] input,
+  [id*="calculadora"] select {
+    width: 100% !important;
+    font-size: 16px !important;
+    min-height: 42px !important;
+  }
+  [id*="calculadora"] .resultado,
+  [id*="calculadora"] [class*="resultado"] {
+    font-size: 1.2rem !important;
+    padding: 12px !important;
+  }
+  [id*="calculadora"] .acoes-finais,
+  [id*="calculadora"] .botoes-finais,
+  [id*="calculadora"] .calc-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    background: var(--bg-card, #1e293b) !important;
+    padding: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    z-index: 10 !important;
+  }
+  [id*="calculadora"] .acoes-finais button,
+  [id*="calculadora"] .botoes-finais button {
+    width: 100% !important;
+    min-height: 44px !important;
+  }
+
+  .chapas-table-wrapper,
+  #tabelaChapasEstoque {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+  #tabelaChapasEstoque th:first-child,
+  #tabelaChapasEstoque td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 2 !important;
+    background: var(--bg-secondary, #1e293b) !important;
+    min-width: 120px !important;
+    max-width: 160px !important;
+    font-size: 0.75rem !important;
+    padding: 8px 6px !important;
+    border-right: 1px solid rgba(255,255,255,0.08) !important;
+  }
+  #tabelaChapasEstoque tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  }
+  #tabelaChapasEstoque td {
+    font-size: 0.75rem !important;
+    padding: 8px 6px !important;
+    white-space: nowrap !important;
+  }
 }
 `;
 

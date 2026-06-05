@@ -10568,6 +10568,7 @@ async function _chapasAtualizarQtdEstoqueChapa(chapaId, qtdNova, req, updatedAt)
 
   const r1 = await tryUpdate('chapas_estoque_v2', {
     qtd_estoque: qtd,
+    quantidade_atual: qtd,
     quantidade: qtd,
     updated_at: at,
     atualizado_por: usuario,
@@ -11209,6 +11210,42 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
     });
   } catch (e) {
     _logApiError('TONELADAS', req, e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
+  try {
+    const chapaId = String(req.params.id || '').trim();
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const empId = String(req.query.empId || req.query.emp_id || '').trim();
+    const limit = Math.max(1, Math.min(200, Math.trunc(_chapasToNum(req.query.limit, 50))));
+
+    const tryTable = async (table) => {
+      let q = supabase.from(table).select('*').eq('chapa_id', chapaId).order('created_at', { ascending: false }).limit(limit);
+      if (empId) q = q.eq('emp_id', empId);
+      const r = await q;
+      return { data: r?.data || [], error: r?.error || null };
+    };
+
+    let r = await tryTable('chapas_estoque_movimentos_v2');
+    if (r.error) {
+      const msg = String(r.error?.message || r.error || '');
+      if (!(msg.includes('does not exist') || msg.includes('relation') || msg.toLowerCase().includes('could not find'))) {
+        return res.status(500).json({ ok: false, error: msg });
+      }
+      r = await tryTable('chapas_estoque_movimentos');
+      if (r.error) {
+        const msg2 = String(r.error?.message || r.error || '');
+        if (msg2.includes('does not exist') || msg2.includes('relation') || msg2.toLowerCase().includes('could not find')) {
+          return res.json({ ok: true, movimentos: [] });
+        }
+        return res.status(500).json({ ok: false, error: msg2 });
+      }
+    }
+
+    return res.json({ ok: true, movimentos: r.data || [] });
+  } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
