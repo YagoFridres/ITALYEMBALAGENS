@@ -567,43 +567,30 @@
 
   #page-orcamentos table td:nth-child(n+8) { display: flex !important; }
   #page-orcamentos table td:last-child { display: flex !important; }
-  #modal-calc { align-items: flex-end !important; }
-  #modal-calculadora, #modal-orcamento-calc, .modal-calculadora,
-  [id*="modal-calculadora"], [id*="calculadora-modal"], [class*="calculadora"] {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    top: auto !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    max-height: 90vh !important;
+
+  #modal-calculadora,
+  #modal-orcamento-calc,
+  [id*="calc-compensacao"] {
+    max-height: 92vh !important;
     overflow-y: auto !important;
-    margin: 0 !important;
-    border-radius: 18px 18px 0 0 !important;
-  }
-  [id*="calculadora"] .row, [class*="calculadora"] .row,
-  [id*="calculadora"] [class*="campo"], [class*="calculadora"] [class*="campo"] {
-    flex-direction: column !important;
-    gap: 8px !important;
-  }
-  [id*="calculadora"] input, [class*="calculadora"] input {
-    width: 100% !important;
-    font-size: 16px !important;
-  }
-  [id*="calculadora"] [class*="ondas"], [class*="calculadora"] [class*="ondas"],
-  [id*="calculadora"] [class*="onda-check"] {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
-  #modal-calculadora .ondas,
-  #modal-calculadora [class*="onda"],
-  #modal-calculadora .calc-row-valores,
-  #modal-calculadora .calc-row-dims {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+  #modal-calculadora .modal-footer,
+  #modal-calculadora .rodape,
+  #modal-orcamento-calc .modal-footer,
+  #modal-orcamento-calc .rodape {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 10px !important;
+  }
+  #modal-calculadora .modal-footer button,
+  #modal-calculadora .rodape button,
+  #modal-orcamento-calc .modal-footer button,
+  #modal-orcamento-calc .rodape button {
+    width: 100% !important;
+    min-height: 44px !important;
   }
 
   [id*="modal"] {
@@ -791,48 +778,6 @@
 
   #graficosHistoricoBox {
     grid-template-columns: 1fr !important;
-  }
-
-  [id*="calculadora"], [id*="calc-"], .calc-container,
-  [class*="calculadora"] {
-    padding: 10px !important;
-    overflow-y: auto !important;
-    max-height: calc(100vh - 120px) !important;
-  }
-  [id*="calculadora"] .row,
-  [id*="calculadora"] .flex,
-  [id*="calculadora"] [style*="display:flex"],
-  [id*="calculadora"] [style*="display: flex"] {
-    flex-direction: column !important;
-    gap: 10px !important;
-  }
-  [id*="calculadora"] input,
-  [id*="calculadora"] select {
-    width: 100% !important;
-    font-size: 16px !important;
-    min-height: 42px !important;
-  }
-  [id*="calculadora"] .resultado,
-  [id*="calculadora"] [class*="resultado"] {
-    font-size: 1.2rem !important;
-    padding: 12px !important;
-  }
-  [id*="calculadora"] .acoes-finais,
-  [id*="calculadora"] .botoes-finais,
-  [id*="calculadora"] .calc-footer {
-    position: sticky !important;
-    bottom: 0 !important;
-    background: var(--bg-card, #1e293b) !important;
-    padding: 10px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    z-index: 10 !important;
-  }
-  [id*="calculadora"] .acoes-finais button,
-  [id*="calculadora"] .botoes-finais button {
-    width: 100% !important;
-    min-height: 44px !important;
   }
 
   .chapas-table-wrapper,
