@@ -9668,7 +9668,7 @@ function _chapasEmpresaFromEmpId(empId) {
 
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
-    const qtd = Math.trunc(_chapasToNum(row.quantidade ?? row.qtd ?? row.quantidade_atual ?? 0, 0));
+    const qtd = Math.trunc(_chapasToNum(row.quantidade_atual ?? row.quantidade ?? row.qtd ?? 0, 0));
     const vunit = _chapasToNum(row.valor_unitario ?? row.val ?? row['valor_unitário'] ?? 0, 0);
     const vtot = _chapasToNum(row.valor_total ?? row.vtot ?? 0, 0) || (qtd * vunit);
     const empId = row.emp_id || 'E1';
@@ -9677,6 +9677,7 @@ function _chapasCanonicalFromAny(row, table) {
       : ((row.qual_cnpj != null && String(row.qual_cnpj).trim() !== '') ? String(row.qual_cnpj).trim()
       : ((row.qual != null && String(row.qual).trim() !== '') ? String(row.qual).trim()
       : _chapasEmpresaFromEmpId(empId)));
+    const nf = (row.nf != null && String(row.nf).trim() !== '') ? String(row.nf).trim() : ((row.numero_nf != null) ? String(row.numero_nf).trim() : '');
     const canon = {
       id: row.id,
       fornecedor: row.fornecedor || '',
@@ -9685,8 +9686,10 @@ function _chapasCanonicalFromAny(row, table) {
       nome: row.nome_uso || row.nome || '',
       empresa_vinculada: empresaVinculada,
       qual_cnpj: row.qual_cnpj || row.qual || row.fabricante || '',
-      nf: row.nf || '',
+      nf,
+      numero_nf: nf,
       quantidade: qtd,
+      quantidade_atual: qtd,
       valor_unitario: vunit,
       valor_total: vtot,
       categoria: row.categoria || 'Estoque Simples',
@@ -10141,9 +10144,12 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
       return rows;
     };
 
-    const tablesToTry = ['chapas_estoque'];
+    const preferred = await _chapasPreferV2Table();
+    const tablesToTry = preferred === 'chapas_estoque_v2'
+      ? ['chapas_estoque_v2', 'chapas_estoque']
+      : ['chapas_estoque', 'chapas_estoque_v2'];
 
-    let usedTable = 'chapas_estoque';
+    let usedTable = preferred === 'chapas_estoque_v2' ? 'chapas_estoque_v2' : 'chapas_estoque';
     let rows = [];
     let lastError = null;
 
@@ -10883,6 +10889,82 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${qtdOut}`,
     });
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const itensIn = Array.isArray(b.itens) ? b.itens : [];
+    const motivo = String(b.motivo || '').trim();
+    const obsRaw = (b.obs != null) ? String(b.obs).trim() : '';
+
+    if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
+    if (!motivo) return res.status(400).json({ ok: false, error: 'Motivo obrigatório' });
+
+    const itens = itensIn.map((it) => {
+      const id = String(it?.chapa_id ?? it?.chapaId ?? it?.id ?? '').trim();
+      const qtd = Math.trunc(Number(it?.quantidade ?? it?.qtd_saida ?? it?.qtd ?? 0) || 0);
+      return { id, qtd };
+    }).filter((it) => it.id && it.qtd > 0);
+
+    if (!itens.length) return res.status(400).json({ ok: false, error: 'Itens inválidos' });
+
+    const checks = [];
+    for (const it of itens) {
+      const r = await supabase
+        .from('chapas_estoque_v2')
+        .select('id,quantidade_atual,quantidade,emp_id,nomenclatura,tamanho,fornecedor')
+        .eq('id', it.id)
+        .maybeSingle();
+      if (r.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
+      if (!r.data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada: ' + it.id });
+
+      const qtdAtual = Math.trunc(Number(r.data.quantidade_atual ?? r.data.quantidade ?? 0) || 0);
+      if (it.qtd > qtdAtual) {
+        return res.status(409).json({ ok: false, error: 'Saldo insuficiente', chapa_id: it.id, saldo: qtdAtual, solicitado: it.qtd });
+      }
+      checks.push({ ...it, qtdAtual, row: r.data });
+    }
+
+    const resultados = [];
+    const updatedAt = new Date().toISOString();
+    const obsFinal = obsRaw ? obsRaw : motivo;
+    const obsTxt = String('Saída em lote' + (obsFinal ? (' · ' + obsFinal) : '')).trim();
+
+    for (const it of checks) {
+      const newQtd = Math.trunc(it.qtdAtual - it.qtd);
+
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: it.id,
+        tipo: 'saida',
+        quantidade: Math.abs(Math.trunc(Number(it.qtd) || 0)),
+        nf: null,
+        obs: obsTxt,
+        origem: 'saida_lote',
+        origem_id: null,
+        usuario: req?.usuario?.nome || 'sistema',
+        emp_id: it.row?.emp_id || null,
+      });
+
+      if (movRes?.error) {
+        if (_chapasMovRpcIsSaldoInsuficiente(movRes.error)) return res.status(409).json({ ok: false, error: 'Saldo insuficiente' });
+        if (_chapasMovRpcIsValidacao(movRes.error)) return res.status(400).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+        return res.status(500).json({ ok: false, error: movRes.error.message || String(movRes.error) });
+      }
+
+      const updCompat = await _chapasAtualizarQtdEstoqueChapa(it.id, newQtd, req, updatedAt);
+      if (updCompat?.error) return res.status(500).json({ ok: false, error: String(updCompat.error.message || updCompat.error) });
+
+      resultados.push({ id: it.id, qtd_anterior: it.qtdAtual, qtd_nova: newQtd });
+      try { await logAuditoria('chapas_estoque_v2', 'SAIDA_LOTE', it.id, { qtd_anterior: it.qtdAtual }, { qtd_nova: newQtd, motivo, obs: obsRaw }, req); } catch (_) {}
+    }
+
+    try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+    return res.json({ ok: true, atualizados: resultados.length, resultados });
+  } catch (e) {
+    console.error('[chapas/saida-lote]', e);
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.get('/api/chapas_estoque/metricas', authMiddleware, async (req, res) => {
