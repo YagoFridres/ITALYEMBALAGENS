@@ -11090,11 +11090,8 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
     let error = null;
 
     try {
-      let q = supabase
-        .from(table)
-        .select('fornecedor,categoria,quantidade,peso_kg_unidade,valor_unitario,gramatura,emp_id')
-        .gt('quantidade', 0)
-        .gt('peso_kg_unidade', 0);
+      const qtdCol = table === 'chapas_estoque_v2' ? 'quantidade_atual' : 'quantidade';
+      let q = supabase.from(table).select('*').gt(qtdCol, 0);
       if (empId) q = q.eq('emp_id', empId);
       const r = await q.limit(1000);
       chapas = r?.data || [];
@@ -11114,7 +11111,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
           ton_por_categoria: [],
           unidades_total: 0,
           valor_total: 0,
-          aviso: 'colunas_peso_kg_unidade_ou_gramatura_inexistentes',
+          aviso: 'colunas_inexistentes_para_toneladas',
         });
       }
       throw error;
@@ -11128,15 +11125,57 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
     const porFornecedor = {};
     const porCategoria = {};
 
+    const toNum = (v) => {
+      if (v == null) return 0;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      const s = String(v).replace(',', '.');
+      const n = Number(s);
+      if (Number.isFinite(n)) return n;
+      const only = String(v).replace(/[^\d.]+/g, '');
+      const n2 = Number(only);
+      return Number.isFinite(n2) ? n2 : 0;
+    };
+    const parseTamanhoMm = (v) => {
+      const s = String(v || '').trim().toLowerCase();
+      if (!s) return { larg: 0, comp: 0 };
+      const nums = s.replace(/,/g, '.').match(/(\d+(?:\.\d+)?)/g) || [];
+      if (nums.length < 2) return { larg: 0, comp: 0 };
+      const a = toNum(nums[0]);
+      const b = toNum(nums[1]);
+      if (!(a > 0 && b > 0)) return { larg: 0, comp: 0 };
+      return { larg: a, comp: b };
+    };
+
     lista.forEach((c) => {
-      const qtd = Number(c?.quantidade) || 0;
-      const pesoKg = Number(c?.peso_kg_unidade) || 0;
+      const qtd = Math.trunc(toNum(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0);
+      const pesoKg = toNum(c?.peso_kg_unidade) || 0;
       const val = Number(c?.valor_unitario) || 0;
       const forn = String(c?.fornecedor || 'Outros').trim() || 'Outros';
       const cat = String(c?.categoria || 'Outros').trim() || 'Outros';
-      if (!(qtd > 0 && pesoKg > 0)) return;
+      if (!(qtd > 0)) return;
 
-      const tonChapa = (qtd * pesoKg) / 1000;
+      let kgTotalLinha = 0;
+      if (pesoKg > 0) {
+        kgTotalLinha = qtd * pesoKg;
+      } else {
+        const gram = toNum(c?.gramatura ?? 0) || 0;
+        const largMm = toNum(c?.largura_mm ?? c?.largura ?? c?.larg ?? 0) || 0;
+        const compMm = toNum(c?.comprimento_mm ?? c?.comprimento ?? c?.comp ?? 0) || 0;
+        let larg = largMm;
+        let comp = compMm;
+        if (!(larg > 0 && comp > 0)) {
+          const t = parseTamanhoMm(c?.tamanho ?? c?.tam ?? '');
+          larg = t.larg;
+          comp = t.comp;
+        }
+        if (!(larg > 0 && comp > 0 && gram > 0)) return;
+        const areaM2 = (larg / 1000) * (comp / 1000);
+        kgTotalLinha = areaM2 * (gram / 1000) * qtd;
+      }
+
+      if (!(kgTotalLinha > 0)) return;
+
+      const tonChapa = kgTotalLinha / 1000;
       tonTotal += tonChapa;
       unidadesTotal += qtd;
       valorTotal += qtd * val;

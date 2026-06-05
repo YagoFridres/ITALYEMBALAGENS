@@ -710,6 +710,89 @@
     margin-left: 200px !important;
   }
 }
+
+/* ============================================
+   MOBILE IMPROVEMENTS — patch.js
+   Apenas correções do layout existente
+   ============================================ */
+
+@media (max-width: 768px) {
+  body,
+  .main-content, #main-content,
+  .page-content, #page-content,
+  .conteudo-principal {
+    padding-bottom: 80px !important;
+  }
+
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-box {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+  }
+  .modal-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 10 !important;
+    background: var(--bg-secondary, #1e293b) !important;
+    padding: 12px 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .modal-footer button,
+  .modal-footer .btn,
+  .modal-footer [class*="btn-"] {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 0.88rem !important;
+  }
+
+  input, select, textarea {
+    font-size: 16px !important;
+    min-height: 42px !important;
+    padding: 8px 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  button, .btn, [class*="btn-"], [role="button"] {
+    min-height: 44px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .mob-btn-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .table-scroll-mobile {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  .hub-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .mob-no-overflow {
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  #graficosHistoricoBox {
+    grid-template-columns: 1fr !important;
+  }
+}
 `;
 
     var elCSS = document.getElementById('patch-css-mobile');
