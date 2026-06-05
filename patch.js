@@ -780,6 +780,126 @@
     grid-template-columns: 1fr !important;
   }
 
+  #modal-calc.modal-overlay {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+  }
+  #modal-calc #modal-calculadora {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 12px !important;
+  }
+  #modal-calc #modal-calculadora .close-btn {
+    position: fixed !important;
+    top: 10px !important;
+    right: 10px !important;
+    z-index: 10000 !important;
+  }
+  #modal-calc #modal-calculadora h2 {
+    margin-top: 0 !important;
+    padding-right: 56px !important;
+  }
+  #modal-calc #modal-calculadora .calc-header-row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  #modal-calc #modal-calculadora .calc-header-row label {
+    white-space: normal !important;
+  }
+  #modal-calc #modal-calculadora #calc-cli {
+    width: 100% !important;
+  }
+
+  #modal-calc #modal-calculadora .modal-body,
+  #modal-calc #modal-calculadora .calc-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 12px 16px !important;
+  }
+
+  #modal-calc #modal-calculadora .calc-col-esq {
+    display: contents !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  #modal-calc #modal-calculadora .calc-row-top,
+  #modal-calc #modal-calculadora .calc-row-dims,
+  #modal-calc #modal-calculadora .calc-row-valores {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: stretch !important;
+  }
+  #modal-calc #modal-calculadora .calc-row-top { order: 2 !important; }
+  #modal-calc #modal-calculadora .calc-row-dims { order: 3 !important; }
+  #modal-calc #modal-calculadora .calc-row-valores { order: 4 !important; }
+  #modal-calc #modal-calculadora #calc-extra-fields { order: 5 !important; }
+
+  #modal-calc #modal-calculadora .calc-col-dir {
+    order: 6 !important;
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+    padding: 12px 0 0 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  #modal-calc #modal-calculadora .calc-tabela-wrap {
+    order: 7 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 0 0 auto !important;
+  }
+
+  #modal-calc #modal-calculadora input,
+  #modal-calc #modal-calculadora select {
+    width: 100% !important;
+    font-size: 16px !important;
+    min-height: 42px !important;
+    box-sizing: border-box !important;
+  }
+
+  #modal-calc #modal-calculadora .modal-footer.rodape {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 20 !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(255,255,255,0.12) !important;
+    padding: 12px 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin-top: 0 !important;
+  }
+  #modal-calc #modal-calculadora .modal-footer.rodape > div:first-child {
+    grid-column: 1 / -1 !important;
+    margin-right: 0 !important;
+  }
+  #modal-calc #modal-calculadora .modal-footer.rodape button:first-of-type {
+    grid-column: 1 / -1 !important;
+  }
+  #modal-calc #modal-calculadora .modal-footer.rodape button {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 0.85rem !important;
+  }
+
   .chapas-table-wrapper,
   #tabelaChapasEstoque {
     overflow-x: auto !important;

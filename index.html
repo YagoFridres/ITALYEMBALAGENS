@@ -46511,7 +46511,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal modal-calculadora" id="modal-calculadora" style="max-width:min(1100px,95vw);width:95vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;padding:18px">
   <button class="close-btn" onclick="fecharCalculadora()">✕</button>
   <h2 style="margin-bottom:8px">🧮 Calculadora de Compensação — Fórmulas Garcia</h2>
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
+  <div class="calc-header-row" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px">
     <label style="white-space:nowrap">CLIENTE DO ORÇAMENTO</label>
     <select id="calc-cli" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px">
       <option value="">— Selecione o cliente —</option>
@@ -46574,7 +46574,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   </div>
   <div id="calc-extra-fields" style="display:flex;gap:10px;flex-wrap:wrap"></div>
 
-  <div style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
+  <div class="calc-tabela-wrap" style="overflow-x:auto;flex:1;min-height:0;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
     <table id="calc-sheet" style="border-collapse:collapse;width:100%;min-width:900px">
       <thead>
         <tr>
