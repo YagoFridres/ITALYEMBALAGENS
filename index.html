@@ -232,6 +232,16 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 .btn-sm{padding:4px 10px;font-size:.72rem;}
 .btn-icon{background:var(--s2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.8rem;transition:.1s;font-family:inherit;}
 .btn-icon:hover{color:var(--text);background:var(--s3);}
+
+#page-estoque #est-table-wrap table tbody tr:nth-child(odd){
+  background: rgba(255,255,255,0.025);
+}
+#page-estoque #est-table-wrap table tbody tr:nth-child(even){
+  background: transparent;
+}
+#page-estoque #est-table-wrap table tbody tr:hover{
+  background: rgba(59,130,246,0.08) !important;
+}
 .ofmaq-move-btn{min-width:44px;min-height:44px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text2);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ofmaq-dragging{opacity:.6;cursor:grabbing;}
 .drag-handle{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:10px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:18px;cursor:grab;user-select:none;touch-action:none}
@@ -24331,45 +24341,25 @@ async function entradaLoteConfirmar(){
   }
 }
 
-let itensSaidaLoteLista = [];
+let saidaLoteLinhas = [];
 
 function abrirModalSaidaLoteChapas(){
-  let modal = document.getElementById('modalSaidaLoteChapas');
+  let modal = document.getElementById('modal-saida-lote');
   if(!modal){
     modal = document.createElement('div');
-    modal.id = 'modalSaidaLoteChapas';
-    modal.className = 'modal-overlay';
-    modal.style.display = 'none';
+    modal.id = 'modal-saida-lote';
+    modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.82);z-index:99999;align-items:center;justify-content:center';
     modal.innerHTML = `
-      <div class="modal-box" style="max-width:700px">
-        <div class="modal-header">
-          <h3>📤 Saída em Lote de Chapas</h3>
-          <button onclick="fecharModalSaidaLoteChapas()" class="btn-fechar">×</button>
+      <div style="background:#0b1220;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:18px 18px 14px;width:min(980px,96vw);max-height:90vh;overflow:auto;box-shadow:0 18px 80px rgba(0,0,0,0.65)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">Saída em Lote</h3>
+          <button class="btn btn-ghost btn-sm" onclick="fecharModalSaidaLoteChapas()">✕</button>
         </div>
-        <div class="modal-body">
-          <div style="display:flex;gap:8px;margin-bottom:16px">
-            <input type="text"
-              id="buscaChapasSaida"
-              placeholder="Buscar chapa por nomenclatura, tamanho ou fornecedor..."
-              class="input-dark"
-              style="flex:1"
-              oninput="filtrarChapasSaida(this.value)"
-            >
-          </div>
-          <div id="sugestoesChapasSaida" style="
-            max-height:200px;overflow-y:auto;
-            background:#1e293b;border:1px solid rgba(255,255,255,0.1);
-            border-radius:8px;margin-bottom:16px;display:none
-          "></div>
-          <div id="itensSaidaLote">
-            <p style="color:#64748b;font-size:0.85rem">
-              Nenhum item adicionado. Busque e selecione as chapas acima.
-            </p>
-          </div>
-          <div class="form-group" style="margin-top:16px">
-            <label>Motivo da Saída <span style="color:#ef4444">*</span></label>
-            <select id="motivoSaidaLote" class="input-dark">
-              <option value="">Selecionar motivo...</option>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:240px;flex:1">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Motivo (obrigatório)</label>
+            <select id="sl-motivo" style="padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
+              <option value="">Selecionar...</option>
               <option value="producao">Produção</option>
               <option value="ajuste">Ajuste de Estoque</option>
               <option value="devolucao">Devolução ao Fornecedor</option>
@@ -24378,16 +24368,20 @@ function abrirModalSaidaLoteChapas(){
               <option value="outro">Outro</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Observação</label>
-            <input type="text" id="obsSaidaLote" class="input-dark" placeholder="Observação opcional...">
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:260px;flex:1">
+            <label style="font-size:11px;color:var(--text2);text-transform:uppercase">Observação</label>
+            <input id="sl-obs" placeholder="Observação opcional..." style="padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800">
           </div>
+          <div style="flex:1"></div>
+          <button class="btn btn-ghost btn-sm" onclick="adicionarLinhaSaidaLote()">+ Adicionar linha</button>
         </div>
-        <div class="modal-footer">
-          <span id="resumoSaidaLote" style="color:#64748b;font-size:0.82rem"></span>
-          <div style="display:flex;gap:8px">
-            <button onclick="fecharModalSaidaLoteChapas()" class="btn btn-ghost btn-sm">Cancelar</button>
-            <button onclick="confirmarSaidaLoteChapas()" class="btn btn-red btn-sm">📤 Confirmar Saída</button>
+        <datalist id="sl-chapas-dl"></datalist>
+        <div id="sl-rows" style="border:1px solid var(--border);border-radius:10px;overflow:auto"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px">
+          <span id="resumoSaidaLote" style="color:var(--text3);font-family:var(--mono);font-size:.72rem"></span>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-ghost btn-sm" onclick="fecharModalSaidaLoteChapas()">Cancelar</button>
+            <button class="btn btn-red btn-sm" onclick="confirmarSaidaLoteChapas()">Confirmar saídas</button>
           </div>
         </div>
       </div>
@@ -24395,195 +24389,141 @@ function abrirModalSaidaLoteChapas(){
     document.body.appendChild(modal);
   }
 
-  itensSaidaLoteLista = [];
-  const host = document.getElementById('itensSaidaLote');
-  if(host) host.innerHTML = '<p style="color:#64748b;font-size:0.85rem">Nenhum item adicionado.</p>';
-  const busca = document.getElementById('buscaChapasSaida'); if(busca) busca.value = '';
-  const sug = document.getElementById('sugestoesChapasSaida'); if(sug){ sug.style.display='none'; sug.innerHTML=''; }
-  const motivo = document.getElementById('motivoSaidaLote'); if(motivo) motivo.value = '';
-  const obs = document.getElementById('obsSaidaLote'); if(obs) obs.value = '';
-  const resumo = document.getElementById('resumoSaidaLote'); if(resumo) resumo.textContent = '';
+  saidaLoteLinhas = [];
 
-  modal.style.display = 'flex';
+  const motivo = document.getElementById('sl-motivo');
+  if(motivo) motivo.value = '';
+  const obs = document.getElementById('sl-obs');
+  if(obs) obs.value = '';
+  const resumo = document.getElementById('resumoSaidaLote');
+  if(resumo) resumo.textContent = '';
+
+  const dl = document.getElementById('sl-chapas-dl');
+  if(dl){
+    const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+    dl.innerHTML = (lista||[]).slice(0, 2000).map(c=>`<option value="${escAttr(estChapaKeyLabel(c))}">`).join('');
+  }
+
+  const rowsHost = document.getElementById('sl-rows');
+  if(rowsHost && !rowsHost.dataset.ready){
+    rowsHost.dataset.ready='1';
+    rowsHost.innerHTML = `<table style="width:100%;border-collapse:collapse;min-width:760px">
+      <thead><tr style="background:var(--s2)">
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2)">Chapa</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);text-align:right">Qtd Saída</th>
+        <th style="padding:8px 10px;border-bottom:1px solid var(--border);font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);color:var(--text2);text-align:center">Remover</th>
+      </tr></thead>
+      <tbody id="sl-tbody"></tbody>
+    </table>`;
+  }
+
+  const tb = document.getElementById('sl-tbody');
+  if(tb){
+    tb.innerHTML = '';
+    adicionarLinhaSaidaLote();
+  }
+
+  modal.style.display='flex';
 }
 
 function fecharModalSaidaLoteChapas(){
-  const modal = document.getElementById('modalSaidaLoteChapas');
+  const modal = document.getElementById('modal-saida-lote');
   if(modal) modal.style.display = 'none';
-  itensSaidaLoteLista = [];
+  saidaLoteLinhas = [];
 }
 
-function filtrarChapasSaida(termo){
-  const sugestoes = document.getElementById('sugestoesChapasSaida');
-  if(!sugestoes) return;
-  const t = String(termo || '').trim().toLowerCase();
-  if(!t || t.length < 2){
-    sugestoes.style.display = 'none';
-    return;
-  }
-  const chapas = (Array.isArray(window._chapasCachedList) && window._chapasCachedList.length)
-    ? window._chapasCachedList
-    : ((Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []));
-
-  const filtradas = (chapas || []).filter((c)=>{
-    const nom = String(c.nomenclatura || c.nom || '').toLowerCase();
-    const tam = String(c.tamanho || c.tam || '').toLowerCase();
-    const forn = String(c.fornecedor || c.forn || '').toLowerCase();
-    return nom.includes(t) || tam.includes(t) || forn.includes(t);
-  }).slice(0, 10);
-
-  if(!filtradas.length){
-    sugestoes.style.display = 'none';
-    return;
-  }
-
-  sugestoes.style.display = 'block';
-  sugestoes.innerHTML = filtradas.map((c)=>{
-    const id = String(c.id || '').trim();
-    const nomen = String(c.nomenclatura || c.nom || '').trim();
-    const tam = String(c.tamanho || c.tam || '').trim();
-    const forn = String(c.fornecedor || c.forn || '').trim();
-    const qtd = (c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0);
-    return `
-      <div onclick="adicionarItemSaida('${escAttr(id)}')"
-        style="padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.05);
-        display:flex;justify-content:space-between;align-items:center"
-        onmouseover="this.style.background='rgba(255,255,255,0.05)'"
-        onmouseout="this.style.background=''"
-      >
-        <div>
-          <strong style="color:#e2e8f0">${escH(nomen)} ${escH(tam)}</strong>
-          <span style="color:#64748b;font-size:0.78rem;margin-left:8px">${escH(forn)}</span>
-        </div>
-        <span style="color:#22d3ee;font-size:0.82rem">Estoque: ${escH(String(qtd ?? 0))}</span>
-      </div>
-    `;
-  }).join('');
+function _saidaLoteLista(){
+  return (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
 }
 
-function adicionarItemSaida(chapaId){
-  const sug = document.getElementById('sugestoesChapasSaida');
-  if(sug) sug.style.display = 'none';
-  const busca = document.getElementById('buscaChapasSaida');
-  if(busca) busca.value = '';
-
-  const id = String(chapaId || '').trim();
-  if(!id) return;
-  if(itensSaidaLoteLista.find(i => String(i.id) === id)){
-    toast('Esta chapa já está na lista.','var(--yellow)');
-    return;
-  }
-
-  const chapas = (Array.isArray(window._chapasCachedList) && window._chapasCachedList.length)
-    ? window._chapasCachedList
-    : ((Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []));
-  const chapa = (chapas || []).find(c => String(c.id) === id);
-  if(!chapa) return;
-
-  itensSaidaLoteLista.push({
-    id: id,
-    nomenclatura: chapa.nomenclatura || chapa.nom || '',
-    tamanho: chapa.tamanho || chapa.tam || '',
-    fornecedor: chapa.fornecedor || chapa.forn || '',
-    qtd_atual: Math.trunc(Number(chapa.quantidade_atual ?? chapa.quantidade ?? chapa.qtd ?? 0) || 0),
-    qtd_saida: 1
-  });
-
-  renderItensSaidaLote();
+function _saidaLoteResolve(label){
+  const parts = String(label||'').split(' · ').map(x=>String(x||'').trim());
+  const nom = parts[0] || '';
+  const tam = parts[1] || '';
+  if(!nom || !tam) return null;
+  const lista = _saidaLoteLista();
+  const match = (lista||[]).find(c=>String(c.nomenclatura||c.nom||'').trim()===nom && String(c.tamanho||c.tam||'').trim()===tam) || null;
+  if(!match || !match.id) return null;
+  const qtdAtual = Math.trunc(Number(match.quantidade_atual ?? match.quantidade ?? match.qtd ?? 0) || 0);
+  return { id: String(match.id).trim(), qtdAtual, label: String(label||'').trim() };
 }
 
-function renderItensSaidaLote(){
-  const container = document.getElementById('itensSaidaLote');
-  if(!container) return;
-  if(!itensSaidaLoteLista.length){
-    container.innerHTML = '<p style="color:#64748b;font-size:0.85rem">Nenhum item adicionado.</p>';
-    const resumo = document.getElementById('resumoSaidaLote'); if(resumo) resumo.textContent = '';
-    return;
+function saidaLoteOnChapaChange(el){
+  const tr = el ? el.closest('tr') : null;
+  if(!tr) return;
+  const r = _saidaLoteResolve(el.value);
+  tr.dataset.chapaId = r ? r.id : '';
+  tr.dataset.qtdAtual = r ? String(r.qtdAtual) : '';
+  const qtdEl = tr.querySelector('.sl-qtd');
+  if(qtdEl){
+    const max = r ? (r.qtdAtual || 0) : '';
+    if(max !== '') qtdEl.max = String(max);
+    else qtdEl.removeAttribute('max');
+    const cur = Math.trunc(Number(qtdEl.value || 0) || 0);
+    if(r && r.qtdAtual >= 0 && cur > r.qtdAtual) qtdEl.value = String(r.qtdAtual);
   }
+  saidaLoteAtualizarResumo();
+}
 
-  container.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
-      <thead>
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:#64748b">
-          <th style="text-align:left;padding:6px 8px">Chapa</th>
-          <th style="text-align:center;padding:6px 8px">Estoque Atual</th>
-          <th style="text-align:center;padding:6px 8px">Qtd Saída</th>
-          <th style="text-align:center;padding:6px 8px">Remover</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itensSaidaLoteLista.map((item, idx) => `
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.05)">
-            <td style="padding:8px">
-              <strong style="color:#e2e8f0">${escH(String(item.nomenclatura||''))} ${escH(String(item.tamanho||''))}</strong>
-              <br><span style="color:#64748b;font-size:0.75rem">${escH(String(item.fornecedor||''))}</span>
-            </td>
-            <td style="text-align:center;padding:8px;color:#94a3b8">${escH(String(item.qtd_atual||0))}</td>
-            <td style="text-align:center;padding:8px">
-              <input type="number"
-                value="${escAttr(String(item.qtd_saida||1))}"
-                min="1"
-                max="${escAttr(String(item.qtd_atual||0))}"
-                style="width:70px;text-align:center"
-                class="input-dark"
-                onchange="atualizarQtdSaida(${idx}, this.value)"
-              >
-            </td>
-            <td style="text-align:center;padding:8px">
-              <button onclick="removerItemSaida(${idx})"
-                style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem">
-                🗑
-              </button>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-
-  const total = itensSaidaLoteLista.reduce((s, i) => s + Number(i.qtd_saida || 0), 0);
+function saidaLoteAtualizarResumo(){
+  const tb = document.getElementById('sl-tbody');
   const resumo = document.getElementById('resumoSaidaLote');
-  if(resumo) resumo.textContent = `${itensSaidaLoteLista.length} tipo(s) · ${Math.trunc(Number(total)||0)} unidade(s) total`;
+  if(!tb || !resumo) return;
+  const rows = Array.from(tb.querySelectorAll('tr'));
+  const itens = rows.map(tr=>{
+    const chapaId = String(tr.dataset.chapaId||'').trim();
+    const qtd = Math.trunc(Number(tr.querySelector('.sl-qtd')?.value || 0) || 0);
+    return { chapaId, qtd };
+  }).filter(x=>x.chapaId && x.qtd > 0);
+  const total = itens.reduce((s,i)=>s + (i.qtd || 0), 0);
+  resumo.textContent = itens.length ? `${itens.length} tipo(s) · ${total} unidade(s)` : '';
 }
 
-function atualizarQtdSaida(idx, valor){
-  const item = itensSaidaLoteLista[idx];
-  if(!item) return;
-  const qtd = parseInt(valor, 10) || 1;
-  const max = Math.trunc(Number(item.qtd_atual || 0) || 0);
-  if(qtd > max){
-    toast(`Quantidade máxima disponível: ${max}`,'var(--yellow)');
-    item.qtd_saida = max > 0 ? max : 1;
-  } else {
-    item.qtd_saida = Math.max(1, qtd);
-  }
-  renderItensSaidaLote();
-}
-
-function removerItemSaida(idx){
-  itensSaidaLoteLista.splice(idx, 1);
-  renderItensSaidaLote();
+function adicionarLinhaSaidaLote(){
+  const tb = document.getElementById('sl-tbody');
+  if(!tb) return;
+  const idx = tb.children.length;
+  const tr = document.createElement('tr');
+  tr.style.background = idx%2===0 ? 'var(--surface)' : 'var(--s2)';
+  tr.innerHTML = `
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
+      <input class="sl-chapa" list="sl-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)" onchange="saidaLoteOnChapaChange(this)">
+    </td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
+      <input class="sl-qtd" type="number" min="1" value="1" style="width:110px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right" onchange="saidaLoteAtualizarResumo()">
+    </td>
+    <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:center">
+      <button class="btn btn-ghost btn-sm" onclick="this.closest('tr').remove();saidaLoteAtualizarResumo()" style="color:var(--red)">🗑</button>
+    </td>
+  `;
+  tb.appendChild(tr);
+  saidaLoteAtualizarResumo();
 }
 
 async function confirmarSaidaLoteChapas(){
-  const motivo = String(document.getElementById('motivoSaidaLote')?.value || '').trim();
-  const obs = String(document.getElementById('obsSaidaLote')?.value || '').trim();
+  const motivo = String(document.getElementById('sl-motivo')?.value || '').trim();
+  const obs = String(document.getElementById('sl-obs')?.value || '').trim();
+  const tb = document.getElementById('sl-tbody');
+  if(!tb) return;
+  const rows = Array.from(tb.querySelectorAll('tr')).map(tr=>{
+    const label = String(tr.querySelector('.sl-chapa')?.value || '').trim();
+    const qtd = Math.trunc(Number(tr.querySelector('.sl-qtd')?.value || 0) || 0);
+    const resolved = _saidaLoteResolve(label);
+    const chapaId = String(tr.dataset.chapaId || (resolved ? resolved.id : '') || '').trim();
+    const qtdAtual = Math.trunc(Number(tr.dataset.qtdAtual || (resolved ? resolved.qtdAtual : 0) || 0) || 0);
+    return { label, chapaId, qtd, qtdAtual };
+  }).filter(r=>r.label && r.chapaId && r.qtd > 0);
 
-  if(!itensSaidaLoteLista.length){
-    toast('Adicione pelo menos uma chapa.','var(--yellow)');
-    return;
-  }
-  if(!motivo){
-    toast('Selecione o motivo da saída.','var(--yellow)');
-    return;
-  }
+  if(!motivo){ toast('Selecione o motivo da saída.','var(--yellow)'); return; }
+  if(!rows.length){ toast('Adicione ao menos 1 linha válida.','var(--yellow)'); return; }
 
-  const invalido = itensSaidaLoteLista.find(i => (Number(i.qtd_saida||0) || 0) > (Number(i.qtd_atual||0) || 0));
+  const invalido = rows.find(r => r.qtd > r.qtdAtual);
   if(invalido){
-    toast(`Quantidade inválida para: ${String(invalido.nomenclatura||'')}`,'var(--yellow)');
+    toast(`Qtd maior que estoque (${invalido.qtdAtual}): ${invalido.label}`,'var(--yellow)');
     return;
   }
 
+  if(_estBusy) return;
   try{
     estSetBusy(true);
     const resp = await apiFetch('/api/chapas/saida-lote', {
@@ -24591,17 +24531,14 @@ async function confirmarSaidaLoteChapas(){
       body:{
         motivo,
         obs,
-        itens: itensSaidaLoteLista.map(i => ({
-          chapa_id: i.id,
-          quantidade: Math.trunc(Number(i.qtd_saida||0)||0)
-        }))
+        itens: rows.map(r => ({ chapa_id: r.chapaId, quantidade: r.qtd }))
       }
     });
     const j = resp ? await resp.json().catch(()=>null) : null;
     if(!resp || !resp.ok || (j && j.ok===false)){
       throw new Error((j && j.error) ? j.error : 'Erro ao registrar saída');
     }
-    toast(`Saída registrada: ${itensSaidaLoteLista.length} tipo(s)`,'var(--green)');
+    toast(`Saída registrada: ${rows.length} tipo(s)`,'var(--green)');
     fecharModalSaidaLoteChapas();
     await carregarChapas(true);
     try{ await carregarMetricasChapas(true); }catch(e){}
@@ -24721,7 +24658,6 @@ function _renderEstoqueBase(chapas) {
       const nf = (c.nf || c.nf_entrada || '').trim() || '—';
       const risDesc = String(c.risca_desc || '').trim();
       const risDescShort = risDesc.length > 34 ? (risDesc.slice(0, 34) + '…') : risDesc;
-      const trBg = i%2===0 ? 'var(--surface)' : 'var(--s2)';
       const empRaw = String(c.empresa_vinculada || c.qual_cnpj || c.qual || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
       const empKey = empRaw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const empSel = empKey.includes('cartoeste') ? 'Cartoeste' : empKey.includes('oestepack') ? 'Oestepack' : empKey.includes('italy') ? 'Italy Embalagens' : 'Italy Embalagens';
@@ -24768,19 +24704,19 @@ function _renderEstoqueBase(chapas) {
       </div>${risDescShort?`<div style="font-size:.62rem;color:var(--text3);font-weight:700;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px">${escH(risDescShort)}</div>`:''}`;
       const fotoUrl = estFotoUrlFromItem(c);
       const fotoHtml = fotoUrl ? `<img src="${escAttr(fotoUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)" loading="lazy">` : '';
-      return `<tr style="background:${trBg}">
+      return `<tr>
         <td data-label="Nome/Uso" style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
           <div style="display:flex;gap:10px;align-items:center">
             ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
             <div style="min-width:0">
-              <div style="font-weight:700">${escH(c.nome||'—')}</div>
+              <div style="font-weight:700">${escH(c.nome || c.nome_uso || c.nomenclatura || c.nom || '—')}</div>
               <div style="font-size:.66rem;color:var(--text3);font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escH(estChapaKeyLabel(c))}</div>
             </div>
           </div>
         </td>
         <td data-label="Nomenclatura" style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);font-family:var(--mono);font-weight:900;min-width:120px">${escH(c.nomenclatura||c.nom||'—')}</td>
         <td data-label="Fornecedor" style="padding:8px 10px;border:1px solid var(--border);color:var(--accent);min-width:120px">${escH(c.fornecedor||c.forn||'—')}</td>
-        <td data-label="Gramatura" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:90px;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
+        <td data-label="Gramatura" style="padding:8px 10px;border:1px solid var(--border);text-align:center;min-width:90px;font-family:var(--mono)">${escH(String(c.gramatura || c.espessura_mm || c.grammage || '—'))}</td>
         <td data-label="Empresa/CNPJ" style="padding:6px 10px;border:1px solid var(--border);min-width:160px">
           <select data-id="${escAttr(c.id)}" data-original="${escAttr(empSel)}" onchange="(async function(el){const id=el.dataset.id;const val=el.value;const orig=el.dataset.original;console.log('[EMPRESA-INLINE] id:',id,'val:',val);if(!id||!val){console.warn('[EMPRESA-INLINE] id ou val vazio!');return;}const r=await apiFetch('/api/chapas_estoque/'+encodeURIComponent(id)+'/inline',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({empresa_vinculada:val,qual_cnpj:val})});console.log('[EMPRESA-INLINE] status:',r&&r.status);const d=await (r?r.json().catch(e=>{console.error('[EMPRESA-INLINE] json error:',e);return null;}):Promise.resolve(null));console.log('[EMPRESA-INLINE] resposta:',d);if(!d||!d.ok){const emsg=(d&&d.error)?d.error:'falha';try{toast('Erro ao salvar empresa: '+emsg,'var(--red)');}catch(e){}alert('Erro: '+emsg);el.value=orig;return;}el.dataset.original=val;const upd=(arr)=>{const i=(arr||[]).findIndex(x=>String(x.id)===String(id));if(i>=0){arr[i].empresa_vinculada=val;arr[i].qual_cnpj=val;arr[i].qual=val;console.log('[EMPRESA-INLINE] atualizado no array índice',i);}else{console.warn('[EMPRESA-INLINE] item não encontrado no array, id:',id);}};upd(typeof _estoqueBase!=='undefined'?_estoqueBase:[]);upd(typeof ESTOQUE!=='undefined'?ESTOQUE:[]);console.log('[EMPRESA-INLINE] salvo com sucesso!');try{toast('Empresa/CNPJ salvo ✓','var(--green)');}catch(e){} })(this)" style="width:100%;padding:6px 8px;border-radius:6px;background:var(--s2);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:900">
             <option value="Italy Embalagens" ${empSel === 'Italy Embalagens' ? 'selected' : ''}>Italy Embalagens</option>
@@ -24922,7 +24858,7 @@ function renderTabelaEstoque(itens) {
         const baixo = qtd < 200;
         const nf = c.nf_entrada || c.nf || '—';
         const emp = String(c.empresa_vinculada || c.empresa || '').trim() || estEmpresaFromEmpId(c.emp_id || c.empId || '');
-        const nomeExibir = c.nome || c.nome_comercial || c.nomenclatura || c.nom || '';
+        const nomeExibir = c.nome || c.nome_uso || c.nome_comercial || c.nomenclatura || c.nom || '';
         const pesoKg = Number(c.peso_kg_unidade ?? 0) || 0;
         const gram = Number(c.gramatura ?? 0) || 0;
         const tonLinha = (qtd > 0 && pesoKg > 0) ? ((qtd * pesoKg) / 1000) : 0;
@@ -24932,7 +24868,7 @@ function renderTabelaEstoque(itens) {
           <td data-label="Nome/Uso" style="padding:8px">${escH(nomeExibir||'—')}</td>
           <td data-label="Nomenclatura" style="padding:8px;color:#4A90D9;font-weight:500">${escH(c.nomenclatura||c.nom||'—')}</td>
           <td data-label="Fornecedor" style="padding:8px;color:#4A90D9">${escH(c.fornecedor||c.forn||'—')}</td>
-          <td data-label="Gramatura" style="padding:8px;text-align:center;font-family:var(--mono)">${escH(String(c.gramatura || c.grammage || '—'))}</td>
+          <td data-label="Gramatura" style="padding:8px;text-align:center;font-family:var(--mono)">${escH(String(c.gramatura || c.espessura_mm || c.grammage || '—'))}</td>
           <td data-label="Empresa/CNPJ" style="padding:8px;color:#9B59B6;font-family:var(--mono);font-weight:900">${escH(emp)}</td>
           <td data-label="Tamanho" style="padding:8px">${escH(c.tamanho||c.tam||'—')}</td>
           <td data-label="NF" style="padding:8px;font-size:11px;color:var(--text2)">${escH(nf)}</td>
@@ -43661,7 +43597,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
   <div class="ptoolbar" style="flex-wrap:wrap;gap:6px">
     <input id="est-busca" placeholder="🔍 Nome, fornecedor, nomenclatura..." oninput="renderEstoque()" style="width:220px">
     <select id="est-fil-forn" onchange="renderEstoque()"><option value="">Todos fornecedores</option></select>
-    <select id="est-fil-emp" onchange="renderEstoque()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
+          <select id="est-fil-emp" onchange="renderEstoque()" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 11px;font-size:.78rem;font-family:var(--font);">
       <option value="">Todas empresas</option>
     </select>
     <div style="flex:1"></div>
@@ -43721,7 +43657,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
         </div>
         <div id="est-filtros-ativos" style="margin:8px 10px 0;color:var(--text3);font-size:.74rem;font-family:var(--mono)"></div>
         <div id="est-table-wrap" style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;min-width:960px">
+          <table id="tabelaChapasEstoque" class="chapas-table" style="width:100%;border-collapse:collapse;min-width:960px">
             <thead>
               <tr style="background:var(--s2)">
                 <th onclick="estOrdenar('nome')" style="cursor:pointer;padding:8px 10px;font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);white-space:nowrap">NOME / USO</th>

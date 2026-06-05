@@ -9672,6 +9672,8 @@ function _chapasCanonicalFromAny(row, table) {
     const vunit = _chapasToNum(row.valor_unitario ?? row.val ?? row['valor_unitário'] ?? 0, 0);
     const vtot = _chapasToNum(row.valor_total ?? row.vtot ?? 0, 0) || (qtd * vunit);
     const empId = row.emp_id || 'E1';
+    const nomeUso = row.nome_uso || row.nome || row.nomenclatura || '';
+    const gramatura = row.gramatura || row.espessura_mm || '';
     const empresaVinculada =
       (row.empresa_vinculada != null && String(row.empresa_vinculada).trim() !== '') ? String(row.empresa_vinculada).trim()
       : ((row.qual_cnpj != null && String(row.qual_cnpj).trim() !== '') ? String(row.qual_cnpj).trim()
@@ -9683,7 +9685,9 @@ function _chapasCanonicalFromAny(row, table) {
       fornecedor: row.fornecedor || '',
       nomenclatura: row.nomenclatura || '',
       tamanho: row.tamanho || '',
-      nome: row.nome_uso || row.nome || '',
+      nome: nomeUso,
+      nome_uso: nomeUso,
+      gramatura,
       empresa_vinculada: empresaVinculada,
       qual_cnpj: row.qual_cnpj || row.qual || row.fabricante || '',
       nf,
@@ -9721,6 +9725,7 @@ function _chapasCanonicalFromAny(row, table) {
   const nomenclatura = _chapasGet(row, km, ['nomenclatura', 'nom', 'codigo', 'cod', 'tipo_papel', 'tipo papel']);
   const nome = _chapasGet(row, km, ['nome', 'nome_uso', 'nome uso', 'nome_comercial', 'nome comercial', 'nom', 'descricao', 'desc', 'name']) || nomenclatura;
   const tamanho = _chapasGet(row, km, ['tamanho', 'tam']);
+  const gramatura = _chapasGet(row, km, ['gramatura', 'espessura_mm', 'espessura']);
   const qualCnpj = _chapasGet(row, km, ['qual_cnpj', 'qual cnpj', 'qual', 'cnpj', 'fabricante']);
   const nf = _chapasGet(row, km, ['numero_nf', 'nf']);
   const qtd = _chapasNum(_chapasGet(row, km, ['quantidade_atual', 'quantidade', 'qtd', 'saldo']));
@@ -9747,6 +9752,8 @@ function _chapasCanonicalFromAny(row, table) {
     nomenclatura,
     tamanho,
     nome,
+    nome_uso: nome,
+    gramatura,
     empresa_vinculada: empresaVinc,
     qual_cnpj: qualCnpj,
     nf,
