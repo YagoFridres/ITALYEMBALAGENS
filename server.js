@@ -9051,14 +9051,18 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
 
     if (payload.operador && !payload.operador_nome) payload.operador_nome = payload.operador;
     if (payload.responsavel && !payload.operador_nome) payload.operador_nome = payload.responsavel;
+    if (payload.operador_nome && !payload.operador) payload.operador = payload.operador_nome;
+    if (payload.operador_id && !payload.op_id) payload.op_id = payload.operador_id;
+    if (payload.operador_id && !payload.opId) payload.opId = payload.operador_id;
+    if (payload.op_id && !payload.operador_id) payload.operador_id = payload.op_id;
+    if (payload.opId && !payload.operador_id) payload.operador_id = payload.opId;
     if (payload.obs && !payload.descricao) payload.descricao = payload.obs;
     if (payload.qtd_perdida != null && payload.caixas_perdidas == null) payload.caixas_perdidas = payload.qtd_perdida;
     if (payload.imagem_problema_url && !payload.foto_url) payload.foto_url = payload.imagem_problema_url;
     if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
     if (payload.imagem_url && !payload.foto_url) payload.foto_url = payload.imagem_url;
 
-    delete payload.operador;
-    delete payload.responsavel;
+    // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
     delete payload.obs;
     delete payload.qtd_perdida;
     delete payload.imagem_problema_url;
@@ -9120,40 +9124,75 @@ app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
 
 app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
   try {
-    const empId = String(req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
-    let q = supabase
-      .from('inconformidades')
-      .select('operador_nome,operador_id,caixas_perdidas,qtd_perdida,quantidade,maquinas,created_at,emp_id')
-      .order('created_at', { ascending: false })
-      .limit(5000);
-    if (empId) q = q.eq('emp_id', empId);
+    const empId = String(
+      req.query?.empId ||
+      req.query?.emp_id ||
+      req.usuario?.empId ||
+      req.usuario?.emp_id ||
+      req.usuario?.sigla ||
+      ''
+    ).trim();
+    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
 
-    let { data, error } = await q;
-    const msg = String(error?.message || '').toLowerCase();
-    if (error && msg.includes('column') && msg.includes('emp_id')) {
-      const r2 = await supabase
+    const baseSelect = 'operador_nome,operador,operador_id,op_id,opId,caixas_perdidas,qtd_perdida,quantidade,created_at,empresa_id,emp_id';
+    let data = null;
+    let error = null;
+
+    if (empresa_id) {
+      try {
+        const r = await supabase
+          .from('inconformidades')
+          .select(baseSelect)
+          .eq('empresa_id', empresa_id)
+          .order('created_at', { ascending: false })
+          .limit(5000);
+        data = r.data;
+        error = r.error;
+      } catch (e) {
+        error = e;
+      }
+    }
+
+    if (!empresa_id || error) {
+      try {
+        let q = supabase
+          .from('inconformidades')
+          .select(baseSelect)
+          .order('created_at', { ascending: false })
+          .limit(5000);
+        if (empId) q = q.eq('emp_id', empId);
+        const r2 = await q;
+        data = r2.data;
+        error = r2.error;
+      } catch (e) {
+        error = e;
+      }
+    }
+
+    const msg = String(error?.message || error || '').toLowerCase();
+    if (error && (msg.includes('column') || msg.includes('schema cache'))) {
+      const r3 = await supabase
         .from('inconformidades')
-        .select('operador_nome,operador_id,caixas_perdidas,qtd_perdida,quantidade,maquinas,created_at')
+        .select('operador_nome,operador,operador_id,op_id,opId,caixas_perdidas,qtd_perdida,quantidade,created_at')
         .order('created_at', { ascending: false })
         .limit(5000);
-      data = r2.data;
-      error = r2.error;
+      data = r3.data;
+      error = r3.error;
     }
     if (error) throw error;
 
     const porOperador = {};
     (data || []).forEach((p) => {
-      const op = String(p?.operador_nome || p?.operador || 'Desconhecido').trim() || 'Desconhecido';
+      const nome = String(p?.operador_nome || p?.operador || 'Desconhecido').trim() || 'Desconhecido';
+      const opId = String(p?.operador_id || p?.op_id || p?.opId || '').trim() || null;
       const perdas = Number(p?.caixas_perdidas ?? p?.qtd_perdida ?? p?.quantidade ?? 0) || 0;
-      if (!porOperador[op]) porOperador[op] = { total: 0, registros: 0 };
-      porOperador[op].total += Math.trunc(perdas);
-      porOperador[op].registros += 1;
+      const key = opId ? `id:${opId}` : `nm:${nome}`;
+      if (!porOperador[key]) porOperador[key] = { nome, operador_id: opId, total: 0, registros: 0 };
+      porOperador[key].total += Math.trunc(perdas);
+      porOperador[key].registros += 1;
     });
 
-    const ranking = Object.entries(porOperador)
-      .map(([nome, dados]) => ({ nome, ...dados }))
-      .sort((a, b) => (b.total || 0) - (a.total || 0));
-
+    const ranking = Object.values(porOperador).sort((a, b) => (b.total || 0) - (a.total || 0));
     return res.json({ ok: true, ranking });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -11428,7 +11467,17 @@ app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
-    const empId = String(req.query.empId || req.query.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
+    const empId = String(
+      req.query.empId ||
+      req.query.emp_id ||
+      req.usuario?.empId ||
+      req.usuario?.emp_id ||
+      req.usuario?.sigla ||
+      req.user?.empId ||
+      req.user?.emp_id ||
+      req.user?.sigla ||
+      ''
+    ).trim();
     const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
     if (!empresa_id) return res.json({ ok: true, data: [] });
 
@@ -11475,12 +11524,26 @@ app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
 app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const empId = String(b.empId || b.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
+    const empId = String(
+      b.empId ||
+      b.emp_id ||
+      req.query?.empId ||
+      req.query?.emp_id ||
+      req.usuario?.empId ||
+      req.usuario?.emp_id ||
+      req.usuario?.sigla ||
+      req.user?.empId ||
+      req.user?.emp_id ||
+      req.user?.sigla ||
+      ''
+    ).trim();
     const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
     const observacao = String(b.observacao || '').trim() || null;
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa inválida' });
+    if (!empresa_id) {
+      return res.status(400).json({ ok: false, error: `Empresa não encontrada. empId recebido: ${empId || '—'}` });
+    }
     if (!chapa_id) return res.status(400).json({ ok: false, error: 'chapa_id obrigatório' });
 
     let existente = null;
@@ -11501,7 +11564,7 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
     const payload = {
       chapa_id,
       empresa_id,
-      emp_id: req.usuario?.empId || null,
+      emp_id: empId || req.usuario?.empId || null,
       criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
       qtd_sugerida: (qtd_sugerida && qtd_sugerida > 0) ? qtd_sugerida : null,
       observacao,
