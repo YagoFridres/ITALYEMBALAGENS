@@ -4793,7 +4793,8 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
         const mid = String(r?.maquina_id || r?.maquinaId || '').trim();
         const nome = mid ? (map.get(mid) || '') : '';
         const fallback = String(r?.maquina || '').trim();
-        const finalNome = nome || fallback;
+        const fallbackNome = (fallback && map.has(fallback)) ? (map.get(fallback) || '') : '';
+        const finalNome = nome || fallbackNome || fallback;
         return { ...r, maquina: finalNome, maquina_nome: finalNome };
       });
     };
@@ -8016,13 +8017,25 @@ async function _resolveEmpresaUuid(req) {
   const bEmp = String(req?.body?.empresa_id || req?.body?.empresaId || '').trim();
   const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
   const uEmp = String(req?.usuario?.empresa_id || req?.usuario?.empresaId || '').trim();
+  const userEmp = String(req?.user?.empresa_id || req?.user?.empresaId || '').trim();
   if (_isUuid(uEmp)) return uEmp;
+  if (_isUuid(userEmp)) return userEmp;
   if (_isUuid(bEmp)) return bEmp;
   if (_isUuid(qEmp)) return qEmp;
+  const hdrEmp = String(
+    req?.headers?.['x-emp-id'] ||
+    req?.headers?.['x-empid'] ||
+    req?.headers?.['x-emp'] ||
+    req?.headers?.['x-empresa'] ||
+    ''
+  ).trim();
   const empId = String(
     req?.body?.emp_id ?? req?.body?.empId ??
     req?.query?.emp_id ?? req?.query?.empId ??
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
+    req?.user?.emp_id ?? req?.user?.empId ??
+    req?.usuario?.sigla ?? req?.user?.sigla ??
+    hdrEmp ??
     ''
   ).trim();
   const empIdBase = (empId ? empId.split(':')[0] : '').trim().toUpperCase();

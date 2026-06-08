@@ -7939,6 +7939,19 @@ async function incCarregarOperadores() {
       return '<option value="' + escAttr(nome) + '" data-id="' + escAttr(id) + '">' + escH(nome) + '</option>';
     }).filter(Boolean).join('');
     sel.innerHTML = html;
+    try{
+      var cont = document.getElementById('inc-operadores-of-lista');
+      if(cont){
+        cont.innerHTML = (ops || []).map(function(o){
+          var nome = String(o?.nome || o?.name || '').trim();
+          if(!nome) return '';
+          return '<label style="display:flex;align-items:center;gap:5px;padding:4px 8px;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);font-size:0.78rem;color:#94a3b8">' +
+            '<input type="checkbox" value="' + escAttr(nome) + '" style="accent-color:#3b82f6">' +
+            escH(nome) +
+          '</label>';
+        }).filter(Boolean).join('');
+      }
+    }catch(_){}
   } catch (_) {
     sel.dataset.loaded = '';
   }
@@ -7972,6 +7985,12 @@ async function salvarInconformidadeNova() {
   var desc = String((document.getElementById('inc-descricao') || {}).value || '').trim();
   var caixas = parseInt((document.getElementById('inc-caixas') || {}).value, 10);
   if (!Number.isFinite(caixas)) caixas = 0;
+  var opsOf = [];
+  try{
+    opsOf = Array.from(document.querySelectorAll('#inc-operadores-of-lista input[type="checkbox"]:checked'))
+      .map(function(cb){ return String(cb?.value || '').trim(); })
+      .filter(Boolean);
+  }catch(_){ opsOf = []; }
 
   var sel = document.getElementById('inc-operador');
   var operadorId = '';
@@ -7995,6 +8014,7 @@ async function salvarInconformidadeNova() {
         maquina: maq || null,
         maquinas: maquinas.length ? maquinas : null,
         operador: operadorNome || null,
+        operadores_of: opsOf.length ? opsOf : null,
         motivo,
         obs: desc || null,
         qtd_perdida: caixas || 0,
@@ -20057,6 +20077,21 @@ function cpRender(rows){
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
       const usu = r.operador || r.usuario || '—';
+      let opsOf = [];
+      try{
+        const raw = r.operadores_of || r.operadoresOf || (ofRel && (ofRel.operadores_of || ofRel.operadoresOf || ofRel.operadores)) || null;
+        if(Array.isArray(raw)) opsOf = raw;
+        else if(typeof raw === 'string'){
+          const s = raw.trim();
+          if(s.startsWith('[')) opsOf = JSON.parse(s || '[]');
+          else opsOf = s.split(/[,;|]/g);
+        }
+      }catch(e){ opsOf = []; }
+      opsOf = (Array.isArray(opsOf) ? opsOf : []).map(x=>String(x||'').trim()).filter(Boolean);
+      opsOf = Array.from(new Set(opsOf));
+      const usuHtml = opsOf.length
+        ? opsOf.map(op => `<span style="display:inline-block;padding:1px 6px;margin:1px;background:rgba(59,130,246,0.15);border-radius:4px;font-size:0.72rem;color:#60a5fa">${escH(op)}</span>`).join('')
+        : escH(String(usu));
       let imgUrl = '';
       try{
         imgUrl = String(
@@ -20081,7 +20116,7 @@ function cpRender(rows){
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">${fmtN(qtd)}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${vu > 0 ? fmtR(vu) : '—'}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${vt > 0 ? fmtR(vt) : '—'}</td>
-        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(usu))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${usuHtml}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">${imgCell}</td>
       </tr>`;
     }).join('') || `<tr><td colspan="10" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>`;
@@ -25130,12 +25165,41 @@ let _chapasPinsAt = 0;
 let _chapasPinsLoading = null;
 
 function _pinGetEmpId(){
+  try{
+    const dbg = String(localStorage.getItem('pin_debug') || localStorage.getItem('PIN_DEBUG') || '').trim();
+    if(dbg === '1' || dbg.toLowerCase() === 'true'){
+      try{ console.log('[PIN DEBUG] EMP_FILTRO:', window.EMP_FILTRO); }catch(_){}
+      try{ console.log('[PIN DEBUG] CURRENT_USER:', JSON.stringify(window.CURRENT_USER || null)?.slice(0,200)); }catch(_){}
+      try{ console.log('[PIN DEBUG] window.empId:', window.empId); }catch(_){}
+      try{ console.log('[PIN DEBUG] window.EMPRESA:', window.EMPRESA); }catch(_){}
+      try{ console.log('[PIN DEBUG] window.empresa:', window.empresa); }catch(_){}
+      try{ console.log('[PIN DEBUG] window.EMP_ID:', window.EMP_ID); }catch(_){}
+      try{
+        console.log('[PIN DEBUG] localStorage keys:', Object.keys(localStorage).filter(k =>
+          String(k||'').toLowerCase().includes('emp') || String(k||'').toLowerCase().includes('empresa')
+        ));
+      }catch(_){}
+    }
+  }catch(_){}
+
   const EMP_MAP = { 'E1':'ITALY','E2':'CARTO','E3':'OESTE','ITALY':'ITALY','CARTO':'CARTO','OESTE':'OESTE' };
   const map = (v)=>{
-    const s = String(v || '').trim().toUpperCase();
+    const s0 = String(v || '').trim().toUpperCase();
+    const s = s0.includes(':') ? s0.split(':')[0] : s0;
     if(!s) return '';
     return EMP_MAP[s] || '';
   };
+
+  try{
+    const w = window || {};
+    const direct = w.empId || w.EMP_ID || w.emp_id || (w.EMPRESA && (w.EMPRESA.sigla || w.EMPRESA.empId || w.EMPRESA.emp_id)) || (w.empresa && (w.empresa.sigla || w.empresa.empId || w.empresa.emp_id)) || '';
+    const m = map(direct);
+    if(m) return m;
+    const s = String(direct || '').trim();
+    if(s && EMP_MAP[s.toUpperCase()]) return EMP_MAP[s.toUpperCase()];
+    if(s) return s;
+  }catch(_){}
+
   try{
     const filtro = String(window.EMP_FILTRO || '').trim() || String(localStorage.getItem('empFiltro') || '').trim();
     const m = map(filtro);
@@ -45895,6 +45959,12 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
 
       <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">OPERADORES DA OF</label>
+        <div id="inc-operadores-of-lista" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-height:120px;overflow-y:auto"></div>
+        <div style="color:#64748b;font-size:0.72rem;margin-top:4px">Selecione todos os operadores envolvidos na OF</div>
+      </div>
+
+      <div>
         <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">MÁQUINA</label>
         <select id="inc-maquina"
           style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">
@@ -57235,17 +57305,28 @@ function renderAlertasRedistribuicao(alertas){
     var num = String(of.numero || of.of || of.of_num || of.numero_of || '').trim();
     var idShow = num ? num : (String(of.id || '').slice(0,6) || '?');
     var cliente = String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '').trim();
+    var produto = String(of.produto || of.descricao || of.nome_produto || of.referencia || '').trim();
+    var imgUrl = String(of.imagem_url || of.imagem || of.foto || of.imgUrl || '').trim();
     var maqAtual = String(a.maquinaAtual || '').trim();
     var dias = Number(a.diasUteis || 0) || 0;
     var entrega = formatarDataBR(String(of.data_entrega || of.ent || '').slice(0,10));
     var qtd = String(of.quantidade || of.qtd || '?');
+    var imgHtml = imgUrl
+      ? `<img src="${escAttr(imgUrl)}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1)" onerror="this.style.display='none'">`
+      : `<div style="width:36px;height:36px;border-radius:6px;background:rgba(255,255,255,0.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem">📦</div>`;
     return `
       <div style="border-bottom:1px solid rgba(255,255,255,0.04)">
         <div onclick="toggleOFRedist(${idx})" style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;font-size:0.82rem" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span style="color:#e2e8f0;font-weight:500;white-space:nowrap">OF #${escH(idShow)}</span>
-            ${cliente ? `<span style="color:#64748b;font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${escH(cliente)}</span>` : ''}
-            ${maqAtual ? `<span style="background:rgba(239,68,68,0.15);color:#f87171;border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:600;white-space:nowrap">${escH(maqAtual)} sobrecarregada</span>` : ''}
+            ${imgHtml}
+            <div style="min-width:0;display:flex;flex-direction:column;gap:2px">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
+                <span style="color:#e2e8f0;font-weight:600;white-space:nowrap">OF #${escH(idShow)}</span>
+                ${cliente ? `<span style="color:#64748b;font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${escH(cliente)}</span>` : ''}
+                ${maqAtual ? `<span style="background:rgba(239,68,68,0.15);color:#f87171;border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:600;white-space:nowrap">${escH(maqAtual)} sobrecarregada</span>` : ''}
+              </div>
+              ${produto ? `<div style="color:#94a3b8;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px">📦 ${escH(produto)}</div>` : ''}
+            </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
             <span style="color:#94a3b8;font-size:0.75rem">${escH(String(dias))} dias úteis</span>
