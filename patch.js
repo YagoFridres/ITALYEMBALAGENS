@@ -2978,6 +2978,11 @@
     if (!id || !ofObj) throw new Error('OF inválida');
     var qtdAnt = Math.trunc(Number(ofObj.qtd_produzida ?? 0) || 0);
     var caixasAnt = Math.trunc(Number(ofObj.caixas_boas ?? 0) || 0);
+    var valorAntigo = Number(ofObj.valor_venda ?? ofObj.valor_total ?? ofObj.vl_total ?? ofObj.total ?? 0) || 0;
+    var valorUnitario = (qtdAnt > 0) ? (valorAntigo / qtdAnt) : 0;
+    var novoTotal = (valorUnitario > 0)
+      ? (Math.round((valorUnitario * qtdNova) * 100) / 100)
+      : valorAntigo;
     var opsRaw = ofObj.operadores_conclusao ?? null;
     var ops = null;
     if (opsRaw != null) {
@@ -2985,7 +2990,12 @@
     }
     var opsNovo = Array.isArray(ops) ? recalcOperadoresProporcional(ops, qtdAnt, qtdNova) : null;
     var caixasNova = Math.max(0, caixasAnt + (qtdNova - qtdAnt));
-    var payload = { qtd_produzida: qtdNova, caixas_boas: caixasNova };
+    var payload = {
+      qtd_produzida: qtdNova,
+      caixas_boas: caixasNova,
+      valor_venda: novoTotal,
+      valor_total: novoTotal
+    };
     if (Array.isArray(opsNovo)) payload.operadores_conclusao = opsNovo;
 
     var resp = null;
@@ -3006,15 +3016,30 @@
 
     ofObj.qtd_produzida = qtdNova;
     ofObj.caixas_boas = caixasNova;
+    ofObj.valor_venda = novoTotal;
+    ofObj.valor_total = novoTotal;
+    ofObj.total = novoTotal;
+    ofObj.vl_total = novoTotal;
     if (Array.isArray(opsNovo)) ofObj.operadores_conclusao = opsNovo;
     try {
       var idx = Array.isArray(window.OFs) ? window.OFs.findIndex(function(o) { return String(o?.id || '').trim() === id; }) : -1;
       if (idx >= 0) {
         window.OFs[idx].qtd_produzida = qtdNova;
         window.OFs[idx].caixas_boas = caixasNova;
+        window.OFs[idx].valor_venda = novoTotal;
+        window.OFs[idx].valor_total = novoTotal;
+        window.OFs[idx].total = novoTotal;
+        window.OFs[idx].vl_total = novoTotal;
         if (Array.isArray(opsNovo)) window.OFs[idx].operadores_conclusao = opsNovo;
       }
     } catch (_) {}
+    try {
+      if (typeof window.comRecalcularLocal === 'function') window.comRecalcularLocal();
+    } catch (_) {}
+    return {
+      qtdNova: qtdNova,
+      novoTotal: novoTotal
+    };
   }
 
   function bindInlineEdit() {
@@ -3065,10 +3090,25 @@
         var qtdNova = Math.trunc(Number(inp.value || 0) || 0);
         if (qtdNova < 0) { try { window.toast('Quantidade inválida', 'var(--orange)'); } catch (_) {} return; }
         try {
-          await salvarQtdProduzida(ofId, qtdNova);
+          var resultado = await salvarQtdProduzida(ofId, qtdNova);
           restore();
           var vEl = document.querySelector('.patch-qtdprod-val[data-of-id="' + escSel(ofId) + '"]');
           if (vEl) vEl.textContent = String(qtdNova);
+          try {
+            var tr = btn.closest ? btn.closest('tr') : null;
+            var tdTotal = tr && tr.children && tr.children[5] ? tr.children[5] : null;
+            if (tdTotal && typeof window.comFmtMoney === 'function') {
+              tdTotal.textContent = window.comFmtMoney(Number(resultado?.novoTotal || 0));
+            }
+            var tdCom = tr && tr.children && tr.children[7] ? tr.children[7] : null;
+            var ofAtual = findOfById(ofId) || null;
+            if (tdCom && ofAtual && typeof window.comFmtMoney === 'function') {
+              tdCom.textContent = window.comFmtMoney(Number(ofAtual.comissaoValor || 0));
+            }
+          } catch (_) {}
+          try {
+            if (typeof window.renderComissoes === 'function') window.renderComissoes();
+          } catch (_) {}
           try { window.toast('✓ Quantidade produzida atualizada', 'var(--green)'); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao salvar qtd produzida', 'var(--red)'); } catch (_) {}
