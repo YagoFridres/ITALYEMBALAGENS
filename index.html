@@ -130,6 +130,20 @@ body.theme-roxo{--accent:#7c3aed;--accent2:#6d28d9;--accent-soft:#7c3aed20}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:99px;}
 
+.inconformidade-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:14px 16px;margin-bottom:8px;transition:all 0.15s;}
+.inconformidade-card:hover{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);}
+.inc-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;}
+.inc-badge-status{padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+.inc-badge-aberta{background:rgba(245,158,11,0.15);color:#f59e0b;}
+.inc-badge-resolvida{background:rgba(34,197,94,0.15);color:#4ade80;}
+.inc-badge-pendente{background:rgba(239,68,68,0.15);color:#f87171;}
+.inc-info-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-top:8px;}
+.inc-info-item{font-size:0.75rem;}
+.inc-info-label{color:#64748b;display:block;margin-bottom:2px;}
+.inc-info-valor{color:#e2e8f0;font-weight:500;}
+.inc-qtd-perdida{font-size:1.3rem;font-weight:800;color:#f87171;}
+@media(max-width:768px){.inc-info-grid{grid-template-columns:1fr 1fr;}}
+
 /* ===== TOP BAR ===== */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;height:52px;padding:0 20px;flex-shrink:0;gap:10px;box-shadow:var(--shadow);}
 .logo{font-family:var(--mono);font-weight:700;font-size:.88rem;color:var(--accent);white-space:nowrap;letter-spacing:.5px;display:flex;align-items:center;gap:10px;}
@@ -8065,12 +8079,14 @@ async function carregarInconformidades() {
       return;
     }
     out.innerHTML = itens.map(function(i){
-      var st = String(i?.status || '—');
-      var cor = st === 'Resolvida' ? '#10b981' : st === 'Em Análise' ? '#f59e0b' : '#f43f5e';
-      var dt = i?.created_at ? new Date(i.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
-      var foto = String(i?.foto_url || i?.imagem_problema_url || '').trim();
-      var perder = Number(i?.qtd_perdida ?? i?.caixas_perdidas ?? i?.qtd_perdida ?? 0) || 0;
-      var opNome = String(i?.operador || i?.operador_nome || i?.responsavel || '').trim();
+      var stRaw = String(i?.status || 'aberta');
+      var stNorm = stRaw.trim().toLowerCase();
+      var statusChave = (stNorm.includes('resolv') ? 'resolvida' : (stNorm.includes('analise') || stNorm.includes('análise')) ? 'aberta' : stNorm.includes('pend') ? 'pendente' : 'pendente');
+      var statusClass = ({ 'aberta':'inc-badge-aberta', 'resolvida':'inc-badge-resolvida', 'pendente':'inc-badge-pendente' })[statusChave] || 'inc-badge-aberta';
+      var dtShort = i?.created_at ? new Date(i.created_at).toLocaleDateString('pt-BR') : '';
+      var foto = String(i?.foto_url || i?.imagem_problema_url || i?.imagem_url || '').trim();
+      var perder = Number(i?.qtd_perdida ?? i?.qtd_perda ?? i?.caixas_perdidas ?? 0) || 0;
+      var usuario = String(i?.operador || i?.operador_nome || i?.usuario || i?.responsavel || '').trim();
       var maqRaw = String(i?.maquina || '').trim();
       var maqLbl = maqRaw;
       try{
@@ -8079,26 +8095,64 @@ async function carregarInconformidades() {
           if(m) maqLbl = String(m?.col || m?.nome || m?.codigo || maqRaw).trim();
         }
       }catch(_){}
-      return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:10px">' +
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">' +
-          '<span style="font-weight:700;color:#e2e8f0">OF ' + escH(String(i?.of_numero || '—')) + '</span>' +
-          '<span style="font-size:11px;padding:2px 8px;border-radius:999px;background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '33">' + escH(st) + '</span>' +
-          (dt ? '<span style="margin-left:auto;color:#64748b;font-size:11px">' + escH(dt) + '</span>' : '') +
-        '</div>' +
-        '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px">' +
-          (opNome ? ('Operador: <b style=\"color:#e2e8f0\">' + escH(String(opNome)) + '</b> · ') : '') +
-          (maqLbl ? ('Máquina: <b style=\"color:#e2e8f0\">' + escH(String(maqLbl)) + '</b> · ') : '') +
-          'Perdas: <b style=\"color:#e2e8f0\">' + escH(String(perder)) + '</b>' +
-        '</div>' +
-        (i?.motivo ? '<div style="color:#e2e8f0;font-size:13px;font-weight:700;margin-bottom:6px">' + escH(String(i.motivo)) + '</div>' : '') +
-        ((i?.obs || i?.descricao) ? '<div style="color:#94a3b8;font-size:12px;white-space:pre-wrap;margin-bottom:8px">' + escH(String(i.obs || i.descricao)) + '</div>' : '') +
-        (foto ? '<img src="' + escAttr(foto) + '" data-url="' + escAttr(foto) + '" onclick="kbAbrirImagem(this.getAttribute(&quot;data-url&quot;))" style="width:100%;max-width:320px;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;margin-bottom:10px" onerror="this.style.display=&#39;none&#39;">' : '') +
-        '<div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">' +
-          (st !== 'Resolvida'
-            ? '<button onclick="incMarcarResolvida(\'' + escAttr(String(i.id || '')) + '\')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.35);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px">Marcar resolvida</button>'
-            : '') +
-        '</div>' +
-      '</div>';
+      var opsHtml = (function(){
+        var raw = i?.operadores_of ?? i?.operadoresOf ?? null;
+        var ops = [];
+        try{
+          if(Array.isArray(raw)) ops = raw;
+          else if(typeof raw === 'string'){
+            var s = raw.trim();
+            if(s.startsWith('[')) ops = JSON.parse(s || '[]');
+            else ops = s.split(/[,;|]/g);
+          }
+        }catch(_){ ops = []; }
+        ops = (Array.isArray(ops) ? ops : []).map(function(x){ return String(x||'').trim(); }).filter(Boolean);
+        ops = Array.from(new Set(ops));
+        if(!ops.length) return (usuario ? escH(usuario) : '—');
+        return ops.map(function(op){
+          return '<span style="display:inline-block;padding:1px 6px;margin:1px;background:rgba(59,130,246,0.15);border-radius:4px;font-size:0.72rem;color:#60a5fa;white-space:nowrap;">' + escH(op) + '</span>';
+        }).join('');
+      })();
+      var ofNum = String(i?.of_numero || '').trim();
+      var ofLbl = ofNum ? ofNum : (String(i?.of_id || '').trim().slice(0,6) || '—');
+      return `
+        <div class="inconformidade-card">
+          <div class="inc-card-header">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-weight:600;color:#e2e8f0">OF #${escH(ofLbl)}</span>
+              <span class="inc-badge-status ${escAttr(statusClass)}">${escH(stRaw || 'aberta')}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${dtShort ? `<span style="font-size:0.72rem;color:#64748b">${escH(dtShort)}</span>` : ''}
+              ${foto ? `<img src="${escAttr(foto)}" onclick="window.open(this.src,'_blank')" style="width:32px;height:32px;object-fit:cover;border-radius:5px;cursor:pointer;border:1px solid rgba(255,255,255,0.1)" onerror="this.style.display='none'">` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+            <div>
+              <div class="inc-qtd-perdida">${escH(String(perder || 0))}</div>
+              <div style="font-size:0.65rem;color:#64748b">CAIXAS PERDIDAS</div>
+            </div>
+            <div style="flex:1;font-size:0.82rem;color:#94a3b8">${escH(String(i?.obs || i?.descricao || ''))}</div>
+          </div>
+          <div class="inc-info-grid">
+            <div class="inc-info-item">
+              <span class="inc-info-label">MÁQUINA</span>
+              <span class="inc-info-valor">${escH(String(maqLbl || '—'))}</span>
+            </div>
+            <div class="inc-info-item">
+              <span class="inc-info-label">USUÁRIO</span>
+              <span class="inc-info-valor">${escH(String(usuario || '—'))}</span>
+            </div>
+            <div class="inc-info-item">
+              <span class="inc-info-label">OPERADORES DA OF</span>
+              <div class="inc-info-valor">${opsHtml}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px">
+            ${!stNorm.includes('resolv') ? `<button onclick="incMarcarResolvida('${escAttr(String(i.id || ''))}')" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.35);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px">Marcar resolvida</button>` : ''}
+          </div>
+        </div>
+      `;
     }).join('');
   } catch (e) {
     out.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao carregar.</p>';
@@ -25291,6 +25345,31 @@ function _pinGetEmpId(){
   return '';
 }
 
+function _pinsAtualizarBotoesChapas(){
+  try{
+    var pins = Array.isArray(window._chapasPins) ? window._chapasPins : [];
+    var temPin = function(chapaId){
+      var id = String(chapaId || '').trim();
+      if(!id) return false;
+      return pins.some(function(p){
+        var pid = String(p?.chapa_id || p?.chapaId || '').trim();
+        var st = String(p?.status || '').trim().toLowerCase();
+        return pid === id && st === 'pendente';
+      });
+    };
+    document.querySelectorAll('[data-chapa-id]').forEach(function(el){
+      var chapaId = String(el.dataset?.chapaId || '').trim();
+      if(!chapaId) return;
+      var btnPin = el.querySelector('.btn-pin-chapa');
+      if(!btnPin) return;
+      var ativo = temPin(chapaId);
+      btnPin.style.background = ativo ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.06)';
+      btnPin.style.borderColor = ativo ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.1)';
+      btnPin.style.color = ativo ? '#fbbf24' : '#64748b';
+    });
+  }catch(e){}
+}
+
 async function carregarPinsChapas(forcar){
   try{
     const now = Date.now();
@@ -25298,13 +25377,6 @@ async function carregarPinsChapas(forcar){
     if(!forcar && _chapasPinsLoading) return _chapasPinsLoading;
     _chapasPinsLoading = (async function(){
       const empId = _pinGetEmpId();
-      if(!empId){
-        try{ console.warn('[PINS] empId vazio, não carregando pins'); }catch(_){}
-        try{ window._chapasPins = []; }catch(_){}
-        _chapasPinsAt = Date.now();
-        _chapasPinsLoading = null;
-        return [];
-      }
       const url = '/api/chapas/pins' + (empId ? ('?empId=' + encodeURIComponent(empId)) : '');
       const resp = await apiFetch(url, { method:'GET' });
       const json = await resp.json().catch(()=>null);
@@ -25312,6 +25384,7 @@ async function carregarPinsChapas(forcar){
       try{ window._chapasPins = data; }catch(_){}
       _chapasPinsAt = Date.now();
       _chapasPinsLoading = null;
+      try{ _pinsAtualizarBotoesChapas(); }catch(_){}
       return data;
     })();
     return _chapasPinsLoading;
@@ -25398,20 +25471,16 @@ async function salvarPinChapa(){
   const qtd = String((document.getElementById('pinQtdSugerida')||{}).value || '').trim();
   const obs = String((document.getElementById('pinObservacao')||{}).value || '').trim();
   const empId = _pinGetEmpId();
-  if(!empId){
-    try{ console.error('[PIN] empId vazio', { EMP_FILTRO: (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : null), CURRENT_USER: window.CURRENT_USER, auth_user: localStorage.getItem('auth_user') }); }catch(_){}
-    toast('Erro: empresa não identificada.', 'var(--red)');
-    return;
-  }
   try{
+    var payload = {
+      chapa_id: cid,
+      qtd_sugerida: qtd ? (parseInt(qtd, 10) || null) : null,
+      observacao: obs || null,
+    };
+    if(empId) payload.empId = empId;
     const resp = await apiFetch('/api/chapas/pins', {
       method: 'POST',
-      body: JSON.stringify({
-        chapa_id: cid,
-        qtd_sugerida: qtd ? (parseInt(qtd, 10) || null) : null,
-        observacao: obs || null,
-        empId: empId,
-      })
+      body: JSON.stringify(payload)
     });
     const json = await resp.json().catch(()=>null);
     if(!resp.ok){
@@ -25424,7 +25493,7 @@ async function salvarPinChapa(){
     toast('Chapa marcada para compra! 📌', 'var(--green)');
     fecharModalPinChapa();
     await carregarPinsChapas(true);
-    try{ _renderEstoqueBase(); }catch(_){}
+    try{ _pinsAtualizarBotoesChapas(); }catch(_){}
     try{ renderSugestoesCompra(); }catch(_){}
   }catch(e){
     toast('Erro ao marcar chapa.', 'var(--red)');
@@ -25438,7 +25507,7 @@ async function removerPinChapa(pinId){
     await apiFetch('/api/chapas/pins/' + encodeURIComponent(pid), { method:'DELETE' });
     toast('Pin removido.', 'var(--green)');
     await carregarPinsChapas(true);
-    try{ _renderEstoqueBase(); }catch(_){}
+    try{ _pinsAtualizarBotoesChapas(); }catch(_){}
     try{ renderSugestoesCompra(); }catch(_){}
   }catch(e){
     toast('Erro ao remover pin.', 'var(--red)');
@@ -25452,7 +25521,7 @@ async function marcarPinComoComprado(pinId){
     await apiFetch('/api/chapas/pins/' + encodeURIComponent(pid) + '/comprado', { method:'PATCH' });
     toast('Marcado como comprado! ✅', 'var(--green)');
     await carregarPinsChapas(true);
-    try{ _renderEstoqueBase(); }catch(_){}
+    try{ _pinsAtualizarBotoesChapas(); }catch(_){}
     try{ renderSugestoesCompra(); }catch(_){}
   }catch(e){
     toast('Erro ao marcar como comprado.', 'var(--red)');
@@ -25687,7 +25756,7 @@ function _renderEstoqueBase(chapas) {
       const tonLinha = calcTonChapa(c);
       const temPin = idsComPin.has(cid);
       const trStyle = temPin ? 'cursor:pointer;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.04)' : 'cursor:pointer';
-      return `<tr onclick="chpRowClick(event,'${escAttr(cid)}')" style="${trStyle}">
+      return `<tr data-chapa-id="${escAttr(cid)}" onclick="chpRowClick(event,'${escAttr(cid)}')" style="${trStyle}">
         <td data-label="Nome/Uso" style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
           <div style="display:flex;gap:10px;align-items:center">
             ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
@@ -25728,7 +25797,7 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td data-label="Ações" style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
           <div style="display:flex;gap:4px;justify-content:center">
-            <button class="btn-icon btn-sm" onclick="togglePinChapa('${escAttr(c.id)}', event)" title="${temPin?'Remover pin de compra':'Marcar para compra'}" style="background:${temPin?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.06)'};border:1px solid ${temPin?'rgba(251,191,36,0.5)':'rgba(255,255,255,0.1)'};border-radius:5px;padding:4px 6px;cursor:pointer;color:${temPin?'#fbbf24':'#64748b'};font-size:0.85rem">📌</button>
+            <button class="btn-icon btn-sm btn-pin-chapa" onclick="togglePinChapa('${escAttr(c.id)}', event)" title="${temPin?'Remover pin de compra':'Marcar para compra'}" style="background:${temPin?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.06)'};border:1px solid ${temPin?'rgba(251,191,36,0.5)':'rgba(255,255,255,0.1)'};border-radius:5px;padding:4px 6px;cursor:pointer;color:${temPin?'#fbbf24':'#64748b'};font-size:0.85rem">📌</button>
             <button class="btn-icon btn-sm" data-acao-chapa="saida" data-id="${escAttr(c.id)}" title="Saída" style="color:var(--red)">-</button>
             <button class="btn-icon btn-sm" data-acao-chapa="entrada" data-id="${escAttr(c.id)}" title="Entrada" style="color:var(--green)">+</button>
             <button class="btn-icon btn-sm" onclick="abrirModalQRCodeEstoque('chapa','${escAttr(c.id)}','${escAttr(estChapaKeyLabel(c))}')" title="QR Code">🔳</button>
@@ -33389,6 +33458,7 @@ async function doLogin(){
     }
   }catch(e){}
   try{ await loadCoreData(); }catch(e){}
+  try{ await carregarPinsChapas(true); }catch(e){}
   try{
     if(document.body && document.body.classList && document.body.classList.contains('mobile-mode') && typeof window.renderMobileApp === 'function'){
       window.renderMobileApp();
@@ -42173,6 +42243,73 @@ function renderRelatorio() {
       </div>`;
     }
   }
+  if (tipo === 'clientes-inativos') {
+    const wrap = document.getElementById('rel-content');
+    if(wrap){
+      wrap.innerHTML = `<div class="sbox">
+        <div class="sbox-h" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <span>👥 Clientes Inativos</span>
+          <button class="btn btn-accent btn-sm" onclick="carregarClientesInativos()">Atualizar</button>
+        </div>
+        <div class="sbox-b">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+            <div style="font-size:0.85rem;color:#94a3b8">Clientes sem pedido há mais de:</div>
+            <select id="filtroClientesInativos" class="input-dark" onchange="carregarClientesInativos()" style="width:auto;font-size:0.85rem">
+              <option value="15">15 dias</option>
+              <option value="30" selected>30 dias</option>
+              <option value="60">60 dias</option>
+              <option value="90">90 dias</option>
+              <option value="180">6 meses</option>
+            </select>
+          </div>
+          <div id="listaClientesInativos"></div>
+        </div>
+      </div>`;
+      setTimeout(function(){ try{ carregarClientesInativos(); }catch(e){} }, 0);
+    }
+  }
+}
+
+async function carregarClientesInativos() {
+  const dias = parseInt(String(document.getElementById('filtroClientesInativos')?.value || '30'), 10) || 30;
+  const empId = _pinGetEmpId() || (window.CURRENT_USER?.email ? String(window.CURRENT_USER.email).toUpperCase() : '');
+  const lista = document.getElementById('listaClientesInativos');
+  if (lista) lista.innerHTML = '<p style="color:#64748b">Carregando...</p>';
+  try {
+    const sp = new URLSearchParams();
+    sp.set('dias', String(dias));
+    if (empId) sp.set('empId', empId);
+    const resp = await apiFetch('/api/relatorios/clientes-inativos?' + sp.toString());
+    const json = await resp.json().catch(()=>null);
+    const data = (json && Array.isArray(json.data)) ? json.data : [];
+    if (!lista) return;
+    if (!data.length) {
+      lista.innerHTML = `<p style="color:#64748b;text-align:center;padding:20px">Nenhum cliente inativo nos últimos ${escH(String(dias))} dias.</p>`;
+      return;
+    }
+    lista.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 140px 120px;gap:8px;padding:8px 12px;font-size:0.7rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid rgba(255,255,255,0.08)">
+        <span>CLIENTE</span>
+        <span>VENDEDOR</span>
+        <span style="text-align:right">SEM PEDIDO</span>
+      </div>
+      ${data.map(function(c, i){
+        const nome = String(c?.nome || '').trim() || ('Cliente ' + String(c?.cliente_id || '').slice(0,6));
+        const vendedor = String(c?.vendedor || '').trim() || '—';
+        const diasSem = Number(c?.dias_sem_pedido || 0) || 0;
+        const cor = diasSem > 90 ? '#ef4444' : diasSem > 60 ? '#f59e0b' : '#94a3b8';
+        return `
+          <div style="display:grid;grid-template-columns:1fr 140px 120px;gap:8px;padding:10px 12px;font-size:0.83rem;border-bottom:1px solid rgba(255,255,255,0.04);background:${i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'};">
+            <span style="color:#e2e8f0;font-weight:500">${escH(nome)}</span>
+            <span style="color:#64748b">${escH(vendedor)}</span>
+            <span style="text-align:right;font-weight:700;color:${escAttr(cor)}">${escH(String(diasSem))} dias</span>
+          </div>
+        `;
+      }).join('')}
+    `;
+  } catch (e) {
+    if (lista) lista.innerHTML = '<p style="color:#ef4444">Erro ao carregar relatório.</p>';
+  }
 }
 
 async function carregarRelatorioVendedor() {
@@ -45858,6 +45995,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="producao-empilhada">📊 Produção Empilhada (por Máquina)</option>
       <option value="resultado-empresas">📊 Resultado por Empresa</option>
       <option value="vendas-por-vendedor">📊 Vendas por Vendedor no Mês</option>
+      <option value="clientes-inativos">👥 Clientes Inativos</option>
       <option value="vendas-mensal-comissao">Vendas Mensais + Comissão</option>
       <option value="pedidos-aberto">Pedidos em Aberto</option>
       <option value="pedidos-concluidos">Pedidos Concluídos</option>
@@ -57316,6 +57454,7 @@ function verificarRedistribuicao(ofs, todasOFs){
   var alertas = [];
   var hoje = new Date();
   hoje.setHours(0,0,0,0);
+  var finais = ['concluida','concluída','concluido','concluído','entregue','despachada','finalizada','finalizado','cancelada','cancelado'];
   var all = Array.isArray(todasOFs) ? todasOFs : (Array.isArray(ofs) ? ofs : []);
   var byMaq = {};
   (all || []).forEach(function(of){
@@ -57326,6 +57465,8 @@ function verificarRedistribuicao(ofs, todasOFs){
   });
   (ofs || []).forEach(function(of){
     if(!of) return;
+    var st = String(of?.status || '').trim().toLowerCase();
+    if(st && finais.includes(st)) return;
     var entregaStr = String(of.data_entrega || of.ent || '').slice(0,10);
     if(!entregaStr) return;
     var entrega = new Date(entregaStr + 'T00:00:00');

@@ -4689,6 +4689,93 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    const empId = String(req.query.empId || req.query.emp_id || '').trim();
+    const diasMinimo = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
+    if (!empresa_id && !empId) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+
+    let q = supabase
+      .from('ofs')
+      .select('id,cliente_id,cli_id,cliId,cliente_nome,cliNome,clinome,data_entrega,ent,created_at,status,deleted_at,empresa_id,emp_id')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5000);
+
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    else if (empId) q = q.eq('emp_id', empId);
+
+    const { data: ofs, error } = await q;
+    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
+
+    const ultimoPorCliente = new Map();
+    const hoje = new Date();
+
+    (Array.isArray(ofs) ? ofs : []).forEach((of) => {
+      if (!of) return;
+      const st = String(of.status || '').trim().toLowerCase();
+      if (st && (st.includes('cancel'))) return;
+      const cid = String(of.cliente_id ?? of.cli_id ?? of.cliId ?? '').trim();
+      if (!cid) return;
+      const dtRaw = String(of.data_entrega || of.ent || of.created_at || '').trim();
+      const dt = dtRaw ? new Date(dtRaw.length === 10 ? (dtRaw + 'T00:00:00') : dtRaw) : null;
+      if (!dt || Number.isNaN(dt.getTime())) return;
+      const cur = ultimoPorCliente.get(cid);
+      if (!cur || dt > cur.data) {
+        ultimoPorCliente.set(cid, {
+          data: dt,
+          cliente_nome: String(of.cliente_nome || of.cliNome || of.clinome || '').trim(),
+        });
+      }
+    });
+
+    const rows = Array.from(ultimoPorCliente.entries()).map(([cliente_id, v]) => {
+      const diasSem = Math.floor((hoje.getTime() - v.data.getTime()) / 86400000);
+      return {
+        cliente_id,
+        ultimo_pedido: v.data.toISOString(),
+        dias_sem_pedido: diasSem,
+        nome: v.cliente_nome || '',
+        vendedor: '',
+      };
+    }).filter((r) => Number(r.dias_sem_pedido || 0) >= diasMinimo)
+      .sort((a, b) => Number(b.dias_sem_pedido || 0) - Number(a.dias_sem_pedido || 0));
+
+    const ids = rows.map((r) => String(r.cliente_id || '').trim()).filter(Boolean);
+    if (ids.length) {
+      const { data: clientes, error: errCli } = await supabase
+        .from('clientes')
+        .select('id,nome,vendedor,vendedor_nome,vendNome,vendedor_id')
+        .in('id', ids)
+        .limit(5000);
+      if (!errCli && Array.isArray(clientes)) {
+        const byId = new Map();
+        clientes.forEach((c) => { if (c?.id) byId.set(String(c.id), c); });
+        const vendIds = Array.from(new Set(clientes.map((c) => String(c?.vendedor_id || '').trim()).filter(_isUuid))).slice(0, 1000);
+        const vendById = new Map();
+        if (vendIds.length) {
+          const { data: vds } = await supabase.from('vendedores').select('id,nome').in('id', vendIds).limit(1000);
+          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v?.id) vendById.set(String(v.id), v); });
+        }
+        rows.forEach((r) => {
+          const c = byId.get(String(r.cliente_id)) || null;
+          if (!c) return;
+          const vendNome = String(c?.vendedor || c?.vendedor_nome || c?.vendNome || '').trim();
+          const vendId = String(c?.vendedor_id || '').trim();
+          const vendResolved = vendNome || (vendId && vendById.get(vendId)?.nome) || '';
+          r.nome = String(c?.nome || r.nome || '').trim() || r.nome;
+          r.vendedor = vendResolved || '—';
+        });
+      }
+    }
+
+    return res.json({ ok: true, data: rows });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) => {
   try {
     const dataInicio = String(req.query.dataInicio || '').trim();
