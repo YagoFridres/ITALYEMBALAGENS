@@ -8035,6 +8035,8 @@ async function _resolveEmpresaUuid(req) {
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
     req?.user?.emp_id ?? req?.user?.empId ??
     req?.usuario?.sigla ?? req?.user?.sigla ??
+    (req?.usuario?.email ? String(req.usuario.email).toUpperCase() : '') ??
+    (req?.user?.email ? String(req.user.email).toUpperCase() : '') ??
     hdrEmp ??
     ''
   ).trim();
@@ -8046,7 +8048,7 @@ async function _resolveEmpresaUuid(req) {
      empIdBase === 'E3' ? 'OESTE' :
      empIdBase) || 'ITALY';
   try {
-    const { data, error } = await supabase.from('empresas').select('id').eq('sigla', empIdEff).maybeSingle();
+    const { data, error } = await supabase.from('empresas').select('id').ilike('sigla', empIdEff.trim()).maybeSingle();
     const id = String(data?.id || '').trim();
     if (!error && _isUuid(id)) return id;
     const { data: data2, error: error2 } = await supabase.from('empresas').select('id').eq('codigo', empIdEff).maybeSingle();

@@ -25165,71 +25165,32 @@ let _chapasPinsAt = 0;
 let _chapasPinsLoading = null;
 
 function _pinGetEmpId(){
-  try{
-    const dbg = String(localStorage.getItem('pin_debug') || localStorage.getItem('PIN_DEBUG') || '').trim();
-    if(dbg === '1' || dbg.toLowerCase() === 'true'){
-      try{ console.log('[PIN DEBUG] EMP_FILTRO:', window.EMP_FILTRO); }catch(_){}
-      try{ console.log('[PIN DEBUG] CURRENT_USER:', JSON.stringify(window.CURRENT_USER || null)?.slice(0,200)); }catch(_){}
-      try{ console.log('[PIN DEBUG] window.empId:', window.empId); }catch(_){}
-      try{ console.log('[PIN DEBUG] window.EMPRESA:', window.EMPRESA); }catch(_){}
-      try{ console.log('[PIN DEBUG] window.empresa:', window.empresa); }catch(_){}
-      try{ console.log('[PIN DEBUG] window.EMP_ID:', window.EMP_ID); }catch(_){}
-      try{
-        console.log('[PIN DEBUG] localStorage keys:', Object.keys(localStorage).filter(k =>
-          String(k||'').toLowerCase().includes('emp') || String(k||'').toLowerCase().includes('empresa')
-        ));
-      }catch(_){}
-    }
-  }catch(_){}
-
-  const EMP_MAP = { 'E1':'ITALY','E2':'CARTO','E3':'OESTE','ITALY':'ITALY','CARTO':'CARTO','OESTE':'OESTE' };
-  const map = (v)=>{
-    const s0 = String(v || '').trim().toUpperCase();
-    const s = s0.includes(':') ? s0.split(':')[0] : s0;
-    if(!s) return '';
-    return EMP_MAP[s] || '';
+  const emailParaSigla = {
+    italy: 'ITALY',
+    carto: 'CARTO',
+    oeste: 'OESTE',
+    cartoeste: 'CARTO',
+    oestepack: 'OESTE',
   };
 
-  try{
-    const w = window || {};
-    const direct = w.empId || w.EMP_ID || w.emp_id || (w.EMPRESA && (w.EMPRESA.sigla || w.EMPRESA.empId || w.EMPRESA.emp_id)) || (w.empresa && (w.empresa.sigla || w.empresa.empId || w.empresa.emp_id)) || '';
-    const m = map(direct);
-    if(m) return m;
-    const s = String(direct || '').trim();
-    if(s && EMP_MAP[s.toUpperCase()]) return EMP_MAP[s.toUpperCase()];
-    if(s) return s;
-  }catch(_){}
+  const email = String(window.CURRENT_USER?.email || '').trim().toLowerCase();
+  if (email) {
+    const sigla = emailParaSigla[email];
+    if (sigla) return sigla;
+    return email.toUpperCase();
+  }
 
-  try{
-    const filtro = String(window.EMP_FILTRO || '').trim() || String(localStorage.getItem('empFiltro') || '').trim();
-    const m = map(filtro);
-    if(m) return m;
-  }catch(_){}
-  try{
-    const u = window.CURRENT_USER || {};
-    const sigla = u?.sigla || u?.empresa_sigla || u?.empSigla;
-    const m = map(sigla);
-    if(m) return m;
-  }catch(_){}
-  try{
-    const u = window.CURRENT_USER || {};
-    const empId = u?.empId || u?.emp_id;
-    const m = map(empId);
-    if(m) return m;
-  }catch(_){}
-  try{
-    const ls = String(localStorage.getItem('empId') || localStorage.getItem('empresa_sigla') || '').trim();
-    const m = map(ls);
-    if(m) return m;
-  }catch(_){}
-  try{
-    const au = JSON.parse(localStorage.getItem('auth_user') || '{}');
-    const v = String(au?.sigla || au?.empId || au?.emp_id || '').trim();
-    const m = map(v);
-    if(m) return m;
-    if(v) return v;
-  }catch(_){}
-  try{ console.warn('[PIN] empId não encontrado', { EMP_FILTRO: window.EMP_FILTRO, CURRENT_USER: window.CURRENT_USER }); }catch(_){}
+  try {
+    const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    const authEmail = String(authUser?.email || '').trim().toLowerCase();
+    if (authEmail) {
+      const sigla = emailParaSigla[authEmail];
+      if (sigla) return sigla;
+      return authEmail.toUpperCase();
+    }
+  } catch (e) {}
+
+  try { console.warn('[PIN] Não foi possível determinar empId'); } catch (e) {}
   return '';
 }
 
@@ -25240,6 +25201,13 @@ async function carregarPinsChapas(forcar){
     if(!forcar && _chapasPinsLoading) return _chapasPinsLoading;
     _chapasPinsLoading = (async function(){
       const empId = _pinGetEmpId();
+      if(!empId){
+        try{ console.warn('[PINS] empId vazio, não carregando pins'); }catch(_){}
+        try{ window._chapasPins = []; }catch(_){}
+        _chapasPinsAt = Date.now();
+        _chapasPinsLoading = null;
+        return [];
+      }
       const url = '/api/chapas/pins' + (empId ? ('?empId=' + encodeURIComponent(empId)) : '');
       const resp = await apiFetch(url, { method:'GET' });
       const json = await resp.json().catch(()=>null);
