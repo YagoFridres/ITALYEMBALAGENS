@@ -9027,6 +9027,21 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     delete payload.empId;
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
+    if (!String(payload.emp_id || '').trim()) {
+      payload.emp_id = String(
+        req.query?.empId ||
+        req.query?.emp_id ||
+        req.usuario?.empId ||
+        req.usuario?.emp_id ||
+        req.usuario?.sigla ||
+        req.user?.empId ||
+        req.user?.emp_id ||
+        req.user?.sigla ||
+        payload.emp_id ||
+        ''
+      ).trim() || undefined;
+    }
+
     if (payload.maquinas != null) {
       let arr = [];
       try {
@@ -9056,15 +9071,45 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     if (payload.operador_id && !payload.opId) payload.opId = payload.operador_id;
     if (payload.op_id && !payload.operador_id) payload.operador_id = payload.op_id;
     if (payload.opId && !payload.operador_id) payload.operador_id = payload.opId;
-    if (payload.obs && !payload.descricao) payload.descricao = payload.obs;
-    if (payload.qtd_perdida != null && payload.caixas_perdidas == null) payload.caixas_perdidas = payload.qtd_perdida;
+    if (payload.descricao && !payload.obs) payload.obs = payload.descricao;
+    if (payload.caixas_perdidas != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.caixas_perdidas;
+    if (payload.quantidade != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.quantidade;
+    if (payload.qtd_perdida != null) payload.qtd_perdida = Math.trunc(Number(payload.qtd_perdida) || 0);
     if (payload.imagem_problema_url && !payload.foto_url) payload.foto_url = payload.imagem_problema_url;
     if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
     if (payload.imagem_url && !payload.foto_url) payload.foto_url = payload.imagem_url;
 
+    try {
+      const cache = {};
+      const resolveMaqNome = async (idOrNome) => {
+        const raw = String(idOrNome || '').trim();
+        if (!raw) return '';
+        if (!_isUuid(raw)) return raw;
+        if (cache[raw]) return cache[raw];
+        const r = await supabase.from('maquinas').select('nome,codigo,col').eq('id', raw).maybeSingle();
+        const m = r?.data || null;
+        const best = String(m?.nome || m?.col || m?.codigo || raw).trim();
+        const canon = _canonMaqNome(best) || best;
+        cache[raw] = canon;
+        return canon;
+      };
+
+      if (payload.maquina) {
+        payload.maquina = await resolveMaqNome(payload.maquina);
+      }
+      if (Array.isArray(payload.maquinas) && payload.maquinas.length) {
+        const mapped = [];
+        for (const it of payload.maquinas) {
+          const nm = await resolveMaqNome(it);
+          if (nm) mapped.push(nm);
+        }
+        const uniq = [...new Set(mapped)];
+        payload.maquinas = uniq;
+        if (!String(payload.maquina || '').trim() && uniq[0]) payload.maquina = uniq[0];
+      }
+    } catch (_) {}
+
     // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
-    delete payload.obs;
-    delete payload.qtd_perdida;
     delete payload.imagem_problema_url;
     delete payload.cliente_nome;
     delete payload.imagem_url;
@@ -9108,7 +9153,10 @@ app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
       totalPerdas += perdas;
       if (i?.motivo) porMotivo[i.motivo] = (porMotivo[i.motivo] || 0) + 1;
       if (i?.maquina) porMaquina[i.maquina] = (porMaquina[i.maquina] || 0) + perdas;
-      if (i?.operador_nome) porOperador[i.operador_nome] = (porOperador[i.operador_nome] || 0) + 1;
+      if (i?.operador || i?.operador_nome) {
+        const op = String(i?.operador || i?.operador_nome || '').trim();
+        if (op) porOperador[op] = (porOperador[op] || 0) + 1;
+      }
     });
 
     return ok(res, {
@@ -9124,72 +9172,47 @@ app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
 
 app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
   try {
+    const empresa_id = await _resolveEmpresaUuid(req);
     const empId = String(
       req.query?.empId ||
       req.query?.emp_id ||
       req.usuario?.empId ||
       req.usuario?.emp_id ||
       req.usuario?.sigla ||
+      req.user?.empId ||
+      req.user?.emp_id ||
+      req.user?.sigla ||
       ''
     ).trim();
-    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
 
-    const baseSelect = 'operador_nome,operador,operador_id,op_id,opId,caixas_perdidas,qtd_perdida,quantidade,created_at,empresa_id,emp_id';
-    let data = null;
-    let error = null;
+    let q = supabase
+      .from('inconformidades')
+      .select('operador,qtd_perdida,caixas_perdidas,quantidade,created_at,empresa_id,emp_id')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    else if (empId) q = q.eq('emp_id', empId);
 
-    if (empresa_id) {
-      try {
-        const r = await supabase
-          .from('inconformidades')
-          .select(baseSelect)
-          .eq('empresa_id', empresa_id)
-          .order('created_at', { ascending: false })
-          .limit(5000);
-        data = r.data;
-        error = r.error;
-      } catch (e) {
-        error = e;
-      }
-    }
-
-    if (!empresa_id || error) {
-      try {
-        let q = supabase
-          .from('inconformidades')
-          .select(baseSelect)
-          .order('created_at', { ascending: false })
-          .limit(5000);
-        if (empId) q = q.eq('emp_id', empId);
-        const r2 = await q;
-        data = r2.data;
-        error = r2.error;
-      } catch (e) {
-        error = e;
-      }
-    }
-
-    const msg = String(error?.message || error || '').toLowerCase();
+    let { data, error } = await q;
+    const msg = String(error?.message || '').toLowerCase();
     if (error && (msg.includes('column') || msg.includes('schema cache'))) {
-      const r3 = await supabase
+      const r2 = await supabase
         .from('inconformidades')
-        .select('operador_nome,operador,operador_id,op_id,opId,caixas_perdidas,qtd_perdida,quantidade,created_at')
+        .select('operador,qtd_perdida,caixas_perdidas,quantidade,created_at')
         .order('created_at', { ascending: false })
         .limit(5000);
-      data = r3.data;
-      error = r3.error;
+      data = r2.data;
+      error = r2.error;
     }
     if (error) throw error;
 
     const porOperador = {};
     (data || []).forEach((p) => {
-      const nome = String(p?.operador_nome || p?.operador || 'Desconhecido').trim() || 'Desconhecido';
-      const opId = String(p?.operador_id || p?.op_id || p?.opId || '').trim() || null;
-      const perdas = Number(p?.caixas_perdidas ?? p?.qtd_perdida ?? p?.quantidade ?? 0) || 0;
-      const key = opId ? `id:${opId}` : `nm:${nome}`;
-      if (!porOperador[key]) porOperador[key] = { nome, operador_id: opId, total: 0, registros: 0 };
-      porOperador[key].total += Math.trunc(perdas);
-      porOperador[key].registros += 1;
+      const nome = String(p?.operador || 'Desconhecido').trim() || 'Desconhecido';
+      const perdas = Number(p?.qtd_perdida ?? p?.caixas_perdidas ?? p?.quantidade ?? 0) || 0;
+      if (!porOperador[nome]) porOperador[nome] = { nome, total: 0, registros: 0 };
+      porOperador[nome].total += Math.trunc(perdas);
+      porOperador[nome].registros += 1;
     });
 
     const ranking = Object.values(porOperador).sort((a, b) => (b.total || 0) - (a.total || 0));
@@ -11467,19 +11490,8 @@ app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
-    const empId = String(
-      req.query.empId ||
-      req.query.emp_id ||
-      req.usuario?.empId ||
-      req.usuario?.emp_id ||
-      req.usuario?.sigla ||
-      req.user?.empId ||
-      req.user?.emp_id ||
-      req.user?.sigla ||
-      ''
-    ).trim();
-    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
-    if (!empresa_id) return res.json({ ok: true, data: [] });
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
 
     const { data: pins, error } = await supabase
       .from('chapas_pins')
@@ -11524,26 +11536,11 @@ app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
 app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const empId = String(
-      b.empId ||
-      b.emp_id ||
-      req.query?.empId ||
-      req.query?.emp_id ||
-      req.usuario?.empId ||
-      req.usuario?.emp_id ||
-      req.usuario?.sigla ||
-      req.user?.empId ||
-      req.user?.emp_id ||
-      req.user?.sigla ||
-      ''
-    ).trim();
-    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
+    const empresa_id = await _resolveEmpresaUuid(req);
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
     const observacao = String(b.observacao || '').trim() || null;
-    if (!empresa_id) {
-      return res.status(400).json({ ok: false, error: `Empresa não encontrada. empId recebido: ${empId || '—'}` });
-    }
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     if (!chapa_id) return res.status(400).json({ ok: false, error: 'chapa_id obrigatório' });
 
     let existente = null;
@@ -11564,7 +11561,7 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
     const payload = {
       chapa_id,
       empresa_id,
-      emp_id: empId || req.usuario?.empId || null,
+      emp_id: String(b.empId || b.emp_id || req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || req.usuario?.sigla || '').trim() || null,
       criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
       qtd_sugerida: (qtd_sugerida && qtd_sugerida > 0) ? qtd_sugerida : null,
       observacao,

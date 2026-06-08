@@ -7951,7 +7951,13 @@ async function salvarInconformidadeNova() {
   if (!motivo) { alert('Selecione o motivo.'); return; }
 
   var ofNumero = String((document.getElementById('inc-of-numero') || {}).value || '').trim();
-  var maq = String((document.getElementById('inc-maquina') || {}).value || '').trim();
+  var maq = '';
+  try{
+    var selMaq = document.getElementById('inc-maquina');
+    if(selMaq){
+      maq = String(selMaq.selectedOptions && selMaq.selectedOptions[0] ? selMaq.selectedOptions[0].textContent : selMaq.value || '').trim();
+    }
+  }catch(_){ maq = ''; }
   var maquinas = [];
   try{
     var wrap = document.getElementById('inc-maquinas-checkboxes');
@@ -7976,6 +7982,11 @@ async function salvarInconformidadeNova() {
 
   var token = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
   try {
+    var empId = '';
+    try{ empId = (typeof EMP_FILTRO !== 'undefined' && EMP_FILTRO) ? String(EMP_FILTRO) : ''; }catch(_){ empId=''; }
+    if(!empId){
+      try{ empId = String((window._currentUser?.empId || window._currentUser?.emp_id || window._currentUser?.sigla || window.CURRENT_USER?.empId || window.CURRENT_USER?.emp_id || window.CURRENT_USER?.sigla || '')).trim(); }catch(_){ empId=''; }
+    }
     var r = await fetch('/api/inconformidades', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -7984,13 +7995,10 @@ async function salvarInconformidadeNova() {
         maquina: maq || null,
         maquinas: maquinas.length ? maquinas : null,
         operador: operadorNome || null,
-        operador_id: operadorId || null,
-        op_id: operadorId || null,
-        opId: operadorId || null,
-        operador_nome: operadorNome || null,
         motivo,
-        descricao: desc || null,
-        caixas_perdidas: caixas || 0,
+        obs: desc || null,
+        qtd_perdida: caixas || 0,
+        emp_id: empId || null,
         foto_url: _incFotoUrl || null,
         status: 'Aberta'
       })
@@ -8046,7 +8054,16 @@ async function carregarInconformidades() {
       var cor = st === 'Resolvida' ? '#10b981' : st === 'Em Análise' ? '#f59e0b' : '#f43f5e';
       var dt = i?.created_at ? new Date(i.created_at).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
       var foto = String(i?.foto_url || i?.imagem_problema_url || '').trim();
-      var perder = Number(i?.caixas_perdidas ?? i?.qtd_perdida ?? 0) || 0;
+      var perder = Number(i?.qtd_perdida ?? i?.caixas_perdidas ?? i?.qtd_perdida ?? 0) || 0;
+      var opNome = String(i?.operador || i?.operador_nome || i?.responsavel || '').trim();
+      var maqRaw = String(i?.maquina || '').trim();
+      var maqLbl = maqRaw;
+      try{
+        if(/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(maqRaw) && typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)){
+          var m = MAQUINAS.find(function(x){ return String(x?.id || '').trim() === maqRaw; });
+          if(m) maqLbl = String(m?.col || m?.nome || m?.codigo || maqRaw).trim();
+        }
+      }catch(_){}
       return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">' +
           '<span style="font-weight:700;color:#e2e8f0">OF ' + escH(String(i?.of_numero || '—')) + '</span>' +
@@ -8054,12 +8071,12 @@ async function carregarInconformidades() {
           (dt ? '<span style="margin-left:auto;color:#64748b;font-size:11px">' + escH(dt) + '</span>' : '') +
         '</div>' +
         '<div style="color:#94a3b8;font-size:12px;margin-bottom:6px">' +
-          (i?.operador_nome ? ('Operador: <b style=\"color:#e2e8f0\">' + escH(String(i.operador_nome)) + '</b> · ') : '') +
-          (i?.maquina ? ('Máquina: <b style=\"color:#e2e8f0\">' + escH(String(i.maquina)) + '</b> · ') : '') +
+          (opNome ? ('Operador: <b style=\"color:#e2e8f0\">' + escH(String(opNome)) + '</b> · ') : '') +
+          (maqLbl ? ('Máquina: <b style=\"color:#e2e8f0\">' + escH(String(maqLbl)) + '</b> · ') : '') +
           'Perdas: <b style=\"color:#e2e8f0\">' + escH(String(perder)) + '</b>' +
         '</div>' +
         (i?.motivo ? '<div style="color:#e2e8f0;font-size:13px;font-weight:700;margin-bottom:6px">' + escH(String(i.motivo)) + '</div>' : '') +
-        (i?.descricao ? '<div style="color:#94a3b8;font-size:12px;white-space:pre-wrap;margin-bottom:8px">' + escH(String(i.descricao)) + '</div>' : '') +
+        ((i?.obs || i?.descricao) ? '<div style="color:#94a3b8;font-size:12px;white-space:pre-wrap;margin-bottom:8px">' + escH(String(i.obs || i.descricao)) + '</div>' : '') +
         (foto ? '<img src="' + escAttr(foto) + '" data-url="' + escAttr(foto) + '" onclick="kbAbrirImagem(this.getAttribute(&quot;data-url&quot;))" style="width:100%;max-width:320px;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,0.1);cursor:pointer;margin-bottom:10px" onerror="this.style.display=&#39;none&#39;">' : '') +
         '<div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">' +
           (st !== 'Resolvida'
@@ -25096,13 +25113,39 @@ try{ if(!Array.isArray(window._chapasPins)) window._chapasPins = []; }catch(_){}
 let _chapasPinsAt = 0;
 let _chapasPinsLoading = null;
 
+function _pinGetEmpId(){
+  try{
+    const ef = (typeof EMP_FILTRO !== 'undefined') ? String(EMP_FILTRO || '').trim() : '';
+    if(ef) return ef;
+  }catch(_){}
+  try{
+    const au = localStorage.getItem('auth_user');
+    if(au){
+      const u = JSON.parse(au);
+      const v = String(u?.empId || u?.emp_id || u?.sigla || '').trim();
+      if(v) return v;
+    }
+  }catch(_){}
+  try{
+    const u = window.USUARIO_LOGADO || window.USER || window._user || window._currentUser || window.CURRENT_USER || {};
+    const perfil = String(u?.perfil || '').trim();
+    const v = String(u?.sigla || u?.empId || u?.emp_id || '').trim();
+    if(v && perfil) return v;
+  }catch(_){}
+  try{
+    const v = String(localStorage.getItem('empId') || localStorage.getItem('empresa_sigla') || '').trim();
+    if(v) return v;
+  }catch(_){}
+  return '';
+}
+
 async function carregarPinsChapas(forcar){
   try{
     const now = Date.now();
     if(!forcar && now - (_chapasPinsAt||0) < 60000 && Array.isArray(window._chapasPins)) return window._chapasPins;
     if(!forcar && _chapasPinsLoading) return _chapasPinsLoading;
     _chapasPinsLoading = (async function(){
-      const empId = String((window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || '').trim();
+      const empId = _pinGetEmpId();
       const url = '/api/chapas/pins' + (empId ? ('?empId=' + encodeURIComponent(empId)) : '');
       const resp = await apiFetch(url, { method:'GET' });
       const json = await resp.json().catch(()=>null);
@@ -25195,7 +25238,12 @@ async function salvarPinChapa(){
   if(!cid) return;
   const qtd = String((document.getElementById('pinQtdSugerida')||{}).value || '').trim();
   const obs = String((document.getElementById('pinObservacao')||{}).value || '').trim();
-  const empId = String((window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || '').trim();
+  const empId = _pinGetEmpId();
+  if(!empId){
+    try{ console.error('[PIN] empId vazio', { EMP_FILTRO: (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : null), CURRENT_USER: window.CURRENT_USER, auth_user: localStorage.getItem('auth_user') }); }catch(_){}
+    toast('Erro: empresa não identificada.', 'var(--red)');
+    return;
+  }
   try{
     const resp = await apiFetch('/api/chapas/pins', {
       method: 'POST',
@@ -25203,7 +25251,7 @@ async function salvarPinChapa(){
         chapa_id: cid,
         qtd_sugerida: qtd ? (parseInt(qtd, 10) || null) : null,
         observacao: obs || null,
-        empId: empId || null,
+        empId: empId,
       })
     });
     const json = await resp.json().catch(()=>null);
