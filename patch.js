@@ -926,6 +926,47 @@
     padding: 8px 6px !important;
     white-space: nowrap !important;
   }
+
+  #painelDetalheChapa {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  #painelDetalheChapa > div {
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 92vh !important;
+  }
+  #painelQtdAtual { font-size: 1.5rem !important; }
+
+  .ofs-maquina-board {
+    overflow-x: auto !important;
+    display: flex !important;
+    gap: 12px !important;
+    padding-bottom: 12px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .ofs-maquina-coluna {
+    min-width: 280px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .of-card {
+    padding: 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .sistema-header, .top-header {
+    padding: 6px 10px !important;
+  }
+
+  .badge-atrasados, .badge-urgentes, .badge-concluidos,
+  [class*="badge-status"] {
+    font-size: 0.68rem !important;
+    padding: 3px 6px !important;
+  }
+
+  .modal-overlay { z-index: 9000 !important; }
+  #painelDetalheChapa { z-index: 9500 !important; }
 }
 `;
 

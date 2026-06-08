@@ -806,12 +806,11 @@ td.tc{text-align:center;}
 /* ===== MODAL ===== */
 .modal-overlay{display:none;position:fixed;z-index:9999;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7)!important;backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px 10px;overflow-y:auto;}
 .modal-overlay.open{display:flex;}
-#painelDetalheChapa.modal-overlay{background:rgba(0,0,0,0.75)!important;align-items:center!important;justify-content:center!important;position:fixed!important;inset:0!important;z-index:9999!important;padding:20px!important;}
-#painelDetalheChapa .modal-box{width:100%!important;max-width:560px!important;min-width:320px!important;max-height:90vh!important;overflow-y:auto!important;background:#1e293b!important;border:1px solid rgba(255,255,255,0.1)!important;border-radius:12px!important;padding:0!important;}
-@media (max-width:768px){
-  #painelDetalheChapa.modal-overlay{align-items:flex-end!important;padding:0!important;}
-  #painelDetalheChapa .modal-box{max-width:100%!important;max-height:92vh!important;border-radius:16px 16px 0 0!important;}
-}
+.painel-dado-linha{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.82rem;}
+.painel-dado-linha:last-child{border-bottom:none;}
+.painel-dado-label{color:#64748b;}
+.painel-dado-valor{color:#e2e8f0;font-weight:500;text-align:right;}
+.painel-badge-cat{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:min(700px,98vw);position:relative;box-shadow:var(--shadow-lg);}
 .modal h2{font-size:.92rem;margin-bottom:16px;color:var(--accent);font-family:var(--mono);display:flex;align-items:center;gap:8px;font-weight:700;}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -10808,6 +10807,8 @@ async function renderOFsPorMaquina(){
 
     const todasOfs = (lista || []).slice();
     window._ofmaqListaCompleta = todasOfs.slice();
+    const alertasRedis = (typeof verificarRedistribuicao === 'function') ? verificarRedistribuicao(todasOfs, todasOfs) : [];
+    const alertasHtml = (typeof renderAlertasRedistribuicao === 'function') ? renderAlertasRedistribuicao(alertasRedis) : '';
     let ofsFiltradas = todasOfs.filter(o => {
       if (!o || o.deleted_at) return false;
       let s = String(o.status || '').toLowerCase();
@@ -10998,7 +10999,7 @@ async function renderOFsPorMaquina(){
     ];
 
     if(typeof renderKanbanOfmaq === 'function'){
-      renderKanbanOfmaq(grupos, maquinasOrdenadas, container);
+      renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml);
       container.scrollTop = scroll;
       _ofsMaqRenderizando=false;return;
     }
@@ -11007,7 +11008,7 @@ async function renderOFsPorMaquina(){
     if(!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
     if(!window._ofmaqLastGroupOfs || typeof window._ofmaqLastGroupOfs !== 'object') window._ofmaqLastGroupOfs = {};
     const maquinas = maquinasOrdenadas;
-    container.innerHTML = maquinas.filter(m=>grupos[m]).map(maq=>{
+    container.innerHTML = String(alertasHtml || '') + maquinas.filter(m=>grupos[m]).map(maq=>{
       const baseSorted = ordenarOFsPorPrioridade(grupos[maq] || []);
       const pos = new Map();
       const ordArr = Array.isArray(window._ordemMaquinas[maq]) ? window._ordemMaquinas[maq] : [];
@@ -24668,43 +24669,40 @@ function _ensurePainelDetalheChapa(){
   modal.style.display = 'none';
   modal.onclick = function(e){ if(e && e.target === modal) fecharPainelChapa(); };
   modal.innerHTML = `
-    <div class="modal-box" style="max-width:560px">
-      <div class="modal-header">
+    <div style="background:#0f172a;border:1px solid rgba(255,255,255,0.1);border-radius:14px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column">
+      <div id="painelChapaHeader" style="padding:16px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;justify-content:space-between;align-items:flex-start">
         <div>
-          <h3 id="painelChapaNome" style="margin:0;font-size:1rem"></h3>
-          <span id="painelChapaSub" style="color:#64748b;font-size:0.8rem"></span>
+          <div id="painelChapaNome" style="font-size:1.05rem;font-weight:700;color:#f1f5f9;margin-bottom:3px"></div>
+          <div id="painelChapaSub" style="font-size:0.78rem;color:#64748b"></div>
+          <span id="painelChapaBadgeCat" class="painel-badge-cat" style="display:none"></span>
         </div>
-        <button onclick="fecharPainelChapa()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">×</button>
+        <button onclick="fecharPainelChapa()" style="background:rgba(255,255,255,0.06);border:none;border-radius:6px;color:#94a3b8;font-size:1rem;width:28px;height:28px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center">×</button>
       </div>
-      <div class="modal-body" style="display:flex;flex-direction:column;gap:16px">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:rgba(255,255,255,0.03);border-radius:10px;padding:14px">
-          <div style="text-align:center">
-            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Estoque Atual</div>
-            <div id="painelQtdAtual" style="font-size:1.8rem;font-weight:800;color:#22d3ee"></div>
-            <div style="font-size:0.7rem;color:#64748b">unidades</div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Vlr Unit.</div>
-            <div id="painelVlrUnit" style="font-size:1.1rem;font-weight:700;color:#e2e8f0"></div>
-          </div>
-          <div style="text-align:center">
-            <div style="font-size:0.7rem;color:#64748b;text-transform:uppercase;margin-bottom:4px">Toneladas</div>
-            <div id="painelToneladas" style="font-size:1.1rem;font-weight:700;color:#a78bfa"></div>
-          </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.07)">
+        <div style="background:#0f172a;padding:14px 12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Estoque Atual</div>
+          <div id="painelQtdAtual" style="font-size:1.9rem;font-weight:800;color:#22d3ee;line-height:1"></div>
+          <div style="font-size:0.65rem;color:#475569;margin-top:3px">unidades</div>
         </div>
-        <div id="painelDadosGerais" style="font-size:0.83rem;display:flex;flex-direction:column;gap:6px"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <button id="btnEntradaPainel" onclick="entradaRapidaDoPainel()" style="padding:10px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);border-radius:8px;color:#4ade80;font-weight:600;cursor:pointer;font-size:0.85rem">➕ Entrada</button>
-          <button id="btnSaidaPainel" onclick="saidaRapidaDoPainel()" style="padding:10px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);border-radius:8px;color:#f87171;font-weight:600;cursor:pointer;font-size:0.85rem">➖ Saída</button>
+        <div style="background:#0f172a;padding:14px 12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Vlr Unit.</div>
+          <div id="painelVlrUnit" style="font-size:1.1rem;font-weight:700;color:#e2e8f0;line-height:1.2"></div>
         </div>
-        <div>
-          <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Histórico por Mês</div>
-          <div id="painelHistoricoMes" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div style="background:#0f172a;padding:14px 12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">Toneladas</div>
+          <div id="painelToneladas" style="font-size:1.1rem;font-weight:700;color:#a78bfa;line-height:1.2"></div>
         </div>
-        <div>
-          <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Últimos Movimentos</div>
-          <div id="painelUltimosMovimentos" style="display:flex;flex-direction:column;gap:4px"></div>
-        </div>
+      </div>
+      <div id="painelDadosGerais" style="padding:14px 20px;display:flex;flex-direction:column;gap:0"></div>
+      <div style="padding:0 20px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button id="btnEntradaPainel" onclick="entradaRapidaDoPainel()" style="padding:11px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.35);color:#4ade80">➕ Entrada</button>
+        <button id="btnSaidaPainel" onclick="saidaRapidaDoPainel()" style="padding:11px;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#f87171">➖ Saída</button>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.06);padding:14px 20px">
+        <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Histórico por Mês</div>
+        <div id="painelHistoricoMes"></div>
+        <div style="font-size:0.68rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin:12px 0 8px">Últimos Movimentos</div>
+        <div id="painelUltimosMovimentos"></div>
       </div>
     </div>
   `;
@@ -24749,21 +24747,43 @@ async function abrirPainelChapa(chapaId){
   if(elVu) elVu.textContent = (vu > 0) ? ('R$ ' + vu.toFixed(2)) : '—';
   if(elTon) elTon.textContent = ton.ok ? ton.txt : '—';
 
+  const catTxt = String(chapa.categoria || '').trim();
+  const catNorm = catTxt.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const catColor = catNorm.includes('duplo') ? '#a78bfa' : catNorm.includes('simples') ? '#22c55e' : '#4A90D9';
+  const badge = document.getElementById('painelChapaBadgeCat');
+  if(badge){
+    if(catTxt){
+      badge.style.display = 'inline-block';
+      badge.textContent = catTxt;
+      badge.style.background = catColor + '22';
+      badge.style.border = '1px solid ' + (catColor + '55');
+      badge.style.color = catColor;
+    } else {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    }
+  }
+  const hdr = document.getElementById('painelChapaHeader');
+  if(hdr){
+    hdr.style.boxShadow = 'inset 4px 0 0 ' + catColor;
+  }
+
   const dados = [
     ['Gramatura', (chapa.gramatura != null && String(chapa.gramatura).trim() !== '') ? (String(chapa.gramatura) + ' g/m²') : '—'],
+    ['Tamanho', chapa.tamanho || chapa.tam || '—'],
+    ['Fornecedor', chapa.fornecedor || chapa.forn || '—'],
     ['NF', chapa.nf || chapa.numero_nf || '—'],
     ['Categoria', chapa.categoria || '—'],
-    ['Empresa/CNPJ', chapa.empresa_vinculada || chapa.qual_cnpj || chapa.qual || '—'],
-    ['Tamanho', chapa.tamanho || chapa.tam || '—'],
-    ['Estoque mínimo', (chapa.estoque_minimo != null) ? String(chapa.estoque_minimo) : '—'],
-    ['Valor total', (vtot > 0) ? ('R$ ' + vtot.toFixed(2)) : '—'],
+    ['Empresa', chapa.empresa_vinculada || chapa.qual_cnpj || chapa.qual || '—'],
+    ['Est. Mínimo', (chapa.estoque_minimo ?? chapa.min) != null ? String(chapa.estoque_minimo ?? chapa.min) : '—'],
+    ['Valor Total', (vtot > 0) ? ('R$ ' + vtot.toFixed(2)) : '—'],
   ];
   const elDados = document.getElementById('painelDadosGerais');
   if(elDados){
     elDados.innerHTML = dados.map(([k,v])=>`
-      <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-        <span style="color:#64748b">${escH(k)}</span>
-        <span style="color:#e2e8f0">${escH(v)}</span>
+      <div class="painel-dado-linha">
+        <span class="painel-dado-label">${escH(k)}</span>
+        <span class="painel-dado-valor">${escH(v)}</span>
       </div>
     `).join('');
   }
@@ -56286,15 +56306,20 @@ async function carregarDadosMaquinas(force){
     _cacheMaquinasLoading = (async function(){
       var token = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
       var base = (window.location && window.location.protocol === 'file:') ? API_BASE : '';
-      var r = await fetch(base + '/api/maquinas?ativas=1&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var empId = String((typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || (window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || '').trim();
+      var qs = new URLSearchParams({ ativas: '1', t: String(Date.now()) });
+      if(empId) qs.set('empId', empId);
+      var r = await fetch(base + '/api/maquinas?' + qs.toString(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var d = await r.json().catch(()=>null);
       var arr = (d && (d.data || d.maquinas)) ? (d.data || d.maquinas) : (Array.isArray(d) ? d : []);
       arr = Array.isArray(arr) ? arr : [];
+      try{ window._maquinasDados = {}; }catch(_){}
       arr.forEach(function(m){
         if(!m) return;
         var nome = String(m.nome || m.codigo || m.col || '').trim();
         if(nome){
           _cacheMaquinas[nome.toUpperCase()] = m;
+          try{ if(window._maquinasDados) window._maquinasDados[nome] = m; }catch(_){}
         }
         if(m.id) _cacheMaquinas[String(m.id)] = m;
       });
@@ -56307,6 +56332,126 @@ async function carregarDadosMaquinas(force){
     try{ _cacheMaquinasLoading = null; }catch(_){}
     return (_cacheMaquinas && typeof _cacheMaquinas === 'object') ? _cacheMaquinas : {};
   }
+}
+
+function calcularDiasUteis(inicio, fim){
+  try{
+    var a = new Date(inicio);
+    var b = new Date(fim);
+    if(!a || !b || isNaN(a) || isNaN(b)) return 0;
+    a.setHours(0,0,0,0);
+    b.setHours(0,0,0,0);
+    var dias = 0;
+    var atual = new Date(a);
+    while(atual < b){
+      atual.setDate(atual.getDate() + 1);
+      var ds = atual.getDay();
+      if(ds !== 0 && ds !== 6) dias++;
+    }
+    return dias;
+  }catch(e){
+    return 0;
+  }
+}
+
+function calcularTempoOF(of, maquina){
+  var maqNome = String(maquina || '').trim();
+  var dados = (window._maquinasDados && maqNome) ? (window._maquinasDados[maqNome] || window._maquinasDados[maqNome.toUpperCase()] || null) : null;
+  if(!dados || !dados.caixas_hora) return null;
+  var qtd = parseInt(of?.quantidade || of?.qtd || 0, 10) || 0;
+  var cxHora = parseFloat(dados.caixas_hora || 0) || 0;
+  var setupMin = parseFloat(dados.tempo_setup_padrao_min || 30) || 30;
+  if(!qtd || !cxHora) return null;
+  var horasProd = qtd / cxHora;
+  var minProd = horasProd * 60;
+  var totalMin = minProd + setupMin;
+  var horas = Math.floor(totalMin / 60);
+  var minutos = Math.round(totalMin % 60);
+  return { totalMin: totalMin, horas: horas, minutos: minutos, label: horas + 'h ' + minutos + 'min' };
+}
+
+function calcularCapacidadeDia(maquina){
+  var maqNome = String(maquina || '').trim();
+  var dados = (window._maquinasDados && maqNome) ? (window._maquinasDados[maqNome] || window._maquinasDados[maqNome.toUpperCase()] || null) : null;
+  if(!dados) return null;
+  var inicio = String(dados.horario_inicio || '07:00');
+  var fim = String(dados.horario_fim || '18:00');
+  var pI = inicio.split(':').map(Number);
+  var pF = fim.split(':').map(Number);
+  var minDisponiveis = ((Number(pF[0])||0) * 60 + (Number(pF[1])||0)) - ((Number(pI[0])||0) * 60 + (Number(pI[1])||0));
+  return { minDisponiveis: minDisponiveis, label: Math.floor(minDisponiveis/60) + 'h de trabalho' };
+}
+
+function calcularCargaMaquina(maquina, ofs){
+  var maqNome = String(maquina || '').trim();
+  var totalMin = 0;
+  (ofs || []).forEach(function(of){
+    var tempo = calcularTempoOF(of, maqNome);
+    if(tempo) totalMin += Number(tempo.totalMin || 0) || 0;
+  });
+  var cap = calcularCapacidadeDia(maqNome);
+  var pct = cap && cap.minDisponiveis > 0 ? Math.round((totalMin / cap.minDisponiveis) * 100) : 0;
+  return {
+    totalMin: totalMin,
+    percentual: pct,
+    sobrecarregada: pct > 100,
+    label: Math.floor(totalMin/60) + 'h ' + Math.round(totalMin%60) + 'min'
+  };
+}
+
+function verificarRedistribuicao(ofs, todasOFs){
+  var alertas = [];
+  var hoje = new Date();
+  hoje.setHours(0,0,0,0);
+  var all = Array.isArray(todasOFs) ? todasOFs : (Array.isArray(ofs) ? ofs : []);
+  var byMaq = {};
+  (all || []).forEach(function(of){
+    var maq = String(of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : '') || (typeof getMaquinaAtual === 'function' ? getMaquinaAtual(of) : '') || '').trim();
+    if(!maq) return;
+    if(!byMaq[maq]) byMaq[maq] = [];
+    byMaq[maq].push(of);
+  });
+  (ofs || []).forEach(function(of){
+    if(!of) return;
+    var entregaStr = String(of.data_entrega || of.ent || '').slice(0,10);
+    if(!entregaStr) return;
+    var entrega = new Date(entregaStr + 'T00:00:00');
+    entrega.setHours(0,0,0,0);
+    var diasUteis = calcularDiasUteis(hoje, entrega);
+    var maqAtual = String(of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : '') || (typeof getMaquinaAtual === 'function' ? getMaquinaAtual(of) : '') || '').trim();
+    if(!maqAtual) return;
+    var carga = calcularCargaMaquina(maqAtual, byMaq[maqAtual] || []);
+    if(carga.sobrecarregada && diasUteis >= 2){
+      var num = String(of.numero || of.of || of.of_num || of.numero_of || of.id || '').trim();
+      alertas.push({
+        of: of,
+        diasUteis: diasUteis,
+        maquinaAtual: maqAtual,
+        mensagem: 'OF #' + num + ' pode ser redistribuída — ' + diasUteis + ' dias úteis disponíveis'
+      });
+    }
+  });
+  return alertas;
+}
+
+function renderAlertasRedistribuicao(alertas){
+  var arr = Array.isArray(alertas) ? alertas : [];
+  if(!arr.length) return '';
+  var rows = arr.slice(0, 12).map(function(a){
+    var num = String(a?.of?.numero || a?.of?.of || a?.of?.of_num || a?.of?.numero_of || a?.of?.id || '').trim();
+    var idShow = num ? num : (String(a?.of?.id || '').slice(0,6) || '—');
+    return `
+      <div style="color:#94a3b8;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+        OF #${escH(idShow)} — <span style="color:#f59e0b">${escH(String(a?.maquinaAtual||''))}</span> sobrecarregada · ainda ${escH(String(a?.diasUteis||0))} dias úteis
+      </div>
+    `;
+  }).join('');
+  return `
+    <div id="alertas-redistribuicao" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem">
+      <div style="color:#fbbf24;font-weight:600;margin-bottom:6px">⚡ ${escH(String(arr.length))} OF(s) podem ser redistribuídas</div>
+      ${rows}
+    </div>
+  `;
 }
 
 function getDadosMaquina(nomeMaquina){
@@ -56472,17 +56617,17 @@ function recalcularSaudeMaquina(nomeMaquina){
   }catch(e){}
 }
 
-function renderKanbanOfmaq(grupos, maquinasOrdenadas, container){
+function renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml){
   if(!container) container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
   if(!container) return;
   try{
     if(!_cacheMaquinasLoaded && !_cacheMaquinasLoading && typeof carregarDadosMaquinas === 'function'){
       carregarDadosMaquinas().then(function(){
-        try{ renderKanbanOfmaq(grupos, maquinasOrdenadas, container); }catch(e){}
+        try{ renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml); }catch(e){}
       });
     }
   }catch(e){}
-  var html = '<div class="kb-board-ofmaq">';
+  var html = String(alertasHtml || '') + '<div class="kb-board-ofmaq">';
   (maquinasOrdenadas || []).filter(function(maq){ return grupos[maq] && grupos[maq].length; }).forEach(function(maquina){
     var ofs = grupos[maquina] || [];
     var urgQty = ofs.filter(function(o){ return o && (o.urgente || o.urg); }).length;
