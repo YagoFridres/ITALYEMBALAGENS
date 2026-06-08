@@ -7153,6 +7153,117 @@ function ordenarOFsPorPrioridade(ofs){
     return numKey(a).localeCompare(numKey(b));
   });
 }
+
+function ofmaqMarcarAgrupamento(ofs){
+  var lista = Array.isArray(ofs) ? ofs : [];
+  lista.forEach(function(of){
+    try{
+      delete of._grupoTipo;
+      delete of._grupoIndex;
+      delete of._grupoTotal;
+      delete of._grupoPrimeiro;
+    }catch(_){}
+  });
+  var norm = function(s){
+    var v = String(s || '').trim().toLowerCase();
+    try{ v = v.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){}
+    return v;
+  };
+  var getCliente = function(of){
+    return norm(of?.cliNome || of?.cliente || of?.cliente_nome || of?.cli_nome || of?.clinome || '');
+  };
+  var getDims = function(of){
+    var w = Number(of?.dim_largura ?? of?.largura ?? of?.larg ?? of?.w ?? 0) || 0;
+    var c = Number(of?.dim_comprimento ?? of?.comprimento ?? of?.comp ?? of?.h ?? 0) || 0;
+    if(!(w > 0 && c > 0)){
+      var t = String(of?.tamanho || of?.tam || '').trim().toLowerCase();
+      var m = t.match(/(\d+(?:\.\d+)?)\D+(\d+(?:\.\d+)?)/);
+      if(m){
+        w = Number(String(m[1]||'').replace(',','.')) || 0;
+        c = Number(String(m[2]||'').replace(',','.')) || 0;
+      }
+    }
+    return { w: w, c: c };
+  };
+  var getCores = function(of){
+    var raw = of?.cores_impressao ?? of?.cores ?? of?.cor ?? null;
+    var arr = [];
+    try{
+      if(Array.isArray(raw)){
+        arr = raw.map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
+      } else if(typeof raw === 'string') {
+        arr = raw.split(/[,;|]/g).map(function(x){ return norm(x); }).filter(Boolean);
+      } else if(raw && typeof raw === 'object') {
+        arr = Object.values(raw).map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
+      }
+    }catch(_){ arr = []; }
+    return Array.from(new Set(arr));
+  };
+  var rel = function(a, b){
+    if(!a || !b) return false;
+    var ca = getCliente(a);
+    var cb = getCliente(b);
+    var sameCliente = ca && cb && ca === cb;
+    var da = getDims(a);
+    var db = getDims(b);
+    var dimSimilar = false;
+    if(da.w > 0 && da.c > 0 && db.w > 0 && db.c > 0){
+      var difW = Math.abs(db.w - da.w) / da.w;
+      var difC = Math.abs(db.c - da.c) / da.c;
+      dimSimilar = difW <= 0.10 && difC <= 0.10;
+    }
+    var coresA = getCores(a);
+    var coresB = getCores(b);
+    var sameCores = false;
+    if(coresA.length && coresB.length){
+      sameCores = coresA.some(function(x){ return coresB.includes(x); });
+    }
+    return sameCliente || dimSimilar || sameCores;
+  };
+  var i = 0;
+  while(i < lista.length){
+    var base = lista[i];
+    var grupo = [base];
+    var j = i + 1;
+    while(j < lista.length){
+      if(!rel(base, lista[j])) break;
+      grupo.push(lista[j]);
+      j++;
+    }
+    if(grupo.length > 1){
+      var primeiro = grupo[0];
+      var cliente0 = getCliente(primeiro);
+      var dims0 = getDims(primeiro);
+      var cores0 = getCores(primeiro);
+      var mesmoCliente = cliente0 && grupo.every(function(of){ return getCliente(of) === cliente0; });
+      var dimSimilarAll = (dims0.w > 0 && dims0.c > 0) && grupo.every(function(of){
+        var d = getDims(of);
+        if(!(d.w > 0 && d.c > 0)) return false;
+        var difW = Math.abs(d.w - dims0.w) / dims0.w;
+        var difC = Math.abs(d.c - dims0.c) / dims0.c;
+        return difW <= 0.10 && difC <= 0.10;
+      });
+      var mesmasCores = cores0.length > 0 && grupo.every(function(of){
+        var cs = getCores(of);
+        return cores0.some(function(c){ return cs.includes(c); });
+      });
+      var tipoGrupo = null;
+      if(dimSimilarAll && mesmasCores) tipoGrupo = 'cor+tamanho';
+      else if(dimSimilarAll) tipoGrupo = 'tamanho';
+      else if(mesmasCores) tipoGrupo = 'cor';
+      else if(mesmoCliente) tipoGrupo = 'cliente';
+      if(tipoGrupo){
+        grupo.forEach(function(of, k){
+          of._grupoTipo = tipoGrupo;
+          of._grupoIndex = k;
+          of._grupoTotal = grupo.length;
+          of._grupoPrimeiro = k === 0;
+        });
+      }
+    }
+    i = j;
+  }
+}
 function abrirModalRelatorioMaquina(){
   const hoje = new Date().toISOString().slice(0,10);
   const semAtual = getSemanaComOffset(0);
@@ -7731,6 +7842,9 @@ function abaInconformidade(aba) {
     ativa.style.color = '#fff';
     ativa.style.fontWeight = '600';
   }
+  if(a === 'relatorio'){
+    try{ if(typeof carregarRankingPerdasOperador === 'function') carregarRankingPerdasOperador(); }catch(_){}
+  }
 }
 
 var _incRegistrarAnchor = null;
@@ -7838,6 +7952,17 @@ async function salvarInconformidadeNova() {
 
   var ofNumero = String((document.getElementById('inc-of-numero') || {}).value || '').trim();
   var maq = String((document.getElementById('inc-maquina') || {}).value || '').trim();
+  var maquinas = [];
+  try{
+    var wrap = document.getElementById('inc-maquinas-checkboxes');
+    if(wrap){
+      maquinas = Array.from(wrap.querySelectorAll('input[type="checkbox"]'))
+        .filter(function(i){ return i && i.checked; })
+        .map(function(i){ return String(i.value || '').trim(); })
+        .filter(Boolean);
+    }
+  }catch(_){ maquinas = []; }
+  if(maquinas.length && !maq) maq = maquinas[0];
   var desc = String((document.getElementById('inc-descricao') || {}).value || '').trim();
   var caixas = parseInt((document.getElementById('inc-caixas') || {}).value, 10);
   if (!Number.isFinite(caixas)) caixas = 0;
@@ -7857,6 +7982,7 @@ async function salvarInconformidadeNova() {
       body: JSON.stringify({
         of_numero: ofNumero || null,
         maquina: maq || null,
+        maquinas: maquinas.length ? maquinas : null,
         operador_id: operadorId || null,
         operador_nome: operadorNome || null,
         motivo,
@@ -7879,6 +8005,10 @@ async function salvarInconformidadeNova() {
       try { (document.getElementById('inc-descricao') || {}).value = ''; } catch (_) {}
       try { (document.getElementById('inc-motivo') || {}).value = ''; } catch (_) {}
       try { (document.getElementById('inc-maquina') || {}).value = ''; } catch (_) {}
+      try {
+        var wrap2 = document.getElementById('inc-maquinas-checkboxes');
+        if(wrap2) Array.from(wrap2.querySelectorAll('input[type="checkbox"]')).forEach(function(i){ i.checked = false; });
+      } catch (_) {}
       abaInconformidade('lista');
       carregarInconformidades();
       return;
@@ -7989,6 +8119,41 @@ async function gerarRelatorioInconformidades() {
       '</div>';
   } catch (e) {
     out.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao gerar relatório.</p>';
+  }
+}
+
+async function carregarRankingPerdasOperador(){
+  var container = document.getElementById('rankingPerdasOperador');
+  if(!container) return;
+  container.innerHTML = '<div style="color:#64748b;font-size:12px">Carregando ranking…</div>';
+  try{
+    var empId = String((window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || '').trim();
+    var url = '/api/perdas/por-operador';
+    if(empId) url += '?empId=' + encodeURIComponent(empId);
+    var resp = (typeof apiFetch === 'function')
+      ? await apiFetch(url, { method:'GET' })
+      : await fetch(url, { headers: { Authorization: 'Bearer ' + (localStorage.getItem('access_token') || localStorage.getItem('token') || '') } });
+    var json = await resp.json().catch(()=>null);
+    var ranking = (json && (json.ranking || json.data)) ? (json.ranking || json.data) : [];
+    if(!Array.isArray(ranking) || !ranking.length){
+      container.innerHTML = '';
+      return;
+    }
+    container.innerHTML = `
+      <div style="font-size:0.75rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px">Caixas Perdidas por Operador</div>
+      ${ranking.map(function(r, i){
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.83rem">
+            <span style="color:#64748b;font-weight:600;width:24px">${i+1}°</span>
+            <span style="color:#e2e8f0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(String(r.nome || r.operador || '—'))}</span>
+            <span style="color:#f87171;font-weight:800">${escH(String(r.total || 0))} cx</span>
+            <span style="color:#475569;font-size:0.72rem">${escH(String(r.registros || 0))} reg.</span>
+          </div>
+        `;
+      }).join('')}
+    `;
+  }catch(e){
+    container.innerHTML = '';
   }
 }
 
@@ -9822,6 +9987,26 @@ function cardOFMaquina(of, maquinaAtual){
   const tempoInfo = Number.isFinite(Number(tMed)) ? (`~${Math.round(Number(tMed))} min médio`) : (tempoMin != null ? (`~${tempoMin} min estimado`) : '⏱ —');
   const velInfo = prodHora > 0 ? (`⚡ ${Math.round(prodHora)} cx/h`) : '⚡ — cx/h';
   const bucket = ofmaqPrioridadeBucket(of);
+  const grupoBadge = (()=>{
+    const t = String(of?._grupoTipo || '').trim();
+    if(!t) return '';
+    const label = ({
+      'cor+tamanho': '🎨📐 Cor+Tam',
+      'tamanho': '📐 Tamanho',
+      'cor': '🎨 Cor',
+      'cliente': '👤 Cliente',
+    })[t] || '';
+    const bg = ({
+      'cor+tamanho': 'rgba(168,85,247,0.2)',
+      'tamanho': 'rgba(59,130,246,0.2)',
+      'cor': 'rgba(236,72,153,0.2)',
+      'cliente': 'rgba(34,197,94,0.2)',
+    })[t] || 'rgba(255,255,255,0.1)';
+    const idx = Number.isFinite(Number(of?._grupoIndex)) ? (Number(of._grupoIndex) + 1) : 1;
+    const tot = Number.isFinite(Number(of?._grupoTotal)) ? Number(of._grupoTotal) : 1;
+    if(!label || !(tot > 1)) return '';
+    return `<span style="display:inline-flex;align-items:center;gap:3px;background:${bg};border-radius:4px;padding:1px 6px;font-size:0.65rem;font-weight:800;color:#e2e8f0;margin-left:4px;white-space:nowrap">${label} ${idx}/${tot}</span>`;
+  })();
 
   const thumb = temImagem
     ? `<div class="ofmaq-thumb of-img" onclick="event.stopPropagation();verImagemOF('${escAttr(urlImagem)}')" title="Ver imagem da OF" style="width:60px;height:60px;border-radius:6px;overflow:hidden;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);flex-shrink:0">
@@ -9897,6 +10082,7 @@ function cardOFMaquina(of, maquinaAtual){
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:1px">
           <span style="font-weight:800;font-size:11px;color:#38bdf8">Nº${escH(_num)}</span>
           ${_atrasada ? '<span style="background:#f43f5e22;color:#f43f5e;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:800">ATRASADA</span>' : _urg ? '<span style="background:#f59e0b22;color:#f59e0b;border-radius:3px;padding:1px 5px;font-size:9px;font-weight:800">URGENTE</span>' : ''}
+          ${grupoBadge ? grupoBadge : ''}
         </div>
         <div style="font-size:12px;font-weight:600;line-height:1.3;word-break:break-word;margin-bottom:1px">${escH(_prod)}</div>
         <div style="font-size:10px;color:rgba(255,255,255,0.4);word-break:break-word;margin-bottom:3px">${escH(_cli)}</div>
@@ -9921,6 +10107,7 @@ function cardOFMaquina(of, maquinaAtual){
     +'<span class="drag-handle" title="Arrastar" onclick="event.stopPropagation()" style="cursor:grab;color:rgba(255,255,255,0.2);font-size:16px;padding:0 6px;flex-shrink:0;touch-action:none;user-select:none;-webkit-user-select:none">⠿</span>'
     +priBadge
     +(badgeHtml?('<div>'+badgeHtml+'</div>'):'')
+    +(grupoBadge?('<div>'+grupoBadge+'</div>'):'')
     +statusBadge
     +moveBtns
     +(dropdownActions || '')
@@ -11031,6 +11218,7 @@ async function renderOFsPorMaquina(){
           ofs = ofs.slice().sort((a,b)=>Number(a?.ordem_maquina||0) - Number(b?.ordem_maquina||0));
         }
       }catch(e){}
+      try{ if(typeof ofmaqMarcarAgrupamento === 'function') ofmaqMarcarAgrupamento(ofs); }catch(e){}
       try{ window._ofmaqLastGroupOfs[maq] = ofs.slice(); }catch(e){}
       const urgCount = ofs.filter(o=>o.urg||o.urgente).length;
       const exp = false;
@@ -11929,6 +12117,27 @@ async function buscarHistoricoPassagens(page) {
       var hora = p.hora_passagem
         ? new Date(p.hora_passagem).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
         : (p.data_passagem || '—');
+      var tipo = String(p.tipo || p.status || '').trim().toUpperCase();
+      var badgeCfg = (function(){
+        var map = {
+          'ENTRADA':    { bg: 'rgba(34,197,94,0.15)',  cor: '#4ade80',  label: '▲ ENTRADA' },
+          'SAIDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
+          'SAÍDA':      { bg: 'rgba(239,68,68,0.15)',  cor: '#f87171',  label: '▼ SAÍDA' },
+          'DESPACHADA': { bg: 'rgba(59,130,246,0.15)', cor: '#60a5fa',  label: '🚚 DESPACHADA' },
+          'CONCLUIDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
+          'CONCLUÍDA':  { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '✓ CONCLUÍDA' },
+          'PASSAGEM':   { bg: 'rgba(168,85,247,0.15)', cor: '#c084fc',  label: '⚙ PASSAGEM' },
+        };
+        if (map[tipo]) return map[tipo];
+        if (tipo && tipo.includes('ENTR')) return map['ENTRADA'];
+        if (tipo && (tipo.includes('SAIDA') || tipo.includes('SAÍDA'))) return map['SAIDA'];
+        if (tipo && tipo.includes('DESP')) return map['DESPACHADA'];
+        if (tipo && tipo.includes('CONCLU')) return map['CONCLUIDA'];
+        return map['PASSAGEM'];
+      })();
+      var badgeHtml = badgeCfg
+        ? ('<span style="background:' + escAttr(badgeCfg.bg) + ';color:' + escAttr(badgeCfg.cor) + ';border-radius:999px;padding:2px 8px;font-size:10px;font-weight:800;border:1px solid rgba(255,255,255,0.08);white-space:nowrap">' + escH(badgeCfg.label) + '</span>')
+        : '';
 
       return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);' +
         'border-radius:10px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px">' +
@@ -11940,6 +12149,7 @@ async function buscarHistoricoPassagens(page) {
         '<div style="flex:1;min-width:0">' +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">' +
             '<span style="font-weight:700;color:#4A90D9;font-size:13px">OF #' + escH(String(p.of_numero||p.numero||'—')) + '</span>' +
+            (badgeHtml ? badgeHtml : '') +
             '<span style="color:#e2e8f0;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escH(cliente) + '</span>' +
           '</div>' +
           (produto ? '<div style="color:rgba(255,255,255,0.82);font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:4px">' + escH(produto) + '</div>' : '') +
@@ -45144,6 +45354,18 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </div>
 
       <div>
+        <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:6px">MÁQUINA(S) (múltipla seleção)</label>
+        <div id="inc-maquinas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="IMP 01"> IMP 01</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="IMP 02"> IMP 02</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="IMP 03"> IMP 03</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="IMP 04"> IMP 04</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="IMP 05"> IMP 05</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;color:#94a3b8"><input type="checkbox" value="CORTE VINCO ROTATIVA"> CVR</label>
+        </div>
+      </div>
+
+      <div>
         <label style="color:#94a3b8;font-size:12px;display:block;margin-bottom:4px">MOTIVO *</label>
         <select id="inc-motivo"
           style="width:100%;background:#080c14;color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;font-size:14px">
@@ -45224,6 +45446,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       </button>
     </div>
     <div id="inc-relatorio-resultado"></div>
+    <div id="rankingPerdasOperador" style="margin-top:14px"></div>
   </div>
 </section>
 
@@ -56436,22 +56659,169 @@ function verificarRedistribuicao(ofs, todasOFs){
 
 function renderAlertasRedistribuicao(alertas){
   var arr = Array.isArray(alertas) ? alertas : [];
+  try{ window._alertasRedist = arr; }catch(_){}
   if(!arr.length) return '';
-  var rows = arr.slice(0, 12).map(function(a){
-    var num = String(a?.of?.numero || a?.of?.of || a?.of?.of_num || a?.of?.numero_of || a?.of?.id || '').trim();
-    var idShow = num ? num : (String(a?.of?.id || '').slice(0,6) || '—');
+
+  var maquinas = [];
+  try{
+    if(typeof ofmaqMaquinasValidas === 'function') maquinas = ofmaqMaquinasValidas();
+  }catch(_){}
+  if(!Array.isArray(maquinas) || !maquinas.length){
+    try{
+      var ms = (typeof MAQUINAS !== 'undefined' && Array.isArray(MAQUINAS)) ? MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
+      maquinas = (ms || []).map(function(m){ return String(m?.col || m?.nome || m?.codigo || '').trim(); }).filter(Boolean);
+    }catch(_){ maquinas = []; }
+  }
+  maquinas = (maquinas || []).map(function(m){ return String(m||'').trim(); }).filter(Boolean);
+  maquinas = Array.from(new Set(maquinas)).sort(function(a,b){ return a.localeCompare(b,'pt-BR'); });
+  var optMaqHtml = maquinas.map(function(m){ return '<option value="' + escAttr(m) + '">' + escH(m) + '</option>'; }).join('');
+
+  var itemsHtml = arr.map(function(a, idx){
+    var of = a && a.of ? a.of : {};
+    var num = String(of.numero || of.of || of.of_num || of.numero_of || '').trim();
+    var idShow = num ? num : (String(of.id || '').slice(0,6) || '?');
+    var cliente = String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || of.clinome || '').trim();
+    var maqAtual = String(a.maquinaAtual || '').trim();
+    var dias = Number(a.diasUteis || 0) || 0;
+    var entrega = formatarDataBR(String(of.data_entrega || of.ent || '').slice(0,10));
+    var qtd = String(of.quantidade || of.qtd || '?');
     return `
-      <div style="color:#94a3b8;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
-        OF #${escH(idShow)} — <span style="color:#f59e0b">${escH(String(a?.maquinaAtual||''))}</span> sobrecarregada · ainda ${escH(String(a?.diasUteis||0))} dias úteis
+      <div style="border-bottom:1px solid rgba(255,255,255,0.04)">
+        <div onclick="toggleOFRedist(${idx})" style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;font-size:0.82rem" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="color:#e2e8f0;font-weight:500;white-space:nowrap">OF #${escH(idShow)}</span>
+            ${cliente ? `<span style="color:#64748b;font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${escH(cliente)}</span>` : ''}
+            ${maqAtual ? `<span style="background:rgba(239,68,68,0.15);color:#f87171;border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:600;white-space:nowrap">${escH(maqAtual)} sobrecarregada</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <span style="color:#94a3b8;font-size:0.75rem">${escH(String(dias))} dias úteis</span>
+            <span id="arrowOFRedist_${idx}" style="color:#64748b;font-size:0.75rem">▶</span>
+          </div>
+        </div>
+        <div id="painelOFRedist_${idx}" style="display:none;background:rgba(0,0,0,0.2);padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,0.05)">
+          <div style="font-size:0.75rem;color:#64748b;margin-bottom:10px">Selecione a nova máquina e/ou data:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px" onclick="event.stopPropagation()">
+            <div>
+              <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:4px">MOVER PARA MÁQUINA</label>
+              <select id="selectMaqRedist_${idx}" class="input-dark" style="width:100%">
+                <option value="">-- Mesma máquina --</option>
+                ${optMaqHtml}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:4px">REALOCAR PARA DIA</label>
+              <input type="date" id="dataRedist_${idx}" class="input-dark" value="${escAttr(proximoDiaUtil())}" style="width:100%">
+            </div>
+          </div>
+          <div style="font-size:0.75rem;color:#475569;margin-bottom:10px">
+            Entrega atual: <strong style="color:#94a3b8">${escH(entrega)}</strong>
+            &nbsp;·&nbsp; Qtd: <strong style="color:#94a3b8">${escH(String(qtd))} cx</strong>
+          </div>
+          <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
+            <button onclick="cancelarRedist(${idx})" style="flex:1;padding:8px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;cursor:pointer;font-size:0.8rem">Cancelar</button>
+            <button onclick="confirmarRedist(${idx},'${escAttr(String(of.id||''))}','${escAttr(maqAtual)}')" style="flex:2;padding:8px;border-radius:6px;background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#60a5fa;cursor:pointer;font-size:0.8rem;font-weight:600">✓ Confirmar Realocação</button>
+          </div>
+        </div>
       </div>
     `;
   }).join('');
+
   return `
-    <div id="alertas-redistribuicao" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem">
-      <div style="color:#fbbf24;font-weight:600;margin-bottom:6px">⚡ ${escH(String(arr.length))} OF(s) podem ser redistribuídas</div>
-      ${rows}
+    <div id="alertas-redistribuicao">
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;margin-bottom:14px;overflow:hidden">
+        <div onclick="toggleBannerRedistribuicao()" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none">
+          <span style="color:#fbbf24;font-weight:600;font-size:0.85rem">⚡ ${escH(String(arr.length))} OF(s) podem ser redistribuídas</span>
+          <span id="bannerRedistArrow" style="color:#f59e0b;font-size:0.8rem">▼</span>
+        </div>
+        <div id="bannerRedistLista" style="display:none;border-top:1px solid rgba(245,158,11,0.15)">
+          ${itemsHtml}
+        </div>
+      </div>
     </div>
   `;
+}
+
+function criarContainerAlertas(){
+  var el = document.getElementById('alertas-redistribuicao');
+  if(el) return el;
+  var div = document.createElement('div');
+  div.id = 'alertas-redistribuicao';
+  var board = document.querySelector('.ofs-maquina-board') || document.querySelector('[id*="ofs-maquina"]') || document.getElementById('ofs-por-maquina-container') || document.getElementById('ofmaq-body');
+  if(board && board.parentNode){
+    board.parentNode.insertBefore(div, board);
+  } else {
+    document.body.appendChild(div);
+  }
+  return div;
+}
+
+function toggleBannerRedistribuicao(){
+  var lista = document.getElementById('bannerRedistLista');
+  var arrow = document.getElementById('bannerRedistArrow');
+  if(!lista) return;
+  var aberto = lista.style.display !== 'none';
+  lista.style.display = aberto ? 'none' : 'block';
+  if(arrow) arrow.textContent = aberto ? '▼' : '▲';
+}
+
+function toggleOFRedist(idx){
+  var painel = document.getElementById('painelOFRedist_' + String(idx));
+  var arrow = document.getElementById('arrowOFRedist_' + String(idx));
+  if(!painel) return;
+  var aberto = painel.style.display !== 'none';
+  painel.style.display = aberto ? 'none' : 'block';
+  if(arrow) arrow.textContent = aberto ? '▶' : '▼';
+}
+
+function cancelarRedist(idx){
+  toggleOFRedist(idx);
+}
+
+async function confirmarRedist(idx, ofId, maquinaAtual){
+  var novaMaq = String(document.getElementById('selectMaqRedist_' + String(idx))?.value || '').trim();
+  var novaData = String(document.getElementById('dataRedist_' + String(idx))?.value || '').trim();
+  if(!novaMaq && !novaData){
+    try{ toast('Selecione máquina e/ou data.', 'var(--orange)'); }catch(_){}
+    return;
+  }
+  var payload = {};
+  if(novaMaq && novaMaq !== String(maquinaAtual||'').trim()){
+    payload.maquina = novaMaq;
+    payload.maq = [novaMaq];
+  }
+  if(novaData){
+    payload.data_entrega = novaData;
+    payload.ent = novaData;
+  }
+  try{
+    var resp = (typeof apiFetch === 'function')
+      ? await apiFetch('/api/ofs/' + encodeURIComponent(String(ofId||'')), { method:'PATCH', body: JSON.stringify(payload) })
+      : await fetch('/api/ofs/' + encodeURIComponent(String(ofId||'')), { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+    if(!resp || !resp.ok) throw new Error('Erro');
+    try{ toast('OF realocada com sucesso!', 'var(--green)'); }catch(_){}
+    try{ if(typeof renderOFsPorMaquina === 'function') await renderOFsPorMaquina(); }catch(_){}
+  }catch(e){
+    try{ toast('Erro ao realocar OF.', 'var(--red)'); }catch(_){}
+  }
+}
+
+function proximoDiaUtil(){
+  var d = new Date();
+  d.setDate(d.getDate() + 1);
+  while(d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+function formatarDataBR(data){
+  var s = String(data || '').trim();
+  if(!s) return '—';
+  try{
+    var d = new Date(s.length === 10 ? (s + 'T00:00:00') : s);
+    if(isNaN(d)) return '—';
+    return d.toLocaleDateString('pt-BR');
+  }catch(e){
+    return '—';
+  }
 }
 
 function getDadosMaquina(nomeMaquina){
@@ -56630,6 +57000,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml){
   var html = String(alertasHtml || '') + '<div class="kb-board-ofmaq">';
   (maquinasOrdenadas || []).filter(function(maq){ return grupos[maq] && grupos[maq].length; }).forEach(function(maquina){
     var ofs = grupos[maquina] || [];
+    try{ if(typeof ofmaqMarcarAgrupamento === 'function') ofmaqMarcarAgrupamento(ofs); }catch(e){}
     var urgQty = ofs.filter(function(o){ return o && (o.urgente || o.urg); }).length;
     var totalCx = ofs.reduce(function(s,o){ return s + (parseInt(o && o.quantidade, 10) || 0); }, 0);
     var maqKey = String(maquina || '').replace(/[^a-zA-Z0-9]/g,'-').toLowerCase().replace(/-+/g,'-').replace(/^-|-$/g,'');
@@ -56710,6 +57081,19 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml){
         var ttl = (qtdT > 0 && cxH > 0) ? (' title="' + escAttr(String(qtdT) + ' cx ÷ ' + String(cxH) + ' cx/h = ' + String(tempoStr)) + '"') : '';
         tempoHtml = '<span style="color:#4A90D9;font-size:11px"' + ttl + '>⏱ ' + escH(tempoStr) + '</span>';
       }
+      var grupoHtml = '';
+      try{
+        var t = String(of?._grupoTipo || '').trim();
+        if(t){
+          var label = ({ 'cor+tamanho':'🎨📐', 'tamanho':'📐', 'cor':'🎨', 'cliente':'👤' })[t] || '';
+          var bg = ({ 'cor+tamanho':'rgba(168,85,247,0.22)', 'tamanho':'rgba(59,130,246,0.22)', 'cor':'rgba(236,72,153,0.22)', 'cliente':'rgba(34,197,94,0.22)' })[t] || 'rgba(255,255,255,0.10)';
+          var idxG = Number.isFinite(Number(of?._grupoIndex)) ? (Number(of._grupoIndex) + 1) : 1;
+          var totG = Number.isFinite(Number(of?._grupoTotal)) ? Number(of._grupoTotal) : 1;
+          if(label && totG > 1){
+            grupoHtml = '<span style="background:' + bg + ';color:#e2e8f0;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:800;white-space:nowrap">' + escH(label + ' ' + idxG + '/' + totG) + '</span>';
+          }
+        }
+      }catch(e){ grupoHtml = ''; }
 
       html += '<div class="kb-card kb-card-ofmaq' + (urgente ? ' kb-urgente' : '') + (atrasada ? ' kb-atrasada' : '') + '"' +
         ' draggable="true" data-of-id="' + escAttr(String(of.id||'')) + '" data-maq="' + escAttr(maquina) + '"' +
@@ -56729,6 +57113,7 @@ function renderKanbanOfmaq(grupos, maquinasOrdenadas, container, alertasHtml){
             '<div class="kb-num">' + escH(numLbl) +
               (urgente ? ' <span style="background:rgba(220,38,38,0.2);color:#f43f5e;font-size:9px;padding:1px 4px;border-radius:3px">URG</span>' : '') +
               (atrasada ? ' <span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:9px;padding:1px 4px;border-radius:3px">ATRAS</span>' : '') +
+              (grupoHtml ? (' ' + grupoHtml) : '') +
             '</div>' +
             '<div class="kb-cliente">' + escH(String(of.cliNome || of.cliente || of.cliente_nome || of.cli_nome || '—')) + '</div>' +
             '<div class="kb-produto">' + escH(String(of.prodDesc || of.produto || of.descricao || '—')) + '</div>' +

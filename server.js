@@ -5148,6 +5148,8 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
+    let stAtualBefore = '';
+    let stNovoWanted = '';
     try {
       const { data: ofAtual } = await supabase
         .from('ofs')
@@ -5214,10 +5216,17 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     const payload = { ...ofIn(mapped || {}), updated_at: new Date().toISOString() };
     try {
       const { data: ofAtual2 } = await supabase.from('ofs').select('status').eq('id', id).maybeSingle();
-      const stAtual = String(ofAtual2?.status || '').trim().toLowerCase();
-      const stNovo = Object.prototype.hasOwnProperty.call(payload, 'status') ? String(payload.status || '').trim().toLowerCase() : '';
-      const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto';
-      const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
+      const norm = (s) => {
+        let v = String(s || '').trim().toLowerCase();
+        try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+        return v;
+      };
+      const stAtual = norm(ofAtual2?.status || '');
+      const stNovo = Object.prototype.hasOwnProperty.call(payload, 'status') ? norm(payload.status || '') : '';
+      stAtualBefore = stAtual;
+      stNovoWanted = stNovo;
+      const isConcluida = stAtual.includes('conclu') || stAtual === 'pedido pronto' || stAtual === 'entregue' || stAtual === 'despachada' || stAtual === 'finalizada';
+      const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada') && !stNovo.includes('cancel');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
         try { console.log('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
@@ -5228,6 +5237,59 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
     const data = upd.data;
+    try {
+      const concluidoValues = new Set(['concluida', 'concluido', 'concluido', 'entregue', 'despachada', 'finalizada', 'pedido pronto']);
+      const antesConcluida = stAtualBefore && (stAtualBefore.includes('conclu') || stAtualBefore === 'pedido pronto' || stAtualBefore === 'entregue' || stAtualBefore === 'despachada' || stAtualBefore === 'finalizada');
+      const agoraConcluida = stNovoWanted && (stNovoWanted.includes('conclu') || concluidoValues.has(stNovoWanted));
+      if (!antesConcluida && agoraConcluida) {
+        const hoje = new Date().toISOString().slice(0, 10);
+        let ja = null;
+        try {
+          const rj = await supabase
+            .from('passagens_maquina')
+            .select('id,status,data_passagem')
+            .eq('of_id', id)
+            .eq('status', 'DESPACHADA')
+            .order('hora_passagem', { ascending: false })
+            .limit(1);
+          ja = Array.isArray(rj?.data) && rj.data[0] ? rj.data[0] : null;
+        } catch (_) {}
+        if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
+          const ofNumero = String(data?.numero || data?.of_num || data?.of || '').trim() || null;
+          const maquina = String(data?.maquina || '').trim() || null;
+          const operador = String(req.usuario?.nome || 'Sistema').trim();
+          const insertBase = {
+            of_id: id,
+            of_numero: ofNumero,
+            cliente: String(data?.cliente || data?.cliente_nome || '').trim() || null,
+            produto: String(data?.produto || data?.descricao || data?.produto_desc || data?.prodDesc || '').trim() || null,
+            referencia: String(data?.referencia || data?.ref || '').trim() || null,
+            imagem_url: data?.imagem_url || data?.imagem || data?.img || null,
+            maquina,
+            operador,
+            quantidade: Number(data?.quantidade ?? data?.qtd ?? 0) || 0,
+            data_passagem: hoje,
+            hora_passagem: new Date().toISOString(),
+            status: 'DESPACHADA',
+            empresa: String(data?.empresa || 'Italy Embalagens'),
+          };
+          let toInsert = { ...insertBase };
+          for (let i = 0; i < 8; i++) {
+            const ins = await supabase.from('passagens_maquina').insert([toInsert]);
+            if (!ins?.error) break;
+            const msg = String(ins.error.message || '').toLowerCase();
+            const m = msg.match(/column \"([^\"]+)\" of relation/i);
+            if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+              delete toInsert[m[1]];
+              continue;
+            }
+            const missing = msg.includes('does not exist') || msg.includes('relation') && msg.includes('passagens_maquina');
+            if (missing) break;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
     try {
       const cliId = String(req.body?.cli_id || req.body?.cliId || '').trim();
       const vendId = String(req.body?.vendedor_id || req.body?.vendId || req.body?.vend_id || '').trim();
@@ -5611,6 +5673,56 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     try {
       const { data: ofAfter } = await supabase.from('ofs').select('status,data_conclusao,updated_at').eq('id', sid).maybeSingle();
       console.log('[CONCLUIR OF] after db:', ofAfter);
+    } catch (_) {}
+
+    try {
+      const hoje = nowIso.slice(0, 10);
+      let ja = null;
+      try {
+        const rj = await supabase
+          .from('passagens_maquina')
+          .select('id,status,data_passagem')
+          .eq('of_id', sid)
+          .eq('status', 'DESPACHADA')
+          .order('hora_passagem', { ascending: false })
+          .limit(1);
+        ja = Array.isArray(rj?.data) && rj.data[0] ? rj.data[0] : null;
+      } catch (_) {}
+
+      if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
+        const picked = fluxoPickMaquina();
+        const maquinaNome = String(mprodRaw || body.maquina || of.maquina || picked.nome || '').trim() || 'Sem máquina';
+        const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
+        let toInsert = {
+          of_id: sid,
+          of_numero: ofNumero,
+          cliente: String(of?.cliente || '').trim() || null,
+          produto: String(of?.produto || of?.descricao || of?.produto_desc || of?.prodDesc || '').trim() || null,
+          referencia: String(of?.referencia || of?.ref || '').trim() || null,
+          imagem_url: of?.imagem_url || of?.imagem || of?.img || null,
+          maquina: maquinaNome,
+          operador: String(req.usuario?.nome || 'Sistema').trim(),
+          quantidade: Number(qtdFinal || 0) || 0,
+          data_passagem: hoje,
+          hora_passagem: nowIso,
+          status: 'DESPACHADA',
+          empresa: String(of?.empresa || 'Italy Embalagens'),
+        };
+
+        for (let i = 0; i < 8; i++) {
+          const ins = await supabase.from('passagens_maquina').insert([toInsert]);
+          if (!ins?.error) break;
+          const msg = String(ins.error.message || '').toLowerCase();
+          const m = msg.match(/column \"([^\"]+)\" of relation/i);
+          if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+            delete toInsert[m[1]];
+            continue;
+          }
+          const missing = msg.includes('does not exist') || msg.includes('relation') && msg.includes('passagens_maquina');
+          if (missing) break;
+          break;
+        }
+      }
     } catch (_) {}
 
     try {
@@ -8915,6 +9027,28 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     delete payload.empId;
     Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
+    if (payload.maquinas != null) {
+      let arr = [];
+      try {
+        if (Array.isArray(payload.maquinas)) arr = payload.maquinas;
+        else if (typeof payload.maquinas === 'string') {
+          const s = String(payload.maquinas || '').trim();
+          if (s.startsWith('[')) arr = JSON.parse(s || '[]');
+          else arr = s.split(/[,;|]/g);
+        } else if (payload.maquinas && typeof payload.maquinas === 'object') {
+          arr = Object.values(payload.maquinas);
+        }
+      } catch (_) { arr = []; }
+      arr = (Array.isArray(arr) ? arr : []).map((x) => String(x || '').trim()).filter(Boolean);
+      arr = [...new Set(arr)];
+      if (arr.length) {
+        payload.maquinas = arr;
+        if (!String(payload.maquina || '').trim()) payload.maquina = arr[0];
+      } else {
+        delete payload.maquinas;
+      }
+    }
+
     if (payload.operador && !payload.operador_nome) payload.operador_nome = payload.operador;
     if (payload.responsavel && !payload.operador_nome) payload.operador_nome = payload.responsavel;
     if (payload.obs && !payload.descricao) payload.descricao = payload.obs;
@@ -8982,6 +9116,48 @@ app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
       itens,
     });
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
+  try {
+    const empId = String(req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
+    let q = supabase
+      .from('inconformidades')
+      .select('operador_nome,operador_id,caixas_perdidas,qtd_perdida,quantidade,maquinas,created_at,emp_id')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if (empId) q = q.eq('emp_id', empId);
+
+    let { data, error } = await q;
+    const msg = String(error?.message || '').toLowerCase();
+    if (error && msg.includes('column') && msg.includes('emp_id')) {
+      const r2 = await supabase
+        .from('inconformidades')
+        .select('operador_nome,operador_id,caixas_perdidas,qtd_perdida,quantidade,maquinas,created_at')
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      data = r2.data;
+      error = r2.error;
+    }
+    if (error) throw error;
+
+    const porOperador = {};
+    (data || []).forEach((p) => {
+      const op = String(p?.operador_nome || p?.operador || 'Desconhecido').trim() || 'Desconhecido';
+      const perdas = Number(p?.caixas_perdidas ?? p?.qtd_perdida ?? p?.quantidade ?? 0) || 0;
+      if (!porOperador[op]) porOperador[op] = { total: 0, registros: 0 };
+      porOperador[op].total += Math.trunc(perdas);
+      porOperador[op].registros += 1;
+    });
+
+    const ranking = Object.entries(porOperador)
+      .map(([nome, dados]) => ({ nome, ...dados }))
+      .sort((a, b) => (b.total || 0) - (a.total || 0));
+
+    return res.json({ ok: true, ranking });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
 });
 
 app.patch('/api/inconformidades/:id', authMiddleware, async (req, res) => {
