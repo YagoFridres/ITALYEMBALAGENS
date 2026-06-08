@@ -4692,86 +4692,80 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    const empId = String(req.query.empId || req.query.emp_id || '').trim();
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const diasMinimo = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
-    if (!empresa_id && !empId) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
 
-    let q = supabase
+    const { data: ofs, error: ofsErr } = await supabase
       .from('ofs')
-      .select('id,cliente_id,cli_id,cliId,cliente_nome,cliNome,clinome,data_entrega,ent,created_at,status,deleted_at,empresa_id,emp_id')
-      .is('deleted_at', null)
+      .select('cliente_id,created_at,data_entrega')
+      .eq('empresa_id', empresa_id)
+      .not('cliente_id', 'is', null)
       .order('created_at', { ascending: false })
-      .limit(5000);
+      .limit(10000);
+    if (ofsErr) throw ofsErr;
 
-    if (empresa_id) q = q.eq('empresa_id', empresa_id);
-    else if (empId) q = q.eq('emp_id', empId);
-
-    const { data: ofs, error } = await q;
-    if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
-
-    const ultimoPorCliente = new Map();
-    const hoje = new Date();
-
+    const ultimoPorCliente = {};
     (Array.isArray(ofs) ? ofs : []).forEach((of) => {
-      if (!of) return;
-      const st = String(of.status || '').trim().toLowerCase();
-      if (st && (st.includes('cancel'))) return;
-      const cid = String(of.cliente_id ?? of.cli_id ?? of.cliId ?? '').trim();
+      const cid = of?.cliente_id;
       if (!cid) return;
-      const dtRaw = String(of.data_entrega || of.ent || of.created_at || '').trim();
-      const dt = dtRaw ? new Date(dtRaw.length === 10 ? (dtRaw + 'T00:00:00') : dtRaw) : null;
+      const dt = of?.created_at ? new Date(of.created_at) : null;
       if (!dt || Number.isNaN(dt.getTime())) return;
-      const cur = ultimoPorCliente.get(cid);
-      if (!cur || dt > cur.data) {
-        ultimoPorCliente.set(cid, {
-          data: dt,
-          cliente_nome: String(of.cliente_nome || of.cliNome || of.clinome || '').trim(),
-        });
-      }
+      if (!ultimoPorCliente[cid] || dt > ultimoPorCliente[cid]) ultimoPorCliente[cid] = dt;
     });
 
-    const rows = Array.from(ultimoPorCliente.entries()).map(([cliente_id, v]) => {
-      const diasSem = Math.floor((hoje.getTime() - v.data.getTime()) / 86400000);
-      return {
+    const hoje = new Date();
+    const clientesInativos = Object.entries(ultimoPorCliente)
+      .map(([cliente_id, data]) => ({
         cliente_id,
-        ultimo_pedido: v.data.toISOString(),
-        dias_sem_pedido: diasSem,
-        nome: v.cliente_nome || '',
-        vendedor: '',
-      };
-    }).filter((r) => Number(r.dias_sem_pedido || 0) >= diasMinimo)
+        ultimo_pedido: (data instanceof Date) ? data.toISOString() : String(data),
+        dias_sem_pedido: Math.floor((hoje.getTime() - (data instanceof Date ? data.getTime() : new Date(data).getTime())) / 86400000),
+      }))
+      .filter((c) => Number(c.dias_sem_pedido || 0) >= diasMinimo)
       .sort((a, b) => Number(b.dias_sem_pedido || 0) - Number(a.dias_sem_pedido || 0));
 
-    const ids = rows.map((r) => String(r.cliente_id || '').trim()).filter(Boolean);
-    if (ids.length) {
-      const { data: clientes, error: errCli } = await supabase
-        .from('clientes')
-        .select('id,nome,vendedor,vendedor_nome,vendNome,vendedor_id')
-        .in('id', ids)
-        .limit(5000);
-      if (!errCli && Array.isArray(clientes)) {
-        const byId = new Map();
-        clientes.forEach((c) => { if (c?.id) byId.set(String(c.id), c); });
-        const vendIds = Array.from(new Set(clientes.map((c) => String(c?.vendedor_id || '').trim()).filter(_isUuid))).slice(0, 1000);
-        const vendById = new Map();
-        if (vendIds.length) {
-          const { data: vds } = await supabase.from('vendedores').select('id,nome').in('id', vendIds).limit(1000);
-          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v?.id) vendById.set(String(v.id), v); });
-        }
-        rows.forEach((r) => {
-          const c = byId.get(String(r.cliente_id)) || null;
-          if (!c) return;
-          const vendNome = String(c?.vendedor || c?.vendedor_nome || c?.vendNome || '').trim();
-          const vendId = String(c?.vendedor_id || '').trim();
-          const vendResolved = vendNome || (vendId && vendById.get(vendId)?.nome) || '';
-          r.nome = String(c?.nome || r.nome || '').trim() || r.nome;
-          r.vendedor = vendResolved || '—';
-        });
-      }
+    if (!clientesInativos.length) return res.json({ ok: true, data: [] });
+
+    const ids = clientesInativos.map((c) => String(c.cliente_id || '').trim()).filter(Boolean);
+    const { data: clientes, error: cliErr } = await supabase
+      .from('clientes')
+      .select('id,nome,telefone,tel,email,cidade,uf,cnpj,documento,endereco,ativo,vendedor_id')
+      .in('id', ids)
+      .limit(10000);
+    if (cliErr) throw cliErr;
+
+    const clientesMap = {};
+    (Array.isArray(clientes) ? clientes : []).forEach((c) => { if (c?.id) clientesMap[String(c.id)] = c; });
+
+    const vendIds = Array.from(new Set((Array.isArray(clientes) ? clientes : []).map((c) => String(c?.vendedor_id || '').trim()).filter(_isUuid))).slice(0, 10000);
+    const vendMap = {};
+    if (vendIds.length) {
+      const { data: usrs, error: usrErr } = await supabase.from('usuarios').select('id,nome,email').in('id', vendIds).limit(10000);
+      if (usrErr) throw usrErr;
+      (Array.isArray(usrs) ? usrs : []).forEach((u) => { if (u?.id) vendMap[String(u.id)] = u; });
     }
 
-    return res.json({ ok: true, data: rows });
+    const resultado = clientesInativos.map((c) => {
+      const dados = clientesMap[String(c.cliente_id)] || {};
+      const vend = dados?.vendedor_id ? vendMap[String(dados.vendedor_id)] : null;
+      return {
+        cliente_id: c.cliente_id,
+        ultimo_pedido: c.ultimo_pedido,
+        dias_sem_pedido: c.dias_sem_pedido,
+        nome: dados.nome || '—',
+        telefone: dados.telefone || dados.tel || '—',
+        email: dados.email || '—',
+        cidade: dados.cidade || '—',
+        uf: dados.uf || '—',
+        cnpj: dados.cnpj || dados.documento || '—',
+        vendedor: vend?.nome || '—',
+        vendedor_email: vend?.email || '—',
+        ativo: dados.ativo,
+      };
+    });
+
+    return res.json({ ok: true, data: resultado });
   } catch (e) {
+    console.error('[CLIENTES INATIVOS]', e);
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
@@ -8195,6 +8189,25 @@ async function _resolveEmpresaUuid(req) {
     }
 
     return '';
+  } catch (_) {
+    return '';
+  }
+}
+
+async function _empresaUuidByUserId(userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return '';
+  try {
+    const { data: usr, error } = await supabase
+      .from('usuarios')
+      .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
+      .eq('id', uid)
+      .maybeSingle();
+    if (error || !usr) return '';
+    const empUuid = String(usr?.empresa_id || '').trim();
+    if (_isUuid(empUuid)) return empUuid;
+    const pseudoReq = { query: { empId: usr?.emp_id || usr?.empresa_sigla || usr?.sigla || usr?.empresa || '' }, usuario: { id: uid }, headers: {}, body: {} };
+    return await _resolveEmpresaUuid(pseudoReq);
   } catch (_) {
     return '';
   }
@@ -11645,13 +11658,17 @@ app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    const userId = String(req.query.userId || req.usuario?.id || '').trim();
+    let empresa_id = '';
+    if (userId) empresa_id = await _empresaUuidByUserId(userId);
+    if (!empresa_id) empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.json({ ok: true, data: [] });
 
     const { data: pins, error } = await supabase
       .from('chapas_pins')
       .select('*')
       .eq('empresa_id', empresa_id)
+      .eq('status', 'pendente')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -11691,7 +11708,10 @@ app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
 app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
-    const empresa_id = await _resolveEmpresaUuid(req);
+    const userId = String(req.query.userId || b.userId || req.usuario?.id || '').trim();
+    let empresa_id = '';
+    if (userId) empresa_id = await _empresaUuidByUserId(userId);
+    if (!empresa_id) empresa_id = await _resolveEmpresaUuid(req);
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
     const observacao = String(b.observacao || '').trim() || null;
@@ -11747,15 +11767,123 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const b = req.body || {};
+    const tamanho = String(b.tamanho || b.tam || '').trim().toUpperCase();
+    const quantidade = Math.trunc(Number(b.quantidade || b.qtd || 0) || 0);
+    const valorUnit = Number(String(b.valor_unitario ?? b.valor ?? 0).replace(',', '.'));
+    const pinRow = await supabase.from('chapas_pins').select('*').eq('id', id).maybeSingle();
+    if (pinRow?.error) throw pinRow.error;
+    const atual = pinRow?.data || null;
+    if (!atual) return res.status(404).json({ ok: false, error: 'pin não encontrado' });
+    if (String(atual.status || '').trim().toLowerCase() === 'comprado') {
+      return res.json({ ok: true, data: atual, movimento: null });
+    }
     const payload = {
       status: 'comprado',
       comprado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
       comprado_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      tamanho_compra: tamanho || null,
+      quantidade_compra: quantidade > 0 ? quantidade : null,
+      valor_unitario_compra: Number.isFinite(valorUnit) && valorUnit > 0 ? valorUnit : null,
     };
-    const upd = await supabase.from('chapas_pins').update(payload).eq('id', id).select().maybeSingle();
+    let toUpdate = { ...payload };
+    let upd = null;
+    for (let i = 0; i < 10; i++) {
+      upd = await supabase.from('chapas_pins').update(toUpdate).eq('id', id).select().maybeSingle();
+      if (!upd?.error) break;
+      const msg = String(upd.error.message || '');
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toUpdate, m[1])) {
+        delete toUpdate[m[1]];
+        continue;
+      }
+      throw upd.error;
+    }
     if (upd?.error) throw upd.error;
-    return res.json({ ok: true, data: upd.data || null });
+
+    let movimento = null;
+    const chapaId = String(atual?.chapa_id || '').trim();
+    if (chapaId && quantidade > 0) {
+      const empresa_id = String(atual?.empresa_id || '').trim() || await _resolveEmpresaUuid(req);
+      try {
+        if (tamanho || (Number.isFinite(valorUnit) && valorUnit > 0)) {
+          const table = await _chapasPreferV2Table();
+          if (table === 'chapas_estoque_v2') {
+            const patch = {};
+            if (tamanho) patch.tamanho = tamanho;
+            if (Number.isFinite(valorUnit) && valorUnit > 0) patch.valor_unitario = valorUnit;
+            if (Object.keys(patch).length) await _chapasUpdateCompatV2(chapaId, patch);
+          } else {
+            const patchLegacy = {};
+            if (tamanho) patchLegacy.tam = tamanho;
+            if (Number.isFinite(valorUnit) && valorUnit > 0) { patchLegacy.val = valorUnit; patchLegacy.valor_unitario = valorUnit; }
+            if (Object.keys(patchLegacy).length) await supabase.from('chapas_estoque').update(patchLegacy).eq('id', chapaId);
+          }
+        }
+      } catch (_) {}
+
+      const movRes = await _chapasMovimentarV2Rpc({
+        chapa_id: chapaId,
+        tipo: 'entrada',
+        quantidade: quantidade,
+        nf: null,
+        obs: 'Compra via pin',
+        origem: 'pin_compra',
+        origem_id: id,
+        usuario: req?.usuario?.nome || req?.usuario?.email || 'Usuário',
+        emp_id: String(atual?.emp_id || req.query?.empId || req.body?.empId || '').trim() || null,
+      });
+      if (movRes?.error) throw movRes.error;
+      if (empresa_id) {
+        const qtdAtual = await supabase.from('chapas_estoque_v2').select('quantidade_atual,quantidade').eq('id', chapaId).maybeSingle();
+        const qtdNova = Math.trunc(Number(qtdAtual?.data?.quantidade_atual ?? qtdAtual?.data?.quantidade ?? 0) || 0);
+        if (qtdNova >= 0) await _chapasAtualizarQtdEstoqueChapa(chapaId, qtdNova, req, new Date().toISOString());
+      }
+      movimento = { quantidade, valor_unitario: Number.isFinite(valorUnit) && valorUnit > 0 ? valorUnit : null };
+      try { cacheClearPrefix('chapas_estoque:'); } catch (_) {}
+    }
+
+    return res.json({ ok: true, data: upd.data || null, movimento });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
+    const quantidade = Math.abs(Math.trunc(Number(b.quantidade || 0) || 0));
+    if (!chapa_id || !(quantidade > 0)) return res.status(400).json({ ok: false, error: 'chapa_id e quantidade obrigatórios' });
+    const empresa_id = await _resolveEmpresaUuid(req);
+    const payload = {
+      chapa_id,
+      quantidade,
+      origem: String(b.origem || '').trim() || 'saida',
+      empresa_id: empresa_id || null,
+      emp_id: String(b.empId || b.emp_id || req.query?.empId || req.body?.empId || '').trim() || null,
+      data: String(b.data || '').trim() || new Date().toISOString(),
+      usuario: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      created_at: new Date().toISOString(),
+    };
+    let toInsert = { ...payload };
+    for (let i = 0; i < 10; i++) {
+      const ins = await supabase.from('chapas_consumo').insert([toInsert]).select().maybeSingle();
+      if (!ins?.error) return res.json({ ok: true, data: ins.data || null });
+      const msg = String(ins.error.message || ins.error || '');
+      const low = msg.toLowerCase();
+      if (low.includes('does not exist') || low.includes('relation') || low.includes('could not find')) {
+        return res.json({ ok: true, data: null, noop: true });
+      }
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+        delete toInsert[m[1]];
+        continue;
+      }
+      throw ins.error;
+    }
+    return res.json({ ok: true, data: null, noop: true });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

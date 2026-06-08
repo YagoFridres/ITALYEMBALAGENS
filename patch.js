@@ -967,6 +967,131 @@
 
   .modal-overlay { z-index: 9000 !important; }
   #painelDetalheChapa { z-index: 9500 !important; }
+
+  /* ===== PCP/PROGRAMAÇÃO ===== */
+  .tabela-ofs, #tabela-pcp, [id*="tabelaPCP"], [id*="tabela-ofs"] {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* ===== KANBAN OFs POR MÁQUINA ===== */
+  .kanban-board, [id*="kanban"], .ofs-maquina-board {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 10px !important;
+    padding-bottom: 16px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .kanban-col, .maquina-col, .ofs-maquina-coluna {
+    min-width: 270px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ===== FORMULÁRIOS GERAIS ===== */
+  .form-row, .form-inline,
+  [style*="display:flex"][class*="form"],
+  [style*="display: flex"][class*="form"] {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .modal-box input:not([type="checkbox"]):not([type="radio"]),
+  .modal-box select,
+  .modal-box textarea {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-size: 16px !important;
+  }
+
+  /* ===== TABELAS GERAIS ===== */
+  .table-container, .tabela-container, [class*="tabela-wrap"] {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* ===== HEADER DO SISTEMA ===== */
+  .sistema-top-bar, .header-principal {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    padding: 6px 8px !important;
+  }
+  .header-btn-group button {
+    font-size: 0.72rem !important;
+    padding: 4px 8px !important;
+  }
+
+  /* ===== CARDS DO HUB ===== */
+  .hub-grid, .dashboard-grid, [class*="cards-grid"] {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* ===== FINANCEIRO ===== */
+  .financeiro-tabela, [id*="financeiro"] table {
+    display: block !important;
+    overflow-x: auto !important;
+  }
+
+  /* ===== ANÁLISES/GRÁFICOS ===== */
+  .grafico-card canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* ===== MENUS E NAVEGAÇÃO ===== */
+  .menu-lateral { display: none !important; }
+  .menu-mobile-bottom {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 9000 !important;
+    background: #0f172a !important;
+    border-top: 1px solid rgba(255,255,255,0.08) !important;
+  }
+
+  /* ===== ESPAÇO PARA MENU INFERIOR ===== */
+  .main-content, .page-content, .conteudo-principal, #app-content {
+    padding-bottom: 80px !important;
+  }
+
+  /* ===== MODAIS BOTTOM SHEET ===== */
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-box {
+    border-radius: 16px 16px 0 0 !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ===== BOTÕES DE AÇÃO ===== */
+  button, .btn, [class*="btn-"] {
+    min-height: 40px !important;
+  }
+
+  .btn-group-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* ===== TEXTO NÃO CORTAR (apenas em tabelas) ===== */
+  table th, table td { white-space: nowrap !important; }
+
+  /* ===== CLIENTES INATIVOS MOBILE ===== */
+  #listaClientesInativosModal > div { grid-template-columns: 1fr 1fr !important; }
+  #listaClientesInativosModal > div span:nth-child(3),
+  #listaClientesInativosModal > div span:nth-child(4) { display: none !important; }
+}
+
+@media (max-width: 390px) {
+  .hub-grid { grid-template-columns: 1fr !important; }
+  .badge-status { font-size: 0.62rem !important; }
 }
 `;
 

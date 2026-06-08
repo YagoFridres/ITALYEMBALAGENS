@@ -12153,41 +12153,47 @@ async function concluirOFComBaixa(ofId){
   }
 }
 
-try{ if(!window._histPassagensState) window._histPassagensState = { page: 1, limit: 50, total: 0, key: '', loading: false }; }catch(_){}
+try{ if(!window._histPassagensState) window._histPassagensState = { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} }; }catch(_){}
+
+function obterFiltrosHistoricoAtivos(){
+  return {
+    cliente: String(document.getElementById('hist-filtro-cliente')?.value || '').trim(),
+    maquina: String(document.getElementById('hist-filtro-maquina')?.value || '').trim(),
+    data_inicio: String(document.getElementById('hist-filtro-data-ini')?.value || '').trim(),
+    data_fim: String(document.getElementById('hist-filtro-data-fim')?.value || '').trim(),
+  };
+}
 
 function carregarMaisPassagens(){
   try{
-    var st = window._histPassagensState || { page: 1, limit: 50, total: 0, key: '', loading: false };
+    var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
     if(st.loading) return;
-    buscarHistoricoPassagens({ page: (Number(st.page || 1) || 1) + 1, append: true });
+    buscarHistoricoPassagens(st.filtros || obterFiltrosHistoricoAtivos(), true);
   }catch(e){}
 }
 
-async function buscarHistoricoPassagens(arg) {
+async function buscarHistoricoPassagens(arg, append) {
   var container = document.getElementById('hist-passagens-resultado');
   if (!container) return;
 
-  var st = window._histPassagensState || { page: 1, limit: 50, total: 0, key: '', loading: false };
+  var st = window._histPassagensState || { page: 0, limit: 50, total: 0, key: '', loading: false, filtros: {} };
   window._histPassagensState = st;
 
-  var opts = {};
-  if (typeof arg === 'number') opts = { page: arg, append: false };
-  else if (arg && typeof arg === 'object') opts = arg;
-  else opts = { page: 1, append: false, reset: true };
-
   var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-  var cli = document.getElementById('hist-filtro-cliente')?.value;
-  var maq = document.getElementById('hist-filtro-maquina')?.value;
-  var ini = document.getElementById('hist-filtro-data-ini')?.value;
-  var fim = document.getElementById('hist-filtro-data-fim')?.value;
+  var filtros = (arg && typeof arg === 'object' && !Array.isArray(arg)) ? arg : obterFiltrosHistoricoAtivos();
+  var cli = filtros.cliente || '';
+  var maq = filtros.maquina || '';
+  var ini = filtros.data_inicio || '';
+  var fim = filtros.data_fim || '';
+  append = !!append;
 
   var key = JSON.stringify({ cli: String(cli || ''), maq: String(maq || ''), ini: String(ini || ''), fim: String(fim || '') });
-  if (st.key !== key) { st.key = key; st.page = 1; opts.append = false; opts.page = 1; }
+  if (st.key !== key) { st.key = key; st.page = 0; append = false; }
+  st.filtros = filtros;
 
-  var page = Math.max(1, parseInt(String(opts.page || 1), 10) || 1);
-  var append = !!opts.append;
   var limit = Math.max(1, parseInt(String(st.limit || 50), 10) || 50);
   if (limit > 200) limit = 200;
+  var offset = append ? ((Number(st.page || 0) || 0) * limit) : 0;
 
   if (!append) {
     container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
@@ -12198,7 +12204,7 @@ async function buscarHistoricoPassagens(arg) {
 
   st.loading = true;
 
-  var params = new URLSearchParams({ page: String(page), limit: String(limit) });
+  var params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (cli) params.set('cliente', cli);
   if (maq) params.set('maquina', maq);
   if (ini) params.set('data_inicio', ini);
@@ -12214,7 +12220,7 @@ async function buscarHistoricoPassagens(arg) {
       container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
       st.loading = false;
       st.total = 0;
-      st.page = 1;
+      st.page = 0;
       return;
     }
 
@@ -12310,10 +12316,10 @@ async function buscarHistoricoPassagens(arg) {
     }).join('');
 
     st.total = Number(d.total || 0) || 0;
-    st.page = page;
+    st.page = append ? ((Number(st.page || 0) || 0) + 1) : 1;
     st.limit = limit;
 
-    var loaded = (page * limit) >= st.total;
+    var loaded = ((Number(st.page || 0) || 0) * limit) >= st.total;
     var loadMoreHtml = (!loaded && st.total > 0)
       ? ('<div style="text-align:center;padding:16px">' +
           '<button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button>' +
@@ -20654,6 +20660,137 @@ async function carregarAnaliseClientes(tipo){
   }
 }
 
+window._clientesInativosLista = [];
+
+function criarModalClientesInativos(){
+  let modal = document.getElementById('modalClientesInativos');
+  if(modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'modalClientesInativos';
+  modal.className = 'modal-overlay';
+  modal.style.display = 'none';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:900px;width:95%">
+      <div class="modal-header" style="display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08)">
+        <div>
+          <h3 style="margin:0;font-size:1rem">📊 Clientes Inativos</h3>
+          <span id="clientesInativosTotal" style="color:#64748b;font-size:0.78rem"></span>
+        </div>
+        <button onclick="document.getElementById('modalClientesInativos').style.display='none'" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">×</button>
+      </div>
+      <div style="padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:0.8rem;color:#94a3b8">Sem pedido há mais de:</span>
+        <select id="filtroInativosDias" class="input-dark" onchange="carregarClientesInativos()" style="width:120px;font-size:0.82rem">
+          <option value="15">15 dias</option>
+          <option value="30" selected>30 dias</option>
+          <option value="60">60 dias</option>
+          <option value="90">90 dias</option>
+          <option value="180">6 meses</option>
+        </select>
+        <input type="text" id="buscaClienteInativo" placeholder="🔍 Buscar cliente ou vendedor..." class="input-dark" style="flex:1;min-width:200px;font-size:0.82rem" oninput="filtrarClientesInativos(this.value)">
+      </div>
+      <div style="overflow-x:auto;max-height:65vh">
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1);color:#64748b;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.8px">
+              <th style="padding:10px 14px;text-align:left">Cliente</th>
+              <th style="padding:10px 14px;text-align:left">Vendedor</th>
+              <th style="padding:10px 14px;text-align:left">Cidade</th>
+              <th style="padding:10px 14px;text-align:left">Telefone</th>
+              <th style="padding:10px 14px;text-align:left">Último Pedido</th>
+              <th style="padding:10px 14px;text-align:right">Sem Pedido</th>
+            </tr>
+          </thead>
+          <tbody id="tabelaClientesInativos"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  modal.addEventListener('click', function(ev){
+    if(ev.target === modal) modal.style.display = 'none';
+  });
+  document.body.appendChild(modal);
+  return modal;
+}
+
+async function abrirClientesInativos(){
+  const modal = document.getElementById('modalClientesInativos') || criarModalClientesInativos();
+  modal.style.display = 'flex';
+  await carregarClientesInativos();
+}
+
+async function carregarClientesInativos(){
+  const dias = String(document.getElementById('filtroInativosDias')?.value || '30');
+  const empId = _pinGetEmpId() || (window.CURRENT_USER?.email ? String(window.CURRENT_USER.email).toUpperCase() : '');
+  const tbody = document.getElementById('tabelaClientesInativos');
+  const total = document.getElementById('clientesInativosTotal');
+  if(tbody){
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b">Carregando...</td></tr>';
+  }
+  try{
+    const qs = new URLSearchParams();
+    qs.set('dias', dias);
+    if(empId) qs.set('empId', empId);
+    const resp = await apiFetch('/api/relatorios/clientes-inativos?' + qs.toString(), { method:'GET' });
+    const json = await resp.json().catch(()=>null);
+    window._clientesInativosLista = (json && Array.isArray(json.data)) ? json.data : [];
+    if(total) total.textContent = `${window._clientesInativosLista.length} clientes sem pedido há ${dias}+ dias`;
+    renderClientesInativosTbody(window._clientesInativosLista);
+    const busca = document.getElementById('buscaClienteInativo');
+    if(busca && busca.value) filtrarClientesInativos(busca.value);
+  }catch(e){
+    if(tbody){
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#ef4444">Erro ao carregar dados.</td></tr>';
+    }
+  }
+}
+
+function renderClientesInativosTbody(lista){
+  const tbody = document.getElementById('tabelaClientesInativos');
+  if(!tbody) return;
+  const rows = Array.isArray(lista) ? lista : [];
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b">Nenhum cliente inativo no período.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(function(c, i){
+    const nome = String(c?.nome || '—').trim() || '—';
+    const vend = String(c?.vendedor || '—').trim() || '—';
+    const cidade = String(c?.cidade || '—').trim() || '—';
+    const uf = String(c?.uf || '—').trim();
+    const tel = String(c?.telefone || '—').trim();
+    const email = String(c?.email || '—').trim();
+    const contato = (tel && tel !== '—') ? tel : ((email && email !== '—') ? email : '—');
+    const ult = c?.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : 'Nunca';
+    const dias = Number(c?.dias_sem_pedido || 0) || 0;
+    const baseBg = i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)';
+    const nm = String(c?.cnpj || '').trim();
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:${baseBg};cursor:pointer" onmouseover="this.style.background='rgba(59,130,246,0.06)'" onmouseout="this.style.background='${baseBg}'" onclick="abrirPainelCliente('${escAttr(String(c?.cliente_id || ''))}','${escAttr(nome)}')">
+      <td style="padding:10px 14px">
+        <div style="color:#e2e8f0;font-weight:500">${escH(nome)}</div>
+        ${nm && nm !== '—' ? `<div style="color:#475569;font-size:0.72rem">${escH(nm)}</div>` : ''}
+      </td>
+      <td style="padding:10px 14px;color:#94a3b8">${escH(vend)}</td>
+      <td style="padding:10px 14px;color:#64748b">${escH(cidade)}${uf && uf !== '—' ? '/' + escH(uf) : ''}</td>
+      <td style="padding:10px 14px;color:#64748b">${escH(contato)}</td>
+      <td style="padding:10px 14px;color:#64748b;font-size:0.78rem">${escH(ult)}</td>
+      <td style="padding:10px 14px;text-align:right;font-weight:700;color:${dias>90?'#ef4444':dias>60?'#f59e0b':'#94a3b8'}">${escH(String(dias))} dias</td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarClientesInativos(termo){
+  const t = String(termo || '').trim().toLowerCase();
+  const base = Array.isArray(window._clientesInativosLista) ? window._clientesInativosLista : [];
+  if(!t){ renderClientesInativosTbody(base); return; }
+  const filtrada = base.filter(function(c){
+    return String(c?.nome || '').toLowerCase().includes(t) ||
+      String(c?.vendedor || '').toLowerCase().includes(t) ||
+      String(c?.cidade || '').toLowerCase().includes(t);
+  });
+  renderClientesInativosTbody(filtrada);
+}
+
 function buscarClienteEAbrir(nomeEnc){
   const nome = (() => {
     try{ return decodeURIComponent(String(nomeEnc || '')); }catch(e){ return String(nomeEnc || ''); }
@@ -24675,6 +24812,42 @@ async function estoqueAplicarAjustesInventario(){
   }
 }
 
+function filtrarChapasBusca(termo, lista){
+  const t = String(termo || '').trim().toLowerCase();
+  const arr = Array.isArray(lista) ? lista : [];
+  if(!t) return arr;
+  return arr.filter(function(c){
+    return [
+      c?.nomenclatura, c?.nom, c?.tamanho, c?.tam, c?.fornecedor, c?.forn, c?.nome_uso, c?.nome
+    ].some(function(v){ return String(v || '').toLowerCase().includes(t); });
+  });
+}
+
+function _atualizarDatalistChapas(dlId, termo){
+  const dl = document.getElementById(dlId);
+  if(!dl) return;
+  const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
+  dl.innerHTML = filtrarChapasBusca(termo, lista).slice(0, 200).map(function(c){
+    return `<option value="${escAttr(estChapaKeyLabel(c))}">`;
+  }).join('');
+}
+
+async function registrarConsumoChapa(chapaId, quantidade, origem){
+  const id = String(chapaId || '').trim();
+  const qtd = Number(quantidade || 0) || 0;
+  if(!id || !(qtd > 0)) return;
+  try{
+    const body = {
+      chapa_id: id,
+      quantidade: qtd,
+      origem: String(origem || '').trim() || 'saida',
+      empId: _pinGetEmpId() || '',
+      data: new Date().toISOString()
+    };
+    await apiFetch('/api/chapas/consumo', { method:'POST', body: JSON.stringify(body) });
+  }catch(_){}
+}
+
 function abrirModalEntradaLoteChapas(){
   let modal = document.getElementById('modal-entrada-lote');
   if(!modal){
@@ -24714,10 +24887,7 @@ function abrirModalEntradaLoteChapas(){
   if(dataEl && !dataEl.value) dataEl.value = today();
 
   const dl = document.getElementById('el-chapas-dl');
-  if(dl){
-    const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
-    dl.innerHTML = (lista||[]).slice(0,2000).map(c=>`<option value="${escAttr(estChapaKeyLabel(c))}">`).join('');
-  }
+  if(dl) _atualizarDatalistChapas('el-chapas-dl', '');
 
   const rowsHost = document.getElementById('el-rows');
   if(rowsHost && !rowsHost.dataset.ready){
@@ -24744,7 +24914,7 @@ function entradaLoteAdicionarLinha(){
   tr.style.background = idx%2===0 ? 'var(--surface)' : 'var(--s2)';
   tr.innerHTML = `
     <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
-      <input class="el-chapa" list="el-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)">
+      <input class="el-chapa" list="el-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)" oninput="_atualizarDatalistChapas('el-chapas-dl', this.value)">
     </td>
     <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
       <input class="el-qtd" type="number" min="1" value="1" style="width:110px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right">
@@ -24860,10 +25030,7 @@ function abrirModalSaidaLoteChapas(){
   if(resumo) resumo.textContent = '';
 
   const dl = document.getElementById('sl-chapas-dl');
-  if(dl){
-    const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
-    dl.innerHTML = (lista||[]).slice(0, 2000).map(c=>`<option value="${escAttr(estChapaKeyLabel(c))}">`).join('');
-  }
+  if(dl) _atualizarDatalistChapas('sl-chapas-dl', '');
 
   const rowsHost = document.getElementById('sl-rows');
   if(rowsHost && !rowsHost.dataset.ready){
@@ -24948,7 +25115,7 @@ function adicionarLinhaSaidaLote(){
   tr.style.background = idx%2===0 ? 'var(--surface)' : 'var(--s2)';
   tr.innerHTML = `
     <td style="padding:8px 10px;border-bottom:1px solid var(--border)">
-      <input class="sl-chapa" list="sl-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)" onchange="saidaLoteOnChapaChange(this)">
+      <input class="sl-chapa" list="sl-chapas-dl" placeholder="Nomenclatura · Tamanho · Nome" style="width:100%;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border)" oninput="_atualizarDatalistChapas('sl-chapas-dl', this.value)" onchange="saidaLoteOnChapaChange(this)">
     </td>
     <td style="padding:8px 10px;border-bottom:1px solid var(--border);text-align:right">
       <input class="sl-qtd" type="number" min="1" value="1" style="width:110px;padding:8px;border-radius:8px;background:var(--bg3);color:var(--text1);border:1px solid var(--border);font-family:var(--mono);font-weight:800;text-align:right" onchange="saidaLoteAtualizarResumo()">
@@ -25000,6 +25167,7 @@ async function confirmarSaidaLoteChapas(){
       throw new Error((j && j.error) ? j.error : 'Erro ao registrar saída');
     }
     toast(`Saída registrada: ${rows.length} tipo(s)`,'var(--green)');
+    try{ await Promise.all(rows.map(function(r){ return registrarConsumoChapa(r.chapaId, r.qtd, 'saida_lote'); })); }catch(_){}
     fecharModalSaidaLoteChapas();
     await chapasForcarReload();
   }catch(e){
@@ -25280,6 +25448,7 @@ function saidaRapidaDoPainel(){
 
 let _chapaIdPin = null;
 try{ if(!Array.isArray(window._chapasPins)) window._chapasPins = []; }catch(_){}
+let _pinCompraAtual = null;
 let _chapasPinsAt = 0;
 let _chapasPinsLoading = null;
 
@@ -25376,8 +25545,12 @@ async function carregarPinsChapas(forcar){
     if(!forcar && now - (_chapasPinsAt||0) < 60000 && Array.isArray(window._chapasPins)) return window._chapasPins;
     if(!forcar && _chapasPinsLoading) return _chapasPinsLoading;
     _chapasPinsLoading = (async function(){
+      const userId = String(window.CURRENT_USER?.id || '').trim();
       const empId = _pinGetEmpId();
-      const url = '/api/chapas/pins' + (empId ? ('?empId=' + encodeURIComponent(empId)) : '');
+      const qs = new URLSearchParams();
+      if(userId) qs.set('userId', userId);
+      if(empId) qs.set('empId', empId);
+      const url = '/api/chapas/pins' + (qs.toString() ? ('?' + qs.toString()) : '');
       const resp = await apiFetch(url, { method:'GET' });
       const json = await resp.json().catch(()=>null);
       const data = (json && Array.isArray(json.data)) ? json.data : [];
@@ -25425,6 +25598,45 @@ function _ensureModalPinChapa(){
   return modal;
 }
 
+function _ensureModalCompraChapa(){
+  let modal = document.getElementById('modalCompraChapa');
+  if(modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'modalCompraChapa';
+  modal.className = 'modal-overlay';
+  modal.style.display = 'none';
+  modal.onclick = function(e){ if(e && e.target === modal) fecharModalCompraChapa(); };
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <h3 style="margin:0">✅ Registrar Compra de Chapa</h3>
+        <button onclick="fecharModalCompraChapa()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">×</button>
+      </div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+        <div id="compraChapaNome" style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;font-size:0.82rem;color:#94a3b8"></div>
+        <div class="form-group">
+          <label>Tamanho <span style="color:#ef4444">*</span></label>
+          <input type="text" id="compraChapaTamanho" class="input-dark" placeholder="Ex: 2170X1800">
+        </div>
+        <div class="form-group">
+          <label>Quantidade <span style="color:#ef4444">*</span></label>
+          <input type="number" id="compraChapQtd" class="input-dark" placeholder="Ex: 500" min="1">
+        </div>
+        <div class="form-group">
+          <label>Valor Unitário (R$) <span style="color:#ef4444">*</span></label>
+          <input type="number" id="compraChapVlrUnit" class="input-dark" placeholder="Ex: 8.50" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="fecharModalCompraChapa()" class="btn btn-ghost">Cancelar</button>
+        <button onclick="confirmarCompraChapa()" class="btn btn-accent">✅ Confirmar Compra</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
 async function togglePinChapa(chapaId, event){
   try{ if(event && typeof event.stopPropagation === 'function') event.stopPropagation(); }catch(_){}
   const cid = String(chapaId || '').trim();
@@ -25465,12 +25677,61 @@ function fecharModalPinChapa(){
   _chapaIdPin = null;
 }
 
+function abrirModalCompraChapa(pinId, chapa){
+  const pid = String(pinId || '').trim();
+  if(!pid) return;
+  _pinCompraAtual = { id: pid, chapa: chapa || null };
+  const modal = _ensureModalCompraChapa();
+  const ch = chapa || {};
+  const info = document.getElementById('compraChapaNome');
+  if(info){
+    info.innerHTML = `<strong style="color:#e2e8f0">${escH(String(ch?.nomenclatura || ch?.nom || ''))} ${escH(String(ch?.tamanho || ch?.tam || ''))}</strong><br>${escH(String(ch?.fornecedor || ch?.forn || ''))}`;
+  }
+  try{ document.getElementById('compraChapaTamanho').value = String(ch?.tamanho || ch?.tam || '').trim(); }catch(_){}
+  try{ document.getElementById('compraChapQtd').value = ''; }catch(_){}
+  try{ document.getElementById('compraChapVlrUnit').value = (ch?.valor_unitario != null ? String(ch.valor_unitario) : ''); }catch(_){}
+  modal.style.display = 'flex';
+}
+
+function fecharModalCompraChapa(){
+  const modal = document.getElementById('modalCompraChapa');
+  if(modal) modal.style.display = 'none';
+  _pinCompraAtual = null;
+}
+
+async function confirmarCompraChapa(){
+  const pinId = String(_pinCompraAtual?.id || '').trim();
+  if(!pinId) return;
+  const tamanho = String(document.getElementById('compraChapaTamanho')?.value || '').trim();
+  const qtd = parseFloat(String(document.getElementById('compraChapQtd')?.value || '').replace(',','.'));
+  const vlr = parseFloat(String(document.getElementById('compraChapVlrUnit')?.value || '').replace(',','.'));
+  if(!tamanho){ toast('Informe o tamanho.','var(--yellow)'); return; }
+  if(!(qtd > 0)){ toast('Informe a quantidade.','var(--yellow)'); return; }
+  if(!(vlr > 0)){ toast('Informe o valor unitário.','var(--yellow)'); return; }
+  try{
+    const resp = await apiFetch('/api/chapas/pins/' + encodeURIComponent(pinId) + '/comprado', {
+      method:'PATCH',
+      body: JSON.stringify({ tamanho, quantidade: qtd, valor_unitario: vlr })
+    });
+    const json = await resp.json().catch(()=>null);
+    if(!resp.ok || (json && json.ok === false)) throw new Error(String(json?.error || 'Erro'));
+    toast('Compra registrada! ✅','var(--green)');
+    fecharModalCompraChapa();
+    await carregarPinsChapas(true);
+    try{ await chapasForcarReload(); }catch(_){}
+    try{ renderSugestoesCompra(); }catch(_){}
+  }catch(e){
+    toast('Erro ao registrar compra.','var(--red)');
+  }
+}
+
 async function salvarPinChapa(){
   const cid = String(_chapaIdPin || '').trim();
   if(!cid) return;
   const qtd = String((document.getElementById('pinQtdSugerida')||{}).value || '').trim();
   const obs = String((document.getElementById('pinObservacao')||{}).value || '').trim();
   const empId = _pinGetEmpId();
+  const userId = String(window.CURRENT_USER?.id || '').trim();
   try{
     var payload = {
       chapa_id: cid,
@@ -25478,6 +25739,7 @@ async function salvarPinChapa(){
       observacao: obs || null,
     };
     if(empId) payload.empId = empId;
+    if(userId) payload.userId = userId;
     const resp = await apiFetch('/api/chapas/pins', {
       method: 'POST',
       body: JSON.stringify(payload)
@@ -25517,15 +25779,8 @@ async function removerPinChapa(pinId){
 async function marcarPinComoComprado(pinId){
   const pid = String(pinId || '').trim();
   if(!pid) return;
-  try{
-    await apiFetch('/api/chapas/pins/' + encodeURIComponent(pid) + '/comprado', { method:'PATCH' });
-    toast('Marcado como comprado! ✅', 'var(--green)');
-    await carregarPinsChapas(true);
-    try{ _pinsAtualizarBotoesChapas(); }catch(_){}
-    try{ renderSugestoesCompra(); }catch(_){}
-  }catch(e){
-    toast('Erro ao marcar como comprado.', 'var(--red)');
-  }
+  const pin = (Array.isArray(window._chapasPins) ? window._chapasPins : []).find(function(p){ return String(p?.id || '').trim() === pid; }) || null;
+  abrirModalCompraChapa(pid, pin?.chapa || null);
 }
 
 async function renderSugestoesCompra(){
@@ -37248,6 +37503,7 @@ async function scSalvarVinculo(ofId){
           if(ESTOQUE[idxE].qtd != null) ESTOQUE[idxE].qtd = dadosMov.qtd_estoque;
         }
       }
+      try{ await registrarConsumoChapa(chapaId, qtdCh, 'producao'); }catch(_){}
 
       toast('✅ Chapa vinculada! Estoque: ' + (dadosMov ? dadosMov.qtd_estoque : '?') + ' un.','var(--green)');
     } else {
@@ -37478,6 +37734,7 @@ async function salvarVinculoChapa(ofId){
           if(ESTOQUE[idx].quantidade != null) ESTOQUE[idx].quantidade = novaQtd;
           if(ESTOQUE[idx].qtd != null) ESTOQUE[idx].qtd = novaQtd;
         }
+          try{ await registrarConsumoChapa(chapaId, qtdChapas, 'producao'); }catch(_){}
         toast('✅ Chapa vinculada e estoque atualizado','var(--green)');
       }
     } else {
@@ -44823,6 +45080,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
       <option value="">Todas as empresas</option>
     </select>
     <div style="flex:1"></div>
+    <button onclick="abrirClientesInativos()" style="padding:7px 14px;border-radius:6px;background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.35);color:#c084fc;cursor:pointer;font-size:0.82rem;font-weight:600">📊 Clientes Inativos</button>
     <button class="btn btn-ghost btn-sm" onclick="clientesAbrirImportExcel()">Importar Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="clientesVerificarDuplicatas()">Verificar Duplicatas</button>
     <button class="btn btn-accent" onclick="abrirModalCliente()">＋ Novo Cliente</button>
