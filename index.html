@@ -7164,6 +7164,7 @@ function ofmaqMarcarAgrupamento(ofs){
       delete of._grupoPrimeiro;
     }catch(_){}
   });
+
   var norm = function(s){
     var v = String(s || '').trim().toLowerCase();
     try{ v = v.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){}
@@ -7171,6 +7172,26 @@ function ofmaqMarcarAgrupamento(ofs){
   };
   var getCliente = function(of){
     return norm(of?.cliNome || of?.cliente || of?.cliente_nome || of?.cli_nome || of?.clinome || '');
+  };
+  var getCores = function(of){
+    var raw = of?.cores_impressao ?? of?.cores ?? of?.cor ?? null;
+    var arr = [];
+    try{
+      if(Array.isArray(raw)){
+        arr = raw.map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
+      } else if(typeof raw === 'string') {
+        var s = raw.trim();
+        if(s.startsWith('[')) {
+          var j = JSON.parse(s || '[]');
+          if(Array.isArray(j)) arr = j.map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
+        } else {
+          arr = s.split(/[,;|]/g).map(function(x){ return norm(x); }).filter(Boolean);
+        }
+      } else if(raw && typeof raw === 'object') {
+        arr = Object.values(raw).map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
+      }
+    }catch(_){ arr = []; }
+    return Array.from(new Set(arr));
   };
   var getDims = function(of){
     var w = Number(of?.dim_largura ?? of?.largura ?? of?.larg ?? of?.w ?? 0) || 0;
@@ -7185,83 +7206,57 @@ function ofmaqMarcarAgrupamento(ofs){
     }
     return { w: w, c: c };
   };
-  var getCores = function(of){
-    var raw = of?.cores_impressao ?? of?.cores ?? of?.cor ?? null;
-    var arr = [];
-    try{
-      if(Array.isArray(raw)){
-        arr = raw.map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
-      } else if(typeof raw === 'string') {
-        arr = raw.split(/[,;|]/g).map(function(x){ return norm(x); }).filter(Boolean);
-      } else if(raw && typeof raw === 'object') {
-        arr = Object.values(raw).map(function(x){ return norm(x?.nome || x?.name || x); }).filter(Boolean);
-      }
-    }catch(_){ arr = []; }
-    return Array.from(new Set(arr));
-  };
-  var rel = function(a, b){
-    if(!a || !b) return false;
-    var ca = getCliente(a);
-    var cb = getCliente(b);
-    var sameCliente = ca && cb && ca === cb;
-    var da = getDims(a);
-    var db = getDims(b);
+  var tipoSimilaridade = function(ofA, ofB, tolerancia){
+    if(!ofA || !ofB) return null;
+    var coresA = getCores(ofA);
+    var coresB = getCores(ofB);
+    var mesmasCores = false;
+    if(coresA.length > 0 && coresB.length > 0){
+      mesmasCores = coresA.some(function(c){ return coresB.includes(c); });
+    }
+
+    var da = getDims(ofA);
+    var db = getDims(ofB);
     var dimSimilar = false;
-    if(da.w > 0 && da.c > 0 && db.w > 0 && db.c > 0){
-      var difW = Math.abs(db.w - da.w) / da.w;
-      var difC = Math.abs(db.c - da.c) / da.c;
-      dimSimilar = difW <= 0.10 && difC <= 0.10;
+    if(da.w > 0 && db.w > 0 && da.c > 0 && db.c > 0){
+      dimSimilar = (Math.abs(da.w - db.w) / da.w) <= tolerancia && (Math.abs(da.c - db.c) / da.c) <= tolerancia;
     }
-    var coresA = getCores(a);
-    var coresB = getCores(b);
-    var sameCores = false;
-    if(coresA.length && coresB.length){
-      sameCores = coresA.some(function(x){ return coresB.includes(x); });
-    }
-    return sameCliente || dimSimilar || sameCores;
+
+    var ca = getCliente(ofA);
+    var cb = getCliente(ofB);
+    var mesmoCliente = ca && cb && ca === cb;
+
+    if(dimSimilar && mesmasCores) return 'cor+tamanho';
+    if(dimSimilar) return 'tamanho';
+    if(mesmasCores) return 'cor';
+    if(mesmoCliente) return 'cliente';
+    return null;
   };
+
+  var TOL = 0.15;
   var i = 0;
   while(i < lista.length){
     var base = lista[i];
     var grupo = [base];
     var j = i + 1;
     while(j < lista.length){
-      if(!rel(base, lista[j])) break;
+      var tipo = tipoSimilaridade(base, lista[j], TOL);
+      if(!tipo) break;
       grupo.push(lista[j]);
       j++;
     }
     if(grupo.length > 1){
-      var primeiro = grupo[0];
-      var cliente0 = getCliente(primeiro);
-      var dims0 = getDims(primeiro);
-      var cores0 = getCores(primeiro);
-      var mesmoCliente = cliente0 && grupo.every(function(of){ return getCliente(of) === cliente0; });
-      var dimSimilarAll = (dims0.w > 0 && dims0.c > 0) && grupo.every(function(of){
-        var d = getDims(of);
-        if(!(d.w > 0 && d.c > 0)) return false;
-        var difW = Math.abs(d.w - dims0.w) / dims0.w;
-        var difC = Math.abs(d.c - dims0.c) / dims0.c;
-        return difW <= 0.10 && difC <= 0.10;
-      });
-      var mesmasCores = cores0.length > 0 && grupo.every(function(of){
-        var cs = getCores(of);
-        return cores0.some(function(c){ return cs.includes(c); });
-      });
-      var tipoGrupo = null;
-      if(dimSimilarAll && mesmasCores) tipoGrupo = 'cor+tamanho';
-      else if(dimSimilarAll) tipoGrupo = 'tamanho';
-      else if(mesmasCores) tipoGrupo = 'cor';
-      else if(mesmoCliente) tipoGrupo = 'cliente';
+      var tipoGrupo = tipoSimilaridade(grupo[0], grupo[1], TOL);
       if(tipoGrupo){
-        grupo.forEach(function(of, k){
+        grupo.forEach(function(of, idx){
           of._grupoTipo = tipoGrupo;
-          of._grupoIndex = k;
+          of._grupoIndex = idx;
           of._grupoTotal = grupo.length;
-          of._grupoPrimeiro = k === 0;
+          of._grupoPrimeiro = idx === 0;
         });
       }
     }
-    i = j;
+    i = (j > i + 1) ? j : (i + 1);
   }
 }
 function abrirModalRelatorioMaquina(){
@@ -12104,18 +12099,52 @@ async function concluirOFComBaixa(ofId){
   }
 }
 
-async function buscarHistoricoPassagens(page) {
-  page = page || 1;
+try{ if(!window._histPassagensState) window._histPassagensState = { page: 1, limit: 50, total: 0, key: '', loading: false }; }catch(_){}
+
+function carregarMaisPassagens(){
+  try{
+    var st = window._histPassagensState || { page: 1, limit: 50, total: 0, key: '', loading: false };
+    if(st.loading) return;
+    buscarHistoricoPassagens({ page: (Number(st.page || 1) || 1) + 1, append: true });
+  }catch(e){}
+}
+
+async function buscarHistoricoPassagens(arg) {
   var container = document.getElementById('hist-passagens-resultado');
   if (!container) return;
-  container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
+
+  var st = window._histPassagensState || { page: 1, limit: 50, total: 0, key: '', loading: false };
+  window._histPassagensState = st;
+
+  var opts = {};
+  if (typeof arg === 'number') opts = { page: arg, append: false };
+  else if (arg && typeof arg === 'object') opts = arg;
+  else opts = { page: 1, append: false, reset: true };
 
   var token = localStorage.getItem('token') || sessionStorage.getItem('token') || '';
-  var params = new URLSearchParams({ page: page });
   var cli = document.getElementById('hist-filtro-cliente')?.value;
   var maq = document.getElementById('hist-filtro-maquina')?.value;
   var ini = document.getElementById('hist-filtro-data-ini')?.value;
   var fim = document.getElementById('hist-filtro-data-fim')?.value;
+
+  var key = JSON.stringify({ cli: String(cli || ''), maq: String(maq || ''), ini: String(ini || ''), fim: String(fim || '') });
+  if (st.key !== key) { st.key = key; st.page = 1; opts.append = false; opts.page = 1; }
+
+  var page = Math.max(1, parseInt(String(opts.page || 1), 10) || 1);
+  var append = !!opts.append;
+  var limit = Math.max(1, parseInt(String(st.limit || 50), 10) || 50);
+  if (limit > 200) limit = 200;
+
+  if (!append) {
+    container.innerHTML = '<p style="color:#64748b;text-align:center;padding:20px">Buscando...</p>';
+  } else {
+    var btnLM0 = document.getElementById('btnCarregarMaisPassagens');
+    if (btnLM0) { btnLM0.disabled = true; btnLM0.textContent = 'Carregando...'; }
+  }
+
+  st.loading = true;
+
+  var params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (cli) params.set('cliente', cli);
   if (maq) params.set('maquina', maq);
   if (ini) params.set('data_inicio', ini);
@@ -12127,13 +12156,32 @@ async function buscarHistoricoPassagens(page) {
     var d = await r.json();
     var lista = d.passagens || [];
 
-    if (!lista.length) {
+    if (!lista.length && !append) {
       container.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px">Nenhuma passagem encontrada.</p>';
+      st.loading = false;
+      st.total = 0;
+      st.page = 1;
       return;
     }
 
-    var html = '<div style="color:#64748b;font-size:12px;margin-bottom:8px">' + d.total + ' passagens encontradas</div>';
-    html += lista.map(function(p) {
+    var semMaquina = 0;
+    try{
+      semMaquina = (lista || []).filter(function(p){
+        var m = String(p?.maquina || '').trim();
+        if(!m) return true;
+        var n = m.toLowerCase();
+        return n === 'sem maquina' || n === 'sem máquina';
+      }).length;
+    }catch(_){ semMaquina = 0; }
+
+    var resumoHtml = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
+      '<span style="color:#64748b;font-size:12px">' + escH(String(d.total || 0)) + ' passagens encontradas</span>' +
+      (semMaquina > 0
+        ? ('<span style="background:rgba(100,116,139,0.15);color:#94a3b8;border-radius:6px;padding:3px 10px;font-size:0.78rem">Sem máquina: <strong>' + escH(String(semMaquina)) + '</strong></span>')
+        : '') +
+      '</div>';
+
+    var cardsHtml = (lista || []).map(function(p) {
       var imgsArr = [];
       try{
         if (Array.isArray(p.imgs)) imgsArr = p.imgs;
@@ -12207,22 +12255,38 @@ async function buscarHistoricoPassagens(page) {
       '</div>';
     }).join('');
 
-    if (d.total > 50) {
-      var totalPages = Math.ceil(d.total / 50);
-      html += '<div style="display:flex;justify-content:center;gap:8px;margin-top:12px">';
-      for (var i = 1; i <= Math.min(totalPages, 10); i++) {
-        html += '<button onclick="buscarHistoricoPassagens(' + i + ')" style="' +
-          'background:' + (i === page ? '#4A90D9' : 'rgba(255,255,255,0.05)') + ';' +
-          'color:' + (i === page ? '#fff' : '#94a3b8') + ';' +
-          'border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">' + i + '</button>';
-      }
-      html += '</div>';
-    }
+    st.total = Number(d.total || 0) || 0;
+    st.page = page;
+    st.limit = limit;
 
-    container.innerHTML = html;
+    var loaded = (page * limit) >= st.total;
+    var loadMoreHtml = (!loaded && st.total > 0)
+      ? ('<div style="text-align:center;padding:16px">' +
+          '<button onclick="carregarMaisPassagens()" class="btn btn-ghost btn-sm" id="btnCarregarMaisPassagens">Carregar mais</button>' +
+        '</div>')
+      : '';
+
+    if (!append) {
+      container.innerHTML = resumoHtml + '<div id="hist-passagens-items">' + cardsHtml + '</div>' + loadMoreHtml;
+    } else {
+      var itemsEl = document.getElementById('hist-passagens-items');
+      if (!itemsEl) {
+        container.innerHTML = resumoHtml + '<div id="hist-passagens-items">' + cardsHtml + '</div>' + loadMoreHtml;
+      } else {
+        itemsEl.insertAdjacentHTML('beforeend', cardsHtml);
+        var oldBtn = document.getElementById('btnCarregarMaisPassagens');
+        if (oldBtn) oldBtn.parentNode.remove();
+        if (loadMoreHtml) container.insertAdjacentHTML('beforeend', loadMoreHtml);
+      }
+    }
   } catch(e) {
-    container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
+    if (!append) container.innerHTML = '<p style="color:#f43f5e;text-align:center;padding:20px">Erro ao buscar passagens.</p>';
   }
+  st.loading = false;
+  try{
+    var btnLM = document.getElementById('btnCarregarMaisPassagens');
+    if (btnLM) { btnLM.disabled = false; btnLM.textContent = 'Carregar mais'; }
+  }catch(_){}
 }
 
 async function carregarGraficosPassagens(){
@@ -25176,22 +25240,54 @@ function _pinGetEmpId(){
 
   const email = String(window.CURRENT_USER?.email || '').trim().toLowerCase();
   if (email) {
-    const sigla = emailParaSigla[email];
-    if (sigla) return sigla;
-    return email.toUpperCase();
+    if (emailParaSigla[email]) return emailParaSigla[email];
+    const keys = Object.keys(emailParaSigla);
+    for (var i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (k && email.includes(k)) return emailParaSigla[k];
+    }
+  }
+
+  const empId =
+    window.CURRENT_USER?.emp_id ||
+    window.CURRENT_USER?.empId ||
+    window.CURRENT_USER?.sigla ||
+    window.CURRENT_USER?.empresa_sigla ||
+    window.CURRENT_USER?.empresa;
+  if (empId) {
+    const s = String(empId || '').trim();
+    const low = s.toLowerCase();
+    if (emailParaSigla[low]) return emailParaSigla[low];
+    if (low.includes('italy')) return 'ITALY';
+    if (low.includes('carto')) return 'CARTO';
+    if (low.includes('oeste')) return 'OESTE';
+    return s.toUpperCase();
   }
 
   try {
     const authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
     const authEmail = String(authUser?.email || '').trim().toLowerCase();
     if (authEmail) {
-      const sigla = emailParaSigla[authEmail];
-      if (sigla) return sigla;
-      return authEmail.toUpperCase();
+      if (emailParaSigla[authEmail]) return emailParaSigla[authEmail];
+      const keys2 = Object.keys(emailParaSigla);
+      for (var j = 0; j < keys2.length; j++) {
+        const k2 = keys2[j];
+        if (k2 && authEmail.includes(k2)) return emailParaSigla[k2];
+      }
+    }
+    const authEmp = authUser?.emp_id || authUser?.empId || authUser?.sigla || authUser?.empresa;
+    if (authEmp) {
+      const s2 = String(authEmp || '').trim();
+      const low2 = s2.toLowerCase();
+      if (emailParaSigla[low2]) return emailParaSigla[low2];
+      if (low2.includes('italy')) return 'ITALY';
+      if (low2.includes('carto')) return 'CARTO';
+      if (low2.includes('oeste')) return 'OESTE';
+      return s2.toUpperCase();
     }
   } catch (e) {}
 
-  try { console.warn('[PIN] Não foi possível determinar empId'); } catch (e) {}
+  if (email) return email.toUpperCase();
   return '';
 }
 
@@ -57236,6 +57332,18 @@ function verificarRedistribuicao(ofs, todasOFs){
     entrega.setHours(0,0,0,0);
     var diasUteis = calcularDiasUteis(hoje, entrega);
     var maqAtual = String(of?.maquina || (Array.isArray(of?.maq) ? of.maq[0] : '') || (typeof getMaquinaAtual === 'function' ? getMaquinaAtual(of) : '') || '').trim();
+    var semMaquina = !maqAtual;
+    if(semMaquina && diasUteis >= 0){
+      var numS = String(of.numero || of.of || of.of_num || of.numero_of || of.id || '').trim();
+      alertas.push({
+        of: of,
+        diasUteis: diasUteis,
+        maquinaAtual: 'Sem Máquina',
+        semMaquina: true,
+        mensagem: 'OF #' + numS + ' sem máquina definida'
+      });
+      return;
+    }
     if(!maqAtual) return;
     var carga = calcularCargaMaquina(maqAtual, byMaq[maqAtual] || []);
     if(carga.sobrecarregada && diasUteis >= 2){
@@ -57244,6 +57352,7 @@ function verificarRedistribuicao(ofs, todasOFs){
         of: of,
         diasUteis: diasUteis,
         maquinaAtual: maqAtual,
+        semMaquina: false,
         mensagem: 'OF #' + num + ' pode ser redistribuída — ' + diasUteis + ' dias úteis disponíveis'
       });
     }
@@ -57278,9 +57387,14 @@ function renderAlertasRedistribuicao(alertas){
     var produto = String(of.produto || of.descricao || of.nome_produto || of.referencia || '').trim();
     var imgUrl = String(of.imagem_url || of.imagem || of.foto || of.imgUrl || '').trim();
     var maqAtual = String(a.maquinaAtual || '').trim();
+    var semMaq = !!a.semMaquina || !maqAtual || String(maqAtual).toLowerCase().includes('sem maquina') || String(maqAtual).toLowerCase().includes('sem máquina');
     var dias = Number(a.diasUteis || 0) || 0;
     var entrega = formatarDataBR(String(of.data_entrega || of.ent || '').slice(0,10));
     var qtd = String(of.quantidade || of.qtd || '?');
+    var badgeStyle = semMaq
+      ? 'background:rgba(100,116,139,0.15);color:#94a3b8;'
+      : 'background:rgba(239,68,68,0.15);color:#f87171;';
+    var badgeText = semMaq ? 'Sem máquina' : (maqAtual ? (maqAtual + ' sobrecarregada') : 'sobrecarregada');
     var imgHtml = imgUrl
       ? `<img src="${escAttr(imgUrl)}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1)" onerror="this.style.display='none'">`
       : `<div style="width:36px;height:36px;border-radius:6px;background:rgba(255,255,255,0.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem">📦</div>`;
@@ -57315,7 +57429,7 @@ function renderAlertasRedistribuicao(alertas){
             </div>
             <div>
               <span style="color:#64748b;font-size:0.72rem">MÁQUINA ATUAL</span><br>
-              <span style="color:#f87171;font-weight:600">${escH(String(maqAtual || '—'))}</span>
+              <span style="color:${semMaq ? '#94a3b8' : '#f87171'};font-weight:600">${escH(String(maqAtual || '—'))}</span>
             </div>
           </div>
         </div>
@@ -57330,7 +57444,7 @@ function renderAlertasRedistribuicao(alertas){
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0">
                 <span style="color:#e2e8f0;font-weight:600;white-space:nowrap">OF #${escH(idShow)}</span>
                 ${cliente ? `<span style="color:#64748b;font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">${escH(cliente)}</span>` : ''}
-                ${maqAtual ? `<span style="background:rgba(239,68,68,0.15);color:#f87171;border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:600;white-space:nowrap">${escH(maqAtual)} sobrecarregada</span>` : ''}
+                <span style="${badgeStyle}border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:600;white-space:nowrap">${escH(badgeText)}</span>
               </div>
               ${produto ? `<div style="color:#94a3b8;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px">📦 ${escH(produto)}</div>` : ''}
             </div>

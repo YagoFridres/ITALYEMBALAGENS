@@ -2148,6 +2148,8 @@ const OFS_TABLE_COLS = [
   'cidade_entrega', 'modo_programacao',
   'usuario_conclusao',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
+  'dim_comprimento', 'dim_largura', 'dim_altura',
+  'cores_impressao',
   'cond_pagamento', 'pagto', 'ramo', 'smp_id',
   'created_at', 'updated_at',
 ];
@@ -6106,9 +6108,11 @@ app.get('/api/passagens/hoje', authMiddleware, async (req, res) => {
 app.get('/api/passagens/historico', authMiddleware, async (req, res) => { 
   try { 
     const { cliente, maquina, data_inicio, data_fim, mes, ano } = req.query; 
-    const page  = Math.max(1, parseInt(req.query.page) || 1); 
-    const limit = 50; 
-    const offset = (page - 1) * limit; 
+    const limit = Math.min(200, Math.max(1, parseInt(String(req.query.limit || ''), 10) || 50)); 
+    const offsetReq = parseInt(String(req.query.offset || ''), 10); 
+    const pageReq = Math.max(1, parseInt(String(req.query.page || ''), 10) || 1); 
+    const offset = Number.isFinite(offsetReq) ? Math.max(0, offsetReq) : ((pageReq - 1) * limit); 
+    const page = Math.max(1, Math.floor(offset / limit) + 1);
  
     let query = supabase 
       .from('passagens_maquina') 
@@ -6177,7 +6181,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
         }); 
       } 
     } catch (_) {} 
-    res.json({ ok: true, passagens: passagens, total: count || 0, page }); 
+    res.json({ ok: true, passagens: passagens, total: count || 0, page, limit, offset }); 
   } catch(e) { 
     console.error('[passagens/historico]', e.message); 
     res.json({ ok: true, passagens: [], total: 0, page: 1, erro: e.message }); 
@@ -8022,6 +8026,7 @@ async function _resolveEmpresaUuid(req) {
   if (_isUuid(userEmp)) return userEmp;
   if (_isUuid(bEmp)) return bEmp;
   if (_isUuid(qEmp)) return qEmp;
+  const usuarioId = String(req?.usuario?.id || req?.user?.id || '').trim();
   const hdrEmp = String(
     req?.headers?.['x-emp-id'] ||
     req?.headers?.['x-empid'] ||
@@ -8029,7 +8034,7 @@ async function _resolveEmpresaUuid(req) {
     req?.headers?.['x-empresa'] ||
     ''
   ).trim();
-  const empId = String(
+  const empIdRaw = String(
     req?.body?.emp_id ?? req?.body?.empId ??
     req?.query?.emp_id ?? req?.query?.empId ??
     req?.usuario?.emp_id ?? req?.usuario?.empId ??
@@ -8040,20 +8045,68 @@ async function _resolveEmpresaUuid(req) {
     hdrEmp ??
     ''
   ).trim();
-  const empIdBase = (empId ? empId.split(':')[0] : '').trim().toUpperCase();
+  const empIdBase = (empIdRaw ? empIdRaw.split(':')[0] : '').trim();
   if (_isUuid(empIdBase)) return empIdBase;
+
+  const empBaseUpper = String(empIdBase || '').trim().toUpperCase();
+  const empBaseLower = String(empIdBase || '').trim().toLowerCase();
   const empIdEff =
-    (empIdBase === 'E1' ? 'ITALY' :
-     empIdBase === 'E2' ? 'CARTO' :
-     empIdBase === 'E3' ? 'OESTE' :
-     empIdBase) || 'ITALY';
+    (empBaseUpper === 'E1' ? 'ITALY' :
+     empBaseUpper === 'E2' ? 'CARTO' :
+     empBaseUpper === 'E3' ? 'OESTE' :
+     empBaseLower.includes('italy') ? 'ITALY' :
+     empBaseLower.includes('carto') ? 'CARTO' :
+     empBaseLower.includes('oeste') ? 'OESTE' :
+     empBaseUpper);
   try {
-    const { data, error } = await supabase.from('empresas').select('id').ilike('sigla', empIdEff.trim()).maybeSingle();
-    const id = String(data?.id || '').trim();
-    if (!error && _isUuid(id)) return id;
-    const { data: data2, error: error2 } = await supabase.from('empresas').select('id').eq('codigo', empIdEff).maybeSingle();
-    const id2 = String(data2?.id || '').trim();
-    if (!error2 && _isUuid(id2)) return id2;
+    if (empIdEff) {
+      const { data, error } = await supabase.from('empresas').select('id').ilike('sigla', empIdEff.trim()).maybeSingle();
+      const id = String(data?.id || '').trim();
+      if (!error && _isUuid(id)) return id;
+      const { data: data2, error: error2 } = await supabase.from('empresas').select('id').eq('codigo', empIdEff).maybeSingle();
+      const id2 = String(data2?.id || '').trim();
+      if (!error2 && _isUuid(id2)) return id2;
+    }
+
+    if (usuarioId) {
+      const { data: usr, error: usrErr } = await supabase
+        .from('usuarios')
+        .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
+        .eq('id', usuarioId)
+        .maybeSingle();
+      if (!usrErr && usr) {
+        const empUuid = String(usr?.empresa_id || '').trim();
+        if (_isUuid(empUuid)) return empUuid;
+        const empRaw =
+          String(
+            usr?.emp_id ??
+            usr?.empresa_sigla ??
+            usr?.sigla ??
+            usr?.empresa ??
+            ''
+          ).trim();
+        const empUpper = empRaw.toUpperCase();
+        const empLower = empRaw.toLowerCase();
+        const empEff =
+          (empUpper === 'E1' ? 'ITALY' :
+           empUpper === 'E2' ? 'CARTO' :
+           empUpper === 'E3' ? 'OESTE' :
+           empLower.includes('italy') ? 'ITALY' :
+           empLower.includes('carto') ? 'CARTO' :
+           empLower.includes('oeste') ? 'OESTE' :
+           empUpper);
+        if (_isUuid(empEff)) return empEff;
+        if (empEff) {
+          const { data: empRow, error: empErr } = await supabase.from('empresas').select('id').ilike('sigla', empEff.trim()).maybeSingle();
+          const empId = String(empRow?.id || '').trim();
+          if (!empErr && _isUuid(empId)) return empId;
+          const { data: empRow2, error: empErr2 } = await supabase.from('empresas').select('id').eq('codigo', empEff).maybeSingle();
+          const empId2 = String(empRow2?.id || '').trim();
+          if (!empErr2 && _isUuid(empId2)) return empId2;
+        }
+      }
+    }
+
     return '';
   } catch (_) {
     return '';
