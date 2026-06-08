@@ -20076,7 +20076,7 @@ function cpRender(rows){
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
-      const usu = r.operador || r.usuario || '—';
+      const usuarioTxt = String(r.operador || r.usuario || '').trim() || '—';
       let opsOf = [];
       try{
         const raw = r.operadores_of || r.operadoresOf || (ofRel && (ofRel.operadores_of || ofRel.operadoresOf || ofRel.operadores)) || null;
@@ -20089,9 +20089,9 @@ function cpRender(rows){
       }catch(e){ opsOf = []; }
       opsOf = (Array.isArray(opsOf) ? opsOf : []).map(x=>String(x||'').trim()).filter(Boolean);
       opsOf = Array.from(new Set(opsOf));
-      const usuHtml = opsOf.length
-        ? opsOf.map(op => `<span style="display:inline-block;padding:1px 6px;margin:1px;background:rgba(59,130,246,0.15);border-radius:4px;font-size:0.72rem;color:#60a5fa">${escH(op)}</span>`).join('')
-        : escH(String(usu));
+      const opsOfHtml = opsOf.length
+        ? opsOf.map(op => `<span style="display:inline-block;padding:1px 6px;margin:1px;background:rgba(59,130,246,0.15);border-radius:4px;font-size:0.72rem;color:#60a5fa;white-space:nowrap">${escH(op)}</span>`).join('')
+        : '—';
       let imgUrl = '';
       try{
         imgUrl = String(
@@ -20116,10 +20116,11 @@ function cpRender(rows){
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">${fmtN(qtd)}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">${vu > 0 ? fmtR(vu) : '—'}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">${vt > 0 ? fmtR(vt) : '—'}</td>
-        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${usuHtml}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${escH(String(usuarioTxt))}</td>
+        <td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">${opsOfHtml}</td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">${imgCell}</td>
       </tr>`;
-    }).join('') || `<tr><td colspan="10" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>`;
+    }).join('') || `<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>`;
   }
 }
 
@@ -45872,7 +45873,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
     <div class="sbox">
       <div class="sbox-h">📋 Lançamentos</div>
       <div class="sbox-b" style="overflow:auto">
-        <table id="cp-table" style="width:100%;border-collapse:collapse;min-width:1100px">
+        <table id="cp-table" style="width:100%;border-collapse:collapse;min-width:1250px">
           <thead>
             <tr style="background:var(--s2)">
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">DATA</th>
@@ -45883,8 +45884,9 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">QTD PERDIDA</th>
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR UNIT</th>
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR TOTAL</th>
-              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OPERADOR</th>
-              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">AÇÕES</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">USUÁRIO</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OPERADORES</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">FOTO</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -57282,6 +57284,43 @@ function renderAlertasRedistribuicao(alertas){
     var imgHtml = imgUrl
       ? `<img src="${escAttr(imgUrl)}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;flex-shrink:0;border:1px solid rgba(255,255,255,0.1)" onerror="this.style.display='none'">`
       : `<div style="width:36px;height:36px;border-radius:6px;background:rgba(255,255,255,0.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1rem">📦</div>`;
+    var detalheHtml = `
+      <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);">
+        ${imgUrl ? `
+          <img src="${escAttr(imgUrl)}"
+            onclick="window.open(this.src,'_blank')"
+            style="width:72px;height:72px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);"
+            title="Clique para ampliar"
+            onerror="this.style.display='none'">
+        ` : `
+          <div style="width:72px;height:72px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">📦</div>
+        `}
+        <div style="flex:1;font-size:0.82rem">
+          <div style="color:#e2e8f0;font-weight:600;margin-bottom:4px">
+            OF #${escH(idShow)}${cliente ? ` — ${escH(cliente)}` : ''}
+          </div>
+          ${produto ? `<div style="color:#94a3b8;margin-bottom:4px">📦 ${escH(produto)}</div>` : ''}
+          <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div>
+              <span style="color:#64748b;font-size:0.72rem">QUANTIDADE</span><br>
+              <span style="color:#22d3ee;font-weight:700;font-size:1rem">${escH(String(qtd))} cx</span>
+            </div>
+            <div>
+              <span style="color:#64748b;font-size:0.72rem">DATA ENTREGA</span><br>
+              <span style="color:#f59e0b;font-weight:600">${escH(entrega)}</span>
+            </div>
+            <div>
+              <span style="color:#64748b;font-size:0.72rem">DIAS ÚTEIS</span><br>
+              <span style="color:${dias >= 3 ? '#4ade80' : '#f87171'};font-weight:600">${escH(String(dias))} dias</span>
+            </div>
+            <div>
+              <span style="color:#64748b;font-size:0.72rem">MÁQUINA ATUAL</span><br>
+              <span style="color:#f87171;font-weight:600">${escH(String(maqAtual || '—'))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
     return `
       <div style="border-bottom:1px solid rgba(255,255,255,0.04)">
         <div onclick="toggleOFRedist(${idx})" style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;font-size:0.82rem" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
@@ -57302,6 +57341,7 @@ function renderAlertasRedistribuicao(alertas){
           </div>
         </div>
         <div id="painelOFRedist_${idx}" style="display:none;background:rgba(0,0,0,0.2);padding:12px 14px 14px;border-top:1px solid rgba(255,255,255,0.05)">
+          ${detalheHtml}
           <div style="font-size:0.75rem;color:#64748b;margin-bottom:10px">Selecione a nova máquina e/ou data:</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px" onclick="event.stopPropagation()">
             <div>
@@ -57315,10 +57355,6 @@ function renderAlertasRedistribuicao(alertas){
               <label style="font-size:0.7rem;color:#64748b;display:block;margin-bottom:4px">REALOCAR PARA DIA</label>
               <input type="date" id="dataRedist_${idx}" class="input-dark" value="${escAttr(proximoDiaUtil())}" style="width:100%">
             </div>
-          </div>
-          <div style="font-size:0.75rem;color:#475569;margin-bottom:10px">
-            Entrega atual: <strong style="color:#94a3b8">${escH(entrega)}</strong>
-            &nbsp;·&nbsp; Qtd: <strong style="color:#94a3b8">${escH(String(qtd))} cx</strong>
           </div>
           <div style="display:flex;gap:8px" onclick="event.stopPropagation()">
             <button onclick="cancelarRedist(${idx})" style="flex:1;padding:8px;border-radius:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;cursor:pointer;font-size:0.8rem">Cancelar</button>
@@ -57374,6 +57410,11 @@ function toggleOFRedist(idx){
   var aberto = painel.style.display !== 'none';
   painel.style.display = aberto ? 'none' : 'block';
   if(arrow) arrow.textContent = aberto ? '▶' : '▼';
+  if(!aberto){
+    setTimeout(function(){
+      try{ painel.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){}
+    }, 50);
+  }
 }
 
 function cancelarRedist(idx){
