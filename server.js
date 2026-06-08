@@ -11426,6 +11426,139 @@ app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
+  try {
+    const empId = String(req.query.empId || req.query.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
+    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
+    if (!empresa_id) return res.json({ ok: true, data: [] });
+
+    const { data: pins, error } = await supabase
+      .from('chapas_pins')
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('relation') || m.includes('could not find')) {
+        return res.json({ ok: true, data: [] });
+      }
+      throw error;
+    }
+
+    const rows = Array.isArray(pins) ? pins : [];
+    const ids = [...new Set(rows.map((p) => String(p?.chapa_id || '').trim()).filter(Boolean))];
+    let chapasMap = {};
+    if (ids.length) {
+      try {
+        const { data: chapas, error: e2 } = await supabase
+          .from('chapas_estoque_v2')
+          .select('id,nomenclatura,tamanho,fornecedor,gramatura,categoria,quantidade_atual,valor_unitario,valor_total,emp_id')
+          .in('id', ids);
+        if (!e2 && Array.isArray(chapas)) {
+          chapasMap = Object.fromEntries(chapas.map((c) => [String(c.id), c]));
+        }
+      } catch (_) {}
+    }
+
+    const out = rows.map((p) => ({
+      ...p,
+      chapa: chapasMap[String(p.chapa_id)] || null,
+    }));
+    return res.json({ ok: true, data: out });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const empId = String(b.empId || b.emp_id || req.usuario?.empId || req.usuario?.emp_id || '').trim();
+    const empresa_id = empId ? await _resolveEmpresaUuid(empId) : null;
+    const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
+    const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
+    const observacao = String(b.observacao || '').trim() || null;
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa inválida' });
+    if (!chapa_id) return res.status(400).json({ ok: false, error: 'chapa_id obrigatório' });
+
+    let existente = null;
+    try {
+      const r = await supabase
+        .from('chapas_pins')
+        .select('id')
+        .eq('chapa_id', chapa_id)
+        .eq('empresa_id', empresa_id)
+        .eq('status', 'pendente')
+        .maybeSingle();
+      existente = r?.data || null;
+    } catch (_) {}
+    if (existente && existente.id) {
+      return res.status(409).json({ ok: false, error: 'Já existe pin pendente para esta chapa' });
+    }
+
+    const payload = {
+      chapa_id,
+      empresa_id,
+      emp_id: req.usuario?.empId || null,
+      criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      qtd_sugerida: (qtd_sugerida && qtd_sugerida > 0) ? qtd_sugerida : null,
+      observacao,
+      status: 'pendente',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    let toInsert = { ...payload };
+    for (let i = 0; i < 10; i++) {
+      const ins = await supabase.from('chapas_pins').insert([toInsert]).select().maybeSingle();
+      if (!ins?.error) return res.json({ ok: true, data: ins.data || null });
+      const msg = String(ins.error.message || '');
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
+        delete toInsert[m[1]];
+        continue;
+      }
+      throw ins.error;
+    }
+    return res.status(500).json({ ok: false, error: 'Falha ao criar pin' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const payload = {
+      status: 'comprado',
+      comprado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      comprado_em: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const upd = await supabase.from('chapas_pins').update(payload).eq('id', id).select().maybeSingle();
+    if (upd?.error) throw upd.error;
+    return res.json({ ok: true, data: upd.data || null });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.delete('/api/chapas/pins/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const del = await supabase.from('chapas_pins').delete().eq('id', id);
+    const err = del?.error || null;
+    if (err) throw err;
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
   try {
     const limit = Math.max(1, Math.min(150, Math.trunc(_chapasToNum(req.query.limit, 120))));

@@ -20377,7 +20377,7 @@ function renderClientes(){
         <div class="cli-stat"><b>${fmtR(ofs.length?total/ofs.length:0)}</b> ticket</div>
       </div>
       <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirHistCli('${c.id}')" style="font-size:.68rem;">📋 Histórico</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();abrirPainelCliente('${c.id}')" style="font-size:.68rem;">👤 Painel</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editarCliente('${c.id}')" style="font-size:.68rem;">✏ Editar</button>
         <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();excluirCliente('${c.id}')" style="font-size:.68rem;color:var(--red);">🗑 Excluir</button>
       </div>
@@ -25088,6 +25088,222 @@ function saidaRapidaDoPainel(){
   if(id) abrirModalMovLinha('saida', id);
 }
 
+let _chapaIdPin = null;
+try{ if(!Array.isArray(window._chapasPins)) window._chapasPins = []; }catch(_){}
+let _chapasPinsAt = 0;
+let _chapasPinsLoading = null;
+
+async function carregarPinsChapas(forcar){
+  try{
+    const now = Date.now();
+    if(!forcar && now - (_chapasPinsAt||0) < 60000 && Array.isArray(window._chapasPins)) return window._chapasPins;
+    if(!forcar && _chapasPinsLoading) return _chapasPinsLoading;
+    _chapasPinsLoading = (async function(){
+      const empId = String((window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || '').trim();
+      const url = '/api/chapas/pins' + (empId ? ('?empId=' + encodeURIComponent(empId)) : '');
+      const resp = await apiFetch(url, { method:'GET' });
+      const json = await resp.json().catch(()=>null);
+      const data = (json && Array.isArray(json.data)) ? json.data : [];
+      try{ window._chapasPins = data; }catch(_){}
+      _chapasPinsAt = Date.now();
+      _chapasPinsLoading = null;
+      return data;
+    })();
+    return _chapasPinsLoading;
+  }catch(e){
+    _chapasPinsLoading = null;
+    return Array.isArray(window._chapasPins) ? window._chapasPins : [];
+  }
+}
+
+function _ensureModalPinChapa(){
+  let modal = document.getElementById('modalPinChapa');
+  if(modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'modalPinChapa';
+  modal.className = 'modal-overlay';
+  modal.style.display = 'none';
+  modal.onclick = function(e){ if(e && e.target === modal) fecharModalPinChapa(); };
+  modal.innerHTML = `
+    <div class="modal" style="width:min(420px,98vw)">
+      <button class="close-btn" onclick="fecharModalPinChapa()">✕</button>
+      <h2 style="margin-bottom:10px">📌 Marcar para Compra</h2>
+      <div id="pinChapaInfo" style="background:rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;font-size:0.83rem;color:#94a3b8;margin-bottom:12px"></div>
+      <div class="mf">
+        <label>Quantidade Sugerida para Compra</label>
+        <input type="number" id="pinQtdSugerida" class="input-dark" placeholder="Ex: 500" min="1">
+      </div>
+      <div class="mf" style="margin-top:10px">
+        <label>Observação</label>
+        <textarea id="pinObservacao" class="input-dark" rows="3" placeholder="Ex: Estoque crítico, comprar urgente..."></textarea>
+      </div>
+      <div class="modal-footer" style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="fecharModalPinChapa()">Cancelar</button>
+        <button class="btn btn-accent" onclick="salvarPinChapa()">📌 Marcar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  return modal;
+}
+
+async function togglePinChapa(chapaId, event){
+  try{ if(event && typeof event.stopPropagation === 'function') event.stopPropagation(); }catch(_){}
+  const cid = String(chapaId || '').trim();
+  if(!cid) return;
+  await carregarPinsChapas(false);
+  const pins = Array.isArray(window._chapasPins) ? window._chapasPins : [];
+  const pinExistente = pins.find(p => String(p?.chapa_id || p?.chapaId || '').trim() === cid && String(p?.status || '').trim().toLowerCase() === 'pendente');
+  if(pinExistente){
+    if(!confirm('Remover o pin desta chapa?')) return;
+    await removerPinChapa(String(pinExistente.id || '').trim());
+    return;
+  }
+  _chapaIdPin = cid;
+  _ensureModalPinChapa();
+  const chapas = Array.isArray(window._chapasCachedList) ? window._chapasCachedList : (Array.isArray(_estoqueBase) ? _estoqueBase : []);
+  const chapa = chapas.find(c => String(c?.id || '').trim() === cid);
+  const info = document.getElementById('pinChapaInfo');
+  if(info){
+    if(chapa){
+      const qtd = Number(chapa.quantidade_atual ?? chapa.quantidade ?? chapa.qtd ?? 0) || 0;
+      info.innerHTML = `
+        <strong style="color:#e2e8f0">${escH(String(chapa.nomenclatura || chapa.nom || ''))} ${escH(String(chapa.tamanho || chapa.tam || ''))}</strong><br>
+        ${escH(String(chapa.fornecedor || chapa.forn || ''))} · ${escH(String(chapa.gramatura || chapa.espessura_mm || ''))}${(chapa.gramatura||chapa.espessura_mm)?'g/m²':''}<br>
+        <span style="color:#22d3ee">Estoque atual: ${escH(String(qtd))} un</span>
+      `;
+    } else {
+      info.textContent = 'Chapa selecionada.';
+    }
+  }
+  try{ document.getElementById('pinQtdSugerida').value = ''; }catch(_){}
+  try{ document.getElementById('pinObservacao').value = ''; }catch(_){}
+  document.getElementById('modalPinChapa').style.display = 'flex';
+}
+
+function fecharModalPinChapa(){
+  const m = document.getElementById('modalPinChapa');
+  if(m) m.style.display = 'none';
+  _chapaIdPin = null;
+}
+
+async function salvarPinChapa(){
+  const cid = String(_chapaIdPin || '').trim();
+  if(!cid) return;
+  const qtd = String((document.getElementById('pinQtdSugerida')||{}).value || '').trim();
+  const obs = String((document.getElementById('pinObservacao')||{}).value || '').trim();
+  const empId = String((window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || (typeof EMP_FILTRO !== 'undefined' ? EMP_FILTRO : '') || '').trim();
+  try{
+    const resp = await apiFetch('/api/chapas/pins', {
+      method: 'POST',
+      body: JSON.stringify({
+        chapa_id: cid,
+        qtd_sugerida: qtd ? (parseInt(qtd, 10) || null) : null,
+        observacao: obs || null,
+        empId: empId || null,
+      })
+    });
+    const json = await resp.json().catch(()=>null);
+    if(!resp.ok){
+      if(resp.status === 409){
+        toast('Esta chapa já tem um pin pendente.', 'var(--yellow)');
+        return;
+      }
+      throw new Error(String(json?.error || 'Erro'));
+    }
+    toast('Chapa marcada para compra! 📌', 'var(--green)');
+    fecharModalPinChapa();
+    await carregarPinsChapas(true);
+    try{ _renderEstoqueBase(); }catch(_){}
+    try{ renderSugestoesCompra(); }catch(_){}
+  }catch(e){
+    toast('Erro ao marcar chapa.', 'var(--red)');
+  }
+}
+
+async function removerPinChapa(pinId){
+  const pid = String(pinId || '').trim();
+  if(!pid) return;
+  try{
+    await apiFetch('/api/chapas/pins/' + encodeURIComponent(pid), { method:'DELETE' });
+    toast('Pin removido.', 'var(--green)');
+    await carregarPinsChapas(true);
+    try{ _renderEstoqueBase(); }catch(_){}
+    try{ renderSugestoesCompra(); }catch(_){}
+  }catch(e){
+    toast('Erro ao remover pin.', 'var(--red)');
+  }
+}
+
+async function marcarPinComoComprado(pinId){
+  const pid = String(pinId || '').trim();
+  if(!pid) return;
+  try{
+    await apiFetch('/api/chapas/pins/' + encodeURIComponent(pid) + '/comprado', { method:'PATCH' });
+    toast('Marcado como comprado! ✅', 'var(--green)');
+    await carregarPinsChapas(true);
+    try{ _renderEstoqueBase(); }catch(_){}
+    try{ renderSugestoesCompra(); }catch(_){}
+  }catch(e){
+    toast('Erro ao marcar como comprado.', 'var(--red)');
+  }
+}
+
+async function renderSugestoesCompra(){
+  try{
+    await carregarPinsChapas(false);
+    const pins = (Array.isArray(window._chapasPins) ? window._chapasPins : []).filter(p => String(p?.status || '').trim().toLowerCase() === 'pendente');
+    const container = document.getElementById('sugestoesCompraSection') || criarContainerSugestoes();
+    if(!container) return;
+    if(!pins.length){
+      container.style.display = 'none';
+      container.innerHTML = '';
+      return;
+    }
+    container.style.display = 'block';
+    container.innerHTML = `
+      <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:14px;margin-bottom:20px">
+        <div style="color:#fbbf24;font-weight:700;font-size:0.88rem;margin-bottom:12px">📌 ${escH(String(pins.length))} Sugestão(ões) de Compra</div>
+        ${pins.map(function(pin){
+          const chapa = pin.chapa || {};
+          const nom = String(chapa.nomenclatura || chapa.nom || '').trim();
+          const tam = String(chapa.tamanho || chapa.tam || '').trim();
+          const forn = String(chapa.fornecedor || chapa.forn || '').trim();
+          const qtdAtual = Number(chapa.quantidade_atual ?? chapa.quantidade ?? chapa.qtd ?? 0) || 0;
+          const qtdSug = pin.qtd_sugerida != null ? parseInt(pin.qtd_sugerida, 10) : null;
+          const obs = String(pin.observacao || '').trim();
+          const criadoPor = String(pin.criado_por || pin.criadoPor || '—').trim();
+          const dt = String(pin.created_at || '').trim();
+          let dtBr = '—';
+          try{ if(dt) dtBr = new Date(dt).toLocaleDateString('pt-BR'); }catch(_){}
+          return `
+            <div style="background:rgba(0,0,0,0.2);border-radius:8px;padding:12px;margin-bottom:8px;border-left:3px solid #fbbf24">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div style="min-width:0">
+                  <div style="font-weight:700;color:#e2e8f0;font-size:0.88rem;word-break:break-word">${escH((nom + ' ' + tam).trim())}</div>
+                  <div style="color:#64748b;font-size:0.75rem;margin-top:2px">${escH(forn)} · Estoque atual: ${escH(String(qtdAtual))} un</div>
+                  ${Number.isFinite(Number(qtdSug)) ? `<div style="color:#22d3ee;font-size:0.78rem;margin-top:4px">Qtd sugerida: <strong>${escH(String(qtdSug))}</strong></div>` : ''}
+                  ${obs ? `<div style="color:#94a3b8;font-size:0.78rem;margin-top:4px;font-style:italic">"${escH(obs)}"</div>` : ''}
+                  <div style="color:#475569;font-size:0.72rem;margin-top:4px">📌 por ${escH(criadoPor)} em ${escH(dtBr)}</div>
+                </div>
+                <button onclick="marcarPinComoComprado('${escAttr(String(pin.id||''))}')" style="padding:7px 12px;border-radius:6px;white-space:nowrap;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#4ade80;cursor:pointer;font-size:0.78rem;font-weight:700">✓ Comprado</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }catch(_){}
+}
+
+function criarContainerSugestoes(){
+  const div = document.createElement('div');
+  div.id = 'sugestoesCompraSection';
+  const tela = document.getElementById('cmp-body');
+  if(tela) tela.prepend(div);
+  return div;
+}
+
 function _renderEstoqueBase(chapas) {
   if (Array.isArray(chapas)) _estoqueBase = chapas;
   const lista = (Array.isArray(_estoqueBase) && _estoqueBase.length) ? _estoqueBase : (Array.isArray(ESTOQUE) ? ESTOQUE : []);
@@ -25160,6 +25376,19 @@ function _renderEstoqueBase(chapas) {
     if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
     return (String(va).localeCompare(String(vb), 'pt-BR')) * dir;
   });
+
+  const idsComPin = new Set(
+    (Array.isArray(window._chapasPins) ? window._chapasPins : [])
+      .filter(p => String(p?.status || '').trim().toLowerCase() === 'pendente')
+      .map(p => String(p?.chapa_id || p?.chapaId || '').trim())
+      .filter(Boolean)
+  );
+  if(idsComPin.size){
+    filtrada = [
+      ...filtrada.filter(c => idsComPin.has(String(c?.id || '').trim())),
+      ...filtrada.filter(c => !idsComPin.has(String(c?.id || '').trim()))
+    ];
+  }
 
   const showTon = lista.some((c)=>{
     const g = _chpToNum(c?.gramatura ?? c?.espessura_mm ?? 0) || 0;
@@ -25243,7 +25472,9 @@ function _renderEstoqueBase(chapas) {
       const fotoUrl = estFotoUrlFromItem(c);
       const fotoHtml = fotoUrl ? `<img src="${escAttr(fotoUrl)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid var(--border);background:var(--bg3)" loading="lazy">` : '';
       const tonLinha = calcTonChapa(c);
-      return `<tr onclick="chpRowClick(event,'${escAttr(cid)}')" style="cursor:pointer">
+      const temPin = idsComPin.has(cid);
+      const trStyle = temPin ? 'cursor:pointer;border-left:3px solid #fbbf24;background:rgba(251,191,36,0.04)' : 'cursor:pointer';
+      return `<tr onclick="chpRowClick(event,'${escAttr(cid)}')" style="${trStyle}">
         <td data-label="Nome/Uso" style="padding:8px 10px;border:1px solid var(--border);min-width:180px">
           <div style="display:flex;gap:10px;align-items:center">
             ${fotoHtml?`<div style="flex:0 0 auto">${fotoHtml}</div>`:''}
@@ -25284,6 +25515,7 @@ function _renderEstoqueBase(chapas) {
         </td>
         <td data-label="Ações" style="padding:8px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap;min-width:140px">
           <div style="display:flex;gap:4px;justify-content:center">
+            <button class="btn-icon btn-sm" onclick="togglePinChapa('${escAttr(c.id)}', event)" title="${temPin?'Remover pin de compra':'Marcar para compra'}" style="background:${temPin?'rgba(251,191,36,0.2)':'rgba(255,255,255,0.06)'};border:1px solid ${temPin?'rgba(251,191,36,0.5)':'rgba(255,255,255,0.1)'};border-radius:5px;padding:4px 6px;cursor:pointer;color:${temPin?'#fbbf24':'#64748b'};font-size:0.85rem">📌</button>
             <button class="btn-icon btn-sm" data-acao-chapa="saida" data-id="${escAttr(c.id)}" title="Saída" style="color:var(--red)">-</button>
             <button class="btn-icon btn-sm" data-acao-chapa="entrada" data-id="${escAttr(c.id)}" title="Entrada" style="color:var(--green)">+</button>
             <button class="btn-icon btn-sm" onclick="abrirModalQRCodeEstoque('chapa','${escAttr(c.id)}','${escAttr(estChapaKeyLabel(c))}')" title="QR Code">🔳</button>
@@ -34362,6 +34594,7 @@ async function carregarChapas(forcar=false){
   if(!Array.isArray(CHAPAS_CATEGORIAS) || CHAPAS_CATEGORIAS.length===0){
     try{ await carregarCategoriasChapas(); }catch(e){}
   }
+  try{ await carregarPinsChapas(false); }catch(e){}
   if(!forcar && (now - _ultimaCargaChapas) < CACHE_TTL && Array.isArray(ESTOQUE) && ESTOQUE.length > 0) {
     try{ popularFiltrosEstoque(ESTOQUE); }catch(e){}
     try{ _renderEstoqueBase(ESTOQUE); }catch(e){}
@@ -39773,6 +40006,7 @@ function renderCompras(){
   const parciais=lista.filter(c=>c.status==='Recebida parcialmente').length;
 
   document.getElementById('cmp-body').innerHTML=`
+  ${tipoFiltro === 'chapas' ? '<div id="sugestoesCompraSection"></div>' : ''}
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">
     <div class="card"><div class="card-lbl">Total em Compras</div><div class="card-val cv-g" style="font-size:1.3rem">${fmtR(totalGeral)}</div></div>
     <div class="card"><div class="card-lbl">Em Aberto</div><div class="card-val cv-a">${emAberto}</div></div>
@@ -39828,6 +40062,9 @@ function renderCompras(){
       </div>
     </div>`;
   }).join('')||'<div style="color:var(--text3);padding:20px">Nenhuma compra registrada.</div>'}</div>`;
+  if(tipoFiltro === 'chapas'){
+    setTimeout(function(){ try{ renderSugestoesCompra(); }catch(e){} }, 0);
+  }
 }
 
 var _AV_FORN = { compraId:'', fornecedorId:'', prazo:0, qualidade:0, preco:0 };
@@ -40253,24 +40490,222 @@ function cmpDarEntrada(id){
 var _HCLI = null;
 var _hcliChart = null;
 
-function abrirHistCli(cliId){
+var _PCLI = null;
+function abrirPainelCliente(cliId){
   const cid = String(cliId||'').trim();
   const cli = getCli(cid);
   if(!cli) return;
-  _HCLI = { cliId: cid, cli, tab: 'ofs', loading: true, ofs: [], visitas: [], amostras: [], inconfs: [] };
   const title = document.getElementById('hist-cli-titulo');
-  if(title) title.textContent = 'Cliente — ' + (cli.nome || '—');
+  if(title) title.textContent = '👤 Painel do Cliente';
   const body = document.getElementById('hist-cli-body');
+  const emp = getEmp(cli.empId || EMP_FILTRO || '');
+  const empTxt = emp ? (emp.sigla || emp.nome || '') : (String(cli.empId || EMP_FILTRO || '').trim());
+  const cnpj = String(cli.cnpj || cli.cnpj_cpf || cli.cnpjCpf || cli.cpf_cnpj || cli.documento || '').trim();
   if(body){
     body.innerHTML = `
-      <div id="hcli-cards" class="cards-row" style="margin-bottom:12px"></div>
-      <div id="hcli-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
-      <div id="hcli-content"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="min-width:0">
+          <div id="pcNome" style="font-size:1.02rem;font-weight:800;color:#e2e8f0;line-height:1.2;word-break:break-word">${escH(cli.nome || '—')}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
+            ${cnpj ? `<span style="color:#64748b;font-size:0.78rem">CNPJ: ${escH(cnpj)}</span>` : ''}
+            ${empTxt ? `<span style="background:rgba(74,144,217,0.15);border:1px solid rgba(74,144,217,0.35);color:#4A90D9;border-radius:999px;padding:2px 10px;font-size:0.7rem;font-weight:800;white-space:nowrap">${escH(empTxt)}</span>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin:6px 0 10px">📊 Resumo</div>
+      <div id="painelClienteResumo" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Total Pedidos</div>
+          <div id="pcTotalPedidos" style="font-size:1.4rem;font-weight:800;color:#e2e8f0">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">Total Faturado</div>
+          <div id="pcTotalFaturado" style="font-size:1.1rem;font-weight:700;color:#22d3ee">—</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:12px;text-align:center">
+          <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">OFs Abertas</div>
+          <div id="pcOfsAbertas" style="font-size:1.4rem;font-weight:800;color:#f59e0b">—</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">📋 OFs em Aberto</div>
+        <div id="pcOfsAbertasList" style="max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">📦 Produtos Mais Pedidos</div>
+        <div id="pcTopProdutos" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <div>
+        <div style="font-size:0.72rem;color:#64748b;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">🕐 Histórico de Pedidos</div>
+        <div id="pcHistorico"></div>
+      </div>
     `;
   }
+  _PCLI = { cliId: cid, cli, ofs: [], loading: true };
   abrir('modal-hist-cli');
-  hcliRender();
-  hcliCarregarDados().catch(()=>{});
+  carregarPainelCliente().catch(()=>{});
+}
+function abrirHistCli(cliId){ return abrirPainelCliente(cliId); }
+
+function _pcIsFinalStatus(status){
+  let s = String(status || '').trim().toLowerCase();
+  try{ s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(_){}
+  return s.includes('conclu') || s.includes('entreg') || s.includes('despach') || s.includes('finaliz') || s === 'pedido pronto';
+}
+
+function _pcPickDataOF(o){
+  const d = String(o?.dia ?? o?.data_pedido ?? o?.created_at ?? o?.createdAt ?? '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : '';
+}
+function _pcValorOF(o){
+  return Number(o?.valor_total ?? o?.valor_venda ?? o?.total ?? o?.vl_total ?? o?.valor ?? o?.val ?? 0) || 0;
+}
+
+async function carregarPainelCliente(){
+  const st = _PCLI;
+  if(!st) return;
+  st.loading = true;
+  pcRenderPainel();
+  try{
+    const cid = String(st.cliId || '').trim();
+    const empId = String(st.cli?.empId || EMP_FILTRO || (window.CURRENT_USER && (CURRENT_USER.sigla || CURRENT_USER.empId || CURRENT_USER.emp_id)) || '').trim();
+    const qs = new URLSearchParams();
+    if(empId) qs.set('empId', empId);
+    qs.set('cliente_id', cid);
+    qs.set('limit', '500');
+    qs.set('order_by', 'created_at');
+    qs.set('order', 'desc');
+    qs.set('lite', '1');
+    const resp = await apiFetch('/api/ofs?' + qs.toString(), { method:'GET' });
+    const json = await resp.json().catch(()=>null);
+    const ofs = (json && Array.isArray(json.data)) ? json.data : (Array.isArray(json) ? json : []);
+    st.ofs = Array.isArray(ofs) ? ofs : [];
+  }catch(_){
+    st.ofs = [];
+  }
+  st.loading = false;
+  pcRenderPainel();
+}
+
+function pcRenderPainel(){
+  const st = _PCLI;
+  if(!st) return;
+  const ofs = Array.isArray(st.ofs) ? st.ofs : [];
+  const totalPedidos = ofs.length;
+  const totalFaturado = ofs.reduce((s,o)=>s + _pcValorOF(o), 0);
+  const ofsAbertas = ofs.filter(o => !_pcIsFinalStatus(o?.status));
+  const ultimo = ofs.slice().sort((a,b)=>String(_pcPickDataOF(b)).localeCompare(String(_pcPickDataOF(a))))[0] || null;
+  const ultimoData = ultimo ? _pcPickDataOF(ultimo) : '';
+
+  try{ const el = document.getElementById('pcTotalPedidos'); if(el) el.textContent = String(totalPedidos); }catch(_){}
+  try{ const el = document.getElementById('pcTotalFaturado'); if(el) el.textContent = fmtR(totalFaturado); }catch(_){}
+  try{ const el = document.getElementById('pcOfsAbertas'); if(el) el.textContent = String(ofsAbertas.length); }catch(_){}
+
+  const listEl = document.getElementById('pcOfsAbertasList');
+  if(listEl){
+    if(st.loading){
+      listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+    } else if(!ofsAbertas.length){
+      listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhuma OF em aberto.</div>';
+    } else {
+      listEl.innerHTML = ofsAbertas.slice(0, 20).map(o=>{
+        const num = String(o?.of || o?.numero || o?.of_num || o?.numero_of || '').trim() || '—';
+        const prod = String(o?.produto || o?.prodDesc || o?.descricao || o?.produto_desc || '').trim();
+        const ent = String(o?.ent || o?.data_entrega || '').slice(0,10);
+        const stt = String(o?.status || '').trim() || '—';
+        const qtd = Number(o?.qtd ?? o?.quantidade ?? 0) || 0;
+        return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:900;color:#4A90D9">OF #${escH(num)}</span>
+              <span style="color:#94a3b8;font-size:0.78rem">${escH(stt)}</span>
+              ${ent ? `<span style="color:#64748b;font-size:0.78rem">📅 ${escH(fmtD(ent))}</span>` : ''}
+              ${qtd ? `<span style="color:#64748b;font-size:0.78rem">📦 ${escH(String(qtd))} cx</span>` : ''}
+            </div>
+            ${prod ? `<div style="color:#e2e8f0;font-size:0.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(prod)}</div>` : ''}
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="try{editarOFDoHistorico('${escAttr(num)}')}catch(e){}" style="white-space:nowrap">Abrir</button>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  const topEl = document.getElementById('pcTopProdutos');
+  if(topEl){
+    if(st.loading){
+      topEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+    } else {
+      const hoje = new Date();
+      const from = new Date(hoje);
+      from.setMonth(from.getMonth() - 12);
+      const prodCount = {};
+      ofs.forEach(o=>{
+        const d = _pcPickDataOF(o);
+        if(d){
+          const dt = new Date(d + 'T00:00:00');
+          if(!isNaN(dt) && dt < from) return;
+        }
+        const prod = String(o?.produto || o?.prodDesc || o?.descricao || o?.nome_produto || '').trim();
+        if(!prod) return;
+        prodCount[prod] = (prodCount[prod] || 0) + 1;
+      });
+      const top = Object.entries(prodCount).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      topEl.innerHTML = top.length
+        ? top.map(([p, n], i)=>`<div style="display:flex;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">
+            <div style="min-width:0;color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i+1}. ${escH(p)}</div>
+            <div style="color:#94a3b8;font-family:var(--mono);font-weight:800">${escH(String(n))}x</div>
+          </div>`).join('')
+        : '<div style="color:#64748b;font-size:0.85rem">Sem dados suficientes.</div>';
+    }
+  }
+
+  const histEl = document.getElementById('pcHistorico');
+  if(histEl){
+    if(st.loading){
+      histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+    } else if(!ofs.length){
+      histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhum pedido encontrado.</div>';
+    } else {
+      const th='padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.65rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+      const td='padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;';
+      const rows = ofs.slice().sort((a,b)=>String(_pcPickDataOF(b)).localeCompare(String(_pcPickDataOF(a))));
+      histEl.innerHTML = `<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table style="width:100%;border-collapse:collapse;min-width:920px">
+          <thead><tr>
+            <th style="${th}">Nº</th>
+            <th style="${th}">Produto</th>
+            <th style="${th}">Data</th>
+            <th style="${th};text-align:right">Valor</th>
+            <th style="${th}">Status</th>
+            <th style="${th};text-align:center">Ação</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r=>{
+              const num = String(r?.of || r?.numero || r?.of_num || r?.numero_of || '—');
+              const prod = String(r?.prodDesc || r?.produto || r?.descricao || '—');
+              const dt = _pcPickDataOF(r);
+              const valor = _pcValorOF(r);
+              const stt = String(r?.status || '—');
+              return `<tr>
+                <td style="${td};font-family:var(--mono);font-weight:900;color:var(--accent)">${escH(num)}</td>
+                <td style="${td};max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escH(prod)}</td>
+                <td style="${td};font-family:var(--mono)">${dt?escH(fmtD(dt)):'—'}</td>
+                <td style="${td};text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)">${escH(fmtR(valor))}</td>
+                <td style="${td};color:var(--text2)">${escH(stt)}</td>
+                <td style="${td};text-align:center">
+                  <button class="btn btn-ghost btn-sm" onclick="try{editarOFDoHistorico('${escAttr(num)}')}catch(e){}">Abrir</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+  }
 }
 
 function hcliSetTab(tab){
@@ -47444,7 +47879,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="modal-overlay" id="modal-hist-cli" onclick="if(event.target===this) fechar('modal-hist-cli')">
 <div class="modal" style="width:min(800px,98vw)">
   <button class="close-btn" onclick="fechar('modal-hist-cli')" style="top:12px;right:12px;width:auto;height:36px;min-width:36px;padding:0 12px;background:var(--red);border:none;color:#fff;font-weight:800;border-radius:10px">✕ Fechar</button>
-  <h2 id="hist-cli-titulo">Histórico do Cliente</h2>
+  <h2 id="hist-cli-titulo">👤 Painel do Cliente</h2>
   <div id="hist-cli-body"></div>
 </div></div>
 
