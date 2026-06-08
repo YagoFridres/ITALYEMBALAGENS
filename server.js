@@ -1990,6 +1990,14 @@ function ofIn(p) {
     const n = Number(String(v ?? '').replace(',', '.'));
     return Number.isFinite(n) ? n : def;
   };
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vl_total')) {
+    const v = toNum(p.vl_total, NaN);
+    if (Number.isFinite(v)) {
+      if (out.valor_total === undefined) out.valor_total = v;
+      if (out.valor_venda === undefined) out.valor_venda = v;
+    }
+    delete out.vl_total;
+  }
   delete out.val;
   delete out.valor;
   delete out.vtot;
@@ -2079,6 +2087,21 @@ function ofIn(p) {
   if (has('chp') && !has('chapa_id')) out.chapa_id = p.chp ? String(p.chp) : null;
   if (has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qtd_chapas) || 0);
   if (has('qchp') && !has('qtd_chapas')) out.qtd_chapas = Math.trunc(Number(p.qchp) || 0);
+  if (has('caixas_boas')) {
+    const n = Math.trunc(Number(p.caixas_boas) || 0);
+    out.caixas_boas = Number.isFinite(n) ? n : null;
+  }
+  if (has('operadores_conclusao')) {
+    const v = p.operadores_conclusao;
+    if (v == null || v === '') out.operadores_conclusao = null;
+    else if (typeof v === 'string') {
+      const s = v.trim();
+      if (!s) out.operadores_conclusao = null;
+      else {
+        try { out.operadores_conclusao = JSON.parse(s); } catch (_) { out.operadores_conclusao = null; }
+      }
+    } else if (typeof v === 'object') out.operadores_conclusao = v;
+  }
   if (has('dia')) out.dia = sanitizeDate(p.dia);
   if (has('ent')) out.ent = sanitizeDate(p.ent);
   if (has('data_producao')) out.data_producao = sanitizeDate(p.data_producao);
@@ -2137,8 +2160,10 @@ const OFS_TABLE_COLS = [
   'data_conclusao', 'data_faturamento', 'dia_programacao',
   'urgente', 'urg',
   'quantidade', 'qtd', 'qtd_pedida', 'qtd_produzida', 'qtd_perdida',
+  'caixas_boas', 'operadores_conclusao',
   'caixas_excedentes', 'qtd_chapas',
   'valor_total', 'valor_venda', 'preco', 'total',
+  'vl_total',
   'descricao', 'obs', 'obs2',
   'itens', 'imgs', 'imagem_url',
   'maq', 'fluxo', 'fluxo_maquinas', 'maquina_atual_index',
