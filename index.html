@@ -19970,7 +19970,7 @@ function cpRender(rows){
       const prod = r.produto || '—';
       const maqId = String(r?.maquina_id || r?.maquina_perda_id || '').trim();
       let maqNome = String(r?.maquina_perda || r?.maquina || r?.maquina_nome || r?.maquina_id || '').trim();
-      const isUuid = (v)=> typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+      const isUuid = (v)=>{ const s=String(v||'').trim(); return s.length===36 && s.includes('-'); };
       const ofKey = String(r?.of_numero || r?.of || r?.numero || '').trim();
       let ofRel = null;
       if(!maqNome){
@@ -20007,11 +20007,27 @@ function cpRender(rows){
           maqNome = String(it?.col || it?.nome || it?.name || '').trim();
         }catch(e){}
       }
+      if((!maqNome || isUuid(maqNome)) && maqId){
+        try{
+          const md = (window._maquinasDados && typeof window._maquinasDados === 'object') ? window._maquinasDados : {};
+          const byId = Object.values(md).find(x=>String(x?.id||'').trim()===maqId) || null;
+          const nm = String(byId?.nome || byId?.col || byId?.codigo || '').trim();
+          if(nm) maqNome = nm;
+        }catch(e){}
+      }
       if(maqNome && isUuid(maqNome)){
         try{
           const src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(MAQUINAS) ? MAQUINAS : []);
           const it = src.find(m=>String(m?.id||'').trim()===maqNome) || null;
           const nm = String(it?.col || it?.nome || it?.name || '').trim();
+          if(nm) maqNome = nm;
+        }catch(e){}
+      }
+      if(maqNome && isUuid(maqNome)){
+        try{
+          const md = (window._maquinasDados && typeof window._maquinasDados === 'object') ? window._maquinasDados : {};
+          const byId = md[maqNome] || Object.values(md).find(x=>String(x?.id||'').trim()===maqNome) || null;
+          const nm = String(byId?.nome || byId?.col || byId?.codigo || '').trim();
           if(nm) maqNome = nm;
         }catch(e){}
       }
@@ -20040,7 +20056,7 @@ function cpRender(rows){
       const qtd = Number(r.qtd_perdida||0) || 0;
       const vu = Number(r.valor_unitario||0) || 0;
       const vt = Number(r.valor_perdido||0) || (qtd * vu);
-      const usu = r.usuario || '—';
+      const usu = r.operador || r.usuario || '—';
       let imgUrl = '';
       try{
         imgUrl = String(
@@ -25114,28 +25130,42 @@ let _chapasPinsAt = 0;
 let _chapasPinsLoading = null;
 
 function _pinGetEmpId(){
+  const EMP_MAP = { 'E1':'ITALY','E2':'CARTO','E3':'OESTE','ITALY':'ITALY','CARTO':'CARTO','OESTE':'OESTE' };
+  const map = (v)=>{
+    const s = String(v || '').trim().toUpperCase();
+    if(!s) return '';
+    return EMP_MAP[s] || '';
+  };
   try{
-    const ef = (typeof EMP_FILTRO !== 'undefined') ? String(EMP_FILTRO || '').trim() : '';
-    if(ef) return ef;
+    const filtro = String(window.EMP_FILTRO || '').trim() || String(localStorage.getItem('empFiltro') || '').trim();
+    const m = map(filtro);
+    if(m) return m;
   }catch(_){}
   try{
-    const au = localStorage.getItem('auth_user');
-    if(au){
-      const u = JSON.parse(au);
-      const v = String(u?.empId || u?.emp_id || u?.sigla || '').trim();
-      if(v) return v;
-    }
+    const u = window.CURRENT_USER || {};
+    const sigla = u?.sigla || u?.empresa_sigla || u?.empSigla;
+    const m = map(sigla);
+    if(m) return m;
   }catch(_){}
   try{
-    const u = window.USUARIO_LOGADO || window.USER || window._user || window._currentUser || window.CURRENT_USER || {};
-    const perfil = String(u?.perfil || '').trim();
-    const v = String(u?.sigla || u?.empId || u?.emp_id || '').trim();
-    if(v && perfil) return v;
+    const u = window.CURRENT_USER || {};
+    const empId = u?.empId || u?.emp_id;
+    const m = map(empId);
+    if(m) return m;
   }catch(_){}
   try{
-    const v = String(localStorage.getItem('empId') || localStorage.getItem('empresa_sigla') || '').trim();
+    const ls = String(localStorage.getItem('empId') || localStorage.getItem('empresa_sigla') || '').trim();
+    const m = map(ls);
+    if(m) return m;
+  }catch(_){}
+  try{
+    const au = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    const v = String(au?.sigla || au?.empId || au?.emp_id || '').trim();
+    const m = map(v);
+    if(m) return m;
     if(v) return v;
   }catch(_){}
+  try{ console.warn('[PIN] empId não encontrado', { EMP_FILTRO: window.EMP_FILTRO, CURRENT_USER: window.CURRENT_USER }); }catch(_){}
   return '';
 }
 
@@ -45821,7 +45851,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">QTD PERDIDA</th>
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR UNIT</th>
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:right">VLR TOTAL</th>
-              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">USUÁRIO</th>
+              <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2)">OPERADOR</th>
               <th style="padding:7px 10px;font-size:.62rem;font-weight:700;text-transform:uppercase;font-family:var(--mono);border:1px solid var(--border);color:var(--text2);text-align:center">AÇÕES</th>
             </tr>
           </thead>
