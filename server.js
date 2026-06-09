@@ -6925,39 +6925,29 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const { data: usr } = await supabase
       .from('usuarios')
-      .select('empresa_id, emp_id')
+      .select('email')
       .eq('id', req.usuario.id)
       .single();
 
-    let empresa_id = usr?.empresa_id || usr?.emp_id;
+    const emailUsuario = usr?.email || req.usuario.email;
+
+    const { data: empresa } = await supabase
+      .from('empresas')
+      .select('id')
+      .ilike('sigla', emailUsuario)
+      .single();
+
+    const empresa_id = empresa?.id;
     if (!empresa_id) {
-      try {
-        const { data: usrJoin } = await supabase
-          .from('usuarios')
-          .select('empresa_id, emp_id, empresas(id)')
-          .eq('id', req.usuario.id)
-          .single();
-        const empresaJoin = Array.isArray(usrJoin?.empresas) ? usrJoin.empresas[0] : usrJoin?.empresas;
-        empresa_id = usrJoin?.empresa_id || usrJoin?.emp_id || empresaJoin?.id || '';
-      } catch (_) {}
-    }
-    console.log('[CLIENTES DEBUG]', {
-      usuario_id: req.usuario.id,
-      usuario_obj: req.usuario,
-      usr_data: usr,
-      empresa_id: empresa_id
-    });
-    if (!empresa_id) {
-      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+      return res.status(400).json({ ok: false, error: 'empresa não encontrada para: ' + emailUsuario });
     }
 
-    const { q, lite, limit = 200, offset = 0 } = req.query;
+    const { q, limit = 500, offset = 0 } = req.query;
 
     let query = supabase
       .from('clientes')
       .select('id, nome, cidade, telefone, tel, email, ativo, vendedor_id, codigo, uf, documento, cnpj, rs, emp_id, empresa_id')
       .eq('empresa_id', empresa_id)
-      .eq('ativo', true)
       .order('nome', { ascending: true })
       .limit(Number(limit))
       .range(Number(offset), Number(offset) + Number(limit) - 1);
@@ -6969,13 +6959,11 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[CLIENTES ERROR]', error);
       return res.status(500).json({ ok: false, error: error.message });
     }
 
     return res.json({ ok: true, data: data || [], total: data?.length || 0 });
   } catch (err) {
-    console.error('[CLIENTES CATCH]', err);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
@@ -7134,14 +7122,24 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _empresaIdFromUsuarios(req);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    let emailUsuario = '';
+    try {
+      const { data: usr } = await supabase
+        .from('usuarios')
+        .select('email')
+        .eq('id', req.usuario.id)
+        .single();
+      emailUsuario = String(usr?.email || req.usuario?.email || '').trim();
+    } catch (_) {
+      emailUsuario = String(req.usuario?.email || '').trim();
+    }
     try {
       console.log('POST /api/clientes - empresa_id:', empresa_id);
       console.log('POST /api/clientes - body:', req.body);
     } catch (_) {}
     const payload = clientesPayload(req.body || {});
-    const empIdUsuario = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
     if (!payload.empresa_id) payload.empresa_id = empresa_id;
-    if (!payload.emp_id) payload.emp_id = empIdUsuario || payload.emp_id;
+    if (!payload.emp_id) payload.emp_id = emailUsuario || payload.emp_id;
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
@@ -8205,6 +8203,10 @@ async function _resolveEmpresaUuid(req) {
   if (_isUuid(bEmp)) return bEmp;
   if (_isUuid(qEmp)) return qEmp;
   const usuarioId = String(req?.usuario?.id || req?.user?.id || '').trim();
+  if (usuarioId) {
+    const empresaByUser = await _empresaUuidByUserId(usuarioId);
+    if (_isUuid(empresaByUser)) return empresaByUser;
+  }
   const hdrEmp = String(
     req?.headers?.['x-emp-id'] ||
     req?.headers?.['x-empid'] ||
@@ -8215,9 +8217,6 @@ async function _resolveEmpresaUuid(req) {
   const empIdRaw = String(
     req?.body?.emp_id ?? req?.body?.empId ??
     req?.query?.emp_id ?? req?.query?.empId ??
-    req?.usuario?.emp_id ?? req?.usuario?.empId ??
-    req?.user?.emp_id ?? req?.user?.empId ??
-    req?.usuario?.sigla ?? req?.user?.sigla ??
     (req?.usuario?.email ? String(req.usuario.email).toUpperCase() : '') ??
     (req?.user?.email ? String(req.user.email).toUpperCase() : '') ??
     hdrEmp ??
@@ -8246,45 +8245,6 @@ async function _resolveEmpresaUuid(req) {
       if (!error2 && _isUuid(id2)) return id2;
     }
 
-    if (usuarioId) {
-      const { data: usr, error: usrErr } = await supabase
-        .from('usuarios')
-        .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
-        .eq('id', usuarioId)
-        .maybeSingle();
-      if (!usrErr && usr) {
-        const empUuid = String(usr?.empresa_id || '').trim();
-        if (_isUuid(empUuid)) return empUuid;
-        const empRaw =
-          String(
-            usr?.emp_id ??
-            usr?.empresa_sigla ??
-            usr?.sigla ??
-            usr?.empresa ??
-            ''
-          ).trim();
-        const empUpper = empRaw.toUpperCase();
-        const empLower = empRaw.toLowerCase();
-        const empEff =
-          (empUpper === 'E1' ? 'ITALY' :
-           empUpper === 'E2' ? 'CARTO' :
-           empUpper === 'E3' ? 'OESTE' :
-           empLower.includes('italy') ? 'ITALY' :
-           empLower.includes('carto') ? 'CARTO' :
-           empLower.includes('oeste') ? 'OESTE' :
-           empUpper);
-        if (_isUuid(empEff)) return empEff;
-        if (empEff) {
-          const { data: empRow, error: empErr } = await supabase.from('empresas').select('id').ilike('sigla', empEff.trim()).maybeSingle();
-          const empId = String(empRow?.id || '').trim();
-          if (!empErr && _isUuid(empId)) return empId;
-          const { data: empRow2, error: empErr2 } = await supabase.from('empresas').select('id').eq('codigo', empEff).maybeSingle();
-          const empId2 = String(empRow2?.id || '').trim();
-          if (!empErr2 && _isUuid(empId2)) return empId2;
-        }
-      }
-    }
-
     return '';
   } catch (_) {
     return '';
@@ -8297,14 +8257,19 @@ async function _empresaUuidByUserId(userId) {
   try {
     const { data: usr, error } = await supabase
       .from('usuarios')
-      .select('empresa_id,emp_id,empresa,empresa_sigla,sigla')
+      .select('email')
       .eq('id', uid)
       .maybeSingle();
     if (error || !usr) return '';
-    const empUuid = String(usr?.empresa_id || '').trim();
-    if (_isUuid(empUuid)) return empUuid;
-    const pseudoReq = { query: { empId: usr?.emp_id || usr?.empresa_sigla || usr?.sigla || usr?.empresa || '' }, usuario: { id: uid }, headers: {}, body: {} };
-    return await _resolveEmpresaUuid(pseudoReq);
+    const emailUsuario = String(usr?.email || '').trim();
+    if (!emailUsuario) return '';
+    const { data: empresa, error: empErr } = await supabase
+      .from('empresas')
+      .select('id')
+      .ilike('sigla', emailUsuario)
+      .maybeSingle();
+    const empresaId = String(empresa?.id || '').trim();
+    return !empErr && _isUuid(empresaId) ? empresaId : '';
   } catch (_) {
     return '';
   }
@@ -8316,12 +8281,19 @@ async function _empresaIdFromUsuarios(req) {
   try {
     const { data: usr, error } = await supabase
       .from('usuarios')
-      .select('empresa_id')
+      .select('email')
       .eq('id', uid)
       .single();
     if (error || !usr) return '';
-    const empresaId = String(usr?.empresa_id || '').trim();
-    return _isUuid(empresaId) ? empresaId : '';
+    const emailUsuario = String(usr?.email || req?.usuario?.email || req?.user?.email || '').trim();
+    if (!emailUsuario) return '';
+    const { data: empresa, error: empErr } = await supabase
+      .from('empresas')
+      .select('id')
+      .ilike('sigla', emailUsuario)
+      .maybeSingle();
+    const empresaId = String(empresa?.id || '').trim();
+    return !empErr && _isUuid(empresaId) ? empresaId : '';
   } catch (_) {
     return '';
   }
