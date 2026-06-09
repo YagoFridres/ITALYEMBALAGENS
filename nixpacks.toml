@@ -1,2 +1,5 @@
 [phases.setup]
 nixPkgs = ["nodejs", "tesseract4", "leptonica"]
+
+[phases.install]
+cmds = ["npm install"]
