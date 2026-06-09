@@ -6923,32 +6923,44 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const todos = String(req.query.todos || '').trim() === 'true';
-    const autocompleteOnly = String(req.query.autocomplete || '').trim() === 'true';
-    const searchQ = String(req.query.q || '').trim();
-    const empresa_id = await _empresaIdFromUsuarios(req);
-    if (!todos && !empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
-    const hasPaging = req.query.limit != null || req.query.offset != null;
-    const limitDefault = autocompleteOnly ? 50 : 100;
-    const limitMax = autocompleteOnly ? 50 : 500;
-    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || limitDefault, limitMax);
-    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
-    let q = supabase
-      .from('clientes')
-      .select('id, empresa_id, nome, documento, telefone, email, observacoes, ativo, created_at, codigo, rs, cnpj, tel, cidade, uf, endereco, ramo, pagto, rep, ie, updated_at, emp_id, vendedor_id')
-      .order('nome');
-    if (!todos) q = q.eq('empresa_id', empresa_id);
-    if (searchQ) {
-      const like = `%${searchQ.replace(/%/g, '')}%`;
-      q = q.or(`nome.ilike.${like},cidade.ilike.${like},email.ilike.${like}`);
+    const { data: usr } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', req.usuario.id)
+      .single();
+
+    const empresa_id = usr?.empresa_id;
+    if (!empresa_id) {
+      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     }
-    if (autocompleteOnly) q = q.eq('ativo', true);
-    if (hasPaging) q = q.range(offset, offset + limit - 1);
-    else q = q.limit(limit);
-    const { data, error } = await q;
-    if (error) throw error;
-    return res.json({ ok: true, data: Array.isArray(data) ? data : [] });
-  } catch (e) { err(res, e); }
+
+    const { q, lite, limit = 200, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('clientes')
+      .select('id, nome, cidade, telefone, tel, email, ativo, vendedor_id, codigo, uf, documento, cnpj, rs, emp_id, empresa_id')
+      .eq('empresa_id', empresa_id)
+      .eq('ativo', true)
+      .order('nome', { ascending: true })
+      .limit(Number(limit))
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    if (q) {
+      query = query.ilike('nome', `%${q}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[CLIENTES ERROR]', error);
+      return res.status(500).json({ ok: false, error: error.message });
+    }
+
+    return res.json({ ok: true, data: data || [], total: data?.length || 0 });
+  } catch (err) {
+    console.error('[CLIENTES CATCH]', err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
