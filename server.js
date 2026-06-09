@@ -6933,7 +6933,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     let q = supabase
       .from('clientes')
-      .select('id,nome,cidade,email,vendedor_id,empresa_id,created_at,ativo')
+      .select('id, empresa_id, nome, documento, telefone, email, observacoes, ativo, created_at, codigo, rs, cnpj, tel, cidade, uf, endereco, ramo, pagto, rep, ie, updated_at, emp_id, vendedor_id')
       .order('nome');
     if (!todos) q = q.eq('empresa_id', empresaIdLookup);
     if (searchQ) {
@@ -18146,7 +18146,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
         id,
         nome: String(c?.nome||'').trim(),
         cidade: String(c?.cidade||'').trim() || null,
-        estado: String(c?.estado||'').trim() || null,
+        estado: String(c?.uf||'').trim() || null,
         uf: String(c?.uf||'').trim() || null,
         tel: String(c?.tel || c?.telefone || '').trim() || null,
         ultima_of: a.ultima_of || null,
@@ -18166,7 +18166,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     const cityAgg = new Map();
     out.forEach((c)=>{
       const cidade = String(c?.cidade||'').trim();
-      const est = String(c?.estado || c?.uf || '').trim();
+      const est = String(c?.uf || '').trim();
       if(!cidade) return;
       const key = _assistNorm(cidade) + '|' + _assistNorm(est);
       const cur = cityAgg.get(key) || { cidade, estado: est || null, total_clientes: 0, valor_mes: 0, valor_ano: 0, total_ofs_mes: 0 };
@@ -18254,7 +18254,7 @@ app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
     const byCity = new Map();
     for (const c of list.slice(0, limit)) {
       const cidade = String(c?.cidade || '').trim();
-      const estado = String(c?.estado || c?.uf || 'SC').trim();
+      const estado = String(c?.uf || 'SC').trim();
       if (!cidade) continue;
       const key = cidade.toLowerCase() + '|' + estado.toLowerCase();
       if (byCity.has(key)) continue;
@@ -18278,7 +18278,7 @@ app.post('/api/clientes/geocode_batch', authMiddleware, async (req, res) => {
     for (const c of list.slice(0, limit)) {
       const id = String(c?.id || '').trim();
       const cidade = String(c?.cidade || '').trim();
-      const estado = String(c?.estado || c?.uf || 'SC').trim();
+      const estado = String(c?.uf || 'SC').trim();
       if (!id || !cidade) continue;
       if (seenId.has(id)) continue;
       seenId.add(id);
@@ -18326,7 +18326,7 @@ app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
 
     let qCli = supabase.from('clientes').select('*').ilike('cidade', '%' + cidadeParam + '%');
     if(empId) qCli = qCli.eq('emp_id', empId);
-    if(estado) qCli = qCli.or(`estado.ilike.%${estado}%,uf.ilike.%${estado}%`);
+    if(estado) qCli = qCli.ilike('uf', '%' + estado + '%');
     const { data: clientesRaw, error: eCli } = await qCli.limit(500);
     if(eCli) throw eCli;
     const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
