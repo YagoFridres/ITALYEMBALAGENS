@@ -9933,6 +9933,249 @@ app.delete('/api/estoque/:id', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
+// ESTOQUE TINTAS / MATERIAIS
+// ══════════════════════════════════════════════════════════════
+app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const num = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const row = {
+      empresa_id: empresaId,
+      nome: String(b.nome || '').trim(),
+      cor: b.cor != null ? String(b.cor || '').trim() : null,
+      fornecedor: b.fornecedor != null ? String(b.fornecedor || '').trim() : null,
+      unidade: String(b.unidade || 'kg').trim() || 'kg',
+      quantidade_atual: num(b.quantidade_atual),
+      quantidade_minima: num(b.quantidade_minima),
+      observacoes: b.observacoes != null ? String(b.observacoes || '').trim() : null,
+      created_at: now,
+      updated_at: now,
+    };
+    if (!row.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    const { data, error } = await supabase.from('estoque_tintas').insert([row]).select();
+    if (error) throw error;
+    return ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const num = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const upd = {
+      nome: b.nome != null ? String(b.nome || '').trim() : undefined,
+      cor: b.cor != null ? String(b.cor || '').trim() : undefined,
+      fornecedor: b.fornecedor != null ? String(b.fornecedor || '').trim() : undefined,
+      unidade: b.unidade != null ? (String(b.unidade || '').trim() || 'kg') : undefined,
+      quantidade_atual: b.quantidade_atual != null ? num(b.quantidade_atual) : undefined,
+      quantidade_minima: b.quantidade_minima != null ? num(b.quantidade_minima) : undefined,
+      observacoes: b.observacoes != null ? String(b.observacoes || '').trim() : undefined,
+      updated_at: now,
+    };
+    Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
+    const { data, error } = await supabase.from('estoque_tintas').update(upd).eq('id', req.params.id).eq('empresa_id', empresaId).select();
+    if (error) throw error;
+    return ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const { error } = await supabase.from('estoque_tintas').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const tipo = String(b.tipo || '').trim().toLowerCase();
+    const deltaRaw = Number(b.quantidade ?? b.delta ?? 0);
+    const qtd = Number.isFinite(deltaRaw) ? Math.abs(deltaRaw) : 0;
+    if (!qtd) return res.status(400).json({ ok: false, error: 'Quantidade inválida' });
+    if (tipo !== 'entrada' && tipo !== 'saida') return res.status(400).json({ ok: false, error: 'Tipo inválido' });
+    const delta = tipo === 'saida' ? -qtd : qtd;
+
+    const { data: cur, error: curErr } = await supabase.from('estoque_tintas').select('id, quantidade_atual').eq('id', req.params.id).eq('empresa_id', empresaId).maybeSingle();
+    if (curErr) throw curErr;
+    if (!cur) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
+
+    const anterior = Number(cur.quantidade_atual || 0) || 0;
+    const nova = anterior + delta;
+    const now = new Date().toISOString();
+
+    const { data: upd, error: updErr } = await supabase.from('estoque_tintas')
+      .update({ quantidade_atual: nova, updated_at: now })
+      .eq('id', cur.id)
+      .eq('empresa_id', empresaId)
+      .select();
+    if (updErr) throw updErr;
+
+    const mov = {
+      empresa_id: empresaId,
+      tinta_id: cur.id,
+      tipo,
+      delta,
+      qtd_anterior: anterior,
+      qtd_nova: nova,
+      obs: b.obs != null ? String(b.obs || '').trim() : null,
+      criado_por: String(req.usuario?.email || req.usuario?.id || '').trim() || null,
+      created_at: now,
+    };
+    const { data: m1, error: mErr } = await supabase.from('estoque_tintas_movimentos').insert([mov]).select();
+    if (mErr) throw mErr;
+    return ok(res, { item: upd && upd[0] ? upd[0] : null, movimento: m1 && m1[0] ? m1[0] : null });
+  } catch (e) { err(res, e); }
+});
+
+app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const { data, error } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
+    if (error) throw error;
+    return ok(res, data || []);
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const num = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const row = {
+      empresa_id: empresaId,
+      categoria: String(b.categoria || '').trim(),
+      nome: String(b.nome || '').trim(),
+      unidade: String(b.unidade || 'un').trim() || 'un',
+      quantidade_atual: num(b.quantidade_atual),
+      quantidade_minima: num(b.quantidade_minima),
+      fornecedor: b.fornecedor != null ? String(b.fornecedor || '').trim() : null,
+      observacoes: b.observacoes != null ? String(b.observacoes || '').trim() : null,
+      created_at: now,
+      updated_at: now,
+    };
+    if (!row.categoria || !row.nome) return res.status(400).json({ ok: false, error: 'Categoria e nome são obrigatórios' });
+    const { data, error } = await supabase.from('estoque_materiais').insert([row]).select();
+    if (error) throw error;
+    return ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const now = new Date().toISOString();
+    const num = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const upd = {
+      categoria: b.categoria != null ? String(b.categoria || '').trim() : undefined,
+      nome: b.nome != null ? String(b.nome || '').trim() : undefined,
+      unidade: b.unidade != null ? (String(b.unidade || '').trim() || 'un') : undefined,
+      quantidade_atual: b.quantidade_atual != null ? num(b.quantidade_atual) : undefined,
+      quantidade_minima: b.quantidade_minima != null ? num(b.quantidade_minima) : undefined,
+      fornecedor: b.fornecedor != null ? String(b.fornecedor || '').trim() : undefined,
+      observacoes: b.observacoes != null ? String(b.observacoes || '').trim() : undefined,
+      updated_at: now,
+    };
+    Object.keys(upd).forEach((k) => upd[k] === undefined && delete upd[k]);
+    const { data, error } = await supabase.from('estoque_materiais').update(upd).eq('id', req.params.id).eq('empresa_id', empresaId).select();
+    if (error) throw error;
+    return ok(res, data && data[0] ? data[0] : null);
+  } catch (e) { err(res, e); }
+});
+
+app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const { error } = await supabase.from('estoque_materiais').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) { err(res, e); }
+});
+
+app.post('/api/estoque_materiais/:id/movimentos', authMiddleware, async (req, res) => {
+  try {
+    const empresaId = await _resolveEmpresaUuid(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const b = req.body || {};
+    const tipo = String(b.tipo || '').trim().toLowerCase();
+    const deltaRaw = Number(b.quantidade ?? b.delta ?? 0);
+    const qtd = Number.isFinite(deltaRaw) ? Math.abs(deltaRaw) : 0;
+    if (!qtd) return res.status(400).json({ ok: false, error: 'Quantidade inválida' });
+    if (tipo !== 'entrada' && tipo !== 'saida') return res.status(400).json({ ok: false, error: 'Tipo inválido' });
+    const delta = tipo === 'saida' ? -qtd : qtd;
+
+    const { data: cur, error: curErr } = await supabase.from('estoque_materiais').select('id, quantidade_atual').eq('id', req.params.id).eq('empresa_id', empresaId).maybeSingle();
+    if (curErr) throw curErr;
+    if (!cur) return res.status(404).json({ ok: false, error: 'Item não encontrado' });
+
+    const anterior = Number(cur.quantidade_atual || 0) || 0;
+    const nova = anterior + delta;
+    const now = new Date().toISOString();
+
+    const { data: upd, error: updErr } = await supabase.from('estoque_materiais')
+      .update({ quantidade_atual: nova, updated_at: now })
+      .eq('id', cur.id)
+      .eq('empresa_id', empresaId)
+      .select();
+    if (updErr) throw updErr;
+
+    const mov = {
+      empresa_id: empresaId,
+      material_id: cur.id,
+      tipo,
+      delta,
+      qtd_anterior: anterior,
+      qtd_nova: nova,
+      obs: b.obs != null ? String(b.obs || '').trim() : null,
+      criado_por: String(req.usuario?.email || req.usuario?.id || '').trim() || null,
+      created_at: now,
+    };
+    const { data: m1, error: mErr } = await supabase.from('estoque_materiais_movimentos').insert([mov]).select();
+    if (mErr) throw mErr;
+    return ok(res, { item: upd && upd[0] ? upd[0] : null, movimento: m1 && m1[0] ? m1[0] : null });
+  } catch (e) { err(res, e); }
+});
+
+// ══════════════════════════════════════════════════════════════
 // FACAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
 app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
@@ -9978,6 +10221,7 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes || '',
       imagem_url: b.imagem_url || b.foto || b.imagem || '',
       foto: b.foto || b.imagem_url || b.imagem || '',
+      tipo_corte: b.tipo_corte || b.tipoCorte || '',
       maquinas: parseArr(b.maquinas),
       clientes: parseArr(b.clientes),
     };
@@ -10023,6 +10267,7 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
       obs: b.obs || b.observacoes,
       imagem_url: b.imagem_url || b.foto || b.imagem,
       foto: b.foto || b.imagem_url || b.imagem,
+      tipo_corte: b.tipo_corte || b.tipoCorte,
       maquinas: b.maquinas !== undefined ? parseArr(b.maquinas) : undefined,
       clientes: b.clientes !== undefined ? parseArr(b.clientes) : undefined,
     };

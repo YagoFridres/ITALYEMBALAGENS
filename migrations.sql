@@ -92,3 +92,69 @@ begin
 end $$;
 
 alter table if exists public.maquinas add column if not exists meta_perda_pct numeric;
+
+create table if not exists public.estoque_tintas (
+  id uuid default gen_random_uuid() primary key,
+  empresa_id uuid references public.empresas(id),
+  nome text not null,
+  cor text,
+  fornecedor text,
+  unidade text default 'kg',
+  quantidade_atual numeric default 0,
+  quantidade_minima numeric default 0,
+  observacoes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.estoque_tintas_movimentos (
+  id uuid default gen_random_uuid() primary key,
+  empresa_id uuid references public.empresas(id),
+  tinta_id uuid not null references public.estoque_tintas(id) on delete cascade,
+  tipo text not null,
+  delta numeric not null default 0,
+  qtd_anterior numeric,
+  qtd_nova numeric,
+  obs text,
+  criado_por text,
+  created_at timestamptz default now()
+);
+
+create index if not exists estoque_tintas_movimentos_tinta_id_idx on public.estoque_tintas_movimentos (tinta_id, created_at desc);
+
+create table if not exists public.estoque_materiais (
+  id uuid default gen_random_uuid() primary key,
+  empresa_id uuid references public.empresas(id),
+  categoria text not null,
+  nome text not null,
+  unidade text default 'un',
+  quantidade_atual numeric default 0,
+  quantidade_minima numeric default 0,
+  fornecedor text,
+  observacoes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.estoque_materiais_movimentos (
+  id uuid default gen_random_uuid() primary key,
+  empresa_id uuid references public.empresas(id),
+  material_id uuid not null references public.estoque_materiais(id) on delete cascade,
+  tipo text not null,
+  delta numeric not null default 0,
+  qtd_anterior numeric,
+  qtd_nova numeric,
+  obs text,
+  criado_por text,
+  created_at timestamptz default now()
+);
+
+create index if not exists estoque_materiais_movimentos_material_id_idx on public.estoque_materiais_movimentos (material_id, created_at desc);
+
+alter table if exists public.facas_estoque
+  add column if not exists tipo_corte text,
+  add column if not exists maquinas jsonb default '[]';
+
+alter table if exists public.cliches_estoque
+  add column if not exists tipo_corte text,
+  add column if not exists maquinas jsonb default '[]';

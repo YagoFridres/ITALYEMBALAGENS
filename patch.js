@@ -2670,6 +2670,775 @@
   }catch(e){}
 })();
 
+(function patchEstoquesTintasMateriaisFacasCamposV1() {
+  function _tok() {
+    try { return String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
+  }
+  function _hdrAuth() {
+    var t = _tok();
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  }
+  function _hdrJson() {
+    var h = { 'Content-Type': 'application/json' };
+    var t = _tok();
+    if (t) h.Authorization = 'Bearer ' + t;
+    return h;
+  }
+  function _esc(s) {
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function _emp() {
+    try { return String(window.EMP_FILTRO || '').trim() || 'E1'; } catch (_) { return 'E1'; }
+  }
+  function _toast(msg, cor) {
+    try { if (typeof window.toast === 'function') return window.toast(msg, cor); } catch (_) {}
+    try { alert(msg); } catch (_) {}
+  }
+
+  function _ensureDrawerModules() {
+    try {
+      var mods = Array.isArray(window._DRAWER_MODULOS) ? window._DRAWER_MODULOS : null;
+      if (mods) {
+        var add = function(id, label, icone) {
+          if (mods.some(function(m) { return String(m?.id || '') === id; })) return;
+          mods.push({ id: id, label: label, icone: icone, grupo: 'Estoques' });
+        };
+        add('estoque-tintas', 'Estoque de Tintas', '🎨');
+        add('estoque-materiais', 'Estoque de Materiais', '🧰');
+      }
+    } catch (_) {}
+  }
+
+  function _ensurePage(id, title) {
+    var pid = 'page-' + id;
+    var el = document.getElementById(pid);
+    if (el) return el;
+    el = document.createElement('div');
+    el.id = pid;
+    el.className = 'page';
+    el.style.display = 'none';
+    el.innerHTML =
+      '<div class="ptoolbar" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+        '<h2 style="margin:0;color:#e2e8f0;font-size:18px">' + _esc(title) + '</h2>' +
+        '<div style="flex:1"></div>' +
+        '<button class="btn btn-ghost btn-sm" id="' + _esc(id) + '-refresh">↻ Atualizar</button>' +
+        '<button class="btn btn-accent btn-sm" id="' + _esc(id) + '-add">＋ Adicionar</button>' +
+      '</div>' +
+      '<div class="page-body" id="' + _esc(id) + '-body"></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function _statusBadge(qtd, min) {
+    var q = Number(qtd || 0) || 0;
+    var m = Number(min || 0) || 0;
+    if (m <= 0) return '<span style="background:#334155;color:#e2e8f0;border-radius:999px;padding:3px 8px;font-size:11px">ok</span>';
+    if (q <= 0) return '<span style="background:#ef4444;color:#fff;border-radius:999px;padding:3px 8px;font-size:11px">crítico</span>';
+    if (q < m) return '<span style="background:#f59e0b;color:#111827;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">baixo</span>';
+    return '<span style="background:#10b981;color:#06281a;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900">ok</span>';
+  }
+
+  function _openModal(opts) {
+    try { document.getElementById(opts.id + '-ov')?.remove(); } catch (_) {}
+    try { document.getElementById(opts.id + '-m')?.remove(); } catch (_) {}
+    var ov = document.createElement('div');
+    ov.id = opts.id + '-ov';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,0.72);backdrop-filter:blur(3px)';
+    var m = document.createElement('div');
+    m.id = opts.id + '-m';
+    m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99991;background:#0d1320;border:1px solid rgba(255,255,255,0.12);border-radius:14px;width:min(720px,96vw);max-height:92vh;overflow:auto;box-shadow:0 22px 70px rgba(0,0,0,0.7)';
+    ov.onclick = function(e) { if (e && e.target === ov) close(); };
+    function close() { try { ov.remove(); } catch (_) {} try { m.remove(); } catch (_) {} }
+    m.innerHTML =
+      '<div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px">' +
+        '<div style="font-weight:900;color:#e2e8f0">' + _esc(opts.title || '') + '</div>' +
+        '<button type="button" id="' + _esc(opts.id) + '-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>' +
+      '</div>' +
+      '<div style="padding:14px 16px" id="' + _esc(opts.id) + '-content"></div>';
+    document.body.appendChild(ov);
+    document.body.appendChild(m);
+    m.querySelector('#' + opts.id + '-close').onclick = close;
+    var host = m.querySelector('#' + opts.id + '-content');
+    try { if (typeof opts.render === 'function') opts.render(host, close); } catch (_) {}
+    return { close: close, el: m, ov: ov };
+  }
+
+  async function _apiJson(url, opts) {
+    var r = await fetch(url, opts);
+    var j = await r.json().catch(function() { return null; });
+    if (!r.ok || !j || j.ok === false) {
+      var msg = (j && j.error) ? String(j.error) : ('HTTP ' + r.status);
+      throw new Error(msg);
+    }
+    return j;
+  }
+
+  var _cacheTintas = { ts: 0, items: [] };
+  async function _loadTintas(force) {
+    if (!force && (Date.now() - _cacheTintas.ts) < 4000) return _cacheTintas.items;
+    var j = await _apiJson('/api/estoque_tintas?empId=' + encodeURIComponent(_emp()) + '&nocache=1&t=' + Date.now(), { headers: _hdrAuth() });
+    _cacheTintas = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
+    return _cacheTintas.items;
+  }
+
+  function _renderTintasPage(force) {
+    var page = _ensurePage('estoque-tintas', '🎨 Estoque de Tintas');
+    if (!page || page.style.display === 'none') return;
+    var body = document.getElementById('estoque-tintas-body');
+    if (!body) return;
+    if (!body.dataset.init) {
+      body.dataset.init = '1';
+      body.insertAdjacentHTML('afterbegin',
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+          '<input id="tintas-busca" placeholder="Buscar nome/cor/fornecedor..." style="flex:1;min-width:220px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#e8f0fe;font-size:14px;outline:none" />' +
+          '<select id="tintas-status" style="min-width:180px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#e8f0fe;font-size:14px;outline:none">' +
+            '<option value="">Todos</option>' +
+            '<option value="baixo">Estoque baixo</option>' +
+            '<option value="critico">Crítico</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="tintas-table-host"></div>'
+      );
+      document.getElementById('estoque-tintas-refresh').onclick = function() { _renderTintasPage(true); };
+      document.getElementById('estoque-tintas-add').onclick = function() { _openTintaForm(null); };
+      body.querySelector('#tintas-busca').addEventListener('input', function() { _renderTintasList(); });
+      body.querySelector('#tintas-status').addEventListener('change', function() { _renderTintasList(); });
+    }
+    _loadTintas(!!force).then(function() { _renderTintasList(); }).catch(function(e) {
+      _toast(String(e?.message || e || 'Erro ao carregar tintas'), 'var(--red)');
+    });
+  }
+
+  function _renderTintasList() {
+    var host = document.getElementById('tintas-table-host');
+    if (!host) return;
+    var busca = String((document.getElementById('tintas-busca') || {}).value || '').trim().toLowerCase();
+    var flt = String((document.getElementById('tintas-status') || {}).value || '').trim();
+    var items = Array.isArray(_cacheTintas.items) ? _cacheTintas.items.slice() : [];
+    if (busca) items = items.filter(function(x) {
+      return (String(x?.nome || '') + ' ' + String(x?.cor || '') + ' ' + String(x?.fornecedor || '')).toLowerCase().indexOf(busca) >= 0;
+    });
+    if (flt) items = items.filter(function(x) {
+      var q = Number(x?.quantidade_atual || 0) || 0;
+      var m = Number(x?.quantidade_minima || 0) || 0;
+      if (flt === 'critico') return q <= 0 || (m > 0 && q <= (m * 0.5));
+      if (flt === 'baixo') return m > 0 && q > 0 && q < m;
+      return true;
+    });
+    if (!items.length) {
+      host.innerHTML = '<div style="padding:14px;color:var(--text3);font-size:.85rem">Nenhuma tinta encontrada.</div>';
+      return;
+    }
+    host.innerHTML =
+      '<div style="overflow:auto;border:1px solid rgba(255,255,255,0.08);border-radius:12px">' +
+        '<table style="width:100%;border-collapse:collapse;min-width:820px">' +
+          '<thead><tr style="background:rgba(255,255,255,0.03)">' +
+            '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Nome</th>' +
+            '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Cor</th>' +
+            '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Fornecedor</th>' +
+            '<th style="text-align:right;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Qtd</th>' +
+            '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Un</th>' +
+            '<th style="text-align:center;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Status</th>' +
+            '<th style="text-align:center;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Ações</th>' +
+          '</tr></thead>' +
+          '<tbody>' +
+            items.map(function(x) {
+              return '<tr>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:900;color:#e2e8f0">' + _esc(x.nome || '') + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);color:#94a3b8">' + _esc(x.cor || '—') + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);color:#94a3b8">' + _esc(x.fornecedor || '—') + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;font-family:var(--mono)">' + _esc(String(x.quantidade_atual ?? 0)) + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06)">' + _esc(x.unidade || 'kg') + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center">' + _statusBadge(x.quantidade_atual, x.quantidade_minima) + '</td>' +
+                '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;white-space:nowrap">' +
+                  '<button class="btn btn-ghost btn-sm" data-act="mov" data-id="' + _esc(x.id) + '">⇄ Movimentar</button>' +
+                  '<button class="btn btn-ghost btn-sm" data-act="edit" data-id="' + _esc(x.id) + '" style="margin-left:6px">✏</button>' +
+                  '<button class="btn btn-ghost btn-sm" data-act="del" data-id="' + _esc(x.id) + '" style="margin-left:6px;color:var(--red)">🗑</button>' +
+                '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+    host.querySelectorAll('button[data-act]').forEach(function(b) {
+      var id = String(b.getAttribute('data-id') || '').trim();
+      var act = String(b.getAttribute('data-act') || '').trim();
+      b.onclick = function() {
+        var item = (_cacheTintas.items || []).find(function(r) { return String(r?.id || '') === id; }) || null;
+        if (act === 'edit') return _openTintaForm(item);
+        if (act === 'mov') return _openTintaMov(item);
+        if (act === 'del') return _deleteTinta(item);
+      };
+    });
+  }
+
+  function _openTintaForm(item) {
+    _openModal({
+      id: 'tinta-form',
+      title: item ? '✏ Editar tinta' : '＋ Nova tinta',
+      render: function(host, close) {
+        var v = item || {};
+        host.innerHTML =
+          '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Nome *</label><input id="tinta-nome" value="' + _esc(v.nome || '') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Cor</label><input id="tinta-cor" value="' + _esc(v.cor || '') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Fornecedor</label><input id="tinta-forn" value="' + _esc(v.fornecedor || '') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Unidade</label><select id="tinta-un" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none"><option value="kg">kg</option><option value="litro">litro</option><option value="galao">galão</option></select></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Qtd atual</label><input id="tinta-qtd" type="number" step="0.01" value="' + _esc(v.quantidade_atual ?? 0) + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Qtd mínima</label><input id="tinta-min" type="number" step="0.01" value="' + _esc(v.quantidade_minima ?? 0) + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Observações</label><textarea id="tinta-obs" rows="3" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none;resize:vertical">' + _esc(v.observacoes || '') + '</textarea></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">' +
+            '<button class="btn btn-ghost btn-sm" id="tinta-cancel">Cancelar</button>' +
+            '<button class="btn btn-accent btn-sm" id="tinta-save">Salvar</button>' +
+          '</div>';
+        try { host.querySelector('#tinta-un').value = String(v.unidade || 'kg'); } catch (_) {}
+        host.querySelector('#tinta-cancel').onclick = close;
+        host.querySelector('#tinta-save').onclick = function() {
+          var payload = {
+            empId: _emp(),
+            nome: String(host.querySelector('#tinta-nome').value || '').trim(),
+            cor: String(host.querySelector('#tinta-cor').value || '').trim(),
+            fornecedor: String(host.querySelector('#tinta-forn').value || '').trim(),
+            unidade: String(host.querySelector('#tinta-un').value || 'kg').trim(),
+            quantidade_atual: Number(host.querySelector('#tinta-qtd').value || 0) || 0,
+            quantidade_minima: Number(host.querySelector('#tinta-min').value || 0) || 0,
+            observacoes: String(host.querySelector('#tinta-obs').value || '').trim(),
+          };
+          if (!payload.nome) return _toast('Nome obrigatório', 'var(--red)');
+          var url = item ? ('/api/estoque_tintas/' + encodeURIComponent(item.id)) : '/api/estoque_tintas';
+          var method = item ? 'PUT' : 'POST';
+          _apiJson(url, { method: method, headers: _hdrJson(), body: JSON.stringify(payload) })
+            .then(function() { return _loadTintas(true); })
+            .then(function() { _renderTintasList(); close(); _toast('✓ Salvo', 'var(--green)'); })
+            .catch(function(e) { _toast(String(e?.message || e || 'Erro ao salvar'), 'var(--red)'); });
+        };
+      }
+    });
+  }
+
+  function _openTintaMov(item) {
+    if (!item) return;
+    _openModal({
+      id: 'tinta-mov',
+      title: '⇄ Movimentar tinta',
+      render: function(host, close) {
+        host.innerHTML =
+          '<div style="color:#e2e8f0;font-weight:900;margin-bottom:10px">' + _esc(item.nome || '') + '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Tipo</label><select id="tm-tipo" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Quantidade</label><input id="tm-qtd" type="number" step="0.01" value="" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Obs</label><input id="tm-obs" value="" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">' +
+            '<button class="btn btn-ghost btn-sm" id="tm-cancel">Cancelar</button>' +
+            '<button class="btn btn-accent btn-sm" id="tm-save">Salvar</button>' +
+          '</div>';
+        host.querySelector('#tm-cancel').onclick = close;
+        host.querySelector('#tm-save').onclick = function() {
+          var payload = {
+            empId: _emp(),
+            tipo: String(host.querySelector('#tm-tipo').value || '').trim(),
+            quantidade: Number(host.querySelector('#tm-qtd').value || 0) || 0,
+            obs: String(host.querySelector('#tm-obs').value || '').trim(),
+          };
+          _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id) + '/movimentos', { method: 'POST', headers: _hdrJson(), body: JSON.stringify(payload) })
+            .then(function() { return _loadTintas(true); })
+            .then(function() { _renderTintasList(); close(); _toast('✓ Movimento registrado', 'var(--green)'); })
+            .catch(function(e) { _toast(String(e?.message || e || 'Erro ao movimentar'), 'var(--red)'); });
+        };
+      }
+    });
+  }
+
+  function _deleteTinta(item) {
+    if (!item) return;
+    if (!confirm('Excluir esta tinta?')) return;
+    _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id) + '?empId=' + encodeURIComponent(_emp()), { method: 'DELETE', headers: _hdrAuth() })
+      .then(function() { return _loadTintas(true); })
+      .then(function() { _renderTintasList(); _toast('🗑 Excluído', 'var(--orange)'); })
+      .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
+  }
+
+  var _cacheMateriais = { ts: 0, items: [] };
+  async function _loadMateriais(force) {
+    if (!force && (Date.now() - _cacheMateriais.ts) < 4000) return _cacheMateriais.items;
+    var j = await _apiJson('/api/estoque_materiais?empId=' + encodeURIComponent(_emp()) + '&nocache=1&t=' + Date.now(), { headers: _hdrAuth() });
+    _cacheMateriais = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
+    return _cacheMateriais.items;
+  }
+
+  function _renderMateriaisPage(force) {
+    var page = _ensurePage('estoque-materiais', '🧰 Estoque de Materiais');
+    if (!page || page.style.display === 'none') return;
+    var body = document.getElementById('estoque-materiais-body');
+    if (!body) return;
+    if (!body.dataset.init) {
+      body.dataset.init = '1';
+      body.insertAdjacentHTML('afterbegin',
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+          '<input id="mat-busca" placeholder="Buscar nome/categoria/fornecedor..." style="flex:1;min-width:220px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#e8f0fe;font-size:14px;outline:none" />' +
+          '<select id="mat-status" style="min-width:180px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#e8f0fe;font-size:14px;outline:none">' +
+            '<option value="">Todos</option>' +
+            '<option value="baixo">Estoque baixo</option>' +
+            '<option value="critico">Crítico</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="mat-list-host"></div>'
+      );
+      document.getElementById('estoque-materiais-refresh').onclick = function() { _renderMateriaisPage(true); };
+      document.getElementById('estoque-materiais-add').onclick = function() { _openMaterialForm(null); };
+      body.querySelector('#mat-busca').addEventListener('input', function() { _renderMateriaisList(); });
+      body.querySelector('#mat-status').addEventListener('change', function() { _renderMateriaisList(); });
+    }
+    _loadMateriais(!!force).then(function() { _renderMateriaisList(); }).catch(function(e) {
+      _toast(String(e?.message || e || 'Erro ao carregar materiais'), 'var(--red)');
+    });
+  }
+
+  function _renderMateriaisList() {
+    var host = document.getElementById('mat-list-host');
+    if (!host) return;
+    var busca = String((document.getElementById('mat-busca') || {}).value || '').trim().toLowerCase();
+    var flt = String((document.getElementById('mat-status') || {}).value || '').trim();
+    var items = Array.isArray(_cacheMateriais.items) ? _cacheMateriais.items.slice() : [];
+    if (busca) items = items.filter(function(x) {
+      return (String(x?.nome || '') + ' ' + String(x?.categoria || '') + ' ' + String(x?.fornecedor || '')).toLowerCase().indexOf(busca) >= 0;
+    });
+    if (flt) items = items.filter(function(x) {
+      var q = Number(x?.quantidade_atual || 0) || 0;
+      var m = Number(x?.quantidade_minima || 0) || 0;
+      if (flt === 'critico') return q <= 0 || (m > 0 && q <= (m * 0.5));
+      if (flt === 'baixo') return m > 0 && q > 0 && q < m;
+      return true;
+    });
+    if (!items.length) {
+      host.innerHTML = '<div style="padding:14px;color:var(--text3);font-size:.85rem">Nenhum material encontrado.</div>';
+      return;
+    }
+    var groups = {};
+    items.forEach(function(it) {
+      var cat = String(it?.categoria || 'Outros').trim() || 'Outros';
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(it);
+    });
+    var cats = Object.keys(groups).sort(function(a, b) { return a.localeCompare(b); });
+    host.innerHTML = cats.map(function(cat) {
+      var rows = groups[cat].slice().sort(function(a, b) { return String(a.nome || '').localeCompare(String(b.nome || '')); });
+      return (
+        '<div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;margin-bottom:12px;overflow:hidden">' +
+          '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);font-weight:900;color:#e2e8f0">' + _esc(cat) + '</div>' +
+          '<div style="overflow:auto">' +
+            '<table style="width:100%;border-collapse:collapse;min-width:780px">' +
+              '<thead><tr>' +
+                '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Nome</th>' +
+                '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Fornecedor</th>' +
+                '<th style="text-align:right;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Qtd</th>' +
+                '<th style="text-align:left;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Un</th>' +
+                '<th style="text-align:center;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Status</th>' +
+                '<th style="text-align:center;padding:10px;border-bottom:1px solid rgba(255,255,255,0.08)">Ações</th>' +
+              '</tr></thead>' +
+              '<tbody>' +
+                rows.map(function(x) {
+                  return '<tr>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);font-weight:900;color:#e2e8f0">' + _esc(x.nome || '') + '</td>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);color:#94a3b8">' + _esc(x.fornecedor || '—') + '</td>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:right;font-family:var(--mono)">' + _esc(String(x.quantidade_atual ?? 0)) + '</td>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06)">' + _esc(x.unidade || 'un') + '</td>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center">' + _statusBadge(x.quantidade_atual, x.quantidade_minima) + '</td>' +
+                    '<td style="padding:10px;border-bottom:1px solid rgba(255,255,255,0.06);text-align:center;white-space:nowrap">' +
+                      '<button class="btn btn-ghost btn-sm" data-act="mov" data-id="' + _esc(x.id) + '">⇄ Movimentar</button>' +
+                      '<button class="btn btn-ghost btn-sm" data-act="edit" data-id="' + _esc(x.id) + '" style="margin-left:6px">✏</button>' +
+                      '<button class="btn btn-ghost btn-sm" data-act="del" data-id="' + _esc(x.id) + '" style="margin-left:6px;color:var(--red)">🗑</button>' +
+                    '</td>' +
+                  '</tr>';
+                }).join('') +
+              '</tbody>' +
+            '</table>' +
+          '</div>' +
+        '</div>'
+      );
+    }).join('');
+    host.querySelectorAll('button[data-act]').forEach(function(b) {
+      var id = String(b.getAttribute('data-id') || '').trim();
+      var act = String(b.getAttribute('data-act') || '').trim();
+      b.onclick = function() {
+        var item = (_cacheMateriais.items || []).find(function(r) { return String(r?.id || '') === id; }) || null;
+        if (act === 'edit') return _openMaterialForm(item);
+        if (act === 'mov') return _openMaterialMov(item);
+        if (act === 'del') return _deleteMaterial(item);
+      };
+    });
+  }
+
+  function _openMaterialForm(item) {
+    var categoriasPadrao = ['Pregos', 'Parafusos', 'Fitas', 'Outros'];
+    var cats = categoriasPadrao.slice();
+    try {
+      (_cacheMateriais.items || []).forEach(function(x) {
+        var c = String(x?.categoria || '').trim();
+        if (c && cats.indexOf(c) < 0) cats.push(c);
+      });
+    } catch (_) {}
+    cats = cats.filter(Boolean).sort(function(a, b) { return a.localeCompare(b); });
+
+    _openModal({
+      id: 'mat-form',
+      title: item ? '✏ Editar material' : '＋ Novo material',
+      render: function(host, close) {
+        var v = item || {};
+        host.innerHTML =
+          '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+            '<div style="display:grid;gap:6px;grid-column:1/-1">' +
+              '<label style="font-size:11px;color:#94a3b8;font-weight:800">Categoria *</label>' +
+              '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+                '<select id="mat-cat" style="flex:1;min-width:220px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none">' +
+                  cats.map(function(c) { return '<option value="' + _esc(c) + '">' + _esc(c) + '</option>'; }).join('') +
+                  '<option value="__nova__">Nova categoria...</option>' +
+                '</select>' +
+                '<input id="mat-cat-nova" placeholder="Nova categoria" style="display:none;flex:1;min-width:220px;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" />' +
+              '</div>' +
+            '</div>' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Nome *</label><input id="mat-nome" value="' + _esc(v.nome || '') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Unidade</label><input id="mat-un" value="' + _esc(v.unidade || 'un') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Fornecedor</label><input id="mat-forn" value="' + _esc(v.fornecedor || '') + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Qtd atual</label><input id="mat-qtd" type="number" step="0.01" value="' + _esc(v.quantidade_atual ?? 0) + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Qtd mínima</label><input id="mat-min" type="number" step="0.01" value="' + _esc(v.quantidade_minima ?? 0) + '" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Observações</label><textarea id="mat-obs" rows="3" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none;resize:vertical">' + _esc(v.observacoes || '') + '</textarea></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">' +
+            '<button class="btn btn-ghost btn-sm" id="mat-cancel">Cancelar</button>' +
+            '<button class="btn btn-accent btn-sm" id="mat-save">Salvar</button>' +
+          '</div>';
+
+        var sel = host.querySelector('#mat-cat');
+        var inpNova = host.querySelector('#mat-cat-nova');
+        var initCat = String(v.categoria || cats[0] || 'Outros');
+        if (cats.indexOf(initCat) >= 0) sel.value = initCat;
+        else { sel.value = '__nova__'; inpNova.style.display = ''; inpNova.value = initCat; }
+        sel.onchange = function() {
+          if (sel.value === '__nova__') { inpNova.style.display = ''; inpNova.focus(); }
+          else { inpNova.style.display = 'none'; inpNova.value = ''; }
+        };
+
+        host.querySelector('#mat-cancel').onclick = close;
+        host.querySelector('#mat-save').onclick = function() {
+          var categoria = (sel.value === '__nova__') ? String(inpNova.value || '').trim() : String(sel.value || '').trim();
+          var payload = {
+            empId: _emp(),
+            categoria: categoria,
+            nome: String(host.querySelector('#mat-nome').value || '').trim(),
+            unidade: String(host.querySelector('#mat-un').value || 'un').trim() || 'un',
+            fornecedor: String(host.querySelector('#mat-forn').value || '').trim(),
+            quantidade_atual: Number(host.querySelector('#mat-qtd').value || 0) || 0,
+            quantidade_minima: Number(host.querySelector('#mat-min').value || 0) || 0,
+            observacoes: String(host.querySelector('#mat-obs').value || '').trim(),
+          };
+          if (!payload.categoria || !payload.nome) return _toast('Categoria e nome são obrigatórios', 'var(--red)');
+          var url = item ? ('/api/estoque_materiais/' + encodeURIComponent(item.id)) : '/api/estoque_materiais';
+          var method = item ? 'PUT' : 'POST';
+          _apiJson(url, { method: method, headers: _hdrJson(), body: JSON.stringify(payload) })
+            .then(function() { return _loadMateriais(true); })
+            .then(function() { _renderMateriaisList(); close(); _toast('✓ Salvo', 'var(--green)'); })
+            .catch(function(e) { _toast(String(e?.message || e || 'Erro ao salvar'), 'var(--red)'); });
+        };
+      }
+    });
+  }
+
+  function _openMaterialMov(item) {
+    if (!item) return;
+    _openModal({
+      id: 'mat-mov',
+      title: '⇄ Movimentar material',
+      render: function(host, close) {
+        host.innerHTML =
+          '<div style="color:#e2e8f0;font-weight:900;margin-bottom:10px">' + _esc(item.nome || '') + '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Tipo</label><select id="mm-tipo" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none"><option value="entrada">Entrada</option><option value="saida">Saída</option></select></div>' +
+            '<div style="display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Quantidade</label><input id="mm-qtd" type="number" step="0.01" value="" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+            '<div style="grid-column:1/-1;display:grid;gap:6px"><label style="font-size:11px;color:#94a3b8;font-weight:800">Obs</label><input id="mm-obs" value="" style="width:100%;background:#080c14;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;color:#e8f0fe;font-size:14px;outline:none" /></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px">' +
+            '<button class="btn btn-ghost btn-sm" id="mm-cancel">Cancelar</button>' +
+            '<button class="btn btn-accent btn-sm" id="mm-save">Salvar</button>' +
+          '</div>';
+        host.querySelector('#mm-cancel').onclick = close;
+        host.querySelector('#mm-save').onclick = function() {
+          var payload = {
+            empId: _emp(),
+            tipo: String(host.querySelector('#mm-tipo').value || '').trim(),
+            quantidade: Number(host.querySelector('#mm-qtd').value || 0) || 0,
+            obs: String(host.querySelector('#mm-obs').value || '').trim(),
+          };
+          _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id) + '/movimentos', { method: 'POST', headers: _hdrJson(), body: JSON.stringify(payload) })
+            .then(function() { return _loadMateriais(true); })
+            .then(function() { _renderMateriaisList(); close(); _toast('✓ Movimento registrado', 'var(--green)'); })
+            .catch(function(e) { _toast(String(e?.message || e || 'Erro ao movimentar'), 'var(--red)'); });
+        };
+      }
+    });
+  }
+
+  function _deleteMaterial(item) {
+    if (!item) return;
+    if (!confirm('Excluir este material?')) return;
+    _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id) + '?empId=' + encodeURIComponent(_emp()), { method: 'DELETE', headers: _hdrAuth() })
+      .then(function() { return _loadMateriais(true); })
+      .then(function() { _renderMateriaisList(); _toast('🗑 Excluído', 'var(--orange)'); })
+      .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
+  }
+
+  function _ensureFacasCampos() {
+    if (window._patchFacasTipoCorteV1) return;
+    window._patchFacasTipoCorteV1 = true;
+
+    function injectFields(f) {
+      var modal = document.getElementById('modal-faca1');
+      if (!modal) return;
+      var body = modal.querySelector('.modal-body');
+      if (!body) return;
+      if (body.querySelector('#fa1-tipo-corte')) return;
+
+      var wrap = document.createElement('div');
+      wrap.className = 'mf';
+      wrap.style.cssText = 'grid-column:1/-1';
+      wrap.innerHTML =
+        '<label>TIPO DE CORTE *</label>' +
+        '<div id="fa1-tipo-corte" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="radio" name="fa1-tc" value="Só Tampa"> Só Tampa</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="radio" name="fa1-tc" value="Só Fundo"> Só Fundo</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="radio" name="fa1-tc" value="Tampa e Fundo"> Tampa e Fundo</label>' +
+        '</div>';
+
+      var wrap2 = document.createElement('div');
+      wrap2.className = 'mf';
+      wrap2.style.cssText = 'grid-column:1/-1';
+      wrap2.innerHTML =
+        '<label>MÁQUINA COMPATÍVEL *</label>' +
+        '<div id="fa1-maquinas-compat" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" value="Corte Vinco Rotativa"> Corte Vinco Rotativa</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" value="Corte Plana"> Corte Plana</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" value="Impressora 01"> Impressora 01</label>' +
+          '<label style="display:flex;align-items:center;gap:6px;font-size:.85rem"><input type="checkbox" value="Impressora 02"> Impressora 02</label>' +
+        '</div>';
+
+      var grid = body.querySelector('div[style*="grid-template-columns"]');
+      if (grid) {
+        var obs = body.querySelector('#fa1-obs')?.closest('.mf') || null;
+        if (obs && obs.parentElement === grid) {
+          obs.insertAdjacentElement('beforebegin', wrap2);
+          obs.insertAdjacentElement('beforebegin', wrap);
+        } else {
+          grid.appendChild(wrap);
+          grid.appendChild(wrap2);
+        }
+      } else {
+        body.appendChild(wrap);
+        body.appendChild(wrap2);
+      }
+
+      try {
+        var tc = String(f?.tipo_corte || '').trim();
+        if (tc) {
+          var r = body.querySelector('#fa1-tipo-corte input[type="radio"][value="' + tc.replace(/"/g, '') + '"]');
+          if (r) r.checked = true;
+        }
+      } catch (_) {}
+      try {
+        var arr = Array.isArray(f?.maquinas) ? f.maquinas : [];
+        body.querySelectorAll('#fa1-maquinas-compat input[type="checkbox"]').forEach(function(ch) {
+          ch.checked = arr.indexOf(String(ch.value)) >= 0;
+        });
+      } catch (_) {}
+    }
+
+    function readTipoCorte() {
+      var modal = document.getElementById('modal-faca1');
+      var r = modal ? modal.querySelector('#fa1-tipo-corte input[type="radio"]:checked') : null;
+      return r ? String(r.value || '').trim() : '';
+    }
+
+    function readMaquinasCompat() {
+      var modal = document.getElementById('modal-faca1');
+      var out = [];
+      if (!modal) return out;
+      modal.querySelectorAll('#fa1-maquinas-compat input[type="checkbox"]').forEach(function(ch) {
+        if (ch.checked) out.push(String(ch.value || '').trim());
+      });
+      return out.filter(Boolean);
+    }
+
+    var origAbrir = window.abrirModalFaca1;
+    if (typeof origAbrir === 'function') {
+      window.abrirModalFaca1 = function(id) {
+        var r = origAbrir.apply(this, arguments);
+        try {
+          var f = id ? (Array.isArray(window.FACAS) ? window.FACAS.find(function(x) { return String(x?.id || '') === String(id); }) : null) : null;
+          injectFields(f);
+        } catch (_) {}
+        return r;
+      };
+    }
+
+    function buildPayload(isEdit, id) {
+      var nome = String(document.getElementById('fa1-nome')?.value || '').trim();
+      if (!nome) throw new Error('Informe o nome da faca');
+      var medidas = String(document.getElementById('fa1-medidas')?.value || '').trim();
+      var valor = Number(document.getElementById('fa1-valor')?.value || 0) || 0;
+      var obs = String(document.getElementById('fa1-obs')?.value || '').trim();
+      var tipoCorte = readTipoCorte();
+      var maqCompat = readMaquinasCompat();
+      if (!tipoCorte) throw new Error('Informe o tipo de corte');
+      if (!maqCompat.length) throw new Error('Selecione ao menos uma máquina compatível');
+      var cliChips = [];
+      try {
+        cliChips = (typeof window._getChips === 'function' ? (window._getChips('fa1-clientes-chips') || []) : []);
+      } catch (_) { cliChips = []; }
+      cliChips = (Array.isArray(cliChips) ? cliChips : []).map(function(x) { return typeof x === 'object' ? (x.id || x.nome || x.name || String(x)) : String(x); }).filter(Boolean);
+      var payload = {
+        nome: nome,
+        medidas: medidas,
+        valor: valor,
+        obs: obs,
+        emp_id: _emp(),
+        tipo_corte: tipoCorte,
+        maquinas: maqCompat,
+        clientes: cliChips,
+      };
+      if (isEdit) payload.id = id;
+      return payload;
+    }
+
+    window.salvarFaca1 = async function() {
+      try {
+        var payload = buildPayload(false, '');
+        var r = await fetch('/api/facas_estoque', { method: 'POST', headers: _hdrJson(), body: JSON.stringify(payload) });
+        var d = await r.json().catch(function() { return null; });
+        if (!r.ok || !d || d.ok === false) throw new Error(d?.error || ('HTTP ' + r.status));
+        var newId = String(d?.data?.id || d?.id || d?.data?.[0]?.id || '').trim();
+        try {
+          var inp = document.getElementById('fa1-foto');
+          var file = inp && inp.files && inp.files[0] ? inp.files[0] : null;
+          if (newId && file && typeof window.estoqueUploadFoto === 'function') {
+            await window.estoqueUploadFoto('faca', newId, file);
+          }
+        } catch (_) {}
+        try { if (typeof window.carregarFacas === 'function') await window.carregarFacas(); } catch (_) {}
+        try { if (typeof window.renderFacas1 === 'function') window.renderFacas1(); } catch (_) {}
+        try { if (typeof window.fechar === 'function') window.fechar('modal-faca1'); } catch (_) {}
+        _toast('✓ Faca salva', 'var(--green)');
+      } catch (e) {
+        _toast(String(e?.message || e || 'Erro ao salvar faca'), 'var(--red)');
+      }
+    };
+
+    window.salvarEdicaoFaca1 = async function(id) {
+      try {
+        var fid = String(id || '').trim();
+        if (!fid) throw new Error('ID inválido');
+        var payload = buildPayload(true, fid);
+        var r = await fetch('/api/facas_estoque/' + encodeURIComponent(fid), { method: 'PUT', headers: _hdrJson(), body: JSON.stringify(payload) });
+        var d = await r.json().catch(function() { return null; });
+        if (!r.ok || !d || d.ok === false) throw new Error(d?.error || ('HTTP ' + r.status));
+        try {
+          var inp = document.getElementById('fa1-foto');
+          var file = inp && inp.files && inp.files[0] ? inp.files[0] : null;
+          if (file && typeof window.estoqueUploadFoto === 'function') {
+            await window.estoqueUploadFoto('faca', fid, file);
+          }
+        } catch (_) {}
+        try { if (typeof window.carregarFacas === 'function') await window.carregarFacas(); } catch (_) {}
+        try { if (typeof window.renderFacas1 === 'function') window.renderFacas1(); } catch (_) {}
+        try { if (typeof window.fechar === 'function') window.fechar('modal-faca1'); } catch (_) {}
+        _toast('✓ Faca atualizada', 'var(--green)');
+      } catch (e) {
+        _toast(String(e?.message || e || 'Erro ao atualizar faca'), 'var(--red)');
+      }
+    };
+
+    function badge(txt, bg, fg) {
+      return '<span style="background:' + bg + ';color:' + fg + ';border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;white-space:nowrap">' + _esc(txt) + '</span>';
+    }
+
+    function applyBadges(scopeId) {
+      var body = document.getElementById(scopeId);
+      if (!body) return;
+      var trs = Array.prototype.slice.call(body.querySelectorAll('tr'));
+      trs.forEach(function(tr) {
+        if (tr.dataset.patchBadges === '1') return;
+        var btn = tr.querySelector('button[onclick^="abrirModalFaca1("]');
+        if (!btn) return;
+        var mm = String(btn.getAttribute('onclick') || '').match(/abrirModalFaca1\\('([^']+)'\\)/);
+        var id = mm && mm[1] ? mm[1] : '';
+        if (!id) return;
+        var f = (Array.isArray(window.FACAS) ? window.FACAS.find(function(x) { return String(x?.id || '') === id; }) : null) || null;
+        if (!f) return;
+        var nomeTd = tr.children && tr.children[1] ? tr.children[1] : null;
+        if (!nomeTd) return;
+        var tipo = String(f.tipo_corte || '').trim();
+        var badges = [];
+        if (tipo) {
+          var bg = (tipo === 'Só Tampa') ? '#60a5fa' : (tipo === 'Só Fundo') ? '#a855f7' : '#10b981';
+          badges.push(badge(tipo, bg, '#0b1220'));
+        }
+        var maq = Array.isArray(f.maquinas) ? f.maquinas : [];
+        var wanted = ['Corte Vinco Rotativa', 'Corte Plana', 'Impressora 01', 'Impressora 02'];
+        wanted.forEach(function(w) {
+          if (maq.indexOf(w) >= 0) badges.push(badge(w, 'rgba(255,255,255,0.06)', '#e2e8f0'));
+        });
+        if (badges.length) {
+          nomeTd.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px">' +
+            '<div>' + nomeTd.innerHTML + '</div>' +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">' + badges.join('') + '</div>' +
+          '</div>';
+        }
+        tr.dataset.patchBadges = '1';
+      });
+    }
+
+    var origR1 = window.renderFacas1;
+    if (typeof origR1 === 'function') {
+      window.renderFacas1 = function() {
+        var r = origR1.apply(this, arguments);
+        try { applyBadges('facas1-body'); } catch (_) {}
+        return r;
+      };
+    }
+    var origR2 = window.renderFacas2;
+    if (typeof origR2 === 'function') {
+      window.renderFacas2 = function() {
+        var r = origR2.apply(this, arguments);
+        try { applyBadges('facas2-body'); } catch (_) {}
+        return r;
+      };
+    }
+  }
+
+  function tick() {
+    try { _ensureDrawerModules(); } catch (_) {}
+    try { _ensureFacasCampos(); } catch (_) {}
+    try {
+      var p1 = document.getElementById('page-estoque-tintas');
+      if (p1 && p1.style.display !== 'none') _renderTintasPage(false);
+    } catch (_) {}
+    try {
+      var p2 = document.getElementById('page-estoque-materiais');
+      if (p2 && p2.style.display !== 'none') _renderMateriaisPage(false);
+    } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 400);
+      setInterval(tick, 1200);
+    });
+  } else {
+    setTimeout(tick, 400);
+    setInterval(tick, 1200);
+  }
+})();
+
 (function initMobileNav() {
   return;
   if (typeof isMobile !== 'function' || !isMobile()) return;
