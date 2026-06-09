@@ -7219,6 +7219,10 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
+    try {
+      console.log('POST /api/clientes - empresa_id:', req.usuario?.empresa_id);
+      console.log('POST /api/clientes - body:', req.body);
+    } catch (_) {}
     const payload = clientesPayload(req.body || {});
     const empresaIdUsuario = String(req.usuario?.empresa_id || '').trim();
     const empIdUsuario = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
@@ -7232,12 +7236,14 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       }
     } catch (_) {}
     let { data, error } = await clientesInsertCompat(payload);
+    try { console.log('POST /api/clientes - resultado:', data, error); } catch (_) {}
     if (error) {
       const msg = String(error.message || error);
       if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
         delete payload.vendedor_id;
         delete payload.vendedor;
         ({ data, error } = await clientesInsertCompat(payload));
+        try { console.log('POST /api/clientes - resultado retry:', data, error); } catch (_) {}
       }
     }
     if (error) throw error;
@@ -9978,7 +9984,7 @@ app.delete('/api/estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
     if (error) throw error;
@@ -9988,7 +9994,7 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const tintaId = String(req.query.tinta_id || '').trim();
@@ -10014,7 +10020,7 @@ app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10049,7 +10055,7 @@ app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10082,7 +10088,7 @@ app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { error } = await supabase.from('estoque_tintas').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
     if (error) throw error;
@@ -10092,7 +10098,7 @@ app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
@@ -10139,7 +10145,7 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { data, error } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
     if (error) throw error;
@@ -10149,7 +10155,7 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const materialId = String(req.query.material_id || '').trim();
@@ -10175,7 +10181,7 @@ app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) =>
 
 app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10204,7 +10210,7 @@ app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10231,7 +10237,7 @@ app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { error } = await supabase.from('estoque_materiais').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
     if (error) throw error;
@@ -10241,7 +10247,7 @@ app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_materiais/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await _resolveEmpresaUuid(req);
+    const empresaId = String(req.usuario?.empresa_id || '').trim();
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();

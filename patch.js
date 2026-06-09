@@ -1837,32 +1837,7 @@
     document.body.appendChild(overlay); 
   }; 
 
-  var _fnOrigOfRapida = null; 
-  function patchAbrirOfRapida() { 
-    if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
-      _fnOrigOfRapida = window.abrirNovaOfRapida; 
-      window.abrirNovaOfRapida = function() { 
-        if (typeof _fnOrigOfRapida === 'function') _fnOrigOfRapida.apply(this, arguments); 
-        setTimeout(function() { 
-          var el = document.getElementById('of-r-numero'); 
-          if (!el) { 
-            console.warn('[PATCH] #of-r-numero nao encontrado apos abrir modal'); 
-            return; 
-          } 
-          if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; } 
-          else el.textContent = '...'; 
-          window.proximoNumeroOf().then(function(num) { 
-            window._ofRapidaNumero = num; 
-            if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; } 
-            else el.textContent = num; 
-            console.log('[PATCH] OF Rapida numero injetado:', num); 
-          }); 
-        }, 150); 
-      }; 
-      window.abrirNovaOfRapida._patched = true; 
-      console.log('[PATCH] abrirNovaOfRapida interceptada'); 
-    } 
-  } 
+  var _fnOrigOfRapida = null;
  
   window.renderProjecaoVendas = async function(anoExibir) { 
     var container = document.getElementById('widget-projecao-vendas'); 
@@ -2073,7 +2048,6 @@
  
   console.log('[PATCH] v3 ativo - Italy Embalagens ERP'); 
   patchToggleMobMenu(); 
-  patchAbrirOfRapida(); 
   patchRenderHub(); 
   patchGoAcordeon(); 
   try{
@@ -2174,10 +2148,6 @@
       patchToggleMobMenu(); 
       patchRenderHub(); 
       patchGoAcordeon(); 
-      if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
-        console.log('[PATCH] abrirNovaOfRapida foi sobrescrita! Reaplicando...'); 
-        patchAbrirOfRapida(); 
-      } 
     } catch(e) {} 
   }, 1000); 
  
@@ -2986,7 +2956,7 @@
         };
       });
     }).catch(function(e) {
-      body.innerHTML = '<div style="padding:12px;color:var(--red);font-size:.85rem">Erro ao carregar dashboard.</div>';
+      body.innerHTML = '<div style="padding:12px;color:var(--red);font-size:.85rem">Erro ao carregar dashboard: ' + _esc(String(e?.message || e || '')) + '</div>';
     });
   }
 
@@ -3345,7 +3315,11 @@
       body.querySelector('#tintas-status').addEventListener('change', function() { _renderTintasList(); });
     }
     _loadTintas(!!force).then(function() { _renderTintasList(); }).catch(function(e) {
-      _toast(String(e?.message || e || 'Erro ao carregar tintas'), 'var(--red)');
+      try {
+        var host = document.getElementById('tintas-table-host');
+        if (host) host.innerHTML = '<div style="padding:14px;color:var(--red);font-size:.85rem">Erro ao carregar tintas: ' + _esc(String(e?.message || e || '')) + '</div>';
+      } catch (_) {}
+      _toast('Erro ao carregar tintas', 'var(--red)');
     });
   }
 
@@ -3598,7 +3572,11 @@
       body.querySelector('#mat-status').addEventListener('change', function() { _renderMateriaisList(); });
     }
     _loadMateriais(!!force).then(function() { _renderMateriaisList(); }).catch(function(e) {
-      _toast(String(e?.message || e || 'Erro ao carregar materiais'), 'var(--red)');
+      try {
+        var host = document.getElementById('mat-list-host');
+        if (host) host.innerHTML = '<div style="padding:14px;color:var(--red);font-size:.85rem">Erro ao carregar materiais: ' + _esc(String(e?.message || e || '')) + '</div>';
+      } catch (_) {}
+      _toast('Erro ao carregar materiais', 'var(--red)');
     });
   }
 
@@ -4303,14 +4281,41 @@
     } catch (_) {}
 
     try {
-      if (typeof window.renderEstoqueTintas !== 'function') {
-        window.renderEstoqueTintas = function() { try { window.go('estoque-tintas'); } catch (_) {} };
+      if (typeof window.renderEstoqueTintas !== 'function' || !window.renderEstoqueTintas._patchedV1) {
+        window.renderEstoqueTintas = async function() {
+          try {
+            if (typeof window.go === 'function') window.go('estoque-tintas');
+            setTimeout(function() { try { _renderTintasPage(true); } catch (e) {} }, 20);
+          } catch (e) {
+            var host = document.getElementById('conteudo-principal') || document.getElementById('content') || document.body;
+            try { host.innerHTML = '<div style="padding:20px;color:var(--red)">Erro ao carregar tintas: ' + _esc(String(e?.message || e || '')) + '</div>'; } catch (_) {}
+          }
+        };
+        window.renderEstoqueTintas._patchedV1 = true;
       }
-      if (typeof window.renderEstoqueMateriais !== 'function') {
-        window.renderEstoqueMateriais = function() { try { window.go('estoque-materiais'); } catch (_) {} };
+      if (typeof window.renderEstoqueMateriais !== 'function' || !window.renderEstoqueMateriais._patchedV1) {
+        window.renderEstoqueMateriais = async function() {
+          try {
+            if (typeof window.go === 'function') window.go('estoque-materiais');
+            setTimeout(function() { try { _renderMateriaisPage(true); } catch (e) {} }, 20);
+          } catch (e) {
+            var host = document.getElementById('conteudo-principal') || document.getElementById('content') || document.body;
+            try { host.innerHTML = '<div style="padding:20px;color:var(--red)">Erro ao carregar materiais: ' + _esc(String(e?.message || e || '')) + '</div>'; } catch (_) {}
+          }
+        };
+        window.renderEstoqueMateriais._patchedV1 = true;
       }
-      if (typeof window.renderDashboardEstoques !== 'function') {
-        window.renderDashboardEstoques = function() { try { window.go('dashboard-estoques'); } catch (_) {} };
+      if (typeof window.renderDashboardEstoques !== 'function' || !window.renderDashboardEstoques._patchedV1) {
+        window.renderDashboardEstoques = async function() {
+          try {
+            if (typeof window.go === 'function') window.go('dashboard-estoques');
+            setTimeout(function() { try { _renderDashboardEstoques(true); } catch (e) {} }, 20);
+          } catch (e) {
+            var host = document.getElementById('conteudo-principal') || document.getElementById('content') || document.body;
+            try { host.innerHTML = '<div style="padding:20px;color:var(--red)">Erro ao carregar dashboard: ' + _esc(String(e?.message || e || '')) + '</div>'; } catch (_) {}
+          }
+        };
+        window.renderDashboardEstoques._patchedV1 = true;
       }
     } catch (_) {}
   }
@@ -5305,6 +5310,21 @@
       var wA = function() {
         _resetClienteRapidaState();
         var r = oA.apply(this, arguments);
+        setTimeout(function() {
+          try {
+            var el = document.getElementById('of-r-numero');
+            if (!el || typeof window.proximoNumeroOf !== 'function') return;
+            if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; }
+            else el.textContent = '...';
+            window.proximoNumeroOf().then(function(num) {
+              try { window._ofRapidaNumero = num; } catch (_) {}
+              if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; }
+              else el.textContent = num;
+            }).catch(function(_) {
+              try { if (el.tagName === 'INPUT') el.disabled = false; } catch (__){}
+            });
+          } catch (_) {}
+        }, 150);
         setTimeout(bindClienteInput, 60);
         return r;
       };
@@ -6590,6 +6610,8 @@ window._mbnActive = function(id) {
         var modalAberto = !!(modal && modal.style.display && modal.style.display !== 'none');
         if (modalAberto) return r;
         try {
+          try { window._clientesCarregados = false; } catch (_) {}
+          try { window.CLIENTES = []; } catch (_) {}
           await _refreshClientesFullList({ reset: !idAntes, scroll: !idAntes });
         } catch (_) {}
         return r;
