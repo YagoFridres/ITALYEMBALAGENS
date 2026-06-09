@@ -4310,6 +4310,7 @@ app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', 
 app.post('/api/importar-of-imagem', authMiddleware, async (req, res) => {
   let tmpPath = '';
   try {
+    try { console.log('importar-of-imagem body keys:', Object.keys(req.body || {})); } catch (_) {}
     const raw = String(req.body?.imagem || '').trim();
     if (!raw) return res.status(400).json({ ok: false, error: 'Imagem inválida' });
 
