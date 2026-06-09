@@ -4307,118 +4307,74 @@ app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', 
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
-app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), async (req, res) => {
+app.post('/api/importar-of-imagem', authMiddleware, async (req, res) => {
+  let tmpPath = '';
   try {
-    if (!OPENAI_API_KEY) {
-      return res.status(500).json({
-        ok: false,
-        error:
-          'OPENAI_API_KEY ausente no servidor. Configure a variável OPENAI_API_KEY no serviço do backend e faça Redeploy/Restart para aplicar.',
-      });
+    const raw = String(req.body?.imagem || '').trim();
+    if (!raw) return res.status(400).json({ ok: false, error: 'Imagem inválida' });
+
+    const m = raw.match(/^data:(image\/(jpeg|jpg|png));base64,([A-Za-z0-9+/=]+)$/i);
+    if (!m) {
+      return res.status(400).json({ ok: false, error: 'Formato de imagem não suportado. Use JPG ou PNG' });
+    }
+    const mime = String(m[1] || '').toLowerCase();
+    const b64 = String(m[4] || '');
+
+    let sharp = null;
+    let tesseract = null;
+    try { sharp = require('sharp'); } catch (_) { sharp = null; }
+    try { tesseract = require('node-tesseract-ocr'); } catch (_) { tesseract = null; }
+    if (!sharp || !tesseract) {
+      return res.status(500).json({ ok: false, error: 'OCR não disponível: instale tesseract-ocr no servidor' });
     }
 
-    const f = req.file || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
-    const mime = String(f.mimetype || '').trim().toLowerCase();
-    const ext = path.extname(f.originalname || '').toLowerCase();
-    const isPdf = mime === 'application/pdf' || ext === '.pdf';
-    const isImg = mime.startsWith('image/');
-    if (!isPdf && !isImg) return res.status(400).json({ ok: false, error: 'Formato inválido (use imagem ou PDF)' });
-    if (isPdf) {
-      return res.status(400).json({
-        ok: false,
-        error: 'PDF ainda não é suportado nesta função (modo OpenAI). Envie uma imagem (JPG/PNG/WebP) ou converta o PDF para imagem.',
-      });
-    }
+    const os = require('os');
+    const buf = Buffer.from(b64, 'base64');
+    const outJpg = await sharp(buf).jpeg({ quality: 90 }).toBuffer();
+    tmpPath = path.join(os.tmpdir(), `of_ocr_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`);
+    await fs.promises.writeFile(tmpPath, outJpg);
 
-    const safeExt = ext && ext.length <= 8 ? ext : (isPdf ? '.pdf' : '.png');
-    const filename = `import-of/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random().toString(36).slice(2)}${safeExt}`;
-
-    const tryUpload = async (bucket) => {
-      const b = String(bucket || '').trim();
-      const r = await supabase.storage.from(b).upload(filename, f.buffer, { contentType: mime || undefined, upsert: false });
-      if (r.error) throw r.error;
-      const { data: urlData } = supabase.storage.from(b).getPublicUrl(filename);
-      const url = String(urlData?.publicUrl || '').trim();
-      if (!url) throw new Error('upload_url_missing');
-      return url;
+    const runOcr = async (lang) => {
+      const opts = {};
+      if (lang) opts.lang = lang;
+      return await tesseract.recognize(tmpPath, opts);
     };
 
-    let arquivoUrl = '';
-    try { arquivoUrl = await tryUpload('chat-arquivos'); } catch (e1) {
-      const msg = String(e1?.message || e1 || '').toLowerCase();
-      const bucketNotFound = msg.includes('bucket') && (msg.includes('not') || msg.includes('exist'));
-      if (bucketNotFound) {
-        try { await supabase.storage.createBucket('chat-arquivos', { public: true }); } catch (_) {}
-        try { arquivoUrl = await tryUpload('chat-arquivos'); } catch (_) {}
+    let text = '';
+    try {
+      text = await runOcr('por');
+    } catch (e1) {
+      try { text = await runOcr(); } catch (e2) {
+        const msg = String(e2?.message || e1?.message || e2 || e1 || '');
+        const low = msg.toLowerCase();
+        const notInstalled =
+          low.includes('tesseract') && (low.includes('not found') || low.includes('enoent') || low.includes('no such file'));
+        if (notInstalled) return res.status(500).json({ ok: false, error: 'OCR não disponível: instale tesseract-ocr no servidor' });
+        return res.status(500).json({ ok: false, error: msg || 'Erro ao executar OCR' });
       }
-      if (!arquivoUrl) arquivoUrl = await tryUpload('uploads');
     }
 
-    const prompt = [
-      'Você é um especialista em leitura de ordens de fabricação de caixas de papelão.',
-      'Analise esta imagem e extraia os dados em JSON com os campos:',
-      'numero_of, cliente_nome, fantasia, cnpj, cidade, telefone, email, vendedor,',
-      'data_pedido, data_entrega, tipo_papel, gramatura, modelo_caixa, referencia,',
-      'quantidade, dim_largura, dim_comprimento, dim_altura, cores_impressao (array),',
-      'cliche, maquina_principal, observacoes, paletizado (bool), furacao (bool),',
-      'fardos, itens_adicionais (array de objetos com os mesmos campos acima).',
-      'Para cada campo, inclua também um campo "confianca" de 0 a 1.',
-      'Se não encontrar um campo, retorne null. Nunca invente dados.',
-      'Responda APENAS com JSON válido, sem markdown.',
-    ].join('\n');
+    const clean = String(text || '').replace(/\r/g, '').trim();
 
-    const b64 = Buffer.from(f.buffer).toString('base64');
-    const dataUrl = `data:${mime || 'image/png'};base64,${b64}`;
-
-    const r = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        response_format: { type: 'json_object' },
-        max_tokens: 1400,
-        messages: [
-          { role: 'system', content: prompt },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Extraia os dados conforme instruções e responda somente com JSON.' },
-              { type: 'image_url', image_url: { url: dataUrl } },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const json = await r.json().catch(() => null);
-    if (!r.ok || !json) {
-      const msg = String(json?.error?.message || json?.message || ('HTTP ' + r.status));
-      try { console.error('[IMPORTAR OF IMAGEM] erro OpenAI:', { status: r.status, msg, rid: req._rid || null }); } catch (_) {}
-      return res.status(500).json({ ok: false, error: msg });
-    }
-
-    const text = String(json?.choices?.[0]?.message?.content || '').trim();
-    const parseJsonLoose = (s) => {
-      const raw = String(s || '').trim();
-      if (!raw) throw new Error('json_vazio');
-      try { return JSON.parse(raw); } catch (_) {}
-      const i0 = raw.indexOf('{');
-      const i1 = raw.lastIndexOf('}');
-      if (i0 >= 0 && i1 > i0) {
-        const sub = raw.slice(i0, i1 + 1);
-        return JSON.parse(sub);
-      }
-      throw new Error('json_invalido');
+    const parseDate = (s) => {
+      const str = String(s || '').trim();
+      const mt = str.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+      if (!mt) return '';
+      return `${mt[3]}-${mt[2]}-${mt[1]}`;
     };
-    let parsed = null;
-    try { parsed = parseJsonLoose(text); } catch (e) {
-      try { console.error('[IMPORTAR OF IMAGEM] parse falhou:', { msg: String(e?.message || e), rid: req._rid || null }); } catch (_) {}
-      return res.status(500).json({ ok: false, error: 'Falha ao ler JSON retornado pela IA' });
-    }
+
+    const find = (re) => {
+      const mm = clean.match(re);
+      return mm && mm[1] ? String(mm[1]).trim() : '';
+    };
+
+    const numero = find(/(?:\bOF\b|\bO\.F\.\b|ORDEM\s*(?:DE\s*)?FABRICA(?:CAO|ÇÃO)|N[ºO]\s*OF)\s*[:#-]?\s*([0-9]{1,7})/i)
+      || find(/(?:\bN[ºO]\b)\s*[:#-]?\s*([0-9]{1,7})/i);
+    const cliente = find(/CLIENTE\s*[:\-]\s*([^\n]{3,80})/i);
+    const entrega = parseDate(find(/ENTREGA\s*[:\-]?\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i))
+      || parseDate(find(/\b([0-9]{2}\/[0-9]{2}\/[0-9]{4})\b/));
+    const qtdRaw = find(/(?:QTD|QUANTIDADE)\s*[:\-]?\s*([0-9\.\,]+)/i);
+    const qtd = qtdRaw ? Math.trunc(Number(String(qtdRaw).replace(/\./g, '').replace(',', '.')) || 0) : null;
 
     const FIELDS = [
       'numero_of', 'cliente_nome', 'fantasia', 'cnpj', 'cidade', 'telefone', 'email', 'vendedor',
@@ -4428,56 +4384,30 @@ app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), asy
       'fardos',
     ];
 
-    const readPair = (obj, field) => {
-      if (!obj || typeof obj !== 'object') return { valor: null, confianca: null };
-      const v = obj[field];
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
-        const conf = (v.confianca != null) ? Number(v.confianca) : ((v.confidence != null) ? Number(v.confidence) : null);
-        const val = (v.valor !== undefined) ? v.valor : ((v.value !== undefined) ? v.value : ((v.val !== undefined) ? v.val : v[field]));
-        return { valor: val ?? null, confianca: Number.isFinite(conf) ? Math.max(0, Math.min(1, conf)) : null };
-      }
-      const conf2 = obj[field + '_confianca'];
-      const conf = (conf2 != null) ? Number(conf2) : null;
-      return { valor: (v === undefined ? null : v), confianca: Number.isFinite(conf) ? Math.max(0, Math.min(1, conf)) : null };
-    };
+    const base = {};
+    FIELDS.forEach((k) => { base[k] = { valor: null, confianca: null, low_confidence: true }; });
+    if (numero) base.numero_of = { valor: numero, confianca: 0.75, low_confidence: false };
+    if (cliente) base.cliente_nome = { valor: cliente, confianca: 0.6, low_confidence: false };
+    if (entrega) base.data_entrega = { valor: entrega, confianca: 0.7, low_confidence: false };
+    if (qtd != null && qtd > 0) base.quantidade = { valor: qtd, confianca: 0.75, low_confidence: false };
+    base.observacoes = { valor: clean.slice(0, 2000) || null, confianca: 0.4, low_confidence: true };
+    base.itens_adicionais = [];
 
-    const normalizeBool = (v) => {
-      if (v === true || v === false) return v;
-      const s = String(v ?? '').trim().toLowerCase();
-      if (!s) return null;
-      if (['1', 'true', 'sim', 's', 'yes'].includes(s)) return true;
-      if (['0', 'false', 'nao', 'não', 'n', 'no'].includes(s)) return false;
-      return null;
-    };
-
-    const normalizeArray = (v) => {
-      if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
-      if (typeof v === 'string') return v.split(/[,;|]/g).map((x) => String(x || '').trim()).filter(Boolean);
-      return [];
-    };
-
-    const normalizeOne = (obj) => {
-      const out = {};
-      for (const f of FIELDS) {
-        const p = readPair(obj, f);
-        const low = Number.isFinite(p.confianca) ? (p.confianca < 0.6) : (p.valor == null);
-        let valor = p.valor;
-        if (f === 'paletizado' || f === 'furacao') valor = normalizeBool(valor);
-        if (f === 'cores_impressao') valor = normalizeArray(valor);
-        out[f] = { valor: (valor === undefined ? null : valor), confianca: p.confianca, low_confidence: !!low };
-      }
-      return out;
-    };
-
-    const itensRaw = (parsed && typeof parsed === 'object') ? parsed.itens_adicionais : null;
-    const itens = Array.isArray(itensRaw) ? itensRaw : [];
-    const dataOut = normalizeOne(parsed);
-    dataOut.itens_adicionais = itens.map((it) => normalizeOne(it));
-
-    return res.json({ ok: true, arquivo_url: arquivoUrl, data: dataOut });
+    return res.json({ ok: true, arquivo_url: '', texto: clean, data: base });
   } catch (e) {
-    try { console.error('[IMPORTAR OF IMAGEM] erro:', String(e?.message || e), 'rid=', req._rid || null); } catch (_) {}
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    const msg = String(e?.message || e || '');
+    const low = msg.toLowerCase();
+    const notInstalled =
+      low.includes('tesseract') && (low.includes('not found') || low.includes('enoent') || low.includes('no such file'));
+    if (notInstalled) return res.status(500).json({ ok: false, error: 'OCR não disponível: instale tesseract-ocr no servidor' });
+    if (msg && msg.toLowerCase().includes('input buffer contains unsupported image format')) {
+      return res.status(400).json({ ok: false, error: 'Formato de imagem não suportado. Use JPG ou PNG' });
+    }
+    return res.status(500).json({ ok: false, error: msg || 'Erro ao importar OF por imagem' });
+  } finally {
+    if (tmpPath) {
+      try { await fs.promises.unlink(tmpPath); } catch (_) {}
+    }
   }
 });
 

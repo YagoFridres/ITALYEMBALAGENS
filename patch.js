@@ -4666,8 +4666,8 @@ window._mbnActive = function(id) {
         '<button type="button" id="impof-close" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>' +
       '</div>' +
       '<div style="padding:14px 16px;display:grid;gap:12px">' +
-        '<div style="color:#94a3b8;font-size:12px">Selecione uma imagem/PDF, analise, confira os campos e só então salve.</div>' +
-        '<input id="impof-file" type="file" accept="image/*,application/pdf" ' + (_isMobile() ? 'capture="environment"' : '') + ' style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);padding:10px;border-radius:10px;color:#e2e8f0" />' +
+        '<div style="color:#94a3b8;font-size:12px">Selecione uma imagem (JPG/PNG), analise, confira os campos e só então salve.</div>' +
+        '<input id="impof-file" type="file" accept="image/*" ' + (_isMobile() ? 'capture="environment"' : '') + ' style="width:100%;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);padding:10px;border-radius:10px;color:#e2e8f0" />' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">' +
           '<button type="button" class="btn btn-ghost btn-sm" id="impof-cancel">Cancelar</button>' +
           '<button type="button" class="btn btn-accent btn-sm" id="impof-analisar">Analisar imagem</button>' +
@@ -4697,21 +4697,42 @@ window._mbnActive = function(id) {
     if (!m) return;
     var msg = document.getElementById('impof-msg');
     if (msg) msg.textContent = 'Lendo imagem e identificando dados...';
-    var fd = new FormData();
-    fd.append('file', file, file.name || 'arquivo');
-    fetch('/api/importar-of-imagem', { method: 'POST', headers: _hdrAuth(), body: fd })
-      .then(function(r) { return r.json().then(function(j) { return { r: r, j: j }; }); })
-      .then(function(x) {
-        if (!x.r.ok || !x.j || x.j.ok === false) throw new Error(x.j?.error || ('HTTP ' + x.r.status));
-        _impState.arquivo_url = String(x.j.arquivo_url || '').trim();
-        _impState.data = x.j.data || null;
-        if (!_impState.data) throw new Error('Resposta inválida');
-        _renderImportarOfImagemReview(_impState.data, _impState.arquivo_url);
-      })
-      .catch(function(e) {
+    var fr = new FileReader();
+    fr.onerror = function() {
+      if (msg) msg.textContent = '';
+      _toast('Falha ao ler imagem', 'var(--red)');
+    };
+    fr.onload = function(ev) {
+      var dataUrl = String(ev && ev.target ? ev.target.result : '') || '';
+      if (!dataUrl || dataUrl.indexOf('data:image/') !== 0) {
         if (msg) msg.textContent = '';
-        _toast(String(e?.message || e || 'Erro ao analisar'), 'var(--red)');
-      });
+        _toast('Formato de imagem não suportado. Use JPG ou PNG', 'var(--yellow)');
+        return;
+      }
+      fetch('/api/importar-of-imagem', {
+        method: 'POST',
+        headers: _hdrJson(),
+        body: JSON.stringify({ imagem: dataUrl })
+      })
+        .then(function(r) { return r.json().then(function(j) { return { r: r, j: j }; }); })
+        .then(function(x) {
+          if (!x.r.ok || !x.j || x.j.ok === false) throw new Error(x.j?.error || ('HTTP ' + x.r.status));
+          _impState.arquivo_url = String(x.j.arquivo_url || '').trim();
+          _impState.data = x.j.data || null;
+          if (!_impState.data) throw new Error('Resposta inválida');
+          _renderImportarOfImagemReview(_impState.data, _impState.arquivo_url);
+        })
+        .catch(function(e) {
+          if (msg) msg.textContent = '';
+          var em = String(e?.message || e || '');
+          if (em.toLowerCase().indexOf('ocr não disponível') >= 0) {
+            _toast('OCR ainda não configurado no servidor. Aguarde atualização do sistema.', 'var(--yellow)');
+            return;
+          }
+          _toast(em || 'Erro ao analisar', 'var(--red)');
+        });
+    };
+    fr.readAsDataURL(file);
   }
 
   function _renderImportarOfImagemReview(data, arquivoUrl) {
