@@ -6920,16 +6920,22 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const empId = req.query.empId ? String(req.query.empId) : '';
+    const empIdReq = req.query.empId != null ? String(req.query.empId) : '';
+    const empresaIdReq = req.query.empresa_id != null ? String(req.query.empresa_id) : '';
+    const userEmpresaId = String(req.usuario?.empresa_id || '').trim();
+    const userEmpId = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    const empCandidates = Array.from(new Set([empIdReq, empresaIdReq, userEmpId, userEmpresaId].map(v => String(v || '').trim()).filter(Boolean)));
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = '';
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    const cols = empCandidates.length ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
-    for (const col of cols) {
+    let lastRows = null;
+    for (const empId of (empCandidates.length ? empCandidates : [null])) {
+      for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
       for (let i = 0; i < 8; i++) {
@@ -6939,7 +6945,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         const { data, error } = await q;
         if (!error) {
           const rows = data || [];
+          lastRows = rows;
           if (!lite) {
+            try { console.log('clientes retornados:', rows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -6962,6 +6970,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
+          try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
           return ok(res, trimmed);
         }
 
@@ -6987,45 +6996,72 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         throw error;
       }
 
-      if (lastLocalErr) lastErr = lastLocalErr;
-      const msg = String(lastLocalErr?.message || lastLocalErr || '');
-      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+        if (lastLocalErr) lastErr = lastLocalErr;
+        const msg = String(lastLocalErr?.message || lastLocalErr || '');
+        if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
 
-      if (lastLocalErr) {
-        let q2 = supabase.from('clientes').select('*').order('nome');
-        if (col) q2 = q2.eq(col, empId);
-        if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
-        const all = await q2;
-        if (!all.error) {
-          const rows = all.data || [];
-          if (!lite) {
-            return ok(res, rows);
+        if (lastLocalErr) {
+          let q2 = supabase.from('clientes').select('*').order('nome');
+          if (col) q2 = q2.eq(col, empId);
+          if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
+          const all = await q2;
+          if (!all.error) {
+            const rows = all.data || [];
+            lastRows = rows;
+            if (!lite) {
+              try { console.log('clientes retornados:', rows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+              return ok(res, rows);
+            }
+            const trimmed = rows.map((r) => ({
+              id: r.id,
+              nome: r.nome ?? null,
+              rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
+              razao_social: r.razao_social ?? null,
+              cnpj: r.cnpj ?? null,
+              ie: r.ie ?? null,
+              tel: r.tel ?? r.telefone ?? null,
+              telefone: r.telefone ?? null,
+              email: r.email ?? null,
+              cidade: r.cidade ?? null,
+              uf: r.uf ?? null,
+              ramo: r.ramo ?? null,
+              emp_id: r.emp_id ?? r.empId ?? null,
+              empId: r.empId ?? null,
+              vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
+              vendId: r.vendId ?? null,
+              obs: r.obs ?? r.observacoes ?? null,
+              observacoes: r.observacoes ?? null,
+            }));
+            try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+            return ok(res, trimmed);
           }
-          const trimmed = rows.map((r) => ({
-            id: r.id,
-            nome: r.nome ?? null,
-            rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
-            razao_social: r.razao_social ?? null,
-            cnpj: r.cnpj ?? null,
-            ie: r.ie ?? null,
-            tel: r.tel ?? r.telefone ?? null,
-            telefone: r.telefone ?? null,
-            email: r.email ?? null,
-            cidade: r.cidade ?? null,
-            uf: r.uf ?? null,
-            ramo: r.ramo ?? null,
-            emp_id: r.emp_id ?? r.empId ?? null,
-            empId: r.empId ?? null,
-            vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
-            vendId: r.vendId ?? null,
-            obs: r.obs ?? r.observacoes ?? null,
-            observacoes: r.observacoes ?? null,
-          }));
-          return ok(res, trimmed);
+          lastErr = all.error;
         }
-        lastErr = all.error;
+        if (lastLocalErr) throw lastLocalErr;
       }
-      if (lastLocalErr) throw lastLocalErr;
+    }
+    if (lastRows && Array.isArray(lastRows)) {
+      try { console.log('clientes retornados:', lastRows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', 'fallback', 'col:', 'none'); } catch (_) {}
+      return ok(res, lite ? lastRows.map((r) => ({
+        id: r.id,
+        nome: r.nome ?? null,
+        rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
+        razao_social: r.razao_social ?? null,
+        cnpj: r.cnpj ?? null,
+        ie: r.ie ?? null,
+        tel: r.tel ?? r.telefone ?? null,
+        telefone: r.telefone ?? null,
+        email: r.email ?? null,
+        cidade: r.cidade ?? null,
+        uf: r.uf ?? null,
+        ramo: r.ramo ?? null,
+        emp_id: r.emp_id ?? r.empId ?? null,
+        empId: r.empId ?? null,
+        vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
+        vendId: r.vendId ?? null,
+        obs: r.obs ?? r.observacoes ?? null,
+        observacoes: r.observacoes ?? null,
+      })) : lastRows);
     }
     throw lastErr;
   } catch (e) { err(res, e); }

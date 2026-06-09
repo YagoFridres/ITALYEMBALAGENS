@@ -2756,6 +2756,27 @@
     return el;
   }
 
+  function _patchGoEstoques() {
+    var origGo = window.go;
+    if (typeof origGo !== 'function' || origGo._patchEstoquesPagesV1) return;
+    var wrapped = function(id) {
+      var r = origGo.apply(this, arguments);
+      var pid = String(id || '').trim();
+      setTimeout(function() {
+        try {
+          if (pid === 'estoque-tintas') _renderTintasPage(true);
+          else if (pid === 'estoque-materiais') _renderMateriaisPage(true);
+          else if (pid === 'dashboard-estoques') _renderDashboardEstoques(true);
+        } catch (e) {
+          try { _toast('Erro ao abrir ' + pid, 'var(--red)'); } catch (_) {}
+        }
+      }, 10);
+      return r;
+    };
+    wrapped._patchEstoquesPagesV1 = true;
+    window.go = wrapped;
+  }
+
   function _statusBadge(qtd, min) {
     var q = Number(qtd || 0) || 0;
     var m = Number(min || 0) || 0;
@@ -4222,6 +4243,7 @@
   }
 
   function tick() {
+    try { _patchGoEstoques(); } catch (_) {}
     try { _ensureDrawerModules(); } catch (_) {}
     try { _ensureFacasCampos(); } catch (_) {}
     try { _ensurePageSimple('dashboard-estoques', '📊 Dashboard de Estoques'); } catch (_) {}
@@ -4250,23 +4272,33 @@
 
     try {
       var host = document.querySelector('#ng-estoques .nav-group-items');
-      if (host && !host.dataset.patchEstItensV1) {
-        host.dataset.patchEstItensV1 = '1';
+      if (host) {
         var mk = function(id, label, icon, pageId) {
-          if (document.getElementById(id)) return;
-          var el = document.createElement('div');
-          el.id = id;
-          el.className = 'nav-item';
-          el.innerHTML = '<span class="ico">' + icon + '</span>' + label;
+          var el = document.getElementById(id);
+          if (!el) {
+            el = document.createElement('div');
+            el.id = id;
+            el.className = 'nav-item';
+            el.innerHTML = '<span class="ico">' + icon + '</span>' + label;
+          }
           el.onclick = function() {
             try { window.go(pageId); } catch (_) {}
             try { window.closeNavGroupsExcept && window.closeNavGroupsExcept('ng-estoques'); } catch (_) {}
           };
-          host.insertBefore(el, host.firstChild);
+          return el;
         };
-        mk('menu-dashboard-estoques', 'Dashboard de Estoques', '📊', 'dashboard-estoques');
-        mk('menu-estoque-materiais', 'Estoque de Materiais', '🧰', 'estoque-materiais');
-        mk('menu-estoque-tintas', 'Estoque de Tintas', '🎨', 'estoque-tintas');
+        var map = {
+          estoque: document.getElementById('menu-estoque'),
+          facas1: document.getElementById('menu-facas'),
+          cliches: document.getElementById('menu-cliches'),
+          'estoque-materiais': mk('menu-estoque-materiais', 'Estoque de Materiais', '🧰', 'estoque-materiais'),
+          'estoque-tintas': mk('menu-estoque-tintas', 'Estoque de Tintas', '🎨', 'estoque-tintas'),
+          'dashboard-estoques': mk('menu-dashboard-estoques', 'Dashboard de Estoques', '📊', 'dashboard-estoques')
+        };
+        ['estoque', 'facas1', 'cliches', 'estoque-materiais', 'estoque-tintas', 'dashboard-estoques'].forEach(function(k) {
+          var el = map[k];
+          if (el) host.appendChild(el);
+        });
       }
     } catch (_) {}
 
@@ -6302,6 +6334,23 @@ window._mbnActive = function(id) {
       try { await window.carregarClientes(true); } catch (_) {
         try { await window.carregarClientes(false); } catch (_) {}
       }
+      if (!(Array.isArray(window.CLIENTES) && window.CLIENTES.length)) {
+        try {
+          var tk = localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+          var emp = String(window.EMP_FILTRO || '').trim();
+          var empresaAtual = String(window.CURRENT_USER?.empresa_id || '').trim();
+          var qs = [];
+          if (emp) qs.push('empId=' + encodeURIComponent(emp));
+          if (empresaAtual) qs.push('empresa_id=' + encodeURIComponent(empresaAtual));
+          qs.push('t=' + Date.now());
+          var rr = await fetch('/api/clientes?' + qs.join('&'), { headers: tk ? { Authorization: 'Bearer ' + tk } : {} });
+          var jj = await rr.json().catch(function() { return null; });
+          var rows = (jj && Array.isArray(jj.data)) ? jj.data : (Array.isArray(jj) ? jj : []);
+          if (Array.isArray(rows) && rows.length && typeof window.normalizeCli === 'function') {
+            window.CLIENTES = rows.map(window.normalizeCli);
+          }
+        } catch (_) {}
+      }
       try { window.renderClientes(); } catch (_) {}
       try {
         var page = document.getElementById('page-clientes');
@@ -6336,6 +6385,7 @@ window._mbnActive = function(id) {
       _hideClientesAnaliseContainer();
       _layoutClientesTopo();
       _ensureBtnVerTodos();
+      var baseClientes = Array.isArray(window.CLIENTES) ? window.CLIENTES.slice() : [];
       var busca = (document.getElementById('cli-busca') || {}).value || '';
       var ramo = (document.getElementById('cli-ramo') || {}).value || '';
       var sit = (document.getElementById('cli-sit') || {}).value || '';
@@ -6358,7 +6408,7 @@ window._mbnActive = function(id) {
         }).join('');
         rs.value = cur;
       }
-      var lista = Array.isArray(window.CLIENTES) ? window.CLIENTES.slice() : [];
+      var lista = baseClientes.slice();
       if (busca) lista = lista.filter(function(c) {
         return String(c?.nome || '').toLowerCase().indexOf(String(busca || '').toLowerCase()) >= 0 || String(c?.cnpj || '').indexOf(String(busca || '')) >= 0;
       });
@@ -6421,6 +6471,12 @@ window._mbnActive = function(id) {
         return tb - ta;
       });
       if (modo === 'inativos_flag') lista = lista.filter(function(c) { return c && c.ativo === false; });
+
+      if (!lista.length && baseClientes.length && !String(busca || '').trim() && !String(ramo || '').trim() && !String(sit || '').trim() && !String(empFil || '').trim()) {
+        lista = baseClientes.slice();
+        modo = '';
+        try { window._clientesAnaliseModo = ''; } catch (_) {}
+      }
 
       try { if (typeof window.renderEmpBar === 'function') window.renderEmpBar(); } catch (_) {}
       var grid = document.getElementById('cli-grid');
