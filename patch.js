@@ -2872,6 +2872,194 @@
   } else { init(); }
 })();
 
+(function patchErpFixesV4() {
+  try {
+    if (!document.getElementById('patch-fixes-v4-style')) {
+      var st = document.createElement('style');
+      st.id = 'patch-fixes-v4-style';
+      st.textContent = `
+.historico-passagens,
+#historico-passagens,
+[id*="historico"],
+[class*="historico-lista"]{
+  overflow-y:auto !important;
+  max-height:60vh !important;
+}
+.modal-box .historico-passagens,
+.modal-box #historico-passagens,
+.modal-box [id*="historico"],
+.modal-box [class*="historico-lista"]{
+  overflow-y:auto !important;
+  max-height:60vh !important;
+}
+
+@media print{
+  body, .relatorio-inativos, table, td, th, tr, span, p, div{
+    color:#000 !important;
+    -webkit-print-color-adjust:exact !important;
+  }
+}
+.relatorio-inativos td,
+.relatorio-inativos th,
+.relatorio-inativos .cliente-nome,
+#relatorio-inativos *{
+  color:#1a1a1a !important;
+}
+      `;
+      document.head.appendChild(st);
+    }
+  } catch (_) {}
+
+  function _normUpper(s) {
+    var v = String(s == null ? '' : s).trim().toUpperCase();
+    try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    v = v.replace(/\s+/g, ' ').trim();
+    return v;
+  }
+
+  function _parseJsonMaybe(v) {
+    if (v == null) return null;
+    if (Array.isArray(v) || typeof v === 'object') return v;
+    if (typeof v === 'string') {
+      var s = v.trim();
+      if (!s) return null;
+      try { return JSON.parse(s); } catch (_) { return null; }
+    }
+    return null;
+  }
+
+  function _maquinasFromOf(of) {
+    var list = [];
+    if (!of || typeof of !== 'object') return list;
+    var fluxo = _parseJsonMaybe(of.fluxo_maquinas) ?? _parseJsonMaybe(of.maq) ?? null;
+    if (Array.isArray(fluxo)) {
+      fluxo.forEach(function(m) {
+        if (typeof m === 'string') list.push(m);
+        else if (m && typeof m === 'object') list.push(m.nome || m.name || m.maquina || '');
+      });
+    }
+    var ag = String(of.maquina_agendada || '').trim();
+    if (ag) list.unshift(ag);
+    list = list.map(function(x) { return String(x || '').trim(); }).filter(Boolean);
+    var uniq = [];
+    var seen = new Set();
+    list.forEach(function(x) {
+      var k = _normUpper(x);
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      uniq.push(x);
+    });
+    return uniq;
+  }
+
+  function _opsFromOf(of) {
+    var ops = [];
+    if (!of || typeof of !== 'object') return ops;
+    var raw = _parseJsonMaybe(of.operadores_conclusao);
+    if (Array.isArray(raw)) {
+      raw.forEach(function(o) {
+        if (typeof o === 'string') ops.push(o);
+        else if (o && typeof o === 'object') ops.push(o.nome || o.name || o.operador || o.usuario || '');
+      });
+    }
+    var one = String(of.operador_conclusao || '').trim();
+    if (one) ops.push(one);
+    ops = ops.map(function(x) { return String(x || '').trim(); }).filter(Boolean);
+    var uniq = [];
+    var seen = new Set();
+    ops.forEach(function(x) {
+      var k = _normUpper(x);
+      if (!k || seen.has(k)) return;
+      seen.add(k);
+      uniq.push(x);
+    });
+    return uniq;
+  }
+
+  async function _buscarOfPorNumero(numero) {
+    var num = String(numero || '').replace(/\D/g, '').trim();
+    if (!num) return null;
+    var token = '';
+    try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+    var h = token ? { Authorization: 'Bearer ' + token } : {};
+    var url = '/api/ofs?numero=' + encodeURIComponent(num) + '&lite=1&limit=5&excluir_canceladas=1&nocache=1&t=' + Date.now();
+    var r = await fetch(url, { headers: h });
+    var j = await r.json().catch(function() { return null; });
+    var data = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : (Array.isArray(j?.ofs) ? j.ofs : []));
+    return (Array.isArray(data) && data[0]) ? data[0] : null;
+  }
+
+  function _preencherMaq(maqList) {
+    var sel = document.getElementById('inc-maquina');
+    if (sel && maqList.length) {
+      var alvo = _normUpper(maqList[0]);
+      var foundVal = '';
+      try {
+        Array.from(sel.options || []).forEach(function(opt) {
+          if (foundVal) return;
+          var txt = String(opt.textContent || opt.value || '').trim();
+          if (_normUpper(txt) === alvo) foundVal = opt.value || txt;
+        });
+      } catch (_) {}
+      if (foundVal) sel.value = foundVal;
+      else sel.value = maqList[0];
+    }
+    var wrap = document.getElementById('inc-maquinas-checkboxes');
+    if (wrap) {
+      var set = new Set(maqList.map(_normUpper));
+      Array.from(wrap.querySelectorAll('input[type="checkbox"]')).forEach(function(cb) {
+        var v = String(cb.value || '').trim();
+        cb.checked = !!(v && set.has(_normUpper(v)));
+      });
+    }
+  }
+
+  function _preencherOps(opsList) {
+    var cont = document.getElementById('inc-operadores-of-lista');
+    if (!cont) return;
+    var set = new Set(opsList.map(_normUpper));
+    Array.from(cont.querySelectorAll('input[type="checkbox"]')).forEach(function(cb) {
+      var v = String(cb.value || '').trim();
+      cb.checked = !!(v && set.has(_normUpper(v)));
+    });
+  }
+
+  var _lastNum = '';
+  var _lock = false;
+  async function _onOfNumero() {
+    if (_lock) return;
+    var input = document.getElementById('inc-of-numero');
+    if (!input) return;
+    var num = String(input.value || '').replace(/\D/g, '').trim();
+    if (!num || num === _lastNum) return;
+    _lastNum = num;
+    _lock = true;
+    try {
+      var of = await _buscarOfPorNumero(num);
+      if (of) {
+        _preencherMaq(_maquinasFromOf(of));
+        _preencherOps(_opsFromOf(of));
+      }
+    } catch (_) {}
+    _lock = false;
+  }
+
+  function _bindInc() {
+    var input = document.getElementById('inc-of-numero');
+    if (!input || input.dataset.patchAutoOf === '1') return;
+    input.dataset.patchAutoOf = '1';
+    input.addEventListener('blur', _onOfNumero, true);
+    input.addEventListener('change', _onOfNumero, true);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(_bindInc, 200); setInterval(_bindInc, 900); });
+  } else {
+    setTimeout(_bindInc, 200);
+    setInterval(_bindInc, 900);
+  }
+})();
+
 (function initComissoesEditarQtdProduzida() {
   function escSel(s) {
     var v = String(s || '');
