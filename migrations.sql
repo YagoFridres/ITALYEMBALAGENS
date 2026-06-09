@@ -158,3 +158,22 @@ alter table if exists public.facas_estoque
 alter table if exists public.cliches_estoque
   add column if not exists tipo_corte text,
   add column if not exists maquinas jsonb default '[]';
+
+alter table if exists public.facas_estoque
+  add column if not exists localizacao_fisica text,
+  add column if not exists data_fabricacao date,
+  add column if not exists vida_util_dias integer default 730;
+
+alter table if exists public.estoque_tintas
+  add column if not exists preco_kg numeric default 0,
+  add column if not exists data_validade date;
+
+alter table if exists public.estoque_tintas_movimentos
+  add column if not exists of_id uuid,
+  add column if not exists of_numero text,
+  add column if not exists valor_unitario numeric;
+
+alter table if exists public.estoque_materiais_movimentos
+  add column if not exists of_id uuid,
+  add column if not exists of_numero text,
+  add column if not exists valor_unitario numeric;
