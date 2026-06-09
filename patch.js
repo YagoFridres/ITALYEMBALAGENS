@@ -4247,6 +4247,40 @@
       var p4 = document.getElementById('page-custo-producao');
       if (p4 && p4.style.display !== 'none') _renderCustoProducao(false);
     } catch (_) {}
+
+    try {
+      var host = document.querySelector('#ng-estoques .nav-group-items');
+      if (host && !host.dataset.patchEstItensV1) {
+        host.dataset.patchEstItensV1 = '1';
+        var mk = function(id, label, icon, pageId) {
+          if (document.getElementById(id)) return;
+          var el = document.createElement('div');
+          el.id = id;
+          el.className = 'nav-item';
+          el.innerHTML = '<span class="ico">' + icon + '</span>' + label;
+          el.onclick = function() {
+            try { window.go(pageId); } catch (_) {}
+            try { window.closeNavGroupsExcept && window.closeNavGroupsExcept('ng-estoques'); } catch (_) {}
+          };
+          host.insertBefore(el, host.firstChild);
+        };
+        mk('menu-dashboard-estoques', 'Dashboard de Estoques', '📊', 'dashboard-estoques');
+        mk('menu-estoque-materiais', 'Estoque de Materiais', '🧰', 'estoque-materiais');
+        mk('menu-estoque-tintas', 'Estoque de Tintas', '🎨', 'estoque-tintas');
+      }
+    } catch (_) {}
+
+    try {
+      if (typeof window.renderEstoqueTintas !== 'function') {
+        window.renderEstoqueTintas = function() { try { window.go('estoque-tintas'); } catch (_) {} };
+      }
+      if (typeof window.renderEstoqueMateriais !== 'function') {
+        window.renderEstoqueMateriais = function() { try { window.go('estoque-materiais'); } catch (_) {} };
+      }
+      if (typeof window.renderDashboardEstoques !== 'function') {
+        window.renderDashboardEstoques = function() { try { window.go('dashboard-estoques'); } catch (_) {} };
+      }
+    } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
@@ -6157,6 +6191,31 @@ window._mbnActive = function(id) {
     window._patchClientesFiltrosV1 = true;
 
     window._clientesAnaliseModo = String(window._clientesAnaliseModo || '').trim();
+    window._clientesFiltroAtivo = String(window._clientesFiltroAtivo || '').trim();
+
+    function _hideClientesAnaliseContainer() {
+      try {
+        var c = document.getElementById('analise-clientes-resultado');
+        if (c) {
+          c.innerHTML = '';
+          c.style.display = 'none';
+        }
+      } catch (_) {}
+    }
+
+    function _ensureClientesCss() {
+      if (document.getElementById('patch-clientes-topo-css')) return;
+      var st = document.createElement('style');
+      st.id = 'patch-clientes-topo-css';
+      st.textContent =
+        '#page-clientes .clientes-acoes-topo{' +
+          'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;' +
+        '}' +
+        '#page-clientes .clientes-acoes-topo .btn, #page-clientes .clientes-acoes-topo .nav-item{' +
+          'min-height:44px;' +
+        '}';
+      document.head.appendChild(st);
+    }
 
     function _setClientesModo(modo) {
       try { window._clientesAnaliseModo = String(modo || '').trim(); } catch (_) {}
@@ -6183,6 +6242,7 @@ window._mbnActive = function(id) {
       if (dias) {
         try { dias.value = String(dias.dataset.defaultValue || dias.value || '30'); } catch (_) {}
       }
+      try { window._clientesFiltroAtivo = ''; } catch (_) {}
       _setClientesModo('');
     }
 
@@ -6205,9 +6265,40 @@ window._mbnActive = function(id) {
       else toolbar.appendChild(btnTodos);
     }
 
+    function _layoutClientesTopo() {
+      _ensureClientesCss();
+      var toolbar = document.querySelector('#page-clientes .ptoolbar');
+      if (!toolbar) return;
+      toolbar.classList.add('clientes-acoes-topo');
+      _ensureBtnVerTodos();
+
+      var btnSem = document.getElementById('btn-analise-inativos');
+      var btnMais = document.getElementById('btn-analise-ativos');
+      var btnVal = document.getElementById('btn-analise-valor');
+      if (btnSem) { btnSem.textContent = 'Sem pedido +30 dias'; btnSem.style.minHeight = '44px'; }
+      if (btnMais) { btnMais.textContent = 'Quem mais pede'; btnMais.style.minHeight = '44px'; }
+      if (btnVal) { btnVal.textContent = 'Maior valor'; btnVal.style.minHeight = '44px'; }
+
+      var btnInativos = toolbar.querySelector('button[onclick*="abrirClientesInativos"]');
+      if (btnInativos) btnInativos.style.minHeight = '44px';
+      var btnImport = toolbar.querySelector('button[onclick*="clientesAbrirImportExcel"]');
+      if (btnImport) btnImport.style.minHeight = '44px';
+      var btnDup = toolbar.querySelector('button[onclick*="clientesVerificarDuplicatas"]');
+      if (btnDup) btnDup.style.minHeight = '44px';
+      var btnTodos = document.getElementById('btn-clientes-ver-todos');
+      var btnNovo = toolbar.querySelector('button[onclick*="abrirModalCliente"]');
+      if (btnNovo) btnNovo.style.minHeight = '44px';
+
+      var ordered = [btnSem, btnMais, btnVal, btnInativos, btnImport, btnDup, btnTodos, btnNovo].filter(Boolean);
+      ordered.forEach(function(b) {
+        try { toolbar.appendChild(b); } catch (_) {}
+      });
+    }
+
     async function _refreshClientesFullList(opts) {
       var o = opts || {};
       if (o.reset !== false) _resetClientesFiltrosUI();
+      _hideClientesAnaliseContainer();
       try { await window.carregarClientes(true); } catch (_) {
         try { await window.carregarClientes(false); } catch (_) {}
       }
@@ -6229,6 +6320,7 @@ window._mbnActive = function(id) {
         var r = origGo.apply(this, arguments);
         if (String(id || '') === 'clientes') {
           setTimeout(function() {
+            try { window._clientesSkipAutoAnaliseUntil = Date.now() + 2500; } catch (_) {}
             if (String(window._clientesAnaliseModo || '').trim()) _setClientesModo('');
             _refreshClientesFullList({ reset: true, scroll: false }).catch(function(_) {});
           }, 80);
@@ -6241,6 +6333,8 @@ window._mbnActive = function(id) {
 
     var origRender = window.renderClientes;
     window.renderClientes = function() {
+      _hideClientesAnaliseContainer();
+      _layoutClientesTopo();
       _ensureBtnVerTodos();
       var busca = (document.getElementById('cli-busca') || {}).value || '';
       var ramo = (document.getElementById('cli-ramo') || {}).value || '';
@@ -6331,6 +6425,11 @@ window._mbnActive = function(id) {
       try { if (typeof window.renderEmpBar === 'function') window.renderEmpBar(); } catch (_) {}
       var grid = document.getElementById('cli-grid');
       if (!grid) return;
+      if (!lista.length) {
+        grid.innerHTML = '<div style="padding:18px;color:var(--text3);text-align:center">Nenhum cliente encontrado.</div>';
+        _setClientesModo(modo);
+        return;
+      }
       grid.innerHTML = lista.map(function(c) {
         var ofs = (Array.isArray(window.OFs) ? window.OFs : []).filter(function(o) { return String(o?.cliId || o?.cli_id || o?.cliente_id || '').trim() === String(c?.id || '').trim(); });
         var total = ofs.reduce(function(s, o) { return s + (Number(o?.valor_total ?? o?.valor_venda ?? o?.val ?? 0) || 0); }, 0);
@@ -6374,13 +6473,21 @@ window._mbnActive = function(id) {
 
     var origAnalise = window.carregarAnaliseClientes;
     window.carregarAnaliseClientes = async function(tipo) {
+      var skipUntil = 0;
+      try { skipUntil = Number(window._clientesSkipAutoAnaliseUntil || 0) || 0; } catch (_) { skipUntil = 0; }
+      if (skipUntil && Date.now() < skipUntil) {
+        _hideClientesAnaliseContainer();
+        return;
+      }
       var t = String(tipo || 'inativos').trim() || 'inativos';
       if (t === 'inativos') window._clientesAnaliseModo = 'sem_pedido';
       else if (t === 'ativos') window._clientesAnaliseModo = 'mais_pede';
       else if (t === 'valor') window._clientesAnaliseModo = 'maior_valor';
       _setClientesModo(String(window._clientesAnaliseModo || ''));
+      try { window._clientesFiltroAtivo = String(window._clientesAnaliseModo || ''); } catch (_) {}
       try { window.renderClientes(); } catch (_) {}
-      try { if (typeof origAnalise === 'function') return await origAnalise.apply(this, arguments); } catch (_) {}
+      _hideClientesAnaliseContainer();
+      return;
     };
 
     ['btn-analise-inativos', 'btn-analise-ativos', 'btn-analise-valor'].forEach(function(id) {
