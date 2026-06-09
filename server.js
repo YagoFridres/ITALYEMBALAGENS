@@ -9455,7 +9455,58 @@ app.put('/api/inconformidades/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/inconformidades/:id', authMiddleware, async (req, res) => {
   try {
-    const { error } = await supabase.from('inconformidades').delete().eq('id', req.params.id);
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id_obrigatorio' });
+
+    const empresaUuid = await _resolveEmpresaUuid(req).catch(() => '');
+    const empId = String(
+      req.usuario?.emp_id ??
+      req.usuario?.empId ??
+      req.usuario?.sigla ??
+      req.user?.emp_id ??
+      req.user?.empId ??
+      req.user?.sigla ??
+      ''
+    ).trim();
+
+    let data = null;
+    let error = null;
+    const selectVariants = [
+      'id,empresa_id,emp_id',
+      'id,empresa_id',
+      'id,emp_id',
+      'id',
+    ];
+
+    for (const cols of selectVariants) {
+      const r = await supabase.from('inconformidades').select(cols).eq('id', id).limit(1);
+      data = r.data;
+      error = r.error;
+      const msg = String(error?.message || '').toLowerCase();
+      if (!error || !(msg.includes('column') || msg.includes('schema cache'))) break;
+    }
+    if (error) throw error;
+
+    const atual = Array.isArray(data) ? data[0] : null;
+    if (!atual) return res.status(404).json({ ok: false, error: 'Inconformidade não encontrada' });
+
+    const rowEmpresaUuid = String(atual?.empresa_id || '').trim();
+    const rowEmpId = String(atual?.emp_id || '').trim();
+    if (empresaUuid && rowEmpresaUuid && rowEmpresaUuid !== empresaUuid) {
+      return res.status(403).json({ ok: false, error: 'Sem permissão para apagar esta inconformidade' });
+    }
+    if (!rowEmpresaUuid && empId && rowEmpId && rowEmpId !== empId) {
+      return res.status(403).json({ ok: false, error: 'Sem permissão para apagar esta inconformidade' });
+    }
+    if ((empresaUuid || empId) && !rowEmpresaUuid && !rowEmpId) {
+      return res.status(403).json({ ok: false, error: 'Empresa da inconformidade não identificada' });
+    }
+
+    let del = supabase.from('inconformidades').delete().eq('id', id);
+    if (empresaUuid && rowEmpresaUuid) del = del.eq('empresa_id', empresaUuid);
+    else if (empId && rowEmpId) del = del.eq('emp_id', empId);
+
+    ({ error } = await del);
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) { err(res, e); }
