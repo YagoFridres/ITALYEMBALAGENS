@@ -3273,6 +3273,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
+    rows = _sanitizeRowsForJson(rows);
     const payload = { data: rows, total: Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0) };
     cacheSet(cacheKey, payload, 10 * 1000);
     return res.json({ ok: true, ...payload });
@@ -6925,160 +6926,26 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const searchQ = String(req.query.q || '').trim();
     const empresaIdLookup = await _empresaIdFromUsuarios(req);
     if (!todos && !empresaIdLookup) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
-    const empCandidates = todos ? [] : [empresaIdLookup];
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limitDefault = autocompleteOnly ? 50 : 100;
     const limitMax = autocompleteOnly ? 50 : 500;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || limitDefault, limitMax);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
-    const lite = String(req.query.lite || '') === '1';
-    const cacheKey = '';
-    const cols = empCandidates.length ? ['empresa_id', 'empresa', 'empresaId'] : [null];
-    let lastErr = null;
-    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
-    let lastRows = null;
-    const applyClientesFilters = (q) => {
-      let query = q;
-      if (searchQ) {
-        const like = `%${searchQ}%`;
-        query = query.or(`nome.ilike.${like},rs.ilike.${like},cnpj.ilike.${like}`);
-      }
-      if (autocompleteOnly) query = query.eq('ativo', true);
-      query = query.order('nome');
-      if (hasPaging) query = query.range(offset, offset + limit - 1);
-      else if (autocompleteOnly) query = query.limit(limit);
-      return query;
-    };
-    for (const empId of (empCandidates.length ? empCandidates : [null])) {
-      for (const col of cols) {
-      let localSelect = selectSlim;
-      let lastLocalErr = null;
-      for (let i = 0; i < 8; i++) {
-        let q = supabase.from('clientes').select(localSelect);
-        if (!todos && col) q = q.eq(col, empId);
-        q = applyClientesFilters(q);
-        const { data, error } = await q;
-        if (!error) {
-          const rows = data || [];
-          lastRows = rows;
-          if (!lite) {
-            try { console.log('clientes retornados:', rows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
-            return ok(res, rows);
-          }
-          const trimmed = rows.map((r) => ({
-            id: r.id,
-            nome: r.nome ?? null,
-            rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
-            razao_social: r.razao_social ?? null,
-            cnpj: r.cnpj ?? null,
-            ie: r.ie ?? null,
-            tel: r.tel ?? r.telefone ?? null,
-            telefone: r.telefone ?? null,
-            email: r.email ?? null,
-            cidade: r.cidade ?? null,
-            uf: r.uf ?? null,
-            ramo: r.ramo ?? null,
-            emp_id: r.emp_id ?? r.empId ?? null,
-            empId: r.empId ?? null,
-            vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
-            vendId: r.vendId ?? null,
-            obs: r.obs ?? r.observacoes ?? null,
-            observacoes: r.observacoes ?? null,
-          }));
-          try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
-          return ok(res, trimmed);
-        }
-
-        lastLocalErr = error;
-        const msg = String(error.message || '');
-        const m = msg.match(/column ["\s]*([\w.]+)["\s]* does not exist/i)
-          || msg.match(/Could not find the '([\w]+)' column/i);
-        const missingCol = m && m[1] ? String(m[1]).split('.').pop() : '';
-
-        if (col && missingCol && missingCol === col) {
-          break;
-        }
-
-        if (missingCol) {
-          localSelect = localSelect.split(',').map(s => s.trim()).filter((c) => c && c !== missingCol).join(',');
-          if (!localSelect) break;
-          continue;
-        }
-
-        if (col && (msg.includes('column') || msg.includes('Could not find'))) {
-          break;
-        }
-        throw error;
-      }
-
-        if (lastLocalErr) lastErr = lastLocalErr;
-        const msg = String(lastLocalErr?.message || lastLocalErr || '');
-        if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
-
-        if (lastLocalErr) {
-          let q2 = supabase.from('clientes').select('*');
-          if (!todos && col) q2 = q2.eq(col, empId);
-          q2 = applyClientesFilters(q2);
-          const all = await q2;
-          if (!all.error) {
-            const rows = all.data || [];
-            lastRows = rows;
-            if (!lite) {
-              try { console.log('clientes retornados:', rows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
-              return ok(res, rows);
-            }
-            const trimmed = rows.map((r) => ({
-              id: r.id,
-              nome: r.nome ?? null,
-              rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
-              razao_social: r.razao_social ?? null,
-              cnpj: r.cnpj ?? null,
-              ie: r.ie ?? null,
-              tel: r.tel ?? r.telefone ?? null,
-              telefone: r.telefone ?? null,
-              email: r.email ?? null,
-              cidade: r.cidade ?? null,
-              uf: r.uf ?? null,
-              ramo: r.ramo ?? null,
-              emp_id: r.emp_id ?? r.empId ?? null,
-              empId: r.empId ?? null,
-              vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
-              vendId: r.vendId ?? null,
-              obs: r.obs ?? r.observacoes ?? null,
-              observacoes: r.observacoes ?? null,
-            }));
-            try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
-            return ok(res, trimmed);
-          }
-          lastErr = all.error;
-        }
-        if (lastLocalErr) throw lastLocalErr;
-      }
+    let q = supabase
+      .from('clientes')
+      .select('id,nome,cidade,email,vendedor_id,empresa_id,created_at,ativo')
+      .order('nome');
+    if (!todos) q = q.eq('empresa_id', empresaIdLookup);
+    if (searchQ) {
+      const like = `%${searchQ.replace(/%/g, '')}%`;
+      q = q.or(`nome.ilike.${like},cidade.ilike.${like},email.ilike.${like}`);
     }
-    if (lastRows && Array.isArray(lastRows)) {
-      try { console.log('clientes retornados:', lastRows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', 'fallback', 'col:', 'none'); } catch (_) {}
-      return ok(res, lite ? lastRows.map((r) => ({
-        id: r.id,
-        nome: r.nome ?? null,
-        rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
-        razao_social: r.razao_social ?? null,
-        cnpj: r.cnpj ?? null,
-        ie: r.ie ?? null,
-        tel: r.tel ?? r.telefone ?? null,
-        telefone: r.telefone ?? null,
-        email: r.email ?? null,
-        cidade: r.cidade ?? null,
-        uf: r.uf ?? null,
-        ramo: r.ramo ?? null,
-        emp_id: r.emp_id ?? r.empId ?? null,
-        empId: r.empId ?? null,
-        vendedor_id: r.vendedor_id ?? r.vendId ?? r.vendedorId ?? null,
-        vendId: r.vendId ?? null,
-        obs: r.obs ?? r.observacoes ?? null,
-        observacoes: r.observacoes ?? null,
-      })) : lastRows);
-    }
-    throw lastErr;
+    if (autocompleteOnly) q = q.eq('ativo', true);
+    if (hasPaging) q = q.range(offset, offset + limit - 1);
+    else q = q.limit(limit);
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data: Array.isArray(data) ? data : [] });
   } catch (e) { err(res, e); }
 });
 
@@ -8420,6 +8287,19 @@ async function _empresaIdFromUsuarios(req) {
   } catch (_) {
     return '';
   }
+}
+
+function _sanitizeRowsForJson(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((row) => {
+    if (!row || typeof row !== 'object') return row;
+    const clean = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (typeof v === 'string' && v.length > 50000) clean[k] = v.substring(0, 50000);
+      else clean[k] = v;
+    }
+    return clean;
+  });
 }
 
 app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
@@ -9967,22 +9847,13 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
   } catch (e) { return err(res, e); }
 });
 
-app.get('/api/estoque', async (req, res) => {
+app.get('/api/estoque', authMiddleware, async (req, res) => {
   try {
-    const empId = req.query.empId ? String(req.query.empId) : '';
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
-    let lastErr = null;
-    for (const col of cols) {
-      let q = supabase.from('estoque').select('*').order('nome');
-      if (col) q = q.eq(col, empId);
-      const { data, error } = await q;
-      if (!error) return ok(res, data || []);
-      lastErr = error;
-      const msg = String(error.message || error);
-      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
-      throw error;
-    }
-    throw lastErr;
+    const empresaId = await _empresaIdFromUsuarios(req);
+    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const { data, error } = await supabase.from('estoque').select('*').eq('empresa_id', empresaId).order('nome');
+    if (error) throw error;
+    return ok(res, data || []);
   } catch (e) { err(res, e); }
 });
 
@@ -18184,7 +18055,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     };
     const hasLat = await hasColCli('lat');
     const hasLng = await hasColCli('lng');
-    const cliSel = 'id,nome,cidade,estado,uf,tel,telefone,vendedor_id,emp_id'
+    const cliSel = 'id,nome,cidade,uf,tel,telefone,vendedor_id,emp_id'
       + ((hasLat && hasLng) ? ',lat,lng' : '');
 
     let qCli = supabase.from('clientes').select(cliSel).limit(5000);
