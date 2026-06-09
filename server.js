@@ -2456,7 +2456,7 @@ async function clientesInsertCompat(payload) {
   return { data: null, error: lastErr };
 }
 
-async function clientesUpdateCompat(id, payload) {
+async function clientesUpdateCompat(id, payload, empresaId) {
   const attempts = [
     payload,
     (() => {
@@ -2470,7 +2470,9 @@ async function clientesUpdateCompat(id, payload) {
   for (const p of attempts) {
     let cur = { ...(p || {}) };
     for (let tentativa = 0; tentativa < 10; tentativa++) {
-      const { data, error } = await supabase.from('clientes').update(cur).eq('id', id).select().limit(1);
+      let q = supabase.from('clientes').update(cur).eq('id', id);
+      if (empresaId) q = q.eq('empresa_id', empresaId);
+      const { data, error } = await q.select().limit(1);
       if (!error) return { data, error: null };
       lastErr = error;
       const msg = String(error.message || error);
@@ -6924,8 +6926,8 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const todos = String(req.query.todos || '').trim() === 'true';
     const autocompleteOnly = String(req.query.autocomplete || '').trim() === 'true';
     const searchQ = String(req.query.q || '').trim();
-    const empresaIdLookup = await _empresaIdFromUsuarios(req);
-    if (!todos && !empresaIdLookup) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const empresa_id = await _empresaIdFromUsuarios(req);
+    if (!todos && !empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limitDefault = autocompleteOnly ? 50 : 100;
     const limitMax = autocompleteOnly ? 50 : 500;
@@ -6935,7 +6937,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       .from('clientes')
       .select('id, empresa_id, nome, documento, telefone, email, observacoes, ativo, created_at, codigo, rs, cnpj, tel, cidade, uf, endereco, ramo, pagto, rep, ie, updated_at, emp_id, vendedor_id')
       .order('nome');
-    if (!todos) q = q.eq('empresa_id', empresaIdLookup);
+    if (!todos) q = q.eq('empresa_id', empresa_id);
     if (searchQ) {
       const like = `%${searchQ.replace(/%/g, '')}%`;
       q = q.or(`nome.ilike.${like},cidade.ilike.${like},email.ilike.${like}`);
@@ -7101,15 +7103,15 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
+    const empresa_id = await _empresaIdFromUsuarios(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     try {
-      console.log('POST /api/clientes - empresa_id:', req.usuario?.empresa_id);
+      console.log('POST /api/clientes - empresa_id:', empresa_id);
       console.log('POST /api/clientes - body:', req.body);
     } catch (_) {}
     const payload = clientesPayload(req.body || {});
-    const empresaIdLookup = await _empresaIdFromUsuarios(req);
-    if (!empresaIdLookup) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const empIdUsuario = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
-    if (!payload.empresa_id) payload.empresa_id = empresaIdLookup;
+    if (!payload.empresa_id) payload.empresa_id = empresa_id;
     if (!payload.emp_id) payload.emp_id = empIdUsuario || payload.emp_id;
     try {
       const digits = _cnpjDigits(payload.cnpj);
@@ -7138,40 +7140,47 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
+    const empresa_id = await _empresaIdFromUsuarios(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const clienteId = String(req.params.id || '').trim();
+    if (!clienteId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     let antes = null;
     try {
-      const r0 = await supabase.from('clientes').select('*').eq('id', String(req.params.id || '').trim()).maybeSingle();
+      const r0 = await supabase.from('clientes').select('*').eq('id', clienteId).eq('empresa_id', empresa_id).maybeSingle();
       antes = r0?.data || null;
     } catch (_) {}
     const payload = clientesPayload({ ...(req.body || {}) });
     delete payload.id;
+    if (!payload.empresa_id) payload.empresa_id = empresa_id;
     if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
-        const existentes = await _clientesFindByCnpjDigits({ digits, empId: String(payload.emp_id || payload.empId || req.query?.empId || '').trim() || null, ignoreId: String(req.params.id || '').trim() });
+        const existentes = await _clientesFindByCnpjDigits({ digits, empId: String(payload.emp_id || payload.empId || req.query?.empId || '').trim() || null, ignoreId: clienteId });
         if (existentes.length) return res.status(409).json({ ok: false, error: 'cnpj_ja_cadastrado', existing: existentes[0] });
       }
     } catch (_) {}
-    let { data, error } = await clientesUpdateCompat(req.params.id, payload);
+    let { data, error } = await clientesUpdateCompat(clienteId, payload, empresa_id);
     if (error) {
       const msg = String(error.message || error);
       if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
         delete payload.vendedor_id;
         delete payload.vendedor;
-        ({ data, error } = await clientesUpdateCompat(req.params.id, payload));
+        ({ data, error } = await clientesUpdateCompat(clienteId, payload, empresa_id));
       }
     }
     if (error) throw error;
     const updated = Array.isArray(data) ? data[0] : data;
-    if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
-    await logAuditoria('clientes', 'UPDATE', String(req.params.id || '').trim(), antes, updated, req);
+    if (!updated || String(updated?.empresa_id || '').trim() !== empresa_id) return res.status(404).json({ error: 'Cliente não encontrado' });
+    await logAuditoria('clientes', 'UPDATE', clienteId, antes, updated, req);
     ok(res, updated);
   } catch (e) { err(res, e); }
 });
 
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
+    const empresa_id = await _empresaIdFromUsuarios(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
@@ -7247,7 +7256,7 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
       }
     }
 
-    const { error } = await supabase.from('clientes').delete().eq('id', id);
+    const { error } = await supabase.from('clientes').delete().eq('id', id).eq('empresa_id', empresa_id);
     if (error) throw error;
     cacheClearPrefix('clientes_');
     res.json({ ok: true });
