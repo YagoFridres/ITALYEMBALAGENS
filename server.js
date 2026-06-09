@@ -6925,11 +6925,28 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const { data: usr } = await supabase
       .from('usuarios')
-      .select('empresa_id')
+      .select('empresa_id, emp_id')
       .eq('id', req.usuario.id)
       .single();
 
-    const empresa_id = usr?.empresa_id;
+    let empresa_id = usr?.empresa_id || usr?.emp_id;
+    if (!empresa_id) {
+      try {
+        const { data: usrJoin } = await supabase
+          .from('usuarios')
+          .select('empresa_id, emp_id, empresas(id)')
+          .eq('id', req.usuario.id)
+          .single();
+        const empresaJoin = Array.isArray(usrJoin?.empresas) ? usrJoin.empresas[0] : usrJoin?.empresas;
+        empresa_id = usrJoin?.empresa_id || usrJoin?.emp_id || empresaJoin?.id || '';
+      } catch (_) {}
+    }
+    console.log('[CLIENTES DEBUG]', {
+      usuario_id: req.usuario.id,
+      usuario_obj: req.usuario,
+      usr_data: usr,
+      empresa_id: empresa_id
+    });
     if (!empresa_id) {
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     }
