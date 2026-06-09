@@ -2836,7 +2836,7 @@
     if (!force && (Date.now() - _cacheChapas.ts) < 4000) return _cacheChapas.items;
     var url = '/api/chapas_estoque?nocache=1&t=' + Date.now();
     try { url += '&empId=' + encodeURIComponent(_emp()); } catch (_) {}
-    var j = await _apiJson(url, { headers: _hdrAuth() });
+    var j = await _apiJson(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
     var rows = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j?.chapas) ? j.chapas : (Array.isArray(j) ? j : []));
     _cacheChapas = { ts: Date.now(), items: Array.isArray(rows) ? rows : [] };
     return _cacheChapas.items;
@@ -2877,7 +2877,7 @@
       _loadMateriais(!!force).catch(function() { return []; }),
       (async function() {
         try {
-          var r = await fetch('/api/facas_estoque?empId=' + encodeURIComponent(_emp()), { headers: _hdrAuth() });
+          var r = await fetch('/api/facas_estoque?empId=' + encodeURIComponent(_emp()), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
           var j = await r.json().catch(function() { return null; });
           if (!r.ok || !j || j.ok === false) return [];
           return Array.isArray(j.data) ? j.data : (Array.isArray(j) ? j : []);
@@ -3024,9 +3024,9 @@
       _loadChapas(!!force).catch(function() { return []; }),
       _loadTintas(!!force).catch(function() { return []; }),
       _loadMateriais(!!force).catch(function() { return []; }),
-      _apiJson('/api/chapas_estoque_movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&empId=' + encodeURIComponent(_emp()) + '&t=' + Date.now(), { headers: _hdrAuth() }).catch(function() { return { data: [] }; }),
-      _apiJson('/api/estoque_tintas/movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: _hdrAuth() }).catch(function() { return { data: [] }; }),
-      _apiJson('/api/estoque_materiais/movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: _hdrAuth() }).catch(function() { return { data: [] }; }),
+      _apiJson('/api/chapas_estoque_movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&empId=' + encodeURIComponent(_emp()) + '&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(function() { return { data: [] }; }),
+      _apiJson('/api/estoque_tintas/movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(function() { return { data: [] }; }),
+      _apiJson('/api/estoque_materiais/movimentos?limit=250&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(function() { return { data: [] }; }),
     ]).then(function(all) {
       var chapas = Array.isArray(all[0]) ? all[0] : [];
       var tintas = Array.isArray(all[1]) ? all[1] : [];
@@ -3179,7 +3179,7 @@
             '&status=' + encodeURIComponent('Concluído') +
             '&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) +
             '&nocache=1&t=' + Date.now();
-          var r = await fetch(url, { headers: _hdrAuth() });
+          var r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
           var j = await r.json().catch(function() { return null; });
           var rows = (j && j.ok !== false && Array.isArray(j.data)) ? j.data : (Array.isArray(j?.ofs) ? j.ofs : []);
           rows = Array.isArray(rows) ? rows : [];
@@ -3190,8 +3190,8 @@
       })(),
       _loadChapas(!!force),
       _loadTintas(!!force),
-      _apiJson('/api/estoque_tintas/movimentos?limit=400&tipo=saida&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: _hdrAuth() }).catch(function() { return { data: [] }; }),
-      _apiJson('/api/estoque_materiais/movimentos?limit=400&tipo=saida&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: _hdrAuth() }).catch(function() { return { data: [] }; }),
+      _apiJson('/api/estoque_tintas/movimentos?limit=400&tipo=saida&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(function() { return { data: [] }; }),
+      _apiJson('/api/estoque_materiais/movimentos?limit=400&tipo=saida&de=' + encodeURIComponent(de) + '&ate=' + encodeURIComponent(ate) + '&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } }).catch(function() { return { data: [] }; }),
     ]).then(function(all) {
       var ofs = Array.isArray(all[0]) ? all[0] : [];
       var chapas = Array.isArray(all[1]) ? all[1] : [];
@@ -3307,7 +3307,7 @@
   var _cacheTintas = { ts: 0, items: [] };
   async function _loadTintas(force) {
     if (!force && (Date.now() - _cacheTintas.ts) < 4000) return _cacheTintas.items;
-    var j = await _apiJson('/api/estoque_tintas?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: _hdrAuth() });
+    var j = await _apiJson('/api/estoque_tintas?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
     _cacheTintas = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
     return _cacheTintas.items;
   }
@@ -3555,7 +3555,7 @@
   function _deleteTinta(item) {
     if (!item) return;
     if (!confirm('Excluir esta tinta?')) return;
-    _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id), { method: 'DELETE', headers: _hdrAuth() })
+    _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } })
       .then(function() { return _loadTintas(true); })
       .then(function() { _renderTintasList(); _toast('🗑 Excluído', 'var(--orange)'); })
       .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
@@ -3564,7 +3564,7 @@
   var _cacheMateriais = { ts: 0, items: [] };
   async function _loadMateriais(force) {
     if (!force && (Date.now() - _cacheMateriais.ts) < 4000) return _cacheMateriais.items;
-    var j = await _apiJson('/api/estoque_materiais?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: _hdrAuth() });
+    var j = await _apiJson('/api/estoque_materiais?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
     _cacheMateriais = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
     return _cacheMateriais.items;
   }
@@ -3844,7 +3844,7 @@
   function _deleteMaterial(item) {
     if (!item) return;
     if (!confirm('Excluir este material?')) return;
-    _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id), { method: 'DELETE', headers: _hdrAuth() })
+    _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id), { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } })
       .then(function() { return _loadMateriais(true); })
       .then(function() { _renderMateriaisList(); _toast('🗑 Excluído', 'var(--orange)'); })
       .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
@@ -5297,7 +5297,7 @@
       var cacheKey = termo.toLowerCase();
       if (_ofRapidaAcKey === cacheKey && _ofRapidaAcCache.length) return Promise.resolve(_ofRapidaAcCache);
       var reqId = ++_ofRapidaAcReq;
-      var headers = _hdrAuth();
+      var headers = { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') };
       return fetch('/api/clientes?todos=true&autocomplete=true&q=' + encodeURIComponent(termo), { headers: headers })
         .then(function(r) { return r.json().catch(function() { return null; }); })
         .then(function(j) {
@@ -6784,7 +6784,7 @@ window._mbnActive = function(id) {
       if (!curId) return _toast('OF inválida', 'var(--red)');
       var fd = new FormData();
       fd.append('file', file, file.name || 'of.png');
-      var up = await fetch('/api/ofs/upload', { method: 'POST', headers: _hdrAuth(), body: fd });
+      var up = await fetch('/api/ofs/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }, body: fd });
       var uj = await up.json().catch(function() { return null; });
       if (!up.ok || !uj || !uj.ok || !uj.data || !uj.data.url) {
         var msg = uj?.error || ('Falha no upload (HTTP ' + up.status + ')');
@@ -7271,7 +7271,7 @@ window._mbnActive = function(id) {
           '&date_field=updated_at' +
           '&status=' + encodeURIComponent('Concluído') +
           '&excluir_canceladas=1&nocache=1&t=' + Date.now();
-        var r = await fetch(url, { headers: _hdrAuth() });
+        var r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
         var j = await r.json().catch(function() { return null; });
         var rows = (j && j.ok !== false && Array.isArray(j.data)) ? j.data : (Array.isArray(j?.ofs) ? j.ofs : []);
         rows = Array.isArray(rows) ? rows : [];
@@ -7282,7 +7282,7 @@ window._mbnActive = function(id) {
     }
 
     async function fetchEstoque() {
-      var r = await fetch('/api/chapas_estoque?nocache=1&t=' + Date.now(), { headers: _hdrAuth() });
+      var r = await fetch('/api/chapas_estoque?nocache=1&t=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') } });
       var j = await r.json().catch(function() { return null; });
       var rows = (j && j.ok !== false && Array.isArray(j.data)) ? j.data : (Array.isArray(j?.chapas) ? j.chapas : []);
       return Array.isArray(rows) ? rows : [];
