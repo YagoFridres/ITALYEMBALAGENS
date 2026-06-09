@@ -9304,8 +9304,25 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
 
     // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
     delete payload.foto_url;
+    delete payload.maquinas;
 
-    let toInsert = { ...payload };
+    const INC_COLS = [
+      'of_id', 'of_numero',
+      'cliente_id', 'cliente_nome',
+      'maquina', 'operador',
+      'obs', 'qtd_perdida',
+      'imagem_url', 'imagem_problema_url',
+      'status',
+      'emp_id',
+      'responsavel_resolucao', 'obs_resolucao', 'resolved_at',
+      'operadores_of',
+    ];
+    let toInsert = {};
+    for (const k of INC_COLS) {
+      if (Object.prototype.hasOwnProperty.call(payload, k) && payload[k] !== undefined) {
+        toInsert[k] = payload[k];
+      }
+    }
     const table = 'inconformidades';
     let lastError = null;
     for (let i = 0; i < 8; i++) {

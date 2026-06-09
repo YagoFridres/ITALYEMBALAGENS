@@ -2905,8 +2905,106 @@
 #relatorio-inativos *{
   color:#1a1a1a !important;
 }
+
+#page-historico-passagens{
+  padding:20px !important;
+}
+#hist-graficos-wrap{
+  padding:20px !important;
+  margin-bottom:16px !important;
+}
+.patch-hist-graficos-grid{
+  display:flex !important;
+  gap:24px !important;
+  width:100% !important;
+  align-items:stretch !important;
+}
+.patch-hist-graf-card{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+}
+.patch-hist-graf-canvaswrap{
+  height:min(400px, 45vh) !important;
+}
+.patch-hist-graf-canvaswrap canvas{
+  width:100% !important;
+  height:100% !important;
+}
+.patch-hist-recentes{
+  margin-top:14px !important;
+  background:rgba(255,255,255,0.03) !important;
+  border:1px solid rgba(255,255,255,0.08) !important;
+  border-radius:12px !important;
+  overflow:hidden !important;
+}
+.patch-hist-recentes .h{
+  padding:10px 12px !important;
+  color:#94a3b8 !important;
+  font-size:12px !important;
+  font-weight:700 !important;
+  border-bottom:1px solid rgba(255,255,255,0.08) !important;
+}
+.patch-hist-recentes table{
+  width:100% !important;
+  border-collapse:collapse !important;
+  font-size:12px !important;
+}
+.patch-hist-recentes th,
+.patch-hist-recentes td{
+  padding:8px 10px !important;
+  border-bottom:1px solid rgba(255,255,255,0.05) !important;
+  white-space:nowrap !important;
+}
+.patch-hist-recentes th{
+  color:#64748b !important;
+  font-weight:800 !important;
+  text-transform:uppercase !important;
+  letter-spacing:0.06em !important;
+}
+.patch-hist-recentes td{
+  color:#e2e8f0 !important;
+}
+.patch-hist-recentes td.q{
+  text-align:right !important;
+  font-weight:800 !important;
+}
+@media (max-width: 980px){
+  .patch-hist-graficos-grid{
+    flex-direction:column !important;
+    gap:12px !important;
+  }
+}
       `;
       document.head.appendChild(st);
+    }
+  } catch (_) {}
+
+  try {
+    if (!window.__patchInativosPrintV4) {
+      window.__patchInativosPrintV4 = 1;
+      window.addEventListener('beforeprint', function() {
+        try {
+          var tem =
+            document.getElementById('modalClientesInativos') ||
+            document.getElementById('listaClientesInativos') ||
+            document.getElementById('tabelaClientesInativos') ||
+            document.getElementById('relatorio-inativos') ||
+            document.querySelector('.relatorio-inativos');
+          if (!tem) return;
+          if (document.getElementById('patch-print-inativos-style')) return;
+          var st = document.createElement('style');
+          st.id = 'patch-print-inativos-style';
+          st.textContent =
+            'body{color:#111 !important;background:#fff !important;}' +
+            'td,th,span,p,div,a{color:#111 !important;}' +
+            '.cliente-nome,.dias-sem-pedido{color:#000 !important;font-weight:500 !important;}' +
+            '@media print{*{color:#000 !important;-webkit-print-color-adjust:exact !important;}}';
+          document.head.appendChild(st);
+        } catch (_) {}
+      });
+      window.addEventListener('afterprint', function() {
+        try { document.getElementById('patch-print-inativos-style')?.remove(); } catch (_) {}
+      });
     }
   } catch (_) {}
 
@@ -2982,7 +3080,18 @@
     var token = '';
     try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
     var h = token ? { Authorization: 'Bearer ' + token } : {};
-    var url = '/api/ofs?numero=' + encodeURIComponent(num) + '&lite=1&limit=5&excluir_canceladas=1&nocache=1&t=' + Date.now();
+    var emp = '';
+    try { if (typeof window._pinGetEmpId === 'function') emp = String(window._pinGetEmpId() || '').trim(); } catch (_) { emp = ''; }
+    if (!emp) { try { emp = String(window.CURRENT_USER?.email || '').trim().toUpperCase(); } catch (_) { emp = ''; } }
+    var qs = new URLSearchParams();
+    qs.set('numero', String(num));
+    qs.set('lite', '1');
+    qs.set('limit', '5');
+    qs.set('excluir_canceladas', '1');
+    qs.set('nocache', '1');
+    if (emp) { qs.set('empId', emp); qs.set('empresa_id', emp); }
+    qs.set('t', String(Date.now()));
+    var url = '/api/ofs?' + qs.toString();
     var r = await fetch(url, { headers: h });
     var j = await r.json().catch(function() { return null; });
     var data = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : (Array.isArray(j?.ofs) ? j.ofs : []));
@@ -3025,14 +3134,18 @@
   }
 
   var _lastNum = '';
+  var _lastTs = 0;
   var _lock = false;
   async function _onOfNumero() {
     if (_lock) return;
     var input = document.getElementById('inc-of-numero');
     if (!input) return;
     var num = String(input.value || '').replace(/\D/g, '').trim();
-    if (!num || num === _lastNum) return;
+    var now = Date.now();
+    if (!num) return;
+    if (num === _lastNum && (now - _lastTs) < 3000) return;
     _lastNum = num;
+    _lastTs = now;
     _lock = true;
     try {
       var of = await _buscarOfPorNumero(num);
@@ -3050,6 +3163,11 @@
     input.dataset.patchAutoOf = '1';
     input.addEventListener('blur', _onOfNumero, true);
     input.addEventListener('change', _onOfNumero, true);
+    input.addEventListener('focus', function() { _lastNum = ''; }, true);
+    input.addEventListener('keydown', function(e) {
+      var k = e && (e.key || e.code || '');
+      if (k === 'Enter') { setTimeout(_onOfNumero, 0); }
+    }, true);
   }
 
   if (document.readyState === 'loading') {
@@ -3057,6 +3175,104 @@
   } else {
     setTimeout(_bindInc, 200);
     setInterval(_bindInc, 900);
+  }
+})();
+
+(function patchHistoricoPassagensLayoutV5() {
+  function _token() {
+    try { return String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
+  }
+
+  function _headers() {
+    var t = _token();
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  }
+
+  function _fmtDataHora(p) {
+    var d = String(p?.data_passagem || p?.data || '').slice(0, 10);
+    var h = String(p?.hora_passagem || p?.hora || '').trim();
+    if (!d && p?.created_at) d = String(p.created_at).slice(0, 10);
+    if (!h && p?.created_at) h = String(p.created_at).slice(11, 16);
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      var parts = d.split('-');
+      d = parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    return (d ? d : '—') + (h ? (' ' + h) : '');
+  }
+
+  async function _carregarRecentes() {
+    var wrap = document.getElementById('hist-graficos-wrap');
+    if (!wrap) return;
+    var host = document.getElementById('patch-hist-recentes-host');
+    if (!host) return;
+    host.innerHTML = '<div style="padding:12px;color:#64748b;font-size:12px">Carregando…</div>';
+    try {
+      var r = await fetch('/api/passagens/historico?limit=20&offset=0&nocache=1&t=' + Date.now(), { headers: _headers() });
+      var j = await r.json().catch(function() { return null; });
+      var list = (j && Array.isArray(j.passagens)) ? j.passagens : (Array.isArray(j?.data) ? j.data : []);
+      if (!Array.isArray(list) || !list.length) {
+        host.innerHTML = '<div style="padding:12px;color:#64748b;font-size:12px">Sem passagens recentes.</div>';
+        return;
+      }
+      host.innerHTML = '<table><thead><tr>' +
+        '<th>Data</th><th>OF</th><th>Máquina</th><th>Operador</th><th style="text-align:right">Quantidade</th>' +
+        '</tr></thead><tbody>' +
+        list.map(function(p, i) {
+          var of = String(p?.of_numero || p?.of || p?.ofNum || '').trim() || '—';
+          var maq = String(p?.maquina || '').trim() || '—';
+          var op = String(p?.usuario || p?.operador || p?.responsavel || '').trim() || '—';
+          var qtd = (p?.quantidade != null) ? p.quantidade : (p?.qtd != null ? p.qtd : '');
+          var qtdN = Math.trunc(Number(qtd || 0) || 0);
+          return '<tr style="background:' + (i % 2 ? 'rgba(255,255,255,0.02)' : 'transparent') + '">' +
+            '<td>' + _fmtDataHora(p) + '</td>' +
+            '<td style="font-family:monospace">' + String(of).replace(/</g, '&lt;') + '</td>' +
+            '<td>' + String(maq).replace(/</g, '&lt;') + '</td>' +
+            '<td>' + String(op).replace(/</g, '&lt;') + '</td>' +
+            '<td class="q">' + String(qtdN) + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    } catch (_) {
+      host.innerHTML = '<div style="padding:12px;color:#ef4444;font-size:12px">Erro ao carregar passagens recentes.</div>';
+    }
+  }
+
+  function _apply() {
+    var page = document.getElementById('page-historico-passagens');
+    if (!page || page.style.display === 'none') return;
+    var wrap = document.getElementById('hist-graficos-wrap');
+    if (!wrap) return;
+    var resumo = document.getElementById('hist-resumo');
+    var grid = null;
+    try { grid = resumo ? resumo.nextElementSibling : null; } catch (_) { grid = null; }
+    if (grid && grid.classList && !grid.classList.contains('patch-hist-graficos-grid')) {
+      grid.classList.add('patch-hist-graficos-grid');
+      Array.from(grid.children || []).forEach(function(card) {
+        if (card && card.classList) card.classList.add('patch-hist-graf-card');
+        try {
+          var canvasWrap = card ? card.querySelector('div > canvas') : null;
+          if (canvasWrap && canvasWrap.parentElement && canvasWrap.parentElement.classList) {
+            canvasWrap.parentElement.classList.add('patch-hist-graf-canvaswrap');
+          }
+        } catch (_) {}
+      });
+    }
+    if (!document.getElementById('patch-hist-recentes')) {
+      var box = document.createElement('div');
+      box.id = 'patch-hist-recentes';
+      box.className = 'patch-hist-recentes';
+      box.innerHTML = '<div class="h">Passagens recentes (últimas 20)</div><div id="patch-hist-recentes-host"></div>';
+      wrap.appendChild(box);
+      setTimeout(_carregarRecentes, 50);
+    }
+  }
+
+  function tick() { try { _apply(); } catch (_) {} }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 250); setInterval(tick, 900); });
+  } else {
+    setTimeout(tick, 250);
+    setInterval(tick, 900);
   }
 })();
 
