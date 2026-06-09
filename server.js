@@ -6923,13 +6923,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const todos = String(req.query.todos || '').trim() === 'true';
     const autocompleteOnly = String(req.query.autocomplete || '').trim() === 'true';
     const searchQ = String(req.query.q || '').trim();
-    const empIdReq = req.query.empId != null ? String(req.query.empId) : '';
-    const empresaIdReq = req.query.empresa_id != null ? String(req.query.empresa_id) : '';
-    const userEmpresaId = String(req.usuario?.empresa_id || '').trim();
-    const userEmpId = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
-    const empCandidates = todos
-      ? []
-      : Array.from(new Set([empIdReq, empresaIdReq, userEmpId, userEmpresaId].map(v => String(v || '').trim()).filter(Boolean)));
+    const empresaIdLookup = await _empresaIdFromUsuarios(req);
+    if (!todos && !empresaIdLookup) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    const empCandidates = todos ? [] : [empresaIdLookup];
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limitDefault = autocompleteOnly ? 50 : 100;
     const limitMax = autocompleteOnly ? 50 : 500;
@@ -6937,7 +6933,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = '';
-    const cols = empCandidates.length ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    const cols = empCandidates.length ? ['empresa_id', 'empresa', 'empresaId'] : [null];
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     let lastRows = null;
@@ -6966,7 +6962,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           const rows = data || [];
           lastRows = rows;
           if (!lite) {
-            try { console.log('clientes retornados:', rows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+            try { console.log('clientes retornados:', rows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
             return ok(res, rows);
           }
           const trimmed = rows.map((r) => ({
@@ -6989,7 +6985,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
           }));
-          try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+          try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
           return ok(res, trimmed);
         }
 
@@ -7028,7 +7024,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             const rows = all.data || [];
             lastRows = rows;
             if (!lite) {
-              try { console.log('clientes retornados:', rows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+              try { console.log('clientes retornados:', rows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
               return ok(res, rows);
             }
             const trimmed = rows.map((r) => ({
@@ -7051,7 +7047,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
               obs: r.obs ?? r.observacoes ?? null,
               observacoes: r.observacoes ?? null,
             }));
-            try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
+            try { console.log('clientes retornados:', trimmed?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', empId, 'col:', col || 'none'); } catch (_) {}
             return ok(res, trimmed);
           }
           lastErr = all.error;
@@ -7060,7 +7056,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       }
     }
     if (lastRows && Array.isArray(lastRows)) {
-      try { console.log('clientes retornados:', lastRows?.length, 'empresa_id:', req.usuario?.empresa_id, 'empCandidate:', 'fallback', 'col:', 'none'); } catch (_) {}
+      try { console.log('clientes retornados:', lastRows?.length, 'empresa_id:', empresaIdLookup, 'empCandidate:', 'fallback', 'col:', 'none'); } catch (_) {}
       return ok(res, lite ? lastRows.map((r) => ({
         id: r.id,
         nome: r.nome ?? null,
@@ -7243,10 +7239,11 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
       console.log('POST /api/clientes - body:', req.body);
     } catch (_) {}
     const payload = clientesPayload(req.body || {});
-    const empresaIdUsuario = String(req.usuario?.empresa_id || '').trim();
+    const empresaIdLookup = await _empresaIdFromUsuarios(req);
+    if (!empresaIdLookup) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const empIdUsuario = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
-    if (empresaIdUsuario && !payload.empresa_id) payload.empresa_id = empresaIdUsuario;
-    if (!payload.emp_id) payload.emp_id = empIdUsuario || empresaIdUsuario || payload.emp_id;
+    if (!payload.empresa_id) payload.empresa_id = empresaIdLookup;
+    if (!payload.emp_id) payload.emp_id = empIdUsuario || payload.emp_id;
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
@@ -8403,6 +8400,23 @@ async function _empresaUuidByUserId(userId) {
     if (_isUuid(empUuid)) return empUuid;
     const pseudoReq = { query: { empId: usr?.emp_id || usr?.empresa_sigla || usr?.sigla || usr?.empresa || '' }, usuario: { id: uid }, headers: {}, body: {} };
     return await _resolveEmpresaUuid(pseudoReq);
+  } catch (_) {
+    return '';
+  }
+}
+
+async function _empresaIdFromUsuarios(req) {
+  const uid = String(req?.usuario?.id || req?.usuario?.sub || req?.user?.id || req?.user?.sub || '').trim();
+  if (!uid) return '';
+  try {
+    const { data: usr, error } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', uid)
+      .single();
+    if (error || !usr) return '';
+    const empresaId = String(usr?.empresa_id || '').trim();
+    return _isUuid(empresaId) ? empresaId : '';
   } catch (_) {
     return '';
   }
@@ -10003,7 +10017,7 @@ app.delete('/api/estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
     if (error) throw error;
@@ -10013,7 +10027,7 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const tintaId = String(req.query.tinta_id || '').trim();
@@ -10039,7 +10053,7 @@ app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10074,7 +10088,7 @@ app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10107,7 +10121,7 @@ app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { error } = await supabase.from('estoque_tintas').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
     if (error) throw error;
@@ -10117,7 +10131,7 @@ app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
@@ -10164,7 +10178,7 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { data, error } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
     if (error) throw error;
@@ -10174,7 +10188,7 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const materialId = String(req.query.material_id || '').trim();
@@ -10200,7 +10214,7 @@ app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) =>
 
 app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10229,7 +10243,7 @@ app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10256,7 +10270,7 @@ app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { error } = await supabase.from('estoque_materiais').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
     if (error) throw error;
@@ -10266,7 +10280,7 @@ app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_materiais/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = String(req.usuario?.empresa_id || '').trim();
+    const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
