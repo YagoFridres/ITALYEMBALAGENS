@@ -6920,13 +6920,20 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
+    const todos = String(req.query.todos || '').trim() === 'true';
+    const autocompleteOnly = String(req.query.autocomplete || '').trim() === 'true';
+    const searchQ = String(req.query.q || '').trim();
     const empIdReq = req.query.empId != null ? String(req.query.empId) : '';
     const empresaIdReq = req.query.empresa_id != null ? String(req.query.empresa_id) : '';
     const userEmpresaId = String(req.usuario?.empresa_id || '').trim();
     const userEmpId = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
-    const empCandidates = Array.from(new Set([empIdReq, empresaIdReq, userEmpId, userEmpresaId].map(v => String(v || '').trim()).filter(Boolean)));
+    const empCandidates = todos
+      ? []
+      : Array.from(new Set([empIdReq, empresaIdReq, userEmpId, userEmpresaId].map(v => String(v || '').trim()).filter(Boolean)));
     const hasPaging = req.query.limit != null || req.query.offset != null;
-    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
+    const limitDefault = autocompleteOnly ? 50 : 100;
+    const limitMax = autocompleteOnly ? 50 : 500;
+    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || limitDefault, limitMax);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = '';
@@ -6934,14 +6941,26 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
     let lastRows = null;
+    const applyClientesFilters = (q) => {
+      let query = q;
+      if (searchQ) {
+        const like = `%${searchQ}%`;
+        query = query.or(`nome.ilike.${like},rs.ilike.${like},cnpj.ilike.${like}`);
+      }
+      if (autocompleteOnly) query = query.eq('ativo', true);
+      query = query.order('nome');
+      if (hasPaging) query = query.range(offset, offset + limit - 1);
+      else if (autocompleteOnly) query = query.limit(limit);
+      return query;
+    };
     for (const empId of (empCandidates.length ? empCandidates : [null])) {
       for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
       for (let i = 0; i < 8; i++) {
-        let q = supabase.from('clientes').select(localSelect).order('nome');
-        if (col) q = q.eq(col, empId);
-        if (hasPaging) q = q.range(offset, offset + limit - 1);
+        let q = supabase.from('clientes').select(localSelect);
+        if (!todos && col) q = q.eq(col, empId);
+        q = applyClientesFilters(q);
         const { data, error } = await q;
         if (!error) {
           const rows = data || [];
@@ -7001,9 +7020,9 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
 
         if (lastLocalErr) {
-          let q2 = supabase.from('clientes').select('*').order('nome');
-          if (col) q2 = q2.eq(col, empId);
-          if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
+          let q2 = supabase.from('clientes').select('*');
+          if (!todos && col) q2 = q2.eq(col, empId);
+          q2 = applyClientesFilters(q2);
           const all = await q2;
           if (!all.error) {
             const rows = all.data || [];

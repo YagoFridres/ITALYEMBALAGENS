@@ -2660,6 +2660,27 @@
   function _emp() {
     try { return String(window.EMP_FILTRO || '').trim() || 'E1'; } catch (_) { return 'E1'; }
   }
+  function _empresaIdAtual() {
+    try {
+      return String(
+        window.empresaAtual?.id ||
+        window.usuarioAtual?.empresa_id ||
+        window.CURRENT_USER?.empresa_id ||
+        window._currentUser?.empresa_id ||
+        document.querySelector('[data-empresa-id]')?.dataset?.empresaId ||
+        ''
+      ).trim();
+    } catch (_) {
+      return '';
+    }
+  }
+  function _empresaQs(extra) {
+    var qs = [];
+    var empresaId = _empresaIdAtual();
+    if (empresaId) qs.push('empresa_id=' + encodeURIComponent(empresaId));
+    if (extra) qs.push(String(extra));
+    return qs.join('&');
+  }
   function _toast(msg, cor) {
     try { if (typeof window.toast === 'function') return window.toast(msg, cor); } catch (_) {}
     try { alert(msg); } catch (_) {}
@@ -3286,7 +3307,7 @@
   var _cacheTintas = { ts: 0, items: [] };
   async function _loadTintas(force) {
     if (!force && (Date.now() - _cacheTintas.ts) < 4000) return _cacheTintas.items;
-    var j = await _apiJson('/api/estoque_tintas?empId=' + encodeURIComponent(_emp()) + '&nocache=1&t=' + Date.now(), { headers: _hdrAuth() });
+    var j = await _apiJson('/api/estoque_tintas?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: _hdrAuth() });
     _cacheTintas = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
     return _cacheTintas.items;
   }
@@ -3465,7 +3486,7 @@
         host.querySelector('#tinta-cancel').onclick = close;
         host.querySelector('#tinta-save').onclick = function() {
           var payload = {
-            empId: _emp(),
+            empresa_id: _empresaIdAtual() || undefined,
             nome: String(host.querySelector('#tinta-nome').value || '').trim(),
             cor: String(host.querySelector('#tinta-cor').value || '').trim(),
             fornecedor: String(host.querySelector('#tinta-forn').value || '').trim(),
@@ -3515,7 +3536,7 @@
         host.querySelector('#tm-cancel').onclick = close;
         host.querySelector('#tm-save').onclick = function() {
           var payload = {
-            empId: _emp(),
+            empresa_id: _empresaIdAtual() || undefined,
             tipo: tipoPreset || String((host.querySelector('#tm-tipo') || {}).value || '').trim(),
             quantidade: Number(host.querySelector('#tm-qtd').value || 0) || 0,
             of_numero: String(host.querySelector('#tm-of').value || '').trim(),
@@ -3534,7 +3555,7 @@
   function _deleteTinta(item) {
     if (!item) return;
     if (!confirm('Excluir esta tinta?')) return;
-    _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id) + '?empId=' + encodeURIComponent(_emp()), { method: 'DELETE', headers: _hdrAuth() })
+    _apiJson('/api/estoque_tintas/' + encodeURIComponent(item.id), { method: 'DELETE', headers: _hdrAuth() })
       .then(function() { return _loadTintas(true); })
       .then(function() { _renderTintasList(); _toast('🗑 Excluído', 'var(--orange)'); })
       .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
@@ -3543,7 +3564,7 @@
   var _cacheMateriais = { ts: 0, items: [] };
   async function _loadMateriais(force) {
     if (!force && (Date.now() - _cacheMateriais.ts) < 4000) return _cacheMateriais.items;
-    var j = await _apiJson('/api/estoque_materiais?empId=' + encodeURIComponent(_emp()) + '&nocache=1&t=' + Date.now(), { headers: _hdrAuth() });
+    var j = await _apiJson('/api/estoque_materiais?' + _empresaQs('nocache=1&t=' + Date.now()), { headers: _hdrAuth() });
     _cacheMateriais = { ts: Date.now(), items: Array.isArray(j.data) ? j.data : j };
     return _cacheMateriais.items;
   }
@@ -3756,7 +3777,7 @@
         host.querySelector('#mat-save').onclick = function() {
           var categoria = String(sel.value || '').trim();
           var payload = {
-            empId: _emp(),
+            empresa_id: _empresaIdAtual() || undefined,
             categoria: categoria,
             nome: String(host.querySelector('#mat-nome').value || '').trim(),
             unidade: String(host.querySelector('#mat-un').value || 'un').trim() || 'un',
@@ -3804,7 +3825,7 @@
         host.querySelector('#mm-cancel').onclick = close;
         host.querySelector('#mm-save').onclick = function() {
           var payload = {
-            empId: _emp(),
+            empresa_id: _empresaIdAtual() || undefined,
             tipo: tipoPreset || String((host.querySelector('#mm-tipo') || {}).value || '').trim(),
             quantidade: Number(host.querySelector('#mm-qtd').value || 0) || 0,
             of_numero: String(host.querySelector('#mm-of').value || '').trim(),
@@ -3823,7 +3844,7 @@
   function _deleteMaterial(item) {
     if (!item) return;
     if (!confirm('Excluir este material?')) return;
-    _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id) + '?empId=' + encodeURIComponent(_emp()), { method: 'DELETE', headers: _hdrAuth() })
+    _apiJson('/api/estoque_materiais/' + encodeURIComponent(item.id), { method: 'DELETE', headers: _hdrAuth() })
       .then(function() { return _loadMateriais(true); })
       .then(function() { _renderMateriaisList(); _toast('🗑 Excluído', 'var(--orange)'); })
       .catch(function(e) { _toast(String(e?.message || e || 'Erro ao excluir'), 'var(--red)'); });
@@ -5268,6 +5289,39 @@
     var el = document.getElementById('of-r-cliente');
     if (!el || el.dataset.patchClienteEspecial === '1') return;
     el.dataset.patchClienteEspecial = '1';
+    var _ofRapidaAcCache = [];
+    var _ofRapidaAcKey = '';
+    var _ofRapidaAcReq = 0;
+    var _prefetchClientesTodos = function(q) {
+      var termo = String(q || '').trim();
+      var cacheKey = termo.toLowerCase();
+      if (_ofRapidaAcKey === cacheKey && _ofRapidaAcCache.length) return Promise.resolve(_ofRapidaAcCache);
+      var reqId = ++_ofRapidaAcReq;
+      var headers = _hdrAuth();
+      return fetch('/api/clientes?todos=true&autocomplete=true&q=' + encodeURIComponent(termo), { headers: headers })
+        .then(function(r) { return r.json().catch(function() { return null; }); })
+        .then(function(j) {
+          if (reqId !== _ofRapidaAcReq) return _ofRapidaAcCache;
+          var rows = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : []);
+          _ofRapidaAcKey = cacheKey;
+          _ofRapidaAcCache = rows.map(function(c) {
+            var empBase = c?.empId ?? c?.emp_id ?? c?.empresa ?? c?.empresa_id ?? '';
+            return {
+              label: c?.nome || c?.rs || c?.razao_social || '',
+              sub: [c?.cidade && c?.uf ? (String(c.cidade) + '/' + String(c.uf)) : (c?.cidade || ''), c?.tel || c?.telefone || '', c?.cnpj || ''].filter(Boolean).join(' · '),
+              badge: (typeof window.getEmp === 'function' ? ((window.getEmp(empBase) || {}).sigla || '') : ''),
+              data: c
+            };
+          });
+          try {
+            if (document.activeElement === el) el.dispatchEvent(new Event('input', { bubbles: true }));
+          } catch (_) {}
+          return _ofRapidaAcCache;
+        })
+        .catch(function() {
+          return _ofRapidaAcCache;
+        });
+    };
     try {
       if (el.getAttribute('list')) el.removeAttribute('list');
     } catch (_) {}
@@ -5279,17 +5333,22 @@
           try { delete el.dataset.clienteId; } catch (_) {}
           try { delete el.dataset.clienteNome; } catch (_) {}
         }
+        if (evt === 'input' || evt === 'change') _prefetchClientesTodos(el.value);
         syncClienteOfRapida(el);
       }, true);
     });
+    el.addEventListener('focus', function() { _prefetchClientesTodos(el.value); }, true);
     setTimeout(function() { syncClienteOfRapida(el); }, 0);
 
     if (!el.dataset.patchClienteAc && typeof window.ac === 'function' && typeof window.acClientes === 'function') {
       el.dataset.patchClienteAc = '1';
       try {
-        window.ac(el, function(q, empId) {
-          var emp = String((document.getElementById('of-r-empresa') || {}).value || empId || window.EMP_FILTRO || '').trim();
-          return window.acClientes(q, emp);
+        window.ac(el, function(q) {
+          var termo = String(q || '').trim().toLowerCase();
+          return (_ofRapidaAcCache || []).filter(function(it) {
+            var texto = String(it?.label || '') + ' ' + String(it?.sub || '');
+            return !termo || texto.toLowerCase().indexOf(termo) >= 0;
+          });
         }, function(data, lbl) {
           var cid = String(data?.id || '').trim();
           if (!cid) return;
@@ -6600,16 +6659,43 @@ window._mbnActive = function(id) {
     if (typeof origSalvarCliente === 'function' && !origSalvarCliente._patchRefreshClientesV2) {
       var wrappedSalvarCliente = async function() {
         var idAntes = '';
+        var empresaIdAtual = _empresaIdAtual();
         try {
           var idEl = document.getElementById('cli-id');
           idAntes = String(window.CLIENTE_ATUAL_ID || (idEl ? idEl.value : '') || '').trim();
           if (idAntes === 'undefined' || idAntes === 'null') idAntes = '';
         } catch (_) {}
-        var r = await origSalvarCliente.apply(this, arguments);
+        var origApiFetch = window.apiFetch;
+        if (typeof origApiFetch === 'function') {
+          window.apiFetch = function(url, opts) {
+            var u = String(url || '');
+            var o = opts && typeof opts === 'object' ? Object.assign({}, opts) : {};
+            var method = String(o.method || 'GET').toUpperCase();
+            var isClientes = u === '/api/clientes' || u.indexOf('/api/clientes/') === 0;
+            var body = o.body;
+            var isPlain = body && typeof body === 'object' && !Array.isArray(body) && !(body instanceof Date) && !(body instanceof FormData);
+            if (isClientes && (method === 'POST' || method === 'PUT') && isPlain) {
+              body = Object.assign({}, body);
+              if (empresaIdAtual) body.empresa_id = empresaIdAtual;
+              if (!body.emp_id) {
+                body.emp_id = String(window.EMP_FILTRO || window.CURRENT_USER?.emp_id || window.CURRENT_USER?.empId || '').trim() || body.emp_id;
+              }
+              o.body = body;
+            }
+            return origApiFetch.call(this, u, o);
+          };
+        }
+        var r;
+        try {
+          r = await origSalvarCliente.apply(this, arguments);
+        } finally {
+          if (typeof origApiFetch === 'function') window.apiFetch = origApiFetch;
+        }
         var modal = document.getElementById('modal-cli');
         var modalAberto = !!(modal && modal.style.display && modal.style.display !== 'none');
         if (modalAberto) return r;
         try {
+          try { window._clientesCache = null; } catch (_) {}
           try { window._clientesCarregados = false; } catch (_) {}
           try { window.CLIENTES = []; } catch (_) {}
           await _refreshClientesFullList({ reset: !idAntes, scroll: !idAntes });
