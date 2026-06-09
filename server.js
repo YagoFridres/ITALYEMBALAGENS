@@ -4307,6 +4307,165 @@ app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', 
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
 
+app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), async (req, res) => {
+  try {
+    const key = String(process.env.ANTHROPIC_API_KEY || '').trim();
+    if (!key) return res.status(500).json({ ok: false, error: 'ANTHROPIC_API_KEY ausente no servidor' });
+
+    const f = req.file || null;
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    const mime = String(f.mimetype || '').trim().toLowerCase();
+    const ext = path.extname(f.originalname || '').toLowerCase();
+    const isPdf = mime === 'application/pdf' || ext === '.pdf';
+    const isImg = mime.startsWith('image/');
+    if (!isPdf && !isImg) return res.status(400).json({ ok: false, error: 'Formato inválido (use imagem ou PDF)' });
+
+    const safeExt = ext && ext.length <= 8 ? ext : (isPdf ? '.pdf' : '.png');
+    const filename = `import-of/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random().toString(36).slice(2)}${safeExt}`;
+
+    const tryUpload = async (bucket) => {
+      const b = String(bucket || '').trim();
+      const r = await supabase.storage.from(b).upload(filename, f.buffer, { contentType: mime || undefined, upsert: false });
+      if (r.error) throw r.error;
+      const { data: urlData } = supabase.storage.from(b).getPublicUrl(filename);
+      const url = String(urlData?.publicUrl || '').trim();
+      if (!url) throw new Error('upload_url_missing');
+      return url;
+    };
+
+    let arquivoUrl = '';
+    try { arquivoUrl = await tryUpload('chat-arquivos'); } catch (e1) {
+      const msg = String(e1?.message || e1 || '').toLowerCase();
+      const bucketNotFound = msg.includes('bucket') && (msg.includes('not') || msg.includes('exist'));
+      if (bucketNotFound) {
+        try { await supabase.storage.createBucket('chat-arquivos', { public: true }); } catch (_) {}
+        try { arquivoUrl = await tryUpload('chat-arquivos'); } catch (_) {}
+      }
+      if (!arquivoUrl) arquivoUrl = await tryUpload('uploads');
+    }
+
+    const prompt = [
+      'Você é um especialista em leitura de ordens de fabricação de caixas de papelão.',
+      'Analise esta imagem e extraia os dados em JSON com os campos:',
+      'numero_of, cliente_nome, fantasia, cnpj, cidade, telefone, email, vendedor,',
+      'data_pedido, data_entrega, tipo_papel, gramatura, modelo_caixa, referencia,',
+      'quantidade, dim_largura, dim_comprimento, dim_altura, cores_impressao (array),',
+      'cliche, maquina_principal, observacoes, paletizado (bool), furacao (bool),',
+      'fardos, itens_adicionais (array de objetos com os mesmos campos acima).',
+      'Para cada campo, inclua também um campo "confianca" de 0 a 1.',
+      'Se não encontrar um campo, retorne null. Nunca invente dados.',
+      'Responda APENAS com JSON válido, sem markdown.',
+    ].join('\n');
+
+    const b64 = Buffer.from(f.buffer).toString('base64');
+    const content = [
+      isPdf
+        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
+        : { type: 'image', source: { type: 'base64', media_type: (mime || 'image/png'), data: b64 } },
+      { type: 'text', text: prompt },
+    ];
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1400,
+        messages: [{ role: 'user', content }],
+      }),
+    });
+
+    const json = await r.json().catch(() => null);
+    if (!r.ok || !json) {
+      const msg = String(json?.error?.message || json?.message || ('HTTP ' + r.status));
+      try { console.error('[IMPORTAR OF IMAGEM] erro IA:', { status: r.status, msg, rid: req._rid || null }); } catch (_) {}
+      return res.status(500).json({ ok: false, error: msg });
+    }
+
+    const text = String((json?.content || []).find((c) => c && c.type === 'text')?.text || '').trim();
+    const parseJsonLoose = (s) => {
+      const raw = String(s || '').trim();
+      if (!raw) throw new Error('json_vazio');
+      try { return JSON.parse(raw); } catch (_) {}
+      const i0 = raw.indexOf('{');
+      const i1 = raw.lastIndexOf('}');
+      if (i0 >= 0 && i1 > i0) {
+        const sub = raw.slice(i0, i1 + 1);
+        return JSON.parse(sub);
+      }
+      throw new Error('json_invalido');
+    };
+    let parsed = null;
+    try { parsed = parseJsonLoose(text); } catch (e) {
+      try { console.error('[IMPORTAR OF IMAGEM] parse falhou:', { msg: String(e?.message || e), rid: req._rid || null }); } catch (_) {}
+      return res.status(500).json({ ok: false, error: 'Falha ao ler JSON retornado pela IA' });
+    }
+
+    const FIELDS = [
+      'numero_of', 'cliente_nome', 'fantasia', 'cnpj', 'cidade', 'telefone', 'email', 'vendedor',
+      'data_pedido', 'data_entrega', 'tipo_papel', 'gramatura', 'modelo_caixa', 'referencia',
+      'quantidade', 'dim_largura', 'dim_comprimento', 'dim_altura', 'cores_impressao',
+      'cliche', 'maquina_principal', 'observacoes', 'paletizado', 'furacao',
+      'fardos',
+    ];
+
+    const readPair = (obj, field) => {
+      if (!obj || typeof obj !== 'object') return { valor: null, confianca: null };
+      const v = obj[field];
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        const conf = (v.confianca != null) ? Number(v.confianca) : ((v.confidence != null) ? Number(v.confidence) : null);
+        const val = (v.valor !== undefined) ? v.valor : ((v.value !== undefined) ? v.value : ((v.val !== undefined) ? v.val : v[field]));
+        return { valor: val ?? null, confianca: Number.isFinite(conf) ? Math.max(0, Math.min(1, conf)) : null };
+      }
+      const conf2 = obj[field + '_confianca'];
+      const conf = (conf2 != null) ? Number(conf2) : null;
+      return { valor: (v === undefined ? null : v), confianca: Number.isFinite(conf) ? Math.max(0, Math.min(1, conf)) : null };
+    };
+
+    const normalizeBool = (v) => {
+      if (v === true || v === false) return v;
+      const s = String(v ?? '').trim().toLowerCase();
+      if (!s) return null;
+      if (['1', 'true', 'sim', 's', 'yes'].includes(s)) return true;
+      if (['0', 'false', 'nao', 'não', 'n', 'no'].includes(s)) return false;
+      return null;
+    };
+
+    const normalizeArray = (v) => {
+      if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
+      if (typeof v === 'string') return v.split(/[,;|]/g).map((x) => String(x || '').trim()).filter(Boolean);
+      return [];
+    };
+
+    const normalizeOne = (obj) => {
+      const out = {};
+      for (const f of FIELDS) {
+        const p = readPair(obj, f);
+        const low = Number.isFinite(p.confianca) ? (p.confianca < 0.6) : (p.valor == null);
+        let valor = p.valor;
+        if (f === 'paletizado' || f === 'furacao') valor = normalizeBool(valor);
+        if (f === 'cores_impressao') valor = normalizeArray(valor);
+        out[f] = { valor: (valor === undefined ? null : valor), confianca: p.confianca, low_confidence: !!low };
+      }
+      return out;
+    };
+
+    const itensRaw = (parsed && typeof parsed === 'object') ? parsed.itens_adicionais : null;
+    const itens = Array.isArray(itensRaw) ? itensRaw : [];
+    const dataOut = normalizeOne(parsed);
+    dataOut.itens_adicionais = itens.map((it) => normalizeOne(it));
+
+    return res.json({ ok: true, arquivo_url: arquivoUrl, data: dataOut });
+  } catch (e) {
+    try { console.error('[IMPORTAR OF IMAGEM] erro:', String(e?.message || e), 'rid=', req._rid || null); } catch (_) {}
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/chat/usuarios', authMiddleware, async (req, res) => {
   try {
     const uid = String(req.usuario?.id || req.usuario?.sub || '').trim();
@@ -9235,28 +9394,6 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
       ).trim() || undefined;
     }
 
-    if (payload.maquinas != null) {
-      let arr = [];
-      try {
-        if (Array.isArray(payload.maquinas)) arr = payload.maquinas;
-        else if (typeof payload.maquinas === 'string') {
-          const s = String(payload.maquinas || '').trim();
-          if (s.startsWith('[')) arr = JSON.parse(s || '[]');
-          else arr = s.split(/[,;|]/g);
-        } else if (payload.maquinas && typeof payload.maquinas === 'object') {
-          arr = Object.values(payload.maquinas);
-        }
-      } catch (_) { arr = []; }
-      arr = (Array.isArray(arr) ? arr : []).map((x) => String(x || '').trim()).filter(Boolean);
-      arr = [...new Set(arr)];
-      if (arr.length) {
-        payload.maquinas = arr;
-        if (!String(payload.maquina || '').trim()) payload.maquina = arr[0];
-      } else {
-        delete payload.maquinas;
-      }
-    }
-
     if (payload.operador && !payload.operador_nome) payload.operador_nome = payload.operador;
     if (payload.responsavel && !payload.operador_nome) payload.operador_nome = payload.responsavel;
     if (payload.operador_nome && !payload.operador) payload.operador = payload.operador_nome;
@@ -9268,41 +9405,8 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     if (payload.caixas_perdidas != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.caixas_perdidas;
     if (payload.quantidade != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.quantidade;
     if (payload.qtd_perdida != null) payload.qtd_perdida = Math.trunc(Number(payload.qtd_perdida) || 0);
-    if (payload.foto_url && !payload.imagem_url) payload.imagem_url = payload.foto_url;
     if (payload.imagem_problema_url && !payload.imagem_url) payload.imagem_url = payload.imagem_problema_url;
     if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
-
-    try {
-      const cache = {};
-      const resolveMaqNome = async (idOrNome) => {
-        const raw = String(idOrNome || '').trim();
-        if (!raw) return '';
-        if (!_isUuid(raw)) return raw;
-        if (cache[raw]) return cache[raw];
-        const r = await supabase.from('maquinas').select('nome,codigo,col').eq('id', raw).maybeSingle();
-        const m = r?.data || null;
-        const best = String(m?.nome || m?.col || m?.codigo || raw).trim();
-        const canon = _canonMaqNome(best) || best;
-        cache[raw] = canon;
-        return canon;
-      };
-
-      if (payload.maquina) {
-        payload.maquina = await resolveMaqNome(payload.maquina);
-      }
-      if (Array.isArray(payload.maquinas) && payload.maquinas.length) {
-        const mapped = [];
-        for (const it of payload.maquinas) {
-          const nm = await resolveMaqNome(it);
-          if (nm) mapped.push(nm);
-        }
-        const uniq = [...new Set(mapped)];
-        payload.maquinas = uniq;
-        if (!String(payload.maquina || '').trim() && uniq[0]) payload.maquina = uniq[0];
-      }
-    } catch (_) {}
-
-    // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
     delete payload.foto_url;
     delete payload.maquinas;
 
@@ -9315,29 +9419,34 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
       'status',
       'emp_id',
       'responsavel_resolucao', 'obs_resolucao', 'resolved_at',
+      'created_at', 'updated_at',
       'operadores_of',
     ];
-    let toInsert = {};
+    const toInsert = {};
     for (const k of INC_COLS) {
       if (Object.prototype.hasOwnProperty.call(payload, k) && payload[k] !== undefined) {
         toInsert[k] = payload[k];
       }
     }
-    const table = 'inconformidades';
-    let lastError = null;
-    for (let i = 0; i < 8; i++) {
-      const { data, error } = await supabase.from(table).insert([toInsert]).select();
-      if (!error) return ok(res, data && data[0] ? data[0] : null);
-      lastError = error;
-      const msg = String(error.message || '');
-      const m = msg.match(/column \"([^\"]+)\" of relation/i);
-      if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
-        delete toInsert[m[1]];
-        continue;
-      }
-      throw error;
+    if (!toInsert.created_at) toInsert.created_at = nowIso;
+    if (!toInsert.updated_at) toInsert.updated_at = nowIso;
+
+    const { data, error } = await supabase.from('inconformidades').insert([toInsert]).select();
+    if (error) {
+      try {
+        console.error('[INCONFORMIDADES POST] erro:', {
+          message: String(error.message || ''),
+          details: error.details || null,
+          hint: error.hint || null,
+          code: error.code || null,
+          keys: Object.keys(toInsert || {}),
+          rid: req._rid || null,
+          usuario: req.usuario?.id || null,
+        });
+      } catch (_) {}
+      return res.status(500).json({ ok: false, error: error.message });
     }
-    throw lastError || new Error('Falha ao inserir inconformidade');
+    return ok(res, data && data[0] ? data[0] : null);
   } catch (e) { err(res, e); }
 });
 
