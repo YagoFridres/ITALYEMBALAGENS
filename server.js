@@ -7183,6 +7183,10 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const payload = clientesPayload(req.body || {});
+    const empresaIdUsuario = String(req.usuario?.empresa_id || '').trim();
+    const empIdUsuario = String(req.usuario?.emp_id || req.usuario?.empId || '').trim();
+    if (empresaIdUsuario && !payload.empresa_id) payload.empresa_id = empresaIdUsuario;
+    if (!payload.emp_id) payload.emp_id = empIdUsuario || empresaIdUsuario || payload.emp_id;
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
