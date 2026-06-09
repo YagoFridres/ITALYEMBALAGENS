@@ -3582,10 +3582,12 @@
     if (cli && cli.id) {
       el.dataset.clienteId = String(cli.id);
       el.dataset.clienteNome = String(cli.nome || cli.razao_social || cli.razao || el.value || '').trim();
+      try { window._ofRapidaClienteId = String(cli.id); } catch (_) {}
       return cli;
     }
     delete el.dataset.clienteId;
     delete el.dataset.clienteNome;
+    try { window._ofRapidaClienteId = ''; } catch (_) {}
     return null;
   }
 
@@ -3594,7 +3596,13 @@
     if (!el || el.dataset.patchClienteEspecial === '1') return;
     el.dataset.patchClienteEspecial = '1';
     ['input', 'change', 'blur'].forEach(function(evt) {
-      el.addEventListener(evt, function() { syncClienteOfRapida(el); }, true);
+      el.addEventListener(evt, function() {
+        if (evt === 'input') {
+          try { window._ofRapidaClienteId = ''; } catch (_) {}
+          delete el.dataset.clienteId;
+        }
+        syncClienteOfRapida(el);
+      }, true);
     });
     setTimeout(function() { syncClienteOfRapida(el); }, 0);
   }
@@ -3606,7 +3614,7 @@
       var el = document.getElementById('of-r-cliente');
       if (el) {
         var cli = syncClienteOfRapida(el);
-        var cliId = String(el.dataset.clienteId || '').trim();
+        var cliId = String(window._ofRapidaClienteId || el.dataset.clienteId || '').trim();
         if (!cliId) {
           try { alert('Selecione um cliente válido da lista.'); } catch (_) {}
           try { el.focus(); el.select && el.select(); } catch (_) {}
@@ -3614,6 +3622,7 @@
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
+        try { window._ofRapidaClienteId = cliId; } catch (_) {}
       }
       return orig.apply(this, arguments);
     };
@@ -3635,6 +3644,222 @@
   } else {
     setTimeout(tick, 150);
     setInterval(tick, 1000);
+  }
+})();
+
+(function patchInconformidadesDeleteAndOperadoresBadge() {
+  function _tok() {
+    try { return String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
+  }
+
+  function _hdrJson() {
+    var t = _tok();
+    var h = { 'Content-Type': 'application/json' };
+    if (t) h.Authorization = 'Bearer ' + t;
+    return h;
+  }
+
+  function _hdr() {
+    var t = _tok();
+    return t ? { Authorization: 'Bearer ' + t } : {};
+  }
+
+  function _norm(s) {
+    var v = String(s || '').trim().toLowerCase();
+    try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return v.replace(/\s+/g, ' ').trim();
+  }
+
+  async function _buscarInconformidadesAtual() {
+    var qs = [];
+    try {
+      var operador = String((document.getElementById('inc-filtro-op') || {}).value || '').trim();
+      var maq = String((document.getElementById('inc-filtro-maq') || {}).value || '').trim();
+      if (operador) qs.push('operador=' + encodeURIComponent(operador));
+      if (maq) qs.push('maquina=' + encodeURIComponent(maq));
+    } catch (_) {}
+    qs.push('t=' + Date.now());
+    var r = await fetch('/api/inconformidades?' + qs.join('&'), { headers: _hdr() });
+    var d = await r.json().catch(function() { return null; });
+    return (d && d.ok && Array.isArray(d.data)) ? d.data : (Array.isArray(d?.inconformidades) ? d.inconformidades : []);
+  }
+
+  async function _apagarInconformidade(id, card) {
+    var incId = String(id || '').trim();
+    if (!incId) return;
+    if (!confirm('Tem certeza que deseja apagar esta inconformidade?')) return;
+    try {
+      var r = await fetch('/api/inconformidades/' + encodeURIComponent(incId), {
+        method: 'DELETE',
+        headers: _hdrJson()
+      });
+      if (!r.ok) {
+        var j = await r.json().catch(function() { return null; });
+        throw new Error(j?.error || ('HTTP ' + r.status));
+      }
+      if (card && card.remove) card.remove();
+      try { if (typeof window.toast === 'function') window.toast('✓ Inconformidade apagada', 'var(--green)'); } catch (_) {}
+    } catch (e) {
+      try { if (typeof window.toast === 'function') window.toast('Erro ao apagar inconformidade', 'var(--red)'); } catch (_) {}
+    }
+  }
+
+  async function _enhanceInconformidades() {
+    var out = document.getElementById('inc-lista-resultado');
+    if (!out) return;
+    var cards = Array.from(out.querySelectorAll('.inconformidade-card'));
+    if (!cards.length) return;
+    var itens = await _buscarInconformidadesAtual().catch(function() { return []; });
+    cards.forEach(function(card, idx) {
+      if (card.dataset.patchDeleteInc === '1') return;
+      card.dataset.patchDeleteInc = '1';
+      var inc = Array.isArray(itens) ? itens[idx] : null;
+      var incId = String(inc?.id || '').trim();
+      var footer = card.querySelector('div[style*="justify-content:flex-end"]');
+      if (!footer) {
+        footer = document.createElement('div');
+        footer.style.cssText = 'display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px';
+        card.appendChild(footer);
+      }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '🗑️ Apagar';
+      btn.style.cssText = 'background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:7px 10px;cursor:pointer;font-size:12px';
+      btn.onclick = function(ev) {
+        if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+        _apagarInconformidade(incId, card);
+      };
+      footer.appendChild(btn);
+    });
+  }
+
+  var _incWrapDone = false;
+  function _hookCarregarInconformidades() {
+    if (_incWrapDone || typeof window.carregarInconformidades !== 'function') return;
+    _incWrapDone = true;
+    var orig = window.carregarInconformidades;
+    window.carregarInconformidades = async function() {
+      var r = await orig.apply(this, arguments);
+      setTimeout(function() { _enhanceInconformidades().catch(function(){}); }, 80);
+      return r;
+    };
+  }
+
+  var _incCountCache = {};
+  async function _buscarIncOperador(nome) {
+    var nm = String(nome || '').trim();
+    if (!nm) return [];
+    var key = _norm(nm);
+    if (_incCountCache[key] && Array.isArray(_incCountCache[key].items)) return _incCountCache[key].items;
+    var r = await fetch('/api/inconformidades?operador=' + encodeURIComponent(nm) + '&t=' + Date.now(), { headers: _hdr() });
+    var d = await r.json().catch(function() { return null; });
+    var items = (d && d.ok && Array.isArray(d.data)) ? d.data : (Array.isArray(d?.inconformidades) ? d.inconformidades : []);
+    _incCountCache[key] = { items: items };
+    return items;
+  }
+
+  function _badgeHtml(count) {
+    if (!count) return '';
+    if (count === 1) return '<span style="background:#666;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px">1</span>';
+    if (count === 2) return '<span style="background:#f59e0b;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px">⚠️ 2</span>';
+    return '<span style="background:#ef4444;color:#fff;border-radius:10px;padding:2px 7px;font-size:11px">🔴 ' + String(count) + '</span>';
+  }
+
+  async function _enhanceOperadoresGrid() {
+    if (String(window._PAGE_ATUAL || '') !== 'operadores') return;
+    var grid = document.getElementById('op-grid');
+    if (!grid) return;
+    var cards = Array.from(grid.querySelectorAll('.op-card'));
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i];
+      var nomeEl = card.querySelector('.op-nome');
+      if (!nomeEl || card.dataset.patchIncBadge === '1') continue;
+      card.dataset.patchIncBadge = '1';
+      var nome = String(nomeEl.textContent || '').trim();
+      var items = await _buscarIncOperador(nome).catch(function() { return []; });
+      var count = Array.isArray(items) ? items.length : 0;
+      if (count > 0) {
+        var wrap = document.createElement('span');
+        wrap.className = 'patch-inc-badge-op';
+        wrap.style.cssText = 'display:inline-flex;align-items:center;margin-left:8px;vertical-align:middle';
+        wrap.innerHTML = _badgeHtml(count);
+        nomeEl.appendChild(wrap);
+      }
+    }
+  }
+
+  var _opWrapDone = false;
+  function _hookRenderOperadores() {
+    if (_opWrapDone || typeof window.renderOperadores !== 'function') return;
+    _opWrapDone = true;
+    var orig = window.renderOperadores;
+    window.renderOperadores = function() {
+      var r = orig.apply(this, arguments);
+      setTimeout(function() { _enhanceOperadoresGrid().catch(function(){}); }, 60);
+      return r;
+    };
+  }
+
+  var _histWrapDone = false;
+  function _hookAbrirHistOp() {
+    if (_histWrapDone || typeof window.abrirHistOp !== 'function') return;
+    _histWrapDone = true;
+    var orig = window.abrirHistOp;
+    window.abrirHistOp = async function(opId) {
+      var r = await orig.apply(this, arguments);
+      try {
+        var op = (typeof window.getOp === 'function') ? window.getOp(opId) : null;
+        var nome = String(op?.nome || '').trim();
+        if (!nome) return r;
+        var body = document.getElementById('hist-cli-body');
+        if (!body) return r;
+        body.querySelectorAll('.patch-op-inc-section').forEach(function(el){ el.remove(); });
+        var items = await _buscarIncOperador(nome).catch(function() { return []; });
+        var html = '<div class="patch-op-inc-section" style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)">' +
+          '<div style="font-size:.82rem;font-weight:800;color:#e2e8f0;margin-bottom:10px">Inconformidades</div>';
+        if (!items.length) {
+          html += '<div style="color:var(--text3);font-size:.78rem">Nenhuma inconformidade registrada para este operador.</div>';
+        } else {
+          html += items.slice().sort(function(a,b){ return String(b?.created_at || '').localeCompare(String(a?.created_at || '')); }).map(function(ic) {
+            var dt = ic?.created_at ? new Date(ic.created_at).toLocaleDateString('pt-BR') : '—';
+            var of = String(ic?.of_numero || '').trim() || '—';
+            var maq = String(ic?.maquina || '').trim() || '—';
+            var motivo = String(ic?.obs || ic?.motivo || ic?.descricao || '').trim() || '—';
+            var qtd = Math.trunc(Number(ic?.qtd_perdida || 0) || 0);
+            return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;margin-bottom:8px">' +
+              '<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;margin-bottom:6px">' +
+                '<span style="color:#94a3b8;font-size:.72rem">' + dt + '</span>' +
+                '<span style="color:#60a5fa;font-family:var(--mono);font-size:.72rem">OF ' + of + '</span>' +
+                '<span style="color:#f59e0b;font-size:.72rem">' + maq + '</span>' +
+                '<span style="color:#f87171;font-size:.72rem;font-weight:700">' + qtd + ' perdidas</span>' +
+              '</div>' +
+              '<div style="font-size:.78rem;color:#e2e8f0">' + motivo.replace(/</g,'&lt;') + '</div>' +
+            '</div>';
+          }).join('');
+        }
+        html += '</div>';
+        body.insertAdjacentHTML('beforeend', html);
+      } catch (_) {}
+      return r;
+    };
+  }
+
+  function tick() {
+    try { _hookCarregarInconformidades(); } catch (_) {}
+    try { _hookRenderOperadores(); } catch (_) {}
+    try { _hookAbrirHistOp(); } catch (_) {}
+    try { _enhanceInconformidades().catch(function(){}); } catch (_) {}
+    try { _enhanceOperadoresGrid().catch(function(){}); } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 180);
+      setInterval(tick, 1200);
+    });
+  } else {
+    setTimeout(tick, 180);
+    setInterval(tick, 1200);
   }
 })();
 
