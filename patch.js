@@ -2660,23 +2660,9 @@
   function _emp() {
     try { return String(window.EMP_FILTRO || '').trim() || 'E1'; } catch (_) { return 'E1'; }
   }
-  function _empresaIdAtual() {
-    try {
-      return String(
-        window.empresaAtual?.id ||
-        window.usuarioAtual?.empresa_id ||
-        window.CURRENT_USER?.empresa_id ||
-        window._currentUser?.empresa_id ||
-        document.querySelector('[data-empresa-id]')?.dataset?.empresaId ||
-        ''
-      ).trim();
-    } catch (_) {
-      return '';
-    }
-  }
   function _empresaQs(extra) {
     var qs = [];
-    var empresaId = _empresaIdAtual();
+    var empresaId = String((window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '')).trim();
     if (empresaId) qs.push('empresa_id=' + encodeURIComponent(empresaId));
     if (extra) qs.push(String(extra));
     return qs.join('&');
@@ -3486,7 +3472,7 @@
         host.querySelector('#tinta-cancel').onclick = close;
         host.querySelector('#tinta-save').onclick = function() {
           var payload = {
-            empresa_id: _empresaIdAtual() || undefined,
+            empresa_id: (window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '') || undefined,
             nome: String(host.querySelector('#tinta-nome').value || '').trim(),
             cor: String(host.querySelector('#tinta-cor').value || '').trim(),
             fornecedor: String(host.querySelector('#tinta-forn').value || '').trim(),
@@ -3536,7 +3522,7 @@
         host.querySelector('#tm-cancel').onclick = close;
         host.querySelector('#tm-save').onclick = function() {
           var payload = {
-            empresa_id: _empresaIdAtual() || undefined,
+            empresa_id: (window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '') || undefined,
             tipo: tipoPreset || String((host.querySelector('#tm-tipo') || {}).value || '').trim(),
             quantidade: Number(host.querySelector('#tm-qtd').value || 0) || 0,
             of_numero: String(host.querySelector('#tm-of').value || '').trim(),
@@ -3777,7 +3763,7 @@
         host.querySelector('#mat-save').onclick = function() {
           var categoria = String(sel.value || '').trim();
           var payload = {
-            empresa_id: _empresaIdAtual() || undefined,
+            empresa_id: (window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '') || undefined,
             categoria: categoria,
             nome: String(host.querySelector('#mat-nome').value || '').trim(),
             unidade: String(host.querySelector('#mat-un').value || 'un').trim() || 'un',
@@ -3825,7 +3811,7 @@
         host.querySelector('#mm-cancel').onclick = close;
         host.querySelector('#mm-save').onclick = function() {
           var payload = {
-            empresa_id: _empresaIdAtual() || undefined,
+            empresa_id: (window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '') || undefined,
             tipo: tipoPreset || String((host.querySelector('#mm-tipo') || {}).value || '').trim(),
             quantidade: Number(host.querySelector('#mm-qtd').value || 0) || 0,
             of_numero: String(host.querySelector('#mm-of').value || '').trim(),
@@ -6659,7 +6645,7 @@ window._mbnActive = function(id) {
     if (typeof origSalvarCliente === 'function' && !origSalvarCliente._patchRefreshClientesV2) {
       var wrappedSalvarCliente = async function() {
         var idAntes = '';
-        var empresaIdAtual = _empresaIdAtual();
+        var empresaIdAtual = String((window.CURRENT_USER?.empresa_id || window.CURRENT_USER?.empId || '')).trim();
         try {
           var idEl = document.getElementById('cli-id');
           idAntes = String(window.CLIENTE_ATUAL_ID || (idEl ? idEl.value : '') || '').trim();
