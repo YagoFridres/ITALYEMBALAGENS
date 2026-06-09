@@ -4309,8 +4309,13 @@ app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', 
 
 app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), async (req, res) => {
   try {
-    const key = String(process.env.ANTHROPIC_API_KEY || '').trim();
-    if (!key) return res.status(500).json({ ok: false, error: 'ANTHROPIC_API_KEY ausente no servidor' });
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({
+        ok: false,
+        error:
+          'OPENAI_API_KEY ausente no servidor. Configure a variável OPENAI_API_KEY no serviço do backend e faça Redeploy/Restart para aplicar.',
+      });
+    }
 
     const f = req.file || null;
     if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
@@ -4319,6 +4324,12 @@ app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), asy
     const isPdf = mime === 'application/pdf' || ext === '.pdf';
     const isImg = mime.startsWith('image/');
     if (!isPdf && !isImg) return res.status(400).json({ ok: false, error: 'Formato inválido (use imagem ou PDF)' });
+    if (isPdf) {
+      return res.status(400).json({
+        ok: false,
+        error: 'PDF ainda não é suportado nesta função (modo OpenAI). Envie uma imagem (JPG/PNG/WebP) ou converta o PDF para imagem.',
+      });
+    }
 
     const safeExt = ext && ext.length <= 8 ? ext : (isPdf ? '.pdf' : '.png');
     const filename = `import-of/${new Date().toISOString().slice(0, 10)}/${Date.now()}-${Math.random().toString(36).slice(2)}${safeExt}`;
@@ -4358,35 +4369,39 @@ app.post('/api/importar-of-imagem', authMiddleware, ofUpload.single('file'), asy
     ].join('\n');
 
     const b64 = Buffer.from(f.buffer).toString('base64');
-    const content = [
-      isPdf
-        ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } }
-        : { type: 'image', source: { type: 'base64', media_type: (mime || 'image/png'), data: b64 } },
-      { type: 'text', text: prompt },
-    ];
+    const dataUrl = `data:${mime || 'image/png'};base64,${b64}`;
 
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' },
         max_tokens: 1400,
-        messages: [{ role: 'user', content }],
+        messages: [
+          { role: 'system', content: prompt },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extraia os dados conforme instruções e responda somente com JSON.' },
+              { type: 'image_url', image_url: { url: dataUrl } },
+            ],
+          },
+        ],
       }),
     });
 
     const json = await r.json().catch(() => null);
     if (!r.ok || !json) {
       const msg = String(json?.error?.message || json?.message || ('HTTP ' + r.status));
-      try { console.error('[IMPORTAR OF IMAGEM] erro IA:', { status: r.status, msg, rid: req._rid || null }); } catch (_) {}
+      try { console.error('[IMPORTAR OF IMAGEM] erro OpenAI:', { status: r.status, msg, rid: req._rid || null }); } catch (_) {}
       return res.status(500).json({ ok: false, error: msg });
     }
 
-    const text = String((json?.content || []).find((c) => c && c.type === 'text')?.text || '').trim();
+    const text = String(json?.choices?.[0]?.message?.content || '').trim();
     const parseJsonLoose = (s) => {
       const raw = String(s || '').trim();
       if (!raw) throw new Error('json_vazio');
