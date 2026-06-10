@@ -2667,8 +2667,17 @@
   function _esc(s) {
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+  function _empFiltroNormalizado() {
+    try {
+      var empFiltro = String(window.EMP_FILTRO || '').trim();
+      var low = empFiltro.toLowerCase();
+      return (low === 'tudo' || low === 'todas') ? '' : empFiltro;
+    } catch (_) {
+      return '';
+    }
+  }
   function _emp() {
-    try { return String(window.EMP_FILTRO || '').trim() || 'E1'; } catch (_) { return 'E1'; }
+    try { return _empFiltroNormalizado(); } catch (_) { return ''; }
   }
   function _empresaQs(extra) {
     var qs = [];
@@ -2677,6 +2686,32 @@
     if (extra) qs.push(String(extra));
     return qs.join('&');
   }
+  try {
+    if (!window.__patchOfsEmpFiltroSanitizado && typeof window.fetch === 'function') {
+      var _origFetchPatchOfs = window.fetch.bind(window);
+      window.fetch = function(input, init) {
+        try {
+          var rawUrl = typeof input === 'string' ? input : (input && input.url ? String(input.url) : '');
+          if (rawUrl && rawUrl.indexOf('/api/ofs') >= 0) {
+            var base = (window.location && window.location.origin) ? window.location.origin : 'http://localhost';
+            var urlObj = new URL(rawUrl, base);
+            if (urlObj.pathname === '/api/ofs') {
+              ['emp_id', 'empId'].forEach(function(k) {
+                var cur = String(urlObj.searchParams.get(k) || '').trim().toLowerCase();
+                if (cur === 'tudo' || cur === 'todas') urlObj.searchParams.delete(k);
+              });
+              var sanitized = rawUrl.indexOf('http://') === 0 || rawUrl.indexOf('https://') === 0
+                ? urlObj.toString()
+                : (urlObj.pathname + urlObj.search);
+              input = sanitized;
+            }
+          }
+        } catch (_) {}
+        return _origFetchPatchOfs(input, init);
+      };
+      window.__patchOfsEmpFiltroSanitizado = true;
+    }
+  } catch (_) {}
   function _toast(msg, cor) {
     try { if (typeof window.toast === 'function') return window.toast(msg, cor); } catch (_) {}
     try { alert(msg); } catch (_) {}

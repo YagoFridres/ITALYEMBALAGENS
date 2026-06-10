@@ -2954,9 +2954,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
     try {
       console.log('[OFS EMPRESA]', {
-        usuario_id: req.usuario?.id,
         email: req.usuario?.email,
-        empId: empId
+        empId_resolvido: empId,
+        empId_query: req.query.emp_id
       });
     } catch (_) {}
     const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
@@ -7008,6 +7008,10 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const { q, limit = 1000, offset = 0, todos } = req.query;
+    console.log('[CLIENTES DEBUG]', {
+      email_token: req.usuario?.email,
+      id_token: req.usuario?.id
+    });
 
     let empresa_id = null;
     try {
