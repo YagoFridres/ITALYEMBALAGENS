@@ -2926,7 +2926,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    let empId = String(q_empId || q_emp_id || '').trim();
+    const empIdRaw = String(req.query.emp_id || req.query.empId || '').trim();
+    const isValidUuid = /^[0-9a-f-]{36}$/i.test(empIdRaw);
+    const empIdFiltro = isValidUuid ? empIdRaw : '';
+    let empId = empIdFiltro;
     if (!empId) {
       try {
         const email = String(req.usuario?.email || '').toLowerCase().trim();
@@ -2938,15 +2941,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
           'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
         };
         empId = String(mapa[email] || '').trim();
-        if (!empId && req.usuario?.id) {
-          const { data: usr } = await supabase
-            .from('usuarios')
-            .select('email')
-            .eq('id', req.usuario.id)
-            .maybeSingle();
-          const em = String(usr?.email || '').toLowerCase().trim();
-          empId = String(mapa[em] || '').trim();
-        }
       } catch (e) {
         console.error('[OFS empresa err]', e.message);
         empId = '';
@@ -2954,9 +2948,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
     try {
       console.log('[OFS EMPRESA]', {
-        email: req.usuario?.email,
-        empId_resolvido: empId,
-        empId_query: req.query.emp_id
+        empIdRaw,
+        empId,
+        email: req.usuario?.email
       });
     } catch (_) {}
     const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();

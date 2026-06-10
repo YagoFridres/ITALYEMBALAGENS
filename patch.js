@@ -2688,26 +2688,23 @@
   }
   try {
     if (!window.__patchOfsEmpFiltroSanitizado && typeof window.fetch === 'function') {
-      var _origFetchPatchOfs = window.fetch.bind(window);
-      window.fetch = function(input, init) {
+      var _origFetchPatchOfs = window.fetch;
+      window.fetch = function(url, opts) {
         try {
-          var rawUrl = typeof input === 'string' ? input : (input && input.url ? String(input.url) : '');
-          if (rawUrl && rawUrl.indexOf('/api/ofs') >= 0) {
-            var base = (window.location && window.location.origin) ? window.location.origin : 'http://localhost';
-            var urlObj = new URL(rawUrl, base);
-            if (urlObj.pathname === '/api/ofs') {
-              ['emp_id', 'empId'].forEach(function(k) {
-                var cur = String(urlObj.searchParams.get(k) || '').trim().toLowerCase();
-                if (cur === 'tudo' || cur === 'todas') urlObj.searchParams.delete(k);
-              });
-              var sanitized = rawUrl.indexOf('http://') === 0 || rawUrl.indexOf('https://') === 0
-                ? urlObj.toString()
-                : (urlObj.pathname + urlObj.search);
-              input = sanitized;
+          if (typeof url === 'string' && url.indexOf('/api/ofs') >= 0) {
+            var u = new URL(url, window.location.origin);
+            var empId = u.searchParams.get('emp_id') ||
+                        u.searchParams.get('empId') || '';
+            empId = String(empId || '').trim().toLowerCase();
+            if (!empId || empId === 'tudo' || empId === 'todas' ||
+                empId === 'null' || empId === 'undefined') {
+              u.searchParams.delete('emp_id');
+              u.searchParams.delete('empId');
+              url = u.pathname + u.search;
             }
           }
         } catch (_) {}
-        return _origFetchPatchOfs(input, init);
+        return _origFetchPatchOfs.apply(this, [url, opts]);
       };
       window.__patchOfsEmpFiltroSanitizado = true;
     }
