@@ -1839,7 +1839,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }; 
 
   var _fnOrigOfRapida = null; 
+  var _ofRapidaPatchado = false;
   function patchAbrirOfRapida() { 
+    if (_ofRapidaPatchado) return;
     if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
       _fnOrigOfRapida = window.abrirNovaOfRapida; 
       window.abrirNovaOfRapida = function() { 
@@ -1861,6 +1863,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }, 150); 
       }; 
       window.abrirNovaOfRapida._patched = true; 
+      _ofRapidaPatchado = true;
+      try { window.__patchAbrirNovaOfRapidaOnce = true; } catch(_) {}
       console.log('[PATCH] abrirNovaOfRapida interceptada'); 
     } 
   } 
@@ -2169,16 +2173,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }, 700);
   }catch(e){}
   setTimeout(function(){ try { aplicarAccordion(); } catch(e) {} }, 800); 
- 
+
   setInterval(function() { 
     try { 
       patchToggleMobMenu(); 
       patchRenderHub(); 
       patchGoAcordeon(); 
-      if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
-        console.log('[PATCH] abrirNovaOfRapida foi sobrescrita! Reaplicando...'); 
-        patchAbrirOfRapida(); 
-      } 
     } catch(e) {} 
   }, 1000); 
  
@@ -4153,6 +4153,29 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function _resetFiltrosClientes() {
+    try {
+      var sit = document.querySelector('#cli-sit');
+      if (sit) {
+        sit.value = '';
+        try { sit.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+      var ramo = document.querySelector('#cli-ramo');
+      if (ramo) {
+        ramo.value = '';
+        try { ramo.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+      var emp = document.querySelector('#cli-emp-fil');
+      if (emp) {
+        emp.value = '';
+        try { emp.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+      if (typeof renderClientes === 'function') {
+        try { renderClientes(); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   function ensureBtnVerTodos() {
     try {
       var bar = document.querySelector('#page-clientes .ptoolbar');
@@ -4474,6 +4497,240 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
       obs.observe(document.body, { childList: true, subtree: true });
     } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
+(function patchGoClientesEEstoques() {
+  function authHeaders() {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function num(v) {
+    var n = Number(v || 0);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function getMainPatchHost(pageKey, title) {
+    var main = document.querySelector('.content, #content, .main-area, #main-content, #page-content');
+    if (!main) return null;
+
+    var host = document.getElementById('patch-page-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'patch-page-host';
+      host.className = 'page';
+      host.style.display = 'none';
+      host.style.padding = '16px';
+      host.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
+          '<h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>' +
+        '</div>' +
+        '<div id="patch-page-body"></div>';
+      main.appendChild(host);
+    }
+
+    try {
+      document.querySelectorAll('[id^="page-"]').forEach(function(el) {
+        if (el !== host) el.style.display = 'none';
+      });
+    } catch (_) {}
+    try { host.style.display = 'block'; } catch (_) {}
+    try { document.getElementById('patch-page-title').textContent = title || ''; } catch (_) {}
+    try { window._PAGE_ATUAL = pageKey; } catch (_) {}
+    return document.getElementById('patch-page-body');
+  }
+
+  window._abrirModalNovaTinta = window._abrirModalNovaTinta || function() {
+    try { alert('Cadastro de tintas ainda nao foi implementado nesta tela.'); } catch (_) {}
+  };
+
+  function _renderEstoqueTintas() {
+    var main = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
+    if (!main) return;
+    main.innerHTML = '<div id="patch-tintas" style="padding:20px">Carregando tintas...</div>';
+    fetch('/api/estoque_tintas', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        var container = document.getElementById('patch-tintas');
+        if (!container) return;
+        if (!res || !res.ok || !Array.isArray(res.data) || !res.data.length) {
+          container.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhuma tinta cadastrada</div>';
+          return;
+        }
+        container.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">' +
+            '<h2 style="color:var(--text);font-size:18px;margin:0">🎨 Estoque de Tintas</h2>' +
+            '<button onclick="_abrirModalNovaTinta()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Tinta</button>' +
+          '</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+            '<thead>' +
+              '<tr style="color:var(--text2);border-bottom:2px solid var(--border)">' +
+                '<th style="text-align:left;padding:10px">Nome</th>' +
+                '<th style="text-align:center;padding:10px">Qtd Atual</th>' +
+                '<th style="text-align:center;padding:10px">Qtd Minima</th>' +
+                '<th style="text-align:center;padding:10px">Unidade</th>' +
+                '<th style="text-align:center;padding:10px">Status</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' +
+              res.data.map(function(t) {
+                var atual = num(t && t.quantidade_atual);
+                var min = num(t && t.quantidade_minima);
+                var status = atual <= min ? '🔴 Critico' : (atual <= (min * 1.2) ? '🟡 Alerta' : '🟢 OK');
+                return '<tr style="border-bottom:1px solid var(--border)">' +
+                  '<td style="padding:10px;color:var(--text)">' + esc(t && t.nome || '-') + '</td>' +
+                  '<td style="padding:10px;text-align:center;font-weight:600;color:' + (atual <= min ? '#f75a5a' : 'var(--text)') + '">' + esc(String(atual)) + '</td>' +
+                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(String(min)) + '</td>' +
+                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(t && t.unidade || '-') + '</td>' +
+                  '<td style="padding:10px;text-align:center">' + status + '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody>' +
+          '</table>';
+      })
+      .catch(function(e) {
+        var c = document.getElementById('patch-tintas');
+        if (c) c.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+      });
+  }
+
+  function _renderEstoqueMateriais() {
+    var main = getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
+    if (!main) return;
+    main.innerHTML = '<div id="patch-materiais" style="padding:20px">Carregando materiais...</div>';
+    fetch('/api/estoque_materiais', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        var container = document.getElementById('patch-materiais');
+        if (!container) return;
+        if (!res || !res.ok || !Array.isArray(res.data) || !res.data.length) {
+          container.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhum material cadastrado</div>';
+          return;
+        }
+        container.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">' +
+            '<h2 style="color:var(--text);font-size:18px;margin:0">🔧 Estoque de Materiais</h2>' +
+            '<button style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Material</button>' +
+          '</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+            '<thead>' +
+              '<tr style="color:var(--text2);border-bottom:2px solid var(--border)">' +
+                '<th style="text-align:left;padding:10px">Nome</th>' +
+                '<th style="text-align:left;padding:10px">Categoria</th>' +
+                '<th style="text-align:center;padding:10px">Qtd Atual</th>' +
+                '<th style="text-align:center;padding:10px">Qtd Minima</th>' +
+                '<th style="text-align:center;padding:10px">Unidade</th>' +
+                '<th style="text-align:center;padding:10px">Status</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' +
+              res.data.map(function(m) {
+                var atual = num(m && (m.quantidade_atual != null ? m.quantidade_atual : m.quantidade));
+                var min = num(m && m.quantidade_minima);
+                var status = atual <= min ? '🔴 Critico' : (atual <= (min * 1.2) ? '🟡 Alerta' : '🟢 OK');
+                return '<tr style="border-bottom:1px solid var(--border)">' +
+                  '<td style="padding:10px;color:var(--text)">' + esc(m && m.nome || '-') + '</td>' +
+                  '<td style="padding:10px;color:var(--text2)">' + esc(m && (m.categoria || m.tipo || m.grupo) || '-') + '</td>' +
+                  '<td style="padding:10px;text-align:center;font-weight:600;color:' + (atual <= min ? '#f75a5a' : 'var(--text)') + '">' + esc(String(atual)) + '</td>' +
+                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(String(min)) + '</td>' +
+                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(m && m.unidade || '-') + '</td>' +
+                  '<td style="padding:10px;text-align:center">' + status + '</td>' +
+                '</tr>';
+              }).join('') +
+            '</tbody>' +
+          '</table>';
+      })
+      .catch(function(e) {
+        var c = document.getElementById('patch-materiais');
+        if (c) c.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+      });
+  }
+
+  function _renderDashboardEstoquesStandalone() {
+    var main = getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
+    if (!main) return;
+    main.innerHTML = '<div id="patch-dashboard-estoques" style="padding:20px;color:var(--text2)">Carregando...</div>';
+    fetch('/api/estoque_dashboard', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        var container = document.getElementById('patch-dashboard-estoques');
+        if (!container) return;
+        if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha ao carregar dashboard');
+        var tintas = res.tintas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
+        var chapas = res.chapas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
+        var cards = [
+          { nome: 'Tintas', icon: '🎨', total: num(tintas.total), criticos: num(tintas.criticos), alertas: num(tintas.alertas), ok: num(tintas.ok), cor: '#f7923a' },
+          { nome: 'Chapas', icon: '📦', total: num(chapas.total), criticos: num(chapas.criticos), alertas: num(chapas.alertas), ok: num(chapas.ok), cor: '#4f8ef7' }
+        ];
+        container.innerHTML =
+          '<div style="padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">' +
+            cards.map(function(c) {
+              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;border-left:4px solid ' + c.cor + '">' +
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+                  '<span style="font-size:24px">' + c.icon + '</span>' +
+                  '<div><div style="font-weight:700;font-size:16px">' + esc(c.nome) + '</div><div style="color:var(--text2);font-size:13px">' + esc(String(c.total)) + ' itens cadastrados</div></div>' +
+                '</div>' +
+                '<div style="display:flex;gap:12px">' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,90,90,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#f75a5a">' + esc(String(c.criticos)) + '</div><div style="font-size:11px;color:var(--text2)">Criticos</div></div>' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,146,58,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#f7923a">' + esc(String(c.alertas)) + '</div><div style="font-size:11px;color:var(--text2)">Alertas</div></div>' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(62,207,142,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#3ecf8e">' + esc(String(c.ok)) + '</div><div style="font-size:11px;color:var(--text2)">OK</div></div>' +
+                '</div>' +
+              '</div>';
+            }).join('') +
+          '</div>';
+      })
+      .catch(function(e) {
+        var c = document.getElementById('patch-dashboard-estoques');
+        if (c) c.innerHTML = '<div style="padding:20px;color:#f75a5a">Erro ao carregar dashboard: ' + esc(e && e.message || e) + '</div>';
+      });
+  }
+
+  function patchGo() {
+    var orig = window.go;
+    if (typeof orig !== 'function' || orig._patchClientesEstoquesCustom) return;
+    var wrapped = function(tela) {
+      var page = String(tela || '');
+      if (page === 'estoque-tintas') {
+        _renderEstoqueTintas();
+        return;
+      }
+      if (page === 'estoque-materiais') {
+        _renderEstoqueMateriais();
+        return;
+      }
+      if (page === 'estoque-dashboard') {
+        _renderDashboardEstoquesStandalone();
+        return;
+      }
+      var r = orig.apply(this, arguments);
+      if (page === 'clientes') {
+        setTimeout(function() {
+          try { _resetFiltrosClientes(); } catch (_) {}
+        }, 400);
+      }
+      return r;
+    };
+    wrapped._patchClientesEstoquesCustom = true;
+    window.go = wrapped;
+  }
+
+  function init() {
+    patchGo();
+    setTimeout(patchGo, 1200);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
