@@ -3393,7 +3393,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
     try {
-      var r = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var r = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var j = await r.json().catch(function() { return null; });
       if (j && j.ok && Array.isArray(j.data)) setClientesLista(j.data);
     } catch (_) {}
@@ -4168,6 +4168,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return [];
   }
 
+  async function _carregarTodosClientes() {
+    try {
+      var token = '';
+      try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (json && json.ok && Array.isArray(json.data) && json.data.length) {
+        try {
+          if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
+            CLIENTES.length = 0;
+            json.data.forEach(function(c) { CLIENTES.push(c); });
+          }
+        } catch (_) {}
+        try { window.CLIENTES = json.data; } catch (_) {}
+        try { window._CLIENTES = json.data; } catch (_) {}
+        console.log('[PATCH] clientes carregados:', json.data.length);
+        if (typeof renderClientes === 'function') renderClientes();
+      }
+    } catch (e) {
+      try { console.error('[PATCH] carregarTodosClientes', e); } catch (_) {}
+    }
+  }
+
   function findClienteById(id) {
     var alvo = String(id || '').trim();
     if (!alvo) return null;
@@ -4340,6 +4365,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
       }
+      try { _carregarTodosClientes(); } catch (_) {}
     } catch (_) {}
   }
 
@@ -4367,6 +4393,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               EMP_FILTRO = '';
             }
           } catch (_) {}
+          await _carregarTodosClientes();
           if (typeof carregarClientes === 'function') {
             try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
           }
@@ -4484,6 +4511,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               if (!existe) {
                 console.log('[PATCH] adicionando cliente manualmente ao array');
                 addClienteToArrays(novoCliente);
+                try { await _carregarTodosClientes(); } catch (_) {}
               }
 
               if (typeof renderClientes === 'function') {
@@ -4626,7 +4654,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-      var resp = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var resp = await fetch('/api/clientes?limit=2000&order=created_at&dir=desc&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
       var json = await resp.json().catch(function() { return null; });
       var arr = json && json.ok && Array.isArray(json.data) ? json.data : null;
       if (arr && arr.length) {
@@ -5137,6 +5165,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (page === 'clientes') {
         setTimeout(function() {
           try { _resetFiltrosClientes(); } catch (_) {}
+          try { _carregarTodosClientes(); } catch (_) {}
         }, 400);
       }
       runAfterGoEffects(page);

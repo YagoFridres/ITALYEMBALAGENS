@@ -6846,23 +6846,35 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
     const hasPaging = req.query.limit != null || req.query.offset != null;
-    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 100, 500);
+    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
     const cacheKey = '';
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
-    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId';
+    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    const logClientes = (rows) => {
+      try {
+        console.log('[GET CLIENTES]', {
+          empresa_id: empId || null,
+          total: rows?.length || 0,
+          primeiros: (rows || []).slice(0, 3).map((c) => c?.nome)
+        });
+      } catch (_) {}
+    };
     for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
+      let localOrder = String(req.query.order || 'created_at').trim() || 'created_at';
+      let localAsc = String(req.query.dir || 'desc').toLowerCase() !== 'desc';
       for (let i = 0; i < 8; i++) {
-        let q = supabase.from('clientes').select(localSelect).order('nome');
+        let q = supabase.from('clientes').select(localSelect).order(localOrder, { ascending: localAsc });
         if (col) q = q.eq(col, empId);
         if (hasPaging) q = q.range(offset, offset + limit - 1);
         const { data, error } = await q;
         if (!error) {
           const rows = data || [];
+          logClientes(rows);
           if (!lite) {
             return ok(res, rows);
           }
@@ -6899,6 +6911,12 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           break;
         }
 
+        if (missingCol && missingCol === localOrder) {
+          localOrder = 'nome';
+          localAsc = true;
+          continue;
+        }
+
         if (missingCol) {
           localSelect = localSelect.split(',').map(s => s.trim()).filter((c) => c && c !== missingCol).join(',');
           if (!localSelect) break;
@@ -6916,12 +6934,24 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
 
       if (lastLocalErr) {
-        let q2 = supabase.from('clientes').select('*').order('nome');
+        let fallbackOrder = String(req.query.order || 'created_at').trim() || 'created_at';
+        let fallbackAsc = String(req.query.dir || 'desc').toLowerCase() !== 'desc';
+        let q2 = supabase.from('clientes').select('*').order(fallbackOrder, { ascending: fallbackAsc });
         if (col) q2 = q2.eq(col, empId);
         if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
-        const all = await q2;
+        let all = await q2;
+        if (all.error) {
+          const msgAll = String(all.error.message || all.error || '');
+          if (msgAll.includes('created_at') || msgAll.includes('Could not find')) {
+            q2 = supabase.from('clientes').select('*').order('nome', { ascending: true });
+            if (col) q2 = q2.eq(col, empId);
+            if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
+            all = await q2;
+          }
+        }
         if (!all.error) {
           const rows = all.data || [];
+          logClientes(rows);
           if (!lite) {
             return ok(res, rows);
           }
