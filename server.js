@@ -217,20 +217,30 @@ async function getEmpresaId(usuarioId, emailFallback) {
     const email = (usr?.email || emailFallback || '').toLowerCase().trim();
     console.log('[getEmpresaId]', { usuarioId, email });
 
-    const mapa = {
+    const MAPA_EMPRESAS = {
       'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+      'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
+      'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
+      'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+      'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
+      'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
+      'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
+      'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
+      'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
+      'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
       'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
       'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
       'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
       'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
     };
+    const EMPRESA_PADRAO = 'df5f7672-0a6b-402d-ae65-296554236c31';
 
-    if (mapa[email]) {
-      console.log('[getEmpresaId] match direto:', mapa[email]);
-      return mapa[email];
+    if (MAPA_EMPRESAS[email]) {
+      console.log('[getEmpresaId] match direto:', MAPA_EMPRESAS[email]);
+      return MAPA_EMPRESAS[email];
     }
 
-    for (const [key, id] of Object.entries(mapa)) {
+    for (const [key, id] of Object.entries(MAPA_EMPRESAS)) {
       if (email.includes(key) || key.includes(email)) {
         console.log('[getEmpresaId] match parcial:', id);
         return id;
@@ -244,11 +254,11 @@ async function getEmpresaId(usuarioId, emailFallback) {
       .maybeSingle();
 
     console.log('[getEmpresaId] fallback banco:', emp?.id);
-    return emp?.id || null;
+    return emp?.id || EMPRESA_PADRAO;
 
   } catch(e) {
     console.error('[getEmpresaId ERROR]', e.message);
-    return null;
+    return 'df5f7672-0a6b-402d-ae65-296554236c31';
   }
 }
 
@@ -2935,15 +2945,24 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         const email = String(req.usuario?.email || '').toLowerCase().trim();
         const MAPA_EMPRESAS = {
           'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+          'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
+          'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
+          'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+          'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
+          'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
+          'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
+          'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
+          'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
+          'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
           'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
           'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
           'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
           'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
         };
-        empId = MAPA_EMPRESAS[email] || null;
+        empId = MAPA_EMPRESAS[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
       } catch (e) {
         console.error('[OFS empresa err]', e.message);
-        empId = null;
+        empId = 'df5f7672-0a6b-402d-ae65-296554236c31';
       }
     }
     try {
@@ -7005,24 +7024,34 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     let empresa_id = null;
     try {
       const email = req.usuario?.email || '';
-      const mapa = {
+      const MAPA_EMPRESAS = {
         'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+        'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
+        'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
+        'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+        'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
+        'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
+        'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
+        'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
+        'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
+        'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
         'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
         'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
         'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
         'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
       };
-      empresa_id = mapa[email.toLowerCase().trim()] || null;
+      empresa_id = MAPA_EMPRESAS[email.toLowerCase().trim()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
 
       if (!empresa_id) {
         const { data: usr } = await supabase
           .from('usuarios').select('email')
           .eq('id', req.usuario.id).maybeSingle();
         const em = (usr?.email || '').toLowerCase().trim();
-        empresa_id = mapa[em] || null;
+        empresa_id = MAPA_EMPRESAS[em] || 'df5f7672-0a6b-402d-ae65-296554236c31';
       }
     } catch(e) {
       console.error('[CLIENTES empresa err]', e.message);
+      empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     }
 
     console.log('[CLIENTES]', { empresa_id, email: req.usuario?.email });
