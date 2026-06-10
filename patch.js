@@ -3897,6 +3897,184 @@
   }
 })();
 
+(function patchClientesUX() {
+  function injectCss() {
+    if (document.getElementById('patch-clientes-css')) return;
+    var cssClientes =
+      '/* Container dos botões do topo de clientes */\n' +
+      '.clientes-acoes-topo,\n' +
+      '#clientes-toolbar,\n' +
+      '[data-tela="clientes"] .toolbar,\n' +
+      '.clientes-header-buttons {\n' +
+      '  display: flex !important;\n' +
+      '  align-items: center !important;\n' +
+      '  gap: 8px !important;\n' +
+      '  flex-wrap: wrap !important;\n' +
+      '}\n' +
+      '\n' +
+      '/* Filtros de busca alinhados */\n' +
+      '.clientes-filtros,\n' +
+      '#clientes-filtros {\n' +
+      '  display: flex !important;\n' +
+      '  align-items: center !important;\n' +
+      '  gap: 8px !important;\n' +
+      '  padding: 8px 16px !important;\n' +
+      '  flex-wrap: wrap !important;\n' +
+      '}\n' +
+      '\n' +
+      '/* Botões de ação em cada card alinhados */\n' +
+      '.cliente-card .acoes,\n' +
+      '.cliente-card-footer,\n' +
+      '.cliente-acoes {\n' +
+      '  display: flex !important;\n' +
+      '  align-items: center !important;\n' +
+      '  gap: 6px !important;\n' +
+      '  flex-wrap: wrap !important;\n' +
+      '  margin-top: 8px !important;\n' +
+      '}\n' +
+      '\n' +
+      '/* Botões Painel, Editar, Excluir no mesmo tamanho */\n' +
+      '.cliente-card .acoes button,\n' +
+      '.cliente-card-footer button,\n' +
+      '.cliente-acoes button {\n' +
+      '  padding: 4px 10px !important;\n' +
+      '  font-size: 12px !important;\n' +
+      '  border-radius: 6px !important;\n' +
+      '  white-space: nowrap !important;\n' +
+      '}\n';
+    var styleClientes = document.createElement('style');
+    styleClientes.id = 'patch-clientes-css';
+    styleClientes.textContent = cssClientes;
+    (document.head || document.documentElement).appendChild(styleClientes);
+  }
+
+  function looksLikeClientesModal(modal) {
+    if (!modal) return false;
+    try {
+      return !!modal.querySelector('input[name="estado"], #f-estado, input[placeholder="SC"], input[placeholder="UF"], input[name="uf"]');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function mapEstadoToUfInModal(modal) {
+    if (!looksLikeClientesModal(modal)) return;
+    try {
+      var inputEstado = modal.querySelector('input[name="estado"], #f-estado, input[placeholder="SC"]');
+      if (inputEstado) {
+        if (String(inputEstado.name || '').toLowerCase() === 'estado') inputEstado.name = 'uf';
+        if (String(inputEstado.id || '').toLowerCase() === 'f-estado') inputEstado.id = 'f-uf';
+      }
+    } catch (_) {}
+  }
+
+  function tryReloadClientesList() {
+    try {
+      if (typeof window.carregarClientes === 'function') return window.carregarClientes();
+      if (typeof window.renderClientes === 'function') return window.renderClientes();
+      if (typeof window.loadClientes === 'function') return window.loadClientes();
+      var menuClientes = document.querySelector('[onclick*="clientes"], [data-menu="clientes"]');
+      if (menuClientes && typeof menuClientes.click === 'function') menuClientes.click();
+    } catch (_) {}
+  }
+
+  function patchClickSalvar() {
+    if (document.documentElement.dataset.patchClientesClickSalvar === '1') return;
+    document.documentElement.dataset.patchClientesClickSalvar = '1';
+    document.addEventListener('click', function(e) {
+      try {
+        var btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!btn) return;
+        var texto = String(btn.textContent || '').trim().toLowerCase();
+        if (texto !== 'salvar') return;
+        var modal = btn.closest ? btn.closest('.modal, [class*="modal"], .modal-overlay') : null;
+        if (!modal) return;
+        mapEstadoToUfInModal(modal);
+      } catch (_) {}
+    }, true);
+  }
+
+  function patchFetchClientes() {
+    var origFetch = window.fetch;
+    if (typeof origFetch !== 'function' || origFetch._patchClientesUX) return;
+    var wrapped = function(url, opts) {
+      var isClientesPost = false;
+      try {
+        var u = typeof url === 'string' ? url : (url && url.url ? String(url.url) : '');
+        var m = String((opts && opts.method) || 'GET').toUpperCase();
+        isClientesPost = (m === 'POST' && u.indexOf('/api/clientes') !== -1);
+        if (isClientesPost && opts) {
+          var body = opts.body;
+          if (typeof body === 'string') {
+            try {
+              var o = JSON.parse(body);
+              if (o && typeof o === 'object') {
+                if (o.uf === undefined && o.estado !== undefined) o.uf = o.estado;
+                if (o.estado !== undefined) delete o.estado;
+                opts.body = JSON.stringify(o);
+              }
+            } catch (_) {}
+          } else if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
+            try {
+              var est = body.get('estado');
+              var uf = body.get('uf');
+              if ((uf == null || String(uf) === '') && est != null) body.set('uf', est);
+              try { body.delete('estado'); } catch (_) {}
+            } catch (_) {}
+          } else if (body && typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
+            try {
+              var est2 = body.get('estado');
+              var uf2 = body.get('uf');
+              if (!uf2 && est2) body.set('uf', est2);
+              body.delete('estado');
+            } catch (_) {}
+          }
+        }
+      } catch (_) {}
+
+      var promise = origFetch.apply(this, arguments);
+
+      if (isClientesPost) {
+        try {
+          promise
+            .then(function(res) {
+              try { return res.clone().json(); } catch (_) { return null; }
+            })
+            .then(function(data) {
+              try {
+                if (data && data.ok) {
+                  try { console.log('[CLIENTE SALVO]', (data.data && data.data.nome) ? data.data.nome : ''); } catch (_) {}
+                  setTimeout(tryReloadClientesList, 500);
+                }
+              } catch (_) {}
+            })
+            .catch(function() {});
+        } catch (_) {}
+      }
+
+      return promise;
+    };
+    wrapped._patchClientesUX = true;
+    window.fetch = wrapped;
+  }
+
+  function tick() {
+    try { injectCss(); } catch (_) {}
+    try { patchClickSalvar(); } catch (_) {}
+    try { patchFetchClientes(); } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 200);
+      setInterval(tick, 2500);
+    });
+  } else {
+    setTimeout(tick, 200);
+    setInterval(tick, 2500);
+  }
+})();
+
 window._mbnActive = function(id) {
   document.querySelectorAll('.mbn-item').forEach(function(el) {
     var on = el.id === id;
