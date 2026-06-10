@@ -3922,7 +3922,14 @@
       '  flex-wrap: wrap !important;\n' +
       '}\n' +
       '\n' +
-      '/* Botões de ação em cada card alinhados */\n' +
+      '/* Cards de clientes (seletor real: .cli-card) */\n' +
+      '.cli-card {\n' +
+      '  display: flex !important;\n' +
+      '  flex-direction: column !important;\n' +
+      '}\n' +
+      '\n' +
+      '/* Ações (Painel/Editar/Excluir) no rodapé do card */\n' +
+      '.cli-card .cli-stats + div,\n' +
       '.cliente-card .acoes,\n' +
       '.cliente-card-footer,\n' +
       '.cliente-acoes {\n' +
@@ -3930,10 +3937,12 @@
       '  align-items: center !important;\n' +
       '  gap: 6px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
-      '  margin-top: 8px !important;\n' +
+      '  margin-top: auto !important;\n' +
+      '  padding-top: 8px !important;\n' +
       '}\n' +
       '\n' +
       '/* Botões Painel, Editar, Excluir no mesmo tamanho */\n' +
+      '.cli-card .cli-stats + div button,\n' +
       '.cliente-card .acoes button,\n' +
       '.cliente-card-footer button,\n' +
       '.cliente-acoes button {\n' +
@@ -3941,6 +3950,9 @@
       '  font-size: 12px !important;\n' +
       '  border-radius: 6px !important;\n' +
       '  white-space: nowrap !important;\n' +
+      '  min-height: 28px !important;\n' +
+      '  display: inline-flex !important;\n' +
+      '  align-items: center !important;\n' +
       '}\n';
     var styleClientes = document.createElement('style');
     styleClientes.id = 'patch-clientes-css';
@@ -3970,8 +3982,19 @@
 
   function tryReloadClientesList() {
     try {
-      if (typeof window.carregarClientes === 'function') return window.carregarClientes();
+      if (typeof window.carregarClientes === 'function') {
+        var p = null;
+        try { p = window.carregarClientes(true); } catch (_) { p = window.carregarClientes(); }
+        if (p && typeof p.then === 'function') {
+          return p.then(function() {
+            try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
+          }).catch(function() {
+            try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
+          });
+        }
+      }
       if (typeof window.renderClientes === 'function') return window.renderClientes();
+      if (typeof window.mapaClientesRecarregar === 'function') return window.mapaClientesRecarregar(true);
       if (typeof window.loadClientes === 'function') return window.loadClientes();
       var menuClientes = document.querySelector('[onclick*="clientes"], [data-menu="clientes"]');
       if (menuClientes && typeof menuClientes.click === 'function') menuClientes.click();
