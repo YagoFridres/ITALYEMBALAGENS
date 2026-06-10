@@ -2926,10 +2926,31 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
     let empId = String(q_empId || q_emp_id || '').trim();
     if (!empId) {
-      try { empId = String(empresa_id || '').trim(); } catch (_) { empId = ''; }
+      try {
+        const email = String(req.usuario?.email || '').toLowerCase().trim();
+        const mapa = {
+          'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+          'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+          'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+          'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+          'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+        };
+        empId = String(mapa[email] || '').trim();
+        if (!empId && req.usuario?.id) {
+          const { data: usr } = await supabase
+            .from('usuarios')
+            .select('email')
+            .eq('id', req.usuario.id)
+            .maybeSingle();
+          const em = String(usr?.email || '').toLowerCase().trim();
+          empId = String(mapa[em] || '').trim();
+        }
+      } catch (e) {
+        console.error('[OFS empresa err]', e.message);
+        empId = '';
+      }
     }
     try {
       console.log('[OFS EMPRESA]', {
@@ -6986,37 +7007,52 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    console.log('[CLIENTES GET]', {
-      usuario_id: req.usuario?.id,
-      email: req.usuario?.email
-    });
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const { q, limit = 1000, offset = 0, todos } = req.query;
 
-    const { q, limit = 1000, offset = 0 } = req.query;
+    let empresa_id = null;
+    try {
+      const email = req.usuario?.email || '';
+      const mapa = {
+        'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
+        'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+        'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+        'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+        'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+      };
+      empresa_id = mapa[email.toLowerCase().trim()] || null;
+
+      if (!empresa_id) {
+        const { data: usr } = await supabase
+          .from('usuarios').select('email')
+          .eq('id', req.usuario.id).maybeSingle();
+        const em = (usr?.email || '').toLowerCase().trim();
+        empresa_id = mapa[em] || null;
+      }
+    } catch(e) {
+      console.error('[CLIENTES empresa err]', e.message);
+    }
+
+    console.log('[CLIENTES]', { empresa_id, email: req.usuario?.email });
 
     let query = supabase
       .from('clientes')
       .select('id, nome, cidade, telefone, tel, email, ativo, vendedor_id, codigo, uf, documento, cnpj, rs, emp_id, empresa_id')
       .order('nome', { ascending: true })
-      .limit(Number(limit))
-      .range(Number(offset), Number(offset) + Number(limit) - 1);
+      .limit(Number(limit));
 
-    if (empresa_id) {
-      query = query.eq('empresa_id', empresa_id);
-    }
-
-    if (q) {
-      query = query.ilike('nome', `%${q}%`);
-    }
+    if (empresa_id) query = query.eq('empresa_id', empresa_id);
+    if (q) query = query.ilike('nome', `%${q}%`);
 
     const { data, error } = await query;
 
     if (error) {
+      console.error('[CLIENTES error]', error);
       return res.status(500).json({ ok: false, error: error.message });
     }
 
     return res.json({ ok: true, data: data || [], total: data?.length || 0 });
   } catch (err) {
+    console.error('[CLIENTES catch]', err.message);
     return res.status(500).json({ ok: false, error: err.message });
   }
 });
