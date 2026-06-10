@@ -987,6 +987,16 @@
     min-width: 270px !important;
     flex-shrink: 0 !important;
   }
+  .kanban-board .of-card img,
+  [id*="kanban"] .of-card img,
+  .ofs-maquina-board .of-card img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 120px !important;
+    object-fit: cover !important;
+    border-radius: 6px !important;
+    display: block !important;
+  }
 
   /* ===== FORMULÁRIOS GERAIS ===== */
   .form-row, .form-inline,
@@ -6407,10 +6417,13 @@ window._mbnActive = function(id) {
           var qs = [];
           if (emp) qs.push('empId=' + encodeURIComponent(emp));
           if (empresaAtual) qs.push('empresa_id=' + encodeURIComponent(empresaAtual));
+          qs.push('limit=2000');
+          qs.push('offset=0');
           qs.push('t=' + Date.now());
           var rr = await fetch('/api/clientes?' + qs.join('&'), { headers: tk ? { Authorization: 'Bearer ' + tk } : {} });
           var jj = await rr.json().catch(function() { return null; });
           var rows = (jj && Array.isArray(jj.data)) ? jj.data : (Array.isArray(jj) ? jj : []);
+          try { console.log('[CLIENTES RENDER]', rows); } catch (_) {}
           if (Array.isArray(rows) && rows.length && typeof window.normalizeCli === 'function') {
             window.CLIENTES = rows.map(window.normalizeCli);
           }
@@ -6479,7 +6492,7 @@ window._mbnActive = function(id) {
       });
       if (ramo) lista = lista.filter(function(c) { return String(c?.ramo || '') === String(ramo || ''); });
       if (empFil) lista = lista.filter(function(c) { return String(c?.empId || '') === String(empFil || ''); });
-      try { if (window.EMP_FILTRO && !empFil) lista = lista.filter(function(c) { return String(c?.empId || '') === String(window.EMP_FILTRO || ''); }); } catch (_) {}
+      try { if (window.EMP_FILTRO && !empFil) {} } catch (_) {}
 
       var parseDia = function(s) {
         var d = String(s || '').slice(0, 10);
@@ -7488,7 +7501,13 @@ window._mbnActive = function(id) {
     function ensureBox(inputEl) {
       var box = inputEl._cliAcBox || null;
       if (box && box.parentNode) return box;
+      try {
+        document.querySelectorAll('.cliente-autocomplete-dropdown').forEach(function(el) {
+          try { el.remove(); } catch (_) {}
+        });
+      } catch (_) {}
       box = document.createElement('div');
+      box.className = 'cliente-autocomplete-dropdown';
       box.style.cssText =
         'position:absolute;' +
         'top:100%;left:0;right:0;z-index:99999;' +
@@ -7500,7 +7519,7 @@ window._mbnActive = function(id) {
         'margin-top:4px;' +
         'display:none;';
       var wrap = null;
-      try { wrap = inputEl.parentElement; } catch (_) { wrap = null; }
+      try { wrap = inputEl.parentElement || (inputEl.closest ? (inputEl.closest('.modal-box') || inputEl.closest('form') || inputEl.closest('.form-row') || null) : null); } catch (_) { wrap = null; }
       if (wrap) {
         try {
           var pos = '';
@@ -7530,7 +7549,10 @@ window._mbnActive = function(id) {
 
     function closeBox(inputEl) {
       var box = inputEl && inputEl._cliAcBox;
-      if (box) box.style.display = 'none';
+      if (box) {
+        try { box.remove(); } catch (_) { try { box.style.display = 'none'; } catch (_) {} }
+      }
+      try { if (inputEl) inputEl._cliAcBox = null; } catch (_) {}
     }
 
     function renderItems(inputEl, items, onPick) {
@@ -7661,6 +7683,15 @@ window._mbnActive = function(id) {
     }
 
     function scan() {
+      try {
+        var has1 = !!document.getElementById('of-r-cliente');
+        var has2 = !!document.getElementById('f-cli-search');
+        if (!has1 && !has2) {
+          document.querySelectorAll('.cliente-autocomplete-dropdown').forEach(function(el) {
+            try { el.remove(); } catch (_) {}
+          });
+        }
+      } catch (_) {}
       try {
         var ofRapida = document.getElementById('of-r-cliente');
         if (ofRapida) {

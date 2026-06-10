@@ -3260,7 +3260,13 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
       const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
-      return { ...row, vendedor_nome };
+      let imgs = row.imgs;
+      if (typeof imgs === 'string') {
+        try { imgs = JSON.parse(imgs || '[]'); } catch (_) { imgs = row.imgs; }
+      }
+      if (!Array.isArray(imgs)) imgs = row.imgs;
+      const imagem_url = row.imagem_url != null ? String(row.imagem_url || '') : row.imagem_url;
+      return { ...row, vendedor_nome, imgs: imgs, imagem_url: imagem_url };
     });
     try {
       const sample = rows && rows[0] ? rows[0] : null;
@@ -6934,11 +6940,12 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       .single();
 
     const emailUsuario = usr?.email || req.usuario.email;
+    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
 
     const { data: empresa } = await supabase
       .from('empresas')
       .select('id')
-      .ilike('sigla', emailUsuario)
+      .ilike('sigla', siglaKey || emailUsuario)
       .single();
 
     const empresa_id = empresa?.id;
@@ -6946,7 +6953,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'empresa não encontrada para: ' + emailUsuario });
     }
 
-    const { q, limit = 500, offset = 0 } = req.query;
+    const { q, limit = 1000, offset = 0 } = req.query;
 
     let query = supabase
       .from('clientes')
@@ -8266,11 +8273,12 @@ async function _empresaUuidByUserId(userId) {
       .maybeSingle();
     if (error || !usr) return '';
     const emailUsuario = String(usr?.email || '').trim();
-    if (!emailUsuario) return '';
+    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
+    if (!siglaKey && !emailUsuario) return '';
     const { data: empresa, error: empErr } = await supabase
       .from('empresas')
       .select('id')
-      .ilike('sigla', emailUsuario)
+      .ilike('sigla', siglaKey || emailUsuario)
       .maybeSingle();
     const empresaId = String(empresa?.id || '').trim();
     return !empErr && _isUuid(empresaId) ? empresaId : '';
@@ -8290,11 +8298,12 @@ async function _empresaIdFromUsuarios(req) {
       .single();
     if (error || !usr) return '';
     const emailUsuario = String(usr?.email || req?.usuario?.email || req?.user?.email || '').trim();
-    if (!emailUsuario) return '';
+    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
+    if (!siglaKey && !emailUsuario) return '';
     const { data: empresa, error: empErr } = await supabase
       .from('empresas')
       .select('id')
-      .ilike('sigla', emailUsuario)
+      .ilike('sigla', siglaKey || emailUsuario)
       .maybeSingle();
     const empresaId = String(empresa?.id || '').trim();
     return !empErr && _isUuid(empresaId) ? empresaId : '';
@@ -9864,7 +9873,10 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
 app.get('/api/estoque', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
-    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    if (!empresaId) {
+      try { console.log('[ESTOQUE DEBUG]', { tipo: 'estoque', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    }
     const { data, error } = await supabase.from('estoque').select('*').eq('empresa_id', empresaId).order('nome');
     if (error) throw error;
     return ok(res, data || []);
@@ -9903,7 +9915,10 @@ app.delete('/api/estoque/:id', async (req, res) => {
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
-    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    if (!empresaId) {
+      try { console.log('[ESTOQUE DEBUG]', { tipo: 'tintas', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    }
     const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
     if (error) throw error;
     return ok(res, data || []);
@@ -10064,7 +10079,10 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
-    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    if (!empresaId) {
+      try { console.log('[ESTOQUE DEBUG]', { tipo: 'materiais', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    }
     const { data, error } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
     if (error) throw error;
     return ok(res, data || []);
