@@ -510,12 +510,24 @@ app.get('/manifest.json', (req, res) => {
 app.get('/sw.js', (req, res) => {
   try {
     res.setHeader('Content-Type', 'application/javascript');
-    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Service-Worker-Allowed', '/');
-    const fpPub = path.join(__dirname, 'public', 'sw.js');
-    const fpRoot = path.join(__dirname, 'sw.js');
-    const fp = fs.existsSync(fpPub) ? fpPub : fpRoot;
-    return res.sendFile(fp);
+    return res.send(`
+// Service Worker desabilitado
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+self.addEventListener('fetch', (e) => {
+  e.respondWith(fetch(e.request));
+});
+`);
   } catch (e) {
     return res.status(500).end();
   }

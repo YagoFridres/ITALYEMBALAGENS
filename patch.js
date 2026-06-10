@@ -3,6 +3,29 @@
   'use strict'; 
 
   try {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        (regs || []).forEach(function(reg) {
+          try {
+            reg.unregister();
+            console.log('[SW] desregistrado:', reg.scope);
+          } catch (_) {}
+        });
+      }).catch(function(_) {});
+      if ('caches' in window) {
+        caches.keys().then(function(keys) {
+          (keys || []).forEach(function(k) {
+            try {
+              caches.delete(k);
+              console.log('[SW] cache deletado:', k);
+            } catch (_) {}
+          });
+        }).catch(function(_) {});
+      }
+    }
+  } catch (_) {}
+
+  try {
     var cssM = `
 /* ════════════════════════════════════════════
    ITALY EMBALAGENS ERP — CSS RESPONSIVO
