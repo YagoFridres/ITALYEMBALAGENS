@@ -4034,6 +4034,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  padding: 8px 16px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
       '}\n' +
+      '#page-clientes .ptoolbar > div[style*="flex:1"] {\n' +
+      '  flex: 1 1 auto !important;\n' +
+      '}\n' +
       '#page-clientes .ptoolbar button {\n' +
       '  opacity: 1 !important;\n' +
       '  pointer-events: auto !important;\n' +
@@ -4117,6 +4120,39 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function clientesModalLike(modal) {
+    if (!modal) return false;
+    try {
+      return !!modal.querySelector('#cl-nome, #cli-nome, #modal-cli, input[id*="cli-"], input[id*="cl-"]');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function addClienteToArrays(novoCliente) {
+    if (!novoCliente || !novoCliente.id) return;
+    var id = String(novoCliente.id || '').trim();
+    if (!id) return;
+    var normalizado = novoCliente;
+    try { if (typeof normalizeCli === 'function') normalizado = normalizeCli(novoCliente); } catch (_) {}
+    var apply = function(arrName, getter) {
+      try {
+        var arr = getter();
+        if (!Array.isArray(arr)) return;
+        var existe = arr.find(function(c) { return String(c && c.id || '').trim() === id; });
+        if (!existe) arr.push(normalizado);
+      } catch (_) {}
+    };
+    apply('CLIENTES', function() { return (typeof CLIENTES !== 'undefined') ? CLIENTES : null; });
+    apply('_CLIENTES', function() { return window._CLIENTES; });
+    try {
+      if (Array.isArray(window.CLIENTES)) {
+        var existeW = window.CLIENTES.find(function(c) { return String(c && c.id || '').trim() === id; });
+        if (!existeW) window.CLIENTES.push(normalizado);
+      }
+    } catch (_) {}
+  }
+
   function ensureBtnVerTodos() {
     try {
       var bar = document.querySelector('#page-clientes .ptoolbar');
@@ -4155,6 +4191,88 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (before && before.parentNode === bar) bar.insertBefore(btn, before);
       else bar.appendChild(btn);
     } catch (_) {}
+  }
+
+  function patchSalvarAntiDuploClique() {
+    if (document.documentElement.dataset.patchClientesSalvarLock === '1') return;
+    document.documentElement.dataset.patchClientesSalvarLock = '1';
+    document.addEventListener('click', function(e) {
+      try {
+        var btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!btn) return;
+        var texto = String(btn.textContent || '').trim().toLowerCase();
+        if (!(texto === 'salvar' || texto === 'salvar alteracoes' || texto === 'salvar alterações')) return;
+        var modal = btn.closest ? btn.closest('.modal, [id*="modal"], .modal-overlay') : null;
+        if (!clientesModalLike(modal)) return;
+        if (btn.dataset.patchLockUntil && Number(btn.dataset.patchLockUntil) > Date.now()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.dataset.patchLockUntil = String(Date.now() + 2000);
+        setTimeout(function() {
+          try {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            delete btn.dataset.patchLockUntil;
+          } catch (_) {}
+        }, 2000);
+      } catch (_) {}
+    }, true);
+  }
+
+  function patchFetchClientesAfterPost() {
+    var origFetch = window.fetch;
+    if (typeof origFetch !== 'function' || origFetch._patchClientesAfterPost) return;
+    var wrapped = function(url, opts) {
+      var isClientesPost = false;
+      try {
+        var u = typeof url === 'string' ? url : (url && url.url ? String(url.url) : '');
+        var m = String((opts && opts.method) || 'GET').toUpperCase();
+        isClientesPost = (m === 'POST' && u.indexOf('/api/clientes') !== -1);
+      } catch (_) {}
+
+      var p = origFetch.apply(this, arguments);
+
+      if (isClientesPost) {
+        try {
+          p.then(function(res) {
+            try { return res.clone().json(); } catch (_) { return null; }
+          }).then(async function(data) {
+            try {
+              if (!(data && data.ok && data.data)) return;
+              var novoCliente = data.data;
+              console.log('[NOVO CLIENTE]', novoCliente.nome, novoCliente.id);
+
+              if (typeof carregarClientes === 'function') {
+                try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+              }
+
+              var existe = null;
+              try {
+                var arr = (Array.isArray(window.CLIENTES) ? window.CLIENTES : ((typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES : []));
+                existe = arr.find(function(c) { return String(c && c.id || '').trim() === String(novoCliente.id || '').trim(); }) || null;
+              } catch (_) {}
+
+              if (!existe) {
+                console.log('[PATCH] adicionando cliente manualmente ao array');
+                addClienteToArrays(novoCliente);
+              }
+
+              if (typeof renderClientes === 'function') {
+                try { renderClientes(); } catch (_) {}
+              }
+            } catch (_) {}
+          }).catch(function() {});
+        } catch (_) {}
+      }
+
+      return p;
+    };
+    wrapped._patchClientesAfterPost = true;
+    window.fetch = wrapped;
   }
 
   async function _reloadClientes() {
@@ -4229,6 +4347,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
+    try { patchSalvarAntiDuploClique(); } catch (_) {}
+    try { patchFetchClientesAfterPost(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
