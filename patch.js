@@ -1,3 +1,13 @@
+window.addEventListener('error', function(e) {
+  try { console.error('[PATCH ERROR GLOBAL]', e && e.message, e && e.filename, e && e.lineno); } catch (_) {}
+});
+window.addEventListener('unhandledrejection', function(e) {
+  try {
+    var r = e && e.reason;
+    console.error('[PATCH PROMISE ERROR]', r && r.message ? r.message : r);
+  } catch (_) {}
+});
+try {
 console.log('[PATCH] versão ' + Date.now() + ' carregado');
 /* patch.js - Italy Embalagens ERP v2 */ 
 (function() { 
@@ -2122,6 +2132,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }, 1000); 
  
 })(); 
+} catch (e) {
+  try { console.error('[PATCH INIT ERROR]', e && e.message, e && e.stack); } catch (_) {}
+}
 
 (function(){ return;
   try{
@@ -3449,8 +3462,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { oc = String(btn.getAttribute('onclick') || ''); } catch (_) {}
       try { txt = String(btn.textContent || '').trim(); } catch (_) {}
 
-      var isNovaOF = oc.indexOf('abrirModalOF') !== -1 || oc.indexOf('NovaOf') !== -1 || oc.indexOf('novaOf') !== -1 || oc.indexOf('novaOF') !== -1 || txt.indexOf('Nova OF') !== -1;
-      var isOFRapida = oc.indexOf('Rapida') !== -1 || oc.indexOf('rapida') !== -1 || txt.indexOf('OF Rápida') !== -1 || txt.indexOf('Rápida') !== -1;
+      var isNovaOF = oc.indexOf('abrirModalOF') !== -1 || oc.indexOf('abrirNovaOf(') !== -1 || oc.indexOf('abrirNovaOF(') !== -1 || txt === 'Nova OF';
+      var isOFRapida = oc.indexOf('abrirNovaOfRapida') !== -1 || oc.indexOf('abrirOFRapida') !== -1 || oc.indexOf('abrirOfRapida') !== -1 || txt === 'OF Rápida' || txt === 'Rápida';
       if (!isNovaOF && !isOFRapida) return;
 
       var openFn = null;
@@ -4203,10 +4216,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return null;
   }
 
+  function getMesclaDuplicadoIds() {
+    try {
+      var nodes = document.querySelectorAll('#mescla-duplicados input.mescla-duplicado-id');
+      return Array.prototype.map.call(nodes, function(el) { return String(el.value || '').trim(); }).filter(Boolean);
+    } catch (_) {
+      return [];
+    }
+  }
+
   function renderMesclaPreview() {
     try {
       var principal = findClienteById(document.getElementById('mescla-principal-id') && document.getElementById('mescla-principal-id').value);
-      var duplicado = findClienteById(document.getElementById('mescla-duplicado-id') && document.getElementById('mescla-duplicado-id').value);
+      var duplicados = getMesclaDuplicadoIds().map(findClienteById).filter(Boolean);
       var box = document.getElementById('mescla-preview');
       if (!box) return;
       box.innerHTML =
@@ -4219,39 +4241,71 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
               : '<div style="color:var(--text2);font-size:12px">Selecione o cliente principal</div>') +
           '</div>' +
           '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">' +
-            '<div style="font-weight:700;color:var(--text);margin-bottom:8px">Cliente Duplicado</div>' +
-            (duplicado
-              ? '<div style="color:var(--text);font-size:13px">' + String(duplicado.nome || '-') + '</div>' +
-                '<div style="color:var(--text2);font-size:12px;margin-top:4px">' + String(duplicado.cnpj || duplicado.documento || '-') + '</div>'
-              : '<div style="color:var(--text2);font-size:12px">Selecione o cliente duplicado</div>') +
+            '<div style="font-weight:700;color:var(--text);margin-bottom:8px">Clientes a Mesclar</div>' +
+            (duplicados.length
+              ? duplicados.map(function(duplicado) {
+                  return '<div style="padding:6px 0;border-top:1px solid rgba(255,255,255,0.06)">' +
+                    '<div style="color:var(--text);font-size:13px">' + String(duplicado.nome || '-') + '</div>' +
+                    '<div style="color:var(--text2);font-size:12px;margin-top:4px">' + String(duplicado.cnpj || duplicado.documento || '-') + '</div>' +
+                  '</div>';
+                }).join('')
+              : '<div style="color:var(--text2);font-size:12px">Selecione ao menos um cliente duplicado</div>') +
           '</div>' +
         '</div>';
     } catch (_) {}
   }
 
-  function syncMesclaId(inputId, hiddenId, listId) {
+  function syncMesclaField(input, hidden, listId) {
     try {
-      var input = document.getElementById(inputId);
-      var hidden = document.getElementById(hiddenId);
+      if (!input || !hidden) return;
       var list = document.getElementById(listId);
-      if (!input || !hidden || !list) return;
       var val = String(input.value || '').trim();
-      var opt = Array.prototype.find.call(list.options || [], function(o) { return String(o.value || '').trim() === val; });
+      var opt = list ? Array.prototype.find.call(list.options || [], function(o) { return String(o.value || '').trim() === val; }) : null;
       hidden.value = opt ? String(opt.getAttribute('data-id') || '') : '';
       renderMesclaPreview();
+    } catch (_) {}
+  }
+
+  function bindMesclaField(input, hidden, listId) {
+    if (!input || input.dataset.patchMesclaBind === '1') return;
+    input.dataset.patchMesclaBind = '1';
+    ['input', 'change'].forEach(function(evt) {
+      input.addEventListener(evt, function() { syncMesclaField(input, hidden, listId); });
+    });
+  }
+
+  function addMesclaDuplicadoRow() {
+    try {
+      var wrap = document.getElementById('mescla-duplicados');
+      if (!wrap) return;
+      var idx = wrap.querySelectorAll('.mescla-duplicado-row').length + 1;
+      var row = document.createElement('div');
+      row.className = 'mescla-duplicado-row';
+      row.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:8px';
+      row.innerHTML =
+        '<div>' +
+          '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE DUPLICADO ' + idx + '</label>' +
+          '<input class="mescla-duplicado-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
+          '<input type="hidden" class="mescla-duplicado-id">' +
+        '</div>' +
+        '<button type="button" class="mescla-remover-dup" style="padding:8px 10px;background:rgba(255,255,255,0.08);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Remover</button>';
+      wrap.appendChild(row);
+      var input = row.querySelector('.mescla-duplicado-busca');
+      var hidden = row.querySelector('.mescla-duplicado-id');
+      bindMesclaField(input, hidden, 'mescla-clientes-lista');
+      row.querySelector('.mescla-remover-dup').onclick = function() {
+        try { row.remove(); } catch (_) {}
+        renderMesclaPreview();
+      };
     } catch (_) {}
   }
 
   async function confirmarMesclaClientes() {
     try {
       var principalId = String(document.getElementById('mescla-principal-id') && document.getElementById('mescla-principal-id').value || '').trim();
-      var duplicadoId = String(document.getElementById('mescla-duplicado-id') && document.getElementById('mescla-duplicado-id').value || '').trim();
-      if (!principalId || !duplicadoId) {
-        alert('Selecione os dois clientes.');
-        return;
-      }
-      if (principalId === duplicadoId) {
-        alert('Os clientes devem ser diferentes.');
+      var duplicados = getMesclaDuplicadoIds();
+      if (!principalId || !duplicados.length) {
+        alert('Selecione o cliente principal e pelo menos um cliente para mesclar.');
         return;
       }
       if (!confirm('Confirmar mescla dos clientes?')) return;
@@ -4265,7 +4319,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         },
         body: JSON.stringify({
           cliente_principal_id: principalId,
-          cliente_duplicado_id: duplicadoId
+          cliente_duplicado_ids: duplicados
         })
       });
       var json = await resp.json().catch(function() { return null; });
@@ -4274,6 +4328,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var modal = document.getElementById('modal-mesclar-clientes');
         if (modal) modal.remove();
       } catch (_) {}
+      try { await _carregarTodosClientes(); } catch (_) {}
       try { if (typeof carregarClientes === 'function') await carregarClientes(true); } catch (_) {}
       try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
       alert('Clientes mesclados com sucesso.');
@@ -4296,18 +4351,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             '<h3 style="margin:0;color:var(--text);font-size:16px">🔗 Mesclar Clientes</h3>' +
             '<button id="mescla-close" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
-            '<div>' +
-              '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE PRINCIPAL</label>' +
-              '<input id="mescla-principal-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
-              '<input type="hidden" id="mescla-principal-id">' +
-            '</div>' +
-            '<div>' +
-              '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE DUPLICADO</label>' +
-              '<input id="mescla-duplicado-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
-              '<input type="hidden" id="mescla-duplicado-id">' +
-            '</div>' +
+          '<div>' +
+            '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE PRINCIPAL</label>' +
+            '<input id="mescla-principal-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
+            '<input type="hidden" id="mescla-principal-id">' +
           '</div>' +
+          '<div id="mescla-duplicados" style="margin-top:14px"></div>' +
+          '<button id="mescla-add-dup" type="button" style="margin-top:10px;padding:8px 12px;background:rgba(124,106,247,0.16);border:1px solid rgba(124,106,247,0.38);border-radius:8px;color:#c9c2ff;cursor:pointer;font-size:13px">+ Adicionar outro duplicado</button>' +
           '<datalist id="mescla-clientes-lista">' +
             lista.map(function(c) {
               var label = String(c && c.nome || '-');
@@ -4319,7 +4369,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '<div id="mescla-preview" style="margin-top:16px"></div>' +
           '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">' +
             '<button id="mescla-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
-            '<button id="mescla-confirmar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">Confirmar Mescla</button>' +
+            '<button id="mescla-confirmar" style="padding:8px 16px;background:#7c6af7;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">Confirmar Mescla</button>' +
           '</div>' +
         '</div>';
       document.body.appendChild(modal);
@@ -4327,18 +4377,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.getElementById('mescla-close').onclick = close;
       document.getElementById('mescla-cancelar').onclick = close;
       document.getElementById('mescla-confirmar').onclick = confirmarMesclaClientes;
-      ['mescla-principal-busca', 'mescla-duplicado-busca'].forEach(function(id) {
-        var el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('input', function() {
-          syncMesclaId('mescla-principal-busca', 'mescla-principal-id', 'mescla-clientes-lista');
-          syncMesclaId('mescla-duplicado-busca', 'mescla-duplicado-id', 'mescla-clientes-lista');
-        });
-        el.addEventListener('change', function() {
-          syncMesclaId('mescla-principal-busca', 'mescla-principal-id', 'mescla-clientes-lista');
-          syncMesclaId('mescla-duplicado-busca', 'mescla-duplicado-id', 'mescla-clientes-lista');
-        });
-      });
+      document.getElementById('mescla-add-dup').onclick = function() { addMesclaDuplicadoRow(); };
+      bindMesclaField(document.getElementById('mescla-principal-busca'), document.getElementById('mescla-principal-id'), 'mescla-clientes-lista');
+      addMesclaDuplicadoRow();
       renderMesclaPreview();
     } catch (e) {
       try { console.error('[MESCLAR CLIENTES]', e); } catch (_) {}
@@ -4417,8 +4458,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (document.getElementById('patch-cli-mesclar')) return;
       var btn = document.createElement('button');
       btn.id = 'patch-cli-mesclar';
-      btn.className = 'btn btn-ghost btn-sm';
       btn.textContent = '🔗 Mesclar';
+      btn.setAttribute('style', 'background:#7c6af7 !important;color:#fff !important;border:none !important;padding:6px 12px !important;border-radius:6px !important;cursor:pointer !important;font-size:13px !important;');
       btn.onclick = function() { abrirModalMesclarClientes(); };
       var after = bar.querySelector('button[onclick*="clientesVerificarDuplicatas"]');
       if (after && after.parentNode === bar) {
@@ -4435,14 +4476,98 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var toolbar = document.querySelector('#page-clientes .ptoolbar');
       var widget = document.querySelector('#page-clientes #widget-analise-clientes > div:first-child');
       if (!toolbar || !widget) return;
-      if (!widget.classList.contains('cli-quick-filters')) widget.classList.add('cli-quick-filters');
-      widget.style.marginBottom = '0';
+      widget.style.display = 'none';
+      var host = document.getElementById('patch-cli-quick-filters');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'patch-cli-quick-filters';
+        host.className = 'cli-quick-filters';
+        host.innerHTML =
+          '<button type="button" id="patch-analise-inativos" style="background:#4A90D9;color:#fff;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">Sem pedir há +30 dias</button>' +
+          '<button type="button" id="patch-analise-ativos" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">Quem mais pede</button>' +
+          '<button type="button" id="patch-analise-valor" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">Maior valor</button>' +
+          '<select id="patch-sel-dias-inativo" style="background:#0b1220;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:12px">' +
+            '<option value="15">15 dias</option>' +
+            '<option value="30" selected>30 dias</option>' +
+            '<option value="60">60 dias</option>' +
+            '<option value="90">90 dias</option>' +
+          '</select>';
+      }
       var spacer = toolbar.querySelector('div[style*="flex:1"]');
-      if (widget.parentNode !== toolbar) {
-        if (spacer && spacer.nextSibling) toolbar.insertBefore(widget, spacer.nextSibling);
-        else toolbar.appendChild(widget);
+      if (host.parentNode !== toolbar) {
+        if (spacer && spacer.nextSibling) toolbar.insertBefore(host, spacer.nextSibling);
+        else toolbar.appendChild(host);
+      }
+      var origSel = document.getElementById('sel-dias-inativo');
+      var cloneSel = document.getElementById('patch-sel-dias-inativo');
+      if (origSel && cloneSel && cloneSel.value !== origSel.value) cloneSel.value = origSel.value;
+      if (!host.dataset.patchBound) {
+        host.dataset.patchBound = '1';
+        var setTipo = function(tipo) {
+          ['inativos', 'ativos', 'valor'].forEach(function(t) {
+            var b = document.getElementById('patch-analise-' + t);
+            if (!b) return;
+            if (t === tipo) {
+              b.style.background = '#4A90D9';
+              b.style.color = '#fff';
+              b.style.fontWeight = '600';
+            } else {
+              b.style.background = 'rgba(255,255,255,0.07)';
+              b.style.color = '#94a3b8';
+              b.style.fontWeight = '400';
+            }
+          });
+        };
+        document.getElementById('patch-analise-inativos').onclick = function() {
+          try { if (origSel && cloneSel) origSel.value = cloneSel.value; } catch (_) {}
+          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {}
+          setTipo('inativos');
+        };
+        document.getElementById('patch-analise-ativos').onclick = function() {
+          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('ativos'); } catch (_) {}
+          setTipo('ativos');
+        };
+        document.getElementById('patch-analise-valor').onclick = function() {
+          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('valor'); } catch (_) {}
+          setTipo('valor');
+        };
+        cloneSel.onchange = function() {
+          try { if (origSel) origSel.value = cloneSel.value; } catch (_) {}
+          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {}
+          setTipo('inativos');
+        };
       }
     } catch (_) {}
+  }
+
+  function _adicionarBadgeOfs() {
+    try {
+      var cards = document.querySelectorAll('.cli-card');
+      cards.forEach(function(card) {
+        if (card.querySelector('.badge-ofs')) return;
+        var nome = card.querySelector('.cli-name, .cli-nome, h3, strong');
+        var total = card.querySelector('.cli-stat b');
+        var txt = String(total && total.textContent || '').trim();
+        if (!nome || !txt) return;
+        var badge = document.createElement('span');
+        badge.className = 'badge-ofs';
+        badge.style.cssText = 'background:var(--accent);color:#fff;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:700;margin-left:6px;display:inline-flex;align-items:center;';
+        badge.textContent = txt + ' OFs';
+        nome.appendChild(badge);
+      });
+    } catch (_) {}
+  }
+
+  function patchRenderClientesBadge() {
+    var orig = window.renderClientes;
+    if (typeof orig !== 'function' || orig._patchBadgeOfs) return;
+    var wrapped = function() {
+      var r = orig.apply(this, arguments);
+      setTimeout(_adicionarBadgeOfs, 40);
+      return r;
+    };
+    wrapped._patchBadgeOfs = true;
+    window.renderClientes = wrapped;
   }
 
   function patchSalvarAntiDuploClique() {
@@ -4602,6 +4727,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { ensureBtnVerTodos(); } catch (_) {}
     try { ensureBtnMesclarClientes(); } catch (_) {}
     try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
+    try { patchRenderClientesBadge(); } catch (_) {}
+    try { _adicionarBadgeOfs(); } catch (_) {}
     try { patchSalvarAntiDuploClique(); } catch (_) {}
     try { patchFetchClientesAfterPost(); } catch (_) {}
   }

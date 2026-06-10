@@ -6862,6 +6862,46 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         });
       } catch (_) {}
     };
+    const enrichClientesWithOfs = async (rows) => {
+      const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
+      const ids = Array.from(new Set(base.map((c) => String(c?.id || '').trim()).filter(Boolean))).slice(0, 4000);
+      if (!ids.length) return base;
+      const mapaOfs = Object.create(null);
+      const seen = Object.create(null);
+      const addCounts = (items, key) => {
+        (Array.isArray(items) ? items : []).forEach((of) => {
+          const cliId = String(of?.[key] || '').trim();
+          if (!cliId) return;
+          const oid = String(of?.id || key + ':' + cliId + ':' + Math.random());
+          if (seen[oid]) return;
+          seen[oid] = 1;
+          mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
+        });
+      };
+      const specs = [
+        { select: 'id,cli_id', col: 'cli_id', key: 'cli_id' },
+        { select: 'id,cliId', col: 'cliId', key: 'cliId' },
+        { select: 'id,cliente_id', col: 'cliente_id', key: 'cliente_id' },
+      ];
+      for (const spec of specs) {
+        try {
+          const { data, error } = await supabase.from('ofs').select(spec.select).in(spec.col, ids);
+          if (!error) addCounts(data, spec.key);
+        } catch (_) {}
+      }
+      const withCounts = base.map((c) => ({
+        ...c,
+        total_ofs: mapaOfs[String(c?.id || '').trim()] || 0
+      }));
+      return withCounts.sort((a, b) => {
+        const diff = (Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0));
+        if (diff) return diff;
+        const da = String(a?.created_at || '');
+        const db = String(b?.created_at || '');
+        if (da !== db) return db.localeCompare(da);
+        return String(a?.nome || '').localeCompare(String(b?.nome || ''));
+      });
+    };
     for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
@@ -6873,7 +6913,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (hasPaging) q = q.range(offset, offset + limit - 1);
         const { data, error } = await q;
         if (!error) {
-          const rows = data || [];
+          const rows = await enrichClientesWithOfs(data || []);
           logClientes(rows);
           if (!lite) {
             return ok(res, rows);
@@ -6897,6 +6937,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             vendId: r.vendId ?? null,
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
+            total_ofs: r.total_ofs ?? 0,
           }));
           return ok(res, trimmed);
         }
@@ -6950,7 +6991,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           }
         }
         if (!all.error) {
-          const rows = all.data || [];
+          const rows = await enrichClientesWithOfs(all.data || []);
           logClientes(rows);
           if (!lite) {
             return ok(res, rows);
@@ -6974,6 +7015,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             vendId: r.vendId ?? null,
             obs: r.obs ?? r.observacoes ?? null,
             observacoes: r.observacoes ?? null,
+            total_ofs: r.total_ofs ?? 0,
           }));
           return ok(res, trimmed);
         }
@@ -7206,47 +7248,54 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
   try {
     const cliente_principal_id = String(req.body?.cliente_principal_id || '').trim();
-    const cliente_duplicado_id = String(req.body?.cliente_duplicado_id || '').trim();
-    if (!cliente_principal_id || !cliente_duplicado_id) {
+    const cliente_duplicado_ids = Array.isArray(req.body?.cliente_duplicado_ids)
+      ? req.body.cliente_duplicado_ids
+      : [req.body?.cliente_duplicado_id];
+    const duplicados = Array.from(new Set(cliente_duplicado_ids.map((id) => String(id || '').trim()).filter(Boolean)));
+    if (!cliente_principal_id || !duplicados.length) {
       return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
     }
-    if (cliente_principal_id === cliente_duplicado_id) {
-      return res.status(400).json({ ok: false, error: 'Clientes devem ser diferentes' });
-    }
 
-    const updates = [
-      { cli_id: cliente_principal_id, match: 'cli_id' },
-      { cliId: cliente_principal_id, match: 'cliId' },
-      { cliente_id: cliente_principal_id, match: 'cliente_id' },
-    ];
-    for (const item of updates) {
-      try {
-        const { error } = await supabase.from('ofs').update(item).eq(item.match, cliente_duplicado_id);
-        if (error) {
-          const msg = String(error.message || error || '');
-          if (!(msg.includes('column') || msg.includes('Could not find'))) throw error;
+    let mesclados = 0;
+    for (const cliente_duplicado_id of duplicados) {
+      if (!cliente_duplicado_id || cliente_duplicado_id === cliente_principal_id) continue;
+
+      const updates = [
+        { cli_id: cliente_principal_id, match: 'cli_id' },
+        { cliId: cliente_principal_id, match: 'cliId' },
+        { cliente_id: cliente_principal_id, match: 'cliente_id' },
+      ];
+      for (const item of updates) {
+        try {
+          const payload = { [item.match]: cliente_principal_id };
+          const { error } = await supabase.from('ofs').update(payload).eq(item.match, cliente_duplicado_id);
+          if (error) {
+            const msg = String(error.message || error || '');
+            if (!(msg.includes('column') || msg.includes('Could not find'))) throw error;
+          }
+        } catch (e) {
+          const msg = String(e?.message || e || '');
+          if (!(msg.includes('column') || msg.includes('Could not find'))) throw e;
         }
-      } catch (e) {
-        const msg = String(e?.message || e || '');
-        if (!(msg.includes('column') || msg.includes('Could not find'))) throw e;
       }
-    }
 
-    let { error: e2 } = await supabase
-      .from('clientes')
-      .update({ ativo: false })
-      .eq('id', cliente_duplicado_id);
-    if (e2) {
-      const msg = String(e2.message || e2 || '');
-      if (msg.includes('ativo')) {
-        ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+      let { error: e2 } = await supabase
+        .from('clientes')
+        .update({ ativo: false })
+        .eq('id', cliente_duplicado_id);
+      if (e2) {
+        const msg = String(e2.message || e2 || '');
+        if (msg.includes('ativo')) {
+          ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+        }
       }
+      if (e2) throw e2;
+      mesclados += 1;
     }
-    if (e2) throw e2;
 
     cacheClearPrefix('clientes_');
     cacheClearPrefix('ofs_');
-    return res.json({ ok: true, message: 'Clientes mesclados com sucesso' });
+    return res.json({ ok: true, message: mesclados ? 'Clientes mesclados com sucesso' : 'Nenhum cliente duplicado precisou ser alterado' });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
