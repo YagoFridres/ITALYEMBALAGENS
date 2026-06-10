@@ -4019,6 +4019,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  display: flex !important;\n' +
       '  flex-direction: column !important;\n' +
       '  height: 100% !important;\n' +
+      '  cursor: pointer !important;\n' +
+      '  transition: box-shadow 0.2s ease, transform 0.1s ease !important;\n' +
+      '}\n' +
+      '\n' +
+      '.cli-card:hover {\n' +
+      '  box-shadow: 0 4px 20px rgba(79,142,247,0.3) !important;\n' +
+      '  transform: translateY(-2px) !important;\n' +
       '}\n' +
       '\n' +
       '.cli-card > div:last-child,\n' +
@@ -4031,6 +4038,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  gap: 6px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
       '  margin-top: auto !important;\n' +
+      '  opacity: 0 !important;\n' +
+      '  pointer-events: none !important;\n' +
+      '  transition: opacity 0.2s ease !important;\n' +
+      '}\n' +
+      '\n' +
+      '.cli-card:hover > div:last-child,\n' +
+      '.cli-card:hover .cli-acoes,\n' +
+      '.cli-card:hover .cliente-card-footer,\n' +
+      '.cli-card:hover .cliente-acoes {\n' +
+      '  opacity: 1 !important;\n' +
+      '  pointer-events: auto !important;\n' +
       '}\n' +
       '\n' +
       '.cli-card button:last-of-type { margin-top: auto !important; }\n' +
@@ -4154,6 +4172,182 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   } else {
     setTimeout(tick, 200);
     setInterval(tick, 2500);
+  }
+})();
+
+(function forceCargaClientes() {
+  async function run() {
+    try {
+      await new Promise(function(r) { setTimeout(r, 2000); });
+      if (typeof carregarClientes === 'function') {
+        console.log('[PATCH] forçando carga de clientes...');
+        await carregarClientes(true);
+        try { window.CLIENTES = Array.isArray(window.CLIENTES) ? window.CLIENTES : (typeof CLIENTES !== 'undefined' ? CLIENTES : []); } catch (_) {}
+        if (typeof renderClientes === 'function') renderClientes();
+        console.log('[PATCH] CLIENTES array:', (window.CLIENTES && window.CLIENTES.length) || 0);
+      }
+    } catch (e) {
+      try { console.error('[PATCH] força carga clientes falhou', e); } catch (_) {}
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { run(); });
+  } else {
+    run();
+  }
+})();
+
+(function patchDashboardEstoques() {
+  function authHeaders() {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function ensureHost() {
+    var dashBody = document.getElementById('dash-body');
+    if (!dashBody) return null;
+    var host = document.getElementById('patch-estoque-dashboard');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'patch-estoque-dashboard';
+      host.style.marginBottom = '16px';
+      try { dashBody.prepend(host); } catch (_) { dashBody.appendChild(host); }
+    }
+    return host;
+  }
+
+  function num(v) {
+    var n = Number(v || 0);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function esc(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderDashboardEstoques(container) {
+    if (!container) return;
+    if (container.dataset.loading === '1') return;
+    container.dataset.loading = '1';
+    container.innerHTML = '<div style="padding:20px;color:var(--text2)">Carregando...</div>';
+
+    fetch('/api/estoque_dashboard', { headers: authHeaders() })
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha ao carregar dashboard');
+        var tintas = res.tintas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
+        var chapas = res.chapas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
+        var cards = [
+          { nome: 'Tintas', icon: '🎨', total: num(tintas.total), criticos: num(tintas.criticos), alertas: num(tintas.alertas), ok: num(tintas.ok), cor: '#f7923a' },
+          { nome: 'Chapas', icon: '📦', total: num(chapas.total), criticos: num(chapas.criticos), alertas: num(chapas.alertas), ok: num(chapas.ok), cor: '#4f8ef7' }
+        ];
+        var tintasCriticas = (Array.isArray(res.tintas_data) ? res.tintas_data : []).filter(function(t) {
+          return num(t && t.quantidade_atual) <= num(t && t.quantidade_minima);
+        });
+        container.innerHTML =
+          '<div style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">' +
+            cards.map(function(c) {
+              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;border-left:4px solid ' + c.cor + '">' +
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+                  '<span style="font-size:24px">' + c.icon + '</span>' +
+                  '<div>' +
+                    '<div style="font-weight:700;font-size:16px">' + esc(c.nome) + '</div>' +
+                    '<div style="color:var(--text2);font-size:13px">' + esc(String(c.total)) + ' itens cadastrados</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="display:flex;gap:12px">' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,90,90,0.1);border-radius:8px">' +
+                    '<div style="font-size:22px;font-weight:700;color:#f75a5a">' + esc(String(c.criticos)) + '</div>' +
+                    '<div style="font-size:11px;color:var(--text2)">Críticos</div>' +
+                  '</div>' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,146,58,0.1);border-radius:8px">' +
+                    '<div style="font-size:22px;font-weight:700;color:#f7923a">' + esc(String(c.alertas)) + '</div>' +
+                    '<div style="font-size:11px;color:var(--text2)">Alertas</div>' +
+                  '</div>' +
+                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(62,207,142,0.1);border-radius:8px">' +
+                    '<div style="font-size:22px;font-weight:700;color:#3ecf8e">' + esc(String(c.ok)) + '</div>' +
+                    '<div style="font-size:11px;color:var(--text2)">OK</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+          (tintasCriticas.length
+            ? '<div style="padding:0 16px 16px">' +
+                '<div style="font-weight:600;margin-bottom:10px;color:var(--text)">🚨 Tintas em nível crítico</div>' +
+                '<table style="width:100%;border-collapse:collapse">' +
+                  '<thead><tr style="color:var(--text2);font-size:12px">' +
+                    '<th style="text-align:left;padding:8px">Nome</th>' +
+                    '<th style="text-align:center;padding:8px">Atual</th>' +
+                    '<th style="text-align:center;padding:8px">Mínimo</th>' +
+                    '<th style="text-align:center;padding:8px">Unidade</th>' +
+                  '</tr></thead>' +
+                  '<tbody>' +
+                    tintasCriticas.map(function(t) {
+                      return '<tr style="border-top:1px solid var(--border)">' +
+                        '<td style="padding:8px;font-size:13px">' + esc(t && t.nome || '') + '</td>' +
+                        '<td style="padding:8px;text-align:center;color:#f75a5a;font-weight:600">' + esc(String(num(t && t.quantidade_atual))) + '</td>' +
+                        '<td style="padding:8px;text-align:center;color:var(--text2)">' + esc(String(num(t && t.quantidade_minima))) + '</td>' +
+                        '<td style="padding:8px;text-align:center;color:var(--text2)">' + esc(t && t.unidade || '-') + '</td>' +
+                      '</tr>';
+                    }).join('') +
+                  '</tbody>' +
+                '</table>' +
+              '</div>'
+            : '');
+      })
+      .catch(function(e) {
+        container.innerHTML = '<div style="padding:20px;color:#f75a5a">Erro ao carregar dashboard: ' + esc(e && e.message || e) + '</div>';
+      })
+      .finally(function() {
+        delete container.dataset.loading;
+      });
+  }
+
+  function tryRender() {
+    try {
+      var page = document.getElementById('page-dashboard');
+      if (!page || page.offsetParent === null) return;
+      var host = ensureHost();
+      if (!host) return;
+      renderDashboardEstoques(host);
+    } catch (_) {}
+  }
+
+  function patchRenderDashboard() {
+    var orig = window.renderDashboard;
+    if (typeof orig !== 'function' || orig._patchDashboardEstoques) return;
+    var wrapped = function() {
+      var r = orig.apply(this, arguments);
+      setTimeout(tryRender, 100);
+      return r;
+    };
+    wrapped._patchDashboardEstoques = true;
+    window.renderDashboard = wrapped;
+  }
+
+  var obs = new MutationObserver(function() {
+    try { patchRenderDashboard(); } catch (_) {}
+    try { tryRender(); } catch (_) {}
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      try { patchRenderDashboard(); } catch (_) {}
+      try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
+      setTimeout(tryRender, 1200);
+    });
+  } else {
+    try { patchRenderDashboard(); } catch (_) {}
+    try { obs.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (_) {}
+    setTimeout(tryRender, 1200);
   }
 })();
 

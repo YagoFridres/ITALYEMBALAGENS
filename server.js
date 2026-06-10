@@ -9851,6 +9851,154 @@ app.delete('/api/estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
+function _getEmpIdEstoque(email) {
+  const MAPA = {
+    'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
+    'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    'carto': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+  };
+  return MAPA[String(email || '').toLowerCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+}
+
+async function _queryByEmpresa(table, selectCols, empresa_id, orderCol, q) {
+  const cols = ['empresa_id', 'emp_id', 'empId', 'empresa'];
+  let lastErr = null;
+  for (const col of cols) {
+    let query = supabase.from(table).select(selectCols);
+    if (empresa_id) query = query.eq(col, empresa_id);
+    if (q) query = query.ilike('nome', `%${q}%`);
+    if (orderCol) query = query.order(orderCol, { ascending: true });
+    const { data, error } = await query;
+    if (!error) return { data: data || [], col };
+    lastErr = error;
+    const msg = String(error?.message || error || '');
+    if (msg.includes('column') || msg.includes('Could not find')) continue;
+    throw error;
+  }
+  throw lastErr || new Error(`tabela ${table} indisponivel`);
+}
+
+app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const q = String(req.query?.q || '').trim();
+    const result = await _queryByEmpresa(
+      'estoque_tintas',
+      'id,nome,cor,fornecedor,unidade,quantidade_atual,quantidade_minima,observacoes,preco_kg,data_validade,empresa_id,created_at,updated_at',
+      empresa_id,
+      'nome',
+      q
+    );
+    return res.json({ ok: true, data: result.data || [] });
+  } catch (e) {
+    console.error('[ESTOQUE_TINTAS]', e.message || e);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const q = String(req.query?.q || '').trim();
+    const tabelas = ['estoque_materiais', 'materiais_estoque', 'materiais', 'estoque_material'];
+    let data = [];
+    let tabelaUsada = '';
+    for (const t of tabelas) {
+      try {
+        const r = await _queryByEmpresa(t, '*', empresa_id, 'nome', q);
+        data = r.data || [];
+        tabelaUsada = t;
+        break;
+      } catch (e) {
+        const msg = String(e?.message || e || '');
+        if (msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('relation')) continue;
+      }
+    }
+    return res.json({ ok: true, data, tabela: tabelaUsada });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+
+    let tintas = [];
+    try {
+      tintas = (await _queryByEmpresa(
+        'estoque_tintas',
+        'id,nome,quantidade_atual,quantidade_minima,unidade',
+        empresa_id,
+        'nome',
+        ''
+      )).data || [];
+    } catch (_) {}
+
+    let chapas = [];
+    try {
+      chapas = (await _queryByEmpresa(
+        'chapas_estoque_v2',
+        'id,nomenclatura,nome,quantidade,quantidade_atual,quantidade_minima,estoque_minimo',
+        empresa_id,
+        'nomenclatura',
+        ''
+      )).data || [];
+    } catch (_) {
+      try {
+        chapas = (await _queryByEmpresa(
+          'chapas_estoque',
+          'id,nomenclatura,nom,nome,quantidade,quantidade_atual,qtd,quantidade_minima,estoque_minimo',
+          empresa_id,
+          'nomenclatura',
+          ''
+        )).data || [];
+      } catch (_) {}
+    }
+
+    const calcStatus = (items, campoAtual, campoMin) => {
+      const base = Array.isArray(items) ? items : [];
+      const criticos = base.filter((i) => Number(i?.[campoAtual] || 0) <= Number(i?.[campoMin] || 0)).length;
+      const alertas = base.filter((i) =>
+        Number(i?.[campoAtual] || 0) <= (Number(i?.[campoMin] || 0) * 1.2) &&
+        Number(i?.[campoAtual] || 0) > Number(i?.[campoMin] || 0)
+      ).length;
+      return {
+        total: base.length,
+        criticos,
+        alertas,
+        ok: Math.max(0, base.length - criticos - alertas)
+      };
+    };
+
+    const chapasCanon = (Array.isArray(chapas) ? chapas : []).map((c) => ({
+      ...c,
+      nome: c?.nome || c?.nomenclatura || c?.nom || '',
+      quantidade: Number(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0,
+      quantidade_minima: Number(c?.quantidade_minima ?? c?.estoque_minimo ?? 0) || 0,
+    }));
+
+    return res.json({
+      ok: true,
+      tintas: calcStatus(tintas, 'quantidade_atual', 'quantidade_minima'),
+      chapas: calcStatus(chapasCanon, 'quantidade', 'quantidade_minima'),
+      tintas_data: tintas || [],
+      chapas_data: chapasCanon || [],
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 // ══════════════════════════════════════════════════════════════
 // FACAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
