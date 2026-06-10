@@ -2880,7 +2880,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    const empId = String(q_empId || q_emp_id || '').trim();
+    let empId = String(q_empId || q_emp_id || '').trim();
+    if (!empId) {
+      try { empId = String(await _empresaIdFromUsuarios(req) || '').trim(); } catch (_) { empId = ''; }
+    }
+    try {
+      console.log('[OFS EMPRESA]', {
+        usuario_id: req.usuario?.id,
+        email: req.usuario?.email,
+        empId: empId
+      });
+    } catch (_) {}
     const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
     let clienteNomeRaw = String(q_cliente_nome || q_clienteNome || q_cliente || '').trim();
     try { clienteNomeRaw = decodeURIComponent(clienteNomeRaw); } catch (_) {}
@@ -6939,18 +6949,25 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       .eq('id', req.usuario.id)
       .single();
 
-    const emailUsuario = usr?.email || req.usuario.email;
-    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
-
-    const { data: empresa } = await supabase
-      .from('empresas')
-      .select('id')
-      .ilike('sigla', siglaKey || emailUsuario)
-      .single();
-
-    const empresa_id = empresa?.id;
+    const emailUsuario = usr?.email || req.usuario.email || '';
+    const lookup = await _buscarEmpresaPorEmail(emailUsuario);
+    const empresa = lookup?.empresa || null;
+    const empresa_id = lookup?.empresa_id || '';
+    console.log('[CLIENTES LOOKUP]', {
+      usuario_id: req.usuario?.id,
+      email_token: req.usuario?.email,
+      usr_found: usr,
+      email_usado: emailUsuario,
+      sigla_buscada: lookup?.siglaBase || '',
+      empresa_found: empresa,
+      empresa_id: empresa_id
+    });
+    console.log('[EMPRESA ENCONTRADA]', {
+      siglaBase: lookup?.siglaBase || '',
+      empresa_id: empresa_id
+    });
     if (!empresa_id) {
-      return res.status(400).json({ ok: false, error: 'empresa não encontrada para: ' + emailUsuario });
+      return res.status(400).json({ ok: false, error: 'empresa não encontrada para sigla: ' + (lookup?.siglaBase || '') });
     }
 
     const { q, limit = 1000, offset = 0 } = req.query;
@@ -8204,6 +8221,44 @@ function _canonMaqNome(v) {
 function _isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
+async function _buscarEmpresaPorEmail(emailValue) {
+  const emailUsuario = String(emailValue || '').trim();
+  const siglaBase = String(emailUsuario || '').split('@')[0].trim().toLowerCase();
+  let empresa = null;
+  if (!emailUsuario && !siglaBase) {
+    return { empresa: null, empresa_id: '', emailUsuario, siglaBase };
+  }
+  try {
+    const { data: e1 } = await supabase
+      .from('empresas')
+      .select('id, sigla, nome')
+      .ilike('sigla', emailUsuario)
+      .maybeSingle();
+    if (e1) empresa = e1;
+  } catch (_) {}
+  if (!empresa && siglaBase) {
+    try {
+      const { data: e2 } = await supabase
+        .from('empresas')
+        .select('id, sigla, nome')
+        .ilike('sigla', '%' + siglaBase + '%')
+        .maybeSingle();
+      if (e2) empresa = e2;
+    } catch (_) {}
+  }
+  if (!empresa && siglaBase) {
+    try {
+      const { data: e3 } = await supabase
+        .from('empresas')
+        .select('id, sigla, nome')
+        .ilike('nome', '%' + siglaBase + '%')
+        .maybeSingle();
+      if (e3) empresa = e3;
+    } catch (_) {}
+  }
+  const empresa_id = String(empresa?.id || '').trim();
+  return { empresa, empresa_id: _isUuid(empresa_id) ? empresa_id : '', emailUsuario, siglaBase };
+}
 async function _resolveEmpresaUuid(req) {
   const bEmp = String(req?.body?.empresa_id || req?.body?.empresaId || '').trim();
   const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
@@ -8272,16 +8327,8 @@ async function _empresaUuidByUserId(userId) {
       .eq('id', uid)
       .maybeSingle();
     if (error || !usr) return '';
-    const emailUsuario = String(usr?.email || '').trim();
-    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
-    if (!siglaKey && !emailUsuario) return '';
-    const { data: empresa, error: empErr } = await supabase
-      .from('empresas')
-      .select('id')
-      .ilike('sigla', siglaKey || emailUsuario)
-      .maybeSingle();
-    const empresaId = String(empresa?.id || '').trim();
-    return !empErr && _isUuid(empresaId) ? empresaId : '';
+    const found = await _buscarEmpresaPorEmail(usr?.email || '');
+    return String(found?.empresa_id || '').trim();
   } catch (_) {
     return '';
   }
@@ -8297,16 +8344,8 @@ async function _empresaIdFromUsuarios(req) {
       .eq('id', uid)
       .single();
     if (error || !usr) return '';
-    const emailUsuario = String(usr?.email || req?.usuario?.email || req?.user?.email || '').trim();
-    const siglaKey = String(emailUsuario || '').split('@')[0].trim();
-    if (!siglaKey && !emailUsuario) return '';
-    const { data: empresa, error: empErr } = await supabase
-      .from('empresas')
-      .select('id')
-      .ilike('sigla', siglaKey || emailUsuario)
-      .maybeSingle();
-    const empresaId = String(empresa?.id || '').trim();
-    return !empErr && _isUuid(empresaId) ? empresaId : '';
+    const found = await _buscarEmpresaPorEmail(usr?.email || req?.usuario?.email || req?.user?.email || '');
+    return String(found?.empresa_id || '').trim();
   } catch (_) {
     return '';
   }
@@ -9874,7 +9913,10 @@ app.get('/api/estoque', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) {
-      try { console.log('[ESTOQUE DEBUG]', { tipo: 'estoque', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      try {
+        const lk = await _buscarEmpresaPorEmail(req.usuario?.email || '');
+        console.log('[ESTOQUE DEBUG]', { tipo: 'estoque', emailUsuario: lk?.emailUsuario || req.usuario?.email, empresa: lk?.empresa || null });
+      } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     }
     const { data, error } = await supabase.from('estoque').select('*').eq('empresa_id', empresaId).order('nome');
@@ -9916,7 +9958,10 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) {
-      try { console.log('[ESTOQUE DEBUG]', { tipo: 'tintas', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      try {
+        const lk = await _buscarEmpresaPorEmail(req.usuario?.email || '');
+        console.log('[ESTOQUE DEBUG]', { tipo: 'tintas', emailUsuario: lk?.emailUsuario || req.usuario?.email, empresa: lk?.empresa || null });
+      } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     }
     const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
@@ -10080,7 +10125,10 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
     const empresaId = await _empresaIdFromUsuarios(req);
     if (!empresaId) {
-      try { console.log('[ESTOQUE DEBUG]', { tipo: 'materiais', usuario_id: req.usuario?.id, emailUsuario: req.usuario?.email }); } catch (_) {}
+      try {
+        const lk = await _buscarEmpresaPorEmail(req.usuario?.email || '');
+        console.log('[ESTOQUE DEBUG]', { tipo: 'materiais', emailUsuario: lk?.emailUsuario || req.usuario?.email, empresa: lk?.empresa || null });
+      } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     }
     const { data, error } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
