@@ -3422,6 +3422,481 @@
   }
 })();
 
+(function patchClienteValidoNovaOf() {
+  function normClienteNome(v) {
+    var s = String(v == null ? '' : v).trim();
+    if (!s) return '';
+    s = s
+      .replace(/\\'/g, "'")
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return s;
+  }
+
+  function clientesRef() {
+    return Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window.clientes) ? window.clientes : []);
+  }
+
+  function acharClienteRobusto(nome) {
+    var alvo = normClienteNome(nome);
+    if (!alvo) return null;
+    var lista = clientesRef();
+    for (var i = 0; i < lista.length; i++) {
+      var c = lista[i];
+      var base = c && (c.nome || c.rs || c.razao_social || c.razao || '');
+      if (normClienteNome(base) === alvo) return c;
+    }
+    for (var j = 0; j < lista.length; j++) {
+      var c2 = lista[j];
+      var hay = [c2 && c2.nome, c2 && c2.rs, c2 && c2.razao_social, c2 && c2.cidade, c2 && c2.tel, c2 && c2.telefone, c2 && c2.cnpj]
+        .filter(Boolean)
+        .map(normClienteNome)
+        .join(' | ');
+      if (hay && hay.indexOf(alvo) !== -1) return c2;
+    }
+    return null;
+  }
+
+  function syncClienteNovaOf(input) {
+    var el = input || document.getElementById('f-cli-search');
+    if (!el) return null;
+    var cli = acharClienteRobusto(el.value);
+    if (cli && cli.id) {
+      el.dataset.clienteId = String(cli.id);
+      el.dataset.clienteNome = String(cli.nome || cli.rs || cli.razao_social || cli.razao || el.value || '').trim();
+      try {
+        var sel = document.getElementById('f-cli');
+        if (sel) sel.value = String(cli.id);
+      } catch (_) {}
+      try {
+        var hid = document.getElementById('f-cli-id');
+        if (hid) hid.value = String(cli.id);
+      } catch (_) {}
+      try { if (typeof window.ofCliChange === 'function') window.ofCliChange(); } catch (_) {}
+      return cli;
+    }
+    delete el.dataset.clienteId;
+    delete el.dataset.clienteNome;
+    return null;
+  }
+
+  function bindClienteNovaOf() {
+    var el = document.getElementById('f-cli-search');
+    if (!el || el.dataset.patchClienteValidoNovaOf === '1') return;
+    el.dataset.patchClienteValidoNovaOf = '1';
+    ['input', 'change', 'blur'].forEach(function(evt) {
+      el.addEventListener(evt, function() { syncClienteNovaOf(el); }, true);
+    });
+    setTimeout(function() { syncClienteNovaOf(el); }, 0);
+  }
+
+  function patchResolveCliId() {
+    var orig = window.ofResolveCliIdFromModal;
+    if (typeof orig !== 'function' || orig._patchClienteValidoNovaOf) return;
+    var wrapped = function() {
+      try {
+        var el = document.getElementById('f-cli-search');
+        if (el && el.dataset && el.dataset.clienteId) return String(el.dataset.clienteId || '').trim();
+      } catch (_) {}
+      var r = orig.apply(this, arguments);
+      try {
+        var rid = String(r || '').trim();
+        var inp = document.getElementById('f-cli-search');
+        if (rid && inp && inp.dataset) inp.dataset.clienteId = rid;
+      } catch (_) {}
+      return r;
+    };
+    wrapped._patchClienteValidoNovaOf = true;
+    window.ofResolveCliIdFromModal = wrapped;
+  }
+
+  function patchOfCliChange() {
+    var orig = window.ofCliChange;
+    if (typeof orig !== 'function' || orig._patchClienteValidoNovaOf) return;
+    var wrapped = function() {
+      var r = orig.apply(this, arguments);
+      try {
+        var sel = document.getElementById('f-cli');
+        var id = sel ? String(sel.value || '').trim() : '';
+        var inp = document.getElementById('f-cli-search');
+        if (inp && inp.dataset) {
+          if (id) {
+            inp.dataset.clienteId = id;
+            try {
+              if (typeof window.getCli === 'function') {
+                var c = window.getCli(id);
+                if (c && (c.nome || c.rs)) inp.dataset.clienteNome = String(c.nome || c.rs || '').trim();
+              }
+            } catch (_) {}
+          } else {
+            delete inp.dataset.clienteId;
+            delete inp.dataset.clienteNome;
+          }
+        }
+      } catch (_) {}
+      return r;
+    };
+    wrapped._patchClienteValidoNovaOf = true;
+    window.ofCliChange = wrapped;
+  }
+
+  function patchApiFetchForCliId() {
+    var orig = window.apiFetch;
+    if (typeof orig !== 'function' || orig._patchClienteValidoNovaOf) return;
+    var wrapped = function(url, opts) {
+      try {
+        var u = String(url || '');
+        var m = String((opts && opts.method) || 'GET').toUpperCase();
+        if (m === 'POST' && u.indexOf('/api/ofs') !== -1 && opts) {
+          var el = document.getElementById('f-cli-search') || document.getElementById('of-r-cliente');
+          var cliId = el && el.dataset ? String(el.dataset.clienteId || '').trim() : '';
+          var cliNome = el && el.dataset ? String(el.dataset.clienteNome || '').trim() : '';
+          if (!cliNome && el) cliNome = String(el.value || '').trim();
+          if (cliId && opts.body) {
+            if (typeof opts.body === 'string') {
+              try {
+                var o = JSON.parse(opts.body);
+                if (o && typeof o === 'object') {
+                  if (!o.cliId) o.cliId = cliId;
+                  if (!o.cli_id) o.cli_id = cliId;
+                  if (!o.cliente_id) o.cliente_id = cliId;
+                  if (cliNome) {
+                    if (!o.cliente_nome) o.cliente_nome = cliNome;
+                    if (!o.cliNome) o.cliNome = cliNome;
+                  }
+                  opts.body = JSON.stringify(o);
+                }
+              } catch (_) {}
+            } else if (typeof opts.body === 'object') {
+              if (!opts.body.cliId) opts.body.cliId = cliId;
+              if (!opts.body.cli_id) opts.body.cli_id = cliId;
+              if (!opts.body.cliente_id) opts.body.cliente_id = cliId;
+              if (cliNome) {
+                if (!opts.body.cliente_nome) opts.body.cliente_nome = cliNome;
+                if (!opts.body.cliNome) opts.body.cliNome = cliNome;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+      return orig.apply(this, arguments);
+    };
+    wrapped._patchClienteValidoNovaOf = true;
+    window.apiFetch = wrapped;
+  }
+
+  function tick() {
+    try { bindClienteNovaOf(); } catch (_) {}
+    try { patchResolveCliId(); } catch (_) {}
+    try { patchOfCliChange(); } catch (_) {}
+    try { patchApiFetchForCliId(); } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 250);
+      setInterval(tick, 1200);
+    });
+  } else {
+    setTimeout(tick, 250);
+    setInterval(tick, 1200);
+  }
+})();
+
+(function patchFacasNumeroCategoria() {
+  function authH() {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function ensureNormalizeFaca() {
+    var orig = window.normalizeFaca;
+    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    var wrapped = function(r) {
+      var out = orig.apply(this, arguments) || {};
+      try { out.numero = r && (r.numero || r.num || r.numeracao) ? String(r.numero || r.num || r.numeracao) : (out.numero || ''); } catch (_) {}
+      try { out.categoria = r && (r.categoria || r.cat) ? String(r.categoria || r.cat) : (out.categoria || ''); } catch (_) {}
+      return out;
+    };
+    wrapped._patchFacasNumeroCategoria = true;
+    window.normalizeFaca = wrapped;
+  }
+
+  function fetchCategorias() {
+    return fetch('/api/facas_categorias', { headers: authH() })
+      .then(function(r) { return r.json(); })
+      .then(function(j) { return (j && j.ok && Array.isArray(j.data)) ? j.data : []; })
+      .catch(function() { return []; });
+  }
+
+  function fillCategoriaSelect(sel, cats) {
+    if (!sel) return;
+    var cur = String(sel.value || '');
+    sel.innerHTML = '<option value="">Todas</option>';
+    (cats || []).forEach(function(c) {
+      var nome = String((c && (c.nome || c.name)) || '').trim();
+      if (!nome) return;
+      var opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      sel.appendChild(opt);
+    });
+    sel.value = cur;
+  }
+
+  function loadAndBindCategorias() {
+    if (window.__facasCatsLoading) return;
+    window.__facasCatsLoading = true;
+    fetchCategorias().then(function(cats) {
+      window.__FACAS_CATEGORIAS = cats || [];
+      fillCategoriaSelect(document.getElementById('facas1-cat-filtro'), cats);
+      fillCategoriaSelect(document.getElementById('facas2-cat-filtro'), cats);
+      fillCategoriaSelect(document.getElementById('fa1-categoria'), cats);
+    }).finally(function() { window.__facasCatsLoading = false; });
+  }
+
+  function ensureFacasToolbar(pageId, renderFnName) {
+    var page = document.getElementById(pageId);
+    if (!page) return;
+    var bar = page.querySelector('.ptoolbar');
+    if (!bar || bar.dataset.patchFacasNumeroCategoria === '1') return;
+    bar.dataset.patchFacasNumeroCategoria = '1';
+
+    var busca = bar.querySelector('input[id$="-busca"]');
+    if (!busca) return;
+
+    var num = document.createElement('input');
+    num.id = pageId === 'page-facas1' ? 'facas1-num-busca' : 'facas2-num-busca';
+    num.placeholder = '🔢 Número...';
+    num.style.width = '140px';
+    num.oninput = function() { try { if (typeof window[renderFnName] === 'function') window[renderFnName](); } catch (_) {} };
+
+    var sel = document.createElement('select');
+    sel.id = pageId === 'page-facas1' ? 'facas1-cat-filtro' : 'facas2-cat-filtro';
+    sel.style.width = '160px';
+    sel.style.background = 'var(--s2)';
+    sel.style.border = '1px solid var(--border)';
+    sel.style.color = 'var(--text)';
+    sel.style.borderRadius = '8px';
+    sel.style.padding = '7px 10px';
+    sel.style.fontSize = '.85rem';
+    sel.onchange = function() { try { if (typeof window[renderFnName] === 'function') window[renderFnName](); } catch (_) {} };
+
+    var btnCat = document.createElement('button');
+    btnCat.className = 'btn btn-ghost btn-sm';
+    btnCat.type = 'button';
+    btnCat.textContent = '+ Categoria';
+    btnCat.onclick = function() {
+      var nome = String(prompt('Nome da categoria:') || '').trim();
+      if (!nome) return;
+      fetch('/api/facas_categorias', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authH()),
+        body: JSON.stringify({ nome: nome })
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (!j || !j.ok) throw new Error((j && j.error) ? j.error : 'Falha ao criar categoria');
+          loadAndBindCategorias();
+          try { if (typeof window.toast === 'function') window.toast('✓ Categoria criada', 'var(--green)'); } catch (_) {}
+        })
+        .catch(function(e) { try { if (typeof window.toast === 'function') window.toast(String(e && e.message ? e.message : e), 'var(--red)'); } catch (_) {} });
+    };
+
+    if (busca.nextSibling) bar.insertBefore(num, busca.nextSibling);
+    else bar.appendChild(num);
+    bar.insertBefore(sel, num.nextSibling);
+    bar.insertBefore(btnCat, sel.nextSibling);
+
+    loadAndBindCategorias();
+  }
+
+  function ensureFacasTableHeaders() {
+    [['page-facas1', 'facas1-body'], ['page-facas2', 'facas2-body']].forEach(function(pair) {
+      var page = document.getElementById(pair[0]);
+      if (!page) return;
+      var tbody = document.getElementById(pair[1]);
+      if (!tbody) return;
+      var table = tbody.closest ? tbody.closest('table') : null;
+      var tr = table ? table.querySelector('thead tr') : null;
+      if (!tr || tr.dataset.patchFacasNumeroCategoria === '1') return;
+      tr.dataset.patchFacasNumeroCategoria = '1';
+      var ths = tr.querySelectorAll('th');
+      if (!ths || ths.length < 2) return;
+      var thFoto = ths[0];
+      var thNome = ths[1];
+      if (thNome && String(thNome.textContent || '').toUpperCase().indexOf('NOME') !== -1) {
+        var thNum = document.createElement('th');
+        thNum.textContent = 'NÚMERO';
+        thNum.style.cssText = thNome.style.cssText;
+        var thCat = document.createElement('th');
+        thCat.textContent = 'CATEGORIA';
+        thCat.style.cssText = thNome.style.cssText;
+        tr.insertBefore(thCat, thNome);
+        tr.insertBefore(thNum, thCat);
+        try { table.style.minWidth = '980px'; } catch (_) {}
+      }
+    });
+  }
+
+  function patchRenderFacas(fnName, bodyId, buscaId, numBuscaId, catSelId) {
+    var orig = window[fnName];
+    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    var wrapped = function() {
+      ensureFacasTableHeaders();
+      var body = document.getElementById(bodyId);
+      if (!body) return orig.apply(this, arguments);
+      var busca = String(((document.getElementById(buscaId) || {}).value || '')).toLowerCase();
+      var buscaNum = String(((document.getElementById(numBuscaId) || {}).value || '')).toLowerCase().trim();
+      var cat = String(((document.getElementById(catSelId) || {}).value || '')).trim();
+      var lista = Array.isArray(window.FACAS) ? window.FACAS : [];
+      if (busca) {
+        lista = lista.filter(function(f) {
+          var hay = String((f.nome || '') + (f.obs || '') + (f.medidas || '') + ((f.maquinas || []).join(' ')) + ((f.clientes || []).join(' '))).toLowerCase();
+          return hay.indexOf(busca) !== -1;
+        });
+      }
+      if (buscaNum) {
+        lista = lista.filter(function(f) { return String(f.numero || '').toLowerCase().indexOf(buscaNum) !== -1; });
+      }
+      if (cat) {
+        lista = lista.filter(function(f) { return String(f.categoria || '').trim() === cat; });
+      }
+      if (!lista.length) {
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';
+        return;
+      }
+      body.innerHTML = lista.map(function(f) {
+        var cliNomes = (f.clientes || []).map(function(id) { var c = (Array.isArray(window.CLIENTES) ? window.CLIENTES : []).find(function(x) { return x.id === id; }); return c ? c.nome : id; }).join(', ');
+        var maqStr = (f.maquinas || []).join(', ') || '—';
+        var thumb = (typeof window.renderFotoItem === 'function') ? window.renderFotoItem(f.foto, f.nome) : '';
+        var num = String(f.numero || '').trim() || '—';
+        var catTxt = String(f.categoria || '').trim() || '—';
+        var nomeTxt = String(f.nome || '—');
+        var medidasTxt = String(f.medidas || '—');
+        var valorTxt = f.valor ? ('R$ ' + Number(f.valor).toFixed(2)) : '—';
+        var esc = (typeof window.escAttr === 'function') ? window.escAttr : function(s) { return String(s || '').replace(/"/g, '&quot;'); };
+        return '<tr>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border)">' + thumb + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">' + esc(num) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(catTxt) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-weight:600">' + esc(nomeTxt) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">' + esc(medidasTxt) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(maqStr) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(cliNomes || '—') + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">' + esc(valorTxt) + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);text-align:center">' +
+            '<button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;margin-right:4px">✏</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque(\'faca\',\'' + esc(f.id) + '\',\'' + esc(f.nome || '') + '\')" style="font-size:.68rem;margin-right:4px">🔳</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="excluirFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;color:var(--red)">🗑</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    };
+    wrapped._patchFacasNumeroCategoria = true;
+    window[fnName] = wrapped;
+  }
+
+  function ensureModalFields() {
+    var modal = document.getElementById('modal-faca1');
+    if (!modal || modal.dataset.patchFacasNumeroCategoria === '1') return;
+    var grid = modal.querySelector('.modal-body div[style*="grid-template-columns"]');
+    var nome = document.getElementById('fa1-nome');
+    if (!grid || !nome) return;
+    modal.dataset.patchFacasNumeroCategoria = '1';
+
+    var wrapNum = document.createElement('div');
+    wrapNum.className = 'mf';
+    wrapNum.innerHTML = '<label>NÚMERO</label><input id="fa1-numero" placeholder="Ex: F001">';
+
+    var wrapCat = document.createElement('div');
+    wrapCat.className = 'mf';
+    wrapCat.innerHTML = '<label>CATEGORIA</label><select id="fa1-categoria" style="background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-size:.85rem;font-family:var(--font);width:100%"><option value="">Selecionar...</option></select>';
+
+    var ref = document.getElementById('fa1-medidas');
+    if (ref && ref.parentElement && ref.parentElement.nextSibling) {
+      grid.insertBefore(wrapNum, ref.parentElement.nextSibling);
+      grid.insertBefore(wrapCat, wrapNum.nextSibling);
+    } else {
+      grid.appendChild(wrapNum);
+      grid.appendChild(wrapCat);
+    }
+
+    loadAndBindCategorias();
+  }
+
+  function patchAbrirModalFaca1() {
+    var orig = window.abrirModalFaca1;
+    if (typeof orig !== 'function' || orig._patchFacasNumeroCategoria) return;
+    var wrapped = function(id) {
+      var r = orig.apply(this, arguments);
+      try { ensureModalFields(); } catch (_) {}
+      try {
+        var f = id && Array.isArray(window.FACAS) ? window.FACAS.find(function(x) { return x.id === id; }) : null;
+        var numEl = document.getElementById('fa1-numero');
+        if (numEl) numEl.value = f ? (f.numero || '') : '';
+        var catEl = document.getElementById('fa1-categoria');
+        if (catEl) catEl.value = f ? (f.categoria || '') : '';
+      } catch (_) {}
+      return r;
+    };
+    wrapped._patchFacasNumeroCategoria = true;
+    window.abrirModalFaca1 = wrapped;
+  }
+
+  function patchApiForFacas() {
+    var origFetch = window.fetch;
+    if (typeof origFetch !== 'function' || origFetch._patchFacasNumeroCategoria) return;
+    var wrapped = function(url, opts) {
+      try {
+        var u = String(url || '');
+        var m = String((opts && opts.method) || 'GET').toUpperCase();
+        if ((m === 'POST' || m === 'PUT') && u.indexOf('/facas_estoque') !== -1 && opts && opts.body && typeof opts.body === 'string') {
+          try {
+            var o = JSON.parse(opts.body);
+            if (o && typeof o === 'object') {
+              var num = String((document.getElementById('fa1-numero') || {}).value || '').trim();
+              var cat = String((document.getElementById('fa1-categoria') || {}).value || '').trim();
+              if (num) o.numero = num;
+              if (cat) o.categoria = cat;
+              opts.body = JSON.stringify(o);
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+      return origFetch.apply(this, arguments);
+    };
+    wrapped._patchFacasNumeroCategoria = true;
+    window.fetch = wrapped;
+  }
+
+  function tick() {
+    try { ensureNormalizeFaca(); } catch (_) {}
+    try { ensureFacasToolbar('page-facas1', 'renderFacas1'); } catch (_) {}
+    try { ensureFacasToolbar('page-facas2', 'renderFacas2'); } catch (_) {}
+    try { patchRenderFacas('renderFacas1', 'facas1-body', 'facas1-busca', 'facas1-num-busca', 'facas1-cat-filtro'); } catch (_) {}
+    try { patchRenderFacas('renderFacas2', 'facas2-body', 'facas2-busca', 'facas2-num-busca', 'facas2-cat-filtro'); } catch (_) {}
+    try { patchAbrirModalFaca1(); } catch (_) {}
+    try { ensureModalFields(); } catch (_) {}
+    try { patchApiForFacas(); } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 350);
+      setInterval(tick, 1500);
+    });
+  } else {
+    setTimeout(tick, 350);
+    setInterval(tick, 1500);
+  }
+})();
+
 window._mbnActive = function(id) {
   document.querySelectorAll('.mbn-item').forEach(function(el) {
     var on = el.id === id;

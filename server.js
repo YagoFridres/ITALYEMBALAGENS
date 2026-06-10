@@ -7078,7 +7078,48 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const payload = clientesPayload(req.body || {});
+    const email = String(req.usuario?.email || '').toLowerCase().trim();
+    const MAPA = {
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'carto': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    };
+    const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const b = req.body || {};
+    const payload = {
+      nome: b.nome,
+      telefone: b.telefone || b.tel || '',
+      tel: b.tel || b.telefone || '',
+      email: b.email || '',
+      cidade: b.cidade || '',
+      uf: b.uf || b.estado || '',
+      documento: b.documento || b.cnpj || '',
+      cnpj: b.cnpj || b.documento || '',
+      rs: b.rs || '',
+      codigo: b.codigo || '',
+      observacoes: b.observacoes || '',
+      ativo: true,
+      empresa_id,
+      emp_id: b.emp_id || '',
+      vendedor_id: b.vendedor_id || null,
+      ramo: b.ramo || '',
+      pagto: b.pagto || '',
+      endereco: b.endereco || '',
+      rep: b.rep || '',
+      ie: b.ie || '',
+    };
+    Object.keys(payload).forEach(k => {
+      if (payload[k] === null || payload[k] === undefined) delete payload[k];
+    });
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
@@ -7098,7 +7139,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
     if (error) throw error;
     cacheClearPrefix('clientes_');
     await logAuditoria('clientes', 'INSERT', data?.[0]?.id, null, data?.[0] || null, req);
-    ok(res, data[0]);
+    return res.json({ ok: true, data: data[0] || null });
   } catch (e) { err(res, e); }
 });
 
@@ -9847,6 +9888,8 @@ app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
       nome: b.nome || b.descricao || b.codigo || '',
       codigo: b.codigo || b.nome || '',
       descricao: b.descricao || b.nome || '',
+      numero: b.numero || b.num || b.numeracao || '',
+      categoria: b.categoria || b.cat || '',
       quantidade: Number(b.quantidade ?? b.qtd ?? 0) || 0,
       cliente: b.cliente || '',
       emp_id: b.emp_id || b.empId || 'E1',
@@ -9892,6 +9935,8 @@ app.put('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
       nome: b.nome || b.descricao || b.codigo,
       codigo: b.codigo || b.nome,
       descricao: b.descricao || b.nome,
+      numero: b.numero || b.num || b.numeracao,
+      categoria: b.categoria || b.cat,
       quantidade: b.quantidade ?? b.qtd,
       cliente: b.cliente,
       emp_id: b.emp_id || b.empId,
@@ -9925,6 +9970,66 @@ app.delete('/api/facas_estoque/:id', authMiddleware, async (req, res) => {
     if (error) throw error;
     res.json({ ok: true });
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/facas_categorias', authMiddleware, async (req, res) => {
+  try {
+    const email = String(req.usuario?.email || '').toLowerCase().trim();
+    const MAPA = {
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    };
+    const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const { data, error } = await supabase
+      .from('facas_categorias')
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('nome');
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/facas_categorias', authMiddleware, async (req, res) => {
+  try {
+    const nome = String(req.body?.nome || '').trim();
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    const email = String(req.usuario?.email || '').toLowerCase().trim();
+    const MAPA = {
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+    };
+    const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const { data, error } = await supabase
+      .from('facas_categorias')
+      .insert({ nome, empresa_id })
+      .select()
+      .single();
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════
