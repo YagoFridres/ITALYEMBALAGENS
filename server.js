@@ -6864,43 +6864,38 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     };
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
-      const ids = Array.from(new Set(base.map((c) => String(c?.id || '').trim()).filter(Boolean))).slice(0, 4000);
-      if (!ids.length) return base;
+      if (!base.length) return base;
       const mapaOfs = Object.create(null);
-      const seen = Object.create(null);
-      const addCounts = (items, key) => {
-        (Array.isArray(items) ? items : []).forEach((of) => {
-          const cliId = String(of?.[key] || '').trim();
-          if (!cliId) return;
-          const oid = String(of?.id || key + ':' + cliId + ':' + Math.random());
-          if (seen[oid]) return;
-          seen[oid] = 1;
-          mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
-        });
-      };
       const specs = [
-        { select: 'id,cli_id', col: 'cli_id', key: 'cli_id' },
-        { select: 'id,cliId', col: 'cliId', key: 'cliId' },
-        { select: 'id,cliente_id', col: 'cliente_id', key: 'cliente_id' },
+        { select: 'cli_id', col: 'cli_id', key: 'cli_id' },
+        { select: 'cliId', col: 'cliId', key: 'cliId' },
+        { select: 'cliente_id', col: 'cliente_id', key: 'cliente_id' },
       ];
       for (const spec of specs) {
         try {
-          const { data, error } = await supabase.from('ofs').select(spec.select).in(spec.col, ids);
-          if (!error) addCounts(data, spec.key);
+          const { data, error } = await supabase.from('ofs').select(spec.select).not(spec.col, 'is', null);
+          if (error) continue;
+          (Array.isArray(data) ? data : []).forEach((of) => {
+            const cliId = String(of?.[spec.key] || '').trim();
+            if (!cliId) return;
+            mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
+          });
         } catch (_) {}
       }
+      console.log('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
       const withCounts = base.map((c) => ({
         ...c,
         total_ofs: mapaOfs[String(c?.id || '').trim()] || 0
       }));
-      return withCounts.sort((a, b) => {
-        const diff = (Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0));
+      withCounts.sort((a, b) => {
+        const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
         if (diff) return diff;
-        const da = String(a?.created_at || '');
-        const db = String(b?.created_at || '');
-        if (da !== db) return db.localeCompare(da);
         return String(a?.nome || '').localeCompare(String(b?.nome || ''));
       });
+      try {
+        console.log('[CLIENTES] top 3:', withCounts.slice(0, 3).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
+      } catch (_) {}
+      return withCounts;
     };
     for (const col of cols) {
       let localSelect = selectSlim;
