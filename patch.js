@@ -3922,14 +3922,14 @@
       '  flex-wrap: wrap !important;\n' +
       '}\n' +
       '\n' +
-      '/* Cards de clientes (seletor real: .cli-card) */\n' +
       '.cli-card {\n' +
       '  display: flex !important;\n' +
       '  flex-direction: column !important;\n' +
+      '  height: 100% !important;\n' +
       '}\n' +
       '\n' +
-      '/* Ações (Painel/Editar/Excluir) no rodapé do card */\n' +
-      '.cli-card .cli-stats + div,\n' +
+      '.cli-card > div:last-child,\n' +
+      '.cli-card .cli-acoes,\n' +
       '.cliente-card .acoes,\n' +
       '.cliente-card-footer,\n' +
       '.cliente-acoes {\n' +
@@ -3938,11 +3938,11 @@
       '  gap: 6px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
       '  margin-top: auto !important;\n' +
-      '  padding-top: 8px !important;\n' +
       '}\n' +
       '\n' +
-      '/* Botões Painel, Editar, Excluir no mesmo tamanho */\n' +
-      '.cli-card .cli-stats + div button,\n' +
+      '.cli-card button:last-of-type { margin-top: auto !important; }\n' +
+      '\n' +
+      '.cli-card button,\n' +
       '.cliente-card .acoes button,\n' +
       '.cliente-card-footer button,\n' +
       '.cliente-acoes button {\n' +
@@ -3950,9 +3950,9 @@
       '  font-size: 12px !important;\n' +
       '  border-radius: 6px !important;\n' +
       '  white-space: nowrap !important;\n' +
-      '  min-height: 28px !important;\n' +
-      '  display: inline-flex !important;\n' +
-      '  align-items: center !important;\n' +
+      '  flex: 1 !important;\n' +
+      '  min-width: 60px !important;\n' +
+      '  text-align: center !important;\n' +
       '}\n';
     var styleClientes = document.createElement('style');
     styleClientes.id = 'patch-clientes-css';
@@ -3980,25 +3980,34 @@
     } catch (_) {}
   }
 
-  function tryReloadClientesList() {
+  function _reloadClientes() {
     try {
-      if (typeof window.carregarClientes === 'function') {
-        var p = null;
-        try { p = window.carregarClientes(true); } catch (_) { p = window.carregarClientes(); }
-        if (p && typeof p.then === 'function') {
-          return p.then(function() {
-            try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
-          }).catch(function() {
-            try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
-          });
+      if (typeof carregarClientes === 'function') {
+        carregarClientes(true);
+        setTimeout(function() {
+          try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+        }, 800);
+        return;
+      }
+      if (typeof renderClientes === 'function') {
+        renderClientes();
+        return;
+      }
+      var links = document.querySelectorAll('a, [onclick]');
+      for (var i = 0; i < links.length; i++) {
+        var el = links[i];
+        var oc = '';
+        try { oc = el.getAttribute('onclick') || ''; } catch (_) { oc = ''; }
+        var txt = '';
+        try { txt = String(el.textContent || '').trim(); } catch (_) { txt = ''; }
+        if (oc.indexOf('clientes') !== -1 || txt === 'Clientes') {
+          try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+          return;
         }
       }
-      if (typeof window.renderClientes === 'function') return window.renderClientes();
-      if (typeof window.mapaClientesRecarregar === 'function') return window.mapaClientesRecarregar(true);
-      if (typeof window.loadClientes === 'function') return window.loadClientes();
-      var menuClientes = document.querySelector('[onclick*="clientes"], [data-menu="clientes"]');
-      if (menuClientes && typeof menuClientes.click === 'function') menuClientes.click();
-    } catch (_) {}
+    } catch (e) {
+      try { console.error('[RELOAD CLIENTES]', e); } catch (_) {}
+    }
   }
 
   function patchClickSalvar() {
@@ -4067,7 +4076,7 @@
               try {
                 if (data && data.ok) {
                   try { console.log('[CLIENTE SALVO]', (data.data && data.data.nome) ? data.data.nome : ''); } catch (_) {}
-                  setTimeout(tryReloadClientesList, 500);
+                  setTimeout(_reloadClientes, 500);
                 }
               } catch (_) {}
             })
