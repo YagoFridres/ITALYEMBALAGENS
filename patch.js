@@ -2026,34 +2026,56 @@
   } 
  
   function patchGoAcordeon() { 
-    if (window.go && !window.go._patched) { 
-      var _origGoAcordeon = window.go; 
-      window.go = function(page) { 
-        var res = typeof _origGoAcordeon === 'function' ? _origGoAcordeon.apply(this, arguments) : undefined; 
-        var p = String(page || ''); 
-        if (String(page || '').toLowerCase() === 'dashboard') { 
-          setTimeout(function() { 
-            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {} 
-          }, 400); 
-        } 
-        if (p === 'ofmaq' || p.indexOf('maq') >= 0) { 
-          [300, 600, 1000, 1500, 2000, 3000].forEach(function(delay) { 
-            setTimeout(function() { 
-              var headers = document.querySelectorAll('.maq-header'); 
-              if (headers.length > 0) { 
-                aplicarAccordion(); 
-                console.log('[PATCH] accordion aplicado em ofmaq apos ' + delay + 'ms: ' + headers.length + ' headers'); 
-              } 
-            }, delay); 
-          }); 
-        } 
-        if (p === 'hub') { 
-          setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
-        } 
-        return res; 
-      }; 
-      window.go._patched = true; 
-    } 
+    try {
+      if (window.__goWrapperInstalled) return;
+      if (typeof window.go !== 'function') return;
+      window.__goHooks = Array.isArray(window.__goHooks) ? window.__goHooks : [];
+      window.__registerGoHook = function(fn) {
+        try {
+          if (typeof fn !== 'function') return;
+          window.__goHooks.push(fn);
+        } catch (_) {}
+      };
+      var _origGo = window.go;
+      var wrappedGo = function(page) {
+        var res = typeof _origGo === 'function' ? _origGo.apply(this, arguments) : undefined;
+        try {
+          var hooks = Array.isArray(window.__goHooks) ? window.__goHooks.slice() : [];
+          hooks.forEach(function(h) { try { h.apply(this, arguments); } catch (_) {} }, this);
+        } catch (_) {}
+        return res;
+      };
+      wrappedGo._patched = true;
+      window.go = wrappedGo;
+      window.__goWrapperInstalled = true;
+    } catch (_) {}
+    try {
+      if (window.__goHookAcordeonV1) return;
+      window.__goHookAcordeonV1 = true;
+      if (typeof window.__registerGoHook !== 'function') return;
+      window.__registerGoHook(function(page) {
+        var p = String(page || '');
+        if (String(page || '').toLowerCase() === 'dashboard') {
+          setTimeout(function() {
+            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {}
+          }, 400);
+        }
+        if (p === 'ofmaq' || p.indexOf('maq') >= 0) {
+          [300, 600, 1000, 1500, 2000, 3000].forEach(function(delay) {
+            setTimeout(function() {
+              var headers = document.querySelectorAll('.maq-header');
+              if (headers.length > 0) {
+                aplicarAccordion();
+                console.log('[PATCH] accordion aplicado em ofmaq apos ' + delay + 'ms: ' + headers.length + ' headers');
+              }
+            }, delay);
+          });
+        }
+        if (p === 'hub') {
+          setTimeout(function() { window.carregarPassagensHoje(); }, 400);
+        }
+      });
+    } catch (_) {}
   } 
  
   console.log('[PATCH] v3 ativo - Italy Embalagens ERP'); 
@@ -2700,8 +2722,14 @@
                 empId === 'null' || empId === 'undefined') {
               u.searchParams.delete('emp_id');
               u.searchParams.delete('empId');
-              url = u.pathname + u.search;
             }
+            var limit = String(u.searchParams.get('limit') || '').trim();
+            var from = String(u.searchParams.get('from') || '').trim();
+            var to = String(u.searchParams.get('to') || '').trim();
+            if (limit === '200' && !from && !to) {
+              u.searchParams.set('limit', '500');
+            }
+            url = u.pathname + u.search;
           }
         } catch (_) {}
         return _origFetchPatchOfs.apply(this, [url, opts]);
@@ -2776,24 +2804,25 @@
   }
 
   function _patchGoEstoques() {
-    var origGo = window.go;
-    if (typeof origGo !== 'function' || origGo._patchEstoquesPagesV1) return;
-    var wrapped = function(id) {
-      var r = origGo.apply(this, arguments);
-      var pid = String(id || '').trim();
-      setTimeout(function() {
-        try {
-          if (pid === 'estoque-tintas') _renderTintasPage(true);
-          else if (pid === 'estoque-materiais') _renderMateriaisPage(true);
-          else if (pid === 'dashboard-estoques') _renderDashboardEstoques(true);
-        } catch (e) {
-          try { _toast('Erro ao abrir ' + pid, 'var(--red)'); } catch (_) {}
-        }
-      }, 10);
-      return r;
-    };
-    wrapped._patchEstoquesPagesV1 = true;
-    window.go = wrapped;
+    try {
+      if (window.__goHookEstoquesPagesV1) return;
+      window.__goHookEstoquesPagesV1 = true;
+      if (typeof window.__registerGoHook !== 'function') return;
+      window.__registerGoHook(function(id) {
+        var pid = String(id || '').trim();
+        setTimeout(function() {
+          try {
+            if (pid === 'estoque-tintas') _renderTintasPage(true);
+            else if (pid === 'estoque-materiais') _renderMateriaisPage(true);
+            else if (pid === 'dashboard-estoques') _renderDashboardEstoques(true);
+            try { if (pid.indexOf('estoque') >= 0 || pid.indexOf('dashboard') >= 0) { if (typeof window.renderDashboardEstoques === 'function') window.renderDashboardEstoques(); } } catch (_) {}
+            try { if (pid.indexOf('estoque') >= 0 || pid.indexOf('dashboard') >= 0) { if (typeof window.carregarEstoque === 'function') window.carregarEstoque(); } } catch (_) {}
+          } catch (e) {
+            try { _toast('Erro ao abrir ' + pid, 'var(--red)'); } catch (_) {}
+          }
+        }, 10);
+      });
+    } catch (_) {}
   }
 
   function _statusBadge(qtd, min) {
@@ -6473,28 +6502,53 @@ window._mbnActive = function(id) {
       await _refreshClientesFullList({ reset: true, scroll: true });
     };
 
-    var origGo = window.go;
-    if (typeof origGo === 'function' && !origGo._patchClientesDefaultTodosV1) {
-      var wGo = function(id) {
-        var r = origGo.apply(this, arguments);
-        if (String(id || '') === 'clientes') {
+    try {
+      if (!window.__goHookClientesReloadV2 && typeof window.__registerGoHook === 'function') {
+        window.__goHookClientesReloadV2 = true;
+        window.__registerGoHook(function(id) {
+          var tela = String(id || '').trim();
+          if (tela !== 'clientes' && tela !== 'cadastro-clientes') return;
           setTimeout(function() {
             try { window._clientesSkipAutoAnaliseUntil = Date.now() + 2500; } catch (_) {}
-            if (String(window._clientesAnaliseModo || '').trim()) _setClientesModo('');
-            _refreshClientesFullList({ reset: true, scroll: false }).catch(function(_) {});
-          }, 80);
-        }
-        return r;
-      };
-      wGo._patchClientesDefaultTodosV1 = true;
-      window.go = wGo;
-    }
+            try { if (String(window._clientesAnaliseModo || '').trim()) _setClientesModo(''); } catch (_) {}
+            try { _refreshClientesFullList({ reset: true, scroll: false }).catch(function(_) {}); } catch (_) {}
+            try {
+              if (typeof window.carregarClientes === 'function') window.carregarClientes();
+              else if (typeof window.renderClientes === 'function') window.renderClientes();
+              else if (typeof window.loadClientes === 'function') window.loadClientes();
+            } catch (_) {}
+          }, 300);
+          setTimeout(function() {
+            try {
+              var container = document.querySelector('#clientes-lista, #lista-clientes, .clientes-container, [data-tela="clientes"], #page-clientes');
+              var vazio = false;
+              try { vazio = !container || !String(container.textContent || '').trim(); } catch (_) { vazio = true; }
+              if (!vazio) return;
+              var token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+              fetch('/api/clientes?limit=1000', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(function(r) { return r.json().catch(function() { return null; }); })
+                .then(function(res) {
+                  var rows = (res && res.ok && Array.isArray(res.data)) ? res.data : [];
+                  if (!rows.length) return;
+                  try { console.log('[PATCH CLIENTES]', rows.length); } catch (_) {}
+                  try { if (typeof window.normalizeCli === 'function') window.CLIENTES = rows.map(window.normalizeCli); } catch (_) {}
+                  try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
+                })
+                .catch(function(e) { try { console.error('[PATCH CLIENTES ERR]', e); } catch (_) {} });
+            } catch (_) {}
+          }, 1000);
+        });
+      }
+    } catch (_) {}
 
     var origRender = window.renderClientes;
     window.renderClientes = function() {
-      _hideClientesAnaliseContainer();
-      _layoutClientesTopo();
-      _ensureBtnVerTodos();
+      var r;
+      try { if (typeof origRender === 'function') r = origRender.apply(this, arguments); } catch (_) { r = undefined; }
+      try { _hideClientesAnaliseContainer(); } catch (_) {}
+      try { _layoutClientesTopo(); } catch (_) {}
+      try { _ensureBtnVerTodos(); } catch (_) {}
+      return r;
       var baseClientes = Array.isArray(window.CLIENTES) ? window.CLIENTES.slice() : [];
       var busca = (document.getElementById('cli-busca') || {}).value || '';
       var ramo = (document.getElementById('cli-ramo') || {}).value || '';
@@ -7534,15 +7588,16 @@ window._mbnActive = function(id) {
       var box = inputEl._cliAcBox || null;
       if (box && box.parentNode) return box;
       try {
-        document.querySelectorAll('.cliente-autocomplete-dropdown').forEach(function(el) {
+        document.querySelectorAll('.cli-ac-dropdown, .cliente-autocomplete-dropdown, [data-autocomplete="clientes"]').forEach(function(el) {
           try { el.remove(); } catch (_) {}
         });
       } catch (_) {}
       box = document.createElement('div');
-      box.className = 'cliente-autocomplete-dropdown';
+      box.className = 'cliente-autocomplete-dropdown cli-ac-dropdown';
+      try { box.dataset.autocomplete = 'clientes'; } catch (_) {}
       box.style.cssText =
         'position:absolute;' +
-        'top:100%;left:0;right:0;z-index:99999;' +
+        'top:100%;left:0;right:0;z-index:999999;' +
         'background:var(--card, #1e2330);' +
         'border:1px solid var(--border, rgba(255,255,255,0.1));' +
         'border-radius:8px;' +
@@ -7551,32 +7606,27 @@ window._mbnActive = function(id) {
         'margin-top:4px;' +
         'display:none;';
       var wrap = null;
-      try { wrap = inputEl.parentElement || (inputEl.closest ? (inputEl.closest('.modal-box') || inputEl.closest('form') || inputEl.closest('.form-row') || null) : null); } catch (_) { wrap = null; }
-      if (wrap) {
-        try {
-          var pos = '';
-          try { pos = String(window.getComputedStyle(wrap).position || '').toLowerCase(); } catch (_) { pos = ''; }
-          if (!pos || pos === 'static') wrap.style.position = 'relative';
-        } catch (_) {}
-        wrap.appendChild(box);
-      } else {
-        document.body.appendChild(box);
-      }
+      try { wrap = (inputEl.closest ? inputEl.closest('div') : null) || inputEl.parentElement || null; } catch (_) { wrap = inputEl.parentElement || null; }
+      if (!wrap) return box;
+      try {
+        var pos = '';
+        try { pos = String(window.getComputedStyle(wrap).position || '').toLowerCase(); } catch (_) { pos = ''; }
+        if (!pos || pos === 'static') wrap.style.position = 'relative';
+      } catch (_) {}
+      try { wrap.appendChild(box); } catch (_) {}
       inputEl._cliAcBox = box;
       return box;
     }
 
     function positionBox(inputEl, box) {
       try {
-        if (box && box.parentElement && inputEl && box.parentElement === inputEl.parentElement) return;
+        if (!box) return;
+        box.style.position = 'absolute';
+        box.style.top = '100%';
+        box.style.left = '0';
+        box.style.right = '0';
+        box.style.width = 'auto';
       } catch (_) {}
-      var r = inputEl.getBoundingClientRect();
-      var top = Math.round(r.bottom + window.scrollY + 6);
-      var left = Math.round(r.left + window.scrollX);
-      var w = Math.round(r.width);
-      box.style.top = top + 'px';
-      box.style.left = left + 'px';
-      box.style.width = Math.max(240, w) + 'px';
     }
 
     function closeBox(inputEl) {
@@ -7585,6 +7635,26 @@ window._mbnActive = function(id) {
         try { box.remove(); } catch (_) { try { box.style.display = 'none'; } catch (_) {} }
       }
       try { if (inputEl) inputEl._cliAcBox = null; } catch (_) {}
+    }
+
+    function _removeAllCliDropdowns() {
+      try {
+        document.querySelectorAll('.cli-ac-dropdown, .cliente-autocomplete-dropdown, [data-autocomplete="clientes"]').forEach(function(el) {
+          try { el.remove(); } catch (_) {}
+        });
+      } catch (_) {}
+    }
+
+    function _bindCloseCleanup() {
+      try {
+        document.querySelectorAll('[onclick*="fechar"], [onclick*="close"], .modal-close, #btn-cancelar-of').forEach(function(btn) {
+          try {
+            if (btn && btn.dataset && btn.dataset._cliAcCloseBound === '1') return;
+            if (btn && btn.dataset) btn.dataset._cliAcCloseBound = '1';
+            btn.addEventListener('click', function() { _removeAllCliDropdowns(); }, true);
+          } catch (_) {}
+        });
+      } catch (_) {}
     }
 
     function renderItems(inputEl, items, onPick) {
@@ -7719,9 +7789,11 @@ window._mbnActive = function(id) {
         var has1 = !!document.getElementById('of-r-cliente');
         var has2 = !!document.getElementById('f-cli-search');
         if (!has1 && !has2) {
-          document.querySelectorAll('.cliente-autocomplete-dropdown').forEach(function(el) {
-            try { el.remove(); } catch (_) {}
-          });
+          _removeAllCliDropdowns();
+          try { window.__cliAcModalOpen = false; } catch (_) {}
+        } else {
+          try { window.__cliAcModalOpen = true; } catch (_) {}
+          _bindCloseCleanup();
         }
       } catch (_) {}
       try {

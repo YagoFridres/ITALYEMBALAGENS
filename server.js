@@ -2889,7 +2889,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         set: OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number' ? OFS_SELECTABLE_COLS_SET.size : null,
       }));
     } catch (_) {}
-    const limitReq = Math.min(Math.max(1, (Number(q_limit || 200) || 200)), 300);
+    const limitParamRaw = String(q_limit ?? '').trim();
+    let limitReq = Math.min(Math.max(1, (Number(q_limit || 500) || 500)), 2000);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
@@ -2938,8 +2939,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
     const temFiltroData = !!(from || to);
-    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status;
-    const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
+    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!numero || !!filtrarPassou;
+    if (!temFiltrosEspecificos && limitParamRaw === '200') limitReq = 500;
+    const limitFinal = limitReq;
 
     const CACHE_VERSION = 'ofs_v4';
     const cacheKey = [
@@ -3080,6 +3082,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let colMissingHits = 0;
     let useSelectAllFallback = false;
     let total = null;
+    let usedEmpresaFallback = false;
     let dateCol = '';
     let useDeletedAtFilter = !incluirExcluidas;
     const isDeletedAt = (v) => {
@@ -3257,6 +3260,31 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       break;
     }
 
+    const temFiltrosParaFallbackEmpresa = temFiltroData || !!clienteId || !!clienteNome || !!status || !!numero || !!filtrarPassou;
+    if (Array.isArray(data) && data.length === 0 && empId && !temFiltrosParaFallbackEmpresa) {
+      try {
+        const selFallback = lite
+          ? (colsArr.length ? colsArr.join(',') : '*')
+          : '*';
+        let q2 = supabase
+          .from('ofs')
+          .select(selFallback, { count: 'exact' })
+          .order(orderBy, { ascending: orderAsc })
+          .range(offset, offset + limitFinal - 1);
+        if (useDeletedAtFilter) q2 = q2.is('deleted_at', null);
+        if (shouldExcludeCanceladas) q2 = q2.neq('status', 'Cancelada').neq('status', 'Cancelado');
+        const r2 = await q2;
+        if (!r2.error && Array.isArray(r2.data) && r2.data.length) {
+          usedEmpresaFallback = true;
+          data = r2.data || [];
+          if (typeof r2.count === 'number') total = r2.count;
+          console.log('[OFS FALLBACK]', { semFiltroEmpresa: true, rows: data.length });
+        }
+      } catch (e) {
+        try { console.error('[OFS FALLBACK ERROR]', e?.message || e); } catch (_) {}
+      }
+    }
+
     if (!data && rawErr) {
       try { console.error('[OFS GET QUERY ERROR]', rawErr?.message || rawErr); } catch (_) {}
       _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit: limitFinal, offset, empId, status, from, to, lite });
@@ -3302,7 +3330,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     } catch (_) {}
     rows = _sanitizeRowsForJson(rows);
     const payload = { data: rows, total: Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0) };
-    cacheSet(cacheKey, payload, 10 * 1000);
+    if (!usedEmpresaFallback) cacheSet(cacheKey, payload, 10 * 1000);
     return res.json({ ok: true, ...payload });
   } catch (e) {
     try { console.error('[OFS 500 FULL]', e); } catch (_) {}
@@ -9785,17 +9813,25 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
 app.get('/api/estoque', authMiddleware, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req.usuario.id);
-    if (!empresaId) {
-      try {
-        const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id);
-        console.log('[ESTOQUE DEBUG]', { tipo: 'estoque', emailUsuario, empresa_id: empresa_id || null });
-      } catch (_) {}
-      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    try {
+      console.log('[ESTOQUE]', { rota: '/api/estoque', empresa_id: empresaId || null, usuario: req.usuario?.email });
+    } catch (_) {}
+    const build = (withEmpresa) => {
+      let q = supabase.from('estoque').select('*').order('nome');
+      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
+      return q;
+    };
+    let r = null;
+    if (empresaId) r = await build(true);
+    else r = await build(false);
+    if (r?.error && empresaId) {
+      const msg = String(r.error?.message || '');
+      if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
+        r = await build(false);
+      }
     }
-    const { data, error } = await supabase.from('estoque').select('*').eq('empresa_id', empresaId).order('nome');
-    if (error) throw error;
-    return ok(res, data || []);
+    if (r?.error) throw r.error;
+    return ok(res, r?.data || []);
   } catch (e) { err(res, e); }
 });
 
@@ -9882,24 +9918,34 @@ async function _getEstoqueMateriaisMovTableName() {
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req.usuario.id);
-    if (!empresaId) {
-      try {
-        const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id);
-        console.log('[ESTOQUE DEBUG]', { tipo: 'tintas', emailUsuario, empresa_id: empresa_id || null });
-      } catch (_) {}
-      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    try {
+      console.log('[ESTOQUE]', { rota: '/api/estoque_tintas', empresa_id: empresaId || null, usuario: req.usuario?.email });
+    } catch (_) {}
+    const build = (withEmpresa) => {
+      let q = supabase.from('estoque_tintas').select('*').order('nome');
+      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
+      return q;
+    };
+    let r = null;
+    if (empresaId) r = await build(true);
+    else r = await build(false);
+    if (r?.error && empresaId) {
+      const msg = String(r.error?.message || '');
+      if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
+        r = await build(false);
+      }
     }
-    const { data, error } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresaId).order('nome');
-    if (error) throw error;
-    return ok(res, data || []);
+    if (r?.error) throw r.error;
+    return ok(res, r?.data || []);
   } catch (e) { err(res, e); }
 });
 
 app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req.usuario.id);
-    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    try {
+      console.log('[ESTOQUE]', { rota: '/api/estoque_tintas/movimentos', empresa_id: empresaId || null, usuario: req.usuario?.email });
+    } catch (_) {}
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const tintaId = String(req.query.tinta_id || '').trim();
     const tipo = String(req.query.tipo || '').trim().toLowerCase();
@@ -9910,15 +9956,27 @@ app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
     const deIso = isIsoDate(de) ? `${de}T00:00:00.000Z` : '';
     const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
 
-    let q = supabase.from('estoque_tintas_movimentos').select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }).limit(limit);
-    if (tintaId) q = q.eq('tinta_id', tintaId);
-    if (tipo) q = q.eq('tipo', tipo);
-    if (ofNumero) q = q.eq('of_numero', ofNumero);
-    if (deIso) q = q.gte('created_at', deIso);
-    if (ateIso) q = q.lte('created_at', ateIso);
-    const { data, error } = await q;
-    if (error) throw error;
-    return ok(res, data || []);
+    const build = (withEmpresa) => {
+      let q = supabase.from('estoque_tintas_movimentos').select('*').order('created_at', { ascending: false }).limit(limit);
+      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
+      if (tintaId) q = q.eq('tinta_id', tintaId);
+      if (tipo) q = q.eq('tipo', tipo);
+      if (ofNumero) q = q.eq('of_numero', ofNumero);
+      if (deIso) q = q.gte('created_at', deIso);
+      if (ateIso) q = q.lte('created_at', ateIso);
+      return q;
+    };
+    let r = null;
+    if (empresaId) r = await build(true);
+    else r = await build(false);
+    if (r?.error && empresaId) {
+      const msg = String(r.error?.message || '');
+      if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
+        r = await build(false);
+      }
+    }
+    if (r?.error) throw r.error;
+    return ok(res, r?.data || []);
   } catch (e) { err(res, e); }
 });
 
@@ -10050,25 +10108,35 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req.usuario.id);
-    if (!empresaId) {
-      try {
-        const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id);
-        console.log('[ESTOQUE DEBUG]', { tipo: 'materiais', emailUsuario, empresa_id: empresa_id || null });
-      } catch (_) {}
-      return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
-    }
+    try {
+      console.log('[ESTOQUE]', { rota: '/api/estoque_materiais', empresa_id: empresaId || null, usuario: req.usuario?.email });
+    } catch (_) {}
     const table = await _getEstoqueMateriaisTableName();
-    const { data, error } = await supabase.from(table).select('*').eq('empresa_id', empresaId).order('categoria').order('nome');
-    if (error) throw error;
-    return ok(res, data || []);
+    const build = (withEmpresa) => {
+      let q = supabase.from(table).select('*').order('categoria').order('nome');
+      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
+      return q;
+    };
+    let r = null;
+    if (empresaId) r = await build(true);
+    else r = await build(false);
+    if (r?.error && empresaId) {
+      const msg = String(r.error?.message || '');
+      if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
+        r = await build(false);
+      }
+    }
+    if (r?.error) throw r.error;
+    return ok(res, r?.data || []);
   } catch (e) { err(res, e); }
 });
 
 app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) => {
   try {
     const empresaId = await getEmpresaId(req.usuario.id);
-    if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
+    try {
+      console.log('[ESTOQUE]', { rota: '/api/estoque_materiais/movimentos', empresa_id: empresaId || null, usuario: req.usuario?.email });
+    } catch (_) {}
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const materialId = String(req.query.material_id || '').trim();
     const tipo = String(req.query.tipo || '').trim().toLowerCase();
@@ -10080,15 +10148,27 @@ app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) =>
     const ateIso = isIsoDate(ate) ? `${ate}T23:59:59.999Z` : '';
 
     const movTable = await _getEstoqueMateriaisMovTableName();
-    let q = supabase.from(movTable).select('*').eq('empresa_id', empresaId).order('created_at', { ascending: false }).limit(limit);
-    if (materialId) q = q.eq('material_id', materialId);
-    if (tipo) q = q.eq('tipo', tipo);
-    if (ofNumero) q = q.eq('of_numero', ofNumero);
-    if (deIso) q = q.gte('created_at', deIso);
-    if (ateIso) q = q.lte('created_at', ateIso);
-    const { data, error } = await q;
-    if (error) throw error;
-    return ok(res, data || []);
+    const build = (withEmpresa) => {
+      let q = supabase.from(movTable).select('*').order('created_at', { ascending: false }).limit(limit);
+      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
+      if (materialId) q = q.eq('material_id', materialId);
+      if (tipo) q = q.eq('tipo', tipo);
+      if (ofNumero) q = q.eq('of_numero', ofNumero);
+      if (deIso) q = q.gte('created_at', deIso);
+      if (ateIso) q = q.lte('created_at', ateIso);
+      return q;
+    };
+    let r = null;
+    if (empresaId) r = await build(true);
+    else r = await build(false);
+    if (r?.error && empresaId) {
+      const msg = String(r.error?.message || '');
+      if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
+        r = await build(false);
+      }
+    }
+    if (r?.error) throw r.error;
+    return ok(res, r?.data || []);
   } catch (e) { err(res, e); }
 });
 
