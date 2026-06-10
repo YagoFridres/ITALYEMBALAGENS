@@ -3453,11 +3453,32 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (typeof orig !== 'function' || orig._patchClienteEspecialOpen) return;
     var wrapped = async function() {
       try {
-        if (!Array.isArray(window.CLIENTES) || window.CLIENTES.length === 0) {
-          if (typeof carregarClientes === 'function') {
-            try { await carregarClientes(true); } catch (_) { try { await carregarClientes(false); } catch (_) {} }
-          }
+        var curLen = 0;
+        try { curLen = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { curLen = 0; }
+        if (curLen < 10 && typeof carregarClientes === 'function') {
+          console.log('[OF RÁPIDA] recarregando CLIENTES...');
+          try { await carregarClientes(true); } catch (_) { try { await carregarClientes(false); } catch (_) {} }
         }
+        try { curLen = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { curLen = 0; }
+        if (curLen < 10) {
+          var token = '';
+          try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+          try {
+            var r = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+            var j = await r.json().catch(function() { return null; });
+            if (j && j.ok && Array.isArray(j.data) && j.data.length) {
+              var out = j.data;
+              try { if (typeof normalizeCli === 'function') out = j.data.map(function(c) { return normalizeCli(c); }); } catch (_) {}
+              try { CLIENTES = out; } catch (_) {}
+              try { window._CLIENTES = out; } catch (_) {}
+              try { window.CLIENTES = out; } catch (_) {}
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+      try {
+        var n = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0);
+        console.log('[OF RÁPIDA] CLIENTES disponíveis:', n);
       } catch (_) {}
       return orig.apply(this, arguments);
     };
@@ -4005,6 +4026,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  flex-wrap: wrap !important;\n' +
       '}\n' +
       '\n' +
+      '/* Topo real da tela de clientes */\n' +
+      '#page-clientes .ptoolbar {\n' +
+      '  display: flex !important;\n' +
+      '  align-items: center !important;\n' +
+      '  gap: 8px !important;\n' +
+      '  padding: 8px 16px !important;\n' +
+      '  flex-wrap: wrap !important;\n' +
+      '}\n' +
+      '#page-clientes .ptoolbar button {\n' +
+      '  opacity: 1 !important;\n' +
+      '  pointer-events: auto !important;\n' +
+      '}\n' +
+      '\n' +
       '/* Filtros de busca alinhados */\n' +
       '.clientes-filtros,\n' +
       '#clientes-filtros {\n' +
@@ -4020,12 +4054,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  flex-direction: column !important;\n' +
       '  height: 100% !important;\n' +
       '  cursor: pointer !important;\n' +
-      '  transition: box-shadow 0.2s ease, transform 0.1s ease !important;\n' +
+      '  transition: box-shadow 0.2s ease !important;\n' +
       '}\n' +
       '\n' +
       '.cli-card:hover {\n' +
-      '  box-shadow: 0 4px 20px rgba(79,142,247,0.3) !important;\n' +
-      '  transform: translateY(-2px) !important;\n' +
+      '  box-shadow: 0 4px 20px rgba(79,142,247,0.2) !important;\n' +
       '}\n' +
       '\n' +
       '.cli-card > div:last-child,\n' +
@@ -4038,15 +4071,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  gap: 6px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
       '  margin-top: auto !important;\n' +
-      '  opacity: 0 !important;\n' +
-      '  pointer-events: none !important;\n' +
-      '  transition: opacity 0.2s ease !important;\n' +
-      '}\n' +
-      '\n' +
-      '.cli-card:hover > div:last-child,\n' +
-      '.cli-card:hover .cli-acoes,\n' +
-      '.cli-card:hover .cliente-card-footer,\n' +
-      '.cli-card:hover .cliente-acoes {\n' +
       '  opacity: 1 !important;\n' +
       '  pointer-events: auto !important;\n' +
       '}\n' +
@@ -4064,6 +4088,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '  flex: 1 !important;\n' +
       '  min-width: 60px !important;\n' +
       '  text-align: center !important;\n' +
+      '  display: inline-flex !important;\n' +
+      '  align-items: center !important;\n' +
       '}\n';
     var styleClientes = document.createElement('style');
     styleClientes.id = 'patch-clientes-css';
@@ -4088,6 +4114,46 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (String(inputEstado.name || '').toLowerCase() === 'estado') inputEstado.name = 'uf';
         if (String(inputEstado.id || '').toLowerCase() === 'f-estado') inputEstado.id = 'f-uf';
       }
+    } catch (_) {}
+  }
+
+  function ensureBtnVerTodos() {
+    try {
+      var bar = document.querySelector('#page-clientes .ptoolbar');
+      if (!bar) return;
+      if (document.getElementById('patch-cli-ver-todos')) return;
+      var btn = document.createElement('button');
+      btn.id = 'patch-cli-ver-todos';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.textContent = 'Ver Todos';
+      btn.onclick = async function() {
+        try {
+          ['#cli-busca', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
+            var el = document.querySelector(s);
+            if (!el) return;
+            el.value = '';
+            try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+            try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+          });
+          try {
+            if (typeof EMP_FILTRO !== 'undefined' && EMP_FILTRO) {
+              if (window.__EMP_FILTRO_ANT == null) window.__EMP_FILTRO_ANT = EMP_FILTRO;
+              EMP_FILTRO = '';
+            }
+          } catch (_) {}
+          if (typeof carregarClientes === 'function') {
+            try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+          }
+          if (typeof renderClientes === 'function') {
+            try { renderClientes(); } catch (_) {}
+          }
+        } catch (e) {
+          try { console.error('[PATCH VER TODOS]', e); } catch (_) {}
+        }
+      };
+      var before = bar.querySelector('button[onclick*="abrirClientesInativos"], button[onclick*="clientesAbrirImportExcel"], button[onclick*="clientesVerificarDuplicatas"], button[onclick*="abrirModalCliente"]');
+      if (before && before.parentNode === bar) bar.insertBefore(btn, before);
+      else bar.appendChild(btn);
     } catch (_) {}
   }
 
@@ -4162,6 +4228,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tick() {
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
+    try { ensureBtnVerTodos(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
@@ -4175,27 +4242,122 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 })();
 
-(function forceCargaClientes() {
+(function _iniciarClientes() {
   async function run() {
     try {
       await new Promise(function(r) { setTimeout(r, 2000); });
+
       if (typeof carregarClientes === 'function') {
-        console.log('[PATCH] forçando carga de clientes...');
-        await carregarClientes(true);
-        try { window.CLIENTES = Array.isArray(window.CLIENTES) ? window.CLIENTES : (typeof CLIENTES !== 'undefined' ? CLIENTES : []); } catch (_) {}
-        if (typeof renderClientes === 'function') renderClientes();
-        console.log('[PATCH] CLIENTES array:', (window.CLIENTES && window.CLIENTES.length) || 0);
+        try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+      }
+
+      var total = 0;
+      try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { total = 0; }
+      console.log('[PATCH CLIENTES TOTAL]', total);
+
+      if (total > 0 && typeof renderClientes === 'function') {
+        try { renderClientes(); } catch (_) {}
+        return;
+      }
+
+      try {
+        if (typeof EMP_FILTRO !== 'undefined' && EMP_FILTRO) {
+          if (window.__EMP_FILTRO_ANT == null) window.__EMP_FILTRO_ANT = EMP_FILTRO;
+          EMP_FILTRO = '';
+        }
+      } catch (_) {}
+
+      if (typeof carregarClientes === 'function') {
+        try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+      }
+
+      try { total = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : 0; } catch (_) { total = 0; }
+      if (total > 0) {
+        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+        return;
+      }
+
+      var token = '';
+      try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+      var resp = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      var arr = json && json.ok && Array.isArray(json.data) ? json.data : null;
+      if (arr && arr.length) {
+        var out = arr;
+        try { if (typeof normalizeCli === 'function') out = arr.map(function(c) { return normalizeCli(c); }); } catch (_) {}
+        try { CLIENTES = out; } catch (_) {}
+        try { window._CLIENTES = out; } catch (_) {}
+        try { window.CLIENTES = out; } catch (_) {}
+        console.log('[PATCH CLIENTES FORÇADO]', out.length);
+        if (typeof renderClientes === 'function') {
+          try { renderClientes(); } catch (_) {}
+        }
       }
     } catch (e) {
-      try { console.error('[PATCH] força carga clientes falhou', e); } catch (_) {}
+      try { console.error('[PATCH CLIENTES INIT]', e); } catch (_) {}
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { run(); });
-  } else {
-    run();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { run(); });
+  else run();
+})();
+
+(function patchMenuEstoques() {
+  function _adicionarMenuEstoques() {
+    try {
+      var grupo = document.querySelector('#ng-estoques .nav-group-items');
+      if (!grupo) return;
+
+      var ultimoEstoque = document.getElementById('menu-cliches') || document.getElementById('menu-facas') || document.getElementById('menu-estoque');
+      if (!ultimoEstoque) return;
+
+      var novos = [
+        { icon: '🎨', label: 'Estoque de Tintas', tela: 'estoque-tintas' },
+        { icon: '🔧', label: 'Estoque de Materiais', tela: 'estoque-materiais' },
+        { icon: '📊', label: 'Dashboard Estoques', tela: 'estoque-dashboard' },
+      ];
+
+      novos.forEach(function(item) {
+        try {
+          if (document.querySelector('#ng-estoques .nav-item[onclick*="' + item.tela + '"]')) return;
+          var el = ultimoEstoque.cloneNode(true);
+          el.id = 'menu-' + item.tela;
+          el.setAttribute('onclick', "go('" + item.tela + "');closeNavGroupsExcept('ng-estoques')");
+          var ico = el.querySelector('span.ico') || el.querySelector('.ico') || el.querySelector('span');
+          if (ico) ico.textContent = item.icon;
+          var txt = el.childNodes;
+          if (txt && txt.length) {
+            for (var i = 0; i < txt.length; i++) {
+              var n = txt[i];
+              if (n && n.nodeType === 3) { n.textContent = item.label; break; }
+            }
+          }
+          if (!el.textContent || el.textContent.trim().length < 3) el.textContent = item.label;
+          grupo.insertBefore(el, ultimoEstoque.nextSibling);
+          ultimoEstoque = el;
+        } catch (_) {}
+      });
+
+      console.log('[PATCH] itens de estoque adicionados ao menu');
+    } catch (_) {}
   }
+
+  function init() {
+    setTimeout(_adicionarMenuEstoques, 1500);
+    try {
+      var obs = new MutationObserver(function() {
+        try {
+          var temEstoque = document.querySelector('#ng-estoques .nav-item[onclick*="estoque"]');
+          var temNovos = document.querySelector('#ng-estoques .nav-item[onclick*="estoque-tintas"]');
+          if (temEstoque && !temNovos) _adicionarMenuEstoques();
+        } catch (_) {}
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
 
 (function patchDashboardEstoques() {
