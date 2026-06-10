@@ -6845,6 +6845,7 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
+    const qBusca = String(req.query.q || '').trim();
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
@@ -6861,6 +6862,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           primeiros: (rows || []).slice(0, 3).map((c) => c?.nome)
         });
       } catch (_) {}
+    };
+    const applyClientSlice = (rows) => {
+      const list = Array.isArray(rows) ? rows : [];
+      return hasPaging ? list.slice(offset, offset + limit) : list;
     };
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
@@ -6898,23 +6903,41 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       } catch (_) {}
       return withCounts;
     };
+    const fetchClientesPages = async (selectCols, col, orderCol, orderAsc) => {
+      const allRows = [];
+      let from = 0;
+      const pageSize = 1000;
+      while (true) {
+        let q = supabase.from('clientes').select(selectCols).order(orderCol, { ascending: orderAsc });
+        if (col) q = q.eq(col, empId);
+        if (qBusca) q = q.ilike('nome', `%${qBusca}%`);
+        q = q.range(from, from + pageSize - 1);
+        const { data, error } = await q;
+        if (error) return { data: null, error };
+        const pageRows = Array.isArray(data) ? data : [];
+        if (!pageRows.length) break;
+        allRows.push(...pageRows);
+        if (pageRows.length < pageSize) break;
+        from += pageSize;
+      }
+      console.log('[CLIENTES] total buscado:', allRows.length);
+      return { data: allRows, error: null };
+    };
     for (const col of cols) {
       let localSelect = selectSlim;
       let lastLocalErr = null;
       let localOrder = String(req.query.order || 'created_at').trim() || 'created_at';
       let localAsc = String(req.query.dir || 'desc').toLowerCase() !== 'desc';
       for (let i = 0; i < 8; i++) {
-        let q = supabase.from('clientes').select(localSelect).order(localOrder, { ascending: localAsc });
-        if (col) q = q.eq(col, empId);
-        if (hasPaging) q = q.range(offset, offset + limit - 1);
-        const { data, error } = await q;
+        const { data, error } = await fetchClientesPages(localSelect, col, localOrder, localAsc);
         if (!error) {
           const rows = await enrichClientesWithOfs(data || []);
+          const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
-            return ok(res, rows);
+            return ok(res, rowsOut);
           }
-          const trimmed = rows.map((r) => ({
+          const trimmed = rowsOut.map((r) => ({
             id: r.id,
             nome: r.nome ?? null,
             rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
@@ -6973,26 +6996,21 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       if (lastLocalErr) {
         let fallbackOrder = String(req.query.order || 'created_at').trim() || 'created_at';
         let fallbackAsc = String(req.query.dir || 'desc').toLowerCase() !== 'desc';
-        let q2 = supabase.from('clientes').select('*').order(fallbackOrder, { ascending: fallbackAsc });
-        if (col) q2 = q2.eq(col, empId);
-        if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
-        let all = await q2;
+        let all = await fetchClientesPages('*', col, fallbackOrder, fallbackAsc);
         if (all.error) {
           const msgAll = String(all.error.message || all.error || '');
           if (msgAll.includes('created_at') || msgAll.includes('Could not find')) {
-            q2 = supabase.from('clientes').select('*').order('nome', { ascending: true });
-            if (col) q2 = q2.eq(col, empId);
-            if (hasPaging) q2 = q2.range(offset, offset + limit - 1);
-            all = await q2;
+            all = await fetchClientesPages('*', col, 'nome', true);
           }
         }
         if (!all.error) {
           const rows = await enrichClientesWithOfs(all.data || []);
+          const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
-            return ok(res, rows);
+            return ok(res, rowsOut);
           }
-          const trimmed = rows.map((r) => ({
+          const trimmed = rowsOut.map((r) => ({
             id: r.id,
             nome: r.nome ?? null,
             rs: r.rs ?? r.razao_social ?? r.razaoSocial ?? null,
