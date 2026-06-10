@@ -1347,7 +1347,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         }
       }catch(e){}
     }
-    try{ if (typeof window.go === 'function') window.go(pid); }catch(e){}
+    try{ if (typeof (window.go) === 'function') window.go(pid); }catch(e){}
   };
   
   function goFinanceiro(pageId){
@@ -1838,36 +1838,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     document.body.appendChild(overlay); 
   }; 
 
-  var _fnOrigOfRapida = null; 
-  var _ofRapidaPatchado = false;
-  function patchAbrirOfRapida() { 
-    if (_ofRapidaPatchado) return;
-    if (window.abrirNovaOfRapida && !window.abrirNovaOfRapida._patched) { 
-      _fnOrigOfRapida = window.abrirNovaOfRapida; 
-      window.abrirNovaOfRapida = function() { 
-        if (typeof _fnOrigOfRapida === 'function') _fnOrigOfRapida.apply(this, arguments); 
-        setTimeout(function() { 
-          var el = document.getElementById('of-r-numero'); 
-          if (!el) { 
-            console.warn('[PATCH] #of-r-numero nao encontrado apos abrir modal'); 
-            return; 
-          } 
-          if (el.tagName === 'INPUT') { el.value = '...'; el.disabled = true; } 
-          else el.textContent = '...'; 
-          window.proximoNumeroOf().then(function(num) { 
-            window._ofRapidaNumero = num; 
-            if (el.tagName === 'INPUT') { el.value = num; el.disabled = false; } 
-            else el.textContent = num; 
-            console.log('[PATCH] OF Rapida numero injetado:', num); 
-          }); 
-        }, 150); 
-      }; 
-      window.abrirNovaOfRapida._patched = true; 
-      _ofRapidaPatchado = true;
-      try { window.__patchAbrirNovaOfRapidaOnce = true; } catch(_) {}
-      console.log('[PATCH] abrirNovaOfRapida interceptada'); 
-    } 
-  } 
+  function patchAbrirOfRapida() { return; } 
  
   window.renderProjecaoVendas = async function(anoExibir) { 
     var container = document.getElementById('widget-projecao-vendas'); 
@@ -2045,42 +2016,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } 
   } 
  
-  function patchGoAcordeon() { 
-    if (window.go && !window.go._patched) { 
-      var _origGoAcordeon = window.go; 
-      window.go = function(page) { 
-        var res = typeof _origGoAcordeon === 'function' ? _origGoAcordeon.apply(this, arguments) : undefined; 
-        var p = String(page || ''); 
-        if (String(page || '').toLowerCase() === 'dashboard') { 
-          setTimeout(function() { 
-            try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch(_) {} 
-          }, 400); 
-        } 
-        if (p === 'ofmaq' || p.indexOf('maq') >= 0) { 
-          [300, 600, 1000, 1500, 2000, 3000].forEach(function(delay) { 
-            setTimeout(function() { 
-              var headers = document.querySelectorAll('.maq-header'); 
-              if (headers.length > 0) { 
-                aplicarAccordion(); 
-                console.log('[PATCH] accordion aplicado em ofmaq apos ' + delay + 'ms: ' + headers.length + ' headers'); 
-              } 
-            }, delay); 
-          }); 
-        } 
-        if (p === 'hub') { 
-          setTimeout(function() { window.carregarPassagensHoje(); }, 400); 
-        } 
-        return res; 
-      }; 
-      window.go._patched = true; 
-    } 
-  } 
+  function patchGoAcordeon() { return; } 
  
   console.log('[PATCH] v3 ativo - Italy Embalagens ERP'); 
   patchToggleMobMenu(); 
-  patchAbrirOfRapida(); 
   patchRenderHub(); 
-  patchGoAcordeon(); 
   try{
     function _bindSwipeMaquinas(){
       try{
@@ -2178,7 +2118,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { 
       patchToggleMobMenu(); 
       patchRenderHub(); 
-      patchGoAcordeon(); 
     } catch(e) {} 
   }, 1000); 
  
@@ -3344,7 +3283,36 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return s;
   }
 
+  function getClientesCount() {
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES.length;
+    } catch (_) {}
+    try {
+      if (Array.isArray(window.CLIENTES)) return window.CLIENTES.length;
+    } catch (_) {}
+    return 0;
+  }
+
+  function setClientesLista(lista) {
+    var out = Array.isArray(lista) ? lista.slice() : [];
+    try {
+      if (typeof normalizeCli === 'function') out = out.map(function(c) { return normalizeCli(c); });
+    } catch (_) {}
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) {
+        CLIENTES.length = 0;
+        out.forEach(function(c) { CLIENTES.push(c); });
+      }
+    } catch (_) {}
+    try { window.CLIENTES = out; } catch (_) {}
+    try { window._CLIENTES = out; } catch (_) {}
+    try { window.clientes = out; } catch (_) {}
+  }
+
   function clientesRef() {
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES;
+    } catch (_) {}
     return Array.isArray(window.CLIENTES) ? window.CLIENTES : (Array.isArray(window.clientes) ? window.clientes : []);
   }
 
@@ -3413,6 +3381,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return tryOne(0);
   }
 
+  async function ensureClientesCarregadosAbertura() {
+    if (getClientesCount() >= 5) return getClientesCount();
+    console.log('[OF] carregando CLIENTES antes de abrir...');
+    try {
+      if (typeof carregarClientes === 'function') {
+        try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+      }
+    } catch (_) {}
+    if (getClientesCount() >= 5) return getClientesCount();
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    try {
+      var r = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j = await r.json().catch(function() { return null; });
+      if (j && j.ok && Array.isArray(j.data)) setClientesLista(j.data);
+    } catch (_) {}
+    console.log('[OF] CLIENTES prontos:', getClientesCount());
+    return getClientesCount();
+  }
+
   async function ensureClienteId(el) {
     if (!el) return null;
     try {
@@ -3448,42 +3436,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     setTimeout(function() { syncClienteOfRapida(el); }, 0);
   }
 
-  function patchAbrirOfRapida(fnName) {
-    var orig = window[fnName];
-    if (typeof orig !== 'function' || orig._patchClienteEspecialOpen) return;
-    var wrapped = async function() {
+  function patchAberturaPorClique() {
+    if (document.documentElement.dataset.patchOfOpenClick === '1') return;
+    document.documentElement.dataset.patchOfOpenClick = '1';
+    document.addEventListener('click', async function(e) {
+      var btn = e && e.target && e.target.closest ? e.target.closest('button, [onclick]') : null;
+      if (!btn) return;
+      if (btn.dataset && btn.dataset.patchOfOpening === '1') return;
+
+      var oc = '';
+      var txt = '';
+      try { oc = String(btn.getAttribute('onclick') || ''); } catch (_) {}
+      try { txt = String(btn.textContent || '').trim(); } catch (_) {}
+
+      var isNovaOF = oc.indexOf('abrirModalOF') !== -1 || oc.indexOf('NovaOf') !== -1 || oc.indexOf('novaOf') !== -1 || oc.indexOf('novaOF') !== -1 || txt.indexOf('Nova OF') !== -1;
+      var isOFRapida = oc.indexOf('Rapida') !== -1 || oc.indexOf('rapida') !== -1 || txt.indexOf('OF Rápida') !== -1 || txt.indexOf('Rápida') !== -1;
+      if (!isNovaOF && !isOFRapida) return;
+
+      var openFn = null;
+      if (isOFRapida) openFn = window.abrirNovaOfRapida || window.abrirOFRapida || window.abrirOfRapida || null;
+      else openFn = window.abrirModalOF || window.abrirNovaOf || null;
+      if (typeof openFn !== 'function') return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+
+      try { btn.dataset.patchOfOpening = '1'; } catch (_) {}
       try {
-        var curLen = 0;
-        try { curLen = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { curLen = 0; }
-        if (curLen < 10 && typeof carregarClientes === 'function') {
-          console.log('[OF RÁPIDA] recarregando CLIENTES...');
-          try { await carregarClientes(true); } catch (_) { try { await carregarClientes(false); } catch (_) {} }
-        }
-        try { curLen = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0); } catch (_) { curLen = 0; }
-        if (curLen < 10) {
-          var token = '';
-          try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
-          try {
-            var r = await fetch('/api/clientes?limit=2000&t=' + Date.now(), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-            var j = await r.json().catch(function() { return null; });
-            if (j && j.ok && Array.isArray(j.data) && j.data.length) {
-              var out = j.data;
-              try { if (typeof normalizeCli === 'function') out = j.data.map(function(c) { return normalizeCli(c); }); } catch (_) {}
-              try { CLIENTES = out; } catch (_) {}
-              try { window._CLIENTES = out; } catch (_) {}
-              try { window.CLIENTES = out; } catch (_) {}
-            }
-          } catch (_) {}
-        }
-      } catch (_) {}
-      try {
-        var n = (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) ? CLIENTES.length : (Array.isArray(window.CLIENTES) ? window.CLIENTES.length : 0);
-        console.log('[OF RÁPIDA] CLIENTES disponíveis:', n);
-      } catch (_) {}
-      return orig.apply(this, arguments);
-    };
-    wrapped._patchClienteEspecialOpen = true;
-    window[fnName] = wrapped;
+        await ensureClientesCarregadosAbertura();
+        openFn.apply(window, []);
+      } catch (_) {
+        try { openFn.apply(window, []); } catch (_) {}
+      } finally {
+        setTimeout(function() {
+          try { delete btn.dataset.patchOfOpening; } catch (_) {}
+        }, 1200);
+      }
+    }, true);
   }
 
   function patchSalvar(fnName) {
@@ -3515,9 +3505,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function tick() {
     try { bindClienteInput(); } catch (_) {}
-    try { patchAbrirOfRapida('abrirNovaOfRapida'); } catch (_) {}
-    try { patchAbrirOfRapida('abrirOfRapida'); } catch (_) {}
-    try { patchAbrirOfRapida('abrirOFRapida'); } catch (_) {}
+    try { patchAberturaPorClique(); } catch (_) {}
     try { patchSalvar('salvarOfRapida'); } catch (_) {}
     try { patchSalvar('salvarNovaOfRapida'); } catch (_) {}
     try { patchSalvar('salvarOFRapida'); } catch (_) {}
@@ -4030,12 +4018,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       '#page-clientes .ptoolbar {\n' +
       '  display: flex !important;\n' +
       '  align-items: center !important;\n' +
+      '  justify-content: flex-end !important;\n' +
       '  gap: 8px !important;\n' +
       '  padding: 8px 16px !important;\n' +
       '  flex-wrap: wrap !important;\n' +
       '}\n' +
       '#page-clientes .ptoolbar > div[style*="flex:1"] {\n' +
       '  flex: 1 1 auto !important;\n' +
+      '}\n' +
+      '#page-clientes .cli-quick-filters {\n' +
+      '  display: flex !important;\n' +
+      '  align-items: center !important;\n' +
+      '  gap: 6px !important;\n' +
+      '  flex-wrap: wrap !important;\n' +
+      '  margin: 0 !important;\n' +
+      '}\n' +
+      '#page-clientes .cli-quick-filters button,\n' +
+      '#page-clientes .cli-quick-filters select,\n' +
+      '#page-clientes [data-quick-filter] {\n' +
+      '  opacity: 1 !important;\n' +
+      '  pointer-events: auto !important;\n' +
       '}\n' +
       '#page-clientes .ptoolbar button {\n' +
       '  opacity: 1 !important;\n' +
@@ -4216,6 +4218,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function ensureClientesQuickFiltersNoTopo() {
+    try {
+      var toolbar = document.querySelector('#page-clientes .ptoolbar');
+      var widget = document.querySelector('#page-clientes #widget-analise-clientes > div:first-child');
+      if (!toolbar || !widget) return;
+      if (!widget.classList.contains('cli-quick-filters')) widget.classList.add('cli-quick-filters');
+      widget.style.marginBottom = '0';
+      var spacer = toolbar.querySelector('div[style*="flex:1"]');
+      if (widget.parentNode !== toolbar) {
+        if (spacer && spacer.nextSibling) toolbar.insertBefore(widget, spacer.nextSibling);
+        else toolbar.appendChild(widget);
+      }
+    } catch (_) {}
+  }
+
   function patchSalvarAntiDuploClique() {
     if (document.documentElement.dataset.patchClientesSalvarLock === '1') return;
     document.documentElement.dataset.patchClientesSalvarLock = '1';
@@ -4370,6 +4387,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
+    try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
     try { patchSalvarAntiDuploClique(); } catch (_) {}
     try { patchFetchClientesAfterPost(); } catch (_) {}
   }
@@ -4525,7 +4543,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function getMainPatchHost(pageKey, title) {
-    var main = document.querySelector('.content, #content, .main-area, #main-content, #page-content');
+    var main = document.querySelector('.content, #content, .content-wrapper, .main-area, #main-content, #page-content, body > div:last-child');
     if (!main) return null;
 
     var host = document.getElementById('patch-page-host');
@@ -4533,8 +4551,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       host = document.createElement('div');
       host.id = 'patch-page-host';
       host.className = 'page';
-      host.style.display = 'none';
-      host.style.padding = '16px';
+      host.style.cssText = 'display:none;flex:1;overflow-y:auto;padding:20px;background:var(--bg)';
       host.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">' +
           '<h2 id="patch-page-title" style="margin:0;color:var(--text);font-size:18px"></h2>' +
@@ -4554,12 +4571,43 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return document.getElementById('patch-page-body');
   }
 
+  function hidePatchHost() {
+    try {
+      var host = document.getElementById('patch-page-host');
+      if (host) host.style.display = 'none';
+    } catch (_) {}
+  }
+
+  function runAfterGoEffects(page) {
+    var p = String(page || '');
+    if (p.toLowerCase() === 'dashboard') {
+      setTimeout(function() {
+        try { if (typeof window.renderProjecaoVendas === 'function') window.renderProjecaoVendas(); } catch (_) {}
+      }, 400);
+    }
+    if (p === 'ofmaq' || p.indexOf('maq') >= 0) {
+      [300, 600, 1000, 1500, 2000, 3000].forEach(function(delay) {
+        setTimeout(function() {
+          try {
+            var headers = document.querySelectorAll('.maq-header');
+            if (headers.length > 0) aplicarAccordion();
+          } catch (_) {}
+        }, delay);
+      });
+    }
+    if (p === 'hub') {
+      setTimeout(function() {
+        try { window.carregarPassagensHoje(); } catch (_) {}
+      }, 400);
+    }
+  }
+
   window._abrirModalNovaTinta = window._abrirModalNovaTinta || function() {
     try { alert('Cadastro de tintas ainda nao foi implementado nesta tela.'); } catch (_) {}
   };
 
-  function _renderEstoqueTintas() {
-    var main = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
+  function _renderEstoqueTintas(main) {
+    main = main || getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
     if (!main) return;
     main.innerHTML = '<div id="patch-tintas" style="padding:20px">Carregando tintas...</div>';
     fetch('/api/estoque_tintas', { headers: authHeaders() })
@@ -4608,8 +4656,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
-  function _renderEstoqueMateriais() {
-    var main = getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
+  function _renderEstoqueMateriais(main) {
+    main = main || getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
     if (!main) return;
     main.innerHTML = '<div id="patch-materiais" style="padding:20px">Carregando materiais...</div>';
     fetch('/api/estoque_materiais', { headers: authHeaders() })
@@ -4660,8 +4708,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
   }
 
-  function _renderDashboardEstoquesStandalone() {
-    var main = getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
+  function _renderDashboardEstoques(main) {
+    main = main || getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
     if (!main) return;
     main.innerHTML = '<div id="patch-dashboard-estoques" style="padding:20px;color:var(--text2)">Carregando...</div>';
     fetch('/api/estoque_dashboard', { headers: authHeaders() })
@@ -4702,26 +4750,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function patchGo() {
     var orig = window.go;
     if (typeof orig !== 'function' || orig._patchClientesEstoquesCustom) return;
-    var wrapped = function(tela) {
+    var wrapped = async function(tela) {
       var page = String(tela || '');
       if (page === 'estoque-tintas') {
-        _renderEstoqueTintas();
+        var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
+        _renderEstoqueTintas(hostTintas);
         return;
       }
       if (page === 'estoque-materiais') {
-        _renderEstoqueMateriais();
+        var hostMateriais = getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
+        _renderEstoqueMateriais(hostMateriais);
         return;
       }
       if (page === 'estoque-dashboard') {
-        _renderDashboardEstoquesStandalone();
+        var hostDash = getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
+        _renderDashboardEstoques(hostDash);
         return;
       }
+      hidePatchHost();
       var r = orig.apply(this, arguments);
       if (page === 'clientes') {
         setTimeout(function() {
           try { _resetFiltrosClientes(); } catch (_) {}
         }, 400);
       }
+      runAfterGoEffects(page);
       return r;
     };
     wrapped._patchClientesEstoquesCustom = true;

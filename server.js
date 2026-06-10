@@ -3261,6 +3261,35 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       return { ...row, vendedor_nome };
     });
     try {
+      const ofsComCliVazio = (Array.isArray(rows) ? rows : []).filter((of) => {
+        const cliId = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
+        const cliNome = String(of?.cliNome ?? of?.clinome ?? of?.cliente_nome ?? '').trim();
+        return !!cliId && !cliNome;
+      });
+      if (ofsComCliVazio.length > 0) {
+        const idsUnicos = Array.from(new Set(
+          ofsComCliVazio.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
+        )).slice(0, 1000);
+        if (idsUnicos.length) {
+          const { data: clientes } = await supabase
+            .from('clientes')
+            .select('id,nome')
+            .in('id', idsUnicos);
+          const mapaClientes = {};
+          (Array.isArray(clientes) ? clientes : []).forEach((c) => {
+            if (c?.id) mapaClientes[String(c.id)] = String(c.nome || '').trim();
+          });
+          rows = rows.map((of) => {
+            const cliId = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
+            return {
+              ...of,
+              cliNome: String(of?.cliNome ?? '').trim() || mapaClientes[cliId] || ''
+            };
+          });
+        }
+      }
+    } catch (_) {}
+    try {
       const sample = rows && rows[0] ? rows[0] : null;
       console.log('[OFS SAMPLE]', JSON.stringify({
         id: sample?.id,
