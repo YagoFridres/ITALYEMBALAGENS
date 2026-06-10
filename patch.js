@@ -4155,6 +4155,171 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function getClientesListaAtual() {
+    try {
+      if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) && CLIENTES.length) return CLIENTES;
+    } catch (_) {}
+    try {
+      if (Array.isArray(window.CLIENTES) && window.CLIENTES.length) return window.CLIENTES;
+    } catch (_) {}
+    try {
+      if (Array.isArray(window._CLIENTES) && window._CLIENTES.length) return window._CLIENTES;
+    } catch (_) {}
+    return [];
+  }
+
+  function findClienteById(id) {
+    var alvo = String(id || '').trim();
+    if (!alvo) return null;
+    var lista = getClientesListaAtual();
+    for (var i = 0; i < lista.length; i++) {
+      if (String(lista[i] && lista[i].id || '').trim() === alvo) return lista[i];
+    }
+    return null;
+  }
+
+  function renderMesclaPreview() {
+    try {
+      var principal = findClienteById(document.getElementById('mescla-principal-id') && document.getElementById('mescla-principal-id').value);
+      var duplicado = findClienteById(document.getElementById('mescla-duplicado-id') && document.getElementById('mescla-duplicado-id').value);
+      var box = document.getElementById('mescla-preview');
+      if (!box) return;
+      box.innerHTML =
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">' +
+            '<div style="font-weight:700;color:var(--text);margin-bottom:8px">Cliente Principal</div>' +
+            (principal
+              ? '<div style="color:var(--text);font-size:13px">' + String(principal.nome || '-') + '</div>' +
+                '<div style="color:var(--text2);font-size:12px;margin-top:4px">' + String(principal.cnpj || principal.documento || '-') + '</div>'
+              : '<div style="color:var(--text2);font-size:12px">Selecione o cliente principal</div>') +
+          '</div>' +
+          '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px">' +
+            '<div style="font-weight:700;color:var(--text);margin-bottom:8px">Cliente Duplicado</div>' +
+            (duplicado
+              ? '<div style="color:var(--text);font-size:13px">' + String(duplicado.nome || '-') + '</div>' +
+                '<div style="color:var(--text2);font-size:12px;margin-top:4px">' + String(duplicado.cnpj || duplicado.documento || '-') + '</div>'
+              : '<div style="color:var(--text2);font-size:12px">Selecione o cliente duplicado</div>') +
+          '</div>' +
+        '</div>';
+    } catch (_) {}
+  }
+
+  function syncMesclaId(inputId, hiddenId, listId) {
+    try {
+      var input = document.getElementById(inputId);
+      var hidden = document.getElementById(hiddenId);
+      var list = document.getElementById(listId);
+      if (!input || !hidden || !list) return;
+      var val = String(input.value || '').trim();
+      var opt = Array.prototype.find.call(list.options || [], function(o) { return String(o.value || '').trim() === val; });
+      hidden.value = opt ? String(opt.getAttribute('data-id') || '') : '';
+      renderMesclaPreview();
+    } catch (_) {}
+  }
+
+  async function confirmarMesclaClientes() {
+    try {
+      var principalId = String(document.getElementById('mescla-principal-id') && document.getElementById('mescla-principal-id').value || '').trim();
+      var duplicadoId = String(document.getElementById('mescla-duplicado-id') && document.getElementById('mescla-duplicado-id').value || '').trim();
+      if (!principalId || !duplicadoId) {
+        alert('Selecione os dois clientes.');
+        return;
+      }
+      if (principalId === duplicadoId) {
+        alert('Os clientes devem ser diferentes.');
+        return;
+      }
+      if (!confirm('Confirmar mescla dos clientes?')) return;
+      var token = '';
+      try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+      var resp = await fetch('/api/clientes/mesclar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? ('Bearer ' + token) : ''
+        },
+        body: JSON.stringify({
+          cliente_principal_id: principalId,
+          cliente_duplicado_id: duplicadoId
+        })
+      });
+      var json = await resp.json().catch(function() { return null; });
+      if (!json || !json.ok) throw new Error((json && json.error) || 'Erro ao mesclar clientes');
+      try {
+        var modal = document.getElementById('modal-mesclar-clientes');
+        if (modal) modal.remove();
+      } catch (_) {}
+      try { if (typeof carregarClientes === 'function') await carregarClientes(true); } catch (_) {}
+      try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+      alert('Clientes mesclados com sucesso.');
+    } catch (e) {
+      alert('Erro: ' + String(e && e.message || e));
+    }
+  }
+
+  function abrirModalMesclarClientes() {
+    try {
+      var old = document.getElementById('modal-mesclar-clientes');
+      if (old) old.remove();
+      var lista = getClientesListaAtual();
+      var modal = document.createElement('div');
+      modal.id = 'modal-mesclar-clientes';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.innerHTML =
+        '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:760px;max-height:90vh;overflow-y:auto">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+            '<h3 style="margin:0;color:var(--text);font-size:16px">🔗 Mesclar Clientes</h3>' +
+            '<button id="mescla-close" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+            '<div>' +
+              '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE PRINCIPAL</label>' +
+              '<input id="mescla-principal-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
+              '<input type="hidden" id="mescla-principal-id">' +
+            '</div>' +
+            '<div>' +
+              '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE DUPLICADO</label>' +
+              '<input id="mescla-duplicado-busca" list="mescla-clientes-lista" placeholder="Buscar cliente..." style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)">' +
+              '<input type="hidden" id="mescla-duplicado-id">' +
+            '</div>' +
+          '</div>' +
+          '<datalist id="mescla-clientes-lista">' +
+            lista.map(function(c) {
+              var label = String(c && c.nome || '-');
+              var cnpj = String(c && (c.cnpj || c.documento || '') || '').trim();
+              var value = cnpj ? (label + ' | ' + cnpj) : label;
+              return '<option value="' + value.replace(/"/g, '&quot;') + '" data-id="' + String(c && c.id || '').replace(/"/g, '&quot;') + '"></option>';
+            }).join('') +
+          '</datalist>' +
+          '<div id="mescla-preview" style="margin-top:16px"></div>' +
+          '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">' +
+            '<button id="mescla-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
+            '<button id="mescla-confirmar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">Confirmar Mescla</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      var close = function() { try { modal.remove(); } catch (_) {} };
+      document.getElementById('mescla-close').onclick = close;
+      document.getElementById('mescla-cancelar').onclick = close;
+      document.getElementById('mescla-confirmar').onclick = confirmarMesclaClientes;
+      ['mescla-principal-busca', 'mescla-duplicado-busca'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', function() {
+          syncMesclaId('mescla-principal-busca', 'mescla-principal-id', 'mescla-clientes-lista');
+          syncMesclaId('mescla-duplicado-busca', 'mescla-duplicado-id', 'mescla-clientes-lista');
+        });
+        el.addEventListener('change', function() {
+          syncMesclaId('mescla-principal-busca', 'mescla-principal-id', 'mescla-clientes-lista');
+          syncMesclaId('mescla-duplicado-busca', 'mescla-duplicado-id', 'mescla-clientes-lista');
+        });
+      });
+      renderMesclaPreview();
+    } catch (e) {
+      try { console.error('[MESCLAR CLIENTES]', e); } catch (_) {}
+    }
+  }
+
   function _resetFiltrosClientes() {
     try {
       var sit = document.querySelector('#cli-sit');
@@ -4215,6 +4380,26 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var before = bar.querySelector('button[onclick*="abrirClientesInativos"], button[onclick*="clientesAbrirImportExcel"], button[onclick*="clientesVerificarDuplicatas"], button[onclick*="abrirModalCliente"]');
       if (before && before.parentNode === bar) bar.insertBefore(btn, before);
       else bar.appendChild(btn);
+    } catch (_) {}
+  }
+
+  function ensureBtnMesclarClientes() {
+    try {
+      var bar = document.querySelector('#page-clientes .ptoolbar');
+      if (!bar) return;
+      if (document.getElementById('patch-cli-mesclar')) return;
+      var btn = document.createElement('button');
+      btn.id = 'patch-cli-mesclar';
+      btn.className = 'btn btn-ghost btn-sm';
+      btn.textContent = '🔗 Mesclar';
+      btn.onclick = function() { abrirModalMesclarClientes(); };
+      var after = bar.querySelector('button[onclick*="clientesVerificarDuplicatas"]');
+      if (after && after.parentNode === bar) {
+        if (after.nextSibling) bar.insertBefore(btn, after.nextSibling);
+        else bar.appendChild(btn);
+      } else {
+        bar.appendChild(btn);
+      }
     } catch (_) {}
   }
 
@@ -4387,6 +4572,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
+    try { ensureBtnMesclarClientes(); } catch (_) {}
     try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
     try { patchSalvarAntiDuploClique(); } catch (_) {}
     try { patchFetchClientesAfterPost(); } catch (_) {}
@@ -4602,9 +4788,188 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   }
 
-  window._abrirModalNovaTinta = window._abrirModalNovaTinta || function() {
-    try { alert('Cadastro de tintas ainda nao foi implementado nesta tela.'); } catch (_) {}
-  };
+  function safeAttr(v) {
+    return esc(v).replace(/`/g, '&#96;');
+  }
+
+  function fechaModalById(id) {
+    try {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    } catch (_) {}
+  }
+
+  function _abrirModalNovaTinta(tintaExistente) {
+    fechaModalById('modal-nova-tinta');
+    var t = tintaExistente || {};
+    var titulo = t && t.id ? 'Editar Tinta' : 'Nova Tinta';
+    var modal = document.createElement('div');
+    modal.id = 'modal-nova-tinta';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML =
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🎨 ' + titulo + '</h3>' +
+          '<button id="nt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">NOME *</label><input id="nt-nome" value="' + safeAttr(t.nome || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">CÓDIGO</label><input id="nt-codigo" value="' + safeAttr(t.codigo || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">TIPO</label><select id="nt-tipo" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
+            ['','Base água','UV','Verniz','Preto','Branco','Pantone','Outro'].map(function(o) {
+              var txt = o || 'Selecionar...';
+              return '<option value="' + safeAttr(o) + '"' + (String(t.tipo || '') === String(o) ? ' selected' : '') + '>' + safeAttr(txt) + '</option>';
+            }).join('') +
+          '</select></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">COR</label><div style="display:flex;gap:8px;align-items:center;margin-top:4px"><input id="nt-cor-picker" type="color" value="' + safeAttr((String(t.cor || '').match(/^#/) ? t.cor : '#000000')) + '" style="width:56px;height:38px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px"><input id="nt-cor" value="' + safeAttr(t.cor || '') + '" style="flex:1;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)"></div></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">FABRICANTE</label><input id="nt-fabricante" value="' + safeAttr(t.fabricante || t.fornecedor || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">LOTE</label><input id="nt-lote" value="' + safeAttr(t.lote || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">QTD ATUAL</label><input id="nt-qtd" type="number" value="' + safeAttr(t.quantidade_atual != null ? t.quantidade_atual : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">QTD MÍNIMA</label><input id="nt-qtd-min" type="number" value="' + safeAttr(t.quantidade_minima != null ? t.quantidade_minima : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">UNIDADE</label><select id="nt-unidade" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
+            ['kg','litro','g','ml'].map(function(u) { return '<option value="' + u + '"' + (String(t.unidade || 'kg') === String(u) ? ' selected' : '') + '>' + u + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">CUSTO/UNIDADE (R$)</label><input id="nt-custo" type="number" step="0.01" value="' + safeAttr(t.custo_unitario != null ? t.custo_unitario : (t.preco_kg != null ? t.preco_kg : 0)) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">LOCALIZAÇÃO</label><input id="nt-local" value="' + safeAttr(t.localizacao || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">VALIDADE</label><input id="nt-validade" type="date" value="' + safeAttr(t.data_validade || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">' +
+          '<button id="nt-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
+          '<button id="nt-salvar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">💾 Salvar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    var corPicker = document.getElementById('nt-cor-picker');
+    var corInput = document.getElementById('nt-cor');
+    if (corPicker && corInput) {
+      corPicker.oninput = function() { corInput.value = corPicker.value; };
+      corInput.oninput = function() {
+        if (/^#[0-9a-f]{6}$/i.test(String(corInput.value || '').trim())) corPicker.value = String(corInput.value || '').trim();
+      };
+    }
+    document.getElementById('nt-fechar').onclick = function() { fechaModalById('modal-nova-tinta'); };
+    document.getElementById('nt-cancelar').onclick = function() { fechaModalById('modal-nova-tinta'); };
+    document.getElementById('nt-salvar').onclick = function() { window._salvarTinta(String(t.id || '')); };
+  }
+
+  async function _salvarTinta(id) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    var payload = {
+      nome: String(document.getElementById('nt-nome') && document.getElementById('nt-nome').value || '').trim(),
+      codigo: String(document.getElementById('nt-codigo') && document.getElementById('nt-codigo').value || '').trim(),
+      tipo: String(document.getElementById('nt-tipo') && document.getElementById('nt-tipo').value || '').trim(),
+      cor: String(document.getElementById('nt-cor') && document.getElementById('nt-cor').value || '').trim(),
+      fabricante: String(document.getElementById('nt-fabricante') && document.getElementById('nt-fabricante').value || '').trim(),
+      fornecedor: String(document.getElementById('nt-fabricante') && document.getElementById('nt-fabricante').value || '').trim(),
+      lote: String(document.getElementById('nt-lote') && document.getElementById('nt-lote').value || '').trim(),
+      quantidade_atual: parseFloat(document.getElementById('nt-qtd') && document.getElementById('nt-qtd').value || 0) || 0,
+      quantidade_minima: parseFloat(document.getElementById('nt-qtd-min') && document.getElementById('nt-qtd-min').value || 0) || 0,
+      unidade: String(document.getElementById('nt-unidade') && document.getElementById('nt-unidade').value || '').trim(),
+      custo_unitario: parseFloat(document.getElementById('nt-custo') && document.getElementById('nt-custo').value || 0) || 0,
+      preco_kg: parseFloat(document.getElementById('nt-custo') && document.getElementById('nt-custo').value || 0) || 0,
+      localizacao: String(document.getElementById('nt-local') && document.getElementById('nt-local').value || '').trim(),
+      data_validade: (document.getElementById('nt-validade') && document.getElementById('nt-validade').value) || null
+    };
+    if (!payload.nome) { alert('Nome é obrigatório'); return; }
+    var method = id ? 'PUT' : 'POST';
+    var url = id ? ('/api/estoque_tintas/' + encodeURIComponent(id)) : '/api/estoque_tintas';
+    var resp = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? ('Bearer ' + token) : ''
+      },
+      body: JSON.stringify(payload)
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && json.ok) {
+      fechaModalById('modal-nova-tinta');
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueTintas(host);
+      return;
+    }
+    alert('Erro: ' + ((json && json.error) || 'desconhecido'));
+  }
+
+  function _abrirModalNovoMaterial(materialExistente) {
+    fechaModalById('modal-novo-material');
+    var m = materialExistente || {};
+    var titulo = m && m.id ? 'Editar Material' : 'Novo Material';
+    var modal = document.createElement('div');
+    modal.id = 'modal-novo-material';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML =
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🔧 ' + titulo + '</h3>' +
+          '<button id="nm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">NOME *</label><input id="nm-nome" value="' + safeAttr(m.nome || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">CÓDIGO</label><input id="nm-codigo" value="' + safeAttr(m.codigo || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">CATEGORIA</label><select id="nm-categoria" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
+            ['Ferramentas','EPIs','Manutenção','Escritório','Limpeza','Produção','Expedição','Outro'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.categoria || '') === String(o) ? ' selected' : '') + '>' + safeAttr(o) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">UNIDADE</label><select id="nm-unidade" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
+            ['un','cx','kg','litro','m','m²','par'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.unidade || 'un') === String(o) ? ' selected' : '') + '>' + safeAttr(o) + '</option>'; }).join('') +
+          '</select></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">FORNECEDOR</label><input id="nm-fornecedor" value="' + safeAttr(m.fornecedor || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">LOCALIZAÇÃO</label><input id="nm-local" value="' + safeAttr(m.localizacao || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">QTD ATUAL</label><input id="nm-qtd" type="number" value="' + safeAttr(m.quantidade_atual != null ? m.quantidade_atual : (m.quantidade != null ? m.quantidade : 0)) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">QTD MÍNIMA</label><input id="nm-qtd-min" type="number" value="' + safeAttr(m.quantidade_minima != null ? m.quantidade_minima : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">CUSTO UNITÁRIO</label><input id="nm-custo" type="number" step="0.01" value="' + safeAttr(m.custo_unitario != null ? m.custo_unitario : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">' +
+          '<button id="nm-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
+          '<button id="nm-salvar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">💾 Salvar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    document.getElementById('nm-fechar').onclick = function() { fechaModalById('modal-novo-material'); };
+    document.getElementById('nm-cancelar').onclick = function() { fechaModalById('modal-novo-material'); };
+    document.getElementById('nm-salvar').onclick = function() { window._salvarMaterial(String(m.id || '')); };
+  }
+
+  async function _salvarMaterial(id) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    var payload = {
+      nome: String(document.getElementById('nm-nome') && document.getElementById('nm-nome').value || '').trim(),
+      codigo: String(document.getElementById('nm-codigo') && document.getElementById('nm-codigo').value || '').trim(),
+      categoria: String(document.getElementById('nm-categoria') && document.getElementById('nm-categoria').value || '').trim(),
+      unidade: String(document.getElementById('nm-unidade') && document.getElementById('nm-unidade').value || '').trim(),
+      fornecedor: String(document.getElementById('nm-fornecedor') && document.getElementById('nm-fornecedor').value || '').trim(),
+      localizacao: String(document.getElementById('nm-local') && document.getElementById('nm-local').value || '').trim(),
+      quantidade_atual: parseFloat(document.getElementById('nm-qtd') && document.getElementById('nm-qtd').value || 0) || 0,
+      quantidade_minima: parseFloat(document.getElementById('nm-qtd-min') && document.getElementById('nm-qtd-min').value || 0) || 0,
+      custo_unitario: parseFloat(document.getElementById('nm-custo') && document.getElementById('nm-custo').value || 0) || 0
+    };
+    if (!payload.nome) { alert('Nome é obrigatório'); return; }
+    var method = id ? 'PUT' : 'POST';
+    var url = id ? ('/api/estoque_materiais/' + encodeURIComponent(id)) : '/api/estoque_materiais';
+    var resp = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? ('Bearer ' + token) : ''
+      },
+      body: JSON.stringify(payload)
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && json.ok) {
+      fechaModalById('modal-novo-material');
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueMateriais(host);
+      return;
+    }
+    alert('Erro: ' + ((json && json.error) || 'desconhecido'));
+  }
+
+  window._abrirModalNovaTinta = _abrirModalNovaTinta;
+  window._salvarTinta = _salvarTinta;
+  window._abrirModalNovoMaterial = _abrirModalNovoMaterial;
+  window._salvarMaterial = _salvarMaterial;
 
   function _renderEstoqueTintas(main) {
     main = main || getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
@@ -4672,7 +5037,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         container.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">' +
             '<h2 style="color:var(--text);font-size:18px;margin:0">🔧 Estoque de Materiais</h2>' +
-            '<button style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Material</button>' +
+            '<button onclick="_abrirModalNovoMaterial()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Material</button>' +
           '</div>' +
           '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
             '<thead>' +

@@ -7155,6 +7155,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
         if (existentes.length) return res.status(409).json({ ok: false, error: 'cnpj_ja_cadastrado', existing: existentes[0] });
       }
     } catch (_) {}
+    console.log('[POST CLIENTES INSERT]', { payload, empresa_id });
     let { data, error } = await clientesInsertCompat(payload);
     if (error) {
       const msg = String(error.message || error);
@@ -7170,6 +7171,55 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
     await logAuditoria('clientes', 'INSERT', data?.[0]?.id, null, data?.[0] || null, req);
     return res.json({ ok: true, data: data[0] || null });
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
+  try {
+    const cliente_principal_id = String(req.body?.cliente_principal_id || '').trim();
+    const cliente_duplicado_id = String(req.body?.cliente_duplicado_id || '').trim();
+    if (!cliente_principal_id || !cliente_duplicado_id) {
+      return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
+    }
+    if (cliente_principal_id === cliente_duplicado_id) {
+      return res.status(400).json({ ok: false, error: 'Clientes devem ser diferentes' });
+    }
+
+    const updates = [
+      { cli_id: cliente_principal_id, match: 'cli_id' },
+      { cliId: cliente_principal_id, match: 'cliId' },
+      { cliente_id: cliente_principal_id, match: 'cliente_id' },
+    ];
+    for (const item of updates) {
+      try {
+        const { error } = await supabase.from('ofs').update(item).eq(item.match, cliente_duplicado_id);
+        if (error) {
+          const msg = String(error.message || error || '');
+          if (!(msg.includes('column') || msg.includes('Could not find'))) throw error;
+        }
+      } catch (e) {
+        const msg = String(e?.message || e || '');
+        if (!(msg.includes('column') || msg.includes('Could not find'))) throw e;
+      }
+    }
+
+    let { error: e2 } = await supabase
+      .from('clientes')
+      .update({ ativo: false })
+      .eq('id', cliente_duplicado_id);
+    if (e2) {
+      const msg = String(e2.message || e2 || '');
+      if (msg.includes('ativo')) {
+        ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+      }
+    }
+    if (e2) throw e2;
+
+    cacheClearPrefix('clientes_');
+    cacheClearPrefix('ofs_');
+    return res.json({ ok: true, message: 'Clientes mesclados com sucesso' });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
 });
 
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
@@ -9916,13 +9966,53 @@ async function _queryByEmpresa(table, selectCols, empresa_id, orderCol, q) {
   throw lastErr || new Error(`tabela ${table} indisponivel`);
 }
 
+async function _insertCompatTable(table, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 20; tentativa++) {
+    const { data, error } = await supabase.from(table).insert([cur]).select();
+    if (!error) return { data: Array.isArray(data) ? data[0] || null : data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error || '');
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    break;
+  }
+  return { data: null, error: lastErr };
+}
+
+async function _updateCompatTable(table, id, payload) {
+  let cur = { ...(payload || {}) };
+  let lastErr = null;
+  for (let tentativa = 0; tentativa < 20; tentativa++) {
+    const { data, error } = await supabase.from(table).update(cur).eq('id', id).select();
+    if (!error) return { data: Array.isArray(data) ? data[0] || null : data, error: null };
+    lastErr = error;
+    const msg = String(error.message || error || '');
+    const m1 = msg.match(/Could not find the '([^']+)' column/i);
+    const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
+    const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
+    if (col && Object.prototype.hasOwnProperty.call(cur, col)) {
+      delete cur[col];
+      continue;
+    }
+    break;
+  }
+  return { data: null, error: lastErr };
+}
+
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
     const empresa_id = _getEmpIdEstoque(req.usuario?.email);
     const q = String(req.query?.q || '').trim();
     const result = await _queryByEmpresa(
       'estoque_tintas',
-      'id,nome,cor,fornecedor,unidade,quantidade_atual,quantidade_minima,observacoes,preco_kg,data_validade,empresa_id,created_at,updated_at',
+      '*',
       empresa_id,
       'nome',
       q
@@ -9930,6 +10020,31 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
     return res.json({ ok: true, data: result.data || [] });
   } catch (e) {
     console.error('[ESTOQUE_TINTAS]', e.message || e);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const payload = { ...(req.body || {}), empresa_id };
+    const { data, error } = await _insertCompatTable('estoque_tintas', payload);
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    delete payload.empresa_id;
+    const { data, error } = await _updateCompatTable('estoque_tintas', req.params.id, payload);
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 });
@@ -9953,6 +10068,31 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
       }
     }
     return res.json({ ok: true, data, tabela: tabelaUsada });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const payload = { ...(req.body || {}), empresa_id };
+    const { data, error } = await _insertCompatTable('estoque_materiais', payload);
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
+  try {
+    const payload = { ...(req.body || {}) };
+    delete payload.id;
+    delete payload.empresa_id;
+    const { data, error } = await _updateCompatTable('estoque_materiais', req.params.id, payload);
+    if (error) throw error;
+    return res.json({ ok: true, data });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
