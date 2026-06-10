@@ -206,59 +206,16 @@ if (!_supabaseEnvOk) {
   console.log('✅ Supabase conectado:', supabaseUrl);
 }
 
-async function getEmpresaId(usuarioId, emailFallback) {
+async function getEmpresaId(usuarioId) {
   try {
-    const { data: usr } = await supabase
+    const { data } = await supabase
       .from('usuarios')
-      .select('email')
+      .select('empresa_id')
       .eq('id', usuarioId)
-      .maybeSingle();
-
-    const email = (usr?.email || emailFallback || '').toLowerCase().trim();
-    console.log('[getEmpresaId]', { usuarioId, email });
-
-    const MAPA_EMPRESAS = {
-      'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-      'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
-      'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
-      'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-      'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
-      'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
-      'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
-      'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
-      'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
-      'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
-      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-      'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-    };
-    const EMPRESA_PADRAO = 'df5f7672-0a6b-402d-ae65-296554236c31';
-
-    if (MAPA_EMPRESAS[email]) {
-      console.log('[getEmpresaId] match direto:', MAPA_EMPRESAS[email]);
-      return MAPA_EMPRESAS[email];
-    }
-
-    for (const [key, id] of Object.entries(MAPA_EMPRESAS)) {
-      if (email.includes(key) || key.includes(email)) {
-        console.log('[getEmpresaId] match parcial:', id);
-        return id;
-      }
-    }
-
-    const { data: emp } = await supabase
-      .from('empresas')
-      .select('id')
-      .ilike('sigla', `%${email}%`)
-      .maybeSingle();
-
-    console.log('[getEmpresaId] fallback banco:', emp?.id);
-    return emp?.id || EMPRESA_PADRAO;
-
-  } catch(e) {
-    console.error('[getEmpresaId ERROR]', e.message);
-    return 'df5f7672-0a6b-402d-ae65-296554236c31';
+      .single();
+    return data?.empresa_id || null;
+  } catch (e) {
+    return null;
   }
 }
 
@@ -2940,31 +2897,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const empIdRaw = String(q_emp_id || q_empId || q_empresa_id || '').trim();
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let empId = UUID_REGEX.test(empIdRaw) ? empIdRaw : null;
-    if (!empId) {
-      try {
-        const email = String(req.usuario?.email || '').toLowerCase().trim();
-        const MAPA_EMPRESAS = {
-          'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-          'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
-          'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
-          'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-          'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
-          'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
-          'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
-          'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
-          'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
-          'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
-          'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-          'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-          'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-          'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-        };
-        empId = MAPA_EMPRESAS[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
-      } catch (e) {
-        console.error('[OFS empresa err]', e.message);
-        empId = 'df5f7672-0a6b-402d-ae65-296554236c31';
-      }
-    }
+    if (!empId) empId = await getEmpresaId(req.usuario.id);
     try {
       console.log('[OFS EMPRESA FINAL]', {
         empIdRaw,
@@ -4916,7 +4849,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 
 app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const diasMinimo = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
 
@@ -6497,7 +6430,7 @@ app.get('/api/passagens/historico', authMiddleware, async (req, res) => {
 app.get('/api/passagens/graficos', authMiddleware, async (req, res) => {
   try {
     const empId = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
-    const empresaUuid = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaUuid = await getEmpresaId(req.usuario.id);
 
     const hoje = new Date();
     const hojeISO = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12, 0, 0).toISOString().slice(0, 10);
@@ -7023,35 +6956,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
 
     let empresa_id = null;
     try {
-      const email = req.usuario?.email || '';
-      const MAPA_EMPRESAS = {
-        'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-        'gabi':      'df5f7672-0a6b-402d-ae65-296554236c31',
-        'dani':      'df5f7672-0a6b-402d-ae65-296554236c31',
-        'daisy':     'df5f7672-0a6b-402d-ae65-296554236c31',
-        'mano':      'df5f7672-0a6b-402d-ae65-296554236c31',
-        'matheus':   'df5f7672-0a6b-402d-ae65-296554236c31',
-        'sidao':     'df5f7672-0a6b-402d-ae65-296554236c31',
-        'edi':       'df5f7672-0a6b-402d-ae65-296554236c31',
-        'estoque':   'df5f7672-0a6b-402d-ae65-296554236c31',
-        'admin':     'df5f7672-0a6b-402d-ae65-296554236c31',
-        'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-        'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-        'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
-      };
-      empresa_id = MAPA_EMPRESAS[email.toLowerCase().trim()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
-
-      if (!empresa_id) {
-        const { data: usr } = await supabase
-          .from('usuarios').select('email')
-          .eq('id', req.usuario.id).maybeSingle();
-        const em = (usr?.email || '').toLowerCase().trim();
-        empresa_id = MAPA_EMPRESAS[em] || 'df5f7672-0a6b-402d-ae65-296554236c31';
-      }
+      empresa_id = await getEmpresaId(req.usuario.id);
     } catch(e) {
       console.error('[CLIENTES empresa err]', e.message);
-      empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
+      empresa_id = null;
     }
 
     console.log('[CLIENTES]', { empresa_id, email: req.usuario?.email });
@@ -7231,7 +7139,7 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     let emailUsuario = '';
     try {
@@ -7278,7 +7186,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 
 app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const clienteId = String(req.params.id || '').trim();
     if (!clienteId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -7317,7 +7225,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -8331,7 +8239,7 @@ function _sanitizeRowsForJson(rows) {
 
 app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const { data, error } = await supabase
       .from('cores_impressao')
@@ -8346,7 +8254,7 @@ app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
 
 app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const nome = String(req.body?.nome || '').trim();
     const hexRaw = String(req.body?.hex || '').trim();
@@ -8364,7 +8272,7 @@ app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
 
 app.put('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -8385,7 +8293,7 @@ app.put('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
@@ -9421,7 +9329,7 @@ app.get('/api/inconformidades/relatorio', authMiddleware, async (req, res) => {
 
 app.get('/api/perdas/por-operador', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     const empId = String(
       req.query?.empId ||
       req.query?.emp_id ||
@@ -9499,7 +9407,7 @@ app.delete('/api/inconformidades/:id', authMiddleware, async (req, res) => {
     const id = String(req.params.id || '').trim();
     if (!id) return res.status(400).json({ ok: false, error: 'id_obrigatorio' });
 
-    const empresaUuid = await getEmpresaId(req.usuario.id, req.usuario.email).catch(() => '');
+    const empresaUuid = await getEmpresaId(req.usuario.id).catch(() => '');
     const empId = String(
       req.usuario?.emp_id ??
       req.usuario?.empId ??
@@ -9876,11 +9784,11 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
 
 app.get('/api/estoque', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) {
       try {
         const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id, emailUsuario);
+        const empresa_id = await getEmpresaId(req.usuario?.id);
         console.log('[ESTOQUE DEBUG]', { tipo: 'estoque', emailUsuario, empresa_id: empresa_id || null });
       } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
@@ -9973,11 +9881,11 @@ async function _getEstoqueMateriaisMovTableName() {
 
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) {
       try {
         const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id, emailUsuario);
+        const empresa_id = await getEmpresaId(req.usuario?.id);
         console.log('[ESTOQUE DEBUG]', { tipo: 'tintas', emailUsuario, empresa_id: empresa_id || null });
       } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
@@ -9990,7 +9898,7 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const tintaId = String(req.query.tinta_id || '').trim();
@@ -10016,7 +9924,7 @@ app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10051,7 +9959,7 @@ app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10084,7 +9992,7 @@ app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const { error } = await supabase.from('estoque_tintas').delete().eq('id', req.params.id).eq('empresa_id', empresaId);
     if (error) throw error;
@@ -10094,7 +10002,7 @@ app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
@@ -10141,11 +10049,11 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) {
       try {
         const emailUsuario = String(req.usuario?.email || '').trim();
-        const empresa_id = await getEmpresaId(req.usuario?.id, emailUsuario);
+        const empresa_id = await getEmpresaId(req.usuario?.id);
         console.log('[ESTOQUE DEBUG]', { tipo: 'materiais', emailUsuario, empresa_id: empresa_id || null });
       } catch (_) {}
       return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
@@ -10159,7 +10067,7 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const limit = Math.max(1, Math.min(400, Math.trunc(Number(req.query.limit ?? 200) || 200)));
     const materialId = String(req.query.material_id || '').trim();
@@ -10186,7 +10094,7 @@ app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) =>
 
 app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10216,7 +10124,7 @@ app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const now = new Date().toISOString();
@@ -10244,7 +10152,7 @@ app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const table = await _getEstoqueMateriaisTableName();
     const { error } = await supabase.from(table).delete().eq('id', req.params.id).eq('empresa_id', empresaId);
@@ -10255,7 +10163,7 @@ app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_materiais/:id/movimentos', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresaId = await getEmpresaId(req.usuario.id);
     if (!empresaId) return res.status(400).json({ ok: false, error: 'empresa_id ausente' });
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
@@ -12182,7 +12090,7 @@ app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
 app.get('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
     const userId = String(req.query.userId || req.usuario?.id || '').trim();
-    const empresa_id = await getEmpresaId(userId || req.usuario?.id, req.usuario?.email);
+    const empresa_id = await getEmpresaId(userId || req.usuario?.id);
     if (!empresa_id) return res.json({ ok: true, data: [] });
 
     const { data: pins, error } = await supabase
@@ -12230,7 +12138,7 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const userId = String(req.query.userId || b.userId || req.usuario?.id || '').trim();
-    const empresa_id = await getEmpresaId(userId || req.usuario?.id, req.usuario?.email);
+    const empresa_id = await getEmpresaId(userId || req.usuario?.id);
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
     const observacao = String(b.observacao || '').trim() || null;
@@ -12324,7 +12232,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
     let movimento = null;
     const chapaId = String(atual?.chapa_id || '').trim();
     if (chapaId && quantidade > 0) {
-      const empresa_id = String(atual?.empresa_id || '').trim() || await getEmpresaId(req.usuario?.id, req.usuario?.email);
+      const empresa_id = String(atual?.empresa_id || '').trim() || await getEmpresaId(req.usuario?.id);
       try {
         if (tamanho || (Number.isFinite(valorUnit) && valorUnit > 0)) {
           const table = await _chapasPreferV2Table();
@@ -12375,7 +12283,7 @@ app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const quantidade = Math.abs(Math.trunc(Number(b.quantidade || 0) || 0));
     if (!chapa_id || !(quantidade > 0)) return res.status(400).json({ ok: false, error: 'chapa_id e quantidade obrigatórios' });
-    const empresa_id = await getEmpresaId(req.usuario.id, req.usuario.email);
+    const empresa_id = await getEmpresaId(req.usuario.id);
     const payload = {
       chapa_id,
       quantidade,
