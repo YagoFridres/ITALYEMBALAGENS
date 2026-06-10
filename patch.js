@@ -2673,6 +2673,19 @@
 })();
 
 (function patchEstoquesTintasMateriaisFacasCamposV1() {
+  try {
+    Object.defineProperty(window, 'EMP_FILTRO', {
+      get: function() { return window._EMP_FILTRO || []; },
+      set: function(v) {
+        if (v === 'tudo' || v === 'todas' || (Array.isArray(v) && v.includes('tudo'))) {
+          window._EMP_FILTRO = [];
+        } else {
+          window._EMP_FILTRO = v;
+        }
+      },
+      configurable: true
+    });
+  } catch (_) {}
   function _tok() {
     try { return String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
   }
@@ -2691,7 +2704,9 @@
   }
   function _empFiltroNormalizado() {
     try {
-      var empFiltro = String(window.EMP_FILTRO || '').trim();
+      var raw = window.EMP_FILTRO;
+      if (Array.isArray(raw)) return raw.length ? String(raw[0] || '').trim() : '';
+      var empFiltro = String(raw || '').trim();
       var low = empFiltro.toLowerCase();
       return (low === 'tudo' || low === 'todas') ? '' : empFiltro;
     } catch (_) {

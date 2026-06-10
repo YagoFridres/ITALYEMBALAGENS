@@ -536,6 +536,20 @@ app.get('/index.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+app.get('/patch.js', (req, res) => {
+  try {
+    const fp = path.join(__dirname, 'patch.js');
+    if (!fs.existsSync(fp)) return res.status(404).end();
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    return res.sendFile(fp);
+  } catch (e) {
+    return res.status(500).end();
+  }
+});
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use(express.static(__dirname, { etag: false, lastModified: false, setHeaders: setNoCache }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), { etag: false, lastModified: false, setHeaders: setNoCache }));
