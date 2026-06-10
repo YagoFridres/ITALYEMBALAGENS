@@ -7731,13 +7731,17 @@ window._mbnActive = function(id) {
     try { _patchApiFetchReloadClientesV1(); } catch (_) {}
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
+  try {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(tick, 250);
+        setInterval(tick, 1200);
+      });
+    } else {
       setTimeout(tick, 250);
       setInterval(tick, 1200);
-    });
-  } else {
-    setTimeout(tick, 250);
-    setInterval(tick, 1200);
+    }
+  } catch (e) {
+    try { console.error('[PATCH ERROR]', e); } catch (_) {}
   }
 })();

@@ -2402,8 +2402,8 @@ function clientesPayload(p) {
     telefone: 'tel',
     email: 'email',
     cidade: 'cidade',
-    estado: 'estado',
-    uf: 'estado',
+    estado: 'uf',
+    uf: 'uf',
     endereco: 'endereco',
     contato: 'contato',
     observacoes: 'observacoes',
@@ -6923,6 +6923,10 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
+    console.log('[CLIENTES GET]', {
+      usuario_id: req.usuario?.id,
+      email: req.usuario?.email
+    });
     const { data: usr } = await supabase
       .from('usuarios')
       .select('email')
