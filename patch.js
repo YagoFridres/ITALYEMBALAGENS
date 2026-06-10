@@ -3982,17 +3982,49 @@
 
   function _reloadClientes() {
     try {
+      try { if (typeof _cliSituacao !== 'undefined') _cliSituacao = ''; } catch (_) {}
+      try { if (typeof window._cliSituacao !== 'undefined') window._cliSituacao = ''; } catch (_) {}
+      try { if (typeof _cliFiltro !== 'undefined') _cliFiltro = ''; } catch (_) {}
+      try { if (typeof window._cliFiltro !== 'undefined') window._cliFiltro = ''; } catch (_) {}
+      try { if (typeof _cliRamo !== 'undefined') _cliRamo = ''; } catch (_) {}
+      try { if (typeof window._cliRamo !== 'undefined') window._cliRamo = ''; } catch (_) {}
+      try { if (typeof _cliBusca !== 'undefined') _cliBusca = ''; } catch (_) {}
+      try { if (typeof window._cliBusca !== 'undefined') window._cliBusca = ''; } catch (_) {}
+
+      var inputBusca = document.querySelector('#cli-busca, input[placeholder*="Nome, CNPJ"], .cli-search');
+      if (inputBusca) {
+        inputBusca.value = '';
+        try { inputBusca.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+        try { inputBusca.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+
+      var selRamo = document.querySelector('#cli-ramo');
+      if (selRamo) {
+        selRamo.value = '';
+        try { selRamo.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+
+      var selSituacao = document.querySelector('#cli-sit, #cli-situacao, select[name="situacao"]');
+      if (selSituacao) {
+        selSituacao.value = '';
+        try { selSituacao.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+
+      var selEmpFil = document.querySelector('#cli-emp-fil');
+      if (selEmpFil) {
+        selEmpFil.value = '';
+        try { selEmpFil.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+      }
+
       if (typeof carregarClientes === 'function') {
-        carregarClientes(true);
-        setTimeout(function() {
-          try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-        }, 800);
-        return;
+        try { carregarClientes(true); } catch (_) { try { carregarClientes(); } catch (_) {} }
       }
-      if (typeof renderClientes === 'function') {
-        renderClientes();
-        return;
-      }
+      setTimeout(function() {
+        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+      }, 1000);
+
+      if (typeof carregarClientes === 'function' || typeof renderClientes === 'function') return;
+
       var links = document.querySelectorAll('a, [onclick]');
       for (var i = 0; i < links.length; i++) {
         var el = links[i];
