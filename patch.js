@@ -3356,6 +3356,16 @@
       var base = c && (c.nome || c.razao_social || c.razao || '');
       if (normClienteNome(base) === alvo) return c;
     }
+    for (var j = 0; j < lista.length; j++) {
+      var c2 = lista[j];
+      var nome2 = c2 && (c2.nome || c2.razao_social || c2.razao || '');
+      var hay = [nome2, c2 && c2.cnpj, c2 && c2.cidade, c2 && (c2.tel || c2.telefone)]
+        .filter(Boolean)
+        .map(normClienteNome)
+        .join(' | ');
+      var n2 = normClienteNome(nome2);
+      if (hay && (hay.indexOf(alvo) !== -1 || (n2 && alvo.indexOf(n2) !== -1))) return c2;
+    }
     return null;
   }
 
@@ -3373,6 +3383,60 @@
     return null;
   }
 
+  function getAuthHeader() {
+    var token = '';
+    try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function fetchClientePorNome(nome) {
+    var q = String(nome || '').trim();
+    if (!q) return Promise.resolve(null);
+    var urls = [
+      '/api/clientes?q=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
+      '/api/clientes?search=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now(),
+      '/api/clientes?busca=' + encodeURIComponent(q) + '&limit=5&t=' + Date.now()
+    ];
+    var tryOne = function(i) {
+      if (i >= urls.length) return Promise.resolve(null);
+      return fetch(urls[i], { headers: getAuthHeader() })
+        .then(function(r) { return r && r.ok ? r.json().catch(function() { return null; }) : null; })
+        .then(function(j) {
+          var arr = j && (j.data || j.clientes || j.items);
+          if (j && j.ok && Array.isArray(arr) && arr.length) return arr[0] || null;
+          return null;
+        })
+        .catch(function() { return null; })
+        .then(function(c) { return c ? c : tryOne(i + 1); });
+    };
+    return tryOne(0);
+  }
+
+  async function ensureClienteId(el) {
+    if (!el) return null;
+    try {
+      if (el.dataset && el.dataset.clienteId) return { id: String(el.dataset.clienteId || '').trim() };
+    } catch (_) {}
+    var raw = String(el.value || '').trim();
+    if (!raw) return null;
+    var cli = syncClienteOfRapida(el);
+    if (cli && cli.id) return cli;
+    try {
+      if (typeof carregarClientes === 'function') await carregarClientes(true);
+    } catch (_) {}
+    cli = syncClienteOfRapida(el);
+    if (cli && cli.id) return cli;
+    var remoto = await fetchClientePorNome(raw);
+    var rid = String(remoto && (remoto.id || remoto.cli_id || remoto.cliente_id) || '').trim();
+    if (rid) {
+      try { el.dataset.clienteId = rid; } catch (_) {}
+      try { el.dataset.clienteNome = String(remoto.nome || remoto.razao_social || remoto.razao || raw || '').trim(); } catch (_) {}
+      try { if (el.dataset && el.dataset.clienteNome) el.value = String(el.dataset.clienteNome || '').trim(); } catch (_) {}
+      return { id: rid, nome: String(remoto.nome || '').trim() };
+    }
+    return null;
+  }
+
   function bindClienteInput() {
     var el = document.getElementById('of-r-cliente');
     if (!el || el.dataset.patchClienteEspecial === '1') return;
@@ -3386,11 +3450,12 @@
   function patchSalvar(fnName) {
     var orig = window[fnName];
     if (typeof orig !== 'function' || orig._patchClienteEspecial) return;
-    var wrapped = function() {
+    var wrapped = async function() {
       var el = document.getElementById('of-r-cliente');
       if (el) {
-        var cli = syncClienteOfRapida(el);
-        var cliId = String(el.dataset.clienteId || '').trim();
+        var cli = null;
+        try { cli = await ensureClienteId(el); } catch (_) { cli = syncClienteOfRapida(el); }
+        var cliId = String((el.dataset && el.dataset.clienteId) ? el.dataset.clienteId : '').trim();
         if (!cliId) {
           try { alert('Selecione um cliente válido da lista.'); } catch (_) {}
           try { el.focus(); el.select && el.select(); } catch (_) {}
@@ -3398,6 +3463,10 @@
         }
         var nomeCanonico = String((cli && (cli.nome || cli.razao_social || cli.razao)) || el.dataset.clienteNome || el.value || '').trim();
         if (nomeCanonico) el.value = nomeCanonico;
+        try {
+          var hiddenCli = document.querySelector('#f-cli-id, input[name="cli_id"], input[name="cliId"]');
+          if (hiddenCli) hiddenCli.value = cliId;
+        } catch (_) {}
       }
       return orig.apply(this, arguments);
     };
@@ -3409,6 +3478,9 @@
     try { bindClienteInput(); } catch (_) {}
     try { patchSalvar('salvarOfRapida'); } catch (_) {}
     try { patchSalvar('salvarNovaOfRapida'); } catch (_) {}
+    try { patchSalvar('salvarOFRapida'); } catch (_) {}
+    try { patchSalvar('salvarNovaOF'); } catch (_) {}
+    try { patchSalvar('salvarOF'); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {
@@ -3980,7 +4052,7 @@
     } catch (_) {}
   }
 
-  function _reloadClientes() {
+  async function _reloadClientes() {
     try {
       try { if (typeof _cliSituacao !== 'undefined') _cliSituacao = ''; } catch (_) {}
       try { if (typeof window._cliSituacao !== 'undefined') window._cliSituacao = ''; } catch (_) {}
@@ -3991,54 +4063,44 @@
       try { if (typeof _cliBusca !== 'undefined') _cliBusca = ''; } catch (_) {}
       try { if (typeof window._cliBusca !== 'undefined') window._cliBusca = ''; } catch (_) {}
 
-      var inputBusca = document.querySelector('#cli-busca, input[placeholder*="Nome, CNPJ"], .cli-search');
-      if (inputBusca) {
-        inputBusca.value = '';
-        try { inputBusca.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
-        try { inputBusca.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
-
-      var selRamo = document.querySelector('#cli-ramo');
-      if (selRamo) {
-        selRamo.value = '';
-        try { selRamo.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
-
-      var selSituacao = document.querySelector('#cli-sit, #cli-situacao, select[name="situacao"]');
-      if (selSituacao) {
-        selSituacao.value = '';
-        try { selSituacao.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
-
-      var selEmpFil = document.querySelector('#cli-emp-fil');
-      if (selEmpFil) {
-        selEmpFil.value = '';
-        try { selEmpFil.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-      }
+      ['#cli-busca', '#cli-ramo', '#cli-sit', '#cli-emp-fil'].forEach(function(s) {
+        try {
+          var el = document.querySelector(s);
+          if (!el) return;
+          el.value = '';
+          try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+          try { el.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+        } catch (_) {}
+      });
 
       if (typeof carregarClientes === 'function') {
-        try { carregarClientes(true); } catch (_) { try { carregarClientes(); } catch (_) {} }
+        try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
       }
-      setTimeout(function() {
-        try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-      }, 1000);
 
-      if (typeof carregarClientes === 'function' || typeof renderClientes === 'function') return;
+      await new Promise(function(r) { setTimeout(r, 800); });
+
+      if (typeof renderClientes === 'function') {
+        try { renderClientes(); } catch (_) {}
+        try { console.log('[CLIENTES] lista recarregada após salvar'); } catch (_) {}
+        return;
+      }
+
+      if (typeof carregarClientes === 'function') return;
 
       var links = document.querySelectorAll('a, [onclick]');
       for (var i = 0; i < links.length; i++) {
-        var el = links[i];
+        var el2 = links[i];
         var oc = '';
-        try { oc = el.getAttribute('onclick') || ''; } catch (_) { oc = ''; }
+        try { oc = el2.getAttribute('onclick') || ''; } catch (_) { oc = ''; }
         var txt = '';
-        try { txt = String(el.textContent || '').trim(); } catch (_) { txt = ''; }
+        try { txt = String(el2.textContent || '').trim(); } catch (_) { txt = ''; }
         if (oc.indexOf('clientes') !== -1 || txt === 'Clientes') {
-          try { if (typeof el.click === 'function') el.click(); } catch (_) {}
+          try { if (typeof el2.click === 'function') el2.click(); } catch (_) {}
           return;
         }
       }
     } catch (e) {
-      try { console.error('[RELOAD CLIENTES]', e); } catch (_) {}
+      try { console.error('[RELOAD CLIENTES ERR]', e); } catch (_) {}
     }
   }
 
