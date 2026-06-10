@@ -9890,6 +9890,31 @@ app.delete('/api/estoque/:id', async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 // ESTOQUE TINTAS / MATERIAIS
 // ══════════════════════════════════════════════════════════════
+function _resolveEmpresaIdEstoque(req) {
+  try {
+    const email = String(req?.usuario?.email || '').toLowerCase().trim();
+    const MAPA = {
+      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
+      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'carto': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
+      'oeste': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+      'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
+    };
+    return MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+  } catch (_) {
+    return 'df5f7672-0a6b-402d-ae65-296554236c31';
+  }
+}
+
 let _ESTOQUE_MATERIAIS_TABLE = null;
 let _ESTOQUE_MATERIAIS_MOV_TABLE = null;
 
@@ -9943,27 +9968,26 @@ async function _getEstoqueMateriaisMovTableName() {
 
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id);
-    try {
-      console.log('[ESTOQUE]', { rota: '/api/estoque_tintas', empresa_id: empresaId || null, usuario: req.usuario?.email });
-    } catch (_) {}
-    const build = (withEmpresa) => {
-      let q = supabase.from('estoque_tintas').select('*').order('nome');
-      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
-      return q;
-    };
-    let r = null;
-    if (empresaId) r = await build(true);
-    else r = await build(false);
-    if (r?.error && empresaId) {
-      const msg = String(r.error?.message || '');
+    const empresa_id = _resolveEmpresaIdEstoque(req);
+    const { data, error } = await supabase
+      .from('estoque_tintas')
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('nome');
+    if (error) {
+      const msg = String(error.message || '');
       if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
-        r = await build(false);
+        const retry = await supabase.from('estoque_tintas').select('*').order('nome');
+        if (retry.error) throw retry.error;
+        return res.json({ ok: true, data: retry.data || [] });
       }
+      throw error;
     }
-    if (r?.error) throw r.error;
-    return ok(res, r?.data || []);
-  } catch (e) { err(res, e); }
+    return res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[ESTOQUE_TINTAS ERROR]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.get('/api/estoque_tintas/movimentos', authMiddleware, async (req, res) => {
@@ -10133,28 +10157,28 @@ app.post('/api/estoque_tintas/:id/movimentos', authMiddleware, async (req, res) 
 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresaId = await getEmpresaId(req.usuario.id);
-    try {
-      console.log('[ESTOQUE]', { rota: '/api/estoque_materiais', empresa_id: empresaId || null, usuario: req.usuario?.email });
-    } catch (_) {}
+    const empresa_id = _resolveEmpresaIdEstoque(req);
     const table = await _getEstoqueMateriaisTableName();
-    const build = (withEmpresa) => {
-      let q = supabase.from(table).select('*').order('categoria').order('nome');
-      if (withEmpresa && empresaId) q = q.eq('empresa_id', empresaId);
-      return q;
-    };
-    let r = null;
-    if (empresaId) r = await build(true);
-    else r = await build(false);
-    if (r?.error && empresaId) {
-      const msg = String(r.error?.message || '');
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('categoria')
+      .order('nome');
+    if (error) {
+      const msg = String(error.message || '');
       if (msg.toLowerCase().includes('empresa_id') && msg.toLowerCase().includes('does not exist')) {
-        r = await build(false);
+        const retry = await supabase.from(table).select('*').order('categoria').order('nome');
+        if (retry.error) throw retry.error;
+        return res.json({ ok: true, data: retry.data || [] });
       }
+      throw error;
     }
-    if (r?.error) throw r.error;
-    return ok(res, r?.data || []);
-  } catch (e) { err(res, e); }
+    return res.json({ ok: true, data: data || [] });
+  } catch (err) {
+    console.error('[ESTOQUE_MATERIAIS ERROR]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.get('/api/estoque_materiais/movimentos', authMiddleware, async (req, res) => {
@@ -10321,21 +10345,24 @@ app.post('/api/estoque_materiais/:id/movimentos', authMiddleware, async (req, re
 // ══════════════════════════════════════════════════════════════
 app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
-    const empId = req.query.empId ? String(req.query.empId) : '';
-    const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
+    const empresa_id = _resolveEmpresaIdEstoque(req);
+    const cols = ['empresa_id', 'emp_id', 'empresa', 'empId'];
     let lastErr = null;
     for (const col of cols) {
-      let q = supabase.from('facas_estoque').select('*').order('nome');
-      if (col) q = q.eq(col, empId);
-      const { data, error } = await q;
-      if (!error) return ok(res, data || []);
+      const { data, error } = await supabase.from('facas_estoque').select('*').eq(col, empresa_id).order('nome');
+      if (!error) return res.json({ ok: true, data: data || [] });
       lastErr = error;
       const msg = String(error.message || error);
-      if (col && (msg.includes('column') || msg.includes('Could not find'))) continue;
+      if (msg.includes('column') || msg.includes('Could not find')) continue;
       throw error;
     }
-    throw lastErr;
-  } catch (e) { err(res, e); }
+    const retry = await supabase.from('facas_estoque').select('*').order('nome');
+    if (retry.error) throw (lastErr || retry.error);
+    return res.json({ ok: true, data: retry.data || [] });
+  } catch (err) {
+    console.error('[FACAS_ESTOQUE ERROR]', err.message);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
 });
 app.post('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
@@ -11009,6 +11036,8 @@ function _chapasParseCsv(text) {
 
 app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
   try {
+    const empresa_id = _resolveEmpresaIdEstoque(req);
+    if (!String(req.query.empId || '').trim()) req.query.empId = empresa_id;
     if (!_chapasCacheClearedOnBoot || String(req.query.flush_cache || '') === '1') {
       cacheClearPrefix('chapas_');
       cacheClearPrefix('chapas_estoque:');
