@@ -6866,6 +6866,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
       if (!base.length) return base;
       const mapaOfs = Object.create(null);
+      const normId = (v) => String(v || '').trim().toLowerCase();
       const specs = [
         { select: 'cli_id', col: 'cli_id', key: 'cli_id' },
         { select: 'cliId', col: 'cliId', key: 'cliId' },
@@ -6876,7 +6877,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           const { data, error } = await supabase.from('ofs').select(spec.select).not(spec.col, 'is', null);
           if (error) continue;
           (Array.isArray(data) ? data : []).forEach((of) => {
-            const cliId = String(of?.[spec.key] || '').trim();
+            const cliId = normId(of?.[spec.key]);
             if (!cliId) return;
             mapaOfs[cliId] = (mapaOfs[cliId] || 0) + 1;
           });
@@ -6885,7 +6886,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       console.log('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
       const withCounts = base.map((c) => ({
         ...c,
-        total_ofs: mapaOfs[String(c?.id || '').trim()] || 0
+        total_ofs: mapaOfs[normId(c?.id)] || 0
       }));
       withCounts.sort((a, b) => {
         const diff = Number(b?.total_ofs || 0) - Number(a?.total_ofs || 0);
@@ -6893,7 +6894,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         return String(a?.nome || '').localeCompare(String(b?.nome || ''));
       });
       try {
-        console.log('[CLIENTES] top 3:', withCounts.slice(0, 3).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
+        console.log('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
       } catch (_) {}
       return withCounts;
     };
