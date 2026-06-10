@@ -1,3 +1,4 @@
+console.log('[PATCH] versão ' + Date.now() + ' carregado');
 /* patch.js - Italy Embalagens ERP v2 */ 
 (function() { 
   'use strict'; 
@@ -3447,6 +3448,23 @@
     setTimeout(function() { syncClienteOfRapida(el); }, 0);
   }
 
+  function patchAbrirOfRapida(fnName) {
+    var orig = window[fnName];
+    if (typeof orig !== 'function' || orig._patchClienteEspecialOpen) return;
+    var wrapped = async function() {
+      try {
+        if (!Array.isArray(window.CLIENTES) || window.CLIENTES.length === 0) {
+          if (typeof carregarClientes === 'function') {
+            try { await carregarClientes(true); } catch (_) { try { await carregarClientes(false); } catch (_) {} }
+          }
+        }
+      } catch (_) {}
+      return orig.apply(this, arguments);
+    };
+    wrapped._patchClienteEspecialOpen = true;
+    window[fnName] = wrapped;
+  }
+
   function patchSalvar(fnName) {
     var orig = window[fnName];
     if (typeof orig !== 'function' || orig._patchClienteEspecial) return;
@@ -3476,6 +3494,9 @@
 
   function tick() {
     try { bindClienteInput(); } catch (_) {}
+    try { patchAbrirOfRapida('abrirNovaOfRapida'); } catch (_) {}
+    try { patchAbrirOfRapida('abrirOfRapida'); } catch (_) {}
+    try { patchAbrirOfRapida('abrirOFRapida'); } catch (_) {}
     try { patchSalvar('salvarOfRapida'); } catch (_) {}
     try { patchSalvar('salvarNovaOfRapida'); } catch (_) {}
     try { patchSalvar('salvarOFRapida'); } catch (_) {}
@@ -4120,74 +4141,9 @@
     }, true);
   }
 
-  function patchFetchClientes() {
-    var origFetch = window.fetch;
-    if (typeof origFetch !== 'function' || origFetch._patchClientesUX) return;
-    var wrapped = function(url, opts) {
-      var isClientesPost = false;
-      try {
-        var u = typeof url === 'string' ? url : (url && url.url ? String(url.url) : '');
-        var m = String((opts && opts.method) || 'GET').toUpperCase();
-        isClientesPost = (m === 'POST' && u.indexOf('/api/clientes') !== -1);
-        if (isClientesPost && opts) {
-          var body = opts.body;
-          if (typeof body === 'string') {
-            try {
-              var o = JSON.parse(body);
-              if (o && typeof o === 'object') {
-                if (o.uf === undefined && o.estado !== undefined) o.uf = o.estado;
-                if (o.estado !== undefined) delete o.estado;
-                opts.body = JSON.stringify(o);
-              }
-            } catch (_) {}
-          } else if (body && typeof FormData !== 'undefined' && body instanceof FormData) {
-            try {
-              var est = body.get('estado');
-              var uf = body.get('uf');
-              if ((uf == null || String(uf) === '') && est != null) body.set('uf', est);
-              try { body.delete('estado'); } catch (_) {}
-            } catch (_) {}
-          } else if (body && typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams) {
-            try {
-              var est2 = body.get('estado');
-              var uf2 = body.get('uf');
-              if (!uf2 && est2) body.set('uf', est2);
-              body.delete('estado');
-            } catch (_) {}
-          }
-        }
-      } catch (_) {}
-
-      var promise = origFetch.apply(this, arguments);
-
-      if (isClientesPost) {
-        try {
-          promise
-            .then(function(res) {
-              try { return res.clone().json(); } catch (_) { return null; }
-            })
-            .then(function(data) {
-              try {
-                if (data && data.ok) {
-                  try { console.log('[CLIENTE SALVO]', (data.data && data.data.nome) ? data.data.nome : ''); } catch (_) {}
-                  setTimeout(_reloadClientes, 500);
-                }
-              } catch (_) {}
-            })
-            .catch(function() {});
-        } catch (_) {}
-      }
-
-      return promise;
-    };
-    wrapped._patchClientesUX = true;
-    window.fetch = wrapped;
-  }
-
   function tick() {
     try { injectCss(); } catch (_) {}
     try { patchClickSalvar(); } catch (_) {}
-    try { patchFetchClientes(); } catch (_) {}
   }
 
   if (document.readyState === 'loading') {

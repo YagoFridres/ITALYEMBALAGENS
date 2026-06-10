@@ -7078,6 +7078,10 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
+    console.log('[POST CLIENTES]', {
+      body: req.body,
+      usuario: req.usuario?.email || null
+    });
     const email = String(req.usuario?.email || '').toLowerCase().trim();
     const MAPA = {
       'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
@@ -7095,31 +7099,26 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
     };
     const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
     const b = req.body || {};
-    const payload = {
-      nome: b.nome,
-      telefone: b.telefone || b.tel || '',
-      tel: b.tel || b.telefone || '',
-      email: b.email || '',
-      cidade: b.cidade || '',
-      uf: b.uf || b.estado || '',
-      documento: b.documento || b.cnpj || '',
-      cnpj: b.cnpj || b.documento || '',
-      rs: b.rs || '',
-      codigo: b.codigo || '',
-      observacoes: b.observacoes || '',
-      ativo: true,
-      empresa_id,
-      emp_id: b.emp_id || '',
-      vendedor_id: b.vendedor_id || null,
-      ramo: b.ramo || '',
-      pagto: b.pagto || '',
-      endereco: b.endereco || '',
-      rep: b.rep || '',
-      ie: b.ie || '',
-    };
-    Object.keys(payload).forEach(k => {
-      if (payload[k] === null || payload[k] === undefined) delete payload[k];
+    const camposPermitidos = ['nome','razao_social','documento','cnpj','telefone','tel','email','cidade','uf','endereco','ramo','pagto','rep','ie','rs','codigo','observacoes','ativo','empresa_id','emp_id','vendedor_id'];
+    const payload = {};
+    camposPermitidos.forEach((campo) => {
+      if (b[campo] !== undefined && b[campo] !== null && b[campo] !== '') {
+        payload[campo] = b[campo];
+      }
     });
+    if (b.estado && !payload.uf) payload.uf = b.estado;
+    if (payload.telefone == null && b.tel) payload.telefone = b.tel;
+    if (payload.tel == null && b.telefone) payload.tel = b.telefone;
+    if (payload.documento == null && b.cnpj) payload.documento = b.cnpj;
+    if (payload.cnpj == null && b.documento) payload.cnpj = b.documento;
+    payload.nome = String(payload.nome || b.nome || '').trim();
+    payload.empresa_id = empresa_id;
+    payload.ativo = true;
+    Object.keys(payload).forEach(k => {
+      if (payload[k] === null || payload[k] === undefined || payload[k] === '') delete payload[k];
+    });
+    console.log('[POST CLIENTES PAYLOAD]', payload);
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'nome_obrigatorio' });
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
@@ -7136,6 +7135,7 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
         ({ data, error } = await clientesInsertCompat(payload));
       }
     }
+    console.log('[POST CLIENTES RESULT]', { data, error });
     if (error) throw error;
     cacheClearPrefix('clientes_');
     await logAuditoria('clientes', 'INSERT', data?.[0]?.id, null, data?.[0] || null, req);
