@@ -7490,15 +7490,35 @@ window._mbnActive = function(id) {
       if (box && box.parentNode) return box;
       box = document.createElement('div');
       box.style.cssText =
-        'position:absolute;z-index:99999;min-width:240px;max-width:520px;max-height:260px;overflow:auto;' +
-        'background:var(--card);border:1px solid var(--border);border-radius:10px;' +
-        'box-shadow:0 18px 40px rgba(0,0,0,.45);display:none;';
-      document.body.appendChild(box);
+        'position:absolute;' +
+        'top:100%;left:0;right:0;z-index:99999;' +
+        'background:var(--card, #1e2330);' +
+        'border:1px solid var(--border, rgba(255,255,255,0.1));' +
+        'border-radius:8px;' +
+        'max-height:240px;overflow-y:auto;' +
+        'box-shadow:0 8px 24px rgba(0,0,0,0.5);' +
+        'margin-top:4px;' +
+        'display:none;';
+      var wrap = null;
+      try { wrap = inputEl.parentElement; } catch (_) { wrap = null; }
+      if (wrap) {
+        try {
+          var pos = '';
+          try { pos = String(window.getComputedStyle(wrap).position || '').toLowerCase(); } catch (_) { pos = ''; }
+          if (!pos || pos === 'static') wrap.style.position = 'relative';
+        } catch (_) {}
+        wrap.appendChild(box);
+      } else {
+        document.body.appendChild(box);
+      }
       inputEl._cliAcBox = box;
       return box;
     }
 
     function positionBox(inputEl, box) {
+      try {
+        if (box && box.parentElement && inputEl && box.parentElement === inputEl.parentElement) return;
+      } catch (_) {}
       var r = inputEl.getBoundingClientRect();
       var top = Math.round(r.bottom + window.scrollY + 6);
       var left = Math.round(r.left + window.scrollX);
@@ -7518,7 +7538,7 @@ window._mbnActive = function(id) {
       if (!items.length) { box.style.display = 'none'; return; }
       box.innerHTML = items.map(function(it, i) {
         return (
-          '<div data-i="' + i + '" style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.06);cursor:pointer">' +
+          '<div data-i="' + i + '" style="display:block;width:100%;box-sizing:border-box;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border, rgba(255,255,255,0.07));font-size:13px;color:var(--text, #e8eaf0);background:transparent;line-height:1.4;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">' +
               '<div style="font-weight:900;color:var(--text1)">' + esc(it.nome || it.label || '') + '</div>' +
               (it.badge ? ('<div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">' + esc(it.badge) + '</div>') : '') +
@@ -7530,7 +7550,7 @@ window._mbnActive = function(id) {
       positionBox(inputEl, box);
       box.style.display = 'block';
       Array.prototype.slice.call(box.querySelectorAll('[data-i]')).forEach(function(el) {
-        el.onmouseenter = function() { el.style.background = 'var(--card2)'; };
+        el.onmouseenter = function() { el.style.background = 'var(--card2, #252b3b)'; };
         el.onmouseleave = function() { el.style.background = 'transparent'; };
         el.onclick = function(ev) {
           if (ev) { ev.preventDefault(); ev.stopPropagation(); }
