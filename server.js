@@ -2866,6 +2866,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       dateField: q_dateField,
       emp_id: q_emp_id,
       empId: q_empId,
+      empresa_id: q_empresa_id,
       status: q_status,
       lite: q_lite,
       nocache: q_nocache,
@@ -2926,28 +2927,27 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    const empIdRaw = String(req.query.emp_id || req.query.empId || '').trim();
-    const isValidUuid = /^[0-9a-f-]{36}$/i.test(empIdRaw);
-    const empIdFiltro = isValidUuid ? empIdRaw : '';
-    let empId = empIdFiltro;
+    const empIdRaw = String(q_emp_id || q_empId || q_empresa_id || '').trim();
+    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let empId = UUID_REGEX.test(empIdRaw) ? empIdRaw : null;
     if (!empId) {
       try {
         const email = String(req.usuario?.email || '').toLowerCase().trim();
-        const mapa = {
+        const MAPA_EMPRESAS = {
           'italy':     'df5f7672-0a6b-402d-ae65-296554236c31',
           'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
           'carto':     'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
           'oeste':     'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
           'oestepack': 'a6e5fd8-4743-4ebe-885e-c2f0741a667a',
         };
-        empId = String(mapa[email] || '').trim();
+        empId = MAPA_EMPRESAS[email] || null;
       } catch (e) {
         console.error('[OFS empresa err]', e.message);
-        empId = '';
+        empId = null;
       }
     }
     try {
-      console.log('[OFS EMPRESA]', {
+      console.log('[OFS EMPRESA FINAL]', {
         empIdRaw,
         empId,
         email: req.usuario?.email
@@ -3164,7 +3164,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     }
 
-    let empCols = empId ? ['emp_id', 'empId', 'empresa_id'] : [];
     let cliCols = clienteId ? ['cli_id', 'cliId', 'cliente_id', 'cliid'] : [];
     let numCols = numero ? ['numero', 'of', 'of_num'] : [];
 
@@ -3181,10 +3180,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       if (status) q = q.eq('status', status);
 
-      if (empId && Array.isArray(empCols) && empCols.length) {
-        const empCol = empCols[Math.min(tentativa, empCols.length - 1)];
-        if (empCol) q = q.eq(empCol, empId);
-      }
+      if (empId) q = q.eq('empresa_id', empId);
 
       if (clienteId && Array.isArray(cliCols) && cliCols.length) {
         const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
@@ -3292,7 +3288,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (colProb === 'deleted_at') useDeletedAtFilter = false;
         if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
         if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
-        if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
         continue;
       }
 
