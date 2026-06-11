@@ -3984,6 +3984,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchBotaoCalculadoraAbrir() {
+  function openModalDirect() {
+    try {
+      var ov = document.getElementById('modal-calc') || document.getElementById('overlay-calculadora') || document.getElementById('modal-bg-calculadora');
+      if (ov) {
+        ov.style.display = 'flex';
+        ov.style.pointerEvents = 'auto';
+        try { ov.classList.add('open', 'show', 'active'); } catch (_) {}
+        try { ov.style.zIndex = '99999'; } catch (_) {}
+      }
+    } catch (_) {}
+    try {
+      var modal = document.getElementById('modal-calculadora') || document.getElementById('modal-orcamento-calc') || document.querySelector('.modal-calculadora');
+      if (modal) {
+        modal.style.display = 'flex';
+        modal.style.pointerEvents = 'auto';
+        try { modal.style.zIndex = '100000'; } catch (_) {}
+      }
+    } catch (_) {}
+    try { document.body && (document.body.style.overflow = 'hidden'); } catch (_) {}
+  }
+
   function abrirCalcFallback() {
     try {
       if (typeof window.abrirCalculadoraCaixas === 'function') { window.abrirCalculadoraCaixas(); return; }
@@ -4003,8 +4024,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function ensureFn() {
     if (typeof window.abrirCalculadora !== 'function') {
-      window.abrirCalculadora = function() { abrirCalcFallback(); };
+      window.abrirCalculadora = function() {
+        try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
+        openModalDirect();
+      };
+      window.abrirCalculadora._patchCalcOpen = true;
+      return;
     }
+    if (window.abrirCalculadora._patchCalcOpen) return;
+    var orig = window.abrirCalculadora;
+    window.abrirCalculadora = function() {
+      try {
+        return orig.apply(this, arguments);
+      } catch (_) {
+        try { if (typeof window.abrir === 'function') window.abrir('modal-calc'); } catch (_) {}
+        try { openModalDirect(); } catch (_) {}
+        return;
+      } finally {
+        try {
+          var ov = document.getElementById('modal-calc');
+          if (ov && String(getComputedStyle(ov).display || '') === 'none') openModalDirect();
+        } catch (_) {}
+      }
+    };
+    window.abrirCalculadora._patchCalcOpen = true;
   }
 
   function bindBtn() {
@@ -4366,7 +4409,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       win.document.write(html);
       win.document.close();
       try { win.focus(); } catch (_) {}
-      setTimeout(function() { try { win.print(); } catch (_) {} }, 500);
+      try {
+        win.addEventListener('load', function() {
+          try { win.focus(); } catch (_) {}
+          try { win.print(); } catch (_) {}
+        });
+      } catch (_) {}
+      setTimeout(function() { try { win.focus(); win.print(); } catch (_) {} }, 700);
     };
     window.imprimirRelatorioComissoes._patchRelatorioVend = true;
   }
