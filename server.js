@@ -151,7 +151,7 @@ if (!supabaseUrl) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_URL'
 if (!supabaseKey) { _supabaseEnvOk = false; _supabaseMissing.push('SUPABASE_SERVICE_ROLE_KEY ou SUPABASE_KEY ou SUPABASE_ANON_KEY'); }
 
 if (!_supabaseEnvOk) {
-  console.error('Erro: variáveis do Supabase ausentes.');
+  console.error('Erro: variÃ¡veis do Supabase ausentes.');
   console.error('Esperado no ambiente (TRAE/deploy):');
   console.error('- SUPABASE_URL');
   console.error('- SUPABASE_SERVICE_ROLE_KEY (recomendado) ou SUPABASE_KEY ou SUPABASE_ANON_KEY');
@@ -163,7 +163,7 @@ if (!_supabaseEnvOk) {
   console.error('SUPABASE_KEY:', !!process.env.SUPABASE_KEY);
   console.error('SUPABASE_ANON_KEY:', !!process.env.SUPABASE_ANON_KEY);
   console.error('index.html fallback:', !!frontSb);
-  console.error('Aviso: iniciando servidor SEM Supabase configurado (rotas que dependem do banco vão falhar).');
+  console.error('Aviso: iniciando servidor SEM Supabase configurado (rotas que dependem do banco vÃ£o falhar).');
 } else {
   const _sbFetch = async (url, options = {}) => {
     const method = String(options?.method || 'GET').toUpperCase();
@@ -202,8 +202,8 @@ if (!_supabaseEnvOk) {
       global: { fetch: _sbFetch },
     }
   );
-  // Conexão Supabase verificada no startup sem query ao banco
-  console.log('✅ Supabase conectado:', supabaseUrl);
+  // ConexÃ£o Supabase verificada no startup sem query ao banco
+  console.log('âœ… Supabase conectado:', supabaseUrl);
 }
 
 (async () => {
@@ -233,12 +233,12 @@ if (!_supabaseEnvOk) {
 
 const OPENAI_API_KEY = String(process.env.OPENAI_API_KEY || '').trim();
 if (OPENAI_API_KEY) {
-  console.log('[IA] OpenAI GPT configurado ✅');
+  console.log('[IA] OpenAI GPT configurado âœ…');
 } else {
-  console.log('[IA] OpenAI não configurada (opcional)');
+  console.log('[IA] OpenAI nÃ£o configurada (opcional)');
 }
 console.log('[IA] Claude:', !!String(process.env.ANTHROPIC_API_KEY || '').trim(), '| OpenAI:', !!OPENAI_API_KEY);
-console.log('[IA DIAGNÓSTICO]', {
+console.log('[IA DIAGNÃ“STICO]', {
   anthropic: process.env.ANTHROPIC_API_KEY ?
     'OK (primeiros 10 chars: ' + String(process.env.ANTHROPIC_API_KEY).slice(0, 10) + ')' :
     'AUSENTE',
@@ -261,10 +261,10 @@ try {
     });
     transporter.verify((err) => {
       if (err) console.error('[EMAIL] SMTP erro:', String(err?.message || err));
-      else console.log('[EMAIL] SMTP Hostgator conectado ✅');
+      else console.log('[EMAIL] SMTP Hostgator conectado âœ…');
     });
   } else {
-    console.log('[EMAIL] SMTP não configurado (EMAIL_USER/EMAIL_PASS ausentes)');
+    console.log('[EMAIL] SMTP nÃ£o configurado (EMAIL_USER/EMAIL_PASS ausentes)');
   }
 } catch (e) {
   console.error('[EMAIL] erro ao configurar SMTP:', String(e?.message || e));
@@ -508,7 +508,7 @@ app.get('/sw.js', (req, res) => {
   }
 });
 
-// Forçar no-cache para o index.html
+// ForÃ§ar no-cache para o index.html
 app.get('/', (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -604,7 +604,7 @@ async function requireAdmin(req, res, next) {
 
     const u = req.usuario || null;
     const uid = String(u?.id || '').trim();
-    if (!uid) return res.status(403).json({ ok: false, error: 'Sem permissão' });
+    if (!uid) return res.status(403).json({ ok: false, error: 'Sem permissÃ£o' });
 
     const { data: dbUser, error: dbErr } = await supabase
       .from('usuarios')
@@ -628,13 +628,13 @@ async function requireAdmin(req, res, next) {
     if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) {
       return next();
     }
-    return res.status(403).json({ ok: false, error: 'Sem permissão — requer perfil admin' });
+    return res.status(403).json({ ok: false, error: 'Sem permissÃ£o â€” requer perfil admin' });
   };
 
   try {
     if (!req.usuario) return authMiddleware(req, res, () => _afterAuth().catch((e) => {
       console.error('[REQUIRE ADMIN] erro:', e?.message);
-      return res.status(403).json({ ok: false, error: 'Sem permissão' });
+      return res.status(403).json({ ok: false, error: 'Sem permissÃ£o' });
     }));
     return _afterAuth();
   } catch (e) {
@@ -646,7 +646,7 @@ async function requireAdmin(req, res, next) {
       const perms = Array.isArray(u?.permissoes) ? u.permissoes : [];
       if (perfil === 'admin' || perfil.includes('admin') || perms.includes('tudo')) return next();
     } catch (_) {}
-    return res.status(403).json({ ok: false, error: 'Sem permissão' });
+    return res.status(403).json({ ok: false, error: 'Sem permissÃ£o' });
   }
 }
 
@@ -764,7 +764,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!supabase) {
       return res.status(503).json({
         ok: false,
-        error: 'Supabase não configurado no servidor (Railway Variables).',
+        error: 'Supabase nÃ£o configurado no servidor (Railway Variables).',
         missing: _supabaseMissing,
         rid: req._rid || null,
       });
@@ -783,7 +783,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!emailNorm || !senhaStr) {
       console.log('[LOGIN ERRO] email ou senha vazios');
-      return res.status(400).json({ ok: false, error: 'Email e senha obrigatórios' });
+      return res.status(400).json({ ok: false, error: 'Email e senha obrigatÃ³rios' });
     }
 
     console.log('[LOGIN BUSCA USUARIO]', emailNorm);
@@ -844,20 +844,20 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (e1) {
       console.error('Erro busca usuario:', e1);
-      return res.status(500).json({ error: 'Erro ao buscar usuário: ' + e1.message });
+      return res.status(500).json({ error: 'Erro ao buscar usuÃ¡rio: ' + e1.message });
     }
     if (!rows || rows.length === 0) {
-      console.error('Usuário não encontrado (ou acesso bloqueado por RLS).', {
+      console.error('UsuÃ¡rio nÃ£o encontrado (ou acesso bloqueado por RLS).', {
         email: emailNorm,
         keySource: supabaseKeySource,
       });
       try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'usuario_nao_encontrado' }); } catch (_) {}
       if (supabaseKeySource === 'SUPABASE_ANON_KEY' || supabaseKeySource === 'index.html:SUPABASE_KEY') {
         return res.status(500).json({
-          error: 'Login bloqueado por permissões (RLS) ao ler public.usuarios. No Railway, use SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY com service_role).',
+          error: 'Login bloqueado por permissÃµes (RLS) ao ler public.usuarios. No Railway, use SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY com service_role).',
         });
       }
-      return res.status(401).json({ error: 'Usuário não encontrado' });
+      return res.status(401).json({ error: 'UsuÃ¡rio nÃ£o encontrado' });
     }
 
     const usuario = rows[0];
@@ -865,7 +865,7 @@ app.post('/api/auth/login', async (req, res) => {
     console.log('[LOGIN] empresa:', usuario?.empresa_id, usuario?.canais_chat);
     if (usuario?.ativo === false) {
       try { console.warn('[LOGIN FALHA]', { email: emailNorm, motivo: 'usuario_inativo' }); } catch (_) {}
-      return res.status(401).json({ ok: false, error: 'Usuário inativo' });
+      return res.status(401).json({ ok: false, error: 'UsuÃ¡rio inativo' });
     }
 
     const hashCandidates = [usuario?.senha_hash, usuario?.senhaHash, usuario?.hash, usuario?.senha]
@@ -1015,7 +1015,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
       .maybeSingle();
     if (error || !usuario) {
       const msg = String(error?.message || error || '');
-      console.warn('[AUTH/ME] não encontrou no banco, usando JWT. err:', msg);
+      console.warn('[AUTH/ME] nÃ£o encontrou no banco, usando JWT. err:', msg);
       return res.json({
         id: req.usuario?.id,
         nome: req.usuario?.nome,
@@ -1141,7 +1141,7 @@ app.post('/api/usuarios/avatar', authMiddleware, async (req, res) => {
           if (upErr) throw upErr;
           const { data: urlData } = supabase.storage.from(b).getPublicUrl(fileName);
           const publicUrl = String(urlData?.publicUrl || '').trim();
-          if (!publicUrl) throw new Error('Falha ao obter URL pública');
+          if (!publicUrl) throw new Error('Falha ao obter URL pÃºblica');
           return { publicUrl, bucket: b };
         };
 
@@ -1168,7 +1168,7 @@ app.post('/api/usuarios/avatar', authMiddleware, async (req, res) => {
               } catch (e3) {
                 return res.status(500).json({
                   ok: false,
-                  error: 'Bucket não encontrado. Crie o bucket "chat-arquivos" no Supabase Storage (Public) ou use "uploads".',
+                  error: 'Bucket nÃ£o encontrado. Crie o bucket "chat-arquivos" no Supabase Storage (Public) ou use "uploads".',
                 });
               }
             }
@@ -1366,7 +1366,7 @@ app.post('/api/usuarios', requireAdmin, async (req, res) => {
     if (!Array.isArray(permissoes)) permissoes = [];
     const canais_chat = Array.isArray(req.body?.canais_chat) ? req.body.canais_chat : undefined;
 
-    if (!nome || !email || !senha) return res.status(400).json({ ok: false, error: 'nome, email e senha são obrigatórios' });
+    if (!nome || !email || !senha) return res.status(400).json({ ok: false, error: 'nome, email e senha sÃ£o obrigatÃ³rios' });
     const senha_hash = await bcrypt.hash(senha, 10);
 
     const row = {
@@ -1391,7 +1391,7 @@ app.post('/api/usuarios', requireAdmin, async (req, res) => {
 app.put('/api/usuarios/:id', requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     let antes = null;
     try {
@@ -1428,7 +1428,7 @@ app.put('/api/usuarios/:id/senha', requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const senha = String(req.body?.senha || '').trim();
-    if (!id || !senha) return res.status(400).json({ ok: false, error: 'id e senha obrigatórios' });
+    if (!id || !senha) return res.status(400).json({ ok: false, error: 'id e senha obrigatÃ³rios' });
     const senha_hash = await bcrypt.hash(senha, 10);
     let antes = null;
     try {
@@ -1560,10 +1560,10 @@ app.post('/api/usuarios/corrigir_login', requireAdmin, async (req, res) => {
 app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     if (String(req.usuario?.id || '') === id) {
-      return res.status(400).json({ error: 'Você não pode deletar seu próprio usuário' });
+      return res.status(400).json({ error: 'VocÃª nÃ£o pode deletar seu prÃ³prio usuÃ¡rio' });
     }
 
     const ADMINS_PROTEGIDOS = ['sidao', 'mano', 'italy'];
@@ -1574,7 +1574,7 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
       .maybeSingle();
     if (uDelErr) throw uDelErr;
     if (uDel && ADMINS_PROTEGIDOS.includes(String(uDel.email || '').toLowerCase())) {
-      return res.status(403).json({ ok: false, error: 'Este usuário não pode ser excluído' });
+      return res.status(403).json({ ok: false, error: 'Este usuÃ¡rio nÃ£o pode ser excluÃ­do' });
     }
 
     const { data: admins, error: aerr } = await supabase
@@ -1584,7 +1584,7 @@ app.delete('/api/usuarios/:id', requireAdmin, async (req, res) => {
       .eq('ativo', true);
     if (aerr) throw aerr;
     if (Array.isArray(admins) && admins.length <= 1 && String(admins[0]?.id || '') === id) {
-      return res.status(400).json({ error: 'Não é possível remover o único administrador do sistema' });
+      return res.status(400).json({ error: 'NÃ£o Ã© possÃ­vel remover o Ãºnico administrador do sistema' });
     }
 
     const { error } = await supabase.from('usuarios').delete().eq('id', id);
@@ -1621,7 +1621,7 @@ app.post('/api/admin/limpar_uploads', requireAdmin, async (req, res) => {
 app.get('/api/configuracoes/:chave', authMiddleware, async (req, res) => {
   try {
     const chave = String(req.params.chave || '').trim();
-    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatória' });
+    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatÃ³ria' });
     const { data, error } = await supabase.from('configuracoes').select('chave,valor,updated_at,atualizado_por').eq('chave', chave).maybeSingle();
     if (error) {
       const msg = String(error.message || error);
@@ -1636,7 +1636,7 @@ app.get('/api/configuracoes/:chave', authMiddleware, async (req, res) => {
 app.put('/api/configuracoes/:chave', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const chave = String(req.params.chave || '').trim();
-    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatória' });
+    if (!chave) return res.status(400).json({ ok: false, error: 'chave obrigatÃ³ria' });
     const body = req.body || {};
     const valor = (body && Object.prototype.hasOwnProperty.call(body, 'valor')) ? body.valor : body;
     const payload = {
@@ -1787,7 +1787,7 @@ const chatUpload = multer({
       '.pdf', '.xlsx', '.docx', '.txt'
     ]);
     const ext = path.extname(file.originalname || '').toLowerCase();
-    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo nÃ£o permitido'));
     return cb(null, true);
   },
 });
@@ -1801,7 +1801,7 @@ const ofUpload = multer({
   fileFilter: function (req, file, cb) {
     const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
     const ext = path.extname(file.originalname || '').toLowerCase();
-    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo nÃ£o permitido'));
     return cb(null, true);
   },
 });
@@ -1812,7 +1812,7 @@ const estoqueFotosUpload = multer({
   fileFilter: function (req, file, cb) {
     const okExt = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
     const ext = path.extname(file.originalname || '').toLowerCase();
-    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo não permitido'));
+    if (!okExt.has(ext)) return cb(new Error('Tipo de arquivo nÃ£o permitido'));
     return cb(null, true);
   },
 });
@@ -1820,12 +1820,12 @@ const estoqueFotosUpload = multer({
 app.post('/api/estoque_fotos/upload', authMiddleware, estoqueFotosUpload.single('file'), async (req, res) => {
   try {
     const f = req.file || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatÃ³rio' });
 
     const tipo = String(req.body?.tipo || req.query?.tipo || '').trim().toLowerCase();
     const itemId = String(req.body?.item_id || req.body?.id || req.query?.item_id || req.query?.id || '').trim();
-    if (!['chapa', 'faca', 'cliche'].includes(tipo)) return res.status(400).json({ ok: false, error: 'tipo inválido' });
-    if (!itemId) return res.status(400).json({ ok: false, error: 'item_id obrigatório' });
+    if (!['chapa', 'faca', 'cliche'].includes(tipo)) return res.status(400).json({ ok: false, error: 'tipo invÃ¡lido' });
+    if (!itemId) return res.status(400).json({ ok: false, error: 'item_id obrigatÃ³rio' });
 
     const ext = path.extname(f.originalname || '').toLowerCase() || '.png';
     const safeTipo = tipo === 'chapa' ? 'chapas' : (tipo === 'faca' ? 'facas' : 'cliches');
@@ -1838,7 +1838,7 @@ app.post('/api/estoque_fotos/upload', authMiddleware, estoqueFotosUpload.single(
 
     const { data: urlData } = supabase.storage.from('estoque-fotos').getPublicUrl(filename);
     const url = String(urlData?.publicUrl || '').trim();
-    if (!url) return res.status(500).json({ ok: false, error: 'Falha ao obter URL pública' });
+    if (!url) return res.status(500).json({ ok: false, error: 'Falha ao obter URL pÃºblica' });
 
     const tryUpdateFotoUrl = async (table, id, extra) => {
       const payload = { ...(extra || {}), foto_url: url };
@@ -1908,7 +1908,7 @@ function canAccessChatCanal(req, canalNome) {
 // Chat removido
 
 async function selectAll(table, orderBy) {
-  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
+  if (!supabase) throw new Error('Supabase nÃ£o configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   let q = supabase.from(table).select('*');
   if (orderBy) q = q.order(orderBy, { ascending: false });
   const { data, error } = await q;
@@ -1920,7 +1920,7 @@ app.get('/api/historico_acoes', authMiddleware, async (req, res) => {
   return ok(res, []);
 });
 async function insertOne(table, row) {
-  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
+  if (!supabase) throw new Error('Supabase nÃ£o configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   if (table !== 'ofs') {
     const { data, error } = await supabase.from(table).insert([row]).select('*').limit(1);
     if (error) throw error;
@@ -1943,11 +1943,11 @@ async function insertOne(table, row) {
     }
     throw error;
   }
-  throw new Error('Falha ao inserir OF após tentativas');
+  throw new Error('Falha ao inserir OF apÃ³s tentativas');
 }
 
 async function updateOne(table, id, row) {
-  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
+  if (!supabase) throw new Error('Supabase nÃ£o configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   if (table !== 'ofs') {
     const { data, error } = await supabase.from(table).update(row).eq('id', id).select('*').limit(1);
     if (error) throw error;
@@ -1970,11 +1970,11 @@ async function updateOne(table, id, row) {
     }
     throw error;
   }
-  throw new Error('Falha ao atualizar OF após tentativas');
+  throw new Error('Falha ao atualizar OF apÃ³s tentativas');
 }
 
 async function deleteOne(table, id) {
-  if (!supabase) throw new Error('Supabase não configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
+  if (!supabase) throw new Error('Supabase nÃ£o configurado no ambiente. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY).');
   const { error } = await supabase.from(table).delete().eq('id', id);
   if (error) throw error;
 }
@@ -2282,7 +2282,7 @@ async function ofsInsertWithRetry(row) {
     r.ignoredColumns = ignoredColumns;
     return r;
   }
-  return { data: null, error: { message: 'Falha ao inserir OF após tentativas' }, ignoredColumns };
+  return { data: null, error: { message: 'Falha ao inserir OF apÃ³s tentativas' }, ignoredColumns };
 }
 
 async function ofsUpdateWithRetry(id, row) {
@@ -2370,7 +2370,7 @@ async function ofsUpdateWithRetry(id, row) {
     r.ignoredColumns = ignoredColumns;
     return r;
   }
-  return { data: null, error: { message: 'Falha ao atualizar OF após tentativas' }, ignoredColumns };
+  return { data: null, error: { message: 'Falha ao atualizar OF apÃ³s tentativas' }, ignoredColumns };
 }
 
 function clientesIn(p) {
@@ -2797,7 +2797,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!supabase) {
       return res.status(503).json({
         ok: false,
-        error: 'Supabase não configurado no servidor (Railway Variables).',
+        error: 'Supabase nÃ£o configurado no servidor (Railway Variables).',
         missing: _supabaseMissing,
         rid: req._rid || null,
       });
@@ -2888,7 +2888,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let filtrarPassou = false;
     try {
       const pv = String(passouRaw || '').trim().toLowerCase();
-      filtrarPassou = !!pv && pv !== '0' && pv !== 'false' && pv !== 'nao' && pv !== 'não';
+      filtrarPassou = !!pv && pv !== '0' && pv !== 'false' && pv !== 'nao' && pv !== 'nÃ£o';
     } catch (_) { filtrarPassou = false; }
     const numeroRaw = String(q_numero || q_of_num || q_of || '').trim();
     const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
@@ -3313,7 +3313,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
   }
 });
 
-// Rota dedicada para próximo número de OF
+// Rota dedicada para prÃ³ximo nÃºmero de OF
 app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -3403,7 +3403,7 @@ async function _maybeRegistrarComissaoOF(req, body, ofRow) {
     const numero = body?.of ?? body?.numero ?? ofRow?.of ?? ofRow?.numero ?? '';
     await supabase.from('historico_acoes').insert([{
       tipo_acao: 'comissao_of',
-      descricao: `Comissão OF #${numero || ''}: ${vendNome || ''} — R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
+      descricao: `ComissÃ£o OF #${numero || ''}: ${vendNome || ''} â€” R$ ${valorComissao.toFixed(2)} (${perc}% de R$ ${valorOf.toFixed(2)})`,
       usuario: req.usuario?.nome || 'sistema',
       data_hora: new Date().toISOString()
     }]);
@@ -3429,7 +3429,7 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
     const usuario = req?.usuario?.nome || 'sistema';
 
     if (table === 'chapas_estoque_v2') {
-      const obs = `Saída automática - OF #${ofNumero || ''} · Cliente: ${cliRef || ''}`.trim();
+      const obs = `SaÃ­da automÃ¡tica - OF #${ofNumero || ''} Â· Cliente: ${cliRef || ''}`.trim();
       const origemId = ofNumero ? String(ofNumero) : (ofRow?.id ? String(ofRow.id) : null);
       const movRes = await _chapasMovimentarV2Rpc({
         chapa_id: chapaId,
@@ -3450,7 +3450,7 @@ async function _maybeBaixaAutomaticaChapasOF(req, body, ofRow) {
         return;
       }
       cacheClearPrefix('chapas_estoque:');
-      const desc = `Estoque chapas: SAIDA -${qtdChapas} · ${canonChapa.nome || ''} · ${canonChapa.fornecedor || ''} · ${canonChapa.nomenclatura || ''} · ${canonChapa.tamanho || ''}${ofNumero ? (' · OF #' + String(ofNumero)) : ''}`.trim();
+      const desc = `Estoque chapas: SAIDA -${qtdChapas} Â· ${canonChapa.nome || ''} Â· ${canonChapa.fornecedor || ''} Â· ${canonChapa.nomenclatura || ''} Â· ${canonChapa.tamanho || ''}${ofNumero ? (' Â· OF #' + String(ofNumero)) : ''}`.trim();
       await _chapasLogAcao(req, 'estoque_saida', desc);
       return;
     }
@@ -3586,7 +3586,7 @@ async function _autoPickSugestaoMaquinaNome(body){
 
     const maquinasCompativeis = compat.length > 0 ? compat : (maquinasAtivas || []).map((m)=>({ id:m.id, nome:String(m.nome||'').trim() })).filter(m=>m.nome);
 
-    const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+    const statusNotIn = '("ConcluÃ­do","Concluido","Cancelada","Cancelado","Pedido Pronto")';
     const { data: ofsRaw } = await supabase
       .from('ofs')
       .select('id,status,fluxo_maquinas,maq,maquina_atual_index,deleted_at')
@@ -3734,7 +3734,7 @@ async function _autoSugerirMaquinaParaOF(body, created){
     const maquinasParaFila = compat.length > 0 ? compat : maquinasAtivas;
     console.log('[SUGESTAO MAQ] compat:', compat.length, 'fallback:', compat.length === 0);
 
-    const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+    const statusNotIn = '("ConcluÃ­do","Concluido","Cancelada","Cancelado","Pedido Pronto")';
     const filas = await Promise.all(maquinasParaFila.map(async (m) => {
       try {
         const nomeMaq = String(m.nome || m.col || '').trim();
@@ -3831,9 +3831,9 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
       if (!(qtd > 0)) missing.push('quantidade');
       if (!prod) missing.push('produto/modelo');
       if (!ent) missing.push('data de entrega');
-      if (!(vunit > 0)) missing.push('valor unitário');
+      if (!(vunit > 0)) missing.push('valor unitÃ¡rio');
       if (missing.length) {
-        return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
+        return res.status(400).json({ ok: false, error: 'Campos obrigatÃ³rios: ' + missing.join(', '), missing });
       }
     }
     console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
@@ -3892,7 +3892,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
     let data = null;
     for (const key of joinKeys) {
@@ -3911,7 +3911,7 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
       data = r.data;
     }
-    if (!data) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!data) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
 
     const clienteJoin = data.cliente && typeof data.cliente === 'object' ? data.cliente : null;
     const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
@@ -3955,7 +3955,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
     console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
@@ -3965,7 +3965,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       .select('*')
       .eq('id', id)
       .maybeSingle();
-    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
 
     {
       const keys = Object.keys(req.body || {});
@@ -4001,9 +4001,9 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
         if (!(qtd > 0)) missing.push('quantidade');
         if (!prod) missing.push('produto/modelo');
         if (!ent) missing.push('data de entrega');
-        if (!(vunit > 0)) missing.push('valor unitário');
+        if (!(vunit > 0)) missing.push('valor unitÃ¡rio');
         if (missing.length) {
-          return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
+          return res.status(400).json({ ok: false, error: 'Campos obrigatÃ³rios: ' + missing.join(', '), missing });
         }
       }
     }
@@ -4140,7 +4140,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       const qtdNova = Number(qtdNovaRaw ?? NaN);
       const qtdAntiga = Number(ofAtual?.qtd ?? NaN);
       const statusAtual = String(ofAtual?.status || '').trim().toLowerCase();
-      const foiConcluida = statusAtual === 'pedido pronto' || statusAtual === 'concluida' || statusAtual === 'concluído';
+      const foiConcluida = statusAtual === 'pedido pronto' || statusAtual === 'concluida' || statusAtual === 'concluÃ­do';
 
       if (foiConcluida && Number.isFinite(qtdNova) && qtdNova > 0 && Number.isFinite(qtdAntiga) && qtdAntiga > 0 && qtdNova < qtdAntiga) {
         const qtdPerdida = Math.trunc(qtdAntiga - qtdNova);
@@ -4199,7 +4199,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
           mes_referencia: mes,
           emp_id: String(updated?.emp_id ?? updated?.empId ?? body?.emp_id ?? body?.empId ?? ''),
           usuario: req.usuario?.nome || 'sistema',
-          obs: 'Ajuste pós-conclusão de OF',
+          obs: 'Ajuste pÃ³s-conclusÃ£o de OF',
         };
 
         try {
@@ -4215,7 +4215,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
         try {
           await supabase.from('historico_acoes').insert([{
             tipo_acao: 'caixas_perdidas_ajuste',
-            descricao: `OF #${String(updated?.of ?? updated?.numero ?? '')}: ajuste de qtd ${qtdAntiga}→${qtdNova}, ${qtdPerdida} cx perdidas`,
+            descricao: `OF #${String(updated?.of ?? updated?.numero ?? '')}: ajuste de qtd ${qtdAntiga}â†’${qtdNova}, ${qtdPerdida} cx perdidas`,
             usuario: req.usuario?.nome || 'sistema',
             data_hora: new Date().toISOString(),
           }]);
@@ -4272,7 +4272,7 @@ app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
       if (vendId && val > 0) {
         await supabase.from('historico_acoes').insert([{
           tipo_acao: 'comissao_cancelada',
-          descricao: `Comissão cancelada - OF #${numero || ''} cancelada/excluída`,
+          descricao: `ComissÃ£o cancelada - OF #${numero || ''} cancelada/excluÃ­da`,
           usuario: req.usuario?.nome || 'sistema',
           data_hora: new Date().toISOString()
         }]);
@@ -4299,7 +4299,7 @@ app.patch('/api/ofs/:id/restore', authMiddleware, async (req, res) => {
 app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
   try {
     const f = req.file || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatÃ³rio' });
     const ext = path.extname(f.originalname || '').toLowerCase();
     const filename = `of/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const { error } = await supabase.storage
@@ -4317,7 +4317,7 @@ app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', 
       || (req && req.files && req.files.file && req.files.file[0])
       || (req && req.files && req.files.arquivo && req.files.arquivo[0])
       || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatÃ³rio' });
     const ext = path.extname(f.originalname || '').toLowerCase();
     const filename = `chat/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const tryUpload = async (bucket) => {
@@ -4405,7 +4405,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
     }
 
     const userId = req.usuario?.id || req.usuario?.sub || req.usuario?.user_id || null;
-    const nome = req.usuario?.nome || req.usuario?.name || req.usuario?.email || 'Usuário';
+    const nome = req.usuario?.nome || req.usuario?.name || req.usuario?.email || 'UsuÃ¡rio';
     const avatar = req.usuario?.avatar_url || req.usuario?.avatar || req.usuario?.foto || null;
 
     if (!userId) {
@@ -4435,7 +4435,7 @@ app.post('/api/chat/mensagens', authMiddleware, async (req, res) => {
         return res.status(500).json({
           ok: false,
           error: 'Tabela chat_mensagens nao existe. Execute o SQL de criacao no Supabase.',
-          sql: "CREATE TABLE IF NOT EXISTS chat_mensagens (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, de_usuario uuid, de_nome text NOT NULL DEFAULT 'Usuário', de_avatar text, para_usuario uuid, conteudo text, tipo text DEFAULT 'texto', url_arquivo text, lida boolean DEFAULT false, created_at timestamptz DEFAULT NOW());"
+          sql: "CREATE TABLE IF NOT EXISTS chat_mensagens (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, de_usuario uuid, de_nome text NOT NULL DEFAULT 'UsuÃ¡rio', de_avatar text, para_usuario uuid, conteudo text, tipo text DEFAULT 'texto', url_arquivo text, lida boolean DEFAULT false, created_at timestamptz DEFAULT NOW());"
         });
       }
       throw error;
@@ -4491,7 +4491,7 @@ app.get('/api/avisos', authMiddleware, async (req, res) => {
 app.post('/api/avisos', authMiddleware, async (req, res) => {
   try {
     const { mensagem, para_usuario } = req.body || {};
-    if (!mensagem) return res.status(400).json({ ok: false, error: 'mensagem obrigatória' });
+    if (!mensagem) return res.status(400).json({ ok: false, error: 'mensagem obrigatÃ³ria' });
     const userId = String(req.usuario?.id || req.usuario?.sub || '').trim();
     const nome = String(req.usuario?.nome || req.usuario?.email || 'Sistema').trim() || 'Sistema';
     const { data, error } = await supabase.from('avisos_usuarios').insert({
@@ -4523,7 +4523,7 @@ app.patch('/api/avisos/:id/lido', authMiddleware, async (req, res) => {
 app.post('/api/of/upload', authMiddleware, ofUpload.single('file'), async (req, res) => {
   try {
     const f = req.file || null;
-    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatório' });
+    if (!f) return res.status(400).json({ ok: false, error: 'Arquivo obrigatÃ³rio' });
     const ext = path.extname(f.originalname || '').toLowerCase();
     const filename = `of/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const { error } = await supabase.storage
@@ -4579,7 +4579,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
         }
         throw r.error;
       }
-      throw new Error('Falha ao buscar OFs após tentativas');
+      throw new Error('Falha ao buscar OFs apÃ³s tentativas');
     };
 
     const { ini: iniMes, fim: fimMes } = mes ? monthBounds(mes) : { ini: '', fim: '' };
@@ -4625,7 +4625,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
       return true;
     });
 
-    console.log('[RELATORIO VENDEDOR] OFs após filtro:', ofs.length);
+    console.log('[RELATORIO VENDEDOR] OFs apÃ³s filtro:', ofs.length);
     console.log('[COMISSAO DEBUG]', {
       totalOfs: ofs?.length,
       semVendedor: ofs?.filter((o) => !o.vendedor_id && !o.vendId && !o.vend_id).length,
@@ -4746,7 +4746,7 @@ app.get('/api/relatorio/vendedor', authMiddleware, async (req, res) => {
 app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
     const diasMinimo = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
 
     const { data: ofs, error: ofsErr } = await supabase
@@ -4805,14 +4805,14 @@ app.get('/api/relatorios/clientes-inativos', authMiddleware, async (req, res) =>
         cliente_id: c.cliente_id,
         ultimo_pedido: c.ultimo_pedido,
         dias_sem_pedido: c.dias_sem_pedido,
-        nome: dados.nome || '—',
-        telefone: dados.telefone || dados.tel || '—',
-        email: dados.email || '—',
-        cidade: dados.cidade || '—',
-        uf: dados.uf || '—',
-        cnpj: dados.cnpj || dados.documento || '—',
-        vendedor: vend?.nome || '—',
-        vendedor_email: vend?.email || '—',
+        nome: dados.nome || 'â€”',
+        telefone: dados.telefone || dados.tel || 'â€”',
+        email: dados.email || 'â€”',
+        cidade: dados.cidade || 'â€”',
+        uf: dados.uf || 'â€”',
+        cnpj: dados.cnpj || dados.documento || 'â€”',
+        vendedor: vend?.nome || 'â€”',
+        vendedor_email: vend?.email || 'â€”',
         ativo: dados.ativo,
       };
     });
@@ -4848,7 +4848,7 @@ app.get('/api/relatorio/resultado-empresas', authMiddleware, async (req, res) =>
         'data_conclusao',
         'deleted_at',
       ].join(','))
-      .eq('status', 'Concluído')
+      .eq('status', 'ConcluÃ­do')
       .is('deleted_at', null);
 
     if (dataInicio) q = q.gte('data_conclusao', dataInicio);
@@ -4982,7 +4982,7 @@ app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, 
     const { data: ofs, error } = await supabase
       .from('ofs')
       .select('id,qtd,qtd_pedida,qtd_produzida,status')
-      .in('status', ['Concluído', 'Concluido', 'Pedido Pronto'])
+      .in('status', ['ConcluÃ­do', 'Concluido', 'Pedido Pronto'])
       .or('qtd.eq.0,qtd.is.null');
     if (error) return res.status(500).json({ ok: false, error: error.message || String(error) });
 
@@ -5179,7 +5179,7 @@ app.get('/api/tempos_reais', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (retornando [])');
+        console.warn('[TEMPOS_REAIS] tabela nÃ£o existe (retornando [])');
       }
       return ok(res, []);
     }
@@ -5194,7 +5194,7 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const maquina_id = String(b.maquina_id || '').trim();
-    if (!maquina_id) return res.status(400).json({ ok: false, error: 'maquina_id obrigatório' });
+    if (!maquina_id) return res.status(400).json({ ok: false, error: 'maquina_id obrigatÃ³rio' });
 
     let maquina_nome = String(b.maquina_nome || '').trim();
     if (!maquina_nome) {
@@ -5227,7 +5227,7 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
+        console.warn('[TEMPOS_REAIS] tabela nÃ£o existe (skipped)');
       }
       return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
@@ -5238,7 +5238,7 @@ app.post('/api/tempos_reais', authMiddleware, async (req, res) => {
 app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const payload = { ...(req.body || {}) };
     delete payload.id;
     delete payload.tempo_total_min;
@@ -5255,7 +5255,7 @@ app.put('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
+        console.warn('[TEMPOS_REAIS] tabela nÃ£o existe (skipped)');
       }
       return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
@@ -5275,7 +5275,7 @@ app.delete('/api/tempos_reais/:id', authMiddleware, async (req, res) => {
     if (isMissing) {
       if (!globalThis.__temposReaisMissingLogged) {
         globalThis.__temposReaisMissingLogged = true;
-        console.warn('[TEMPOS_REAIS] tabela não existe (skipped)');
+        console.warn('[TEMPOS_REAIS] tabela nÃ£o existe (skipped)');
       }
       return ok(res, { skipped: true, reason: 'tempos_reais_unavailable' });
     }
@@ -5445,7 +5445,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         if (vendId && val > 0) {
           await supabase.from('historico_acoes').insert([{
             tipo_acao: 'comissao_cancelada',
-            descricao: `Comissão cancelada - OF #${numero || ''} cancelada/excluída`,
+            descricao: `ComissÃ£o cancelada - OF #${numero || ''} cancelada/excluÃ­da`,
             usuario: req.usuario?.nome || 'sistema',
             data_hora: new Date().toISOString()
           }]);
@@ -5460,7 +5460,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.patch('/api/ofs/:id/urgente', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const urgente = !!(req.body && Object.prototype.hasOwnProperty.call(req.body, 'urgente') ? req.body.urgente : false);
     const payload = {
       urgente,
@@ -5493,11 +5493,11 @@ app.get('/api/admin/ofs_sem_valor', requireAdmin, async (req, res) => {
 app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', id).maybeSingle();
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
-    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
 
     const qtdOriginal = Number(of?.qtd || of?.quantidade || 0);
     const valorOriginal = Number(of?.valor_total || of?.valor_venda || 0);
@@ -5532,7 +5532,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const nowIso = new Date().toISOString();
     const payload = {
       maquina_atual_index: nextIdx,
-      status: concluida ? 'Concluído' : 'Em Produção',
+      status: concluida ? 'ConcluÃ­do' : 'Em ProduÃ§Ã£o',
       data_conclusao: concluida ? nowIso : undefined,
     };
 
@@ -5581,8 +5581,8 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
     const usuario = req.body?.usuario ? String(req.body.usuario) : 'sistema';
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const msg = concluida
-      ? `OF #${numero} baixada em ${atual || '—'} — CONCLUÍDO ✓`
-      : `OF #${numero} baixada em ${atual || '—'} → próxima: ${proxima || '—'}`;
+      ? `OF #${numero} baixada em ${atual || 'â€”'} â€” CONCLUÃDO âœ“`
+      : `OF #${numero} baixada em ${atual || 'â€”'} â†’ prÃ³xima: ${proxima || 'â€”'}`;
 
     if (concluida) {
       try {
@@ -5596,7 +5596,7 @@ app.patch('/api/ofs/:id/baixa', authMiddleware, async (req, res) => {
           quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
           valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
           maquina: atual || '',
-          status: 'Concluído',
+          status: 'ConcluÃ­do',
         }]);
       } catch (e) {}
     }
@@ -5655,18 +5655,18 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const sid = String(id || '').trim();
-    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     const body = req.body || {};
     console.log('[CONCLUIR OF] body:', JSON.stringify(body));
     const qtdProduzidaRaw = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
-    if (!Number.isFinite(qtdProduzidaRaw) || qtdProduzidaRaw < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
-    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida inválida' });
+    if (!Number.isFinite(qtdProduzidaRaw) || qtdProduzidaRaw < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida invÃ¡lida' });
+    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida invÃ¡lida' });
 
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
-    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
     try {
       console.log('[CONCLUIR OF] before:', {
         id: sid,
@@ -5720,7 +5720,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     operadoresConclusao = [...new Set(operadoresConclusao)];
 
     const updateData = {
-      status: 'Concluído',
+      status: 'ConcluÃ­do',
       setor_finalizacao: body.setor_finalizacao || null,
       caixas_boas: body.caixas_boas != null ? parseInt(body.caixas_boas, 10) : null,
       caixas_perdidas: body.caixas_perdidas != null ? parseInt(body.caixas_perdidas, 10) : null,
@@ -5829,7 +5829,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
       if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
         const picked = fluxoPickMaquina();
-        const maquinaNome = String(mprodRaw || body.maquina || of.maquina || picked.nome || '').trim() || 'Sem máquina';
+        const maquinaNome = String(mprodRaw || body.maquina || of.maquina || picked.nome || '').trim() || 'Sem mÃ¡quina';
         const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
         let toInsert = {
           of_id: sid,
@@ -5974,7 +5974,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     const numero = of.of != null ? of.of : (of.numero != null ? of.numero : '');
     const atual = (Array.isArray(fluxo) && fluxo.length) ? String(fluxo[fluxo.length - 1]) : '';
     const maquinaProducaoOut = mprodRaw || atual || '';
-    const msg = `OF #${numero} baixada em ${maquinaProducaoOut || '—'} — CONCLUÍDO ✓`;
+    const msg = `OF #${numero} baixada em ${maquinaProducaoOut || 'â€”'} â€” CONCLUÃDO âœ“`;
 
     try {
       const ofRel = (upd && upd.data) ? upd.data : of;
@@ -5987,7 +5987,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         quantidade: ofRel.qtd ?? ofRel.quantidade ?? 0,
         valor: ofRel.valor_total ?? ofRel.valor_venda ?? 0,
         maquina: maquinaProducaoOut || '',
-        status: 'Concluído',
+        status: 'ConcluÃ­do',
       }]);
     } catch (e) {}
 
@@ -6031,10 +6031,10 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
       data: { ...dataOut, maquina_producao: maquinaProducaoOut || null },
       concluida: true,
       proxima: null,
-      status: 'Concluído',
+      status: 'ConcluÃ­do',
       excedente,
       novo_valor_total: novoValor,
-      mensagem: `OF concluída.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
+      mensagem: `OF concluÃ­da.${excedente > 0 ? (' ' + excedente + ' caixas excedentes.') : ''}`,
     });
   } catch (e) {
     const msg = String(e?.message || e);
@@ -6045,7 +6045,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const body = req.body || {};
     const maquinaNome = String(body.maquina_nome || body.maquinaNome || body.maquina || '').trim();
     console.log('[PASSOU] id recebido:', id);
@@ -6186,7 +6186,7 @@ app.post('/api/of-passagens', authMiddleware, async (req, res) => {
       if (missing) {
         if (!globalThis.__OF_PASSAGENS_SQL_LOGGED) {
           globalThis.__OF_PASSAGENS_SQL_LOGGED = true;
-          console.log('[PASSAGENS] Para ativar histórico, execute no Supabase SQL Editor:\n' +
+          console.log('[PASSAGENS] Para ativar histÃ³rico, execute no Supabase SQL Editor:\n' +
             'CREATE TABLE IF NOT EXISTS of_passagens (\n' +
             '  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,\n' +
             '  of_id uuid,\n' +
@@ -6443,19 +6443,19 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const sid = String(id || '').trim();
-    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     const body = req.body || {};
     const maquinaConcluida = String(body.maquina_concluida || body.maquina || body.maquinaConcluida || '').trim();
     const qtdProduzida = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
-    if (!maquinaConcluida) return res.status(400).json({ ok: false, error: 'maquina_concluida obrigatória' });
-    if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
-    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida inválida' });
+    if (!maquinaConcluida) return res.status(400).json({ ok: false, error: 'maquina_concluida obrigatÃ³ria' });
+    if (!Number.isFinite(qtdProduzida) || qtdProduzida < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida invÃ¡lida' });
+    if (!Number.isFinite(qtdPerdida) || qtdPerdida < 0) return res.status(400).json({ ok: false, error: 'qtd_perdida invÃ¡lida' });
 
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', sid).maybeSingle();
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
-    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (!of) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
 
     let fluxoRaw = of.fluxo_maquinas;
     if (typeof fluxoRaw === 'string') {
@@ -6508,7 +6508,7 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
       }
       return m;
     });
-    if (!found) return res.status(400).json({ ok: false, error: 'Máquina não encontrada no fluxo' });
+    if (!found) return res.status(400).json({ ok: false, error: 'MÃ¡quina nÃ£o encontrada no fluxo' });
 
     const todasConcluidas = fluxo.length > 0 && fluxo.every((m) => m && m.concluido === true);
     const updateData = {
@@ -6517,7 +6517,7 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
     };
 
     if (todasConcluidas) {
-      updateData.status = 'Concluído';
+      updateData.status = 'ConcluÃ­do';
       updateData.data_conclusao = nowIso;
 
       if (qtdProduzida > 0) {
@@ -6538,7 +6538,7 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
         await supabase.from('caixas_perdidas').insert([{
           of_id: sid,
           quantidade: Number(qtdPerdida),
-          motivo: 'Perda na produção',
+          motivo: 'Perda na produÃ§Ã£o',
           data: nowIso,
           usuario_id: req.usuario?.id || null,
           usuario_nome: req.usuario?.nome || req.usuario?.email || null,
@@ -6553,7 +6553,7 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
       await supabase.from('historico_acoes').insert([{
         data_hora: nowIso,
         tipo_acao: 'passagem_maquina',
-        descricao: `Etapa concluída: ${maquinaConcluida} — OF #${of?.of||of?.numero||''} — ${operador}${tempoRealMin != null ? (' — ' + tempoRealMin + ' min') : ''} — ${qtdProduzida} produzida — ${qtdPerdida} perda`,
+        descricao: `Etapa concluÃ­da: ${maquinaConcluida} â€” OF #${of?.of||of?.numero||''} â€” ${operador}${tempoRealMin != null ? (' â€” ' + tempoRealMin + ' min') : ''} â€” ${qtdProduzida} produzida â€” ${qtdPerdida} perda`,
         usuario: operador,
       }]);
     } catch (_) {}
@@ -6564,8 +6564,8 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
       concluida: todasConcluidas,
       maquinas_restantes: maqsRestantes,
       mensagem: todasConcluidas
-        ? '✅ OF concluída! Todas as etapas finalizadas.'
-        : `✅ ${maquinaConcluida} concluída! Faltam: ${maqsRestantes.join(', ')}`,
+        ? 'âœ… OF concluÃ­da! Todas as etapas finalizadas.'
+        : `âœ… ${maquinaConcluida} concluÃ­da! Faltam: ${maqsRestantes.join(', ')}`,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e?.message });
@@ -6575,7 +6575,7 @@ app.post('/api/ofs/:id/avancar-etapa', authMiddleware, async (req, res) => {
 app.get('/api/maquinas/:id/tempo_medio', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const cacheKey = 'maq_tempo_medio_' + id;
     try {
       const cached = cacheGet(cacheKey);
@@ -6584,9 +6584,9 @@ app.get('/api/maquinas/:id/tempo_medio', authMiddleware, async (req, res) => {
 
     const { data: maq, error: em } = await supabase.from('maquinas').select('id,nome,col').eq('id', id).maybeSingle();
     if (em) throw em;
-    if (!maq) return res.status(404).json({ ok: false, error: 'Máquina não encontrada' });
+    if (!maq) return res.status(404).json({ ok: false, error: 'MÃ¡quina nÃ£o encontrada' });
     const nome = String(maq?.col || maq?.nome || '').trim();
-    if (!nome) return res.status(404).json({ ok: false, error: 'Máquina sem nome' });
+    if (!nome) return res.status(404).json({ ok: false, error: 'MÃ¡quina sem nome' });
 
     const norm = (s) => {
       try { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
@@ -6641,7 +6641,7 @@ app.get('/api/roteiro_entrega', authMiddleware, async (req, res) => {
 app.post('/api/roteiro_entrega', authMiddleware, async (req, res) => {
   try {
     const { cidade, dia_semana, observacao } = req.body || {};
-    if (!cidade || !dia_semana) return bad(res, 'Cidade e dia obrigatórios');
+    if (!cidade || !dia_semana) return bad(res, 'Cidade e dia obrigatÃ³rios');
     const payload = {
       cidade: String(cidade).trim(),
       dia_semana: parseInt(dia_semana),
@@ -6687,7 +6687,7 @@ app.get('/api/roteiro/semana', authMiddleware, async (req, res) => {
       .from('ofs')
       .select('*')
       .is('deleted_at', null)
-      .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+      .not('status', 'in', '("ConcluÃ­do","Cancelada","Cancelado")')
       .order('data_entrega', { ascending: true });
 
     let ofs = null;
@@ -6733,13 +6733,13 @@ app.get('/api/roteiro/semana', authMiddleware, async (req, res) => {
         const bairro = String(cli?.bairro || '').trim();
         const cep = String(cli?.cep || '').trim();
         const uf = String(cli?.uf || cli?.estado || '').trim();
-        const endParts = [rua, num ? `nº ${num}` : '', bairro, cep, uf].filter(Boolean);
+        const endParts = [rua, num ? `nÂº ${num}` : '', bairro, cep, uf].filter(Boolean);
         return {
           ...o,
           cli_id: cliId || o.cli_id || o.cliente_id || null,
           cliente_nome: String(cli?.nome || '').trim(),
           cliente_tel: String(cli?.tel || cli?.telefone || '').trim(),
-          cliente_endereco: endParts.join(' · '),
+          cliente_endereco: endParts.join(' Â· '),
           cidade_entrega: cidade,
           dia_semana: rota?.dia_semana ?? null,
           sem_roteiro: !rota,
@@ -6752,9 +6752,9 @@ app.get('/api/roteiro/semana', authMiddleware, async (req, res) => {
   }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CLIENTES
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function _cnpjDigits(v) {
   return String(v || '').replace(/\D/g, '');
 }
@@ -7313,14 +7313,14 @@ app.get('/api/clientes/inativos', authMiddleware, async (req, res) => {
       const vend = c?.vendedor_id ? vendMap[String(c.vendedor_id)] : null;
       return {
         cliente_id: id,
-        nome: c?.nome || '—',
-        telefone: c?.telefone || c?.tel || '—',
-        email: c?.email || '—',
-        cidade: c?.cidade || '—',
-        uf: c?.uf || '—',
-        cnpj: c?.cnpj || c?.documento || '—',
-        vendedor: vend?.nome || '—',
-        vendedor_email: vend?.email || '—',
+        nome: c?.nome || 'â€”',
+        telefone: c?.telefone || c?.tel || 'â€”',
+        email: c?.email || 'â€”',
+        cidade: c?.cidade || 'â€”',
+        uf: c?.uf || 'â€”',
+        cnpj: c?.cnpj || c?.documento || 'â€”',
+        vendedor: vend?.nome || 'â€”',
+        vendedor_email: vend?.email || 'â€”',
         ativo: c?.ativo,
         ultimo_pedido: dtRaw,
         dias_sem_pedido: diasSem,
@@ -7389,8 +7389,8 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
       const id = String(c?.id || '').trim();
       return {
         id,
-        nome: c?.nome || '—',
-        cidade: c?.cidade || '—',
+        nome: c?.nome || 'â€”',
+        cidade: c?.cidade || 'â€”',
         total_ofs: mapaQtd[id] || 0,
         faturamento: mapaVal[id] || 0,
       };
@@ -7417,14 +7417,14 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { data: cli, error: e1 } = await supabase
       .from('clientes')
       .select('id,nome,vendedor_id,vendId,vend_id')
       .eq('id', id)
       .maybeSingle();
     if (e1) throw e1;
-    if (!cli) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
+    if (!cli) return res.status(404).json({ ok: false, error: 'Cliente nÃ£o encontrado' });
     const vendedorId = String(cli.vendedor_id || cli.vendId || cli.vend_id || '').trim();
     if (!vendedorId) return res.json({ vendedor_id: null, vendedor_nome: null, comissao_pct: 0 });
     const { data: vend, error: e2 } = await supabase
@@ -7517,7 +7517,7 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
       : (Array.isArray(req.body?.cliente_duplicado_ids) ? req.body.cliente_duplicado_ids : [req.body?.cliente_duplicado_id]);
     const duplicados = Array.from(new Set((dupArr || []).map((id) => String(id || '').trim()).filter(Boolean)));
     if (!principalId || !duplicados.length) {
-      return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
+      return res.status(400).json({ ok: false, error: 'IDs obrigatÃ³rios' });
     }
 
     console.log('[MESCLAR] principal:', principalId, 'duplicados:', duplicados);
@@ -7594,7 +7594,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
     } catch (_) {}
     const payload = clientesPayload({ ...(req.body || {}) });
     delete payload.id;
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
     try {
       const digits = _cnpjDigits(payload.cnpj);
       if (_cnpjIs14(digits)) {
@@ -7613,7 +7613,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
     }
     if (error) throw error;
     const updated = Array.isArray(data) ? data[0] : data;
-    if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
+    if (!updated) return res.status(404).json({ error: 'Cliente nÃ£o encontrado' });
     await logAuditoria('clientes', 'UPDATE', String(req.params.id || '').trim(), antes, updated, req);
     ok(res, updated);
   } catch (e) { err(res, e); }
@@ -7622,7 +7622,7 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
 
     const manterParaRaw = (req.query && req.query.manter_para != null) ? req.query.manter_para : (req.body && req.body.manter_para != null ? req.body.manter_para : null);
     const manterPara = String(manterParaRaw || '').trim();
@@ -7671,7 +7671,7 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
       }
 
       if (!algumUpdate) {
-        if (manter) return res.status(400).json({ ok: false, error: 'Não foi possível migrar as OFs deste cliente. Verifique as colunas de cliente na tabela ofs.' });
+        if (manter) return res.status(400).json({ ok: false, error: 'NÃ£o foi possÃ­vel migrar as OFs deste cliente. Verifique as colunas de cliente na tabela ofs.' });
         if (lastConstraintErr) {
           return res.status(409).json({
             ok: false,
@@ -7688,7 +7688,7 @@ app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
         try {
           await supabase.from('historico_acoes').insert([{
             tipo_acao: 'cliente_deduplicado',
-            descricao: `Cliente duplicado excluído (id=${id}), OFs migradas para id=${manter}`,
+            descricao: `Cliente duplicado excluÃ­do (id=${id}), OFs migradas para id=${manter}`,
             usuario: req.usuario?.nome || 'sistema',
             data_hora: new Date().toISOString(),
           }]);
@@ -7707,9 +7707,9 @@ app.get('/api/chapas_estoque/:id/detalhes_compra', authMiddleware, async (req, r
   try {
     const table = await _chapasPreferV2Table();
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada' });
     const c = _chapasCanonicalFromAny(data, table);
     return ok(res, {
       fornecedor: c.fornecedor || null,
@@ -7728,9 +7728,9 @@ app.get('/api/chapas_estoque/:id/ficha_compra', authMiddleware, async (req, res)
   try {
     const table = await _chapasPreferV2Table();
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
-    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada' });
 
     const c = _chapasCanonicalFromAny(data, table);
     let ultimoPreco = Number(c.valor_unitario || 0);
@@ -7774,7 +7774,7 @@ app.get('/api/chapas_estoque/:id/ficha_compra', authMiddleware, async (req, res)
         unidade: 'UN',
         valor_unitario: ultimoPreco,
         nota_fiscal: ultimaNF,
-        obs: `Reposição: ${c.nome || c.nomenclatura}`,
+        obs: `ReposiÃ§Ã£o: ${c.nome || c.nomenclatura}`,
         chapa_id: c.id,
         emp_id: c.emp_id,
       },
@@ -7798,9 +7798,9 @@ app.get('/api/chapas_estoque/alertas_reposicao', authMiddleware, async (req, res
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // VENDEDORES
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/vendedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -7857,7 +7857,7 @@ app.put('/api/vendedores/:id', authMiddleware, async (req, res) => {
   try {
     const payload = vendedoresPayload({ ...(req.body || {}) });
     delete payload.id;
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
     const { data, error } = await vendedoresUpdateCompat(req.params.id, payload);
     if (error) throw error;
     cacheClearPrefix('vendedores_');
@@ -7914,9 +7914,9 @@ app.delete('/api/visitas_vendedor/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // EMPRESAS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/empresas', async (req, res) => {
   try {
     const cached = cacheGet('empresas');
@@ -7949,10 +7949,10 @@ app.get('/api/orcamentos', authMiddleware, async (req, res) => {
 app.get('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { data, error } = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (error) return res.status(500).json({ ok: false, error: error.message });
-    if (!data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    if (!data) return res.status(404).json({ ok: false, error: 'OrÃ§amento nÃ£o encontrado' });
     return ok(res, data);
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
 });
@@ -8014,7 +8014,7 @@ app.post('/api/orcamentos', authMiddleware, async (req, res) => {
 app.put('/api/orcamentos/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const atual = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (atual.error) return res.status(500).json({ error: atual.error.message });
     if (atual.data) {
@@ -8085,7 +8085,7 @@ app.delete('/api/orcamentos/:id', async (req, res) => {
 app.post('/api/orcamentos/:id/token', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const cur = await supabase.from('orcamentos').select('id,public_token').eq('id', id).maybeSingle();
     if (cur.error) return res.status(500).json({ ok: false, error: cur.error.message });
     const existing = String(cur.data?.public_token || '').trim();
@@ -8097,7 +8097,7 @@ app.post('/api/orcamentos/:id/token', authMiddleware, async (req, res) => {
       const m1 = msg.match(/Could not find the '([^']+)' column/i);
       const m2 = msg.match(/column\s+"([^"]+)"\s+does not exist/i);
       const col = (m1 && m1[1]) || (m2 && m2[1]) || null;
-      if (col === 'public_token') return res.status(400).json({ ok: false, error: 'public_token não disponível' });
+      if (col === 'public_token') return res.status(400).json({ ok: false, error: 'public_token nÃ£o disponÃ­vel' });
       return res.status(500).json({ ok: false, error: upd.error.message });
     }
     return ok(res, { token: String(upd.data?.public_token || token) });
@@ -8107,7 +8107,7 @@ app.post('/api/orcamentos/:id/token', authMiddleware, async (req, res) => {
 app.get('/api/orcamentos/:id/versoes', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const r = await supabase.from('orcamentos_versoes')
       .select('*')
       .eq('orcamento_id', id)
@@ -8127,16 +8127,16 @@ app.post('/api/orcamentos/:id/restaurar', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const versao = Math.trunc(Number(req.body?.versao ?? 0) || 0);
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    if (!(versao > 0)) return res.status(400).json({ ok: false, error: 'versao obrigatória' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
+    if (!(versao > 0)) return res.status(400).json({ ok: false, error: 'versao obrigatÃ³ria' });
 
     const cur = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (cur.error) return res.status(500).json({ ok: false, error: cur.error.message });
-    if (!cur.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    if (!cur.data) return res.status(404).json({ ok: false, error: 'OrÃ§amento nÃ£o encontrado' });
 
     const v = await supabase.from('orcamentos_versoes').select('*').eq('orcamento_id', id).eq('versao', versao).maybeSingle();
     if (v.error) return res.status(500).json({ ok: false, error: v.error.message });
-    if (!v.data) return res.status(404).json({ ok: false, error: 'Versão não encontrada' });
+    if (!v.data) return res.status(404).json({ ok: false, error: 'VersÃ£o nÃ£o encontrada' });
 
     try {
       const last = await supabase.from('orcamentos_versoes')
@@ -8178,13 +8178,13 @@ app.get('/api/public/orcamentos/:id', async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
     const token = String(req.query.token || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
+    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatÃ³rio' });
     const r = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
-    if (!r.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    if (!r.data) return res.status(404).json({ ok: false, error: 'OrÃ§amento nÃ£o encontrado' });
     const curTok = String(r.data.public_token || '').trim();
-    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token inválido' });
+    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token invÃ¡lido' });
     const o = r.data;
     return res.json({
       ok: true,
@@ -8212,15 +8212,15 @@ app.post('/api/public/orcamentos/:id/resposta', async (req, res) => {
     const token = String(req.query.token || '').trim();
     const acao = String(req.body?.acao || '').trim().toLowerCase();
     const obs = String(req.body?.obs || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatório' });
-    if (acao !== 'aprovar' && acao !== 'reprovar') return res.status(400).json({ ok: false, error: 'acao inválida' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
+    if (!token) return res.status(401).json({ ok: false, error: 'token obrigatÃ³rio' });
+    if (acao !== 'aprovar' && acao !== 'reprovar') return res.status(400).json({ ok: false, error: 'acao invÃ¡lida' });
 
     const r = await supabase.from('orcamentos').select('*').eq('id', id).maybeSingle();
     if (r.error) return res.status(500).json({ ok: false, error: r.error.message });
-    if (!r.data) return res.status(404).json({ ok: false, error: 'Orçamento não encontrado' });
+    if (!r.data) return res.status(404).json({ ok: false, error: 'OrÃ§amento nÃ£o encontrado' });
     const curTok = String(r.data.public_token || '').trim();
-    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token inválido' });
+    if (!curTok || curTok !== token) return res.status(403).json({ ok: false, error: 'token invÃ¡lido' });
 
     const status = acao === 'aprovar' ? 'Aprovado' : 'Reprovado';
     const updates = {
@@ -8252,7 +8252,7 @@ app.get('/orcamento-publico/:id', async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   return res.end(`<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Orçamento</title>
+<title>OrÃ§amento</title>
 <style>
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0b1220;color:#e5e7eb}
   .wrap{max-width:880px;margin:0 auto;padding:22px}
@@ -8273,8 +8273,8 @@ app.get('/orcamento-publico/:id', async (req, res) => {
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <div>
-        <div style="font-size:18px;font-weight:900">Orçamento</div>
-        <div class="muted" id="sub">Carregando…</div>
+        <div style="font-size:18px;font-weight:900">OrÃ§amento</div>
+        <div class="muted" id="sub">Carregandoâ€¦</div>
       </div>
       <div class="muted">Italy Embalagens</div>
     </div>
@@ -8288,8 +8288,8 @@ app.get('/orcamento-publico/:id', async (req, res) => {
     </div>
     <div style="height:10px"></div>
     <div>
-      <div class="muted" style="margin-bottom:6px">Observações (opcional)</div>
-      <textarea id="obs" placeholder="Escreva aqui…"></textarea>
+      <div class="muted" style="margin-bottom:6px">ObservaÃ§Ãµes (opcional)</div>
+      <textarea id="obs" placeholder="Escreva aquiâ€¦"></textarea>
     </div>
   </div>
 </div>
@@ -8298,28 +8298,28 @@ app.get('/orcamento-publico/:id', async (req, res) => {
   const TOKEN=${JSON.stringify(token)};
   const $=(id)=>document.getElementById(id);
   function fmtR(v){ try{ return 'R$ '+Number(v||0).toFixed(2).replace('.',','); }catch(e){ return 'R$ 0,00'; } }
-  function fmtD(s){ if(!s) return '—'; try{ return String(s).slice(0,10).split('-').reverse().join('/'); }catch(e){ return String(s); } }
+  function fmtD(s){ if(!s) return 'â€”'; try{ return String(s).slice(0,10).split('-').reverse().join('/'); }catch(e){ return String(s); } }
   async function load(){
     const r = await fetch('/api/public/orcamentos/'+encodeURIComponent(ORC_ID)+'?token='+encodeURIComponent(TOKEN));
     const j = await r.json().catch(()=>null);
-    if(!r.ok || !j || j.ok===false){ $('sub').textContent = 'Falha ao carregar'; $('body').innerHTML = '<div class=\"muted\">Token inválido ou orçamento não encontrado.</div>'; return; }
+    if(!r.ok || !j || j.ok===false){ $('sub').textContent = 'Falha ao carregar'; $('body').innerHTML = '<div class=\"muted\">Token invÃ¡lido ou orÃ§amento nÃ£o encontrado.</div>'; return; }
     const o = j.data || {};
-    $('sub').textContent = 'Nº '+(o.numero_orcamento||'—')+' · '+(o.cliente_nome||'—')+' · '+fmtD(o.criado_em);
+    $('sub').textContent = 'NÂº '+(o.numero_orcamento||'â€”')+' Â· '+(o.cliente_nome||'â€”')+' Â· '+fmtD(o.criado_em);
     const linhas = Array.isArray(o.resultados) ? o.resultados : [];
     const tab = linhas.length ? ('<table><thead><tr><th>Onda</th><th>VL Unit.</th><th>Total</th></tr></thead><tbody>'+
-      linhas.map(x=>'<tr><td>'+String(x.onda||'—')+'</td><td style=\"text-align:right\">'+fmtR(x.vUnit||x.v_unit||0)+'</td><td style=\"text-align:right\">'+fmtR(x.total||0)+'</td></tr>').join('')+
+      linhas.map(x=>'<tr><td>'+String(x.onda||'â€”')+'</td><td style=\"text-align:right\">'+fmtR(x.vUnit||x.v_unit||0)+'</td><td style=\"text-align:right\">'+fmtR(x.total||0)+'</td></tr>').join('')+
       '</tbody></table>') : '';
     $('body').innerHTML =
-      '<div class=\"row\"><div style=\"flex:1\"><div class=\"muted\">Medidas</div><div style=\"font-weight:900\">'+String(o.medidas||'—')+'</div></div>'+
-      '<div><div class=\"muted\">Qtd</div><div style=\"font-weight:900\">'+String(o.quantidade==null?'—':o.quantidade)+'</div></div>'+
-      '<div><div class=\"muted\">Onda</div><div style=\"font-weight:900\">'+String(o.onda||'—')+'</div></div></div>'+
+      '<div class=\"row\"><div style=\"flex:1\"><div class=\"muted\">Medidas</div><div style=\"font-weight:900\">'+String(o.medidas||'â€”')+'</div></div>'+
+      '<div><div class=\"muted\">Qtd</div><div style=\"font-weight:900\">'+String(o.quantidade==null?'â€”':o.quantidade)+'</div></div>'+
+      '<div><div class=\"muted\">Onda</div><div style=\"font-weight:900\">'+String(o.onda||'â€”')+'</div></div></div>'+
       '<div style=\"height:10px\"></div>'+
       '<div class=\"row\"><div><div class=\"muted\">Valor total</div><div style=\"font-size:18px;font-weight:900;color:#10b981\">'+fmtR(o.valor_total||0)+'</div></div>'+
-      '<div class=\"muted\">Status: '+String(o.status||'—')+'</div></div>'+
+      '<div class=\"muted\">Status: '+String(o.status||'â€”')+'</div></div>'+
       (tab?('<div style=\"height:12px\"></div>'+tab):'');
   }
   async function send(acao){
-    $('msg').textContent = 'Enviando…';
+    $('msg').textContent = 'Enviandoâ€¦';
     const r = await fetch('/api/public/orcamentos/'+encodeURIComponent(ORC_ID)+'/resposta?token='+encodeURIComponent(TOKEN), {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -8337,9 +8337,9 @@ app.get('/orcamento-publico/:id', async (req, res) => {
 </body></html>`);
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // APONTAMENTOS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/apontamentos', async (req, res) => {
   try {
     const { data, error } = await supabase.from('apontamentos')
@@ -8367,19 +8367,19 @@ app.put('/api/apontamentos/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // OPERADORES
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 function _operadoresPayload(body, req) {
   const b = body && typeof body === 'object' ? body : {};
   const nome = String(b.nome ?? b.name ?? '').trim();
   const empresa = String(b.empresa ?? b.company ?? req?.usuario?.empresa ?? 'Italy Embalagens').trim() || 'Italy Embalagens';
   const empId = String(b.empId ?? b.emp_id ?? b.empresa_id ?? b.empresaId ?? '').trim();
-  const mat = String(b.mat ?? b.matricula ?? b.matrícula ?? '').trim();
-  const setor = String(b.setor ?? b.funcao ?? b.função ?? b.area ?? '').trim();
+  const mat = String(b.mat ?? b.matricula ?? b.matrÃ­cula ?? '').trim();
+  const setor = String(b.setor ?? b.funcao ?? b.funÃ§Ã£o ?? b.area ?? '').trim();
   const maq = String(b.maqId ?? b.maq_id ?? b.maquina_id ?? b.maquinaId ?? b.maq_principal ?? b.maqPrincipal ?? '').trim();
-  const admissao = String(b.admissao ?? b.admissão ?? b.admission ?? '').trim();
-  const obs = String(b.obs ?? b.observacoes ?? b.observações ?? '').trim();
+  const admissao = String(b.admissao ?? b.admissÃ£o ?? b.admission ?? '').trim();
+  const obs = String(b.obs ?? b.observacoes ?? b.observaÃ§Ãµes ?? '').trim();
   const statusRaw = b.status != null ? String(b.status).trim() : '';
   const ativoRaw = b.ativo != null ? b.ativo : (statusRaw ? statusRaw : undefined);
   let ativo = true;
@@ -8415,12 +8415,12 @@ function _operadoresPayload(body, req) {
   }
   if (admissao) {
     out.admissao = admissao;
-    out.admissão = admissao;
+    out.admissÃ£o = admissao;
   }
   if (obs) {
     out.obs = obs;
     out.observacoes = obs;
-    out.observações = obs;
+    out.observaÃ§Ãµes = obs;
   }
   Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
   return out;
@@ -8506,7 +8506,7 @@ app.get('/api/operadores', authMiddleware, async (req, res) => {
 app.post('/api/operadores', authMiddleware, async (req, res) => {
   try {
     const payload = _operadoresPayload(req.body, req);
-    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome Ã© obrigatÃ³rio' });
     const { data, error } = await _operadoresInsertCompat(payload);
     if (error) throw error;
     cacheClearPrefix('operadores_');
@@ -8517,12 +8517,12 @@ app.post('/api/operadores', authMiddleware, async (req, res) => {
 app.patch('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const base = _operadoresPayload(body, req);
     const payload = { ...base };
     delete payload.id;
-    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome Ã© obrigatÃ³rio' });
     const { data, error } = await _operadoresUpdateCompat(id, payload);
     if (error) throw error;
     cacheClearPrefix('operadores_');
@@ -8533,7 +8533,7 @@ app.patch('/api/operadores/:id', authMiddleware, async (req, res) => {
 app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     let attemptedDelete = false;
     try {
       const upd = await _operadoresUpdateCompat(id, { ativo: false, status: 'Inativo' });
@@ -8560,12 +8560,12 @@ app.delete('/api/operadores/:id', authMiddleware, async (req, res) => {
 app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const base = _operadoresPayload(body, req);
     const payload = { ...base };
     delete payload.id;
-    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome é obrigatório' });
+    if (body.nome !== undefined && !String(body.nome || '').trim()) return res.status(400).json({ ok: false, error: 'Nome Ã© obrigatÃ³rio' });
     const { data, error } = await _operadoresUpdateCompat(id, payload);
     if (error) throw error;
     cacheClearPrefix('operadores_');
@@ -8573,9 +8573,9 @@ app.put('/api/operadores/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
-// MÁQUINAS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// MÃQUINAS
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 const _MAQUINAS_ATIVAS = ['IMP 01', 'IMP 02', 'IMP 03', 'IMP 04', 'IMP 05', 'CORTE VINCO ROTATIVA'];
 function _normMaqNome(v) {
   try {
@@ -8724,7 +8724,7 @@ async function _empresaUuidByUserId(userId) {
 app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
     const { data, error } = await supabase
       .from('cores_impressao')
       .select('id,nome,hex,ativo')
@@ -8739,10 +8739,10 @@ app.get('/api/cores-impressao', authMiddleware, async (req, res) => {
 app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
     const nome = String(req.body?.nome || '').trim();
     const hexRaw = String(req.body?.hex || '').trim();
-    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatÃ³rio' });
     const payload = { empresa_id, nome, hex: hexRaw ? hexRaw : null, ativo: true };
     const { data, error } = await supabase
       .from('cores_impressao')
@@ -8757,12 +8757,12 @@ app.post('/api/cores-impressao', authMiddleware, async (req, res) => {
 app.put('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const nome = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'nome')) ? String(req.body.nome || '').trim() : '';
     const hexRaw = (req.body && Object.prototype.hasOwnProperty.call(req.body, 'hex')) ? String(req.body.hex || '').trim() : '';
-    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    if (!nome) return res.status(400).json({ ok: false, error: 'Nome obrigatÃ³rio' });
     const { data, error } = await supabase
       .from('cores_impressao')
       .update({ nome, hex: hexRaw ? hexRaw : null })
@@ -8778,9 +8778,9 @@ app.put('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
 app.delete('/api/cores-impressao/:id', authMiddleware, async (req, res) => {
   try {
     const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { error } = await supabase
       .from('cores_impressao')
       .update({ ativo: false })
@@ -8911,7 +8911,7 @@ async function _calcularCapacidadeMaquinaDia(maquinaKey, data) {
     .from('ofs')
     .select('*')
     .eq('data_agendamento', dia)
-    .not('status', 'in', '("Concluída","Cancelada","Cancelado")')
+    .not('status', 'in', '("ConcluÃ­da","Cancelada","Cancelado")')
     .limit(2000);
   if (error) throw error;
   const ofsHoje = (Array.isArray(ofsAg) ? ofsAg : []).filter((of) => {
@@ -8985,7 +8985,7 @@ async function agendarOFsAutomaticamente() {
       .not('data_entrega', 'is', null)
       .is('data_agendamento', null)
       .or('maquina_agendada.not.is.null,fluxo_maquinas.not.is.null,maq.not.is.null')
-      .not('status', 'in', '("Concluída","Cancelada","Cancelado")')
+      .not('status', 'in', '("ConcluÃ­da","Cancelada","Cancelado")')
       .limit(200);
 
     if (error) throw error;
@@ -9087,9 +9087,9 @@ app.post('/api/maquinas/sugerir', authMiddleware, async (req, res) => {
         const compativel = devOk && bocaOk;
       let motivo = null;
       if (!devOk) {
-        motivo = 'Puxada necessária ' + Math.round(desenvolvimento) + 'mm (limite: ' + pMin + '–' + pMax + 'mm)';
+        motivo = 'Puxada necessÃ¡ria ' + Math.round(desenvolvimento) + 'mm (limite: ' + pMin + 'â€“' + pMax + 'mm)';
       } else if (!bocaOk) {
-        motivo = 'Boca necessária ' + Math.round(boca) + 'mm (máximo: ' + bMax + 'mm)';
+        motivo = 'Boca necessÃ¡ria ' + Math.round(boca) + 'mm (mÃ¡ximo: ' + bMax + 'mm)';
       }
         return {
           id: m.id,
@@ -9198,7 +9198,7 @@ async function _maquinaUpdateHandler(req, res) {
     const count = Array.isArray(data) ? data.length : 0;
     console.log('[MAQUINA UPDATE] resultado:', { count, idReal, error: error ? (error.message || error) : null });
     if (error) throw error;
-    if (count === 0) return res.status(404).json({ ok: false, error: 'Máquina não encontrada', id: idReal });
+    if (count === 0) return res.status(404).json({ ok: false, error: 'MÃ¡quina nÃ£o encontrada', id: idReal });
     cacheClear('maquinas');
     ok(res, data[0]);
   } catch (e) { err(res, e); }
@@ -9216,9 +9216,9 @@ app.delete('/api/maquinas/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // FLUXOS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/fluxos', async (req, res) => {
   try {
     const cached = cacheGet('fluxos');
@@ -9230,9 +9230,9 @@ app.get('/api/fluxos', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // TIPOS DE CAIXA
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/tipos_caixa', authMiddleware, async (req, res) => {
   try {
     const emp = String(req.query.emp_id ?? req.query.empId ?? req.usuario?.emp_id ?? req.usuario?.empId ?? '').trim();
@@ -9302,7 +9302,7 @@ app.delete('/api/tipos_caixa/:id', authMiddleware, async (req, res) => {
 app.post('/api/fluxos', authMiddleware, async (req, res) => {
   try {
     const payload = { ...(req.body || {}) };
-    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+    if (!payload.nome) return res.status(400).json({ ok: false, error: 'Nome obrigatÃ³rio' });
     const parseArr = (v) => {
       if (!v) return [];
       let arr = v;
@@ -9359,9 +9359,9 @@ app.delete('/api/fluxos/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // COMPRAS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/compras', async (req, res) => {
   try {
     const { data, error } = await supabase.from('compras')
@@ -9417,7 +9417,7 @@ app.post('/api/cotacoes', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const item = String(b.item || '').trim();
-    if (!item) return res.status(400).json({ ok: false, error: 'item obrigatório' });
+    if (!item) return res.status(400).json({ ok: false, error: 'item obrigatÃ³rio' });
     const quantidade = (b.quantidade == null) ? null : Math.trunc(Number(b.quantidade));
     const fornecedor_ids = Array.isArray(b.fornecedor_ids) ? b.fornecedor_ids : (Array.isArray(b.fornecedores) ? b.fornecedores : null);
     const propostas = Array.isArray(b.propostas) ? b.propostas : null;
@@ -9439,7 +9439,7 @@ app.post('/api/cotacoes', authMiddleware, async (req, res) => {
 app.put('/api/cotacoes/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const b = req.body || {};
     const escolhido_fornecedor_id = b.escolhido_fornecedor_id || b.escolhidoFornecedorId || b.escolhido || null;
     const propostas = Array.isArray(b.propostas) ? b.propostas : null;
@@ -9494,7 +9494,7 @@ app.post('/api/avaliacoes_fornecedor', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const fornecedor_id = String(b.fornecedor_id || '').trim();
-    if (!fornecedor_id) return res.status(400).json({ ok: false, error: 'fornecedor_id obrigatório' });
+    if (!fornecedor_id) return res.status(400).json({ ok: false, error: 'fornecedor_id obrigatÃ³rio' });
     const clamp = (n) => Math.max(1, Math.min(5, Math.trunc(Number(n))));
     const payload = {
       fornecedor_id,
@@ -9513,10 +9513,10 @@ app.post('/api/avaliacoes_fornecedor', authMiddleware, async (req, res) => {
 app.get('/api/fornecedores/:id/precos', authMiddleware, async (req, res) => {
   try {
     const fornId = String(req.params.id || '').trim();
-    if (!fornId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!fornId) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const { data: forn, error: ef } = await supabase.from('fornecedores').select('id,nome').eq('id', fornId).maybeSingle();
     if (ef) throw ef;
-    if (!forn) return res.status(404).json({ ok: false, error: 'Fornecedor não encontrado' });
+    if (!forn) return res.status(404).json({ ok: false, error: 'Fornecedor nÃ£o encontrado' });
     const fornNome = String(forn.nome || '').trim().toLowerCase();
 
     const loadChapas = async (table) => {
@@ -9570,9 +9570,9 @@ app.get('/api/fornecedores/:id/precos', authMiddleware, async (req, res) => {
   } catch (e) { return err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // FORNECEDORES
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -9599,7 +9599,7 @@ app.post('/api/fornecedores', authMiddleware, async (req, res) => {
   try {
     const b = req.body || {};
     const nome = String(b.nome || '').trim();
-    if (!nome) return res.status(400).json({ error: 'Nome obrigatório' });
+    if (!nome) return res.status(400).json({ error: 'Nome obrigatÃ³rio' });
     const payload = fornecedoresPayload(b);
     let { data, error } = await fornecedoresInsertCompat(payload);
     if (error) throw error;
@@ -9611,7 +9611,7 @@ app.put('/api/fornecedores/:id', authMiddleware, async (req, res) => {
   try {
     const payload = fornecedoresPayload({ ...(req.body || {}) });
     delete payload.id;
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
     const { data, error } = await fornecedoresUpdateCompat(req.params.id, payload);
     if (error) throw error;
     return ok(res, data[0]);
@@ -9626,9 +9626,9 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // INCONFORMIDADES
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
     const { maquina, operador, data_ini, data_fim, status } = req.query || {};
@@ -9927,9 +9927,9 @@ app.delete('/api/inconformidades/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // NOTAS FISCAIS
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/notas_fiscais', async (req, res) => {
   try {
     const { data, error } = await supabase.from('notas_fiscais')
@@ -10055,11 +10055,11 @@ function _parseNfeXml(xml) {
 
 app.post('/api/notas_fiscais/import_xml', authMiddleware, nfeXmlUpload.single('file'), async (req, res) => {
   try {
-    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo XML obrigatório' });
+    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo XML obrigatÃ³rio' });
     const tipo = String(req.body?.tipo || 'entrada').trim().toLowerCase() === 'saida' ? 'saida' : 'entrada';
     const xml = req.file.buffer.toString('utf8');
     const d = _parseNfeXml(xml);
-    if (!d.chave && !d.numero) return res.status(400).json({ ok: false, error: 'XML inválido ou NF-e não encontrada' });
+    if (!d.chave && !d.numero) return res.status(400).json({ ok: false, error: 'XML invÃ¡lido ou NF-e nÃ£o encontrada' });
 
     const payload = {
       chave: d.chave || null,
@@ -10086,12 +10086,12 @@ app.post('/api/integracoes/whatsapp/enviar', authMiddleware, requireAdmin, async
     const instanceToken = String(process.env.ZAPI_INSTANCE_TOKEN || process.env.ZAPI_TOKEN || '').trim();
     const clientToken = String(process.env.ZAPI_CLIENT_TOKEN || process.env.ZAPI_SECURITY_TOKEN || '').trim();
     if (!instanceId || !instanceToken) {
-      return res.status(400).json({ ok: false, error: 'Z-API não configurado (ZAPI_INSTANCE_ID e ZAPI_INSTANCE_TOKEN)' });
+      return res.status(400).json({ ok: false, error: 'Z-API nÃ£o configurado (ZAPI_INSTANCE_ID e ZAPI_INSTANCE_TOKEN)' });
     }
     const phone = String(req.body?.phone || req.body?.to || '').replace(/\D/g, '');
     const message = String(req.body?.message || '').trim();
-    if (!phone) return res.status(400).json({ ok: false, error: 'phone obrigatório (somente números, ex: 5511999999999)' });
-    if (!message) return res.status(400).json({ ok: false, error: 'message obrigatório' });
+    if (!phone) return res.status(400).json({ ok: false, error: 'phone obrigatÃ³rio (somente nÃºmeros, ex: 5511999999999)' });
+    if (!message) return res.status(400).json({ ok: false, error: 'message obrigatÃ³rio' });
 
     const url = `https://api.z-api.io/instances/${encodeURIComponent(instanceId)}/token/${encodeURIComponent(instanceToken)}/send-text`;
     const headers = { 'Content-Type': 'application/json' };
@@ -10165,7 +10165,7 @@ async function _googleAccessTokenByRefresh(refreshToken) {
 app.get('/api/integracoes/google/auth_url', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { clientId, redirectUri } = _googleEnv();
-    if (!clientId || !redirectUri) return res.status(400).json({ ok: false, error: 'GOOGLE_CLIENT_ID/GOOGLE_REDIRECT_URI não configurado' });
+    if (!clientId || !redirectUri) return res.status(400).json({ ok: false, error: 'GOOGLE_CLIENT_ID/GOOGLE_REDIRECT_URI nÃ£o configurado' });
     const state = _googleNewState();
     const qs = new URLSearchParams({
       client_id: clientId,
@@ -10194,7 +10194,7 @@ app.get('/api/integracoes/google/callback', async (req, res) => {
     await _saveConfigJson('google_calendar', { refresh_token: tok.refresh_token, updated_at: new Date().toISOString() }, null);
     _googleOauthState = null;
     _googleOauthStateExp = 0;
-    return res.send('<html><body style="font-family:system-ui;padding:18px"><h2>Conectado ✓</h2><p>Você pode fechar esta aba e voltar para o sistema.</p></body></html>');
+    return res.send('<html><body style="font-family:system-ui;padding:18px"><h2>Conectado âœ“</h2><p>VocÃª pode fechar esta aba e voltar para o sistema.</p></body></html>');
   } catch (e) {
     return res.status(500).send(`<html><body style="font-family:system-ui;padding:18px"><h2>Erro</h2><pre>${String(e?.message || e)}</pre></body></html>`);
   }
@@ -10213,7 +10213,7 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
   try {
     const cfg = await _loadConfigJson('google_calendar', null);
     const refreshToken = String(cfg?.refresh_token || '').trim();
-    if (!refreshToken) return res.status(400).json({ ok: false, error: 'Google Calendar não configurado' });
+    if (!refreshToken) return res.status(400).json({ ok: false, error: 'Google Calendar nÃ£o configurado' });
     const { calendarId } = _googleEnv();
 
     const summary = String(req.body?.summary || '').trim();
@@ -10221,8 +10221,8 @@ app.post('/api/integracoes/google/evento', authMiddleware, requireAdmin, async (
     const startTime = String(req.body?.start_time || '08:00').trim() || '08:00';
     const endTime = String(req.body?.end_time || '09:00').trim() || '09:00';
     const description = String(req.body?.description || '').trim() || null;
-    if (!summary) return res.status(400).json({ ok: false, error: 'summary obrigatório' });
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date inválida (YYYY-MM-DD)' });
+    if (!summary) return res.status(400).json({ ok: false, error: 'summary obrigatÃ³rio' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date invÃ¡lida (YYYY-MM-DD)' });
 
     const accessToken = await _googleAccessTokenByRefresh(refreshToken);
     if (!accessToken) return res.status(500).json({ ok: false, error: 'google_access_token_failed' });
@@ -10730,9 +10730,9 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
   }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // FACAS ESTOQUE
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/facas_estoque', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -10883,7 +10883,7 @@ app.get('/api/facas_categorias', authMiddleware, async (req, res) => {
 app.post('/api/facas_categorias', authMiddleware, async (req, res) => {
   try {
     const nome = String(req.body?.nome || '').trim();
-    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatório' });
+    if (!nome) return res.status(400).json({ ok: false, error: 'nome obrigatÃ³rio' });
     const email = String(req.usuario?.email || '').toLowerCase().trim();
     const MAPA = {
       'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
@@ -10911,9 +10911,9 @@ app.post('/api/facas_categorias', authMiddleware, async (req, res) => {
   }
 });
 
-// ══════════════════════════════════════════════════════════════
-// CLICHÊS ESTOQUE
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// CLICHÃŠS ESTOQUE
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 app.get('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
@@ -10974,7 +10974,7 @@ app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
       if (col && payload[col] !== undefined) { delete payload[col]; continue; }
       throw error;
     }
-    return res.status(500).json({ ok: false, error: 'Falha ao inserir clichê' });
+    return res.status(500).json({ ok: false, error: 'Falha ao inserir clichÃª' });
   } catch (e) { err(res, e); }
 });
 app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
@@ -11017,7 +11017,7 @@ app.put('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
       if (col && payload[col] !== undefined) { delete payload[col]; continue; }
       throw error;
     }
-    return res.status(500).json({ ok: false, error: 'Falha ao atualizar clichê' });
+    return res.status(500).json({ ok: false, error: 'Falha ao atualizar clichÃª' });
   } catch (e) { err(res, e); }
 });
 app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
@@ -11028,9 +11028,9 @@ app.delete('/api/cliches_estoque/:id', authMiddleware, async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // CHAPAS ESTOQUE
-// ══════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 let _chapasCacheClearedOnBoot = false;
 async function _chapasPreferV2Table() {
   const tables = ['chapas_estoque_v2', 'chapas_estoque'];
@@ -11082,7 +11082,7 @@ function _chapasEmpresaFromEmpId(empId) {
 function _chapasCanonicalFromAny(row, table) {
   if (table === 'chapas_estoque_v2') {
     const qtd = Math.trunc(_chapasToNum(row.quantidade_atual ?? row.quantidade ?? row.qtd ?? 0, 0));
-    const vunit = _chapasToNum(row.valor_unitario ?? row.val ?? row['valor_unitário'] ?? 0, 0);
+    const vunit = _chapasToNum(row.valor_unitario ?? row.val ?? row['valor_unitÃ¡rio'] ?? 0, 0);
     const vtot = _chapasToNum(row.valor_total ?? row.vtot ?? 0, 0) || (qtd * vunit);
     const empId = row.emp_id || 'E1';
     const nomeUso = row.nome_uso || row.nome || row.nomenclatura || '';
@@ -11145,18 +11145,18 @@ function _chapasCanonicalFromAny(row, table) {
   const vunit = _chapasNum(_chapasGet(row, km, ['valor_unitario', 'val', 'custo_unitario', 'valor unitario', 'vunit', 'rs']));
   const vtot = _chapasNum(_chapasGet(row, km, ['valor_total', 'valor total', 'total', 'vtot']));
   const estoqueMin = _chapasNum(_chapasGet(row, km, ['estoque_minimo', 'estoque minimo', 'quantidade_minima', 'quantidade minima', 'min']));
-  const vincos = _chapasGet(row, km, ['vincos', 'víncos']);
-  const observacao = _chapasGet(row, km, ['observacao', 'observação', 'observacoes', 'observações', 'obs']);
+  const vincos = _chapasGet(row, km, ['vincos', 'vÃ­ncos']);
+  const observacao = _chapasGet(row, km, ['observacao', 'observaÃ§Ã£o', 'observacoes', 'observaÃ§Ãµes', 'obs']);
   const dataEntrada = _chapasGet(row, km, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados', 'entrada_de_dados']);
   const categoria = _chapasGet(row, km, ['categoria']) || 'Estoque Simples';
   const cliente = _chapasGet(row, km, ['cliente', 'cliente_nome', 'cliente nome']);
   const riscadaRaw = _chapasGet(row, km, ['riscada', 'riscado', 'ver_real', 'ver real']);
   const riscada = String(riscadaRaw).toLowerCase() === 'true' || String(riscadaRaw).toLowerCase() === 'sim' || String(riscadaRaw) === '1';
-  const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
+  const riscaDesc = _chapasGet(row, km, ['risca_desc', 'descricao_risca', 'descriÃ§Ã£o da risca', 'descricao da risca']);
   const empId = _chapasGet(row, km, ['emp_id', 'emp id', 'empId', 'empresa', 'empresa_id', 'empresa id']);
   const empresaVinc = qualCnpj || _chapasGet(row, km, ['empresa_vinculada', 'empresa vinculada', 'fabricante_empresa', 'fabricante empresa', 'empresa']) || _chapasEmpresaFromEmpId(empId);
   const id = _chapasGet(row, km, ['id']);
-  const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuário']);
+  const criadoPor = _chapasGet(row, km, ['criado_por', 'criado por', 'usuario', 'usuÃ¡rio']);
   const atualizadoPor = _chapasGet(row, km, ['atualizado_por', 'atualizado por', 'editado_por', 'editado por']);
 
   const canon = {
@@ -11221,11 +11221,11 @@ function _chapasMovRpcIsSaldoInsuficiente(err) {
 function _chapasMovRpcIsValidacao(err) {
   const msg = String(err?.message || err || '').toLowerCase();
   return (
-    msg.includes('quantidade inválida') ||
+    msg.includes('quantidade invÃ¡lida') ||
     msg.includes('quantidade invalida') ||
-    msg.includes('tipo de movimentação inválido') ||
+    msg.includes('tipo de movimentaÃ§Ã£o invÃ¡lido') ||
     msg.includes('tipo de movimentacao invalido') ||
-    msg.includes('chapa não encontrada') ||
+    msg.includes('chapa nÃ£o encontrada') ||
     msg.includes('chapa nao encontrada')
   );
 }
@@ -11266,11 +11266,11 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
   const categoria = (b.categoria ?? '').toString().trim() || 'Estoque Simples';
 
   if (!isUpdate) {
-    if (!fornecedor) throw new Error('Fornecedor obrigatório');
-    if (!nomenclatura) throw new Error('Nomenclatura obrigatória');
-    if (!tamanho) throw new Error('Tamanho obrigatório');
-    if (!nomeUso) throw new Error('Nome/Uso obrigatório');
-    if (!categoria) throw new Error('Categoria obrigatória');
+    if (!fornecedor) throw new Error('Fornecedor obrigatÃ³rio');
+    if (!nomenclatura) throw new Error('Nomenclatura obrigatÃ³ria');
+    if (!tamanho) throw new Error('Tamanho obrigatÃ³rio');
+    if (!nomeUso) throw new Error('Nome/Uso obrigatÃ³rio');
+    if (!categoria) throw new Error('Categoria obrigatÃ³ria');
   }
 
   if (fornecedor) set('fornecedor', fornecedor);
@@ -11304,13 +11304,13 @@ function _chapasPayloadV2FromBody(b, req, isUpdate) {
 
   const qtd = b.quantidade != null ? Math.trunc(_chapasToNum(b.quantidade, 0)) : (b.qtd != null ? Math.trunc(_chapasToNum(b.qtd, 0)) : undefined);
   if (qtd !== undefined) {
-    if (qtd < 0) throw new Error('Quantidade não pode ser negativa');
+    if (qtd < 0) throw new Error('Quantidade nÃ£o pode ser negativa');
     set('quantidade', qtd);
   }
 
   const vunit = b.valor_unitario != null ? _chapasToNum(b.valor_unitario, 0) : (b.val != null ? _chapasToNum(b.val, 0) : undefined);
   if (vunit !== undefined) {
-    if (vunit < 0) throw new Error('Valor unitário inválido');
+    if (vunit < 0) throw new Error('Valor unitÃ¡rio invÃ¡lido');
     set('valor_unitario', vunit);
   }
 
@@ -11441,10 +11441,10 @@ function _chapasParseCsv(text) {
     const valorUnitario = get(r, ['valor_unitario', 'valor unitario', 'rs/un', 'r$/un', 'val', 'vunit']);
     const categoria = get(r, ['categoria', 'grupo']);
     const vincos = get(r, ['vincos']);
-    const observacao = get(r, ['observacao', 'observação', 'obs']);
+    const observacao = get(r, ['observacao', 'observaÃ§Ã£o', 'obs']);
     const clienteNome = get(r, ['cliente', 'cliente_nome', 'cliente nome']);
-    const riscada = get(r, ['riscada', 'riscado', 'ja_vem_riscada', 'já vem riscada']);
-    const riscaDesc = get(r, ['risca_desc', 'descricao_risca', 'descrição da risca', 'descricao da risca']);
+    const riscada = get(r, ['riscada', 'riscado', 'ja_vem_riscada', 'jÃ¡ vem riscada']);
+    const riscaDesc = get(r, ['risca_desc', 'descricao_risca', 'descriÃ§Ã£o da risca', 'descricao da risca']);
     const estoqueMin = get(r, ['estoque_minimo', 'estoque minimo', 'min']);
     const empId = get(r, ['emp_id', 'emp id', 'empresa_id', 'empresa id', 'empid']);
     const dataEntrada = get(r, ['data_entrada', 'data entrada', 'entrada_de_dados', 'entrada de dados']);
@@ -11670,7 +11670,7 @@ app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (
 app.get('/api/chapas/qr/:codigo', authMiddleware, async (req, res) => {
   try {
     const raw = String(req.params.codigo || '').trim();
-    if (!raw) return res.status(400).json({ ok: false, error: 'Código obrigatório' });
+    if (!raw) return res.status(400).json({ ok: false, error: 'CÃ³digo obrigatÃ³rio' });
     const candidates = [raw, raw.replace(/^CHAPA-/i, '')].map((s) => String(s || '').trim()).filter(Boolean);
     const isUuid = (s) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s || '').trim());
     const tables = ['chapas', 'chapas_estoque_v2', 'chapas_estoque'];
@@ -11695,7 +11695,7 @@ app.get('/api/chapas/qr/:codigo', authMiddleware, async (req, res) => {
       if (chapa) break;
     }
 
-    if (!chapa || !tableUsed) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (!chapa || !tableUsed) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada' });
 
     let similares = [];
     try {
@@ -11724,10 +11724,10 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       const nomenclatura = String(b.nomenclatura ?? b.nom ?? b.codigo ?? b.tipo_papel ?? b.modelo ?? '').trim();
       const tamanho = String(b.tamanho ?? b.tam ?? b.size ?? '').trim().toUpperCase();
       const nomeUso = String(b.nome_uso ?? b.nome ?? b.nomeUso ?? nomenclatura ?? '').trim();
-      if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatório: fornecedor' });
-      if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nomenclatura (ou nom / codigo / tipo_papel)' });
-      if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatório: tamanho (ex: 1200X900)' });
-      if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
+      if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: fornecedor' });
+      if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: nomenclatura (ou nom / codigo / tipo_papel)' });
+      if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: tamanho (ex: 1200X900)' });
+      if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: nome_uso (ou nome)' });
 
       const payload = _chapasPayloadV2FromBody({ ...b, fornecedor, nomenclatura, tamanho, nome_uso: nomeUso, nome: nomeUso }, req, false);
       const qtdInicial = Math.trunc(Number(payload.quantidade ?? 0) || 0);
@@ -11747,7 +11747,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
       if (error) return res.status(500).json({ ok: false, error: error.message });
 
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada: ${payload.nome_uso || ''} · ${payload.fornecedor || ''} · ${payload.nomenclatura || ''} · ${payload.tamanho || ''} · qtd=${qtdInicial}`);
+      await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada: ${payload.nome_uso || ''} Â· ${payload.fornecedor || ''} Â· ${payload.nomenclatura || ''} Â· ${payload.tamanho || ''} Â· qtd=${qtdInicial}`);
 
       if (qtdInicial > 0) {
         const movRes = await _chapasMovimentarV2Rpc({
@@ -11777,10 +11777,10 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     const nomenclatura = String(b.nomenclatura ?? b.nom ?? b.codigo ?? b.tipo_papel ?? b.modelo ?? '').trim();
     const tamanho = String(b.tamanho ?? b.tam ?? b.size ?? '').trim().toUpperCase();
     const nomeUso = String(b.nome_uso ?? b.nome ?? b.nomeUso ?? nomenclatura ?? '').trim();
-    if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatório: fornecedor' });
-    if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nomenclatura (ou nom / codigo / tipo_papel)' });
-    if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatório: tamanho (ex: 1200X900)' });
-    if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatório: nome_uso (ou nome)' });
+    if (!fornecedor) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: fornecedor' });
+    if (!nomenclatura) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: nomenclatura (ou nom / codigo / tipo_papel)' });
+    if (!tamanho) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: tamanho (ex: 1200X900)' });
+    if (!nomeUso) return res.status(400).json({ ok: false, error: 'Campo obrigatÃ³rio: nome_uso (ou nome)' });
 
     const payload = {
       forn: fornecedor,
@@ -11822,7 +11822,7 @@ app.post('/api/chapas_estoque', authMiddleware, async (req, res) => {
     }
     if (error) return res.status(500).json({ ok: false, error: String(error.message || error) });
     cacheClearPrefix('chapas_estoque:');
-    await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada (legado): ${payload.nom || ''} · ${payload.forn || ''} · ${payload.tam || ''} · qtd=${payload.qtd ?? 0}`);
+    await _chapasLogAcao(req, 'estoque_chapas_entrada', `Entrada (legado): ${payload.nom || ''} Â· ${payload.forn || ''} Â· ${payload.tam || ''} Â· qtd=${payload.qtd ?? 0}`);
     return res.json({ ok: true, data: _chapasCanonicalFromAny(data, 'chapas_estoque') });
   } catch (e) { err(res, e); }
 });
@@ -11833,11 +11833,11 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
 
     if (table === 'chapas_estoque_v2') {
       const payload = _chapasPayloadV2FromBody(b, req, true);
-      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
       const { data, error } = await _chapasUpdateCompatV2(String(req.params.id || '').trim(), payload);
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''}`);
+      await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada: ${data?.nome_uso || ''} Â· ${data?.fornecedor || ''} Â· ${data?.nomenclatura || ''} Â· ${data?.tamanho || ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
 
@@ -11852,11 +11852,11 @@ app.put('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     if (b.vincos !== undefined) payload.vincos = b.vincos;
     if (b.observacao !== undefined) payload.observacao = b.observacao;
     if (b.emp_id) payload.emp_id = b.emp_id;
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
     cacheClearPrefix('chapas_estoque:');
-    await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''}`);
+    await _chapasLogAcao(req, 'estoque_chapas_edicao', `Chapa atualizada (legado): ${data?.nom || ''} Â· ${data?.forn || ''} Â· ${data?.tam || ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
 });
@@ -11869,22 +11869,22 @@ app.patch('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
       const payload = _chapasPayloadV2FromBody(b, req, true);
       if (b.quantidade !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.quantidade, 0));
       if (b.qtd !== undefined) payload.quantidade = Math.trunc(_chapasToNum(b.qtd, 0));
-      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+      if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
       const { data, error } = await supabase.from('chapas_estoque_v2').update(payload).eq('id', req.params.id).select().single();
       if (error) return res.status(500).json({ error: error.message });
       cacheClearPrefix('chapas_estoque:');
-      await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida: ${data?.nome_uso || ''} · ${data?.fornecedor || ''} · ${data?.nomenclatura || ''} · ${data?.tamanho || ''} · qtd=${data?.quantidade ?? ''}`);
+      await _chapasLogAcao(req, 'estoque_chapas_patch', `AtualizaÃ§Ã£o rÃ¡pida: ${data?.nome_uso || ''} Â· ${data?.fornecedor || ''} Â· ${data?.nomenclatura || ''} Â· ${data?.tamanho || ''} Â· qtd=${data?.quantidade ?? ''}`);
       return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque_v2'));
     }
 
     const payload = {};
     if (b.quantidade !== undefined) payload.qtd = Number(b.quantidade);
     if (b.qtd !== undefined) payload.qtd = Number(b.qtd);
-    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo vÃ¡lido para atualizar' });
     const { data, error } = await supabase.from('chapas_estoque').update(payload).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
     cacheClearPrefix('chapas_estoque:');
-    await _chapasLogAcao(req, 'estoque_chapas_patch', `Atualização rápida (legado): ${data?.nom || ''} · ${data?.forn || ''} · ${data?.tam || ''} · qtd=${data?.qtd ?? ''}`);
+    await _chapasLogAcao(req, 'estoque_chapas_patch', `AtualizaÃ§Ã£o rÃ¡pida (legado): ${data?.nom || ''} Â· ${data?.forn || ''} Â· ${data?.tam || ''} Â· qtd=${data?.qtd ?? ''}`);
     return res.json(_chapasCanonicalFromAny(data, 'chapas_estoque'));
   } catch (e) { err(res, e); }
 });
@@ -11896,7 +11896,7 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
     console.log('[INLINE] table:', table, 'body:', JSON.stringify(b));
     const payload = {};
 
-    // empresa_vinculada só existe na v2; no legado mapear para qual_cnpj/qual
+    // empresa_vinculada sÃ³ existe na v2; no legado mapear para qual_cnpj/qual
     if ('empresa_vinculada' in b) {
       if (table === 'chapas_estoque_v2') payload.empresa_vinculada = String(b.empresa_vinculada);
       payload.qual_cnpj = String(b.empresa_vinculada);
@@ -11911,7 +11911,7 @@ app.patch('/api/chapas_estoque/:id/inline', authMiddleware, async (req, res) => 
 
     if (Object.keys(payload).length === 0) {
       console.warn('[INLINE] payload vazio! body:', JSON.stringify(b));
-      return res.status(400).json({ ok: false, error: 'Nenhum campo válido. Body: ' + JSON.stringify(b) });
+      return res.status(400).json({ ok: false, error: 'Nenhum campo vÃ¡lido. Body: ' + JSON.stringify(b) });
     }
 
     if (table === 'chapas_estoque_v2') {
@@ -12067,7 +12067,7 @@ async function verificarEstoqueMinimo(req, canonChapa) {
       qtd: qtdSug,
       valor_unitario: ultimoValorPago || 0,
       status: 'rascunho',
-      obs: 'Criado automaticamente — estoque mínimo atingido',
+      obs: 'Criado automaticamente â€” estoque mÃ­nimo atingido',
       emp_id: empId || undefined,
       data_pedido: new Date().toISOString().slice(0, 10),
       tipo: 'chapas',
@@ -12093,7 +12093,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     const b = req.body || {};
     const tipo = String(b.tipo || '').trim().toLowerCase();
     if (!['entrada', 'saida', 'ajuste'].includes(tipo)) {
-      return res.status(400).json({ ok: false, error: 'Tipo inválido — use: entrada | saida | ajuste' });
+      return res.status(400).json({ ok: false, error: 'Tipo invÃ¡lido â€” use: entrada | saida | ajuste' });
     }
 
     const id = String(req.params.id || '').trim();
@@ -12108,7 +12108,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       const r = await supabase.from(t).select('*').eq('id', id).maybeSingle();
       if (r?.data) { cur = r.data; table = t; break; }
     }
-    if (!cur || !table) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (!cur || !table) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada' });
 
     const canonCur = _chapasCanonicalFromAny(cur, table);
     const oldQtd = Number(canonCur.quantidade || 0) || 0;
@@ -12118,13 +12118,13 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
 
     if (tipo === 'ajuste') {
       const alvo = Math.trunc(_chapasToNum((b.quantidade ?? b.qtd_nova ?? b.qtd), NaN));
-      if (!Number.isFinite(alvo) || alvo < 0) return res.status(400).json({ ok: false, error: 'Quantidade inválida para ajuste' });
+      if (!Number.isFinite(alvo) || alvo < 0) return res.status(400).json({ ok: false, error: 'Quantidade invÃ¡lida para ajuste' });
       newQtd = alvo;
       deltaAbs = newQtd - oldQtd;
     } else {
       const raw = (b.delta ?? b.quantidade ?? b.qtd);
       deltaAbs = Math.trunc(_chapasToNum(raw, NaN));
-      if (!Number.isFinite(deltaAbs) || deltaAbs <= 0) return res.status(400).json({ ok: false, error: 'Quantidade (delta) deve ser um número positivo' });
+      if (!Number.isFinite(deltaAbs) || deltaAbs <= 0) return res.status(400).json({ ok: false, error: 'Quantidade (delta) deve ser um nÃºmero positivo' });
       newQtd = tipo === 'entrada' ? (oldQtd + deltaAbs) : (oldQtd - deltaAbs);
       if (newQtd < 0) {
         return res.status(409).json({
@@ -12143,7 +12143,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
           data: { ...canonCur, _movimento: { tipo, oldQtd, newQtd: oldQtd, delta: 0 } },
           qtd_estoque: Math.trunc(Number(oldQtd) || 0),
           qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-          mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${Math.trunc(Number(oldQtd) || 0)}`,
+          mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${Math.trunc(Number(oldQtd) || 0)}`,
         });
       }
 
@@ -12187,7 +12187,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       const canonUpd = updRow ? _chapasCanonicalFromAny(updRow, 'chapas_estoque_v2') : { ...canonCur, quantidade: Math.trunc(Number(newQtd) || 0) };
 
       const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
-      const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
+      const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} Â· ${canonUpd.nome || ''} Â· ${canonUpd.fornecedor || ''} Â· ${canonUpd.nomenclatura || ''} Â· ${canonUpd.tamanho || ''}`.trim();
       await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
       const qtdOut = Math.trunc(Number(canonUpd.quantidade || newQtd) || 0);
@@ -12197,7 +12197,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
         data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd: Number(canonUpd.quantidade || newQtd) || newQtd, delta: deltaAbs } },
         qtd_estoque: qtdOut,
         qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-        mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${qtdOut}`,
+        mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${qtdOut}`,
       });
     }
 
@@ -12252,7 +12252,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
     const finalTable = updCompat2?.data ? updCompat2.table : table;
     const canonUpd = _chapasCanonicalFromAny(finalRow || {}, finalTable);
     const deltaTxt = tipo === 'ajuste' ? `de ${oldQtd} para ${newQtd}` : `${tipo === 'entrada' ? '+' : '-'}${Math.abs(deltaAbs)}`;
-    const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`.trim();
+    const desc = `Estoque chapas: ${tipo.toUpperCase()} ${deltaTxt} Â· ${canonUpd.nome || ''} Â· ${canonUpd.fornecedor || ''} Â· ${canonUpd.nomenclatura || ''} Â· ${canonUpd.tamanho || ''}`.trim();
     await _chapasLogAcao(req, `estoque_${tipo}`, desc);
 
     if (table === 'chapas_estoque_v2') {
@@ -12307,7 +12307,7 @@ app.post('/api/chapas_estoque/:id/movimento', authMiddleware, async (req, res) =
       data: { ...canonUpd, _movimento: { tipo, oldQtd, newQtd, delta: deltaAbs } },
       qtd_estoque: qtdOut,
       qtd_anterior: Math.trunc(Number(oldQtd) || 0),
-      mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} → ${qtdOut}`,
+      mensagem: `Estoque atualizado: ${Math.trunc(Number(oldQtd) || 0)} â†’ ${qtdOut}`,
     });
   } catch (e) { err(res, e); }
 });
@@ -12319,8 +12319,8 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
     const motivo = String(b.motivo || '').trim();
     const obsRaw = (b.obs != null) ? String(b.obs).trim() : '';
 
-    if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatórios' });
-    if (!motivo) return res.status(400).json({ ok: false, error: 'Motivo obrigatório' });
+    if (!itensIn.length) return res.status(400).json({ ok: false, error: 'Itens obrigatÃ³rios' });
+    if (!motivo) return res.status(400).json({ ok: false, error: 'Motivo obrigatÃ³rio' });
 
     const itens = itensIn.map((it) => {
       const id = String(it?.chapa_id ?? it?.chapaId ?? it?.id ?? '').trim();
@@ -12328,7 +12328,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
       return { id, qtd };
     }).filter((it) => it.id && it.qtd > 0);
 
-    if (!itens.length) return res.status(400).json({ ok: false, error: 'Itens inválidos' });
+    if (!itens.length) return res.status(400).json({ ok: false, error: 'Itens invÃ¡lidos' });
 
     const checks = [];
     for (const it of itens) {
@@ -12338,7 +12338,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
         .eq('id', it.id)
         .maybeSingle();
       if (r.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
-      if (!r.data) return res.status(404).json({ ok: false, error: 'Chapa não encontrada: ' + it.id });
+      if (!r.data) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada: ' + it.id });
 
       const qtdAtual = Math.trunc(Number(r.data.quantidade_atual ?? r.data.quantidade ?? 0) || 0);
       if (it.qtd > qtdAtual) {
@@ -12350,7 +12350,7 @@ app.post('/api/chapas/saida-lote', authMiddleware, async (req, res) => {
     const resultados = [];
     const updatedAt = new Date().toISOString();
     const obsFinal = obsRaw ? obsRaw : motivo;
-    const obsTxt = String('Saída em lote' + (obsFinal ? (' · ' + obsFinal) : '')).trim();
+    const obsTxt = String('SaÃ­da em lote' + (obsFinal ? (' Â· ' + obsFinal) : '')).trim();
 
     for (const it of checks) {
       const newQtd = Math.trunc(it.qtdAtual - it.qtd);
@@ -12630,7 +12630,7 @@ app.get('/api/chapas_estoque/toneladas', authMiddleware, async (req, res) => {
 app.get('/api/chapas/historico/:id', authMiddleware, async (req, res) => {
   try {
     const chapaId = String(req.params.id || '').trim();
-    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!chapaId) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const empId = String(req.query.empId || req.query.emp_id || '').trim();
     const limit = Math.max(1, Math.min(200, Math.trunc(_chapasToNum(req.query.limit, 50))));
 
@@ -12722,8 +12722,8 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const qtd_sugerida = b.qtd_sugerida != null ? Math.trunc(Number(b.qtd_sugerida) || 0) : null;
     const observacao = String(b.observacao || '').trim() || null;
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id não encontrado' });
-    if (!chapa_id) return res.status(400).json({ ok: false, error: 'chapa_id obrigatório' });
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id nÃ£o encontrado' });
+    if (!chapa_id) return res.status(400).json({ ok: false, error: 'chapa_id obrigatÃ³rio' });
 
     let existente = null;
     try {
@@ -12737,14 +12737,14 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
       existente = r?.data || null;
     } catch (_) {}
     if (existente && existente.id) {
-      return res.status(409).json({ ok: false, error: 'Já existe pin pendente para esta chapa' });
+      return res.status(409).json({ ok: false, error: 'JÃ¡ existe pin pendente para esta chapa' });
     }
 
     const payload = {
       chapa_id,
       empresa_id,
       emp_id: String(b.empId || b.emp_id || req.query?.empId || req.query?.emp_id || req.usuario?.empId || req.usuario?.emp_id || req.usuario?.sigla || '').trim() || null,
-      criado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      criado_por: req.usuario?.nome || req.usuario?.email || 'UsuÃ¡rio',
       qtd_sugerida: (qtd_sugerida && qtd_sugerida > 0) ? qtd_sugerida : null,
       observacao,
       status: 'pendente',
@@ -12773,7 +12773,7 @@ app.post('/api/chapas/pins', authMiddleware, async (req, res) => {
 app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const b = req.body || {};
     const tamanho = String(b.tamanho || b.tam || '').trim().toUpperCase();
     const quantidade = Math.trunc(Number(b.quantidade || b.qtd || 0) || 0);
@@ -12781,13 +12781,13 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
     const pinRow = await supabase.from('chapas_pins').select('*').eq('id', id).maybeSingle();
     if (pinRow?.error) throw pinRow.error;
     const atual = pinRow?.data || null;
-    if (!atual) return res.status(404).json({ ok: false, error: 'pin não encontrado' });
+    if (!atual) return res.status(404).json({ ok: false, error: 'pin nÃ£o encontrado' });
     if (String(atual.status || '').trim().toLowerCase() === 'comprado') {
       return res.json({ ok: true, data: atual, movimento: null });
     }
     const payload = {
       status: 'comprado',
-      comprado_por: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      comprado_por: req.usuario?.nome || req.usuario?.email || 'UsuÃ¡rio',
       comprado_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       tamanho_compra: tamanho || null,
@@ -12838,7 +12838,7 @@ app.patch('/api/chapas/pins/:id/comprado', authMiddleware, async (req, res) => {
         obs: 'Compra via pin',
         origem: 'pin_compra',
         origem_id: id,
-        usuario: req?.usuario?.nome || req?.usuario?.email || 'Usuário',
+        usuario: req?.usuario?.nome || req?.usuario?.email || 'UsuÃ¡rio',
         emp_id: String(atual?.emp_id || req.query?.empId || req.body?.empId || '').trim() || null,
       });
       if (movRes?.error) throw movRes.error;
@@ -12862,7 +12862,7 @@ app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
     const b = req.body || {};
     const chapa_id = String(b.chapa_id || b.chapaId || '').trim();
     const quantidade = Math.abs(Math.trunc(Number(b.quantidade || 0) || 0));
-    if (!chapa_id || !(quantidade > 0)) return res.status(400).json({ ok: false, error: 'chapa_id e quantidade obrigatórios' });
+    if (!chapa_id || !(quantidade > 0)) return res.status(400).json({ ok: false, error: 'chapa_id e quantidade obrigatÃ³rios' });
     const empresa_id = await _resolveEmpresaUuid(req);
     const payload = {
       chapa_id,
@@ -12871,7 +12871,7 @@ app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
       empresa_id: empresa_id || null,
       emp_id: String(b.empId || b.emp_id || req.query?.empId || req.body?.empId || '').trim() || null,
       data: String(b.data || '').trim() || new Date().toISOString(),
-      usuario: req.usuario?.nome || req.usuario?.email || 'Usuário',
+      usuario: req.usuario?.nome || req.usuario?.email || 'UsuÃ¡rio',
       created_at: new Date().toISOString(),
     };
     let toInsert = { ...payload };
@@ -12899,7 +12899,7 @@ app.post('/api/chapas/consumo', authMiddleware, async (req, res) => {
 app.delete('/api/chapas/pins/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const del = await supabase.from('chapas_pins').delete().eq('id', id);
     const err = del?.error || null;
     if (err) throw err;
@@ -12974,7 +12974,7 @@ app.get('/api/chapas_estoque_movimentos', authMiddleware, async (req, res) => {
 app.delete('/api/chapas_estoque_movimentos', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const preferred = await _chapasPreferV2Table();
-    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'MovimentaÃ§Ãµes disponÃ­veis apenas no v2' });
 
     const delFilter = '00000000-0000-0000-0000-000000000000';
     const { data, error } = await supabase
@@ -12992,11 +12992,11 @@ app.delete('/api/chapas_estoque_movimentos', authMiddleware, requireAdmin, async
 app.patch('/api/chapas_estoque_movimentos/:id/confirmar', authMiddleware, async (req, res) => {
   try {
     const preferred = await _chapasPreferV2Table();
-    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'MovimentaÃ§Ãµes disponÃ­veis apenas no v2' });
     const movId = String(req.params.id || '').trim();
-    if (!movId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!movId) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const qtd = Math.trunc(Number(req.body?.qtd_real_utilizada));
-    if (!Number.isFinite(qtd) || qtd < 0) return res.status(400).json({ ok: false, error: 'qtd_real_utilizada inválida' });
+    if (!Number.isFinite(qtd) || qtd < 0) return res.status(400).json({ ok: false, error: 'qtd_real_utilizada invÃ¡lida' });
     const payload = {
       qtd_real_utilizada: qtd,
       confirmado_por: String(req.body?.confirmado_por || req.usuario?.nome || 'sistema'),
@@ -13016,16 +13016,16 @@ app.patch('/api/chapas_estoque_movimentos/:id/confirmar', authMiddleware, async 
 app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res) => {
   try {
     const preferred = await _chapasPreferV2Table();
-    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Movimentações disponíveis apenas no v2' });
+    if (preferred !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'MovimentaÃ§Ãµes disponÃ­veis apenas no v2' });
 
     const movId = req.params.id;
     const { data: mov, error: movErr } = await supabase.from('chapas_estoque_movimentos_v2').select('*').eq('id', movId).single();
-    if (movErr || !mov) return res.status(404).json({ ok: false, error: 'Movimentação não encontrada' });
-    if (mov.reverted) return res.status(400).json({ ok: false, error: 'Movimentação já revertida' });
+    if (movErr || !mov) return res.status(404).json({ ok: false, error: 'MovimentaÃ§Ã£o nÃ£o encontrada' });
+    if (mov.reverted) return res.status(400).json({ ok: false, error: 'MovimentaÃ§Ã£o jÃ¡ revertida' });
 
     const chapaId = mov.chapa_id;
     const { data: cur, error: curErr } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).single();
-    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa não encontrada' });
+    if (curErr || !cur) return res.status(404).json({ ok: false, error: 'Chapa nÃ£o encontrada' });
 
     const canonCur = _chapasCanonicalFromAny(cur, 'chapas_estoque_v2');
     const curQtd = Math.trunc(Number(canonCur.quantidade || 0) || 0);
@@ -13038,7 +13038,7 @@ app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res
         tipo: tipoRpc,
         quantidade: qtdRpc,
         nf: null,
-        obs: `Reversão do movimento ${movId} (${mov.tipo})`.trim(),
+        obs: `ReversÃ£o do movimento ${movId} (${mov.tipo})`.trim(),
         origem: 'reversao_movimento',
         origem_id: String(movId),
         usuario: req?.usuario?.nome || 'sistema',
@@ -13060,7 +13060,7 @@ app.delete('/api/chapas_estoque_movimentos/:id', authMiddleware, async (req, res
     cacheClearPrefix('chapas_estoque:');
     const { data: upd } = await supabase.from('chapas_estoque_v2').select('*').eq('id', chapaId).maybeSingle();
     const canonUpd = upd ? _chapasCanonicalFromAny(upd, 'chapas_estoque_v2') : { ...canonCur, quantidade: curQtd - delta };
-    await _chapasLogAcao(req, 'estoque_movimento_revertido', `Movimento revertido (${mov.tipo}) delta=${delta} · ${canonUpd.nome || ''} · ${canonUpd.fornecedor || ''} · ${canonUpd.nomenclatura || ''} · ${canonUpd.tamanho || ''}`);
+    await _chapasLogAcao(req, 'estoque_movimento_revertido', `Movimento revertido (${mov.tipo}) delta=${delta} Â· ${canonUpd.nome || ''} Â· ${canonUpd.fornecedor || ''} Â· ${canonUpd.nomenclatura || ''} Â· ${canonUpd.tamanho || ''}`);
 
     return ok(res, { chapa: canonUpd });
   } catch (e) { err(res, e); }
@@ -13076,7 +13076,7 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
     if (!rowsRaw.length) return res.status(400).json({ ok: false, error: 'rows vazio' });
 
     const normNom = (v) => String(v || '').trim().toUpperCase();
-    const normTam = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/MM/g, '').replace(/×/g, 'X');
+    const normTam = (v) => String(v || '').trim().toUpperCase().replace(/\s+/g, '').replace(/MM/g, '').replace(/Ã—/g, 'X');
     const toInt = (v) => Math.trunc(Number(String(v ?? '').toString().replace(/\./g, '').replace(',', '.')) || 0);
     const toNum = (v) => Number(String(v ?? '').toString().replace(/R\$/gi, '').replace(/\s+/g, '').replace(/\./g, '').replace(',', '.')) || 0;
 
@@ -13095,7 +13095,7 @@ app.post('/api/chapas_estoque/upsert_sem_historico', authMiddleware, async (req,
 
       const key = `${normNom(nomenclatura)}|${normTam(tamanho)}`;
       if (!nomenclatura || !tamanho) {
-        errors.push({ idx, error: 'nomenclatura/tamanho obrigatórios' });
+        errors.push({ idx, error: 'nomenclatura/tamanho obrigatÃ³rios' });
         return;
       }
       byKey.set(key, { idx, fornecedor, nomenclatura, tamanho, nome, qual_cnpj: qualCnpj, nf, quantidade, valor_unitario: valorUnitario });
@@ -13263,15 +13263,15 @@ app.post('/api/chapas_estoque/importar_sql', authMiddleware, async (req, res) =>
 app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.single('file'), async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
-    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
-    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo CSV não recebido' });
+    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 nÃ£o encontrada no banco' });
+    if (!req.file || !req.file.buffer) return res.status(400).json({ ok: false, error: 'Arquivo CSV nÃ£o recebido' });
 
     const mode = String(req.query.mode || req.body?.mode || 'append').toLowerCase().trim();
-    if (!['append', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode inválido (append/replace)' });
+    if (!['append', 'replace'].includes(mode)) return res.status(400).json({ ok: false, error: 'mode invÃ¡lido (append/replace)' });
 
     const text = req.file.buffer.toString('utf8');
     const parsed = _chapasParseCsv(text);
-    if (!parsed.length) return res.status(400).json({ ok: false, error: 'CSV vazio ou sem linhas válidas' });
+    if (!parsed.length) return res.status(400).json({ ok: false, error: 'CSV vazio ou sem linhas vÃ¡lidas' });
 
     if (mode === 'replace') {
       const delFilter = '00000000-0000-0000-0000-000000000000';
@@ -13290,7 +13290,7 @@ app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.singl
       }
     }
 
-    if (!clean.length) return res.status(400).json({ ok: false, error: 'Nenhuma linha válida para importar', errors });
+    if (!clean.length) return res.status(400).json({ ok: false, error: 'Nenhuma linha vÃ¡lida para importar', errors });
 
     const chunkSize = 200;
     let inserted = 0;
@@ -13309,7 +13309,7 @@ app.post('/api/chapas_estoque/import_csv', authMiddleware, chapasCsvUpload.singl
 app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const table = await _chapasPreferV2Table();
-    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 não encontrada no banco' });
+    if (table !== 'chapas_estoque_v2') return res.status(400).json({ ok: false, error: 'Tabela chapas_estoque_v2 nÃ£o encontrada no banco' });
 
     const { data: legacy, error: legacyErr } = await supabase.from('chapas_estoque').select('*');
     if (legacyErr) return res.status(500).json({ ok: false, error: legacyErr.message });
@@ -13346,7 +13346,7 @@ app.post('/api/chapas_estoque/migrar_legacy', authMiddleware, requireAdmin, asyn
       inserted += Array.isArray(data) ? data.length : chunk.length;
     }
 
-    await _chapasLogAcao(req, 'estoque_chapas_migrar_legacy', `Migração legado -> v2: ${inserted} itens`);
+    await _chapasLogAcao(req, 'estoque_chapas_migrar_legacy', `MigraÃ§Ã£o legado -> v2: ${inserted} itens`);
     return ok(res, { inserted, legacyCount: (legacy || []).length });
   } catch (e) { err(res, e); }
 });
@@ -13360,7 +13360,7 @@ app.delete('/api/chapas_estoque/:id', authMiddleware, async (req, res) => {
     for (const t of tables) {
       const { error } = await supabase.from(t).delete().eq('id', req.params.id);
       if (!error) {
-        await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluída (id=${req.params.id})`);
+        await _chapasLogAcao(req, 'estoque_chapas_excluir', `Chapa excluÃ­da (id=${req.params.id})`);
         return res.json({ ok: true });
       }
       lastErr = error;
@@ -13433,14 +13433,14 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
       const larg = Number(req.body?.largura_mm) || 0;
       const alt  = Number(req.body?.altura_mm) || 0;
       if (!(comp > 0 && larg > 0)) {
-        return res.status(400).json({ ok: false, error: 'largura_mm e comprimento_mm obrigatórios' });
+        return res.status(400).json({ ok: false, error: 'largura_mm e comprimento_mm obrigatÃ³rios' });
       }
       planifLarg = larg + (alt * 2) + 15;
       planifComp = (comp + alt) * 2 + 20;
     }
 
     if (!(planifLarg > 0 && planifComp > 0)) {
-      return res.status(400).json({ ok: false, error: 'Dimensões de planificação inválidas' });
+      return res.status(400).json({ ok: false, error: 'DimensÃµes de planificaÃ§Ã£o invÃ¡lidas' });
     }
 
     const areaPlanif = planifLarg * planifComp;
@@ -13459,7 +13459,7 @@ app.post('/api/chapas_estoque/sugerir_menor_desperdicio', authMiddleware, async 
 
     for (const c of chapas) {
       const tam = String(c.tamanho || c.tam || '').trim();
-      const m = tam.match(/(\d+)\s*[xX×]\s*(\d+)/);
+      const m = tam.match(/(\d+)\s*[xXÃ—]\s*(\d+)/);
       if (!m) continue;
 
       const d1 = Number(m[1]);
@@ -13967,7 +13967,7 @@ app.post('/api/relatorios/lancar_of', async (req, res) => {
       of = data && data[0] ? data[0] : null;
     }
 
-    if (!of) return bad(res, 'OF não encontrada');
+    if (!of) return bad(res, 'OF nÃ£o encontrada');
 
     const getDate = (v) => {
       if (!v) return '';
@@ -14006,7 +14006,7 @@ app.post('/api/relatorios/lancar_of', async (req, res) => {
 app.post('/api/relatorio/producao/manual', async (req, res) => {
   try {
     const row = { ...(req.body || {}) };
-    if (!row.mes_referencia) return bad(res, 'mes_referencia obrigatório');
+    if (!row.mes_referencia) return bad(res, 'mes_referencia obrigatÃ³rio');
     const { data, error } = await supabase.from('relatorio_producao').insert([row]).select();
     if (error) throw error;
     ok(res, data[0]);
@@ -14016,7 +14016,7 @@ app.post('/api/relatorio/producao/manual', async (req, res) => {
 app.get('/api/relatorio/producao', async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
-    if (!mes) return bad(res, 'mes obrigatório');
+    if (!mes) return bad(res, 'mes obrigatÃ³rio');
     const { data, error } = await supabase.from('relatorio_producao').select('*').eq('mes_referencia', mes).order('data');
     if (error) throw error;
     ok(res, data || []);
@@ -14026,7 +14026,7 @@ app.get('/api/relatorio/producao', async (req, res) => {
 app.get('/api/relatorio/aparras', async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
-    if (!mes) return bad(res, 'mes obrigatório');
+    if (!mes) return bad(res, 'mes obrigatÃ³rio');
     const { data, error } = await supabase.from('relatorio_aparras').select('*').eq('mes_referencia', mes).order('data');
     if (error) throw error;
     ok(res, data || []);
@@ -14036,7 +14036,7 @@ app.get('/api/relatorio/aparras', async (req, res) => {
 app.get('/api/relatorio/dashboard', async (req, res) => {
   try {
     const mes = String(req.query.mes || '').trim();
-    if (!mes) return bad(res, 'mes obrigatório');
+    if (!mes) return bad(res, 'mes obrigatÃ³rio');
     const { data, error } = await supabase.from('relatorio_dashboard').select('*').eq('mes_referencia', mes).limit(1);
     if (error) throw error;
     ok(res, (data && data[0]) ? data[0] : null);
@@ -14136,8 +14136,8 @@ app.post('/api/hist_estoque', authMiddleware, async (req, res) => {
       b.descricao ||
       [b.tipo ? String(b.tipo).toUpperCase() : 'ESTOQUE', b.item_id ? `item=${b.item_id}` : '', b.qtd != null ? `qtd=${b.qtd}` : '', b.motivo || b.obs || '']
         .filter(Boolean)
-        .join(' · ')
-    ).trim() || 'Movimentação manual de estoque';
+        .join(' Â· ')
+    ).trim() || 'MovimentaÃ§Ã£o manual de estoque';
     const payload = {
       tipo_acao: 'estoque_manual',
       descricao,
@@ -14302,11 +14302,11 @@ function _range(period) {
     const dow = x.getDay();
     const diff = (dow === 0) ? 6 : (dow - 1);
     x.setDate(x.getDate() - diff);
-    return { de: x, ate: endOfDay(now), label: `Semana ${_isoDay(x)} → ${_isoDay(now)}` };
+    return { de: x, ate: endOfDay(now), label: `Semana ${_isoDay(x)} â†’ ${_isoDay(now)}` };
   }
   if (period === 'mes') {
     const de = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    return { de, ate: endOfDay(now), label: `Mês ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}` };
+    return { de, ate: endOfDay(now), label: `MÃªs ${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}` };
   }
   const y = startOfDay(now);
   y.setDate(y.getDate() - 1);
@@ -14335,7 +14335,7 @@ async function _fetchResumoEmail({ empId, period }) {
   const totalCompras = compras.reduce((s, c) => s + sumCmp(c), 0);
   const stCount = {};
   ofs.forEach((o) => {
-    const st = String(o?.status || '—').trim() || '—';
+    const st = String(o?.status || 'â€”').trim() || 'â€”';
     stCount[st] = (stCount[st] || 0) + 1;
   });
 
@@ -14347,8 +14347,8 @@ async function _fetchResumoEmail({ empId, period }) {
     totalCompras,
     status: stCount,
     sampleOfs: ofs.slice(0, 12).map((o) => ({
-      numero: o?.numero ?? o?.of ?? '—',
-      status: o?.status ?? '—',
+      numero: o?.numero ?? o?.of ?? 'â€”',
+      status: o?.status ?? 'â€”',
       valor: sumOf(o),
       created_at: String(o?.created_at || '').slice(0, 10),
       emp_id: o?.emp_id ?? '',
@@ -14366,17 +14366,17 @@ function _renderResumoEmailHtml(resumo) {
       <td style="font-family:monospace">${esc(o.numero)}</td>
       <td>${esc(o.status)}</td>
       <td style="text-align:right">${fmtMoney(o.valor)}</td>
-      <td style="text-align:center">${esc(o.created_at || '—')}</td>
+      <td style="text-align:center">${esc(o.created_at || 'â€”')}</td>
     </tr>`).join('');
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Relatório</title>
+  <title>RelatÃ³rio</title>
   </head><body style="margin:0;background:#0b1220;color:#e5e7eb;font-family:Arial,sans-serif">
   <div style="max-width:920px;margin:0 auto;padding:18px">
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
       <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
         <div>
-          <div style="font-size:18px;font-weight:900">Relatório (ERP)</div>
+          <div style="font-size:18px;font-weight:900">RelatÃ³rio (ERP)</div>
           <div style="margin-top:6px;color:rgba(229,231,235,0.70);font-size:12px">${esc(resumo.label || '')}</div>
         </div>
         <div style="color:rgba(229,231,235,0.70);font-size:12px">Italy Embalagens</div>
@@ -14406,7 +14406,7 @@ function _renderResumoEmailHtml(resumo) {
           <div style="font-weight:900;margin-bottom:8px">Status das OFs</div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead><tr><th style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Status</th><th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Qtd</th></tr></thead>
-            <tbody>${statusRows || '<tr><td colspan="2" style="padding:6px 8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+            <tbody>${statusRows || '<tr><td colspan="2" style="padding:6px 8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
           </table>
         </div>
         <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:12px">
@@ -14418,7 +14418,7 @@ function _renderResumoEmailHtml(resumo) {
               <th style="text-align:right;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Valor</th>
               <th style="text-align:center;border-bottom:1px solid rgba(255,255,255,0.12);padding:6px 8px">Data</th>
             </tr></thead>
-            <tbody>${ofsRows || '<tr><td colspan="4" style="padding:6px 8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+            <tbody>${ofsRows || '<tr><td colspan="4" style="padding:6px 8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
           </table>
         </div>
       </div>
@@ -14461,7 +14461,7 @@ async function _reloadRelEmailSchedule() {
     try {
       const resumo = await _fetchResumoEmail({ empId, period: cfg?.period || 'ontem' });
       const html = _renderResumoEmailHtml(resumo);
-      const subject = `Relatório ERP — ${resumo.label}`;
+      const subject = `RelatÃ³rio ERP â€” ${resumo.label}`;
       await _sendResumoEmail({ to, subject, html });
       _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: true, lastError: null };
     } catch (e) {
@@ -14503,7 +14503,7 @@ app.post('/api/relatorios/email/enviar_agora', authMiddleware, requireAdmin, asy
     const empId = String(cfg?.emp_id || cfg?.empId || '').trim() || null;
     const resumo = await _fetchResumoEmail({ empId, period: cfg?.period || 'ontem' });
     const html = _renderResumoEmailHtml(resumo);
-    const subject = `Relatório ERP — ${resumo.label}`;
+    const subject = `RelatÃ³rio ERP â€” ${resumo.label}`;
     await _sendResumoEmail({ to, subject, html });
     _relEmailState = { ..._relEmailState, lastRunAt: new Date().toISOString(), lastOk: true, lastError: null };
     return ok(res, true);
@@ -14551,16 +14551,16 @@ function _assistDaysDiff(aIso, bIso) {
 
 function _assistMonthFromText(norm) {
   const map = {
-    janeiro: 1, fevereiro: 2, marco: 3, março: 3, abril: 4, maio: 5, junho: 6,
+    janeiro: 1, fevereiro: 2, marco: 3, marÃ§o: 3, abril: 4, maio: 5, junho: 6,
     julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
   };
   for (const k of Object.keys(map)) {
     if (norm.includes(k)) return map[k];
   }
-  const m1 = norm.match(/\b(?:mes|mês|em)\s*(0?[1-9]|1[0-2])\b/);
+  const m1 = norm.match(/\b(?:mes|mÃªs|em)\s*(0?[1-9]|1[0-2])\b/);
   if (m1) return Number(m1[1]);
   const m2 = norm.match(/\b(0?[1-9]|1[0-2])\b/);
-  if (m2 && (norm.includes('fatur') || norm.includes('venda') || norm.includes('total de') || norm.includes('mes') || norm.includes('mês'))) {
+  if (m2 && (norm.includes('fatur') || norm.includes('venda') || norm.includes('total de') || norm.includes('mes') || norm.includes('mÃªs'))) {
     return Number(m2[1]);
   }
   return null;
@@ -14601,12 +14601,12 @@ async function _assistUser(req) {
       }
     } catch (_) {}
   }
-  const nomeSafe = nome || email || 'Olá';
+  const nomeSafe = nome || email || 'OlÃ¡';
   return { id: uid || null, nome: nomeSafe, email: email || null, perfil: perfil || null };
 }
 
 function _assistPickOfNumber(o) {
-  return String(o?.of ?? o?.numero ?? '').trim() || '—';
+  return String(o?.of ?? o?.numero ?? '').trim() || 'â€”';
 }
 
 function _assistPickOfEntrega(o) {
@@ -14653,7 +14653,7 @@ async function _assistLoadClientesByIds(ids) {
 function _jarvisFirstName(full) {
   const s = _jarvisPrettyName(full);
   const parts = s.split(/\s+/).filter(Boolean);
-  return parts[0] || s || 'Usuário';
+  return parts[0] || s || 'UsuÃ¡rio';
 }
 
 function _jarvisHasAny(norm, ...words) {
@@ -14832,7 +14832,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
       .from('ofs')
       .select('fluxo_maquinas,maq,maquina_atual_index,status,deleted_at')
       .is('deleted_at', null)
-      .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+      .not('status', 'in', '("ConcluÃ­do","Cancelada","Cancelado")')
       .limit(500);
     const filaMap = {};
     (Array.isArray(ofsAbertas) ? ofsAbertas : []).forEach(o => {
@@ -14873,22 +14873,22 @@ async function _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, histori
   if (!key) return { ok: false, error: 'missing_key' };
   const firstName = _jarvisFirstName(nomeUsuario);
   const systemPrompt =
-    `Você é o JARVIS, assistente inteligente da Italy Embalagens, uma fábrica de caixas de papelão.\n\n` +
-    `USUÁRIO LOGADO: ${firstName} (chame sempre pelo primeiro nome)\n` +
+    `VocÃª Ã© o JARVIS, assistente inteligente da Italy Embalagens, uma fÃ¡brica de caixas de papelÃ£o.\n\n` +
+    `USUÃRIO LOGADO: ${firstName} (chame sempre pelo primeiro nome)\n` +
     `DATA/HORA: ${new Date().toLocaleString('pt-BR')}\n\n` +
     `DADOS DO SISTEMA:\n${JSON.stringify(dadosContexto || {}, null, 2)}\n\n` +
-    `INSTRUÇÕES:\n` +
-    `- Responda SEMPRE em português brasileiro\n` +
+    `INSTRUÃ‡Ã•ES:\n` +
+    `- Responda SEMPRE em portuguÃªs brasileiro\n` +
     `- Seja direto e objetivo como o JARVIS do Iron Man\n` +
     `- Use emojis relevantes nas respostas\n` +
     `- Formate valores em R$ (ex: R$ 45.230,00)\n` +
     `- Formate datas como DD/MM/AAAA\n` +
-    `- Quando listar OFs, mostre: número, cliente, status, data entrega\n` +
-    `- Quando não souber algo, diga o que sabe e sugira alternativas\n` +
-    `- Se perguntarem sobre OF específica e você tiver os dados, detalhe tudo\n` +
-    `- Para ações de alteração, sempre confirme antes de executar\n` +
-    `- Você tem acesso completo aos dados do sistema listados acima\n` +
-    `- Nunca diga que não tem acesso aos dados — os dados estão no contexto acima`;
+    `- Quando listar OFs, mostre: nÃºmero, cliente, status, data entrega\n` +
+    `- Quando nÃ£o souber algo, diga o que sabe e sugira alternativas\n` +
+    `- Se perguntarem sobre OF especÃ­fica e vocÃª tiver os dados, detalhe tudo\n` +
+    `- Para aÃ§Ãµes de alteraÃ§Ã£o, sempre confirme antes de executar\n` +
+    `- VocÃª tem acesso completo aos dados do sistema listados acima\n` +
+    `- Nunca diga que nÃ£o tem acesso aos dados â€” os dados estÃ£o no contexto acima`;
 
   const msgs = [];
   const hist = Array.isArray(historico) ? historico : [];
@@ -14926,7 +14926,7 @@ async function _jarvisCallClaude({ pergunta, nomeUsuario, dadosContexto, histori
 
 async function _callOpenAI({ mensagem, sistema, historico, json, modelo }) {
   try {
-    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY não configurada');
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY nÃ£o configurada');
 
     const modeloFinal = modelo || 'gpt-4o';
     const msgs = [];
@@ -14980,37 +14980,37 @@ async function _callJarvisIA({ pergunta, nomeUsuario, dadosContexto, historico, 
     console.log('[CALLJARVIS]', { temOpenAI: !!OPENAI_API_KEY, modelo: 'gpt-4o', perguntaLen: pergunta?.length });
 
     const hoje = new Date().toLocaleString('pt-BR');
-    const firstName = _jarvisFirstName(nomeUsuario || 'usuário');
+    const firstName = _jarvisFirstName(nomeUsuario || 'usuÃ¡rio');
 
-    const systemBase = `Você é o JARVIS, assistente de inteligência artificial da Italy Embalagens.
-Seu papel é responder perguntas com base nos dados reais do ERP abaixo.
+    const systemBase = `VocÃª Ã© o JARVIS, assistente de inteligÃªncia artificial da Italy Embalagens.
+Seu papel Ã© responder perguntas com base nos dados reais do ERP abaixo.
 
-USUÁRIO LOGADO: ${firstName}
+USUÃRIO LOGADO: ${firstName}
 DATA E HORA: ${hoje}
 
-═══ DADOS REAIS DO SISTEMA ═══
+â•â•â• DADOS REAIS DO SISTEMA â•â•â•
 ${JSON.stringify(dadosContexto || {}, null, 2)}
-══════════════════════════════
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-INSTRUÇÕES OBRIGATÓRIAS:
-1. Use APENAS os dados acima para responder — nunca invente números
-2. Responda SEMPRE em português brasileiro
-3. Seja analítico e completo — explique o que os dados significam
+INSTRUÃ‡Ã•ES OBRIGATÃ“RIAS:
+1. Use APENAS os dados acima para responder â€” nunca invente nÃºmeros
+2. Responda SEMPRE em portuguÃªs brasileiro
+3. Seja analÃ­tico e completo â€” explique o que os dados significam
 4. Formate valores em R$ com separador de milhar (ex: R$ 45.230,00)
 5. Formate datas como DD/MM/AAAA
-6. Para listas de OFs: número, cliente, status, data entrega, valor
-7. Quando perguntarem sobre tendências: compare períodos e indique se melhorou ou piorou
-8. Quando perguntarem sobre problemas: identifique causas e sugira ações
-9. Se os dados não contiverem a informação pedida: diga exatamente o que está faltando
-10. Para relatórios: organize em seções com títulos claros
+6. Para listas de OFs: nÃºmero, cliente, status, data entrega, valor
+7. Quando perguntarem sobre tendÃªncias: compare perÃ­odos e indique se melhorou ou piorou
+8. Quando perguntarem sobre problemas: identifique causas e sugira aÃ§Ãµes
+9. Se os dados nÃ£o contiverem a informaÃ§Ã£o pedida: diga exatamente o que estÃ¡ faltando
+10. Para relatÃ³rios: organize em seÃ§Ãµes com tÃ­tulos claros
 
 CAPACIDADES:
-- Analisar OFs atrasadas, urgentes, por máquina, por cliente
-- Calcular faturamento por período, por empresa, por vendedor
-- Identificar padrões de perda e problemas de produção
-- Comparar desempenho entre períodos
-- Sugerir prioridades de produção
-- Gerar relatórios detalhados em HTML para impressão`;
+- Analisar OFs atrasadas, urgentes, por mÃ¡quina, por cliente
+- Calcular faturamento por perÃ­odo, por empresa, por vendedor
+- Identificar padrÃµes de perda e problemas de produÃ§Ã£o
+- Comparar desempenho entre perÃ­odos
+- Sugerir prioridades de produÃ§Ã£o
+- Gerar relatÃ³rios detalhados em HTML para impressÃ£o`;
 
     if (modo === 'turbo' && temClaude && temOpenAI) {
       try {
@@ -15024,19 +15024,19 @@ CAPACIDADES:
 
         if (textoClaude && textoOpenAI) {
           const sintese = await _callOpenAI({
-            mensagem: `Duas análises foram feitas sobre a pergunta: "${pergunta}"
+            mensagem: `Duas anÃ¡lises foram feitas sobre a pergunta: "${pergunta}"
 
-ANÁLISE 1 (Claude):
+ANÃLISE 1 (Claude):
 ${textoClaude}
 
-ANÁLISE 2 (GPT-4o):
+ANÃLISE 2 (GPT-4o):
 ${textoOpenAI}
 
-Sintetize as duas análises em UMA resposta única, completa e superior.
-Aproveite os pontos fortes de cada análise.
-Responda em português brasileiro, de forma direta e clara.
-NÃO mencione que houve duas análises — apenas dê a melhor resposta possível.`,
-            sistema: 'Você sintetiza análises em respostas superiores. Responda em português.',
+Sintetize as duas anÃ¡lises em UMA resposta Ãºnica, completa e superior.
+Aproveite os pontos fortes de cada anÃ¡lise.
+Responda em portuguÃªs brasileiro, de forma direta e clara.
+NÃƒO mencione que houve duas anÃ¡lises â€” apenas dÃª a melhor resposta possÃ­vel.`,
+            sistema: 'VocÃª sintetiza anÃ¡lises em respostas superiores. Responda em portuguÃªs.',
             modelo: 'gpt-4o',
           });
           return { ok: true, text: sintese.text, origem: 'turbo' };
@@ -15068,7 +15068,7 @@ NÃO mencione que houve duas análises — apenas dê a melhor resposta possíve
         });
         if (r?.ok && r.text) return { ok: true, text: r.text, origem: 'openai' };
       } catch (e) {
-        console.warn('[JARVIS] OpenAI também falhou:', e?.message);
+        console.warn('[JARVIS] OpenAI tambÃ©m falhou:', e?.message);
       }
     }
 
@@ -15195,7 +15195,7 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
     const q = m ? Math.trunc(Number(m[1])) : 0;
     if (q > 0) return { type: 'of_set_qtd', ofNum, qtd: q };
   }
-  if (ofNum && _jarvisHasAny(norm, 'urgencia', 'urgência', 'urgente') && _jarvisHasAny(norm, 'adicione', 'adicionar', 'coloque', 'marque', 'set')) {
+  if (ofNum && _jarvisHasAny(norm, 'urgencia', 'urgÃªncia', 'urgente') && _jarvisHasAny(norm, 'adicione', 'adicionar', 'coloque', 'marque', 'set')) {
     return { type: 'of_set_urgente', ofNum };
   }
   if (ofNum && _jarvisHasAny(norm, 'cliente') && _jarvisHasAny(norm, 'mude', 'mudar', 'troque', 'alterar', 'altere', 'para')) {
@@ -15203,7 +15203,7 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
     const cliNome = m ? String(m[1] || '').trim() : '';
     if (cliNome) return { type: 'of_set_cliente', ofNum, clienteNome: cliNome };
   }
-  if (ofNum && _jarvisHasAny(norm, 'conclua', 'concluir', 'concluida', 'concluída', 'concluido', 'concluído')) {
+  if (ofNum && _jarvisHasAny(norm, 'conclua', 'concluir', 'concluida', 'concluÃ­da', 'concluido', 'concluÃ­do')) {
     const m = p.match(/\bcom\s+([0-9]{1,9})\s*(?:caixas?|cx)\b/i) || p.match(/\b([0-9]{1,9})\s*(?:caixas?|cx)\b/i);
     const qtdProd = m ? Math.trunc(Number(m[1])) : 0;
     return { type: 'of_concluir', ofNum, qtdProduzida: (qtdProd > 0 ? qtdProd : undefined) };
@@ -15214,8 +15214,8 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
     const chapaNome = m ? String(m[2] || '').trim() : '';
     if (qtd > 0 && chapaNome) return { type: 'chapa_entrada', qtd, chapaNome };
   }
-  if (_jarvisHasAny(norm, 'estoque minimo', 'estoque mínimo') && _jarvisHasAny(norm, 'chapa') && _jarvisHasAny(norm, 'para')) {
-    const m = p.match(/estoque\s+m[ií]nimo\s+da\s+chapa\s+(.+?)\s+para\s+([0-9]{1,9})\b/i);
+  if (_jarvisHasAny(norm, 'estoque minimo', 'estoque mÃ­nimo') && _jarvisHasAny(norm, 'chapa') && _jarvisHasAny(norm, 'para')) {
+    const m = p.match(/estoque\s+m[iÃ­]nimo\s+da\s+chapa\s+(.+?)\s+para\s+([0-9]{1,9})\b/i);
     const chapaNome = m ? String(m[1] || '').trim() : '';
     const min = m ? Math.trunc(Number(m[2])) : 0;
     if (chapaNome && min >= 0) return { type: 'chapa_set_min', chapaNome, min };
@@ -15235,7 +15235,7 @@ async function _jarvisDetectAction({ norm, pergunta, ofNum, year }) {
   return null;
 }
 
-// ─── HELPERS JARVIS ───────────────────────────────────────────
+// â”€â”€â”€ HELPERS JARVIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function _jarvisOfsDoCliente(cliId) {
   const cols = ['cli_id', 'cliente_id', 'cliId', 'clienteId'];
@@ -15273,12 +15273,12 @@ function _jarvisPickMaqAtualOf(o) {
   try {
     let f = o.fluxo_maquinas || o.maq || [];
     if (typeof f === 'string') f = JSON.parse(f || '[]');
-    if (!Array.isArray(f) || !f.length) return '—';
+    if (!Array.isArray(f) || !f.length) return 'â€”';
     const idx = Number(o.maquina_atual_index || 0) || 0;
     const item = f[Math.min(idx, f.length - 1)] || f[0];
-    if (item && typeof item === 'object') return String(item.nome || item.maquina || item.name || '').trim() || '—';
-    return String(item || '').trim() || '—';
-  } catch (_) { return '—'; }
+    if (item && typeof item === 'object') return String(item.nome || item.maquina || item.name || '').trim() || 'â€”';
+    return String(item || '').trim() || 'â€”';
+  } catch (_) { return 'â€”'; }
 }
 
 function _jarvisPickAllImgs(o) {
@@ -15307,7 +15307,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     const respond = (txt, extra) => res.json({ ok: true, resposta: String(txt || '').trim(), ...(extra && typeof extra === 'object' ? extra : {}) });
     const naoEntendi = () => respond(
-      `Desculpe ${nome}, não entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`,
+      `Desculpe ${nome}, nÃ£o entendi sua pergunta. Tente perguntar sobre OFs, faturamento, estoque, clientes ou perdas.`,
       { suggestions: ['/ajuda', '/resumo', '/atrasadas', '/estoque'] }
     );
 
@@ -15316,7 +15316,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     const empIdCtx = String(req.body?.empId || req.body?.emp_id || req.query?.empId || '').trim() || null;
 
-    const hasMedidas = /\b\d{1,4}\s*[x×]\s*\d{1,4}\s*[x×]\s*\d{1,4}\b/i.test(pergunta);
+    const hasMedidas = /\b\d{1,4}\s*[xÃ—]\s*\d{1,4}\s*[xÃ—]\s*\d{1,4}\b/i.test(pergunta);
     const hasCaixasNum = /\bcaix[a-z]*\b/i.test(pergunta) && /\b\d{1,6}\b/.test(pergunta);
     if ((hasMedidas || hasCaixasNum) && !norm.startsWith('/')) {
       try{
@@ -15330,27 +15330,27 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           const ent = String(ofRow?.data_entrega || ofRow?.ent || '').slice(0, 10);
           const mk = String(_ofPickMaqAtualName(ofRow) || '').trim();
           return respond(
-            `✅ Pedido entendido e OF criada!\n` +
-            `• OF #${num || ofRow?.id}\n` +
-            `• Cliente: ${cli || '—'}\n` +
-            `• Produto: ${prod || '—'}\n` +
-            `• Entrega: ${_assistFmtDateBr(ent)}\n` +
-            (mk ? `• Sugestão/Máquina: ${mk}\n` : '') +
-            `\nSe quiser, eu já te monto o sequenciamento da máquina.`,
+            `âœ… Pedido entendido e OF criada!\n` +
+            `â€¢ OF #${num || ofRow?.id}\n` +
+            `â€¢ Cliente: ${cli || 'â€”'}\n` +
+            `â€¢ Produto: ${prod || 'â€”'}\n` +
+            `â€¢ Entrega: ${_assistFmtDateBr(ent)}\n` +
+            (mk ? `â€¢ SugestÃ£o/MÃ¡quina: ${mk}\n` : '') +
+            `\nSe quiser, eu jÃ¡ te monto o sequenciamento da mÃ¡quina.`,
             { dadosExtras: { tipo: 'of_criada_linguagem_natural', of_id: ofRow?.id, numero: num || null } }
           );
         }
         if (r?.erro === 'cliente_nao_encontrado') {
           const sug = Array.isArray(r?.sugestoes) ? r.sugestoes : [];
           return respond(
-            `⚠️ Entendi o pedido, mas não encontrei o cliente "${String(r?.dados_extraidos?.cliente_nome || '').trim()}".\n` +
-            (sug.length ? `Sugestões:\n${sug.slice(0, 8).map((x)=>`• ${x}`).join('\n')}` : `Me diga o nome do cliente como está cadastrado.`),
+            `âš ï¸ Entendi o pedido, mas nÃ£o encontrei o cliente "${String(r?.dados_extraidos?.cliente_nome || '').trim()}".\n` +
+            (sug.length ? `SugestÃµes:\n${sug.slice(0, 8).map((x)=>`â€¢ ${x}`).join('\n')}` : `Me diga o nome do cliente como estÃ¡ cadastrado.`),
             { dadosExtras: { tipo: 'pedido_cliente_nao_encontrado', dados_extraidos: r?.dados_extraidos || null } }
           );
         }
         if (Array.isArray(r?.campos_faltando) && r.campos_faltando.length) {
           return respond(
-            `⚠️ Entendi parcialmente, mas faltaram dados: ${r.campos_faltando.join(', ')}.\n` +
+            `âš ï¸ Entendi parcialmente, mas faltaram dados: ${r.campos_faltando.join(', ')}.\n` +
             `Me envie a frase novamente incluindo esses campos (ex: "500 caixas 30x20x15 onda B entrega 2026-05-25 cliente X").`,
             { dadosExtras: { tipo: 'pedido_campos_faltando', dados_extraidos: r?.dados_extraidos || null } }
           );
@@ -15358,7 +15358,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       }catch(_){}
     }
 
-    if (hasAny('perda','perdas','caixas perdidas') || (hasAny('maquina','máquina') && hasAny('perda','perdas'))) {
+    if (hasAny('perda','perdas','caixas perdidas') || (hasAny('maquina','mÃ¡quina') && hasAny('perda','perdas'))) {
       try{
         const qs = new URLSearchParams();
         if(empIdCtx) qs.set('empId', empIdCtx);
@@ -15368,11 +15368,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const alertas = Array.isArray(data?.alertas) ? data.alertas : [];
         const pior = data?.pior_combinacao || null;
         const msg =
-          `📉 Padrões de perda (últimos ${data?.meses || 3} meses)\n` +
+          `ðŸ“‰ PadrÃµes de perda (Ãºltimos ${data?.meses || 3} meses)\n` +
           (alertas.length
-            ? `\n⚠️ Alertas (máquinas > 2× média geral):\n` + alertas.slice(0, 8).map((a)=>`• ${a.maquina}: média ${Math.round(Number(a.media_por_of||0))} cx/OF (geral ${Math.round(Number(a.media_geral||0))})`).join('\n')
-            : `\n✅ Sem alertas acima de 2× a média geral.`) +
-          (pior ? `\n\n🔥 Pior combinação: ${pior.maquina_perda} · ${pior.dia_semana} · ${pior.turno} — ${Math.round(Number(pior.total_perdido||0))} cx perdidas` : '');
+            ? `\nâš ï¸ Alertas (mÃ¡quinas > 2Ã— mÃ©dia geral):\n` + alertas.slice(0, 8).map((a)=>`â€¢ ${a.maquina}: mÃ©dia ${Math.round(Number(a.media_por_of||0))} cx/OF (geral ${Math.round(Number(a.media_geral||0))})`).join('\n')
+            : `\nâœ… Sem alertas acima de 2Ã— a mÃ©dia geral.`) +
+          (pior ? `\n\nðŸ”¥ Pior combinaÃ§Ã£o: ${pior.maquina_perda} Â· ${pior.dia_semana} Â· ${pior.turno} â€” ${Math.round(Number(pior.total_perdido||0))} cx perdidas` : '');
         return respond(msg, { dadosExtras: { tipo: 'analise_perdas', data } });
       }catch(_){}
     }
@@ -15402,13 +15402,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
             const v = String(o?.of ?? o?.numero ?? o?.of_num ?? '').replace(/\D/g, '');
             return v && v === digits;
           }) || null;
-          if (!pick) return respond(`Não encontrei a OF ${digits}.`);
+          if (!pick) return respond(`NÃ£o encontrei a OF ${digits}.`);
           const imgs = _jarvisPickAllImgs(pick);
           const num = String(pick?.of || pick?.numero || digits).trim() || digits;
           if (!imgs.length) {
-            return respond(`A OF ${num} não possui imagem cadastrada.`);
+            return respond(`A OF ${num} nÃ£o possui imagem cadastrada.`);
           }
-          return respond(`Aqui está a imagem da OF ${num}:`, {
+          return respond(`Aqui estÃ¡ a imagem da OF ${num}:`, {
             images: imgs,
             dadosExtras: { tipo: 'of_imagem', of_id: pick.id, numero: num, imagem_url: imgs[0], imgs },
           });
@@ -15421,7 +15421,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         ok: true,
         resposta:
           `Vou cadastrar um novo cliente! Me informe os dados:\n` +
-          `1️⃣ Qual o nome do cliente?`,
+          `1ï¸âƒ£ Qual o nome do cliente?`,
         jarvis_state: {
           acao: 'cadastrar_cliente',
           etapa: 'nome',
@@ -15430,7 +15430,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (hasAny('quanto vamos faturar', 'previsão de faturamento', 'previsao de faturamento', 'faturamento previsto')) {
+    if (hasAny('quanto vamos faturar', 'previsÃ£o de faturamento', 'previsao de faturamento', 'faturamento previsto')) {
       const mesRef = new Date().toISOString().slice(0, 7);
       const [ano, mm] = mesRef.split('-').map(Number);
       const dtIni = `${mesRef}-01`;
@@ -15455,15 +15455,15 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const previstoAberto = abertasMesEntrega.reduce((s, o) => s + _assistPickOfValor(o), 0);
       const total = faturado + previstoAberto;
       return respond(
-        `📊 Previsão de faturamento de ${mesRef}:\n` +
-        `• Total previsto: ${_assistFmtMoney(total)}\n` +
-        `• Já faturado (OFs concluídas no mês): ${_assistFmtMoney(faturado)}\n` +
-        `• Em OFs abertas com entrega este mês: ${_assistFmtMoney(previstoAberto)}\n\n` +
-        `💡 Por que sugiro isso: somei o valor total das OFs concluídas no mês + OFs abertas com entrega entre ${_assistFmtDateBr(dtIni)} e ${_assistFmtDateBr(dtFim)}.`
+        `ðŸ“Š PrevisÃ£o de faturamento de ${mesRef}:\n` +
+        `â€¢ Total previsto: ${_assistFmtMoney(total)}\n` +
+        `â€¢ JÃ¡ faturado (OFs concluÃ­das no mÃªs): ${_assistFmtMoney(faturado)}\n` +
+        `â€¢ Em OFs abertas com entrega este mÃªs: ${_assistFmtMoney(previstoAberto)}\n\n` +
+        `ðŸ’¡ Por que sugiro isso: somei o valor total das OFs concluÃ­das no mÃªs + OFs abertas com entrega entre ${_assistFmtDateBr(dtIni)} e ${_assistFmtDateBr(dtFim)}.`
       );
     }
 
-    if (hasAny('clientes vip', 'melhores clientes', 'quais clientes merecem atenção', 'quais clientes merecem atencao')) {
+    if (hasAny('clientes vip', 'melhores clientes', 'quais clientes merecem atenÃ§Ã£o', 'quais clientes merecem atencao')) {
       const now = new Date();
       const dt3m = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString().slice(0, 10);
       const dtMesIni = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
@@ -15508,72 +15508,72 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         .filter((id) => hadBefore.get(id) && !hadThis.get(id))
         .sort((a, b) => (sumMap.get(b) || 0) - (sumMap.get(a) || 0))
         .slice(0, 10);
-      const lnTop = top.map((x, i) => `• ${i + 1}. ${String(cliMap.get(x.id) || '—')} — ${_assistFmtMoney(x.valor)}`);
-      const lnFreq = frequentes.map((id, i) => `• ${i + 1}. ${String(cliMap.get(id) || '—')} — ${Number(cntMes.get(id) || 0)} compras no mês`);
-      const lnQueda = queda.map((id, i) => `• ${i + 1}. ${String(cliMap.get(id) || '—')} — comprava antes e não comprou neste mês`);
+      const lnTop = top.map((x, i) => `â€¢ ${i + 1}. ${String(cliMap.get(x.id) || 'â€”')} â€” ${_assistFmtMoney(x.valor)}`);
+      const lnFreq = frequentes.map((id, i) => `â€¢ ${i + 1}. ${String(cliMap.get(id) || 'â€”')} â€” ${Number(cntMes.get(id) || 0)} compras no mÃªs`);
+      const lnQueda = queda.map((id, i) => `â€¢ ${i + 1}. ${String(cliMap.get(id) || 'â€”')} â€” comprava antes e nÃ£o comprou neste mÃªs`);
       return respond(
-        `👑 Clientes VIP (últimos 3 meses):\n\n` +
-        `🥇 Top compradores:\n${lnTop.join('\n') || '—'}\n\n` +
-        `📈 Mais frequentes (mês atual):\n${lnFreq.join('\n') || '—'}\n\n` +
-        `⚠️ Clientes em queda:\n${lnQueda.join('\n') || '—'}\n\n` +
-        `💡 Por que sugiro isso: usei as OFs dos últimos 3 meses e somei valores por cliente; frequência considera compras no mês atual; “queda” = tinha compra antes e zero neste mês.`
+        `ðŸ‘‘ Clientes VIP (Ãºltimos 3 meses):\n\n` +
+        `ðŸ¥‡ Top compradores:\n${lnTop.join('\n') || 'â€”'}\n\n` +
+        `ðŸ“ˆ Mais frequentes (mÃªs atual):\n${lnFreq.join('\n') || 'â€”'}\n\n` +
+        `âš ï¸ Clientes em queda:\n${lnQueda.join('\n') || 'â€”'}\n\n` +
+        `ðŸ’¡ Por que sugiro isso: usei as OFs dos Ãºltimos 3 meses e somei valores por cliente; frequÃªncia considera compras no mÃªs atual; â€œquedaâ€ = tinha compra antes e zero neste mÃªs.`
       );
     }
 
-    if (/como (fa[cç]o|fazer|funciona)|me ensine|n[aã]o sei como/i.test(pergunta)) {
+    if (/como (fa[cÃ§]o|fazer|funciona)|me ensine|n[aÃ£]o sei como/i.test(pergunta)) {
       const p = _assistNorm(pergunta);
-      const mk = (lines) => lines.map((t, i) => `${['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'][i] || '•'} ${t}`).join('\n');
+      const mk = (lines) => lines.map((t, i) => `${['1ï¸âƒ£','2ï¸âƒ£','3ï¸âƒ£','4ï¸âƒ£','5ï¸âƒ£','6ï¸âƒ£','7ï¸âƒ£','8ï¸âƒ£'][i] || 'â€¢'} ${t}`).join('\n');
       if (p.includes('criar') && p.includes('of')) {
-        return respond(`📋 Como criar uma OF:\n` + mk([
-          `Vá em PCP e clique em "+ Nova OF"`,
+        return respond(`ðŸ“‹ Como criar uma OF:\n` + mk([
+          `VÃ¡ em PCP e clique em "+ Nova OF"`,
           `Selecione o cliente (use o autocomplete)`,
-          `Preencha Produto/Descrição, Quantidade e Data de entrega`,
-          `Abra "Produção" e selecione o fluxo de máquinas (sugestão é opcional)`,
+          `Preencha Produto/DescriÃ§Ã£o, Quantidade e Data de entrega`,
+          `Abra "ProduÃ§Ã£o" e selecione o fluxo de mÃ¡quinas (sugestÃ£o Ã© opcional)`,
           `Clique em "Salvar OF"`,
           `Dica: se precisar dividir em itens, use os itens da OF (Detalhes)`,
         ]));
       }
       if ((p.includes('entrada') || p.includes('dar entrada')) && (p.includes('estoque') || p.includes('chapa'))) {
-        return respond(`📦 Como dar entrada no estoque:\n` + mk([
-          `Vá em Estoque (Chapas)`,
-          `Clique em "📥 Entrada em Lote"`,
+        return respond(`ðŸ“¦ Como dar entrada no estoque:\n` + mk([
+          `VÃ¡ em Estoque (Chapas)`,
+          `Clique em "ðŸ“¥ Entrada em Lote"`,
           `Informe NF/fornecedor e as quantidades`,
           `Confirme e verifique se a chapa atualizou`,
         ]));
       }
       if (p.includes('concluir') && p.includes('of')) {
-        return respond(`✅ Como concluir uma OF:\n` + mk([
+        return respond(`âœ… Como concluir uma OF:\n` + mk([
           `No PCP, localize a OF`,
-          `Use a ação de concluir (ou peça no JARVIS: "concluir OF 123")`,
-          `Informe: produzidas, perdidas e a máquina`,
+          `Use a aÃ§Ã£o de concluir (ou peÃ§a no JARVIS: "concluir OF 123")`,
+          `Informe: produzidas, perdidas e a mÃ¡quina`,
           `Confirme na tela`,
         ]));
       }
       if ((p.includes('cadastrar') || p.includes('cadastro') || p.includes('novo')) && p.includes('cliente')) {
-        return respond(`👥 Como cadastrar cliente:\n` + mk([
-          `Vá em Clientes e clique em "+ Novo Cliente"`,
-          `Preencha nome e telefone (o resto é opcional)`,
+        return respond(`ðŸ‘¥ Como cadastrar cliente:\n` + mk([
+          `VÃ¡ em Clientes e clique em "+ Novo Cliente"`,
+          `Preencha nome e telefone (o resto Ã© opcional)`,
           `Salve`,
-          `Dica: também dá para cadastrar pelo JARVIS: "cadastrar cliente"`,
+          `Dica: tambÃ©m dÃ¡ para cadastrar pelo JARVIS: "cadastrar cliente"`,
         ]));
       }
       if (p.includes('cota') || p.includes('cotacao')) {
-        return respond(`🛒 Como fazer cotação:\n` + mk([
-          `Vá em Compras MP`,
-          `Crie uma cotação e adicione itens/quantidades`,
+        return respond(`ðŸ›’ Como fazer cotaÃ§Ã£o:\n` + mk([
+          `VÃ¡ em Compras MP`,
+          `Crie uma cotaÃ§Ã£o e adicione itens/quantidades`,
           `Selecione fornecedores e registre propostas`,
           `Marque o fornecedor escolhido e finalize`,
         ]));
       }
       if (p.includes('jarvis')) {
-        return respond(`⚙️ Como usar o JARVIS:\n` + mk([
-          `Digite um número (ex: "230") para ver uma OF`,
-          `Peça ações: "concluir OF 230", "altere a OF 230"`,
-          `Peça listas: "OFs do cliente X", "clientes VIP"`,
-          `Peça relatórios: "relatório de estoque", "relatório de perdas"`,
+        return respond(`âš™ï¸ Como usar o JARVIS:\n` + mk([
+          `Digite um nÃºmero (ex: "230") para ver uma OF`,
+          `PeÃ§a aÃ§Ãµes: "concluir OF 230", "altere a OF 230"`,
+          `PeÃ§a listas: "OFs do cliente X", "clientes VIP"`,
+          `PeÃ§a relatÃ³rios: "relatÃ³rio de estoque", "relatÃ³rio de perdas"`,
         ]));
       }
-      return respond(`🧠 Me diga exatamente o que você quer aprender (ex: "como criar uma OF", "como dar entrada no estoque").`);
+      return respond(`ðŸ§  Me diga exatamente o que vocÃª quer aprender (ex: "como criar uma OF", "como dar entrada no estoque").`);
     }
 
     if (hasAny('imagem', 'imagens', 'foto', 'fotos') && hasAny('cliente')) {
@@ -15590,7 +15590,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           .ilike('nome', `%${termo}%`)
           .limit(5);
         const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
-        if (!clientes.length) return respond(`${nome}, não encontrei nenhum cliente com o nome "${cliNome}".`);
+        if (!clientes.length) return respond(`${nome}, nÃ£o encontrei nenhum cliente com o nome "${cliNome}".`);
 
         const all = [];
         for (const c of clientes) {
@@ -15626,7 +15626,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           status: String(o.status || '').trim(),
         }));
         return respond(
-          `${nome}, aqui estão as imagens das OFs de "${cliNome0}" (${imagens.length} OFs com imagem):`,
+          `${nome}, aqui estÃ£o as imagens das OFs de "${cliNome0}" (${imagens.length} OFs com imagem):`,
           { dadosExtras: { tipo: 'galeria_imagens', imagens } }
         );
       }
@@ -15635,35 +15635,35 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
     if (/^\s*\d{1,4}\s*$/.test(pergunta)) {
       const n = String(pergunta || '').trim();
       const of = await _jarvisFindOFByNumero(n);
-      if (!of) return respond(`Não encontrei nenhuma OF com o número ${n}. Verifique o número e tente novamente.`);
+      if (!of) return respond(`NÃ£o encontrei nenhuma OF com o nÃºmero ${n}. Verifique o nÃºmero e tente novamente.`);
       const cid = _assistPickOfClienteId(of);
       const cliMap = await _assistLoadClientesByIds([cid]);
-      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || 'â€”').trim() || 'â€”';
       const numOf = _assistPickOfNumber(of);
-      const produto = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const produto = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || 'â€”';
       const qtd = Math.trunc(Number(of.qtd_pedida || of.qtd_produzida || of.quantidade || of.qtd || 0) || 0);
       const valor = _assistPickOfValor(of);
-      const status = String(of.status || '—').trim() || '—';
+      const status = String(of.status || 'â€”').trim() || 'â€”';
       const diaPedido = String(of.data_pedido || of.dia || of.data || of.created_at || '').slice(0, 10);
       const entrega = _assistPickOfEntrega(of);
       const urg = !!(of.urg || of.urgente);
-      const emp = String(of.emp_id || of.empId || of.empresa || of.empresa_id || '').trim() || '—';
+      const emp = String(of.emp_id || of.empId || of.empresa || of.empresa_id || '').trim() || 'â€”';
       const obs = String(of.obs || of.observacao || '').trim();
       const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || of.maquinas || of.etapas || []);
-      const fluxoTxt = fluxo.length ? fluxo.map((x) => String(x || '').trim()).filter(Boolean).join(' → ') : '—';
+      const fluxoTxt = fluxo.length ? fluxo.map((x) => String(x || '').trim()).filter(Boolean).join(' â†’ ') : 'â€”';
       const texto =
-        `📋 OF #${numOf}\n` +
-        `👤 Cliente: ${cNome}\n` +
-        `📦 Produto: ${produto}\n` +
-        `📦 Quantidade: ${qtd.toLocaleString('pt-BR')} caixas\n` +
-        `💰 Valor: ${valor ? _assistFmtMoney(valor) : '—'}\n` +
-        `🏷 Status: ${status}\n` +
-        `📅 Data do pedido: ${diaPedido ? _assistFmtDateBr(diaPedido) : '—'}\n` +
-        `🚚 Entrega: ${entrega ? _assistFmtDateBr(entrega) : '—'}\n` +
-        `🏭 Máquinas: ${fluxoTxt}\n` +
-        `⚡ Urgente: ${urg ? 'Sim' : 'Não'}\n` +
-        `🏢 Empresa: ${emp}\n` +
-        (obs ? `📝 Observações: ${obs}\n` : '');
+        `ðŸ“‹ OF #${numOf}\n` +
+        `ðŸ‘¤ Cliente: ${cNome}\n` +
+        `ðŸ“¦ Produto: ${produto}\n` +
+        `ðŸ“¦ Quantidade: ${qtd.toLocaleString('pt-BR')} caixas\n` +
+        `ðŸ’° Valor: ${valor ? _assistFmtMoney(valor) : 'â€”'}\n` +
+        `ðŸ· Status: ${status}\n` +
+        `ðŸ“… Data do pedido: ${diaPedido ? _assistFmtDateBr(diaPedido) : 'â€”'}\n` +
+        `ðŸšš Entrega: ${entrega ? _assistFmtDateBr(entrega) : 'â€”'}\n` +
+        `ðŸ­ MÃ¡quinas: ${fluxoTxt}\n` +
+        `âš¡ Urgente: ${urg ? 'Sim' : 'NÃ£o'}\n` +
+        `ðŸ¢ Empresa: ${emp}\n` +
+        (obs ? `ðŸ“ ObservaÃ§Ãµes: ${obs}\n` : '');
 
       const imgs203 = _jarvisTodasImgsOf ? _jarvisTodasImgsOf(of) : [];
       if (imgs203 && imgs203.length) {
@@ -15677,39 +15677,39 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return respond(texto);
     }
 
-    if (norm.includes('pdf') && (norm.includes('cliente') || norm.includes('relatorio') || norm.includes('relatório'))) {
-      const mCli = pergunta.match(/(?:pdf|relat[oó]rio)\s+(?:do\s+)?(?:cliente\s+)?(.+)$/i) || pergunta.match(/cliente\s+(.+?)(?:\s+pdf|\s+relat|\s*$)/i) || null;
+    if (norm.includes('pdf') && (norm.includes('cliente') || norm.includes('relatorio') || norm.includes('relatÃ³rio'))) {
+      const mCli = pergunta.match(/(?:pdf|relat[oÃ³]rio)\s+(?:do\s+)?(?:cliente\s+)?(.+)$/i) || pergunta.match(/cliente\s+(.+?)(?:\s+pdf|\s+relat|\s*$)/i) || null;
       const cliNomeBusca = mCli ? String(mCli[1]||'').trim().replace(/\?+$/,'').trim() : '';
       if (!cliNomeBusca) return respond(`${nome}, qual o nome do cliente para o PDF?`);
       const { data: cls } = await supabase.from('clientes').select('id,nome').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(3);
       const clientes = Array.isArray(cls) ? cls : [];
-      if (!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
+      if (!clientes.length) return respond(`${nome}, nÃ£o encontrei cliente com "${cliNomeBusca}".`);
       const cli = clientes[0];
       const urlPdf = `/api/relatorio/cliente_pdf?cliente_id=${encodeURIComponent(cli.id)}&cliente_nome=${encodeURIComponent(cli.nome)}`;
       return res.json({
         ok: true,
         resposta: `${nome}, PDF das OFs de **${cli.nome}** pronto! Clique no link abaixo para abrir, imprimir ou salvar:`,
-        dadosExtras: { tipo: 'pdf_link', url: urlPdf, cliente_nome: cli.nome, label: `📄 Abrir PDF — ${cli.nome}` }
+        dadosExtras: { tipo: 'pdf_link', url: urlPdf, cliente_nome: cli.nome, label: `ðŸ“„ Abrir PDF â€” ${cli.nome}` }
       });
     }
 
     if (
-      hasAny('ofs do cliente','of do cliente','ofs da cliente','situação do cliente',
+      hasAny('ofs do cliente','of do cliente','ofs da cliente','situaÃ§Ã£o do cliente',
         'situacao do cliente','tem of do cliente','ofs abertas do cliente',
         'pedidos do cliente','quantas ofs tem o cliente','quantas ofs do cliente',
         'quais ofs do cliente','pedidos abertos do cliente','status do cliente',
-        'situação das ofs do cliente','pdf do cliente','relatorio do cliente',
-        'relatório do cliente')
+        'situaÃ§Ã£o das ofs do cliente','pdf do cliente','relatorio do cliente',
+        'relatÃ³rio do cliente')
     ) {
       const mCli =
-        pergunta.match(/(?:ofs?|pedidos?|situa[cç][aã]o|quantas ofs (?:tem|do)|pdf|relat[oó]rio)\s+(?:o\s+)?(?:do\s+|da\s+)?(?:cliente\s+)?(.+)$/i) ||
+        pergunta.match(/(?:ofs?|pedidos?|situa[cÃ§][aÃ£]o|quantas ofs (?:tem|do)|pdf|relat[oÃ³]rio)\s+(?:o\s+)?(?:do\s+|da\s+)?(?:cliente\s+)?(.+)$/i) ||
         pergunta.match(/cliente\s+(.+)$/i) || null;
       const cliNomeBusca = mCli ? String(mCli[1]||'').trim().replace(/\?+$/,'').trim() : '';
       if (!cliNomeBusca) return respond(`${nome}, me diga o nome do cliente.`);
 
       const { data: cls } = await supabase.from('clientes').select('id,nome,cidade,cnpj,tel,telefone').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(5);
       const clientes = Array.isArray(cls) ? cls : [];
-      if (!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
+      if (!clientes.length) return respond(`${nome}, nÃ£o encontrei cliente com "${cliNomeBusca}".`);
 
       const cli = clientes[0];
       const cliNome = String(cli.nome||'').trim();
@@ -15735,8 +15735,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const totalValorAbertas  = abertas.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0);
 
       const fmtOf = (o) => {
-        const num  = String(o.of||o.numero||'—');
-        const desc = String(o.descricao||o.prodDesc||o.produto||'—').trim();
+        const num  = String(o.of||o.numero||'â€”');
+        const desc = String(o.descricao||o.prodDesc||o.produto||'â€”').trim();
         const qtd  = Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
         const ent  = String(o.data_entrega||o.ent||'').slice(0,10);
         const dia  = String(o.data_producao||o.dia||'').slice(0,10);
@@ -15744,43 +15744,43 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const atras = ent && ent < hoje;
         const atrDias = atras ? Math.floor((new Date(hoje)-new Date(ent))/86400000) : 0;
         return (
-          `• OF #${num}${(o.urg||o.urgente)?' 🚨':''}${atras?' ⚠️':''} [${String(o.status||'').trim()}]\n`+
+          `â€¢ OF #${num}${(o.urg||o.urgente)?' ðŸš¨':''}${atras?' âš ï¸':''} [${String(o.status||'').trim()}]\n`+
           `  ${desc} | ${qtd.toLocaleString('pt-BR')} cx\n`+
-          `  Entrega: ${ent?_assistFmtDateBr(ent):'—'}${atras?` (${atrDias}d atraso)`:''} | Prod: ${dia?_assistFmtDateBr(dia):'—'}\n`+
-          `  Máquina: ${maq}`
+          `  Entrega: ${ent?_assistFmtDateBr(ent):'â€”'}${atras?` (${atrDias}d atraso)`:''} | Prod: ${dia?_assistFmtDateBr(dia):'â€”'}\n`+
+          `  MÃ¡quina: ${maq}`
         );
       };
       const fmtConc = (o) => {
-        const num  = String(o.of||o.numero||'—');
-        const desc = String(o.descricao||o.prodDesc||o.produto||'—').trim();
+        const num  = String(o.of||o.numero||'â€”');
+        const desc = String(o.descricao||o.prodDesc||o.produto||'â€”').trim();
         const qtd  = Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
         const dc   = String(o.data_conclusao||'').slice(0,10);
         const val  = Number(o.valor_total||o.valor_venda||0);
-        return `• OF #${num} — ${desc} — ${qtd.toLocaleString('pt-BR')} cx${dc?` — ${_assistFmtDateBr(dc)}`:''}${val>0?` — R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`:''}`;
+        return `â€¢ OF #${num} â€” ${desc} â€” ${qtd.toLocaleString('pt-BR')} cx${dc?` â€” ${_assistFmtDateBr(dc)}`:''}${val>0?` â€” R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`:''}`;
       };
 
-      const pedirPdf = norm.includes('pdf') || norm.includes('relatorio') || norm.includes('relatório');
+      const pedirPdf = norm.includes('pdf') || norm.includes('relatorio') || norm.includes('relatÃ³rio');
 
       const linhas = [
-        `📋 **${cliNome}**${cli.cidade?' — '+cli.cidade:''}`,
+        `ðŸ“‹ **${cliNome}**${cli.cidade?' â€” '+cli.cidade:''}`,
         cli.cnpj ? `CNPJ: ${cli.cnpj}` : null,
         ``,
-        `📊 RESUMO:`,
-        `🔵 Em aberto: ${abertas.length} (${totalCaixasAbertas.toLocaleString('pt-BR')} cx | R$ ${totalValorAbertas.toLocaleString('pt-BR',{minimumFractionDigits:2})})`,
+        `ðŸ“Š RESUMO:`,
+        `ðŸ”µ Em aberto: ${abertas.length} (${totalCaixasAbertas.toLocaleString('pt-BR')} cx | R$ ${totalValorAbertas.toLocaleString('pt-BR',{minimumFractionDigits:2})})`,
         abertas.length > 0 ? `   Status: ${statusResumo}` : null,
-        atrasadas.length > 0 ? `   ⚠️ Atrasadas: ${atrasadas.length}` : null,
-        urgentes.length > 0  ? `   🚨 Urgentes: ${urgentes.length}` : null,
-        `✅ Concluídas: ${concluidas.length}`,
-        canceladas.length > 0 ? `❌ Canceladas: ${canceladas.length}` : null,
+        atrasadas.length > 0 ? `   âš ï¸ Atrasadas: ${atrasadas.length}` : null,
+        urgentes.length > 0  ? `   ðŸš¨ Urgentes: ${urgentes.length}` : null,
+        `âœ… ConcluÃ­das: ${concluidas.length}`,
+        canceladas.length > 0 ? `âŒ Canceladas: ${canceladas.length}` : null,
         ``,
-        `🔵 OFs EM ABERTO:`,
+        `ðŸ”µ OFs EM ABERTO:`,
         ...abertas.slice(0,10).map(fmtOf),
         abertas.length > 10 ? `  ...e mais ${abertas.length-10} OFs abertas` : null,
         ``,
-        `✅ ÚLTIMAS CONCLUÍDAS:`,
+        `âœ… ÃšLTIMAS CONCLUÃDAS:`,
         ...concluidas.slice(0,5).map(fmtConc),
-        concluidas.length > 5 ? `  ...e mais ${concluidas.length-5} concluídas` : null,
-        pedirPdf ? `\n📄 Para gerar o PDF deste cliente, diga: "gerar PDF do cliente ${cliNome}"` : null,
+        concluidas.length > 5 ? `  ...e mais ${concluidas.length-5} concluÃ­das` : null,
+        pedirPdf ? `\nðŸ“„ Para gerar o PDF deste cliente, diga: "gerar PDF do cliente ${cliNome}"` : null,
       ].filter(x => x !== null);
 
       return respond(linhas.join('\n'), {
@@ -15799,13 +15799,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (hasAny('relatório de', 'relatorio de', 'relatório sobre', 'relatorio sobre', 'me dê um relatório', 'me de um relatorio')) {
+    if (hasAny('relatÃ³rio de', 'relatorio de', 'relatÃ³rio sobre', 'relatorio sobre', 'me dÃª um relatÃ³rio', 'me de um relatorio')) {
       const temaRaw =
-        (pergunta.match(/relat[óo]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
-        (pergunta.match(/me\s+d[êe]\s+um\s+relat[óo]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
+        (pergunta.match(/relat[Ã³o]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
+        (pergunta.match(/me\s+d[Ãªe]\s+um\s+relat[Ã³o]rio\s+(?:de|sobre)\s+(.+)$/i)?.[1]) ||
         '';
       const tema = String(temaRaw || '').trim();
-      if (!tema) return respond(`${nome}, qual tema você quer no relatório? Ex: OFs, clientes, estoque, perdas, faturamento, máquinas, fornecedores.`);
+      if (!tema) return respond(`${nome}, qual tema vocÃª quer no relatÃ³rio? Ex: OFs, clientes, estoque, perdas, faturamento, mÃ¡quinas, fornecedores.`);
 
       const tnorm = _assistNorm(tema);
       let assunto = 'geral';
@@ -15846,21 +15846,21 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       const useClaude = !!String(process.env.ANTHROPIC_API_KEY || '').trim();
       if (!useClaude) {
-        return respond(`${nome}, para gerar relatório automático eu preciso da chave ANTHROPIC_API_KEY configurada no servidor.`);
+        return respond(`${nome}, para gerar relatÃ³rio automÃ¡tico eu preciso da chave ANTHROPIC_API_KEY configurada no servidor.`);
       }
 
       const perguntaRel =
-        `Gere um relatório completo sobre: ${tema}.\n` +
+        `Gere um relatÃ³rio completo sobre: ${tema}.\n` +
         `Responda SOMENTE com HTML (sem Markdown) usando <h2>, <p>, <ul> e uma <table class="jarvis-table"> para os dados.\n` +
-        `Inclua: resumo executivo, dados em tabela, insights principais e sugestões de ação.\n` +
-        `Não inclua <script>.\n` +
+        `Inclua: resumo executivo, dados em tabela, insights principais e sugestÃµes de aÃ§Ã£o.\n` +
+        `NÃ£o inclua <script>.\n` +
         `DADOS:\n${JSON.stringify(dados || {}, null, 2)}`;
 
       const rClaude = await _jarvisCallClaude({ pergunta: perguntaRel, nomeUsuario: nome, dadosContexto: {}, historico: req.body?.historico || [] });
-      if (!rClaude.ok) return respond(`${nome}, não consegui gerar o relatório agora (${String(rClaude.error || 'erro')}).`);
+      if (!rClaude.ok) return respond(`${nome}, nÃ£o consegui gerar o relatÃ³rio agora (${String(rClaude.error || 'erro')}).`);
       return res.json({
         ok: true,
-        resposta: `📄 Relatório pronto: ${tema}`,
+        resposta: `ðŸ“„ RelatÃ³rio pronto: ${tema}`,
         html: String(rClaude.text || '').trim(),
         report: true,
       });
@@ -15870,33 +15870,33 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return res.json({
         ok: true,
         resposta:
-          `⚙️ Tutorial do Sistema Italy Embalagens\n\n` +
-          `📋 PCP / Ordens de Fabricação (OFs)\n` +
-          `- Para criar uma OF: Menu PCP → botão "+ Nova OF" → preencha cliente, produto, máquinas, quantidade e data de entrega\n` +
-          `- Para clonar uma OF existente: clique em "Clonar" nas ações da OF → ajuste data e quantidade → Salvar\n` +
-          `- Para concluir uma OF: botão "▶" na OF → informar quantidade produzida → Concluir\n` +
-          `- Para cancelar: botão vermelho "Cancelar OF"\n` +
-          `- Para comparar OFs: marque 2 checkboxes → botão "⚖️ Comparar OFs"\n\n` +
-          `📦 Estoque de Chapas\n` +
-          `- Para dar entrada: Estoques → Chapas → "Entrada em Lote" → informe NF, chapas e quantidades\n` +
-          `- Para ver estoque crítico: itens em vermelho estão abaixo do mínimo\n` +
-          `- Para ajustar quantidade: clique na chapa → botão "Movimentação"\n` +
-          `- Gerar QR Code: botão QR na chapa para identificação física\n\n` +
-          `👥 Clientes\n` +
-          `- Cadastrar: Cadastros → Clientes → "+ Novo Cliente"\n` +
-          `- Ver histórico completo: clique no cliente → abas OFs, Financeiro, Visitas\n` +
-          `- Importar em massa: botão "Importar Excel"\n` +
-          `- Verificar duplicatas: botão "Verificar Duplicatas"\n\n` +
-          `📊 Relatórios\n` +
-          `- Exportar Excel: botão "⬇ Excel" em qualquer listagem\n` +
-          `- Relatórios do PCP: botão "📄 Relatório" com seleção de período\n\n` +
-          `🎯 Comandos rápidos do JARVIS\n` +
-          `- /resumo — resumo completo do dia\n` +
-          `- /atrasadas — OFs em atraso\n` +
-          `- /estoque — estoque de chapas\n` +
-          `- /dashboard — faturamento do ano\n` +
-          `- /ajuda — lista de comandos\n\n` +
-          `Quer tutorial detalhado de alguma área específica?`,
+          `âš™ï¸ Tutorial do Sistema Italy Embalagens\n\n` +
+          `ðŸ“‹ PCP / Ordens de FabricaÃ§Ã£o (OFs)\n` +
+          `- Para criar uma OF: Menu PCP â†’ botÃ£o "+ Nova OF" â†’ preencha cliente, produto, mÃ¡quinas, quantidade e data de entrega\n` +
+          `- Para clonar uma OF existente: clique em "Clonar" nas aÃ§Ãµes da OF â†’ ajuste data e quantidade â†’ Salvar\n` +
+          `- Para concluir uma OF: botÃ£o "â–¶" na OF â†’ informar quantidade produzida â†’ Concluir\n` +
+          `- Para cancelar: botÃ£o vermelho "Cancelar OF"\n` +
+          `- Para comparar OFs: marque 2 checkboxes â†’ botÃ£o "âš–ï¸ Comparar OFs"\n\n` +
+          `ðŸ“¦ Estoque de Chapas\n` +
+          `- Para dar entrada: Estoques â†’ Chapas â†’ "Entrada em Lote" â†’ informe NF, chapas e quantidades\n` +
+          `- Para ver estoque crÃ­tico: itens em vermelho estÃ£o abaixo do mÃ­nimo\n` +
+          `- Para ajustar quantidade: clique na chapa â†’ botÃ£o "MovimentaÃ§Ã£o"\n` +
+          `- Gerar QR Code: botÃ£o QR na chapa para identificaÃ§Ã£o fÃ­sica\n\n` +
+          `ðŸ‘¥ Clientes\n` +
+          `- Cadastrar: Cadastros â†’ Clientes â†’ "+ Novo Cliente"\n` +
+          `- Ver histÃ³rico completo: clique no cliente â†’ abas OFs, Financeiro, Visitas\n` +
+          `- Importar em massa: botÃ£o "Importar Excel"\n` +
+          `- Verificar duplicatas: botÃ£o "Verificar Duplicatas"\n\n` +
+          `ðŸ“Š RelatÃ³rios\n` +
+          `- Exportar Excel: botÃ£o "â¬‡ Excel" em qualquer listagem\n` +
+          `- RelatÃ³rios do PCP: botÃ£o "ðŸ“„ RelatÃ³rio" com seleÃ§Ã£o de perÃ­odo\n\n` +
+          `ðŸŽ¯ Comandos rÃ¡pidos do JARVIS\n` +
+          `- /resumo â€” resumo completo do dia\n` +
+          `- /atrasadas â€” OFs em atraso\n` +
+          `- /estoque â€” estoque de chapas\n` +
+          `- /dashboard â€” faturamento do ano\n` +
+          `- /ajuda â€” lista de comandos\n\n` +
+          `Quer tutorial detalhado de alguma Ã¡rea especÃ­fica?`,
         suggestions: ['Como criar OF', 'Como dar entrada no estoque', 'Como cadastrar cliente', '/ajuda'],
       });
     }
@@ -15904,11 +15904,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return res.json({
         ok: true,
         resposta:
-          `📋 Como criar uma OF (PCP)\n` +
+          `ðŸ“‹ Como criar uma OF (PCP)\n` +
           `1) Abra o menu PCP\n` +
           `2) Clique em "+ Nova OF"\n` +
-          `3) Preencha cliente, descrição/produto, quantidade e data de entrega\n` +
-          `4) Selecione o fluxo de máquinas\n` +
+          `3) Preencha cliente, descriÃ§Ã£o/produto, quantidade e data de entrega\n` +
+          `4) Selecione o fluxo de mÃ¡quinas\n` +
           `5) Clique em "Salvar"\n\n` +
           `Dica: para reaproveitar uma OF parecida, use "Clonar" e ajuste data/quantidade.`,
         suggestions: ['Clonar OF', 'Concluir OF', 'Cancelar OF'],
@@ -15918,42 +15918,42 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       return res.json({
         ok: true,
         resposta:
-          `📦 Como dar entrada no estoque de chapas\n` +
-          `1) Vá em Estoques → Chapas\n` +
+          `ðŸ“¦ Como dar entrada no estoque de chapas\n` +
+          `1) VÃ¡ em Estoques â†’ Chapas\n` +
           `2) Clique em "Entrada em Lote"\n` +
           `3) Informe NF, selecione as chapas e quantidades\n` +
-          `4) Confirme para registrar a movimentação\n\n` +
-          `Dica: itens abaixo do mínimo ficam destacados como críticos.`,
-        suggestions: ['/estoque', 'Estoque crítico', 'Movimentação de chapa'],
+          `4) Confirme para registrar a movimentaÃ§Ã£o\n\n` +
+          `Dica: itens abaixo do mÃ­nimo ficam destacados como crÃ­ticos.`,
+        suggestions: ['/estoque', 'Estoque crÃ­tico', 'MovimentaÃ§Ã£o de chapa'],
       });
     }
     if (/como.*(cliente|cadastr)/i.test(pergunta)) {
       return res.json({
         ok: true,
         resposta:
-          `👥 Como cadastrar um cliente\n` +
-          `1) Cadastros → Clientes\n` +
+          `ðŸ‘¥ Como cadastrar um cliente\n` +
+          `1) Cadastros â†’ Clientes\n` +
           `2) Clique em "+ Novo Cliente"\n` +
-          `3) Preencha os dados principais (nome, telefone, CNPJ, endereço)\n` +
+          `3) Preencha os dados principais (nome, telefone, CNPJ, endereÃ§o)\n` +
           `4) Salve\n\n` +
-          `Dica: se existir duplicidade, use a verificação de duplicatas antes de cadastrar novamente.`,
-        suggestions: ['Clientes inativos', 'Cliente existe X?', 'Top clientes do mês'],
+          `Dica: se existir duplicidade, use a verificaÃ§Ã£o de duplicatas antes de cadastrar novamente.`,
+        suggestions: ['Clientes inativos', 'Cliente existe X?', 'Top clientes do mÃªs'],
       });
     }
-    if (/como.*(relatorio|relatório|dre|faturamento)/i.test(pergunta)) {
+    if (/como.*(relatorio|relatÃ³rio|dre|faturamento)/i.test(pergunta)) {
       return res.json({
         ok: true,
         resposta:
-          `📊 Como usar relatórios\n` +
-          `- No PCP: use "📄 Relatório" e selecione o período\n` +
-          `- Para exportar: use "⬇ Excel" nas listagens\n` +
-          `- Para indicadores: use /dashboard (faturamento anual) e "Faturamento do mês"\n\n` +
-          `Se você me disser o período (ex: abril/2026), eu resumo os números.`,
-        suggestions: ['/dashboard', 'Faturamento do mês', 'Faturamento por empresa'],
+          `ðŸ“Š Como usar relatÃ³rios\n` +
+          `- No PCP: use "ðŸ“„ RelatÃ³rio" e selecione o perÃ­odo\n` +
+          `- Para exportar: use "â¬‡ Excel" nas listagens\n` +
+          `- Para indicadores: use /dashboard (faturamento anual) e "Faturamento do mÃªs"\n\n` +
+          `Se vocÃª me disser o perÃ­odo (ex: abril/2026), eu resumo os nÃºmeros.`,
+        suggestions: ['/dashboard', 'Faturamento do mÃªs', 'Faturamento por empresa'],
       });
     }
 
-    const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nº|no|numero|número)?\s*([0-9]{1,8})\b/);
+    const ofNumMatch = norm.match(/\b(?:of|ordem)\s*(?:#|n|nÂº|no|numero|nÃºmero)?\s*([0-9]{1,8})\b/);
     let ofNum = ofNumMatch ? String(ofNumMatch[1]) : '';
     const match = pergunta.match(/\b(\d+)\b/);
     if (!ofNum && match) ofNum = String(match[1] || '').trim();
@@ -15964,19 +15964,19 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     if (ofNum && hasAny('programa','programar','agendar','agende','mover para','move para') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
-      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      if (!of) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
 
-      const mMaq = pergunta.match(/(?:na|para a|máquina|maquina)\s+([A-Z0-9\s]+?)(?:\s+para|\s+amanhã|\s+dia|\s*$)/i);
+      const mMaq = pergunta.match(/(?:na|para a|mÃ¡quina|maquina)\s+([A-Z0-9\s]+?)(?:\s+para|\s+amanhÃ£|\s+dia|\s*$)/i);
       const mData = pergunta.match(/(?:para\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i) ||
-                    (norm.includes('amanhã') || norm.includes('amanha') ? ['','amanhã'] : null);
+                    (norm.includes('amanhÃ£') || norm.includes('amanha') ? ['','amanhÃ£'] : null);
 
       const maqNova = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
       let dataNova = '';
-      if (mData && mData[1] !== 'amanhã') {
+      if (mData && mData[1] !== 'amanhÃ£') {
         const partes = mData[1].split('/');
         const y = partes[2] ? (partes[2].length === 2 ? '20'+partes[2] : partes[2]) : new Date().getFullYear();
         dataNova = `${y}-${String(partes[1]).padStart(2,'0')}-${String(partes[0]).padStart(2,'0')}`;
-      } else if (norm.includes('amanhã') || norm.includes('amanha')) {
+      } else if (norm.includes('amanhÃ£') || norm.includes('amanha')) {
         const d = new Date(); d.setDate(d.getDate()+1);
         dataNova = d.toISOString().slice(0,10);
       }
@@ -15986,23 +15986,23 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const actionId = _jarvisStoreAction(uid, { type:'of_programar', ofId:String(of.id), ofNum:nOf, maqNova, dataProducao:dataNova });
 
       const detalhes = [
-        maqNova ? `Máquina: ${maqNova}` : null,
-        dataNova ? `Data de produção: ${dataNova.split('-').reverse().join('/')}` : null,
+        maqNova ? `MÃ¡quina: ${maqNova}` : null,
+        dataNova ? `Data de produÃ§Ã£o: ${dataNova.split('-').reverse().join('/')}` : null,
       ].filter(Boolean).join(' | ');
 
       return res.json({
         ok:true,
-        resposta:`${nome}, confirmar programação da OF #${nOf}?\n${detalhes}`,
+        resposta:`${nome}, confirmar programaÃ§Ã£o da OF #${nOf}?\n${detalhes}`,
         actions:[
-          {id:actionId,label:'✅ Confirmar',decision:'confirm'},
-          {id:actionId,label:'❌ Cancelar',decision:'cancel'},
+          {id:actionId,label:'âœ… Confirmar',decision:'confirm'},
+          {id:actionId,label:'âŒ Cancelar',decision:'cancel'},
         ]
       });
     }
 
-    if (ofNum && hasAny('clonar','clone','copiar','cópia','duplicar')) {
+    if (ofNum && hasAny('clonar','clone','copiar','cÃ³pia','duplicar')) {
       const of = await _jarvisFindOFByNumero(ofNum);
-      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      if (!of) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
 
       const mData = pergunta.match(/(?:entrega|para)\s+(?:dia\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i);
       const mCli  = pergunta.match(/(?:para o|para a|cliente)\s+(.+?)(?:\s+com|\s+entrega|\s*$)/i);
@@ -16027,8 +16027,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         ok:true,
         resposta:`${nome}, confirmar clonagem da OF #${nOf}?\n${novoCliNome?'Novo cliente: '+novoCliNome:'Mesmo cliente'}${novaEntrega?' | Nova entrega: '+novaEntrega.split('-').reverse().join('/'):''}`,
         actions:[
-          {id:actionId,label:'✅ Confirmar',decision:'confirm'},
-          {id:actionId,label:'❌ Cancelar',decision:'cancel'},
+          {id:actionId,label:'âœ… Confirmar',decision:'confirm'},
+          {id:actionId,label:'âŒ Cancelar',decision:'cancel'},
         ]
       });
     }
@@ -16037,13 +16037,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const mMaq = pergunta.match(/(?:da|de)\s+([A-Z0-9\s]+?)(?:\s+de|\s+para|\s*$)/i);
       const maqNome = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
       let dataDestino = '';
-      if (norm.includes('amanhã')||norm.includes('amanha')) {
+      if (norm.includes('amanhÃ£')||norm.includes('amanha')) {
         const d=new Date(); d.setDate(d.getDate()+1); dataDestino=d.toISOString().slice(0,10);
       } else {
         const mData = pergunta.match(/para\s+(?:dia\s+)?(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)/i);
         if (mData) { const p=mData[1].split('/'); const y=p[2]?(p[2].length===2?'20'+p[2]:p[2]):new Date().getFullYear(); dataDestino=`${y}-${String(p[1]).padStart(2,'0')}-${String(p[0]).padStart(2,'0')}`; }
       }
-      if (!maqNome||!dataDestino) return respond(`${nome}, preciso saber a máquina e a data destino. Ex: "mover todas as OFs da IMP 03 para amanhã"`);
+      if (!maqNome||!dataDestino) return respond(`${nome}, preciso saber a mÃ¡quina e a data destino. Ex: "mover todas as OFs da IMP 03 para amanhÃ£"`);
 
       const {data:ofsMaq} = await supabase.from('ofs').select('id,of,numero,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,status').is('deleted_at',null).limit(500);
       const lista = (Array.isArray(ofsMaq)?ofsMaq:[]).filter(o=>{
@@ -16056,21 +16056,21 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return mNome.toUpperCase()===maqNome;
       });
 
-      if (!lista.length) return respond(`${nome}, não encontrei OFs abertas na máquina ${maqNome}.`);
+      if (!lista.length) return respond(`${nome}, nÃ£o encontrei OFs abertas na mÃ¡quina ${maqNome}.`);
       const uid = String(req?.usuario?.id||'');
       const actionId = _jarvisStoreAction(uid,{type:'of_reagendar_lote', maqNome, dataDestino, ids:lista.map(o=>o.id)});
       return res.json({
         ok:true,
         resposta:`${nome}, confirmar reagendamento de ${lista.length} OFs da ${maqNome} para ${dataDestino.split('-').reverse().join('/')}?`,
-        actions:[{id:actionId,label:'✅ Confirmar',decision:'confirm'},{id:actionId,label:'❌ Cancelar',decision:'cancel'}]
+        actions:[{id:actionId,label:'âœ… Confirmar',decision:'confirm'},{id:actionId,label:'âŒ Cancelar',decision:'cancel'}]
       });
     }
 
-    if (hasAny('fila','fila da','fila de') && (norm.match(/\b(imp|cor|acab|vinco|maq)\b/i) || norm.includes('maquina') || norm.includes('máquina'))) {
+    if (hasAny('fila','fila da','fila de') && (norm.match(/\b(imp|cor|acab|vinco|maq)\b/i) || norm.includes('maquina') || norm.includes('mÃ¡quina'))) {
       const mMaq = pergunta.match(/(?:fila\s+(?:da|de|do)\s+)([A-Z0-9\s]+?)(?:\?|$)/i) ||
                    pergunta.match(/(?:da|de|do)\s+([A-Z0-9\s]+?)(?:\?|$)/i);
       const maqBusca = mMaq ? String(mMaq[1]||'').trim().toUpperCase() : '';
-      if (!maqBusca) return respond(`${nome}, qual máquina? Ex: "fila da IMP 02"`);
+      if (!maqBusca) return respond(`${nome}, qual mÃ¡quina? Ex: "fila da IMP 02"`);
 
       const {data:ofsAll} = await supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,cli_id,descricao,prodDesc,qtd,quantidade,qtd_pedida,data_entrega,ent,dia,data_producao,fluxo_maquinas,maq,maquina_atual_index,urg,urgente,deleted_at').is('deleted_at',null).limit(500);
       const fila = (Array.isArray(ofsAll)?ofsAll:[]).filter(o=>{
@@ -16090,26 +16090,26 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return ea.localeCompare(eb);
       });
 
-      if(!fila.length) return respond(`${nome}, a máquina ${maqBusca} não tem OFs na fila agora.`);
+      if(!fila.length) return respond(`${nome}, a mÃ¡quina ${maqBusca} nÃ£o tem OFs na fila agora.`);
       const cliIds=fila.map(o=>String(o.cli_id||o.cliente_id||'').trim()).filter(Boolean);
       const cliMap=await _assistLoadClientesByIds(cliIds);
       const totalCx=fila.reduce((s,o)=>s+Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0),0);
 
       const linhas=fila.slice(0,15).map((o,i)=>{
-        const num=String(o.of||o.numero||'—');
-        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'—').trim();
+        const num=String(o.of||o.numero||'â€”');
+        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'â€”').trim();
         const desc=String(o.descricao||o.prodDesc||'').trim();
         const qtd=Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
         const ent=String(o.data_entrega||o.ent||'').slice(0,10);
         const dia=String(o.data_producao||o.dia||'').slice(0,10);
         const atras=ent&&ent<hoje;
-        return `${i+1}. OF #${num}${(o.urg||o.urgente)?' 🚨':''}${atras?' ⚠️':''} — ${cli}\n   ${desc} | ${qtd.toLocaleString('pt-BR')} cx | Entrega: ${ent?ent.split('-').reverse().join('/'):'—'} | Prod: ${dia?dia.split('-').reverse().join('/'):'—'}`;
+        return `${i+1}. OF #${num}${(o.urg||o.urgente)?' ðŸš¨':''}${atras?' âš ï¸':''} â€” ${cli}\n   ${desc} | ${qtd.toLocaleString('pt-BR')} cx | Entrega: ${ent?ent.split('-').reverse().join('/'):'â€”'} | Prod: ${dia?dia.split('-').reverse().join('/'):'â€”'}`;
       });
 
-      return respond(`🏭 Fila da ${maqBusca}: ${fila.length} OF${fila.length!==1?'s':''} (${totalCx.toLocaleString('pt-BR')} cx)\n\n${linhas.join('\n')}${fila.length>15?'\n...e mais '+(fila.length-15)+' OFs':''}`);
+      return respond(`ðŸ­ Fila da ${maqBusca}: ${fila.length} OF${fila.length!==1?'s':''} (${totalCx.toLocaleString('pt-BR')} cx)\n\n${linhas.join('\n')}${fila.length>15?'\n...e mais '+(fila.length-15)+' OFs':''}`);
     }
 
-    if (hasAny('como está a produção','como esta a producao','produção agora','producao agora','status da produção','status da producao')) {
+    if (hasAny('como estÃ¡ a produÃ§Ã£o','como esta a producao','produÃ§Ã£o agora','producao agora','status da produÃ§Ã£o','status da producao')) {
       const {data:ofsAbRaw} = await supabase.from('ofs').select('id,status,fluxo_maquinas,maq,maquina_atual_index,qtd,quantidade,qtd_pedida,deleted_at').is('deleted_at',null).limit(800);
       const ofsAb=(Array.isArray(ofsAbRaw)?ofsAbRaw:[]).filter(o=>{const s=String(o.status||'').toLowerCase();return !s.includes('conclu')&&!s.includes('cancel');});
 
@@ -16133,25 +16133,25 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         cur.caixas+=Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0);
       });
 
-      const maqLinhas=[...maqMap.entries()].sort((a,b)=>b[1].ofs-a[1].ofs).slice(0,8).map(([m,v])=>`  🏭 ${m}: ${v.ofs} OF${v.ofs!==1?'s':''} (${v.caixas.toLocaleString('pt-BR')} cx)`);
+      const maqLinhas=[...maqMap.entries()].sort((a,b)=>b[1].ofs-a[1].ofs).slice(0,8).map(([m,v])=>`  ðŸ­ ${m}: ${v.ofs} OF${v.ofs!==1?'s':''} (${v.caixas.toLocaleString('pt-BR')} cx)`);
       const totalCxAb=ofsAb.reduce((s,o)=>s+Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0),0);
 
       return respond(
-        `📊 Produção agora (${hoje.split('-').reverse().join('/')}):\n\n`+
-        `🔵 Em produção: ${ofsAb.length} OFs (${totalCxAb.toLocaleString('pt-BR')} cx)\n`+
-        `✅ Concluídas hoje: ${conclH.length} OFs (${cxHoje.toLocaleString('pt-BR')} cx)\n`+
-        `💰 Faturado hoje: R$ ${fatHoje.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n\n`+
-        `Carga por máquina:\n${maqLinhas.join('\n')||'  —'}`
+        `ðŸ“Š ProduÃ§Ã£o agora (${hoje.split('-').reverse().join('/')}):\n\n`+
+        `ðŸ”µ Em produÃ§Ã£o: ${ofsAb.length} OFs (${totalCxAb.toLocaleString('pt-BR')} cx)\n`+
+        `âœ… ConcluÃ­das hoje: ${conclH.length} OFs (${cxHoje.toLocaleString('pt-BR')} cx)\n`+
+        `ðŸ’° Faturado hoje: R$ ${fatHoje.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n\n`+
+        `Carga por mÃ¡quina:\n${maqLinhas.join('\n')||'  â€”'}`
       );
     }
 
-    if (hasAny('histórico do cliente','historico do cliente','histórico de compras','historico de compras','ticket médio','ticket medio')) {
-      const mCli=pergunta.match(/(?:histórico|historico|ticket)\s+(?:do|da|de)\s+(?:cliente\s+)?(.+?)(?:\?|$)/i)||pergunta.match(/cliente\s+(.+?)(?:\?|$)/i)||null;
+    if (hasAny('histÃ³rico do cliente','historico do cliente','histÃ³rico de compras','historico de compras','ticket mÃ©dio','ticket medio')) {
+      const mCli=pergunta.match(/(?:histÃ³rico|historico|ticket)\s+(?:do|da|de)\s+(?:cliente\s+)?(.+?)(?:\?|$)/i)||pergunta.match(/cliente\s+(.+?)(?:\?|$)/i)||null;
       const cliNomeBusca=mCli?String(mCli[1]||'').trim().replace(/\?+$/,'').trim():'';
-      if(!cliNomeBusca) return respond(`${nome}, qual o cliente? Ex: "histórico do cliente Padaria X"`);
+      if(!cliNomeBusca) return respond(`${nome}, qual o cliente? Ex: "histÃ³rico do cliente Padaria X"`);
       const {data:cls}=await supabase.from('clientes').select('id,nome,cidade,tel,telefone').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(3);
       const clientes=Array.isArray(cls)?cls:[];
-      if(!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
+      if(!clientes.length) return respond(`${nome}, nÃ£o encontrei cliente com "${cliNomeBusca}".`);
       const cli=clientes[0]; const cliNome=String(cli.nome||'').trim(); const cliId=String(cli.id||'').trim();
       const todas=await _jarvisOfsDoCliente(cliId);
       const concluidas=todas.filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
@@ -16160,28 +16160,28 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const ticketMedio=concluidas.length>0?totalFat/concluidas.length:0;
       const totalCx=concluidas.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0);
       const ultimas=concluidas.slice(0,5).map(o=>{
-        const num=String(o.of||o.numero||'—');
+        const num=String(o.of||o.numero||'â€”');
         const desc=String(o.descricao||o.prodDesc||o.produto||'').trim();
         const dc=String(o.data_conclusao||'').slice(0,10);
         const val=Number(o.valor_total||o.valor_venda||0);
-        return `• OF #${num} — ${desc} — ${dc?dc.split('-').reverse().join('/'):'—'} — R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+        return `â€¢ OF #${num} â€” ${desc} â€” ${dc?dc.split('-').reverse().join('/'):'â€”'} â€” R$ ${val.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
       });
       return respond(
-        `📊 Histórico: ${cliNome}\n`+
-        (cli.cidade?`📍 ${cli.cidade}\n`:'')+
-        (cli.tel||cli.telefone?`📞 ${cli.tel||cli.telefone}\n`:'')+
-        `\n📈 RESUMO:\n`+
-        `• Total de OFs: ${todas.length}\n`+
-        `• Concluídas: ${concluidas.length}\n`+
-        `• Em aberto: ${abertas.length}\n`+
-        `• Total caixas produzidas: ${totalCx.toLocaleString('pt-BR')}\n`+
-        `• Faturamento total: R$ ${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
-        `• Ticket médio por OF: R$ ${ticketMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
-        `\n🕐 Últimas concluídas:\n${ultimas.join('\n')||'—'}`
+        `ðŸ“Š HistÃ³rico: ${cliNome}\n`+
+        (cli.cidade?`ðŸ“ ${cli.cidade}\n`:'')+
+        (cli.tel||cli.telefone?`ðŸ“ž ${cli.tel||cli.telefone}\n`:'')+
+        `\nðŸ“ˆ RESUMO:\n`+
+        `â€¢ Total de OFs: ${todas.length}\n`+
+        `â€¢ ConcluÃ­das: ${concluidas.length}\n`+
+        `â€¢ Em aberto: ${abertas.length}\n`+
+        `â€¢ Total caixas produzidas: ${totalCx.toLocaleString('pt-BR')}\n`+
+        `â€¢ Faturamento total: R$ ${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `â€¢ Ticket mÃ©dio por OF: R$ ${ticketMedio.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `\nðŸ• Ãšltimas concluÃ­das:\n${ultimas.join('\n')||'â€”'}`
       );
     }
 
-    if (hasAny('o que preciso comprar','o que devo comprar','sugestão de compra','sugestao de compra','comprar esta semana','comprar essa semana')) {
+    if (hasAny('o que preciso comprar','o que devo comprar','sugestÃ£o de compra','sugestao de compra','comprar esta semana','comprar essa semana')) {
       const {data:chapasRaw}=await supabase.from('chapas_estoque').select('id,nome,nomenclatura,nom,fornecedor,forn,tamanho,tam,quantidade,qtd,quantidade_atual,estoque_minimo,valor_unitario,val').limit(500);
       const chapas=Array.isArray(chapasRaw)?chapasRaw:[];
       const criticas=chapas.filter(c=>{
@@ -16195,16 +16195,16 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const mb=Math.trunc(Number(b.estoque_minimo||200)||200);
         return (qa-ma)-(qb-mb);
       });
-      if(!criticas.length) return respond(`${nome}, estoque de chapas está OK! Nenhuma abaixo do mínimo.`);
+      if(!criticas.length) return respond(`${nome}, estoque de chapas estÃ¡ OK! Nenhuma abaixo do mÃ­nimo.`);
       const linhas=criticas.slice(0,10).map(c=>{
-        const nom=String(c.nomenclatura||c.nom||c.nome||'—').trim();
+        const nom=String(c.nomenclatura||c.nom||c.nome||'â€”').trim();
         const tam=String(c.tamanho||c.tam||'').trim();
         const forn=String(c.fornecedor||c.forn||'').trim();
         const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
         const min=Math.trunc(Number(c.estoque_minimo||200)||200);
         const sug=Math.max(0,min-qtd);
         const val=Number(c.valor_unitario||c.val||0);
-        return `• ${nom}${tam?' ('+tam+')':''}\n  Saldo: ${qtd} | Mínimo: ${min} | Comprar: ${sug} un${val>0?' | ~R$ '+(sug*val).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}${forn?' | '+forn:''}`;
+        return `â€¢ ${nom}${tam?' ('+tam+')':''}\n  Saldo: ${qtd} | MÃ­nimo: ${min} | Comprar: ${sug} un${val>0?' | ~R$ '+(sug*val).toLocaleString('pt-BR',{minimumFractionDigits:2}):''}${forn?' | '+forn:''}`;
       });
       const totalVal=criticas.slice(0,10).reduce((s,c)=>{
         const qtd=Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
@@ -16212,11 +16212,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const val=Number(c.valor_unitario||c.val||0);
         return s+(Math.max(0,min-qtd)*val);
       },0);
-      return respond(`🛒 ${nome}, ${criticas.length} chapa${criticas.length!==1?'s':''} para comprar:\n\n${linhas.join('\n')}\n\n💰 Investimento estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}`);
+      return respond(`ðŸ›’ ${nome}, ${criticas.length} chapa${criticas.length!==1?'s':''} para comprar:\n\n${linhas.join('\n')}\n\nðŸ’° Investimento estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}`);
     }
 
-    if (hasAny('compare','comparar','comparativo') && hasAny('faturamento','vendas','mês','mes')) {
-      const meses={janeiro:1,fevereiro:2,marco:3,'março':3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+    if (hasAny('compare','comparar','comparativo') && hasAny('faturamento','vendas','mÃªs','mes')) {
+      const meses={janeiro:1,fevereiro:2,marco:3,'marÃ§o':3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
       const palavras=norm.split(/\s+/);
       const mesesEncontrados=[];
       palavras.forEach(p=>{if(meses[p]) mesesEncontrados.push(meses[p]);});
@@ -16230,15 +16230,15 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return {fat:rows.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0),ofs:rows.length,cx:rows.reduce((s,o)=>s+Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0),0)};
       };
       const [r1,r2]=await Promise.all([fatMes(mesesEncontrados[0]),fatMes(mesesEncontrados[1])]);
-      const nomeMes=n=>Object.keys(meses).find(k=>meses[k]===n&&!k.includes('ç'))||String(n);
+      const nomeMes=n=>Object.keys(meses).find(k=>meses[k]===n&&!k.includes('Ã§'))||String(n);
       const diff=r2.fat-r1.fat; const pct=r1.fat>0?((diff/r1.fat)*100):0;
       return respond(
-        `📊 Comparativo de faturamento (${y}):\n\n`+
-        `📅 ${nomeMes(mesesEncontrados[0]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[0]).slice(1)}:\n`+
-        `  💰 R$ ${r1.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r1.ofs} OFs | ${r1.cx.toLocaleString('pt-BR')} cx\n\n`+
-        `📅 ${nomeMes(mesesEncontrados[1]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[1]).slice(1)}:\n`+
-        `  💰 R$ ${r2.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r2.ofs} OFs | ${r2.cx.toLocaleString('pt-BR')} cx\n\n`+
-        `${diff>=0?'📈':'📉'} Variação: ${diff>=0?'+':''}R$ ${Math.abs(diff).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${diff>=0?'+':''}${pct.toFixed(1)}%)`
+        `ðŸ“Š Comparativo de faturamento (${y}):\n\n`+
+        `ðŸ“… ${nomeMes(mesesEncontrados[0]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[0]).slice(1)}:\n`+
+        `  ðŸ’° R$ ${r1.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r1.ofs} OFs | ${r1.cx.toLocaleString('pt-BR')} cx\n\n`+
+        `ðŸ“… ${nomeMes(mesesEncontrados[1]).charAt(0).toUpperCase()+nomeMes(mesesEncontrados[1]).slice(1)}:\n`+
+        `  ðŸ’° R$ ${r2.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})} | ${r2.ofs} OFs | ${r2.cx.toLocaleString('pt-BR')} cx\n\n`+
+        `${diff>=0?'ðŸ“ˆ':'ðŸ“‰'} VariaÃ§Ã£o: ${diff>=0?'+':''}R$ ${Math.abs(diff).toLocaleString('pt-BR',{minimumFractionDigits:2})} (${diff>=0?'+':''}${pct.toFixed(1)}%)`
       );
     }
 
@@ -16248,14 +16248,14 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows=(Array.isArray(ofsRaw)?ofsRaw:[]).filter(o=>String(o.status||'').toLowerCase().includes('conclu'));
       const ranking=new Map();
       rows.forEach(o=>{
-        const prod=String(o.descricao||o.prodDesc||o.produto||'Sem descrição').trim();
+        const prod=String(o.descricao||o.prodDesc||o.produto||'Sem descriÃ§Ã£o').trim();
         const qtd=Math.trunc(Number(o.qtd_produzida||o.qtd||0)||0);
         ranking.set(prod,(ranking.get(prod)||0)+qtd);
       });
       const top=[...ranking.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
-      if(!top.length) return respond(`${nome}, não há dados de produção para este mês ainda.`);
+      if(!top.length) return respond(`${nome}, nÃ£o hÃ¡ dados de produÃ§Ã£o para este mÃªs ainda.`);
       const linhas=top.map(([p,q],i)=>`${i+1}. ${p}: ${q.toLocaleString('pt-BR')} cx`);
-      return respond(`🏆 Top ${top.length} produtos mais fabricados (${m}):\n\n${linhas.join('\n')}`);
+      return respond(`ðŸ† Top ${top.length} produtos mais fabricados (${m}):\n\n${linhas.join('\n')}`);
     }
 
     if (hasAny('abrir cliente','abre o cliente','abre a cliente','buscar cliente','encontrar cliente','ver cliente') && !hasAny('ofs do cliente','of do cliente')) {
@@ -16264,8 +16264,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       if(!cliNomeBusca) return respond(`${nome}, qual o nome do cliente?`);
       const {data:cls}=await supabase.from('clientes').select('id,nome,cidade,tel,telefone,cnpj').ilike('nome',`%${cliNomeBusca.replace(/%/g,'')}%`).limit(5);
       const clientes=Array.isArray(cls)?cls:[];
-      if(!clientes.length) return respond(`${nome}, não encontrei cliente com "${cliNomeBusca}".`);
-      const linhas=clientes.map((c,i)=>`${i+1}. **${String(c.nome||'').trim()}**${c.cidade?' — '+c.cidade:''}${c.tel||c.telefone?' | 📞 '+(c.tel||c.telefone):''}${c.cnpj?' | CNPJ: '+c.cnpj:''}`);
+      if(!clientes.length) return respond(`${nome}, nÃ£o encontrei cliente com "${cliNomeBusca}".`);
+      const linhas=clientes.map((c,i)=>`${i+1}. **${String(c.nome||'').trim()}**${c.cidade?' â€” '+c.cidade:''}${c.tel||c.telefone?' | ðŸ“ž '+(c.tel||c.telefone):''}${c.cnpj?' | CNPJ: '+c.cnpj:''}`);
       return res.json({
         ok:true,
         resposta:`${nome}, encontrei ${clientes.length} cliente${clientes.length!==1?'s':''}:\n\n${linhas.join('\n')}`,
@@ -16273,7 +16273,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (hasAny('máquina mais livre','maquina mais livre','qual máquina','qual maquina') && hasAny('livre','disponível','disponivel','menos ocupada','menos carregada')) {
+    if (hasAny('mÃ¡quina mais livre','maquina mais livre','qual mÃ¡quina','qual maquina') && hasAny('livre','disponÃ­vel','disponivel','menos ocupada','menos carregada')) {
       const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativa',true);
       const {data:ofsAb}=await supabase.from('ofs').select('fluxo_maquinas,maq,maquina_atual_index,status,deleted_at').is('deleted_at',null).limit(500);
       const contagem=new Map();
@@ -16290,13 +16290,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         if(mNome) contagem.set(mNome,(contagem.get(mNome)||0)+1);
       });
       const ranking=[...contagem.entries()].sort((a,b)=>a[1]-b[1]);
-      if(!ranking.length) return respond(`${nome}, não encontrei máquinas cadastradas.`);
+      if(!ranking.length) return respond(`${nome}, nÃ£o encontrei mÃ¡quinas cadastradas.`);
       const linhas=ranking.slice(0,8).map(([m,n],i)=>`${i+1}. ${m}: ${n} OF${n!==1?'s':''} na fila`);
       const livre=ranking[0];
-      return respond(`🏭 ${nome}, a máquina mais livre é **${livre[0]}** com ${livre[1]} OF${livre[1]!==1?'s':''} na fila.\n\nRanking (menos para mais carregada):\n${linhas.join('\n')}`);
+      return respond(`ðŸ­ ${nome}, a mÃ¡quina mais livre Ã© **${livre[0]}** com ${livre[1]} OF${livre[1]!==1?'s':''} na fila.\n\nRanking (menos para mais carregada):\n${linhas.join('\n')}`);
     }
 
-    if (hasAny('última entrada','ultima entrada','histórico de chapa','historico de chapa','última compra de chapa','ultima compra de chapa') && hasAny('chapa','onda','papel')) {
+    if (hasAny('Ãºltima entrada','ultima entrada','histÃ³rico de chapa','historico de chapa','Ãºltima compra de chapa','ultima compra de chapa') && hasAny('chapa','onda','papel')) {
       const mChapa=pergunta.match(/(?:entrada|chapa|compra)\s+(?:de\s+)?(.+?)(?:\?|$)/i)||null;
       const termoBusca=mChapa?String(mChapa[1]||'').trim():'';
       const tables=['chapas_estoque_movimentos_v2','chapas_estoque_movimentos'];
@@ -16314,43 +16314,43 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         chapaIds=(Array.isArray(chapas)?chapas:[]).map(c=>String(c.id));
         movs=movs.filter(m=>chapaIds.includes(String(m.chapa_id||'')));
       }
-      if(!movs.length) return respond(`${nome}, não encontrei histórico de entradas${termoBusca?' para "'+termoBusca+'"':''}.`);
+      if(!movs.length) return respond(`${nome}, nÃ£o encontrei histÃ³rico de entradas${termoBusca?' para "'+termoBusca+'"':''}.`);
       const linhas=movs.slice(0,8).map(m=>{
         const dt=String(m.created_at||'').slice(0,10).split('-').reverse().join('/');
         const qtd=Math.abs(Math.trunc(Number(m.delta||0)||0));
         const vu=Number(m.valor_unitario||m.vunit||m.val||0);
-        return `• ${dt} — ${qtd} un${vu>0?' | R$ '+vu.toFixed(2)+'/un':''}${m.nf?' | NF: '+m.nf:''}${m.usuario?' | '+m.usuario:''}`;
+        return `â€¢ ${dt} â€” ${qtd} un${vu>0?' | R$ '+vu.toFixed(2)+'/un':''}${m.nf?' | NF: '+m.nf:''}${m.usuario?' | '+m.usuario:''}`;
       });
-      return respond(`📦 ${nome}, histórico de entradas${termoBusca?' ('+termoBusca+')':''}:\n\n${linhas.join('\n')}`);
+      return respond(`ðŸ“¦ ${nome}, histÃ³rico de entradas${termoBusca?' ('+termoBusca+')':''}:\n\n${linhas.join('\n')}`);
     }
 
     if (ofNum && hasAny('custo','quanto custou','quanto de chapa','chapas da of','chapa da of')) {
       const of=await _jarvisFindOFByNumero(ofNum);
-      if(!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      if(!of) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
       const nOf=_assistPickOfNumber(of);
       const chapaId=String(of.chapa_id||of.chp||'').trim();
       const qtdChapas=Math.trunc(Number(of.qtd_chapas||of.qchp||0)||0);
-      if(!chapaId||!qtdChapas) return respond(`${nome}, a OF #${nOf} não tem chapas registradas.`);
+      if(!chapaId||!qtdChapas) return respond(`${nome}, a OF #${nOf} nÃ£o tem chapas registradas.`);
       const table='chapas_estoque';
       const {data:chapa}=await supabase.from(table).select('id,nomenclatura,nom,nome,valor_unitario,val,tamanho,tam').eq('id',chapaId).maybeSingle();
-      if(!chapa) return respond(`${nome}, não encontrei os dados da chapa da OF #${nOf}.`);
-      const nom=String(chapa.nomenclatura||chapa.nom||chapa.nome||'—').trim();
+      if(!chapa) return respond(`${nome}, nÃ£o encontrei os dados da chapa da OF #${nOf}.`);
+      const nom=String(chapa.nomenclatura||chapa.nom||chapa.nome||'â€”').trim();
       const tam=String(chapa.tamanho||chapa.tam||'').trim();
       const vu=Number(chapa.valor_unitario||chapa.val||0);
       const custo=qtdChapas*vu;
       const valorOf=Number(of.valor_total||of.valor_venda||0);
       const pctCusto=valorOf>0?((custo/valorOf)*100):0;
       return respond(
-        `📊 Custo de chapas da OF #${nOf}:\n\n`+
-        `📄 Chapa: ${nom}${tam?' ('+tam+')':''}\n`+
-        `🔢 Quantidade usada: ${qtdChapas.toLocaleString('pt-BR')} un\n`+
-        `💰 Valor unitário: R$ ${vu.toFixed(2)}\n`+
-        `💰 Custo total chapas: R$ ${custo.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
-        (valorOf>0?`📊 Representa ${pctCusto.toFixed(1)}% do valor da OF (R$ ${valorOf.toLocaleString('pt-BR',{minimumFractionDigits:2})})`:'')
+        `ðŸ“Š Custo de chapas da OF #${nOf}:\n\n`+
+        `ðŸ“„ Chapa: ${nom}${tam?' ('+tam+')':''}\n`+
+        `ðŸ”¢ Quantidade usada: ${qtdChapas.toLocaleString('pt-BR')} un\n`+
+        `ðŸ’° Valor unitÃ¡rio: R$ ${vu.toFixed(2)}\n`+
+        `ðŸ’° Custo total chapas: R$ ${custo.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        (valorOf>0?`ðŸ“Š Representa ${pctCusto.toFixed(1)}% do valor da OF (R$ ${valorOf.toLocaleString('pt-BR',{minimumFractionDigits:2})})`:'')
       );
     }
 
-    if (hasAny('valor total do estoque','inventário','inventario','valor do estoque','total do estoque')) {
+    if (hasAny('valor total do estoque','inventÃ¡rio','inventario','valor do estoque','total do estoque')) {
       const {data:chapasRaw}=await supabase.from('chapas_estoque').select('nome,nomenclatura,nom,fornecedor,forn,tamanho,tam,quantidade,qtd,quantidade_atual,valor_unitario,val,estoque_minimo').limit(1000);
       const chapas=Array.isArray(chapasRaw)?chapasRaw:[];
       let totalVal=0, totalItens=0, abaixoMin=0, semValor=0;
@@ -16363,16 +16363,16 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         if(qtd<min) abaixoMin++;
       });
       return respond(
-        `📦 Inventário do estoque (${hoje.split('-').reverse().join('/')}):\n\n`+
-        `🏷️ Total de tipos de chapas: ${chapas.length}\n`+
-        `🔢 Total de unidades: ${totalItens.toLocaleString('pt-BR')}\n`+
-        `💰 Valor total estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
-        `⚠️ Abaixo do mínimo: ${abaixoMin}\n`+
-        `❓ Sem valor cadastrado: ${semValor}`
+        `ðŸ“¦ InventÃ¡rio do estoque (${hoje.split('-').reverse().join('/')}):\n\n`+
+        `ðŸ·ï¸ Total de tipos de chapas: ${chapas.length}\n`+
+        `ðŸ”¢ Total de unidades: ${totalItens.toLocaleString('pt-BR')}\n`+
+        `ðŸ’° Valor total estimado: R$ ${totalVal.toLocaleString('pt-BR',{minimumFractionDigits:2})}\n`+
+        `âš ï¸ Abaixo do mÃ­nimo: ${abaixoMin}\n`+
+        `â“ Sem valor cadastrado: ${semValor}`
       );
     }
 
-    if (hasAny('vão atrasar','vao atrasar','previsão de atraso','previsao de atraso','risco de atraso','podem atrasar')) {
+    if (hasAny('vÃ£o atrasar','vao atrasar','previsÃ£o de atraso','previsao de atraso','risco de atraso','podem atrasar')) {
       const d=new Date(); const dow=d.getDay(); const diffMon=dow===0?6:dow-1;
       const mon=new Date(d); mon.setDate(d.getDate()-diffMon);
       const sun=new Date(mon); sun.setDate(mon.getDate()+6);
@@ -16387,53 +16387,53 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const atrasadas=semana.filter(o=>{const ent=String(o.data_entrega||o.ent||'').slice(0,10);return ent&&ent<hoje;});
       const cliMap=await _assistLoadClientesByIds(semana.map(o=>String(o.cli_id||o.cliente_id||'').trim()));
       const linhas=semana.slice(0,12).map(o=>{
-        const num=String(o.of||o.numero||'—');
-        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'—').trim();
+        const num=String(o.of||o.numero||'â€”');
+        const cli=String(cliMap.get(String(o.cli_id||o.cliente_id||'').trim())||o.cliNome||o.cliente_nome||'â€”').trim();
         const ent=String(o.data_entrega||o.ent||'').slice(0,10);
         const atras=ent&&ent<hoje;
         const maq=_jarvisMaqAtualOf(o);
-        return `• OF #${num}${atras?' ⚠️ ATRASADA':''} — ${cli} — Entrega: ${ent?ent.split('-').reverse().join('/'):'—'} — ${maq}`;
+        return `â€¢ OF #${num}${atras?' âš ï¸ ATRASADA':''} â€” ${cli} â€” Entrega: ${ent?ent.split('-').reverse().join('/'):'â€”'} â€” ${maq}`;
       });
       return respond(
-        `📅 OFs da semana (${deS.split('-').reverse().join('/')} a ${ateS.split('-').reverse().join('/')}):\n\n`+
-        `Total: ${semana.length} | Já atrasadas: ${atrasadas.length}\n\n`+
+        `ðŸ“… OFs da semana (${deS.split('-').reverse().join('/')} a ${ateS.split('-').reverse().join('/')}):\n\n`+
+        `Total: ${semana.length} | JÃ¡ atrasadas: ${atrasadas.length}\n\n`+
         `${linhas.join('\n')||'Nenhuma OF esta semana.'}`
       );
     }
 
-    if (hasAny('modo fábrica','modo fabrica','modo operador','modo producao','modo produção')) {
+    if (hasAny('modo fÃ¡brica','modo fabrica','modo operador','modo producao','modo produÃ§Ã£o')) {
       const {data:maqAll}=await supabase.from('maquinas').select('id,nome,col').eq('ativa',true).order('ordem',{ascending:true});
       const maquinas=(Array.isArray(maqAll)?maqAll:[]).map(m=>String(m.nome||m.col||'').trim()).filter(Boolean);
       return res.json({
         ok:true,
         resposta:
-          `🏭 **MODO FÁBRICA ATIVADO**\n\n`+
-          `Comandos disponíveis:\n`+
-          `• "OF da IMP 02" → ver OF atual da máquina\n`+
-          `• "concluir OF 498" → registrar produção\n`+
-          `• "imagem da OF 498" → ver referência visual\n`+
-          `• "fila da IMP 03" → ver próximas OFs\n`+
-          `• "parei IMP 02 por manutenção" → registrar parada\n\n`+
-          `Máquinas disponíveis:\n${maquinas.map(m=>`• ${m}`).join('\n')||'—'}`,
+          `ðŸ­ **MODO FÃBRICA ATIVADO**\n\n`+
+          `Comandos disponÃ­veis:\n`+
+          `â€¢ "OF da IMP 02" â†’ ver OF atual da mÃ¡quina\n`+
+          `â€¢ "concluir OF 498" â†’ registrar produÃ§Ã£o\n`+
+          `â€¢ "imagem da OF 498" â†’ ver referÃªncia visual\n`+
+          `â€¢ "fila da IMP 03" â†’ ver prÃ³ximas OFs\n`+
+          `â€¢ "parei IMP 02 por manutenÃ§Ã£o" â†’ registrar parada\n\n`+
+          `MÃ¡quinas disponÃ­veis:\n${maquinas.map(m=>`â€¢ ${m}`).join('\n')||'â€”'}`,
         dadosExtras:{ tipo:'modo_fabrica', maquinas }
       });
     }
 
-    if (ofNum && hasAny('concluir','finalizar','dar baixa','concluída','concluida') && hasAny('of','ordem')) {
+    if (ofNum && hasAny('concluir','finalizar','dar baixa','concluÃ­da','concluida') && hasAny('of','ordem')) {
       const of = await _jarvisFindOFByNumero(ofNum);
-      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      if (!of) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
       const cid = _assistPickOfClienteId(of);
       const cliMap = await _assistLoadClientesByIds([cid]);
-      const cNome = String(cliMap.get(cid)||of.cliNome||of.cliente_nome||'—').trim()||'—';
+      const cNome = String(cliMap.get(cid)||of.cliNome||of.cliente_nome||'â€”').trim()||'â€”';
       const nOf   = _assistPickOfNumber(of);
       const qtd   = Math.trunc(Number(of.qtd_pedida||of.quantidade||of.qtd||0)||0);
-      const desc  = String(of.descricao||of.prodDesc||of.produto||of.prod||'').trim()||'—';
+      const desc  = String(of.descricao||of.prodDesc||of.produto||of.prod||'').trim()||'â€”';
       const fluxo = parseFluxo(of.fluxo_maquinas||of.maq||[]);
 
       return res.json({
         ok: true,
         resposta:
-          `📋 Concluir OF #${nOf}\n`+
+          `ðŸ“‹ Concluir OF #${nOf}\n`+
           `Cliente: ${cNome}\n`+
           `Produto: ${desc}\n`+
           `Qtd pedida: ${qtd.toLocaleString('pt-BR')} caixas\n\n`+
@@ -16450,29 +16450,29 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
     if (ofNum && (_jarvisHasAny(norm, 'altere', 'alterar', 'mude', 'mudar', 'edite', 'editar') && _jarvisHasAny(norm, 'of', 'ordem'))) {
       const of = await _jarvisFindOFByNumero(ofNum);
-      if (!of) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
+      if (!of) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
       const cid = _assistPickOfClienteId(of);
       const cliMap = await _assistLoadClientesByIds([cid]);
-      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+      const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || 'â€”').trim() || 'â€”';
       const nOf = _assistPickOfNumber(of);
       const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
       const entrega = _assistPickOfEntrega(of);
-      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || '—';
+      const desc = String(of.descricao || of.prodDesc || of.produto || of.prod || '').trim() || 'â€”';
       const obs = String(of.obs || of.observacao || '').trim();
       const urg = !!(of.urg || of.urgente);
       const fluxo = parseFluxo(of.fluxo_maquinas || of.maq || []);
       return res.json({
         ok: true,
         resposta:
-          `✏️ Editar OF #${nOf}\n` +
+          `âœï¸ Editar OF #${nOf}\n` +
           `Cliente: ${cNome}\n` +
           `Produto: ${desc}\n` +
           `Quantidade: ${qtd.toLocaleString('pt-BR')}\n` +
-          `Entrega: ${entrega ? _assistFmtDateBr(entrega) : '—'}\n` +
-          `Urgente: ${urg ? 'Sim' : 'Não'}\n` +
-          `Máquinas: ${fluxo.length ? fluxo.join(' → ') : '—'}\n` +
+          `Entrega: ${entrega ? _assistFmtDateBr(entrega) : 'â€”'}\n` +
+          `Urgente: ${urg ? 'Sim' : 'NÃ£o'}\n` +
+          `MÃ¡quinas: ${fluxo.length ? fluxo.join(' â†’ ') : 'â€”'}\n` +
           (obs ? `Obs: ${obs}\n` : '') +
-          `\nO que deseja alterar? (data de entrega, quantidade, cliente, produto, urgente, máquinas, observações)`,
+          `\nO que deseja alterar? (data de entrega, quantidade, cliente, produto, urgente, mÃ¡quinas, observaÃ§Ãµes)`,
         jarvis_state: {
           acao: 'alterar_of',
           of_id: String(of.id || ''),
@@ -16500,107 +16500,107 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       try {
         if (act.type.startsWith('of_')) {
           const of = await _jarvisFindOFByNumero(act.ofNum);
-          if (!of) return respond(`${nome}, não encontrei a OF #${act.ofNum}.`);
+          if (!of) return respond(`${nome}, nÃ£o encontrei a OF #${act.ofNum}.`);
           const cid = _assistPickOfClienteId(of);
           const cliMap = await _assistLoadClientesByIds([cid]);
-          const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—';
+          const cNome = String(cliMap.get(cid) || of.cliNome || of.cliente_nome || 'â€”').trim() || 'â€”';
           const nOf = _assistPickOfNumber(of);
           const qtd = Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0);
-          if (act.type === 'of_cancel') resumo = `⚠️ Confirmar cancelamento da OF #${nOf} — ${cNome} — ${qtd} caixas?`;
-          else if (act.type === 'of_upload_image') resumo = `⚠️ Confirmar troca da imagem da OF #${nOf} — ${cNome}?`;
-          else if (act.type === 'of_set_entrega') resumo = `⚠️ Confirmar alteração da entrega da OF #${nOf} — ${cNome} para ${_assistFmtDateBr(act.data)}?`;
-          else if (act.type === 'of_set_qtd') resumo = `⚠️ Confirmar alteração da quantidade da OF #${nOf} — ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
-          else if (act.type === 'of_set_urgente') resumo = `⚠️ Confirmar marcar urgência na OF #${nOf} — ${cNome}?`;
-          else if (act.type === 'of_set_cliente') resumo = `⚠️ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
-          else if (act.type === 'of_concluir') resumo = `⚠️ Confirmar concluir a OF #${nOf} — ${cNome}${act.qtdProduzida ? ` (produzidas ${Number(act.qtdProduzida).toLocaleString('pt-BR')} cx)` : ''}?`;
-          else resumo = `⚠️ Confirmar ação na OF #${nOf}?`;
+          if (act.type === 'of_cancel') resumo = `âš ï¸ Confirmar cancelamento da OF #${nOf} â€” ${cNome} â€” ${qtd} caixas?`;
+          else if (act.type === 'of_upload_image') resumo = `âš ï¸ Confirmar troca da imagem da OF #${nOf} â€” ${cNome}?`;
+          else if (act.type === 'of_set_entrega') resumo = `âš ï¸ Confirmar alteraÃ§Ã£o da entrega da OF #${nOf} â€” ${cNome} para ${_assistFmtDateBr(act.data)}?`;
+          else if (act.type === 'of_set_qtd') resumo = `âš ï¸ Confirmar alteraÃ§Ã£o da quantidade da OF #${nOf} â€” ${cNome} para ${Number(act.qtd).toLocaleString('pt-BR')} caixas?`;
+          else if (act.type === 'of_set_urgente') resumo = `âš ï¸ Confirmar marcar urgÃªncia na OF #${nOf} â€” ${cNome}?`;
+          else if (act.type === 'of_set_cliente') resumo = `âš ï¸ Confirmar trocar cliente da OF #${nOf} para "${act.clienteNome}"?`;
+          else if (act.type === 'of_concluir') resumo = `âš ï¸ Confirmar concluir a OF #${nOf} â€” ${cNome}${act.qtdProduzida ? ` (produzidas ${Number(act.qtdProduzida).toLocaleString('pt-BR')} cx)` : ''}?`;
+          else resumo = `âš ï¸ Confirmar aÃ§Ã£o na OF #${nOf}?`;
           act.ofId = String(of.id || '');
         } else if (act.type.startsWith('chapa_')) {
           const ch = await _jarvisFindChapaByNome(act.chapaNome);
-          if (!ch) return respond(`${nome}, não encontrei a chapa "${act.chapaNome}".`);
-          const nomeCh = String(ch.nomenclatura || ch.nome_uso || ch.nome || '—').trim() || '—';
-          if (act.type === 'chapa_entrada') resumo = `⚠️ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
-          else if (act.type === 'chapa_set_min') resumo = `⚠️ Confirmar ajuste do estoque mínimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
+          if (!ch) return respond(`${nome}, nÃ£o encontrei a chapa "${act.chapaNome}".`);
+          const nomeCh = String(ch.nomenclatura || ch.nome_uso || ch.nome || 'â€”').trim() || 'â€”';
+          if (act.type === 'chapa_entrada') resumo = `âš ï¸ Confirmar entrada de ${Number(act.qtd).toLocaleString('pt-BR')} unidade(s) na chapa "${nomeCh}"?`;
+          else if (act.type === 'chapa_set_min') resumo = `âš ï¸ Confirmar ajuste do estoque mÃ­nimo da chapa "${nomeCh}" para ${Number(act.min).toLocaleString('pt-BR')}?`;
           act.chapaId = String(ch.id || '');
         } else if (act.type.startsWith('cliente_')) {
-          if (act.type === 'cliente_create') resumo = `⚠️ Confirmar cadastro do cliente "${act.clienteNome}" com telefone "${act.telefone}"?`;
-          if (act.type === 'cliente_set_tel') resumo = `⚠️ Confirmar atualizar telefone do cliente "${act.clienteNome}" para "${act.telefone}"?`;
+          if (act.type === 'cliente_create') resumo = `âš ï¸ Confirmar cadastro do cliente "${act.clienteNome}" com telefone "${act.telefone}"?`;
+          if (act.type === 'cliente_set_tel') resumo = `âš ï¸ Confirmar atualizar telefone do cliente "${act.clienteNome}" para "${act.telefone}"?`;
         } else {
-          resumo = `⚠️ Confirmar ação?`;
+          resumo = `âš ï¸ Confirmar aÃ§Ã£o?`;
         }
       } catch (_) {
-        resumo = `⚠️ Confirmar ação?`;
+        resumo = `âš ï¸ Confirmar aÃ§Ã£o?`;
       }
       const actionId = _jarvisStoreAction(uid, act);
       return res.json({
         ok: true,
         resposta: resumo,
         actions: [
-          { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
-          { id: actionId, label: '❌ Cancelar', decision: 'cancel' },
+          { id: actionId, label: 'âœ… Confirmar', decision: 'confirm' },
+          { id: actionId, label: 'âŒ Cancelar', decision: 'cancel' },
         ],
       });
     }
 
     if (norm.startsWith('/ajuda') || norm.startsWith('/help') ||
-        hasAny('o que você pode fazer','o que voce pode fazer','o que você faz',
+        hasAny('o que vocÃª pode fazer','o que voce pode fazer','o que vocÃª faz',
                'como usar o jarvis','quais comandos','o que posso pedir',
                'me ajude','preciso de ajuda')) {
       return res.json({
         ok: true,
         resposta:
-`${nome}, sou o JARVIS — IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:
+`${nome}, sou o JARVIS â€” IA integrada ao ERP Italy Embalagens. Veja tudo que posso fazer:
 
-📋 ORDENS DE FABRICAÇÃO
-- "imagem da OF 498" → imagem + dados completos + ações
-- "OF 498" → todos os dados da OF
-- "OFs do cliente João" → situação completa com status
+ðŸ“‹ ORDENS DE FABRICAÃ‡ÃƒO
+- "imagem da OF 498" â†’ imagem + dados completos + aÃ§Ãµes
+- "OF 498" â†’ todos os dados da OF
+- "OFs do cliente JoÃ£o" â†’ situaÃ§Ã£o completa com status
 - "OFs atrasadas" / "OFs urgentes" / "OFs de hoje"
-- "concluir OF 498" → solicito dados e concluo
-- "cancelar OF 498" → cancelo após confirmação
-- "altere a entrega da OF 498 para 25/05" → altero após confirmação
-- "programa a OF 498 para amanhã na IMP 03" → reagendo
-- "clonar OF 498 para cliente X com entrega 30/05" → cria cópia
-- "mover todas as OFs da IMP 03 para amanhã" → lote
+- "concluir OF 498" â†’ solicito dados e concluo
+- "cancelar OF 498" â†’ cancelo apÃ³s confirmaÃ§Ã£o
+- "altere a entrega da OF 498 para 25/05" â†’ altero apÃ³s confirmaÃ§Ã£o
+- "programa a OF 498 para amanhÃ£ na IMP 03" â†’ reagendo
+- "clonar OF 498 para cliente X com entrega 30/05" â†’ cria cÃ³pia
+- "mover todas as OFs da IMP 03 para amanhÃ£" â†’ lote
 
-🏭 PRODUÇÃO
-- "como está a produção agora" → dashboard em tempo real
-- "fila da IMP 02" → OFs em ordem de prioridade
-- "qual máquina está mais livre" → ranking de carga
-- "quais OFs vão atrasar essa semana" → previsão
-- "ranking de produtos mais fabricados" → top produtos
-- "modo fábrica" → interface simplificada para operadores
+ðŸ­ PRODUÃ‡ÃƒO
+- "como estÃ¡ a produÃ§Ã£o agora" â†’ dashboard em tempo real
+- "fila da IMP 02" â†’ OFs em ordem de prioridade
+- "qual mÃ¡quina estÃ¡ mais livre" â†’ ranking de carga
+- "quais OFs vÃ£o atrasar essa semana" â†’ previsÃ£o
+- "ranking de produtos mais fabricados" â†’ top produtos
+- "modo fÃ¡brica" â†’ interface simplificada para operadores
 
-👥 CLIENTES
-- "histórico do cliente X" → OFs, ticket médio, total gasto
-- "abre o cliente Padaria X" → busca com dados
-- "clientes inativos" → sem pedido há 30 dias
-- "top clientes do mês" → maiores compradores
-- "PDF do cliente X" → relatório para imprimir
-- "compare faturamento de abril com maio" → comparativo
+ðŸ‘¥ CLIENTES
+- "histÃ³rico do cliente X" â†’ OFs, ticket mÃ©dio, total gasto
+- "abre o cliente Padaria X" â†’ busca com dados
+- "clientes inativos" â†’ sem pedido hÃ¡ 30 dias
+- "top clientes do mÃªs" â†’ maiores compradores
+- "PDF do cliente X" â†’ relatÃ³rio para imprimir
+- "compare faturamento de abril com maio" â†’ comparativo
 
-📦 ESTOQUE
-- "quanto tem de chapa onda B" → saldo atual
-- "estoque crítico" → abaixo do mínimo
-- "valor total do estoque" → inventário completo
-- "o que preciso comprar esta semana" → sugestão de compra
-- "dar entrada de 100 na chapa X" → registra após confirmação
-- "última entrada de onda B 1200x900" → histórico
-- "custo de chapas da OF 498" → cálculo de custo
+ðŸ“¦ ESTOQUE
+- "quanto tem de chapa onda B" â†’ saldo atual
+- "estoque crÃ­tico" â†’ abaixo do mÃ­nimo
+- "valor total do estoque" â†’ inventÃ¡rio completo
+- "o que preciso comprar esta semana" â†’ sugestÃ£o de compra
+- "dar entrada de 100 na chapa X" â†’ registra apÃ³s confirmaÃ§Ã£o
+- "Ãºltima entrada de onda B 1200x900" â†’ histÃ³rico
+- "custo de chapas da OF 498" â†’ cÃ¡lculo de custo
 
-📊 RELATÓRIOS
-- "faturamento do mês" / "faturamento de abril"
+ðŸ“Š RELATÃ“RIOS
+- "faturamento do mÃªs" / "faturamento de abril"
 - "compare faturamento de abril com maio"
-- "/dashboard" → gráfico anual
-- "/resumo" → resumo completo do dia
-- "/atrasadas" → lista rápida
+- "/dashboard" â†’ grÃ¡fico anual
+- "/resumo" â†’ resumo completo do dia
+- "/atrasadas" â†’ lista rÃ¡pida
 
-💡 DICAS
-- Digite só o número (ex: "498") → mostro a OF direto
-- Botão 📎 → enviar imagem para atualizar foto de OF
-- Botão 🎤 → comando por voz
-- "modo fábrica" → modo simplificado para chão de fábrica`,
-        suggestions: ['imagem da OF 498','fila da IMP 02','o que preciso comprar','como está a produção agora','PDF do cliente X']
+ðŸ’¡ DICAS
+- Digite sÃ³ o nÃºmero (ex: "498") â†’ mostro a OF direto
+- BotÃ£o ðŸ“Ž â†’ enviar imagem para atualizar foto de OF
+- BotÃ£o ðŸŽ¤ â†’ comando por voz
+- "modo fÃ¡brica" â†’ modo simplificado para chÃ£o de fÃ¡brica`,
+        suggestions: ['imagem da OF 498','fila da IMP 02','o que preciso comprar','como estÃ¡ a produÃ§Ã£o agora','PDF do cliente X']
       });
     }
 
@@ -16625,17 +16625,17 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const ent = _assistPickOfEntrega(o);
         const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
-        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s)`;
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
+        return `ðŸ“¦ OF #${_assistPickOfNumber(o)} â€” ${cNome} â€” ${atraso} dia(s)`;
       });
       return res.json({
         ok: true,
         resposta:
           `${_jarvisFirstName(nome)}, resumo do dia (${_assistFmtDateBr(hoje)}):\n` +
-          `🚨 Atrasadas: ${atras.length}\n` +
-          `📅 Entregas hoje: ${hojeList.length}\n` +
-          `⚡ Urgentes: ${urg.length}\n\n` +
-          `Top atrasadas:\n${linhas.join('\n') || '—'}`,
+          `ðŸš¨ Atrasadas: ${atras.length}\n` +
+          `ðŸ“… Entregas hoje: ${hojeList.length}\n` +
+          `âš¡ Urgentes: ${urg.length}\n\n` +
+          `Top atrasadas:\n${linhas.join('\n') || 'â€”'}`,
         suggestions: ['/atrasadas', 'OFs de hoje', 'OFs urgentes', '/estoque'],
       });
     }
@@ -16658,8 +16658,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const ent = _assistPickOfEntrega(o);
         const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
-        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s)`;
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
+        return `ðŸ“¦ OF #${_assistPickOfNumber(o)} â€” ${cNome} â€” ${atraso} dia(s)`;
       });
       const tbl = {
         headers: ['OF', 'Cliente', 'Entrega', 'Atraso (dias)'],
@@ -16667,11 +16667,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
           const ent = _assistPickOfEntrega(o);
           const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
           const cid = _assistPickOfClienteId(o);
-          const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+          const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
           return [
             String(_assistPickOfNumber(o)),
             cNome,
-            ent ? _assistFmtDateBr(ent) : '—',
+            ent ? _assistFmtDateBr(ent) : 'â€”',
             String(atraso),
           ];
         }),
@@ -16679,9 +16679,9 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const extra = atras.length > top.length ? `\n...e mais ${atras.length - top.length} itens` : '';
       return res.json({
         ok: true,
-        resposta: `${_jarvisFirstName(nome)}, OFs atrasadas: ${atras.length}\n${linhas.join('\n') || '—'}${extra}`,
+        resposta: `${_jarvisFirstName(nome)}, OFs atrasadas: ${atras.length}\n${linhas.join('\n') || 'â€”'}${extra}`,
         table: tbl,
-        suggestions: ['/resumo', 'OFs urgentes', 'Estoque crítico', '/dashboard'],
+        suggestions: ['/resumo', 'OFs urgentes', 'Estoque crÃ­tico', '/dashboard'],
       });
     }
 
@@ -16725,18 +16725,18 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const toMin = (c) => Math.trunc(Number(c.estoque_minimo ?? 0) || 0);
       const top = rows.slice(0, 40);
       const tbl = {
-        headers: ['Chapa', 'Saldo', 'Mínimo'],
+        headers: ['Chapa', 'Saldo', 'MÃ­nimo'],
         rows: top.map((c) => [
-          String(c.nomenclatura || c.nome_uso || c.nome || '—').trim() || '—',
+          String(c.nomenclatura || c.nome_uso || c.nome || 'â€”').trim() || 'â€”',
           String(toQtd(c)),
           String(toMin(c)),
         ]),
       };
       const extra = rows.length > top.length ? ` (mostrando 40 de ${rows.length})` : '';
-      return res.json({ ok: true, resposta: `${_jarvisFirstName(nome)}, aqui está o estoque de chapas${extra}:`, table: tbl });
+      return res.json({ ok: true, resposta: `${_jarvisFirstName(nome)}, aqui estÃ¡ o estoque de chapas${extra}:`, table: tbl });
     }
 
-    if ((hasAny('grafico', 'gráfico') || norm.startsWith('/dashboard')) && hasAny('faturamento', 'vendas', 'venda')) {
+    if ((hasAny('grafico', 'grÃ¡fico') || norm.startsWith('/dashboard')) && hasAny('faturamento', 'vendas', 'venda')) {
       const y = year;
       const de = `${y}-01-01`;
       const ate = `${y}-12-31`;
@@ -16759,7 +16759,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       return res.json({
         ok: true,
-        resposta: `${_jarvisFirstName(nome)}, gráfico de faturamento (${y}) pronto:`,
+        resposta: `${_jarvisFirstName(nome)}, grÃ¡fico de faturamento (${y}) pronto:`,
         chart: { type: 'bar', title: 'Faturamento', labels, data: sums.map((v) => Math.round(Number(v || 0))) },
       });
     }
@@ -16775,48 +16775,48 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         of,
         numero: _assistPickOfNumber(of),
         clienteId: cid || '',
-        clienteNome: String(cliMap.get(cid) || of.cliNome || of.cliente_nome || '—').trim() || '—',
+        clienteNome: String(cliMap.get(cid) || of.cliNome || of.cliente_nome || 'â€”').trim() || 'â€”',
         entrega: _assistPickOfEntrega(of),
-        status: String(of.status || '—').trim() || '—',
+        status: String(of.status || 'â€”').trim() || 'â€”',
         qtd: Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0),
         urgente: !!(of.urg || of.urgente),
       };
       return _ofCtx;
     };
 
-    if (ofNum && norm.includes('status') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'concluir', 'concluida', 'concluída', 'concluido', 'concluído')) {
+    if (ofNum && norm.includes('status') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'concluir', 'concluida', 'concluÃ­da', 'concluido', 'concluÃ­do')) {
       const ctx = await loadOfCtx();
-      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      return respond(`${nome}, a OF #${ctx.numero} está com status "${ctx.status}"${ctx.entrega ? ` e entrega em ${_assistFmtDateBr(ctx.entrega)}` : ''}.`);
+      if (!ctx) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} estÃ¡ com status "${ctx.status}"${ctx.entrega ? ` e entrega em ${_assistFmtDateBr(ctx.entrega)}` : ''}.`);
     }
 
     if (ofNum && hasAny('cliente') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
       const ctx = await loadOfCtx();
-      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      return respond(`${nome}, a OF #${ctx.numero} é do cliente ${ctx.clienteNome}${ctx.entrega ? ` (entrega ${_assistFmtDateBr(ctx.entrega)})` : ''}.`);
+      if (!ctx) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} Ã© do cliente ${ctx.clienteNome}${ctx.entrega ? ` (entrega ${_assistFmtDateBr(ctx.entrega)})` : ''}.`);
     }
 
     if (ofNum && hasAny('entrega', 'data de entrega') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
       const ctx = await loadOfCtx();
-      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      return respond(`${nome}, a entrega da OF #${ctx.numero} é ${ctx.entrega ? _assistFmtDateBr(ctx.entrega) : '—'}.`);
+      if (!ctx) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a entrega da OF #${ctx.numero} Ã© ${ctx.entrega ? _assistFmtDateBr(ctx.entrega) : 'â€”'}.`);
     }
 
     if (ofNum && hasAny('quantidade', 'qtd', 'caixas') && !hasAny('alterar', 'altere', 'mudar', 'trocar', 'para')) {
       const ctx = await loadOfCtx();
-      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      return respond(`${nome}, a OF #${ctx.numero} está com ${Number(ctx.qtd || 0).toLocaleString('pt-BR')} caixa(s) no pedido.`);
+      if (!ctx) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} estÃ¡ com ${Number(ctx.qtd || 0).toLocaleString('pt-BR')} caixa(s) no pedido.`);
     }
 
-    if (ofNum && hasAny('urgente', 'urgência', 'urgencia') && !hasAny('adicione', 'adicionar', 'coloque', 'marque', 'set')) {
+    if (ofNum && hasAny('urgente', 'urgÃªncia', 'urgencia') && !hasAny('adicione', 'adicionar', 'coloque', 'marque', 'set')) {
       const ctx = await loadOfCtx();
-      if (!ctx) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      return respond(`${nome}, a OF #${ctx.numero} está ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcação de urgência'}.`);
+      if (!ctx) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      return respond(`${nome}, a OF #${ctx.numero} estÃ¡ ${ctx.urgente ? 'marcada como URGENTE' : 'sem marcaÃ§Ã£o de urgÃªncia'}.`);
     }
 
     if (ofNum && (hasAny('imagem','foto','fotos','imagens') || norm.includes('imagem') || norm.includes('foto'))) {
       const ofImg = await _jarvisFindOFByNumero(ofNum);
-      if (!ofImg) return respond(`Não encontrei a OF #${ofNum}.`);
+      if (!ofImg) return respond(`NÃ£o encontrei a OF #${ofNum}.`);
 
       const pickImg = (o) => {
         const iu = String(o.imagem_url || '').trim();
@@ -16837,8 +16837,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       if (!imgUrl) {
         return respond(
-          `A OF #${numOf} não possui imagem cadastrada. ` +
-          `Para adicionar, edite a OF e faça upload da foto.`
+          `A OF #${numOf} nÃ£o possui imagem cadastrada. ` +
+          `Para adicionar, edite a OF e faÃ§a upload da foto.`
         );
       }
 
@@ -16856,17 +16856,17 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       });
     }
 
-    if (hasAny('que horas sao', 'que horas são', 'hora', 'horas') && (norm.includes('que horas') || norm === 'hora' || norm === 'horas')) {
+    if (hasAny('que horas sao', 'que horas sÃ£o', 'hora', 'horas') && (norm.includes('que horas') || norm === 'hora' || norm === 'horas')) {
       const now = new Date();
-      return respond(`${nome}, agora são ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`);
+      return respond(`${nome}, agora sÃ£o ${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`);
     }
 
     if (hasAny('quem sou eu', 'meus dados', 'meu perfil')) {
       const parts = [
-        `${nome}, aqui estão seus dados:`,
-        `👤 Nome: ${nome}`,
-        email ? `📧 Email: ${email}` : null,
-        perfil ? `🔐 Perfil: ${perfil}` : null,
+        `${nome}, aqui estÃ£o seus dados:`,
+        `ðŸ‘¤ Nome: ${nome}`,
+        email ? `ðŸ“§ Email: ${email}` : null,
+        perfil ? `ðŸ” Perfil: ${perfil}` : null,
       ].filter(Boolean).join('\n');
       return respond(parts);
     }
@@ -16903,16 +16903,16 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       const texto = [
         `${nome}, resumo de hoje (${_assistFmtDateBr(hoje)}):`,
-        `📦 OFs atrasadas: ${atrasadas.length}`,
-        `📅 Entregas de hoje: ${entregasHoje.length}`,
-        `📉 Estoque crítico (chapas): ${crit.length}`,
-        `🧯 Perdas concluídas hoje: ${Number(perdasHoje || 0).toLocaleString('pt-BR')}`,
-        `📆 Semana: ${_assistFmtDateBr(wDe)} a ${_assistFmtDateBr(wAte)}`,
+        `ðŸ“¦ OFs atrasadas: ${atrasadas.length}`,
+        `ðŸ“… Entregas de hoje: ${entregasHoje.length}`,
+        `ðŸ“‰ Estoque crÃ­tico (chapas): ${crit.length}`,
+        `ðŸ§¯ Perdas concluÃ­das hoje: ${Number(perdasHoje || 0).toLocaleString('pt-BR')}`,
+        `ðŸ“† Semana: ${_assistFmtDateBr(wDe)} a ${_assistFmtDateBr(wAte)}`,
       ].join('\n');
       return respond(texto);
     }
 
-    if (hasAny('estoque critico', 'estoque crítico', 'chapas abaixo do minimo', 'chapas abaixo do mínimo', 'abaixo do minimo', 'abaixo do mínimo')) {
+    if (hasAny('estoque critico', 'estoque crÃ­tico', 'chapas abaixo do minimo', 'chapas abaixo do mÃ­nimo', 'abaixo do minimo', 'abaixo do mÃ­nimo')) {
       const { data } = await supabase.from('chapas_estoque').select('id,fornecedor,nomenclatura,nome_uso,nome,tamanho,quantidade,quantidade_atual,qtd,estoque_minimo').order('nomenclatura', { ascending: true }).limit(5000);
       const rows = Array.isArray(data) ? data : [];
       const crit = rows.filter((c) => {
@@ -16924,11 +16924,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const linhas = top.map((c) => {
         const qtd = Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0;
         const min = Number(c.estoque_minimo ?? 0) || 0;
-        const nom = String(c.nomenclatura || c.nome_uso || c.nome || '—').trim();
-        return `📦 ${nom} — saldo ${qtd} (mín ${min})`;
+        const nom = String(c.nomenclatura || c.nome_uso || c.nome || 'â€”').trim();
+        return `ðŸ“¦ ${nom} â€” saldo ${qtd} (mÃ­n ${min})`;
       });
       const extra = crit.length > top.length ? `\n...e mais ${crit.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${crit.length} chapas abaixo do mínimo:\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, encontrei ${crit.length} chapas abaixo do mÃ­nimo:\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny('estoque zerado', 'zerado', 'quantidade = 0')) {
@@ -16936,9 +16936,9 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows = Array.isArray(data) ? data : [];
       const zer = rows.filter((c) => (Number(c.quantidade_atual ?? c.quantidade ?? c.qtd ?? 0) || 0) === 0);
       const top = zer.slice(0, 10);
-      const linhas = top.map((c) => `📦 ${String(c.nomenclatura || c.nome_uso || c.nome || '—').trim()} — saldo 0`);
+      const linhas = top.map((c) => `ðŸ“¦ ${String(c.nomenclatura || c.nome_uso || c.nome || 'â€”').trim()} â€” saldo 0`);
       const extra = zer.length > top.length ? `\n...e mais ${zer.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${zer.length} chapas com estoque zerado:\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, encontrei ${zer.length} chapas com estoque zerado:\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny('quanto tem de', 'quanto temos de', 'quanto tem da', 'quantidade de') && hasAny('chapa', 'chapas')) {
@@ -16950,11 +16950,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows = Array.isArray(data) ? data : [];
       const t = _assistNorm(termo);
       const found = rows.find((c) => _assistNorm(c.nomenclatura || c.nome_uso || c.nome || '').includes(t)) || null;
-      if (!found) return respond(`${nome}, não encontrei essa chapa no estoque.`);
+      if (!found) return respond(`${nome}, nÃ£o encontrei essa chapa no estoque.`);
       const qtd = Number(found.quantidade_atual ?? found.quantidade ?? found.qtd ?? 0) || 0;
       const min = Number(found.estoque_minimo ?? 0) || 0;
-      const nom = String(found.nomenclatura || found.nome_uso || found.nome || '—').trim();
-      return respond(`${nome}, a chapa "${nom}" está com saldo ${qtd}${(min ? ` (mín ${min})` : '')}.`);
+      const nom = String(found.nomenclatura || found.nome_uso || found.nome || 'â€”').trim();
+      return respond(`${nome}, a chapa "${nom}" estÃ¡ com saldo ${qtd}${(min ? ` (mÃ­n ${min})` : '')}.`);
       }
     }
 
@@ -16968,7 +16968,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const vu = Number(c.valor_unitario ?? c.val ?? 0) || 0;
         return s + (qtd * vu);
       }, 0);
-      return respond(`${nome}, o valor total estimado do estoque de chapas é ${_assistFmtBRL(total)}.`);
+      return respond(`${nome}, o valor total estimado do estoque de chapas Ã© ${_assistFmtBRL(total)}.`);
     }
 
     if (hasAny('chapas mais usadas', 'mais usadas')) {
@@ -16995,8 +16995,8 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const nomById = new Map();
       (Array.isArray(chapasAll) ? chapasAll : []).forEach((c) => { if (c?.id) nomById.set(String(c.id), String(c.nomenclatura || c.nome_uso || c.nome || '').trim()); });
       const top = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      const linhas = top.map(([id, q]) => `📦 ${nomById.get(id) || id} — ${Number(q || 0).toLocaleString('pt-BR')} saídas`);
-      return respond(`${nome}, top 5 chapas mais usadas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${linhas.join('\n') || '—'}`);
+      const linhas = top.map(([id, q]) => `ðŸ“¦ ${nomById.get(id) || id} â€” ${Number(q || 0).toLocaleString('pt-BR')} saÃ­das`);
+      return respond(`${nome}, top 5 chapas mais usadas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${linhas.join('\n') || 'â€”'}`);
     }
 
     if (hasAny('ofs atrasadas', 'of atrasada', 'atrasadas', 'em atraso', 'passou da data')) {
@@ -17017,11 +17017,11 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const ent = _assistPickOfEntrega(o);
         const atraso = ent ? _assistDaysDiff(hoje, ent) : 0;
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
-        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome} — ${atraso} dia(s) de atraso`;
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
+        return `ðŸ“¦ OF #${_assistPickOfNumber(o)} â€” ${cNome} â€” ${atraso} dia(s) de atraso`;
       });
       const extra = atras.length > top.length ? `\n...e mais ${atras.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${atras.length} OF(s) atrasada(s):\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, encontrei ${atras.length} OF(s) atrasada(s):\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny(
@@ -17044,14 +17044,14 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const top = abertas.slice(0, 10);
       const linhas = top.map(o => {
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
         const maq = _jarvisMaqAtualOf(o);
-        const st = String(o.status || '—').trim();
-        return `• OF #${_assistPickOfNumber(o)} — ${cNome} — ${st} — Máq: ${maq}`;
+        const st = String(o.status || 'â€”').trim();
+        return `â€¢ OF #${_assistPickOfNumber(o)} â€” ${cNome} â€” ${st} â€” MÃ¡q: ${maq}`;
       });
       const extra = abertas.length > 10 ? `\n...e mais ${abertas.length - 10} itens` : '';
       return respond(
-        `${nome}, OFs em aberto para hoje (${_assistFmtDateBr(hoje)}): ${abertas.length}\n${linhas.join('\n') || '—'}${extra}`
+        `${nome}, OFs em aberto para hoje (${_assistFmtDateBr(hoje)}): ${abertas.length}\n${linhas.join('\n') || 'â€”'}${extra}`
       );
     }
 
@@ -17068,12 +17068,12 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const top = urg.slice(0, 10);
       const linhas = top.map((o) => {
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
         const ent = _assistPickOfEntrega(o);
-        return `🚨 OF #${_assistPickOfNumber(o)} — ${cNome}${ent ? ` — entrega ${_assistFmtDateBr(ent)}` : ''}`;
+        return `ðŸš¨ OF #${_assistPickOfNumber(o)} â€” ${cNome}${ent ? ` â€” entrega ${_assistFmtDateBr(ent)}` : ''}`;
       });
       const extra = urg.length > top.length ? `\n...e mais ${urg.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${urg.length} OF(s) urgente(s):\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, encontrei ${urg.length} OF(s) urgente(s):\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny('ofs em aberto', 'em aberto') && norm.includes('of')) {
@@ -17087,27 +17087,27 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const ab = ativos.filter((o) => _assistNorm(o.status || '') === 'em aberto');
       const by = new Map();
       ab.forEach((o) => {
-        const emp = String(o.emp_id || o.empId || '—').trim() || '—';
+        const emp = String(o.emp_id || o.empId || 'â€”').trim() || 'â€”';
         by.set(emp, (by.get(emp) || 0) + 1);
       });
-      const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, c]) => `🏢 ${emp}: ${c}`);
-      return respond(`${nome}, OFs em aberto por empresa:\n${lines.join('\n') || '—'}`);
+      const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, c]) => `ðŸ¢ ${emp}: ${c}`);
+      return respond(`${nome}, OFs em aberto por empresa:\n${lines.join('\n') || 'â€”'}`);
     }
 
     if (hasAny('quantas ofs', 'quantas of', 'total de ofs', 'quantas ordens') && norm.includes('of')) {
       const { data } = await supabase.from('ofs').select('id,status,deleted_at').order('created_at', { ascending: false }).limit(5000);
       const rows = Array.isArray(data) ? data : [];
       const ativos = rows.filter((o) => !o.deleted_at && !_assistIsCancelada(o));
-      return respond(`${nome}, temos ${ativos.length} OF(s) ativas no sistema (amostra até 5000 registros).`);
+      return respond(`${nome}, temos ${ativos.length} OF(s) ativas no sistema (amostra atÃ© 5000 registros).`);
     }
 
-    if (hasAny('status da of', 'status of', 'situacao da of', 'situação da of') && ofNum) {
+    if (hasAny('status da of', 'status of', 'situacao da of', 'situaÃ§Ã£o da of') && ofNum) {
       const { data } = await supabase.from('ofs').select('id,of,numero,status,ent,data_entrega,deleted_at').or(`of.eq.${ofNum},numero.eq.${ofNum}`).limit(10);
       const row = Array.isArray(data) && data[0] ? data[0] : null;
-      if (!row) return respond(`${nome}, não encontrei a OF #${ofNum}.`);
-      const st = String(row.status || '—').trim() || '—';
+      if (!row) return respond(`${nome}, nÃ£o encontrei a OF #${ofNum}.`);
+      const st = String(row.status || 'â€”').trim() || 'â€”';
       const ent = _assistPickOfEntrega(row);
-      return respond(`${nome}, a OF #${_assistPickOfNumber(row)} está com status "${st}"${ent ? ` e entrega em ${_assistFmtDateBr(ent)}` : ''}.`);
+      return respond(`${nome}, a OF #${_assistPickOfNumber(row)} estÃ¡ com status "${st}"${ent ? ` e entrega em ${_assistFmtDateBr(ent)}` : ''}.`);
     }
 
     if (hasAny('ofs desta semana', 'of desta semana', 'essa semana', 'esta semana') && norm.includes('of')) {
@@ -17127,15 +17127,15 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const top = list.slice(0, 10);
       const linhas = top.map((o) => {
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
         const ent = _assistPickOfEntrega(o);
-        return `📦 OF #${_assistPickOfNumber(o)} — ${cNome}${ent ? ` — ${_assistFmtDateBr(ent)}` : ''}`;
+        return `ðŸ“¦ OF #${_assistPickOfNumber(o)} â€” ${cNome}${ent ? ` â€” ${_assistFmtDateBr(ent)}` : ''}`;
       });
       const extra = list.length > top.length ? `\n...e mais ${list.length - top.length} itens` : '';
-      return respond(`${nome}, OFs com entrega nesta semana (${_assistFmtDateBr(de)} a ${_assistFmtDateBr(ate)}): ${list.length}\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, OFs com entrega nesta semana (${_assistFmtDateBr(de)} a ${_assistFmtDateBr(ate)}): ${list.length}\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
-    if (hasAny('ofs concluidas', 'ofs concluídas', 'concluidas hoje', 'concluídas hoje', 'concluidas este mes', 'concluídas este mês', 'concluidas no mes', 'concluídas no mês')) {
+    if (hasAny('ofs concluidas', 'ofs concluÃ­das', 'concluidas hoje', 'concluÃ­das hoje', 'concluidas este mes', 'concluÃ­das este mÃªs', 'concluidas no mes', 'concluÃ­das no mÃªs')) {
       const perHoje = norm.includes('hoje');
       const m = month || (new Date().getMonth() + 1);
       const range = perHoje ? { de: hoje, ate: hoje } : _assistMonthRange(year, m);
@@ -17151,13 +17151,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const top = rows.slice(0, 10);
       const linhas = top.map((o) => {
         const cid = _assistPickOfClienteId(o);
-        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || '—').trim() || '—';
+        const cNome = String(cliMap.get(cid) || o.cliNome || o.cliente_nome || 'â€”').trim() || 'â€”';
         const dt = _assistPickOfConclusao(o);
-        return `✅ OF #${_assistPickOfNumber(o)} — ${cNome}${dt ? ` — ${_assistFmtDateBr(dt)}` : ''}`;
+        return `âœ… OF #${_assistPickOfNumber(o)} â€” ${cNome}${dt ? ` â€” ${_assistFmtDateBr(dt)}` : ''}`;
       });
       const extra = rows.length > top.length ? `\n...e mais ${rows.length - top.length} itens` : '';
       const label = perHoje ? _assistFmtDateBr(hoje) : `${String(range.de).slice(5, 7)}/${String(range.de).slice(0, 4)}`;
-      return respond(`${nome}, OFs concluídas (${label}): ${rows.length}\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, OFs concluÃ­das (${label}): ${rows.length}\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny('faturamento', 'quanto faturamos', 'vendas de', 'total de') && (norm.includes('fatur') || norm.includes('venda'))) {
@@ -17174,16 +17174,16 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       if (hasAny('por empresa', 'empresa')) {
         const by = new Map();
         rows.forEach((o) => {
-          const emp = String(o.emp_id || o.empId || '—').trim() || '—';
+          const emp = String(o.emp_id || o.empId || 'â€”').trim() || 'â€”';
           by.set(emp, (by.get(emp) || 0) + _assistPickOfValor(o));
         });
-        const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, v]) => `🏢 ${emp}: ${_assistFmtBRL(v)}`);
-        return respond(`${nome}, faturamento por empresa em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${lines.join('\n') || '—'}`);
+        const lines = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).map(([emp, v]) => `ðŸ¢ ${emp}: ${_assistFmtBRL(v)}`);
+        return respond(`${nome}, faturamento por empresa em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)}:\n${lines.join('\n') || 'â€”'}`);
       }
       return respond(`${nome}, o faturamento em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)} foi ${_assistFmtBRL(total)}.`);
     }
 
-    if (hasAny('melhor mes do ano', 'melhor mês do ano')) {
+    if (hasAny('melhor mes do ano', 'melhor mÃªs do ano')) {
       const y = year;
       const sums = [];
       for (let m = 1; m <= 12; m++) {
@@ -17199,7 +17199,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         sums.push({ m, total });
       }
       const best = sums.sort((a, b) => b.total - a.total)[0] || { m: 1, total: 0 };
-      return respond(`${nome}, o melhor mês de ${y} foi ${String(best.m).padStart(2, '0')}/${y} com ${_assistFmtBRL(best.total)}.`);
+      return respond(`${nome}, o melhor mÃªs de ${y} foi ${String(best.m).padStart(2, '0')}/${y} com ${_assistFmtBRL(best.total)}.`);
     }
 
     if (hasAny('faturamento total do ano', 'total do ano', 'faturamento do ano')) {
@@ -17213,7 +17213,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         .limit(5000);
       const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
       const total = rows.reduce((s, o) => s + _assistPickOfValor(o), 0);
-      return respond(`${nome}, o faturamento total de ${y} é ${_assistFmtBRL(total)}.`);
+      return respond(`${nome}, o faturamento total de ${y} Ã© ${_assistFmtBRL(total)}.`);
     }
 
     if (hasAny('clientes inativos', 'cliente inativo', 'inativos')) {
@@ -17231,12 +17231,12 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return ativo && idc && !activeCli.has(idc);
       });
       const top = inativos.slice(0, 10);
-      const linhas = top.map((c) => `👤 ${String(c.nome || '—').trim() || '—'}`);
+      const linhas = top.map((c) => `ðŸ‘¤ ${String(c.nome || 'â€”').trim() || 'â€”'}`);
       const extra = inativos.length > top.length ? `\n...e mais ${inativos.length - top.length} itens` : '';
-      return respond(`${nome}, encontrei ${inativos.length} cliente(s) sem OF nos últimos 30 dias:\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, encontrei ${inativos.length} cliente(s) sem OF nos Ãºltimos 30 dias:\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
-    if (hasAny('top clientes do mes', 'top clientes do mês')) {
+    if (hasAny('top clientes do mes', 'top clientes do mÃªs')) {
       const m = new Date().getMonth() + 1;
       const { de, ate } = _assistMonthRange(year, m);
       const { data } = await supabase
@@ -17248,20 +17248,20 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
       const by = new Map();
       rows.forEach((o) => {
-        const cid = _assistPickOfClienteId(o) || '—';
+        const cid = _assistPickOfClienteId(o) || 'â€”';
         by.set(cid, (by.get(cid) || 0) + _assistPickOfValor(o));
       });
-      const cliMap = await _assistLoadClientesByIds(Array.from(by.keys()).filter((x) => x !== '—'));
+      const cliMap = await _assistLoadClientesByIds(Array.from(by.keys()).filter((x) => x !== 'â€”'));
       const top = Array.from(by.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
-      const linhas = top.map(([cid, v]) => `🏆 ${cliMap.get(cid) || cid} — ${_assistFmtBRL(v)}`);
-      return respond(`${nome}, top 5 clientes do mês (${String(de).slice(5, 7)}/${String(de).slice(0, 4)}):\n${linhas.join('\n') || '—'}`);
+      const linhas = top.map(([cid, v]) => `ðŸ† ${cliMap.get(cid) || cid} â€” ${_assistFmtBRL(v)}`);
+      return respond(`${nome}, top 5 clientes do mÃªs (${String(de).slice(5, 7)}/${String(de).slice(0, 4)}):\n${linhas.join('\n') || 'â€”'}`);
     }
 
     if (hasAny('quantos clientes temos', 'quantos clientes')) {
       const { data } = await supabase.from('clientes').select('id,ativo').limit(5000);
       const rows = Array.isArray(data) ? data : [];
       const ativos = rows.filter((c) => (c.ativo === undefined ? true : !!c.ativo));
-      return respond(`${nome}, temos ${ativos.length} cliente(s) ativo(s) (amostra até 5000 registros).`);
+      return respond(`${nome}, temos ${ativos.length} cliente(s) ativo(s) (amostra atÃ© 5000 registros).`);
     }
 
     if (hasAny('cliente', 'existe') && norm.includes('cliente') && norm.includes('existe')) {
@@ -17270,13 +17270,13 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       if (termo) {
         const { data } = await supabase.from('clientes').select('id,nome').ilike('nome', '%' + termo.replace(/%/g, '') + '%').limit(5);
         const rows = Array.isArray(data) ? data : [];
-        if (!rows.length) return respond(`${nome}, não encontrei cliente com esse nome.`);
-        const linhas = rows.slice(0, 5).map((c) => `👤 ${String(c.nome || '').trim()} (id ${String(c.id || '').slice(0, 8)})`);
+        if (!rows.length) return respond(`${nome}, nÃ£o encontrei cliente com esse nome.`);
+        const linhas = rows.slice(0, 5).map((c) => `ðŸ‘¤ ${String(c.nome || '').trim()} (id ${String(c.id || '').slice(0, 8)})`);
         return respond(`${nome}, encontrei ${rows.length} resultado(s):\n${linhas.join('\n')}`);
       }
     }
 
-    if (hasAny('caixas perdidas', 'perdas') && hasAny('hoje', 'este mes', 'este mês', 'mês', 'mes')) {
+    if (hasAny('caixas perdidas', 'perdas') && hasAny('hoje', 'este mes', 'este mÃªs', 'mÃªs', 'mes')) {
       const perHoje = norm.includes('hoje');
       const m = month || (new Date().getMonth() + 1);
       const range = perHoje ? { de: hoje, ate: hoje } : _assistMonthRange(year, m);
@@ -17289,10 +17289,10 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
       const totalPerd = rows.reduce((s, o) => s + (Number(o.qtd_perdida || 0) || 0), 0);
       const totalValPerd = rows.reduce((s, o) => s + (Number(o.valor_perdido || 0) || 0), 0);
-      return respond(`${nome}, perdas no período ${_assistFmtDateBr(range.de)} a ${_assistFmtDateBr(range.ate)}:\n🧯 Caixas perdidas: ${Number(totalPerd).toLocaleString('pt-BR')}\n💸 Valor perdido: ${_assistFmtBRL(totalValPerd)}`);
+      return respond(`${nome}, perdas no perÃ­odo ${_assistFmtDateBr(range.de)} a ${_assistFmtDateBr(range.ate)}:\nðŸ§¯ Caixas perdidas: ${Number(totalPerd).toLocaleString('pt-BR')}\nðŸ’¸ Valor perdido: ${_assistFmtBRL(totalValPerd)}`);
     }
 
-    if (hasAny('maquina com mais perdas', 'máquina com mais perdas')) {
+    if (hasAny('maquina com mais perdas', 'mÃ¡quina com mais perdas')) {
       const m = month || (new Date().getMonth() + 1);
       const { de, ate } = _assistMonthRange(year, m);
       const { data } = await supabase
@@ -17304,19 +17304,19 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const rows = (Array.isArray(data) ? data : []).filter((o) => !o.deleted_at && _assistIsConcluida(o));
       const by = new Map();
       rows.forEach((o) => {
-        const maq = String(o.maquina_perda || '').trim() || '—';
+        const maq = String(o.maquina_perda || '').trim() || 'â€”';
         const q = Number(o.qtd_perdida || 0) || 0;
         by.set(maq, (by.get(maq) || 0) + q);
       });
-      const best = Array.from(by.entries()).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
-      return respond(`${nome}, a máquina com mais perdas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)} foi "${best[0]}" com ${Number(best[1] || 0).toLocaleString('pt-BR')} caixas perdidas.`);
+      const best = Array.from(by.entries()).sort((a, b) => b[1] - a[1])[0] || ['â€”', 0];
+      return respond(`${nome}, a mÃ¡quina com mais perdas em ${String(de).slice(5, 7)}/${String(de).slice(0, 4)} foi "${best[0]}" com ${Number(best[1] || 0).toLocaleString('pt-BR')} caixas perdidas.`);
     }
 
-    if (hasAny('quantas maquinas temos', 'quantas máquinas temos', 'quantas maquinas', 'quantas máquinas')) {
+    if (hasAny('quantas maquinas temos', 'quantas mÃ¡quinas temos', 'quantas maquinas', 'quantas mÃ¡quinas')) {
       const { data } = await supabase.from('maquinas').select('id,ativa,nome').limit(5000);
       const rows = Array.isArray(data) ? data : [];
       const ativas = rows.filter((m) => (m.ativa === undefined ? true : !!m.ativa));
-      return respond(`${nome}, temos ${ativas.length} máquina(s) ativa(s).`);
+      return respond(`${nome}, temos ${ativas.length} mÃ¡quina(s) ativa(s).`);
     }
 
     if (hasAny('compras pendentes', 'compras pendente', 'compra pendente')) {
@@ -17328,21 +17328,21 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         return !(st.includes('recebid') || st.includes('entreg'));
       });
       const top = pend.slice(0, 10);
-      const linhas = top.map((c) => `🧾 ${String(c.fornecedor || '—').trim() || '—'} — ${String(c.status || 'Pendente')} — ${_assistFmtBRL(c.valor_total ?? c.valor ?? 0)}`);
+      const linhas = top.map((c) => `ðŸ§¾ ${String(c.fornecedor || 'â€”').trim() || 'â€”'} â€” ${String(c.status || 'Pendente')} â€” ${_assistFmtBRL(c.valor_total ?? c.valor ?? 0)}`);
       const extra = pend.length > top.length ? `\n...e mais ${pend.length - top.length} itens` : '';
-      return respond(`${nome}, compras pendentes: ${pend.length}\n${linhas.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, compras pendentes: ${pend.length}\n${linhas.join('\n') || 'â€”'}${extra}`);
     }
 
     if (hasAny('fornecedores cadastrados', 'fornecedores', 'fornecedor')) {
       const { data } = await supabase.from('fornecedores').select('id,nome,created_at').order('created_at', { ascending: false }).limit(200);
       const rows = Array.isArray(data) ? data : [];
-      const top = rows.slice(0, 10).map((f) => `🏭 ${String(f.nome || '—').trim() || '—'}`);
+      const top = rows.slice(0, 10).map((f) => `ðŸ­ ${String(f.nome || 'â€”').trim() || 'â€”'}`);
       const extra = rows.length > top.length ? `\n...e mais ${rows.length - top.length} itens` : '';
-      return respond(`${nome}, fornecedores cadastrados: ${rows.length}\n${top.join('\n') || '—'}${extra}`);
+      return respond(`${nome}, fornecedores cadastrados: ${rows.length}\n${top.join('\n') || 'â€”'}${extra}`);
     }
 
-    if (hasAny('chapa','chapas') && hasAny('estoque','quanto tem','quantas tem','saldo','disponivel','disponível')) {
-      const mChapa = pergunta.match(/(?:chapa|chapas?)\s+(?:de\s+)?(.+?)(?:\s+no\s+estoque|\s+disponivel|\s+disponível|\?|$)/i) ||
+    if (hasAny('chapa','chapas') && hasAny('estoque','quanto tem','quantas tem','saldo','disponivel','disponÃ­vel')) {
+      const mChapa = pergunta.match(/(?:chapa|chapas?)\s+(?:de\s+)?(.+?)(?:\s+no\s+estoque|\s+disponivel|\s+disponÃ­vel|\?|$)/i) ||
                      pergunta.match(/estoque\s+(?:da?\s+)?chapa\s+(.+)$/i) || null;
       const termoBusca = mChapa ? String(mChapa[1]||'').trim() : '';
 
@@ -17353,31 +17353,31 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       const { data: chapas } = await q;
       const rows = Array.isArray(chapas) ? chapas : [];
-      if (!rows.length) return respond(`${nome}, não encontrei chapas${termoBusca?' com "'+termoBusca+'"':''} no estoque.`);
+      if (!rows.length) return respond(`${nome}, nÃ£o encontrei chapas${termoBusca?' com "'+termoBusca+'"':''} no estoque.`);
 
       const linhas = rows.slice(0,10).map(c => {
-        const nom = String(c.nomenclatura||c.nom||c.nome||'—').trim();
+        const nom = String(c.nomenclatura||c.nom||c.nome||'â€”').trim();
         const tam = String(c.tamanho||c.tam||'').trim();
         const forn = String(c.fornecedor||c.forn||'').trim();
         const qtd = Math.trunc(Number(c.quantidade_atual||c.quantidade||c.qtd||0)||0);
         const min = Math.trunc(Number(c.estoque_minimo||0)||0);
         const val = Number(c.valor_unitario||c.val||0);
-        const alerta = min > 0 && qtd < min ? ' ⚠️ ABAIXO DO MÍNIMO' : '';
-        return `• ${nom}${tam?' ('+tam+')':''} | Saldo: **${qtd}**${min>0?' | Mín: '+min:''}${val>0?' | R$ '+val.toFixed(2):''}${forn?' | '+forn:''}${alerta}`;
+        const alerta = min > 0 && qtd < min ? ' âš ï¸ ABAIXO DO MÃNIMO' : '';
+        return `â€¢ ${nom}${tam?' ('+tam+')':''} | Saldo: **${qtd}**${min>0?' | MÃ­n: '+min:''}${val>0?' | R$ '+val.toFixed(2):''}${forn?' | '+forn:''}${alerta}`;
       });
 
       return respond(`${nome}, estoque de chapas${termoBusca?' ('+termoBusca+')':''}:\n${linhas.join('\n')}${rows.length>10?'\n...e mais '+(rows.length-10)+' chapas':''}`);
     }
 
-    if (hasAny('chapa','chapas') && hasAny('adicionar','adicione','entrada','dar entrada','subtrair','retire','retirar','baixar','saida','saída','ajustar','ajuste')) {
-      const tipo = hasAny('adicionar','adicione','entrada','dar entrada') ? 'entrada' : hasAny('subtrair','retire','retirar','baixar','saida','saída') ? 'saida' : 'ajuste';
+    if (hasAny('chapa','chapas') && hasAny('adicionar','adicione','entrada','dar entrada','subtrair','retire','retirar','baixar','saida','saÃ­da','ajustar','ajuste')) {
+      const tipo = hasAny('adicionar','adicione','entrada','dar entrada') ? 'entrada' : hasAny('subtrair','retire','retirar','baixar','saida','saÃ­da') ? 'saida' : 'ajuste';
       const mQtd   = pergunta.match(/(\d+)\s*(?:unidades?|un|folhas?|chapas?)?/i);
       const mChapa = pergunta.match(/(?:na|da|na chapa|chapa)\s+(.+?)(?:\s+\d|\s+unidade|\s*$)/i) || pergunta.match(/chapa\s+(.+?)(?:\s+\d|\s*$)/i) || null;
       const qtd = mQtd ? Math.trunc(Number(mQtd[1])||0) : 0;
       const termoBusca = mChapa ? String(mChapa[1]||'').trim().replace(/\d+/g,'').trim() : '';
 
       if (!qtd || !termoBusca) {
-        return respond(`${nome}, para movimentar estoque de chapa preciso saber:\n- Qual chapa (nome ou nomenclatura)\n- Quantidade\n- Tipo: entrada ou saída\n\nEx: "dar entrada de 100 na chapa onda B 1200x900"`);
+        return respond(`${nome}, para movimentar estoque de chapa preciso saber:\n- Qual chapa (nome ou nomenclatura)\n- Quantidade\n- Tipo: entrada ou saÃ­da\n\nEx: "dar entrada de 100 na chapa onda B 1200x900"`);
       }
 
       const { data: chapas } = await supabase.from('chapas_estoque')
@@ -17386,7 +17386,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         .limit(3);
       const rows = Array.isArray(chapas) ? chapas : [];
 
-      if (!rows.length) return respond(`${nome}, não encontrei chapa com "${termoBusca}".`);
+      if (!rows.length) return respond(`${nome}, nÃ£o encontrei chapa com "${termoBusca}".`);
       if (rows.length > 1) {
         const opts = rows.map((c,i)=>`${i+1}. ${String(c.nomenclatura||c.nom||c.nome||'').trim()} ${String(c.tamanho||c.tam||'').trim()}`).join('\n');
         return respond(`${nome}, encontrei mais de uma chapa:\n${opts}\n\nEspecifique melhor o nome.`);
@@ -17395,7 +17395,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const chapa = rows[0];
       const nomChapa = String(chapa.nomenclatura||chapa.nom||chapa.nome||'').trim();
       const qtdAtual = Math.trunc(Number(chapa.quantidade_atual||chapa.quantidade||chapa.qtd||0)||0);
-      const tipoLabel = tipo === 'entrada' ? 'ENTRADA' : tipo === 'saida' ? 'SAÍDA' : 'AJUSTE';
+      const tipoLabel = tipo === 'entrada' ? 'ENTRADA' : tipo === 'saida' ? 'SAÃDA' : 'AJUSTE';
 
       const uid = String(req?.usuario?.id || '');
       const actionId = _jarvisStoreAction(uid, {
@@ -17409,19 +17409,19 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
 
       return res.json({
         ok: true,
-        resposta: `${nome}, confirmar ${tipoLabel} de **${qtd}** unidades na chapa **${nomChapa}**?\nSaldo atual: ${qtdAtual} → Novo saldo: ${tipo==='entrada'?qtdAtual+qtd:tipo==='saida'?qtdAtual-qtd:qtd}`,
+        resposta: `${nome}, confirmar ${tipoLabel} de **${qtd}** unidades na chapa **${nomChapa}**?\nSaldo atual: ${qtdAtual} â†’ Novo saldo: ${tipo==='entrada'?qtdAtual+qtd:tipo==='saida'?qtdAtual-qtd:qtd}`,
         actions: [
-          { id: actionId, label: '✅ Confirmar', decision: 'confirm' },
-          { id: actionId, label: '❌ Cancelar',  decision: 'cancel'  },
+          { id: actionId, label: 'âœ… Confirmar', decision: 'confirm' },
+          { id: actionId, label: 'âŒ Cancelar',  decision: 'cancel'  },
         ]
       });
     }
 
     const isComplexo = _jarvisHasAny(
       norm,
-      'analise', 'análise', 'compare', 'comparar', 'explique', 'por que', 'como melhorar',
-      'sugestao', 'sugestão', 'estrategia', 'estratégia', 'previsao', 'previsão',
-      'tendencia', 'tendência', 'relatório', 'relatorio', 'dashboard', 'insight'
+      'analise', 'anÃ¡lise', 'compare', 'comparar', 'explique', 'por que', 'como melhorar',
+      'sugestao', 'sugestÃ£o', 'estrategia', 'estratÃ©gia', 'previsao', 'previsÃ£o',
+      'tendencia', 'tendÃªncia', 'relatÃ³rio', 'relatorio', 'dashboard', 'insight'
     );
     const modoReq = String(req.body?.modo || '').trim().toLowerCase();
     const turboDisponivel = !!(String(process.env.ANTHROPIC_API_KEY || '').trim() && OPENAI_API_KEY);
@@ -17437,30 +17437,30 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       dadosContexto = {};
     }
 
-    const pediuRelatorio = _jarvisHasAny(norm, 'relatorio', 'relatório', 'gerar relatorio', 'gerar relatório', 'exportar', 'imprimir', 'baixar relatorio', 'baixar relatório', 'pdf');
+    const pediuRelatorio = _jarvisHasAny(norm, 'relatorio', 'relatÃ³rio', 'gerar relatorio', 'gerar relatÃ³rio', 'exportar', 'imprimir', 'baixar relatorio', 'baixar relatÃ³rio', 'pdf');
     if (!isCmd && pediuRelatorio && OPENAI_API_KEY) {
       try {
-        const promptRelatorio = `Gere um relatório completo sobre: ${pergunta}
+        const promptRelatorio = `Gere um relatÃ³rio completo sobre: ${pergunta}
 
 Use os dados do ERP: ${JSON.stringify(dadosContexto, null, 2)}
 
-Retorne APENAS HTML válido (sem markdown, sem explicação fora do HTML).
+Retorne APENAS HTML vÃ¡lido (sem markdown, sem explicaÃ§Ã£o fora do HTML).
 O HTML deve:
-- Ter um <style> interno com CSS para impressão
+- Ter um <style> interno com CSS para impressÃ£o
 - Incluir @media print com margens adequadas
 - Usar tabelas bem formatadas com bordas
-- Ter cabeçalho com logo "Italy Embalagens" e data
-- Ter rodapé com total de registros
+- Ter cabeÃ§alho com logo "Italy Embalagens" e data
+- Ter rodapÃ© com total de registros
 - Usar cores: fundo branco, texto preto, bordas #ddd
-- Ter um botão de impressão: <button onclick="window.print()"
+- Ter um botÃ£o de impressÃ£o: <button onclick="window.print()"
   style="display:block;margin:10px auto;padding:8px 20px;
   background:#1a7a4a;color:white;border:none;border-radius:4px;
-  cursor:pointer;font-size:14px" class="no-print">Imprimir relatório</button>
-- O botão deve ter class="no-print" para não aparecer na impressão`;
+  cursor:pointer;font-size:14px" class="no-print">Imprimir relatÃ³rio</button>
+- O botÃ£o deve ter class="no-print" para nÃ£o aparecer na impressÃ£o`;
 
         const rRel = await _callOpenAI({
           mensagem: promptRelatorio,
-          sistema: 'Você gera relatórios HTML para impressão. Retorne apenas HTML válido.',
+          sistema: 'VocÃª gera relatÃ³rios HTML para impressÃ£o. Retorne apenas HTML vÃ¡lido.',
           modelo: 'gpt-4o',
         });
 
@@ -17468,7 +17468,7 @@ O HTML deve:
         if (htmlRel) {
           return res.json({
             ok: true,
-            resposta: 'Relatório gerado! Clique em "Imprimir" para imprimir ou salvar como PDF.',
+            resposta: 'RelatÃ³rio gerado! Clique em "Imprimir" para imprimir ou salvar como PDF.',
             html_relatorio: htmlRel,
             html: htmlRel,
             report: true,
@@ -17554,7 +17554,7 @@ app.post('/api/jarvis/turbo', authMiddleware, async (req, res) => {
 
     return res.json({
       ok: true,
-      resposta: rIA.text || 'Não consegui processar.',
+      resposta: rIA.text || 'NÃ£o consegui processar.',
       origem: rIA.origem,
       modo: 'turbo',
     });
@@ -17574,57 +17574,57 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
     if (!pending) return res.status(404).json({ ok: false, error: 'acao_expirada' });
     if (decisao === 'cancel') {
       _jarvisPendingActions.delete(id);
-      return res.json({ ok: true, resposta: `${first}, ação cancelada.` });
+      return res.json({ ok: true, resposta: `${first}, aÃ§Ã£o cancelada.` });
     }
     const act = pending.action || {};
     _jarvisPendingActions.delete(id);
 
     if (act.type === 'of_cancel') {
       const ofId = act.ofId;
-      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF.` });
       await supabase.from('ofs').update({ status: 'Cancelada', deleted_at: new Date().toISOString() }).eq('id', ofId);
-      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum||act.ofId} cancelada com sucesso.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, OF #${act.ofNum||act.ofId} cancelada com sucesso.` });
     }
 
     if (act.type === 'of_set_entrega') {
       const ofId = act.ofId;
-      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF.` });
       await supabase.from('ofs').update({ ent: act.data, data_entrega: act.data, updated_at: new Date().toISOString() }).eq('id', ofId);
-      return res.json({ ok: true, resposta: `✅ ${first}, data de entrega da OF #${act.ofNum} alterada para ${act.data.split('-').reverse().join('/')}.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, data de entrega da OF #${act.ofNum} alterada para ${act.data.split('-').reverse().join('/')}.` });
     }
 
     if (act.type === 'of_set_qtd') {
       const ofId = act.ofId;
-      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF.` });
       await supabase.from('ofs').update({ qtd: act.qtd, quantidade: act.qtd, qtd_pedida: act.qtd, updated_at: new Date().toISOString() }).eq('id', ofId);
-      return res.json({ ok: true, resposta: `✅ ${first}, quantidade da OF #${act.ofNum} alterada para ${Number(act.qtd).toLocaleString('pt-BR')} caixas.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, quantidade da OF #${act.ofNum} alterada para ${Number(act.qtd).toLocaleString('pt-BR')} caixas.` });
     }
 
     if (act.type === 'of_set_urgente') {
       const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF #${act.ofNum}.` });
       await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { urg: true, urgente: true } });
-      return res.json({ ok: true, resposta: `✅ ${first}, urgência adicionada na OF #${act.ofNum}.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, urgÃªncia adicionada na OF #${act.ofNum}.` });
     }
 
     if (act.type === 'of_set_cliente') {
       const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF #${act.ofNum}.` });
       const cli = await _jarvisFindClienteByNome(act.clienteNome);
-      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, não encontrei o cliente "${act.clienteNome}".` });
+      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei o cliente "${act.clienteNome}".` });
       await _jarvisCallInternal(req, `/api/ofs/${String(of.id)}`, { method: 'PATCH', body: { cli_id: cli.id, cliente_id: cli.id, cliNome: cli.nome, cliente_nome: cli.nome } });
-      return res.json({ ok: true, resposta: `✅ ${first}, cliente da OF #${act.ofNum} atualizado para ${cli.nome}.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, cliente da OF #${act.ofNum} atualizado para ${cli.nome}.` });
     }
 
     if (act.type === 'of_concluir') {
       const ofId = act.ofId;
-      if (!ofId) return res.json({ ok: true, resposta: `${first}, não encontrei a OF.` });
+      if (!ofId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF.` });
       const qtdProd  = act.qtdProduzida || 0;
       const qtdPerd  = act.qtdPerdida   || 0;
       const maqPerda = act.maquina      || '';
       const now = new Date().toISOString();
       await supabase.from('ofs').update({
-        status: 'Concluído',
+        status: 'ConcluÃ­do',
         qtd_produzida: qtdProd,
         qtd_perdida: qtdPerd,
         maquina_perda: maqPerda || null,
@@ -17632,7 +17632,7 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
         usuario_conclusao: req.usuario?.nome || 'sistema',
         updated_at: now,
       }).eq('id', ofId);
-      return res.json({ ok: true, resposta: `✅ ${first}, OF #${act.ofNum} concluída! Produzidas: ${Number(qtdProd).toLocaleString('pt-BR')} cx | Perdidas: ${Number(qtdPerd).toLocaleString('pt-BR')} cx.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, OF #${act.ofNum} concluÃ­da! Produzidas: ${Number(qtdProd).toLocaleString('pt-BR')} cx | Perdidas: ${Number(qtdPerd).toLocaleString('pt-BR')} cx.` });
     }
 
     if (act.type === 'of_programar') {
@@ -17645,12 +17645,12 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       if (act.dataProducao) { payload.data_producao = act.dataProducao; payload.dia = act.dataProducao; }
       payload.updated_at = new Date().toISOString();
       await supabase.from('ofs').update(payload).eq('id', act.ofId);
-      return res.json({ok:true, resposta:`✅ ${first}, OF #${act.ofNum} programada!${act.maqNova?' Máquina: '+act.maqNova:''}${act.dataProducao?' | Data: '+act.dataProducao.split('-').reverse().join('/'):''}` });
+      return res.json({ok:true, resposta:`âœ… ${first}, OF #${act.ofNum} programada!${act.maqNova?' MÃ¡quina: '+act.maqNova:''}${act.dataProducao?' | Data: '+act.dataProducao.split('-').reverse().join('/'):''}` });
     }
 
     if (act.type === 'of_clonar') {
       const {data:ofOrig} = await supabase.from('ofs').select('*').eq('id',act.ofId).maybeSingle();
-      if (!ofOrig) return res.json({ok:false, resposta:`${first}, OF original não encontrada.`});
+      if (!ofOrig) return res.json({ok:false, resposta:`${first}, OF original nÃ£o encontrada.`});
       const {data:last} = await supabase.from('ofs').select('seq,of,numero').order('seq',{ascending:false}).limit(1).maybeSingle();
       const nextSeq = Math.trunc(Number(last?.seq||0)||0)+1;
       const numStr = String(nextSeq);
@@ -17666,7 +17666,7 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
       clone.updated_at = new Date().toISOString();
       const {data:nova, error} = await supabase.from('ofs').insert([clone]).select('id,of,numero').single();
       if (error) return res.json({ok:false, resposta:`${first}, erro ao clonar: ${error.message}`});
-      return res.json({ok:true, resposta:`✅ ${first}, OF #${act.ofNum} clonada! Nova OF criada: #${nova.of||nova.numero}`});
+      return res.json({ok:true, resposta:`âœ… ${first}, OF #${act.ofNum} clonada! Nova OF criada: #${nova.of||nova.numero}`});
     }
 
     if (act.type === 'of_reagendar_lote') {
@@ -17675,57 +17675,57 @@ app.post('/api/assistente/acao', authMiddleware, async (req, res) => {
         const r = await supabase.from('ofs').update({dia:act.dataDestino,data_producao:act.dataDestino,updated_at:new Date().toISOString()}).eq('id',id);
         if(!r.error) ok2++;
       }
-      return res.json({ok:true, resposta:`✅ ${first}, ${ok2} OFs da ${act.maqNome} reagendadas para ${act.dataDestino.split('-').reverse().join('/')}.`});
+      return res.json({ok:true, resposta:`âœ… ${first}, ${ok2} OFs da ${act.maqNome} reagendadas para ${act.dataDestino.split('-').reverse().join('/')}.`});
     }
 
     if (act.type === 'of_upload_image') {
       const of = act.ofId ? { id: act.ofId } : await _jarvisFindOFByNumero(act.ofNum);
-      if (!of?.id) return res.json({ ok: true, resposta: `${first}, não encontrei a OF #${act.ofNum}.` });
+      if (!of?.id) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a OF #${act.ofNum}.` });
       const newId = _jarvisStoreAction(uid, { type: 'of_upload_image_file', ofId: String(of.id || ''), ofNum: String(act.ofNum || '') });
       return res.json({
         ok: true,
         resposta: `${first}, selecione a imagem para a OF #${act.ofNum}:`,
         actions: [
-          { id: newId, label: '📎 Enviar imagem', decision: 'upload', ofId: String(of.id || '') },
-          { id: newId, label: '❌ Cancelar', decision: 'cancel', ofId: String(of.id || '') },
+          { id: newId, label: 'ðŸ“Ž Enviar imagem', decision: 'upload', ofId: String(of.id || '') },
+          { id: newId, label: 'âŒ Cancelar', decision: 'cancel', ofId: String(of.id || '') },
         ],
       });
     }
 
     if (act.type === 'chapa_entrada') {
-      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
+      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a chapa.` });
       await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}/movimento`, { method: 'POST', body: { tipo: 'entrada', delta: act.qtd, obs: 'Entrada via JARVIS' } });
-      return res.json({ ok: true, resposta: `✅ ${first}, entrada registrada no estoque.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, entrada registrada no estoque.` });
     }
 
     if (act.type === 'chapa_set_min') {
-      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, não encontrei a chapa.` });
+      if (!act.chapaId) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei a chapa.` });
       await _jarvisCallInternal(req, `/api/chapas_estoque/${String(act.chapaId)}`, { method: 'PATCH', body: { estoque_minimo: act.min } });
-      return res.json({ ok: true, resposta: `✅ ${first}, estoque mínimo atualizado.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, estoque mÃ­nimo atualizado.` });
     }
 
     if (act.type === 'chapa_movimento') {
       const { chapaId, tipo, qtd, chapaName } = act;
-      const payload = { tipo, delta: qtd, qtd, obs: `Movimentação via JARVIS por ${req.usuario?.nome||'sistema'}` };
+      const payload = { tipo, delta: qtd, qtd, obs: `MovimentaÃ§Ã£o via JARVIS por ${req.usuario?.nome||'sistema'}` };
       if (String(tipo || '') === 'ajuste') payload.quantidade = qtd;
       const j = await _jarvisCallInternal(req, `/api/chapas_estoque/${String(chapaId)}/movimento`, { method: 'POST', body: payload });
-      const novoSaldo = j?.qtd_estoque ?? '—';
-      return res.json({ ok: true, resposta: `✅ ${first}, ${tipo==='entrada'?'entrada':'saída'} de **${qtd}** na chapa **${chapaName}** registrada! Novo saldo: **${novoSaldo}**` });
+      const novoSaldo = j?.qtd_estoque ?? 'â€”';
+      return res.json({ ok: true, resposta: `âœ… ${first}, ${tipo==='entrada'?'entrada':'saÃ­da'} de **${qtd}** na chapa **${chapaName}** registrada! Novo saldo: **${novoSaldo}**` });
     }
 
     if (act.type === 'cliente_create') {
       await _jarvisCallInternal(req, '/api/clientes', { method: 'POST', body: { nome: act.clienteNome, telefone: act.telefone, ativo: true } });
-      return res.json({ ok: true, resposta: `✅ ${first}, cliente cadastrado com sucesso.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, cliente cadastrado com sucesso.` });
     }
 
     if (act.type === 'cliente_set_tel') {
       const cli = await _jarvisFindClienteByNome(act.clienteNome);
-      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, não encontrei o cliente "${act.clienteNome}".` });
+      if (!cli?.id) return res.json({ ok: true, resposta: `${first}, nÃ£o encontrei o cliente "${act.clienteNome}".` });
       await _jarvisCallInternal(req, `/api/clientes/${String(cli.id)}`, { method: 'PUT', body: { telefone: act.telefone } });
-      return res.json({ ok: true, resposta: `✅ ${first}, telefone atualizado para ${act.telefone}.` });
+      return res.json({ ok: true, resposta: `âœ… ${first}, telefone atualizado para ${act.telefone}.` });
     }
 
-    return res.json({ ok: true, resposta: `${first}, ação executada.` });
+    return res.json({ ok: true, resposta: `${first}, aÃ§Ã£o executada.` });
   } catch (e) {
     return err(res, e);
   }
@@ -17764,7 +17764,7 @@ app.post('/api/assistente/upload', authMiddleware, ofUpload.single('file'), asyn
     if (!url) throw new Error('upload_url_missing');
 
     await _jarvisCallInternal(req, `/api/ofs/${String(act.ofId)}`, { method: 'PATCH', body: { imagem_url: url } });
-    return res.json({ ok: true, resposta: `✅ ${first}, imagem da OF #${act.ofNum || ''} atualizada com sucesso!`, images: [url] });
+    return res.json({ ok: true, resposta: `âœ… ${first}, imagem da OF #${act.ofNum || ''} atualizada com sucesso!`, images: [url] });
   } catch (e) {
     return err(res, e);
   }
@@ -17782,7 +17782,7 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
     const concluidas = todasOfs.filter(o => String(o.status||'').toLowerCase().includes('conclu'));
     const hoje = new Date().toLocaleDateString('pt-BR');
 
-    const fmtData = s => { if(!s) return '—'; const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?`${m[3]}/${m[2]}/${m[1]}`:s; };
+    const fmtData = s => { if(!s) return 'â€”'; const m=String(s).slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?`${m[3]}/${m[2]}/${m[1]}`:s; };
     const esc = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     const rowsAbertas = abertas.map(o => {
@@ -17793,7 +17793,7 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
         <td>${esc(o.descricao||o.prodDesc||o.produto||'')}</td>
         <td>${Math.trunc(Number(o.qtd_pedida||o.quantidade||o.qtd||0)||0).toLocaleString('pt-BR')}</td>
         <td>${esc(o.status||'')}</td>
-        <td>${fmtData(ent)}${atras?' ⚠️':''}</td>
+        <td>${fmtData(ent)}${atras?' âš ï¸':''}</td>
         <td>${esc(fmtData(String(o.data_producao||o.dia||'').slice(0,10)))}</td>
       </tr>`;
     }).join('');
@@ -17810,7 +17810,7 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
     const totalValor  = abertas.reduce((s,o)=>s+Number(o.valor_total||o.valor_venda||0),0);
 
     const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-    <title>Relatório — ${esc(cli?.nome||cliNome)}</title>
+    <title>RelatÃ³rio â€” ${esc(cli?.nome||cliNome)}</title>
     <style>
       body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:20px}
       h1{font-size:18px;color:#1a1a2e;margin-bottom:4px}
@@ -17828,9 +17828,9 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
       @media print{body{margin:10px}.no-print{display:none}}
     </style></head><body>
     <div class="no-print" style="margin-bottom:12px">
-      <button onclick="window.print()" style="padding:8px 16px;background:#1a1a2e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">🖨️ Imprimir / Salvar PDF</button>
+      <button onclick="window.print()" style="padding:8px 16px;background:#1a1a2e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px">ðŸ–¨ï¸ Imprimir / Salvar PDF</button>
     </div>
-    <h1>Italy Embalagens — Relatório de OFs</h1>
+    <h1>Italy Embalagens â€” RelatÃ³rio de OFs</h1>
     <div class="info">
       Cliente: <strong>${esc(cli?.nome||cliNome)}</strong>
       ${cli?.cidade?' | Cidade: '+esc(cli.cidade):''}
@@ -17841,17 +17841,17 @@ app.get('/api/relatorio/cliente_pdf', authMiddleware, async (req, res) => {
       <div class="card"><div class="card-num">${abertas.length}</div><div class="card-label">Em aberto</div></div>
       <div class="card"><div class="card-num">${totalCaixas.toLocaleString('pt-BR')}</div><div class="card-label">Caixas em aberto</div></div>
       <div class="card"><div class="card-num">R$ ${totalValor.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div><div class="card-label">Valor em aberto</div></div>
-      <div class="card"><div class="card-num">${concluidas.length}</div><div class="card-label">Concluídas</div></div>
+      <div class="card"><div class="card-num">${concluidas.length}</div><div class="card-label">ConcluÃ­das</div></div>
     </div>
     ${abertas.length > 0 ? `
-    <h2>🔵 OFs em Aberto (${abertas.length})</h2>
-    <table><thead><tr><th>Nº OF</th><th>Produto</th><th>Qtd (cx)</th><th>Status</th><th>Entrega</th><th>Produção</th></tr></thead>
+    <h2>ðŸ”µ OFs em Aberto (${abertas.length})</h2>
+    <table><thead><tr><th>NÂº OF</th><th>Produto</th><th>Qtd (cx)</th><th>Status</th><th>Entrega</th><th>ProduÃ§Ã£o</th></tr></thead>
     <tbody>${rowsAbertas}</tbody></table>` : ''}
     ${concluidas.length > 0 ? `
-    <h2>✅ OFs Concluídas (${concluidas.length > 20 ? 'últimas 20 de '+concluidas.length : concluidas.length})</h2>
-    <table><thead><tr><th>Nº OF</th><th>Produto</th><th>Qtd (cx)</th><th>Conclusão</th><th>Valor</th></tr></thead>
+    <h2>âœ… OFs ConcluÃ­das (${concluidas.length > 20 ? 'Ãºltimas 20 de '+concluidas.length : concluidas.length})</h2>
+    <table><thead><tr><th>NÂº OF</th><th>Produto</th><th>Qtd (cx)</th><th>ConclusÃ£o</th><th>Valor</th></tr></thead>
     <tbody>${rowsConc}</tbody></table>` : ''}
-    <div class="footer">Italy Embalagens — ${hoje} — Relatório gerado pelo sistema ERP</div>
+    <div class="footer">Italy Embalagens â€” ${hoje} â€” RelatÃ³rio gerado pelo sistema ERP</div>
     </body></html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -17873,11 +17873,11 @@ app.post('/api/ofs/:id/baixa_maquina', authMiddleware, async (req, res) => {
     const qtdPerdida = Math.trunc(Number(req.body?.qtd_perdida || 0) || 0);
     const imagemUrl = String(req.body?.imagem_url || '').trim();
 
-    if (!ofId) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-    if (!maquina) return res.status(400).json({ ok: false, error: 'maquina obrigatória' });
+    if (!ofId) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
+    if (!maquina) return res.status(400).json({ ok: false, error: 'maquina obrigatÃ³ria' });
 
     const { data: of, error: errOf } = await supabase.from('ofs').select('*').eq('id', ofId).maybeSingle();
-    if (errOf || !of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+    if (errOf || !of) return res.status(404).json({ ok: false, error: 'OF nÃ£o encontrada' });
 
     const now = new Date().toISOString();
 
@@ -17911,7 +17911,7 @@ app.post('/api/ofs/:id/baixa_maquina', authMiddleware, async (req, res) => {
       updated_at: now,
     };
     if (String(of.status || '').toLowerCase() === 'em aberto') {
-      updatePayload.status = 'Em Produção';
+      updatePayload.status = 'Em ProduÃ§Ã£o';
     }
 
     const upd = await ofsUpdateWithRetry(ofId, updatePayload);
@@ -17921,7 +17921,7 @@ app.post('/api/ofs/:id/baixa_maquina', authMiddleware, async (req, res) => {
       await supabase.from('historico_acoes').insert([{
         data_hora: now,
         tipo_acao: 'baixa_maquina',
-        descricao: `OF #${of.of || of.numero} baixada na máquina ${maquina}${qtdProduzida > 0 ? ` — ${qtdProduzida.toLocaleString('pt-BR')} cx` : ''}${temProblema ? ' ⚠️ COM PROBLEMA' : ''}`,
+        descricao: `OF #${of.of || of.numero} baixada na mÃ¡quina ${maquina}${qtdProduzida > 0 ? ` â€” ${qtdProduzida.toLocaleString('pt-BR')} cx` : ''}${temProblema ? ' âš ï¸ COM PROBLEMA' : ''}`,
         usuario: operador || req.usuario?.nome || 'sistema',
       }]);
     } catch (_) {}
@@ -17959,8 +17959,8 @@ app.post('/api/ofs/:id/baixa_maquina', authMiddleware, async (req, res) => {
       data: upd.data,
       todasConcluidas,
       mensagem: todasConcluidas
-        ? `✅ OF #${of.of || of.numero} passou por todas as máquinas! Agora você pode fazer a Conclusão Final.`
-        : `✅ OF #${of.of || of.numero} baixada na máquina ${maquina}.`,
+        ? `âœ… OF #${of.of || of.numero} passou por todas as mÃ¡quinas! Agora vocÃª pode fazer a ConclusÃ£o Final.`
+        : `âœ… OF #${of.of || of.numero} baixada na mÃ¡quina ${maquina}.`,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
@@ -18083,14 +18083,14 @@ async function _analyticsPadroesPerdaCompute({ empId, meses }){
     throw error;
   }
   const rows = Array.isArray(data) ? data : [];
-  const pickMaq = (r)=> String(r?.maquina_perda || r?.maquina_nome || r?.maquina || '').trim() || '—';
+  const pickMaq = (r)=> String(r?.maquina_perda || r?.maquina_nome || r?.maquina || '').trim() || 'â€”';
   const dowName = (dow)=>{
-    const map = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-    return map[dow] || '—';
+    const map = ['Domingo','Segunda','TerÃ§a','Quarta','Quinta','Sexta','SÃ¡bado'];
+    return map[dow] || 'â€”';
   };
   const turno = (h)=>{
     const hh = Number(h)||0;
-    if(hh >= 6 && hh < 12) return 'manhã';
+    if(hh >= 6 && hh < 12) return 'manhÃ£';
     if(hh >= 12 && hh < 18) return 'tarde';
     return 'noite';
   };
@@ -18168,7 +18168,7 @@ function _horasUteisAteEntrega(hojeIso, entregaIso){
 
 async function _analyticsPrevisaoAtrasosCompute({ empId }){
   const hojeIso = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
-  const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+  const statusNotIn = '("ConcluÃ­do","Concluido","Cancelada","Cancelado","Pedido Pronto")';
   let q = supabase
     .from('ofs')
     .select('id,of,numero,status,cli_id,cliId,cliente_id,descricao,cliNome,cliente_nome,ent,data_entrega,data_producao,dia,fluxo_maquinas,maq,maquina_atual_index,qtd,quantidade,qtd_produzida,created_at,emp_id,deleted_at')
@@ -18259,7 +18259,7 @@ async function _notificarRiscoAtraso({ empId, items }){
     if(!altos.length) return;
     const agora = new Date().toISOString();
     for(const it of altos){
-      const msg = `⚠️ Risco ALTO de atraso — OF #${it.numero||it.of_id} — entrega ${it.entrega} (estimado ${it.horas_estimadas}h / disponível ${it.horas_disponiveis}h)`;
+      const msg = `âš ï¸ Risco ALTO de atraso â€” OF #${it.numero||it.of_id} â€” entrega ${it.entrega} (estimado ${it.horas_estimadas}h / disponÃ­vel ${it.horas_disponiveis}h)`;
       const { data: existente, error: e1 } = await supabase
         .from('notificacoes')
         .select('id')
@@ -18308,9 +18308,9 @@ async function _anthropicExtrairPedidoJson(texto){
   if(!key) throw new Error('missing_anthropic_key');
   const hojeIso = _isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo');
   const system =
-    'Você extrai dados de pedidos de caixas de papelão. Retorne APENAS JSON válido sem markdown:\n' +
+    'VocÃª extrai dados de pedidos de caixas de papelÃ£o. Retorne APENAS JSON vÃ¡lido sem markdown:\n' +
     '{ cliente_nome, produto, quantidade, comprimento_mm, largura_mm, altura_mm, onda, data_entrega (YYYY-MM-DD), urgente (bool), observacoes }\n' +
-    'Se não conseguir extrair um campo, use null. Data relativa como "semana que vem" = hoje + 7 dias.';
+    'Se nÃ£o conseguir extrair um campo, use null. Data relativa como "semana que vem" = hoje + 7 dias.';
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -18463,7 +18463,7 @@ app.post('/api/pedido/linguagem_natural', authMiddleware, async (req, res) => {
 });
 
 async function _sequenciamentoListar({ maquina, empId }){
-  const statusNotIn = '("Concluído","Concluido","Cancelada","Cancelado","Pedido Pronto")';
+  const statusNotIn = '("ConcluÃ­do","Concluido","Cancelada","Cancelado","Pedido Pronto")';
   let q = supabase
     .from('ofs')
     .select('id,of,numero,status,cliNome,cliente_nome,cli_id,cliente_id,data_entrega,ent,prioridade,prioridade_producao,urg,urgente,fluxo_maquinas,maq,maquina_atual_index,created_at,emp_id,deleted_at,tipo_caixa,tipo_caixa_id,onda')
@@ -18553,7 +18553,7 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
   try{
     if(!supabase) return res.status(500).json({ ok:false, error:'supabase_not_configured' });
     const maquina = String(req.body?.maquina_id || req.body?.maquina || '').trim();
-    const ordemIn = req.body?.ordem;
+    const ordemIn = Array.isArray(req.body?.ids) && req.body.ids.length ? req.body.ids : req.body?.ordem;
     let ids = [];
     if(Array.isArray(ordemIn)){
       ids = ordemIn.map((x)=>String((typeof x === 'string' ? x : (x?.of_id || x?.id || x?.ofId || '')) || '').trim()).filter(Boolean);
@@ -18567,8 +18567,9 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
     const ids2 = ids.slice(0, 5000);
     const updates = ids2.map((id, idx) => {
       const ordem_maquina = idx;
-      const patch = maquina ? { ordem_maquina, maq: maquina, maquina_atual: maquina } : { ordem_maquina };
-      return supabase.from('ofs').update(patch).eq('id', id);
+      const seq = idx;
+      const patch = maquina ? { ordem_maquina, seq, maq: maquina, maquina_atual: maquina } : { ordem_maquina, seq };
+      return _updateCompatTable('ofs', id, patch);
     });
     const results = await Promise.all(updates);
     const erros = (results || []).filter((r) => r && r.error);
@@ -18590,9 +18591,9 @@ app.patch('/api/ofs/:id/ordem', authMiddleware, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
     const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatÃ³rio' });
     const ordem_maquina = Number(req.body?.ordem_maquina);
-    if (!Number.isFinite(ordem_maquina)) return res.status(400).json({ ok: false, error: 'ordem_maquina inválida' });
+    if (!Number.isFinite(ordem_maquina)) return res.status(400).json({ ok: false, error: 'ordem_maquina invÃ¡lida' });
 
     const r = await supabase.from('ofs').update({ ordem_maquina: Math.trunc(ordem_maquina) }).eq('id', id);
     if (r?.error) return res.status(500).json({ ok: false, error: r.error.message || String(r.error) });
@@ -19326,33 +19327,33 @@ async function _relDiarioFetchData(empId){
 
 function _relDiarioRenderHtml(d){
   const fmtMoney = (v)=>_assistFmtMoney(Number(v||0)||0);
-  const fmtPct = (p)=> (p == null ? '—' : (p >= 0 ? `+${p.toFixed(1)}%` : `${p.toFixed(1)}%`));
+  const fmtPct = (p)=> (p == null ? 'â€”' : (p >= 0 ? `+${p.toFixed(1)}%` : `${p.toFixed(1)}%`));
   const rowOf = (o)=>`<tr>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.of||o?.numero||'—')}</td>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.cliNome||o?.cliente_nome||'—')}</td>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.descricao||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.of||o?.numero||'â€”')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.cliNome||o?.cliente_nome||'â€”')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(o?.descricao||'â€”')}</td>
     <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${_assistFmtDateBr(String(o?.data_entrega??o?.ent??'').slice(0,10))}</td>
   </tr>`;
   const rowsAtras = (d.atrasadas||[]).slice(0,5).map(rowOf).join('');
   const rowsHoje = (d.entregasHoje||[]).slice(0,8).map(rowOf).join('');
   const riscoRows = (d.riscoAtraso||[]).slice(0,12).map((x)=>`<tr>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.numero||x.of_id||'—')}</td>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.cliente||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.numero||x.of_id||'â€”')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(x.cliente||'â€”')}</td>
     <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${_assistFmtDateBr(String(x.entrega||''))}</td>
     <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:center">${String(x.risco||'ok')}</td>
   </tr>`).join('');
   const chapasRows = (d.chapasCrit||[]).slice(0,10).map((c)=>`<tr>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.nome||c?.nomenclatura||'—')}</td>
-    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.tamanho||'—')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.nome||c?.nomenclatura||'â€”')}</td>
+    <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08)">${String(c?.tamanho||'â€”')}</td>
     <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right">${Math.trunc(Number(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0)||0)}</td>
     <td style="padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.08);text-align:right">${Math.trunc(Number(c?.estoque_minimo ?? 200)||200)}</td>
   </tr>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Relatório Diário</title></head>
+  <title>RelatÃ³rio DiÃ¡rio</title></head>
   <body style="margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
   <div style="max-width:920px;margin:0 auto;padding:22px 14px">
     <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:16px 16px 10px">
-      <div style="font-weight:900;font-size:18px">Relatório Diário — ${_assistFmtDateBr(d.hoje)}</div>
+      <div style="font-weight:900;font-size:18px">RelatÃ³rio DiÃ¡rio â€” ${_assistFmtDateBr(d.hoje)}</div>
       <div style="color:rgba(229,231,235,0.70);margin-top:4px">ERP Italy Embalagens</div>
     </div>
 
@@ -19363,7 +19364,7 @@ function _relDiarioRenderHtml(d){
         <div style="margin-top:10px;font-size:13px;color:rgba(229,231,235,0.85)">5 mais antigas</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
           <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Produto</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th></tr></thead>
-          <tbody>${rowsAtras || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          <tbody>${rowsAtras || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
         </table>
       </div>
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
@@ -19371,7 +19372,7 @@ function _relDiarioRenderHtml(d){
         <div style="font-size:28px;font-weight:900;color:#22c55e">${(d.entregasHoje||[]).length}</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
           <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Produto</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th></tr></thead>
-          <tbody>${rowsHoje || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          <tbody>${rowsHoje || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -19380,9 +19381,9 @@ function _relDiarioRenderHtml(d){
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
         <div style="font-weight:900;margin-bottom:8px">Faturamento</div>
         <div style="display:flex;gap:14px;flex-wrap:wrap">
-          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Mês atual</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAtual)}</div></div>
-          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Mês anterior</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAnt)}</div></div>
-          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">Variação</div><div style="font-size:20px;font-weight:900">${fmtPct(d.pct)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">MÃªs atual</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAtual)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">MÃªs anterior</div><div style="font-size:20px;font-weight:900">${fmtMoney(d.fatAnt)}</div></div>
+          <div><div style="color:rgba(229,231,235,0.70);font-size:12px">VariaÃ§Ã£o</div><div style="font-size:20px;font-weight:900">${fmtPct(d.pct)}</div></div>
         </div>
       </div>
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
@@ -19396,11 +19397,11 @@ function _relDiarioRenderHtml(d){
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
-        <div style="font-weight:900;margin-bottom:8px">Estoque crítico (Chapas)</div>
+        <div style="font-weight:900;margin-bottom:8px">Estoque crÃ­tico (Chapas)</div>
         <div style="color:rgba(229,231,235,0.70);font-size:12px;margin-bottom:8px">${(d.chapasCrit||[]).length} item(ns)</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Chapa</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Tam.</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Qtd</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Min</th></tr></thead>
-          <tbody>${chapasRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          <tbody>${chapasRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
         </table>
       </div>
       <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.10);border-radius:14px;padding:14px">
@@ -19408,7 +19409,7 @@ function _relDiarioRenderHtml(d){
         <div style="color:rgba(229,231,235,0.70);font-size:12px;margin-bottom:8px">${(d.riscoAtraso||[]).length} item(ns)</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">OF</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Cliente</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Entrega</th><th style="text-align:center;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.12)">Risco</th></tr></thead>
-          <tbody>${riscoRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">—</td></tr>'}</tbody>
+          <tbody>${riscoRows || '<tr><td colspan="4" style="padding:8px;color:rgba(229,231,235,0.70)">â€”</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -19430,7 +19431,7 @@ async function _relDiarioEnviar(){
   if(!to.length) return;
   const data = await _relDiarioFetchData(empId);
   const html = _relDiarioRenderHtml(data);
-  const subject = `Relatório Diário ERP — ${_assistFmtDateBr(data.hoje)}`;
+  const subject = `RelatÃ³rio DiÃ¡rio ERP â€” ${_assistFmtDateBr(data.hoje)}`;
   const t = _mailTransportPrefer();
   if(!t) throw new Error('smtp_not_configured');
   const from = String(process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
@@ -19465,8 +19466,8 @@ if(cron && cron.validate('0 6 * * *')){
         const t = _mailTransportPrefer();
         if(t){
           const from = String(process.env.SMTP_FROM || process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
-          const subject = `OFs geradas automaticamente (recorrentes) — ${_assistFmtDateBr(_isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo'))}`;
-          const rows = geradas.slice(0, 30).map((o)=>`<li>OF #${String(o?.of||o?.numero||'—')} — ${String(o?.cliNome||o?.cliente_nome||'—')} — ${String(o?.descricao||'—')}</li>`).join('');
+          const subject = `OFs geradas automaticamente (recorrentes) â€” ${_assistFmtDateBr(_isoDateFromTzNow(process.env.REPORT_TZ || 'America/Sao_Paulo'))}`;
+          const rows = geradas.slice(0, 30).map((o)=>`<li>OF #${String(o?.of||o?.numero||'â€”')} â€” ${String(o?.cliNome||o?.cliente_nome||'â€”')} â€” ${String(o?.descricao||'â€”')}</li>`).join('');
           const html = `<!doctype html><html><body style="margin:0;background:#0f172a;color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial"><div style="max-width:760px;margin:0 auto;padding:18px"><div style="font-weight:900;font-size:18px;margin-bottom:10px">Pedidos Recorrentes</div><div>Foram geradas ${geradas.length} OF(s):</div><ul style="margin-top:10px">${rows}</ul></div></body></html>`;
           await t.sendMail({ from, to: to.join(','), subject, html });
         }
@@ -19488,13 +19489,13 @@ if (cron) {
         .select('id,of,numero,cliNome,cliente_nome,data_entrega,ent')
         .lt('data_entrega', new Date().toISOString().slice(0,10))
         .is('deleted_at', null)
-        .not('status', 'in', '("Concluído","Cancelada","Cancelado")')
+        .not('status', 'in', '("ConcluÃ­do","Cancelada","Cancelado")')
         .gte('updated_at', trintaMin)
         .limit(10);
 
       if (Array.isArray(novasAtras) && novasAtras.length) {
         for (const of2 of novasAtras) {
-          const msg = `⚠️ OF #${of2.of||of2.numero} — ${of2.cliNome||of2.cliente_nome||'—'} passou da data de entrega!`;
+          const msg = `âš ï¸ OF #${of2.of||of2.numero} â€” ${of2.cliNome||of2.cliente_nome||'â€”'} passou da data de entrega!`;
           await supabase.from('notificacoes').insert([{ mensagem: msg, tipo: 'warning', lida: false, data_hora: agoraStr, criado_por: 'JARVIS' }]);
         }
       }
@@ -19506,7 +19507,7 @@ if (cron) {
         return qtd < min && qtd >= 0;
       });
       if (criticas.length > 0) {
-        const msg = `📦 ${criticas.length} chapa${criticas.length!==1?'s':''} abaixo do estoque mínimo! Use "estoque crítico" para ver.`;
+        const msg = `ðŸ“¦ ${criticas.length} chapa${criticas.length!==1?'s':''} abaixo do estoque mÃ­nimo! Use "estoque crÃ­tico" para ver.`;
         const { data: existente } = await supabase.from('notificacoes').select('id').eq('mensagem', msg).eq('lida', false).limit(1);
         if (!Array.isArray(existente) || !existente.length) {
           await supabase.from('notificacoes').insert([{ mensagem: msg, tipo: 'warning', lida: false, data_hora: new Date().toISOString(), criado_por: 'JARVIS' }]);
@@ -19514,7 +19515,7 @@ if (cron) {
       }
     } catch(e) { console.warn('[JARVIS CRON]', e?.message); }
   }, { scheduled: true, timezone: String(process.env.REPORT_TZ || 'America/Sao_Paulo') });
-  console.log('✅ JARVIS: alertas proativos configurados (30min)');
+  console.log('âœ… JARVIS: alertas proativos configurados (30min)');
 }
 
 function _addDaysISO(iso, days){
@@ -19562,7 +19563,7 @@ async function _jobAdiamento18h(){
   const { data: rows, error } = await supabase.from('ofs')
     .select('id,of,numero,status,obs,dia,data_producao,dia_programacao,deleted_at')
     .is('deleted_at', null)
-    .not('status', 'in', '("Concluído","Concluido","Cancelado","Cancelada")')
+    .not('status', 'in', '("ConcluÃ­do","Concluido","Cancelado","Cancelada")')
     .or(`dia.eq.${hoje},data_producao.eq.${hoje},dia_programacao.eq.${hoje}`)
     .limit(2000);
   if(error) throw error;
@@ -19584,7 +19585,7 @@ async function _jobAdiamento18h(){
       await supabase.from('historico_acoes').insert([{
         data_hora: new Date().toISOString(),
         tipo_acao: 'adiamento_18h',
-        descricao: `OF #${of2?.of||of2?.numero||''} adiada automaticamente: ${hoje} → ${prox}`,
+        descricao: `OF #${of2?.of||of2?.numero||''} adiada automaticamente: ${hoje} â†’ ${prox}`,
         usuario: 'JOB 18H',
       }]);
     }catch(_){}
@@ -19741,7 +19742,7 @@ app.post('/api/agenda', authMiddleware, async (req, res) => {
     const { titulo, descricao, data_evento, hora_inicio, hora_fim, para_usuario, cor, tipo } = req.body || {};
     if (!titulo || !data_evento) return res.status(400).json({ ok:false, error:'titulo e data obrigatorios' });
     const userId = req.usuario?.id || req.usuario?.sub;
-    const nome = req.usuario?.nome || 'Usuário';
+    const nome = req.usuario?.nome || 'UsuÃ¡rio';
     const para = Object.prototype.hasOwnProperty.call((req.body || {}), 'para_usuario')
       ? (!para_usuario ? userId : para_usuario)
       : userId;
@@ -19795,7 +19796,7 @@ app.use((e, req, res, next) => {
   if (!e) return next();
   const msg = String(e.message || e);
   if (e instanceof multer.MulterError) return res.status(400).json({ ok: false, error: msg });
-  if (msg.includes('Tipo de arquivo não permitido')) return res.status(400).json({ ok: false, error: msg });
+  if (msg.includes('Tipo de arquivo nÃ£o permitido')) return res.status(400).json({ ok: false, error: msg });
   return res.status(500).json({ ok: false, error: msg });
 });
 
