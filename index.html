@@ -34161,16 +34161,6 @@ function normalizeOF(r){
   const ent = entRaw ? String(entRaw).slice(0, 10) : '';
   const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
-  const maqParsed = (typeof r.maq === 'string' && String(r.maq).trim()) ? tryParse(r.maq, null) : null;
-  const maqArr = Array.isArray(r.maq)
-    ? r.maq
-    : (r.maquina_id ? [r.maquina_id] : (
-      r.maquinaId ? [r.maquinaId] : (
-        Array.isArray(maqParsed) ? maqParsed : (
-          (typeof r.maq === 'string' && String(r.maq).trim()) ? [String(r.maq).trim()] : tryParse(r.maq, [])
-        )
-      )
-    ));
   const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
   let prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';
@@ -34211,6 +34201,51 @@ function normalizeOF(r){
   prodDesc = String(item0.desc || item0.descricao || prodDesc || r.descricao || '').trim();
   const refOf = String(item0.ref || item0.referencia || '').trim();
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
+  const _isUuidLike = (v)=> typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(String(v).trim());
+  let _maquinaFinal = '';
+  let _maqArr = [];
+
+  if (r.maquina_atual && typeof r.maquina_atual === 'string' && r.maquina_atual.trim()) {
+    _maquinaFinal = r.maquina_atual.trim();
+    _maqArr = [_maquinaFinal];
+  } else if (r.maquina && typeof r.maquina === 'string' && r.maquina.trim() && !_isUuidLike(r.maquina)) {
+    _maquinaFinal = r.maquina.trim();
+    _maqArr = [_maquinaFinal];
+  } else if (Array.isArray(fluxoMaq) && fluxoMaq.length) {
+    const nomesFluxo = fluxoMaq
+      .map((m)=> String(m || '').trim())
+      .filter((m)=> m && !_isUuidLike(m));
+    if (nomesFluxo.length) {
+      _maquinaFinal = nomesFluxo[0];
+      _maqArr = nomesFluxo;
+    }
+  } else if (r.maq) {
+    try {
+      let maqParsed = r.maq;
+      if (typeof maqParsed === 'string') maqParsed = JSON.parse(maqParsed);
+      if (Array.isArray(maqParsed)) {
+        const nomes = maqParsed
+          .map((m)=> String(m || '').trim())
+          .filter((m)=> m && !_isUuidLike(m));
+        if (nomes.length) {
+          _maquinaFinal = nomes[0];
+          _maqArr = nomes;
+        } else if (maqParsed.length) {
+          _maquinaFinal = '';
+          _maqArr = [];
+        }
+      } else if (typeof maqParsed === 'string' && !_isUuidLike(maqParsed)) {
+        _maquinaFinal = maqParsed.trim();
+        _maqArr = [_maquinaFinal];
+      }
+    } catch (e) {
+      if (typeof r.maq === 'string' && !_isUuidLike(r.maq)) {
+        _maquinaFinal = r.maq.trim();
+        _maqArr = [_maquinaFinal];
+      }
+    }
+  }
+  const maqArr = _maqArr;
   let maquinaPorItem = (r.maquina_por_item && typeof r.maquina_por_item === 'object' && !Array.isArray(r.maquina_por_item))
     ? r.maquina_por_item
     : parseAny(r.maquina_por_item, {});
@@ -34266,7 +34301,10 @@ function normalizeOF(r){
     ent,
     data_entrega: ent || null,
     fluxo,
-    maq:maqArr,
+    maq: maqArr,
+    maquina: _maquinaFinal,
+    maquina_atual: _maquinaFinal,
+    maquina_nome: _maquinaFinal,
     status:r.status ?? 'Em aberto',
     urg:!!urg,
     chp,
@@ -34290,7 +34328,7 @@ function normalizeOF(r){
     imgs,
     imagens,
     imgUrl: imgUrlNorm,
-    fluxo_maquinas: fluxoMaq,
+    fluxo_maquinas: (Array.isArray(fluxoMaq) && fluxoMaq.length) ? fluxoMaq : maqArr,
     tipo_caixa_id: r.tipo_caixa_id ?? r.tipoCaixaId ?? null,
     tipo_caixa: r.tipo_caixa ?? r.tipoCaixa ?? null,
     caixa_comprimento: r.caixa_comprimento ?? r.caixaComprimento ?? null,
@@ -34784,10 +34822,11 @@ async function carregarOFSArquivo(force=false){
   _ofsArquivoLoading = true;
   window._ofsArquivoPromise = (async ()=>{
     try{
-      const all = [];
+      let all = [];
       let offset = 0;
       let total = null;
-      for(let guard=0; guard<2000; guard++){
+      let hasMore = true;
+      while (hasMore) {
         const qs = new URLSearchParams();
         qs.set('incluir_excluidas','1');
         qs.set('limit', String(_OFS_ARQUIVO_LIMIT));
@@ -34797,12 +34836,13 @@ async function carregarOFSArquivo(force=false){
         qs.set('order','asc');
         qs.set('nocache','1');
         const r = await api('GET', '/ofs?' + qs.toString());
-        const chunk = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        const chunk = extractOfsRows(r);
         if(typeof r?.total === 'number') total = r.total;
-        all.push(...chunk);
-        if(total != null && all.length >= total) break;
+        all = all.concat(Array.isArray(chunk) ? chunk : []);
+        hasMore = r?.hasMore === true || (typeof total === 'number' && all.length < total);
         if(chunk.length === 0) break;
         offset += chunk.length;
+        if(offset >= 5000) break;
       }
       _setOFSArquivoGlobal(all);
       _ofsArquivoLastLoad = Date.now();
