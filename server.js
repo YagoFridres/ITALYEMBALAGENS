@@ -3109,16 +3109,39 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
     const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const empresaFiltro = String(req.query.empresa || req.query.empresa_id || req.query.empId || '').trim();
     const statusRaw = String(req.query.status || '').trim();
     const status = statusRaw && statusRaw !== 'todos' && statusRaw !== 'Todos status' ? statusRaw : '';
     const busca = String(req.query.busca || '').trim();
+    const perfil = String(req?.usuario?.perfil || '').trim().toLowerCase();
+    const permissoes = Array.isArray(req?.usuario?.permissoes) ? req.usuario.permissoes : [];
+    const podeVerTodasEmpresas = perfil === 'admin' || perfil.includes('admin') || permissoes.includes('tudo');
+    const empresaScope = (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all')
+      ? empresaFiltro
+      : ((empresaFiltro === 'todas' || empresaFiltro === 'all') && podeVerTodasEmpresas ? 'todas' : empId);
+    const cacheKey = [
+      'ofs_v8',
+      empId,
+      empresaScope,
+      String(offset),
+      String(limit),
+      status || '',
+      busca || '',
+    ].join('_');
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
 
     let query = supabase
       .from('ofs')
       .select('*', { count: 'exact' })
-      .eq('empresa_id', empId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
+
+    if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
+      query = query.eq('empresa_id', empresaFiltro);
+    } else if (!(empresaFiltro && (empresaFiltro === 'todas' || empresaFiltro === 'all') && podeVerTodasEmpresas)) {
+      query = query.eq('empresa_id', empId);
+    }
 
     if (status) {
       if (status.includes(',')) query = query.in('status', status.split(',').map((s) => String(s || '').trim()).filter(Boolean));
@@ -3135,7 +3158,30 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    const rows = (data || []).map((of) => {
+    const ofsRaw = data || [];
+    const clienteIds = Array.from(new Set(
+      ofsRaw
+        .map((o) => String(o?.cli_id || '').trim())
+        .filter((v) => /^[0-9a-f-]{36}$/i.test(v))
+    ));
+    const mapaClientes = {};
+    if (clienteIds.length > 0) {
+      for (let i = 0; i < clienteIds.length; i += 100) {
+        const lote = clienteIds.slice(i, i + 100);
+        try {
+          const { data: clientes } = await supabase
+            .from('clientes')
+            .select('id,nome,rs')
+            .in('id', lote);
+          (clientes || []).forEach((c) => {
+            const key = String(c?.id || '').trim();
+            if (key) mapaClientes[key] = String(c?.nome || c?.rs || '').trim();
+          });
+        } catch (_) {}
+      }
+    }
+
+    const rows = ofsRaw.map((of) => {
       let maquinaNome = '';
       try {
         let m = of?.maq;
@@ -3172,19 +3218,28 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       return {
         ...of,
+        clinome: String(of?.clinome || mapaClientes[String(of?.cli_id || '').trim()] || of?.cliid || '').trim(),
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
-        cliente: String(of?.clinome || of?.cliid || of?.cli_id || '').trim(),
+        cliente: String(of?.clinome || mapaClientes[String(of?.cli_id || '').trim()] || of?.cliid || '').trim(),
         imagem_url: primeiraImagem || String(of?.imgs || '').trim(),
         total: 0,
         itens_parsed: itensArr,
       };
     });
 
+    rows.forEach((of) => {
+      const clienteNome = String(of?.clinome || of?.cliente || '').trim();
+      of.clinome = clienteNome;
+      of.cliente = clienteNome || '';
+    });
+
     const total = Number.isFinite(Number(count)) ? Number(count) : rows.length;
     const hasMore = (offset + rows.length) < total;
-    return res.json({ ok: true, data: rows, total, offset, limit, hasMore });
+    const resultado = { ok: true, data: rows, total, offset, limit, hasMore };
+    cacheSet(cacheKey, resultado, 30000);
+    return res.json(resultado);
   } catch (e) {
     try { console.error('[GET /api/ofs]', e?.message || e); } catch (_) {}
     return res.status(500).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: String(e?.message || e) });

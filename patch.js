@@ -107,25 +107,6 @@ window.addEventListener('unhandledrejection', function(e) {
     return _warnOrig.apply(console, arguments);
   };
 })();
-// DEBUG TEMPORARIO - remover apos resolver
-window._debugOFS = true;
-const _fetchOriginal = window.fetch;
-window.fetch = async function(...args) {
-  const url = args[0] && args[0].toString ? args[0].toString() : '';
-  const result = await _fetchOriginal.apply(this, args);
-  if (url.includes('/api/ofs') && !url.includes(':') && window._debugOFS) {
-    const clone = result.clone();
-    clone.json().then(function(data) {
-      try {
-        console.error('[DEBUG OFS] URL:', url.substring(0, 100));
-        console.error('[DEBUG OFS] Tipo:', Array.isArray(data) ? 'ARRAY' : typeof data);
-        console.error('[DEBUG OFS] Length/total:', Array.isArray(data) ? data.length : data?.total || data?.data?.length);
-        console.error('[DEBUG OFS] Primeiro item:', JSON.stringify(Array.isArray(data) ? data[0] : data?.data?.[0]).substring(0, 200));
-      } catch (_) {}
-    }).catch(function() {});
-  }
-  return result;
-};
 if (!window._debounce) {
   window._debounce = function(fn, delay) {
     var timer = null;

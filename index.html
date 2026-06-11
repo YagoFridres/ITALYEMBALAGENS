@@ -5770,9 +5770,10 @@ function renderPCP(){
   if(busca)lista=lista.filter(o=>o.of.toLowerCase().includes(busca.toLowerCase())||(getCli(o.cliId)||{nome:''}).nome.toLowerCase().includes(busca.toLowerCase()));
   if(fv)lista=lista.filter(o=>o.vendId===fv);
   // Filtro multiempresa
-  const fpcp=(document.getElementById('pcp-emp')||{}).value||'';
+  const pcpEmpEl = document.getElementById('pcp-emp');
+  const fpcp=(pcpEmpEl||{}).value||'';
   if(fpcp) lista=lista.filter(o=>(o.empId||'')===fpcp);
-  else if(EMP_FILTRO) lista=lista.filter(o=>(o.empId||'')=== EMP_FILTRO);
+  else if(!pcpEmpEl && EMP_FILTRO) lista=lista.filter(o=>(o.empId||'')=== EMP_FILTRO);
   const pcpPag = _pcpAtualizarPaginacao(
     lista.length,
     [PCP_DIA_ATUAL, busca, fs, fv, fpcp || EMP_FILTRO || '', lista.length].join('|')
@@ -34859,6 +34860,7 @@ async function carregarOFSArquivo(force=false){
       let hasMore = true;
       while (hasMore) {
         const qs = new URLSearchParams();
+        const empSelAtual = String((document.getElementById('pcp-emp')||{}).value || '').trim();
         qs.set('incluir_excluidas','1');
         qs.set('limit', String(_OFS_ARQUIVO_LIMIT));
         qs.set('offset', String(offset));
@@ -34866,6 +34868,7 @@ async function carregarOFSArquivo(force=false){
         qs.set('order_by','created_at');
         qs.set('order','asc');
         qs.set('nocache','1');
+        qs.set('empresa', empSelAtual || 'todas');
         const r = await api('GET', '/ofs?' + qs.toString());
         const chunk = extractOfsRows(r);
         if(typeof r?.total === 'number') total = r.total;
