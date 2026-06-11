@@ -10023,22 +10023,28 @@ app.delete('/api/estoque/:id', async (req, res) => {
   } catch (e) { err(res, e); }
 });
 
-function _getEmpIdEstoque(email) {
-  const MAPA = {
-    'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
-    'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-    'carto': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-  };
-  return MAPA[String(email || '').toLowerCase()] || 'df5f7672-0a6b-402d-ae65-296554236c31';
+async function _resolveEmpresaIdEstoqueByEmail(email) {
+  const raw = String(email || '').trim().toLowerCase();
+  if (!raw) throw new Error('email_nao_encontrado');
+  try {
+    const u = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('email', raw)
+      .maybeSingle();
+    const empId = String(u?.data?.empresa_id || '').trim();
+    if (empId) return empId;
+  } catch (_) {}
+  const prefix = raw.includes('@') ? raw.split('@')[0] : raw;
+  if (!prefix) throw new Error('email_prefix_invalido');
+  const emp = await supabase
+    .from('empresas')
+    .select('id')
+    .ilike('sigla', `%${prefix}%`)
+    .maybeSingle();
+  const empId2 = String(emp?.data?.id || '').trim();
+  if (!empId2) throw new Error('empresa_id_nao_resolvido');
+  return empId2;
 }
 
 async function _queryByEmpresa(table, selectCols, empresa_id, orderCol, q) {
@@ -10101,16 +10107,19 @@ async function _updateCompatTable(table, id, payload) {
 
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
     const q = String(req.query?.q || '').trim();
-    const result = await _queryByEmpresa(
-      'estoque_tintas',
-      '*',
-      empresa_id,
-      'nome',
-      q
-    );
-    return res.json({ ok: true, data: result.data || [] });
+    let query = supabase
+      .from('estoque_tintas')
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('nome', { ascending: true });
+    try { query = query.eq('ativo', true); } catch (_) {}
+    if (q) query = query.ilike('nome', `%${q}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
   } catch (e) {
     console.error('[ESTOQUE_TINTAS]', e.message || e);
     return res.status(500).json({ ok: false, error: e.message || String(e) });
@@ -10119,8 +10128,10 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
     const payload = { ...(req.body || {}), empresa_id };
+    if (payload.ativo == null) payload.ativo = true;
     const { data, error } = await _insertCompatTable('estoque_tintas', payload);
     if (error) throw error;
     return res.json({ ok: true, data });
@@ -10129,7 +10140,7 @@ app.post('/api/estoque_tintas', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
+async function _updateEstoqueTintas(req, res) {
   try {
     const payload = { ...(req.body || {}) };
     delete payload.id;
@@ -10140,27 +10151,72 @@ app.put('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
+}
+app.patch('/api/estoque_tintas/:id', authMiddleware, _updateEstoqueTintas);
+app.put('/api/estoque_tintas/:id', authMiddleware, _updateEstoqueTintas);
+
+app.delete('/api/estoque_tintas/:id', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await _updateCompatTable('estoque_tintas', req.params.id, { ativo: false });
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.post('/api/estoque_tintas/:id/movimentar', authMiddleware, async (req, res) => {
+  try {
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    const tipo = String(req.body?.tipo || '').trim();
+    const quantidade = Number(req.body?.quantidade || 0) || 0;
+    if (!tipo || !Number.isFinite(quantidade) || quantidade <= 0) {
+      return res.status(400).json({ ok: false, error: 'tipo_e_quantidade_obrigatorios' });
+    }
+    await _insertCompatTable('estoque_tintas_movimentos', {
+      empresa_id,
+      tinta_id: req.params.id,
+      tipo,
+      quantidade,
+      operador: req.body?.operador || null,
+      setor: req.body?.setor || null,
+      of_numero: req.body?.of_numero || null,
+      motivo: req.body?.motivo || null,
+      custo_unitario: req.body?.custo_unitario ?? null,
+      observacoes: req.body?.observacoes || null,
+      created_at: new Date().toISOString(),
+    });
+    const cur = await supabase.from('estoque_tintas').select('quantidade_atual').eq('id', req.params.id).maybeSingle();
+    const atual = Number(cur?.data?.quantidade_atual || 0) || 0;
+    const nova = (tipo === 'entrada') ? (atual + quantidade) : (atual - quantidade);
+    const upd = { quantidade_atual: Math.max(0, nova), updated_at: new Date().toISOString() };
+    if (tipo === 'entrada') upd.ultima_entrada = new Date().toISOString();
+    if (tipo === 'saida') upd.ultima_saida = new Date().toISOString();
+    const { data, error } = await _updateCompatTable('estoque_tintas', req.params.id, upd);
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
 });
 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
     const q = String(req.query?.q || '').trim();
-    const tabelas = ['estoque_materiais', 'materiais_estoque', 'materiais', 'estoque_material'];
-    let data = [];
-    let tabelaUsada = '';
-    for (const t of tabelas) {
-      try {
-        const r = await _queryByEmpresa(t, '*', empresa_id, 'nome', q);
-        data = r.data || [];
-        tabelaUsada = t;
-        break;
-      } catch (e) {
-        const msg = String(e?.message || e || '');
-        if (msg.includes('does not exist') || msg.includes('Could not find') || msg.includes('relation')) continue;
-      }
-    }
-    return res.json({ ok: true, data, tabela: tabelaUsada });
+    let query = supabase
+      .from('estoque_materiais')
+      .select('*')
+      .eq('empresa_id', empresa_id)
+      .order('categoria', { ascending: true })
+      .order('nome', { ascending: true });
+    try { query = query.eq('ativo', true); } catch (_) {}
+    if (q) query = query.ilike('nome', `%${q}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
@@ -10168,8 +10224,10 @@ app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
 
 app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
     const payload = { ...(req.body || {}), empresa_id };
+    if (payload.ativo == null) payload.ativo = true;
     const { data, error } = await _insertCompatTable('estoque_materiais', payload);
     if (error) throw error;
     return res.json({ ok: true, data });
@@ -10178,7 +10236,7 @@ app.post('/api/estoque_materiais', authMiddleware, async (req, res) => {
   }
 });
 
-app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
+async function _updateEstoqueMateriais(req, res) {
   try {
     const payload = { ...(req.body || {}) };
     delete payload.id;
@@ -10189,28 +10247,97 @@ app.put('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
+}
+app.patch('/api/estoque_materiais/:id', authMiddleware, _updateEstoqueMateriais);
+app.put('/api/estoque_materiais/:id', authMiddleware, _updateEstoqueMateriais);
+
+app.delete('/api/estoque_materiais/:id', authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await _updateCompatTable('estoque_materiais', req.params.id, { ativo: false });
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.post('/api/estoque_materiais/:id/movimentar', authMiddleware, async (req, res) => {
+  try {
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    const tipo = String(req.body?.tipo || '').trim();
+    const quantidade = Number(req.body?.quantidade || 0) || 0;
+    if (!tipo || !Number.isFinite(quantidade) || quantidade <= 0) {
+      return res.status(400).json({ ok: false, error: 'tipo_e_quantidade_obrigatorios' });
+    }
+    await _insertCompatTable('estoque_materiais_movimentos', {
+      empresa_id,
+      material_id: req.params.id,
+      tipo,
+      quantidade,
+      operador: req.body?.operador || null,
+      setor: req.body?.setor || null,
+      motivo: req.body?.motivo || null,
+      custo_unitario: req.body?.custo_unitario ?? null,
+      observacoes: req.body?.observacoes || null,
+      created_at: new Date().toISOString(),
+    });
+    const cur = await supabase.from('estoque_materiais').select('quantidade_atual,quantidade').eq('id', req.params.id).maybeSingle();
+    const atual = Number(cur?.data?.quantidade_atual ?? cur?.data?.quantidade ?? 0) || 0;
+    const nova = (tipo === 'entrada') ? (atual + quantidade) : (atual - quantidade);
+    const upd = { quantidade_atual: Math.max(0, nova), updated_at: new Date().toISOString() };
+    if (tipo === 'entrada') upd.ultima_entrada = new Date().toISOString();
+    if (tipo === 'saida') upd.ultima_saida = new Date().toISOString();
+    const { data, error } = await _updateCompatTable('estoque_materiais', req.params.id, upd);
+    if (error) throw error;
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
 });
 
 app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = _getEmpIdEstoque(req.usuario?.email);
+    const email = req.usuario?.email || req.user?.email || '';
+    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    const hoje = new Date();
+    const em30 = new Date(hoje.getTime() + 30 * 86400000);
 
-    let tintas = [];
-    try {
-      tintas = (await _queryByEmpresa(
-        'estoque_tintas',
-        'id,nome,quantidade_atual,quantidade_minima,unidade',
-        empresa_id,
-        'nome',
-        ''
-      )).data || [];
-    } catch (_) {}
+    const pickQtd = (x) => Number(x?.quantidade_atual ?? x?.quantidade ?? x?.qtd ?? 0) || 0;
+    const pickMin = (x) => Number(x?.quantidade_minima ?? x?.estoque_minimo ?? x?.minimo ?? 0) || 0;
+    const pickVal = (x) => {
+      const v = x?.validade ?? x?.data_validade ?? null;
+      if (!v) return null;
+      const d = new Date(String(v));
+      return Number.isFinite(d.getTime()) ? d : null;
+    };
+    const statusOf = (x) => {
+      const q = pickQtd(x);
+      const m = pickMin(x);
+      if (q <= 0) return 'zerado';
+      if (m > 0 && q <= m * 0.5) return 'critico';
+      if (m > 0 && q <= m) return 'baixo';
+      return 'ok';
+    };
+    const isVencendo = (x) => {
+      const d = pickVal(x);
+      if (!d) return false;
+      return d.getTime() >= hoje.getTime() && d.getTime() <= em30.getTime();
+    };
+    const sumValor = (items, getCusto) => (Array.isArray(items) ? items : []).reduce((s, it) => {
+      const q = pickQtd(it);
+      const c = Number(getCusto(it) || 0) || 0;
+      return s + (q * c);
+    }, 0);
+
+    const { data: tintasRaw } = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+    const { data: materiaisRaw } = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
 
     let chapas = [];
     try {
       chapas = (await _queryByEmpresa(
         'chapas_estoque_v2',
-        'id,nomenclatura,nome,quantidade,quantidade_atual,quantidade_minima,estoque_minimo',
+        '*',
         empresa_id,
         'nomenclatura',
         ''
@@ -10219,7 +10346,7 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
       try {
         chapas = (await _queryByEmpresa(
           'chapas_estoque',
-          'id,nomenclatura,nom,nome,quantidade,quantidade_atual,qtd,quantidade_minima,estoque_minimo',
+          '*',
           empresa_id,
           'nomenclatura',
           ''
@@ -10227,34 +10354,106 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
       } catch (_) {}
     }
 
-    const calcStatus = (items, campoAtual, campoMin) => {
-      const base = Array.isArray(items) ? items : [];
-      const criticos = base.filter((i) => Number(i?.[campoAtual] || 0) <= Number(i?.[campoMin] || 0)).length;
-      const alertas = base.filter((i) =>
-        Number(i?.[campoAtual] || 0) <= (Number(i?.[campoMin] || 0) * 1.2) &&
-        Number(i?.[campoAtual] || 0) > Number(i?.[campoMin] || 0)
-      ).length;
-      return {
-        total: base.length,
-        criticos,
-        alertas,
-        ok: Math.max(0, base.length - criticos - alertas)
-      };
-    };
-
+    const tintas = (Array.isArray(tintasRaw) ? tintasRaw : []).map((t) => ({
+      ...t,
+      quantidade_atual: pickQtd(t),
+      quantidade_minima: pickMin(t),
+      status: statusOf(t),
+      vencendo: isVencendo(t),
+    }));
+    const materiais = (Array.isArray(materiaisRaw) ? materiaisRaw : []).map((m) => ({
+      ...m,
+      quantidade_atual: pickQtd(m),
+      quantidade_minima: pickMin(m),
+      status: statusOf(m),
+      vencendo: isVencendo(m),
+    }));
     const chapasCanon = (Array.isArray(chapas) ? chapas : []).map((c) => ({
       ...c,
       nome: c?.nome || c?.nomenclatura || c?.nom || '',
-      quantidade: Number(c?.quantidade_atual ?? c?.quantidade ?? c?.qtd ?? 0) || 0,
-      quantidade_minima: Number(c?.quantidade_minima ?? c?.estoque_minimo ?? 0) || 0,
+      quantidade_atual: pickQtd(c),
+      quantidade_minima: pickMin(c),
+      status: statusOf(c),
+      vencendo: false,
     }));
+
+    const countStatus = (items) => {
+      const base = Array.isArray(items) ? items : [];
+      const critico = base.filter((i) => i.status === 'critico' || i.status === 'zerado').length;
+      const alerta = base.filter((i) => i.status === 'baixo').length;
+      const okC = base.filter((i) => i.status === 'ok').length;
+      const venc = base.filter((i) => !!i.vencendo).length;
+      return { total: base.length, critico, criticos: critico, alerta, alertas: alerta, ok: okC, vencendo: venc };
+    };
+
+    const tintasAgg = countStatus(tintas);
+    const materiaisAgg = countStatus(materiais);
+    const chapasAgg = countStatus(chapasCanon);
+
+    const valorTintas = sumValor(tintas, (t) => t?.custo_unitario ?? t?.preco_kg ?? 0);
+    const valorMateriais = sumValor(materiais, (m) => m?.custo_medio ?? m?.custo_unitario ?? m?.ultimo_custo ?? 0);
+    const valorChapas = 0;
+    const valorTotal = valorTintas + valorMateriais + valorChapas;
+
+    const alertas = [];
+    const pushAlertas = (categoria, items) => {
+      (Array.isArray(items) ? items : []).forEach((it) => {
+        if (!(it.status === 'critico' || it.status === 'zerado' || it.status === 'baixo' || it.vencendo)) return;
+        alertas.push({
+          categoria,
+          id: it?.id || null,
+          nome: it?.nome || it?.nomenclatura || it?.nom || '',
+          quantidade_atual: it?.quantidade_atual ?? 0,
+          unidade: it?.unidade || it?.un || null,
+          quantidade_minima: it?.quantidade_minima ?? 0,
+          status: it.status,
+          vencendo: !!it.vencendo,
+          validade: it?.validade ?? it?.data_validade ?? null,
+        });
+      });
+    };
+    pushAlertas('Tintas', tintas);
+    pushAlertas('Materiais', materiais);
+    pushAlertas('Chapas', chapasCanon);
+    alertas.sort((a, b) => {
+      const p = (x) => (x.status === 'zerado' ? 4 : x.status === 'critico' ? 3 : x.vencendo ? 2 : x.status === 'baixo' ? 1 : 0);
+      return p(b) - p(a);
+    });
+
+    const movs = [];
+    try {
+      const tmov = await supabase.from('estoque_tintas_movimentos').select('*').eq('empresa_id', empresa_id).order('created_at', { ascending: false }).limit(10);
+      if (!tmov.error && Array.isArray(tmov.data)) movs.push(...tmov.data.map((m) => ({ ...m, categoria: 'Tintas' })));
+    } catch (_) {}
+    try {
+      const mmov = await supabase.from('estoque_materiais_movimentos').select('*').eq('empresa_id', empresa_id).order('created_at', { ascending: false }).limit(10);
+      if (!mmov.error && Array.isArray(mmov.data)) movs.push(...mmov.data.map((m) => ({ ...m, categoria: 'Materiais' })));
+    } catch (_) {}
+    movs.sort((a, b) => String(b?.created_at || '').localeCompare(String(a?.created_at || '')));
+    const movimentos = movs.slice(0, 10);
 
     return res.json({
       ok: true,
-      tintas: calcStatus(tintas, 'quantidade_atual', 'quantidade_minima'),
-      chapas: calcStatus(chapasCanon, 'quantidade', 'quantidade_minima'),
-      tintas_data: tintas || [],
-      chapas_data: chapasCanon || [],
+      cards: {
+        valor_total: valorTotal,
+        itens_criticos: tintasAgg.critico + materiaisAgg.critico + chapasAgg.critico,
+        vencendo_30d: tintasAgg.vencendo + materiaisAgg.vencendo,
+        total_itens: tintasAgg.total + materiaisAgg.total + chapasAgg.total,
+      },
+      valores: {
+        tintas: valorTintas,
+        materiais: valorMateriais,
+        chapas: valorChapas,
+        outros: 0,
+      },
+      alertas,
+      movimentos,
+      tintas: tintasAgg,
+      materiais: materiaisAgg,
+      chapas: chapasAgg,
+      tintas_data: tintas,
+      materiais_data: materiais,
+      chapas_data: chapasCanon,
     });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });

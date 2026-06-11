@@ -5018,7 +5018,87 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  function _getInputVal(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function _getNumVal(id) {
+    var n = Number(_getInputVal(id).replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function _getToken() {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
+    return token;
+  }
+
+  function _fmtDateISO(v) {
+    if (!v) return '';
+    var s = String(v).trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    var d = new Date(s);
+    if (!Number.isFinite(d.getTime())) return '';
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return String(d.getFullYear()) + '-' + mm + '-' + dd;
+  }
+
+  function _statusBadgeHtml(status, vencendo) {
+    var s = String(status || '');
+    if (vencendo) return '<span class="badge badge-venc">Venc.</span>';
+    if (s === 'zerado') return '<span class="badge badge-zerado">Zerado</span>';
+    if (s === 'critico') return '<span class="badge badge-critico">Crítico</span>';
+    if (s === 'baixo') return '<span class="badge badge-baixo">Baixo</span>';
+    return '<span class="badge badge-ok">OK</span>';
+  }
+
+  function _calcStatus(qtd, minimo) {
+    var q = num(qtd);
+    var m = num(minimo);
+    if (q <= 0) return 'zerado';
+    if (m > 0 && q <= m * 0.5) return 'critico';
+    if (m > 0 && q <= m) return 'baixo';
+    return 'ok';
+  }
+
+  function _isVencendo(validade) {
+    if (!validade) return false;
+    var d = new Date(String(validade));
+    if (!Number.isFinite(d.getTime())) return false;
+    var hoje = new Date();
+    var em30 = new Date(hoje.getTime() + 30 * 86400000);
+    return d.getTime() >= hoje.getTime() && d.getTime() <= em30.getTime();
+  }
+
+  function _ensureEstoqueStyle() {
+    if (document.getElementById('patch-estoques-style')) return;
+    var st = document.createElement('style');
+    st.id = 'patch-estoques-style';
+    st.textContent =
+      '.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:800;white-space:nowrap}' +
+      '.badge-ok{ background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; }' +
+      '.badge-baixo{ background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid #f59e0b; }' +
+      '.badge-critico{ background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }' +
+      '.badge-zerado{ background: rgba(127,29,29,0.3); color: #fca5a5; border: 1px solid #ef4444; }' +
+      '.badge-venc{ background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid #a855f7; }' +
+      '.pcp-table{width:100%;border-collapse:collapse;font-size:13px}' +
+      '.pcp-table th{color:var(--text2);text-align:left;padding:10px;border-bottom:2px solid var(--border);font-size:12px;letter-spacing:0.3px}' +
+      '.pcp-table td{padding:10px;border-bottom:1px solid var(--border);color:var(--text)}' +
+      '.pcp-table td.muted{color:var(--text2)}' +
+      '.pcp-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}' +
+      '.pcp-btn{display:inline-flex;align-items:center;gap:6px;border-radius:8px;padding:6px 10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;font-size:12px}' +
+      '.pcp-btn.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:700}' +
+      '.pcp-btn.danger{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.35);color:#ef4444;font-weight:800}' +
+      '.pcp-input{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}' +
+      '.pcp-select{padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px}';
+    document.head.appendChild(st);
+  }
+
   function _abrirModalNovaTinta(tintaExistente) {
+    _ensureEstoqueStyle();
     fechaModalById('modal-nova-tinta');
     var t = tintaExistente || {};
     var titulo = t && t.id ? 'Editar Tinta' : 'Nova Tinta';
@@ -5026,35 +5106,52 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     modal.id = 'modal-nova-tinta';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
     modal.innerHTML =
-      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">🎨 ' + titulo + '</h3>' +
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:820px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🎨 ' + esc(titulo) + '</h3>' +
           '<button id="nt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">NOME *</label><input id="nt-nome" value="' + safeAttr(t.nome || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CÓDIGO</label><input id="nt-codigo" value="' + safeAttr(t.codigo || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">TIPO</label><select id="nt-tipo" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
-            ['','Base água','UV','Verniz','Preto','Branco','Pantone','Outro'].map(function(o) {
-              var txt = o || 'Selecionar...';
-              return '<option value="' + safeAttr(o) + '"' + (String(t.tipo || '') === String(o) ? ' selected' : '') + '>' + safeAttr(txt) + '</option>';
-            }).join('') +
-          '</select></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">COR</label><div style="display:flex;gap:8px;align-items:center;margin-top:4px"><input id="nt-cor-picker" type="color" value="' + safeAttr((String(t.cor || '').match(/^#/) ? t.cor : '#000000')) + '" style="width:56px;height:38px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:4px"><input id="nt-cor" value="' + safeAttr(t.cor || '') + '" style="flex:1;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text)"></div></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">FABRICANTE</label><input id="nt-fabricante" value="' + safeAttr(t.fabricante || t.fornecedor || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">LOTE</label><input id="nt-lote" value="' + safeAttr(t.lote || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">QTD ATUAL</label><input id="nt-qtd" type="number" value="' + safeAttr(t.quantidade_atual != null ? t.quantidade_atual : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">QTD MÍNIMA</label><input id="nt-qtd-min" type="number" value="' + safeAttr(t.quantidade_minima != null ? t.quantidade_minima : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">UNIDADE</label><select id="nt-unidade" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
-            ['kg','litro','g','ml'].map(function(u) { return '<option value="' + u + '"' + (String(t.unidade || 'kg') === String(u) ? ' selected' : '') + '>' + u + '</option>'; }).join('') +
-          '</select></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CUSTO/UNIDADE (R$)</label><input id="nt-custo" type="number" step="0.01" value="' + safeAttr(t.custo_unitario != null ? t.custo_unitario : (t.preco_kg != null ? t.preco_kg : 0)) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">LOCALIZAÇÃO</label><input id="nt-local" value="' + safeAttr(t.localizacao || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">VALIDADE</label><input id="nt-validade" type="date" value="' + safeAttr(t.data_validade || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Nome *</label><input id="nt-nome" class="pcp-input" value="' + safeAttr(t.nome || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código</label><input id="nt-codigo" class="pcp-input" value="' + safeAttr(t.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Pantone</label><input id="nt-pantone" class="pcp-input" value="' + safeAttr(t.pantone || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Cor</label>' +
+            '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">' +
+              '<input id="nt-cor-picker" type="color" value="' + safeAttr((String(t.cor || '').match(/^#/) ? t.cor : '#000000')) + '" style="width:56px;height:38px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:4px">' +
+              '<input id="nt-cor" class="pcp-input" value="' + safeAttr(t.cor || '') + '" style="flex:1">' +
+            '</div>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Tipo</label>' +
+            '<select id="nt-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
+              '<option value="">Selecionar...</option>' +
+              [
+                { v: 'base_agua', l: 'Base Água' },
+                { v: 'uv', l: 'UV' },
+                { v: 'verniz', l: 'Verniz' },
+                { v: 'outro', l: 'Outro' }
+              ].map(function(o) { return '<option value="' + o.v + '"' + (String(t.tipo || '') === o.v ? ' selected' : '') + '>' + o.l + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Fabricante</label><input id="nt-fabricante" class="pcp-input" value="' + safeAttr(t.fabricante || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Fornecedor</label><input id="nt-fornecedor" class="pcp-input" value="' + safeAttr(t.fornecedor || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Lote</label><input id="nt-lote" class="pcp-input" value="' + safeAttr(t.lote || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Validade</label><input id="nt-validade" type="date" class="pcp-input" value="' + safeAttr(_fmtDateISO(t.validade || t.data_validade || '')) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Unidade</label>' +
+            '<select id="nt-unidade" class="pcp-select" style="width:100%;margin-top:4px">' +
+              ['kg', 'litro'].map(function(u) { return '<option value="' + u + '"' + (String(t.unidade || 'kg') === u ? ' selected' : '') + '>' + u + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Peso líquido</label><input id="nt-peso" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.peso_liquido != null ? t.peso_liquido : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade atual *</label><input id="nt-qtd" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_atual != null ? t.quantidade_atual : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade mínima</label><input id="nt-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_minima != null ? t.quantidade_minima : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade ideal</label><input id="nt-qtd-ideal" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_ideal != null ? t.quantidade_ideal : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="nt-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.custo_unitario != null ? t.custo_unitario : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Localização</label><input id="nt-local" class="pcp-input" value="' + safeAttr(t.localizacao || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="nt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:90px;resize:vertical">' + esc(t.observacoes || '') + '</textarea></div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">' +
-          '<button id="nt-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
-          '<button id="nt-salvar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">💾 Salvar</button>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+          '<button id="nt-cancelar" class="pcp-btn">Cancelar</button>' +
+          '<button id="nt-salvar" class="pcp-btn primary">💾 Salvar</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -5063,7 +5160,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (corPicker && corInput) {
       corPicker.oninput = function() { corInput.value = corPicker.value; };
       corInput.oninput = function() {
-        if (/^#[0-9a-f]{6}$/i.test(String(corInput.value || '').trim())) corPicker.value = String(corInput.value || '').trim();
+        var v = String(corInput.value || '').trim();
+        if (/^#[0-9a-f]{6}$/i.test(v)) corPicker.value = v;
       };
     }
     document.getElementById('nt-fechar').onclick = function() { fechaModalById('modal-nova-tinta'); };
@@ -5071,47 +5169,142 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     document.getElementById('nt-salvar').onclick = function() { window._salvarTinta(String(t.id || '')); };
   }
 
+  function _abrirModalMovTinta(tinta) {
+    _ensureEstoqueStyle();
+    fechaModalById('modal-mov-tinta');
+    var t = tinta || {};
+    var modal = document.createElement('div');
+    modal.id = 'modal-mov-tinta';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML =
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">↕ Movimentar Tinta</h3>' +
+          '<button id="mt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="color:var(--text2);font-size:12px;margin-bottom:10px">Tinta</div>' +
+        '<div style="font-weight:900;color:var(--text);margin-bottom:14px">' + esc(t.nome || '-') + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          '<div><label style="color:var(--text2);font-size:12px">Tipo *</label>' +
+            '<select id="mt-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
+              '<option value="entrada">Entrada ↓</option>' +
+              '<option value="saida">Saída ↑</option>' +
+              '<option value="ajuste">Ajuste</option>' +
+              '<option value="perda">Perda</option>' +
+              '<option value="inventario">Inventário</option>' +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade *</label><input id="mt-qtd" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Operador</label><input id="mt-operador" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Setor</label>' +
+            '<select id="mt-setor" class="pcp-select" style="width:100%;margin-top:4px">' +
+              ['Produção','Manutenção','Expedição','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Nº OF</label><input id="mt-of" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="mt-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Motivo</label><input id="mt-motivo" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="mt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+          '<button id="mt-cancelar" class="pcp-btn">Cancelar</button>' +
+          '<button id="mt-confirmar" class="pcp-btn primary">Confirmar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    document.getElementById('mt-fechar').onclick = function() { fechaModalById('modal-mov-tinta'); };
+    document.getElementById('mt-cancelar').onclick = function() { fechaModalById('modal-mov-tinta'); };
+    document.getElementById('mt-confirmar').onclick = function() { window._movimentarTinta(String(t.id || '')); };
+  }
+
   async function _salvarTinta(id) {
-    var token = '';
-    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
     var payload = {
-      nome: String(document.getElementById('nt-nome') && document.getElementById('nt-nome').value || '').trim(),
-      codigo: String(document.getElementById('nt-codigo') && document.getElementById('nt-codigo').value || '').trim(),
-      tipo: String(document.getElementById('nt-tipo') && document.getElementById('nt-tipo').value || '').trim(),
-      cor: String(document.getElementById('nt-cor') && document.getElementById('nt-cor').value || '').trim(),
-      fabricante: String(document.getElementById('nt-fabricante') && document.getElementById('nt-fabricante').value || '').trim(),
-      fornecedor: String(document.getElementById('nt-fabricante') && document.getElementById('nt-fabricante').value || '').trim(),
-      lote: String(document.getElementById('nt-lote') && document.getElementById('nt-lote').value || '').trim(),
-      quantidade_atual: parseFloat(document.getElementById('nt-qtd') && document.getElementById('nt-qtd').value || 0) || 0,
-      quantidade_minima: parseFloat(document.getElementById('nt-qtd-min') && document.getElementById('nt-qtd-min').value || 0) || 0,
-      unidade: String(document.getElementById('nt-unidade') && document.getElementById('nt-unidade').value || '').trim(),
-      custo_unitario: parseFloat(document.getElementById('nt-custo') && document.getElementById('nt-custo').value || 0) || 0,
-      preco_kg: parseFloat(document.getElementById('nt-custo') && document.getElementById('nt-custo').value || 0) || 0,
-      localizacao: String(document.getElementById('nt-local') && document.getElementById('nt-local').value || '').trim(),
-      data_validade: (document.getElementById('nt-validade') && document.getElementById('nt-validade').value) || null
+      nome: _getInputVal('nt-nome'),
+      codigo: _getInputVal('nt-codigo'),
+      cor: _getInputVal('nt-cor'),
+      tipo: _getInputVal('nt-tipo'),
+      pantone: _getInputVal('nt-pantone'),
+      fabricante: _getInputVal('nt-fabricante'),
+      fornecedor: _getInputVal('nt-fornecedor'),
+      lote: _getInputVal('nt-lote'),
+      validade: _getInputVal('nt-validade') || null,
+      unidade: _getInputVal('nt-unidade') || 'kg',
+      peso_liquido: _getNumVal('nt-peso'),
+      quantidade_atual: _getNumVal('nt-qtd'),
+      quantidade_minima: _getNumVal('nt-qtd-min'),
+      quantidade_ideal: _getNumVal('nt-qtd-ideal'),
+      custo_unitario: _getNumVal('nt-custo'),
+      localizacao: _getInputVal('nt-local'),
+      observacoes: (function() { var el = document.getElementById('nt-obs'); return el ? String(el.value || '') : ''; })(),
+      ativo: true
     };
     if (!payload.nome) { alert('Nome é obrigatório'); return; }
-    var method = id ? 'PUT' : 'POST';
+    var token = _getToken();
+    var method = id ? 'PATCH' : 'POST';
     var url = id ? ('/api/estoque_tintas/' + encodeURIComponent(id)) : '/api/estoque_tintas';
     var resp = await fetch(url, {
       method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? ('Bearer ' + token) : ''
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': token ? ('Bearer ' + token) : '' },
       body: JSON.stringify(payload)
     });
     var json = await resp.json().catch(function() { return null; });
-    if (json && json.ok) {
+    if (json && (json.ok || json.id)) {
       fechaModalById('modal-nova-tinta');
       var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
       _renderEstoqueTintas(host);
       return;
     }
-    alert('Erro: ' + ((json && json.error) || 'desconhecido'));
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
+  }
+
+  async function _excluirTinta(id) {
+    if (!id) return;
+    if (!confirm('Desativar esta tinta?')) return;
+    var token = _getToken();
+    var resp = await fetch('/api/estoque_tintas/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { 'Authorization': token ? ('Bearer ' + token) : '' }
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && (json.ok || json.data)) {
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueTintas(host);
+      return;
+    }
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
+  }
+
+  async function _movimentarTinta(id) {
+    if (!id) return;
+    var payload = {
+      tipo: _getInputVal('mt-tipo'),
+      quantidade: _getNumVal('mt-qtd'),
+      operador: _getInputVal('mt-operador'),
+      setor: _getInputVal('mt-setor'),
+      of_numero: _getInputVal('mt-of'),
+      motivo: _getInputVal('mt-motivo'),
+      custo_unitario: _getNumVal('mt-custo'),
+      observacoes: (function() { var el = document.getElementById('mt-obs'); return el ? String(el.value || '') : ''; })(),
+    };
+    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade são obrigatórios'); return; }
+    var token = _getToken();
+    var resp = await fetch('/api/estoque_tintas/' + encodeURIComponent(id) + '/movimentar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': token ? ('Bearer ' + token) : '' },
+      body: JSON.stringify(payload)
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && json.ok) {
+      fechaModalById('modal-mov-tinta');
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueTintas(host);
+      return;
+    }
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
   }
 
   function _abrirModalNovoMaterial(materialExistente) {
+    _ensureEstoqueStyle();
     fechaModalById('modal-novo-material');
     var m = materialExistente || {};
     var titulo = m && m.id ? 'Editar Material' : 'Novo Material';
@@ -5119,214 +5312,668 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     modal.id = 'modal-novo-material';
     modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
     modal.innerHTML =
-      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">🔧 ' + titulo + '</h3>' +
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:900px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🔩 ' + esc(titulo) + '</h3>' +
           '<button id="nm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">NOME *</label><input id="nm-nome" value="' + safeAttr(m.nome || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CÓDIGO</label><input id="nm-codigo" value="' + safeAttr(m.codigo || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CATEGORIA</label><select id="nm-categoria" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
-            ['Ferramentas','EPIs','Manutenção','Escritório','Limpeza','Produção','Expedição','Outro'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.categoria || '') === String(o) ? ' selected' : '') + '>' + safeAttr(o) + '</option>'; }).join('') +
-          '</select></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">UNIDADE</label><select id="nm-unidade" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px">' +
-            ['un','cx','kg','litro','m','m²','par'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.unidade || 'un') === String(o) ? ' selected' : '') + '>' + safeAttr(o) + '</option>'; }).join('') +
-          '</select></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">FORNECEDOR</label><input id="nm-fornecedor" value="' + safeAttr(m.fornecedor || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">LOCALIZAÇÃO</label><input id="nm-local" value="' + safeAttr(m.localizacao || '') + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">QTD ATUAL</label><input id="nm-qtd" type="number" value="' + safeAttr(m.quantidade_atual != null ? m.quantidade_atual : (m.quantidade != null ? m.quantidade : 0)) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">QTD MÍNIMA</label><input id="nm-qtd-min" type="number" value="' + safeAttr(m.quantidade_minima != null ? m.quantidade_minima : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CUSTO UNITÁRIO</label><input id="nm-custo" type="number" step="0.01" value="' + safeAttr(m.custo_unitario != null ? m.custo_unitario : 0) + '" style="width:100%;padding:8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Nome *</label><input id="nm-nome" class="pcp-input" value="' + safeAttr(m.nome || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código</label><input id="nm-codigo" class="pcp-input" value="' + safeAttr(m.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Categoria *</label>' +
+            '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">' +
+              '<select id="nm-categoria" class="pcp-select" style="flex:1">' +
+                ['Ferramentas','EPIs','Manutenção','Escritório','Limpeza','Produção','Expedição','Outro'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.categoria || '') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+              '</select>' +
+              '<button id="nm-nova-cat" class="pcp-btn" type="button">Nova</button>' +
+            '</div>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Subcategoria</label><input id="nm-subcategoria" class="pcp-input" value="' + safeAttr(m.subcategoria || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Marca</label><input id="nm-marca" class="pcp-input" value="' + safeAttr(m.marca || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Fornecedor</label><input id="nm-fornecedor" class="pcp-input" value="' + safeAttr(m.fornecedor || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Unidade</label>' +
+            '<select id="nm-unidade" class="pcp-select" style="width:100%;margin-top:4px">' +
+              ['un','kg','litro','metro','caixa','pacote','par','m²','m'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.unidade || 'un') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código de barras</label><input id="nm-codbarras" class="pcp-input" value="' + safeAttr(m.codigo_barras || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Validade</label><input id="nm-validade" type="date" class="pcp-input" value="' + safeAttr(_fmtDateISO(m.validade || m.data_validade || '')) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd atual *</label><input id="nm-qtd" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_atual != null ? m.quantidade_atual : (m.quantidade != null ? m.quantidade : 0)) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd mínima</label><input id="nm-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_minima != null ? m.quantidade_minima : (m.estoque_minimo != null ? m.estoque_minimo : 0)) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd ideal</label><input id="nm-qtd-ideal" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_ideal != null ? m.quantidade_ideal : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd máxima</label><input id="nm-qtd-max" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_maxima != null ? m.quantidade_maxima : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo médio (R$)</label><input id="nm-custo-medio" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.custo_medio != null ? m.custo_medio : (m.custo_unitario != null ? m.custo_unitario : 0)) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Último custo (R$)</label><input id="nm-ultimo-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.ultimo_custo != null ? m.ultimo_custo : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Corredor</label><input id="nm-loc-cor" class="pcp-input" value="' + safeAttr(m.localizacao_corredor || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Prateleira</label><input id="nm-loc-pra" class="pcp-input" value="' + safeAttr(m.localizacao_prateleira || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Caixa/Gaveta</label><input id="nm-loc-cai" class="pcp-input" value="' + safeAttr(m.localizacao_caixa || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Descrição</label><textarea id="nm-desc" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.descricao || '') + '</textarea></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="nm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.observacoes || '') + '</textarea></div>' +
         '</div>' +
-        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px">' +
-          '<button id="nm-cancelar" style="padding:8px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer">Cancelar</button>' +
-          '<button id="nm-salvar" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:600">💾 Salvar</button>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+          '<button id="nm-cancelar" class="pcp-btn">Cancelar</button>' +
+          '<button id="nm-salvar" class="pcp-btn primary">💾 Salvar</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
     document.getElementById('nm-fechar').onclick = function() { fechaModalById('modal-novo-material'); };
     document.getElementById('nm-cancelar').onclick = function() { fechaModalById('modal-novo-material'); };
     document.getElementById('nm-salvar').onclick = function() { window._salvarMaterial(String(m.id || '')); };
+    document.getElementById('nm-nova-cat').onclick = function() {
+      var n = prompt('Nova categoria:');
+      if (!n) return;
+      n = String(n).trim();
+      if (!n) return;
+      var sel = document.getElementById('nm-categoria');
+      if (!sel) return;
+      var opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      sel.appendChild(opt);
+      sel.value = n;
+    };
+  }
+
+  function _abrirModalMovMaterial(material) {
+    _ensureEstoqueStyle();
+    fechaModalById('modal-mov-material');
+    var m = material || {};
+    var modal = document.createElement('div');
+    modal.id = 'modal-mov-material';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML =
+      '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">↕ Movimentar Material</h3>' +
+          '<button id="mm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="color:var(--text2);font-size:12px;margin-bottom:10px">Material</div>' +
+        '<div style="font-weight:900;color:var(--text);margin-bottom:14px">' + esc(m.nome || '-') + '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+          '<div><label style="color:var(--text2);font-size:12px">Tipo *</label>' +
+            '<select id="mm-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
+              '<option value="entrada">Entrada ↓</option>' +
+              '<option value="saida">Saída ↑</option>' +
+              '<option value="ajuste">Ajuste</option>' +
+              '<option value="perda">Perda</option>' +
+              '<option value="inventario">Inventário</option>' +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade *</label><input id="mm-qtd" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Operador</label><input id="mm-operador" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Setor</label>' +
+            '<select id="mm-setor" class="pcp-select" style="width:100%;margin-top:4px">' +
+              ['Produção','Manutenção','Expedição','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="mm-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Motivo</label><input id="mm-motivo" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="mm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
+          '<button id="mm-cancelar" class="pcp-btn">Cancelar</button>' +
+          '<button id="mm-confirmar" class="pcp-btn primary">Confirmar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    document.getElementById('mm-fechar').onclick = function() { fechaModalById('modal-mov-material'); };
+    document.getElementById('mm-cancelar').onclick = function() { fechaModalById('modal-mov-material'); };
+    document.getElementById('mm-confirmar').onclick = function() { window._movimentarMaterial(String(m.id || '')); };
   }
 
   async function _salvarMaterial(id) {
-    var token = '';
-    try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
     var payload = {
-      nome: String(document.getElementById('nm-nome') && document.getElementById('nm-nome').value || '').trim(),
-      codigo: String(document.getElementById('nm-codigo') && document.getElementById('nm-codigo').value || '').trim(),
-      categoria: String(document.getElementById('nm-categoria') && document.getElementById('nm-categoria').value || '').trim(),
-      unidade: String(document.getElementById('nm-unidade') && document.getElementById('nm-unidade').value || '').trim(),
-      fornecedor: String(document.getElementById('nm-fornecedor') && document.getElementById('nm-fornecedor').value || '').trim(),
-      localizacao: String(document.getElementById('nm-local') && document.getElementById('nm-local').value || '').trim(),
-      quantidade_atual: parseFloat(document.getElementById('nm-qtd') && document.getElementById('nm-qtd').value || 0) || 0,
-      quantidade_minima: parseFloat(document.getElementById('nm-qtd-min') && document.getElementById('nm-qtd-min').value || 0) || 0,
-      custo_unitario: parseFloat(document.getElementById('nm-custo') && document.getElementById('nm-custo').value || 0) || 0
+      nome: _getInputVal('nm-nome'),
+      codigo: _getInputVal('nm-codigo'),
+      categoria: _getInputVal('nm-categoria'),
+      subcategoria: _getInputVal('nm-subcategoria'),
+      marca: _getInputVal('nm-marca'),
+      fornecedor: _getInputVal('nm-fornecedor'),
+      unidade: _getInputVal('nm-unidade'),
+      codigo_barras: _getInputVal('nm-codbarras'),
+      validade: _getInputVal('nm-validade') || null,
+      quantidade_atual: _getNumVal('nm-qtd'),
+      quantidade_minima: _getNumVal('nm-qtd-min'),
+      quantidade_ideal: _getNumVal('nm-qtd-ideal'),
+      quantidade_maxima: _getNumVal('nm-qtd-max'),
+      custo_medio: _getNumVal('nm-custo-medio'),
+      ultimo_custo: _getNumVal('nm-ultimo-custo'),
+      localizacao_corredor: _getInputVal('nm-loc-cor'),
+      localizacao_prateleira: _getInputVal('nm-loc-pra'),
+      localizacao_caixa: _getInputVal('nm-loc-cai'),
+      descricao: (function() { var el = document.getElementById('nm-desc'); return el ? String(el.value || '') : ''; })(),
+      observacoes: (function() { var el = document.getElementById('nm-obs'); return el ? String(el.value || '') : ''; })(),
+      ativo: true
     };
     if (!payload.nome) { alert('Nome é obrigatório'); return; }
-    var method = id ? 'PUT' : 'POST';
+    if (!payload.categoria) { alert('Categoria é obrigatória'); return; }
+    var token = _getToken();
+    var method = id ? 'PATCH' : 'POST';
     var url = id ? ('/api/estoque_materiais/' + encodeURIComponent(id)) : '/api/estoque_materiais';
     var resp = await fetch(url, {
       method: method,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token ? ('Bearer ' + token) : ''
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': token ? ('Bearer ' + token) : '' },
       body: JSON.stringify(payload)
     });
     var json = await resp.json().catch(function() { return null; });
-    if (json && json.ok) {
+    if (json && (json.ok || json.id)) {
       fechaModalById('modal-novo-material');
       var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
       _renderEstoqueMateriais(host);
       return;
     }
-    alert('Erro: ' + ((json && json.error) || 'desconhecido'));
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
+  }
+
+  async function _excluirMaterial(id) {
+    if (!id) return;
+    if (!confirm('Desativar este material?')) return;
+    var token = _getToken();
+    var resp = await fetch('/api/estoque_materiais/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { 'Authorization': token ? ('Bearer ' + token) : '' }
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && (json.ok || json.data)) {
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueMateriais(host);
+      return;
+    }
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
+  }
+
+  async function _movimentarMaterial(id) {
+    if (!id) return;
+    var payload = {
+      tipo: _getInputVal('mm-tipo'),
+      quantidade: _getNumVal('mm-qtd'),
+      operador: _getInputVal('mm-operador'),
+      setor: _getInputVal('mm-setor'),
+      motivo: _getInputVal('mm-motivo'),
+      custo_unitario: _getNumVal('mm-custo'),
+      observacoes: (function() { var el = document.getElementById('mm-obs'); return el ? String(el.value || '') : ''; })(),
+    };
+    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade são obrigatórios'); return; }
+    var token = _getToken();
+    var resp = await fetch('/api/estoque_materiais/' + encodeURIComponent(id) + '/movimentar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': token ? ('Bearer ' + token) : '' },
+      body: JSON.stringify(payload)
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (json && json.ok) {
+      fechaModalById('modal-mov-material');
+      var host = document.getElementById('patch-page-body') || document.getElementById('patch-page-host');
+      _renderEstoqueMateriais(host);
+      return;
+    }
+    alert('Erro: ' + ((json && (json.error || json.message)) || 'desconhecido'));
   }
 
   window._abrirModalNovaTinta = _abrirModalNovaTinta;
   window._salvarTinta = _salvarTinta;
+  window._movimentarTinta = _movimentarTinta;
+  window._abrirModalMovTinta = _abrirModalMovTinta;
+  window._excluirTinta = _excluirTinta;
   window._abrirModalNovoMaterial = _abrirModalNovoMaterial;
   window._salvarMaterial = _salvarMaterial;
+  window._movimentarMaterial = _movimentarMaterial;
+  window._abrirModalMovMaterial = _abrirModalMovMaterial;
+  window._excluirMaterial = _excluirMaterial;
 
   function _renderEstoqueTintas(main) {
     main = main || getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
     if (!main) return;
-    main.innerHTML = '<div id="patch-tintas" style="padding:20px">Carregando tintas...</div>';
+    _ensureEstoqueStyle();
+    main.innerHTML =
+      '<div id="patch-tintas">' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
+          '<button class="pcp-btn primary" id="btn-nova-tinta" type="button">+ Nova Tinta</button>' +
+          '<input id="patch-tintas-q" class="pcp-input" placeholder="🔍 buscar..." style="min-width:220px;flex:1" />' +
+          '<select id="patch-tintas-filtro" class="pcp-select" style="min-width:220px">' +
+            '<option value="">Todos</option>' +
+            '<option value="critico">Crítico</option>' +
+            '<option value="baixo">Alerta</option>' +
+            '<option value="ok">OK</option>' +
+            '<option value="vencendo">Vencendo</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="patch-tintas-body" style="color:var(--text2);padding:20px">Carregando...</div>' +
+      '</div>';
+
+    var inputQ = document.getElementById('patch-tintas-q');
+    var selF = document.getElementById('patch-tintas-filtro');
+    var body = document.getElementById('patch-tintas-body');
+    document.getElementById('btn-nova-tinta').onclick = function() { window._abrirModalNovaTinta(null); };
+
+    function renderRows(list) {
+      var q = String(inputQ && inputQ.value || '').trim().toLowerCase();
+      var f = String(selF && selF.value || '').trim();
+      var rows = (Array.isArray(list) ? list : []).map(function(t) {
+        var qtd = num(t && t.quantidade_atual);
+        var min = num(t && t.quantidade_minima);
+        var st = _calcStatus(qtd, min);
+        var venc = _isVencendo(t && (t.validade || t.data_validade));
+        return { raw: t, qtd: qtd, min: min, st: st, venc: venc };
+      }).filter(function(x) {
+        if (f === 'vencendo') return x.venc;
+        if (f && x.st !== f) return false;
+        if (!q) return true;
+        var t = x.raw || {};
+        var blob = [
+          t.nome, t.codigo, t.pantone, t.tipo, t.fabricante, t.fornecedor, t.lote
+        ].map(function(v) { return String(v || '').toLowerCase(); }).join(' ');
+        return blob.indexOf(q) >= 0;
+      });
+
+      window.__ESTOQUE_TINTAS_CACHE = rows.map(function(x) { return x.raw; });
+      window.__ESTOQUE_TINTAS_BYID = Object.create(null);
+      rows.forEach(function(x) { var id = String(x.raw && x.raw.id || '').trim(); if (id) window.__ESTOQUE_TINTAS_BYID[id] = x.raw; });
+
+      if (!rows.length) {
+        body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhuma tinta encontrada</div>';
+        return;
+      }
+
+      body.innerHTML =
+        '<table class="pcp-table">' +
+          '<thead>' +
+            '<tr>' +
+              '<th>Nome</th>' +
+              '<th>Cor</th>' +
+              '<th>Tipo</th>' +
+              '<th>Fabricante</th>' +
+              '<th style="text-align:center">Qtd Atual</th>' +
+              '<th style="text-align:center">Unidade</th>' +
+              '<th style="text-align:center">Mínimo</th>' +
+              '<th style="text-align:center">Status</th>' +
+              '<th style="text-align:center">Validade</th>' +
+              '<th style="text-align:right">Ações</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' +
+            rows.map(function(x) {
+              var t = x.raw || {};
+              var id = String(t.id || '');
+              var validade = t.validade || t.data_validade || '';
+              return '<tr>' +
+                '<td>' + esc(t.nome || '-') + '</td>' +
+                '<td class="muted">' + esc(t.cor || '-') + '</td>' +
+                '<td class="muted">' + esc(t.tipo || '-') + '</td>' +
+                '<td class="muted">' + esc(t.fabricante || t.fornecedor || '-') + '</td>' +
+                '<td style="text-align:center;font-weight:900;color:' + (x.st === 'zerado' || x.st === 'critico' ? '#ef4444' : 'var(--text)') + '">' + esc(String(x.qtd)) + '</td>' +
+                '<td style="text-align:center" class="muted">' + esc(t.unidade || '-') + '</td>' +
+                '<td style="text-align:center" class="muted">' + esc(String(x.min)) + '</td>' +
+                '<td style="text-align:center">' + _statusBadgeHtml(x.st, x.venc) + '</td>' +
+                '<td style="text-align:center" class="muted">' + esc(validade ? _fmtDateISO(validade).split('-').reverse().join('/') : '-') + '</td>' +
+                '<td style="text-align:right">' +
+                  '<div class="pcp-actions">' +
+                    '<button class="pcp-btn" type="button" onclick="window._abrirModalMovTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
+                    '<button class="pcp-btn" type="button" onclick="window._abrirModalNovaTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
+                    '<button class="pcp-btn danger" type="button" onclick="window._excluirTinta(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
+                  '</div>' +
+                '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>';
+    }
+
+    function wireFilters(list) {
+      if (inputQ) inputQ.oninput = function() { renderRows(list); };
+      if (selF) selF.onchange = function() { renderRows(list); };
+      renderRows(list);
+    }
+
     fetch('/api/estoque_tintas', { headers: authHeaders() })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        var container = document.getElementById('patch-tintas');
-        if (!container) return;
-        if (!res || !res.ok || !Array.isArray(res.data) || !res.data.length) {
-          container.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhuma tinta cadastrada</div>';
-          return;
-        }
-        container.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">' +
-            '<h2 style="color:var(--text);font-size:18px;margin:0">🎨 Estoque de Tintas</h2>' +
-            '<button onclick="_abrirModalNovaTinta()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Tinta</button>' +
-          '</div>' +
-          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
-            '<thead>' +
-              '<tr style="color:var(--text2);border-bottom:2px solid var(--border)">' +
-                '<th style="text-align:left;padding:10px">Nome</th>' +
-                '<th style="text-align:center;padding:10px">Qtd Atual</th>' +
-                '<th style="text-align:center;padding:10px">Qtd Minima</th>' +
-                '<th style="text-align:center;padding:10px">Unidade</th>' +
-                '<th style="text-align:center;padding:10px">Status</th>' +
-              '</tr>' +
-            '</thead>' +
-            '<tbody>' +
-              res.data.map(function(t) {
-                var atual = num(t && t.quantidade_atual);
-                var min = num(t && t.quantidade_minima);
-                var status = atual <= min ? '🔴 Critico' : (atual <= (min * 1.2) ? '🟡 Alerta' : '🟢 OK');
-                return '<tr style="border-bottom:1px solid var(--border)">' +
-                  '<td style="padding:10px;color:var(--text)">' + esc(t && t.nome || '-') + '</td>' +
-                  '<td style="padding:10px;text-align:center;font-weight:600;color:' + (atual <= min ? '#f75a5a' : 'var(--text)') + '">' + esc(String(atual)) + '</td>' +
-                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(String(min)) + '</td>' +
-                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(t && t.unidade || '-') + '</td>' +
-                  '<td style="padding:10px;text-align:center">' + status + '</td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>';
+        var data = res && (res.data || res) || [];
+        if (!Array.isArray(data)) data = [];
+        wireFilters(data);
       })
       .catch(function(e) {
-        var c = document.getElementById('patch-tintas');
-        if (c) c.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+        body.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
       });
   }
 
   function _renderEstoqueMateriais(main) {
     main = main || getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
     if (!main) return;
-    main.innerHTML = '<div id="patch-materiais" style="padding:20px">Carregando materiais...</div>';
+    _ensureEstoqueStyle();
+    main.innerHTML =
+      '<div id="patch-materiais">' +
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
+          '<button class="pcp-btn primary" id="btn-novo-material" type="button">+ Novo Material</button>' +
+          '<input id="patch-mat-q" class="pcp-input" placeholder="🔍 buscar..." style="min-width:220px;flex:1" />' +
+          '<select id="patch-mat-cat" class="pcp-select" style="min-width:220px"><option value="">Todas categorias</option></select>' +
+          '<select id="patch-mat-filtro" class="pcp-select" style="min-width:180px">' +
+            '<option value="">Todos</option>' +
+            '<option value="critico">Crítico</option>' +
+            '<option value="baixo">Alerta</option>' +
+            '<option value="ok">OK</option>' +
+            '<option value="vencendo">Vencendo</option>' +
+          '</select>' +
+        '</div>' +
+        '<div id="patch-materiais-body" style="color:var(--text2);padding:20px">Carregando...</div>' +
+      '</div>';
+
+    var inputQ = document.getElementById('patch-mat-q');
+    var selCat = document.getElementById('patch-mat-cat');
+    var selF = document.getElementById('patch-mat-filtro');
+    var body = document.getElementById('patch-materiais-body');
+    document.getElementById('btn-novo-material').onclick = function() { window._abrirModalNovoMaterial(null); };
+
+    function renderList(list) {
+      var q = String(inputQ && inputQ.value || '').trim().toLowerCase();
+      var cat = String(selCat && selCat.value || '').trim();
+      var f = String(selF && selF.value || '').trim();
+
+      var rows = (Array.isArray(list) ? list : []).map(function(m) {
+        var qtd = num(m && (m.quantidade_atual != null ? m.quantidade_atual : m.quantidade));
+        var min = num(m && (m.quantidade_minima != null ? m.quantidade_minima : m.estoque_minimo));
+        var st = _calcStatus(qtd, min);
+        var venc = _isVencendo(m && (m.validade || m.data_validade));
+        var categoria = String((m && (m.categoria || '')) || 'Sem categoria').trim() || 'Sem categoria';
+        var loc = [m.localizacao_corredor, m.localizacao_prateleira, m.localizacao_caixa].filter(Boolean).join('-') || (m.localizacao || '');
+        return { raw: m, qtd: qtd, min: min, st: st, venc: venc, categoria: categoria, loc: loc };
+      }).filter(function(x) {
+        if (cat && x.categoria !== cat) return false;
+        if (f === 'vencendo') return x.venc;
+        if (f && x.st !== f) return false;
+        if (!q) return true;
+        var m = x.raw || {};
+        var blob = [
+          m.codigo, m.nome, m.marca, m.categoria, m.subcategoria, m.fornecedor, m.codigo_barras
+        ].map(function(v) { return String(v || '').toLowerCase(); }).join(' ');
+        return blob.indexOf(q) >= 0;
+      });
+
+      window.__ESTOQUE_MATERIAIS_CACHE = rows.map(function(x) { return x.raw; });
+      window.__ESTOQUE_MATERIAIS_BYID = Object.create(null);
+      rows.forEach(function(x) { var id = String(x.raw && x.raw.id || '').trim(); if (id) window.__ESTOQUE_MATERIAIS_BYID[id] = x.raw; });
+
+      if (!rows.length) {
+        body.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhum material encontrado</div>';
+        return;
+      }
+
+      var grupos = {};
+      rows.forEach(function(x) {
+        if (!grupos[x.categoria]) grupos[x.categoria] = [];
+        grupos[x.categoria].push(x);
+      });
+      var cats = Object.keys(grupos).sort(function(a, b) { return a.localeCompare(b); });
+
+      body.innerHTML =
+        cats.map(function(categoria) {
+          var items = grupos[categoria] || [];
+          return '<details open style="margin-bottom:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:10px 12px">' +
+            '<summary style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;color:var(--text);font-weight:900">' +
+              '<span>' + esc(categoria) + '</span>' +
+              '<span style="color:var(--text2);font-weight:800;font-size:12px">' + esc(String(items.length)) + ' itens</span>' +
+            '</summary>' +
+            '<div style="margin-top:10px;overflow:auto">' +
+              '<table class="pcp-table">' +
+                '<thead>' +
+                  '<tr>' +
+                    '<th>Código</th>' +
+                    '<th>Nome</th>' +
+                    '<th>Marca</th>' +
+                    '<th style="text-align:center">Qtd Atual</th>' +
+                    '<th style="text-align:center">Unidade</th>' +
+                    '<th style="text-align:center">Mínimo</th>' +
+                    '<th>Localização</th>' +
+                    '<th style="text-align:center">Status</th>' +
+                    '<th style="text-align:right">Ações</th>' +
+                  '</tr>' +
+                '</thead>' +
+                '<tbody>' +
+                  items.map(function(x) {
+                    var m = x.raw || {};
+                    var id = String(m.id || '');
+                    return '<tr>' +
+                      '<td class="muted">' + esc(m.codigo || '-') + '</td>' +
+                      '<td>' + esc(m.nome || '-') + '</td>' +
+                      '<td class="muted">' + esc(m.marca || '-') + '</td>' +
+                      '<td style="text-align:center;font-weight:900;color:' + (x.st === 'zerado' || x.st === 'critico' ? '#ef4444' : 'var(--text)') + '">' + esc(String(x.qtd)) + '</td>' +
+                      '<td style="text-align:center" class="muted">' + esc(m.unidade || '-') + '</td>' +
+                      '<td style="text-align:center" class="muted">' + esc(String(x.min)) + '</td>' +
+                      '<td class="muted">' + esc(x.loc || '-') + '</td>' +
+                      '<td style="text-align:center">' + _statusBadgeHtml(x.st, x.venc) + '</td>' +
+                      '<td style="text-align:right">' +
+                        '<div class="pcp-actions">' +
+                          '<button class="pcp-btn" type="button" onclick="window._abrirModalMovMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
+                          '<button class="pcp-btn" type="button" onclick="window._abrirModalNovoMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
+                          '<button class="pcp-btn danger" type="button" onclick="window._excluirMaterial(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
+                        '</div>' +
+                      '</td>' +
+                    '</tr>';
+                  }).join('') +
+                '</tbody>' +
+              '</table>' +
+            '</div>' +
+          '</details>';
+        }).join('');
+    }
+
+    function fillCategorias(list) {
+      var set = {};
+      (Array.isArray(list) ? list : []).forEach(function(m) {
+        var c = String(m && m.categoria || '').trim();
+        if (!c) return;
+        set[c] = 1;
+      });
+      var cats = Object.keys(set).sort(function(a, b) { return a.localeCompare(b); });
+      if (selCat) {
+        cats.forEach(function(c) {
+          var opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          selCat.appendChild(opt);
+        });
+      }
+    }
+
+    function wire(list) {
+      fillCategorias(list);
+      if (inputQ) inputQ.oninput = function() { renderList(list); };
+      if (selCat) selCat.onchange = function() { renderList(list); };
+      if (selF) selF.onchange = function() { renderList(list); };
+      renderList(list);
+    }
+
     fetch('/api/estoque_materiais', { headers: authHeaders() })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        var container = document.getElementById('patch-materiais');
-        if (!container) return;
-        if (!res || !res.ok || !Array.isArray(res.data) || !res.data.length) {
-          container.innerHTML = '<div style="color:var(--text2);padding:40px;text-align:center">Nenhum material cadastrado</div>';
-          return;
-        }
-        container.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap">' +
-            '<h2 style="color:var(--text);font-size:18px;margin:0">🔧 Estoque de Materiais</h2>' +
-            '<button onclick="_abrirModalNovoMaterial()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px">+ Adicionar Material</button>' +
-          '</div>' +
-          '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
-            '<thead>' +
-              '<tr style="color:var(--text2);border-bottom:2px solid var(--border)">' +
-                '<th style="text-align:left;padding:10px">Nome</th>' +
-                '<th style="text-align:left;padding:10px">Categoria</th>' +
-                '<th style="text-align:center;padding:10px">Qtd Atual</th>' +
-                '<th style="text-align:center;padding:10px">Qtd Minima</th>' +
-                '<th style="text-align:center;padding:10px">Unidade</th>' +
-                '<th style="text-align:center;padding:10px">Status</th>' +
-              '</tr>' +
-            '</thead>' +
-            '<tbody>' +
-              res.data.map(function(m) {
-                var atual = num(m && (m.quantidade_atual != null ? m.quantidade_atual : m.quantidade));
-                var min = num(m && m.quantidade_minima);
-                var status = atual <= min ? '🔴 Critico' : (atual <= (min * 1.2) ? '🟡 Alerta' : '🟢 OK');
-                return '<tr style="border-bottom:1px solid var(--border)">' +
-                  '<td style="padding:10px;color:var(--text)">' + esc(m && m.nome || '-') + '</td>' +
-                  '<td style="padding:10px;color:var(--text2)">' + esc(m && (m.categoria || m.tipo || m.grupo) || '-') + '</td>' +
-                  '<td style="padding:10px;text-align:center;font-weight:600;color:' + (atual <= min ? '#f75a5a' : 'var(--text)') + '">' + esc(String(atual)) + '</td>' +
-                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(String(min)) + '</td>' +
-                  '<td style="padding:10px;text-align:center;color:var(--text2)">' + esc(m && m.unidade || '-') + '</td>' +
-                  '<td style="padding:10px;text-align:center">' + status + '</td>' +
-                '</tr>';
-              }).join('') +
-            '</tbody>' +
-          '</table>';
+        var data = res && (res.data || res) || [];
+        if (!Array.isArray(data)) data = [];
+        wire(data);
       })
       .catch(function(e) {
-        var c = document.getElementById('patch-materiais');
-        if (c) c.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+        body.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
       });
   }
 
   function _renderDashboardEstoques(main) {
     main = main || getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
     if (!main) return;
-    main.innerHTML = '<div id="patch-dashboard-estoques" style="padding:20px;color:var(--text2)">Carregando...</div>';
+    _ensureEstoqueStyle();
+    main.innerHTML =
+      '<div id="patch-dashboard-estoques">' +
+        '<div id="patch-dashboard-body" style="color:var(--text2);padding:20px">Carregando...</div>' +
+      '</div>';
+
+    function fmtBRL(v) {
+      var n = Number(v || 0) || 0;
+      try { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch (_) { return 'R$ ' + String(n.toFixed(2)); }
+    }
+
+    function ensureChartJs() {
+      return new Promise(function(resolve) {
+        try {
+          if (window.Chart) return resolve(true);
+          if (typeof window.ensureChartJsLoaded === 'function') {
+            Promise.resolve(window.ensureChartJsLoaded()).then(function(ok) { resolve(!!ok); }).catch(function() { resolve(false); });
+            return;
+          }
+        } catch (_) {}
+        try {
+          var s = document.createElement('script');
+          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+          s.onload = function() { resolve(!!window.Chart); };
+          s.onerror = function() { resolve(false); };
+          document.head.appendChild(s);
+        } catch (_) { resolve(false); }
+      });
+    }
+
     fetch('/api/estoque_dashboard', { headers: authHeaders() })
       .then(function(r) { return r.json(); })
       .then(function(res) {
-        var container = document.getElementById('patch-dashboard-estoques');
+        var container = document.getElementById('patch-dashboard-body');
         if (!container) return;
         if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha ao carregar dashboard');
-        var tintas = res.tintas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
-        var chapas = res.chapas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
-        var cards = [
-          { nome: 'Tintas', icon: '🎨', total: num(tintas.total), criticos: num(tintas.criticos), alertas: num(tintas.alertas), ok: num(tintas.ok), cor: '#f7923a' },
-          { nome: 'Chapas', icon: '📦', total: num(chapas.total), criticos: num(chapas.criticos), alertas: num(chapas.alertas), ok: num(chapas.ok), cor: '#4f8ef7' }
-        ];
+
+        var cards = res.cards || {};
+        var valores = res.valores || {};
+        var alertas = Array.isArray(res.alertas) ? res.alertas : [];
+        var movs = Array.isArray(res.movimentos) ? res.movimentos : [];
+        var tintas = res.tintas || {};
+        var materiais = res.materiais || {};
+        var chapas = res.chapas || {};
+
         container.innerHTML =
-          '<div style="padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">' +
-            cards.map(function(c) {
-              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;border-left:4px solid ' + c.cor + '">' +
-                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
-                  '<span style="font-size:24px">' + c.icon + '</span>' +
-                  '<div><div style="font-weight:700;font-size:16px">' + esc(c.nome) + '</div><div style="color:var(--text2);font-size:13px">' + esc(String(c.total)) + ' itens cadastrados</div></div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:14px">' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+              '<div style="color:var(--text2);font-size:12px">💰 Valor Total em Estoque</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(fmtBRL(cards.valor_total || 0)) + '</div>' +
+            '</div>' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+              '<div style="color:var(--text2);font-size:12px">⚠️ Itens Críticos</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.itens_criticos || 0)) + '</div>' +
+            '</div>' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+              '<div style="color:var(--text2);font-size:12px">🕒 Vencendo em 30 dias</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.vencendo_30d || 0)) + '</div>' +
+            '</div>' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+              '<div style="color:var(--text2);font-size:12px">📦 Total de Itens</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.total_itens || 0)) + '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:14px">' +
+            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">🚨 Alertas Ativos</div>' +
+            (alertas.length ? (
+              '<div style="display:flex;flex-direction:column;gap:8px">' +
+                alertas.slice(0, 40).map(function(a) {
+                  var badge = _statusBadgeHtml(a.status, a.vencendo);
+                  var un = a.unidade ? (' ' + String(a.unidade)) : '';
+                  return '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;background:rgba(0,0,0,0.10)">' +
+                    '<div style="min-width:0">' +
+                      '<div style="color:var(--text);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.categoria || '-') + ' · ' + esc(a.nome || '-') + '</div>' +
+                      '<div style="color:var(--text2);font-size:12px;margin-top:2px">' +
+                        esc(String(a.quantidade_atual || 0) + un) + ' (mín: ' + esc(String(a.quantidade_minima || 0)) + ')' +
+                      '</div>' +
+                    '</div>' +
+                    '<div>' + badge + '</div>' +
+                  '</div>';
+                }).join('') +
+              '</div>'
+            ) : '<div style="color:var(--text2);padding:8px 0">✅ Todos os estoques em ordem</div>') +
+          '</div>' +
+
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:14px">' +
+            [
+              { nome: 'Tintas', icon: '🎨', d: tintas, cor: '#4f8ef7' },
+              { nome: 'Chapas', icon: '📦', d: chapas, cor: '#22c55e' },
+              { nome: 'Materiais', icon: '🔩', d: materiais, cor: '#f59e0b' }
+            ].map(function(c) {
+              var d = c.d || {};
+              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-left:4px solid ' + c.cor + '">' +
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
+                  '<div style="font-size:22px">' + c.icon + '</div>' +
+                  '<div style="font-weight:950;color:var(--text)">' + esc(c.nome) + '</div>' +
+                  '<div style="margin-left:auto;color:var(--text2);font-size:12px">' + esc(String(d.total || 0)) + '</div>' +
                 '</div>' +
-                '<div style="display:flex;gap:12px">' +
-                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,90,90,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#f75a5a">' + esc(String(c.criticos)) + '</div><div style="font-size:11px;color:var(--text2)">Criticos</div></div>' +
-                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,146,58,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#f7923a">' + esc(String(c.alertas)) + '</div><div style="font-size:11px;color:var(--text2)">Alertas</div></div>' +
-                  '<div style="flex:1;text-align:center;padding:10px;background:rgba(62,207,142,0.1);border-radius:8px"><div style="font-size:22px;font-weight:700;color:#3ecf8e">' + esc(String(c.ok)) + '</div><div style="font-size:11px;color:var(--text2)">OK</div></div>' +
+                '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+                  '<span class="badge badge-critico">Críticos: ' + esc(String(d.critico || d.criticos || 0)) + '</span>' +
+                  '<span class="badge badge-baixo">Alertas: ' + esc(String(d.alerta || d.alertas || 0)) + '</span>' +
+                  '<span class="badge badge-ok">OK: ' + esc(String(d.ok || 0)) + '</span>' +
+                  '<span class="badge badge-venc">Venc.: ' + esc(String(d.vencendo || 0)) + '</span>' +
                 '</div>' +
               '</div>';
             }).join('') +
+          '</div>' +
+
+          '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
+                '<div style="font-weight:950;color:var(--text)">Distribuição do valor em estoque</div>' +
+                '<div style="color:var(--text2);font-size:12px">' + esc(fmtBRL((valores.tintas || 0) + (valores.materiais || 0) + (valores.chapas || 0))) + '</div>' +
+              '</div>' +
+              '<div style="height:220px;position:relative"><canvas id="patch-estoque-donut" style="width:100%;height:100%"></canvas></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
+            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">Movimentações recentes</div>' +
+            (movs.length ? (
+              '<table class="pcp-table">' +
+                '<thead><tr>' +
+                  '<th>Data/Hora</th><th>Tipo</th><th>Item</th><th style="text-align:center">Qtd</th><th>Operador</th><th>Setor</th>' +
+                '</tr></thead>' +
+                '<tbody>' +
+                  movs.slice(0, 10).map(function(m) {
+                    var dt = String(m.created_at || '');
+                    var d = dt ? new Date(dt) : null;
+                    var show = d && Number.isFinite(d.getTime()) ? (String(d.toLocaleDateString('pt-BR')) + ' ' + String(d.toLocaleTimeString('pt-BR')).slice(0, 5)) : '-';
+                    var item = m.item || m.nome || m.material_nome || m.tinta_nome || '';
+                    var cat = m.categoria || '';
+                    return '<tr>' +
+                      '<td class="muted">' + esc(show) + '</td>' +
+                      '<td class="muted">' + esc(String(m.tipo || '-')) + '</td>' +
+                      '<td>' + esc((cat ? (cat + ' · ') : '') + (item || String(m.material_id || m.tinta_id || '-'))) + '</td>' +
+                      '<td style="text-align:center;font-weight:900">' + esc(String(m.quantidade || 0)) + '</td>' +
+                      '<td class="muted">' + esc(String(m.operador || '-')) + '</td>' +
+                      '<td class="muted">' + esc(String(m.setor || '-')) + '</td>' +
+                    '</tr>';
+                  }).join('') +
+                '</tbody>' +
+              '</table>'
+            ) : '<div style="color:var(--text2);padding:8px 0">Nenhuma movimentação recente</div>') +
           '</div>';
+
+        ensureChartJs().then(function(ok) {
+          if (!ok || !window.Chart) return;
+          var canvas = document.getElementById('patch-estoque-donut');
+          if (!canvas) return;
+          try { if (window._patchEstoqueDonut && typeof window._patchEstoqueDonut.destroy === 'function') window._patchEstoqueDonut.destroy(); } catch (_) {}
+          var ctx = canvas.getContext('2d');
+          var labels = ['Tintas', 'Chapas', 'Materiais', 'Outros'];
+          var data = [num(valores.tintas), num(valores.chapas), num(valores.materiais), num(valores.outros)];
+          window._patchEstoqueDonut = new window.Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: data,
+                backgroundColor: ['#4f8ef7', '#22c55e', '#f59e0b', '#94a3b8'],
+                borderColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } }
+            }
+          });
+        });
       })
       .catch(function(e) {
-        var c = document.getElementById('patch-dashboard-estoques');
+        var c = document.getElementById('patch-dashboard-body');
         if (c) c.innerHTML = '<div style="padding:20px;color:#f75a5a">Erro ao carregar dashboard: ' + esc(e && e.message || e) + '</div>';
       });
   }
