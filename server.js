@@ -7366,28 +7366,43 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     let empresa_id = null;
     try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
 
+    const isMissingColumnErr = (error) => {
+      const msg = String(error?.message || error || '').toLowerCase();
+      return msg.includes('column') || msg.includes('could not find');
+    };
+
     const tryQueryEq = async (col) => {
-      let q = supabase.from('ofs')
-        .select('id,numero,of,cliente,cliNome,cliente_nome,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,ent,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
-        .eq(col, clienteId)
-        .order('created_at', { ascending: false })
-        .limit(5000);
-      if (empresa_id) {
-        try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+      try {
+        let q = supabase
+          .from('ofs')
+          .select('*')
+          .eq(col, clienteId)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (empresa_id) {
+          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+        }
+        return await q;
+      } catch (e) {
+        return { data: null, error: e };
       }
-      return await q;
     };
 
     const tryQueryIlike = async (col, pattern) => {
-      let q = supabase.from('ofs')
-        .select('id,numero,of,cliente,cliNome,cliente_nome,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,ent,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
-        .ilike(col, pattern)
-        .order('created_at', { ascending: false })
-        .limit(5000);
-      if (empresa_id) {
-        try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+      try {
+        let q = supabase
+          .from('ofs')
+          .select('*')
+          .ilike(col, pattern)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        if (empresa_id) {
+          try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+        }
+        return await q;
+      } catch (e) {
+        return { data: null, error: e };
       }
-      return await q;
     };
 
     let cliente = null;
@@ -7406,8 +7421,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       const { data, error } = await tryQueryEq(col);
       if (!error) { ofs = data || []; lastErr = null; break; }
       lastErr = error;
-      const msg = String(error.message || error || '');
-      if (msg.includes('column') || msg.includes('Could not find')) continue;
+      if (isMissingColumnErr(error)) continue;
       throw error;
     }
     if (lastErr && ofs == null) throw lastErr;
@@ -7418,8 +7432,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
         const { data, error } = await tryQueryIlike(col, clienteId);
         if (!error) { todas = Array.isArray(data) ? data : []; lastErr = null; break; }
         lastErr = error;
-        const msg = String(error.message || error || '');
-        if (msg.includes('column') || msg.includes('Could not find')) continue;
+        if (isMissingColumnErr(error)) continue;
         throw error;
       }
     }
@@ -7429,14 +7442,13 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
       if (nomeCliente && nomeCliente.length >= 4) {
         const pattern = '%' + nomeCliente + '%';
-        for (const col of ['cliente', 'cliNome', 'cliente_nome']) {
+        for (const col of ['cliente', 'cli_nome', 'cliente_nome', 'cliNome']) {
           const { data, error } = await tryQueryIlike(col, pattern);
           if (!error) {
             const arr = Array.isArray(data) ? data : [];
             if (arr.length) { todas = arr; break; }
           } else {
-            const msg = String(error.message || error || '');
-            if (msg.includes('column') || msg.includes('Could not find')) continue;
+            if (isMissingColumnErr(error)) continue;
           }
         }
       }
@@ -7455,7 +7467,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       const s = norm(st);
       return s.includes('cancel');
     };
-    const pickTotal = (o) => Number(o?.total ?? o?.valor_total ?? o?.valor_venda ?? o?.vl_total ?? 0) || 0;
+    const pickTotal = (o) => Number(o?.total ?? o?.valor_total ?? o?.valor_venda ?? o?.vl_total ?? o?.vlTotal ?? 0) || 0;
     const pickProduto = (o) => String(o?.produto ?? o?.descricao ?? 'Sem produto').trim() || 'Sem produto';
 
     const abertas = todas.filter((o) => !isFinal(o?.status) && !isCancel(o?.status));
@@ -7501,20 +7513,21 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes/inativos', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id_nao_resolvido' });
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    if (!empresa_id) return res.json({ ok: true, data: [] });
     const dias = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
 
     const { data: clientes, error: cliErr } = await supabase
       .from('clientes')
-      .select('id,nome,telefone,tel,email,cidade,uf,cnpj,documento,ativo,vendedor_id')
+      .select('*')
       .eq('empresa_id', empresa_id)
-      .eq('ativo', true)
       .order('nome', { ascending: true })
       .limit(20000);
     if (cliErr) throw cliErr;
 
-    const cliRows = Array.isArray(clientes) ? clientes : [];
+    let cliRows = Array.isArray(clientes) ? clientes : [];
+    cliRows = cliRows.filter((c) => (c?.ativo === undefined ? true : !!c.ativo));
 
     const pageSize = 10000;
     const maxPages = 30;
@@ -7590,19 +7603,21 @@ app.get('/api/clientes/inativos', authMiddleware, async (req, res) => {
 
 app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await _resolveEmpresaUuid(req);
-    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id_nao_resolvido' });
-    const tipo = String(req.query.tipo || 'quantidade').trim().toLowerCase();
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) { empresa_id = null; }
+    if (!empresa_id) return res.json({ ok: true, data: [] });
+    const tipoRaw = String(req.query.tipo || 'quantidade').trim().toLowerCase();
+    const tipo = (tipoRaw === 'valor' || tipoRaw === 'faturamento' || tipoRaw.includes('fat')) ? 'valor' : 'quantidade';
     const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '50'), 10) || 50));
 
     const { data: clientes, error: cliErr } = await supabase
       .from('clientes')
-      .select('id,nome,cidade,ativo')
+      .select('*')
       .eq('empresa_id', empresa_id)
-      .eq('ativo', true)
       .limit(20000);
     if (cliErr) throw cliErr;
-    const cliRows = Array.isArray(clientes) ? clientes : [];
+    let cliRows = Array.isArray(clientes) ? clientes : [];
+    cliRows = cliRows.filter((c) => (c?.ativo === undefined ? true : !!c.ativo));
 
     const pageSize = 10000;
     const maxPages = 30;
@@ -7635,7 +7650,7 @@ app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
       const id = String(c?.id || '').trim();
       return {
         id,
-        nome: c?.nome || '—',
+        nome: c?.nome || c?.rs || c?.razao_social || '—',
         cidade: c?.cidade || '—',
         total_ofs: mapaQtd[id] || 0,
         faturamento: mapaVal[id] || 0,
