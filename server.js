@@ -3230,7 +3230,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!maquina || !!busca;
     const limitFinal = pedidoPaginacao ? limitReq : 500;
 
-    const CACHE_VERSION = 'ofs_v6';
+    const CACHE_VERSION = 'ofs_v7';
     const cacheKey = [
       CACHE_VERSION,
       String(req?.usuario?.id || ''),
@@ -3436,6 +3436,72 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     let total = null;
     let dateCol = '';
     let useDeletedAtFilter = !incluirExcluidas;
+    const applyOfsQueryFilters = (query, tentativaAtual) => {
+      let out = query;
+      if (status) {
+        const statusList = String(status).split(',').map((s) => String(s || '').trim()).filter(Boolean);
+        if (statusList.length > 1) out = out.in('status', statusList);
+        else out = out.eq('status', statusList[0] || status);
+      }
+
+      if (empId && Array.isArray(empCols) && empCols.length) {
+        const empCol = empCols[Math.min(tentativaAtual, empCols.length - 1)];
+        if (empCol) out = out.eq(empCol, empId);
+      }
+
+      if (clienteId && Array.isArray(cliCols) && cliCols.length) {
+        const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
+        if (expr) out = out.or(expr);
+      }
+
+      if (clienteNome) {
+        const termo = String(clienteNome || '').replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
+        const cols = ['cliente_nome', 'cliNome', 'clinome'].filter((c) => _ofsSelectableHas(c));
+        if (termo && cols.length) {
+          const like = '%' + termo + '%';
+          const expr = cols.map((c) => `${c}.ilike.${like}`).join(',');
+          if (expr) out = out.or(expr);
+        }
+      }
+
+      if (numero && Array.isArray(numCols) && numCols.length) {
+        const expr = numCols.map((c) => `${c}.eq.${numero}`).join(',');
+        if (expr) out = out.or(expr);
+      }
+
+      if (maquina && _ofsSelectableHas('maquina_agendada')) {
+        out = out.eq('maquina_agendada', maquina);
+      }
+
+      if (busca) {
+        const like = '%' + busca + '%';
+        const buscaCols = ['numero', 'of', 'of_num', 'produto', 'descricao', 'prodDesc', 'cliente', 'cliente_nome', 'cliNome', 'clinome']
+          .filter((c) => _ofsSelectableHas(c));
+        if (buscaCols.length) {
+          const expr = buscaCols.map((c) => `${c}.ilike.${like}`).join(',');
+          if (expr) out = out.or(expr);
+        }
+      }
+
+      if (filtrarPassou && _ofsSelectableHas('passou_maquina')) {
+        out = out.eq('passou_maquina', true);
+      } else if (filtrarPassou && !_ofsSelectableHas('passou_maquina')) {
+        filtrarPassou = false;
+        console.debug('[OFS] passou_maquina skip');
+      }
+
+      if (useDeletedAtFilter) out = out.is('deleted_at', null);
+      if (shouldExcludeCanceladas) out = out.neq('status', 'Cancelada').neq('status', 'Cancelado');
+      if (from) {
+        const fromIso = (from.includes('T') ? from : (from + 'T00:00:00'));
+        out = out.gte(dateCol || 'data_entrega', fromIso);
+      }
+      if (to) {
+        const toIso = (to.includes('T') ? to : (to + 'T23:59:59'));
+        out = out.lte(dateCol || 'data_entrega', toIso);
+      }
+      return out;
+    };
     const isDeletedAt = (v) => {
       if (v == null) return false;
       const s = String(v).trim();
@@ -3485,69 +3551,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .order(orderBy, { ascending: orderAsc });
       if (pedidoPaginacao) q = q.range(offset, offset + limitFinal - 1);
       else q = q.limit(limitFinal);
-
-      if (status) {
-        const statusList = String(status).split(',').map((s) => String(s || '').trim()).filter(Boolean);
-        if (statusList.length > 1) q = q.in('status', statusList);
-        else q = q.eq('status', statusList[0] || status);
-      }
-
-      if (empId && Array.isArray(empCols) && empCols.length) {
-        const empCol = empCols[Math.min(tentativa, empCols.length - 1)];
-        if (empCol) q = q.eq(empCol, empId);
-      }
-
-      if (clienteId && Array.isArray(cliCols) && cliCols.length) {
-        const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
-        if (expr) q = q.or(expr);
-      }
-
-      if (clienteNome) {
-        const termo = String(clienteNome || '').replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
-        const cols = ['cliente_nome', 'cliNome', 'clinome'].filter((c) => _ofsSelectableHas(c));
-        if (termo && cols.length) {
-          const like = '%' + termo + '%';
-          const expr = cols.map((c) => `${c}.ilike.${like}`).join(',');
-          if (expr) q = q.or(expr);
-        }
-      }
-
-      if (numero && Array.isArray(numCols) && numCols.length) {
-        const expr = numCols.map((c) => `${c}.eq.${numero}`).join(',');
-        if (expr) q = q.or(expr);
-      }
-
-      if (maquina && _ofsSelectableHas('maquina_agendada')) {
-        q = q.eq('maquina_agendada', maquina);
-      }
-
-      if (busca) {
-        const like = '%' + busca + '%';
-        const buscaCols = ['numero', 'of', 'of_num', 'produto', 'descricao', 'prodDesc', 'cliente', 'cliente_nome', 'cliNome', 'clinome']
-          .filter((c) => _ofsSelectableHas(c));
-        if (buscaCols.length) {
-          const expr = buscaCols.map((c) => `${c}.ilike.${like}`).join(',');
-          if (expr) q = q.or(expr);
-        }
-      }
-
-      if (filtrarPassou && _ofsSelectableHas('passou_maquina')) {
-        q = q.eq('passou_maquina', true);
-      } else if (filtrarPassou && !_ofsSelectableHas('passou_maquina')) {
-        filtrarPassou = false;
-        console.debug('[OFS] passou_maquina skip');
-      }
-
-      if (useDeletedAtFilter) q = q.is('deleted_at', null);
-      if (shouldExcludeCanceladas) q = q.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      if (from) {
-        const fromIso = (from.includes('T') ? from : (from + 'T00:00:00'));
-        q = q.gte(dateCol || 'data_entrega', fromIso);
-      }
-      if (to) {
-        const toIso = (to.includes('T') ? to : (to + 'T23:59:59'));
-        q = q.lte(dateCol || 'data_entrega', toIso);
-      }
+      q = applyOfsQueryFilters(q, tentativa);
 
       let r = null;
       try {
@@ -3579,6 +3583,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (!r.error) {
         data = r.data || [];
         if (typeof r.count === 'number') total = r.count;
+        if (pedidoPaginacao && !maquina && !Number.isFinite(Number(total))) {
+          try {
+            let qc = supabase
+              .from('ofs')
+              .select('id', { count: 'exact', head: true });
+            qc = applyOfsQueryFilters(qc, tentativa);
+            const rc = await qc;
+            if (!rc?.error && typeof rc?.count === 'number') total = rc.count;
+          } catch (_) {}
+        }
         const shouldTryNextEmpCol =
           Array.isArray(data) &&
           data.length === 0 &&
@@ -3719,18 +3733,26 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
+    const rowsLen = Array.isArray(rows) ? rows.length : 0;
+    const totalFromCount = Number.isFinite(Number(total)) ? Number(total) : null;
     const totalRows = maquina
-      ? (Array.isArray(rows) ? rows.length : 0)
-      : (Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0));
+      ? rowsLen
+      : (totalFromCount != null
+        ? totalFromCount
+        : (rowsLen === limitFinal ? (offset + rowsLen + 1) : (offset + rowsLen)));
+    const hasMore = maquina
+      ? false
+      : (rowsLen === limitFinal && ((offset + rowsLen) < totalRows));
     const payload = {
       data: rows,
       total: totalRows,
       offset,
       limit: limitFinal,
-      hasMore: (offset + limitFinal) < totalRows,
+      hasMore,
     };
-    cacheSet(cacheKey, payload, lite ? (2 * 60 * 1000) : (10 * 1000));
+    cacheSet(cacheKey, payload, pedidoPaginacao ? 30_000 : (lite ? (2 * 60 * 1000) : (10 * 1000)));
     if (!pedidoPaginacao) return res.json(rows);
+    console.debug('[OFS PAGE]', { offset, limit: limitFinal, rows: rowsLen, total: totalRows, hasMore });
     return res.json({ ok: true, ...payload });
   } catch (e) {
     try { console.error('[OFS 500 FULL]', e); } catch (_) {}
