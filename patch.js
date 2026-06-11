@@ -8271,8 +8271,6 @@ window._mbnActive = function(id) {
   var originalCardOfmaq = (typeof window.cardOFMaquina === 'function')
     ? window.cardOFMaquina
     : null;
-  var hubTimerStarted = false;
-
   function escHLocal(s) {
     try {
       return window.escH
@@ -9031,10 +9029,11 @@ window._mbnActive = function(id) {
     var orig = window.renderHub;
     window.renderHub = async function() {
       var result = await orig.apply(this, arguments);
-      setTimeout(function() {
-        ensureHubIntelBlock();
-        try { window.carregarInteligenciaHub().catch(function(){}); } catch (_) {}
-      }, 300);
+      var block = ensureHubIntelBlock();
+      if (block && block.dataset.hubIntelLoaded !== '1') {
+        block.dataset.hubIntelLoaded = '1';
+        try { window.carregarInteligenciaHub(); } catch (_) {}
+      }
       return result;
     };
     window.renderHub._patchedHubIntel = true;
@@ -9045,16 +9044,6 @@ window._mbnActive = function(id) {
     try { window._hubObs = null; } catch (_) {}
     try { if (window.__patchHubIntelObs && typeof window.__patchHubIntelObs.disconnect === 'function') window.__patchHubIntelObs.disconnect(); } catch (_) {}
     try { window.__patchHubIntelObs = null; } catch (_) {}
-
-    setTimeout(function() {
-      try {
-        var hubContainer = document.querySelector('.hub-container, #hub-content, [data-section="hub"], #main-content, #page-hub .hub-shell');
-        if (hubContainer && !document.getElementById('hub-inteligencia')) {
-          ensureHubIntelBlock();
-        }
-        if (window.carregarInteligenciaHub) window.carregarInteligenciaHub();
-      } catch (_) {}
-    }, 1500);
   }
 
   function tick() {
@@ -9062,16 +9051,9 @@ window._mbnActive = function(id) {
     hookRenderOfmaq();
     hookRenderHubIntel();
     ensureOfmaqToolbarButtons();
-    ensureHubIntelBlock();
-    if (!hubTimerStarted) {
-      hubTimerStarted = true;
-      try { if (window._hubIntelInterval) clearInterval(window._hubIntelInterval); } catch (_) {}
-      window._hubIntelInterval = setInterval(function() {
-        try {
-          if (document.getElementById('hub-inteligencia')) window.carregarInteligenciaHub().catch(function(){});
-        } catch (_) {}
-      }, 5 * 60 * 1000);
-    }
+    try { if (window._hubIntelInterval) clearInterval(window._hubIntelInterval); } catch (_) {}
+    try { window._hubIntelInterval = null; } catch (_) {}
+    if (document.getElementById('page-hub')) ensureHubIntelBlock();
   }
 
   if (typeof originalSortByPriority === 'function') {
@@ -9092,7 +9074,6 @@ window._mbnActive = function(id) {
     tick();
     setTimeout(afterRenderOfmaq, 500);
   }
-  setInterval(tick, 1500);
 })();
 
 (function patchInconformidadesCaixasPerdidas() {

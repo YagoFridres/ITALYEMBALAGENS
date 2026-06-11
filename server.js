@@ -19000,324 +19000,153 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
+  const alertas = [];
   try {
-    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    if (!supabase) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
 
-    const email = String(req.usuario?.email || req.user?.email || '').trim();
-    const empresaUuid = await _resolveEmpresaUuid(req).catch(() => null);
-    const estoqueEmpresaId = await _resolveEmpresaIdEstoqueByEmail(email).catch(() => null);
-    const empLegacy = String(
-      req.usuario?.emp_id ??
-      req.usuario?.empId ??
-      req.user?.emp_id ??
-      req.user?.empId ??
-      ''
-    ).trim();
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
-    const fmtDate = (d) => {
-      try { return new Date(d).toISOString().slice(0, 10); } catch (_) { return ''; }
-    };
-    const hojeIso = fmtDate(hoje);
-    const amanhaIso = fmtDate(amanha);
-    const cutoff60 = new Date(hoje.getTime() - (60 * 86400000));
-    const alertas = [];
+    const email = String(req.user?.email || req.usuario?.email || '').trim();
+    let empId = null;
 
-    const isMissingColumnErr = (error) => {
-      const msg = String(error?.message || error || '').toLowerCase();
-      return msg.includes('column') || msg.includes('could not find');
-    };
-    const safeArray = (data) => Array.isArray(data) ? data : [];
-    const normStatus = (s) => {
-      let v = String(s || '').trim().toLowerCase();
-      try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
-      return v;
-    };
-    const isAtiva = (v) => !(v === false || String(v || '').trim().toLowerCase() === 'false' || String(v || '').trim() === '0');
-    const addAlerta = (item) => {
-      if (!item || !item.titulo) return;
-      alertas.push(item);
-    };
-    const empresaCandidates = [
-      empresaUuid ? { col: 'empresa_id', val: empresaUuid } : null,
-      estoqueEmpresaId ? { col: 'empresa_id', val: estoqueEmpresaId } : null,
-      empLegacy ? { col: 'emp_id', val: empLegacy } : null,
-      empLegacy ? { col: 'empId', val: empLegacy } : null,
-    ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
-    const queryEmpresa = async (table, selectCols, build, options) => {
-      const opts = options || {};
-      let lastError = null;
-      for (let i = 0; i < empresaCandidates.length; i++) {
-        const cand = empresaCandidates[i];
-        try {
-          let q = supabase.from(table).select(selectCols);
-          if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
-          if (typeof build === 'function') q = build(q, cand) || q;
-          const { data, error } = await q;
-          if (!error) return safeArray(data);
-          if (isMissingColumnErr(error)) {
-            lastError = error;
-            continue;
-          }
-          throw error;
-        } catch (e) {
-          if (isMissingColumnErr(e)) {
-            lastError = e;
-            continue;
-          }
-          if (!opts.optional) throw e;
-          lastError = e;
-        }
-      }
-      if (opts.allowWithoutEmpresa) {
-        try {
-          let q = supabase.from(table).select(selectCols);
-          if (typeof build === 'function') q = build(q, null) || q;
-          const { data, error } = await q;
-          if (!error) return safeArray(data);
-          if (!opts.optional) throw error;
-          lastError = error;
-        } catch (e) {
-          if (!opts.optional) throw e;
-          lastError = e;
-        }
-      }
-      if (!opts.optional && lastError) throw lastError;
-      return [];
-    };
-    const querySingle = async (table, selectCols, build, options) => {
-      const rows = await queryEmpresa(table, selectCols, (q, cand) => {
-        let qq = typeof build === 'function' ? (build(q, cand) || q) : q;
-        return qq.limit(1);
-      }, options);
-      return Array.isArray(rows) ? (rows[0] || null) : null;
-    };
-    const pickDate = (row, keys) => {
-      for (let i = 0; i < keys.length; i++) {
-        const raw = String(row?.[keys[i]] || '').trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-      }
-      return '';
-    };
-
-    const ofsAbertas = await queryEmpresa(
-      'ofs',
-      '*',
-      (q) => q.limit(5000),
-      { optional: true, allowWithoutEmpresa: true }
-    );
-    const ofsPendentes = ofsAbertas.filter((o) => {
-      const st = normStatus(o?.status);
-      return !(st.includes('conclu') || st === 'pedido pronto' || st.includes('cancel') || st === 'entregue' || st === 'despachada' || st === 'finalizada');
-    });
-    const ofsAtrasadas = ofsPendentes.filter((o) => {
-      const entrega = pickDate(o, ['data_entrega', 'ent']);
-      return !!(entrega && entrega < hojeIso);
-    });
-    if (ofsAtrasadas.length > 0) {
-      addAlerta({
-        tipo: 'danger',
-        icone: '🔴',
-        titulo: `${ofsAtrasadas.length} OF${ofsAtrasadas.length > 1 ? 's' : ''} atrasada${ofsAtrasadas.length > 1 ? 's' : ''}`,
-        subtitulo: ofsAtrasadas.slice(0, 3).map((o) => {
-          const num = String(o?.numero || o?.of || '').trim() || '—';
-          const cli = String(o?.cliente || o?.cliNome || o?.cliente_nome || '').trim() || 'Cliente';
-          return `#${num} — ${cli}`;
-        }).join(', ') + (ofsAtrasadas.length > 3 ? ` +${ofsAtrasadas.length - 3}` : ''),
-        acao: 'pcp',
-        acao_label: 'ver OFs →',
-        prioridade: 1,
-      });
-    }
-
-    const ofsSemMaquina = ofsPendentes.filter((o) => {
-      const maq = String(o?.maquina_atual || o?.maquina_agendada || o?.maq || '').trim();
-      return !maq || maq === '[]';
-    });
-    if (ofsSemMaquina.length > 0) {
-      addAlerta({
-        tipo: 'warning',
-        icone: '⚙️',
-        titulo: `${ofsSemMaquina.length} OF${ofsSemMaquina.length > 1 ? 's' : ''} sem máquina definida`,
-        subtitulo: ofsSemMaquina.slice(0, 2).map((o) => {
-          const num = String(o?.numero || o?.of || '').trim() || '—';
-          const cli = String(o?.cliente || o?.cliNome || o?.cliente_nome || '').trim() || 'Cliente';
-          return `#${num} — ${cli}`;
-        }).join(', '),
-        acao: 'ofs-maquina',
-        acao_label: 'programar →',
-        prioridade: 2,
-      });
-    }
-
-    const tintasCriticas = await queryEmpresa(
-      'estoque_tintas',
-      'id,nome,quantidade_atual,quantidade_minima,unidade,ativo',
-      (q) => q.eq('ativo', true).limit(500),
-      { optional: true, allowWithoutEmpresa: !estoqueEmpresaId }
-    );
-    tintasCriticas.forEach((t) => {
-      const q = Number(t?.quantidade_atual || 0) || 0;
-      const min = Number(t?.quantidade_minima || 0) || 0;
-      if (q <= 0) {
-        addAlerta({
-          tipo: 'danger',
-          icone: '🎨',
-          titulo: `Tinta "${String(t?.nome || 'Sem nome')}" ZERADA`,
-          subtitulo: `Estoque: 0 ${String(t?.unidade || 'kg')}`,
-          acao: 'estoque-tintas',
-          acao_label: 'repor →',
-          prioridade: 3,
-        });
-      } else if (min > 0 && q <= (min * 0.5)) {
-        addAlerta({
-          tipo: 'warning',
-          icone: '🟡',
-          titulo: `Tinta "${String(t?.nome || 'Sem nome')}" crítica`,
-          subtitulo: `${q} ${String(t?.unidade || 'kg')} restante`,
-          acao: 'estoque-tintas',
-          acao_label: 'comprar →',
-          prioridade: 4,
-        });
-      }
-    });
-
-    let chapasCriticas = [];
     try {
-      chapasCriticas = await queryEmpresa(
-        'chapas_estoque_v2',
-        'id,tipo,gramatura,largura,comprimento,quantidade,quantidade_minima,nomenclatura,nome_uso',
-        (q) => q.limit(500),
-        { optional: true, allowWithoutEmpresa: true }
-      );
+      const { data: usr } = await supabase
+        .from('usuarios')
+        .select('empresa_id')
+        .eq('email', email)
+        .maybeSingle();
+      empId = usr?.empresa_id || null;
     } catch (_) {}
-    if (!chapasCriticas.length) {
+
+    if (!empId) {
+      try { empId = await _resolveEmpresaUuid(req); } catch (_) { empId = null; }
+    }
+
+    if (!empId && email) {
       try {
-        chapasCriticas = await queryEmpresa(
-          'chapas_estoque',
-          'id,tipo,gramatura,largura,comprimento,quantidade,quantidade_minima,nomenclatura,nome_uso,nom,tam',
-          (q) => q.limit(500),
-          { optional: true, allowWithoutEmpresa: true }
-        );
+        const prefix = String(email.split('@')[0] || '').trim();
+        const { data: emp } = await supabase
+          .from('empresas')
+          .select('id,sigla')
+          .ilike('sigla', '%' + prefix + '%')
+          .limit(1)
+          .maybeSingle();
+        empId = emp?.id || null;
       } catch (_) {}
     }
-    safeArray(chapasCriticas)
-      .filter((c) => (Number(c?.quantidade || 0) || 0) <= 0)
-      .slice(0, 3)
-      .forEach((c) => {
-        const nome = String(c?.tipo || c?.nomenclatura || c?.nome_uso || c?.nom || '').trim();
-        const medidas = [c?.largura, c?.comprimento].filter((v) => v != null && v !== '').join('×');
-        addAlerta({
+
+    if (!empId) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
+
+    const hoje = new Date();
+    const fmtD = (d) => {
+      try { return new Date(d).toISOString().split('T')[0]; } catch (_) { return ''; }
+    };
+    const hojeIso = fmtD(hoje);
+
+    try {
+      const { data } = await supabase
+        .from('ofs')
+        .select('numero,data_entrega,status')
+        .eq('empresa_id', empId)
+        .limit(50);
+
+      const atrasadas = (Array.isArray(data) ? data : []).filter((o) => {
+        const entrega = String(o?.data_entrega || '').slice(0, 10);
+        const status = String(o?.status || '').trim().toLowerCase();
+        return entrega && entrega < hojeIso && !status.includes('conclu') && !status.includes('cancel');
+      }).slice(0, 5);
+
+      if (atrasadas.length > 0) {
+        alertas.push({
           tipo: 'danger',
-          icone: '📦',
-          titulo: `Chapa ${nome || ''}${medidas ? ` ${medidas}` : ''} zerada`.trim(),
-          subtitulo: `Estoque: ${String(c?.quantidade || 0)} unidades`,
-          acao: 'estoque-chapas',
-          acao_label: 'repor →',
-          prioridade: 5,
+          icone: '🔴',
+          prioridade: 1,
+          titulo: atrasadas.length + ' OF' + (atrasadas.length > 1 ? 's' : '') + ' atrasada' + (atrasadas.length > 1 ? 's' : ''),
+          subtitulo: atrasadas.slice(0, 3).map((o) => '#' + (o?.numero || '?')).join(', '),
+          acao: 'pcp',
+          acao_label: 'ver OFs →'
         });
-      });
-
-    const materiaisCriticos = await queryEmpresa(
-      'estoque_materiais',
-      'id,nome,categoria,quantidade_atual,quantidade,quantidade_minima,unidade,ativo',
-      (q) => q.eq('ativo', true).limit(500),
-      { optional: true, allowWithoutEmpresa: !estoqueEmpresaId }
-    );
-    materiaisCriticos
-      .filter((m) => (Number(m?.quantidade_atual ?? m?.quantidade ?? 0) || 0) <= 0)
-      .slice(0, 2)
-      .forEach((m) => {
-        addAlerta({
-          tipo: 'warning',
-          icone: '🔩',
-          titulo: `Material "${String(m?.nome || 'Sem nome')}" zerado`,
-          subtitulo: `Categoria: ${String(m?.categoria || 'Geral')}`,
-          acao: 'estoque-materiais',
-          acao_label: 'repor →',
-          prioridade: 6,
-        });
-      });
-
-    const ultimosPedidos = new Map();
-    ofsAbertas.forEach((o) => {
-      const cliId = String(o?.cli_id || '').trim();
-      const created = String(o?.created_at || '').trim();
-      if (!cliId || !created) return;
-      if (!ultimosPedidos.has(cliId) || new Date(created) > new Date(ultimosPedidos.get(cliId))) {
-        ultimosPedidos.set(cliId, created);
       }
-    });
-    const clientesInativos = Array.from(ultimosPedidos.entries()).filter(([, d]) => {
-      const dt = new Date(String(d));
-      return Number.isFinite(dt.getTime()) && dt < cutoff60;
-    }).length;
-    if (clientesInativos > 0) {
-      addAlerta({
-        tipo: 'info',
-        icone: '👤',
-        titulo: `${clientesInativos} cliente${clientesInativos > 1 ? 's' : ''} sem pedido há +60 dias`,
-        subtitulo: 'Oportunidade de reativação',
-        acao: 'clientes',
-        acao_label: 'ver →',
-        prioridade: 7,
-      });
+    } catch (e) {
+      console.error('[hub] ofs:', e?.message || e);
     }
 
-    const maquinasAtivas = await queryEmpresa(
-      'maquinas',
-      'id,nome,codigo,ativa',
-      (q) => q.limit(500),
-      { optional: true }
-    );
-    const ofsAmanha = ofsPendentes.filter((o) => {
-      const dataProg = pickDate(o, ['data_agendamento', 'dia', 'data_producao']);
-      return dataProg === amanhaIso;
-    });
-    const maquinasComOfAmanha = new Set();
-    ofsAmanha.forEach((o) => {
-      const raw = o?.maquina_atual || o?.maquina_agendada || o?.maq || '';
-      if (Array.isArray(raw)) {
-        raw.forEach((x) => maquinasComOfAmanha.add(String(x || '').trim()));
-        return;
-      }
-      const s = String(raw || '').trim();
-      if (!s) return;
-      if (s.startsWith('[')) {
-        try {
-          const arr = JSON.parse(s);
-          if (Array.isArray(arr)) arr.forEach((x) => maquinasComOfAmanha.add(String(x || '').trim()));
-        } catch (_) {
-          maquinasComOfAmanha.add(s);
-        }
-        return;
-      }
-      maquinasComOfAmanha.add(s);
-    });
-    safeArray(maquinasAtivas).forEach((m) => {
-      const nome = String(m?.nome || '').trim();
-      const codigo = String(m?.codigo || '').trim();
-      if (!isAtiva(m?.ativa)) return;
-      if (nome && maquinasComOfAmanha.has(nome)) return;
-      if (codigo && maquinasComOfAmanha.has(codigo)) return;
-      addAlerta({
-        tipo: 'info',
-        icone: '⚙️',
-        titulo: `${nome || codigo || 'Máquina'} sem OFs programadas amanhã`,
-        subtitulo: 'Máquina ficará ociosa',
-        acao: 'ofs-maquina',
-        acao_label: 'programar →',
-        prioridade: 8,
-      });
-    });
+    try {
+      const { data } = await supabase
+        .from('estoque_tintas')
+        .select('nome,quantidade_atual,quantidade_minima,unidade')
+        .eq('empresa_id', empId)
+        .eq('ativo', true)
+        .limit(50);
 
-    alertas.sort((a, b) => Number(a?.prioridade || 999) - Number(b?.prioridade || 999));
-    return res.json({ ok: true, alertas, gerado_em: new Date().toISOString() });
+      (Array.isArray(data) ? data : []).forEach((t) => {
+        const q = Number(t?.quantidade_atual || 0);
+        const min = Number(t?.quantidade_minima || 1);
+        if (q <= 0) {
+          alertas.push({
+            tipo: 'danger',
+            icone: '🎨',
+            prioridade: 3,
+            titulo: 'Tinta "' + String(t?.nome || '') + '" zerada',
+            subtitulo: '0 ' + String(t?.unidade || 'kg'),
+            acao: 'estoque-tintas',
+            acao_label: 'repor →'
+          });
+        } else if (q <= (min * 0.5)) {
+          alertas.push({
+            tipo: 'warning',
+            icone: '🟡',
+            prioridade: 4,
+            titulo: 'Tinta "' + String(t?.nome || '') + '" crítica',
+            subtitulo: String(q) + ' ' + String(t?.unidade || 'kg'),
+            acao: 'estoque-tintas',
+            acao_label: 'comprar →'
+          });
+        }
+      });
+    } catch (e) {
+      console.error('[hub] tintas:', e?.message || e);
+    }
+
+    try {
+      const tryChapas = async (table) => {
+        const { data, error } = await supabase
+          .from(table)
+          .select('tipo,largura,comprimento,quantidade')
+          .eq('empresa_id', empId)
+          .lte('quantidade', 0)
+          .limit(3);
+        if (error) throw error;
+        return Array.isArray(data) ? data : [];
+      };
+
+      let chapas = [];
+      try { chapas = await tryChapas('estoque_chapas'); } catch (_) {}
+      if (!chapas.length) {
+        try { chapas = await tryChapas('chapas_estoque_v2'); } catch (_) {}
+      }
+      if (!chapas.length) {
+        try { chapas = await tryChapas('chapas_estoque'); } catch (_) {}
+      }
+
+      chapas.forEach((c) => {
+        alertas.push({
+          tipo: 'danger',
+          icone: '📦',
+          prioridade: 5,
+          titulo: 'Chapa ' + String(c?.tipo || '') + ' ' + String(c?.largura || '') + '×' + String(c?.comprimento || '') + ' zerada',
+          subtitulo: 'Estoque zerado',
+          acao: 'estoque-chapas',
+          acao_label: 'repor →'
+        });
+      });
+    } catch (e) {
+      console.error('[hub] chapas:', e?.message || e);
+    }
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    console.error('[hub/inteligencia] erro geral:', e?.message || e);
   }
+
+  alertas.sort((a, b) => Number(a?.prioridade || 9) - Number(b?.prioridade || 9));
+  res.json({ alertas, gerado_em: new Date().toISOString() });
 });
 
 app.patch('/api/ofs/:id/ordem', authMiddleware, async (req, res) => {
