@@ -3325,15 +3325,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       };
     };
     if (cached != null) {
-      if (Array.isArray(cached)) return res.json(cached.map(formatOfRow));
+      if (Array.isArray(cached)) {
+        const dataCached = cached.map(formatOfRow);
+        const totalCached = dataCached.length;
+        const limitCached = Number.isFinite(Number(limitFinal)) ? Number(limitFinal) : dataCached.length;
+        const offsetCached = Number.isFinite(Number(offset)) ? Number(offset) : 0;
+        const hasMoreCached = limitCached > 0 && dataCached.length >= limitCached;
+        return res.json({ ok: true, data: dataCached, total: totalCached, offset: offsetCached, limit: limitCached, hasMore: hasMoreCached, _legacyArray: true });
+      }
       if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
         const totalCached = Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length;
         const limitCached = Number.isFinite(Number(cached.limit)) ? Number(cached.limit) : limitFinal;
         const offsetCached = Number.isFinite(Number(cached.offset)) ? Number(cached.offset) : offset;
-        if (!pedidoPaginacao) return res.json(cached.data.map(formatOfRow));
         return res.json({ ok: true, data: cached.data.map(formatOfRow), total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
       }
-      return res.json(cached);
+      return res.json({ ok: true, data: [], total: 0, offset, limit: limitFinal, hasMore: false });
     }
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
@@ -3751,7 +3757,6 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       hasMore,
     };
     cacheSet(cacheKey, payload, pedidoPaginacao ? 30_000 : (lite ? (2 * 60 * 1000) : (10 * 1000)));
-    if (!pedidoPaginacao) return res.json(rows);
     console.debug('[OFS PAGE]', { offset, limit: limitFinal, rows: rowsLen, total: totalRows, hasMore });
     return res.json({ ok: true, ...payload });
   } catch (e) {
