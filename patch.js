@@ -3331,6 +3331,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.renderComissoes = async function() {
       var r = await orig.apply(this, arguments);
       setTimeout(enhanceComissoesTable, 0);
+      try {
+        var term = String(window.__comissoesBuscaTerm || '').trim();
+        if (term && typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(term);
+      } catch (_) {}
       return r;
     };
   }
@@ -3338,6 +3342,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   function tick() {
     try { hookRenderComissoes(); } catch (_) {}
     try { enhanceComissoesTable(); } catch (_) {}
+    try { if (typeof window.__ensureComissoesBusca === 'function') window.__ensureComissoesBusca(); } catch (_) {}
   }
 
   bindInlineEdit();
@@ -3631,6 +3636,142 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(hook, 300); setInterval(hook, 2000); });
   else { setTimeout(hook, 300); setInterval(hook, 2000); }
+})();
+
+(function patchAutocompleteCalcCliente() {
+  function escHLocal(s) {
+    try { return window.escH ? window.escH(s) : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } catch (_) { return String(s == null ? '' : s); }
+  }
+  function clientesRef() {
+    try { if (Array.isArray(window.CLIENTES)) return window.CLIENTES; } catch (_) {}
+    try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES; } catch (_) {}
+    return [];
+  }
+  function ensure() {
+    var sel = document.getElementById('calc-cli');
+    if (!sel) return;
+    if (sel.dataset.patchAutocomplete === '1') return;
+    sel.dataset.patchAutocomplete = '1';
+
+    var wrap = document.createElement('div');
+    wrap.id = 'wrap-calc-cli';
+    wrap.style.position = 'relative';
+    wrap.style.flex = '1';
+
+    var input = document.createElement('input');
+    input.id = 'calc-cli-input';
+    input.type = 'text';
+    input.placeholder = 'Digite o nome do cliente...';
+    input.autocomplete = 'off';
+    input.style.cssText = 'width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:14px';
+
+    var dd = document.createElement('div');
+    dd.id = 'calc-cli-dropdown';
+    dd.style.cssText = 'display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+
+    var hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.id = 'calc-cli-id';
+    hidden.value = '';
+
+    wrap.appendChild(input);
+    wrap.appendChild(dd);
+    wrap.appendChild(hidden);
+
+    try { sel.parentNode.insertBefore(wrap, sel); } catch (_) {}
+    try { sel.style.display = 'none'; } catch (_) {}
+
+    try {
+      var optSel = sel.options && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex] : null;
+      var currentId = String(sel.value || '').trim();
+      var currentTxt = optSel ? String(optSel.textContent || '').trim() : '';
+      if (currentId) hidden.value = currentId;
+      if (currentTxt && currentTxt !== '-- Selecione o cliente --' && currentTxt !== '— Selecione o cliente —') input.value = currentTxt;
+    } catch (_) {}
+
+    var timer = 0;
+    function close() { try { dd.style.display = 'none'; } catch (_) {} }
+    function open() { try { dd.style.display = 'block'; } catch (_) {} }
+    function render(term) {
+      var t = String(term || '').trim().toLowerCase();
+      dd.innerHTML = '';
+      if (!t || t.length < 2) { close(); return; }
+      var list = clientesRef().filter(function(c) {
+        var nome = String(c && (c.nome || c.rs || c.razao_social || '') || '').toLowerCase();
+        var cidade = String(c && (c.cidade || '') || '').toLowerCase();
+        var doc = String(c && (c.cnpj || c.documento || '') || '').toLowerCase();
+        return (nome && nome.indexOf(t) !== -1) || (cidade && cidade.indexOf(t) !== -1) || (doc && doc.indexOf(t) !== -1);
+      }).slice(0, 15);
+      if (!list.length) {
+        dd.innerHTML = '<div style="padding:12px;color:var(--text2);font-size:13px">Nenhum cliente encontrado</div>';
+        open();
+        return;
+      }
+      list.forEach(function(c) {
+        var row = document.createElement('div');
+        row.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s';
+        row.onmouseover = function() { try { row.style.background = 'var(--bg3,#2a3347)'; } catch (_) {} };
+        row.onmouseout = function() { try { row.style.background = ''; } catch (_) {} };
+        var nome = String(c && (c.nome || c.rs || c.razao_social || '') || '').trim();
+        var cidade = String(c && (c.cidade || '') || '').trim();
+        var doc = String(c && (c.cnpj || c.documento || '') || '').trim();
+        row.innerHTML =
+          '<div style="font-weight:500;color:var(--text1)">' + escHLocal(nome || '—') + '</div>' +
+          '<div style="font-size:11px;color:var(--text2)">' + escHLocal((cidade ? cidade : '') + (doc ? (' · ' + doc) : '')) + '</div>';
+        row.onclick = function(ev) {
+          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+          var id = String(c && c.id || '').trim();
+          hidden.value = id;
+          input.value = nome || '';
+          close();
+          try { sel.value = id; } catch (_) {}
+          try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+        };
+        dd.appendChild(row);
+      });
+      open();
+    }
+    function onInput() {
+      clearTimeout(timer);
+      var term = String(input.value || '');
+      timer = setTimeout(function() { render(term); }, 200);
+    }
+    input.addEventListener('input', onInput, true);
+    input.addEventListener('focus', onInput, true);
+    document.addEventListener('click', function(ev) {
+      try { if (!ev.target.closest('#wrap-calc-cli')) close(); } catch (_) {}
+    }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(ensure, 500); setInterval(ensure, 1500); });
+  else { setTimeout(ensure, 500); setInterval(ensure, 1500); }
+})();
+
+(function patchBuscaComissoesPorOf() {
+  window.__ensureComissoesBusca = function() {
+    try {
+      var bar = document.querySelector('#page-comissoes .filtros-comissao');
+      if (!bar) return;
+      if (document.getElementById('comissoes-busca-of')) return;
+      var input = document.createElement('input');
+      input.id = 'comissoes-busca-of';
+      input.type = 'text';
+      input.placeholder = '🔍 Buscar por nº OF, cliente...';
+      input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:220px';
+      input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
+      bar.appendChild(input);
+    } catch (_) {}
+  };
+  window.filtrarComissoesPorBusca = function(termo) {
+    var t = String(termo || '').toLowerCase().trim();
+    try { window.__comissoesBuscaTerm = termo; } catch (_) {}
+    var linhas = document.querySelectorAll('#tabela-comissoes-ofs tbody tr');
+    linhas.forEach(function(tr) {
+      var txt = String(tr && tr.textContent || '').toLowerCase();
+      tr.style.display = (!t || txt.indexOf(t) !== -1) ? '' : 'none';
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); });
+  else { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); }
 })();
 
 (function patchOfRapidaClienteEspecial() {
