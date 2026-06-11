@@ -8,23 +8,23 @@ window.addEventListener('unhandledrejection', function(e) {
   } catch (_) {}
 });
 try {
-console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
+console.log('[PATCH] versão ' + Date.now() + ' carregado');
 /* patch.js - Italy Embalagens ERP v2 */ 
 (function() { 
   'use strict'; 
 
   try {
     var cssM = `
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   ITALY EMBALAGENS ERP â€” CSS RESPONSIVO
+/* ════════════════════════════════════════════
+   ITALY EMBALAGENS ERP — CSS RESPONSIVO
    Adapta o sistema PC para mobile/tablet.
-   NÃ£o cria novo sistema. Mesmas APIs/dados.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   Não cria novo sistema. Mesmas APIs/dados.
+   ════════════════════════════════════════════ */
 
-/* â”€â”€ MOBILE ATÃ‰ 768px â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── MOBILE ATÉ 768px ─────────────────────── */
 @media (max-width: 768px) {
 
-  /* 1. ESTRUTURA: sidebar oculta, conteÃºdo full width */
+  /* 1. ESTRUTURA: sidebar oculta, conteúdo full width */
   .sidebar, #sidebar, nav.side, .side-nav,
   [class*="sidebar-"]:not(#mobile-bottom-nav),
   [id*="sidebar"]:not(#mobile-bottom-nav) {
@@ -59,7 +59,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   .empresa-tabs, [class*="empresa-tab"],
   .emp-sel-bar { display: none !important; }
 
-  /* 3. HOTBAR â€” sempre visÃ­vel no rodapÃ© */
+  /* 3. HOTBAR — sempre visível no rodapé */
   #mobile-bottom-nav, .mobile-bottom-nav {
     display: flex !important;
     position: fixed !important;
@@ -70,11 +70,11 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
   body { padding-bottom: 64px !important; }
 
-  /* 4. INPUTS â€” sem zoom no iOS */
+  /* 4. INPUTS — sem zoom no iOS */
   input, select, textarea { font-size: 16px !important; }
   input[type="date"], input[type="time"] { font-size: 14px !important; }
 
-  /* 5. BOTÃ•ES MAIORES PARA TOQUE */
+  /* 5. BOTÕES MAIORES PARA TOQUE */
   button, .btn, [class*="btn-"], [role="button"] {
     min-height: 40px !important;
     padding: 8px 12px !important;
@@ -83,7 +83,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     -webkit-tap-highlight-color: transparent !important;
   }
 
-  /* 6. TABELAS â†’ CARDS */
+  /* 6. TABELAS → CARDS */
   table:not(.no-card):not([class*="kanban"]) {
     display: block !important; width: 100% !important;
   }
@@ -108,7 +108,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
   /* Esconder colunas menos importantes */
   table:not(.no-card) td:nth-child(n+8) { display: none !important; }
-  /* Coluna de aÃ§Ãµes sempre visÃ­vel */
+  /* Coluna de ações sempre visível */
   table:not(.no-card) td:last-child {
     display: flex !important;
     justify-content: flex-end !important;
@@ -117,7 +117,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     margin-top: 4px !important;
   }
 
-  /* 7. MODAIS â†’ BOTTOM SHEET */
+  /* 7. MODAIS → BOTTOM SHEET */
   [id*="modal"] {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -133,7 +133,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     margin: 0 !important;
   }
 
-  /* 8. KANBAN â€” scroll horizontal */
+  /* 8. KANBAN — scroll horizontal */
   .kb-board, .kb-maq-board, [class*="kb-board"] {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
@@ -198,7 +198,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     padding: 3px !important;
   }
 
-  /* 14. PROJEÃ‡ÃƒO / GRÃFICOS COM SCROLL */
+  /* 14. PROJEÇÃO / GRÁFICOS COM SCROLL */
   #widget-projecao-vendas,
   [id*="grafico"], [id*="chart"] {
     overflow-x: auto !important;
@@ -220,14 +220,14 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     border-radius: 3px !important;
   }
 
-  /* 18. FAB nÃ£o sobrepor hotbar */
+  /* 18. FAB não sobrepor hotbar */
   #fab-menu-container { bottom: 72px !important; }
 
-  /* 19. LINHAS OFs POR MÃQUINA */
+  /* 19. LINHAS OFs POR MÁQUINA */
   .of-linha-row { gap: 6px !important; padding: 8px !important; }
   .of-ln-prod { display: none !important; }
 
-  /* 20. SELETOR DE MÃQUINA */
+  /* 20. SELETOR DE MÁQUINA */
   #ofmaq-seletor-maquinas {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
@@ -243,7 +243,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
 }
 
-/* â”€â”€ CELULAR PEQUENO ATÃ‰ 480px â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── CELULAR PEQUENO ATÉ 480px ───────────────── */
 @media (max-width: 480px) {
   body { font-size: 12px !important; }
   .main-content, #main-content {
@@ -257,7 +257,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   h1 { font-size: 16px !important; }
 }
 
-/* â”€â”€ TABLET 769px â€“ 1024px â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── TABLET 769px – 1024px ──────────────────── */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar, #sidebar, [class*="sidebar"] {
     width: 200px !important;
@@ -270,8 +270,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
 `;
 
     cssM = `
-/* ITALY ERP â€” CSS MOBILE DEFINITIVO v4
-   Fonte: sistema PC adaptado. Sem dados mock. Sem pÃ¡ginas legadas. */
+/* ITALY ERP — CSS MOBILE DEFINITIVO v4
+   Fonte: sistema PC adaptado. Sem dados mock. Sem páginas legadas. */
 
 @media (max-width: 768px) {
 
@@ -464,7 +464,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     border-radius: 10px !important;
   }
   #page-estoque #est-table-wrap:after {
-    content: 'â†’ deslize para ver mais' !important;
+    content: '→ deslize para ver mais' !important;
     display: block !important;
     text-align: right !important;
     font-size: 10px !important;
@@ -710,8 +710,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
 }
 
 /* ============================================
-   MOBILE IMPROVEMENTS â€” patch.js
-   Apenas correÃ§Ãµes do layout existente
+   MOBILE IMPROVEMENTS — patch.js
+   Apenas correções do layout existente
    ============================================ */
 
 @media (max-width: 768px) {
@@ -979,14 +979,14 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   .modal-overlay { z-index: 9000 !important; }
   #painelDetalheChapa { z-index: 9500 !important; }
 
-  /* ===== PCP/PROGRAMAÃ‡ÃƒO ===== */
+  /* ===== PCP/PROGRAMAÇÃO ===== */
   .tabela-ofs, #tabela-pcp, [id*="tabelaPCP"], [id*="tabela-ofs"] {
     display: block !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
-  /* ===== KANBAN OFs POR MÃQUINA ===== */
+  /* ===== KANBAN OFs POR MÁQUINA ===== */
   .kanban-board, [id*="kanban"], .ofs-maquina-board {
     display: flex !important;
     overflow-x: auto !important;
@@ -999,7 +999,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     flex-shrink: 0 !important;
   }
 
-  /* ===== FORMULÃRIOS GERAIS ===== */
+  /* ===== FORMULÁRIOS GERAIS ===== */
   .form-row, .form-inline,
   [style*="display:flex"][class*="form"],
   [style*="display: flex"][class*="form"] {
@@ -1044,13 +1044,13 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     overflow-x: auto !important;
   }
 
-  /* ===== ANÃLISES/GRÃFICOS ===== */
+  /* ===== ANÁLISES/GRÁFICOS ===== */
   .grafico-card canvas {
     max-width: 100% !important;
     height: auto !important;
   }
 
-  /* ===== MENUS E NAVEGAÃ‡ÃƒO ===== */
+  /* ===== MENUS E NAVEGAÇÃO ===== */
   .menu-lateral { display: none !important; }
   .menu-mobile-bottom {
     position: fixed !important;
@@ -1062,7 +1062,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     border-top: 1px solid rgba(255,255,255,0.08) !important;
   }
 
-  /* ===== ESPAÃ‡O PARA MENU INFERIOR ===== */
+  /* ===== ESPAÇO PARA MENU INFERIOR ===== */
   .main-content, .page-content, .conteudo-principal, #app-content {
     padding-bottom: 80px !important;
   }
@@ -1080,7 +1080,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     max-width: 100% !important;
   }
 
-  /* ===== BOTÃ•ES DE AÃ‡ÃƒO ===== */
+  /* ===== BOTÕES DE AÇÃO ===== */
   button, .btn, [class*="btn-"] {
     min-height: 40px !important;
   }
@@ -1091,7 +1091,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     gap: 6px !important;
   }
 
-  /* ===== TEXTO NÃƒO CORTAR (apenas em tabelas) ===== */
+  /* ===== TEXTO NÃO CORTAR (apenas em tabelas) ===== */
   table th, table td { white-space: nowrap !important; }
 
   /* ===== CLIENTES INATIVOS MOBILE ===== */
@@ -1113,17 +1113,17 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       document.head.appendChild(elCSS);
     }
     elCSS.textContent = cssM;
-    console.log('[PATCH] CSS mobile v4 â€” ' + cssM.length + ' chars');
+    console.log('[PATCH] CSS mobile v4 — ' + cssM.length + ' chars');
   } catch (_) {}
  
-  // â”€â”€ UTIL: pegar token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 
+  // ── UTIL: pegar token ────────────────────────────────────────── 
   function getToken() { 
     return localStorage.getItem('token') || 
            sessionStorage.getItem('token') || 
            localStorage.getItem('access_token') || ''; 
   } 
  
-  // â”€â”€ PATCH 1: proximoNumeroOf â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 
+  // ── PATCH 1: proximoNumeroOf ─────────────────────────────────── 
   // Busca a OF com maior numero e retorna numero + 1 formatado 
   window.proximoNumeroOf = async function() { 
     var token = getToken(); 
@@ -1197,7 +1197,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     return '001'; 
   }; 
  
-  // â”€â”€ PATCH 3: garantir numero no payload ao salvar OF Rapida â”€â”€â”€ 
+  // ── PATCH 3: garantir numero no payload ao salvar OF Rapida ─── 
   var _origSalvar1 = window.salvarOfRapida; 
   var _origSalvar2 = window.salvarNovaOfRapida; 
   var _wrapSalvar = function(orig) { 
@@ -1215,7 +1215,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   if (typeof _origSalvar1 === 'function') window.salvarOfRapida = _wrapSalvar(_origSalvar1); 
   if (typeof _origSalvar2 === 'function') window.salvarNovaOfRapida = _wrapSalvar(_origSalvar2); 
  
-  // â”€â”€ PATCH 4: carregarPassagensHoje com filtros â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 
+  // ── PATCH 4: carregarPassagensHoje com filtros ───────────────── 
   window.carregarPassagensHoje = async function(opts) { 
     opts = opts || {}; 
     var periodo = opts.periodo || 'hoje'; 
@@ -1262,53 +1262,53 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }; 
 
   var HOTBAR_ABAS = [
-    { id: 'hub',   label: 'Hub',      icone: 'ðŸ ', fixo: true  },
-    { id: 'pcp',   label: 'PCP',      icone: 'ðŸ“‹', fixo: false },
-    { id: 'ofmaq', label: 'MÃ¡quinas', icone: 'âš™',  fixo: true  },
+    { id: 'hub',   label: 'Hub',      icone: '🏠', fixo: true  },
+    { id: 'pcp',   label: 'PCP',      icone: '📋', fixo: false },
+    { id: 'ofmaq', label: 'Máquinas', icone: '⚙',  fixo: true  },
   ];
 
   var PAGINAS_REAIS_DESKTOP = [
-    { id: 'hub',                 label: 'Hub Inicial',         icone: 'ðŸ ', grupo: 'ProduÃ§Ã£o' },
-    { id: 'pcp',                 label: 'PCP',                 icone: 'ðŸ“‹', grupo: 'ProduÃ§Ã£o' },
-    { id: 'ofmaq',               label: 'OFs por MÃ¡quina',     icone: 'âš™',  grupo: 'ProduÃ§Ã£o' },
-    { id: 'historico-passagens', label: 'HistÃ³rico Passagens', icone: 'ðŸ•’', grupo: 'ProduÃ§Ã£o' },
-    { id: 'lancamento',          label: 'Armazenamento',       icone: 'ðŸ“¦', grupo: 'ProduÃ§Ã£o' },
-    { id: 'amostras',            label: 'Amostras',            icone: 'ðŸ”¬', grupo: 'ProduÃ§Ã£o' },
-    { id: 'pedidos-recorrentes', label: 'Recorrentes',         icone: 'ðŸ”„', grupo: 'ProduÃ§Ã£o' },
-    { id: 'roteiro-entrega',     label: 'Roteiro Entrega',     icone: 'ðŸšš', grupo: 'ProduÃ§Ã£o' },
+    { id: 'hub',                 label: 'Hub Inicial',         icone: '🏠', grupo: 'Produção' },
+    { id: 'pcp',                 label: 'PCP',                 icone: '📋', grupo: 'Produção' },
+    { id: 'ofmaq',               label: 'OFs por Máquina',     icone: '⚙',  grupo: 'Produção' },
+    { id: 'historico-passagens', label: 'Histórico Passagens', icone: '🕒', grupo: 'Produção' },
+    { id: 'lancamento',          label: 'Armazenamento',       icone: '📦', grupo: 'Produção' },
+    { id: 'amostras',            label: 'Amostras',            icone: '🔬', grupo: 'Produção' },
+    { id: 'pedidos-recorrentes', label: 'Recorrentes',         icone: '🔄', grupo: 'Produção' },
+    { id: 'roteiro-entrega',     label: 'Roteiro Entrega',     icone: '🚚', grupo: 'Produção' },
 
-    { id: 'clientes',            label: 'Clientes',            icone: 'ðŸ‘¥', grupo: 'Cadastros' },
-    { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: 'ðŸ—º', grupo: 'Cadastros' },
-    { id: 'fornecedores',        label: 'Fornecedores',        icone: 'ðŸ­', grupo: 'Cadastros' },
-    { id: 'vendedores',          label: 'Vendedores',          icone: 'ðŸ¤', grupo: 'Cadastros' },
-    { id: 'usuarios',            label: 'UsuÃ¡rios',            icone: 'ðŸ‘¤', grupo: 'Cadastros' },
+    { id: 'clientes',            label: 'Clientes',            icone: '👥', grupo: 'Cadastros' },
+    { id: 'mapa-clientes',       label: 'Mapa Clientes',       icone: '🗺', grupo: 'Cadastros' },
+    { id: 'fornecedores',        label: 'Fornecedores',        icone: '🏭', grupo: 'Cadastros' },
+    { id: 'vendedores',          label: 'Vendedores',          icone: '🤝', grupo: 'Cadastros' },
+    { id: 'usuarios',            label: 'Usuários',            icone: '👤', grupo: 'Cadastros' },
 
-    { id: 'orcamentos',          label: 'OrÃ§amentos',          icone: 'ðŸ’°', grupo: 'Financeiro', senha: true },
-    { id: 'comissoes',           label: 'ComissÃµes',           icone: 'ðŸ’µ', grupo: 'Financeiro', senha: true },
+    { id: 'orcamentos',          label: 'Orçamentos',          icone: '💰', grupo: 'Financeiro', senha: true },
+    { id: 'comissoes',           label: 'Comissões',           icone: '💵', grupo: 'Financeiro', senha: true },
 
-    { id: 'estoque',             label: 'Estoque Chapas',      icone: 'ðŸ“¦', grupo: 'Estoques' },
-    { id: 'facas1',              label: 'Estoque Facas',       icone: 'ðŸ”§', grupo: 'Estoques' },
-    { id: 'cliches',             label: 'Estoque ClichÃªs',     icone: 'ðŸ–¼', grupo: 'Estoques' },
-    { id: 'compras',             label: 'Compras',             icone: 'ðŸ›’', grupo: 'Estoques' },
-    { id: 'sel-chapas',          label: 'SeleÃ§Ã£o de Chapas',   icone: 'ðŸ§¾', grupo: 'Estoques' },
-    { id: 'papelao-ia',          label: 'PapelÃ£o IA',          icone: 'ðŸ§ ', grupo: 'Estoques' },
-    { id: 'simd',                label: 'Simulador (SIMD)',    icone: 'â™»',  grupo: 'Estoques' },
+    { id: 'estoque',             label: 'Estoque Chapas',      icone: '📦', grupo: 'Estoques' },
+    { id: 'facas1',              label: 'Estoque Facas',       icone: '🔧', grupo: 'Estoques' },
+    { id: 'cliches',             label: 'Estoque Clichês',     icone: '🖼', grupo: 'Estoques' },
+    { id: 'compras',             label: 'Compras',             icone: '🛒', grupo: 'Estoques' },
+    { id: 'sel-chapas',          label: 'Seleção de Chapas',   icone: '🧾', grupo: 'Estoques' },
+    { id: 'papelao-ia',          label: 'Papelão IA',          icone: '🧠', grupo: 'Estoques' },
+    { id: 'simd',                label: 'Simulador (SIMD)',    icone: '♻',  grupo: 'Estoques' },
 
-    { id: 'fluxos',              label: 'Fluxos',              icone: 'ðŸ”€', grupo: 'MÃ¡quinas' },
-    { id: 'maquinas',            label: 'Cadastro MÃ¡quinas',   icone: 'ðŸ–¨', grupo: 'MÃ¡quinas' },
-    { id: 'tipos-caixa',         label: 'Tipos de Caixa',      icone: 'ðŸ“¦', grupo: 'MÃ¡quinas' },
-    { id: 'tempos-reais',        label: 'Tempos Reais',        icone: 'â±',  grupo: 'MÃ¡quinas' },
+    { id: 'fluxos',              label: 'Fluxos',              icone: '🔀', grupo: 'Máquinas' },
+    { id: 'maquinas',            label: 'Cadastro Máquinas',   icone: '🖨', grupo: 'Máquinas' },
+    { id: 'tipos-caixa',         label: 'Tipos de Caixa',      icone: '📦', grupo: 'Máquinas' },
+    { id: 'tempos-reais',        label: 'Tempos Reais',        icone: '⏱',  grupo: 'Máquinas' },
 
-    { id: 'agenda',              label: 'Agenda',              icone: 'ðŸ“…', grupo: 'ComunicaÃ§Ãµes' },
+    { id: 'agenda',              label: 'Agenda',              icone: '📅', grupo: 'Comunicações' },
 
-    { id: 'operadores',          label: 'Operadores',          icone: 'ðŸ‘·', grupo: 'Qualidade' },
-    { id: 'inconformidades',     label: 'Inconformidades',     icone: 'âš ',  grupo: 'Qualidade' },
+    { id: 'operadores',          label: 'Operadores',          icone: '👷', grupo: 'Qualidade' },
+    { id: 'inconformidades',     label: 'Inconformidades',     icone: '⚠',  grupo: 'Qualidade' },
 
-    { id: 'dashboard',           label: 'Dashboard',           icone: 'ðŸ“Š', grupo: 'AnÃ¡lises' },
-    { id: 'relatorios',          label: 'RelatÃ³rios',          icone: 'ðŸ–¨', grupo: 'AnÃ¡lises' },
-    { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: 'ðŸ“¦', grupo: 'AnÃ¡lises' },
-    { id: 'relmensal',           label: 'RelatÃ³rio Mensal',    icone: 'ðŸ“…', grupo: 'AnÃ¡lises' },
-    { id: 'configuracoes',       label: 'ConfiguraÃ§Ãµes',       icone: 'âš™',  grupo: 'AnÃ¡lises' },
+    { id: 'dashboard',           label: 'Dashboard',           icone: '📊', grupo: 'Análises' },
+    { id: 'relatorios',          label: 'Relatórios',          icone: '🖨', grupo: 'Análises' },
+    { id: 'caixas-perdidas',     label: 'Caixas Perdidas',     icone: '📦', grupo: 'Análises' },
+    { id: 'relmensal',           label: 'Relatório Mensal',    icone: '📅', grupo: 'Análises' },
+    { id: 'configuracoes',       label: 'Configurações',       icone: '⚙',  grupo: 'Análises' },
   ];
   
   function _hotbarCap(s){
@@ -1465,7 +1465,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     if (!nav) { console.warn('[PATCH] hotbar nao encontrada'); return; }       
     var ativos = getHotbarConfig(); 
     var html = ativos.slice(0, 4).map(function(id) { 
-      var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || _findPaginaById(id) || { id: id, label: id, icone: 'ðŸ“Œ', fixo: false }; 
+      var aba = HOTBAR_ABAS.find(function(a){ return a.id===id; }) || _findPaginaById(id) || { id: id, label: id, icone: '📌', fixo: false }; 
       var on = 'mobileGoPage(&quot;' + aba.id + '&quot;)';
       return '<button class="mbn-item" data-tab="' + aba.id + '" onclick="' + on + '" ' + 
         'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
@@ -1480,7 +1480,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       'style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;' + 
       'padding:6px 2px;background:none;border:none;cursor:pointer;font-size:10px;color:#94a3b8;gap:1px">' + 
       '<div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.08);' + 
-      'display:flex;align-items:center;justify-content:center;font-size:14px">â˜°</div>' + 
+      'display:flex;align-items:center;justify-content:center;font-size:14px">☰</div>' + 
       '<span style="font-size:9px">Mais</span></button>'; 
     nav.innerHTML = html; 
     atualizarAbaAtiva(); 
@@ -1521,14 +1521,14 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     var html = '<div style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:82vh;overflow-y:auto;padding:16px 14px 72px">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">' +
         '<span style="color:#e2e8f0;font-weight:700;font-size:16px">Menu</span>' +
-        '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:24px;cursor:pointer">âœ•</button>' +
+        '<button onclick="document.getElementById(&quot;mob-menu-mais&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:24px;cursor:pointer">✕</button>' +
       '</div>';
     html += '<button onclick="abrirPersonalizarHotbar()" style="' +
       'width:100%;background:rgba(74,144,217,0.1);color:#4A90D9;' +
       'border:1px solid rgba(74,144,217,0.25);border-radius:10px;' +
       'padding:12px;cursor:pointer;font-size:13px;font-weight:600;' +
       'display:flex;align-items:center;gap:8px;margin-bottom:14px;justify-content:center">' +
-      'âš™ Personalizar barra de navegaÃ§Ã£o</button>';
+      '⚙ Personalizar barra de navegação</button>';
 
     Object.keys(grupos).forEach(function(grupo) {
       html += '<div style="margin-bottom:16px">' +
@@ -1541,9 +1541,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           'border-radius:12px;padding:14px 8px;cursor:pointer;color:#e2e8f0;' +
           'display:flex;flex-direction:column;align-items:center;gap:5px;' +
           'touch-action:manipulation;-webkit-tap-highlight-color:transparent">' +
-          '<span style="font-size:22px">' + (p.icone||'ðŸ“Œ') + '</span>' +
+          '<span style="font-size:22px">' + (p.icone||'📌') + '</span>' +
           '<span style="font-size:11px;color:#94a3b8;text-align:center;line-height:1.2">' + p.label + '</span>' +
-          (p.senha ? '<span style="font-size:9px;color:#f59e0b">ðŸ”’</span>' : '') +
+          (p.senha ? '<span style="font-size:9px;color:#f59e0b">🔒</span>' : '') +
         '</button>';
       });
 
@@ -1585,13 +1585,13 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       '<div style="background:#0b1220;border-radius:18px 18px 0 0;width:100%;max-height:85vh;overflow-y:auto;padding:20px">' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:6px;align-items:center">' +
           '<span style="color:#e2e8f0;font-weight:700;font-size:15px">Personalizar Hotbar</span>' +
-          '<button onclick="document.getElementById(&quot;modal-personalizar-hotbar&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">âœ•</button>' +
+          '<button onclick="document.getElementById(&quot;modal-personalizar-hotbar&quot;).remove()" style="background:none;border:none;color:#64748b;font-size:22px;cursor:pointer">✕</button>' +
         '</div>' +
-        '<p style="color:#64748b;font-size:12px;margin:0 0 16px">MÃ¡ximo 4 atalhos. Hub Ã© fixo.</p>' +
+        '<p style="color:#64748b;font-size:12px;margin:0 0 16px">Máximo 4 atalhos. Hub é fixo.</p>' +
         '<div style="display:flex;flex-direction:column;gap:8px">' +
           paginas.map(function(p){
             var selecionado = configuradas.indexOf(p.id) !== -1;
-            var ic = String(p.icone || 'ðŸ“Œ').replace(/</g,'').replace(/>/g,'');
+            var ic = String(p.icone || '📌').replace(/</g,'').replace(/>/g,'');
             var lb = String(p.label || p.id).replace(/</g,'').replace(/>/g,'');
             return '<label style="display:flex;align-items:center;gap:12px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,' + (selecionado?'0.15':'0.07') + ');border-radius:10px;cursor:pointer">' +
               '<input type="checkbox" ' + (selecionado?'checked':'') + ' data-id="' + p.id + '" onchange="toggleHotbarItem(this)" style="width:20px;height:20px;accent-color:#4A90D9;flex-shrink:0">' +
@@ -1600,7 +1600,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
             '</label>';
           }).join('') +
         '</div>' +
-        '<button onclick="salvarHotbarConfig()" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:10px;padding:14px;cursor:pointer;font-size:14px;font-weight:600;margin-top:16px">Salvar configuraÃ§Ã£o</button>' +
+        '<button onclick="salvarHotbarConfig()" style="width:100%;background:#4A90D9;color:#fff;border:none;border-radius:10px;padding:14px;cursor:pointer;font-size:14px;font-weight:600;margin-top:16px">Salvar configuração</button>' +
       '</div>';
 
     overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
@@ -1614,7 +1614,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         .filter(Boolean);
       if (selecionados.length > 3 && checkbox && checkbox.checked) {
         checkbox.checked = false;
-        alert('MÃ¡ximo 3 atalhos alÃ©m do Hub.');
+        alert('Máximo 3 atalhos além do Hub.');
       }
     }catch(e){}
   };
@@ -1628,7 +1628,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     );
     salvarHotbarConfig(selecionados);
     try{ document.getElementById('modal-personalizar-hotbar') && document.getElementById('modal-personalizar-hotbar').remove(); }catch(e){}
-    alert('Hotbar salva! âœ“');
+    alert('Hotbar salva! ✓');
   };
 
   window.toggleHotbarAba = function(id, ativo) {
@@ -1679,7 +1679,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       if (!header.querySelector('.patch-seta-v4')) { 
         var seta = document.createElement('span'); 
         seta.className = 'patch-seta-v4'; 
-        seta.textContent = 'â–¼'; 
+        seta.textContent = '▼'; 
         seta.style.cssText = 'display:inline-block;transition:transform 0.3s;' + 
           'font-size:11px;opacity:0.5;margin-left:8px;pointer-events:none'; 
         header.appendChild(seta); 
@@ -2089,7 +2089,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           }
 
           var indicator = document.createElement('div');
-          indicator.textContent = (dx < 0 ? 'â†’ ' : 'â† ') + next;
+          indicator.textContent = (dx < 0 ? '→ ' : '← ') + next;
           indicator.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(74,144,217,0.92);color:#fff;padding:10px 18px;border-radius:20px;font-size:15px;font-weight:700;z-index:9999;pointer-events:none;animation:patchSwipeFade .85s forwards';
           document.body.appendChild(indicator);
           setTimeout(function(){ try{ indicator.remove(); }catch(_){ } }, 900);
@@ -2160,7 +2160,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
   body { padding-bottom: 70px !important; }
 
-  /* BOTTOM NAV â€” classes reais do sistema */
+  /* BOTTOM NAV — classes reais do sistema */
   .mobile-bottom-nav, #mobile-bottom-nav {
     display: flex !important;
     position: fixed !important;
@@ -2178,7 +2178,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     box-sizing: border-box !important;
   }
 
-  /* BotÃ£o da bottom nav â€” classe real: mbn-item */
+  /* Botão da bottom nav — classe real: mbn-item */
   .mbn-item {
     display: flex !important;
     flex-direction: column !important;
@@ -2208,7 +2208,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     height: 22px !important;
   }
 
-  /* Ãcone e label â€” classes reais: mbn-ico, mbn-lbl */
+  /* Ícone e label — classes reais: mbn-ico, mbn-lbl */
   .mbn-ico {
     display: flex !important;
     align-items: center !important;
@@ -2508,7 +2508,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     color: #64748b !important;
   }
 
-  /* FORMULÃRIOS */
+  /* FORMULÁRIOS */
   input, select, textarea {
     font-size: 16px !important;
     min-height: 44px !important;
@@ -2519,7 +2519,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     touch-action: manipulation !important;
   }
 
-  /* TABELAS GENÃ‰RICAS */
+  /* TABELAS GENÉRICAS */
   table {
     display: block !important;
     overflow-x: auto !important;
@@ -2636,7 +2636,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         icon:'<path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' },
       { id:'mob-nav-pcp',  page:'pcp',     label:'PCP',
         icon:'<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>' },
-      { id:'mob-nav-maq',  page:'ofmaq',   label:'MÃ¡quinas',
+      { id:'mob-nav-maq',  page:'ofmaq',   label:'Máquinas',
         icon:'<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>' },
       { id:'mob-nav-est',  page:'estoque', label:'Estoque',
         icon:'<path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>' },
@@ -2665,39 +2665,39 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   var MODULOS = [
     {label:'Hub',             page:'hub'},
     {label:'PCP',             page:'pcp'},
-    {label:'OF MÃ¡quina',      page:'ofmaq'},
+    {label:'OF Máquina',      page:'ofmaq'},
     {label:'Hist. Passagens', page:'historico-passagens'},
     {label:'Agenda',          page:'agenda'},
     {label:'Amostras',        page:'amostras'},
-    {label:'OrÃ§amentos',      page:'orcamentos'},
+    {label:'Orçamentos',      page:'orcamentos'},
     {label:'Clientes',        page:'clientes'},
     {label:'Mapa Clientes',   page:'mapa-clientes'},
     {label:'Estoque',         page:'estoque'},
     {label:'Sel. Chapas',     page:'sel-chapas'},
-    {label:'PapelÃ£o IA',      page:'papelao-ia'},
-    {label:'MÃ¡quinas',        page:'maquinas'},
+    {label:'Papelão IA',      page:'papelao-ia'},
+    {label:'Máquinas',        page:'maquinas'},
     {label:'Tempos Reais',    page:'tempos-reais'},
     {label:'Tipos Caixa',     page:'tipos-caixa'},
     {label:'Fluxos',          page:'fluxos'},
     {label:'Facas',           page:'facas1'},
-    {label:'ClichÃªs',         page:'cliches'},
+    {label:'Clichês',         page:'cliches'},
     {label:'Pedidos Rec.',    page:'pedidos-recorrentes'},
-    {label:'RelatÃ³rios',      page:'relatorios'},
+    {label:'Relatórios',      page:'relatorios'},
     {label:'Rel. Mensal',     page:'relmensal'},
     {label:'Dashboard',       page:'dashboard'},
-    {label:'ComissÃµes',       page:'comissoes'},
+    {label:'Comissões',       page:'comissoes'},
     {label:'Vendedores',      page:'vendedores'},
-    {label:'UsuÃ¡rios',        page:'usuarios'},
+    {label:'Usuários',        page:'usuarios'},
     {label:'Fornecedores',    page:'fornecedores'},
     {label:'Compras',         page:'compras'},
     {label:'Operadores',      page:'operadores'},
     {label:'Contas Pagar',    page:'contaspagar'},
     {label:'Contas Receber',  page:'contasreceber'},
     {label:'NFe',             page:'nfe'},
-    {label:'LogÃ­stica',       page:'logistica'},
+    {label:'Logística',       page:'logistica'},
     {label:'Motoristas',      page:'motoristas'},
     {label:'Roteiro Ent.',    page:'roteiro-entrega'},
-    {label:'LanÃ§amento',      page:'lancamento'},
+    {label:'Lançamento',      page:'lancamento'},
     {label:'Qualidade',       page:'qualidade'},
     {label:'Inconform.',      page:'inconformidades'},
     {label:'Cx. Perdidas',    page:'caixas-perdidas'},
@@ -2705,7 +2705,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     {label:'SIMD',            page:'simd'},
     {label:'Tablets',         page:'tablets'},
     {label:'Apontamento',     page:'apontamento'},
-    {label:'ConfiguraÃ§Ãµes',   page:'configuracoes'},
+    {label:'Configurações',   page:'configuracoes'},
     {label:'Facas 2',         page:'facas2'}
   ];
   window._DRAWER_MODULOS = MODULOS;
@@ -2726,7 +2726,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       '<div class="mob-drawer-handle"></div>' +
       '<div class="mob-drawer-search-wrap">' +
         '<input class="mob-drawer-search" id="mob-drawer-search-input" ' +
-          'type="search" placeholder="Buscar mÃ³dulo..." ' +
+          'type="search" placeholder="Buscar módulo..." ' +
           'oninput="_filterDrawer(this.value)">' +
       '</div>' +
       '<div class="mob-drawer-grid" id="mob-drawer-grid"></div>';
@@ -2792,7 +2792,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         '<span class="mob-badge-num" id="mob-badge-urgentes">0</span>URGENTES' +
       '</div>' +
       '<div class="mob-badge concluidos">' +
-        '<span class="mob-badge-num" id="mob-badge-concluidos">0</span>CONCLUÃDOS' +
+        '<span class="mob-badge-num" id="mob-badge-concluidos">0</span>CONCLUÍDOS' +
       '</div>';
     topbar.appendChild(wrap);
     function syncBadges() {
@@ -3167,7 +3167,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         bottom.innerHTML =
           '<span style="color:#94a3b8;font-size:0.72rem">Prod:</span>' +
           '<span class="patch-qtdprod-val" data-of-id="' + ofId + '" style="font-weight:800;color:#22d3ee">' + qtdProd + '</span>' +
-          '<button type="button" class="patch-qtdprod-edit" data-of-id="' + ofId + '" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:0.78rem;line-height:1">âœï¸</button>';
+          '<button type="button" class="patch-qtdprod-edit" data-of-id="' + ofId + '" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;border-radius:6px;padding:2px 6px;cursor:pointer;font-size:0.78rem;line-height:1">✏️</button>';
         wrap.appendChild(top);
         wrap.appendChild(bottom);
         tdQtd.innerHTML = '';
@@ -3180,7 +3180,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   async function salvarQtdProduzida(ofId, qtdNova) {
     var id = String(ofId || '').trim();
     var ofObj = findOfById(id) || null;
-    if (!id || !ofObj) throw new Error('OF invÃ¡lida');
+    if (!id || !ofObj) throw new Error('OF inválida');
     var qtdAnt = Math.trunc(Number(ofObj.qtd_produzida ?? 0) || 0);
     var caixasAnt = Math.trunc(Number(ofObj.caixas_boas ?? 0) || 0);
     var valorAntigo = Number(ofObj.valor_venda ?? ofObj.valor_total ?? ofObj.vl_total ?? ofObj.total ?? 0) || 0;
@@ -3276,11 +3276,11 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       inp.style.cssText = 'width:92px;padding:4px 6px;border-radius:6px;border:1px solid rgba(255,255,255,0.14);background:rgba(15,23,42,0.6);color:#e2e8f0;font-size:0.85rem;';
       var ok = document.createElement('button');
       ok.type = 'button';
-      ok.textContent = 'âœ…';
+      ok.textContent = '✅';
       ok.style.cssText = 'background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);color:#4ade80;border-radius:6px;padding:2px 6px;cursor:pointer;';
       var cancel = document.createElement('button');
       cancel.type = 'button';
-      cancel.textContent = 'âŒ';
+      cancel.textContent = '❌';
       cancel.style.cssText = 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:6px;padding:2px 6px;cursor:pointer;';
       row.appendChild(lab);
       row.appendChild(inp);
@@ -3293,7 +3293,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       ok.onclick = async function(e) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         var qtdNova = Math.trunc(Number(inp.value || 0) || 0);
-        if (qtdNova < 0) { try { window.toast('Quantidade invÃ¡lida', 'var(--orange)'); } catch (_) {} return; }
+        if (qtdNova < 0) { try { window.toast('Quantidade inválida', 'var(--orange)'); } catch (_) {} return; }
         try {
           var resultado = await salvarQtdProduzida(ofId, qtdNova);
           restore();
@@ -3314,7 +3314,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           try {
             if (typeof window.renderComissoes === 'function') window.renderComissoes();
           } catch (_) {}
-          try { window.toast('âœ“ Quantidade produzida atualizada', 'var(--green)'); } catch (_) {}
+          try { window.toast('✓ Quantidade produzida atualizada', 'var(--green)'); } catch (_) {}
         } catch (err) {
           try { window.toast('Erro ao salvar qtd produzida', 'var(--red)'); } catch (_) {}
           restore();
@@ -3370,7 +3370,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       var parts = d.split('-');
       return parts[2] + '/' + parts[1] + '/' + parts[0];
     }
-    return d || 'â€”';
+    return d || '—';
   }
   function getAuthHeader() {
     var token = '';
@@ -3399,11 +3399,11 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhuma OF em aberto.</div>';
       } else {
         listEl.innerHTML = abertas.map(function(o) {
-          var num = String(o && o.numero || 'â€”').trim() || 'â€”';
+          var num = String(o && o.numero || '—').trim() || '—';
           var prod = String(o && o.produto || '').trim();
           var qtd = (o && o.quantidade != null) ? (Number(o.quantidade) || 0) : 0;
           var ent = String(o && o.data_entrega || '').slice(0, 10);
-          var stt = String(o && o.status || 'â€”').trim() || 'â€”';
+          var stt = String(o && o.status || '—').trim() || '—';
           var maq = String(o && o.maquina || '').trim();
           return (
             '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">' +
@@ -3411,9 +3411,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                 '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
                   '<span style="font-weight:900;color:#4A90D9">OF #' + escHLocal(num) + '</span>' +
                   '<span style="color:#94a3b8;font-size:0.78rem">' + escHLocal(stt) + '</span>' +
-                  (ent ? '<span style="color:#64748b;font-size:0.78rem">ðŸ“… ' + escHLocal(fmtDataLocal(ent)) + '</span>' : '') +
-                  (qtd ? '<span style="color:#64748b;font-size:0.78rem">ðŸ“¦ ' + escHLocal(String(qtd)) + ' cx</span>' : '') +
-                  (maq ? '<span style="color:#64748b;font-size:0.78rem">ðŸ§° ' + escHLocal(maq) + '</span>' : '') +
+                  (ent ? '<span style="color:#64748b;font-size:0.78rem">📅 ' + escHLocal(fmtDataLocal(ent)) + '</span>' : '') +
+                  (qtd ? '<span style="color:#64748b;font-size:0.78rem">📦 ' + escHLocal(String(qtd)) + ' cx</span>' : '') +
+                  (maq ? '<span style="color:#64748b;font-size:0.78rem">🧰 ' + escHLocal(maq) + '</span>' : '') +
                 '</div>' +
                 (prod ? '<div style="color:#e2e8f0;font-size:0.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHLocal(prod) + '</div>' : '') +
               '</div>' +
@@ -3466,24 +3466,24 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '<table style="width:100%;border-collapse:collapse;min-width:920px">' +
             '<thead><tr>' +
               '<th style=\"' + th + '\">Data</th>' +
-              '<th style=\"' + th + '\">NÂº OF</th>' +
+              '<th style=\"' + th + '\">Nº OF</th>' +
               '<th style=\"' + th + '\">Produto</th>' +
               '<th style=\"' + th + ';text-align:right\">Qtd</th>' +
               '<th style=\"' + th + '\">Status</th>' +
               '<th style=\"' + th + ';text-align:right\">Valor</th>' +
-              '<th style=\"' + th + ';text-align:center\">AÃ§Ã£o</th>' +
+              '<th style=\"' + th + ';text-align:center\">Ação</th>' +
             '</tr></thead>' +
             '<tbody>' +
               hist.map(function(r) {
-                var num = String(r && r.numero || 'â€”').trim() || 'â€”';
-                var prod = String(r && r.produto || 'â€”').trim() || 'â€”';
+                var num = String(r && r.numero || '—').trim() || '—';
+                var prod = String(r && r.produto || '—').trim() || '—';
                 var dt = String(r && (r.data_entrega || r.created_at) || '').slice(0, 10);
                 var qtd = (r && r.quantidade != null) ? (Number(r.quantidade) || 0) : 0;
-                var stt = String(r && r.status || 'â€”').trim() || 'â€”';
+                var stt = String(r && r.status || '—').trim() || '—';
                 var valor = Number(r && r.total || 0) || 0;
                 return (
                   '<tr>' +
-                    '<td style=\"' + td + ';font-family:var(--mono)\">' + escHLocal(dt ? fmtDataLocal(dt) : 'â€”') + '</td>' +
+                    '<td style=\"' + td + ';font-family:var(--mono)\">' + escHLocal(dt ? fmtDataLocal(dt) : '—') + '</td>' +
                     '<td style=\"' + td + ';font-family:var(--mono);font-weight:900;color:var(--accent)\">' + escHLocal(num) + '</td>' +
                     '<td style=\"' + td + ';max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">' + escHLocal(prod) + '</td>' +
                     '<td style=\"' + td + ';text-align:right;font-family:var(--mono)\">' + escHLocal(String(qtd || 0)) + '</td>' +
@@ -3512,15 +3512,15 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
   function showLoading() {
     try {
-      setTxt('pcTotalPedidos', 'â€”');
-      setTxt('pcTotalFaturado', 'â€”');
-      setTxt('pcOfsAbertas', 'â€”');
+      setTxt('pcTotalPedidos', '—');
+      setTxt('pcTotalFaturado', '—');
+      setTxt('pcOfsAbertas', '—');
       var listEl = document.getElementById('pcOfsAbertasList');
-      if (listEl) listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregandoâ€¦</div>';
+      if (listEl) listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
       var topEl = document.getElementById('pcTopProdutos');
-      if (topEl) topEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregandoâ€¦</div>';
+      if (topEl) topEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
       var histEl = document.getElementById('pcHistorico');
-      if (histEl) histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregandoâ€¦</div>';
+      if (histEl) histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
     } catch (_) {}
   }
   function hook() {
@@ -3588,7 +3588,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         var json = await resp.json().catch(function() { return null; });
         var list = (json && json.ok && Array.isArray(json.data)) ? json.data : [];
         try { window._clientesInativosLista = list; } catch (_) {}
-        if (total) total.textContent = String(list.length) + ' clientes sem pedido hÃ¡ ' + dias + '+ dias';
+        if (total) total.textContent = String(list.length) + ' clientes sem pedido há ' + dias + '+ dias';
         if (typeof window.renderClientesInativosTbody === 'function') window.renderClientesInativosTbody(list);
         try {
           var busca = document.getElementById('buscaClienteInativo');
@@ -3620,7 +3620,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
             if (!url) { tr.dataset.patchWa = '1'; return; }
             var btn = document.createElement('button');
             btn.type = 'button';
-            btn.textContent = 'ðŸ“ž WhatsApp';
+            btn.textContent = '📞 WhatsApp';
             btn.style.cssText = 'margin-left:10px;padding:4px 8px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.35);color:#4ade80;cursor:pointer;font-size:0.72rem;font-weight:700;';
             btn.onclick = function(ev) {
               try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
@@ -3686,7 +3686,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       var currentId = String(sel.value || '').trim();
       var currentTxt = optSel ? String(optSel.textContent || '').trim() : '';
       if (currentId) hidden.value = currentId;
-      if (currentTxt && currentTxt !== '-- Selecione o cliente --' && currentTxt !== 'â€” Selecione o cliente â€”') input.value = currentTxt;
+      if (currentTxt && currentTxt !== '-- Selecione o cliente --' && currentTxt !== '— Selecione o cliente —') input.value = currentTxt;
     } catch (_) {}
 
     var timer = 0;
@@ -3716,8 +3716,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         var cidade = String(c && (c.cidade || '') || '').trim();
         var doc = String(c && (c.cnpj || c.documento || '') || '').trim();
         row.innerHTML =
-          '<div style="font-weight:500;color:var(--text1)">' + escHLocal(nome || 'â€”') + '</div>' +
-          '<div style="font-size:11px;color:var(--text2)">' + escHLocal((cidade ? cidade : '') + (doc ? (' Â· ' + doc) : '')) + '</div>';
+          '<div style="font-weight:500;color:var(--text1)">' + escHLocal(nome || '—') + '</div>' +
+          '<div style="font-size:11px;color:var(--text2)">' + escHLocal((cidade ? cidade : '') + (doc ? (' · ' + doc) : '')) + '</div>';
         row.onclick = function(ev) {
           try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
           var id = String(c && c.id || '').trim();
@@ -3755,7 +3755,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       var input = document.createElement('input');
       input.id = 'comissoes-busca-of';
       input.type = 'text';
-      input.placeholder = 'ðŸ” Buscar por nÂº OF, cliente...';
+      input.placeholder = '🔍 Buscar por nº OF, cliente...';
       input.style.cssText = 'padding:7px 12px;border-radius:6px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);width:220px';
       input.oninput = function() { try { if (typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(input.value); } catch (_) {} };
       bar.appendChild(input);
@@ -3956,7 +3956,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       try { txt = String(btn.textContent || '').trim(); } catch (_) {}
 
       var isNovaOF = oc.indexOf('abrirModalOF') !== -1 || oc.indexOf('abrirNovaOf(') !== -1 || oc.indexOf('abrirNovaOF(') !== -1 || txt === 'Nova OF';
-      var isOFRapida = oc.indexOf('abrirNovaOfRapida') !== -1 || oc.indexOf('abrirOFRapida') !== -1 || oc.indexOf('abrirOfRapida') !== -1 || txt === 'OF RÃ¡pida' || txt === 'RÃ¡pida';
+      var isOFRapida = oc.indexOf('abrirNovaOfRapida') !== -1 || oc.indexOf('abrirOFRapida') !== -1 || oc.indexOf('abrirOfRapida') !== -1 || txt === 'OF Rápida' || txt === 'Rápida';
       if (!isNovaOF && !isOFRapida) return;
 
       var openFn = null;
@@ -3992,7 +3992,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         try { cli = await ensureClienteId(el); } catch (_) { cli = syncClienteOfRapida(el); }
         var cliId = String((el.dataset && el.dataset.clienteId) ? el.dataset.clienteId : '').trim();
         if (!cliId) {
-          try { alert('Selecione um cliente vÃ¡lido da lista.'); } catch (_) {}
+          try { alert('Selecione um cliente válido da lista.'); } catch (_) {}
           try { el.focus(); el.select && el.select(); } catch (_) {}
           return;
         }
@@ -4280,7 +4280,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
 
     var num = document.createElement('input');
     num.id = pageId === 'page-facas1' ? 'facas1-num-busca' : 'facas2-num-busca';
-    num.placeholder = 'ðŸ”¢ NÃºmero...';
+    num.placeholder = '🔢 Número...';
     num.style.width = '140px';
     num.oninput = function() { try { if (typeof window[renderFnName] === 'function') window[renderFnName](); } catch (_) {} };
 
@@ -4311,7 +4311,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         .then(function(j) {
           if (!j || !j.ok) throw new Error((j && j.error) ? j.error : 'Falha ao criar categoria');
           loadAndBindCategorias();
-          try { if (typeof window.toast === 'function') window.toast('âœ“ Categoria criada', 'var(--green)'); } catch (_) {}
+          try { if (typeof window.toast === 'function') window.toast('✓ Categoria criada', 'var(--green)'); } catch (_) {}
         })
         .catch(function(e) { try { if (typeof window.toast === 'function') window.toast(String(e && e.message ? e.message : e), 'var(--red)'); } catch (_) {} });
     };
@@ -4340,7 +4340,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       var thNome = ths[1];
       if (thNome && String(thNome.textContent || '').toUpperCase().indexOf('NOME') !== -1) {
         var thNum = document.createElement('th');
-        thNum.textContent = 'NÃšMERO';
+        thNum.textContent = 'NÚMERO';
         thNum.style.cssText = thNome.style.cssText;
         var thCat = document.createElement('th');
         thCat.textContent = 'CATEGORIA';
@@ -4376,18 +4376,18 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         lista = lista.filter(function(f) { return String(f.categoria || '').trim() === cat; });
       }
       if (!lista.length) {
-        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada â€” clique em ï¼‹ Nova Faca</td></tr>';
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Nenhuma faca cadastrada — clique em ＋ Nova Faca</td></tr>';
         return;
       }
       body.innerHTML = lista.map(function(f) {
         var cliNomes = (f.clientes || []).map(function(id) { var c = (Array.isArray(window.CLIENTES) ? window.CLIENTES : []).find(function(x) { return x.id === id; }); return c ? c.nome : id; }).join(', ');
-        var maqStr = (f.maquinas || []).join(', ') || 'â€”';
+        var maqStr = (f.maquinas || []).join(', ') || '—';
         var thumb = (typeof window.renderFotoItem === 'function') ? window.renderFotoItem(f.foto, f.nome) : '';
-        var num = String(f.numero || '').trim() || 'â€”';
-        var catTxt = String(f.categoria || '').trim() || 'â€”';
-        var nomeTxt = String(f.nome || 'â€”');
-        var medidasTxt = String(f.medidas || 'â€”');
-        var valorTxt = f.valor ? ('R$ ' + Number(f.valor).toFixed(2)) : 'â€”';
+        var num = String(f.numero || '').trim() || '—';
+        var catTxt = String(f.categoria || '').trim() || '—';
+        var nomeTxt = String(f.nome || '—');
+        var medidasTxt = String(f.medidas || '—');
+        var valorTxt = f.valor ? ('R$ ' + Number(f.valor).toFixed(2)) : '—';
         var esc = (typeof window.escAttr === 'function') ? window.escAttr : function(s) { return String(s || '').replace(/"/g, '&quot;'); };
         return '<tr>' +
           '<td style="padding:8px 10px;border:1px solid var(--border)">' + thumb + '</td>' +
@@ -4396,12 +4396,12 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '<td style="padding:8px 10px;border:1px solid var(--border);font-weight:600">' + esc(nomeTxt) + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem;color:var(--text2)">' + esc(medidasTxt) + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(maqStr) + '</td>' +
-          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(cliNomes || 'â€”') + '</td>' +
+          '<td style="padding:8px 10px;border:1px solid var(--border);font-size:.78rem">' + esc(cliNomes || '—') + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);text-align:right;color:var(--green)">' + esc(valorTxt) + '</td>' +
           '<td style="padding:8px 10px;border:1px solid var(--border);text-align:center">' +
-            '<button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;margin-right:4px">âœ</button>' +
-            '<button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque(\'faca\',\'' + esc(f.id) + '\',\'' + esc(f.nome || '') + '\')" style="font-size:.68rem;margin-right:4px">ðŸ”³</button>' +
-            '<button class="btn btn-ghost btn-sm" onclick="excluirFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;color:var(--red)">ðŸ—‘</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="abrirModalFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;margin-right:4px">✏</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="abrirModalQRCodeEstoque(\'faca\',\'' + esc(f.id) + '\',\'' + esc(f.nome || '') + '\')" style="font-size:.68rem;margin-right:4px">🔳</button>' +
+            '<button class="btn btn-ghost btn-sm" onclick="excluirFaca1(\'' + esc(f.id) + '\')" style="font-size:.68rem;color:var(--red)">🗑</button>' +
           '</td>' +
         '</tr>';
       }).join('');
@@ -4420,7 +4420,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
 
     var wrapNum = document.createElement('div');
     wrapNum.className = 'mf';
-    wrapNum.innerHTML = '<label>NÃšMERO</label><input id="fa1-numero" placeholder="Ex: F001">';
+    wrapNum.innerHTML = '<label>NÚMERO</label><input id="fa1-numero" placeholder="Ex: F001">';
 
     var wrapCat = document.createElement('div');
     wrapCat.className = 'mf';
@@ -4509,7 +4509,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   function injectCss() {
     if (document.getElementById('patch-clientes-css')) return;
     var cssClientes =
-      '/* Container dos botÃµes do topo de clientes */\n' +
+      '/* Container dos botões do topo de clientes */\n' +
       '.clientes-acoes-topo,\n' +
       '#clientes-toolbar,\n' +
       '[data-tela="clientes"] .toolbar,\n' +
@@ -4824,7 +4824,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       try { await _carregarTodosClientes(); } catch (_) {}
       try { if (typeof carregarClientes === 'function') await carregarClientes(true); } catch (_) {}
       try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-      var msg = String(json.clientes_mesclados || 0) + ' clientes mesclados â€” ' + String(json.ofs_migradas || 0) + ' OFs migradas';
+      var msg = String(json.clientes_mesclados || 0) + ' clientes mesclados — ' + String(json.ofs_migradas || 0) + ' OFs migradas';
       try { if (typeof window.toast === 'function') window.toast(msg, 'var(--green)'); else alert(msg); } catch (_) { alert(msg); }
     } catch (e) {
       alert('Erro: ' + String(e && e.message || e));
@@ -4850,8 +4850,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       modal.innerHTML =
         '<div style="background:var(--bg2,#1e2433) !important;border:1px solid var(--border,#2d3748);border-radius:12px;padding:24px;width:100%;max-width:760px;max-height:90vh;overflow-y:auto">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-            '<h3 style="margin:0;color:var(--text);font-size:16px">ðŸ”— Mesclar Clientes</h3>' +
-            '<button id="mescla-close" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">âœ•</button>' +
+            '<h3 style="margin:0;color:var(--text);font-size:16px">🔗 Mesclar Clientes</h3>' +
+            '<button id="mescla-close" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
           '</div>' +
           '<div>' +
             '<label style="display:block;color:var(--text2);font-size:12px;margin-bottom:4px">CLIENTE PRINCIPAL</label>' +
@@ -4967,7 +4967,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       if (document.getElementById('patch-cli-mesclar')) return;
       var btn = document.createElement('button');
       btn.id = 'patch-cli-mesclar';
-      btn.textContent = 'ðŸ”— Mesclar';
+      btn.textContent = '🔗 Mesclar';
       btn.setAttribute('style', 'background:#7c6af7 !important;color:#fff !important;border:none !important;padding:6px 12px !important;border-radius:6px !important;cursor:pointer !important;font-size:13px !important;');
       btn.onclick = function() { abrirModalMesclarClientes(); };
       var after = bar.querySelector('button[onclick*="clientesVerificarDuplicatas"]');
@@ -4992,7 +4992,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         host.id = 'patch-cli-quick-filters';
         host.className = 'cli-quick-filters';
         host.innerHTML =
-          '<button type="button" id="patch-analise-inativos" style="background:#4A90D9;color:#fff;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">Sem pedir hÃ¡ +30 dias</button>' +
+          '<button type="button" id="patch-analise-inativos" style="background:#4A90D9;color:#fff;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">Sem pedir há +30 dias</button>' +
           '<button type="button" id="patch-analise-ativos" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">Quem mais pede</button>' +
           '<button type="button" id="patch-analise-valor" style="background:rgba(255,255,255,0.07);color:#94a3b8;border:none;border-radius:20px;padding:6px 14px;cursor:pointer;font-size:13px">Maior valor</button>' +
           '<select id="patch-sel-dias-inativo" style="background:#0b1220;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:4px 10px;font-size:12px">' +
@@ -5027,7 +5027,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
             var parts = d.split('-');
             return parts[2] + '/' + parts[1] + '/' + parts[0];
           }
-          return d || 'â€”';
+          return d || '—';
         };
         var getAuthHeader = function() {
           var token = '';
@@ -5059,7 +5059,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                   '<div id="ranking-clientes-titulo" style="font-weight:800;color:var(--text,#e2e8f0);font-size:15px">Ranking</div>' +
                   '<div id="ranking-clientes-sub" style="margin-top:2px;color:var(--text2,#94a3b8);font-size:12px"></div>' +
                 '</div>' +
-                '<button id="ranking-clientes-close" style="background:none;border:none;color:var(--text2,#94a3b8);font-size:20px;cursor:pointer">âœ•</button>' +
+                '<button id="ranking-clientes-close" style="background:none;border:none;color:var(--text2,#94a3b8);font-size:20px;cursor:pointer">✕</button>' +
               '</div>' +
               '<div id="ranking-clientes-body" style="display:flex;flex-direction:column;gap:8px"></div>' +
             '</div>';
@@ -5084,9 +5084,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           });
           if (!(topMetric > 0)) topMetric = 1;
           body.innerHTML = list.map(function(r, i) {
-            var medalha = (i === 0) ? 'ðŸ¥‡' : (i === 1) ? 'ðŸ¥ˆ' : (i === 2) ? 'ðŸ¥‰' : '#';
-            var nome = String(r && r.nome || 'â€”').trim() || 'â€”';
-            var cidade = String(r && r.cidade || 'â€”').trim() || 'â€”';
+            var medalha = (i === 0) ? '🥇' : (i === 1) ? '🥈' : (i === 2) ? '🥉' : '#';
+            var nome = String(r && r.nome || '—').trim() || '—';
+            var cidade = String(r && r.cidade || '—').trim() || '—';
             var qtd = Number(r && r.total_ofs || 0) || 0;
             var fat = Number(r && r.faturamento || 0) || 0;
             var metric = (tipo === 'valor') ? fat : qtd;
@@ -5122,8 +5122,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           var sub = document.getElementById('ranking-clientes-sub');
           var body = document.getElementById('ranking-clientes-body');
           if (titulo) titulo.textContent = (tipo === 'valor') ? 'Maior valor' : 'Quem mais pede';
-          if (sub) sub.textContent = 'Carregandoâ€¦';
-          if (body) body.innerHTML = '<div style="padding:14px;color:var(--text2,#94a3b8);text-align:center">Carregandoâ€¦</div>';
+          if (sub) sub.textContent = 'Carregando…';
+          if (body) body.innerHTML = '<div style="padding:14px;color:var(--text2,#94a3b8);text-align:center">Carregando…</div>';
           try {
             var resp = await apiGet('/api/clientes/ranking?tipo=' + encodeURIComponent(tipo === 'valor' ? 'valor' : 'quantidade') + '&limit=50&t=' + Date.now());
             var json = await resp.json().catch(function() { return null; });
@@ -5210,7 +5210,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         var btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
         if (!btn) return;
         var texto = String(btn.textContent || '').trim().toLowerCase();
-        if (!(texto === 'salvar' || texto === 'salvar alteracoes' || texto === 'salvar alteraÃ§Ãµes')) return;
+        if (!(texto === 'salvar' || texto === 'salvar alteracoes' || texto === 'salvar alterações')) return;
         var modal = btn.closest ? btn.closest('.modal, [id*="modal"], .modal-overlay') : null;
         if (!clientesModalLike(modal)) return;
         if (btn.dataset.patchLockUntil && Number(btn.dataset.patchLockUntil) > Date.now()) {
@@ -5314,7 +5314,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
 
       if (typeof renderClientes === 'function') {
         try { renderClientes(); } catch (_) {}
-        try { console.log('[CLIENTES] lista recarregada apÃ³s salvar'); } catch (_) {}
+        try { console.log('[CLIENTES] lista recarregada após salvar'); } catch (_) {}
         return;
       }
 
@@ -5422,7 +5422,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         try { CLIENTES = out; } catch (_) {}
         try { window._CLIENTES = out; } catch (_) {}
         try { window.CLIENTES = out; } catch (_) {}
-        console.log('[PATCH CLIENTES FORÃ‡ADO]', out.length);
+        console.log('[PATCH CLIENTES FORÇADO]', out.length);
         if (typeof renderClientes === 'function') {
           try { renderClientes(); } catch (_) {}
         }
@@ -5446,9 +5446,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       if (!ultimoEstoque) return;
 
       var novos = [
-        { icon: 'ðŸŽ¨', label: 'Estoque de Tintas', tela: 'estoque-tintas' },
-        { icon: 'ðŸ”§', label: 'Estoque de Materiais', tela: 'estoque-materiais' },
-        { icon: 'ðŸ“Š', label: 'Dashboard Estoques', tela: 'estoque-dashboard' },
+        { icon: '🎨', label: 'Estoque de Tintas', tela: 'estoque-tintas' },
+        { icon: '🔧', label: 'Estoque de Materiais', tela: 'estoque-materiais' },
+        { icon: '📊', label: 'Dashboard Estoques', tela: 'estoque-dashboard' },
       ];
 
       novos.forEach(function(item) {
@@ -5618,7 +5618,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     var s = String(status || '');
     if (vencendo) return '<span class="badge badge-venc">Venc.</span>';
     if (s === 'zerado') return '<span class="badge badge-zerado">Zerado</span>';
-    if (s === 'critico') return '<span class="badge badge-critico">CrÃ­tico</span>';
+    if (s === 'critico') return '<span class="badge badge-critico">Crítico</span>';
     if (s === 'baixo') return '<span class="badge badge-baixo">Baixo</span>';
     return '<span class="badge badge-ok">OK</span>';
   }
@@ -5676,12 +5676,12 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     modal.innerHTML =
       '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:820px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">ðŸŽ¨ ' + esc(titulo) + '</h3>' +
-          '<button id="nt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">âœ•</button>' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🎨 ' + esc(titulo) + '</h3>' +
+          '<button id="nt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
           '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Nome *</label><input id="nt-nome" class="pcp-input" value="' + safeAttr(t.nome || '') + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CÃ³digo</label><input id="nt-codigo" class="pcp-input" value="' + safeAttr(t.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código</label><input id="nt-codigo" class="pcp-input" value="' + safeAttr(t.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Pantone</label><input id="nt-pantone" class="pcp-input" value="' + safeAttr(t.pantone || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Cor</label>' +
             '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">' +
@@ -5693,7 +5693,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
             '<select id="nt-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
               '<option value="">Selecionar...</option>' +
               [
-                { v: 'base_agua', l: 'Base Ãgua' },
+                { v: 'base_agua', l: 'Base Água' },
                 { v: 'uv', l: 'UV' },
                 { v: 'verniz', l: 'Verniz' },
                 { v: 'outro', l: 'Outro' }
@@ -5709,17 +5709,17 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
               ['kg', 'litro'].map(function(u) { return '<option value="' + u + '"' + (String(t.unidade || 'kg') === u ? ' selected' : '') + '>' + u + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Peso lÃ­quido</label><input id="nt-peso" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.peso_liquido != null ? t.peso_liquido : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Peso líquido</label><input id="nt-peso" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.peso_liquido != null ? t.peso_liquido : 0) + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Quantidade atual *</label><input id="nt-qtd" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_atual != null ? t.quantidade_atual : 0) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Quantidade mÃ­nima</label><input id="nt-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_minima != null ? t.quantidade_minima : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Quantidade mínima</label><input id="nt-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_minima != null ? t.quantidade_minima : 0) + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Quantidade ideal</label><input id="nt-qtd-ideal" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.quantidade_ideal != null ? t.quantidade_ideal : 0) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Custo unitÃ¡rio (R$)</label><input id="nt-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.custo_unitario != null ? t.custo_unitario : 0) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">LocalizaÃ§Ã£o</label><input id="nt-local" class="pcp-input" value="' + safeAttr(t.localizacao || '') + '" style="width:100%;margin-top:4px"></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">ObservaÃ§Ãµes</label><textarea id="nt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:90px;resize:vertical">' + esc(t.observacoes || '') + '</textarea></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="nt-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(t.custo_unitario != null ? t.custo_unitario : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Localização</label><input id="nt-local" class="pcp-input" value="' + safeAttr(t.localizacao || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="nt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:90px;resize:vertical">' + esc(t.observacoes || '') + '</textarea></div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
           '<button id="nt-cancelar" class="pcp-btn">Cancelar</button>' +
-          '<button id="nt-salvar" class="pcp-btn primary">ðŸ’¾ Salvar</button>' +
+          '<button id="nt-salvar" class="pcp-btn primary">💾 Salvar</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -5747,32 +5747,32 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     modal.innerHTML =
       '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">â†• Movimentar Tinta</h3>' +
-          '<button id="mt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">âœ•</button>' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">↕ Movimentar Tinta</h3>' +
+          '<button id="mt-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="color:var(--text2);font-size:12px;margin-bottom:10px">Tinta</div>' +
         '<div style="font-weight:900;color:var(--text);margin-bottom:14px">' + esc(t.nome || '-') + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
           '<div><label style="color:var(--text2);font-size:12px">Tipo *</label>' +
             '<select id="mt-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
-              '<option value="entrada">Entrada â†“</option>' +
-              '<option value="saida">SaÃ­da â†‘</option>' +
+              '<option value="entrada">Entrada ↓</option>' +
+              '<option value="saida">Saída ↑</option>' +
               '<option value="ajuste">Ajuste</option>' +
               '<option value="perda">Perda</option>' +
-              '<option value="inventario">InventÃ¡rio</option>' +
+              '<option value="inventario">Inventário</option>' +
             '</select>' +
           '</div>' +
           '<div><label style="color:var(--text2);font-size:12px">Quantidade *</label><input id="mt-qtd" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Operador</label><input id="mt-operador" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Setor</label>' +
             '<select id="mt-setor" class="pcp-select" style="width:100%;margin-top:4px">' +
-              ['ProduÃ§Ã£o','ManutenÃ§Ã£o','ExpediÃ§Ã£o','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
+              ['Produção','Manutenção','Expedição','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<div><label style="color:var(--text2);font-size:12px">NÂº OF</label><input id="mt-of" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Custo unitÃ¡rio (R$)</label><input id="mt-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Nº OF</label><input id="mt-of" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="mt-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
           '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Motivo</label><input id="mt-motivo" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">ObservaÃ§Ãµes</label><textarea id="mt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="mt-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
           '<button id="mt-cancelar" class="pcp-btn">Cancelar</button>' +
@@ -5806,7 +5806,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       observacoes: (function() { var el = document.getElementById('nt-obs'); return el ? String(el.value || '') : ''; })(),
       ativo: true
     };
-    if (!payload.nome) { alert('Nome Ã© obrigatÃ³rio'); return; }
+    if (!payload.nome) { alert('Nome é obrigatório'); return; }
     var token = _getToken();
     var method = id ? 'PATCH' : 'POST';
     var url = id ? ('/api/estoque_tintas/' + encodeURIComponent(id)) : '/api/estoque_tintas';
@@ -5854,7 +5854,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       custo_unitario: _getNumVal('mt-custo'),
       observacoes: (function() { var el = document.getElementById('mt-obs'); return el ? String(el.value || '') : ''; })(),
     };
-    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade sÃ£o obrigatÃ³rios'); return; }
+    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade são obrigatórios'); return; }
     var token = _getToken();
     var resp = await fetch('/api/estoque_tintas/' + encodeURIComponent(id) + '/movimentar', {
       method: 'POST',
@@ -5882,16 +5882,16 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     modal.innerHTML =
       '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:900px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">ðŸ”© ' + esc(titulo) + '</h3>' +
-          '<button id="nm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">âœ•</button>' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">🔩 ' + esc(titulo) + '</h3>' +
+          '<button id="nm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
           '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Nome *</label><input id="nm-nome" class="pcp-input" value="' + safeAttr(m.nome || '') + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CÃ³digo</label><input id="nm-codigo" class="pcp-input" value="' + safeAttr(m.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código</label><input id="nm-codigo" class="pcp-input" value="' + safeAttr(m.codigo || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Categoria *</label>' +
             '<div style="display:flex;gap:8px;align-items:center;margin-top:4px">' +
               '<select id="nm-categoria" class="pcp-select" style="flex:1">' +
-                ['Ferramentas','EPIs','ManutenÃ§Ã£o','EscritÃ³rio','Limpeza','ProduÃ§Ã£o','ExpediÃ§Ã£o','Outro'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.categoria || '') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+                ['Ferramentas','EPIs','Manutenção','Escritório','Limpeza','Produção','Expedição','Outro'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.categoria || '') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
               '</select>' +
               '<button id="nm-nova-cat" class="pcp-btn" type="button">Nova</button>' +
             '</div>' +
@@ -5901,26 +5901,26 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '<div><label style="color:var(--text2);font-size:12px">Fornecedor</label><input id="nm-fornecedor" class="pcp-input" value="' + safeAttr(m.fornecedor || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Unidade</label>' +
             '<select id="nm-unidade" class="pcp-select" style="width:100%;margin-top:4px">' +
-              ['un','kg','litro','metro','caixa','pacote','par','mÂ²','m'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.unidade || 'un') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
+              ['un','kg','litro','metro','caixa','pacote','par','m²','m'].map(function(o) { return '<option value="' + safeAttr(o) + '"' + (String(m.unidade || 'un') === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<div><label style="color:var(--text2);font-size:12px">CÃ³digo de barras</label><input id="nm-codbarras" class="pcp-input" value="' + safeAttr(m.codigo_barras || '') + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Código de barras</label><input id="nm-codbarras" class="pcp-input" value="' + safeAttr(m.codigo_barras || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Validade</label><input id="nm-validade" type="date" class="pcp-input" value="' + safeAttr(_fmtDateISO(m.validade || m.data_validade || '')) + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Qtd atual *</label><input id="nm-qtd" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_atual != null ? m.quantidade_atual : (m.quantidade != null ? m.quantidade : 0)) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Qtd mÃ­nima</label><input id="nm-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_minima != null ? m.quantidade_minima : (m.estoque_minimo != null ? m.estoque_minimo : 0)) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd mínima</label><input id="nm-qtd-min" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_minima != null ? m.quantidade_minima : (m.estoque_minimo != null ? m.estoque_minimo : 0)) + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Qtd ideal</label><input id="nm-qtd-ideal" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_ideal != null ? m.quantidade_ideal : 0) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Qtd mÃ¡xima</label><input id="nm-qtd-max" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_maxima != null ? m.quantidade_maxima : 0) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Custo mÃ©dio (R$)</label><input id="nm-custo-medio" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.custo_medio != null ? m.custo_medio : (m.custo_unitario != null ? m.custo_unitario : 0)) + '" style="width:100%;margin-top:4px"></div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Ãšltimo custo (R$)</label><input id="nm-ultimo-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.ultimo_custo != null ? m.ultimo_custo : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Qtd máxima</label><input id="nm-qtd-max" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.quantidade_maxima != null ? m.quantidade_maxima : 0) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo médio (R$)</label><input id="nm-custo-medio" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.custo_medio != null ? m.custo_medio : (m.custo_unitario != null ? m.custo_unitario : 0)) + '" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Último custo (R$)</label><input id="nm-ultimo-custo" type="number" step="0.01" class="pcp-input" value="' + safeAttr(m.ultimo_custo != null ? m.ultimo_custo : 0) + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Corredor</label><input id="nm-loc-cor" class="pcp-input" value="' + safeAttr(m.localizacao_corredor || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Prateleira</label><input id="nm-loc-pra" class="pcp-input" value="' + safeAttr(m.localizacao_prateleira || '') + '" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Caixa/Gaveta</label><input id="nm-loc-cai" class="pcp-input" value="' + safeAttr(m.localizacao_caixa || '') + '" style="width:100%;margin-top:4px"></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">DescriÃ§Ã£o</label><textarea id="nm-desc" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.descricao || '') + '</textarea></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">ObservaÃ§Ãµes</label><textarea id="nm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.observacoes || '') + '</textarea></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Descrição</label><textarea id="nm-desc" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.descricao || '') + '</textarea></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="nm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical">' + esc(m.observacoes || '') + '</textarea></div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
           '<button id="nm-cancelar" class="pcp-btn">Cancelar</button>' +
-          '<button id="nm-salvar" class="pcp-btn primary">ðŸ’¾ Salvar</button>' +
+          '<button id="nm-salvar" class="pcp-btn primary">💾 Salvar</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -5952,31 +5952,31 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     modal.innerHTML =
       '<div style="background:var(--card);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border:1px solid var(--border)">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">' +
-          '<h3 style="color:var(--text);font-size:16px;margin:0">â†• Movimentar Material</h3>' +
-          '<button id="mm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">âœ•</button>' +
+          '<h3 style="color:var(--text);font-size:16px;margin:0">↕ Movimentar Material</h3>' +
+          '<button id="mm-fechar" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
         '</div>' +
         '<div style="color:var(--text2);font-size:12px;margin-bottom:10px">Material</div>' +
         '<div style="font-weight:900;color:var(--text);margin-bottom:14px">' + esc(m.nome || '-') + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
           '<div><label style="color:var(--text2);font-size:12px">Tipo *</label>' +
             '<select id="mm-tipo" class="pcp-select" style="width:100%;margin-top:4px">' +
-              '<option value="entrada">Entrada â†“</option>' +
-              '<option value="saida">SaÃ­da â†‘</option>' +
+              '<option value="entrada">Entrada ↓</option>' +
+              '<option value="saida">Saída ↑</option>' +
               '<option value="ajuste">Ajuste</option>' +
               '<option value="perda">Perda</option>' +
-              '<option value="inventario">InventÃ¡rio</option>' +
+              '<option value="inventario">Inventário</option>' +
             '</select>' +
           '</div>' +
           '<div><label style="color:var(--text2);font-size:12px">Quantidade *</label><input id="mm-qtd" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Operador</label><input id="mm-operador" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Setor</label>' +
             '<select id="mm-setor" class="pcp-select" style="width:100%;margin-top:4px">' +
-              ['ProduÃ§Ã£o','ManutenÃ§Ã£o','ExpediÃ§Ã£o','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
+              ['Produção','Manutenção','Expedição','Limpeza','Outro'].map(function(s) { return '<option value="' + safeAttr(s) + '">' + esc(s) + '</option>'; }).join('') +
             '</select>' +
           '</div>' +
-          '<div><label style="color:var(--text2);font-size:12px">Custo unitÃ¡rio (R$)</label><input id="mm-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
+          '<div><label style="color:var(--text2);font-size:12px">Custo unitário (R$)</label><input id="mm-custo" type="number" step="0.01" class="pcp-input" value="0" style="width:100%;margin-top:4px"></div>' +
           '<div><label style="color:var(--text2);font-size:12px">Motivo</label><input id="mm-motivo" class="pcp-input" value="" style="width:100%;margin-top:4px"></div>' +
-          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">ObservaÃ§Ãµes</label><textarea id="mm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
+          '<div style="grid-column:1/-1"><label style="color:var(--text2);font-size:12px">Observações</label><textarea id="mm-obs" class="pcp-input" style="width:100%;margin-top:4px;min-height:80px;resize:vertical"></textarea></div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">' +
           '<button id="mm-cancelar" class="pcp-btn">Cancelar</button>' +
@@ -6013,8 +6013,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       observacoes: (function() { var el = document.getElementById('nm-obs'); return el ? String(el.value || '') : ''; })(),
       ativo: true
     };
-    if (!payload.nome) { alert('Nome Ã© obrigatÃ³rio'); return; }
-    if (!payload.categoria) { alert('Categoria Ã© obrigatÃ³ria'); return; }
+    if (!payload.nome) { alert('Nome é obrigatório'); return; }
+    if (!payload.categoria) { alert('Categoria é obrigatória'); return; }
     var token = _getToken();
     var method = id ? 'PATCH' : 'POST';
     var url = id ? ('/api/estoque_materiais/' + encodeURIComponent(id)) : '/api/estoque_materiais';
@@ -6061,7 +6061,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
       custo_unitario: _getNumVal('mm-custo'),
       observacoes: (function() { var el = document.getElementById('mm-obs'); return el ? String(el.value || '') : ''; })(),
     };
-    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade sÃ£o obrigatÃ³rios'); return; }
+    if (!payload.tipo || payload.quantidade <= 0) { alert('Tipo e quantidade são obrigatórios'); return; }
     var token = _getToken();
     var resp = await fetch('/api/estoque_materiais/' + encodeURIComponent(id) + '/movimentar', {
       method: 'POST',
@@ -6090,17 +6090,17 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   window._excluirMaterial = _excluirMaterial;
 
   function _renderEstoqueTintas(main) {
-    main = main || getMainPatchHost('estoque-tintas', 'ðŸŽ¨ Estoque de Tintas');
+    main = main || getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
       '<div id="patch-tintas">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
           '<button class="pcp-btn primary" id="btn-nova-tinta" type="button">+ Nova Tinta</button>' +
-          '<input id="patch-tintas-q" class="pcp-input" placeholder="ðŸ” buscar..." style="min-width:220px;flex:1" />' +
+          '<input id="patch-tintas-q" class="pcp-input" placeholder="🔍 buscar..." style="min-width:220px;flex:1" />' +
           '<select id="patch-tintas-filtro" class="pcp-select" style="min-width:220px">' +
             '<option value="">Todos</option>' +
-            '<option value="critico">CrÃ­tico</option>' +
+            '<option value="critico">Crítico</option>' +
             '<option value="baixo">Alerta</option>' +
             '<option value="ok">OK</option>' +
             '<option value="vencendo">Vencendo</option>' +
@@ -6153,10 +6153,10 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
               '<th>Fabricante</th>' +
               '<th style="text-align:center">Qtd Atual</th>' +
               '<th style="text-align:center">Unidade</th>' +
-              '<th style="text-align:center">MÃ­nimo</th>' +
+              '<th style="text-align:center">Mínimo</th>' +
               '<th style="text-align:center">Status</th>' +
               '<th style="text-align:center">Validade</th>' +
-              '<th style="text-align:right">AÃ§Ãµes</th>' +
+              '<th style="text-align:right">Ações</th>' +
             '</tr>' +
           '</thead>' +
           '<tbody>' +
@@ -6176,9 +6176,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                 '<td style="text-align:center" class="muted">' + esc(validade ? _fmtDateISO(validade).split('-').reverse().join('/') : '-') + '</td>' +
                 '<td style="text-align:right">' +
                   '<div class="pcp-actions">' +
-                    '<button class="pcp-btn" type="button" onclick="window._abrirModalMovTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Movimentar â†•</button>' +
-                    '<button class="pcp-btn" type="button" onclick="window._abrirModalNovaTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Editar âœ</button>' +
-                    '<button class="pcp-btn danger" type="button" onclick="window._excluirTinta(\'' + safeAttr(id) + '\')">Excluir ðŸ—‘</button>' +
+                    '<button class="pcp-btn" type="button" onclick="window._abrirModalMovTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
+                    '<button class="pcp-btn" type="button" onclick="window._abrirModalNovaTinta(window.__ESTOQUE_TINTAS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
+                    '<button class="pcp-btn danger" type="button" onclick="window._excluirTinta(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
                   '</div>' +
                 '</td>' +
               '</tr>';
@@ -6206,18 +6206,18 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
 
   function _renderEstoqueMateriais(main) {
-    main = main || getMainPatchHost('estoque-materiais', 'ðŸ”§ Estoque de Materiais');
+    main = main || getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
       '<div id="patch-materiais">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
           '<button class="pcp-btn primary" id="btn-novo-material" type="button">+ Novo Material</button>' +
-          '<input id="patch-mat-q" class="pcp-input" placeholder="ðŸ” buscar..." style="min-width:220px;flex:1" />' +
+          '<input id="patch-mat-q" class="pcp-input" placeholder="🔍 buscar..." style="min-width:220px;flex:1" />' +
           '<select id="patch-mat-cat" class="pcp-select" style="min-width:220px"><option value="">Todas categorias</option></select>' +
           '<select id="patch-mat-filtro" class="pcp-select" style="min-width:180px">' +
             '<option value="">Todos</option>' +
-            '<option value="critico">CrÃ­tico</option>' +
+            '<option value="critico">Crítico</option>' +
             '<option value="baixo">Alerta</option>' +
             '<option value="ok">OK</option>' +
             '<option value="vencendo">Vencendo</option>' +
@@ -6285,15 +6285,15 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
               '<table class="pcp-table">' +
                 '<thead>' +
                   '<tr>' +
-                    '<th>CÃ³digo</th>' +
+                    '<th>Código</th>' +
                     '<th>Nome</th>' +
                     '<th>Marca</th>' +
                     '<th style="text-align:center">Qtd Atual</th>' +
                     '<th style="text-align:center">Unidade</th>' +
-                    '<th style="text-align:center">MÃ­nimo</th>' +
-                    '<th>LocalizaÃ§Ã£o</th>' +
+                    '<th style="text-align:center">Mínimo</th>' +
+                    '<th>Localização</th>' +
                     '<th style="text-align:center">Status</th>' +
-                    '<th style="text-align:right">AÃ§Ãµes</th>' +
+                    '<th style="text-align:right">Ações</th>' +
                   '</tr>' +
                 '</thead>' +
                 '<tbody>' +
@@ -6311,9 +6311,9 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                       '<td style="text-align:center">' + _statusBadgeHtml(x.st, x.venc) + '</td>' +
                       '<td style="text-align:right">' +
                         '<div class="pcp-actions">' +
-                          '<button class="pcp-btn" type="button" onclick="window._abrirModalMovMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Movimentar â†•</button>' +
-                          '<button class="pcp-btn" type="button" onclick="window._abrirModalNovoMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Editar âœ</button>' +
-                          '<button class="pcp-btn danger" type="button" onclick="window._excluirMaterial(\'' + safeAttr(id) + '\')">Excluir ðŸ—‘</button>' +
+                          '<button class="pcp-btn" type="button" onclick="window._abrirModalMovMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Movimentar ↕</button>' +
+                          '<button class="pcp-btn" type="button" onclick="window._abrirModalNovoMaterial(window.__ESTOQUE_MATERIAIS_BYID[\'' + safeAttr(id) + '\'])">Editar ✏</button>' +
+                          '<button class="pcp-btn danger" type="button" onclick="window._excluirMaterial(\'' + safeAttr(id) + '\')">Excluir 🗑</button>' +
                         '</div>' +
                       '</td>' +
                     '</tr>';
@@ -6364,7 +6364,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
   }
 
   function _renderDashboardEstoques(main) {
-    main = main || getMainPatchHost('estoque-dashboard', 'ðŸ“Š Dashboard Estoques');
+    main = main || getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
@@ -6414,25 +6414,25 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         container.innerHTML =
           '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:14px">' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">ðŸ’° Valor Total em Estoque</div>' +
+              '<div style="color:var(--text2);font-size:12px">💰 Valor Total em Estoque</div>' +
               '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(fmtBRL(cards.valor_total || 0)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">âš ï¸ Itens CrÃ­ticos</div>' +
+              '<div style="color:var(--text2);font-size:12px">⚠️ Itens Críticos</div>' +
               '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.itens_criticos || 0)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">ðŸ•’ Vencendo em 30 dias</div>' +
+              '<div style="color:var(--text2);font-size:12px">🕒 Vencendo em 30 dias</div>' +
               '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.vencendo_30d || 0)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">ðŸ“¦ Total de Itens</div>' +
+              '<div style="color:var(--text2);font-size:12px">📦 Total de Itens</div>' +
               '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.total_itens || 0)) + '</div>' +
             '</div>' +
           '</div>' +
 
           '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:14px">' +
-            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">ðŸš¨ Alertas Ativos</div>' +
+            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">🚨 Alertas Ativos</div>' +
             (alertas.length ? (
               '<div style="display:flex;flex-direction:column;gap:8px">' +
                 alertas.slice(0, 40).map(function(a) {
@@ -6440,23 +6440,23 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                   var un = a.unidade ? (' ' + String(a.unidade)) : '';
                   return '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;background:rgba(0,0,0,0.10)">' +
                     '<div style="min-width:0">' +
-                      '<div style="color:var(--text);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.categoria || '-') + ' Â· ' + esc(a.nome || '-') + '</div>' +
+                      '<div style="color:var(--text);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.categoria || '-') + ' · ' + esc(a.nome || '-') + '</div>' +
                       '<div style="color:var(--text2);font-size:12px;margin-top:2px">' +
-                        esc(String(a.quantidade_atual || 0) + un) + ' (mÃ­n: ' + esc(String(a.quantidade_minima || 0)) + ')' +
+                        esc(String(a.quantidade_atual || 0) + un) + ' (mín: ' + esc(String(a.quantidade_minima || 0)) + ')' +
                       '</div>' +
                     '</div>' +
                     '<div>' + badge + '</div>' +
                   '</div>';
                 }).join('') +
               '</div>'
-            ) : '<div style="color:var(--text2);padding:8px 0">âœ… Todos os estoques em ordem</div>') +
+            ) : '<div style="color:var(--text2);padding:8px 0">✅ Todos os estoques em ordem</div>') +
           '</div>' +
 
           '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:14px">' +
             [
-              { nome: 'Tintas', icon: 'ðŸŽ¨', d: tintas, cor: '#4f8ef7' },
-              { nome: 'Chapas', icon: 'ðŸ“¦', d: chapas, cor: '#22c55e' },
-              { nome: 'Materiais', icon: 'ðŸ”©', d: materiais, cor: '#f59e0b' }
+              { nome: 'Tintas', icon: '🎨', d: tintas, cor: '#4f8ef7' },
+              { nome: 'Chapas', icon: '📦', d: chapas, cor: '#22c55e' },
+              { nome: 'Materiais', icon: '🔩', d: materiais, cor: '#f59e0b' }
             ].map(function(c) {
               var d = c.d || {};
               return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-left:4px solid ' + c.cor + '">' +
@@ -6466,7 +6466,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                   '<div style="margin-left:auto;color:var(--text2);font-size:12px">' + esc(String(d.total || 0)) + '</div>' +
                 '</div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-                  '<span class="badge badge-critico">CrÃ­ticos: ' + esc(String(d.critico || d.criticos || 0)) + '</span>' +
+                  '<span class="badge badge-critico">Críticos: ' + esc(String(d.critico || d.criticos || 0)) + '</span>' +
                   '<span class="badge badge-baixo">Alertas: ' + esc(String(d.alerta || d.alertas || 0)) + '</span>' +
                   '<span class="badge badge-ok">OK: ' + esc(String(d.ok || 0)) + '</span>' +
                   '<span class="badge badge-venc">Venc.: ' + esc(String(d.vencendo || 0)) + '</span>' +
@@ -6478,7 +6478,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
               '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
-                '<div style="font-weight:950;color:var(--text)">DistribuiÃ§Ã£o do valor em estoque</div>' +
+                '<div style="font-weight:950;color:var(--text)">Distribuição do valor em estoque</div>' +
                 '<div style="color:var(--text2);font-size:12px">' + esc(fmtBRL((valores.tintas || 0) + (valores.materiais || 0) + (valores.chapas || 0))) + '</div>' +
               '</div>' +
               '<div style="height:220px;position:relative"><canvas id="patch-estoque-donut" style="width:100%;height:100%"></canvas></div>' +
@@ -6486,7 +6486,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '</div>' +
 
           '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">MovimentaÃ§Ãµes recentes</div>' +
+            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">Movimentações recentes</div>' +
             (movs.length ? (
               '<table class="pcp-table">' +
                 '<thead><tr>' +
@@ -6502,7 +6502,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                     return '<tr>' +
                       '<td class="muted">' + esc(show) + '</td>' +
                       '<td class="muted">' + esc(String(m.tipo || '-')) + '</td>' +
-                      '<td>' + esc((cat ? (cat + ' Â· ') : '') + (item || String(m.material_id || m.tinta_id || '-'))) + '</td>' +
+                      '<td>' + esc((cat ? (cat + ' · ') : '') + (item || String(m.material_id || m.tinta_id || '-'))) + '</td>' +
                       '<td style="text-align:center;font-weight:900">' + esc(String(m.quantidade || 0)) + '</td>' +
                       '<td class="muted">' + esc(String(m.operador || '-')) + '</td>' +
                       '<td class="muted">' + esc(String(m.setor || '-')) + '</td>' +
@@ -6510,7 +6510,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                   }).join('') +
                 '</tbody>' +
               '</table>'
-            ) : '<div style="color:var(--text2);padding:8px 0">Nenhuma movimentaÃ§Ã£o recente</div>') +
+            ) : '<div style="color:var(--text2);padding:8px 0">Nenhuma movimentação recente</div>') +
           '</div>';
 
         ensureChartJs().then(function(ok) {
@@ -6552,17 +6552,17 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
     var wrapped = async function(tela) {
       var page = String(tela || '');
       if (page === 'estoque-tintas') {
-        var hostTintas = getMainPatchHost('estoque-tintas', 'ðŸŽ¨ Estoque de Tintas');
+        var hostTintas = getMainPatchHost('estoque-tintas', '🎨 Estoque de Tintas');
         _renderEstoqueTintas(hostTintas);
         return;
       }
       if (page === 'estoque-materiais') {
-        var hostMateriais = getMainPatchHost('estoque-materiais', 'ðŸ”§ Estoque de Materiais');
+        var hostMateriais = getMainPatchHost('estoque-materiais', '🔧 Estoque de Materiais');
         _renderEstoqueMateriais(hostMateriais);
         return;
       }
       if (page === 'estoque-dashboard') {
-        var hostDash = getMainPatchHost('estoque-dashboard', 'ðŸ“Š Dashboard Estoques');
+        var hostDash = getMainPatchHost('estoque-dashboard', '📊 Dashboard Estoques');
         _renderDashboardEstoques(hostDash);
         return;
       }
@@ -6637,8 +6637,8 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
         var tintas = res.tintas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
         var chapas = res.chapas || { total: 0, criticos: 0, alertas: 0, ok: 0 };
         var cards = [
-          { nome: 'Tintas', icon: 'ðŸŽ¨', total: num(tintas.total), criticos: num(tintas.criticos), alertas: num(tintas.alertas), ok: num(tintas.ok), cor: '#f7923a' },
-          { nome: 'Chapas', icon: 'ðŸ“¦', total: num(chapas.total), criticos: num(chapas.criticos), alertas: num(chapas.alertas), ok: num(chapas.ok), cor: '#4f8ef7' }
+          { nome: 'Tintas', icon: '🎨', total: num(tintas.total), criticos: num(tintas.criticos), alertas: num(tintas.alertas), ok: num(tintas.ok), cor: '#f7923a' },
+          { nome: 'Chapas', icon: '📦', total: num(chapas.total), criticos: num(chapas.criticos), alertas: num(chapas.alertas), ok: num(chapas.ok), cor: '#4f8ef7' }
         ];
         var tintasCriticas = (Array.isArray(res.tintas_data) ? res.tintas_data : []).filter(function(t) {
           return num(t && t.quantidade_atual) <= num(t && t.quantidade_minima);
@@ -6657,7 +6657,7 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
                 '<div style="display:flex;gap:12px">' +
                   '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,90,90,0.1);border-radius:8px">' +
                     '<div style="font-size:22px;font-weight:700;color:#f75a5a">' + esc(String(c.criticos)) + '</div>' +
-                    '<div style="font-size:11px;color:var(--text2)">CrÃ­ticos</div>' +
+                    '<div style="font-size:11px;color:var(--text2)">Críticos</div>' +
                   '</div>' +
                   '<div style="flex:1;text-align:center;padding:10px;background:rgba(247,146,58,0.1);border-radius:8px">' +
                     '<div style="font-size:22px;font-weight:700;color:#f7923a">' + esc(String(c.alertas)) + '</div>' +
@@ -6673,12 +6673,12 @@ console.log('[PATCH] versÃ£o ' + Date.now() + ' carregado');
           '</div>' +
           (tintasCriticas.length
             ? '<div style="padding:0 16px 16px">' +
-                '<div style="font-weight:600;margin-bottom:10px;color:var(--text)">ðŸš¨ Tintas em nÃ­vel crÃ­tico</div>' +
+                '<div style="font-weight:600;margin-bottom:10px;color:var(--text)">🚨 Tintas em nível crítico</div>' +
                 '<table style="width:100%;border-collapse:collapse">' +
                   '<thead><tr style="color:var(--text2);font-size:12px">' +
                     '<th style="text-align:left;padding:8px">Nome</th>' +
                     '<th style="text-align:center;padding:8px">Atual</th>' +
-                    '<th style="text-align:center;padding:8px">MÃ­nimo</th>' +
+                    '<th style="text-align:center;padding:8px">Mínimo</th>' +
                     '<th style="text-align:center;padding:8px">Unidade</th>' +
                   '</tr></thead>' +
                   '<tbody>' +
@@ -6813,10 +6813,10 @@ window._mbnActive = function(id) {
     return (
       '<div class="mob-of-card' + borda + '" data-of-id="' + d.id + '">' +
         '<div class="mob-of-card-top">' +
-          '<span class="mob-of-num">OF ' + (d.num||'â€”') + '</span>' +
+          '<span class="mob-of-num">OF ' + (d.num||'—') + '</span>' +
           '<span class="mob-of-badge ' + badgeClass + '">' + badgeLabel + '</span>' +
         '</div>' +
-        '<div class="mob-of-cliente">' + (d.cliente||'â€”') + '</div>' +
+        '<div class="mob-of-cliente">' + (d.cliente||'—') + '</div>' +
         '<div class="mob-of-row">' +
           (d.vendedor ? '<span class="mob-of-meta">' + d.vendedor + '</span>' : '') +
           (d.qtd      ? '<span class="mob-of-meta">' + d.qtd + ' un</span>' : '') +
@@ -6835,7 +6835,7 @@ window._mbnActive = function(id) {
             '<button class="mob-of-btn alterar"  ' + btnA + '>Alterar</button>' +
             '<button class="mob-of-btn cancelar" ' + btnC + '>Cancelar</button>' +
             '<button class="mob-of-btn rapida" ' +
-              'onclick="if(typeof abrirOFRapida===\'function\')abrirOFRapida()">âš¡ RÃ¡pida</button>' +
+              'onclick="if(typeof abrirOFRapida===\'function\')abrirOFRapida()">⚡ Rápida</button>' +
           '</div>' +
         '</div>' +
       '</div>'
@@ -6925,7 +6925,7 @@ window._mbnActive = function(id) {
           'placeholder="Buscar OF, cliente, produto..." ' +
           'oninput="_mobSearch(this.value)">' +
         '<button class="mob-search-close" ' +
-          'onclick="_toggleMobSearch(false)">âœ•</button>' +
+          'onclick="_toggleMobSearch(false)">✕</button>' +
       '</div>' +
       '<div class="mob-search-results" id="mob-search-results">' +
         '<p style="color:#475569;font-size:13px;padding:20px 0;text-align:center">' +
@@ -6973,7 +6973,7 @@ window._mbnActive = function(id) {
         function c(i){ return tds[i] ? tds[i].textContent.trim() : ''; }
         resultados.push({
           tipo: 'OF',
-          titulo: 'OF ' + c(0) + ' â€” ' + c(2),
+          titulo: 'OF ' + c(0) + ' — ' + c(2),
           sub:    c(4) + ' | Entrega: ' + c(3),
           id:     tr.dataset.id || tr.dataset.ofId || ''
         });
@@ -6981,7 +6981,7 @@ window._mbnActive = function(id) {
 
     (window._DRAWER_MODULOS || []).forEach(function(m) {
       if (m.label.toLowerCase().indexOf(t) !== -1)
-        resultados.push({ tipo:'MÃ³dulo', titulo: m.label, sub:'', page: m.page });
+        resultados.push({ tipo:'Módulo', titulo: m.label, sub:'', page: m.page });
     });
 
     if (!resultados.length) {
@@ -7099,7 +7099,7 @@ window._mbnActive = function(id) {
 
   function fmtDateBR(iso) {
     var s = String(iso || '').slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return 'â€”';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '—';
     try {
       if (typeof window.fmtD === 'function') return window.fmtD(s);
     } catch (_) {}
@@ -7269,7 +7269,7 @@ window._mbnActive = function(id) {
       btnOrd.id = 'patch-btn-prioridade';
       btnOrd.setAttribute('onclick', 'ordenarOFsPorPrioridade()');
       btnOrd.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px';
-      btnOrd.textContent = 'ðŸŽ¯ Ordenar por Prioridade';
+      btnOrd.textContent = '🎯 Ordenar por Prioridade';
       wrap.appendChild(btnOrd);
     }
     if (!document.getElementById('btn-agrupar-setup')) {
@@ -7277,7 +7277,7 @@ window._mbnActive = function(id) {
       btnAgr.id = 'btn-agrupar-setup';
       btnAgr.setAttribute('onclick', 'toggleAgrupamentoSetup()');
       btnAgr.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:13px';
-      btnAgr.textContent = 'ðŸŽ¨ Agrupar Setup';
+      btnAgr.textContent = '🎨 Agrupar Setup';
       wrap.appendChild(btnAgr);
     }
     updateAgrupamentoButton();
@@ -7289,15 +7289,15 @@ window._mbnActive = function(id) {
     var ativo = !!window._agrupamentoSetupAtivo;
     btn.style.background = ativo ? 'var(--accent)' : 'var(--bg2)';
     btn.style.color = ativo ? '#fff' : 'var(--text1)';
-    btn.textContent = ativo ? 'ðŸŽ¨ Agrupado por Setup âœ“' : 'ðŸŽ¨ Agrupar Setup';
+    btn.textContent = ativo ? '🎨 Agrupado por Setup ✓' : '🎨 Agrupar Setup';
   }
 
   function getBadgeForDays(diff) {
     if (diff == null) return null;
     if (diff < 0) return { cls: 'darkred', text: 'ATRASADA ' + Math.abs(diff) + ' dia' + (Math.abs(diff) > 1 ? 's' : '') };
-    if (diff <= 1) return { cls: 'red', text: 'URGENTE! ' + diff + ' dia' + (diff === 1 ? ' Ãºtil' : 's Ãºteis') };
-    if (diff <= 4) return { cls: 'yellow', text: diff + ' dias Ãºteis âš ï¸' };
-    return { cls: 'green', text: diff + ' dias Ãºteis' };
+    if (diff <= 1) return { cls: 'red', text: 'URGENTE! ' + diff + ' dia' + (diff === 1 ? ' útil' : 's úteis') };
+    if (diff <= 4) return { cls: 'yellow', text: diff + ' dias úteis ⚠️' };
+    return { cls: 'green', text: diff + ' dias úteis' };
   }
 
   function getCardContentEl(card) {
@@ -7313,7 +7313,7 @@ window._mbnActive = function(id) {
     var out = {};
     Object.keys(groups || {}).forEach(function(maquina) {
       var ofs = Array.isArray(groups[maquina]) ? groups[maquina] : [];
-      if (!ofs.length || maquina === 'Sem MÃ¡quina') return;
+      if (!ofs.length || maquina === 'Sem Máquina') return;
       var maqDados = null;
       var cap = null;
       try { maqDados = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null; } catch (_) {}
@@ -7363,8 +7363,8 @@ window._mbnActive = function(id) {
         var btn = document.createElement('button');
         btn.className = 'patch-ofmaq-calendar-btn';
         btn.type = 'button';
-        btn.title = 'SugestÃ£o de reagendamento';
-        btn.textContent = 'ðŸ“…';
+        btn.title = 'Sugestão de reagendamento';
+        btn.textContent = '📅';
         btn.onclick = function(ev) {
           try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
           window.mostrarSugestaoReagendamento(id, window._ofmaqOverloadMap[id].maquina);
@@ -7417,7 +7417,7 @@ window._mbnActive = function(id) {
     if (largura > 0 && comprimento > 0) return { largura: largura, comprimento: comprimento };
     for (var i = 0; i < candidates.length; i += 1) {
       var s = String(candidates[i] || '');
-      var m = s.match(/(\d{2,4})\s*[xÃ—]\s*(\d{2,4})/i);
+      var m = s.match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
       if (m) {
         return { largura: Number(m[1]) || 0, comprimento: Number(m[2]) || 0 };
       }
@@ -7428,7 +7428,7 @@ window._mbnActive = function(id) {
   function buildSizeLabel(dim) {
     var largura = Number(dim && dim.largura || 0) || 0;
     var comprimento = Number(dim && dim.comprimento || 0) || 0;
-    if (largura > 0 && comprimento > 0) return '~' + largura + 'Ã—' + comprimento + 'mm';
+    if (largura > 0 && comprimento > 0) return '~' + largura + '×' + comprimento + 'mm';
     return 'sem medida definida';
   }
 
@@ -7468,9 +7468,9 @@ window._mbnActive = function(id) {
         }
         target.items.push(of);
       });
-      sections.push({ type: 'color', label: 'ðŸŽ¨ ' + colorKey + ' (' + items.length + ' OFs)' });
+      sections.push({ type: 'color', label: '🎨 ' + colorKey + ' (' + items.length + ' OFs)' });
       clusters.forEach(function(cluster) {
-        sections.push({ type: 'size', label: 'ðŸ“ ' + buildSizeLabel(cluster.ref) + ' (' + cluster.items.length + ' OFs)' });
+        sections.push({ type: 'size', label: '📐 ' + buildSizeLabel(cluster.ref) + ' (' + cluster.items.length + ' OFs)' });
         cluster.items.forEach(function(of) {
           ordered.push(of);
           sections.push({ type: 'card', of: of });
@@ -7537,7 +7537,7 @@ window._mbnActive = function(id) {
       var setupsSem = countSetups(ofs);
       var setupsCom = countSetups(visual.ordered);
       var economia = Math.max(0, setupsSem - setupsCom);
-      updateEconomiaHeader(maquina, economia > 0 ? ('ðŸ’° Economia estimada: ' + economia + ' setups (â‰ˆ ' + (economia * setupMedio) + 'min)') : 'ðŸ’° Economia estimada: 0 setup');
+      updateEconomiaHeader(maquina, economia > 0 ? ('💰 Economia estimada: ' + economia + ' setups (≈ ' + (economia * setupMedio) + 'min)') : '💰 Economia estimada: 0 setup');
       var frag = document.createDocumentFragment();
       visual.sections.forEach(function(section) {
         if (section.type === 'color' || section.type === 'size') {
@@ -7570,20 +7570,20 @@ window._mbnActive = function(id) {
     overlay.innerHTML = ''
       + '<div class="patch-reag-card">'
       + '  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">'
-      + '    <div style="font-size:18px;font-weight:800;color:var(--text1)">ðŸ“… SugestÃ£o de Reagendamento</div>'
-      + '    <button type="button" id="patch-reag-close" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px">âœ•</button>'
+      + '    <div style="font-size:18px;font-weight:800;color:var(--text1)">📅 Sugestão de Reagendamento</div>'
+      + '    <button type="button" id="patch-reag-close" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px">✕</button>'
       + '  </div>'
-      + '  <div style="margin-top:14px;color:var(--text1);font-weight:700">OF #' + escHLocal(String(of.numero || of.of || 'â€”')) + ' â€” ' + escHLocal(String(of.prodDesc || of.produto || of.descricao || 'Produto')) + '</div>'
+      + '  <div style="margin-top:14px;color:var(--text1);font-weight:700">OF #' + escHLocal(String(of.numero || of.of || '—')) + ' — ' + escHLocal(String(of.prodDesc || of.produto || of.descricao || 'Produto')) + '</div>'
       + '  <div style="margin-top:4px;color:var(--text2);font-size:13px">' + escHLocal(String(of.cliNome || of.cliente || of.cliente_nome || 'Cliente')) + '</div>'
-      + '  <div style="margin-top:12px;color:var(--text2);font-size:13px">Entrega: ' + escHLocal(fmtDateBR(entrega)) + ' (' + escHLocal(String(dias == null ? 0 : dias)) + ' dias Ãºteis restantes)</div>'
+      + '  <div style="margin-top:12px;color:var(--text2);font-size:13px">Entrega: ' + escHLocal(fmtDateBR(entrega)) + ' (' + escHLocal(String(dias == null ? 0 : dias)) + ' dias úteis restantes)</div>'
       + '  <div style="margin-top:12px;color:var(--text1);line-height:1.5">'
-      + '    <div>' + escHLocal(String(maquina || 'Esta mÃ¡quina')) + ' estÃ¡ sobrecarregada hoje.</div>'
+      + '    <div>' + escHLocal(String(maquina || 'Esta máquina')) + ' está sobrecarregada hoje.</div>'
       + '    <div>Esta OF tem folga para ser movida.</div>'
       + '  </div>'
       + '  <div style="margin-top:14px;color:var(--text2);font-size:12px;font-weight:700">Mover para:</div>'
       + '  <div class="patch-reag-actions">'
-      + '    <button type="button" class="primary" data-date="' + escAttrLocal(nextBusinessDate(1)) + '">ðŸ“… AmanhÃ£ ' + escHLocal(fmtWeekdayDate(nextBusinessDate(1))) + '</button>'
-      + '    <button type="button" data-date="' + escAttrLocal(nextBusinessDate(2)) + '">ðŸ“… ' + escHLocal(fmtWeekdayDate(nextBusinessDate(2))) + '</button>'
+      + '    <button type="button" class="primary" data-date="' + escAttrLocal(nextBusinessDate(1)) + '">📅 Amanhã ' + escHLocal(fmtWeekdayDate(nextBusinessDate(1))) + '</button>'
+      + '    <button type="button" data-date="' + escAttrLocal(nextBusinessDate(2)) + '">📅 ' + escHLocal(fmtWeekdayDate(nextBusinessDate(2))) + '</button>'
       + '    <button type="button" data-keep="1">Manter</button>'
       + '  </div>'
       + '</div>';
@@ -7611,7 +7611,7 @@ window._mbnActive = function(id) {
         throw new Error((result.data && (result.data.error || result.data.message)) || 'Falha ao reagendar');
       }
       closeReagendamentoModal();
-      try { window.toast('âœ“ OF reagendada', 'var(--green)'); } catch (_) {}
+      try { window.toast('✓ OF reagendada', 'var(--green)'); } catch (_) {}
       try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
     } catch (e) {
       try { window.toast('Erro ao reagendar OF: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -7644,7 +7644,7 @@ window._mbnActive = function(id) {
         await savePriorityOrder(maq, ids);
       }
       try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('âœ… OFs reorganizadas por prioridade', 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ OFs reorganizadas por prioridade', 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
       try { window.toast('Erro ao reorganizar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
@@ -7684,11 +7684,146 @@ window._mbnActive = function(id) {
     window.cardOFMaquina._patchedPriorityHub = true;
   }
 
+  function buildHubIntelBlockHtml() {
+    return ''
+      + '<div id="hub-inteligencia" style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:24px">'
+      + '  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+      + '    <div style="display:flex;align-items:center;gap:10px">'
+      + '      <span style="font-size:20px">📋</span>'
+      + '      <div>'
+      + '        <div style="font-weight:700;font-size:16px;color:var(--text1)">O que fazer hoje</div>'
+      + '        <div style="font-size:12px;color:var(--text2)" id="hub-intel-data"></div>'
+      + '      </div>'
+      + '    </div>'
+      + '    <button onclick="carregarInteligenciaHub()" style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px" title="Atualizar">↻</button>'
+      + '  </div>'
+      + '  <div id="hub-intel-lista"><div style="color:var(--text2);font-size:13px">Carregando análise...</div></div>'
+      + '</div>';
+  }
+
+  function ensureHubIntelBlock() {
+    var shell = document.querySelector('#page-hub .hub-shell');
+    if (!shell) return null;
+    var existing = document.getElementById('hub-inteligencia');
+    if (existing) return existing;
+    var kpis = document.getElementById('hub-kpis');
+    var wrap = document.createElement('div');
+    wrap.innerHTML = buildHubIntelBlockHtml();
+    var block = wrap.firstElementChild;
+    if (!block) return null;
+    if (kpis && kpis.parentNode === shell) shell.insertBefore(block, kpis);
+    else shell.prepend(block);
+    return block;
+  }
+
+  window.navegarParaAlerta = function(rota) {
+    var destino = String(rota || '').trim();
+    if (!destino) return;
+    try { if (typeof window.navigateTo === 'function') { window.navigateTo(destino); return; } } catch (_) {}
+    try { if (typeof window.renderSection === 'function') { window.renderSection(destino); return; } } catch (_) {}
+    try { if (typeof window.go === 'function') { window.go(destino); return; } } catch (_) {}
+    try {
+      var menuItem = document.querySelector('[data-section="' + destino + '"], [onclick*="' + destino + '"]');
+      if (menuItem) menuItem.click();
+    } catch (_) {}
+  };
+
+  window.carregarInteligenciaHub = async function() {
+    ensureStyles();
+    var block = ensureHubIntelBlock();
+    var lista = document.getElementById('hub-intel-lista');
+    var dataEl = document.getElementById('hub-intel-data');
+    if (!block || !lista) return;
+    if (dataEl) {
+      try {
+        var hoje = new Date();
+        dataEl.textContent = hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      } catch (_) {}
+    }
+    lista.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0">Analisando dados...</div>';
+    try {
+      var result = await apiJson('/api/hub/inteligencia', { method: 'GET' });
+      var data = result && result.data || {};
+      var alertas = Array.isArray(data.alertas) ? data.alertas : [];
+      if (!alertas.length) {
+        lista.innerHTML = ''
+          + '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;color:#10b981">'
+          + '  <span style="font-size:24px">✅</span>'
+          + '  <div>'
+          + '    <div style="font-weight:600">Tudo em ordem!</div>'
+          + '    <div style="font-size:12px;color:var(--text2)">Nenhum alerta no momento. Bom trabalho!</div>'
+          + '  </div>'
+          + '</div>';
+        return;
+      }
+      var cores = {
+        danger: { bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', text: '#ef4444' },
+        warning: { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b' },
+        info: { bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', text: '#3b82f6' }
+      };
+      lista.innerHTML = alertas.map(function(a) {
+        var c = cores[a.tipo] || cores.info;
+        return ''
+          + '<div class="patch-hub-intel-item" data-acao="' + escAttrLocal(String(a.acao || '')) + '" style="background:' + c.bg + ';border:1px solid ' + c.border + ';">'
+          + '  <div style="display:flex;align-items:center;gap:12px">'
+          + '    <span style="font-size:20px">' + escHLocal(a.icone || 'ℹ️') + '</span>'
+          + '    <div>'
+          + '      <div style="font-weight:600;font-size:14px;color:' + c.text + '">' + escHLocal(a.titulo || '') + '</div>'
+          + '      <div style="font-size:12px;color:var(--text2);margin-top:2px">' + escHLocal(a.subtitulo || '') + '</div>'
+          + '    </div>'
+          + '  </div>'
+          + '  <span style="font-size:12px;color:' + c.text + ';white-space:nowrap;margin-left:12px">' + escHLocal(a.acao_label || 'ver →') + '</span>'
+          + '</div>';
+      }).join('');
+      Array.prototype.slice.call(lista.querySelectorAll('.patch-hub-intel-item[data-acao]')).forEach(function(item) {
+        item.onclick = function() {
+          window.navegarParaAlerta(String(item.getAttribute('data-acao') || ''));
+        };
+      });
+    } catch (_) {
+      lista.innerHTML = '<div style="color:var(--text2);font-size:12px">Erro ao carregar análise</div>';
+    }
+  };
+
+  function hookRenderHubIntel() {
+    if (typeof window.renderHub !== 'function') return;
+    if (window.renderHub._patchedHubIntel) return;
+    var orig = window.renderHub;
+    window.renderHub = async function() {
+      var result = await orig.apply(this, arguments);
+      setTimeout(function() {
+        ensureHubIntelBlock();
+        window.carregarInteligenciaHub();
+      }, 300);
+      return result;
+    };
+    window.renderHub._patchedHubIntel = true;
+  }
+
+  function initHubObserver() {
+    if (window.__patchHubIntelObs) return;
+    window.__patchHubIntelObs = new MutationObserver(function() {
+      var shell = document.querySelector('#page-hub .hub-shell');
+      if (!shell) return;
+      ensureHubIntelBlock();
+    });
+    window.__patchHubIntelObs.observe(document.body, { childList: true, subtree: true });
+  }
+
   function tick() {
     ensureStyles();
     hookRenderOfmaq();
+    hookRenderHubIntel();
     ensureOfmaqToolbarButtons();
+    ensureHubIntelBlock();
+    if (!hubTimerStarted) {
+      hubTimerStarted = true;
+      setInterval(function() {
+        if (document.getElementById('hub-inteligencia')) window.carregarInteligenciaHub();
+      }, 5 * 60 * 1000);
+    }
   }
+
   if (typeof originalSortByPriority === 'function') {
     originalSortByPriority = originalSortByPriority.bind(window);
   }
