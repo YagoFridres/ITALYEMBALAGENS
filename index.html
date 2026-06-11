@@ -34143,11 +34143,11 @@ function normalizeOF(r){
     }catch(_){ return def; }
   };
 
-  const of = r.of_numero ?? r.of_num ?? r.numero ?? r.of ?? r.ofNum ?? '';
+  const of = r.numero ?? r.of_num ?? r.of ?? r.of_numero ?? r.ofNum ?? '';
   const clienteJoin = r.cliente && typeof r.cliente === 'object' ? r.cliente : null;
   const vendedorJoin = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
   const clienteTexto = (typeof r.cliente === 'string') ? r.cliente : '';
-  let cliNomeResolved = clienteJoin?.nome || r.cliNome || r.clinome || r.cliente_nome || r.cli_nome || r.nome_cliente || clienteTexto || '';
+  let cliNomeResolved = clienteJoin?.nome || r.clinome || r.cliid || r.cli_id || r.cliNome || r.cliente_nome || r.cli_nome || r.nome_cliente || clienteTexto || '';
   let vendNome = vendedorJoin?.nome || r.vendNome || r.vendedor_nome || r.vendedor || r.vendedorNome || '';
   let vendId = clienteJoin?.vendedor_id || r.vendedor_id || r.vend_id || r.vendedorId || r.vendId || '';
   const cliId = r.cli_id ?? r.cliente_id ?? r.clienteId ?? r.cliId ?? '';
@@ -34182,16 +34182,17 @@ function normalizeOF(r){
   const diaPedidoRaw = r.dia ?? r.dia_pedido ?? r.data_pedido ?? r.diaPedido ?? r.dataPedido ?? '';
   const diaPedido = diaPedidoRaw ? String(diaPedidoRaw).slice(0,10) : createdDay;
   const dia = diaPedido || (r.data_producao ?? r.dia ?? r.dataProducao ?? r.data ?? '');
-  const entRaw = (r.ent && String(r.ent).trim().length >= 8 ? r.ent : '')
-              || (r.data_entrega && String(r.data_entrega).trim().length >= 8 ? r.data_entrega : '')
+  const entRaw = (r.data_entrega && String(r.data_entrega).trim().length >= 8 ? r.data_entrega : '')
+              || (r.ent && String(r.ent).trim().length >= 8 ? r.ent : '')
               || '';
   const ent = entRaw ? String(entRaw).slice(0, 10) : '';
-  const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
+  const urg = r.urgente ?? r.urg ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
   const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
-  let prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
+  let prodDesc = r.produto ?? r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';
-  const imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
+  let imgs = Array.isArray(r.imgs) ? r.imgs : tryParse(r.imgs, []);
+  if(!Array.isArray(imgs)) imgs = (typeof r.imgs === 'string' && String(r.imgs).trim()) ? [String(r.imgs).trim()] : [];
   let imagens = parseAny(r.imagens, []);
   if(!Array.isArray(imagens)) imagens = [];
   let itens = parseAny(r.itens, []);
@@ -34225,7 +34226,7 @@ function normalizeOF(r){
     };
   });
   const item0 = itens[0] || {};
-  prodDesc = String(item0.desc || item0.descricao || prodDesc || r.descricao || '').trim();
+  prodDesc = String(item0.descricao || item0.produto || item0.desc || prodDesc || r.descricao || '').trim();
   const refOf = String(item0.ref || item0.referencia || '').trim();
   const fluxoMaq = Array.isArray(r.fluxo_maquinas) ? r.fluxo_maquinas : tryParse(r.fluxo_maquinas, []);
   const _isUuidLike = (v)=> typeof v === 'string' && /^[0-9a-f-]{36}$/i.test(String(v).trim());
@@ -34279,8 +34280,9 @@ function normalizeOF(r){
   if(!maquinaPorItem || typeof maquinaPorItem !== 'object' || Array.isArray(maquinaPorItem)) maquinaPorItem = {};
   const maqIdx = r.maquina_atual_index != null ? Number(r.maquina_atual_index) : 0;
   const imgUrlPick = String(
+    (Array.isArray(imgs) && imgs.length ? imgs[0] : '') ||
     (r.imagem_url != null ? r.imagem_url : '') ||
-    (Array.isArray(imgs) && imgs.length ? imgs[0] : (imgs || '')) ||
+    (r.imgs != null && !Array.isArray(r.imgs) ? r.imgs : '') ||
     ''
   ).trim();
   const imgUrl = imgUrlPick || null;
@@ -34315,8 +34317,9 @@ function normalizeOF(r){
     seq:r.seq ?? r.of_seq ?? r.ofSeq ?? 0,
     of,
     cliId,
-    cliente: (cliNomeResolved || r.cliente_nome || r.clinome || r.cliNome || ''),
-    cliNome: (cliNomeResolved || r.cliente_nome || r.clinome || ''),
+    cliente: (cliNomeResolved || r.clinome || r.cliid || r.cli_id || r.cliente_nome || r.cliNome || ''),
+    cliNome: (cliNomeResolved || r.clinome || r.cliid || r.cli_id || r.cliente_nome || ''),
+    clinome: (cliNomeResolved || r.clinome || r.cliid || r.cli_id || r.cliente_nome || ''),
     vendId,
     vendedor: String(vendNome || '').trim(),
     vendNome: String(vendNome || '').trim(),
@@ -34348,6 +34351,7 @@ function normalizeOF(r){
     qtd_perdida: Number.isFinite(qtdPerdida) ? qtdPerdida : null,
     caixas_excedentes: Number.isFinite(caixasExcedentes) ? caixasExcedentes : null,
     obs,
+    produto: prodDesc,
     prodDesc,
     descricao: prodDesc,
     ref: refOf || (r.ref ? String(r.ref).trim() : ''),

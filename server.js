@@ -3101,669 +3101,93 @@ async function comprasUpdateCompat(id, payload) {
 app.get('/api/ofs', authMiddleware, async (req, res) => {
   try {
     if (!supabase) {
-      return res.status(503).json({
-        ok: false,
-        error: 'Supabase não configurado no servidor (Railway Variables).',
-        missing: _supabaseMissing,
-        rid: req._rid || null,
-      });
+      return res.status(503).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: 'Supabase não configurado.' });
     }
-    console.debug('[OFS DEBUG 500]', {
-      query: req.query,
-      usuario: req.usuario?.id,
-      supabaseOk: !!supabase,
-    });
-    const {
-      limit: q_limit,
-      offset: q_offset,
-      from: q_from,
-      to: q_to,
-      de: q_de,
-      ate: q_ate,
-      date_field: q_date_field,
-      dateField: q_dateField,
-      emp_id: q_emp_id,
-      empId: q_empId,
-      status: q_status,
-      maquina: q_maquina,
-      busca: q_busca,
-      lite: q_lite,
-      nocache: q_nocache,
-      no_cache: q_no_cache,
-      cache: q_cache,
-      clear_cache: q_clear_cache,
-      clearCache: q_clearCache,
-      order_by: q_order_by,
-      orderBy: q_orderBy,
-      order: q_order,
-      incluir_excluidas: q_incluir_excluidas,
-      incluirExcluidas: q_incluirExcluidas,
-      incluir_canceladas: q_incluir_canceladas,
-      incluirCanceladas: q_incluirCanceladas,
-      excluir_canceladas: q_excluir_canceladas,
-      excluirCanceladas: q_excluirCanceladas,
-      cliente_id: q_cliente_id,
-      clienteId: q_clienteId,
-      cli_id: q_cli_id,
-      cliId: q_cliId,
-      cliente_nome: q_cliente_nome,
-      clienteNome: q_clienteNome,
-      cliente: q_cliente,
-      numero: q_numero,
-      of_num: q_of_num,
-      of: q_of,
-      data_inicio: q_data_inicio,
-      dataInicio: q_dataInicio,
-      data_fim: q_data_fim,
-      dataFim: q_dataFim,
-    } = (req.query || {});
-    console.debug('[OFS CHEGOU]', req.query);
-    console.debug('[OFS GET START]', req.query);
-    try {
-      console.debug('[OFS DEBUG ENTRY]', {
-        query: req.query,
-        usuario: req?.usuario?.id,
-        supabaseOk: !!supabase,
-        colsSetSize: OFS_SELECTABLE_COLS_SET?.size,
-      });
-    } catch (_) {}
-    console.debug('[OFS GET COLS CHECK]', {
-      tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
-      selectableLen: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
-      setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
-    });
-    setNoCache(res);
-    const pedidoPaginacao = q_offset !== undefined || q_limit !== undefined;
-    const limitDefault = pedidoPaginacao ? 10 : 500;
-    const limitReq = Math.min(Math.max(1, (Number(q_limit || limitDefault) || limitDefault)), 500);
-    const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
-    const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
-    const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
-    const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    const empIdRaw = String(q_empId || q_emp_id || '').trim();
-    const empId = empIdRaw || String(
-      req?.usuario?.empresa_id ||
-      req?.usuario?.emp_id ||
-      req?.usuario?.empId ||
-      req?.user?.empresa_id ||
-      req?.user?.emp_id ||
-      req?.user?.empId ||
-      ''
-    ).trim() || String((await _resolveEmpresaUuid(req).catch(() => '')) || '').trim();
-    const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
-    let clienteNomeRaw = String(q_cliente_nome || q_clienteNome || q_cliente || '').trim();
-    try { clienteNomeRaw = decodeURIComponent(clienteNomeRaw); } catch (_) {}
-    const clienteNome = clienteNomeRaw ? String(clienteNomeRaw).replace(/%/g, '').trim() : '';
-    let buscaRaw = String(q_busca || '').trim();
-    try { buscaRaw = decodeURIComponent(buscaRaw); } catch (_) {}
-    const busca = buscaRaw ? String(buscaRaw).replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim() : '';
-    const maquina = String(q_maquina || '').trim();
-    const passouRaw =
-      (req.query && (req.query.passou_maqu || req.query.passou_maquina || req.query.passouMaquina)) || '';
-    let filtrarPassou = false;
-    try {
-      const pv = String(passouRaw || '').trim().toLowerCase();
-      filtrarPassou = !!pv && pv !== '0' && pv !== 'false' && pv !== 'nao' && pv !== 'não';
-    } catch (_) { filtrarPassou = false; }
-    const numeroRaw = String(q_numero || q_of_num || q_of || '').trim();
-    const numero = numeroRaw ? String(numeroRaw).replace(/\D/g, '') : '';
-    let statusRaw = q_status ? String(q_status).trim() : '';
-    try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
-    const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
-    const lite = String(q_lite || '') === '1';
-    const from = String(q_from || q_de || q_data_inicio || q_dataInicio || '').trim();
-    const to = String(q_to || q_ate || q_data_fim || q_dataFim || '').trim();
-    const dateFieldRaw = String(q_date_field || q_dateField || '').trim().toLowerCase();
-    const orderByRaw = String(q_order_by || q_orderBy || '').trim();
-    const orderRaw = String(q_order || '').trim().toLowerCase();
-    const orderAsc = orderRaw === 'asc';
-    const orderDir = orderAsc ? 'asc' : 'desc';
-    const ALLOWED_ORDER_BY = new Set([
-      'created_at', 'updated_at', 'data_entrega', 'ent', 'dia', 'data_agendamento',
-      'numero', 'of', 'status', 'valor_total',
-    ]);
-    let orderBy = orderByRaw || 'created_at';
-    if (!ALLOWED_ORDER_BY.has(orderBy)) orderBy = 'created_at';
-    if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
-    const temFiltroData = !!(from || to);
-    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!maquina || !!busca;
-    const limitFinal = pedidoPaginacao ? limitReq : 500;
+    const empId = await resolverEmpresaId(req);
+    if (!empId) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
 
-    const CACHE_VERSION = 'ofs_v7';
-    const cacheKey = [
-      CACHE_VERSION,
-      String(req?.usuario?.id || ''),
-      empId,
-      clienteId,
-      maquina,
-      busca,
-      numero ? ('num=' + numero) : '',
-      status,
-      lite ? 'lite1' : 'lite0',
-      from,
-      to,
-      dateFieldRaw || 'date_default',
-      orderBy,
-      orderDir,
-      incluirExcluidas ? 'incl_excl1' : 'incl_excl0',
-      incluirCanceladas ? 'incl_can1' : 'incl_can0',
-      excluirCanceladas ? 'exc_can1' : 'exc_can0',
-      filtrarPassou ? 'passou1' : 'passou0',
-      pedidoPaginacao ? 'fmt_page' : 'fmt_array',
-      String(limitFinal),
-      String(offset),
-    ].join('|');
-    const forceNoCache =
-      String(q_nocache || q_no_cache || '') === '1' ||
-      String(q_cache || '') === '0' ||
-      String(q_clear_cache || q_clearCache || '') === '1';
-    if (forceNoCache) {
-      try { cacheClearPrefix(CACHE_VERSION); } catch (_) {}
+    const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
+    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
+    const statusRaw = String(req.query.status || '').trim();
+    const status = statusRaw && statusRaw !== 'todos' && statusRaw !== 'Todos status' ? statusRaw : '';
+    const busca = String(req.query.busca || '').trim();
+
+    let query = supabase
+      .from('ofs')
+      .select('*', { count: 'exact' })
+      .eq('empresa_id', empId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (status) {
+      if (status.includes(',')) query = query.in('status', status.split(',').map((s) => String(s || '').trim()).filter(Boolean));
+      else query = query.eq('status', status);
     }
-    const cached = forceNoCache ? null : cacheGet(cacheKey);
-    try {
-      const cacheHit = cached != null;
-      console.debug('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
-    } catch (_) {}
-    const isUuidLike = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v).trim());
-    const parseMachineList = (value) => {
+
+    if (busca) {
+      const termo = String(busca).replace(/[(),]/g, ' ').trim();
+      query = query.or(
+        `numero.ilike.%${termo}%,descricao.ilike.%${termo}%,clinome.ilike.%${termo}%`
+      );
+    }
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    const rows = (data || []).map((of) => {
+      let maquinaNome = '';
       try {
-        if (Array.isArray(value)) {
-          return value.map((item) => {
-            if (item && typeof item === 'object') {
-              return String(item.nome || item.name || item.maquina || item.id || item.value || item.label || '').trim();
-            }
-            return String(item || '').trim();
-          }).filter(Boolean);
-        }
-        if (typeof value === 'string') {
-          const raw = String(value || '').trim();
-          if (!raw) return [];
-          try {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-              return parsed.map((item) => {
-                if (item && typeof item === 'object') {
-                  return String(item.nome || item.name || item.maquina || item.id || item.value || item.label || '').trim();
-                }
-                return String(item || '').trim();
-              }).filter(Boolean);
-            }
-          } catch (_) {}
-          return [raw];
+        let m = of?.maq;
+        if (m) {
+          if (typeof m === 'string') m = JSON.parse(m);
+          if (Array.isArray(m)) {
+            const nomes = m
+              .map((x) => String(x || '').trim())
+              .filter((x) => x && !/^[0-9a-f-]{36}$/i.test(x));
+            maquinaNome = nomes.join(', ') || '';
+          } else {
+            const raw = String(m || '').trim();
+            maquinaNome = /^[0-9a-f-]{36}$/i.test(raw) ? '' : raw;
+          }
         }
       } catch (_) {}
-      return [];
-    };
-    const parseMachineDisplay = (value) => {
-      const items = parseMachineList(value);
-      const nomes = items.filter((item) => item && !isUuidLike(item));
-      return {
-        items,
-        nome: String((nomes.length ? nomes.join(', ') : (items[0] || '')) || '').trim(),
-      };
-    };
-    const formatOfRow = (row) => {
-      if (!row || typeof row !== 'object') return row;
-      const maqInfo = parseMachineDisplay(row?.maq);
-      const fluxoInfo = parseMachineDisplay(row?.fluxo_maquinas ?? row?.maq);
-      const fluxoMaquinas = fluxoInfo.items.length ? fluxoInfo.items : maqInfo.items;
-      const maqValue = String(
-        row?.maquina_atual ||
-        row?.maquina ||
-        fluxoInfo.nome ||
-        maqInfo.nome ||
-        ''
-      ).trim();
-      return {
-        ...row,
-        maq: maqInfo.items.length ? maqInfo.items : row?.maq,
-        maquina: maqValue,
-        maquina_atual: String(row?.maquina_atual || maqValue).trim(),
-        fluxo_maquinas: fluxoMaquinas,
-      };
-    };
-    if (cached != null) {
-      if (Array.isArray(cached)) {
-        const dataCached = cached.map(formatOfRow);
-        const totalCached = dataCached.length;
-        const limitCached = Number.isFinite(Number(limitFinal)) ? Number(limitFinal) : dataCached.length;
-        const offsetCached = Number.isFinite(Number(offset)) ? Number(offset) : 0;
-        const hasMoreCached = limitCached > 0 && dataCached.length >= limitCached;
-        return res.json({ ok: true, data: dataCached, total: totalCached, offset: offsetCached, limit: limitCached, hasMore: hasMoreCached, _legacyArray: true });
-      }
-      if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
-        const totalCached = Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length;
-        const limitCached = Number.isFinite(Number(cached.limit)) ? Number(cached.limit) : limitFinal;
-        const offsetCached = Number.isFinite(Number(cached.offset)) ? Number(cached.offset) : offset;
-        return res.json({ ok: true, data: cached.data.map(formatOfRow), total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
-      }
-      return res.json({ ok: true, data: [], total: 0, offset, limit: limitFinal, hasMore: false });
-    }
 
-    const selectBaseCols = OFS_TABLE_COLS.slice();
-    const selectLitePref = [
-      'id', 'of', 'numero', 'of_num', 'seq',
-      'status', 'created_at', 'updated_at', 'deleted_at',
-      'emp_id', 'empId', 'empresa_id',
-      'cli_id', 'cliId', 'cliente_id',
-      'cliNome', 'clinome', 'cliente_nome',
-      'vendedor_id', 'vendId',
-      'vendNome', 'vendedor',
-      'qtd', 'quantidade', 'qtd_pedida',
-      'prioridade', 'sem_papel',
-      'obs', 'descricao',
-      'valor_total', 'valor_venda',
-      'urgente', 'urg',
-      'dia', 'data_producao', 'ent', 'data_entrega',
-      'data_conclusao', 'usuario_conclusao',
-      'qtd_produzida', 'qtd_perdida', 'qtd_pedida', 'caixas_excedentes',
-      'maquina_perda', 'maq', 'fluxo_maquinas', 'maquina_atual_index',
-      'imgs', 'imagem_url',
-    ];
-    const selectCols = (lite ? selectLitePref : selectBaseCols).filter((c) => _ofsSelectableHas(c));
-    const shouldExcludeCanceladas = (excluirCanceladas && !incluirCanceladas && !incluirExcluidas);
-    const enrichJoinClientVend = async (rows) => {
-      const arr = Array.isArray(rows) ? rows : [];
-      if (!arr.length) return arr;
-      const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-      const cliIds = Array.from(new Set(
-        arr.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
-      )).slice(0, 1000);
-      const vendIdsFromRows = Array.from(new Set(
-        arr.map((o) => String(
-          o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? o?.vendId ?? ''
-        ).trim()).filter(Boolean)
-      ));
-      const vendIdsFromVendedorField = Array.from(new Set(
-        arr.map((o) => String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim())
-          .filter((v) => isUuid(v))
-      ));
-      const preVendIds = Array.from(new Set([...vendIdsFromRows, ...vendIdsFromVendedorField])).slice(0, 1000);
-      if (!cliIds.length && !preVendIds.length) return arr;
+      let itensArr = [];
       try {
-        let cls = [];
-        if (cliIds.length) {
-          const r1 = await supabase
-            .from('clientes')
-            .select('id,nome,vendedor_id')
-            .in('id', cliIds);
-          if (!r1.error && Array.isArray(r1.data)) cls = r1.data;
-        }
-        const byCliId = new Map();
-        cls.forEach((c) => { if (c?.id) byCliId.set(String(c.id), c); });
-        const vendIdsFromClients = Array.from(new Set(
-          cls.map((c) => String(c?.vendedor_id || '').trim()).filter(Boolean)
-        ));
-        const vendIds = Array.from(new Set([...vendIdsFromClients, ...preVendIds])).slice(0, 1000);
-        const byVendId = new Map();
-        if (vendIds.length) {
-          const { data: vds } = await supabase
-            .from('vendedores')
-            .select('id,nome')
-            .in('id', vendIds)
-            .limit(1000);
-          (Array.isArray(vds) ? vds : []).forEach((v) => { if (v?.id) byVendId.set(String(v.id), v); });
-        }
-        return arr.map((o) => {
-          const cid = String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim();
-          const c = cid ? (byCliId.get(cid) || null) : null;
-          let vid = String(
-            o?.vendedor_id ?? o?.vendId ?? o?.vend_id ?? o?.vendedorId ?? ''
-          ).trim();
-          if (!vid || !isUuid(vid)) vid = String(c?.vendedor_id || '').trim();
-          if ((!vid || !isUuid(vid))) {
-            const maybe = String(o?.vendedor ?? o?.vendedor_nome ?? o?.vendNome ?? '').trim();
-            if (isUuid(maybe)) vid = maybe;
-          }
-          const v = (vid && isUuid(vid)) ? (byVendId.get(vid) || null) : null;
-          const vendNomeExisting = String(o?.vendNome || o?.vendedor_nome || o?.vendedor || '').trim();
-          const vendNomeSafe = (vendNomeExisting && !isUuid(vendNomeExisting)) ? vendNomeExisting : '';
-          return {
-            ...o,
-            cliNome: (c?.nome || o?.cliNome || o?.clinome || o?.cliente_nome || o?.cli_nome || o?.cliente || ''),
-            vendNome: (v?.nome || vendNomeSafe || ''),
-            vendedor_id: (vid && isUuid(vid)) ? vid : (c?.vendedor_id || o?.vendedor_id || o?.vendId || null),
-          };
-        });
-      } catch (e) {
-        try { console.warn('[enrich] erro:', e?.message); } catch (_) {}
-        return arr;
-      }
-    };
+        if (of?.itens) itensArr = typeof of.itens === 'string' ? JSON.parse(of.itens) : of.itens;
+      } catch (_) {}
+      if (!Array.isArray(itensArr)) itensArr = [];
 
-    const colsValidas = selectCols.filter((c) => _ofsSelectableHas(c));
-    let data = null;
-    let rawErr = null;
-    let colsArr = colsValidas.slice();
-    let colMissingHits = 0;
-    let useSelectAllFallback = false;
-    let total = null;
-    let dateCol = '';
-    let useDeletedAtFilter = !incluirExcluidas;
-    const applyOfsQueryFilters = (query, tentativaAtual) => {
-      let out = query;
-      if (status) {
-        const statusList = String(status).split(',').map((s) => String(s || '').trim()).filter(Boolean);
-        if (statusList.length > 1) out = out.in('status', statusList);
-        else out = out.eq('status', statusList[0] || status);
-      }
+      const item0 = itensArr[0] && typeof itensArr[0] === 'object' ? itensArr[0] : {};
+      const produtoNome = String(item0.descricao || item0.produto || of?.descricao || '').trim();
 
-      if (empId && Array.isArray(empCols) && empCols.length) {
-        const empCol = empCols[Math.min(tentativaAtual, empCols.length - 1)];
-        if (empCol) out = out.eq(empCol, empId);
-      }
-
-      if (clienteId && Array.isArray(cliCols) && cliCols.length) {
-        const expr = cliCols.map((c) => `${c}.eq.${clienteId}`).join(',');
-        if (expr) out = out.or(expr);
-      }
-
-      if (clienteNome) {
-        const termo = String(clienteNome || '').replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim();
-        const cols = ['cliente_nome', 'cliNome', 'clinome'].filter((c) => _ofsSelectableHas(c));
-        if (termo && cols.length) {
-          const like = '%' + termo + '%';
-          const expr = cols.map((c) => `${c}.ilike.${like}`).join(',');
-          if (expr) out = out.or(expr);
-        }
-      }
-
-      if (numero && Array.isArray(numCols) && numCols.length) {
-        const expr = numCols.map((c) => `${c}.eq.${numero}`).join(',');
-        if (expr) out = out.or(expr);
-      }
-
-      if (maquina && _ofsSelectableHas('maquina_agendada')) {
-        out = out.eq('maquina_agendada', maquina);
-      }
-
-      if (busca) {
-        const like = '%' + busca + '%';
-        const buscaCols = ['numero', 'of', 'of_num', 'produto', 'descricao', 'prodDesc', 'cliente', 'cliente_nome', 'cliNome', 'clinome']
-          .filter((c) => _ofsSelectableHas(c));
-        if (buscaCols.length) {
-          const expr = buscaCols.map((c) => `${c}.ilike.${like}`).join(',');
-          if (expr) out = out.or(expr);
-        }
-      }
-
-      if (filtrarPassou && _ofsSelectableHas('passou_maquina')) {
-        out = out.eq('passou_maquina', true);
-      } else if (filtrarPassou && !_ofsSelectableHas('passou_maquina')) {
-        filtrarPassou = false;
-        console.debug('[OFS] passou_maquina skip');
-      }
-
-      if (useDeletedAtFilter) out = out.is('deleted_at', null);
-      if (shouldExcludeCanceladas) out = out.neq('status', 'Cancelada').neq('status', 'Cancelado');
-      if (from) {
-        const fromIso = (from.includes('T') ? from : (from + 'T00:00:00'));
-        out = out.gte(dateCol || 'data_entrega', fromIso);
-      }
-      if (to) {
-        const toIso = (to.includes('T') ? to : (to + 'T23:59:59'));
-        out = out.lte(dateCol || 'data_entrega', toIso);
-      }
-      return out;
-    };
-    const isDeletedAt = (v) => {
-      if (v == null) return false;
-      const s = String(v).trim();
-      if (!s) return false;
-      const sl = s.toLowerCase();
-      if (sl === 'null' || sl === 'undefined' || sl === '0') return false;
-      if (s === '0000-00-00' || s.startsWith('0000-00-00')) return false;
-      return true;
-    };
-    if (from || to) {
-      const requested = dateFieldRaw || 'data_entrega';
-      const fallback =
-        (_ofsSelectableHas('data_entrega') ? 'data_entrega'
-          : (_ofsSelectableHas('ent') ? 'ent'
-            : (_ofsSelectableHas('dia') ? 'dia' : 'created_at')));
-      if (requested === 'entrega' || requested === 'data_entrega' || requested === 'ent') {
-        if (_ofsSelectableHas('data_entrega')) dateCol = 'data_entrega';
-        else if (_ofsSelectableHas('ent')) dateCol = 'ent';
-        else dateCol = fallback;
-      } else if (requested === 'agendamento' || requested === 'data_agendamento') {
-        if (_ofsSelectableHas('data_agendamento')) dateCol = 'data_agendamento';
-        else dateCol = fallback;
-      } else if (requested === 'producao' || requested === 'data_producao' || requested === 'dia') {
-        if (_ofsSelectableHas('data_producao')) dateCol = 'data_producao';
-        else if (_ofsSelectableHas('dia')) dateCol = 'dia';
-        else dateCol = fallback;
-      } else if (requested === 'created_at') {
-        if (_ofsSelectableHas('created_at')) dateCol = 'created_at';
-        else dateCol = fallback;
-      } else {
-        dateCol = fallback;
-      }
-    }
-
-    let empCols = empId ? ['emp_id', 'empId', 'empresa_id'] : [];
-    let cliCols = clienteId ? ['cli_id', 'cliId', 'cliente_id', 'cliid'] : [];
-    let numCols = numero ? ['numero', 'of', 'of_num'] : [];
-
-    for (let tentativa = 0; tentativa < 8; tentativa++) {
-      const sel = lite
-        ? (colsArr.length ? colsArr.join(',') : '*')
-        : (tentativa === 0 ? '*' : (colsArr.length ? colsArr.join(',') : 'id,numero,status,created_at'));
-
-      let q = supabase
-        .from('ofs')
-        .select(sel, { count: 'exact' })
-        .order(orderBy, { ascending: orderAsc });
-      if (pedidoPaginacao) q = q.range(offset, offset + limitFinal - 1);
-      else q = q.limit(limitFinal);
-      q = applyOfsQueryFilters(q, tentativa);
-
-      let r = null;
+      let imgsArr = [];
       try {
-        const timeoutMs = limitFinal > 500 ? 25000 : (limitFinal > 200 ? 15000 : 8000);
-        if (typeof q.timeout === 'function') {
-          r = await q.timeout(timeoutMs);
-        } else if (typeof q.abortSignal === 'function') {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-          try {
-            r = await q.abortSignal(controller.signal);
-          } finally {
-            clearTimeout(timeoutId);
-          }
-        } else {
-          r = await q;
-        }
-      } catch (e) {
-        const isAbort = e?.name === 'AbortError' || String(e?.message || '').toLowerCase().includes('abort');
-        if (isAbort) {
-          return res.status(504).json({
-            ok: false,
-            error: 'Query demorou demais. Use filtros para reduzir o resultado.',
-          });
-        }
-        throw e;
+        imgsArr = Array.isArray(of?.imgs) ? of.imgs : (typeof of?.imgs === 'string' ? JSON.parse(of.imgs) : []);
+      } catch (_) {
+        imgsArr = [];
       }
+      const primeiraImagem = Array.isArray(imgsArr) ? String(imgsArr[0] || '').trim() : '';
 
-      if (!r.error) {
-        data = r.data || [];
-        if (typeof r.count === 'number') total = r.count;
-        if (pedidoPaginacao && !maquina && !Number.isFinite(Number(total))) {
-          try {
-            let qc = supabase
-              .from('ofs')
-              .select('id', { count: 'exact', head: true });
-            qc = applyOfsQueryFilters(qc, tentativa);
-            const rc = await qc;
-            if (!rc?.error && typeof rc?.count === 'number') total = rc.count;
-          } catch (_) {}
-        }
-        const shouldTryNextEmpCol =
-          Array.isArray(data) &&
-          data.length === 0 &&
-          empId &&
-          Array.isArray(empCols) &&
-          tentativa < (empCols.length - 1);
-        if (shouldTryNextEmpCol) {
-          console.debug('[OFS GET] sem linhas com coluna empresa atual, tentando fallback:', empCols[Math.min(tentativa, empCols.length - 1)], '->', empCols[Math.min(tentativa + 1, empCols.length - 1)]);
-          continue;
-        }
-        console.debug('[OFS GET] OK tentativa=' + tentativa + ' rows=' + (Array.isArray(data) ? data.length : 0));
-        break;
-      }
-
-      rawErr = r.error;
-      const msg = String(r.error?.message || '');
-      console.error('[OFS GET] erro tentativa=' + tentativa + ':', {
-        message: msg,
-        code: r.error?.code,
-        details: r.error?.details,
-        hint: r.error?.hint,
-      });
-
-      const colMatch =
-        msg.match(/column ofs\."?(\w+)"? does not exist/i) ||
-        msg.match(/column "?(\w+)"? does not exist/i) ||
-        msg.match(/Could not find the '(\w+)' column/i);
-
-      if (colMatch) {
-        const colProb = colMatch[1];
-        console.warn('[OFS GET] removendo coluna:', colProb);
-        colsArr = colsArr.filter((c) => c !== colProb);
-        if (colProb === 'passou_maquina') filtrarPassou = false;
-        if (orderBy === colProb) {
-          if (colProb !== 'created_at' && _ofsSelectableHas('created_at')) orderBy = 'created_at';
-          else if (colProb !== 'updated_at' && _ofsSelectableHas('updated_at')) orderBy = 'updated_at';
-          else if (colProb !== 'id' && _ofsSelectableHas('id')) orderBy = 'id';
-          else orderBy = 'numero';
-        }
-        if (dateCol === colProb) {
-          if (colProb !== 'created_at' && _ofsSelectableHas('created_at')) dateCol = 'created_at';
-          else if (colProb !== 'dia' && _ofsSelectableHas('dia')) dateCol = 'dia';
-          else if (colProb !== 'ent' && _ofsSelectableHas('ent')) dateCol = 'ent';
-          else dateCol = '';
-        }
-        if (colProb === 'deleted_at') useDeletedAtFilter = false;
-        if (Array.isArray(cliCols) && cliCols.includes(colProb)) cliCols = cliCols.filter((c) => c !== colProb);
-        if (Array.isArray(numCols) && numCols.includes(colProb)) numCols = numCols.filter((c) => c !== colProb);
-        if (Array.isArray(empCols) && empCols.includes(colProb)) empCols = empCols.filter((c) => c !== colProb);
-        continue;
-      }
-
-      if (msg.includes('does not exist') || msg.includes('Could not find')) {
-        colsArr = [
-          'id', 'numero', 'of', 'status', 'created_at', 'updated_at', 'deleted_at',
-          'cli_id', 'cliId', 'cliente_id', 'emp_id', 'empId', 'empresa_id',
-          'data_entrega', 'ent', 'valor_total', 'valor_venda', 'qtd', 'quantidade',
-          'descricao', 'obs', 'urgente', 'urg', 'imgs', 'imagem_url',
-          'maq', 'fluxo_maquinas', 'data_conclusao', 'cliNome', 'clinome'
-        ];
-        continue;
-      }
-
-      break;
-    }
-
-    if (!data && rawErr) {
-      try { console.error('[OFS GET QUERY ERROR]', rawErr?.message || rawErr); } catch (_) {}
-      _logApiError('OFS GET', req, rawErr, { selectCols: colsArr, limit: limitFinal, offset, empId, status, from, to, lite });
-      return res.json({ ok: false, data: [], total: 0, error: String(rawErr.message || rawErr), rid: req._rid || null });
-    }
-
-    try {
-      const before = Array.isArray(data) ? data : [];
-      console.debug('[OFS DEBUG] total antes do filtro:', before.length);
-      console.debug('[OFS DEBUG] com deleted_at:', before.filter((o) => isDeletedAt(o?.deleted_at)).length);
-    } catch (_) {}
-    if (!incluirExcluidas) {
-      data = (Array.isArray(data) ? data : []).filter((o) => !isDeletedAt(o?.deleted_at));
-      if (typeof total === 'number') total = Number(data.length);
-    }
-
-    const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);
-    let rows = (enriched || []).map((row) => {
-      if (!row || typeof row !== 'object') return row;
-      const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
-      const vendedor_nome = (raw && !isUuidLike(raw)) ? raw : '';
-      return formatOfRow({ ...row, vendedor_nome });
+      return {
+        ...of,
+        maquina: maquinaNome,
+        maquina_atual: maquinaNome,
+        produto: produtoNome,
+        cliente: String(of?.clinome || of?.cliid || of?.cli_id || '').trim(),
+        imagem_url: primeiraImagem || String(of?.imgs || '').trim(),
+        total: 0,
+        itens_parsed: itensArr,
+      };
     });
-    if (maquina) {
-      rows = rows.filter((row) => {
-        const nomes = parseMachineList(row?.fluxo_maquinas).concat(parseMachineList(row?.maq));
-        const atual = String(row?.maquina_atual || row?.maquina || '').trim();
-        return nomes.includes(maquina) || atual === maquina;
-      });
-    }
-    try {
-      const ofsComCliVazio = (Array.isArray(rows) ? rows : []).filter((of) => {
-        const cliId = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
-        const cliNome = String(of?.cliNome ?? of?.clinome ?? of?.cliente_nome ?? '').trim();
-        return !!cliId && !cliNome;
-      });
-      if (ofsComCliVazio.length > 0) {
-        const idsUnicos = Array.from(new Set(
-          ofsComCliVazio.map((o) => String(o?.cli_id ?? o?.cliId ?? o?.cliente_id ?? '').trim()).filter(Boolean)
-        )).slice(0, 1000);
-        if (idsUnicos.length) {
-          const { data: clientes } = await supabase
-            .from('clientes')
-            .select('id,nome')
-            .in('id', idsUnicos);
-          const mapaClientes = {};
-          (Array.isArray(clientes) ? clientes : []).forEach((c) => {
-            if (c?.id) mapaClientes[String(c.id)] = String(c.nome || '').trim();
-          });
-          rows = rows.map((of) => {
-            const cliId = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
-            return {
-              ...of,
-              cliNome: String(of?.cliNome ?? '').trim() || mapaClientes[cliId] || ''
-            };
-          });
-        }
-      }
-    } catch (_) {}
-    try {
-      const sample = rows && rows[0] ? rows[0] : null;
-      console.debug('[OFS SAMPLE]', JSON.stringify({
-        id: sample?.id,
-        of: sample?.of,
-        cli_id: sample?.cli_id,
-        cliNome: sample?.cliNome,
-        vendedor_id: sample?.vendedor_id,
-        vendNome: sample?.vendNome,
-        maq: sample?.maq,
-        maquina: sample?.maquina,
-        imagem_url: sample?.imagem_url,
-        imgs: sample?.imgs,
-      }));
-    } catch (_) {}
-    const rowsLen = Array.isArray(rows) ? rows.length : 0;
-    const totalFromCount = Number.isFinite(Number(total)) ? Number(total) : null;
-    const totalRows = maquina
-      ? rowsLen
-      : (totalFromCount != null
-        ? totalFromCount
-        : (rowsLen === limitFinal ? (offset + rowsLen + 1) : (offset + rowsLen)));
-    const hasMore = maquina
-      ? false
-      : (rowsLen === limitFinal && ((offset + rowsLen) < totalRows));
-    const payload = {
-      data: rows,
-      total: totalRows,
-      offset,
-      limit: limitFinal,
-      hasMore,
-    };
-    cacheSet(cacheKey, payload, pedidoPaginacao ? 30_000 : (lite ? (2 * 60 * 1000) : (10 * 1000)));
-    console.debug('[OFS PAGE]', { offset, limit: limitFinal, rows: rowsLen, total: totalRows, hasMore });
-    return res.json({ ok: true, ...payload });
+
+    const total = Number.isFinite(Number(count)) ? Number(count) : rows.length;
+    const hasMore = (offset + rows.length) < total;
+    return res.json({ ok: true, data: rows, total, offset, limit, hasMore });
   } catch (e) {
-    try { console.error('[OFS 500 FULL]', e); } catch (_) {}
-    console.error('[OFS ERROR]', e?.message, String(e?.stack || '').slice(0, 200));
-    _logApiError('OFS GET', req, e, { query: req.query });
-    return res.json({ ok: false, data: [], total: 0, error: String(e.message || e), rid: req._rid || null });
+    try { console.error('[GET /api/ofs]', e?.message || e); } catch (_) {}
+    return res.status(500).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: String(e?.message || e) });
   }
 });
 
