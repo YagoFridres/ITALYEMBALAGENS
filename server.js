@@ -313,6 +313,9 @@ function _logApiError(tag, req, err, extra) {
 const _serverCache = {};
 const _serverCacheTTL = {};
 const SERVER_CACHE_TTL = 10 * 60 * 1000;
+// Limpar cache ao iniciar
+Object.keys(_serverCache).forEach(k => delete _serverCache[k]);
+Object.keys(_serverCacheTTL).forEach(k => delete _serverCacheTTL[k]);
 
 function cacheGet(key) {
   if (_serverCacheTTL[key] && Date.now() < _serverCacheTTL[key]) return _serverCache[key];
@@ -3112,7 +3115,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const status = req.query.status;
     const busca = req.query.busca;
     const empresaFiltro = req.query.empresa;
-    const cacheKey = 'ofs_v9_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
+    const cacheKey = 'ofs_v10_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
 
