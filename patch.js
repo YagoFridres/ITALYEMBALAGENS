@@ -4166,7 +4166,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       + '      </select>'
       + '    </div>'
       + '    <div style="display:flex;gap:8px">'
-      + '      <button onclick="gerarRelatorioComissoes()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 Gerar</button>'
+      + '      <button id="btn-gerar-comissoes" onclick="gerarRelatorioComissoes()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 Gerar</button>'
       + '      <button onclick="imprimirRelatorioComissoes()" id="btn-imprimir-comissoes" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;display:none">🖨️ Imprimir</button>'
       + '    </div>'
       + '  </div>'
@@ -4246,73 +4246,42 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var mes = document.getElementById('rel-comissao-mes') && document.getElementById('rel-comissao-mes').value;
     var ano = document.getElementById('rel-comissao-ano') && document.getElementById('rel-comissao-ano').value;
     var selVend = document.getElementById('rel-comissao-vendedores');
-    var container = document.getElementById('comissoes-relatorio-resultado');
-    if (!container) return;
     syncTodosOption();
     var vendedoresSel = 'todos';
     if (selVend) {
       var picks = Array.from(selVend.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); }).filter(Boolean);
       vendedoresSel = (!picks.length || picks.indexOf('todos') >= 0) ? 'todos' : picks.join(',');
     }
-    container.style.display = 'block';
-    container.innerHTML = '<div style="padding:20px;color:var(--text2)">Carregando...</div>';
+    if (!mes || !ano) {
+      try { window.mostrarToast('⚠️ Selecione mês e ano'); } catch (_) { try { window.toast('⚠️ Selecione mês e ano', 'var(--yellow)'); } catch (_) {} }
+      return;
+    }
+    var container = document.getElementById('comissoes-relatorio-resultado');
+    var btnGerar = document.getElementById('btn-gerar-comissoes') || document.querySelector('button[onclick*="gerarRelatorioComissoes"]');
+    if (container) {
+      container.style.display = 'block';
+      container.innerHTML = '<div style="padding:20px;color:var(--text2)">Gerando relatório para impressão...</div>';
+    }
+    try { if (btnGerar) { btnGerar.disabled = true; btnGerar.textContent = '⏳ Gerando...'; } } catch (_) {}
     try {
       var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes || '') + '&ano=' + encodeURIComponent(ano || '') + '&vendedores=' + encodeURIComponent(vendedoresSel), {
         headers: tokenHeaders()
       });
       var data = await resp.json().catch(function() { return {}; });
       if (!resp.ok || !data || data.error) throw new Error((data && data.error) || 'Erro ao gerar relatório');
+      if (!data.grupos || !data.grupos.length) {
+        try { window.mostrarToast('⚠️ Nenhuma comissão encontrada para o período'); } catch (_) { try { window.toast('⚠️ Nenhuma comissão encontrada para o período', 'var(--yellow)'); } catch (_) {} }
+        if (container) container.innerHTML = '<div style="padding:12px;color:var(--text2)">Nenhuma comissão encontrada para o período.</div>';
+        return;
+      }
       window._relatorioComissoesData = data;
-      container.innerHTML =
-        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px;flex-wrap:wrap">' +
-            '<h3 style="margin:0;color:var(--text1)">Relatório de Comissões — ' + esc(data.periodo || '') + '</h3>' +
-            '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
-              '<div style="text-align:right"><div style="font-size:11px;color:var(--text2)">TOTAL VENDAS</div><div style="font-weight:700;color:#3b82f6">' + fmtMoeda(data.total_geral_vendas) + '</div></div>' +
-              '<div style="text-align:right"><div style="font-size:11px;color:var(--text2)">TOTAL COMISSÕES</div><div style="font-weight:700;color:#10b981">' + fmtMoeda(data.total_geral_comissao) + '</div></div>' +
-            '</div>' +
-          '</div>' +
-          ((data.grupos || []).map(function(g) {
-            return '' +
-              '<div style="margin-bottom:24px;border:1px solid var(--border);border-radius:8px;overflow:hidden">' +
-                '<div style="background:var(--bg3,#1a2235);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">' +
-                  '<div style="font-weight:700;font-size:15px;color:var(--text1)">👤 ' + esc(g.vendedor || '') + '</div>' +
-                  '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
-                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">VENDAS</div><div style="font-weight:600;color:#3b82f6">' + fmtMoeda(g.total_vendas) + '</div></div>' +
-                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">COMISSÃO</div><div style="font-weight:600;color:#10b981">' + fmtMoeda(g.total_comissao) + '</div></div>' +
-                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">OFs</div><div style="font-weight:600">' + fmtN(g.ofs && g.ofs.length || 0) + '</div></div>' +
-                  '</div>' +
-                '</div>' +
-                '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
-                  '<thead><tr style="border-bottom:1px solid var(--border)">' +
-                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Nº OF</th>' +
-                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Cliente</th>' +
-                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Produto</th>' +
-                    '<th style="padding:8px 12px;text-align:right;color:var(--text2);font-weight:500">Qtd</th>' +
-                    '<th style="padding:8px 12px;text-align:right;color:var(--text2);font-weight:500">Valor</th>' +
-                    '<th style="padding:8px 12px;text-align:right;color:#10b981;font-weight:500">Comissão</th>' +
-                  '</tr></thead>' +
-                  '<tbody>' +
-                    ((g.ofs || []).map(function(of, idx) {
-                      return '' +
-                        '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? 'background:rgba(255,255,255,0.015);' : '') + '">' +
-                          '<td style="padding:8px 12px;color:#3b82f6">#' + esc(of.numero || of.of || '') + '</td>' +
-                          '<td style="padding:8px 12px">' + esc(of.cliente || '') + '</td>' +
-                          '<td style="padding:8px 12px">' + esc(of.produto || '') + '</td>' +
-                          '<td style="padding:8px 12px;text-align:right">' + fmtN(of.quantidade) + '</td>' +
-                          '<td style="padding:8px 12px;text-align:right">' + fmtMoeda(of.total) + '</td>' +
-                          '<td style="padding:8px 12px;text-align:right;color:#10b981">' + fmtMoeda(of.comissao || (Number(of.total || 0) * 0.03)) + '</td>' +
-                        '</tr>';
-                    }).join('')) +
-                  '</tbody>' +
-                '</table>' +
-              '</div>';
-          }).join('')) +
-        '</div>';
-      var btnImpr = document.getElementById('btn-imprimir-comissoes');
-      if (btnImpr) btnImpr.style.display = 'inline-block';
+      if (container) container.innerHTML = '<div style="padding:12px;color:var(--text2)">Abrindo impressão...</div>';
+      if (typeof window.imprimirRelatorioComissoes === 'function') window.imprimirRelatorioComissoes();
     } catch (e) {
-      container.innerHTML = '<div style="color:#ef4444;padding:12px">Erro: ' + esc(e && e.message || e) + '</div>';
+      if (container) container.innerHTML = '<div style="color:#ef4444;padding:12px">Erro: ' + esc(e && e.message || e) + '</div>';
+      try { window.mostrarToast('❌ Erro: ' + String(e && e.message || e)); } catch (_) { try { window.toast('❌ Erro: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {} }
+    } finally {
+      try { if (btnGerar) { btnGerar.disabled = false; btnGerar.textContent = '📊 Gerar'; } } catch (_) {}
     }
   };
 
@@ -4931,6 +4900,350 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 400); setInterval(tick, 1500); });
   else { setTimeout(tick, 400); setInterval(tick, 1500); }
+})();
+
+(function patchOfRapidaCoresMultiItemAndSalvarEdicao() {
+  function escTxt(v) {
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function getToastFn() {
+    if (typeof window.mostrarToast === 'function') return window.mostrarToast;
+    if (typeof window.toast === 'function') return function(msg) { return window.toast(msg, /❌|erro/i.test(String(msg || '')) ? 'var(--red)' : 'var(--green)'); };
+    return function(msg) { try { alert(msg); } catch (_) {} };
+  }
+
+  function getToken() {
+    try { return String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { return ''; }
+  }
+
+  function getColorsSource() {
+    var src = Array.isArray(window.coresDisponiveis) ? window.coresDisponiveis : (Array.isArray(window.CORES_IMPRESSAO) ? window.CORES_IMPRESSAO : []);
+    if (src.length) return src;
+    return [
+      { id: 'amarelo', nome: 'Amarelo', hex: '#FFD700' },
+      { id: 'azul-claro', nome: 'Azul Claro', hex: '#87CEEB' },
+      { id: 'azul-escuro', nome: 'Azul Escuro', hex: '#00008B' },
+      { id: 'branco', nome: 'Branco', hex: '#FFFFFF' },
+      { id: 'dourado', nome: 'Dourado', hex: '#FFD700' },
+      { id: 'laranja', nome: 'Laranja', hex: '#FFA500' },
+      { id: 'marrom', nome: 'Marrom', hex: '#8B4513' },
+      { id: 'preto', nome: 'Preto', hex: '#000000' },
+      { id: 'rosa', nome: 'Rosa', hex: '#FFC0CB' },
+      { id: 'roxo', nome: 'Roxo', hex: '#800080' },
+      { id: 'verde', nome: 'Verde', hex: '#008000' },
+      { id: 'verde-limao', nome: 'Verde Limão', hex: '#32CD32' },
+      { id: 'vermelho', nome: 'Vermelho', hex: '#FF0000' },
+      { id: 'sem-impressao', nome: 'Sem Impressão', hex: '#64748b' }
+    ];
+  }
+
+  function getItemColorIds(idx) {
+    if (!window.coresSelecionadasOFRapidaItens || typeof window.coresSelecionadasOFRapidaItens !== 'object') window.coresSelecionadasOFRapidaItens = {};
+    if (!Array.isArray(window.coresSelecionadasOFRapidaItens[idx])) window.coresSelecionadasOFRapidaItens[idx] = [];
+    return window.coresSelecionadasOFRapidaItens[idx];
+  }
+
+  function getItemColorPayload(idx) {
+    var ids = getItemColorIds(idx).slice();
+    var cores = getColorsSource();
+    return ids.map(function(id) {
+      var s = String(id || '').trim();
+      var cor = cores.find(function(c) { return String(c && (c.id || c.nome) || '').trim() === s; }) || null;
+      if (!cor) return null;
+      return { id: cor.id || cor.nome, nome: cor.nome || cor.id, hex: cor.hex || cor.cor || '#64748b' };
+    }).filter(Boolean);
+  }
+
+  window.renderSeletorCoresItemOFRapida = function(index) {
+    var idx = String(index == null ? '' : index).trim();
+    if (!idx) return;
+    var el = document.getElementById('seletorCoresItemOFRapida_' + idx);
+    if (!el) return;
+    var selectedIds = getItemColorIds(idx);
+    var cores = getColorsSource();
+    el.innerHTML = cores.map(function(cor) {
+      var id = String(cor && (cor.id || cor.nome) || '').trim();
+      var nome = String(cor && (cor.nome || cor.id) || '').trim();
+      var hex = String(cor && (cor.hex || cor.cor) || '#64748b').trim() || '#64748b';
+      var on = selectedIds.indexOf(id) >= 0;
+      var styleExtra = on ? ('border-color:' + escTxt(hex) + ';color:' + escTxt(hex) + ';background:' + escTxt(hex) + '18;') : '';
+      return '<button type="button" class="btn-cor ' + (on ? 'selecionado' : '') + '" style="' + styleExtra + '" onclick="toggleCorItemOFRapida(\'' + escTxt(idx) + '\',\'' + escTxt(id) + '\')" title="' + escTxt(nome) + '">' +
+        '<span class="circulo-cor" style="background:' + escTxt(hex) + '"></span>' +
+        '<span>' + escTxt(nome) + '</span>' +
+      '</button>';
+    }).join('');
+    try {
+      if (typeof window.atualizarBotaoCores === 'function') {
+        window.atualizarBotaoCores(selectedIds, 'btnCoresLabelItemOFRapida_' + idx, 'resumoCoresItemOFRapida_' + idx);
+      } else {
+        var lbl = document.getElementById('btnCoresLabelItemOFRapida_' + idx);
+        if (lbl) lbl.textContent = selectedIds.length ? ('🎨 ' + selectedIds.length + ' cores selecionadas') : '🎨 Selecionar Cores';
+      }
+    } catch (_) {}
+  };
+
+  window.toggleCorItemOFRapida = function(index, corId) {
+    var idx = String(index == null ? '' : index).trim();
+    var id = String(corId || '').trim();
+    if (!idx || !id) return;
+    var list = getItemColorIds(idx);
+    var pos = list.indexOf(id);
+    if (pos >= 0) list.splice(pos, 1);
+    else list.push(id);
+    window.renderSeletorCoresItemOFRapida(idx);
+  };
+
+  if (typeof window.toggleDropdownCores === 'function' && !window.toggleDropdownCores._patchMultiItem) {
+    var _origToggleDropdownCores = window.toggleDropdownCores;
+    window.toggleDropdownCores = function(dropdownId, btnId) {
+      try {
+        var ddId = String(dropdownId || '').trim();
+        var btn = String(btnId || '').trim();
+        if (ddId.indexOf('dropdownCoresItemOFRapida_') === 0) {
+          Array.prototype.slice.call(document.querySelectorAll('[id^="dropdownCoresItemOFRapida_"]')).forEach(function(el) {
+            if (el && el.id !== ddId) el.style.display = 'none';
+          });
+        }
+        return _origToggleDropdownCores.apply(this, [ddId, btn]);
+      } catch (_) {
+        return _origToggleDropdownCores.apply(this, arguments);
+      }
+    };
+    window.toggleDropdownCores._patchMultiItem = true;
+  }
+
+  function ensureMultiItemColors() {
+    Array.prototype.slice.call(document.querySelectorAll('.ofr-item-card, [data-item-idx]')).forEach(function(card, order) {
+      var idx = String(card && (card.getAttribute('data-item-idx') || card.dataset.itemIdx || order) || order).trim();
+      if (!card) return;
+      try { card.setAttribute('data-item-idx', idx); } catch (_) {}
+      var btn = card.querySelector('#btnAbrirCoresItemOFRapida_' + idx) || card.querySelector('[id^="btnAbrirCoresItemOFRapida_"]');
+      var dd = card.querySelector('#dropdownCoresItemOFRapida_' + idx) || card.querySelector('[id^="dropdownCoresItemOFRapida_"]');
+      var grid = card.querySelector('#seletorCoresItemOFRapida_' + idx) || card.querySelector('[id^="seletorCoresItemOFRapida_"]');
+      var resumo = card.querySelector('#resumoCoresItemOFRapida_' + idx) || card.querySelector('[id^="resumoCoresItemOFRapida_"]');
+      if (btn && btn.id !== 'btnAbrirCoresItemOFRapida_' + idx) btn.id = 'btnAbrirCoresItemOFRapida_' + idx;
+      if (dd && dd.id !== 'dropdownCoresItemOFRapida_' + idx) dd.id = 'dropdownCoresItemOFRapida_' + idx;
+      if (grid && grid.id !== 'seletorCoresItemOFRapida_' + idx) grid.id = 'seletorCoresItemOFRapida_' + idx;
+      if (resumo && resumo.id !== 'resumoCoresItemOFRapida_' + idx) resumo.id = 'resumoCoresItemOFRapida_' + idx;
+      var lbl = btn ? btn.querySelector('span[id^="btnCoresLabelItemOFRapida_"]') : null;
+      if (lbl && lbl.id !== 'btnCoresLabelItemOFRapida_' + idx) lbl.id = 'btnCoresLabelItemOFRapida_' + idx;
+      if (btn && btn.dataset.patchColorIdx !== idx) {
+        btn.dataset.patchColorIdx = idx;
+        btn.onclick = function(ev) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          window.toggleDropdownCores('dropdownCoresItemOFRapida_' + idx, 'btnAbrirCoresItemOFRapida_' + idx);
+        };
+      }
+      try { window.renderSeletorCoresItemOFRapida(idx); } catch (_) {}
+    });
+  }
+
+  if (!window.__patchColorOutsideClickBound) {
+    window.__patchColorOutsideClickBound = true;
+    document.addEventListener('click', function(ev) {
+      var t = ev && ev.target;
+      if (t && t.closest && t.closest('.cores-picker-wrapper')) return;
+      Array.prototype.slice.call(document.querySelectorAll('[id^="dropdownCoresItemOFRapida_"]')).forEach(function(el) {
+        if (el) el.style.display = 'none';
+      });
+    }, true);
+  }
+
+  window.salvarEdicaoOf = async function() {
+    var id = String(window._ofRapidaEditandoId || '').trim();
+    var toast = getToastFn();
+    if (!id) {
+      try { console.warn('[salvarEdicaoOf] sem id de edição'); } catch (_) {}
+      return;
+    }
+
+    var getV = function() {
+      for (var i = 0; i < arguments.length; i += 1) {
+        var sel = arguments[i];
+        if (!sel) continue;
+        var el = null;
+        try { el = document.querySelector(sel); } catch (_) { el = null; }
+        if (el && el.value !== undefined && el.value !== '') return el.value;
+      }
+      return null;
+    };
+
+    var body = { _allow_partial: '1' };
+    var maquina = getV('#of-r-maquina', '#ofr-maquina', 'select[name="maquina"]', '[data-campo="maquina"]');
+    var tipo = getV('#ofr-tipo', '#of-r-tipo', 'select[name="tipo_caixa"]', 'select[name="tipo"]');
+    var produto = getV('#of-r-produto', '#ofr-produto', 'input[name="produto"]', '[data-campo="produto"]');
+    var quantidade = getV('#of-r-qtd', '#ofr-quantidade', 'input[name="quantidade"]');
+    var comprimento = getV('#of-r-comp', '#ofr-comp', 'input[name="comprimento"]');
+    var largura = getV('#of-r-larg', '#ofr-larg', 'input[name="largura"]');
+    var altura = getV('#ofr-alt', '#of-r-alt', 'input[name="altura"]');
+    var entrega = getV('#of-r-entrega', '#ofr-entrega', 'input[name="data_entrega"]', 'input[type="date"]');
+    var vlUnit = getV('#of-r-vlunit', '#ofr-vl-unit', 'input[name="vl_unit"]', 'input[name="valor_unitario"]');
+    var obs = getV('#ofr-obs', '#of-r-obs', 'textarea[name="observacoes"]', 'textarea[name="obs"]');
+    var cliId = getV('#ofr-cliente-id', '#of-r-cliente-id', 'input[name="cli_id"]');
+    var vendId = getV('#of-r-vendedor', '#ofr-vendedor', 'select[name="vendedor_id"]');
+
+    if (maquina) {
+      body.maquina = maquina;
+      body.maquina_agendada = maquina;
+      body.maq = [maquina];
+      body.fluxo_maquinas = [maquina];
+    }
+    if (tipo) body.tipo_caixa = tipo;
+    if (produto) {
+      body.produto = produto;
+      body.descricao = produto;
+      body.prodDesc = produto;
+    }
+    if (quantidade != null && quantidade !== '') {
+      body.quantidade = Number(quantidade);
+      body.qtd = Number(quantidade);
+    }
+    if (comprimento != null && comprimento !== '') {
+      body.comprimento = Number(comprimento);
+      body.caixa_comprimento = Number(comprimento);
+      body.dim_comprimento = Number(comprimento);
+    }
+    if (largura != null && largura !== '') {
+      body.largura = Number(largura);
+      body.caixa_largura = Number(largura);
+      body.dim_largura = Number(largura);
+    }
+    if (altura != null && altura !== '') {
+      body.altura = Number(altura);
+      body.caixa_altura = Number(altura);
+      body.dim_altura = Number(altura);
+    }
+    if (entrega) {
+      body.data_entrega = entrega;
+      body.ent = entrega;
+    }
+    if (vlUnit != null && vlUnit !== '') {
+      body.vl_unit = Number(vlUnit);
+      body.valor_unitario = Number(vlUnit);
+    }
+    if (obs) {
+      body.observacoes = obs;
+      body.obs = obs;
+    }
+    if (cliId) {
+      body.cli_id = cliId;
+      body.cliente_id = cliId;
+      body.cliId = cliId;
+    }
+    if (vendId) {
+      body.vendedor_id = vendId;
+      body.vendId = vendId;
+      body.vend_id = vendId;
+    }
+    if ((body.vl_unit || body.valor_unitario) && (body.quantidade || body.qtd)) {
+      var qty = Number(body.quantidade || body.qtd || 0) || 0;
+      var unit = Number(body.vl_unit || body.valor_unitario || 0) || 0;
+      if (qty > 0 && unit > 0) {
+        body.valor_total = qty * unit;
+        body.valor_venda = qty * unit;
+      }
+    }
+    try {
+      if (Array.isArray(window.coresSelecionadasOFRapida) && window.coresSelecionadasOFRapida.length && typeof window.coresPayloadFromSelecionadas === 'function') {
+        body.cores_impressao = window.coresPayloadFromSelecionadas(window.coresSelecionadasOFRapida);
+      }
+    } catch (_) {}
+
+    if (Object.keys(body).length === 1) {
+      toast('⚠️ Nenhum campo preenchido para salvar');
+      return;
+    }
+
+    try { console.log('[salvarEdicaoOf] enviando PATCH para OF', id, body); } catch (_) {}
+    var btn = document.getElementById('btn-salvar-of-rapida');
+    try { if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; } } catch (_) {}
+    try {
+      var resp = await fetch('/api/ofs/' + encodeURIComponent(id), {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, getToken() ? { Authorization: 'Bearer ' + getToken() } : {}),
+        body: JSON.stringify(body)
+      });
+      var result = await resp.json().catch(function() { return {}; });
+      try { console.log('[salvarEdicaoOf] resposta:', resp.status, result); } catch (_) {}
+      if (!resp.ok || (result && result.ok === false)) {
+        toast('❌ Erro ao salvar: ' + String(result && result.error || resp.status));
+        return;
+      }
+      toast('✅ OF #' + String(window._ofRapidaEditandoNumero || id.substring(0, 8)) + ' salva!');
+      window._ofRapidaEditandoId = null;
+      window._ofRapidaEditandoNumero = null;
+      try { document.getElementById('btn-salvar-edicao-of') && document.getElementById('btn-salvar-edicao-of').remove(); } catch (_) {}
+      try {
+        var btnOrig = document.querySelector('#modal-of-rapida button[type="submit"], .btn-salvar-of');
+        if (btnOrig) btnOrig.style.display = '';
+      } catch (_) {}
+      var btnFechar = null;
+      try {
+        btnFechar = document.querySelector('#modal-of-rapida .modal-close, [onclick*="fecharModalOfRapida"], [onclick*="fecharNovaOf"], [onclick*="fecharOFRapida"]');
+      } catch (_) {}
+      if (btnFechar) {
+        try { btnFechar.click(); } catch (_) {}
+      } else {
+        try {
+          var modal = document.getElementById('modal-of-rapida') || document.getElementById('modal-nova-of-rapida') || document.getElementById('modal-of-rapida-ov');
+          if (modal) modal.style.display = 'none';
+        } catch (_) {}
+      }
+      setTimeout(function() {
+        try { if (window.carregarOFs) window.carregarOFs(true); else if (window.renderPCP) window.renderPCP(); } catch (_) {}
+      }, 300);
+    } catch (e) {
+      try { console.error('[salvarEdicaoOf]', e); } catch (_) {}
+      toast('❌ Erro de rede: ' + String(e && e.message || e));
+    } finally {
+      try { if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar Alterações'; } } catch (_) {}
+    }
+  };
+
+  function wrapSalvarOfRapidaEdicao() {
+    if (typeof window.salvarOfRapida !== 'function') return;
+    if (window.salvarOfRapida._patchSalvarEdicaoOf) return;
+    var orig = window.salvarOfRapida;
+    window.salvarOfRapida = async function() {
+      if (String(window._ofRapidaEditandoId || '').trim()) return window.salvarEdicaoOf();
+      return orig.apply(this, arguments);
+    };
+    window.salvarOfRapida._patchSalvarEdicaoOf = true;
+  }
+
+  function patchAbrirModalNumero() {
+    if (typeof window.abrirModalOF !== 'function') return;
+    if (window.abrirModalOF._patchNumeroEdicao) return;
+    var orig = window.abrirModalOF;
+    window.abrirModalOF = async function(ofId) {
+      var r = await orig.apply(this, arguments);
+      try {
+        var span = document.getElementById('of-r-numero');
+        if (span) window._ofRapidaEditandoNumero = String(span.textContent || '').trim() || null;
+      } catch (_) {}
+      return r;
+    };
+    window.abrirModalOF._patchNumeroEdicao = true;
+  }
+
+  function tick() {
+    ensureMultiItemColors();
+    wrapSalvarOfRapidaEdicao();
+    patchAbrirModalNumero();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 300); setInterval(tick, 1200); });
+  } else {
+    setTimeout(tick, 300);
+    setInterval(tick, 1200);
+  }
 })();
 
 (function patchClienteValidoNovaOf() {

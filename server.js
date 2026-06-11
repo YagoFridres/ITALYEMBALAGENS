@@ -2192,6 +2192,44 @@ function ofIn(p) {
     }
     delete out.vl_total;
   }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'vl_unit')) {
+    const v = toNum(p.vl_unit, NaN);
+    if (Number.isFinite(v)) {
+      out.vl_unit = v;
+      if (out.valor_unitario === undefined) out.valor_unitario = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'valor_unitario')) {
+    const v = toNum(p.valor_unitario, NaN);
+    if (Number.isFinite(v)) {
+      out.valor_unitario = v;
+      if (out.vl_unit === undefined) out.vl_unit = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'comprimento')) {
+    const v = toNum(p.comprimento, NaN);
+    if (Number.isFinite(v)) {
+      out.comprimento = v;
+      if (out.caixa_comprimento === undefined) out.caixa_comprimento = v;
+      if (out.dim_comprimento === undefined) out.dim_comprimento = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'largura')) {
+    const v = toNum(p.largura, NaN);
+    if (Number.isFinite(v)) {
+      out.largura = v;
+      if (out.caixa_largura === undefined) out.caixa_largura = v;
+      if (out.dim_largura === undefined) out.dim_largura = v;
+    }
+  }
+  if (Object.prototype.hasOwnProperty.call(p || {}, 'altura')) {
+    const v = toNum(p.altura, NaN);
+    if (Number.isFinite(v)) {
+      out.altura = v;
+      if (out.caixa_altura === undefined) out.caixa_altura = v;
+      if (out.dim_altura === undefined) out.dim_altura = v;
+    }
+  }
   delete out.val;
   delete out.valor;
   delete out.vtot;
@@ -2357,8 +2395,8 @@ const OFS_TABLE_COLS = [
   'caixas_boas', 'operadores_conclusao',
   'caixas_excedentes', 'qtd_chapas',
   'valor_total', 'valor_venda', 'preco', 'total',
-  'vl_total',
-  'descricao', 'obs', 'obs2',
+  'vl_total', 'vl_unit', 'valor_unitario',
+  'descricao', 'obs', 'obs2', 'observacoes',
   'itens', 'imgs', 'imagem_url',
   'maq', 'fluxo', 'fluxo_maquinas', 'maquina_atual_index',
   'chp', 'chapa_id', 'maquina_perda',
@@ -2368,6 +2406,7 @@ const OFS_TABLE_COLS = [
   'usuario_conclusao',
   'tipo_caixa', 'caixa_comprimento', 'caixa_largura', 'caixa_altura',
   'dim_comprimento', 'dim_largura', 'dim_altura',
+  'comprimento', 'largura', 'altura',
   'cores_impressao',
   'cond_pagamento', 'pagto', 'ramo', 'smp_id',
   'created_at', 'updated_at',
@@ -4172,7 +4211,8 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
         'ent','data_entrega','dataEntrega',
         'itens',
       ].includes(k));
-      if (shouldValidate) {
+      const allowPartial = String(req.body?._allow_partial || req.body?.allow_partial || '').trim() === '1';
+      if (shouldValidate && !allowPartial) {
         const parseItens = (v) => {
           if (Array.isArray(v)) return v;
           if (typeof v === 'string') { try { const p = JSON.parse(v || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } }
@@ -5540,6 +5580,31 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       (bodyIn && typeof bodyIn === 'object' && !Array.isArray(bodyIn))
         ? {
           ...bodyIn,
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'vl_unit') && !Object.prototype.hasOwnProperty.call(bodyIn, 'valor_unitario')
+            ? { valor_unitario: Number(bodyIn.vl_unit) || bodyIn.vl_unit }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'observacoes') && !Object.prototype.hasOwnProperty.call(bodyIn, 'obs')
+            ? { obs: bodyIn.observacoes }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
+            ? { maq: [bodyIn.maquina], fluxo_maquinas: [bodyIn.maquina], maquina_agendada: bodyIn.maquina }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'comprimento') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_comprimento')
+            ? { caixa_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento, dim_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'largura') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_largura')
+            ? { caixa_largura: Number(bodyIn.largura) || bodyIn.largura, dim_largura: Number(bodyIn.largura) || bodyIn.largura }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'altura') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_altura')
+            ? { caixa_altura: Number(bodyIn.altura) || bodyIn.altura, dim_altura: Number(bodyIn.altura) || bodyIn.altura }
+            : {}),
+          ...(((bodyIn.vl_unit != null || bodyIn.valor_unitario != null) && (bodyIn.quantidade != null || bodyIn.qtd != null) && bodyIn.valor_total == null && bodyIn.valor_venda == null)
+            ? (function() {
+                const qtd = Number(bodyIn.quantidade ?? bodyIn.qtd ?? 0) || 0;
+                const vu = Number(bodyIn.vl_unit ?? bodyIn.valor_unitario ?? 0) || 0;
+                return (qtd > 0 && vu > 0) ? { valor_total: qtd * vu, valor_venda: qtd * vu } : {};
+              })()
+            : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina_atual') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
             ? { maq: bodyIn.maquina_atual }
             : {}),
