@@ -3983,6 +3983,57 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   else { setTimeout(ensure, 500); setInterval(ensure, 1500); }
 })();
 
+(function patchBotaoCalculadoraAbrir() {
+  function abrirCalcFallback() {
+    try {
+      if (typeof window.abrirCalculadoraCaixas === 'function') { window.abrirCalculadoraCaixas(); return; }
+    } catch (_) {}
+    try {
+      if (typeof window.abrirCalculadora === 'function') { window.abrirCalculadora(); return; }
+    } catch (_) {}
+    try {
+      var modal = document.getElementById('modal-calc') || document.getElementById('modal-calculadora') || document.getElementById('modal-calc-orcamento') || document.getElementById('modal-orcamento-calc');
+      if (modal) {
+        modal.style.display = 'flex';
+        try { modal.classList.add('open', 'show', 'active'); } catch (_) {}
+        return;
+      }
+    } catch (_) {}
+  }
+
+  function ensureFn() {
+    if (typeof window.abrirCalculadora !== 'function') {
+      window.abrirCalculadora = function() { abrirCalcFallback(); };
+    }
+  }
+
+  function bindBtn() {
+    var btn =
+      document.querySelector('#btn-calculadora, .btn-calculadora') ||
+      document.querySelector('button[onclick*="abrirCalculadora"]') ||
+      Array.prototype.slice.call(document.querySelectorAll('button')).find(function(b) {
+        var t = String(b && b.textContent || '').toLowerCase();
+        return t.indexOf('calculadora de caixas') >= 0;
+      }) ||
+      null;
+    if (!btn || btn.dataset.patchCalcBtn === '1') return;
+    btn.dataset.patchCalcBtn = '1';
+    btn.onclick = function(e) {
+      try { if (e) { e.preventDefault(); e.stopPropagation(); } } catch (_) {}
+      ensureFn();
+      abrirCalcFallback();
+    };
+  }
+
+  function tick() {
+    ensureFn();
+    bindBtn();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 600); setInterval(tick, 2000); });
+  else { setTimeout(tick, 600); setInterval(tick, 2000); }
+})();
+
 (function patchBuscaComissoesPorOf() {
   window.__ensureComissoesBusca = function() {
     try {
@@ -4112,16 +4163,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try {
       var names = [];
       try {
-        var resp = await fetch('/api/usuarios/lista', { headers: tokenHeaders() });
-        var json = await resp.json().catch(function() { return {}; });
-        var usrs = Array.isArray(json && (json.data || json)) ? (json.data || json) : [];
-        names = usrs
-          .filter(function(u) {
-            var perfil = String(u && u.perfil || '').toLowerCase();
-            return perfil.indexOf('vend') >= 0 || perfil === 'comercial' || perfil === 'admin' || perfil === 'custom';
-          })
-          .map(function(u) { return String(u && u.nome || '').trim(); })
-          .filter(Boolean);
+        var resp = await fetch('/api/ofs/vendedores-unicos', { headers: tokenHeaders() });
+        if (resp && resp.ok) {
+          var json = await resp.json().catch(function() { return []; });
+          if (Array.isArray(json)) names = json.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+          else if (json && json.ok && Array.isArray(json.data)) names = json.data.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
+        }
       } catch (_) {}
       if (!names.length) {
         try {
@@ -8551,31 +8598,36 @@ window._mbnActive = function(id) {
   };
 
   window.carregarInteligenciaHub = async function() {
-    ensureStyles();
-    var block = ensureHubIntelBlock();
-    var lista = document.getElementById('hub-intel-lista');
-    var dataEl = document.getElementById('hub-intel-data');
-    if (!block || !lista) return;
-    if (dataEl) {
-      try {
-        var hoje = new Date();
-        dataEl.textContent = hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-      } catch (_) {}
-    }
-    lista.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0">Analisando dados...</div>';
     try {
-      var result = await apiJson('/api/hub/inteligencia', { method: 'GET' });
-      var data = result && result.data || {};
-      var alertas = Array.isArray(data.alertas) ? data.alertas : [];
+      ensureStyles();
+      var block = ensureHubIntelBlock();
+      var lista = document.getElementById('hub-intel-lista');
+      var dataEl = document.getElementById('hub-intel-data');
+      if (!block || !lista) return;
+      if (dataEl) {
+        try {
+          var hoje = new Date();
+          dataEl.textContent = hoje.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+        } catch (_) {}
+      }
+      lista.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0">Analisando dados...</div>';
+
+      var token = '';
+      try {
+        token =
+          String(window._token || localStorage.getItem('token') || '') ||
+          String((document.cookie.match(/(?:^|;\\s*)token=([^;]+)/) || [])[1] || '');
+      } catch (_) { token = ''; }
+
+      var r = await fetch('/api/hub/inteligencia', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      if (!r || !r.ok) {
+        lista.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de inteligência indisponível no momento.</div>';
+        return;
+      }
+      var data = await r.json().catch(function() { return {}; });
+      var alertas = Array.isArray(data && data.alertas) ? data.alertas : [];
       if (!alertas.length) {
-        lista.innerHTML = ''
-          + '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;color:#10b981">'
-          + '  <span style="font-size:24px">✅</span>'
-          + '  <div>'
-          + '    <div style="font-weight:600">Tudo em ordem!</div>'
-          + '    <div style="font-size:12px;color:var(--text2)">Nenhum alerta no momento. Bom trabalho!</div>'
-          + '  </div>'
-          + '</div>';
+        lista.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;color:#10b981"><span style="font-size:20px">✅</span><span>Tudo em ordem! Nenhum alerta no momento.</span></div>';
         return;
       }
       var cores = {
@@ -8585,25 +8637,29 @@ window._mbnActive = function(id) {
       };
       lista.innerHTML = alertas.map(function(a) {
         var c = cores[a.tipo] || cores.info;
+        var acao = escAttrLocal(String(a.acao || ''));
         return ''
-          + '<div class="patch-hub-intel-item" data-acao="' + escAttrLocal(String(a.acao || '')) + '" style="background:' + c.bg + ';border:1px solid ' + c.border + ';">'
-          + '  <div style="display:flex;align-items:center;gap:12px">'
-          + '    <span style="font-size:20px">' + escHLocal(a.icone || 'ℹ️') + '</span>'
+          + '<div class="patch-hub-intel-item" data-acao="' + acao + '" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;margin-bottom:6px;border-radius:8px;cursor:pointer;background:' + c.bg + ';border:1px solid ' + c.border + '">'
+          + '  <div style="display:flex;align-items:center;gap:10px">'
+          + '    <span style="font-size:18px">' + escHLocal(a.icone || 'ℹ️') + '</span>'
           + '    <div>'
-          + '      <div style="font-weight:600;font-size:14px;color:' + c.text + '">' + escHLocal(a.titulo || '') + '</div>'
-          + '      <div style="font-size:12px;color:var(--text2);margin-top:2px">' + escHLocal(a.subtitulo || '') + '</div>'
+          + '      <div style="font-weight:600;font-size:13px;color:' + c.text + '">' + escHLocal(a.titulo || '') + '</div>'
+          + '      <div style="font-size:11px;color:var(--text2)">' + escHLocal(a.subtitulo || '') + '</div>'
           + '    </div>'
           + '  </div>'
-          + '  <span style="font-size:12px;color:' + c.text + ';white-space:nowrap;margin-left:12px">' + escHLocal(a.acao_label || 'ver →') + '</span>'
+          + '  <span style="font-size:11px;color:' + c.text + ';white-space:nowrap;margin-left:10px">' + escHLocal(a.acao_label || 'ver →') + '</span>'
           + '</div>';
       }).join('');
       Array.prototype.slice.call(lista.querySelectorAll('.patch-hub-intel-item[data-acao]')).forEach(function(item) {
         item.onclick = function() {
-          window.navegarParaAlerta(String(item.getAttribute('data-acao') || ''));
+          try { window.navegarParaAlerta(String(item.getAttribute('data-acao') || '')); } catch (_) {}
         };
       });
     } catch (_) {
-      lista.innerHTML = '<div style="color:var(--text2);font-size:12px">Erro ao carregar análise</div>';
+      try {
+        var lista2 = document.getElementById('hub-intel-lista');
+        if (lista2) lista2.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px">Central de inteligência indisponível.</div>';
+      } catch (_) {}
     }
   };
 
@@ -8615,7 +8671,7 @@ window._mbnActive = function(id) {
       var result = await orig.apply(this, arguments);
       setTimeout(function() {
         ensureHubIntelBlock();
-        window.carregarInteligenciaHub();
+        try { window.carregarInteligenciaHub().catch(function(){}); } catch (_) {}
       }, 300);
       return result;
     };
@@ -8647,8 +8703,11 @@ window._mbnActive = function(id) {
     ensureHubIntelBlock();
     if (!hubTimerStarted) {
       hubTimerStarted = true;
-      setInterval(function() {
-        if (document.getElementById('hub-inteligencia')) window.carregarInteligenciaHub();
+      try { if (window._hubIntelInterval) clearInterval(window._hubIntelInterval); } catch (_) {}
+      window._hubIntelInterval = setInterval(function() {
+        try {
+          if (document.getElementById('hub-inteligencia')) window.carregarInteligenciaHub().catch(function(){});
+        } catch (_) {}
       }, 5 * 60 * 1000);
     }
   }

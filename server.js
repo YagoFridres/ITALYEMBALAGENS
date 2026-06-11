@@ -1380,43 +1380,34 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       empLegacy ? { col: 'empId', val: empLegacy } : null,
     ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
 
-    const selectVariants = [
-      'id,numero,of,cliente,cliNome,cliente_nome,produto,prodDesc,descricao,quantidade,qtd,total,valor_total,valor_venda,vl_unit,comissao,vendedor,representante,data_entrega,ent,created_at,status',
-      'id,numero,of,cliente,cliNome,cliente_nome,descricao,quantidade,qtd,valor_total,valor_venda,comissao,vendedor,representante,data_entrega,ent,created_at,status',
-      'id,numero,of,cliente,descricao,qtd,valor_total,comissao,vendedor,representante,created_at,status',
-    ];
-
-    const isMissingColumnErr = (error) => {
-      const msg = String(error?.message || error || '').toLowerCase();
-      return msg.includes('column') || msg.includes('could not find');
+    const norm = (v) => String(v || '').trim().toLowerCase();
+    const matchVend = (rowVend, lista) => {
+      const v = norm(rowVend);
+      if (!v) return false;
+      return lista.some((x) => {
+        const t = norm(x);
+        if (!t) return false;
+        return v === t || v.includes(t) || t.includes(v);
+      });
     };
 
     const queryRows = async () => {
       let lastError = null;
-      for (const sel of selectVariants) {
-        for (const cand of empresaCandidates.length ? empresaCandidates : [null]) {
-          try {
-            let q = supabase
-              .from('ofs')
-              .select(sel)
-              .gte('created_at', dataInicio)
-              .lte('created_at', dataFim + 'T23:59:59')
-              .limit(5000);
-            if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
-            const { data, error } = await q.order('created_at', { ascending: true });
-            if (!error) return Array.isArray(data) ? data : [];
-            if (isMissingColumnErr(error)) {
-              lastError = error;
-              continue;
-            }
-            throw error;
-          } catch (e) {
-            if (isMissingColumnErr(e)) {
-              lastError = e;
-              continue;
-            }
-            throw e;
-          }
+      const cands = empresaCandidates.length ? empresaCandidates : [null];
+      for (const cand of cands) {
+        try {
+          let q = supabase
+            .from('ofs')
+            .select('*')
+            .gte('created_at', dataInicio + 'T00:00:00')
+            .lte('created_at', dataFim + 'T23:59:59')
+            .limit(5000);
+          if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
+          const { data, error } = await q.order('created_at', { ascending: true });
+          if (!error) return Array.isArray(data) ? data : [];
+          lastError = error;
+        } catch (e) {
+          lastError = e;
         }
       }
       if (lastError) throw lastError;
@@ -1424,48 +1415,57 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     };
 
     const rows = await queryRows();
-    const norm = (v) => String(v || '').trim().toLowerCase();
-    const filtradas = rows.filter((of) => {
+    const filtradas = (rows || []).filter((of) => {
       const st = norm(of?.status);
       if (st.includes('cancel')) return false;
       if (!vendedoresFiltro.length) return true;
-      const vendedor = String(of?.vendedor || '').trim();
-      const representante = String(of?.representante || '').trim();
-      return vendedoresFiltro.includes(vendedor) || vendedoresFiltro.includes(representante);
+      const vend = String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || of?.vend || '').trim();
+      return matchVend(vend, vendedoresFiltro);
     });
+
+    const pickCliente = (of) => {
+      const c =
+        of?.cli_nome ??
+        of?.nome_cliente ??
+        of?.cliente_nome ??
+        of?.cliente ??
+        of?.cliNome ??
+        of?.clinome ??
+        '';
+      const out = String(c || '').trim();
+      if (out) return out;
+      const cid = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
+      return cid || '—';
+    };
+    const pickProduto = (of) => String(of?.produto ?? of?.produto_nome ?? of?.prodDesc ?? of?.descricao ?? '').trim() || '—';
+    const pickQtd = (of) => Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
+    const pickTotal = (of) => Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? of?.vl_total ?? of?.val ?? 0) || 0;
+    const pickNumero = (of) => String(of?.numero ?? of?.of ?? '').trim() || String(of?.id || '').slice(0, 8);
 
     const grupos = {};
     filtradas.forEach((of) => {
-      const vendedor = String(of?.vendedor || of?.representante || 'Sem vendedor').trim() || 'Sem vendedor';
-      const total = Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? 0) || 0;
-      const quantidade = Number(of?.quantidade ?? of?.qtd ?? 0) || 0;
-      const produto = String(of?.produto || of?.prodDesc || of?.descricao || '').trim();
-      const comissao = Number(of?.comissao ?? 0) || (total * 0.03);
-      if (!grupos[vendedor]) {
-        grupos[vendedor] = { vendedor, ofs: [], total_vendas: 0, total_comissao: 0 };
-      }
-      grupos[vendedor].ofs.push({
+      const vend = String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || 'Sem vendedor').trim() || 'Sem vendedor';
+      const total = pickTotal(of);
+      const comissao = Number(of?.comissao ?? of?.vl_comissao ?? 0) || (total * 0.03);
+      if (!grupos[vend]) grupos[vend] = { vendedor: vend, ofs: [], total_vendas: 0, total_comissao: 0 };
+      grupos[vend].ofs.push({
         id: of?.id || null,
-        numero: of?.numero ?? of?.of ?? '',
-        cliente: of?.cliente ?? of?.cliNome ?? of?.cliente_nome ?? '',
-        produto,
-        quantidade,
+        numero: pickNumero(of),
+        cliente: pickCliente(of),
+        produto: pickProduto(of),
+        quantidade: pickQtd(of),
         total,
-        vl_unit: Number(of?.vl_unit ?? 0) || 0,
         comissao,
-        vendedor: String(of?.vendedor || '').trim(),
-        representante: String(of?.representante || '').trim(),
-        data_entrega: of?.data_entrega ?? of?.ent ?? null,
-        created_at: of?.created_at ?? null,
         status: of?.status ?? '',
+        created_at: of?.created_at ?? null,
       });
-      grupos[vendedor].total_vendas += total;
-      grupos[vendedor].total_comissao += comissao;
+      grupos[vend].total_vendas += total;
+      grupos[vend].total_comissao += comissao;
     });
 
     const gruposArr = Object.values(grupos).sort((a, b) => String(a.vendedor || '').localeCompare(String(b.vendedor || '')));
     const vendedoresDisponiveis = Array.from(new Set(
-      rows.map((of) => String(of?.vendedor || of?.representante || '').trim()).filter(Boolean)
+      (rows || []).map((of) => String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || '').trim()).filter(Boolean)
     )).sort((a, b) => a.localeCompare(b));
 
     return res.json({
@@ -1478,6 +1478,70 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       total_geral_vendas: gruposArr.reduce((s, g) => s + (Number(g.total_vendas || 0) || 0), 0),
       total_geral_comissao: gruposArr.reduce((s, g) => s + (Number(g.total_comissao || 0) || 0), 0),
     });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get('/api/ofs/vendedores-unicos', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const empresaUuid = await _resolveEmpresaUuid(req).catch(() => null);
+    const empLegacy = String(
+      req.usuario?.emp_id ??
+      req.usuario?.empId ??
+      req.user?.emp_id ??
+      req.user?.empId ??
+      ''
+    ).trim();
+    const empresaCandidates = [
+      empresaUuid ? { col: 'empresa_id', val: empresaUuid } : null,
+      empLegacy ? { col: 'emp_id', val: empLegacy } : null,
+      empLegacy ? { col: 'empId', val: empLegacy } : null,
+    ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
+
+    const isMissingColumnErr = (error) => {
+      const msg = String(error?.message || error || '').toLowerCase();
+      return msg.includes('column') || msg.includes('could not find');
+    };
+
+    const trySelects = [
+      'vendedor,representante,status,created_at',
+      'vendedor_nome,vendNome,status,created_at',
+      '*',
+    ];
+
+    let rows = [];
+    let lastError = null;
+    for (const sel of trySelects) {
+      for (const cand of (empresaCandidates.length ? empresaCandidates : [null])) {
+        try {
+          let q = supabase.from('ofs').select(sel).order('created_at', { ascending: false }).limit(20000);
+          if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
+          const { data, error } = await q;
+          if (!error) { rows = Array.isArray(data) ? data : []; lastError = null; break; }
+          if (isMissingColumnErr(error)) { lastError = error; continue; }
+          throw error;
+        } catch (e) {
+          if (isMissingColumnErr(e)) { lastError = e; continue; }
+          throw e;
+        }
+      }
+      if (rows.length) break;
+    }
+    if (!rows.length && lastError) throw lastError;
+
+    const set = new Set();
+    const norm = (v) => String(v || '').trim();
+    rows.forEach((o) => {
+      const st = String(o?.status || '').toLowerCase();
+      if (st.includes('cancel')) return;
+      const a = norm(o?.vendedor || o?.vendedor_nome || o?.vendNome);
+      const b = norm(o?.representante);
+      if (a) set.add(a);
+      if (b) set.add(b);
+    });
+    return res.json({ ok: true, data: Array.from(set).sort((a, b) => a.localeCompare(b)) });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
@@ -18874,9 +18938,9 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
 
     const ofsAbertas = await queryEmpresa(
       'ofs',
-      'id,numero,of,cliente,cliNome,cliente_nome,maq,maquina_atual,maquina_agendada,data_entrega,ent,dia,data_producao,data_agendamento,status,cli_id,created_at',
+      '*',
       (q) => q.limit(5000),
-      { optional: false }
+      { optional: true, allowWithoutEmpresa: true }
     );
     const ofsPendentes = ofsAbertas.filter((o) => {
       const st = normStatus(o?.status);
