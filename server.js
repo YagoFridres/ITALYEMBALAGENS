@@ -3108,26 +3108,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!empId) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
 
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
-    const offset = Math.max(0, parseInt(String(req.query.offset || ''), 10) || 0);
-    const empresaFiltro = String(req.query.empresa || req.query.empresa_id || req.query.empId || '').trim();
-    const statusRaw = String(req.query.status || '').trim();
-    const status = statusRaw && statusRaw !== 'todos' && statusRaw !== 'Todos status' ? statusRaw : '';
-    const busca = String(req.query.busca || '').trim();
-    const perfil = String(req?.usuario?.perfil || '').trim().toLowerCase();
-    const permissoes = Array.isArray(req?.usuario?.permissoes) ? req.usuario.permissoes : [];
-    const podeVerTodasEmpresas = perfil === 'admin' || perfil.includes('admin') || permissoes.includes('tudo');
-    const empresaScope = (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all')
-      ? empresaFiltro
-      : ((empresaFiltro === 'todas' || empresaFiltro === 'all') && podeVerTodasEmpresas ? 'todas' : empId);
-    const cacheKey = [
-      'ofs_v8',
-      empId,
-      empresaScope,
-      String(offset),
-      String(limit),
-      status || '',
-      busca || '',
-    ].join('_');
+    const offset = parseInt(String(req.query.offset || ''), 10) || 0;
+    const status = req.query.status;
+    const busca = req.query.busca;
+    const empresaFiltro = req.query.empresa;
+    const cacheKey = 'ofs_v9_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
 
@@ -3139,7 +3124,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
       query = query.eq('empresa_id', empresaFiltro);
-    } else if (!(empresaFiltro && (empresaFiltro === 'todas' || empresaFiltro === 'all') && podeVerTodasEmpresas)) {
+    } else {
       query = query.eq('empresa_id', empId);
     }
 
@@ -3149,39 +3134,30 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     }
 
     if (busca) {
-      const termo = String(busca).replace(/[(),]/g, ' ').trim();
-      query = query.or(
-        `numero.ilike.%${termo}%,descricao.ilike.%${termo}%,clinome.ilike.%${termo}%`
-      );
+      query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
     }
 
     const { data, error, count } = await query;
     if (error) throw error;
 
     const ofsRaw = data || [];
-    const clienteIds = Array.from(new Set(
-      ofsRaw
-        .map((o) => String(o?.cli_id || '').trim())
-        .filter((v) => /^[0-9a-f-]{36}$/i.test(v))
-    ));
+    const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
     const mapaClientes = {};
     if (clienteIds.length > 0) {
       for (let i = 0; i < clienteIds.length; i += 100) {
         const lote = clienteIds.slice(i, i + 100);
-        try {
-          const { data: clientes } = await supabase
-            .from('clientes')
-            .select('id,nome,rs')
-            .in('id', lote);
-          (clientes || []).forEach((c) => {
-            const key = String(c?.id || '').trim();
-            if (key) mapaClientes[key] = String(c?.nome || c?.rs || '').trim();
-          });
-        } catch (_) {}
+        const { data: clientes } = await supabase
+          .from('clientes')
+          .select('id, nome, rs')
+          .in('id', lote);
+        (clientes || []).forEach(c => {
+          mapaClientes[c.id] = c.nome || c.rs || '';
+        });
       }
     }
 
     const rows = ofsRaw.map((of) => {
+      const clienteNome = of.clinome || mapaClientes[of.cli_id] || of.cliid || '';
       let maquinaNome = '';
       try {
         let m = of?.maq;
@@ -3205,8 +3181,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       } catch (_) {}
       if (!Array.isArray(itensArr)) itensArr = [];
 
-      const item0 = itensArr[0] && typeof itensArr[0] === 'object' ? itensArr[0] : {};
-      const produtoNome = String(item0.descricao || item0.produto || of?.descricao || '').trim();
+      let produtoNome = of.descricao || '';
+      let total = 0;
+      try {
+        if (of.itens) {
+          itensArr = typeof of.itens === 'string' ? JSON.parse(of.itens) : of.itens;
+          if (Array.isArray(itensArr) && itensArr[0]) {
+            produtoNome = itensArr[0].descricao || itensArr[0].produto || of.descricao || '';
+            total = itensArr.reduce((s, it) => s + Number(it.total || it.valor_total || 0), 0);
+          }
+        }
+      } catch (e) {}
 
       let imgsArr = [];
       try {
@@ -3218,31 +3203,27 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
       return {
         ...of,
-        clinome: String(of?.clinome || mapaClientes[String(of?.cli_id || '').trim()] || of?.cliid || '').trim(),
+        cliente: clienteNome,
+        clinome: clienteNome,
         maquina: maquinaNome,
         maquina_atual: maquinaNome,
         produto: produtoNome,
-        cliente: String(of?.clinome || mapaClientes[String(of?.cli_id || '').trim()] || of?.cliid || '').trim(),
         imagem_url: primeiraImagem || String(of?.imgs || '').trim(),
-        total: 0,
+        total: total || of.total || 0,
         itens_parsed: itensArr,
+        urgente: of.urgente || of.urg || false,
+        numero: of.numero || of.of_num || of.of || ''
       };
     });
 
-    rows.forEach((of) => {
-      const clienteNome = String(of?.clinome || of?.cliente || '').trim();
-      of.clinome = clienteNome;
-      of.cliente = clienteNome || '';
-    });
-
-    const total = Number.isFinite(Number(count)) ? Number(count) : rows.length;
-    const hasMore = (offset + rows.length) < total;
-    const resultado = { ok: true, data: rows, total, offset, limit, hasMore };
+    const totalCount = count || rows.length;
+    const hasMore = (offset + rows.length) < totalCount;
+    const resultado = { ok: true, data: rows, total: totalCount, offset, limit, hasMore };
     cacheSet(cacheKey, resultado, 30000);
     return res.json(resultado);
   } catch (e) {
-    try { console.error('[GET /api/ofs]', e?.message || e); } catch (_) {}
-    return res.status(500).json({ ok: false, data: [], total: 0, offset: 0, limit: 0, hasMore: false, error: String(e?.message || e) });
+    try { console.error('[GET /api/ofs]', e.message); } catch (_) {}
+    return res.status(500).json({ error: e.message });
   }
 });
 
