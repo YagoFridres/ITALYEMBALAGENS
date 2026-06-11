@@ -1,3 +1,87 @@
+// LIMPEZA DE OVERLAYS ÓRFÃOS — executar imediatamente
+(function limparOverlaysOrfaos() {
+  function removerOrfaos() {
+    try {
+      document.querySelectorAll('div').forEach(function(el) {
+        try {
+          var s = el && el.style ? el.style : {};
+          var computed = window.getComputedStyle ? window.getComputedStyle(el) : null;
+          var pos = String((s && s.position) || (computed && computed.position) || '').trim().toLowerCase();
+          var isFixed = pos === 'fixed';
+          var inset = String((s && s.inset) || (computed && computed.inset) || '').trim();
+          var cobreTudo = inset === '0' || (String(s.top) === '0px' || String(s.top) === '0') && (String(s.left) === '0px' || String(s.left) === '0') && (String(s.right) === '0px' || String(s.right) === '0') && (String(s.bottom) === '0px' || String(s.bottom) === '0');
+          var semConteudo = (!el.children || el.children.length === 0) && !String(el.textContent || '').trim();
+          var z = parseInt(String((s && s.zIndex) || (computed && computed.zIndex) || '0'), 10);
+          var altaZIndex = Number.isFinite(z) && z > 9000;
+          if (isFixed && (cobreTudo || altaZIndex) && semConteudo) {
+            try { console.warn('[PATCH] Removendo overlay órfão:', el.id || el.className || '(sem id)'); } catch (_) {}
+            el.remove();
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    try {
+      ['hub-inteligencia-wrap-overlay', 'modal-overlay', 'backdrop', '_modal-backdrop'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+          try { console.warn('[PATCH] Removendo:', id); } catch (_) {}
+          el.remove();
+        }
+      });
+    } catch (_) {}
+
+    try {
+      var overlays = document.querySelectorAll('[id*="overlay"],[id*="backdrop"],[class*="overlay"],[class*="backdrop"]');
+      overlays.forEach(function(el) {
+        try {
+          var computed = window.getComputedStyle ? window.getComputedStyle(el) : null;
+          var pos = String((computed && computed.position) || '').trim().toLowerCase();
+          if (pos === 'fixed') el.style.display = 'none';
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    try { document.body && (document.body.style.pointerEvents = ''); } catch (_) {}
+    try { document.body && (document.body.style.overflow = ''); } catch (_) {}
+    try { document.documentElement && (document.documentElement.style.overflow = ''); } catch (_) {}
+  }
+
+  function killObservers() {
+    try { if (window._hubObs && typeof window._hubObs.disconnect === 'function') window._hubObs.disconnect(); } catch (_) {}
+    try { window._hubObs = null; } catch (_) {}
+    try { if (window.__patchHubIntelObs && typeof window.__patchHubIntelObs.disconnect === 'function') window.__patchHubIntelObs.disconnect(); } catch (_) {}
+    try { window.__patchHubIntelObs = null; } catch (_) {}
+  }
+
+  function run() {
+    killObservers();
+    removerOrfaos();
+  }
+
+  try { run(); } catch (_) {}
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      run();
+      setTimeout(run, 700);
+    });
+  } else {
+    setTimeout(run, 50);
+    setTimeout(run, 700);
+  }
+
+  if (!window.__patchEscOverlayCleaner) {
+    window.__patchEscOverlayCleaner = true;
+    document.addEventListener('keydown', function(e) {
+      try {
+        if (!e || e.key !== 'Escape') return;
+        window._ofRapidaEditandoId = null;
+        run();
+      } catch (_) {}
+    }, true);
+  }
+})();
+
 window.addEventListener('error', function(e) {
   try { console.error('[PATCH ERROR GLOBAL]', e && e.message, e && e.filename, e && e.lineno); } catch (_) {}
 });
@@ -8259,13 +8343,20 @@ window._mbnActive = function(id) {
   }
 
   function initHubObserver() {
-    if (window.__patchHubIntelObs) return;
-    window.__patchHubIntelObs = new MutationObserver(function() {
-      var shell = document.querySelector('#page-hub .hub-shell');
-      if (!shell) return;
-      ensureHubIntelBlock();
-    });
-    window.__patchHubIntelObs.observe(document.body, { childList: true, subtree: true });
+    try { if (window._hubObs && typeof window._hubObs.disconnect === 'function') window._hubObs.disconnect(); } catch (_) {}
+    try { window._hubObs = null; } catch (_) {}
+    try { if (window.__patchHubIntelObs && typeof window.__patchHubIntelObs.disconnect === 'function') window.__patchHubIntelObs.disconnect(); } catch (_) {}
+    try { window.__patchHubIntelObs = null; } catch (_) {}
+
+    setTimeout(function() {
+      try {
+        var hubContainer = document.querySelector('.hub-container, #hub-content, [data-section="hub"], #main-content, #page-hub .hub-shell');
+        if (hubContainer && !document.getElementById('hub-inteligencia')) {
+          ensureHubIntelBlock();
+        }
+        if (window.carregarInteligenciaHub) window.carregarInteligenciaHub();
+      } catch (_) {}
+    }, 1500);
   }
 
   function tick() {
