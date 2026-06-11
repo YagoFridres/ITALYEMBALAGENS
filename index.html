@@ -3513,7 +3513,8 @@ let ofImgsTemp=[];
 
 // ===================== PCP DIA ATUAL =====================
 // PCP_DIA_ATUAL is initialized lazily on first use (after today() is defined)
-var PCP_DIA_PADRAO = '2026-03-23';
+// By default, start with all OFs visible; date becomes an explicit user filter.
+var PCP_DIA_PADRAO = '__todas__';
 var PCP_DIA_ATUAL = null;
 
 function pcpNavDia(dir){
@@ -32615,7 +32616,7 @@ function renderArteFinal(){
 // ===================== INIT OVERRIDE =====================
 document.addEventListener('DOMContentLoaded', function(){
   try {
-    PCP_DIA_ATUAL = today();
+    PCP_DIA_ATUAL = PCP_DIA_PADRAO || '__todas__';
     try{ const raw = localStorage.getItem('configuracoes_usuario_last'); if(raw) cfgUserApply(JSON.parse(raw)); }catch(e){}
     applyTheme();
     startClock();
@@ -34160,9 +34161,16 @@ function normalizeOF(r){
   const ent = entRaw ? String(entRaw).slice(0, 10) : '';
   const urg = r.urgente ?? r.urg ?? r.urgent ?? false;
   const qtd = r.quantidade ?? r.qtd ?? 0;
+  const maqParsed = (typeof r.maq === 'string' && String(r.maq).trim()) ? tryParse(r.maq, null) : null;
   const maqArr = Array.isArray(r.maq)
     ? r.maq
-    : (r.maquina_id ? [r.maquina_id] : (r.maquinaId ? [r.maquinaId] : tryParse(r.maq, [])));
+    : (r.maquina_id ? [r.maquina_id] : (
+      r.maquinaId ? [r.maquinaId] : (
+        Array.isArray(maqParsed) ? maqParsed : (
+          (typeof r.maq === 'string' && String(r.maq).trim()) ? [String(r.maq).trim()] : tryParse(r.maq, [])
+        )
+      )
+    ));
   const fluxo = r.fluxo ?? r.fluxo_id ?? r.fluxoId ?? '';
   let prodDesc = r.descricao ?? r.prod_desc ?? r.prodDesc ?? '';
   const obs = r.obs ?? r.obs2 ?? '';

@@ -3268,9 +3268,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     } catch (_) {}
     const formatOfRow = (row) => {
       if (!row || typeof row !== 'object') return row;
+      const maqValue = row?.maq ?? row?.maquina ?? row?.maquina_atual ?? '';
       return {
         ...row,
-        maquina: row?.maq ?? row?.maquina ?? '',
+        maquina: maqValue,
+        maquina_atual: row?.maquina_atual ?? maqValue,
       };
     };
     if (cached != null) {
