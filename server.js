@@ -7302,9 +7302,9 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
     let empresa_id = null;
     try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
 
-    const tryQuery = async (col) => {
+    const tryQueryEq = async (col) => {
       let q = supabase.from('ofs')
-        .select('id,numero,of,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
+        .select('id,numero,of,cliente,cliNome,cliente_nome,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,ent,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
         .eq(col, clienteId)
         .order('created_at', { ascending: false })
         .limit(5000);
@@ -7314,10 +7314,32 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       return await q;
     };
 
+    const tryQueryIlike = async (col, pattern) => {
+      let q = supabase.from('ofs')
+        .select('id,numero,of,cliente,cliNome,cliente_nome,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,ent,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
+        .ilike(col, pattern)
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      if (empresa_id) {
+        try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+      }
+      return await q;
+    };
+
+    let cliente = null;
+    try {
+      let qc = supabase.from('clientes').select('id,nome,rs,razao_social,razao,cliente_nome').eq('id', clienteId).maybeSingle();
+      if (empresa_id) {
+        try { qc = qc.eq('empresa_id', empresa_id); } catch (_) {}
+      }
+      const rc = await qc;
+      if (!rc?.error) cliente = rc?.data || null;
+    } catch (_) {}
+
     let ofs = null;
     let lastErr = null;
     for (const col of ['cli_id', 'cliId', 'cliente_id']) {
-      const { data, error } = await tryQuery(col);
+      const { data, error } = await tryQueryEq(col);
       if (!error) { ofs = data || []; lastErr = null; break; }
       lastErr = error;
       const msg = String(error.message || error || '');
@@ -7325,7 +7347,36 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       throw error;
     }
     if (lastErr && ofs == null) throw lastErr;
-    const todas = Array.isArray(ofs) ? ofs : [];
+    let todas = Array.isArray(ofs) ? ofs : [];
+
+    if (todas.length === 0) {
+      for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+        const { data, error } = await tryQueryIlike(col, clienteId);
+        if (!error) { todas = Array.isArray(data) ? data : []; lastErr = null; break; }
+        lastErr = error;
+        const msg = String(error.message || error || '');
+        if (msg.includes('column') || msg.includes('Could not find')) continue;
+        throw error;
+      }
+    }
+
+    if (todas.length === 0 && cliente) {
+      const nomeClienteRaw = String(cliente?.nome || cliente?.rs || cliente?.razao_social || cliente?.razao || cliente?.cliente_nome || '').trim();
+      const nomeCliente = nomeClienteRaw.replace(/\s+/g, ' ').trim();
+      if (nomeCliente && nomeCliente.length >= 4) {
+        const pattern = '%' + nomeCliente + '%';
+        for (const col of ['cliente', 'cliNome', 'cliente_nome']) {
+          const { data, error } = await tryQueryIlike(col, pattern);
+          if (!error) {
+            const arr = Array.isArray(data) ? data : [];
+            if (arr.length) { todas = arr; break; }
+          } else {
+            const msg = String(error.message || error || '');
+            if (msg.includes('column') || msg.includes('Could not find')) continue;
+          }
+        }
+      }
+    }
 
     const norm = (s) => {
       let v = String(s || '').trim().toLowerCase();
@@ -7362,7 +7413,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       numero: o?.numero ?? o?.of ?? null,
       produto: o?.produto ?? o?.descricao ?? null,
       quantidade: o?.quantidade ?? o?.qtd ?? o?.qtd_pedida ?? null,
-      data_entrega: o?.data_entrega ?? null,
+      data_entrega: o?.data_entrega ?? o?.ent ?? null,
       status: o?.status ?? null,
       maquina: o?.maquina ?? o?.maq ?? null,
       total: pickTotal(o),
@@ -7371,6 +7422,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
 
     return res.json({
       ok: true,
+      cliente: cliente,
       total_pedidos: todas.length,
       total_faturado: totalFaturado,
       ofs_abertas: abertas.length,

@@ -3845,6 +3845,87 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { if (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES)) return CLIENTES; } catch (_) {}
     return [];
   }
+  window.selecionarClienteOrcamento = function(id, nome) {
+    var cid = String(id || '').trim();
+    var nm = String(nome || '').replace(/&#39;/g, "'").trim();
+    var sel = document.getElementById('calc-cli');
+    var input = document.getElementById('calc-cliente-input');
+    var hidden = document.getElementById('calc-cli-id');
+    var dd = document.getElementById('calc-cliente-dropdown');
+    try { if (hidden) hidden.value = cid; } catch (_) {}
+    try { if (input) input.value = nm; } catch (_) {}
+    try { if (dd) dd.style.display = 'none'; } catch (_) {}
+    if (sel) {
+      try {
+        if (cid && sel.querySelector && !sel.querySelector('option[value="' + cid.replace(/"/g, '\\"') + '"]')) {
+          var opt = document.createElement('option');
+          opt.value = cid;
+          opt.textContent = nm || cid;
+          sel.appendChild(opt);
+        }
+      } catch (_) {}
+      try { sel.value = cid; } catch (_) {}
+      try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
+    }
+  };
+
+  window.buscarClienteOrcamento = function(termo) {
+    var dd = document.getElementById('calc-cliente-dropdown');
+    if (!dd) return;
+
+    var t = String(termo || '').toLowerCase().trim();
+    var todos = clientesRef().slice();
+    todos.sort(function(a, b) {
+      var an = String(a && (a.nome || a.rs || a.razao_social || a.razao || '') || '').trim().toLowerCase();
+      var bn = String(b && (b.nome || b.rs || b.razao_social || b.razao || '') || '').trim().toLowerCase();
+      return an.localeCompare(bn, 'pt-BR');
+    });
+    var lista = t.length === 0
+      ? todos.slice(0, 10)
+      : todos.filter(function(c) {
+        var nome = String(c && (c.nome || c.rs || c.razao_social || c.razao || '') || '').toLowerCase();
+        return nome.indexOf(t) !== -1;
+      }).slice(0, 15);
+
+    if (!todos.length) {
+      dd.innerHTML = '<div style="padding:12px 14px;color:#94a3b8;font-size:13px">Carregando clientes...</div>';
+      dd.style.display = 'block';
+      return;
+    }
+    if (!lista.length) {
+      dd.innerHTML = '<div style="padding:12px 14px;color:#94a3b8;font-size:13px">Nenhum cliente encontrado</div>';
+      dd.style.display = 'block';
+      return;
+    }
+
+    dd.innerHTML = '';
+    lista.forEach(function(c) {
+      var id = String(c && c.id || '').trim();
+      var nomeRaw = String((c && (c.nome || c.rs || c.razao_social || c.razao)) || 'Sem nome');
+      var nome = nomeRaw.trim() || 'Sem nome';
+      var cidade = String(c && (c.cidade || '') || '').trim();
+      var cnpj = String(c && (c.cnpj || c.documento || '') || '').trim();
+      var row = document.createElement('div');
+      row.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #2d3748;transition:background 0.1s;background:#1e2433';
+      row.onmouseover = function() { try { row.style.background = '#2a3347'; } catch (_) {} };
+      row.onmouseout = function() { try { row.style.background = '#1e2433'; } catch (_) {} };
+      row.innerHTML =
+        '<div style="font-weight:500;color:#f1f5f9;font-size:13px">' + escHLocal(nome) + '</div>' +
+        '<div style="font-size:11px;color:#64748b">' + escHLocal(cidade) + (cnpj ? (' · ' + escHLocal(cnpj)) : '') + '</div>';
+      row.onclick = function(ev) {
+        try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+        try { window.selecionarClienteOrcamento(id, nome); } catch (_) {}
+      };
+      dd.appendChild(row);
+    });
+
+    if (!t && todos.length > 10) {
+      dd.innerHTML += '<div style="padding:8px 14px;color:#64748b;font-size:11px;text-align:center;border-top:1px solid #2d3748">Digite para filtrar entre ' + escHLocal(String(todos.length)) + ' clientes</div>';
+    }
+
+    dd.style.display = 'block';
+  };
+
   function ensure() {
     var sel = document.getElementById('calc-cli');
     if (!sel) return;
@@ -3852,20 +3933,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     sel.dataset.patchAutocomplete = '1';
 
     var wrap = document.createElement('div');
-    wrap.id = 'wrap-calc-cli';
+    wrap.id = 'wrap-calc-cliente';
     wrap.style.position = 'relative';
     wrap.style.flex = '1';
+    wrap.style.zIndex = '9999';
 
     var input = document.createElement('input');
-    input.id = 'calc-cli-input';
+    input.id = 'calc-cliente-input';
     input.type = 'text';
     input.placeholder = 'Digite o nome do cliente...';
     input.autocomplete = 'off';
     input.style.cssText = 'width:100%;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:14px';
 
     var dd = document.createElement('div');
-    dd.id = 'calc-cli-dropdown';
-    dd.style.cssText = 'display:none;position:absolute;top:100%;left:0;right:0;z-index:99999;background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
+    dd.id = 'calc-cliente-dropdown';
+    dd.style.cssText = 'display:block;position:absolute;top:100%;left:0;right:0;z-index:99999;background:#1e2433 !important;border:1px solid #2d3748;border-top:none;border-radius:0 0 8px 8px;max-height:240px;overflow-y:auto;box-shadow:0 12px 32px rgba(0,0,0,0.7)';
+    dd.style.display = 'none';
 
     var hidden = document.createElement('input');
     hidden.type = 'hidden';
@@ -3887,57 +3970,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (currentTxt && currentTxt !== '-- Selecione o cliente --' && currentTxt !== '— Selecione o cliente —') input.value = currentTxt;
     } catch (_) {}
 
-    var timer = 0;
     function close() { try { dd.style.display = 'none'; } catch (_) {} }
-    function open() { try { dd.style.display = 'block'; } catch (_) {} }
-    function render(term) {
-      var t = String(term || '').trim().toLowerCase();
-      dd.innerHTML = '';
-      if (!t || t.length < 2) { close(); return; }
-      var list = clientesRef().filter(function(c) {
-        var nome = String(c && (c.nome || c.rs || c.razao_social || '') || '').toLowerCase();
-        var cidade = String(c && (c.cidade || '') || '').toLowerCase();
-        var doc = String(c && (c.cnpj || c.documento || '') || '').toLowerCase();
-        return (nome && nome.indexOf(t) !== -1) || (cidade && cidade.indexOf(t) !== -1) || (doc && doc.indexOf(t) !== -1);
-      }).slice(0, 15);
-      if (!list.length) {
-        dd.innerHTML = '<div style="padding:12px;color:var(--text2);font-size:13px">Nenhum cliente encontrado</div>';
-        open();
-        return;
-      }
-      list.forEach(function(c) {
-        var row = document.createElement('div');
-        row.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background 0.15s';
-        row.onmouseover = function() { try { row.style.background = 'var(--bg3,#2a3347)'; } catch (_) {} };
-        row.onmouseout = function() { try { row.style.background = ''; } catch (_) {} };
-        var nome = String(c && (c.nome || c.rs || c.razao_social || '') || '').trim();
-        var cidade = String(c && (c.cidade || '') || '').trim();
-        var doc = String(c && (c.cnpj || c.documento || '') || '').trim();
-        row.innerHTML =
-          '<div style="font-weight:500;color:var(--text1)">' + escHLocal(nome || '—') + '</div>' +
-          '<div style="font-size:11px;color:var(--text2)">' + escHLocal((cidade ? cidade : '') + (doc ? (' · ' + doc) : '')) + '</div>';
-        row.onclick = function(ev) {
-          try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
-          var id = String(c && c.id || '').trim();
-          hidden.value = id;
-          input.value = nome || '';
-          close();
-          try { sel.value = id; } catch (_) {}
-          try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (_) {}
-        };
-        dd.appendChild(row);
-      });
-      open();
-    }
-    function onInput() {
-      clearTimeout(timer);
-      var term = String(input.value || '');
-      timer = setTimeout(function() { render(term); }, 200);
-    }
-    input.addEventListener('input', onInput, true);
-    input.addEventListener('focus', onInput, true);
+    input.oninput = null;
+    input.onfocus = null;
+    input.addEventListener('focus', function() { try { window.buscarClienteOrcamento(String(input.value || '')); } catch (_) {} }, true);
+    input.addEventListener('input', function() { try { window.buscarClienteOrcamento(String(input.value || '')); } catch (_) {} }, true);
     document.addEventListener('click', function(ev) {
-      try { if (!ev.target.closest('#wrap-calc-cli')) close(); } catch (_) {}
+      try { if (!ev.target.closest('#wrap-calc-cliente')) close(); } catch (_) {}
     }, true);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(ensure, 500); setInterval(ensure, 1500); });
@@ -4555,6 +4594,247 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     setTimeout(tick, 150);
     setInterval(tick, 1000);
   }
+})();
+
+(function patchEditarOfPcpAbrirNaOfRapida() {
+  function tokenHeaders() {
+    var token = '';
+    try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  async function fetchOf(id) {
+    var sid = String(id || '').trim();
+    if (!sid) return null;
+    try {
+      if (typeof window.apiFetch === 'function') {
+        var r1 = await window.apiFetch('/api/ofs/' + encodeURIComponent(sid), { method: 'GET' });
+        var j1 = await r1.json().catch(function() { return null; });
+        if (j1 && j1.ok && j1.data) return j1.data;
+        return j1 && j1.ok ? j1 : j1;
+      }
+    } catch (_) {}
+    var r = await fetch('/api/ofs/' + encodeURIComponent(sid), { headers: tokenHeaders() });
+    var j = await r.json().catch(function() { return null; });
+    if (j && j.ok && j.data) return j.data;
+    return j && j.ok ? j : j;
+  }
+
+  function setVal(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (val == null) return;
+    try { el.value = String(val); } catch (_) {}
+  }
+
+  function setChecked(id, v) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    try { el.checked = !!v; } catch (_) {}
+  }
+
+  function patchSalvarOfRapida() {
+    if (typeof window.salvarOfRapida !== 'function') return;
+    if (window.salvarOfRapida._patchEditToPatch) return;
+    var orig = window.salvarOfRapida;
+    window.salvarOfRapida = async function() {
+      var editId = String(window._ofRapidaEditandoId || '').trim();
+      if (!editId) return orig.apply(this, arguments);
+
+      var btn = document.getElementById('btn-salvar-of-rapida');
+      try { if (btn) { btn.textContent = 'Salvando...'; btn.disabled = true; } } catch (_) {}
+      try {
+        var clienteNome = String(document.getElementById('of-r-cliente')?.value || '').trim();
+        var produto = String(document.getElementById('of-r-produto')?.value || '').trim();
+        var empId = String(document.getElementById('of-r-empresa')?.value || 'E1').trim() || 'E1';
+        var vendId = String(document.getElementById('of-r-vendedor')?.value || '').trim();
+        var qtd = Math.trunc(Number(document.getElementById('of-r-qtd')?.value || 0) || 0);
+        var vlunit = parseFloat(String(document.getElementById('of-r-vlunit')?.value || '0').replace(',', '.')) || 0;
+        var totalManualEl = document.getElementById('of-r-total');
+        var total = parseFloat(String(totalManualEl?.value || '0').replace(',', '.')) || (qtd * vlunit);
+        var ref = String(document.getElementById('of-r-ref')?.value || '').trim();
+        var comp = parseFloat(String(document.getElementById('of-r-comp')?.value || '').replace(',', '.')) || 0;
+        var larg = parseFloat(String(document.getElementById('of-r-larg')?.value || '').replace(',', '.')) || 0;
+        var entrega = String(document.getElementById('of-r-entrega')?.value || '').slice(0, 10);
+        var urgente = !!document.getElementById('of-r-urgente')?.checked;
+        var maquinaSel = String(document.getElementById('of-r-maquina')?.value || '').trim();
+        var dataAgend = String(window._ofRapidaDataAgendamento || '').slice(0, 10);
+        var agendamentoAuto = !!(maquinaSel && dataAgend);
+
+        var erros = [];
+        if (!clienteNome) erros.push('Cliente');
+        if (!produto) erros.push('Produto');
+        if (!(qtd > 0)) erros.push('Quantidade');
+        if (!(vlunit > 0)) erros.push('Valor Unit.');
+        if (!(larg > 0 && comp > 0)) erros.push('Dimensões (L×C)');
+        if (!maquinaSel) erros.push('Máquina');
+        if (!entrega) erros.push('Data de Entrega');
+        if (erros.length) {
+          alert('Preencha: ' + erros.join(', '));
+          return;
+        }
+
+        var cli = (Array.isArray(window.CLIENTES) ? window.CLIENTES : (typeof CLIENTES !== 'undefined' && Array.isArray(CLIENTES) ? CLIENTES : [])).find(function(c) {
+          var n = String(c?.nome || c?.razao_social || c?.razao || '').trim();
+          if (!n) return false;
+          return n.toLowerCase() === clienteNome.toLowerCase();
+        }) || null;
+        var cliId = String(cli?.id || '').trim();
+        if (!cliId) {
+          alert('Selecione um cliente válido da lista.');
+          return;
+        }
+
+        var coresPayload = [];
+        try {
+          if (typeof window.coresPayloadFromSelecionadas === 'function') coresPayload = window.coresPayloadFromSelecionadas(window.coresSelecionadasOFRapida);
+        } catch (_) {}
+
+        var payload = {
+          cli_id: cliId,
+          cliId: cliId,
+          cliente_id: cliId,
+          vendedor_id: vendId,
+          vendId: vendId,
+          vend_id: vendId,
+          prodDesc: produto,
+          descricao: produto,
+          produto: produto,
+          quantidade: qtd,
+          qtd: qtd,
+          valor_total: total,
+          valor_venda: total,
+          ent: entrega,
+          data_entrega: entrega,
+          urg: urgente,
+          urgente: urgente,
+          emp_id: empId,
+          empId: empId,
+          caixa_comprimento: comp,
+          caixa_largura: larg,
+          dim_comprimento: comp,
+          dim_largura: larg,
+          cores_impressao: coresPayload,
+          itens: [{
+            desc: produto,
+            descricao: produto,
+            ref: ref,
+            qtd: qtd,
+            quantidade: qtd,
+            vunit: vlunit,
+            valor_unitario: vlunit,
+            valor_total: total,
+            maquina: maquinaSel || '',
+            maquinas_fluxo: [],
+            maquinas_fluxo_ids: [],
+          }],
+          maquina_agendada: maquinaSel || undefined,
+          data_agendamento: agendamentoAuto ? dataAgend : undefined,
+          agendamento_auto: agendamentoAuto ? true : undefined,
+          fluxo_maquinas: maquinaSel ? [maquinaSel] : [],
+          maq: maquinaSel ? [maquinaSel] : undefined,
+        };
+
+        var r2 = null;
+        if (typeof window.apiFetch === 'function') {
+          r2 = await window.apiFetch('/api/ofs/' + encodeURIComponent(editId), { method: 'PATCH', body: payload });
+        } else {
+          r2 = await fetch('/api/ofs/' + encodeURIComponent(editId), { method: 'PATCH', headers: Object.assign({ 'Content-Type': 'application/json' }, tokenHeaders()), body: JSON.stringify(payload) });
+        }
+        var d2 = r2 ? await r2.json().catch(function() { return null; }) : null;
+        if (!(r2 && r2.ok) || (d2 && d2.ok === false)) throw new Error(d2?.error || d2?.message || 'Erro ao salvar');
+
+        window._ofRapidaEditandoId = null;
+        try { if (typeof window.fecharNovaOfRapida === 'function') window.fecharNovaOfRapida(); } catch (_) {}
+        try { window.toast('OF atualizada com sucesso! ✅', 'var(--green)'); } catch (_) {}
+        try { if (typeof window.carregarOFs === 'function') window.carregarOFs(); } catch (_) {}
+        try { if (typeof window.renderPCP === 'function') window.renderPCP(); } catch (_) {}
+        try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+        return;
+      } catch (e) {
+        try { window.toast('Erro ao atualizar OF: ' + String(e?.message || e), 'var(--red)'); } catch (_) {}
+        return;
+      } finally {
+        try { if (btn) { btn.textContent = '💾 Salvar Alterações'; btn.disabled = false; } } catch (_) {}
+      }
+    };
+    window.salvarOfRapida._patchEditToPatch = true;
+  }
+
+  function patchAbrirModalOF() {
+    if (typeof window.abrirModalOF !== 'function') return;
+    if (window.abrirModalOF._patchToOfRapidaEdit) return;
+    var orig = window.abrirModalOF;
+    window.abrirModalOF = async function(ofId) {
+      var sid = String(ofId || '').trim();
+      if (!sid) return orig.apply(this, arguments);
+      if (typeof window.abrirNovaOfRapida !== 'function') return orig.apply(this, arguments);
+
+      try { window._ofRapidaEditandoId = sid; } catch (_) {}
+      try { window.abrirNovaOfRapida(); } catch (_) { return orig.apply(this, arguments); }
+
+      await new Promise(function(r) { setTimeout(r, 450); });
+      var of = await fetchOf(sid);
+      if (!of || of.error) return;
+
+      var cliNome = String(of.cliente || of.cliNome || of.cliente_nome || '').trim();
+      var produto = String(of.produto || of.prodDesc || of.descricao || '').trim();
+      var empId = String(of.emp_id || of.empId || 'E1').trim() || 'E1';
+      var vendId = String(of.vendedor_id || of.vendId || of.vend_id || '').trim();
+      var qtd = of.quantidade ?? of.qtd ?? of.qtd_pedida ?? '';
+      var vlunit = of.vl_unit ?? of.valor_unitario ?? of.vunit ?? '';
+      var total = of.total ?? of.valor_total ?? of.valor_venda ?? '';
+      var entrega = String(of.data_entrega || of.ent || '').slice(0, 10);
+      var pedido = String(of.data_pedido || of.dia || of.created_at || '').slice(0, 10);
+      var comp = of.caixa_comprimento ?? of.dim_comprimento ?? of.comprimento ?? '';
+      var larg = of.caixa_largura ?? of.dim_largura ?? of.largura ?? '';
+      var maquina = '';
+      try {
+        if (Array.isArray(of.maq) && of.maq.length) maquina = String(of.maq[0] || '').trim();
+      } catch (_) {}
+      maquina = maquina || String(of.maquina_agendada || of.maquina || of.maquina_atual || '').trim();
+
+      try { setVal('of-r-cliente', cliNome); } catch (_) {}
+      try { setVal('of-r-produto', produto); } catch (_) {}
+      try { setVal('of-r-empresa', empId); } catch (_) {}
+      try { setVal('of-r-vendedor', vendId); } catch (_) {}
+      try { setVal('of-r-qtd', qtd); } catch (_) {}
+      try { setVal('of-r-vlunit', vlunit); } catch (_) {}
+      try { setVal('of-r-total', total); } catch (_) {}
+      try { setVal('of-r-entrega', entrega); } catch (_) {}
+      try { if (pedido) setVal('of-r-pedido', pedido); } catch (_) {}
+      try { setVal('of-r-comp', comp); } catch (_) {}
+      try { setVal('of-r-larg', larg); } catch (_) {}
+      try { setVal('of-r-maquina', maquina); } catch (_) {}
+      try { setChecked('of-r-urgente', !!(of.urgente === true || of.urg === true || of.urgente === 1 || of.urg === 1)); } catch (_) {}
+
+      try {
+        var numSpan = document.getElementById('of-r-numero');
+        if (numSpan) numSpan.textContent = String(of.numero || of.of || sid.slice(0, 8));
+      } catch (_) {}
+      try { window._ofRapidaNumero = String(of.numero || of.of || '').trim(); } catch (_) {}
+
+      try {
+        var header = document.querySelector('#modal-of-rapida div[style*="font-weight:800"]');
+        if (header) header.textContent = '✏️ Editar OF Rápida';
+      } catch (_) {}
+      try {
+        var btn = document.getElementById('btn-salvar-of-rapida');
+        if (btn) btn.textContent = '💾 Salvar Alterações';
+      } catch (_) {}
+
+      patchSalvarOfRapida();
+    };
+    window.abrirModalOF._patchToOfRapidaEdit = true;
+  }
+
+  function tick() {
+    patchAbrirModalOF();
+    patchSalvarOfRapida();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 400); setInterval(tick, 1500); });
+  else { setTimeout(tick, 400); setInterval(tick, 1500); }
 })();
 
 (function patchClienteValidoNovaOf() {
