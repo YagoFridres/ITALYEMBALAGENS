@@ -7164,6 +7164,256 @@ app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
+  try {
+    const clienteId = String(req.params.id || '').trim();
+    if (!clienteId) return res.status(400).json({ ok: false, error: 'cliente_id_obrigatorio' });
+
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaUuid(req); } catch (_) {}
+
+    const tryQuery = async (col) => {
+      let q = supabase.from('ofs')
+        .select('id,numero,of,produto,descricao,quantidade,qtd,qtd_pedida,data_entrega,created_at,status,maquina,maq,total,valor_total,valor_venda,vl_total')
+        .eq(col, clienteId)
+        .order('created_at', { ascending: false })
+        .limit(5000);
+      if (empresa_id) {
+        try { q = q.eq('empresa_id', empresa_id); } catch (_) {}
+      }
+      return await q;
+    };
+
+    let ofs = null;
+    let lastErr = null;
+    for (const col of ['cli_id', 'cliId', 'cliente_id']) {
+      const { data, error } = await tryQuery(col);
+      if (!error) { ofs = data || []; lastErr = null; break; }
+      lastErr = error;
+      const msg = String(error.message || error || '');
+      if (msg.includes('column') || msg.includes('Could not find')) continue;
+      throw error;
+    }
+    if (lastErr && ofs == null) throw lastErr;
+    const todas = Array.isArray(ofs) ? ofs : [];
+
+    const norm = (s) => {
+      let v = String(s || '').trim().toLowerCase();
+      try { v = v.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+      return v;
+    };
+    const isFinal = (st) => {
+      const s = norm(st);
+      return s.includes('conclu') || s.includes('entreg') || s.includes('despach') || s.includes('finaliz') || s === 'pedido pronto';
+    };
+    const isCancel = (st) => {
+      const s = norm(st);
+      return s.includes('cancel');
+    };
+    const pickTotal = (o) => Number(o?.total ?? o?.valor_total ?? o?.valor_venda ?? o?.vl_total ?? 0) || 0;
+    const pickProduto = (o) => String(o?.produto ?? o?.descricao ?? 'Sem produto').trim() || 'Sem produto';
+
+    const abertas = todas.filter((o) => !isFinal(o?.status) && !isCancel(o?.status));
+    const concluidas = todas.filter((o) => isFinal(o?.status));
+    const totalFaturado = concluidas.reduce((s, o) => s + pickTotal(o), 0);
+
+    const contProd = Object.create(null);
+    todas.forEach((o) => {
+      const p = pickProduto(o);
+      contProd[p] = (contProd[p] || 0) + 1;
+    });
+    const produtosMaisPedidos = Object.entries(contProd)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([produto, vezes]) => ({ produto, vezes }));
+
+    const mapOf = (o) => ({
+      id: o?.id ?? null,
+      numero: o?.numero ?? o?.of ?? null,
+      produto: o?.produto ?? o?.descricao ?? null,
+      quantidade: o?.quantidade ?? o?.qtd ?? o?.qtd_pedida ?? null,
+      data_entrega: o?.data_entrega ?? null,
+      status: o?.status ?? null,
+      maquina: o?.maquina ?? o?.maq ?? null,
+      total: pickTotal(o),
+      created_at: o?.created_at ?? null,
+    });
+
+    return res.json({
+      ok: true,
+      total_pedidos: todas.length,
+      total_faturado: totalFaturado,
+      ofs_abertas: abertas.length,
+      ofs_em_aberto: abertas.slice(0, 10).map(mapOf),
+      produtos_mais_pedidos: produtosMaisPedidos,
+      historico: todas.slice(0, 20).map(mapOf),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.get('/api/clientes/inativos', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id_nao_resolvido' });
+    const dias = Math.max(1, parseInt(String(req.query.dias || '30'), 10) || 30);
+
+    const { data: clientes, error: cliErr } = await supabase
+      .from('clientes')
+      .select('id,nome,telefone,tel,email,cidade,uf,cnpj,documento,ativo,vendedor_id')
+      .eq('empresa_id', empresa_id)
+      .eq('ativo', true)
+      .order('nome', { ascending: true })
+      .limit(20000);
+    if (cliErr) throw cliErr;
+
+    const cliRows = Array.isArray(clientes) ? clientes : [];
+
+    const pageSize = 10000;
+    const maxPages = 30;
+    const ultimo = Object.create(null);
+    const totalOfs = Object.create(null);
+    let from = 0;
+    for (let p = 0; p < maxPages; p++) {
+      const { data: ofs, error: ofsErr } = await supabase
+        .from('ofs')
+        .select('cli_id,created_at')
+        .eq('empresa_id', empresa_id)
+        .not('cli_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (ofsErr) throw ofsErr;
+      const rows = Array.isArray(ofs) ? ofs : [];
+      if (!rows.length) break;
+      rows.forEach((of) => {
+        const cid = String(of?.cli_id || '').trim();
+        if (!cid) return;
+        totalOfs[cid] = (totalOfs[cid] || 0) + 1;
+        if (!ultimo[cid]) ultimo[cid] = of?.created_at || null;
+      });
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    const vendIds = Array.from(new Set(cliRows.map((c) => String(c?.vendedor_id || '').trim()).filter(_isUuid))).slice(0, 20000);
+    const vendMap = Object.create(null);
+    if (vendIds.length) {
+      const { data: vend, error: vendErr } = await supabase.from('usuarios').select('id,nome,email').in('id', vendIds).limit(20000);
+      if (vendErr) throw vendErr;
+      (Array.isArray(vend) ? vend : []).forEach((v) => { if (v?.id) vendMap[String(v.id)] = v; });
+    }
+
+    const hoje = new Date();
+    const out = cliRows.map((c) => {
+      const id = String(c?.id || '').trim();
+      const dtRaw = ultimo[id] || null;
+      const dt = dtRaw ? new Date(dtRaw) : null;
+      const diasSem = dt && Number.isFinite(dt.getTime()) ? Math.floor((hoje.getTime() - dt.getTime()) / 86400000) : null;
+      const vend = c?.vendedor_id ? vendMap[String(c.vendedor_id)] : null;
+      return {
+        cliente_id: id,
+        nome: c?.nome || '—',
+        telefone: c?.telefone || c?.tel || '—',
+        email: c?.email || '—',
+        cidade: c?.cidade || '—',
+        uf: c?.uf || '—',
+        cnpj: c?.cnpj || c?.documento || '—',
+        vendedor: vend?.nome || '—',
+        vendedor_email: vend?.email || '—',
+        ativo: c?.ativo,
+        ultimo_pedido: dtRaw,
+        dias_sem_pedido: diasSem,
+        total_ofs: totalOfs[id] || 0,
+      };
+    }).filter((c) => c.ultimo_pedido == null || Number(c.dias_sem_pedido || 0) >= dias);
+
+    out.sort((a, b) => {
+      if (!a.ultimo_pedido && b.ultimo_pedido) return -1;
+      if (a.ultimo_pedido && !b.ultimo_pedido) return 1;
+      if (!a.ultimo_pedido && !b.ultimo_pedido) return String(a.nome || '').localeCompare(String(b.nome || ''));
+      return String(a.ultimo_pedido).localeCompare(String(b.ultimo_pedido));
+    });
+
+    return res.json({ ok: true, data: out });
+  } catch (e) {
+    console.error('[CLIENTES INATIVOS API]', e?.message || e);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+app.get('/api/clientes/ranking', authMiddleware, async (req, res) => {
+  try {
+    const empresa_id = await _resolveEmpresaUuid(req);
+    if (!empresa_id) return res.status(400).json({ ok: false, error: 'empresa_id_nao_resolvido' });
+    const tipo = String(req.query.tipo || 'quantidade').trim().toLowerCase();
+    const limit = Math.max(1, Math.min(200, parseInt(String(req.query.limit || '50'), 10) || 50));
+
+    const { data: clientes, error: cliErr } = await supabase
+      .from('clientes')
+      .select('id,nome,cidade,ativo')
+      .eq('empresa_id', empresa_id)
+      .eq('ativo', true)
+      .limit(20000);
+    if (cliErr) throw cliErr;
+    const cliRows = Array.isArray(clientes) ? clientes : [];
+
+    const pageSize = 10000;
+    const maxPages = 30;
+    const mapaQtd = Object.create(null);
+    const mapaVal = Object.create(null);
+    let from = 0;
+    for (let p = 0; p < maxPages; p++) {
+      const { data: ofs, error: ofsErr } = await supabase
+        .from('ofs')
+        .select('cli_id,valor_total,valor_venda,total,vl_total')
+        .eq('empresa_id', empresa_id)
+        .not('cli_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (ofsErr) throw ofsErr;
+      const rows = Array.isArray(ofs) ? ofs : [];
+      if (!rows.length) break;
+      rows.forEach((of) => {
+        const cid = String(of?.cli_id || '').trim();
+        if (!cid) return;
+        mapaQtd[cid] = (mapaQtd[cid] || 0) + 1;
+        const v = Number(of?.valor_total ?? of?.valor_venda ?? of?.total ?? of?.vl_total ?? 0) || 0;
+        if (v) mapaVal[cid] = (mapaVal[cid] || 0) + v;
+      });
+      if (rows.length < pageSize) break;
+      from += pageSize;
+    }
+
+    const out = cliRows.map((c) => {
+      const id = String(c?.id || '').trim();
+      return {
+        id,
+        nome: c?.nome || '—',
+        cidade: c?.cidade || '—',
+        total_ofs: mapaQtd[id] || 0,
+        faturamento: mapaVal[id] || 0,
+      };
+    }).filter((r) => r.total_ofs > 0 || r.faturamento > 0);
+
+    out.sort((a, b) => {
+      if (tipo === 'valor') {
+        if (b.faturamento !== a.faturamento) return b.faturamento - a.faturamento;
+        if (b.total_ofs !== a.total_ofs) return b.total_ofs - a.total_ofs;
+        return String(a.nome || '').localeCompare(String(b.nome || ''));
+      }
+      if (b.total_ofs !== a.total_ofs) return b.total_ofs - a.total_ofs;
+      if (b.faturamento !== a.faturamento) return b.faturamento - a.faturamento;
+      return String(a.nome || '').localeCompare(String(b.nome || ''));
+    });
+
+    return res.json({ ok: true, data: out.slice(0, limit) });
+  } catch (e) {
+    console.error('[CLIENTES RANKING API]', e?.message || e);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();
@@ -7261,36 +7511,55 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
   try {
-    const cliente_principal_id = String(req.body?.cliente_principal_id || '').trim();
-    const cliente_duplicado_ids = Array.isArray(req.body?.cliente_duplicado_ids)
-      ? req.body.cliente_duplicado_ids
-      : [req.body?.cliente_duplicado_id];
-    const duplicados = Array.from(new Set(cliente_duplicado_ids.map((id) => String(id || '').trim()).filter(Boolean)));
-    if (!cliente_principal_id || !duplicados.length) {
+    const principalId = String(req.body?.principal_id || req.body?.cliente_principal_id || '').trim();
+    const dupArr = Array.isArray(req.body?.duplicados)
+      ? req.body.duplicados
+      : (Array.isArray(req.body?.cliente_duplicado_ids) ? req.body.cliente_duplicado_ids : [req.body?.cliente_duplicado_id]);
+    const duplicados = Array.from(new Set((dupArr || []).map((id) => String(id || '').trim()).filter(Boolean)));
+    if (!principalId || !duplicados.length) {
       return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
     }
 
-    let mesclados = 0;
-    for (const cliente_duplicado_id of duplicados) {
-      if (!cliente_duplicado_id || cliente_duplicado_id === cliente_principal_id) continue;
+    console.log('[MESCLAR] principal:', principalId, 'duplicados:', duplicados);
+    let principalNome = '';
+    try {
+      const { data: cliP } = await supabase.from('clientes').select('nome').eq('id', principalId).maybeSingle();
+      principalNome = String(cliP?.nome || '').trim();
+    } catch (_) {}
 
-      const updates = [
-        { cli_id: cliente_principal_id, match: 'cli_id' },
-        { cliId: cliente_principal_id, match: 'cliId' },
-        { cliente_id: cliente_principal_id, match: 'cliente_id' },
-      ];
-      for (const item of updates) {
+    let mesclados = 0;
+    let ofsMigradas = 0;
+    for (const cliente_duplicado_id of duplicados) {
+      if (!cliente_duplicado_id) continue;
+      if (cliente_duplicado_id === principalId) continue;
+
+      let countBefore = 0;
+      try {
+        const { count } = await supabase
+          .from('ofs')
+          .select('id', { count: 'exact', head: true })
+          .eq('cli_id', cliente_duplicado_id);
+        countBefore = Number(count || 0) || 0;
+      } catch (_) {}
+
+      const { error: upErr } = await supabase
+        .from('ofs')
+        .update({ cli_id: principalId })
+        .eq('cli_id', cliente_duplicado_id);
+      if (upErr) throw upErr;
+      ofsMigradas += countBefore;
+
+      if (principalNome) {
         try {
-          const payload = { [item.match]: cliente_principal_id };
-          const { error } = await supabase.from('ofs').update(payload).eq(item.match, cliente_duplicado_id);
-          if (error) {
-            const msg = String(error.message || error || '');
-            if (!(msg.includes('column') || msg.includes('Could not find'))) throw error;
+          const { error: eNome } = await supabase
+            .from('ofs')
+            .update({ cliente: principalNome })
+            .eq('cli_id', principalId);
+          if (eNome) {
+            const msg = String(eNome.message || eNome || '');
+            if (!(msg.includes('column') || msg.includes('Could not find'))) throw eNome;
           }
-        } catch (e) {
-          const msg = String(e?.message || e || '');
-          if (!(msg.includes('column') || msg.includes('Could not find'))) throw e;
-        }
+        } catch (_) {}
       }
 
       let { error: e2 } = await supabase
@@ -7309,7 +7578,8 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
 
     cacheClearPrefix('clientes_');
     cacheClearPrefix('ofs_');
-    return res.json({ ok: true, message: mesclados ? 'Clientes mesclados com sucesso' : 'Nenhum cliente duplicado precisou ser alterado' });
+    console.log('[MESCLAR] ofs migradas:', ofsMigradas);
+    return res.json({ ok: true, clientes_mesclados: mesclados, ofs_migradas: ofsMigradas });
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }

@@ -3345,6 +3345,294 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   else { setTimeout(tick, 250); setInterval(tick, 900); }
 })();
 
+(function patchPainelClienteApi() {
+  function escHLocal(s) {
+    try { return window.escH ? window.escH(s) : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } catch (_) { return String(s == null ? '' : s); }
+  }
+  function escAttrLocal(s) {
+    var v = String(s == null ? '' : s);
+    return escHLocal(v).replace(/`/g, '&#96;');
+  }
+  function fmtMoneyLocal(v) {
+    var n = Number(v || 0) || 0;
+    try { if (typeof window.fmtR === 'function') return window.fmtR(n); } catch (_) {}
+    return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtDataLocal(s) {
+    var d = String(s || '').slice(0, 10);
+    try { if (typeof window.fmtD === 'function') return window.fmtD(d); } catch (_) {}
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      var parts = d.split('-');
+      return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    return d || '—';
+  }
+  function getAuthHeader() {
+    var token = '';
+    try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+  async function apiGet(url) {
+    if (typeof window.apiFetch === 'function') return await window.apiFetch(url, { method: 'GET' });
+    return await fetch(url, { method: 'GET', headers: getAuthHeader() });
+  }
+  function setTxt(id, txt) {
+    try { var el = document.getElementById(id); if (el) el.textContent = String(txt); } catch (_) {}
+  }
+  function renderPainel(json) {
+    var totalPedidos = Number(json && json.total_pedidos || 0) || 0;
+    var totalFaturado = Number(json && json.total_faturado || 0) || 0;
+    var ofsAbertas = Number(json && json.ofs_abertas || 0) || 0;
+    setTxt('pcTotalPedidos', totalPedidos);
+    setTxt('pcTotalFaturado', fmtMoneyLocal(totalFaturado));
+    setTxt('pcOfsAbertas', ofsAbertas);
+
+    var listEl = document.getElementById('pcOfsAbertasList');
+    var abertas = (json && Array.isArray(json.ofs_em_aberto)) ? json.ofs_em_aberto : [];
+    if (listEl) {
+      if (!abertas.length) {
+        listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhuma OF em aberto.</div>';
+      } else {
+        listEl.innerHTML = abertas.map(function(o) {
+          var num = String(o && o.numero || '—').trim() || '—';
+          var prod = String(o && o.produto || '').trim();
+          var qtd = (o && o.quantidade != null) ? (Number(o.quantidade) || 0) : 0;
+          var ent = String(o && o.data_entrega || '').slice(0, 10);
+          var stt = String(o && o.status || '—').trim() || '—';
+          var maq = String(o && o.maquina || '').trim();
+          return (
+            '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">' +
+              '<div style="min-width:0">' +
+                '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+                  '<span style="font-weight:900;color:#4A90D9">OF #' + escHLocal(num) + '</span>' +
+                  '<span style="color:#94a3b8;font-size:0.78rem">' + escHLocal(stt) + '</span>' +
+                  (ent ? '<span style="color:#64748b;font-size:0.78rem">📅 ' + escHLocal(fmtDataLocal(ent)) + '</span>' : '') +
+                  (qtd ? '<span style="color:#64748b;font-size:0.78rem">📦 ' + escHLocal(String(qtd)) + ' cx</span>' : '') +
+                  (maq ? '<span style="color:#64748b;font-size:0.78rem">🧰 ' + escHLocal(maq) + '</span>' : '') +
+                '</div>' +
+                (prod ? '<div style="color:#e2e8f0;font-size:0.86rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHLocal(prod) + '</div>' : '') +
+              '</div>' +
+              '<button class="btn btn-ghost btn-sm" data-pc-of="' + escAttrLocal(num) + '" style="white-space:nowrap">Abrir</button>' +
+            '</div>'
+          );
+        }).join('');
+        try {
+          Array.prototype.slice.call(listEl.querySelectorAll('button[data-pc-of]')).forEach(function(btn) {
+            if (!btn || btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.onclick = function(ev) {
+              try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+              var n = String(btn.getAttribute('data-pc-of') || '').trim();
+              try { if (typeof window.editarOFDoHistorico === 'function') window.editarOFDoHistorico(n); } catch (_) {}
+            };
+          });
+        } catch (_) {}
+      }
+    }
+
+    var topEl = document.getElementById('pcTopProdutos');
+    var prods = (json && Array.isArray(json.produtos_mais_pedidos)) ? json.produtos_mais_pedidos : [];
+    if (topEl) {
+      if (!prods.length) {
+        topEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Sem dados suficientes.</div>';
+      } else {
+        topEl.innerHTML = prods.map(function(p, i) {
+          var nome = String(p && p.produto || 'Sem produto').trim() || 'Sem produto';
+          var vezes = Number(p && p.vezes || 0) || 0;
+          return (
+            '<div style="display:flex;justify-content:space-between;gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px">' +
+              '<div style="min-width:0;color:#e2e8f0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (i + 1) + '. ' + escHLocal(nome) + '</div>' +
+              '<div style="color:#94a3b8;font-family:var(--mono);font-weight:800">' + escHLocal(String(vezes)) + ' pedidos</div>' +
+            '</div>'
+          );
+        }).join('');
+      }
+    }
+
+    var histEl = document.getElementById('pcHistorico');
+    var hist = (json && Array.isArray(json.historico)) ? json.historico : [];
+    if (histEl) {
+      if (!hist.length) {
+        histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Nenhum pedido encontrado.</div>';
+      } else {
+        var th = 'padding:8px 10px;border:1px solid var(--border);background:var(--s2);font-size:.65rem;font-weight:900;font-family:var(--mono);text-transform:uppercase;white-space:nowrap;';
+        var td = 'padding:8px 10px;border:1px solid var(--s3);font-size:.78rem;';
+        histEl.innerHTML = '<div style="overflow:auto;border:1px solid var(--border);border-radius:10px">' +
+          '<table style="width:100%;border-collapse:collapse;min-width:920px">' +
+            '<thead><tr>' +
+              '<th style=\"' + th + '\">Data</th>' +
+              '<th style=\"' + th + '\">Nº OF</th>' +
+              '<th style=\"' + th + '\">Produto</th>' +
+              '<th style=\"' + th + ';text-align:right\">Qtd</th>' +
+              '<th style=\"' + th + '\">Status</th>' +
+              '<th style=\"' + th + ';text-align:right\">Valor</th>' +
+              '<th style=\"' + th + ';text-align:center\">Ação</th>' +
+            '</tr></thead>' +
+            '<tbody>' +
+              hist.map(function(r) {
+                var num = String(r && r.numero || '—').trim() || '—';
+                var prod = String(r && r.produto || '—').trim() || '—';
+                var dt = String(r && (r.data_entrega || r.created_at) || '').slice(0, 10);
+                var qtd = (r && r.quantidade != null) ? (Number(r.quantidade) || 0) : 0;
+                var stt = String(r && r.status || '—').trim() || '—';
+                var valor = Number(r && r.total || 0) || 0;
+                return (
+                  '<tr>' +
+                    '<td style=\"' + td + ';font-family:var(--mono)\">' + escHLocal(dt ? fmtDataLocal(dt) : '—') + '</td>' +
+                    '<td style=\"' + td + ';font-family:var(--mono);font-weight:900;color:var(--accent)\">' + escHLocal(num) + '</td>' +
+                    '<td style=\"' + td + ';max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">' + escHLocal(prod) + '</td>' +
+                    '<td style=\"' + td + ';text-align:right;font-family:var(--mono)\">' + escHLocal(String(qtd || 0)) + '</td>' +
+                    '<td style=\"' + td + ';color:var(--text2)\">' + escHLocal(stt) + '</td>' +
+                    '<td style=\"' + td + ';text-align:right;font-family:var(--mono);font-weight:900;color:var(--green)\">' + escHLocal(fmtMoneyLocal(valor)) + '</td>' +
+                    '<td style=\"' + td + ';text-align:center\"><button class=\"btn btn-ghost btn-sm\" data-pc-of=\"' + escAttrLocal(num) + '\">Abrir</button></td>' +
+                  '</tr>'
+                );
+              }).join('') +
+            '</tbody>' +
+          '</table>' +
+        '</div>';
+        try {
+          Array.prototype.slice.call(histEl.querySelectorAll('button[data-pc-of]')).forEach(function(btn2) {
+            if (!btn2 || btn2.dataset.bound === '1') return;
+            btn2.dataset.bound = '1';
+            btn2.onclick = function(ev2) {
+              try { if (ev2) { ev2.preventDefault(); ev2.stopPropagation(); } } catch (_) {}
+              var n2 = String(btn2.getAttribute('data-pc-of') || '').trim();
+              try { if (typeof window.editarOFDoHistorico === 'function') window.editarOFDoHistorico(n2); } catch (_) {}
+            };
+          });
+        } catch (_) {}
+      }
+    }
+  }
+  function showLoading() {
+    try {
+      setTxt('pcTotalPedidos', '—');
+      setTxt('pcTotalFaturado', '—');
+      setTxt('pcOfsAbertas', '—');
+      var listEl = document.getElementById('pcOfsAbertasList');
+      if (listEl) listEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+      var topEl = document.getElementById('pcTopProdutos');
+      if (topEl) topEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+      var histEl = document.getElementById('pcHistorico');
+      if (histEl) histEl.innerHTML = '<div style="color:#64748b;font-size:0.85rem">Carregando…</div>';
+    } catch (_) {}
+  }
+  function hook() {
+    if (typeof window.carregarPainelCliente !== 'function') return;
+    if (window.carregarPainelCliente._patchPainelClienteApi) return;
+    var orig = window.carregarPainelCliente;
+    window.carregarPainelCliente = async function() {
+      var st = null;
+      try { st = window._PCLI || null; } catch (_) { st = null; }
+      var cid = '';
+      try { cid = String(st && st.cliId || '').trim(); } catch (_) { cid = ''; }
+      if (!cid) return await orig.apply(this, arguments);
+      try {
+        if (st) st.loading = true;
+        showLoading();
+        var resp = await apiGet('/api/clientes/' + encodeURIComponent(cid) + '/painel?t=' + Date.now());
+        var json = await resp.json().catch(function() { return null; });
+        if (!resp.ok || !json || json.ok === false) throw new Error(String(json && json.error || 'Erro'));
+        if (st) st.loading = false;
+        renderPainel(json);
+        return;
+      } catch (e) {
+        try { if (st) st.loading = false; } catch (_) {}
+        return await orig.apply(this, arguments);
+      }
+    };
+    window.carregarPainelCliente._patchPainelClienteApi = true;
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(hook, 250); setInterval(hook, 1500); });
+  } else {
+    setTimeout(hook, 250);
+    setInterval(hook, 1500);
+  }
+})();
+
+(function patchClientesInativosApi() {
+  function digitsOnly(v) { return String(v || '').replace(/\D+/g, ''); }
+  function getAuthHeader() {
+    var token = '';
+    try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+  async function apiGet(url) {
+    if (typeof window.apiFetch === 'function') return await window.apiFetch(url, { method: 'GET' });
+    return await fetch(url, { method: 'GET', headers: getAuthHeader() });
+  }
+  function waUrl(tel) {
+    var d = digitsOnly(tel);
+    if (!d) return '';
+    if (d.startsWith('55')) return 'https://wa.me/' + d;
+    return 'https://wa.me/55' + d;
+  }
+  function hook() {
+    if (typeof window.carregarClientesInativos !== 'function') return;
+    if (window.carregarClientesInativos._patchNovaApi) return;
+    var orig = window.carregarClientesInativos;
+    window.carregarClientesInativos = async function() {
+      var dias = String(document.getElementById('filtroInativosDias') && document.getElementById('filtroInativosDias').value || '30');
+      var tbody = document.getElementById('tabelaClientesInativos');
+      var total = document.getElementById('clientesInativosTotal');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b">Carregando...</td></tr>';
+      try {
+        var resp = await apiGet('/api/clientes/inativos?dias=' + encodeURIComponent(dias) + '&t=' + Date.now());
+        var json = await resp.json().catch(function() { return null; });
+        var list = (json && json.ok && Array.isArray(json.data)) ? json.data : [];
+        try { window._clientesInativosLista = list; } catch (_) {}
+        if (total) total.textContent = String(list.length) + ' clientes sem pedido há ' + dias + '+ dias';
+        if (typeof window.renderClientesInativosTbody === 'function') window.renderClientesInativosTbody(list);
+        try {
+          var busca = document.getElementById('buscaClienteInativo');
+          if (busca && busca.value && typeof window.filtrarClientesInativos === 'function') window.filtrarClientesInativos(busca.value);
+        } catch (_) {}
+        return;
+      } catch (e) {
+        try { return await orig.apply(this, arguments); } catch (_) {}
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#ef4444">Erro ao carregar dados.</td></tr>';
+      }
+    };
+    window.carregarClientesInativos._patchNovaApi = true;
+    if (typeof window.renderClientesInativosTbody === 'function' && !window.renderClientesInativosTbody._patchWaBtn) {
+      var origRender = window.renderClientesInativosTbody;
+      window.renderClientesInativosTbody = function(lista) {
+        try { origRender.apply(this, arguments); } catch (_) {}
+        try {
+          var tbody2 = document.getElementById('tabelaClientesInativos');
+          if (!tbody2) return;
+          var trs = tbody2.querySelectorAll('tr');
+          trs.forEach(function(tr) {
+            if (!tr || tr.dataset.patchWa === '1') return;
+            var tds = tr.children || [];
+            if (!tds || tds.length < 4) return;
+            var tdTel = tds[3];
+            if (!tdTel) return;
+            var tel = String(tdTel.textContent || '').trim();
+            var url = waUrl(tel);
+            if (!url) { tr.dataset.patchWa = '1'; return; }
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = '📞 WhatsApp';
+            btn.style.cssText = 'margin-left:10px;padding:4px 8px;border-radius:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.35);color:#4ade80;cursor:pointer;font-size:0.72rem;font-weight:700;';
+            btn.onclick = function(ev) {
+              try { if (ev) { ev.preventDefault(); ev.stopPropagation(); } } catch (_) {}
+              try { window.open(url, '_blank'); } catch (_) {}
+            };
+            tdTel.appendChild(btn);
+            tr.dataset.patchWa = '1';
+          });
+        } catch (_) {}
+      };
+      window.renderClientesInativosTbody._patchWaBtn = true;
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(hook, 300); setInterval(hook, 2000); });
+  else { setTimeout(hook, 300); setInterval(hook, 2000); }
+})();
+
 (function patchOfRapidaClienteEspecial() {
   function normClienteNome(v) {
     var s = String(v == null ? '' : v).trim();
@@ -4382,8 +4670,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           'Authorization': token ? ('Bearer ' + token) : ''
         },
         body: JSON.stringify({
-          cliente_principal_id: principalId,
-          cliente_duplicado_ids: duplicados
+          principal_id: principalId,
+          duplicados: duplicados
         })
       });
       var json = await resp.json().catch(function() { return null; });
@@ -4395,7 +4683,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { await _carregarTodosClientes(); } catch (_) {}
       try { if (typeof carregarClientes === 'function') await carregarClientes(true); } catch (_) {}
       try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-      alert('Clientes mesclados com sucesso.');
+      var msg = String(json.clientes_mesclados || 0) + ' clientes mesclados — ' + String(json.ofs_migradas || 0) + ' OFs migradas';
+      try { if (typeof window.toast === 'function') window.toast(msg, 'var(--green)'); else alert(msg); } catch (_) { alert(msg); }
     } catch (e) {
       alert('Erro: ' + String(e && e.message || e));
     }
@@ -4408,9 +4697,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var lista = getClientesListaAtual();
       var modal = document.createElement('div');
       modal.id = 'modal-mesclar-clientes';
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+      modal.style.position = 'fixed';
+      modal.style.inset = '0';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      modal.style.padding = '20px';
+      modal.style.zIndex = '99999';
+      try { modal.style.setProperty('background', 'rgba(0,0,0,0.75)', 'important'); } catch (_) { modal.style.background = 'rgba(0,0,0,0.75)'; }
+      try { modal.style.setProperty('backdrop-filter', 'blur(2px)', 'important'); } catch (_) {}
       modal.innerHTML =
-        '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;width:100%;max-width:760px;max-height:90vh;overflow-y:auto">' +
+        '<div style="background:var(--bg2,#1e2433) !important;border:1px solid var(--border,#2d3748);border-radius:12px;padding:24px;width:100%;max-width:760px;max-height:90vh;overflow-y:auto">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
             '<h3 style="margin:0;color:var(--text);font-size:16px">🔗 Mesclar Clientes</h3>' +
             '<button id="mescla-close" style="background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer">✕</button>' +
@@ -4437,6 +4734,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           '</div>' +
         '</div>';
       document.body.appendChild(modal);
+      try {
+        var box = modal.firstElementChild;
+        if (box) {
+          try { box.style.setProperty('background', 'var(--bg2,#1e2433)', 'important'); } catch (_) {}
+          try { box.style.setProperty('border', '1px solid var(--border,#2d3748)', 'important'); } catch (_) {}
+        }
+      } catch (_) {}
       var close = function() { try { modal.remove(); } catch (_) {} };
       document.getElementById('mescla-close').onclick = close;
       document.getElementById('mescla-cancelar').onclick = close;
@@ -4567,6 +4871,129 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (origSel && cloneSel && cloneSel.value !== origSel.value) cloneSel.value = origSel.value;
       if (!host.dataset.patchBound) {
         host.dataset.patchBound = '1';
+        var escHLocal = function(s) {
+          try { return window.escH ? window.escH(s) : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } catch (_) { return String(s == null ? '' : s); }
+        };
+        var fmtMoneyLocal = function(v) {
+          var n = Number(v || 0) || 0;
+          try { if (typeof window.fmtR === 'function') return window.fmtR(n); } catch (_) {}
+          return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        var fmtDataLocal = function(s) {
+          var d = String(s || '').slice(0, 10);
+          try { if (typeof window.fmtD === 'function') return window.fmtD(d); } catch (_) {}
+          if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            var parts = d.split('-');
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+          }
+          return d || '—';
+        };
+        var getAuthHeader = function() {
+          var token = '';
+          try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+          return token ? { Authorization: 'Bearer ' + token } : {};
+        };
+        var apiGet = async function(url) {
+          if (typeof window.apiFetch === 'function') return await window.apiFetch(url, { method: 'GET' });
+          return await fetch(url, { method: 'GET', headers: getAuthHeader() });
+        };
+        var ensureRankingModal = function() {
+          var old = document.getElementById('modal-ranking-clientes');
+          if (old) return old;
+          var modal = document.createElement('div');
+          modal.id = 'modal-ranking-clientes';
+          modal.style.position = 'fixed';
+          modal.style.inset = '0';
+          modal.style.display = 'none';
+          modal.style.alignItems = 'center';
+          modal.style.justifyContent = 'center';
+          modal.style.padding = '20px';
+          modal.style.zIndex = '99999';
+          try { modal.style.setProperty('background', 'rgba(0,0,0,0.75)', 'important'); } catch (_) { modal.style.background = 'rgba(0,0,0,0.75)'; }
+          try { modal.style.setProperty('backdrop-filter', 'blur(2px)', 'important'); } catch (_) {}
+          modal.innerHTML =
+            '<div id="modal-ranking-clientes-box" style="width:100%;max-width:860px;max-height:90vh;overflow:auto;border-radius:12px;padding:18px 18px 14px;border:1px solid var(--border,#2d3748);background:var(--bg2,#1e2433)">' +
+              '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">' +
+                '<div style="min-width:0">' +
+                  '<div id="ranking-clientes-titulo" style="font-weight:800;color:var(--text,#e2e8f0);font-size:15px">Ranking</div>' +
+                  '<div id="ranking-clientes-sub" style="margin-top:2px;color:var(--text2,#94a3b8);font-size:12px"></div>' +
+                '</div>' +
+                '<button id="ranking-clientes-close" style="background:none;border:none;color:var(--text2,#94a3b8);font-size:20px;cursor:pointer">✕</button>' +
+              '</div>' +
+              '<div id="ranking-clientes-body" style="display:flex;flex-direction:column;gap:8px"></div>' +
+            '</div>';
+          modal.addEventListener('click', function(ev) { try { if (ev.target === modal) modal.style.display = 'none'; } catch (_) {} });
+          document.body.appendChild(modal);
+          var btnClose = document.getElementById('ranking-clientes-close');
+          if (btnClose) btnClose.onclick = function() { modal.style.display = 'none'; };
+          return modal;
+        };
+        var renderRanking = function(rows, tipo) {
+          var body = document.getElementById('ranking-clientes-body');
+          if (!body) return;
+          var list = Array.isArray(rows) ? rows : [];
+          if (!list.length) {
+            body.innerHTML = '<div style="padding:14px;color:var(--text2,#94a3b8);text-align:center">Nenhum dado encontrado.</div>';
+            return;
+          }
+          var topMetric = 0;
+          list.forEach(function(r) {
+            var m = (tipo === 'valor') ? Number(r && r.faturamento || 0) : Number(r && r.total_ofs || 0);
+            if (m > topMetric) topMetric = m;
+          });
+          if (!(topMetric > 0)) topMetric = 1;
+          body.innerHTML = list.map(function(r, i) {
+            var medalha = (i === 0) ? '🥇' : (i === 1) ? '🥈' : (i === 2) ? '🥉' : '#';
+            var nome = String(r && r.nome || '—').trim() || '—';
+            var cidade = String(r && r.cidade || '—').trim() || '—';
+            var qtd = Number(r && r.total_ofs || 0) || 0;
+            var fat = Number(r && r.faturamento || 0) || 0;
+            var metric = (tipo === 'valor') ? fat : qtd;
+            var pct = Math.max(0, Math.min(100, (metric / topMetric) * 100));
+            var lblMetric = (tipo === 'valor') ? fmtMoneyLocal(fat) : (String(qtd) + ' OFs');
+            var sub = (tipo === 'valor') ? (String(qtd) + ' OFs') : fmtMoneyLocal(fat);
+            return (
+              '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 12px;display:flex;gap:12px;align-items:center">' +
+                '<div style="width:44px;flex:0 0 44px;text-align:center;font-family:var(--mono);font-weight:900;color:var(--accent,#4A90D9)">' + escHLocal(medalha) + '<div style="margin-top:2px;color:var(--text2,#94a3b8);font-size:11px">' + (i + 1) + '</div></div>' +
+                '<div style="flex:1;min-width:0">' +
+                  '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">' +
+                    '<div style="min-width:0">' +
+                      '<div style="color:var(--text,#e2e8f0);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHLocal(nome) + '</div>' +
+                      '<div style="margin-top:2px;color:var(--text2,#94a3b8);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHLocal(cidade) + '</div>' +
+                    '</div>' +
+                    '<div style="text-align:right;flex:0 0 auto">' +
+                      '<div style="color:var(--text,#e2e8f0);font-weight:900;font-family:var(--mono)">' + escHLocal(lblMetric) + '</div>' +
+                      '<div style="margin-top:2px;color:var(--text2,#94a3b8);font-size:11px">' + escHLocal(sub) + '</div>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div style="margin-top:10px;height:8px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden">' +
+                    '<div style="height:100%;width:' + pct.toFixed(1) + '%;background:linear-gradient(90deg,#4A90D9,#22d3ee);border-radius:999px"></div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>'
+            );
+          }).join('');
+        };
+        var abrirRankingClientes = async function(tipo) {
+          var modal = ensureRankingModal();
+          modal.style.display = 'flex';
+          var titulo = document.getElementById('ranking-clientes-titulo');
+          var sub = document.getElementById('ranking-clientes-sub');
+          var body = document.getElementById('ranking-clientes-body');
+          if (titulo) titulo.textContent = (tipo === 'valor') ? 'Maior valor' : 'Quem mais pede';
+          if (sub) sub.textContent = 'Carregando…';
+          if (body) body.innerHTML = '<div style="padding:14px;color:var(--text2,#94a3b8);text-align:center">Carregando…</div>';
+          try {
+            var resp = await apiGet('/api/clientes/ranking?tipo=' + encodeURIComponent(tipo === 'valor' ? 'valor' : 'quantidade') + '&limit=50&t=' + Date.now());
+            var json = await resp.json().catch(function() { return null; });
+            var rows = (json && json.ok && Array.isArray(json.data)) ? json.data : [];
+            if (sub) sub.textContent = rows.length ? (rows.length + ' clientes') : 'Sem dados';
+            renderRanking(rows, tipo === 'valor' ? 'valor' : 'quantidade');
+          } catch (e) {
+            if (sub) sub.textContent = 'Erro ao carregar';
+            if (body) body.innerHTML = '<div style="padding:14px;color:#f87171;text-align:center">Erro ao carregar ranking.</div>';
+          }
+        };
         var setTipo = function(tipo) {
           ['inativos', 'ativos', 'valor'].forEach(function(t) {
             var b = document.getElementById('patch-analise-' + t);
@@ -4584,20 +5011,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         };
         document.getElementById('patch-analise-inativos').onclick = function() {
           try { if (origSel && cloneSel) origSel.value = cloneSel.value; } catch (_) {}
-          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {}
+          try { if (typeof window.abrirClientesInativos === 'function') window.abrirClientesInativos(); } catch (_) { try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {} }
           setTipo('inativos');
         };
         document.getElementById('patch-analise-ativos').onclick = function() {
-          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('ativos'); } catch (_) {}
+          try { abrirRankingClientes('quantidade'); } catch (_) {}
           setTipo('ativos');
         };
         document.getElementById('patch-analise-valor').onclick = function() {
-          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('valor'); } catch (_) {}
+          try { abrirRankingClientes('valor'); } catch (_) {}
           setTipo('valor');
         };
         cloneSel.onchange = function() {
           try { if (origSel) origSel.value = cloneSel.value; } catch (_) {}
-          try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {}
+          try { if (typeof window.abrirClientesInativos === 'function') window.abrirClientesInativos(); } catch (_) { try { if (typeof carregarAnaliseClientes === 'function') carregarAnaliseClientes('inativos'); } catch (_) {} }
           setTipo('inativos');
         };
       }
