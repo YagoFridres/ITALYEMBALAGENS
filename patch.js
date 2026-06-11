@@ -91,13 +91,31 @@ window.addEventListener('unhandledrejection', function(e) {
     console.error('[PATCH PROMISE ERROR]', r && r.message ? r.message : r);
   } catch (_) {}
 });
-if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-  var _logOriginal = console.log.bind(console);
+(function() {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+  var _logOrig = console.log.bind(console);
+  var _warnOrig = console.warn.bind(console);
   console.log = function() {
-    var msg = arguments.length ? String(arguments[0] || '') : '';
+    var msg = String(arguments[0] || '');
     if (msg.indexOf('[ERRO]') === 0 || msg.indexOf('[CRITICO]') === 0 || msg.indexOf('[CRÍTICO]') === 0) {
-      return _logOriginal.apply(console, arguments);
+      return _logOrig.apply(console, arguments);
     }
+  };
+  console.warn = function() {
+    var msg = String(arguments[0] || '');
+    if (msg.indexOf('[PATCH]') >= 0 || msg.toLowerCase().indexOf('overlay') >= 0) return;
+    return _warnOrig.apply(console, arguments);
+  };
+})();
+if (!window._debounce) {
+  window._debounce = function(fn, delay) {
+    var timer = null;
+    return function() {
+      var ctx = this;
+      var args = arguments;
+      clearTimeout(timer);
+      timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
+    };
   };
 }
 try {
@@ -8125,14 +8143,18 @@ window._mbnActive = function(id) {
   function watchPCP() {
     var page = document.getElementById('page-pcp');
     if (!page) return;
-    new MutationObserver(function(mutations) {
+    var obs = new MutationObserver(function(mutations, observer) {
       mutations.forEach(function(m) {
         if (m.type !== 'attributes') return;
         var vis = page.style.display !== 'none' &&
                   !page.classList.contains('hidden');
-        if (vis) setTimeout(renderCards, 350);
+        if (vis) {
+          setTimeout(renderCards, 350);
+          try { observer.disconnect(); } catch (_) {}
+        }
       });
-    }).observe(page, { attributes: true, attributeFilter: ['style','class'] });
+    });
+    obs.observe(page, { attributes: true, attributeFilter: ['style','class'] });
   }
 
   window._mobAlterar = function(id) {
@@ -9600,17 +9622,10 @@ window._mbnActive = function(id) {
 })();
 
 (function patchPerformanceInputs() {
-  function debounce(fn, delay) {
-    var timer = null;
-    return function() {
-      var ctx = this;
-      var args = arguments;
-      clearTimeout(timer);
-      timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
-    };
-  }
-
+  var debounce = window._debounce;
   if (typeof window.debounce !== 'function') window.debounce = debounce;
+  window._ofsPag = window._ofsPag || { offset: 0, limit: 10, total: 0, hasMore: false, loading: false, filtros: {} };
+  window._armazemPag = window._armazemPag || { offset: 0, limit: 10, total: 0, hasMore: false, loading: false, filtros: {} };
 
   function bindDebouncedInput(selector, delay) {
     Array.prototype.slice.call(document.querySelectorAll(selector)).forEach(function(input) {
@@ -9624,7 +9639,14 @@ window._mbnActive = function(id) {
 
   function bindAll() {
     bindDebouncedInput('#pcp-busca', 300);
+    bindDebouncedInput('#busca-of', 300);
+    bindDebouncedInput('#busca-cliente', 300);
+    bindDebouncedInput('#busca-geral', 300);
     bindDebouncedInput('#lanc-busca', 300);
+    bindDebouncedInput('input[placeholder*="Buscar"]', 300);
+    bindDebouncedInput('input[placeholder*="buscar"]', 300);
+    bindDebouncedInput('input[placeholder*="Filtrar"]', 300);
+    bindDebouncedInput('input[placeholder*="pesquisar"]', 300);
   }
 
   function wrapRenderer(nome) {
@@ -9649,4 +9671,5 @@ window._mbnActive = function(id) {
   else init();
   setTimeout(init, 800);
   setTimeout(init, 1800);
+  setTimeout(bindAll, 2500);
 })();

@@ -3100,7 +3100,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
     });
     setNoCache(res);
-    const limitReq = Math.min(Math.max(1, (Number(q_limit || 200) || 200)), 300);
+    const limitReq = Math.min(Math.max(1, (Number(q_limit || 10) || 10)), 500);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
@@ -3190,13 +3190,20 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const cacheHit = cached != null;
       console.debug('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
     } catch (_) {}
+    const formatOfRow = (row) => {
+      if (!row || typeof row !== 'object') return row;
+      return {
+        ...row,
+        maquina: row?.maq ?? row?.maquina ?? '',
+      };
+    };
     if (cached != null) {
       if (Array.isArray(cached)) return ok(res, cached);
       if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
         const totalCached = Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length;
         const limitCached = Number.isFinite(Number(cached.limit)) ? Number(cached.limit) : limitFinal;
         const offsetCached = Number.isFinite(Number(cached.offset)) ? Number(cached.offset) : offset;
-        return res.json({ ok: true, data: cached.data, total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
+        return res.json({ ok: true, data: cached.data.map(formatOfRow), total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
       }
       return ok(res, cached);
     }
@@ -3382,7 +3389,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
 
       if (maquina) {
-        const maqCols = ['maquina', 'maquina_agendada'].filter((c) => _ofsSelectableHas(c));
+        const maqCols = ['maq', 'maquina_agendada'].filter((c) => _ofsSelectableHas(c));
         if (maqCols.length === 1) q = q.eq(maqCols[0], maquina);
         else if (maqCols.length > 1) q = q.or(maqCols.map((c) => `${c}.eq.${maquina}`).join(','));
       }
@@ -3523,7 +3530,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
       const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
-      return { ...row, vendedor_nome };
+      return formatOfRow({ ...row, vendedor_nome });
     });
     try {
       const ofsComCliVazio = (Array.isArray(rows) ? rows : []).filter((of) => {
@@ -3563,6 +3570,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         cliNome: sample?.cliNome,
         vendedor_id: sample?.vendedor_id,
         vendNome: sample?.vendNome,
+        maq: sample?.maq,
+        maquina: sample?.maquina,
         imagem_url: sample?.imagem_url,
         imgs: sample?.imgs,
       }));
@@ -4108,7 +4117,7 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         return res.status(400).json({ ok: false, error: 'Campos obrigatórios: ' + missing.join(', '), missing });
       }
     }
-    console.log('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
+    console.debug('[OF SAVE]', req.method, req.params.id || 'novo', JSON.stringify(Object.keys(body)));
     const createdRes = await ofsInsertWithRetry(ofIn(filtered));
     if (createdRes.error) throw createdRes.error;
     let created = createdRes.data;
@@ -4230,7 +4239,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
-    console.log('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
+    console.debug('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
     const { data: ofAtual } = await supabase
       .from('ofs')
@@ -4288,7 +4297,7 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto') && !stNovo.includes('cancel');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
-        try { console.log('[OF STATUS GUARD] ignorando reabertura via PUT', { id, stAtual, stNovo }); } catch (_) {}
+        try { console.debug('[OF STATUS GUARD] ignorando reabertura via PUT', { id, stAtual, stNovo }); } catch (_) {}
         delete cleanBody.status;
         delete body.status;
       }
@@ -5665,7 +5674,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
       const vaiReabrir = stNovo && !(stNovo.includes('conclu') || stNovo === 'pedido pronto' || stNovo === 'entregue' || stNovo === 'despachada' || stNovo === 'finalizada') && !stNovo.includes('cancel');
       const force = String(req.body?._force_status || req.body?.force_status || req.body?.forcar_status || '').trim() === '1';
       if (isConcluida && vaiReabrir && !force) {
-        try { console.log('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
+        try { console.debug('[OF STATUS GUARD] ignorando reabertura via PATCH', { id, stAtual, stNovo }); } catch (_) {}
         delete payload.status;
       }
     } catch (_) {}
@@ -5956,7 +5965,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (!sid) return res.status(400).json({ ok: false, error: 'id obrigatório' });
 
     const body = req.body || {};
-    console.log('[CONCLUIR OF] body:', JSON.stringify(body));
+    console.debug('[CONCLUIR OF] body:', JSON.stringify(body));
     const qtdProduzidaRaw = Number(body.qtd_produzida || body.qtd_real || body.qtdProduzida || body.caixas_produzidas || 0);
     const qtdPerdida = Math.trunc(Number(body.qtd_perdida || body.qtdPerdida || body.caixas_perdidas || 0) || 0);
     if (!Number.isFinite(qtdProduzidaRaw) || qtdProduzidaRaw < 0) return res.status(400).json({ ok: false, error: 'qtd_produzida inválida' });
@@ -5966,7 +5975,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     if (errOf) return res.status(500).json({ ok: false, error: errOf.message || String(errOf) });
     if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
     try {
-      console.log('[CONCLUIR OF] before:', {
+      console.debug('[CONCLUIR OF] before:', {
         id: sid,
         status: of?.status,
         data_conclusao: of?.data_conclusao,
@@ -6095,11 +6104,11 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     }
 
     Object.keys(updateData).forEach((k) => updateData[k] === undefined && delete updateData[k]);
-    console.log('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
+    console.debug('[CONCLUIR OF] updateData:', JSON.stringify(updateData));
     const upd = await ofsUpdateWithRetry(sid, updateData);
     if (upd.error) return res.status(500).json({ ok: false, error: upd.error.message || String(upd.error) });
     try {
-      console.log('[CONCLUIR OF] after updRes:', {
+      console.debug('[CONCLUIR OF] after updRes:', {
         id: sid,
         status: upd?.data?.status,
         data_conclusao: upd?.data?.data_conclusao,
@@ -6108,7 +6117,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
     } catch (_) {}
     try {
       const { data: ofAfter } = await supabase.from('ofs').select('status,data_conclusao,updated_at').eq('id', sid).maybeSingle();
-      console.log('[CONCLUIR OF] after db:', ofAfter);
+      console.debug('[CONCLUIR OF] after db:', ofAfter);
     } catch (_) {}
 
     try {
@@ -6127,7 +6136,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
 
       if (!ja || String(ja.data_passagem || '').slice(0, 10) !== hoje) {
         const picked = fluxoPickMaquina();
-        const maquinaNome = String(mprodRaw || body.maquina || of.maquina || picked.nome || '').trim() || 'Sem máquina';
+        const maquinaNome = String(mprodRaw || body.maquina || of.maq || of.maquina || picked.nome || '').trim() || 'Sem máquina';
         const ofNumero = String(of?.numero || of?.of_num || of?.of || '').trim() || null;
         let toInsert = {
           of_id: sid,
@@ -6167,7 +6176,7 @@ app.post('/api/ofs/:id/concluir', authMiddleware, async (req, res) => {
         .select('maquina_perda,qtd_perdida,qtd_produzida')
         .eq('id', sid)
         .maybeSingle();
-      console.log('[CONCLUIR VERIFICACAO]', ofVerif);
+      console.debug('[CONCLUIR VERIFICACAO]', ofVerif);
     } catch (_) {}
 
     if (qtdPerdida > 0) {
@@ -6346,10 +6355,10 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = req.body || {};
     const maquinaNome = String(body.maquina_nome || body.maquinaNome || body.maquina || '').trim();
-    console.log('[PASSOU] id recebido:', id);
-    console.log('[PASSOU] body:', body);
-    console.log('[PASSOU] usuario:', req.usuario?.nome);
-    console.log('[PASSOU MAQUINA]', id, maquinaNome);
+    console.debug('[PASSOU] id recebido:', id);
+    console.debug('[PASSOU] body:', body);
+    console.debug('[PASSOU] usuario:', req.usuario?.nome);
+    console.debug('[PASSOU MAQUINA]', id, maquinaNome);
 
     const nowIso = new Date().toISOString();
 
@@ -6435,7 +6444,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
         status:        'Concluida', 
         empresa:       of.empresa || 'Italy Embalagens' 
       }); 
-      console.log('[passou-maquina] passagem registrada:', maqPassou); 
+      console.debug('[passou-maquina] passagem registrada:', maqPassou);
     } catch(ep){ console.warn('[passou-maquina] erro ao registrar passagem:', ep.message); } 
 
     try {
@@ -6450,7 +6459,7 @@ app.post('/api/ofs/:id/passou-maquina', authMiddleware, async (req, res) => {
       });
     } catch (_) {}
 
-    console.log('[PASSOU] OK:', id);
+    console.debug('[PASSOU] OK:', id);
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
     return res.json({ ok: true });
   } catch (e) {
@@ -7609,7 +7618,7 @@ app.get('/api/clientes/:id/painel', authMiddleware, async (req, res) => {
       quantidade: o?.quantidade ?? o?.qtd ?? o?.qtd_pedida ?? null,
       data_entrega: o?.data_entrega ?? o?.ent ?? null,
       status: o?.status ?? null,
-      maquina: o?.maquina ?? o?.maq ?? null,
+      maquina: o?.maq ?? o?.maquina ?? null,
       total: pickTotal(o),
       created_at: o?.created_at ?? null,
     });
@@ -10067,7 +10076,7 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
 
     const pickOfProduto = (of) => String(of?.produto || of?.descricao || of?.prodDesc || '').trim();
     const pickOfCliente = (of) => String(of?.cli_nome || of?.cliente || of?.cliente_nome || of?.cliNome || '').trim();
-    const pickOfMaquina = (of) => String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '').trim();
+    const pickOfMaquina = (of) => String(of?.maq || of?.maquina || of?.maquina_atual || of?.maquina_agendada || '').trim();
     const pickOfNumero = (of) => String(of?.numero || of?.of || '').trim();
     const pickVlUnit = (of) => Number(of?.vl_unit || of?.valor_unitario || 0) || 0;
 
@@ -10199,7 +10208,7 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
       emp_id: String(req.query?.empId || req.query?.emp_id || req.usuario?.emp_id || req.usuario?.empId || req.user?.emp_id || req.user?.empId || '').trim() || undefined,
       of_id: ofId || null,
       of_numero: String(payload.of_numero || b?.of_numero || ofData?.numero || ofData?.of || '').trim() || null,
-      maquina: String(b?.maquina || ofData?.maquina || ofData?.maq || ofData?.maquina_atual || '').trim() || null,
+      maquina: String(b?.maquina || ofData?.maq || ofData?.maquina || ofData?.maquina_atual || '').trim() || null,
       produto: String(b?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || null,
       cliente: String(b?.cliente || b?.cliente_nome || ofData?.cliente || ofData?.cliente_nome || ofData?.cli_nome || ofData?.cliNome || '').trim() || null,
       operadores,
@@ -19032,7 +19041,7 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
     }
     if(!Array.isArray(ids) || !ids.length) return res.status(400).json({ ok:false, error:'ordem deve ser array nao vazio' });
 
-    try { console.log('[reordenar] maquina:', maquina || '(vazio)', '| ofs:', ids.length); } catch (_) {}
+    try { console.debug('[reordenar] maquina:', maquina || '(vazio)', '| ofs:', ids.length); } catch (_) {}
 
     const ids2 = ids.slice(0, 5000);
     const updates = ids2.map((id, idx) => {
