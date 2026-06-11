@@ -1234,6 +1234,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
            localStorage.getItem('access_token') || '';
   }
 
+  function extractOfsRows(raw) {
+    return Array.isArray(raw) ? raw : (Array.isArray(raw && raw.data) ? raw.data : (Array.isArray(raw && raw.ofs) ? raw.ofs : []));
+  }
+
   // ── PATCH 1: proximoNumeroOf ───────────────────────────────────
   // Busca a OF com maior numero e retorna numero + 1 formatado
   window.proximoNumeroOf = async function() {
@@ -1260,7 +1264,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var r = await fetch('/api/ofs?limit=5&order_by=numero&order=desc&t=' + Date.now(), { headers: h });
       if (r.ok) {
         var d = await r.json();
-        var lista = d.data || d.ofs || (Array.isArray(d) ? d : []);
+        var lista = extractOfsRows(d);
         console.log('[PATCH] OFs recebidas para calcular proximo numero:', lista.slice(0,3).map(function(o){ return {numero: o.numero, of_num: o.of_num, id: o.id}; }));
         // Tentar todos os campos possiveis de numero
         var maior = 0;
@@ -3235,7 +3239,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var url = '/api/ofs?numero=' + encodeURIComponent(num) + '&lite=1&limit=5&excluir_canceladas=1&nocache=1&t=' + Date.now();
     var r = await fetch(url, { headers: h });
     var j = await r.json().catch(function() { return null; });
-    var data = (j && Array.isArray(j.data)) ? j.data : (Array.isArray(j) ? j : (Array.isArray(j?.ofs) ? j.ofs : []));
+    var data = extractOfsRows(j);
     return (Array.isArray(data) && data[0]) ? data[0] : null;
   }
 

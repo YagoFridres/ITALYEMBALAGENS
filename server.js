@@ -3100,7 +3100,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
     });
     setNoCache(res);
-    const limitReq = Math.min(Math.max(1, (Number(q_limit || 10) || 10)), 500);
+    const pedidoPaginacao = q_offset !== undefined || q_limit !== undefined;
+    const limitDefault = pedidoPaginacao ? 10 : 200;
+    const limitReq = Math.min(Math.max(1, (Number(q_limit || limitDefault) || limitDefault)), 500);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
@@ -3175,6 +3177,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       incluirCanceladas ? 'incl_can1' : 'incl_can0',
       excluirCanceladas ? 'exc_can1' : 'exc_can0',
       filtrarPassou ? 'passou1' : 'passou0',
+      pedidoPaginacao ? 'fmt_page' : 'fmt_array',
       String(limitFinal),
       String(offset),
     ].join('|');
@@ -3198,14 +3201,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       };
     };
     if (cached != null) {
-      if (Array.isArray(cached)) return ok(res, cached);
+      if (Array.isArray(cached)) return res.json(cached.map(formatOfRow));
       if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
         const totalCached = Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length;
         const limitCached = Number.isFinite(Number(cached.limit)) ? Number(cached.limit) : limitFinal;
         const offsetCached = Number.isFinite(Number(cached.offset)) ? Number(cached.offset) : offset;
+        if (!pedidoPaginacao) return res.json(cached.data.map(formatOfRow));
         return res.json({ ok: true, data: cached.data.map(formatOfRow), total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
       }
-      return ok(res, cached);
+      return res.json(cached);
     }
 
     const selectBaseCols = OFS_TABLE_COLS.slice();
@@ -3585,6 +3589,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       hasMore: (offset + limitFinal) < totalRows,
     };
     cacheSet(cacheKey, payload, lite ? (2 * 60 * 1000) : (10 * 1000));
+    if (!pedidoPaginacao) return res.json(rows);
     return res.json({ ok: true, ...payload });
   } catch (e) {
     try { console.error('[OFS 500 FULL]', e); } catch (_) {}

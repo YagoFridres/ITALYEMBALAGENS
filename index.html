@@ -10844,7 +10844,7 @@ async function _ofmaqBuscarOFs(dataSel, limite, empId){
     if(eid) params.set('empId', eid);
     const r = await fetch(base + '/api/ofs?' + params.toString(), { headers });
     const j = await r.json().catch(()=>null);
-    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    const rows = extractOfsRows(j);
     return (rows || []).map(normalizeOF);
   };
 
@@ -10906,7 +10906,7 @@ async function _ofmaqBuscarOFsRange(from, to, limite, empId){
     if(eid) params.set('empId', eid);
     const r = await fetch(base + '/api/ofs?' + params.toString(), { headers });
     const j = await r.json().catch(()=>null);
-    const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    const rows = extractOfsRows(j);
     return (rows || []).map(normalizeOF);
   };
   const agRows = await fetchRange('data_agendamento');
@@ -33996,9 +33996,20 @@ async function api(method, url, body) {
     }
   }
   const j = await resp.json().catch(() => null);
+  if (String(method || '').toUpperCase() === 'GET' && String(url || '').startsWith('/ofs')) {
+    const rowsOfs = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+    if (Array.isArray(rowsOfs)) {
+      if (Array.isArray(j)) return { ok: true, data: rowsOfs, total: rowsOfs.length, offset: 0, limit: rowsOfs.length, hasMore: false, _legacyArray: true, status: resp.status };
+      if (j && typeof j === 'object') j.data = rowsOfs;
+    }
+  }
   if(j && typeof j === 'object' && j.status == null) j.status = resp.status;
   if(j && typeof j === 'object' && j.ok == null && resp.ok) j.ok = true;
   return j;
+}
+
+function extractOfsRows(raw){
+  return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : (Array.isArray(raw?.ofs) ? raw.ofs : []));
 }
 
 async function apiUpload(url, formData) {
@@ -34860,7 +34871,8 @@ async function carregarOFs(opts){
   if(status && status !== 'todos') qs.set('status', status);
   const r = await api('GET','/ofs' + (qs.toString()?('?'+qs.toString()):''));
   let lista = [];
-  if(r && r.ok && r.data) lista = r.data.map(o=>{
+  const ofsRows = extractOfsRows(r);
+  if(r && ((r.ok && Array.isArray(ofsRows)) || Array.isArray(ofsRows))) lista = ofsRows.map(o=>{
     let fm=o && o.fluxo_maquinas;
     if(typeof fm==='string'){ try{ fm=JSON.parse(fm); }catch(e){ fm=[]; } }
     if(!Array.isArray(fm)) fm=[];
@@ -54256,7 +54268,7 @@ window.atualizarChapas = async function(){
       const url = base + '/api/ofs?limit=' + String(lim) + '&excluir_canceladas=1&nocache=1' + (empId ? ('&empId=' + encodeURIComponent(String(empId))) : '');
       const r = await fetch(url, { headers: { Authorization: 'Bearer ' + String(token || '') } });
       const j = await r.json().catch(()=>null);
-      const rows = Array.isArray(j) ? j : (Array.isArray(j?.data) ? j.data : []);
+      const rows = extractOfsRows(j);
       try{ sessionStorage.setItem(MAQ_OFS_CACHE_KEY, JSON.stringify(rows || [])); }catch(e){}
       return mobileFilterEmp(rows, empId);
     }
