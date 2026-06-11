@@ -335,6 +335,79 @@ function cacheClearPrefix(prefix) {
     if (k.startsWith(prefix)) cacheClear(k);
   });
 }
+async function resolverEmpresaId(req) {
+  const emailRaw = String(
+    req?.user?.email ||
+    req?.user?.username ||
+    req?.usuario?.email ||
+    req?.usuario?.username ||
+    ''
+  ).trim();
+  if (!emailRaw || !supabase) return null;
+
+  const exactCandidates = Array.from(new Set([
+    emailRaw,
+    emailRaw.toLowerCase(),
+    emailRaw.toUpperCase(),
+  ].filter(Boolean)));
+  for (const candidate of exactCandidates) {
+    try {
+      const { data: usr1 } = await supabase
+        .from('usuarios')
+        .select('empresa_id')
+        .eq('email', candidate)
+        .maybeSingle();
+      if (usr1?.empresa_id) return usr1.empresa_id;
+    } catch (_) {}
+  }
+
+  const prefixo = String(emailRaw.split('@')[0] || '').trim().toLowerCase();
+  if (!prefixo) return null;
+
+  try {
+    const { data: usr2 } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .ilike('email', prefixo)
+      .limit(1)
+      .maybeSingle();
+    if (usr2?.empresa_id) return usr2.empresa_id;
+  } catch (_) {}
+
+  try {
+    const { data: usr3 } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .ilike('email', prefixo + '%')
+      .limit(1)
+      .maybeSingle();
+    if (usr3?.empresa_id) return usr3.empresa_id;
+  } catch (_) {}
+
+  try {
+    const { data: emp } = await supabase
+      .from('empresas')
+      .select('id')
+      .ilike('sigla', '%' + prefixo + '%')
+      .limit(1)
+      .maybeSingle();
+    if (emp?.id) return emp.id;
+  } catch (_) {}
+
+  try {
+    const { data: empPrimeira } = await supabase
+      .from('empresas')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+    if (empPrimeira?.id) {
+      console.debug('[resolverEmpresaId] fallback para primeira empresa:', empPrimeira.id);
+      return empPrimeira.id;
+    }
+  } catch (_) {}
+
+  return null;
+}
 if (Array.isArray(globalThis.__pendingCacheClearPrefixes) && globalThis.__pendingCacheClearPrefixes.length) {
   globalThis.__pendingCacheClearPrefixes.forEach((p) => {
     try { cacheClearPrefix(String(p || '')); } catch (_) {}
@@ -9010,6 +9083,11 @@ function _isUuid(v) {
   return typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
 }
 async function _resolveEmpresaUuid(req) {
+  try {
+    const resolved = await resolverEmpresaId(req);
+    const resolvedId = String(resolved || '').trim();
+    if (_isUuid(resolvedId)) return resolvedId;
+  } catch (_) {}
   const bEmp = String(req?.body?.empresa_id || req?.body?.empresaId || '').trim();
   const qEmp = String(req?.query?.empresa_id || req?.query?.empresaId || '').trim();
   const uEmp = String(req?.usuario?.empresa_id || req?.usuario?.empresaId || '').trim();
@@ -10034,19 +10112,7 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    const email = String(req.usuario?.email || req.user?.email || '').trim();
-    let empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
-    if (!empresa_id && email) {
-      const { data: usr } = await supabase.from('usuarios').select('empresa_id').eq('email', email).maybeSingle();
-      empresa_id = usr?.empresa_id || null;
-    }
-    if (!empresa_id && email) {
-      const sigla = String(email.split('@')[0] || '').trim();
-      if (sigla) {
-        const { data: emp } = await supabase.from('empresas').select('id').ilike('sigla', `%${sigla}%`).maybeSingle();
-        empresa_id = emp?.id || null;
-      }
-    }
+    const empresa_id = await resolverEmpresaId(req);
 
     const { maquina, status } = req.query || {};
     const operador = String(req.query?.operador || '').trim();
@@ -10154,20 +10220,7 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     const manual = !!(b.manual || b.modo === 'manual');
     const nowIso = new Date().toISOString();
     const year = Number(nowIso.slice(0, 4)) || new Date().getFullYear();
-    const email = String(req.usuario?.email || req.user?.email || '').trim();
-
-    let empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
-    if (!empresa_id && email) {
-      const { data: usr } = await supabase.from('usuarios').select('empresa_id').eq('email', email).maybeSingle();
-      empresa_id = usr?.empresa_id || null;
-    }
-    if (!empresa_id && email) {
-      const sigla = String(email.split('@')[0] || '').trim();
-      if (sigla) {
-        const { data: emp } = await supabase.from('empresas').select('id').ilike('sigla', `%${sigla}%`).maybeSingle();
-        empresa_id = emp?.id || null;
-      }
-    }
+    const empresa_id = await resolverEmpresaId(req);
 
     let payload = { ...b };
     delete payload.id;
@@ -10785,25 +10838,10 @@ app.delete('/api/estoque/:id', async (req, res) => {
 async function _resolveEmpresaIdEstoqueByEmail(email) {
   const raw = String(email || '').trim().toLowerCase();
   if (!raw) throw new Error('email_nao_encontrado');
-  try {
-    const u = await supabase
-      .from('usuarios')
-      .select('empresa_id')
-      .eq('email', raw)
-      .maybeSingle();
-    const empId = String(u?.data?.empresa_id || '').trim();
-    if (empId) return empId;
-  } catch (_) {}
-  const prefix = raw.includes('@') ? raw.split('@')[0] : raw;
-  if (!prefix) throw new Error('email_prefix_invalido');
-  const emp = await supabase
-    .from('empresas')
-    .select('id')
-    .ilike('sigla', `%${prefix}%`)
-    .maybeSingle();
-  const empId2 = String(emp?.data?.id || '').trim();
-  if (!empId2) throw new Error('empresa_id_nao_resolvido');
-  return empId2;
+  const pseudoReq = { user: { email: raw }, usuario: { email: raw } };
+  const empId = String((await resolverEmpresaId(pseudoReq)) || '').trim();
+  if (!empId) throw new Error('empresa_id_nao_resolvido');
+  return empId;
 }
 
 async function _queryByEmpresa(table, selectCols, empresa_id, orderCol, q) {
@@ -19087,34 +19125,7 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
   try {
     if (!supabase) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
 
-    const email = String(req.user?.email || req.usuario?.email || '').trim();
-    let empId = null;
-
-    try {
-      const { data: usr } = await supabase
-        .from('usuarios')
-        .select('empresa_id')
-        .eq('email', email)
-        .maybeSingle();
-      empId = usr?.empresa_id || null;
-    } catch (_) {}
-
-    if (!empId) {
-      try { empId = await _resolveEmpresaUuid(req); } catch (_) { empId = null; }
-    }
-
-    if (!empId && email) {
-      try {
-        const prefix = String(email.split('@')[0] || '').trim();
-        const { data: emp } = await supabase
-          .from('empresas')
-          .select('id,sigla')
-          .ilike('sigla', '%' + prefix + '%')
-          .limit(1)
-          .maybeSingle();
-        empId = emp?.id || null;
-      } catch (_) {}
-    }
+    const empId = await resolverEmpresaId(req);
 
     if (!empId) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
     cacheKeyHub = 'hub_' + String(empId || 'all');
