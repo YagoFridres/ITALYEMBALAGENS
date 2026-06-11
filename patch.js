@@ -2846,6 +2846,28 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   max-height:60vh !important;
 }
 
+#page-historico-passagens{
+  max-height:none !important;
+  overflow:visible !important;
+}
+#hist-graficos-wrap{
+  overflow:visible !important;
+}
+#hist-graficos-wrap > div > div > div[style*="height"]{
+  position:relative !important;
+  overflow:visible !important;
+  height:260px !important;
+}
+#hist-graficos-wrap > div > div:nth-child(2) > div[style*="height"]{
+  height:240px !important;
+}
+#hist-chart-semana,
+#hist-chart-mes{
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+}
+
 @media print{
   body, .relatorio-inativos, table, td, th, tr, span, p, div{
     color:#000 !important;
@@ -2862,6 +2884,48 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.head.appendChild(st);
     }
   } catch (_) {}
+
+  function patchHistoricoPassagensGraficos() {
+    var fn = window.carregarGraficosPassagens;
+    if (typeof fn !== 'function' || fn._patchFixChartMes) return;
+    var wrapped = async function() {
+      var r = await fn.apply(this, arguments);
+      try {
+        var cMes = document.getElementById('hist-chart-mes');
+        var cSemana = document.getElementById('hist-chart-semana');
+        if (cMes) {
+          cMes.setAttribute('height', '240');
+          cMes.style.height = '240px';
+          cMes.style.maxHeight = 'none';
+        }
+        if (cSemana) {
+          cSemana.setAttribute('height', '260');
+          cSemana.style.height = '260px';
+          cSemana.style.maxHeight = 'none';
+        }
+        var wrapMes = cMes ? cMes.parentElement : null;
+        if (wrapMes) {
+          wrapMes.style.position = 'relative';
+          wrapMes.style.overflow = 'visible';
+          wrapMes.style.height = '240px';
+          wrapMes.style.maxHeight = 'none';
+        }
+        var wrapSemana = cSemana ? cSemana.parentElement : null;
+        if (wrapSemana) {
+          wrapSemana.style.position = 'relative';
+          wrapSemana.style.overflow = 'visible';
+          wrapSemana.style.height = '260px';
+          wrapSemana.style.maxHeight = 'none';
+        }
+        try { if (window._histChartMes && typeof window._histChartMes.resize === 'function') window._histChartMes.resize(); } catch (_) {}
+        try { if (window._histChartSemana && typeof window._histChartSemana.resize === 'function') window._histChartSemana.resize(); } catch (_) {}
+      } catch (_) {}
+      return r;
+    };
+    wrapped._patchFixChartMes = true;
+    window.carregarGraficosPassagens = wrapped;
+  }
+  try { patchHistoricoPassagensGraficos(); } catch (_) {}
 
   function _normUpper(s) {
     var v = String(s == null ? '' : s).trim().toUpperCase();
