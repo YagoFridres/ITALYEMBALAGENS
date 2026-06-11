@@ -3035,7 +3035,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         rid: req._rid || null,
       });
     }
-    console.log('[OFS DEBUG 500]', {
+    console.debug('[OFS DEBUG 500]', {
       query: req.query,
       usuario: req.usuario?.id,
       supabaseOk: !!supabase,
@@ -3052,6 +3052,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       emp_id: q_emp_id,
       empId: q_empId,
       status: q_status,
+      maquina: q_maquina,
+      busca: q_busca,
       lite: q_lite,
       nocache: q_nocache,
       no_cache: q_no_cache,
@@ -3077,45 +3079,50 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       numero: q_numero,
       of_num: q_of_num,
       of: q_of,
+      data_inicio: q_data_inicio,
+      dataInicio: q_dataInicio,
+      data_fim: q_data_fim,
+      dataFim: q_dataFim,
     } = (req.query || {});
-    console.log('[OFS CHEGOU]', req.query);
-    console.log('[OFS GET START]', req.query);
+    console.debug('[OFS CHEGOU]', req.query);
+    console.debug('[OFS GET START]', req.query);
     try {
-      console.log('[OFS DEBUG ENTRY]', {
+      console.debug('[OFS DEBUG ENTRY]', {
         query: req.query,
         usuario: req?.usuario?.id,
         supabaseOk: !!supabase,
         colsSetSize: OFS_SELECTABLE_COLS_SET?.size,
       });
     } catch (_) {}
-    console.log('[OFS GET COLS CHECK]', {
+    console.debug('[OFS GET COLS CHECK]', {
       tableLen: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
       selectableLen: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
       setSize: (OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number') ? OFS_SELECTABLE_COLS_SET.size : null,
     });
     setNoCache(res);
-    const testeRapido = await supabase.from('ofs').select('id').limit(1);
-    console.log('[OFS TESTE RAPIDO]', testeRapido.error?.message || 'OK');
-    if (testeRapido.error) {
-      return res.json({ ok: false, data: [], total: 0, error: testeRapido.error.message, rid: req._rid || null });
-    }
-    try {
-      console.log('[OFS COLS]', JSON.stringify({
-        table: Array.isArray(OFS_TABLE_COLS) ? OFS_TABLE_COLS.length : null,
-        selectable: Array.isArray(OFS_SELECTABLE_COLS) ? OFS_SELECTABLE_COLS.length : null,
-        set: OFS_SELECTABLE_COLS_SET && typeof OFS_SELECTABLE_COLS_SET.size === 'number' ? OFS_SELECTABLE_COLS_SET.size : null,
-      }));
-    } catch (_) {}
     const limitReq = Math.min(Math.max(1, (Number(q_limit || 200) || 200)), 300);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
     const incluirCanceladas = String(q_incluir_canceladas || q_incluir_excluidas || q_incluirExcluidas || q_incluirCanceladas || '') === '1';
     const excluirCanceladas = String(q_excluir_canceladas || q_excluirCanceladas || '') === '1';
-    const empId = String(q_empId || q_emp_id || '').trim();
+    const empIdRaw = String(q_empId || q_emp_id || '').trim();
+    const empId = empIdRaw || String(
+      req?.usuario?.empresa_id ||
+      req?.usuario?.emp_id ||
+      req?.usuario?.empId ||
+      req?.user?.empresa_id ||
+      req?.user?.emp_id ||
+      req?.user?.empId ||
+      ''
+    ).trim() || String((await _resolveEmpresaUuid(req).catch(() => '')) || '').trim();
     const clienteId = String(q_cliente_id || q_clienteId || q_cli_id || q_cliId || '').trim();
     let clienteNomeRaw = String(q_cliente_nome || q_clienteNome || q_cliente || '').trim();
     try { clienteNomeRaw = decodeURIComponent(clienteNomeRaw); } catch (_) {}
     const clienteNome = clienteNomeRaw ? String(clienteNomeRaw).replace(/%/g, '').trim() : '';
+    let buscaRaw = String(q_busca || '').trim();
+    try { buscaRaw = decodeURIComponent(buscaRaw); } catch (_) {}
+    const busca = buscaRaw ? String(buscaRaw).replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    const maquina = String(q_maquina || '').trim();
     const passouRaw =
       (req.query && (req.query.passou_maqu || req.query.passou_maquina || req.query.passouMaquina)) || '';
     let filtrarPassou = false;
@@ -3129,8 +3136,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     try { statusRaw = decodeURIComponent(statusRaw); } catch (_) {}
     const status = statusRaw && statusRaw.toLowerCase() !== 'todos' ? statusRaw : '';
     const lite = String(q_lite || '') === '1';
-    const from = String(q_from || q_de || '').trim();
-    const to = String(q_to || q_ate || '').trim();
+    const from = String(q_from || q_de || q_data_inicio || q_dataInicio || '').trim();
+    const to = String(q_to || q_ate || q_data_fim || q_dataFim || '').trim();
     const dateFieldRaw = String(q_date_field || q_dateField || '').trim().toLowerCase();
     const orderByRaw = String(q_order_by || q_orderBy || '').trim();
     const orderRaw = String(q_order || '').trim().toLowerCase();
@@ -3145,7 +3152,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (!_ofsSelectableHas(orderBy)) orderBy = 'created_at';
 
     const temFiltroData = !!(from || to);
-    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status;
+    const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!maquina || !!busca;
     const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
 
     const CACHE_VERSION = 'ofs_v4';
@@ -3154,6 +3161,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       String(req?.usuario?.id || ''),
       empId,
       clienteId,
+      maquina,
+      busca,
       numero ? ('num=' + numero) : '',
       status,
       lite ? 'lite1' : 'lite0',
@@ -3179,12 +3188,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const cached = forceNoCache ? null : cacheGet(cacheKey);
     try {
       const cacheHit = cached != null;
-      console.log('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
+      console.debug('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
     } catch (_) {}
     if (cached != null) {
       if (Array.isArray(cached)) return ok(res, cached);
       if (cached && typeof cached === 'object' && Array.isArray(cached.data)) {
-        return res.json({ ok: true, data: cached.data, total: Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length });
+        const totalCached = Number.isFinite(Number(cached.total)) ? Number(cached.total) : cached.data.length;
+        const limitCached = Number.isFinite(Number(cached.limit)) ? Number(cached.limit) : limitFinal;
+        const offsetCached = Number.isFinite(Number(cached.offset)) ? Number(cached.offset) : offset;
+        return res.json({ ok: true, data: cached.data, total: totalCached, offset: offsetCached, limit: limitCached, hasMore: (offsetCached + limitCached) < totalCached });
       }
       return ok(res, cached);
     }
@@ -3338,7 +3350,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         .order(orderBy, { ascending: orderAsc })
         .range(offset, offset + limitFinal - 1);
 
-      if (status) q = q.eq('status', status);
+      if (status) {
+        const statusList = String(status).split(',').map((s) => String(s || '').trim()).filter(Boolean);
+        if (statusList.length > 1) q = q.in('status', statusList);
+        else q = q.eq('status', statusList[0] || status);
+      }
 
       if (empId && Array.isArray(empCols) && empCols.length) {
         const empCol = empCols[Math.min(tentativa, empCols.length - 1)];
@@ -3365,11 +3381,27 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (expr) q = q.or(expr);
       }
 
+      if (maquina) {
+        const maqCols = ['maquina', 'maquina_agendada'].filter((c) => _ofsSelectableHas(c));
+        if (maqCols.length === 1) q = q.eq(maqCols[0], maquina);
+        else if (maqCols.length > 1) q = q.or(maqCols.map((c) => `${c}.eq.${maquina}`).join(','));
+      }
+
+      if (busca) {
+        const like = '%' + busca + '%';
+        const buscaCols = ['numero', 'of', 'of_num', 'produto', 'descricao', 'prodDesc', 'cliente', 'cliente_nome', 'cliNome', 'clinome']
+          .filter((c) => _ofsSelectableHas(c));
+        if (buscaCols.length) {
+          const expr = buscaCols.map((c) => `${c}.ilike.${like}`).join(',');
+          if (expr) q = q.or(expr);
+        }
+      }
+
       if (filtrarPassou && _ofsSelectableHas('passou_maquina')) {
         q = q.eq('passou_maquina', true);
       } else if (filtrarPassou && !_ofsSelectableHas('passou_maquina')) {
         filtrarPassou = false;
-        console.log('[OFS] passou_maquina skip');
+        console.debug('[OFS] passou_maquina skip');
       }
 
       if (useDeletedAtFilter) q = q.is('deleted_at', null);
@@ -3413,7 +3445,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (!r.error) {
         data = r.data || [];
         if (typeof r.count === 'number') total = r.count;
-        console.log('[OFS GET] OK tentativa=' + tentativa + ' rows=' + (Array.isArray(data) ? data.length : 0));
+        console.debug('[OFS GET] OK tentativa=' + tentativa + ' rows=' + (Array.isArray(data) ? data.length : 0));
         break;
       }
 
@@ -3477,8 +3509,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     try {
       const before = Array.isArray(data) ? data : [];
-      console.log('[OFS DEBUG] total antes do filtro:', before.length);
-      console.log('[OFS DEBUG] com deleted_at:', before.filter((o) => isDeletedAt(o?.deleted_at)).length);
+      console.debug('[OFS DEBUG] total antes do filtro:', before.length);
+      console.debug('[OFS DEBUG] com deleted_at:', before.filter((o) => isDeletedAt(o?.deleted_at)).length);
     } catch (_) {}
     if (!incluirExcluidas) {
       data = (Array.isArray(data) ? data : []).filter((o) => !isDeletedAt(o?.deleted_at));
@@ -3524,7 +3556,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     } catch (_) {}
     try {
       const sample = rows && rows[0] ? rows[0] : null;
-      console.log('[OFS SAMPLE]', JSON.stringify({
+      console.debug('[OFS SAMPLE]', JSON.stringify({
         id: sample?.id,
         of: sample?.of,
         cli_id: sample?.cli_id,
@@ -3535,8 +3567,15 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
-    const payload = { data: rows, total: Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0) };
-    cacheSet(cacheKey, payload, 10 * 1000);
+    const totalRows = Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0);
+    const payload = {
+      data: rows,
+      total: totalRows,
+      offset,
+      limit: limitFinal,
+      hasMore: (offset + limitFinal) < totalRows,
+    };
+    cacheSet(cacheKey, payload, lite ? (2 * 60 * 1000) : (10 * 1000));
     return res.json({ ok: true, ...payload });
   } catch (e) {
     try { console.error('[OFS 500 FULL]', e); } catch (_) {}
@@ -7109,13 +7148,23 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const lite = String(req.query.lite || '') === '1';
-    const cacheKey = '';
+    const cacheKey = [
+      'clientes_',
+      empId || 'all',
+      qBusca || '',
+      lite ? 'lite1' : 'lite0',
+      hasPaging ? ('p' + offset + ':' + limit) : 'full',
+      String(req.query.order || 'created_at'),
+      String(req.query.dir || 'desc'),
+    ].join('|');
+    const cachedClientes = cacheGet(cacheKey);
+    if (cachedClientes) return res.json(cachedClientes);
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
     let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
     const logClientes = (rows) => {
       try {
-        console.log('[GET CLIENTES]', {
+        console.debug('[GET CLIENTES]', {
           empresa_id: empId || null,
           total: rows?.length || 0,
           primeiros: (rows || []).slice(0, 3).map((c) => c?.nome)
@@ -7125,6 +7174,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     const applyClientSlice = (rows) => {
       const list = Array.isArray(rows) ? rows : [];
       return hasPaging ? list.slice(offset, offset + limit) : list;
+    };
+    const sendClientes = (payload) => {
+      try { cacheSet(cacheKey, payload, 3 * 60 * 1000); } catch (_) {}
+      return res.json(payload);
     };
     const enrichClientesWithOfs = async (rows) => {
       const base = Array.isArray(rows) ? rows.map((r) => ({ ...r })) : [];
@@ -7147,7 +7200,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           });
         } catch (_) {}
       }
-      console.log('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
+      console.debug('[CLIENTES] total:', base.length, 'clientes com OFs:', Object.keys(mapaOfs).length);
       const withCounts = base.map((c) => ({
         ...c,
         total_ofs: mapaOfs[normId(c?.id)] || 0
@@ -7158,7 +7211,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         return String(a?.nome || '').localeCompare(String(b?.nome || ''));
       });
       try {
-        console.log('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
+        console.debug('[CLIENTES TOP 5]', withCounts.slice(0, 5).map((c) => `${String(c?.nome || '')}(${Number(c?.total_ofs || 0)})`));
       } catch (_) {}
       return withCounts;
     };
@@ -7179,7 +7232,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         if (pageRows.length < pageSize) break;
         from += pageSize;
       }
-      console.log('[CLIENTES] total buscado:', allRows.length);
+      console.debug('[CLIENTES] total buscado:', allRows.length);
       return { data: allRows, error: null };
     };
     for (const col of cols) {
@@ -7194,7 +7247,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
-            return ok(res, rowsOut);
+            return sendClientes({ ok: true, data: rowsOut });
           }
           const trimmed = rowsOut.map((r) => ({
             id: r.id,
@@ -7217,7 +7270,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             observacoes: r.observacoes ?? null,
             total_ofs: r.total_ofs ?? 0,
           }));
-          return ok(res, trimmed);
+          return sendClientes({ ok: true, data: trimmed });
         }
 
         lastLocalErr = error;
@@ -7267,7 +7320,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
           const rowsOut = applyClientSlice(rows);
           logClientes(rows);
           if (!lite) {
-            return ok(res, rowsOut);
+            return sendClientes({ ok: true, data: rowsOut });
           }
           const trimmed = rowsOut.map((r) => ({
             id: r.id,
@@ -7290,7 +7343,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
             observacoes: r.observacoes ?? null,
             total_ofs: r.total_ofs ?? 0,
           }));
-          return ok(res, trimmed);
+          return sendClientes({ ok: true, data: trimmed });
         }
         lastErr = all.error;
       }
@@ -10982,6 +11035,9 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
   try {
     const email = req.usuario?.email || req.user?.email || '';
     const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    const cacheKeyDash = ['dashboard_', empresa_id || 'all', String(req.query?.mes || ''), String(req.query?.ano || '')].join('|');
+    const cachedDash = cacheGet(cacheKeyDash);
+    if (cachedDash) return res.json(cachedDash);
     const hoje = new Date();
     const em30 = new Date(hoje.getTime() + 30 * 86400000);
 
@@ -11114,7 +11170,7 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
     movs.sort((a, b) => String(b?.created_at || '').localeCompare(String(a?.created_at || '')));
     const movimentos = movs.slice(0, 10);
 
-    return res.json({
+    const resultado = {
       ok: true,
       cards: {
         valor_total: valorTotal,
@@ -11136,7 +11192,9 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
       tintas_data: tintas,
       materiais_data: materiais,
       chapas_data: chapasCanon,
-    });
+    };
+    cacheSet(cacheKeyDash, resultado, 5 * 60 * 1000);
+    return res.json(resultado);
   } catch (e) {
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
@@ -19001,6 +19059,7 @@ app.post('/api/ofs/reordenar', authMiddleware, async (req, res) => {
 
 app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
   const alertas = [];
+  let cacheKeyHub = '';
   try {
     if (!supabase) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
 
@@ -19034,6 +19093,9 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
     }
 
     if (!empId) return res.json({ alertas: [], gerado_em: new Date().toISOString() });
+    cacheKeyHub = 'hub_' + String(empId || 'all');
+    const cachedHub = cacheGet(cacheKeyHub);
+    if (cachedHub) return res.json(cachedHub);
 
     const hoje = new Date();
     const fmtD = (d) => {
@@ -19146,7 +19208,9 @@ app.get('/api/hub/inteligencia', authMiddleware, async (req, res) => {
   }
 
   alertas.sort((a, b) => Number(a?.prioridade || 9) - Number(b?.prioridade || 9));
-  res.json({ alertas, gerado_em: new Date().toISOString() });
+  const resultado = { alertas, gerado_em: new Date().toISOString() };
+  try { if (cacheKeyHub) cacheSet(cacheKeyHub, resultado, 2 * 60 * 1000); } catch (_) {}
+  res.json(resultado);
 });
 
 app.patch('/api/ofs/:id/ordem', authMiddleware, async (req, res) => {
@@ -20164,6 +20228,13 @@ if(cron && cron.validate('0 18 * * *')){
 
 app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) => {
   try {
+    const cacheKey = [
+      'dashboard_faturamento_mensal',
+      String(req.query?.ano || ''),
+      String(req.query?.mes || ''),
+    ].join('|');
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
     const hoje = new Date();
     const dataInicio = new Date();
     dataInicio.setFullYear(hoje.getFullYear() - 3);
@@ -20247,14 +20318,16 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
       }
     }
 
-    res.json({
+    const resultado = {
       ok: true,
       dados,
       futuros,
       crescimento_pct: Math.round(crescimento * 10000) / 100,
       base_meses: comDados.length,
       debug: { totalOfs: (ofs || []).length, mesesComDados: Object.keys(grupos).length },
-    });
+    };
+    cacheSet(cacheKey, resultado, 5 * 60 * 1000);
+    res.json(resultado);
   } catch (e) {
     console.error('[faturamento-mensal]', e.message);
     res.status(500).json({ ok: false, error: e.message });
@@ -20269,6 +20342,7 @@ app.post('/api/dashboard/faturamento-manual', authMiddleware, async (req, res) =
       .upsert({ ano: parseInt(ano), mes: parseInt(mes), valor: parseFloat(valor), observacao: observacao||null, updated_at: new Date().toISOString() }, { onConflict: 'ano,mes' })
       .select().single();
     if (error) throw error;
+    try { cacheClearPrefix('dashboard_faturamento_mensal'); } catch (_) {}
     res.json({ ok: true, data });
   } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -20278,6 +20352,7 @@ app.delete('/api/dashboard/faturamento-manual/:ano/:mes', authMiddleware, async 
     const { error } = await supabase.from('faturamento_manual')
       .delete().eq('ano', parseInt(req.params.ano)).eq('mes', parseInt(req.params.mes));
     if (error) throw error;
+    try { cacheClearPrefix('dashboard_faturamento_mensal'); } catch (_) {}
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
 });

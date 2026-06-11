@@ -1582,51 +1582,51 @@ body.mobile-mode #modal-calculadora .modal-footer > button{
   gap:10px;
 }
 
-@keyframes homeSlideUp { 
-  from { opacity:0; transform:translateY(16px); } 
-  to   { opacity:1; transform:translateY(0); } 
-} 
-.home-kpi { 
-  animation: homeSlideUp 0.4s ease forwards; 
-  opacity:0; 
-} 
-.home-kpi:nth-child(1){animation-delay:0.05s} 
-.home-kpi:nth-child(2){animation-delay:0.10s} 
-.home-kpi:nth-child(3){animation-delay:0.15s} 
-.home-kpi:nth-child(4){animation-delay:0.20s} 
-.home-kpi:nth-child(5){animation-delay:0.25s} 
-.home-kpi:nth-child(6){animation-delay:0.30s} 
- 
-.home-mod { 
-  background: rgba(255,255,255,0.03); 
-  border: 0.5px solid rgba(255,255,255,0.07); 
-  border-radius: 14px; 
-  padding: 18px 16px; 
-  cursor: pointer; 
-  transition: all 0.2s cubic-bezier(0.4,0,0.2,1); 
-  display: flex; 
-  flex-direction: column; 
-  gap: 10px; 
-  position: relative; 
-  overflow: hidden; 
-} 
-.home-mod::after { 
-  content: ''; 
-  position: absolute; 
-  bottom: 0; left: 0; right: 0; 
-  height: 1px; 
-  background: linear-gradient(90deg, 
-    transparent, rgba(255,255,255,0.1), transparent); 
-  opacity: 0; 
-  transition: opacity 0.2s; 
-} 
-.home-mod:hover { 
-  background: rgba(255,255,255,0.06); 
-  border-color: rgba(255,255,255,0.15); 
-  transform: translateY(-3px); 
-  box-shadow: 0 12px 28px rgba(0,0,0,0.25); 
-} 
-.home-mod:hover::after { opacity: 1; } 
+@keyframes homeSlideUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.home-kpi {
+  animation: homeSlideUp 0.4s ease forwards;
+  opacity:0;
+}
+.home-kpi:nth-child(1){animation-delay:0.05s}
+.home-kpi:nth-child(2){animation-delay:0.10s}
+.home-kpi:nth-child(3){animation-delay:0.15s}
+.home-kpi:nth-child(4){animation-delay:0.20s}
+.home-kpi:nth-child(5){animation-delay:0.25s}
+.home-kpi:nth-child(6){animation-delay:0.30s}
+
+.home-mod {
+  background: rgba(255,255,255,0.03);
+  border: 0.5px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.home-mod::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent, rgba(255,255,255,0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.home-mod:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+}
+.home-mod:hover::after { opacity: 1; }
 
 </style>
 </head>
@@ -4187,7 +4187,7 @@ function abrirNovaOfRapida(){
   document.body.appendChild(ov);
   document.body.appendChild(modal);
 
-  setTimeout(()=>{ 
+  setTimeout(()=>{
     try{
       window._ofRapidaDataAgendamento = null;
       const st = document.getElementById('of-r-maquina-status');
@@ -5596,6 +5596,67 @@ async function getConcluidasHoje() {
 
 // ===================== PCP POR DIA =====================
 let _pcpRenderizando = false;
+window._ofsPaginacao = window._ofsPaginacao || { limit: 10, shown: 10, total: 0, hasMore: false, signature: '' };
+
+function _pcpEnsurePaginacaoUI() {
+  const wrap = document.getElementById('pcp-table-wrap');
+  if (!wrap || !wrap.parentElement) return;
+
+  let contador = document.getElementById('contador-ofs-pcp');
+  if (!contador) {
+    contador = document.createElement('div');
+    contador.id = 'contador-ofs-pcp';
+    contador.style.cssText = 'font-size:12px;color:var(--text2);padding:0 10px 8px;';
+    wrap.parentElement.insertBefore(contador, wrap);
+  }
+
+  let btn = document.getElementById('btn-ofs-ver-mais');
+  if (!btn) {
+    btn = document.createElement('button');
+    btn.id = 'btn-ofs-ver-mais';
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.style.cssText = 'display:none;width:calc(100% - 20px);margin:12px 10px 0;border:1px dashed var(--border);';
+    btn.onclick = carregarMaisOFs;
+    wrap.parentElement.appendChild(btn);
+  }
+}
+
+function _pcpAtualizarPaginacao(total, signature) {
+  const pag = window._ofsPaginacao || (window._ofsPaginacao = {});
+  pag.limit = Math.max(1, Number(pag.limit || 10) || 10);
+  if (pag.signature !== signature) pag.shown = pag.limit;
+  pag.signature = signature;
+  pag.total = Math.max(0, Number(total || 0) || 0);
+  if (!pag.total) pag.shown = 0;
+  else pag.shown = Math.min(Math.max(pag.limit, Number(pag.shown || pag.limit) || pag.limit), pag.total);
+  pag.hasMore = pag.shown < pag.total;
+  return pag;
+}
+
+function _pcpSyncPaginacaoUI() {
+  _pcpEnsurePaginacaoUI();
+  const pag = window._ofsPaginacao || {};
+  const contador = document.getElementById('contador-ofs-pcp');
+  const btn = document.getElementById('btn-ofs-ver-mais');
+  if (contador) contador.textContent = 'Mostrando ' + (pag.shown || 0) + ' de ' + (pag.total || 0) + ' OFs';
+  if (btn) {
+    if (pag.hasMore) {
+      const restante = Math.max(0, (pag.total || 0) - (pag.shown || 0));
+      btn.style.display = 'block';
+      btn.textContent = '↓ Ver mais ' + Math.min(pag.limit || 10, restante) + ' OFs (' + restante + ' restantes)';
+      btn.disabled = false;
+    } else {
+      btn.style.display = 'none';
+    }
+  }
+}
+
+function carregarMaisOFs() {
+  const pag = window._ofsPaginacao || (window._ofsPaginacao = { limit: 10 });
+  pag.shown = Math.max(pag.limit || 10, Number(pag.shown || 0) + (pag.limit || 10));
+  renderPCP();
+}
+
 function renderPCP(){
   if(_pcpRenderizando) return;
   _pcpRenderizando = true;
@@ -5703,6 +5764,11 @@ function renderPCP(){
   const fpcp=(document.getElementById('pcp-emp')||{}).value||'';
   if(fpcp) lista=lista.filter(o=>(o.empId||'')===fpcp);
   else if(EMP_FILTRO) lista=lista.filter(o=>(o.empId||'')=== EMP_FILTRO);
+  const pcpPag = _pcpAtualizarPaginacao(
+    lista.length,
+    [PCP_DIA_ATUAL, busca, fs, fv, fpcp || EMP_FILTRO || '', lista.length].join('|')
+  );
+  const listaRender = lista.slice(0, pcpPag.shown || pcpPag.limit || 10);
   renderEmpBar();
 
   // Day summary
@@ -5734,9 +5800,9 @@ function renderPCP(){
   }
 
     updateBadges();
-    document.getElementById('pcp-tbody').innerHTML=lista.length===0
+    document.getElementById('pcp-tbody').innerHTML=listaRender.length===0
     ?`<tr><td colspan="19" style="text-align:center;padding:32px;color:var(--text3)">Nenhuma OF para ${pcpDiaLabel(PCP_DIA_ATUAL)} — <button class="btn btn-ghost btn-sm" style="margin-left:8px" onclick="abrirModalOF()">＋ Nova OF</button></td></tr>`
-    :lista.map(o=>{
+    :listaRender.map(o=>{
     const cli=getCli(o.cliId)||{nome:'—'};
     const vend=getV(o.vendId)||{nome:'—'};
     const cliTxt = String(cli.nome || '').trim() && String(cli.nome || '').trim() !== '—'
@@ -5831,6 +5897,7 @@ function renderPCP(){
       </div></td>
     </tr>`;
     }).join('');
+    _pcpSyncPaginacaoUI();
     try{ if(typeof window.pcpSyncCompareFab === 'function') window.pcpSyncCompareFab(); }catch(e){}
   } finally {
     _pcpRenderizando = false;
@@ -18009,7 +18076,7 @@ function renderLancamento(){
     return sa.localeCompare(sb) * dirMul;
   });
 
-  const pageSize = 50;
+  const pageSize = 10;
   const page = Math.max(1, Number(LANC_UI.page||1) || 1);
   const shown = rows.slice(0, page * pageSize);
   const hasMore = shown.length < rows.length;
@@ -44230,314 +44297,314 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
 <div class="content">
 
 <div id="tela-home" class="tela" style="display:none">
-  <div style="padding:32px 40px;max-width:1400px; 
-    font-family:'Inter',system-ui,sans-serif"> 
- 
-    <!-- Boas-vindas --> 
-    <div style="margin-bottom:32px"> 
-      <div style="font-size:13px;color:rgba(255,255,255,0.4); 
-        margin-bottom:8px" id="home-greeting"> 
-        Carregando... 
-      </div> 
-      <h1 id="home-welcome" 
-        style="font-size:32px;font-weight:700;color:#fff; 
-        margin:0;letter-spacing:-0.02em"> 
-        Bem-vindo de volta 👋 
-      </h1> 
-    </div> 
- 
-    <!-- KPIs --> 
-    <div style="display:grid; 
-      grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); 
-      gap:12px;margin-bottom:28px"> 
- 
-      <div onclick="go('pcp')" 
-        style="background:rgba(255,255,255,0.04); 
-        border:0.5px solid rgba(255,255,255,0.08); 
-        border-radius:14px;padding:20px;cursor:pointer; 
-        transition:all 0.2s" 
-        onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
-        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-          text-transform:uppercase;letter-spacing:0.07em; 
-          margin-bottom:10px">OFs em aberto</div> 
-        <div id="kpi-ofs-abertas" 
-          style="font-size:36px;font-weight:700; 
-          color:#fff;line-height:1;margin-bottom:6px">—</div> 
-        <div style="font-size:11px;color:rgba(99,102,241,0.8)"> 
-          Ver todas → 
-        </div> 
-      </div> 
- 
-      <div onclick="go('pcp')" 
-        style="background:rgba(255,255,255,0.04); 
-        border:0.5px solid rgba(16,185,129,0.2); 
-        border-radius:14px;padding:20px;cursor:pointer; 
-        transition:all 0.2s" 
-        onmouseover="this.style.background='rgba(16,185,129,0.06)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
-        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-          text-transform:uppercase;letter-spacing:0.07em; 
-          margin-bottom:10px">Concluídas hoje</div> 
-        <div id="kpi-ofs-hoje" 
-          style="font-size:36px;font-weight:700; 
-          color:#10B981;line-height:1;margin-bottom:6px">—</div> 
-        <div style="font-size:11px;color:rgba(16,185,129,0.8)"> 
-          Ver detalhes → 
-        </div> 
-      </div> 
- 
-      <div onclick="go('pcp')" 
-        style="background:rgba(255,255,255,0.04); 
-        border:0.5px solid rgba(239,68,68,0.2); 
-        border-radius:14px;padding:20px;cursor:pointer; 
-        transition:all 0.2s" 
-        onmouseover="this.style.background='rgba(239,68,68,0.06)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
-        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-          text-transform:uppercase;letter-spacing:0.07em; 
-          margin-bottom:10px">Atrasadas</div> 
-        <div id="kpi-atrasadas" 
-          style="font-size:36px;font-weight:700; 
-          color:#EF4444;line-height:1;margin-bottom:6px">—</div> 
-        <div style="font-size:11px;color:rgba(239,68,68,0.8)"> 
-          Ver urgente → 
-        </div> 
-      </div> 
- 
-      <div onclick="go('pcp')" 
-        style="background:rgba(255,255,255,0.04); 
-        border:0.5px solid rgba(245,158,11,0.2); 
-        border-radius:14px;padding:20px;cursor:pointer; 
-        transition:all 0.2s" 
-        onmouseover="this.style.background='rgba(245,158,11,0.06)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
-        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-          text-transform:uppercase;letter-spacing:0.07em; 
-          margin-bottom:10px">Urgentes</div> 
-        <div id="kpi-urgentes" 
-          style="font-size:36px;font-weight:700; 
-          color:#F59E0B;line-height:1;margin-bottom:6px">—</div> 
-        <div style="font-size:11px;color:rgba(245,158,11,0.8)"> 
-          Prioridade → 
-        </div> 
-      </div> 
- 
-      <div style="background:rgba(255,255,255,0.04); 
-        border:0.5px solid rgba(6,182,212,0.2); 
-        border-radius:14px;padding:20px; 
-        transition:all 0.2s" 
-        onmouseover="this.style.background='rgba(6,182,212,0.06)';this.style.transform='translateY(-2px)'" 
-        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'"> 
-        <div style="font-size:11px;color:rgba(255,255,255,0.4); 
-          text-transform:uppercase;letter-spacing:0.07em; 
-          margin-bottom:10px">Faturamento mês</div> 
-        <div id="kpi-faturamento" 
-          style="font-size:22px;font-weight:700; 
-          color:#06B6D4;line-height:1;margin-bottom:6px">—</div> 
-        <div id="kpi-fat-variacao" 
-          style="font-size:11px;color:rgba(6,182,212,0.8)"> 
-          Este mês 
-        </div> 
-      </div> 
-    </div> 
- 
-    <!-- Grid: Acesso rápido + OFs urgentes --> 
-    <div style="display:grid;grid-template-columns:1fr 320px; 
-      gap:20px;align-items:start"> 
- 
-      <!-- Acesso rápido --> 
-      <div> 
-        <div style="font-size:11px;font-weight:600; 
-          color:rgba(255,255,255,0.3);letter-spacing:0.08em; 
-          text-transform:uppercase;margin-bottom:14px"> 
-          Acesso rápido 
-        </div> 
-        <div style="display:grid; 
-          grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); 
-          gap:10px"> 
- 
-          <div id="hmod-pcp" 
-            style="background:rgba(79,70,229,0.1); 
-            border:0.5px solid rgba(79,70,229,0.25); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(79,70,229,0.18)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(79,70,229,0.1)'"> 
-            <div style="font-size:22px;margin-bottom:8px">📋</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">PCP</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Programação</div> 
-          </div> 
- 
-          <div id="hmod-maquina" 
-            style="background:rgba(16,185,129,0.08); 
-            border:0.5px solid rgba(16,185,129,0.2); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(16,185,129,0.15)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(16,185,129,0.08)'"> 
-            <div style="font-size:22px;margin-bottom:8px">🏭</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">OFs Máquina</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Produção</div> 
-          </div> 
- 
-          <div id="hmod-estoque" 
-            style="background:rgba(245,158,11,0.08); 
-            border:0.5px solid rgba(245,158,11,0.2); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(245,158,11,0.15)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(245,158,11,0.08)'"> 
-            <div style="font-size:22px;margin-bottom:8px">📦</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Estoque</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Chapas</div> 
-          </div> 
- 
-          <div id="hmod-clientes" 
-            style="background:rgba(255,255,255,0.04); 
-            border:0.5px solid rgba(255,255,255,0.08); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
-            <div style="font-size:22px;margin-bottom:8px">👥</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Clientes</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Cadastros</div> 
-          </div> 
- 
-          <div id="hmod-mapa" 
-            style="background:rgba(255,255,255,0.04); 
-            border:0.5px solid rgba(255,255,255,0.08); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
-            <div style="font-size:22px;margin-bottom:8px">🗺️</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Mapa</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Clientes</div> 
-          </div> 
- 
-          <div id="hmod-relatorios" 
-            style="background:rgba(255,255,255,0.04); 
-            border:0.5px solid rgba(255,255,255,0.08); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
-            <div style="font-size:22px;margin-bottom:8px">📊</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Relatórios</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Análises</div> 
-          </div> 
- 
-          <div id="hmod-simulador" 
-            style="background:rgba(255,255,255,0.04); 
-            border:0.5px solid rgba(255,255,255,0.08); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'"> 
-            <div style="font-size:22px;margin-bottom:8px">♻️</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Simulador</div> 
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Desperdício</div> 
-          </div> 
- 
-          <div id="hmod-jarvis" 
-            style="background:rgba(99,102,241,0.1); 
-            border:0.5px solid rgba(99,102,241,0.3); 
-            border-radius:12px;padding:16px;cursor:pointer; 
-            transition:all 0.2s;position:relative" 
-            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(99,102,241,0.18)'" 
-            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(99,102,241,0.1)'"> 
-            <div style="position:absolute;top:10px;right:10px; 
-              width:7px;height:7px;border-radius:50%; 
-              background:#10B981; 
-              box-shadow:0 0 6px rgba(16,185,129,0.8)"></div> 
-            <div style="font-size:22px;margin-bottom:8px">🤖</div> 
-            <div style="font-size:13px;font-weight:600;color:#fff">Jarvis IA</div> 
-            <div style="font-size:11px;color:rgba(165,180,252,0.7);margin-top:2px">Online</div> 
-          </div> 
-        </div> 
-      </div> 
- 
-      <!-- OFs urgentes --> 
-      <div> 
-        <div style="display:flex;justify-content:space-between; 
-          align-items:center;margin-bottom:14px"> 
-          <div style="font-size:11px;font-weight:600; 
-            color:rgba(255,255,255,0.3);letter-spacing:0.08em; 
-            text-transform:uppercase">OFs urgentes</div> 
-          <span id="home-ver-pcp" 
-            style="font-size:11px;color:rgba(99,102,241,0.8); 
-            cursor:pointer;font-weight:500"> 
-            Ver todas → 
-          </span> 
-        </div> 
-        <div style="background:rgba(255,255,255,0.03); 
-          border:0.5px solid rgba(255,255,255,0.07); 
-          border-radius:14px;overflow:hidden"> 
-          <div id="home-ofs-urgentes" 
-            style="max-height:300px;overflow-y:auto;padding:6px"> 
-            <div style="padding:16px;text-align:center; 
-              font-size:12px;color:rgba(255,255,255,0.25)"> 
-              Carregando... 
-            </div> 
-          </div> 
-        </div> 
- 
-        <!-- Status --> 
-        <div style="margin-top:14px;padding:12px 16px; 
-          background:rgba(255,255,255,0.03); 
-          border:0.5px solid rgba(255,255,255,0.06); 
-          border-radius:10px"> 
-          <div style="display:flex;align-items:center; 
-            justify-content:space-between;margin-bottom:6px"> 
-            <div style="display:flex;align-items:center;gap:6px"> 
-              <div style="width:6px;height:6px;border-radius:50%; 
-                background:#10B981"></div> 
-              <span style="font-size:11px; 
-                color:rgba(255,255,255,0.35)"> 
-                Sistema online 
-              </span> 
-            </div> 
-            <span id="home-att" 
-              style="font-size:10px; 
-              color:rgba(255,255,255,0.2)">—</span> 
-          </div> 
-          <div style="display:flex;align-items:center;gap:6px"> 
-            <div id="home-ia-dot" style="width:6px;height:6px; 
-              border-radius:50%;background:#F59E0B"></div> 
-            <span id="home-ia-txt" 
-              style="font-size:11px; 
-              color:rgba(255,255,255,0.35)"> 
-              IA: verificando... 
-            </span> 
-          </div> 
-        </div> 
-      </div> 
-    </div> 
- 
-    <!-- Botão principal --> 
-    <div style="margin-top:28px;padding-top:24px; 
-      border-top:0.5px solid rgba(255,255,255,0.06); 
-      display:flex;align-items:center; 
-      justify-content:space-between;flex-wrap:wrap;gap:12px"> 
-      <div style="font-size:13px;color:rgba(255,255,255,0.35)"> 
-        Italy Embalagens ERP · Sistema operacional 
-      </div> 
-      <button id="home-btn-pcp" 
-        style="background:linear-gradient(135deg,#4F46E5,#7C3AED); 
-        border:none;border-radius:10px;color:#fff; 
-        font-size:14px;font-weight:600;padding:11px 24px; 
-        cursor:pointer;transition:all 0.2s; 
-        font-family:'Inter',system-ui,sans-serif; 
-        box-shadow:0 4px 20px rgba(79,70,229,0.35)" 
-        onmouseover="this.style.transform='translateY(-1px)'" 
-        onmouseout="this.style.transform='translateY(0)'"> 
-        Acessar PCP → 
-      </button> 
-    </div> 
-  </div> 
-</div> 
+  <div style="padding:32px 40px;max-width:1400px;
+    font-family:'Inter',system-ui,sans-serif">
+
+    <!-- Boas-vindas -->
+    <div style="margin-bottom:32px">
+      <div style="font-size:13px;color:rgba(255,255,255,0.4);
+        margin-bottom:8px" id="home-greeting">
+        Carregando...
+      </div>
+      <h1 id="home-welcome"
+        style="font-size:32px;font-weight:700;color:#fff;
+        margin:0;letter-spacing:-0.02em">
+        Bem-vindo de volta 👋
+      </h1>
+    </div>
+
+    <!-- KPIs -->
+    <div style="display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:12px;margin-bottom:28px">
+
+      <div onclick="go('pcp')"
+        style="background:rgba(255,255,255,0.04);
+        border:0.5px solid rgba(255,255,255,0.08);
+        border-radius:14px;padding:20px;cursor:pointer;
+        transition:all 0.2s"
+        onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+          text-transform:uppercase;letter-spacing:0.07em;
+          margin-bottom:10px">OFs em aberto</div>
+        <div id="kpi-ofs-abertas"
+          style="font-size:36px;font-weight:700;
+          color:#fff;line-height:1;margin-bottom:6px">—</div>
+        <div style="font-size:11px;color:rgba(99,102,241,0.8)">
+          Ver todas →
+        </div>
+      </div>
+
+      <div onclick="go('pcp')"
+        style="background:rgba(255,255,255,0.04);
+        border:0.5px solid rgba(16,185,129,0.2);
+        border-radius:14px;padding:20px;cursor:pointer;
+        transition:all 0.2s"
+        onmouseover="this.style.background='rgba(16,185,129,0.06)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+          text-transform:uppercase;letter-spacing:0.07em;
+          margin-bottom:10px">Concluídas hoje</div>
+        <div id="kpi-ofs-hoje"
+          style="font-size:36px;font-weight:700;
+          color:#10B981;line-height:1;margin-bottom:6px">—</div>
+        <div style="font-size:11px;color:rgba(16,185,129,0.8)">
+          Ver detalhes →
+        </div>
+      </div>
+
+      <div onclick="go('pcp')"
+        style="background:rgba(255,255,255,0.04);
+        border:0.5px solid rgba(239,68,68,0.2);
+        border-radius:14px;padding:20px;cursor:pointer;
+        transition:all 0.2s"
+        onmouseover="this.style.background='rgba(239,68,68,0.06)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+          text-transform:uppercase;letter-spacing:0.07em;
+          margin-bottom:10px">Atrasadas</div>
+        <div id="kpi-atrasadas"
+          style="font-size:36px;font-weight:700;
+          color:#EF4444;line-height:1;margin-bottom:6px">—</div>
+        <div style="font-size:11px;color:rgba(239,68,68,0.8)">
+          Ver urgente →
+        </div>
+      </div>
+
+      <div onclick="go('pcp')"
+        style="background:rgba(255,255,255,0.04);
+        border:0.5px solid rgba(245,158,11,0.2);
+        border-radius:14px;padding:20px;cursor:pointer;
+        transition:all 0.2s"
+        onmouseover="this.style.background='rgba(245,158,11,0.06)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+          text-transform:uppercase;letter-spacing:0.07em;
+          margin-bottom:10px">Urgentes</div>
+        <div id="kpi-urgentes"
+          style="font-size:36px;font-weight:700;
+          color:#F59E0B;line-height:1;margin-bottom:6px">—</div>
+        <div style="font-size:11px;color:rgba(245,158,11,0.8)">
+          Prioridade →
+        </div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.04);
+        border:0.5px solid rgba(6,182,212,0.2);
+        border-radius:14px;padding:20px;
+        transition:all 0.2s"
+        onmouseover="this.style.background='rgba(6,182,212,0.06)';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);
+          text-transform:uppercase;letter-spacing:0.07em;
+          margin-bottom:10px">Faturamento mês</div>
+        <div id="kpi-faturamento"
+          style="font-size:22px;font-weight:700;
+          color:#06B6D4;line-height:1;margin-bottom:6px">—</div>
+        <div id="kpi-fat-variacao"
+          style="font-size:11px;color:rgba(6,182,212,0.8)">
+          Este mês
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid: Acesso rápido + OFs urgentes -->
+    <div style="display:grid;grid-template-columns:1fr 320px;
+      gap:20px;align-items:start">
+
+      <!-- Acesso rápido -->
+      <div>
+        <div style="font-size:11px;font-weight:600;
+          color:rgba(255,255,255,0.3);letter-spacing:0.08em;
+          text-transform:uppercase;margin-bottom:14px">
+          Acesso rápido
+        </div>
+        <div style="display:grid;
+          grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+          gap:10px">
+
+          <div id="hmod-pcp"
+            style="background:rgba(79,70,229,0.1);
+            border:0.5px solid rgba(79,70,229,0.25);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(79,70,229,0.18)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(79,70,229,0.1)'">
+            <div style="font-size:22px;margin-bottom:8px">📋</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">PCP</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Programação</div>
+          </div>
+
+          <div id="hmod-maquina"
+            style="background:rgba(16,185,129,0.08);
+            border:0.5px solid rgba(16,185,129,0.2);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(16,185,129,0.15)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(16,185,129,0.08)'">
+            <div style="font-size:22px;margin-bottom:8px">🏭</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">OFs Máquina</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Produção</div>
+          </div>
+
+          <div id="hmod-estoque"
+            style="background:rgba(245,158,11,0.08);
+            border:0.5px solid rgba(245,158,11,0.2);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(245,158,11,0.15)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(245,158,11,0.08)'">
+            <div style="font-size:22px;margin-bottom:8px">📦</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Estoque</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Chapas</div>
+          </div>
+
+          <div id="hmod-clientes"
+            style="background:rgba(255,255,255,0.04);
+            border:0.5px solid rgba(255,255,255,0.08);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'">
+            <div style="font-size:22px;margin-bottom:8px">👥</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Clientes</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Cadastros</div>
+          </div>
+
+          <div id="hmod-mapa"
+            style="background:rgba(255,255,255,0.04);
+            border:0.5px solid rgba(255,255,255,0.08);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'">
+            <div style="font-size:22px;margin-bottom:8px">🗺️</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Mapa</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Clientes</div>
+          </div>
+
+          <div id="hmod-relatorios"
+            style="background:rgba(255,255,255,0.04);
+            border:0.5px solid rgba(255,255,255,0.08);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'">
+            <div style="font-size:22px;margin-bottom:8px">📊</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Relatórios</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Análises</div>
+          </div>
+
+          <div id="hmod-simulador"
+            style="background:rgba(255,255,255,0.04);
+            border:0.5px solid rgba(255,255,255,0.08);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(255,255,255,0.08)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(255,255,255,0.04)'">
+            <div style="font-size:22px;margin-bottom:8px">♻️</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Simulador</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px">Desperdício</div>
+          </div>
+
+          <div id="hmod-jarvis"
+            style="background:rgba(99,102,241,0.1);
+            border:0.5px solid rgba(99,102,241,0.3);
+            border-radius:12px;padding:16px;cursor:pointer;
+            transition:all 0.2s;position:relative"
+            onmouseover="this.style.transform='translateY(-2px)';this.style.background='rgba(99,102,241,0.18)'"
+            onmouseout="this.style.transform='translateY(0)';this.style.background='rgba(99,102,241,0.1)'">
+            <div style="position:absolute;top:10px;right:10px;
+              width:7px;height:7px;border-radius:50%;
+              background:#10B981;
+              box-shadow:0 0 6px rgba(16,185,129,0.8)"></div>
+            <div style="font-size:22px;margin-bottom:8px">🤖</div>
+            <div style="font-size:13px;font-weight:600;color:#fff">Jarvis IA</div>
+            <div style="font-size:11px;color:rgba(165,180,252,0.7);margin-top:2px">Online</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- OFs urgentes -->
+      <div>
+        <div style="display:flex;justify-content:space-between;
+          align-items:center;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:600;
+            color:rgba(255,255,255,0.3);letter-spacing:0.08em;
+            text-transform:uppercase">OFs urgentes</div>
+          <span id="home-ver-pcp"
+            style="font-size:11px;color:rgba(99,102,241,0.8);
+            cursor:pointer;font-weight:500">
+            Ver todas →
+          </span>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.07);
+          border-radius:14px;overflow:hidden">
+          <div id="home-ofs-urgentes"
+            style="max-height:300px;overflow-y:auto;padding:6px">
+            <div style="padding:16px;text-align:center;
+              font-size:12px;color:rgba(255,255,255,0.25)">
+              Carregando...
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div style="margin-top:14px;padding:12px 16px;
+          background:rgba(255,255,255,0.03);
+          border:0.5px solid rgba(255,255,255,0.06);
+          border-radius:10px">
+          <div style="display:flex;align-items:center;
+            justify-content:space-between;margin-bottom:6px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="width:6px;height:6px;border-radius:50%;
+                background:#10B981"></div>
+              <span style="font-size:11px;
+                color:rgba(255,255,255,0.35)">
+                Sistema online
+              </span>
+            </div>
+            <span id="home-att"
+              style="font-size:10px;
+              color:rgba(255,255,255,0.2)">—</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div id="home-ia-dot" style="width:6px;height:6px;
+              border-radius:50%;background:#F59E0B"></div>
+            <span id="home-ia-txt"
+              style="font-size:11px;
+              color:rgba(255,255,255,0.35)">
+              IA: verificando...
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Botão principal -->
+    <div style="margin-top:28px;padding-top:24px;
+      border-top:0.5px solid rgba(255,255,255,0.06);
+      display:flex;align-items:center;
+      justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="font-size:13px;color:rgba(255,255,255,0.35)">
+        Italy Embalagens ERP · Sistema operacional
+      </div>
+      <button id="home-btn-pcp"
+        style="background:linear-gradient(135deg,#4F46E5,#7C3AED);
+        border:none;border-radius:10px;color:#fff;
+        font-size:14px;font-weight:600;padding:11px 24px;
+        cursor:pointer;transition:all 0.2s;
+        font-family:'Inter',system-ui,sans-serif;
+        box-shadow:0 4px 20px rgba(79,70,229,0.35)"
+        onmouseover="this.style.transform='translateY(-1px)'"
+        onmouseout="this.style.transform='translateY(0)'">
+        Acessar PCP →
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ========== 1. PCP ========== -->
 <div id="page-pcp" class="page active">
@@ -45454,7 +45521,7 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
           <div style="font-size:12px;font-weight:500;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">
             Simular com chapa específica (opcional)
           </div>
-          
+
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" id="simd-busca-chapa"
               placeholder="Digite o nome ou fornecedor da chapa..."
@@ -45466,10 +45533,10 @@ console.log('✅ PCP Pro — Integração API ativa. Backend:', API_BASE);
               ✕ Limpar
             </button>
           </div>
-        
+
           <!-- Dropdown de resultados da busca -->
           <div id="simd-busca-resultados" style="display:none;margin-top:4px;background:#1a1f2e;border:0.5px solid rgba(255,255,255,0.15);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
-        
+
           <!-- Chapa selecionada -->
           <div id="simd-chapa-selecionada" style="display:none;margin-top:8px;padding:10px 12px;background:rgba(24,95,165,0.15);border:0.5px solid rgba(24,95,165,0.4);border-radius:7px">
             <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:3px">Chapa selecionada</div>
@@ -56117,188 +56184,188 @@ window.atualizarChapas = async function(){
 </script>
 
 <script>
-async function _homeInit() { 
-  const nome = window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador'; 
-  const first = String(nome || 'Administrador').split(' ')[0] || 'Administrador'; 
+async function _homeInit() {
+  const nome = window._usuarioLogado?.nome || localStorage.getItem('italy_nome') || 'Administrador';
+  const first = String(nome || 'Administrador').split(' ')[0] || 'Administrador';
 
-  const elW = document.getElementById('home-welcome'); 
-  if (elW) elW.textContent = 'Bem-vindo de volta, ' + first + ' 👋'; 
+  const elW = document.getElementById('home-welcome');
+  if (elW) elW.textContent = 'Bem-vindo de volta, ' + first + ' 👋';
 
-  const elG = document.getElementById('home-greeting'); 
-  if (elG) elG.textContent = new Date().toLocaleDateString('pt-BR', { 
-    weekday:'long', 
-    day:'numeric', 
-    month:'long', 
-    year:'numeric' 
-  }); 
+  const elG = document.getElementById('home-greeting');
+  if (elG) elG.textContent = new Date().toLocaleDateString('pt-BR', {
+    weekday:'long',
+    day:'numeric',
+    month:'long',
+    year:'numeric'
+  });
 
-  await Promise.allSettled([ _homeKpis(), _homeOfsUrgentes(), _homeIaStatus() ]); 
+  await Promise.allSettled([ _homeKpis(), _homeOfsUrgentes(), _homeIaStatus() ]);
 
-  const elA = document.getElementById('home-att'); 
-  if (elA) elA.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}); 
-} 
- 
-async function _homeKpis() { 
-  try { 
-    const token = localStorage.getItem('token') || ''; 
-    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
-    const hoje = new Date().toISOString().slice(0,10); 
-    const tresM = new Date(); 
-    tresM.setMonth(tresM.getMonth() - 3); 
-    const dataCorte = tresM.toISOString().slice(0,10); 
- 
-    const r = await fetch('/api/ofs?lite=1&limit=500&nocache=1' + 
-      '&from=' + dataCorte + 
-      '&date_field=created_at' + 
-      (empId ? '&emp_id='+empId : ''), { 
-      headers: {'Authorization':'Bearer '+token} 
-    }); 
-    const d = await r.json(); 
-    const ofs = Array.isArray(d) ? d : 
-      (Array.isArray(d.data) ? d.data : []); 
- 
-    const abertas = ofs.filter(o => { 
-      const s = String(o.status||'').toLowerCase(); 
-      return !s.includes('conclu') && !s.includes('cancela'); 
-    }); 
-    const conclHoje = ofs.filter(o => 
-      String(o.data_conclusao||'').slice(0,10) === hoje); 
-    const atrasadas = abertas.filter(o => { 
-      const e = String(o.data_entrega||o.ent||'').slice(0,10); 
-      return e && e < hoje; 
-    }); 
-    const urgentes = abertas.filter(o => o.urg || o.urgente); 
-    const emProd = abertas.filter(o => { 
-      const s = String(o.status||'').toLowerCase(); 
-      return s.includes('produ'); 
-    }); 
- 
-    const set = (id, v) => { 
-      const el = document.getElementById(id); 
-      if (el) el.textContent = typeof v === 'number' ? 
-        v.toLocaleString('pt-BR') : v; 
-    }; 
- 
-    set('kpi-ofs-abertas', abertas.length); 
-    set('kpi-ofs-hoje', conclHoje.length); 
-    set('kpi-atrasadas', atrasadas.length); 
-    set('kpi-urgentes', urgentes.length); 
- 
-    const mes = hoje.slice(0,7); 
-    const fat = ofs 
-      .filter(o => String(o.data_conclusao||'').slice(0,7) === mes) 
-      .reduce((s,o) => s + 
-        (Number(o.valor_total??o.valor_venda??o.val??0)||0), 0); 
-    if (fat > 0) { 
-      const elF = document.getElementById('kpi-faturamento'); 
-      if (elF) elF.textContent = 'R$ ' + 
-        fat.toLocaleString('pt-BR', 
-          {minimumFractionDigits:0,maximumFractionDigits:0}); 
-    } 
- 
-  } catch(e) { 
-    console.error('[HOME KPIs]', e?.message); 
-  } 
-} 
- 
-async function _homeOfsUrgentes() { 
-  const container = document.getElementById('home-ofs-urgentes'); 
-  if (!container) return; 
-  try { 
-    const token = localStorage.getItem('token') || ''; 
-    const empId = window.EMPRESA_ATIVA || window._empAtual || ''; 
-    const hoje = new Date().toISOString().slice(0,10); 
- 
-    const r = await fetch('/api/ofs?lite=1&limit=100&nocache=1' + 
-      (empId ? '&emp_id=' + empId : ''), { 
-      headers: {'Authorization':'Bearer ' + token} 
-    }); 
-    const d = await r.json(); 
-    const ofs = Array.isArray(d) ? d : 
-      (Array.isArray(d.data) ? d.data : []); 
- 
-    const lista = ofs 
-      .filter(o => { 
-        const s = String(o.status||'').toLowerCase(); 
-        if (s.includes('conclu') || s.includes('cancela')) return false; 
-        const e = String(o.data_entrega||o.ent||'').slice(0,10); 
-        return (o.urg || o.urgente) || (e && e < hoje); 
-      }) 
-      .sort((a,b) => { 
-        const ua = !!(a.urg||a.urgente), ub = !!(b.urg||b.urgente); 
-        if (ua && !ub) return -1; 
-        if (!ua && ub) return 1; 
-        return String(a.data_entrega||'') 
-          .localeCompare(String(b.data_entrega||'')); 
-      }) 
-      .slice(0, 7); 
- 
-    if (!lista.length) { 
-      container.innerHTML = 
-        '<div style="padding:16px;text-align:center;' + 
-        'font-size:12px;color:rgba(255,255,255,0.3)">' + 
-        '✓ Nenhuma OF urgente</div>'; 
-      return; 
-    } 
- 
-    container.innerHTML = lista.map(o => { 
-      const e = String(o.data_entrega||o.ent||'').slice(0,10); 
-      const atras = e && e < hoje; 
-      const urg = !!(o.urg||o.urgente); 
-      const cor = (urg && atras) ? '#E24B4A' : 
-                   urg ? '#EF9F27' : '#E24B4A'; 
-      const eFmt = e ? e.split('-').reverse().join('/') : '—'; 
-      const cli = String(o.cliNome||o.cliente_nome||'—'); 
-      const num = String(o.of||o.numero||'?'); 
-      return '<div style="padding:9px 12px;cursor:pointer;' + 
-        'border-radius:8px;display:flex;align-items:center;' + 
-        'gap:8px;transition:background 0.15s;margin-bottom:2px"' + 
-        ' onmouseover="this.style.background=&quot;rgba(255,255,255,0.05)&quot;"' + 
-        ' onmouseout="this.style.background=&quot;transparent&quot;"' + 
-        ' id="home-of-item-' + o.id + '">' + 
-        '<div style="width:3px;height:32px;border-radius:2px;' + 
-        'background:' + cor + ';flex-shrink:0"></div>' + 
-        '<div style="flex:1;min-width:0">' + 
-        '<div style="font-size:12px;font-weight:500;' + 
-        'color:rgba(255,255,255,0.85);white-space:nowrap;' + 
-        'overflow:hidden;text-overflow:ellipsis">' + cli + '</div>' + 
-        '<div style="font-size:11px;color:rgba(255,255,255,0.35);' + 
-        'margin-top:1px">Nº ' + num + 
-        ' · <span style="color:' + cor + '">' + eFmt + '</span></div>' + 
-        '</div>' + 
-        '<div style="font-size:10px;font-weight:600;color:' + cor + ';' + 
-        'white-space:nowrap">' + 
-        (urg ? 'URGENTE' : 'ATRASADA') + '</div></div>'; 
-    }).join(''); 
-  } catch(e) { 
-    container.innerHTML = 
-      '<div style="padding:12px;font-size:12px;' + 
-      'color:rgba(255,255,255,0.3)">Erro ao carregar.</div>'; 
-  } 
-} 
- 
-async function _homeIaStatus() { 
-  try { 
-    const token = localStorage.getItem('token') || ''; 
-    const r = await fetch('/api/ia/status', { 
-      headers: {'Authorization':'Bearer ' + token} 
-    }); 
-    const d = await r.json(); 
-    const dot = document.getElementById('home-ia-dot'); 
-    const txt = document.getElementById('home-ia-txt'); 
-    if (!dot || !txt) return; 
-    if (d.modo_turbo_disponivel) { 
-      dot.style.background = '#10B981'; 
-      txt.textContent = ' IA: Turbo ativo'; 
-    } else if (d.claude?.ativo || d.openai?.ativo) { 
-      dot.style.background = '#F59E0B'; 
-      txt.textContent = ' IA: Parcial'; 
-    } else { 
-      dot.style.background = '#EF4444'; 
-      txt.textContent = ' IA: offline'; 
-    } 
-  } catch(_) {} 
-} 
+  const elA = document.getElementById('home-att');
+  if (elA) elA.textContent = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+}
+
+async function _homeKpis() {
+  try {
+    const token = localStorage.getItem('token') || '';
+    const empId = window.EMPRESA_ATIVA || window._empAtual || '';
+    const hoje = new Date().toISOString().slice(0,10);
+    const tresM = new Date();
+    tresM.setMonth(tresM.getMonth() - 3);
+    const dataCorte = tresM.toISOString().slice(0,10);
+
+    const r = await fetch('/api/ofs?lite=1&limit=500&nocache=1' +
+      '&from=' + dataCorte +
+      '&date_field=created_at' +
+      (empId ? '&emp_id='+empId : ''), {
+      headers: {'Authorization':'Bearer '+token}
+    });
+    const d = await r.json();
+    const ofs = Array.isArray(d) ? d :
+      (Array.isArray(d.data) ? d.data : []);
+
+    const abertas = ofs.filter(o => {
+      const s = String(o.status||'').toLowerCase();
+      return !s.includes('conclu') && !s.includes('cancela');
+    });
+    const conclHoje = ofs.filter(o =>
+      String(o.data_conclusao||'').slice(0,10) === hoje);
+    const atrasadas = abertas.filter(o => {
+      const e = String(o.data_entrega||o.ent||'').slice(0,10);
+      return e && e < hoje;
+    });
+    const urgentes = abertas.filter(o => o.urg || o.urgente);
+    const emProd = abertas.filter(o => {
+      const s = String(o.status||'').toLowerCase();
+      return s.includes('produ');
+    });
+
+    const set = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = typeof v === 'number' ?
+        v.toLocaleString('pt-BR') : v;
+    };
+
+    set('kpi-ofs-abertas', abertas.length);
+    set('kpi-ofs-hoje', conclHoje.length);
+    set('kpi-atrasadas', atrasadas.length);
+    set('kpi-urgentes', urgentes.length);
+
+    const mes = hoje.slice(0,7);
+    const fat = ofs
+      .filter(o => String(o.data_conclusao||'').slice(0,7) === mes)
+      .reduce((s,o) => s +
+        (Number(o.valor_total??o.valor_venda??o.val??0)||0), 0);
+    if (fat > 0) {
+      const elF = document.getElementById('kpi-faturamento');
+      if (elF) elF.textContent = 'R$ ' +
+        fat.toLocaleString('pt-BR',
+          {minimumFractionDigits:0,maximumFractionDigits:0});
+    }
+
+  } catch(e) {
+    console.error('[HOME KPIs]', e?.message);
+  }
+}
+
+async function _homeOfsUrgentes() {
+  const container = document.getElementById('home-ofs-urgentes');
+  if (!container) return;
+  try {
+    const token = localStorage.getItem('token') || '';
+    const empId = window.EMPRESA_ATIVA || window._empAtual || '';
+    const hoje = new Date().toISOString().slice(0,10);
+
+    const r = await fetch('/api/ofs?lite=1&limit=100&nocache=1' +
+      (empId ? '&emp_id=' + empId : ''), {
+      headers: {'Authorization':'Bearer ' + token}
+    });
+    const d = await r.json();
+    const ofs = Array.isArray(d) ? d :
+      (Array.isArray(d.data) ? d.data : []);
+
+    const lista = ofs
+      .filter(o => {
+        const s = String(o.status||'').toLowerCase();
+        if (s.includes('conclu') || s.includes('cancela')) return false;
+        const e = String(o.data_entrega||o.ent||'').slice(0,10);
+        return (o.urg || o.urgente) || (e && e < hoje);
+      })
+      .sort((a,b) => {
+        const ua = !!(a.urg||a.urgente), ub = !!(b.urg||b.urgente);
+        if (ua && !ub) return -1;
+        if (!ua && ub) return 1;
+        return String(a.data_entrega||'')
+          .localeCompare(String(b.data_entrega||''));
+      })
+      .slice(0, 7);
+
+    if (!lista.length) {
+      container.innerHTML =
+        '<div style="padding:16px;text-align:center;' +
+        'font-size:12px;color:rgba(255,255,255,0.3)">' +
+        '✓ Nenhuma OF urgente</div>';
+      return;
+    }
+
+    container.innerHTML = lista.map(o => {
+      const e = String(o.data_entrega||o.ent||'').slice(0,10);
+      const atras = e && e < hoje;
+      const urg = !!(o.urg||o.urgente);
+      const cor = (urg && atras) ? '#E24B4A' :
+                   urg ? '#EF9F27' : '#E24B4A';
+      const eFmt = e ? e.split('-').reverse().join('/') : '—';
+      const cli = String(o.cliNome||o.cliente_nome||'—');
+      const num = String(o.of||o.numero||'?');
+      return '<div style="padding:9px 12px;cursor:pointer;' +
+        'border-radius:8px;display:flex;align-items:center;' +
+        'gap:8px;transition:background 0.15s;margin-bottom:2px"' +
+        ' onmouseover="this.style.background=&quot;rgba(255,255,255,0.05)&quot;"' +
+        ' onmouseout="this.style.background=&quot;transparent&quot;"' +
+        ' id="home-of-item-' + o.id + '">' +
+        '<div style="width:3px;height:32px;border-radius:2px;' +
+        'background:' + cor + ';flex-shrink:0"></div>' +
+        '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12px;font-weight:500;' +
+        'color:rgba(255,255,255,0.85);white-space:nowrap;' +
+        'overflow:hidden;text-overflow:ellipsis">' + cli + '</div>' +
+        '<div style="font-size:11px;color:rgba(255,255,255,0.35);' +
+        'margin-top:1px">Nº ' + num +
+        ' · <span style="color:' + cor + '">' + eFmt + '</span></div>' +
+        '</div>' +
+        '<div style="font-size:10px;font-weight:600;color:' + cor + ';' +
+        'white-space:nowrap">' +
+        (urg ? 'URGENTE' : 'ATRASADA') + '</div></div>';
+    }).join('');
+  } catch(e) {
+    container.innerHTML =
+      '<div style="padding:12px;font-size:12px;' +
+      'color:rgba(255,255,255,0.3)">Erro ao carregar.</div>';
+  }
+}
+
+async function _homeIaStatus() {
+  try {
+    const token = localStorage.getItem('token') || '';
+    const r = await fetch('/api/ia/status', {
+      headers: {'Authorization':'Bearer ' + token}
+    });
+    const d = await r.json();
+    const dot = document.getElementById('home-ia-dot');
+    const txt = document.getElementById('home-ia-txt');
+    if (!dot || !txt) return;
+    if (d.modo_turbo_disponivel) {
+      dot.style.background = '#10B981';
+      txt.textContent = ' IA: Turbo ativo';
+    } else if (d.claude?.ativo || d.openai?.ativo) {
+      dot.style.background = '#F59E0B';
+      txt.textContent = ' IA: Parcial';
+    } else {
+      dot.style.background = '#EF4444';
+      txt.textContent = ' IA: offline';
+    }
+  } catch(_) {}
+}
 
 (function(){
   const bind = ()=>{
