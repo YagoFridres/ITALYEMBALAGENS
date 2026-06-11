@@ -3157,7 +3157,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!maquina || !!busca;
     const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
 
-    const CACHE_VERSION = 'ofs_v4';
+    const CACHE_VERSION = 'ofs_v5';
     const cacheKey = [
       CACHE_VERSION,
       String(req?.usuario?.id || ''),
@@ -3456,6 +3456,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       if (!r.error) {
         data = r.data || [];
         if (typeof r.count === 'number') total = r.count;
+        const shouldTryNextEmpCol =
+          Array.isArray(data) &&
+          data.length === 0 &&
+          empId &&
+          Array.isArray(empCols) &&
+          tentativa < (empCols.length - 1);
+        if (shouldTryNextEmpCol) {
+          console.debug('[OFS GET] sem linhas com coluna empresa atual, tentando fallback:', empCols[Math.min(tentativa, empCols.length - 1)], '->', empCols[Math.min(tentativa + 1, empCols.length - 1)]);
+          continue;
+        }
         console.debug('[OFS GET] OK tentativa=' + tentativa + ' rows=' + (Array.isArray(data) ? data.length : 0));
         break;
       }
