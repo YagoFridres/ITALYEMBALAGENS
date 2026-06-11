@@ -9877,17 +9877,38 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    const { maquina, operador, data_ini, data_fim, status } = req.query || {};
-    const limit = Math.max(1, Math.min(500, parseInt(req.query?.limit, 10) || 100));
+    const email = String(req.usuario?.email || req.user?.email || '').trim();
+    let empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
+    if (!empresa_id && email) {
+      const { data: usr } = await supabase.from('usuarios').select('empresa_id').eq('email', email).maybeSingle();
+      empresa_id = usr?.empresa_id || null;
+    }
+    if (!empresa_id && email) {
+      const sigla = String(email.split('@')[0] || '').trim();
+      if (sigla) {
+        const { data: emp } = await supabase.from('empresas').select('id').ilike('sigla', `%${sigla}%`).maybeSingle();
+        empresa_id = emp?.id || null;
+      }
+    }
 
-    let q = supabase.from('inconformidades').select('*').order('created_at', { ascending: false }).limit(limit);
-    if (req.query.cliente_id) q = q.eq('cliente_id', String(req.query.cliente_id));
-    if (req.query.empId) q = q.eq('emp_id', String(req.query.empId));
+    const { maquina, status } = req.query || {};
+    const operador = String(req.query?.operador || '').trim();
+    const fromDate = String(req.query?.from || req.query?.data_ini || req.query?.de || '').trim();
+    const toDate = String(req.query?.to || req.query?.data_fim || req.query?.ate || '').trim();
+    const limit = Math.max(1, Math.min(500, parseInt(req.query?.limit, 10) || 500));
+
+    let q = supabase
+      .from('inconformidades')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (empresa_id) q = q.eq('empresa_id', empresa_id);
+    else if (req.query?.empId) q = q.eq('emp_id', String(req.query.empId));
     if (maquina) q = q.eq('maquina', String(maquina));
-    if (operador) q = q.ilike('operador_nome', '%' + String(operador) + '%');
     if (status) q = q.eq('status', String(status));
-    if (data_ini) q = q.gte('created_at', String(data_ini));
-    if (data_fim) q = q.lte('created_at', String(data_fim));
+    if (fromDate) q = q.gte('created_at', fromDate);
+    if (toDate) q = q.lte('created_at', toDate + 'T23:59:59');
 
     const { data, error } = await q;
     if (error) {
@@ -9898,7 +9919,75 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
       }
       throw error;
     }
-    res.json({ ok: true, data, inconformidades: data || [] });
+
+    const itens = Array.isArray(data) ? data : [];
+    const ofIds = Array.from(new Set(itens.map((item) => String(item?.of_id || '').trim()).filter(Boolean)));
+    let ofsMap = new Map();
+    if (ofIds.length) {
+      try {
+        let oq = supabase.from('ofs').select('*').in('id', ofIds);
+        if (empresa_id) oq = oq.eq('empresa_id', empresa_id);
+        const { data: ofsData } = await oq;
+        ofsMap = new Map((ofsData || []).map((of) => [String(of?.id || '').trim(), of]));
+      } catch (_) {}
+    }
+
+    const pickOfProduto = (of) => String(of?.produto || of?.descricao || of?.prodDesc || '').trim();
+    const pickOfCliente = (of) => String(of?.cli_nome || of?.cliente || of?.cliente_nome || of?.cliNome || '').trim();
+    const pickOfMaquina = (of) => String(of?.maquina || of?.maq || of?.maquina_atual || of?.maquina_agendada || '').trim();
+    const pickOfNumero = (of) => String(of?.numero || of?.of || '').trim();
+    const pickVlUnit = (of) => Number(of?.vl_unit || of?.valor_unitario || 0) || 0;
+
+    let enriched = itens.map((item) => {
+      const ofData = ofsMap.get(String(item?.of_id || '').trim()) || null;
+      const qtdPerdida = Number(item?.qtd_perdida ?? item?.caixas_perdidas ?? 0) || 0;
+      const vlUnit = Number(item?.vl_unit ?? item?.valor_unitario ?? pickVlUnit(ofData) ?? 0) || 0;
+      const vlTotal = Number(item?.vl_total ?? item?.valor_perdido ?? 0) || ((qtdPerdida || 0) * (vlUnit || 0));
+      const operadores = Array.isArray(item?.operadores)
+        ? item.operadores
+        : (typeof item?.operadores === 'string' ? item.operadores.split(/[,;|]/g) : []);
+      const operadoresLimpos = operadores.map((op) => String(op || '').trim()).filter(Boolean);
+      const operadorDisplay =
+        String(item?.operador_display || '').trim() ||
+        String(item?.operador_principal || item?.operador_nome || item?.operador || '').trim() ||
+        (operadoresLimpos.length ? operadoresLimpos.join(', ') : '') ||
+        String(item?.usuario || '').trim() ||
+        '—';
+
+      return {
+        ...item,
+        empresa_id: item?.empresa_id || empresa_id || null,
+        of_numero: String(item?.of_numero || pickOfNumero(ofData) || String(item?.of_id || '').slice(0, 8) || '').trim(),
+        maquina: String(item?.maquina || pickOfMaquina(ofData) || '—').trim() || '—',
+        produto: String(item?.produto || pickOfProduto(ofData) || '—').trim() || '—',
+        cliente: String(item?.cliente || pickOfCliente(ofData) || '—').trim() || '—',
+        qtd_perdida: qtdPerdida,
+        vl_unit: vlUnit,
+        vl_total: vlTotal,
+        valor_unitario: vlUnit,
+        valor_perdido: vlTotal,
+        operadores: operadoresLimpos,
+        operador_display: operadorDisplay,
+      };
+    });
+
+    if (operador) {
+      const termo = operador.toLowerCase();
+      enriched = enriched.filter((item) => {
+        const alvo = String(
+          item?.operador_display ||
+          item?.operador_principal ||
+          item?.operador_nome ||
+          item?.operador ||
+          item?.usuario ||
+          ''
+        ).toLowerCase();
+        const ops = Array.isArray(item?.operadores) ? item.operadores.join(' ').toLowerCase() : '';
+        return alvo.includes(termo) || ops.includes(termo);
+      });
+    }
+
+    res.json({ ok: true, data: enriched, inconformidades: enriched });
   } catch (e) { err(res, e); }
 });
 
@@ -9908,140 +9997,137 @@ app.post('/api/inconformidades', authMiddleware, async (req, res) => {
     const manual = !!(b.manual || b.modo === 'manual');
     const nowIso = new Date().toISOString();
     const year = Number(nowIso.slice(0, 4)) || new Date().getFullYear();
+    const email = String(req.usuario?.email || req.user?.email || '').trim();
 
-    let payload = { ...b };
-    delete payload.id;
-
-    if (manual) {
-      if (!String(payload.status || '').trim()) payload.status = 'Aberta';
-      if (!String(payload.emp_id || payload.empId || '').trim()) {
-        payload.emp_id = String(req.query?.empId || req.query?.emp_id || payload.emp_id || payload.empId || '').trim() || undefined;
-      }
-      if (!String(payload.created_at || '').trim() && String(payload.data_ocorrencia || payload.data || '').trim()) {
-        const d = String(payload.data_ocorrencia || payload.data || '').slice(0, 10);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.created_at = d + 'T12:00:00.000Z';
-      }
-
-      const hasInc = String(payload.of_numero || '').trim().toUpperCase().startsWith('INC-');
-      if (!payload.of_numero || hasInc) {
-        let seq = 1;
-        try {
-          const { data: last, error: eLast } = await supabase
-            .from('inconformidades')
-            .select('of_numero,created_at')
-            .like('of_numero', `INC-${year}-%`)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          if (!eLast && Array.isArray(last) && last[0]) {
-            const n = String(last[0].of_numero || '').trim();
-            const m = n.match(/INC-(\d{4})-(\d+)/i);
-            if (m && Number(m[1]) === year) seq = (Number(m[2]) || 0) + 1;
-          }
-        } catch (_) {}
-        payload.of_numero = `INC-${year}-${String(seq).padStart(4, '0')}`;
+    let empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
+    if (!empresa_id && email) {
+      const { data: usr } = await supabase.from('usuarios').select('empresa_id').eq('email', email).maybeSingle();
+      empresa_id = usr?.empresa_id || null;
+    }
+    if (!empresa_id && email) {
+      const sigla = String(email.split('@')[0] || '').trim();
+      if (sigla) {
+        const { data: emp } = await supabase.from('empresas').select('id').ilike('sigla', `%${sigla}%`).maybeSingle();
+        empresa_id = emp?.id || null;
       }
     }
 
+    let payload = { ...b };
+    delete payload.id;
+    delete payload.empId;
     delete payload.manual;
     delete payload.modo;
-    delete payload.data_ocorrencia;
-    delete payload.data;
-    delete payload.empId;
-    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
-    if (!String(payload.emp_id || '').trim()) {
-      payload.emp_id = String(
-        req.query?.empId ||
-        req.query?.emp_id ||
-        req.usuario?.empId ||
-        req.usuario?.emp_id ||
-        req.usuario?.sigla ||
-        req.user?.empId ||
-        req.user?.emp_id ||
-        req.user?.sigla ||
-        payload.emp_id ||
-        ''
-      ).trim() || undefined;
+    const rawOperadores = Array.isArray(b?.operadores)
+      ? b.operadores
+      : (typeof b?.operadores === 'string' ? b.operadores.split(/[,;|]/g) : []);
+    const operadores = Array.from(new Set(rawOperadores.map((op) => String(op || '').trim()).filter(Boolean)));
+    const operador_principal = String(
+      b?.operador_principal ||
+      b?.operador_nome ||
+      b?.operador ||
+      (operadores[0] || '')
+    ).trim() || null;
+
+    let ofData = null;
+    const ofId = String(b?.of_id || '').trim();
+    if (ofId) {
+      try {
+        const { data: of } = await supabase.from('ofs').select('*').eq('id', ofId).maybeSingle();
+        ofData = of || null;
+      } catch (_) {}
+    }
+
+    if (!String(payload.of_numero || '').trim() && manual) {
+      let seq = 1;
+      try {
+        const { data: last } = await supabase
+          .from('inconformidades')
+          .select('of_numero,created_at')
+          .like('of_numero', `INC-${year}-%`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (Array.isArray(last) && last[0]) {
+          const n = String(last[0].of_numero || '').trim();
+          const m = n.match(/INC-(\d{4})-(\d+)/i);
+          if (m && Number(m[1]) === year) seq = (Number(m[2]) || 0) + 1;
+        }
+      } catch (_) {}
+      payload.of_numero = `INC-${year}-${String(seq).padStart(4, '0')}`;
+    }
+
+    const qtd_perdida = Number(b?.qtd_perdida ?? b?.caixas_perdidas ?? b?.quantidade ?? 0) || 0;
+    const vl_unit = Number(b?.vl_unit ?? b?.valor_unitario ?? ofData?.vl_unit ?? 0) || 0;
+    const vl_total = Number(b?.vl_total ?? b?.valor_perdido ?? (qtd_perdida * vl_unit) ?? 0) || 0;
+
+    payload = {
+      ...payload,
+      empresa_id: empresa_id || null,
+      emp_id: String(req.query?.empId || req.query?.emp_id || req.usuario?.emp_id || req.usuario?.empId || req.user?.emp_id || req.user?.empId || '').trim() || undefined,
+      of_id: ofId || null,
+      of_numero: String(payload.of_numero || b?.of_numero || ofData?.numero || ofData?.of || '').trim() || null,
+      maquina: String(b?.maquina || ofData?.maquina || ofData?.maq || ofData?.maquina_atual || '').trim() || null,
+      produto: String(b?.produto || ofData?.produto || ofData?.descricao || ofData?.prodDesc || '').trim() || null,
+      cliente: String(b?.cliente || b?.cliente_nome || ofData?.cliente || ofData?.cliente_nome || ofData?.cli_nome || ofData?.cliNome || '').trim() || null,
+      operadores,
+      operador_principal,
+      operador_nome: operador_principal,
+      operador: operador_principal,
+      qtd_perdida,
+      caixas_perdidas: qtd_perdida,
+      vl_unit,
+      valor_unitario: vl_unit,
+      vl_total,
+      valor_perdido: vl_total,
+      motivo: String(b?.motivo || '').trim() || null,
+      descricao: String(b?.descricao || b?.obs || b?.motivo || '').trim() || null,
+      obs: String(b?.obs || b?.descricao || b?.motivo || '').trim() || null,
+      usuario: String(req.usuario?.nome || req.user?.nome || email || 'Usuário').trim() || 'Usuário',
+      saiu_em: new Date().toISOString(),
+      status: String(b?.status || 'Aberta').trim() || 'Aberta',
+      imagem_url: String(b?.imagem_url || b?.foto_url || b?.imagem_problema_url || '').trim() || null,
+      created_at: String(b?.created_at || '').trim() || undefined
+    };
+
+    if (!payload.created_at && String(b?.data_ocorrencia || b?.data || '').trim()) {
+      const d = String(b?.data_ocorrencia || b?.data || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.created_at = d + 'T12:00:00.000Z';
     }
 
     if (payload.maquinas != null) {
       let arr = [];
       try {
         if (Array.isArray(payload.maquinas)) arr = payload.maquinas;
-        else if (typeof payload.maquinas === 'string') {
-          const s = String(payload.maquinas || '').trim();
-          if (s.startsWith('[')) arr = JSON.parse(s || '[]');
-          else arr = s.split(/[,;|]/g);
-        } else if (payload.maquinas && typeof payload.maquinas === 'object') {
-          arr = Object.values(payload.maquinas);
-        }
+        else if (typeof payload.maquinas === 'string') arr = payload.maquinas.split(/[,;|]/g);
       } catch (_) { arr = []; }
-      arr = (Array.isArray(arr) ? arr : []).map((x) => String(x || '').trim()).filter(Boolean);
-      arr = [...new Set(arr)];
-      if (arr.length) {
-        payload.maquinas = arr;
-        if (!String(payload.maquina || '').trim()) payload.maquina = arr[0];
-      } else {
-        delete payload.maquinas;
-      }
+      arr = Array.from(new Set((Array.isArray(arr) ? arr : []).map((x) => String(x || '').trim()).filter(Boolean)));
+      payload.maquinas = arr;
+      if (!payload.maquina && arr[0]) payload.maquina = arr[0];
     }
 
-    if (payload.operador && !payload.operador_nome) payload.operador_nome = payload.operador;
-    if (payload.responsavel && !payload.operador_nome) payload.operador_nome = payload.responsavel;
-    if (payload.operador_nome && !payload.operador) payload.operador = payload.operador_nome;
-    if (payload.operador_id && !payload.op_id) payload.op_id = payload.operador_id;
-    if (payload.operador_id && !payload.opId) payload.opId = payload.operador_id;
-    if (payload.op_id && !payload.operador_id) payload.operador_id = payload.op_id;
-    if (payload.opId && !payload.operador_id) payload.operador_id = payload.opId;
-    if (payload.descricao && !payload.obs) payload.obs = payload.descricao;
-    if (payload.caixas_perdidas != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.caixas_perdidas;
-    if (payload.quantidade != null && payload.qtd_perdida == null) payload.qtd_perdida = payload.quantidade;
-    if (payload.qtd_perdida != null) payload.qtd_perdida = Math.trunc(Number(payload.qtd_perdida) || 0);
-    if (payload.foto_url && !payload.imagem_url) payload.imagem_url = payload.foto_url;
-    if (payload.imagem_problema_url && !payload.imagem_url) payload.imagem_url = payload.imagem_problema_url;
-    if (payload.cliente_nome && !payload.cliente) payload.cliente = payload.cliente_nome;
-
-    try {
-      const cache = {};
-      const resolveMaqNome = async (idOrNome) => {
-        const raw = String(idOrNome || '').trim();
-        if (!raw) return '';
-        if (!_isUuid(raw)) return raw;
-        if (cache[raw]) return cache[raw];
-        const r = await supabase.from('maquinas').select('nome,codigo,col').eq('id', raw).maybeSingle();
-        const m = r?.data || null;
-        const best = String(m?.nome || m?.col || m?.codigo || raw).trim();
-        const canon = _canonMaqNome(best) || best;
-        cache[raw] = canon;
-        return canon;
-      };
-
-      if (payload.maquina) {
-        payload.maquina = await resolveMaqNome(payload.maquina);
-      }
-      if (Array.isArray(payload.maquinas) && payload.maquinas.length) {
-        const mapped = [];
-        for (const it of payload.maquinas) {
-          const nm = await resolveMaqNome(it);
-          if (nm) mapped.push(nm);
-        }
-        const uniq = [...new Set(mapped)];
-        payload.maquinas = uniq;
-        if (!String(payload.maquina || '').trim() && uniq[0]) payload.maquina = uniq[0];
-      }
-    } catch (_) {}
-
-    // manter payload.operador / payload.responsavel para compatibilidade com esquemas antigos
-    delete payload.foto_url;
+    Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
 
     let toInsert = { ...payload };
-    const table = 'inconformidades';
     let lastError = null;
-    for (let i = 0; i < 8; i++) {
-      const { data, error } = await supabase.from(table).insert([toInsert]).select();
-      if (!error) return ok(res, data && data[0] ? data[0] : null);
+    for (let i = 0; i < 16; i += 1) {
+      const { data, error } = await supabase.from('inconformidades').insert([toInsert]).select().single();
+      if (!error) {
+        if (operadores.length && data?.id) {
+          const vinculos = operadores.map((op) => ({
+            empresa_id: empresa_id || null,
+            operador_nome: op,
+            inconformidade_id: data.id,
+            of_id: ofId || null,
+            maquina: payload.maquina || null,
+            qtd_perdida,
+            vl_total
+          }));
+          try { await supabase.from('operadores_inconformidades').insert(vinculos); } catch (_) {}
+        }
+        return ok(res, data);
+      }
       lastError = error;
-      const msg = String(error.message || '');
+      const msg = String(error?.message || '');
       const m = msg.match(/column \"([^\"]+)\" of relation/i);
       if (m && m[1] && Object.prototype.hasOwnProperty.call(toInsert, m[1])) {
         delete toInsert[m[1]];

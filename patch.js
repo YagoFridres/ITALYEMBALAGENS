@@ -8781,3 +8781,488 @@ window._mbnActive = function(id) {
   }
   setInterval(tick, 1500);
 })();
+
+(function patchInconformidadesCaixasPerdidas() {
+  function authToken() {
+    try {
+      return String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function authHeaders(extra) {
+    var token = authToken();
+    var headers = extra ? Object.assign({}, extra) : {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
+
+  function toastLocal(msg) {
+    try {
+      if (typeof window.mostrarToast === 'function') return window.mostrarToast(msg);
+    } catch (_) {}
+    try {
+      if (typeof window.toast === 'function') return window.toast(msg, /❌|erro/i.test(String(msg || '')) ? 'var(--red)' : 'var(--green)');
+    } catch (_) {}
+    try { alert(msg); } catch (_) {}
+  }
+
+  function fmtDataLocal(v) {
+    try { if (typeof window.fmtD === 'function') return window.fmtD(v); } catch (_) {}
+    var s = String(v || '').slice(0, 10);
+    if (!s) return '—';
+    var p = s.split('-');
+    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : s;
+  }
+
+  function fmtNumLocal(v) {
+    try { if (typeof window.fmtN === 'function') return window.fmtN(v); } catch (_) {}
+    return Number(v || 0).toLocaleString('pt-BR');
+  }
+
+  function fmtMoneyLocal(v) {
+    try { if (typeof window.fmtR === 'function') return window.fmtR(v); } catch (_) {}
+    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function escHLocal2(v) {
+    try { if (typeof window.escH === 'function') return window.escH(v); } catch (_) {}
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escAttrLocal2(v) {
+    return escHLocal2(v);
+  }
+
+  function normMaq(v) {
+    var raw = String(v || '').trim().toLowerCase();
+    try { raw = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) {}
+    return raw;
+  }
+
+  function uniqStrings(arr) {
+    return Array.from(new Set((Array.isArray(arr) ? arr : []).map(function(x) { return String(x || '').trim(); }).filter(Boolean)));
+  }
+
+  function parseArrayField(raw) {
+    try {
+      if (Array.isArray(raw)) return uniqStrings(raw);
+      if (raw && typeof raw === 'object') return uniqStrings(Object.values(raw));
+      if (typeof raw === 'string') {
+        var s = raw.trim();
+        if (!s) return [];
+        if (s.charAt(0) === '[') return uniqStrings(JSON.parse(s || '[]'));
+        return uniqStrings(s.split(/[,;|]/g));
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  function getMaquinaSelecionadaNome() {
+    var maqSel = String((document.getElementById('cp-maq') || {}).value || (window._cpFiltro && window._cpFiltro.maquina_id) || '').trim();
+    if (!maqSel) return '';
+    try {
+      var src = Array.isArray(window.MAQUINAS) ? window.MAQUINAS : (Array.isArray(window.MAQUINAS) ? window.MAQUINAS : []);
+      var it = src.find(function(m) { return String(m && m.id || '').trim() === maqSel; }) || null;
+      return String(it && (it.col || it.nome || it.name || it.codigo) || maqSel).trim();
+    } catch (_) {
+      return maqSel;
+    }
+  }
+
+  function getCpPeriodo() {
+    var f = window._cpFiltro || {};
+    var de = String(f.de || '').slice(0, 10);
+    var ate = String(f.ate || '').slice(0, 10);
+    var mesSelecionado = String((document.getElementById('cp-mesref') || {}).value || f.mes_ref || '').trim();
+    if (mesSelecionado && /^\d{4}-\d{2}$/.test(mesSelecionado)) {
+      var parts = mesSelecionado.split('-');
+      var ano = Number(parts[0]);
+      var mes = Number(parts[1]);
+      if (ano > 2000 && mes >= 1 && mes <= 12) {
+        de = mesSelecionado + '-01';
+        ate = new Date(ano, mes, 0).toISOString().slice(0, 10);
+      }
+    }
+    return { de: de, ate: ate, mes: mesSelecionado };
+  }
+
+  function getOfCacheById(ofId) {
+    var id = String(ofId || '').trim();
+    if (!id) return null;
+    var bases = [
+      Array.isArray(window.OFS) ? window.OFS : [],
+      Array.isArray(window.OFs) ? window.OFs : [],
+      Array.isArray(window.OFs_CACHE) ? window.OFs_CACHE : [],
+      Array.isArray(window._ofsCarregadas) ? window._ofsCarregadas : [],
+      Array.isArray(window.OFsUnico) ? window.OFsUnico : []
+    ];
+    for (var i = 0; i < bases.length; i += 1) {
+      var arr = bases[i];
+      var found = arr.find(function(of) { return String(of && of.id || '').trim() === id; }) || null;
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function normalizeInconfRow(item) {
+    var ofData = getOfCacheById(item && item.of_id);
+    var operadores = parseArrayField(item && item.operadores);
+    var operadorDisplay = String(
+      item && (item.operador_display || item.operador_principal || item.operador_nome || item.operador || '') || ''
+    ).trim() || (operadores.length ? operadores.join(', ') : '') || String(item && item.usuario || '').trim() || '—';
+    var qtdPerdida = Number(item && (item.qtd_perdida != null ? item.qtd_perdida : item.caixas_perdidas) || 0) || 0;
+    var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || (ofData && (ofData.vl_unit || ofData.valor_unitario)) || 0) || 0;
+    var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
+    var produto = String(item && item.produto || '').trim() || String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim() || '—';
+    var cliente = String(item && item.cliente || '').trim() || String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim() || '—';
+    var maquina = String(item && item.maquina || '').trim() || String(ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim() || '—';
+    var ofNumero = String(item && (item.of_numero || item.numero || item.of) || '').trim() || String(ofData && (ofData.numero || ofData.of) || '').trim() || String(item && item.of_id || '').slice(0, 8) || '—';
+    var imgUrl = String(item && (item.imagem_url || item.foto_url || item.imgUrl) || '').trim() || String(ofData && (ofData.imagem_url || ofData.imgUrl || (Array.isArray(ofData.imgs) ? ofData.imgs[0] : '')) || '').trim();
+    return {
+      id: String(item && item.id || '').trim(),
+      of_id: String(item && item.of_id || '').trim(),
+      of_numero: ofNumero,
+      produto: produto,
+      maquina: maquina,
+      cliente: cliente,
+      qtd_perdida: qtdPerdida,
+      vl_unit: vlUnit,
+      vl_total: vlTotal,
+      valor_unitario: vlUnit,
+      valor_perdido: vlTotal,
+      usuario: String(item && item.usuario || '').trim() || '—',
+      operador_display: operadorDisplay,
+      operador_principal: String(item && item.operador_principal || '').trim(),
+      operadores: operadores,
+      imgUrl: imgUrl,
+      imagem_url: imgUrl,
+      motivo: String(item && item.motivo || '').trim(),
+      data: String(item && (item.data || item.created_at || item.updated_at || '') || '').slice(0, 10),
+      created_at: String(item && (item.created_at || item.updated_at || '') || ''),
+      mes_referencia: String(item && item.mes_referencia || '').trim() || String(item && (item.data || item.created_at || '') || '').slice(0, 7),
+      empresa_id: String(item && (item.empresa_id || item.emp_id) || '').trim()
+    };
+  }
+
+  async function fetchInconformidadesCp() {
+    var periodo = getCpPeriodo();
+    var maquinaNome = getMaquinaSelecionadaNome();
+    var qs = new URLSearchParams();
+    if (maquinaNome) qs.set('maquina', maquinaNome);
+    if (periodo.de) qs.set('from', periodo.de);
+    if (periodo.ate) qs.set('to', periodo.ate);
+    qs.set('limit', '500');
+    var resp = await fetch('/api/inconformidades?' + qs.toString(), { headers: authHeaders() });
+    var json = await resp.json().catch(function() { return null; });
+    if (!resp.ok) throw new Error(String(json && json.error || resp.status));
+    var arr = Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : (Array.isArray(json && json.inconformidades) ? json.inconformidades : []));
+    return arr.map(normalizeInconfRow);
+  }
+
+  function filterCpRows(rows) {
+    var listaBase = Array.isArray(rows) ? rows : [];
+    var periodo = getCpPeriodo();
+    var maqNomeSel = getMaquinaSelecionadaNome();
+    var mesSel = String((document.getElementById('cp-mesref') || {}).value || (window._cpFiltro && window._cpFiltro.mes_ref) || '').trim();
+    return listaBase.filter(function(r) {
+      var data = String(r && (r.data || r.created_at || '') || '').slice(0, 10);
+      if (periodo.de && data && data < periodo.de) return false;
+      if (periodo.ate && data && data > periodo.ate) return false;
+      if (mesSel) {
+        var mr = String(r && (r.mes_referencia || data.slice(0, 7)) || '').trim();
+        if (mr !== mesSel) return false;
+      }
+      if (maqNomeSel && normMaq(r && r.maquina) !== normMaq(maqNomeSel) && normMaq(r && r.maquina) !== normMaq(String((document.getElementById('cp-maq') || {}).value || ''))) return false;
+      return true;
+    });
+  }
+
+  function renderCpRowsPatched(rows) {
+    var lista = filterCpRows(rows);
+    var totalQtd = lista.reduce(function(s, r) { return s + (Number(r && r.qtd_perdida || 0) || 0); }, 0);
+    var totalValor = lista.reduce(function(s, r) { return s + (Number(r && (r.vl_total != null ? r.vl_total : r.valor_perdido) || 0) || 0); }, 0);
+    var cards = document.getElementById('cp-cards');
+    if (cards) {
+      cards.innerHTML = ''
+        + '<div class="card"><div class="card-lbl">Total Caixas Perdidas</div><div class="card-val cv-r">' + fmtNumLocal(totalQtd) + '</div><div class="card-sub">unidades</div></div>'
+        + '<div class="card"><div class="card-lbl">Valor Total Perdido</div><div class="card-val cv-r" style="font-size:1.1rem">' + fmtMoneyLocal(totalValor) + '</div></div>'
+        + '<div class="card"><div class="card-lbl">Ocorrências</div><div class="card-val cv-a">' + fmtNumLocal(lista.length) + '</div></div>';
+    }
+
+    var tbody = document.querySelector('#cp-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = lista.map(function(item) {
+      var id = String(item && item.id || '').trim();
+      var maquinaDisplay = item && item.maquina || '—';
+      var operadorDisplay = item && item.operador_display || item && item.operador_principal || (Array.isArray(item && item.operadores) && item.operadores.length ? item.operadores.join(', ') : '') || item && item.usuario || '—';
+      var qtdPerdida = Number(item && item.qtd_perdida || 0) || 0;
+      var vlUnit = Number(item && (item.vl_unit != null ? item.vl_unit : item.valor_unitario) || 0) || 0;
+      var vlTotal = Number(item && (item.vl_total != null ? item.vl_total : item.valor_perdido) || 0) || ((qtdPerdida || 0) * (vlUnit || 0));
+      var imgUrl = String(item && (item.imgUrl || item.imagem_url) || '').trim();
+      var operadores = Array.isArray(item && item.operadores) && item.operadores.length ? item.operadores.join(', ') : operadorDisplay;
+      var imgCell = imgUrl
+        ? '<img src="' + escAttrLocal2(imgUrl) + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--border);cursor:pointer" onclick="abrirFotoModal(\'' + escAttrLocal2(imgUrl) + '\',\'OF ' + escAttrLocal2(item && item.of_numero || '') + '\')" onerror="this.style.display=\'none\'">'
+        : '—';
+      return ''
+        + '<tr data-cp-id="' + escAttrLocal2(id) + '">'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.72rem;color:var(--text2)">' + escHLocal2(fmtDataLocal(item && (item.data || item.created_at))) + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:.74rem;color:var(--accent)">' + escHLocal2(item && item.of_numero || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.produto || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem;white-space:nowrap">' + escHLocal2(maquinaDisplay) + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.cliente || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800;color:var(--red)">' + fmtNumLocal(qtdPerdida) + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono)">' + (vlUnit > 0 ? fmtMoneyLocal(vlUnit) : '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:right;font-family:var(--mono);font-weight:800">' + (vlTotal > 0 ? fmtMoneyLocal(vlTotal) : '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(item && item.usuario || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);font-size:.75rem">' + escHLocal2(operadores || '—') + '</td>'
+        + '<td style="padding:7px 10px;border:1px solid var(--border);text-align:center">' + imgCell + '</td>'
+        + '</tr>';
+    }).join('') || '<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>';
+  }
+
+  window.renderCaixasPerdidas = function() {
+    renderCpRowsPatched(Array.isArray(window._cpRows) ? window._cpRows : []);
+  };
+
+  if (typeof window.cpRender === 'function' && !window.cpRender._patchInconfRows) {
+    var _cpRenderOriginal = window.cpRender;
+    window.cpRender = function(rows) {
+      try {
+        renderCpRowsPatched(Array.isArray(rows) ? rows : (Array.isArray(window._cpRows) ? window._cpRows : []));
+      } catch (_) {
+        return _cpRenderOriginal.apply(this, arguments);
+      }
+    };
+    window.cpRender._patchInconfRows = true;
+  }
+
+  if (typeof window.carregarCaixasPerdidas === 'function' && !window.carregarCaixasPerdidas._patchInconfRows) {
+    var _carregarCaixasPerdidasOriginal = window.carregarCaixasPerdidas;
+    window.carregarCaixasPerdidas = async function() {
+      var result = await _carregarCaixasPerdidasOriginal.apply(this, arguments);
+      try {
+        var itens = await fetchInconformidadesCp();
+        if (Array.isArray(itens)) {
+          window._cpRows = itens;
+          renderCpRowsPatched(itens);
+        }
+      } catch (_) {}
+      return result;
+    };
+    window.carregarCaixasPerdidas._patchInconfRows = true;
+  }
+
+  async function carregarOfModal(ofId) {
+    var of = getOfCacheById(ofId);
+    if (of) return of;
+    if (!ofId) return null;
+    try {
+      var resp = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: authHeaders() });
+      var json = await resp.json().catch(function() { return null; });
+      return json && (json.data || json) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function carregarOperadoresModal() {
+    try {
+      var r = await fetch('/api/operadores?t=' + Date.now(), { headers: authHeaders() });
+      var j = await r.json().catch(function() { return null; });
+      var ops = (j && j.ok && Array.isArray(j.data)) ? j.data : (Array.isArray(j && j.data) ? j.data : []);
+      return uniqStrings(ops.map(function(o) { return String(o && (o.nome || o.name || o.operador_nome) || '').trim(); }));
+    } catch (_) {
+      return [];
+    }
+  }
+
+  window.adicionarOperadorInconf = function(nome) {
+    var n = String(nome || '').trim().toUpperCase();
+    if (!n) return;
+    var container = document.getElementById('inconf-operadores-chips');
+    if (!container) return;
+    var selVal = (window.CSS && typeof window.CSS.escape === 'function')
+      ? window.CSS.escape(n)
+      : n.replace(/[^a-zA-Z0-9_\-]/g, function(ch) { return '\\' + ch; });
+    if (container.querySelector('input[value="' + selVal + '"]')) return;
+    var label = document.createElement('label');
+    label.style.cssText = 'display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(59,130,246,0.15);border:1px solid #3b82f6;border-radius:20px;cursor:pointer;font-size:12px;color:#f1f5f9;user-select:none';
+    label.innerHTML = '<input type="checkbox" value="' + escAttrLocal2(n) + '" checked style="width:14px;height:14px;accent-color:#3b82f6"> ' + escHLocal2(n);
+    container.appendChild(label);
+  };
+
+  window.calcularValorInconf = function() {
+    var qtd = Number((document.getElementById('inconf-qtd') || {}).value || 0);
+    var vl = Number((document.getElementById('inconf-vl-unit') || {}).value || 0);
+    var total = document.getElementById('inconf-vl-total');
+    if (total) total.value = (qtd * vl).toFixed(2);
+  };
+
+  window.abrirModalInconformidade = async function(ofId, ofNumero, maquinaParam) {
+    try {
+      var old = document.getElementById('modal-nova-inconformidade');
+      if (old) old.remove();
+    } catch (_) {}
+
+    var ofData = await carregarOfModal(ofId);
+    var produto = String(ofData && (ofData.produto || ofData.descricao || ofData.prodDesc) || '').trim();
+    var cliente = String(ofData && (ofData.cli_nome || ofData.cliente || ofData.cliente_nome || ofData.cliNome) || '').trim();
+    var maquina = String(maquinaParam || ofData && (ofData.maquina || ofData.maq || ofData.maquina_atual) || '').trim();
+    var vlUnit = Number(ofData && (ofData.vl_unit || ofData.valor_unitario) || 0) || 0;
+    var operadores = parseArrayField(ofData && (ofData.operadores || ofData.operadores_of || ofData.operadoresOf));
+    var opOptions = await carregarOperadoresModal();
+
+    var modal = document.createElement('div');
+    modal.id = 'modal-nova-inconformidade';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(2,6,23,0.78);backdrop-filter:blur(4px);z-index:100001;display:flex;align-items:center;justify-content:center;padding:16px';
+    modal.innerHTML = ''
+      + '<div style="width:min(760px,96vw);max-height:92vh;overflow:auto;background:#0f172a;border:1px solid rgba(148,163,184,0.2);border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,0.45);padding:22px">'
+      + '  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:18px">'
+      + '    <div>'
+      + '      <div style="font-size:18px;font-weight:700;color:#f8fafc">⚠️ Registrar Perda / Inconformidade</div>'
+      + '      <div style="font-size:12px;color:#94a3b8;margin-top:4px">Preencha os dados da perda para alimentar a análise de caixas perdidas.</div>'
+      + '    </div>'
+      + '    <button type="button" id="btn-fechar-inconf-modal" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer">✕</button>'
+      + '  </div>'
+      + '  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">OF</label><input id="inconf-of-numero" value="' + escAttrLocal2(ofNumero || ofData && (ofData.numero || ofData.of) || '') + '" readonly style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">MÁQUINA</label><input id="inconf-maquina" value="' + escAttrLocal2(maquina) + '" placeholder="Ex: IMP 01" style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">PRODUTO</label><input id="inconf-produto" value="' + escAttrLocal2(produto) + '" readonly style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">CLIENTE</label><input id="inconf-cliente" value="' + escAttrLocal2(cliente) + '" readonly style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">QTD PERDIDA</label><input id="inconf-qtd" type="number" min="0" step="1" oninput="calcularValorInconf()" style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">VL UNIT</label><input id="inconf-vl-unit" type="number" min="0" step="0.01" value="' + escAttrLocal2(vlUnit ? vlUnit.toFixed(2) : '') + '" oninput="calcularValorInconf()" style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">VL TOTAL</label><input id="inconf-vl-total" type="number" min="0" step="0.01" readonly style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '    <div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">MOTIVO</label><input id="inconf-motivo" placeholder="Ex: Erro de impressão" style="width:100%;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc"></div>'
+      + '  </div>'
+      + '  <div style="margin-top:16px">'
+      + '    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:5px">OPERADORES</label>'
+      + '    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+      + '      <input id="inconf-operador-input" list="inconf-operadores-list" placeholder="Digite ou selecione um operador" style="flex:1;min-width:220px;padding:10px 12px;background:#111827;border:1px solid #273449;border-radius:8px;color:#f8fafc">'
+      + '      <datalist id="inconf-operadores-list">' + opOptions.map(function(op) { return '<option value="' + escAttrLocal2(op) + '"></option>'; }).join('') + '</datalist>'
+      + '      <button type="button" id="btn-add-operador-inconf" style="padding:10px 14px;background:#2563eb;border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer">+ Operador</button>'
+      + '    </div>'
+      + '    <div id="inconf-operadores-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>'
+      + '  </div>'
+      + '  <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:22px">'
+      + '    <button type="button" id="btn-cancelar-inconf" style="padding:10px 16px;background:#1f2937;border:1px solid #334155;border-radius:8px;color:#e5e7eb;cursor:pointer">Cancelar</button>'
+      + '    <button type="button" id="btn-confirmar-inconf" onclick="confirmarRegistroInconformidade(\'' + escAttrLocal2(ofId || '') + '\',\'' + escAttrLocal2(ofNumero || ofData && (ofData.numero || ofData.of) || '') + '\',\'' + escAttrLocal2(maquina) + '\')" style="padding:10px 16px;background:#ef4444;border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer">⚠️ Registrar Perda</button>'
+      + '  </div>'
+      + '</div>';
+
+    modal.addEventListener('click', function(ev) {
+      if (ev.target === modal) modal.remove();
+    });
+    document.body.appendChild(modal);
+    try { document.body.style.overflow = 'hidden'; } catch (_) {}
+
+    var closeModal = function() {
+      try { modal.remove(); } catch (_) {}
+      try { document.body.style.overflow = ''; } catch (_) {}
+    };
+    var btnClose = document.getElementById('btn-fechar-inconf-modal');
+    var btnCancel = document.getElementById('btn-cancelar-inconf');
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCancel) btnCancel.onclick = closeModal;
+
+    var btnAdd = document.getElementById('btn-add-operador-inconf');
+    var inpAdd = document.getElementById('inconf-operador-input');
+    if (btnAdd) btnAdd.onclick = function() {
+      window.adicionarOperadorInconf(inpAdd && inpAdd.value || '');
+      if (inpAdd) inpAdd.value = '';
+    };
+    if (inpAdd) {
+      inpAdd.addEventListener('keydown', function(ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          window.adicionarOperadorInconf(inpAdd.value || '');
+          inpAdd.value = '';
+        }
+      });
+    }
+
+    operadores.forEach(function(op) { window.adicionarOperadorInconf(op); });
+    window.calcularValorInconf();
+  };
+
+  window.confirmarRegistroInconformidade = async function(ofId, ofNumero, maquinaParam) {
+    var maquina = String((document.getElementById('inconf-maquina') || {}).value || maquinaParam || '').trim();
+    var qtd = Number((document.getElementById('inconf-qtd') || {}).value || 0);
+    var vlUnit = Number((document.getElementById('inconf-vl-unit') || {}).value || 0);
+    var vlTotal = Number((document.getElementById('inconf-vl-total') || {}).value || (qtd * vlUnit));
+    var motivo = String((document.getElementById('inconf-motivo') || {}).value || '').trim();
+    var produto = String((document.getElementById('inconf-produto') || {}).value || '').trim();
+    var cliente = String((document.getElementById('inconf-cliente') || {}).value || '').trim();
+    var checkboxes = document.querySelectorAll('#inconf-operadores-chips input[type="checkbox"]:checked');
+    var operadores = Array.prototype.slice.call(checkboxes).map(function(cb) { return String(cb.value || '').trim(); }).filter(Boolean);
+
+    if (!maquina) { toastLocal('⚠️ Informe a máquina'); return; }
+    if (!qtd || qtd <= 0) { toastLocal('⚠️ Informe a quantidade perdida'); return; }
+
+    var btnConfirmar = document.getElementById('btn-confirmar-inconf');
+    if (btnConfirmar) { btnConfirmar.disabled = true; btnConfirmar.textContent = 'Salvando...'; }
+
+    try {
+      var resp = await fetch('/api/inconformidades', {
+        method: 'POST',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          of_id: ofId || null,
+          of_numero: ofNumero || null,
+          maquina: maquina,
+          produto: produto || null,
+          cliente: cliente || null,
+          operadores: operadores,
+          operador_principal: operadores[0] || null,
+          qtd_perdida: qtd,
+          vl_unit: vlUnit,
+          vl_total: vlTotal || (qtd * vlUnit),
+          motivo: motivo || null
+        })
+      });
+      var data = await resp.json().catch(function() { return null; });
+      if (!resp.ok) throw new Error(String(data && data.error || resp.status));
+      toastLocal('✅ Inconformidade registrada com sucesso!');
+      var modal = document.getElementById('modal-nova-inconformidade');
+      if (modal) modal.remove();
+      try { document.body.style.overflow = ''; } catch (_) {}
+      if (typeof window.carregarCaixasPerdidas === 'function') await window.carregarCaixasPerdidas();
+      else if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas();
+    } catch (e) {
+      toastLocal('❌ Erro ao salvar: ' + String(e && e.message || e));
+      if (btnConfirmar) { btnConfirmar.disabled = false; btnConfirmar.textContent = '⚠️ Registrar Perda'; }
+    }
+  };
+
+  function fixarBotaoNovaInconformidade() {
+    Array.prototype.slice.call(document.querySelectorAll('#page-caixas-perdidas button, #page-inconformidades button')).forEach(function(btn) {
+      var txt = String(btn && btn.textContent || '').trim();
+      if (!txt) return;
+      if (!(/inconformidade/i.test(txt) || /registrar perda/i.test(txt) || /nova perda/i.test(txt) || /^registrar$/i.test(txt))) return;
+      if (btn.dataset.inconfFixed === '1') return;
+      btn.dataset.inconfFixed = '1';
+      var onclickAtual = String(btn.getAttribute('onclick') || '');
+      if (onclickAtual.indexOf('abrirModalInconformidade') >= 0) return;
+      btn.onclick = function(e) {
+        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+        window.abrirModalInconformidade(null, null, null);
+      };
+    });
+  }
+
+  window.fixarBotaoNovaInconformidade = fixarBotaoNovaInconformidade;
+  fixarBotaoNovaInconformidade();
+  try {
+    if (window._obsInconf && typeof window._obsInconf.disconnect === 'function') window._obsInconf.disconnect();
+  } catch (_) {}
+  try {
+    window._obsInconf = new MutationObserver(function() { fixarBotaoNovaInconformidade(); });
+    window._obsInconf.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+})();
