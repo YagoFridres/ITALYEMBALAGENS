@@ -3578,9 +3578,30 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { if (typeof window.__ensureComissoesBusca === 'function') window.__ensureComissoesBusca(); } catch (_) {}
   }
 
+  function stopTickWhenReady() {
+    try {
+      var buscaOk = !!document.getElementById('comissoes-busca-of');
+      var hookOk = !!window.__patchComHooked;
+      if (buscaOk && hookOk && window.__patchComissoesTickInterval) {
+        clearInterval(window.__patchComissoesTickInterval);
+        window.__patchComissoesTickInterval = null;
+      }
+    } catch (_) {}
+  }
+
+  function startTick() {
+    try { tick(); } catch (_) {}
+    stopTickWhenReady();
+    if (window.__patchComissoesTickInterval) return;
+    window.__patchComissoesTickInterval = setInterval(function() {
+      try { tick(); } catch (_) {}
+      stopTickWhenReady();
+    }, 900);
+  }
+
   bindInlineEdit();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 250); setInterval(tick, 900); });
-  else { setTimeout(tick, 250); setInterval(tick, 900); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startTick, 250); });
+  else { setTimeout(startTick, 250); }
 })();
 
 (function patchPainelClienteApi() {
@@ -4014,8 +4035,22 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { if (!ev.target.closest('#wrap-calc-cliente')) close(); } catch (_) {}
     }, true);
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(ensure, 500); setInterval(ensure, 1500); });
-  else { setTimeout(ensure, 500); setInterval(ensure, 1500); }
+  function startEnsureCalcCliente() {
+    try { ensure(); } catch (_) {}
+    if (window.__patchCalcClienteInterval) return;
+    window.__patchCalcClienteInterval = setInterval(function() {
+      try { ensure(); } catch (_) {}
+      try {
+        var sel = document.getElementById('calc-cli');
+        if (sel && sel.dataset.patchAutocomplete === '1' && window.__patchCalcClienteInterval) {
+          clearInterval(window.__patchCalcClienteInterval);
+          window.__patchCalcClienteInterval = null;
+        }
+      } catch (_) {}
+    }, 1500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startEnsureCalcCliente, 500); });
+  else { setTimeout(startEnsureCalcCliente, 500); }
 })();
 
 (function patchBotaoCalculadoraAbrir() {
@@ -4108,8 +4143,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     bindBtn();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 600); setInterval(tick, 2000); });
-  else { setTimeout(tick, 600); setInterval(tick, 2000); }
+  function startTickCalc() {
+    try { tick(); } catch (_) {}
+    if (window.__patchCalcOpenInterval) return;
+    window.__patchCalcOpenInterval = setInterval(function() {
+      try { tick(); } catch (_) {}
+      try {
+        var btn =
+          document.querySelector('#btn-calculadora, .btn-calculadora') ||
+          document.querySelector('button[onclick*="abrirCalculadora"]');
+        var btnOk = !!(btn && btn.dataset.patchCalcBtn === '1');
+        var fnOk = !!(window.abrirCalculadora && window.abrirCalculadora._patchCalcOpen);
+        if (btnOk && fnOk && window.__patchCalcOpenInterval) {
+          clearInterval(window.__patchCalcOpenInterval);
+          window.__patchCalcOpenInterval = null;
+        }
+      } catch (_) {}
+    }, 2000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startTickCalc, 600); });
+  else { setTimeout(startTickCalc, 600); }
 })();
 
 (function patchBuscaComissoesPorOf() {
@@ -4136,8 +4190,19 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       tr.style.display = (!t || txt.indexOf(t) !== -1) ? '' : 'none';
     });
   };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); });
-  else { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); }
+  function startEnsureBuscaComissoes() {
+    try { window.__ensureComissoesBusca(); } catch (_) {}
+    if (window.__ensureComissoesBuscaInterval) return;
+    window.__ensureComissoesBuscaInterval = setInterval(function() {
+      try { window.__ensureComissoesBusca(); } catch (_) {}
+      if (document.getElementById('comissoes-busca-of') && window.__ensureComissoesBuscaInterval) {
+        clearInterval(window.__ensureComissoesBuscaInterval);
+        window.__ensureComissoesBuscaInterval = null;
+      }
+    }, 1800);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startEnsureBuscaComissoes, 600); });
+  else { setTimeout(startEnsureBuscaComissoes, 600); }
 })();
 
 (function patchRelatorioComissoesVendedor() {
@@ -4933,8 +4998,24 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     patchSalvarOfRapida();
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(tick, 400); setInterval(tick, 1500); });
-  else { setTimeout(tick, 400); setInterval(tick, 1500); }
+  function startTickOfRapida() {
+    try { tick(); } catch (_) {}
+    if (window.__patchOfRapidaEditInterval) return;
+    window.__patchOfRapidaEditInterval = setInterval(function() {
+      try { tick(); } catch (_) {}
+      try {
+        var abriuOk = !!(window.abrirModalOF && window.abrirModalOF._patchToOfRapidaEdit);
+        var salvarOk = !!(window.salvarOfRapida && window.salvarOfRapida._patchSalvarEdicaoOf);
+        if (abriuOk && salvarOk && window.__patchOfRapidaEditInterval) {
+          clearInterval(window.__patchOfRapidaEditInterval);
+          window.__patchOfRapidaEditInterval = null;
+        }
+      } catch (_) {}
+    }, 1500);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(startTickOfRapida, 400); });
+  else { setTimeout(startTickOfRapida, 400); }
 })();
 
 (function patchOfRapidaCoresMultiItemAndSalvarEdicao() {
@@ -7856,10 +7937,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   cleanupAnalisesHost();
+  function startCleanupAnalisesHost() {
+    cleanupAnalisesHost();
+    if (window.__cleanupAnalisesHostInterval) return;
+    window.__cleanupAnalisesHostInterval = setInterval(function() {
+      cleanupAnalisesHost();
+    }, 1200);
+  }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { setInterval(cleanupAnalisesHost, 1200); });
+    document.addEventListener('DOMContentLoaded', function() { startCleanupAnalisesHost(); });
   } else {
-    setInterval(cleanupAnalisesHost, 1200);
+    startCleanupAnalisesHost();
   }
   return;
 
