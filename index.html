@@ -17948,7 +17948,7 @@ function renderLancamento(){
   const getQtd = (o)=> Number(o.qtd || o.quantidade || 0) || 0;
   const getPedido = (o)=> String(lancDia(o) || String(o.created_at||'').slice(0,10) || '').slice(0,10);
   const getConc = (o)=> String(o.data_conclusao || o.dataConclusao || '').slice(0,10);
-  const getMaquina = (o)=> String(ofFluxoGetMaquinaAtual(o) || o.maq || '').trim();
+  const getMaquina = (o)=> String(ofFluxoGetMaquinaAtual(o) || o.maquina_atual || o.maquina || (Array.isArray(o.maq) ? o.maq.join(', ') : o.maq) || '').trim();
 
   const q = String(LANC_UI.busca||'').trim().toLowerCase();
   const cliFil = String(LANC_UI.cliente||'').trim().toLowerCase();

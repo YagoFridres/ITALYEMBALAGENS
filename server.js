@@ -3174,7 +3174,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     });
     setNoCache(res);
     const pedidoPaginacao = q_offset !== undefined || q_limit !== undefined;
-    const limitDefault = pedidoPaginacao ? 10 : 200;
+    const limitDefault = pedidoPaginacao ? 10 : 500;
     const limitReq = Math.min(Math.max(1, (Number(q_limit || limitDefault) || limitDefault)), 500);
     const offset = Math.max(0, parseInt(String(q_offset || ''), 10) || 0);
     const incluirExcluidas = String(q_incluir_excluidas || '') === '1';
@@ -3228,9 +3228,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     const temFiltroData = !!(from || to);
     const temFiltrosEspecificos = temFiltroData || !!clienteId || !!clienteNome || !!status || !!maquina || !!busca;
-    const limitFinal = temFiltrosEspecificos ? limitReq : Math.min(limitReq, 200);
+    const limitFinal = pedidoPaginacao ? limitReq : 500;
 
-    const CACHE_VERSION = 'ofs_v5';
+    const CACHE_VERSION = 'ofs_v6';
     const cacheKey = [
       CACHE_VERSION,
       String(req?.usuario?.id || ''),
@@ -3266,13 +3266,62 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       const cacheHit = cached != null;
       console.debug('[OFS CACHE]', cacheHit ? 'HIT' : 'MISS', String(cacheKey).slice(0, 220));
     } catch (_) {}
+    const isUuidLike = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v).trim());
+    const parseMachineList = (value) => {
+      try {
+        if (Array.isArray(value)) {
+          return value.map((item) => {
+            if (item && typeof item === 'object') {
+              return String(item.nome || item.name || item.maquina || item.id || item.value || item.label || '').trim();
+            }
+            return String(item || '').trim();
+          }).filter(Boolean);
+        }
+        if (typeof value === 'string') {
+          const raw = String(value || '').trim();
+          if (!raw) return [];
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              return parsed.map((item) => {
+                if (item && typeof item === 'object') {
+                  return String(item.nome || item.name || item.maquina || item.id || item.value || item.label || '').trim();
+                }
+                return String(item || '').trim();
+              }).filter(Boolean);
+            }
+          } catch (_) {}
+          return [raw];
+        }
+      } catch (_) {}
+      return [];
+    };
+    const parseMachineDisplay = (value) => {
+      const items = parseMachineList(value);
+      const nomes = items.filter((item) => item && !isUuidLike(item));
+      return {
+        items,
+        nome: String((nomes.length ? nomes.join(', ') : (items[0] || '')) || '').trim(),
+      };
+    };
     const formatOfRow = (row) => {
       if (!row || typeof row !== 'object') return row;
-      const maqValue = row?.maq ?? row?.maquina ?? row?.maquina_atual ?? '';
+      const maqInfo = parseMachineDisplay(row?.maq);
+      const fluxoInfo = parseMachineDisplay(row?.fluxo_maquinas ?? row?.maq);
+      const fluxoMaquinas = fluxoInfo.items.length ? fluxoInfo.items : maqInfo.items;
+      const maqValue = String(
+        row?.maquina_atual ||
+        row?.maquina ||
+        fluxoInfo.nome ||
+        maqInfo.nome ||
+        ''
+      ).trim();
       return {
         ...row,
+        maq: maqInfo.items.length ? maqInfo.items : row?.maq,
         maquina: maqValue,
-        maquina_atual: row?.maquina_atual ?? maqValue,
+        maquina_atual: String(row?.maquina_atual || maqValue).trim(),
+        fluxo_maquinas: fluxoMaquinas,
       };
     };
     if (cached != null) {
@@ -3433,8 +3482,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       let q = supabase
         .from('ofs')
         .select(sel, { count: 'exact' })
-        .order(orderBy, { ascending: orderAsc })
-        .range(offset, offset + limitFinal - 1);
+        .order(orderBy, { ascending: orderAsc });
+      if (pedidoPaginacao) q = q.range(offset, offset + limitFinal - 1);
+      else q = q.limit(limitFinal);
 
       if (status) {
         const statusList = String(status).split(',').map((s) => String(s || '').trim()).filter(Boolean);
@@ -3467,10 +3517,8 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         if (expr) q = q.or(expr);
       }
 
-      if (maquina) {
-        const maqCols = ['maq', 'maquina_agendada'].filter((c) => _ofsSelectableHas(c));
-        if (maqCols.length === 1) q = q.eq(maqCols[0], maquina);
-        else if (maqCols.length > 1) q = q.or(maqCols.map((c) => `${c}.eq.${maquina}`).join(','));
+      if (maquina && _ofsSelectableHas('maquina_agendada')) {
+        q = q.eq('maquina_agendada', maquina);
       }
 
       if (busca) {
@@ -3616,11 +3664,17 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const enriched = await enrichJoinClientVend(Array.isArray(data) ? data : []);
     let rows = (enriched || []).map((row) => {
       if (!row || typeof row !== 'object') return row;
-      const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
       const raw = String(row.vendNome || row.vendedor_nome || row.vendedor || '').trim();
-      const vendedor_nome = (raw && !isUuid(raw)) ? raw : '';
+      const vendedor_nome = (raw && !isUuidLike(raw)) ? raw : '';
       return formatOfRow({ ...row, vendedor_nome });
     });
+    if (maquina) {
+      rows = rows.filter((row) => {
+        const nomes = parseMachineList(row?.fluxo_maquinas).concat(parseMachineList(row?.maq));
+        const atual = String(row?.maquina_atual || row?.maquina || '').trim();
+        return nomes.includes(maquina) || atual === maquina;
+      });
+    }
     try {
       const ofsComCliVazio = (Array.isArray(rows) ? rows : []).filter((of) => {
         const cliId = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
@@ -3665,7 +3719,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         imgs: sample?.imgs,
       }));
     } catch (_) {}
-    const totalRows = Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0);
+    const totalRows = maquina
+      ? (Array.isArray(rows) ? rows.length : 0)
+      : (Number.isFinite(Number(total)) ? Number(total) : (Array.isArray(rows) ? rows.length : 0));
     const payload = {
       data: rows,
       total: totalRows,
