@@ -4103,62 +4103,100 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   };
 
-  function abrirJanelaImpressaoRelatorio(data) {
-    var grupos = Array.isArray(data && data.grupos) ? data.grupos : [];
-    var win = window.open('', '_blank');
-    if (!win) {
-      try { window.toast('Bloqueio de pop-up impedindo impressão', 'var(--red)'); } catch (_) {}
-      return;
-    }
-    win.document.write(
-      '<html><head><title>Relatório de Comissões ' + esc(data && data.periodo || '') + '</title>' +
-      '<style>' +
-      'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:18px}' +
-      'h1{font-size:18px;margin:0 0 6px;text-align:center}' +
-      'h2{font-size:14px;margin:18px 0 8px}' +
-      'table{width:100%;border-collapse:collapse;margin-top:8px}' +
-      'th,td{border:1px solid #d0d0d0;padding:6px 8px;font-size:11px}' +
-      'th{background:#efefef;text-align:left}' +
-      '.top{display:flex;justify-content:space-between;gap:16px;margin:12px 0 18px;flex-wrap:wrap}' +
-      '.box{border:1px solid #ddd;padding:8px 10px;border-radius:8px;min-width:180px}' +
-      '</style></head><body>' +
-      '<h1>RELATÓRIO DE COMISSÕES</h1>' +
-      '<div style="text-align:center;color:#555">Período: ' + esc(data && data.periodo || '') + ' | Gerado em: ' + esc(new Date().toLocaleDateString('pt-BR')) + '</div>' +
-      '<div class="top">' +
-        '<div class="box"><div>Total vendas</div><strong>' + esc(fmtMoeda(data && data.total_geral_vendas)) + '</strong></div>' +
-        '<div class="box"><div>Total comissões</div><strong>' + esc(fmtMoeda(data && data.total_geral_comissao)) + '</strong></div>' +
-      '</div>' +
-      grupos.map(function(g) {
-        return '<h2>' + esc(g.vendedor || 'Sem vendedor') + ' | OFs: ' + esc(String(g.ofs && g.ofs.length || 0)) + ' | Vendas: ' + esc(fmtMoeda(g.total_vendas)) + ' | Comissão: ' + esc(fmtMoeda(g.total_comissao)) + '</h2>' +
-          '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Comissão</th></tr></thead><tbody>' +
-          (g.ofs || []).map(function(of) {
-            return '<tr>' +
-              '<td>#' + esc(of.numero || of.of || '') + '</td>' +
-              '<td>' + esc(of.cliente || '') + '</td>' +
-              '<td>' + esc(of.produto || '') + '</td>' +
-              '<td style="text-align:right">' + esc(fmtN(of.quantidade)) + '</td>' +
-              '<td style="text-align:right">' + esc(fmtMoeda(of.total)) + '</td>' +
-              '<td style="text-align:right">' + esc(fmtMoeda(of.comissao || (Number(of.total || 0) * 0.03))) + '</td>' +
-            '</tr>';
-          }).join('') +
-          '</tbody></table>';
-      }).join('') +
-      '</body></html>'
-    );
-    win.document.close();
-    setTimeout(function() { try { win.focus(); win.print(); } catch (_) {} }, 80);
-  }
-
   function patchPrint() {
     if (typeof window.imprimirRelatorioComissoes !== 'function') return;
     if (window.imprimirRelatorioComissoes._patchRelatorioVend) return;
     var orig = window.imprimirRelatorioComissoes;
-    window.imprimirRelatorioComissoes = async function() {
-      if (window._relatorioComissoesData && Array.isArray(window._relatorioComissoesData.grupos) && window._relatorioComissoesData.grupos.length) {
-        abrirJanelaImpressaoRelatorio(window._relatorioComissoesData);
+    window.imprimirRelatorioComissoes = function() {
+      var data = window._relatorioComissoesData;
+      if (!data) {
+        try { return orig.apply(this, arguments); } catch (_) { return; }
+      }
+
+      var fmtMoeda2 = function(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
+      var fmtN2 = function(v) { return Number(v || 0).toLocaleString('pt-BR'); };
+
+      var win = window.open('', '_blank');
+      if (!win) {
+        try { window.toast('Bloqueio de pop-up impedindo impressão', 'var(--red)'); } catch (_) {}
         return;
       }
-      return orig.apply(this, arguments);
+
+      var now = new Date();
+      var grupos = Array.isArray(data.grupos) ? data.grupos : [];
+      var html =
+        '<!DOCTYPE html><html><head>' +
+        '<meta charset="UTF-8">' +
+        '<title>Comissões ' + esc(data.periodo) + '</title>' +
+        '<style>' +
+        '*{margin:0;padding:0;box-sizing:border-box;}' +
+        'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px;}' +
+        'h1{font-size:18px;margin-bottom:4px;}' +
+        '.subtitulo{color:#555;margin-bottom:20px;font-size:13px;}' +
+        '.totais-gerais{display:flex;gap:30px;margin-bottom:24px;padding:12px 16px;background:#f5f5f5;border-radius:6px;}' +
+        '.totais-gerais label{font-size:10px;color:#666;display:block;}' +
+        '.totais-gerais strong{font-size:16px;}' +
+        '.vendedor-bloco{margin-bottom:28px;page-break-inside:avoid;}' +
+        '.vendedor-header{background:#1a2235;color:#fff;padding:10px 14px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;}' +
+        '.vendedor-header .nome{font-weight:bold;font-size:14px;}' +
+        '.vendedor-header .resumo{display:flex;gap:20px;font-size:11px;}' +
+        '.vendedor-header .resumo span{display:flex;flex-direction:column;align-items:flex-end;}' +
+        'table{width:100%;border-collapse:collapse;border:1px solid #ddd;}' +
+        'th{background:#f0f0f0;padding:7px 10px;text-align:left;font-size:11px;border-bottom:1px solid #ccc;}' +
+        'td{padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;}' +
+        '.num{text-align:right;}' +
+        '.total-row{background:#f9f9f9;font-weight:bold;}' +
+        '@media print{body{padding:10px;}.vendedor-bloco{page-break-inside:avoid;}}' +
+        '</style>' +
+        '</head><body>' +
+        '<h1>Relatório de Comissões — ' + esc(data.periodo) + '</h1>' +
+        '<div class="subtitulo">Italy Embalagens · Gerado em ' + esc(now.toLocaleDateString('pt-BR')) + ' às ' + esc(now.toLocaleTimeString('pt-BR')) + '</div>' +
+        '<div class="totais-gerais">' +
+        '<div><label>TOTAL DE VENDAS</label><strong>' + esc(fmtMoeda2(data.total_geral_vendas)) + '</strong></div>' +
+        '<div><label>TOTAL DE COMISSÕES</label><strong style="color:#16a34a">' + esc(fmtMoeda2(data.total_geral_comissao)) + '</strong></div>' +
+        '<div><label>Nº DE VENDEDORES</label><strong>' + esc(String(grupos.length)) + '</strong></div>' +
+        '</div>' +
+        grupos.map(function(g) {
+          var ofs = Array.isArray(g.ofs) ? g.ofs : [];
+          return '' +
+            '<div class="vendedor-bloco">' +
+            '<div class="vendedor-header">' +
+            '<span class="nome">👤 ' + esc(g.vendedor) + '</span>' +
+            '<div class="resumo">' +
+            '<span><small>VENDAS</small> ' + esc(fmtMoeda2(g.total_vendas)) + '</span>' +
+            '<span><small>COMISSÃO</small> ' + esc(fmtMoeda2(g.total_comissao)) + '</span>' +
+            '<span><small>OFs</small> ' + esc(String(ofs.length)) + '</span>' +
+            '</div>' +
+            '</div>' +
+            '<table><thead><tr>' +
+            '<th>Nº OF</th><th>Cliente</th><th>Produto</th>' +
+            '<th class="num">Qtd</th><th class="num">Valor</th><th class="num">Comissão</th>' +
+            '</tr></thead><tbody>' +
+            ofs.map(function(of) {
+              return '' +
+                '<tr>' +
+                '<td>#' + esc(of && (of.numero || of.of || '') || '') + '</td>' +
+                '<td>' + esc(of && of.cliente || '') + '</td>' +
+                '<td>' + esc(of && of.produto || '') + '</td>' +
+                '<td class="num">' + esc(fmtN2(of && of.quantidade)) + '</td>' +
+                '<td class="num">' + esc(fmtMoeda2(of && of.total)) + '</td>' +
+                '<td class="num">' + esc(fmtMoeda2((of && of.comissao) || (Number(of && of.total || 0) * 0.03))) + '</td>' +
+                '</tr>';
+            }).join('') +
+            '<tr class="total-row">' +
+            '<td colspan="4">TOTAL ' + esc(g.vendedor) + '</td>' +
+            '<td class="num">' + esc(fmtMoeda2(g.total_vendas)) + '</td>' +
+            '<td class="num">' + esc(fmtMoeda2(g.total_comissao)) + '</td>' +
+            '</tr>' +
+            '</tbody></table>' +
+            '</div>';
+        }).join('') +
+        '</body></html>';
+
+      win.document.write(html);
+      win.document.close();
+      try { win.focus(); } catch (_) {}
+      setTimeout(function() { try { win.print(); } catch (_) {} }, 500);
     };
     window.imprimirRelatorioComissoes._patchRelatorioVend = true;
   }
