@@ -1381,6 +1381,120 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
   window.goFinanceiro = goFinanceiro;
 
+  (function patchPermissoesLiberadasExcetoFinanceiro() {
+    function isFinanceiroPage(pid) {
+      var page = String(pid || '').trim().toLowerCase();
+      return page === 'orcamentos' || page === 'comissoes';
+    }
+
+    function liberarElementosNaoFinanceiro() {
+      try {
+        document.querySelectorAll('.nav-item, .menu-item, [data-section], button, a, [onclick]').forEach(function(el) {
+          if (!el) return;
+          var dentroFinanceiro = false;
+          try {
+            dentroFinanceiro = !!el.closest('#nav-group-financeiro, #ng-financeiro, #menu-fin-orcamentos, #menu-fin-comissoes');
+          } catch (_) {}
+          if (dentroFinanceiro) return;
+          try { el.disabled = false; } catch (_) {}
+          try { el.removeAttribute('disabled'); } catch (_) {}
+          try { el.removeAttribute('aria-disabled'); } catch (_) {}
+          try { el.style.pointerEvents = ''; } catch (_) {}
+          try { el.style.opacity = ''; } catch (_) {}
+          try { if (el.classList) el.classList.remove('bloqueado', 'disabled', 'is-disabled'); } catch (_) {}
+          try {
+            var ds = String(el.style.display || '').trim().toLowerCase();
+            if (ds === 'none') el.style.display = '';
+          } catch (_) {}
+        });
+      } catch (_) {}
+      try {
+        document.querySelectorAll('.no-perm-overlay').forEach(function(el) { el.remove(); });
+      } catch (_) {}
+    }
+
+    function hook() {
+      if (window.__patchPermissoesLiberadasExcetoFinanceiro) return;
+      window.__patchPermissoesLiberadasExcetoFinanceiro = true;
+
+      var origHasPerm = (typeof window.hasPerm === 'function') ? window.hasPerm : null;
+      var origTemPermPagina = (typeof window.temPermPagina === 'function') ? window.temPermPagina : null;
+      var origAplicarPermissoes = (typeof window.aplicarPermissoes === 'function') ? window.aplicarPermissoes : null;
+      var origMostrarSemPermissao = (typeof window.mostrarSemPermissao === 'function') ? window.mostrarSemPermissao : null;
+
+      window.hasPerm = function(keyOrList) {
+        if (Array.isArray(keyOrList)) {
+          return keyOrList.some(function(k) { return window.hasPerm(k); });
+        }
+        var key = String(keyOrList || '').trim().toLowerCase();
+        if (!key) return true;
+        if (key.indexOf('financeiro') >= 0) {
+          try { return origHasPerm ? !!origHasPerm.apply(this, arguments) : true; } catch (_) { return true; }
+        }
+        return true;
+      };
+
+      window.temPermPagina = function(paginaId) {
+        var pid = String(paginaId || '').trim();
+        if (!isFinanceiroPage(pid)) return true;
+        if (origTemPermPagina) {
+          try { return !!origTemPermPagina.apply(this, arguments); } catch (_) {}
+        }
+        try {
+          if (sessionStorage.getItem('fin_ok') === '1') return true;
+          var s = prompt('Senha do Financeiro:');
+          if (s === null) return false;
+          if (String(s).trim() === '1234') {
+            sessionStorage.setItem('fin_ok', '1');
+            return true;
+          }
+          if (String(s).trim() !== '') alert('Senha incorreta.');
+        } catch (_) {}
+        return false;
+      };
+
+      window.aplicarPermissoes = function() {
+        try { if (origAplicarPermissoes) origAplicarPermissoes.apply(this, arguments); } catch (_) {}
+        liberarElementosNaoFinanceiro();
+      };
+
+      window.mostrarSemPermissao = function(paginaId) {
+        if (!isFinanceiroPage(paginaId)) {
+          liberarElementosNaoFinanceiro();
+          return;
+        }
+        try { if (origMostrarSemPermissao) return origMostrarSemPermissao.apply(this, arguments); } catch (_) {}
+      };
+
+      window.podeSelecionarChapas = function() { return true; };
+
+      try {
+        var origGo = window.go;
+        if (typeof origGo === 'function' && !origGo._patchPermissoesLiberadasExcetoFinanceiro) {
+          var wrappedGo = function(id) {
+            var ret = origGo.apply(this, arguments);
+            setTimeout(liberarElementosNaoFinanceiro, 40);
+            return ret;
+          };
+          wrappedGo._patchPermissoesLiberadasExcetoFinanceiro = true;
+          window.go = wrappedGo;
+        }
+      } catch (_) {}
+
+      liberarElementosNaoFinanceiro();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        hook();
+        setInterval(liberarElementosNaoFinanceiro, 1500);
+      });
+    } else {
+      hook();
+      setInterval(liberarElementosNaoFinanceiro, 1500);
+    }
+  })();
+
   function _hotbarValidIds(){
     try{
       return (PAGINAS_REAIS_DESKTOP || []).map(function(p){ return String(p && p.id || '').trim(); }).filter(Boolean);
@@ -3772,6 +3886,297 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); });
   else { setTimeout(window.__ensureComissoesBusca, 600); setInterval(window.__ensureComissoesBusca, 1800); }
+})();
+
+(function patchRelatorioComissoesVendedor() {
+  function esc(v) {
+    if (typeof window.escH === 'function') return window.escH(v);
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function tokenHeaders() {
+    var token = '';
+    try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) {}
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+
+  function mesesOptions() {
+    var now = new Date();
+    return Array.from({ length: 12 }, function(_, i) {
+      var dt = new Date(2000, i, 1);
+      var sel = (i + 1) === (now.getMonth() + 1) ? ' selected' : '';
+      return '<option value="' + (i + 1) + '"' + sel + '>' + esc(dt.toLocaleDateString('pt-BR', { month: 'long' })) + '</option>';
+    }).join('');
+  }
+
+  function anosOptions() {
+    var nowYear = new Date().getFullYear();
+    return [2024, 2025, 2026, 2027].map(function(a) {
+      return '<option value="' + a + '"' + (a === nowYear ? ' selected' : '') + '>' + a + '</option>';
+    }).join('');
+  }
+
+  function fmtMoeda(v) {
+    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtN(v) {
+    return Number(v || 0).toLocaleString('pt-BR');
+  }
+
+  function buildToolbarHtml() {
+    return ''
+      + '<div id="comissoes-relatorio-toolbar" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px">'
+      + '  <div style="font-weight:600;margin-bottom:12px;color:var(--text1)">📊 Relatório de Comissões</div>'
+      + '  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
+      + '    <div>'
+      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">MÊS</label>'
+      + '      <select id="rel-comissao-mes" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1)">' + mesesOptions() + '</select>'
+      + '    </div>'
+      + '    <div>'
+      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">ANO</label>'
+      + '      <select id="rel-comissao-ano" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1)">' + anosOptions() + '</select>'
+      + '    </div>'
+      + '    <div style="flex:1;min-width:200px">'
+      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">VENDEDOR(ES)</label>'
+      + '      <select id="rel-comissao-vendedores" multiple style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1);width:100%;min-height:70px">'
+      + '        <option value="todos" selected>Todos os vendedores</option>'
+      + '      </select>'
+      + '    </div>'
+      + '    <div style="display:flex;gap:8px">'
+      + '      <button onclick="gerarRelatorioComissoes()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 Gerar</button>'
+      + '      <button onclick="imprimirRelatorioComissoes()" id="btn-imprimir-comissoes" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;display:none">🖨️ Imprimir</button>'
+      + '    </div>'
+      + '  </div>'
+      + '</div>'
+      + '<div id="comissoes-relatorio-resultado" style="display:none"></div>';
+  }
+
+  function ensureToolbar() {
+    var area = document.getElementById('com-screen-area');
+    if (!area) return null;
+    var wrap = document.getElementById('comissoes-relatorio-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'comissoes-relatorio-wrap';
+      wrap.innerHTML = buildToolbarHtml();
+      area.parentNode.insertBefore(wrap, area);
+    }
+    return wrap;
+  }
+
+  function syncTodosOption() {
+    var sel = document.getElementById('rel-comissao-vendedores');
+    if (!sel) return;
+    var todosOpt = sel.querySelector('option[value="todos"]');
+    var picked = Array.from(sel.selectedOptions || []).map(function(o) { return String(o.value || ''); });
+    if (picked.indexOf('todos') >= 0 && picked.length > 1) {
+      Array.from(sel.options).forEach(function(o) { if (o.value !== 'todos') o.selected = false; });
+    } else if (picked.indexOf('todos') === -1 && picked.length === 0 && todosOpt) {
+      todosOpt.selected = true;
+    }
+  }
+
+  window.carregarVendedoresComissoes = async function() {
+    var sel = document.getElementById('rel-comissao-vendedores');
+    if (!sel || sel.dataset.loading === '1') return;
+    sel.dataset.loading = '1';
+    try {
+      var names = [];
+      try {
+        var resp = await fetch('/api/usuarios/lista', { headers: tokenHeaders() });
+        var json = await resp.json().catch(function() { return {}; });
+        var usrs = Array.isArray(json && (json.data || json)) ? (json.data || json) : [];
+        names = usrs
+          .filter(function(u) {
+            var perfil = String(u && u.perfil || '').toLowerCase();
+            return perfil.indexOf('vend') >= 0 || perfil === 'comercial' || perfil === 'admin' || perfil === 'custom';
+          })
+          .map(function(u) { return String(u && u.nome || '').trim(); })
+          .filter(Boolean);
+      } catch (_) {}
+      if (!names.length) {
+        try {
+          var vendedores = Array.isArray(window._comissoesData && window._comissoesData.vendedores) ? window._comissoesData.vendedores : [];
+          names = vendedores.map(function(v) { return String(v && v.vendedor || '').trim(); }).filter(Boolean);
+        } catch (_) {}
+      }
+      if (!names.length) {
+        try {
+          var ofs = Array.isArray(window.OFS) ? window.OFS : [];
+          ofs.forEach(function(of) {
+            var nome = String(of && (of.vendedor || of.representante || of.vendNome) || '').trim();
+            if (nome) names.push(nome);
+          });
+        } catch (_) {}
+      }
+      names = Array.from(new Set(names.filter(Boolean))).sort(function(a, b) { return a.localeCompare(b); });
+      Array.from(sel.querySelectorAll('option:not([value="todos"])')).forEach(function(o) { o.remove(); });
+      names.forEach(function(v) {
+        var opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        sel.appendChild(opt);
+      });
+      sel.onchange = syncTodosOption;
+    } finally {
+      delete sel.dataset.loading;
+    }
+  };
+
+  window.gerarRelatorioComissoes = async function() {
+    var mes = document.getElementById('rel-comissao-mes') && document.getElementById('rel-comissao-mes').value;
+    var ano = document.getElementById('rel-comissao-ano') && document.getElementById('rel-comissao-ano').value;
+    var selVend = document.getElementById('rel-comissao-vendedores');
+    var container = document.getElementById('comissoes-relatorio-resultado');
+    if (!container) return;
+    syncTodosOption();
+    var vendedoresSel = 'todos';
+    if (selVend) {
+      var picks = Array.from(selVend.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); }).filter(Boolean);
+      vendedoresSel = (!picks.length || picks.indexOf('todos') >= 0) ? 'todos' : picks.join(',');
+    }
+    container.style.display = 'block';
+    container.innerHTML = '<div style="padding:20px;color:var(--text2)">Carregando...</div>';
+    try {
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes || '') + '&ano=' + encodeURIComponent(ano || '') + '&vendedores=' + encodeURIComponent(vendedoresSel), {
+        headers: tokenHeaders()
+      });
+      var data = await resp.json().catch(function() { return {}; });
+      if (!resp.ok || !data || data.error) throw new Error((data && data.error) || 'Erro ao gerar relatório');
+      window._relatorioComissoesData = data;
+      container.innerHTML =
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px;flex-wrap:wrap">' +
+            '<h3 style="margin:0;color:var(--text1)">Relatório de Comissões — ' + esc(data.periodo || '') + '</h3>' +
+            '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
+              '<div style="text-align:right"><div style="font-size:11px;color:var(--text2)">TOTAL VENDAS</div><div style="font-weight:700;color:#3b82f6">' + fmtMoeda(data.total_geral_vendas) + '</div></div>' +
+              '<div style="text-align:right"><div style="font-size:11px;color:var(--text2)">TOTAL COMISSÕES</div><div style="font-weight:700;color:#10b981">' + fmtMoeda(data.total_geral_comissao) + '</div></div>' +
+            '</div>' +
+          '</div>' +
+          ((data.grupos || []).map(function(g) {
+            return '' +
+              '<div style="margin-bottom:24px;border:1px solid var(--border);border-radius:8px;overflow:hidden">' +
+                '<div style="background:var(--bg3,#1a2235);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">' +
+                  '<div style="font-weight:700;font-size:15px;color:var(--text1)">👤 ' + esc(g.vendedor || '') + '</div>' +
+                  '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
+                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">VENDAS</div><div style="font-weight:600;color:#3b82f6">' + fmtMoeda(g.total_vendas) + '</div></div>' +
+                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">COMISSÃO</div><div style="font-weight:600;color:#10b981">' + fmtMoeda(g.total_comissao) + '</div></div>' +
+                    '<div style="text-align:right"><div style="font-size:10px;color:var(--text2)">OFs</div><div style="font-weight:600">' + fmtN(g.ofs && g.ofs.length || 0) + '</div></div>' +
+                  '</div>' +
+                '</div>' +
+                '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+                  '<thead><tr style="border-bottom:1px solid var(--border)">' +
+                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Nº OF</th>' +
+                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Cliente</th>' +
+                    '<th style="padding:8px 12px;text-align:left;color:var(--text2);font-weight:500">Produto</th>' +
+                    '<th style="padding:8px 12px;text-align:right;color:var(--text2);font-weight:500">Qtd</th>' +
+                    '<th style="padding:8px 12px;text-align:right;color:var(--text2);font-weight:500">Valor</th>' +
+                    '<th style="padding:8px 12px;text-align:right;color:#10b981;font-weight:500">Comissão</th>' +
+                  '</tr></thead>' +
+                  '<tbody>' +
+                    ((g.ofs || []).map(function(of, idx) {
+                      return '' +
+                        '<tr style="border-bottom:1px solid var(--border);' + (idx % 2 === 0 ? 'background:rgba(255,255,255,0.015);' : '') + '">' +
+                          '<td style="padding:8px 12px;color:#3b82f6">#' + esc(of.numero || of.of || '') + '</td>' +
+                          '<td style="padding:8px 12px">' + esc(of.cliente || '') + '</td>' +
+                          '<td style="padding:8px 12px">' + esc(of.produto || '') + '</td>' +
+                          '<td style="padding:8px 12px;text-align:right">' + fmtN(of.quantidade) + '</td>' +
+                          '<td style="padding:8px 12px;text-align:right">' + fmtMoeda(of.total) + '</td>' +
+                          '<td style="padding:8px 12px;text-align:right;color:#10b981">' + fmtMoeda(of.comissao || (Number(of.total || 0) * 0.03)) + '</td>' +
+                        '</tr>';
+                    }).join('')) +
+                  '</tbody>' +
+                '</table>' +
+              '</div>';
+          }).join('')) +
+        '</div>';
+      var btnImpr = document.getElementById('btn-imprimir-comissoes');
+      if (btnImpr) btnImpr.style.display = 'inline-block';
+    } catch (e) {
+      container.innerHTML = '<div style="color:#ef4444;padding:12px">Erro: ' + esc(e && e.message || e) + '</div>';
+    }
+  };
+
+  function abrirJanelaImpressaoRelatorio(data) {
+    var grupos = Array.isArray(data && data.grupos) ? data.grupos : [];
+    var win = window.open('', '_blank');
+    if (!win) {
+      try { window.toast('Bloqueio de pop-up impedindo impressão', 'var(--red)'); } catch (_) {}
+      return;
+    }
+    win.document.write(
+      '<html><head><title>Relatório de Comissões ' + esc(data && data.periodo || '') + '</title>' +
+      '<style>' +
+      'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:18px}' +
+      'h1{font-size:18px;margin:0 0 6px;text-align:center}' +
+      'h2{font-size:14px;margin:18px 0 8px}' +
+      'table{width:100%;border-collapse:collapse;margin-top:8px}' +
+      'th,td{border:1px solid #d0d0d0;padding:6px 8px;font-size:11px}' +
+      'th{background:#efefef;text-align:left}' +
+      '.top{display:flex;justify-content:space-between;gap:16px;margin:12px 0 18px;flex-wrap:wrap}' +
+      '.box{border:1px solid #ddd;padding:8px 10px;border-radius:8px;min-width:180px}' +
+      '</style></head><body>' +
+      '<h1>RELATÓRIO DE COMISSÕES</h1>' +
+      '<div style="text-align:center;color:#555">Período: ' + esc(data && data.periodo || '') + ' | Gerado em: ' + esc(new Date().toLocaleDateString('pt-BR')) + '</div>' +
+      '<div class="top">' +
+        '<div class="box"><div>Total vendas</div><strong>' + esc(fmtMoeda(data && data.total_geral_vendas)) + '</strong></div>' +
+        '<div class="box"><div>Total comissões</div><strong>' + esc(fmtMoeda(data && data.total_geral_comissao)) + '</strong></div>' +
+      '</div>' +
+      grupos.map(function(g) {
+        return '<h2>' + esc(g.vendedor || 'Sem vendedor') + ' | OFs: ' + esc(String(g.ofs && g.ofs.length || 0)) + ' | Vendas: ' + esc(fmtMoeda(g.total_vendas)) + ' | Comissão: ' + esc(fmtMoeda(g.total_comissao)) + '</h2>' +
+          '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Qtd</th><th>Valor</th><th>Comissão</th></tr></thead><tbody>' +
+          (g.ofs || []).map(function(of) {
+            return '<tr>' +
+              '<td>#' + esc(of.numero || of.of || '') + '</td>' +
+              '<td>' + esc(of.cliente || '') + '</td>' +
+              '<td>' + esc(of.produto || '') + '</td>' +
+              '<td style="text-align:right">' + esc(fmtN(of.quantidade)) + '</td>' +
+              '<td style="text-align:right">' + esc(fmtMoeda(of.total)) + '</td>' +
+              '<td style="text-align:right">' + esc(fmtMoeda(of.comissao || (Number(of.total || 0) * 0.03))) + '</td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table>';
+      }).join('') +
+      '</body></html>'
+    );
+    win.document.close();
+    setTimeout(function() { try { win.focus(); win.print(); } catch (_) {} }, 80);
+  }
+
+  function patchPrint() {
+    if (typeof window.imprimirRelatorioComissoes !== 'function') return;
+    if (window.imprimirRelatorioComissoes._patchRelatorioVend) return;
+    var orig = window.imprimirRelatorioComissoes;
+    window.imprimirRelatorioComissoes = async function() {
+      if (window._relatorioComissoesData && Array.isArray(window._relatorioComissoesData.grupos) && window._relatorioComissoesData.grupos.length) {
+        abrirJanelaImpressaoRelatorio(window._relatorioComissoesData);
+        return;
+      }
+      return orig.apply(this, arguments);
+    };
+    window.imprimirRelatorioComissoes._patchRelatorioVend = true;
+  }
+
+  function ensure() {
+    ensureToolbar();
+    patchPrint();
+    if (document.getElementById('page-comissoes') && document.getElementById('page-comissoes').classList.contains('active')) {
+      window.carregarVendedoresComissoes();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(ensure, 500); setInterval(ensure, 1800); });
+  } else {
+    setTimeout(ensure, 500);
+    setInterval(ensure, 1800);
+  }
 })();
 
 (function patchOfRapidaClienteEspecial() {
@@ -6591,6 +6996,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchDashboardEstoques() {
+  function cleanupAnalisesHost() {
+    try {
+      var host = document.getElementById('patch-estoque-dashboard');
+      if (host && host.parentNode && host.parentNode.id === 'dash-body') host.remove();
+    } catch (_) {}
+  }
+
+  cleanupAnalisesHost();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { setInterval(cleanupAnalisesHost, 1200); });
+  } else {
+    setInterval(cleanupAnalisesHost, 1200);
+  }
+  return;
+
   function authHeaders() {
     var token = '';
     try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}

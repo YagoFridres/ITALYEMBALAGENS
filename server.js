@@ -1353,6 +1353,136 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+
+    const anoNum = parseInt(String(req.query?.ano || ''), 10) || new Date().getFullYear();
+    const mesNum = parseInt(String(req.query?.mes || ''), 10) || (new Date().getMonth() + 1);
+    const vendedoresRaw = String(req.query?.vendedores || 'todos').trim();
+    const dataInicio = `${anoNum}-${String(mesNum).padStart(2, '0')}-01`;
+    const dataFim = new Date(anoNum, mesNum, 0).toISOString().split('T')[0];
+    const empresaUuid = await _resolveEmpresaUuid(req).catch(() => null);
+    const empLegacy = String(
+      req.usuario?.emp_id ??
+      req.usuario?.empId ??
+      req.user?.emp_id ??
+      req.user?.empId ??
+      ''
+    ).trim();
+    const vendedoresFiltro = vendedoresRaw && vendedoresRaw !== 'todos'
+      ? vendedoresRaw.split(',').map((v) => String(v || '').trim()).filter(Boolean)
+      : [];
+
+    const empresaCandidates = [
+      empresaUuid ? { col: 'empresa_id', val: empresaUuid } : null,
+      empLegacy ? { col: 'emp_id', val: empLegacy } : null,
+      empLegacy ? { col: 'empId', val: empLegacy } : null,
+    ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
+
+    const selectVariants = [
+      'id,numero,of,cliente,cliNome,cliente_nome,produto,prodDesc,descricao,quantidade,qtd,total,valor_total,valor_venda,vl_unit,comissao,vendedor,representante,data_entrega,ent,created_at,status',
+      'id,numero,of,cliente,cliNome,cliente_nome,descricao,quantidade,qtd,valor_total,valor_venda,comissao,vendedor,representante,data_entrega,ent,created_at,status',
+      'id,numero,of,cliente,descricao,qtd,valor_total,comissao,vendedor,representante,created_at,status',
+    ];
+
+    const isMissingColumnErr = (error) => {
+      const msg = String(error?.message || error || '').toLowerCase();
+      return msg.includes('column') || msg.includes('could not find');
+    };
+
+    const queryRows = async () => {
+      let lastError = null;
+      for (const sel of selectVariants) {
+        for (const cand of empresaCandidates.length ? empresaCandidates : [null]) {
+          try {
+            let q = supabase
+              .from('ofs')
+              .select(sel)
+              .gte('created_at', dataInicio)
+              .lte('created_at', dataFim + 'T23:59:59')
+              .limit(5000);
+            if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
+            const { data, error } = await q.order('created_at', { ascending: true });
+            if (!error) return Array.isArray(data) ? data : [];
+            if (isMissingColumnErr(error)) {
+              lastError = error;
+              continue;
+            }
+            throw error;
+          } catch (e) {
+            if (isMissingColumnErr(e)) {
+              lastError = e;
+              continue;
+            }
+            throw e;
+          }
+        }
+      }
+      if (lastError) throw lastError;
+      return [];
+    };
+
+    const rows = await queryRows();
+    const norm = (v) => String(v || '').trim().toLowerCase();
+    const filtradas = rows.filter((of) => {
+      const st = norm(of?.status);
+      if (st.includes('cancel')) return false;
+      if (!vendedoresFiltro.length) return true;
+      const vendedor = String(of?.vendedor || '').trim();
+      const representante = String(of?.representante || '').trim();
+      return vendedoresFiltro.includes(vendedor) || vendedoresFiltro.includes(representante);
+    });
+
+    const grupos = {};
+    filtradas.forEach((of) => {
+      const vendedor = String(of?.vendedor || of?.representante || 'Sem vendedor').trim() || 'Sem vendedor';
+      const total = Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? 0) || 0;
+      const quantidade = Number(of?.quantidade ?? of?.qtd ?? 0) || 0;
+      const produto = String(of?.produto || of?.prodDesc || of?.descricao || '').trim();
+      const comissao = Number(of?.comissao ?? 0) || (total * 0.03);
+      if (!grupos[vendedor]) {
+        grupos[vendedor] = { vendedor, ofs: [], total_vendas: 0, total_comissao: 0 };
+      }
+      grupos[vendedor].ofs.push({
+        id: of?.id || null,
+        numero: of?.numero ?? of?.of ?? '',
+        cliente: of?.cliente ?? of?.cliNome ?? of?.cliente_nome ?? '',
+        produto,
+        quantidade,
+        total,
+        vl_unit: Number(of?.vl_unit ?? 0) || 0,
+        comissao,
+        vendedor: String(of?.vendedor || '').trim(),
+        representante: String(of?.representante || '').trim(),
+        data_entrega: of?.data_entrega ?? of?.ent ?? null,
+        created_at: of?.created_at ?? null,
+        status: of?.status ?? '',
+      });
+      grupos[vendedor].total_vendas += total;
+      grupos[vendedor].total_comissao += comissao;
+    });
+
+    const gruposArr = Object.values(grupos).sort((a, b) => String(a.vendedor || '').localeCompare(String(b.vendedor || '')));
+    const vendedoresDisponiveis = Array.from(new Set(
+      rows.map((of) => String(of?.vendedor || of?.representante || '').trim()).filter(Boolean)
+    )).sort((a, b) => a.localeCompare(b));
+
+    return res.json({
+      ok: true,
+      mes: mesNum,
+      ano: anoNum,
+      periodo: `${String(mesNum).padStart(2, '0')}/${anoNum}`,
+      grupos: gruposArr,
+      vendedores_disponiveis: vendedoresDisponiveis,
+      total_geral_vendas: gruposArr.reduce((s, g) => s + (Number(g.total_vendas || 0) || 0), 0),
+      total_geral_comissao: gruposArr.reduce((s, g) => s + (Number(g.total_comissao || 0) || 0), 0),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.post('/api/usuarios', requireAdmin, async (req, res) => {
   try {
     const nome = String(req.body?.nome || '').trim();
