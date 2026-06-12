@@ -3115,7 +3115,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const status = req.query.status;
     const busca = req.query.busca;
     const empresaFiltro = req.query.empresa;
-    const cacheKey = 'ofs_v10_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
+    const cacheKey = 'ofs_v11_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
     const cached = cacheGet(cacheKey);
     if (cached) return res.json(cached);
 
@@ -3128,7 +3128,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     if (empresaFiltro && empresaFiltro !== 'todas' && empresaFiltro !== 'all') {
       query = query.eq('empresa_id', empresaFiltro);
     } else {
-      query = query.eq('empresa_id', empId);
+      query = query.or('empresa_id.eq.' + empId + ',empresa_id.is.null');
     }
 
     if (status) {
@@ -3753,8 +3753,14 @@ async function _autoSugerirMaquinaParaOF(body, created){
 app.post('/api/ofs', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
+    const empId = await resolverEmpresaId(req);
+    if (!empId) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
     const body = req.body || {};
     const filtered = ofPayloadFiltrado(body);
+    filtered.empresa_id = empId;
+    delete filtered.id;
+    delete filtered.emp_id;
+    delete filtered.empId;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
         const { data: last } = await supabase
@@ -3921,6 +3927,8 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
+    delete body.id; delete body.empresa_id; delete body.emp_id; delete body.empId;
+    delete cleanBody.id; delete cleanBody.empresa_id; delete cleanBody.emp_id; delete cleanBody.empId;
     console.debug('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
     const { data: ofAtual } = await supabase
@@ -5360,7 +5368,8 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         delete payload.status;
       }
     } catch (_) {}
-    delete payload.id; delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
+    delete payload.id; delete payload.empresa_id; delete payload.emp_id; delete payload.empId;
+    delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
     const data = upd.data;
@@ -7513,70 +7522,53 @@ app.get('/api/clientes/:id/vendedor', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes', authMiddleware, async (req, res) => {
   try {
-    console.log('[POST CLIENTES]', {
-      body: req.body,
-      usuario: req.usuario?.email || null
-    });
-    const email = String(req.usuario?.email || '').toLowerCase().trim();
-    const MAPA = {
-      'italy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'gabi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'dani': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'daisy': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'mano': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'matheus': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'sidao': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'edi': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'estoque': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'admin': 'df5f7672-0a6b-402d-ae65-296554236c31',
-      'cartoeste': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-      'carto': 'e9b734dc-c7d5-4b04-898d-1ec7affa721e',
-    };
-    const empresa_id = MAPA[email] || 'df5f7672-0a6b-402d-ae65-296554236c31';
     const b = req.body || {};
-    const camposPermitidos = ['nome','razao_social','documento','cnpj','telefone','tel','email','cidade','uf','endereco','ramo','pagto','rep','ie','rs','codigo','observacoes','ativo','empresa_id','emp_id','vendedor_id'];
-    const payload = {};
-    camposPermitidos.forEach((campo) => {
-      if (b[campo] !== undefined && b[campo] !== null && b[campo] !== '') {
-        payload[campo] = b[campo];
+    const empId = await resolverEmpresaId(req);
+    if (!empId) return res.status(400).json({ ok: false, error: 'Empresa não identificada' });
+    if (!b.nome && !b.rs) return res.status(400).json({ ok: false, error: 'Nome obrigatório' });
+
+    const payloadBase = {
+      empresa_id: empId,
+      nome: String(b.nome || b.rs || '').trim(),
+      rs: String(b.rs || b.nome || '').trim() || null,
+      documento: String(b.documento || b.cnpj || '').trim() || null,
+      cnpj: String(b.cnpj || b.documento || '').trim() || null,
+      telefone: String(b.telefone || b.tel || '').trim() || null,
+      tel: String(b.tel || b.telefone || '').trim() || null,
+      email: String(b.email || '').trim() || null,
+      cidade: String(b.cidade || '').trim() || null,
+      uf: String(b.uf || b.estado || '').trim() || null,
+      endereco: String(b.endereco || '').trim() || null,
+      observacoes: String(b.observacoes || b.obs || '').trim() || null,
+      ativo: true,
+    };
+
+    let payload = { ...payloadBase };
+    delete payload.id;
+
+    let data = null;
+    let error = null;
+    for (let i = 0; i < 8; i++) {
+      const ins = await supabase.from('clientes').insert([payload]).select('*').single();
+      data = ins.data;
+      error = ins.error;
+      if (!error) break;
+      const msg = String(error.message || '').toLowerCase();
+      const m = msg.match(/column \"([^\"]+)\" of relation/i);
+      if (m && m[1] && Object.prototype.hasOwnProperty.call(payload, m[1])) {
+        delete payload[m[1]];
+        continue;
       }
-    });
-    if (b.estado && !payload.uf) payload.uf = b.estado;
-    if (payload.telefone == null && b.tel) payload.telefone = b.tel;
-    if (payload.tel == null && b.telefone) payload.tel = b.telefone;
-    if (payload.documento == null && b.cnpj) payload.documento = b.cnpj;
-    if (payload.cnpj == null && b.documento) payload.cnpj = b.documento;
-    payload.nome = String(payload.nome || b.nome || '').trim();
-    payload.empresa_id = empresa_id;
-    payload.ativo = true;
-    Object.keys(payload).forEach(k => {
-      if (payload[k] === null || payload[k] === undefined || payload[k] === '') delete payload[k];
-    });
-    console.log('[POST CLIENTES PAYLOAD]', payload);
-    if (!payload.nome) return res.status(400).json({ ok: false, error: 'nome_obrigatorio' });
-    try {
-      const digits = _cnpjDigits(payload.cnpj);
-      if (_cnpjIs14(digits)) {
-        const existentes = await _clientesFindByCnpjDigits({ digits, empId: String(payload.emp_id || payload.empId || req.query?.empId || '').trim() || null, ignoreId: '' });
-        if (existentes.length) return res.status(409).json({ ok: false, error: 'cnpj_ja_cadastrado', existing: existentes[0] });
-      }
-    } catch (_) {}
-    console.log('[POST CLIENTES INSERT]', { payload, empresa_id });
-    let { data, error } = await clientesInsertCompat(payload);
-    if (error) {
-      const msg = String(error.message || error);
-      if (msg.includes("vendedor_id") || msg.includes("vendedor")) {
-        delete payload.vendedor_id;
-        delete payload.vendedor;
-        ({ data, error } = await clientesInsertCompat(payload));
-      }
+      break;
     }
-    console.log('[POST CLIENTES RESULT]', { data, error });
     if (error) throw error;
     cacheClearPrefix('clientes_');
-    await logAuditoria('clientes', 'INSERT', data?.[0]?.id, null, data?.[0] || null, req);
-    return res.json({ ok: true, data: data[0] || null });
-  } catch (e) { err(res, e); }
+    await logAuditoria('clientes', 'INSERT', data?.id, null, data || null, req);
+    return res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[POST clientes]', e.message);
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {

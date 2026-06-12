@@ -107,6 +107,29 @@ window.addEventListener('unhandledrejection', function(e) {
     return _warnOrig.apply(console, arguments);
   };
 })();
+(function() {
+  if (window.__patchFetchGuardInstalled) return;
+  window.__patchFetchGuardInstalled = true;
+  var _fetchOrig = window.fetch;
+  if (typeof _fetchOrig !== 'function') return;
+  window.fetch = function(input, init) {
+    try {
+      var url = '';
+      try { url = input && typeof input === 'object' && input.url ? String(input.url) : String(input || ''); } catch (_) { url = ''; }
+      var u = String(url || '');
+      if (
+        u.indexOf('undefined') >= 0 ||
+        u.indexOf('null') >= 0 ||
+        u.indexOf('[object') >= 0 ||
+        u.indexOf('/[]') >= 0
+      ) {
+        try { console.warn('[GUARD] URL inválida bloqueada:', u.substring(0, 140)); } catch (_) {}
+        try { return Promise.resolve(new Response('{}', { status: 400, headers: { 'Content-Type': 'application/json' } })); } catch (_) { return Promise.resolve({ ok: false, status: 400 }); }
+      }
+    } catch (_) {}
+    return _fetchOrig.apply(this, arguments);
+  };
+})();
 if (!window._debounce) {
   window._debounce = function(fn, delay) {
     var timer = null;
@@ -6621,6 +6644,129 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window.fetch = wrapped;
   }
 
+  function abrirModalNovoCliente() {
+    try {
+      var existente = document.getElementById('modal-novo-cliente-overlay');
+      if (existente) existente.remove();
+    } catch (_) {}
+
+    var overlay = document.createElement('div');
+    overlay.id = 'modal-novo-cliente-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:18px;';
+    overlay.innerHTML =
+      '<div style="width:100%;max-width:520px;max-height:90vh;overflow:auto;border-radius:12px;padding:16px;border:1px solid var(--border,#2d3748);background:var(--bg2,#111827);color:var(--text,#e5e7eb)">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">' +
+          '<div style="font-weight:800;font-size:15px">Novo cliente</div>' +
+          '<button id="novo-cli-fechar" style="background:none;border:none;color:var(--text2,#94a3b8);font-size:20px;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr;gap:10px">' +
+          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Nome</label><input id="novo-cli-nome" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Razão social</label><input id="novo-cli-rs" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">CNPJ/Documento</label><input id="novo-cli-cnpj" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Telefone</label><input id="novo-cli-tel" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">E-mail</label><input id="novo-cli-email" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+            '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Cidade</label><input id="novo-cli-cidade" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc)"></div>' +
+          '</div>' +
+          '<div><label style="font-size:11px;color:var(--text2,#94a3b8);display:block;margin-bottom:5px">Observações</label><textarea id="novo-cli-obs" rows="3" style="width:100%;padding:10px 12px;background:var(--bg,#0b1220);border:1px solid var(--border,#273449);border-radius:8px;color:var(--text,#f8fafc);resize:vertical"></textarea></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">' +
+          '<button id="novo-cli-cancelar" style="padding:9px 12px;border-radius:10px;border:1px solid var(--border,#273449);background:transparent;color:var(--text,#e5e7eb);cursor:pointer">Cancelar</button>' +
+          '<button id="novo-cli-salvar" style="padding:9px 12px;border-radius:10px;border:1px solid rgba(34,197,94,0.35);background:rgba(34,197,94,0.18);color:#bbf7d0;cursor:pointer;font-weight:700">Salvar</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+
+    function fechar() {
+      try { overlay.remove(); } catch (_) {}
+    }
+
+    overlay.addEventListener('click', function(e) {
+      try { if (e && e.target === overlay) fechar(); } catch (_) {}
+    });
+    try { document.getElementById('novo-cli-fechar').onclick = fechar; } catch (_) {}
+    try { document.getElementById('novo-cli-cancelar').onclick = fechar; } catch (_) {}
+    try { document.getElementById('novo-cli-salvar').onclick = salvarNovoCliente; } catch (_) {}
+    try { document.getElementById('novo-cli-nome').focus(); } catch (_) {}
+  }
+
+  async function salvarNovoCliente() {
+    try {
+      var nome = String((document.getElementById('novo-cli-nome') || {}).value || '').trim();
+      var rs = String((document.getElementById('novo-cli-rs') || {}).value || '').trim();
+      var cnpj = String((document.getElementById('novo-cli-cnpj') || {}).value || '').trim();
+      var tel = String((document.getElementById('novo-cli-tel') || {}).value || '').trim();
+      var email = String((document.getElementById('novo-cli-email') || {}).value || '').trim();
+      var cidade = String((document.getElementById('novo-cli-cidade') || {}).value || '').trim();
+      var observacoes = String((document.getElementById('novo-cli-obs') || {}).value || '').trim();
+
+      if (!nome && !rs) {
+        alert('Nome obrigatório');
+        return;
+      }
+
+      var token = '';
+      try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) { token = ''; }
+      var headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = 'Bearer ' + token;
+
+      var payload = {
+        nome: nome || rs || '',
+        rs: rs || nome || '',
+        cnpj: cnpj || '',
+        documento: cnpj || '',
+        telefone: tel || '',
+        tel: tel || '',
+        email: email || '',
+        cidade: cidade || '',
+        observacoes: observacoes || ''
+      };
+
+      var resp = await fetch('/api/clientes', { method: 'POST', headers: headers, body: JSON.stringify(payload) });
+      var json = null;
+      try { json = await resp.json(); } catch (_) { json = null; }
+      if (!(json && json.ok && json.data)) {
+        var msg = (json && (json.error || json.message)) ? String(json.error || json.message) : ('Erro ao salvar (' + resp.status + ')');
+        alert(msg);
+        return;
+      }
+
+      try {
+        var overlay = document.getElementById('modal-novo-cliente-overlay');
+        if (overlay) overlay.remove();
+      } catch (_) {}
+
+      try {
+        if (typeof carregarClientes === 'function') {
+          try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
+        }
+      } catch (_) {}
+
+      try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
+      try { alert('Cliente criado'); } catch (_) {}
+    } catch (e) {
+      try { alert(String(e && e.message ? e.message : e)); } catch (_) {}
+    }
+  }
+
+  function ensureBtnNovoCliente() {
+    try {
+      var btn = document.getElementById('btn-novo-cliente') || document.querySelector('[data-novo-cliente], .btn-novo-cliente');
+      if (!btn || btn.dataset.patchNovoCliente === '1') return;
+      btn.dataset.patchNovoCliente = '1';
+      btn.onclick = function(e) {
+        try { if (e && typeof e.preventDefault === 'function') e.preventDefault(); } catch (_) {}
+        abrirModalNovoCliente();
+      };
+    } catch (_) {}
+  }
+
+  window.abrirModalNovoCliente = abrirModalNovoCliente;
+  window.salvarNovoCliente = salvarNovoCliente;
+
   async function _reloadClientes() {
     try {
       try { if (typeof _cliSituacao !== 'undefined') _cliSituacao = ''; } catch (_) {}
@@ -6694,6 +6840,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { patchClickSalvar(); } catch (_) {}
     try { ensureBtnVerTodos(); } catch (_) {}
     try { ensureBtnMesclarClientes(); } catch (_) {}
+    try { ensureBtnNovoCliente(); } catch (_) {}
     try { ensureClientesQuickFiltersNoTopo(); } catch (_) {}
     try { patchRenderClientesBadge(); } catch (_) {}
     try { _adicionarBadgeOfs(); } catch (_) {}
