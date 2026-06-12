@@ -3759,8 +3759,6 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     const filtered = ofPayloadFiltrado(body);
     filtered.empresa_id = empId;
     delete filtered.id;
-    delete filtered.emp_id;
-    delete filtered.empId;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
         const { data: last } = await supabase
@@ -3927,8 +3925,8 @@ app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
     if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
     const body = _filterOfsPayloadKnownCols(req.body || {}, true);
     const cleanBody = { ...body };
-    delete body.id; delete body.empresa_id; delete body.emp_id; delete body.empId;
-    delete cleanBody.id; delete cleanBody.empresa_id; delete cleanBody.emp_id; delete cleanBody.empId;
+    delete body.id; delete body.empresa_id;
+    delete cleanBody.id; delete cleanBody.empresa_id;
     console.debug('[OF SAVE]', req.method, id, JSON.stringify(Object.keys(body || {})));
 
     const { data: ofAtual } = await supabase
@@ -5368,7 +5366,7 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
         delete payload.status;
       }
     } catch (_) {}
-    delete payload.id; delete payload.empresa_id; delete payload.emp_id; delete payload.empId;
+    delete payload.id; delete payload.empresa_id;
     delete payload.numero; delete payload.of; delete payload.of_num; delete payload.seq;
     const upd = await ofsUpdateWithRetry(id, payload);
     if (upd.error) throw upd.error;
