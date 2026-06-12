@@ -6588,6 +6588,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         if (overlay) overlay.remove();
       } catch (_) {}
 
+      try { window._clientesCarregados = false; } catch (_) {}
+      try { window._CLIENTES = []; } catch (_) {}
+      try { window.CLIENTES = []; } catch (_) {}
+      try { if (typeof CLIENTES !== 'undefined') CLIENTES.length = 0; } catch (_) {}
+
       try {
         if (typeof carregarClientes === 'function') {
           try { await carregarClientes(true); } catch (_) { try { await carregarClientes(); } catch (_) {} }
@@ -7910,6 +7915,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         setTimeout(function() {
           try { _resetFiltrosClientes(); } catch (_) {}
           try { _carregarTodosClientes(); } catch (_) {}
+          try { window._clientesCarregados = false; } catch (_) {}
+          try {
+            if (typeof carregarClientes === 'function') {
+              Promise.resolve(carregarClientes(true)).catch(function() { try { return carregarClientes(); } catch (_) {} });
+            }
+          } catch (_) {}
+          try { if (typeof renderClientes === 'function') setTimeout(renderClientes, 120); } catch (_) {}
+          try {
+            var w = document.querySelector('#page-clientes #widget-analise-clientes');
+            if (w) w.style.display = 'none';
+          } catch (_) {}
+          try {
+            var grid = document.getElementById('cli-grid') || document.querySelector('#page-clientes #cli-grid');
+            if (grid) grid.style.display = '';
+            var lista = document.getElementById('clientes-lista') || document.querySelector('#page-clientes #clientes-lista');
+            if (lista) lista.style.display = '';
+          } catch (_) {}
         }, 400);
       }
       runAfterGoEffects(page);
@@ -9877,18 +9899,6 @@ window._mbnActive = function(id) {
         btnValor.dataset.rankFixed = '1';
         btnValor.onclick = function() { window.abrirRankingClientes('faturamento'); };
       }
-      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
-        if (!btn) return;
-        var txt = String(btn.textContent || '').trim();
-        if (!txt || btn.dataset.rankFixed === '1') return;
-        if (txt.indexOf('Quem mais pede') >= 0) {
-          btn.dataset.rankFixed = '1';
-          btn.onclick = function() { window.abrirRankingClientes('quantidade'); };
-        } else if (txt.indexOf('Maior valor') >= 0 || txt.indexOf('Maior Valor') >= 0) {
-          btn.dataset.rankFixed = '1';
-          btn.onclick = function() { window.abrirRankingClientes('faturamento'); };
-        }
-      });
     } catch (_) {}
   }
 
@@ -10100,4 +10110,43 @@ window._mbnActive = function(id) {
   setInterval(function() {
     try { window.aplicarClickImagemOF(); } catch (_) {}
   }, 8000);
+})();
+
+(function patchLog404Resources() {
+  if (window.__patchLog404ResourcesInstalled) return;
+  window.__patchLog404ResourcesInstalled = true;
+
+  try {
+    window.addEventListener('error', function(ev) {
+      try {
+        var t = ev && ev.target;
+        if (!t) return;
+        var tag = String(t.tagName || '').toLowerCase();
+        if (tag === 'img' || tag === 'script' || tag === 'link') {
+          var url = '';
+          try { url = String(t.src || t.href || '').trim(); } catch (_) { url = ''; }
+          if (url) console.warn('[404/RESOURCE]', tag, url);
+        }
+      } catch (_) {}
+    }, true);
+  } catch (_) {}
+
+  try {
+    var origFetch = window.fetch;
+    if (typeof origFetch === 'function' && !origFetch._patchLog404) {
+      var wrapped = function(input, init) {
+        var url = '';
+        try { url = input && typeof input === 'object' && input.url ? String(input.url) : String(input || ''); } catch (_) { url = ''; }
+        var p = origFetch.apply(this, arguments);
+        try {
+          Promise.resolve(p).then(function(res) {
+            try { if (res && res.status === 404) console.warn('[404/FETCH]', url); } catch (_) {}
+          }).catch(function() {});
+        } catch (_) {}
+        return p;
+      };
+      wrapped._patchLog404 = true;
+      window.fetch = wrapped;
+    }
+  } catch (_) {}
 })();

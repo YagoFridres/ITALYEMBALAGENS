@@ -1437,7 +1437,9 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const mesNum = parseInt(String(req.query?.mes || ''), 10) || (new Date().getMonth() + 1);
     const vendedoresRaw = String(req.query?.vendedores || 'todos').trim();
     const dataInicio = `${anoNum}-${String(mesNum).padStart(2, '0')}-01`;
-    const dataFim = new Date(anoNum, mesNum, 0).toISOString().split('T')[0];
+    const nextAno = mesNum === 12 ? (anoNum + 1) : anoNum;
+    const nextMes = mesNum === 12 ? 1 : (mesNum + 1);
+    const dataFimExclusive = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
     const empresaUuid = await _resolveEmpresaUuid(req).catch(() => null);
     const empLegacy = String(
       req.usuario?.emp_id ??
@@ -1472,16 +1474,28 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       const cands = empresaCandidates.length ? empresaCandidates : [null];
       for (const cand of cands) {
         try {
-          let q = supabase
-            .from('ofs')
-            .select('*')
-            .gte('created_at', dataInicio + 'T00:00:00')
-            .lte('created_at', dataFim + 'T23:59:59')
-            .limit(5000);
-          if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
-          const { data, error } = await q.order('created_at', { ascending: true });
-          if (!error) return Array.isArray(data) ? data : [];
-          lastError = error;
+          const pageSize = 1000;
+          let from = 0;
+          let out = [];
+          while (true) {
+            let q = supabase
+              .from('ofs')
+              .select('*')
+              .gte('created_at', dataInicio + 'T00:00:00')
+              .lt('created_at', dataFimExclusive + 'T00:00:00')
+              .order('created_at', { ascending: true })
+              .range(from, from + pageSize - 1);
+            if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
+            const { data, error } = await q;
+            if (error) { lastError = error; break; }
+            const arr = Array.isArray(data) ? data : [];
+            if (!arr.length) break;
+            out = out.concat(arr);
+            if (arr.length < pageSize) break;
+            from += pageSize;
+            if (from > 50000) break;
+          }
+          if (out.length) return out;
         } catch (e) {
           lastError = e;
         }
@@ -1543,6 +1557,9 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const vendedoresDisponiveis = Array.from(new Set(
       (rows || []).map((of) => String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || '').trim()).filter(Boolean)
     )).sort((a, b) => a.localeCompare(b));
+
+    const semValor = filtradas.reduce((s, of) => s + (pickTotal(of) > 0 ? 0 : 1), 0);
+    console.log('[COMISSOES] OFs sem valor:', semValor, 'de', filtradas.length, '| periodo:', anoNum + '-' + String(mesNum).padStart(2, '0'));
 
     return res.json({
       ok: true,
