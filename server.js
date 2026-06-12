@@ -3147,20 +3147,66 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const clienteIds = [...new Set(ofsRaw.map(o => o.cli_id).filter(Boolean))];
     const mapaClientes = {};
     if (clienteIds.length > 0) {
-      for (let i = 0; i < clienteIds.length; i += 100) {
-        const lote = clienteIds.slice(i, i + 100);
-        const { data: clientes } = await supabase
-          .from('clientes')
-          .select('id, nome, rs')
-          .in('id', lote);
-        (clientes || []).forEach(c => {
-          mapaClientes[c.id] = c.nome || c.rs || '';
-        });
+      try {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const idsValidos = clienteIds
+          .map(id => String(id).trim())
+          .filter(id => uuidRegex.test(id));
+
+        console.debug('[CLIENTES] ids para resolver:', idsValidos.length);
+
+        if (idsValidos.length > 0) {
+          for (let i = 0; i < idsValidos.length; i += 50) {
+            const lote = idsValidos.slice(i, i + 50);
+            const { data: clientes, error: errCli } = await supabase
+              .from('clientes')
+              .select('id, nome, rs')
+              .in('id', lote);
+
+            if (errCli) {
+              console.debug('[CLIENTES] erro .in():', errCli.message);
+            }
+
+            console.debug('[CLIENTES] lote', i, 'resultado:', clientes?.length);
+
+            (clientes || []).forEach(c => {
+              const nomeCliente = c.nome || c.rs || '';
+              mapaClientes[c.id] = nomeCliente;
+              mapaClientes[String(c.id).toLowerCase()] = nomeCliente;
+              mapaClientes[String(c.id).toUpperCase()] = nomeCliente;
+            });
+          }
+        }
+
+        const idsCodigo = clienteIds
+          .map(id => String(id).trim())
+          .filter(id => !uuidRegex.test(id) && id.length > 0);
+
+        if (idsCodigo.length > 0) {
+          const { data: clientesCod } = await supabase
+            .from('clientes')
+            .select('id, nome, rs, codigo')
+            .in('codigo', idsCodigo);
+          (clientesCod || []).forEach(c => {
+            const nome = c.nome || c.rs || '';
+            if (c.codigo) mapaClientes[c.codigo] = nome;
+            mapaClientes[c.id] = nome;
+          });
+        }
+
+        console.debug('[CLIENTES] mapa size:', Object.keys(mapaClientes).length);
+      } catch (e) {
+        console.error('[CLIENTES] erro:', e.message);
       }
     }
 
     const rows = ofsRaw.map((of) => {
-      const clienteNome = of.clinome || mapaClientes[of.cli_id] || of.cliid || '';
+      const cliIdNorm = String(of.cli_id || '').trim();
+      const clienteNome = of.clinome
+        || mapaClientes[cliIdNorm]
+        || mapaClientes[cliIdNorm.toLowerCase()]
+        || mapaClientes[cliIdNorm.toUpperCase()]
+        || '';
       let maquinaNome = '';
       try {
         let m = of?.maq;
