@@ -1498,6 +1498,20 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       porVend[vid].total += val;
     });
 
+    const cliIds = Array.from(new Set(
+      todasOFs.map((o) => String(o?.cli_id || '').toLowerCase().trim()).filter(Boolean)
+    ));
+    const mapCli = {};
+    if (cliIds.length > 0) {
+      const { data: clientes } = await supabase
+        .from('clientes')
+        .select('id,nome')
+        .in('id', cliIds.slice(0, 500));
+      (clientes || []).forEach((c) => {
+        mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
+      });
+    }
+
     console.log(`[COMISSOES] Total: R$ ${totalGeral.toFixed(2)}, sem valor: ${semValor}`);
 
     const vendedoresResult = Object.values(porVend)
@@ -1507,6 +1521,25 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
         comissao_rs: (Number(v.total || 0) || 0) * ((Number(v.comissao_pct || 0) || 0) / 100),
       }));
 
+    const ofsDetalhadas = todasOFs.map((of) => {
+      const vid = of?.vendedor_id ? String(of.vendedor_id).toLowerCase().trim() : null;
+      const vend = vid ? mapVend[vid] : null;
+      const cid = of?.cli_id ? String(of.cli_id).toLowerCase().trim() : null;
+      const valorTotal = Number(of?.valor_total || of?.total || 0) || 0;
+      const pct = vend ? (Number(vend.comissao_pct || 1) || 1) : 1;
+      return {
+        id: of?.id || null,
+        numero: of?.numero || null,
+        cliente: cid ? (mapCli[cid] || of?.cli_id || '—') : '—',
+        vendedor: vend ? (String(vend.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
+        valor_total: valorTotal,
+        comissao_pct: pct,
+        comissao_rs: valorTotal * (pct / 100),
+        created_at: of?.created_at || null,
+        status: of?.status || '—',
+      };
+    });
+
     return res.json({
       ok: true,
       mes: `${ano}-${mesNum}`,
@@ -1514,6 +1547,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       total_vendido: totalGeral,
       total_comissao: vendedoresResult.reduce((s, v) => s + (Number(v.comissao_rs || 0) || 0), 0),
       vendedores: vendedoresResult,
+      ofs: ofsDetalhadas,
     });
   } catch (e) {
     console.error('[COMISSOES] erro:', e?.message);

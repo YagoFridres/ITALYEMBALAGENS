@@ -4303,7 +4303,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       document.querySelector('[name="mes"], #mes-sel, #comissao-mes, #comissoes-mes');
     var anoEl = document.getElementById('com-ano') ||
       document.querySelector('[name="ano"], #ano-sel, #comissao-ano, #comissoes-ano');
-
     var mesVal = '';
     var anoVal = '';
     try { mesVal = String((mesEl && mesEl.value) || '').trim(); } catch (_) { mesVal = ''; }
@@ -4315,10 +4314,17 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         anoVal = parts[0];
         mesVal = parts[1];
       }
-    }
-
-    if (!anoVal) {
-      try { anoVal = String(new Date().getFullYear()); } catch (_) { anoVal = ''; }
+    } else if (!mesVal || isNaN(parseInt(mesVal, 10))) {
+      try {
+        var textoMes = String((document.querySelector('.com-mes-label, [data-mes]') || {}).textContent || '');
+        var meses = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+        var low = textoMes.toLowerCase();
+        meses.forEach(function(m, i) {
+          if (low.indexOf(m) >= 0) mesVal = String(i + 1).padStart(2, '0');
+        });
+        var anoMatch = textoMes.match(/\d{4}/);
+        if (anoMatch) anoVal = anoMatch[0];
+      } catch (_) {}
     }
 
     var mesNum = parseInt(String(mesVal || ''), 10);
@@ -4328,18 +4334,44 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function fmt(v) {
-    try {
-      return 'R$ ' + (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } catch (_) {
-      return String(v || 0);
-    }
+    return 'R$ ' + (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtData(d) {
+    try { return d ? new Date(d).toLocaleDateString('pt-BR') : '—'; } catch (_) { return '—'; }
+  }
+
+  function setTextMany(selectors, value) {
+    selectors.forEach(function(sel) {
+      try {
+        var el = document.querySelector(sel);
+        if (el) el.textContent = value;
+      } catch (_) {}
+    });
+  }
+
+  function _renderDetalheOFs(ofs) {
+    var tbody = document.querySelector('#com-ofs-tbody, .com-detalhe-ofs tbody, [data-com-ofs] tbody, #detalhe-ofs tbody');
+    if (!tbody) return;
+    tbody.innerHTML = (ofs || []).map(function(of) {
+      return ''
+        + '<tr>'
+        + '<td>#' + String(of && of.numero || '—') + '</td>'
+        + '<td>' + String(of && of.cliente || '—') + '</td>'
+        + '<td>' + String(of && of.vendedor || '—') + '</td>'
+        + '<td style="text-align:right">' + fmt(of && of.valor_total) + '</td>'
+        + '<td style="text-align:center">' + String(of && of.comissao_pct || 0) + '%</td>'
+        + '<td style="text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
+        + '<td>' + fmtData(of && of.created_at) + '</td>'
+        + '<td>' + String(of && of.status || '—') + '</td>'
+        + '</tr>';
+    }).join('');
   }
 
   async function calcularViaApi() {
     var ref = parseMesAno();
     var mesVal = String(ref.mesNum).padStart(2, '0');
     var anoVal = String(ref.anoNum);
-
     var token = '';
     try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
 
@@ -4352,48 +4384,51 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       headers: token ? { 'Authorization': 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
-    if (!json || json.ok === false) throw new Error(String(json && (json.error || json.message) || resp.status));
+    if (!json || !json.ok) {
+      try { alert('Erro: ' + String(json && json.error || 'Falha ao calcular')); } catch (_) {}
+      return null;
+    }
 
-    try {
-      var elTotal = document.querySelector('#com-total-vendido, .com-total-vendido, [data-field="total_vendido"]');
-      if (elTotal) elTotal.textContent = fmt(json.total_vendido);
-      var elComissao = document.querySelector('#com-total-comissao, .com-total-comissao, [data-field="total_comissao"]');
-      if (elComissao) elComissao.textContent = fmt(json.total_comissao);
-      var elOfs = document.querySelector('#com-total-ofs, .com-total-ofs, [data-field="total_ofs"]');
-      if (elOfs) elOfs.textContent = String(json.total_ofs || 0);
-    } catch (_) {}
+    window._comissoesSqlData = json;
+    window._comissoesData = {
+      totalGeral: Number(json.total_vendido || 0) || 0,
+      totalComissao: Number(json.total_comissao || 0) || 0,
+      totalPedidos: Number(json.total_ofs || 0) || 0,
+      vendedores: (json.vendedores || []).map(function(v) {
+        var total = Number(v && v.total || 0) || 0;
+        var pct = Number(v && v.comissao_pct || 0) || 0;
+        return Object.assign({}, v, {
+          vendNome: v && v.nome,
+          vendId: v && v.id,
+          total: total,
+          peds: Number(v && v.ofs || 0) || 0,
+          comissaoRs: Number(v && v.comissao_rs || (total * (pct / 100))) || 0,
+          comissao: pct,
+          comissao_pct: pct
+        });
+      })
+    };
 
-    try {
-      var vendArr = Array.isArray(json.vendedores) ? json.vendedores : [];
-      window._comissoesSqlData = json;
-      window._comissoesData = {
-        vendedores: vendArr.map(function(v) {
-          return {
-            vendedorId: String(v && v.id || '').trim(),
-            vendedor: String(v && v.nome || 'Sem Vendedor').trim() || 'Sem Vendedor',
-            pedidos: Number(v && v.ofs || 0) || 0,
-            valorTotal: Number(v && v.total || 0) || 0,
-            comissaoPct: Number(v && v.comissao_pct || 0) || 0,
-            comissaoTotal: Number(v && v.comissao_rs || 0) || 0,
-            ofs: []
-          };
-        }),
-        totalGeral: Number(json.total_vendido || 0) || 0,
-        totalComissao: Number(json.total_comissao || 0) || 0,
-        totalPedidos: Number(json.total_ofs || 0) || 0
-      };
-      if (typeof window.renderComissoes === 'function') window.renderComissoes();
-    } catch (_) {}
+    var vals = [json.total_vendido, json.total_comissao, json.total_ofs];
+    [
+      ['#com-total-vendido','[data-com="total_vendido"]','.com-total-vendido','[data-field="total_vendido"]'],
+      ['#com-total-comissao','[data-com="total_comissao"]','.com-total-comissao','[data-field="total_comissao"]'],
+      ['#com-total-ofs','[data-com="total_ofs"]','.com-total-ofs','[data-field="total_ofs"]']
+    ].forEach(function(sels, i) {
+      var value = i === 2 ? String(json.total_ofs || 0) : fmt(vals[i]);
+      setTextMany(sels, value);
+    });
 
+    try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
+    try { if (typeof window.renderRelatorioComissoes === 'function') window.renderRelatorioComissoes(); } catch (_) {}
+    try { if (typeof window.atualizarTabelaComissoes === 'function') window.atualizarTabelaComissoes(); } catch (_) {}
+    try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
     try { window.dispatchEvent(new CustomEvent('comissoes-calculadas', { detail: json })); } catch (_) {}
-    try { console.log('[COMISSOES PATCH]', json.mes, 'OFs:', json.total_ofs, 'Total:', Number(json.total_vendido || 0).toFixed(2)); } catch (_) {}
     return json;
   }
 
   window.calcularComissoes = async function() {
-    try {
-      return await calcularViaApi();
-    } catch (e) {
+    try { return await calcularViaApi(); } catch (e) {
       try { alert('Erro: ' + String(e && e.message || e)); } catch (_) {}
       return null;
     }
@@ -4401,101 +4436,164 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function _vincularBtnCalcular() {
     try {
-      var scope = document.getElementById('page-comissoes') || document;
-      Array.prototype.slice.call(scope.querySelectorAll('button')).forEach(function(btn) {
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
         try {
           if (!btn || btn.dataset.patchCom === '1') return;
           var txt = String(btn.textContent || '').trim();
-          if (!txt) return;
           if (!(txt === 'Calcular' || txt.indexOf('Calcular') >= 0)) return;
           btn.dataset.patchCom = '1';
           btn.addEventListener('click', function(e) {
             try { e.preventDefault(); } catch (_) {}
             try { e.stopPropagation(); } catch (_) {}
-            try { window.calcularComissoes(); } catch (_) {}
+            window.calcularComissoes();
           }, true);
         } catch (_) {}
       });
     } catch (_) {}
   }
 
-  try { _vincularBtnCalcular(); } catch (_) {}
-  try {
-    var _obsCom = new MutationObserver(function() { _vincularBtnCalcular(); });
-    _obsCom.observe(document.body, { childList: true, subtree: true });
-  } catch (_) {}
-})();
+  async function _abrirModalImpressao() {
+    var data = window._comissoesSqlData || {};
+    var vends = Array.isArray(data.vendedores) ? data.vendedores : [];
+    var mesEl = document.getElementById('com-mes') || document.querySelector('select[name="mes"]');
+    var anoEl = document.getElementById('com-ano') || document.querySelector('select[name="ano"]');
+    var mesAtual = (mesEl && mesEl.value) || '';
+    var anoAtual = (anoEl && anoEl.value) || new Date().getFullYear();
 
-(function patchRelatorioComissoesVendedor() {
-  function obterToolbarComissoes() {
-    return document.querySelector(
-      '#page-comissoes .ptoolbar, .comissoes-toolbar, #comissoes-toolbar, [id*="comissao"][id*="toolbar"], .comissoes-filtros, [class*="comissao"][class*="filtro"]'
-    );
-  }
+    var antigo = document.getElementById('modal-impressao-com');
+    if (antigo) antigo.remove();
 
-  function syncFiltrosComissoesOriginais() {
-    var mesEl = document.querySelector('#comissoes-mes, [name="mes"], select[id*="mes"]');
-    var anoEl = document.querySelector('#comissoes-ano, [name="ano"], select[id*="ano"]');
-    var vendEl = document.querySelector('#comissoes-vendedor, [name="vendedor"], select[id*="vendedor"]');
-    var comMes = document.getElementById('com-mes');
-    var comAno = document.getElementById('com-ano');
-    var comVend = document.getElementById('com-vendedores');
-    if (comMes && mesEl && mesEl.value) comMes.value = mesEl.value;
-    if (comAno && anoEl && anoEl.value) comAno.value = anoEl.value;
-    if (comVend && vendEl && vendEl.value) comVend.value = vendEl.value;
-  }
+    var overlay = document.createElement('div');
+    overlay.id = 'modal-impressao-com';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:99999;display:flex;align-items:center;justify-content:center';
 
-  window.gerarEImprimirComissoes = function() {
-    syncFiltrosComissoesOriginais();
-    if (typeof window.imprimirRelatorioComissoes === 'function') return window.imprimirRelatorioComissoes();
-    if (typeof window.gerarRelatorioComissoes === 'function' && window.gerarRelatorioComissoes !== window.gerarEImprimirComissoes) {
-      return window.gerarRelatorioComissoes();
-    }
-  };
+    var vendsOpts = vends
+      .filter(function(v) { return String(v && v.nome || '') !== 'Sem Vendedor'; })
+      .map(function(v) {
+        return '<label style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;cursor:pointer;background:var(--bg3,#0d0d1a);margin-bottom:6px">'
+          + '<input type="checkbox" value="' + String(v && v.id || '') + '" checked style="width:16px;height:16px">'
+          + '<span style="color:var(--text1,#fff)">' + String(v && v.nome || '—') + '</span>'
+          + '<span style="color:#4ade80;margin-left:auto">' + fmt(v && v.total) + '</span>'
+          + '</label>';
+      }).join('');
 
-  window.injetarBotaoImprimirComissoes = function() {
-    var toolbar = obterToolbarComissoes();
-    if (!toolbar) return;
-    var original = toolbar.querySelector('button[onclick*="imprimirRelatorioComissoes"]');
-    if (original) {
-      original.id = original.id || 'btn-imprimir-comissoes-toolbar';
-      return;
-    }
-    if (document.getElementById('btn-imprimir-comissoes-toolbar')) return;
-
-    var btn = document.createElement('button');
-    btn.id = 'btn-imprimir-comissoes-toolbar';
-    btn.innerHTML = '🖨️ Imprimir Relatório';
-    btn.style.cssText = 'padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:8px';
-    btn.onclick = function() { window.gerarEImprimirComissoes(); };
-    toolbar.appendChild(btn);
-  };
-
-  function ensure() { window.injetarBotaoImprimirComissoes(); }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(ensure, 500);
-      setTimeout(ensure, 2000);
-      setTimeout(ensure, 4000);
-      try {
-        if (!window._obsComissBtn) {
-          window._obsComissBtn = new MutationObserver(ensure);
-          window._obsComissBtn.observe(document.body, { childList: true, subtree: true });
-        }
-      } catch (_) {}
-    });
-  } else {
-    setTimeout(ensure, 500);
-    setTimeout(ensure, 2000);
-    setTimeout(ensure, 4000);
+    overlay.innerHTML = ''
+      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto">'
+      + '<h3 style="color:var(--text1,#fff);margin-bottom:20px;font-size:16px">🖨️ Imprimir Relatório de Comissões</h3>'
+      + '<div style="margin-bottom:16px">'
+      + '<label style="color:var(--text2,#aaa);font-size:11px;text-transform:uppercase;display:block;margin-bottom:6px">Mês de Referência</label>'
+      + '<div style="color:var(--text1,#fff);font-size:14px;padding:10px;background:var(--bg3,#0d0d1a);border-radius:6px" id="imp-mes-label">' + String(mesAtual || (anoAtual + '-??')) + '</div>'
+      + '</div>'
+      + '<div style="margin-bottom:20px">'
+      + '<label style="color:var(--text2,#aaa);font-size:11px;text-transform:uppercase;display:block;margin-bottom:8px">Selecionar Vendedores</label>'
+      + '<label style="display:flex;align-items:center;gap:8px;padding:8px;cursor:pointer;margin-bottom:8px">'
+      + '<input type="checkbox" id="imp-todos" checked style="width:16px;height:16px">'
+      + '<span style="color:var(--text1,#fff);font-weight:600">Todos os vendedores</span>'
+      + '</label>'
+      + '<div id="imp-vends-list">' + vendsOpts + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;justify-content:flex-end">'
+      + '<button type="button" data-imp-close="1" style="padding:10px 20px;border-radius:6px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer">Cancelar</button>'
+      + '<button type="button" id="btn-gerar-impressao-com" style="padding:10px 24px;border-radius:6px;border:none;background:#6366f1;color:#fff;cursor:pointer;font-weight:600">🖨️ Gerar e Imprimir</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
     try {
-      if (!window._obsComissBtn) {
-        window._obsComissBtn = new MutationObserver(ensure);
-        window._obsComissBtn.observe(document.body, { childList: true, subtree: true });
-      }
+      overlay.querySelector('[data-imp-close="1"]').onclick = function() { overlay.remove(); };
+      overlay.querySelector('#btn-gerar-impressao-com').onclick = function() { window._gerarImpressaoComissoes(); };
+      document.getElementById('imp-todos').addEventListener('change', function() {
+        Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input[type=checkbox]')).forEach(function(cb) {
+          cb.checked = !!document.getElementById('imp-todos').checked;
+        });
+      });
     } catch (_) {}
   }
+
+  window._gerarImpressaoComissoes = function() {
+    var data = window._comissoesSqlData;
+    if (!data) { try { alert('Calcule o relatório primeiro'); } catch (_) {} return; }
+
+    var selecionados = new Set(Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input:checked')).map(function(cb) { return cb.value; }));
+    var todosSel = !!((document.getElementById('imp-todos') || {}).checked);
+    var vends = (data.vendedores || []).filter(function(v) { return todosSel || selecionados.has(String(v && v.id || '')); });
+    var ofs = (data.ofs || []).filter(function(of) {
+      return todosSel || vends.some(function(v) { return String(v && v.nome || '') === String(of && of.vendedor || ''); });
+    });
+
+    var parts = String(data.mes || '').split('-');
+    var ano = parts[0] || '';
+    var mes = parts[1] || '';
+    var nomeMes = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][Math.max(0, (parseInt(mes, 10) || 1) - 1)] || mes;
+
+    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatorio de Comissoes — ' + nomeMes + '/' + ano + '</title>'
+      + '<style>body{font-family:Arial,sans-serif;color:#000;padding:24px;font-size:12px}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#555;margin-bottom:20px;font-weight:normal}.resumo{display:flex;gap:24px;margin-bottom:24px}.card{border:1px solid #ddd;border-radius:6px;padding:12px 20px;min-width:150px}.card-lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px}.card-val{font-size:16px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:28px}th{background:#f0f0f0;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #ccc}td{padding:7px 8px;border-bottom:1px solid #eee}.vend-header{background:#1a1a2e;color:#fff;padding:10px 14px;border-radius:6px;margin:20px 0 8px;font-weight:700;font-size:13px}.total-row{font-weight:700;background:#f9f9f9}.green{color:#16a34a}@media print{body{padding:0}}</style>'
+      + '</head><body>'
+      + '<h1>Relatorio de Comissoes — ' + nomeMes + '/' + ano + '</h1>'
+      + '<h2>Italy Embalagens · Gerado em ' + new Date().toLocaleDateString('pt-BR') + '</h2>'
+      + '<div class="resumo">'
+      + '<div class="card"><div class="card-lbl">Total Vendido</div><div class="card-val">' + fmt(data.total_vendido) + '</div></div>'
+      + '<div class="card"><div class="card-lbl">Total Comissão</div><div class="card-val green">' + fmt(data.total_comissao) + '</div></div>'
+      + '<div class="card"><div class="card-lbl">Total OFs</div><div class="card-val">' + String(data.total_ofs || 0) + '</div></div>'
+      + '</div>'
+      + '<h3 style="margin-bottom:8px">Resumo por Vendedor</h3>'
+      + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">% Comissão</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
+      + vends.map(function(v) {
+        return '<tr><td>' + String(v.nome || '—') + '</td><td>' + String(v.ofs || 0) + '</td><td style="text-align:right">' + fmt(v.total) + '</td><td style="text-align:center">' + String(v.comissao_pct || 0) + '%</td><td style="text-align:right" class="green">' + fmt(v.comissao_rs) + '</td></tr>';
+      }).join('')
+      + '<tr class="total-row"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmt(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmt(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
+      + '</tbody></table>'
+      + vends.map(function(v) {
+        var vOfs = ofs.filter(function(o) { return String(o && o.vendedor || '') === String(v && v.nome || ''); });
+        return '<div class="vend-header">📋 ' + String(v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmt(v.total) + '</div>'
+          + '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th style="text-align:right">Valor</th><th style="text-align:center">%</th><th style="text-align:right">Comissão</th><th>Data</th><th>Status</th></tr></thead><tbody>'
+          + vOfs.map(function(o) {
+            return '<tr><td>#' + String(o.numero || '—') + '</td><td>' + String(o.cliente || '—') + '</td><td style="text-align:right">' + fmt(o.valor_total) + '</td><td style="text-align:center">' + String(o.comissao_pct || 0) + '%</td><td style="text-align:right" class="green">' + fmt(o.comissao_rs) + '</td><td>' + fmtData(o.created_at) + '</td><td>' + String(o.status || '—') + '</td></tr>';
+          }).join('')
+          + '<tr class="total-row"><td colspan="2">Total ' + String(v.nome || '—') + '</td><td style="text-align:right">' + fmt(v.total) + '</td><td></td><td style="text-align:right" class="green">' + fmt(v.comissao_rs) + '</td><td colspan="2"></td></tr>'
+          + '</tbody></table>';
+      }).join('')
+      + '</body></html>';
+
+    try { document.getElementById('modal-impressao-com').remove(); } catch (_) {}
+    var win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setTimeout(function() { try { win.print(); } catch (_) {} }, 800);
+  };
+
+  window._abrirModalImpressaoComissoes = _abrirModalImpressao;
+  window.gerarEImprimirComissoes = function() { _abrirModalImpressao(); };
+  window.injetarBotaoImprimirComissoes = function() {};
+
+  function _vincularBtnImprimir() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          var txt = String(btn.textContent || '').trim();
+          if ((txt.indexOf('Imprimir') >= 0 || txt.indexOf('imprimir') >= 0) && !btn.dataset.patchPrint) {
+            btn.dataset.patchPrint = '1';
+            btn.addEventListener('click', function(e) {
+              try { e.preventDefault(); } catch (_) {}
+              try { e.stopPropagation(); } catch (_) {}
+              _abrirModalImpressao();
+            }, true);
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  try { _vincularBtnCalcular(); } catch (_) {}
+  try { _vincularBtnImprimir(); } catch (_) {}
+  try {
+    var _obsCom = new MutationObserver(function() {
+      _vincularBtnCalcular();
+      _vincularBtnImprimir();
+    });
+    _obsCom.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
 })();
 
 (function patchOfRapidaClienteEspecial() {
@@ -10110,17 +10208,8 @@ window._mbnActive = function(id) {
 
   window.gerarEImprimirComissoes = function() {
     try {
-      var mesEl = document.querySelector('#comissoes-mes, [name="mes"], select[id*="mes"]');
-      var anoEl = document.querySelector('#comissoes-ano, [name="ano"], select[id*="ano"]');
-      var vendEl = document.querySelector('#comissoes-vendedor, [name="vendedor"], select[id*="vendedor"]');
-      var comMes = document.getElementById('com-mes');
-      var comAno = document.getElementById('com-ano');
-      var comVend = document.getElementById('com-vendedores');
-      if (comMes && mesEl && mesEl.value) comMes.value = mesEl.value;
-      if (comAno && anoEl && anoEl.value) comAno.value = anoEl.value;
-      if (comVend && vendEl && vendEl.value) comVend.value = vendEl.value;
+      if (typeof window._abrirModalImpressaoComissoes === 'function') return window._abrirModalImpressaoComissoes();
     } catch (_) {}
-    try { if (typeof window.imprimirRelatorioComissoes === 'function') return window.imprimirRelatorioComissoes(); } catch (_) {}
     return null;
   };
 
