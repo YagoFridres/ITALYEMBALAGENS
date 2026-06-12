@@ -1465,10 +1465,12 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
 
     const { data: vendedores } = await supabase
       .from('vendedores')
-      .select('id,nome,comissao,comissao_pct');
+      .select('id,nome,comissao_pct');
 
     const mapVend = {};
-    (vendedores || []).forEach((v) => { mapVend[v.id] = v; });
+    (vendedores || []).forEach((v) => {
+      mapVend[String(v && v.id || '').toLowerCase().trim()] = v;
+    });
 
     const porVend = {};
     let totalGeral = 0;
@@ -1478,13 +1480,15 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       const val = Number(of?.valor_total || of?.total || 0) || 0;
       if (!val) { semValor += 1; return; }
       totalGeral += val;
-      const vid = String(of?.vendedor_id || '__sem__').trim() || '__sem__';
+      const vid = of?.vendedor_id
+        ? String(of.vendedor_id).toLowerCase().trim()
+        : '__sem__';
       if (!porVend[vid]) {
         const v = mapVend[vid];
-        const pct = Number(v?.comissao_pct ?? v?.comissaoPct ?? v?.comissao ?? 1) || 1;
+        const pct = v ? (Number(v.comissao_pct || 1) || 1) : 1;
         porVend[vid] = {
           id: vid,
-          nome: v ? String(v.nome || '').trim() || 'Sem Vendedor' : 'Sem Vendedor',
+          nome: v ? (String(v.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
           comissao_pct: pct,
           ofs: 0,
           total: 0,
