@@ -1440,23 +1440,9 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const nextAno = mesNum === 12 ? (anoNum + 1) : anoNum;
     const nextMes = mesNum === 12 ? 1 : (mesNum + 1);
     const dataFimExclusive = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
-    const empresaUuid = await _resolveEmpresaUuid(req).catch(() => null);
-    const empLegacy = String(
-      req.usuario?.emp_id ??
-      req.usuario?.empId ??
-      req.user?.emp_id ??
-      req.user?.empId ??
-      ''
-    ).trim();
     const vendedoresFiltro = vendedoresRaw && vendedoresRaw !== 'todos'
       ? vendedoresRaw.split(',').map((v) => String(v || '').trim()).filter(Boolean)
       : [];
-
-    const empresaCandidates = [
-      empresaUuid ? { col: 'empresa_id', val: empresaUuid } : null,
-      empLegacy ? { col: 'emp_id', val: empLegacy } : null,
-      empLegacy ? { col: 'empId', val: empLegacy } : null,
-    ].filter((x, i, arr) => x && arr.findIndex((y) => y.col === x.col && String(y.val) === String(x.val)) === i);
 
     const norm = (v) => String(v || '').trim().toLowerCase();
     const matchVend = (rowVend, lista) => {
@@ -1470,38 +1456,27 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     };
 
     const queryRows = async () => {
-      let lastError = null;
-      const cands = empresaCandidates.length ? empresaCandidates : [null];
-      for (const cand of cands) {
-        try {
-          const pageSize = 1000;
-          let from = 0;
-          let out = [];
-          while (true) {
-            let q = supabase
-              .from('ofs')
-              .select('*')
-              .gte('created_at', dataInicio + 'T00:00:00')
-              .lt('created_at', dataFimExclusive + 'T00:00:00')
-              .order('created_at', { ascending: true })
-              .range(from, from + pageSize - 1);
-            if (cand?.col && cand?.val) q = q.eq(cand.col, cand.val);
-            const { data, error } = await q;
-            if (error) { lastError = error; break; }
-            const arr = Array.isArray(data) ? data : [];
-            if (!arr.length) break;
-            out = out.concat(arr);
-            if (arr.length < pageSize) break;
-            from += pageSize;
-            if (from > 50000) break;
-          }
-          if (out.length) return out;
-        } catch (e) {
-          lastError = e;
-        }
+      const pageSize = 1000;
+      let from = 0;
+      let out = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from('ofs')
+          .select('id,numero,of,valor_total,cli_id,cliId,cliente_id,vendedor,vendedor_nome,representante,vendNome,produto,produto_nome,prodDesc,descricao,quantidade,qtd,qtd_pedida,created_at,status,deleted_at,empresa_id')
+          .is('deleted_at', null)
+          .gte('created_at', dataInicio + 'T00:00:00')
+          .lt('created_at', dataFimExclusive + 'T00:00:00')
+          .order('created_at', { ascending: true })
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const arr = Array.isArray(data) ? data : [];
+        if (!arr.length) break;
+        out = out.concat(arr);
+        if (arr.length < pageSize) break;
+        from += pageSize;
+        if (from > 50000) break;
       }
-      if (lastError) throw lastError;
-      return [];
+      return out;
     };
 
     const rows = await queryRows();
@@ -1529,7 +1504,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     };
     const pickProduto = (of) => String(of?.produto ?? of?.produto_nome ?? of?.prodDesc ?? of?.descricao ?? '').trim() || '—';
     const pickQtd = (of) => Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
-    const pickTotal = (of) => Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? of?.vl_total ?? 0) || 0;
+    const pickTotal = (of) => Number(of?.valor_total ?? 0) || 0;
     const pickNumero = (of) => String(of?.numero ?? of?.of ?? '').trim() || String(of?.id || '').slice(0, 8);
 
     const grupos = {};
