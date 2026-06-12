@@ -17953,7 +17953,7 @@ function renderLancamento(){
   const isCancelada = (st)=>{ const s = normSt(st); return s.includes('cancelad'); };
   const isEmProducao = (st)=>{ const s = normSt(st); return s.includes('produc'); };
   const isEmAberto = (st)=>{ const s = normSt(st); return s.includes('abert') || s.includes('aguard'); };
-  const getValor = (o)=> Number((o.valor_total ?? o.valor_venda ?? o.val) || 0) || 0;
+  const getValor = (o)=> Number((o.total ?? o.valor_total ?? o.valor_venda ?? o.val) || 0) || 0;
   const getQtd = (o)=> Number(o.qtd || o.quantidade || 0) || 0;
   const getPedido = (o)=> String(lancDia(o) || String(o.created_at||'').slice(0,10) || '').slice(0,10);
   const getConc = (o)=> String(o.data_conclusao || o.dataConclusao || '').slice(0,10);
@@ -18043,7 +18043,16 @@ function renderLancamento(){
   });
 
   const totalOfs = base.length;
-  const totalValor = base.reduce((s,o)=>s + getValor(o), 0);
+  const totalValor = base.reduce((s,o)=>{
+    if(o && (o.deleted_at || isCancelada(o.status))) return s;
+    let v = getValor(o);
+    if(!v){
+      const itens = Array.isArray(o.itens) ? o.itens : (typeof o.itens === 'string' ? tryParse(o.itens, []) : []);
+      const arr = Array.isArray(itens) ? itens : [];
+      v = arr.reduce((ss,i)=>ss + (Number(i?.valor_total ?? i?.valorTotal ?? i?.total ?? 0) || 0), 0);
+    }
+    return s + (Number(v) || 0);
+  }, 0);
   const cntConcl = base.filter(o=>!o.deleted_at && isConcluida(o.status)).length;
   const cntCancel = base.filter(o=>!o.deleted_at && isCancelada(o.status)).length;
   const cntExcl = base.filter(o=>!!o.deleted_at).length;
