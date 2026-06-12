@@ -3100,14 +3100,21 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const empId = await resolverEmpresaId(req);
     if (!empId) return res.json({ ok: true, data: [], total: 0, offset: 0, limit: 0, hasMore: false });
 
+    const after = String(req.query.after || '').trim();
+    const afterIso = (after && after !== 'undefined' && after !== 'null' && after !== '[object Object]') ? after : '';
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = req.query.busca;
     const empresaFiltro = req.query.empresa;
-    const cacheKey = 'ofs_v11_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '');
-    const cached = cacheGet(cacheKey);
-    if (cached) return res.json(cached);
+    const useCache = !afterIso;
+    const cacheKey = useCache ? ('ofs_v11_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '')) : '';
+    if (useCache) {
+      const cached = cacheGet(cacheKey);
+      if (cached) return res.json(cached);
+    } else {
+      setNoCache(res);
+    }
 
     let query = supabase
       .from('ofs')
@@ -3128,6 +3135,9 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     if (busca) {
       query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
+    }
+    if (afterIso) {
+      query = query.gte('created_at', afterIso);
     }
 
     const { data, error, count } = await query;
@@ -3258,7 +3268,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const totalCount = count || rows.length;
     const hasMore = (offset + rows.length) < totalCount;
     const resultado = { ok: true, data: rows, total: totalCount, offset, limit, hasMore };
-    cacheSet(cacheKey, resultado, 30000);
+    if (useCache) cacheSet(cacheKey, resultado, 30000);
     return res.json(resultado);
   } catch (e) {
     try { console.error('[GET /api/ofs]', e.message); } catch (_) {}
@@ -3751,6 +3761,22 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     delete filtered.id;
     if ((filtered.of == null || String(filtered.of || '').trim() === '') && (filtered.numero == null || String(filtered.numero || '').trim() === '')) {
       try {
+        const proximoNumeroOF = async (empresa_id) => {
+          const { data, error } = await supabase
+            .from('ofs')
+            .select('numero')
+            .eq('empresa_id', empresa_id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+          if (error) throw error;
+          let maior = 0;
+          (data || []).forEach((o) => {
+            const n = parseInt(String(o?.numero || '').replace(/\D/g, ''), 10) || 0;
+            if (n > maior) maior = n;
+          });
+          return maior + 1;
+        };
+
         const { data: last } = await supabase
           .from('ofs')
           .select('seq,of,numero')
@@ -3760,9 +3786,21 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
         const lastSeq = Math.trunc(Number(last?.seq || 0) || 0);
         const nextSeq = lastSeq > 0 ? (lastSeq + 1) : 1;
         filtered.seq = nextSeq;
-        const numStr = String(nextSeq);
-        filtered.of = numStr;
-        filtered.numero = numStr;
+        let numeroEmpresa = null;
+        try { numeroEmpresa = await proximoNumeroOF(empId); } catch (_) { numeroEmpresa = null; }
+        for (let i = 0; i < 5; i += 1) {
+          const cand = String((numeroEmpresa != null ? numeroEmpresa : nextSeq) + i);
+          const { data: exists } = await supabase
+            .from('ofs')
+            .select('id')
+            .eq('empresa_id', empId)
+            .eq('numero', cand)
+            .limit(1);
+          if (Array.isArray(exists) && exists.length) continue;
+          filtered.of = cand;
+          filtered.numero = cand;
+          break;
+        }
       } catch (_) {}
     }
     {
@@ -4983,7 +5021,7 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
 
     const { data, error } = await supabase
       .from('caixas_perdidas')
-      .select('*')
+      .select('id,of_id,of_numero,produto,cliente,valor_unitario,qtd_perdida,valor_perdido,data,mes_referencia,emp_id,usuario,obs,created_at,maquina,maquina_id,maquina_perda')
       .order('created_at', { ascending: false });
     if (error) {
       const msg = String(error.message || error).toLowerCase();
