@@ -1482,7 +1482,6 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const rows = await queryRows();
     const filtradas = (rows || []).filter((of) => {
       const st = norm(of?.status);
-      if (st.includes('cancel')) return false;
       if (!vendedoresFiltro.length) return true;
       const vend = String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || of?.vend || '').trim();
       return matchVend(vend, vendedoresFiltro);
@@ -4982,38 +4981,10 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       });
     };
 
-    let q = supabase.from('caixas_perdidas').select('*').order('data', { ascending: false });
-    if (req.query.empId) q = q.eq('emp_id', req.query.empId);
-    const mes = String(req.query.mes || '').trim();
-    if (mes && mes !== 'undefined' && mes !== 'null' && mes.length >= 7) {
-      const [ano, mm] = mes.split('-').map(Number);
-      if (ano > 2000 && mm >= 1 && mm <= 12) {
-        const dtIni = `${mes}-01`;
-        const dtFim = new Date(ano, mm, 0).toISOString().slice(0, 10);
-        const { data: d1 } = await supabase.from('caixas_perdidas')
-          .select('*').eq('mes_referencia', mes)
-          .order('data', { ascending: false });
-        const { data: d2 } = await supabase.from('caixas_perdidas')
-          .select('*').is('mes_referencia', null)
-          .gte('data', dtIni).lte('data', dtFim)
-          .order('data', { ascending: false });
-        const todos = [...(d1 || []), ...(d2 || [])];
-        const vistos = new Set();
-        const result = todos.filter((r) => {
-          if (vistos.has(r.id)) return false;
-          vistos.add(r.id);
-          return true;
-        });
-        if (req.query.empId) {
-          const filtered = result.filter((r) => r.emp_id === req.query.empId);
-          return ok(res, await enrichMaquinas(filtered));
-        }
-        return ok(res, await enrichMaquinas(result));
-      }
-    }
-    if (req.query.de) q = q.gte('data', req.query.de);
-    if (req.query.ate) q = q.lte('data', req.query.ate);
-    const { data, error } = await q.limit(1000);
+    const { data, error } = await supabase
+      .from('caixas_perdidas')
+      .select('*')
+      .order('created_at', { ascending: false });
     if (error) {
       const msg = String(error.message || error).toLowerCase();
       if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
