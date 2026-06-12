@@ -4397,15 +4397,27 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       vendedores: (json.vendedores || []).map(function(v) {
         var total = Number(v && v.total || 0) || 0;
         var pct = Number(v && v.comissao_pct || 0) || 0;
-        return Object.assign({}, v, {
-          vendNome: v && v.nome,
-          vendId: v && v.id,
+        var nome = String(v && v.nome || 'Sem Vendedor');
+        var vendId = String(v && v.id || '');
+        var ofs = Array.isArray(json && json.ofs) ? json.ofs : [];
+        var key = nome.toLowerCase().trim();
+        var ofsLista = ofs.filter(function(o) {
+          return String(o && o.vendedor || '').toLowerCase().trim() === key;
+        });
+        return {
+          vendNome: nome,
+          nome: nome,
+          vendId: vendId,
+          id: vendId,
           total: total,
           peds: Number(v && v.ofs || 0) || 0,
+          quantidade: Number(v && v.ofs || 0) || 0,
           comissaoRs: Number(v && v.comissao_rs || (total * (pct / 100))) || 0,
           comissao: pct,
-          comissao_pct: pct
-        });
+          comissao_pct: pct,
+          ofsList: ofsLista,
+          ofs_lista: ofsLista
+        };
       })
     };
 
@@ -4419,10 +4431,45 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       setTextMany(sels, value);
     });
 
+    function _repopularTabelaVendedoresSeZerada() {
+      try {
+        var tbody = document.querySelector('#com-vend-tbody, .com-vendedores tbody, [data-com-vendedores] tbody');
+        if (!tbody) return;
+        var primeiraLinha = tbody.querySelector('tr td:nth-child(2)');
+        var valor = String(primeiraLinha && primeiraLinha.textContent || '').trim();
+        if (!(valor === '0' || valor === 'R$ 0,00' || valor === 'R$\u00a00,00' || !valor)) return;
+
+        var data = window._comissoesSqlData || {};
+        var vends = Array.isArray(data.vendedores) ? data.vendedores : [];
+        var fmt2 = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+        tbody.innerHTML = vends.map(function(v) {
+          return ''
+            + '<tr>'
+            + '<td>' + String(v && v.nome || '—') + '</td>'
+            + '<td style="text-align:center">' + String(v && v.ofs || 0) + '</td>'
+            + '<td style="text-align:right">' + fmt2(v && v.total) + '</td>'
+            + '<td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+            + '<td style="text-align:right;color:#4ade80">' + fmt2(v && v.comissao_rs) + '</td>'
+            + '<td>—</td>'
+            + '</tr>';
+        }).join('') + ''
+          + '<tr style="font-weight:700;background:var(--bg3,#0d0d1a)">'
+          + '<td>TOTAL</td>'
+          + '<td style="text-align:center">' + String(vends.reduce(function(s, x) { return s + (Number(x && x.ofs || 0) || 0); }, 0)) + '</td>'
+          + '<td style="text-align:right">' + fmt2(data.total_vendido) + '</td>'
+          + '<td></td>'
+          + '<td style="text-align:right;color:#4ade80">' + fmt2(data.total_comissao) + '</td>'
+          + '<td></td>'
+          + '</tr>';
+      } catch (_) {}
+    }
+
     try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
     try { if (typeof window.renderRelatorioComissoes === 'function') window.renderRelatorioComissoes(); } catch (_) {}
     try { if (typeof window.atualizarTabelaComissoes === 'function') window.atualizarTabelaComissoes(); } catch (_) {}
     try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
+    try { setTimeout(_repopularTabelaVendedoresSeZerada, 300); } catch (_) {}
     try { window.dispatchEvent(new CustomEvent('comissoes-calculadas', { detail: json })); } catch (_) {}
     return json;
   }
@@ -4512,7 +4559,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   window._gerarImpressaoComissoes = function() {
     var data = window._comissoesSqlData;
-    if (!data) { try { alert('Calcule o relatório primeiro'); } catch (_) {} return; }
+    try { console.log('[IMPRIMIR] data:', data); } catch (_) {}
+    if (!data || !data.total_ofs) {
+      try { alert('Calcule o relatório primeiro clicando em Calcular'); } catch (_) {}
+      return;
+    }
 
     var selecionados = new Set(Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input:checked')).map(function(cb) { return cb.value; }));
     var todosSel = !!((document.getElementById('imp-todos') || {}).checked);
@@ -4557,7 +4608,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
     try { document.getElementById('modal-impressao-com').remove(); } catch (_) {}
     var win = window.open('', '_blank');
-    if (!win) return;
+    if (!win) {
+      try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
+      return;
+    }
     win.document.write(html);
     win.document.close();
     setTimeout(function() { try { win.print(); } catch (_) {} }, 800);
