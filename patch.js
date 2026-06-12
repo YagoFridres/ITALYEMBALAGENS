@@ -4294,94 +4294,135 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   else { setTimeout(startEnsureBuscaComissoes, 600); }
 })();
 
-(function patchCalcularComissoesPorApi() {
-  try {
-    if (window.__patchCalcularComissoesPorApi) return;
-    if (typeof window.calcularComissoes !== 'function') return;
-    window.__patchCalcularComissoesPorApi = true;
+(function patchCalcularComissoesSqlBackend() {
+  if (window.__patchCalcularComissoesSqlBackendInstalled) return;
+  window.__patchCalcularComissoesSqlBackendInstalled = true;
 
-    var orig = window.calcularComissoes;
-    window.calcularComissoes = async function() {
-      try {
-        if (typeof window.initComissoesUI === 'function') window.initComissoesUI();
-        var hostCards = document.getElementById('com-cards');
-        if (hostCards) hostCards.innerHTML = '<div class="sbox"><div class="sbox-b">Carregando comissões...</div></div>';
-      } catch (_) {}
+  function parseMesAno() {
+    var mesEl = document.getElementById('com-mes') ||
+      document.querySelector('[name="mes"], #mes-sel, #comissao-mes, #comissoes-mes');
+    var anoEl = document.getElementById('com-ano') ||
+      document.querySelector('[name="ano"], #ano-sel, #comissao-ano, #comissoes-ano');
 
-      var mesVal = '';
-      try { mesVal = String((document.getElementById('com-mes') || {}).value || '').trim(); } catch (_) { mesVal = ''; }
-      var anoNum = 0;
-      var mesNum = 0;
-      if (mesVal && /^\d{4}-\d{2}$/.test(mesVal)) {
-        anoNum = parseInt(mesVal.slice(0, 4), 10) || 0;
-        mesNum = parseInt(mesVal.slice(5, 7), 10) || 0;
-      } else {
-        var now = new Date();
-        anoNum = now.getFullYear();
-        mesNum = now.getMonth() + 1;
+    var mesVal = '';
+    var anoVal = '';
+    try { mesVal = String((mesEl && mesEl.value) || '').trim(); } catch (_) { mesVal = ''; }
+    try { anoVal = String((anoEl && anoEl.value) || '').trim(); } catch (_) { anoVal = ''; }
+
+    if (mesVal && mesVal.indexOf('-') >= 0) {
+      var parts = mesVal.split('-');
+      if (parts.length >= 2) {
+        anoVal = parts[0];
+        mesVal = parts[1];
       }
+    }
 
-      var vendRaw = '';
-      try {
-        var vEl = document.getElementById('com-vendedores') || document.getElementById('com-vendedor') || document.querySelector('[id*="com-vend"]');
-        vendRaw = String((vEl && vEl.value) || '').trim();
-      } catch (_) { vendRaw = ''; }
+    if (!anoVal) {
+      try { anoVal = String(new Date().getFullYear()); } catch (_) { anoVal = ''; }
+    }
 
-      try {
-        var token = '';
-        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
-        var qs = new URLSearchParams();
-        qs.set('ano', String(anoNum));
-        qs.set('mes', String(mesNum));
-        if (vendRaw && vendRaw !== 'todos') qs.set('vendedores', vendRaw);
-        var resp = await fetch('/api/comissoes/relatorio?' + qs.toString(), {
-          headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-        });
-        var json = await resp.json().catch(function() { return null; });
-        if (!resp.ok || !json || json.ok === false) throw new Error(String(json && (json.error || json.message) || resp.status));
+    var mesNum = parseInt(String(mesVal || ''), 10);
+    if (!mesNum || mesNum < 1 || mesNum > 12) mesNum = (new Date().getMonth() + 1);
+    var anoNum = parseInt(String(anoVal || ''), 10) || new Date().getFullYear();
+    return { mesNum: mesNum, anoNum: anoNum };
+  }
 
-        var grupos = Array.isArray(json.grupos) ? json.grupos : [];
-        var vendedores = grupos.map(function(g) {
-          var ofs = Array.isArray(g && g.ofs) ? g.ofs : [];
-          var totalVendas = ofs.reduce(function(s, o) {
-            var v = Number(o && (o.valor_total != null ? o.valor_total : o.total) || 0) || 0;
-            return s + v;
-          }, 0);
-          var totalCom = ofs.reduce(function(s, o) { return s + (Number(o && o.comissao || 0) || 0); }, 0);
-          var pct = totalVendas > 0 ? ((totalCom / totalVendas) * 100) : 0;
-          var outOfs = ofs.map(function(o) {
-            var created = String(o && o.created_at || '').slice(0, 10);
-            return Object.assign({}, o, { dia: created });
-          });
+  function fmt(v) {
+    try {
+      return 'R$ ' + (Number(v || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (_) {
+      return String(v || 0);
+    }
+  }
+
+  async function calcularViaApi() {
+    var ref = parseMesAno();
+    var mesVal = String(ref.mesNum).padStart(2, '0');
+    var anoVal = String(ref.anoNum);
+
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
+
+    try {
+      var cards = document.querySelectorAll('.com-total, [data-com-total]');
+      cards.forEach(function(c) { try { c.textContent = 'Calculando...'; } catch (_) {} });
+    } catch (_) {}
+
+    var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesVal) + '&ano=' + encodeURIComponent(anoVal), {
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (!json || json.ok === false) throw new Error(String(json && (json.error || json.message) || resp.status));
+
+    try {
+      var elTotal = document.querySelector('#com-total-vendido, .com-total-vendido, [data-field="total_vendido"]');
+      if (elTotal) elTotal.textContent = fmt(json.total_vendido);
+      var elComissao = document.querySelector('#com-total-comissao, .com-total-comissao, [data-field="total_comissao"]');
+      if (elComissao) elComissao.textContent = fmt(json.total_comissao);
+      var elOfs = document.querySelector('#com-total-ofs, .com-total-ofs, [data-field="total_ofs"]');
+      if (elOfs) elOfs.textContent = String(json.total_ofs || 0);
+    } catch (_) {}
+
+    try {
+      var vendArr = Array.isArray(json.vendedores) ? json.vendedores : [];
+      window._comissoesSqlData = json;
+      window._comissoesData = {
+        vendedores: vendArr.map(function(v) {
           return {
-            vendedorId: String(g && (g.vendedorId || g.vendedor_id) || '').trim(),
-            vendedor: String(g && g.vendedor || 'Sem vendedor').trim() || 'Sem vendedor',
-            pedidos: outOfs.length,
-            valorTotal: Number(totalVendas || 0) || 0,
-            comissaoPct: Number(pct || 0) || 0,
-            comissaoTotal: Number(totalCom || 0) || 0,
-            ofs: outOfs
+            vendedorId: String(v && v.id || '').trim(),
+            vendedor: String(v && v.nome || 'Sem Vendedor').trim() || 'Sem Vendedor',
+            pedidos: Number(v && v.ofs || 0) || 0,
+            valorTotal: Number(v && v.total || 0) || 0,
+            comissaoPct: Number(v && v.comissao_pct || 0) || 0,
+            comissaoTotal: Number(v && v.comissao_rs || 0) || 0,
+            ofs: []
           };
-        });
+        }),
+        totalGeral: Number(json.total_vendido || 0) || 0,
+        totalComissao: Number(json.total_comissao || 0) || 0,
+        totalPedidos: Number(json.total_ofs || 0) || 0
+      };
+      if (typeof window.renderComissoes === 'function') window.renderComissoes();
+    } catch (_) {}
 
-        var totalGeral = vendedores.reduce(function(s, v) { return s + (Number(v.valorTotal || 0) || 0); }, 0);
-        var totalComissao = vendedores.reduce(function(s, v) { return s + (Number(v.comissaoTotal || 0) || 0); }, 0);
-        var totalPedidos = vendedores.reduce(function(s, v) { return s + (Number(v.pedidos || 0) || 0); }, 0);
+    try { window.dispatchEvent(new CustomEvent('comissoes-calculadas', { detail: json })); } catch (_) {}
+    try { console.log('[COMISSOES PATCH]', json.mes, 'OFs:', json.total_ofs, 'Total:', Number(json.total_vendido || 0).toFixed(2)); } catch (_) {}
+    return json;
+  }
 
-        window._comissoesData = {
-          vendedores: vendedores,
-          totalGeral: totalGeral,
-          totalComissao: totalComissao,
-          totalPedidos: totalPedidos
-        };
+  window.calcularComissoes = async function() {
+    try {
+      return await calcularViaApi();
+    } catch (e) {
+      try { alert('Erro: ' + String(e && e.message || e)); } catch (_) {}
+      return null;
+    }
+  };
 
-        try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
-        return window._comissoesData;
-      } catch (e) {
-        try { return await orig.apply(this, arguments); } catch (_) {}
-        return null;
-      }
-    };
+  function _vincularBtnCalcular() {
+    try {
+      var scope = document.getElementById('page-comissoes') || document;
+      Array.prototype.slice.call(scope.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          if (!btn || btn.dataset.patchCom === '1') return;
+          var txt = String(btn.textContent || '').trim();
+          if (!txt) return;
+          if (!(txt === 'Calcular' || txt.indexOf('Calcular') >= 0)) return;
+          btn.dataset.patchCom = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            try { window.calcularComissoes(); } catch (_) {}
+          }, true);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  try { _vincularBtnCalcular(); } catch (_) {}
+  try {
+    var _obsCom = new MutationObserver(function() { _vincularBtnCalcular(); });
+    _obsCom.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
 })();
 

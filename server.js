@@ -1431,122 +1431,89 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
 
 app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
   try {
-    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    if (!supabase) return res.json({ ok: false, error: 'supabase_not_configured' });
 
-    const anoNum = parseInt(String(req.query?.ano || ''), 10) || new Date().getFullYear();
-    const mesNum = parseInt(String(req.query?.mes || ''), 10) || (new Date().getMonth() + 1);
-    const vendedoresRaw = String(req.query?.vendedores || 'todos').trim();
-    const dataInicio = `${anoNum}-${String(mesNum).padStart(2, '0')}-01`;
-    const nextAno = mesNum === 12 ? (anoNum + 1) : anoNum;
-    const nextMes = mesNum === 12 ? 1 : (mesNum + 1);
-    const dataFimExclusive = `${nextAno}-${String(nextMes).padStart(2, '0')}-01`;
-    const vendedoresFiltro = vendedoresRaw && vendedoresRaw !== 'todos'
-      ? vendedoresRaw.split(',').map((v) => String(v || '').trim()).filter(Boolean)
-      : [];
+    const mes = String(req.query?.mes || '').trim();
+    const ano = String(req.query?.ano || '').trim();
+    if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' });
 
-    const norm = (v) => String(v || '').trim().toLowerCase();
-    const matchVend = (rowVend, lista) => {
-      const v = norm(rowVend);
-      if (!v) return false;
-      return lista.some((x) => {
-        const t = norm(x);
-        if (!t) return false;
-        return v === t || v.includes(t) || t.includes(v);
-      });
-    };
+    const mesNum = String(parseInt(mes, 10) || 0).padStart(2, '0');
+    const inicio = `${ano}-${mesNum}-01`;
+    const fimAno = (parseInt(mes, 10) === 12) ? (parseInt(ano, 10) + 1) : parseInt(ano, 10);
+    const fimMes = (parseInt(mes, 10) === 12) ? '01' : String((parseInt(mes, 10) + 1)).padStart(2, '0');
+    const fim = `${fimAno}-${fimMes}-01`;
 
-    const queryRows = async () => {
-      const pageSize = 1000;
-      let from = 0;
-      let out = [];
-      while (true) {
-        const { data, error } = await supabase
-          .from('ofs')
-          .select('id,numero,of,valor_total,cli_id,cliId,cliente_id,vendedor,vendedor_nome,representante,vendNome,produto,produto_nome,prodDesc,descricao,quantidade,qtd,qtd_pedida,created_at,status,deleted_at,empresa_id')
-          .is('deleted_at', null)
-          .gte('created_at', dataInicio + 'T00:00:00')
-          .lt('created_at', dataFimExclusive + 'T00:00:00')
-          .order('created_at', { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        const arr = Array.isArray(data) ? data : [];
-        if (!arr.length) break;
-        out = out.concat(arr);
-        if (arr.length < pageSize) break;
-        from += pageSize;
-        if (from > 50000) break;
+    const PAGE = 1000;
+    let from = 0;
+    let todasOFs = [];
+    while (true) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,status,empresa_id')
+        .is('deleted_at', null)
+        .gte('created_at', inicio)
+        .lt('created_at', fim)
+        .range(from, from + PAGE - 1);
+      if (error || !(data && data.length)) break;
+      todasOFs = todasOFs.concat(data);
+      if (data.length < PAGE) break;
+      from += PAGE;
+      if (from > 200000) break;
+    }
+
+    console.log(`[COMISSOES] ${ano}-${mesNum}: ${todasOFs.length} OFs encontradas`);
+
+    const { data: vendedores } = await supabase
+      .from('vendedores')
+      .select('id,nome,comissao,comissao_pct');
+
+    const mapVend = {};
+    (vendedores || []).forEach((v) => { mapVend[v.id] = v; });
+
+    const porVend = {};
+    let totalGeral = 0;
+    let semValor = 0;
+
+    todasOFs.forEach((of) => {
+      const val = Number(of?.valor_total || of?.total || 0) || 0;
+      if (!val) { semValor += 1; return; }
+      totalGeral += val;
+      const vid = String(of?.vendedor_id || '__sem__').trim() || '__sem__';
+      if (!porVend[vid]) {
+        const v = mapVend[vid];
+        const pct = Number(v?.comissao_pct ?? v?.comissaoPct ?? v?.comissao ?? 1) || 1;
+        porVend[vid] = {
+          id: vid,
+          nome: v ? String(v.nome || '').trim() || 'Sem Vendedor' : 'Sem Vendedor',
+          comissao_pct: pct,
+          ofs: 0,
+          total: 0,
+        };
       }
-      return out;
-    };
-
-    const rows = await queryRows();
-    const filtradas = (rows || []).filter((of) => {
-      const st = norm(of?.status);
-      if (!vendedoresFiltro.length) return true;
-      const vend = String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || of?.vend || '').trim();
-      return matchVend(vend, vendedoresFiltro);
+      porVend[vid].ofs += 1;
+      porVend[vid].total += val;
     });
 
-    const pickCliente = (of) => {
-      const c =
-        of?.cli_nome ??
-        of?.nome_cliente ??
-        of?.cliente_nome ??
-        of?.cliente ??
-        of?.cliNome ??
-        of?.clinome ??
-        '';
-      const out = String(c || '').trim();
-      if (out) return out;
-      const cid = String(of?.cli_id ?? of?.cliId ?? of?.cliente_id ?? '').trim();
-      return cid || '—';
-    };
-    const pickProduto = (of) => String(of?.produto ?? of?.produto_nome ?? of?.prodDesc ?? of?.descricao ?? '').trim() || '—';
-    const pickQtd = (of) => Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
-    const pickTotal = (of) => Number(of?.valor_total ?? 0) || 0;
-    const pickNumero = (of) => String(of?.numero ?? of?.of ?? '').trim() || String(of?.id || '').slice(0, 8);
+    console.log(`[COMISSOES] Total: R$ ${totalGeral.toFixed(2)}, sem valor: ${semValor}`);
 
-    const grupos = {};
-    filtradas.forEach((of) => {
-      const vend = String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || 'Sem vendedor').trim() || 'Sem vendedor';
-      const total = pickTotal(of);
-      const comissao = Number(of?.comissao ?? of?.vl_comissao ?? 0) || (total * 0.03);
-      if (!grupos[vend]) grupos[vend] = { vendedor: vend, ofs: [], total_vendas: 0, total_comissao: 0 };
-      grupos[vend].ofs.push({
-        id: of?.id || null,
-        numero: pickNumero(of),
-        cliente: pickCliente(of),
-        produto: pickProduto(of),
-        quantidade: pickQtd(of),
-        total,
-        comissao,
-        status: of?.status ?? '',
-        created_at: of?.created_at ?? null,
-      });
-      grupos[vend].total_vendas += total;
-      grupos[vend].total_comissao += comissao;
-    });
-
-    const gruposArr = Object.values(grupos).sort((a, b) => String(a.vendedor || '').localeCompare(String(b.vendedor || '')));
-    const vendedoresDisponiveis = Array.from(new Set(
-      (rows || []).map((of) => String(of?.vendedor || of?.representante || of?.vendedor_nome || of?.vendNome || '').trim()).filter(Boolean)
-    )).sort((a, b) => a.localeCompare(b));
-
-    const semValor = filtradas.reduce((s, of) => s + (pickTotal(of) > 0 ? 0 : 1), 0);
-    console.log('[COMISSOES] OFs sem valor:', semValor, 'de', filtradas.length, '| periodo:', anoNum + '-' + String(mesNum).padStart(2, '0'));
+    const vendedoresResult = Object.values(porVend)
+      .sort((a, b) => Number(b.total || 0) - Number(a.total || 0))
+      .map((v) => ({
+        ...v,
+        comissao_rs: (Number(v.total || 0) || 0) * ((Number(v.comissao_pct || 0) || 0) / 100),
+      }));
 
     return res.json({
       ok: true,
-      mes: mesNum,
-      ano: anoNum,
-      periodo: `${String(mesNum).padStart(2, '0')}/${anoNum}`,
-      grupos: gruposArr,
-      vendedores_disponiveis: vendedoresDisponiveis,
-      total_geral_vendas: gruposArr.reduce((s, g) => s + (Number(g.total_vendas || 0) || 0), 0),
-      total_geral_comissao: gruposArr.reduce((s, g) => s + (Number(g.total_comissao || 0) || 0), 0),
+      mes: `${ano}-${mesNum}`,
+      total_ofs: todasOFs.length,
+      total_vendido: totalGeral,
+      total_comissao: vendedoresResult.reduce((s, v) => s + (Number(v.comissao_rs || 0) || 0), 0),
+      vendedores: vendedoresResult,
     });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    console.error('[COMISSOES] erro:', e?.message);
+    return res.json({ ok: false, error: String(e?.message || e) });
   }
 });
 
