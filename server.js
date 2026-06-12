@@ -5322,8 +5322,20 @@ app.patch('/api/ofs/:id', authMiddleware, async (req, res) => {
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'observacoes') && !Object.prototype.hasOwnProperty.call(bodyIn, 'obs')
             ? { obs: bodyIn.observacoes }
             : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'produto') && !Object.prototype.hasOwnProperty.call(bodyIn, 'descricao')
+            ? { descricao: bodyIn.produto }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'cliente_id') && !Object.prototype.hasOwnProperty.call(bodyIn, 'cli_id')
+            ? { cli_id: bodyIn.cliente_id }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'clienteId') && !Object.prototype.hasOwnProperty.call(bodyIn, 'cli_id')
+            ? { cli_id: bodyIn.clienteId }
+            : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'maquina') && !Object.prototype.hasOwnProperty.call(bodyIn, 'maq')
             ? { maq: [bodyIn.maquina], fluxo_maquinas: [bodyIn.maquina], maquina_agendada: bodyIn.maquina }
+            : {}),
+          ...(Object.prototype.hasOwnProperty.call(bodyIn, 'imagem_url') && !Object.prototype.hasOwnProperty.call(bodyIn, 'imgs')
+            ? { imgs: [bodyIn.imagem_url] }
             : {}),
           ...(Object.prototype.hasOwnProperty.call(bodyIn, 'comprimento') && !Object.prototype.hasOwnProperty.call(bodyIn, 'caixa_comprimento')
             ? { caixa_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento, dim_comprimento: Number(bodyIn.comprimento) || bodyIn.comprimento }
@@ -7593,21 +7605,21 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
       if (!cliente_duplicado_id) continue;
       if (cliente_duplicado_id === principalId) continue;
 
-      let countBefore = 0;
-      try {
-        const { count } = await supabase
-          .from('ofs')
-          .select('id', { count: 'exact', head: true })
-          .eq('cli_id', cliente_duplicado_id);
-        countBefore = Number(count || 0) || 0;
-      } catch (_) {}
-
-      const { error: upErr } = await supabase
+      const upd1 = await supabase
         .from('ofs')
         .update({ cli_id: principalId })
-        .eq('cli_id', cliente_duplicado_id);
-      if (upErr) throw upErr;
-      ofsMigradas += countBefore;
+        .eq('cli_id', cliente_duplicado_id)
+        .select('id');
+      if (upd1.error) throw upd1.error;
+
+      const upd2 = await supabase
+        .from('ofs')
+        .update({ cli_id: principalId })
+        .eq('cli_id', String(cliente_duplicado_id))
+        .select('id');
+      if (upd2.error) throw upd2.error;
+
+      ofsMigradas += (Array.isArray(upd1.data) ? upd1.data.length : 0) + (Array.isArray(upd2.data) ? upd2.data.length : 0);
 
       if (principalNome) {
         try {
@@ -7638,6 +7650,13 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
 
     cacheClearPrefix('clientes_');
     cacheClearPrefix('ofs_');
+    try {
+      const { count } = await supabase
+        .from('ofs')
+        .select('id', { count: 'exact', head: true })
+        .eq('cli_id', principalId);
+      if (Number.isFinite(Number(count))) ofsMigradas = Number(count);
+    } catch (_) {}
     console.log('[MESCLAR] ofs migradas:', ofsMigradas);
     return res.json({ ok: true, clientes_mesclados: mesclados, ofs_migradas: ofsMigradas });
   } catch (e) {
@@ -9719,12 +9738,8 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
 
     const { data, error } = await q;
     if (error) {
-      const msg = String(error.message || error);
-      const m = msg.toLowerCase();
-      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found') || m.includes('schema cache')) {
-        return ok(res, []);
-      }
-      throw error;
+      try { console.error('[inconformidades]', error.message || error); } catch (_) {}
+      return ok(res, []);
     }
 
     const itens = Array.isArray(data) ? data : [];
@@ -10203,7 +10218,10 @@ app.post('/api/notas_fiscais/import_xml', authMiddleware, nfeXmlUpload.single('f
     const { data, error } = await supabase.from('notas_fiscais').insert([payload]).select();
     if (error) throw error;
     return ok(res, data?.[0] || null);
-  } catch (e) { return err(res, e); }
+  } catch (e) {
+    try { console.error('[inconformidades]', e.message || e); } catch (_) {}
+    return ok(res, []);
+  }
 });
 
 app.post('/api/integracoes/whatsapp/enviar', authMiddleware, requireAdmin, async (req, res) => {

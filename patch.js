@@ -9912,3 +9912,345 @@ window._mbnActive = function(id) {
   setTimeout(init, 1800);
   setTimeout(bindAll, 2500);
 })();
+
+(function patchCheckupHotfixes() {
+  function esc(v) {
+    try { if (typeof window.escH === 'function') return window.escH(v); } catch (_) {}
+    return String(v == null ? '' : v)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function tokenHeaders(extra) {
+    var token = '';
+    try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+    var headers = extra ? Object.assign({}, extra) : {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
+
+  function toastHotfix(msg, tone) {
+    try { if (typeof window.mostrarToast === 'function') return window.mostrarToast(msg); } catch (_) {}
+    try { if (typeof window.toast === 'function') return window.toast(msg, tone || 'var(--accent)'); } catch (_) {}
+    try { alert(msg); } catch (_) {}
+  }
+
+  function ensurePainelClienteScroll() {
+    try {
+      var modal = document.querySelector('#modal-hist-cli .modal');
+      if (modal) {
+        modal.style.maxHeight = '85vh';
+        modal.style.overflowY = 'auto';
+      }
+      var body = document.getElementById('hist-cli-body');
+      if (body) {
+        body.style.maxHeight = 'calc(85vh - 90px)';
+        body.style.overflowY = 'auto';
+      }
+    } catch (_) {}
+  }
+
+  function hideProjecaoVendas() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('#widget-projecao-vendas, .projecao-vendas, [id*="projecao"]')).forEach(function(el) {
+        if (!el) return;
+        var box = el.closest ? (el.closest('.sbox') || el) : el;
+        box.style.display = 'none';
+      });
+    } catch (_) {}
+  }
+
+  window.abrirRankingClientes = async function(tipo) {
+    var tipoNorm = String(tipo || '').trim().toLowerCase();
+    tipoNorm = (tipoNorm === 'valor' || tipoNorm === 'faturamento') ? 'faturamento' : 'quantidade';
+    var resp = await fetch('/api/clientes/ranking?tipo=' + encodeURIComponent(tipoNorm) + '&limit=30&t=' + Date.now(), {
+      headers: tokenHeaders()
+    });
+    var data = await resp.json().catch(function() { return []; });
+    var lista = Array.isArray(data) ? data : (Array.isArray(data && data.data) ? data.data : []);
+
+    var anterior = document.getElementById('modal-ranking-clientes');
+    if (anterior) anterior.remove();
+
+    var titulo = tipoNorm === 'faturamento' ? 'Maior Valor' : 'Quem Mais Pede';
+    var overlay = document.createElement('div');
+    overlay.id = 'modal-ranking-clientes';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:20px';
+
+    var rows = lista.slice(0, 30).map(function(c, i) {
+      var medalha = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : '#' + (i + 1)));
+      var val = tipoNorm === 'faturamento'
+        ? 'R$ ' + (Number(c && c.faturamento || 0) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : String(Number(c && c.total_ofs || 0) || 0) + ' OFs';
+      return '<tr style="border-bottom:1px solid #2d3748">'
+        + '<td style="padding:8px 12px;font-size:18px">' + esc(medalha) + '</td>'
+        + '<td style="padding:8px 12px;color:#f1f5f9">' + esc(c && c.nome || '—') + '</td>'
+        + '<td style="padding:8px 12px;color:#64748b">' + esc(c && c.cidade || '') + '</td>'
+        + '<td style="padding:8px 12px;text-align:right;color:#3b82f6;font-weight:600">' + esc(val) + '</td>'
+        + '</tr>';
+    }).join('');
+
+    overlay.innerHTML = '<div style="background:#1e2433;border:1px solid #2d3748;border-radius:14px;padding:28px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.6);position:relative">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">'
+      + '<h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin:0">' + esc(tipoNorm === 'faturamento' ? '💰 Maior Valor' : '📦 Quem Mais Pede') + '</h2>'
+      + '<button type="button" id="ranking-close-hotfix" style="background:none;border:none;color:#64748b;font-size:24px;cursor:pointer">×</button></div>'
+      + '<table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid #2d3748">'
+      + '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#64748b">#</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#64748b">CLIENTE</th>'
+      + '<th style="padding:8px 12px;text-align:left;font-size:11px;color:#64748b">CIDADE</th>'
+      + '<th style="padding:8px 12px;text-align:right;font-size:11px;color:#64748b">' + esc(tipoNorm === 'faturamento' ? 'VALOR' : 'OFs') + '</th>'
+      + '</tr></thead><tbody>' + (rows || '<tr><td colspan="4" style="padding:12px;color:#94a3b8;text-align:center">Nenhum dado encontrado.</td></tr>') + '</tbody></table></div>';
+
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    try { document.getElementById('ranking-close-hotfix').onclick = function() { overlay.remove(); }; } catch (_) {}
+  };
+
+  function fixarBotoesRankingClientes() {
+    try {
+      var btnAtivos = document.getElementById('patch-analise-ativos');
+      var btnValor = document.getElementById('patch-analise-valor');
+      if (btnAtivos && btnAtivos.dataset.rankFixed !== '1') {
+        btnAtivos.dataset.rankFixed = '1';
+        btnAtivos.onclick = function() { window.abrirRankingClientes('quantidade'); };
+      }
+      if (btnValor && btnValor.dataset.rankFixed !== '1') {
+        btnValor.dataset.rankFixed = '1';
+        btnValor.onclick = function() { window.abrirRankingClientes('faturamento'); };
+      }
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+        if (!btn) return;
+        var txt = String(btn.textContent || '').trim();
+        if (!txt || btn.dataset.rankFixed === '1') return;
+        if (txt.indexOf('Quem mais pede') >= 0) {
+          btn.dataset.rankFixed = '1';
+          btn.onclick = function() { window.abrirRankingClientes('quantidade'); };
+        } else if (txt.indexOf('Maior valor') >= 0 || txt.indexOf('Maior Valor') >= 0) {
+          btn.dataset.rankFixed = '1';
+          btn.onclick = function() { window.abrirRankingClientes('faturamento'); };
+        }
+      });
+    } catch (_) {}
+  }
+
+  function hideLegacyComissoesUi() {
+    try {
+      var oldToolbar = document.querySelector('#page-comissoes > .ptoolbar.filtros-comissao');
+      if (oldToolbar) oldToolbar.style.display = 'none';
+      var box1 = document.getElementById('grafico-comissoes');
+      if (box1 && box1.closest) {
+        var wrap1 = box1.closest('.sbox');
+        if (wrap1) wrap1.style.display = 'none';
+      }
+      var box2 = document.getElementById('tabela-comissoes-ofs');
+      if (box2 && box2.closest) {
+        var wrap2 = box2.closest('.sbox');
+        if (wrap2) wrap2.style.display = 'none';
+      }
+      var result = document.getElementById('comissoes-relatorio-resultado');
+      if (result) result.style.display = 'none';
+    } catch (_) {}
+  }
+
+  function mesesOptionsSimple() {
+    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var atual = new Date().getMonth() + 1;
+    return meses.map(function(m, i) {
+      var v = i + 1;
+      return '<option value="' + v + '"' + (v === atual ? ' selected' : '') + '>' + esc(m) + '</option>';
+    }).join('');
+  }
+
+  function anosOptionsSimple() {
+    var atual = new Date().getFullYear();
+    return [2024, 2025, 2026, 2027].map(function(a) {
+      return '<option value="' + a + '"' + (a === atual ? ' selected' : '') + '>' + a + '</option>';
+    }).join('');
+  }
+
+  window.carregarVendedoresComissoes = async function() {
+    var sel = document.getElementById('com-simples-vendedores');
+    if (!sel || sel.dataset.loading === '1') return;
+    sel.dataset.loading = '1';
+    try {
+      var resp = await fetch('/api/ofs/vendedores-unicos?t=' + Date.now(), { headers: tokenHeaders() });
+      var json = await resp.json().catch(function() { return []; });
+      var nomes = Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : []);
+      nomes = Array.from(new Set((nomes || []).map(function(v) { return String(v || '').trim(); }).filter(Boolean))).sort(function(a, b) { return a.localeCompare(b); });
+      sel.innerHTML = '<option value="todos" selected>Todos os vendedores</option>' + nomes.map(function(v) {
+        return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+      }).join('');
+      sel.onchange = function() {
+        var picks = Array.prototype.slice.call(sel.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); });
+        if (picks.indexOf('todos') >= 0 && picks.length > 1) {
+          Array.prototype.slice.call(sel.options).forEach(function(o) { if (o.value !== 'todos') o.selected = false; });
+        } else if (picks.indexOf('todos') === -1 && picks.length === 0 && sel.options[0]) {
+          sel.options[0].selected = true;
+        }
+      };
+    } catch (_) {
+      sel.innerHTML = '<option value="todos" selected>Todos os vendedores</option>';
+    } finally {
+      delete sel.dataset.loading;
+    }
+  };
+
+  function renderTelaComissoes() {
+    var area = document.getElementById('com-screen-area');
+    if (!area) return;
+    hideLegacyComissoesUi();
+    var wrap = document.getElementById('comissoes-relatorio-wrap');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'comissoes-relatorio-wrap';
+      area.parentNode.insertBefore(wrap, area);
+    }
+    if (wrap.dataset.simpleReady === '1' && document.getElementById('com-simples-vendedores')) return;
+    wrap.dataset.simpleReady = '1';
+    wrap.innerHTML =
+      '<div style="max-width:600px;margin:0 auto;padding:24px 0">'
+      + '<h2 style="font-size:20px;font-weight:700;color:var(--text1);margin-bottom:24px">Relatorio de Comissoes</h2>'
+      + '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">'
+      +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
+      +     '<div><label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">MES</label><select id="com-simples-mes" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1)">' + mesesOptionsSimple() + '</select></div>'
+      +     '<div><label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">ANO</label><select id="com-simples-ano" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1)">' + anosOptionsSimple() + '</select></div>'
+      +   '</div>'
+      +   '<div style="margin-bottom:20px">'
+      +     '<label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">VENDEDOR(ES) - segure Ctrl para selecionar mais de um</label>'
+      +     '<select id="com-simples-vendedores" multiple style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);min-height:100px">'
+      +       '<option value="todos" selected>Todos os vendedores</option>'
+      +     '</select>'
+      +   '</div>'
+      +   '<button id="btn-gerar-imprimir-comissoes" onclick="gerarEImprimirComissoes()" style="width:100%;padding:14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">Gerar e Imprimir Relatorio</button>'
+      + '</div>'
+      + '</div>';
+    window.carregarVendedoresComissoes();
+  }
+
+  window.gerarEImprimirComissoes = async function() {
+    var mes = (document.getElementById('com-simples-mes') || {}).value;
+    var ano = (document.getElementById('com-simples-ano') || {}).value;
+    var sel = document.getElementById('com-simples-vendedores');
+    var picks = sel ? Array.prototype.slice.call(sel.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); }).filter(Boolean) : ['todos'];
+    var vendedoresSel = (!picks.length || picks.indexOf('todos') >= 0) ? 'todos' : picks.join(',');
+    var btn = document.getElementById('btn-gerar-imprimir-comissoes');
+    try {
+      if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes || '') + '&ano=' + encodeURIComponent(ano || '') + '&vendedores=' + encodeURIComponent(vendedoresSel), {
+        headers: tokenHeaders()
+      });
+      var data = await resp.json().catch(function() { return {}; });
+      if (!resp.ok || data.error) throw new Error((data && data.error) || ('Erro ' + resp.status));
+      if (!data.grupos || !data.grupos.length) {
+        toastHotfix('Nenhuma comissao encontrada para o periodo selecionado', 'var(--orange)');
+        return;
+      }
+      window._relatorioComissoesData = data;
+      if (typeof window.imprimirRelatorioComissoes === 'function') window.imprimirRelatorioComissoes();
+    } catch (e) {
+      toastHotfix('Erro: ' + String(e && e.message || e), 'var(--red)');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Gerar e Imprimir Relatorio'; }
+    }
+  };
+  window.gerarRelatorioComissoes = window.gerarEImprimirComissoes;
+
+  function hookRenderComissoesSimple() {
+    if (typeof window.renderComissoes !== 'function' || window.renderComissoes._patchSimpleCom) return;
+    var orig = window.renderComissoes;
+    window.renderComissoes = async function() {
+      var r = await orig.apply(this, arguments);
+      setTimeout(function() {
+        hideLegacyComissoesUi();
+        renderTelaComissoes();
+      }, 0);
+      return r;
+    };
+    window.renderComissoes._patchSimpleCom = true;
+  }
+
+  function patchCaixasPerdidasSafe() {
+    if (typeof window.carregarCaixasPerdidas === 'function' && !window.carregarCaixasPerdidas._patchSafeHotfix) {
+      var origLoad = window.carregarCaixasPerdidas;
+      window.carregarCaixasPerdidas = async function() {
+        try {
+          return await origLoad.apply(this, arguments);
+        } catch (_) {
+          try { window._cpRows = Array.isArray(window._cpRows) ? window._cpRows : []; } catch (_) {}
+          try { if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas(); } catch (_) {}
+          return [];
+        } finally {
+          try {
+            var page = document.getElementById('page-caixas-perdidas');
+            if (page) page.style.display = '';
+            if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas();
+          } catch (_) {}
+        }
+      };
+      window.carregarCaixasPerdidas._patchSafeHotfix = true;
+    }
+    if (typeof window.renderCaixasPerdidas === 'function' && !window.renderCaixasPerdidas._patchSafeHotfix) {
+      var origRender = window.renderCaixasPerdidas;
+      window.renderCaixasPerdidas = function() {
+        try {
+          var page = document.getElementById('page-caixas-perdidas');
+          if (page) page.style.display = '';
+        } catch (_) {}
+        try {
+          return origRender.apply(this, arguments);
+        } catch (_) {
+          var tbody = document.querySelector('#cp-table tbody');
+          if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lancamentos no periodo</td></tr>';
+        }
+      };
+      window.renderCaixasPerdidas._patchSafeHotfix = true;
+    }
+  }
+
+  function tick() {
+    ensurePainelClienteScroll();
+    hideProjecaoVendas();
+    fixarBotoesRankingClientes();
+    renderTelaComissoes();
+    hookRenderComissoesSimple();
+    patchCaixasPerdidasSafe();
+  }
+
+  try {
+    if (typeof window.renderProjecaoVendas === 'function' && !window.renderProjecaoVendas._patchHideWidget) {
+      var origProj = window.renderProjecaoVendas;
+      window.renderProjecaoVendas = async function() {
+        hideProjecaoVendas();
+        return null;
+      };
+      window.renderProjecaoVendas._patchHideWidget = true;
+      window.renderProjecaoVendas._orig = origProj;
+    }
+  } catch (_) {}
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(tick, 200);
+      setTimeout(tick, 900);
+    });
+  } else {
+    setTimeout(tick, 200);
+    setTimeout(tick, 900);
+  }
+
+  try {
+    if (window._obsRankHotfix && typeof window._obsRankHotfix.disconnect === 'function') window._obsRankHotfix.disconnect();
+  } catch (_) {}
+  try {
+    window._obsRankHotfix = new MutationObserver(function() {
+      ensurePainelClienteScroll();
+      hideProjecaoVendas();
+      fixarBotoesRankingClientes();
+      patchCaixasPerdidasSafe();
+    });
+    window._obsRankHotfix.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+})();
