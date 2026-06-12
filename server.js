@@ -1515,7 +1515,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     };
     const pickProduto = (of) => String(of?.produto ?? of?.produto_nome ?? of?.prodDesc ?? of?.descricao ?? '').trim() || '—';
     const pickQtd = (of) => Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
-    const pickTotal = (of) => Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? of?.vl_total ?? of?.val ?? 0) || 0;
+    const pickTotal = (of) => Number(of?.total ?? of?.valor_total ?? of?.valor_venda ?? of?.vl_total ?? 0) || 0;
     const pickNumero = (of) => String(of?.numero ?? of?.of ?? '').trim() || String(of?.id || '').slice(0, 8);
 
     const grupos = {};
@@ -2711,8 +2711,7 @@ function clientesPayload(p) {
     telefone: 'tel',
     email: 'email',
     cidade: 'cidade',
-    estado: 'estado',
-    uf: 'estado',
+    uf: 'uf',
     endereco: 'endereco',
     contato: 'contato',
     observacoes: 'observacoes',
@@ -4279,6 +4278,91 @@ app.post('/api/ofs/upload', authMiddleware, ofUpload.single('file'), async (req,
     const { data: urlData } = supabase.storage.from('uploads').getPublicUrl(filename);
     return ok(res, { url: urlData?.publicUrl || '' });
   } catch (e) { return res.status(500).json({ ok: false, error: String(e.message || e) }); }
+});
+
+app.post('/api/ofs/:id/imagem', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+
+    const imagemBase64 = String(req.body?.imagem_base64 || '').trim();
+    const imagemUrlBody = String(req.body?.imagem_url || '').trim();
+    let finalUrl = imagemUrlBody;
+
+    if (!finalUrl && !imagemBase64) {
+      return res.status(400).json({ ok: false, error: 'imagem obrigatória' });
+    }
+
+    const { data: ofAtual, error: ofErr } = await supabase
+      .from('ofs')
+      .select('id, imagem_url, imgs')
+      .eq('id', id)
+      .maybeSingle();
+    if (ofErr) throw ofErr;
+    if (!ofAtual) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    if (!finalUrl && imagemBase64) {
+      const match = imagemBase64.match(/^data:([^;]+);base64,(.+)$/);
+      if (!match) return res.status(400).json({ ok: false, error: 'imagem_base64 inválida' });
+
+      const mime = String(match[1] || req.body?.tipo || 'application/octet-stream').trim().toLowerCase();
+      const extMap = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg',
+        'image/png': '.png',
+        'image/webp': '.webp',
+        'image/gif': '.gif',
+        'application/pdf': '.pdf',
+      };
+      const ext = extMap[mime] || '.bin';
+      const buffer = Buffer.from(String(match[2] || ''), 'base64');
+      if (!buffer.length) return res.status(400).json({ ok: false, error: 'arquivo vazio' });
+
+      const filename = `of/${id}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+      const tryUpload = async (bucket) => {
+        const b = String(bucket || '').trim();
+        const r = await supabase.storage.from(b).upload(filename, buffer, { contentType: mime, upsert: false });
+        return { bucket: b, error: r?.error || null };
+      };
+
+      let uploaded = await tryUpload('of-images');
+      if (uploaded.error) uploaded = await tryUpload('uploads');
+      if (uploaded.error) throw uploaded.error;
+
+      const { data: urlData } = supabase.storage.from(uploaded.bucket).getPublicUrl(filename);
+      finalUrl = String(urlData?.publicUrl || '').trim();
+      if (!finalUrl) throw new Error('upload_url_missing');
+    }
+
+    const imgsAtual = Array.isArray(ofAtual?.imgs)
+      ? ofAtual.imgs
+      : (typeof ofAtual?.imgs === 'string'
+        ? (() => { try { const p = JSON.parse(ofAtual.imgs || '[]'); return Array.isArray(p) ? p : []; } catch (_) { return []; } })()
+        : []);
+    const imgs = Array.from(new Set([finalUrl].concat(imgsAtual).map((v) => String(v || '').trim()).filter(Boolean))).slice(0, 10);
+    const payload = {
+      imagem_url: finalUrl || String(ofAtual?.imagem_url || '').trim() || null,
+      imgs: JSON.stringify(imgs),
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from('ofs')
+      .update(payload)
+      .eq('id', id)
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+
+    try { cacheClearPrefix('ofs_'); } catch (_) {}
+    try { cacheClearPrefix('ofs_v4'); } catch (_) {}
+    try { cacheClearPrefix('ofs_v11_'); } catch (_) {}
+
+    return res.json({ ok: true, imagem_url: payload.imagem_url, imgs, data });
+  } catch (e) {
+    console.error('[OF IMAGEM]', e.message || e);
+    return res.status(500).json({ ok: false, error: String(e.message || e) });
+  }
 });
 
 app.post('/api/chat/upload', authMiddleware, chatUpload.fields([{ name: 'file', maxCount: 1 }, { name: 'arquivo', maxCount: 1 }]), async (req, res) => {
@@ -6871,7 +6955,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
     if (cachedClientes) return res.json(cachedClientes);
     const cols = empId ? ['empId', 'emp_id', 'empresa', 'empresa_id'] : [null];
     let lastErr = null;
-    let selectSlim = 'id,nome,cnpj,tel,email,cidade,estado,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
+    let selectSlim = 'id,nome,cnpj,tel,email,cidade,vendedor_id,emp_id,ativo,rs,ie,uf,end,endereco,ramo,pagto,rep,obs,observacoes,vendedor,vendId,empId,empresa_id,created_at';
     const logClientes = (rows) => {
       try {
         console.debug('[GET CLIENTES]', {
@@ -7090,7 +7174,7 @@ app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
     };
 
     const pickValor = (of) => {
-      const direto = parseFloat(of?.vl_total ?? of?.valor_total ?? of?.valor_venda ?? of?.val ?? of?.total ?? of?.valor ?? 0) || 0;
+      const direto = parseFloat(of?.total ?? of?.vl_total ?? of?.valor_total ?? of?.valor_venda ?? of?.valor ?? 0) || 0;
       if (direto > 0) return direto;
       const qtd = parseFloat(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
       const unit = parseFloat(of?.vl_unit ?? of?.valor_unit ?? of?.vlUnit ?? of?.valorUnit ?? 0) || 0;
@@ -7102,7 +7186,7 @@ app.get('/api/clientes/analise', authMiddleware, async (req, res) => {
     while (offset < maxRows) {
       const { data: ofs, error } = await supabase
         .from('ofs')
-        .select('id,cliNome,cliente_nome,cli_id,cliente_id,created_at,dia,quantidade,qtd,qtd_pedida,valor_total,valor_venda,val,status,deleted_at')
+        .select('id,cliNome,cliente_nome,cli_id,cliente_id,created_at,dia,quantidade,qtd,qtd_pedida,valor_total,valor_venda,total,status,deleted_at')
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
@@ -7696,6 +7780,48 @@ app.put('/api/clientes/:id', authMiddleware, async (req, res) => {
     await logAuditoria('clientes', 'UPDATE', String(req.params.id || '').trim(), antes, updated, req);
     ok(res, updated);
   } catch (e) { err(res, e); }
+});
+
+app.patch('/api/clientes/:id', authMiddleware, async (req, res) => {
+  try {
+    let antes = null;
+    try {
+      const r0 = await supabase.from('clientes').select('*').eq('id', String(req.params.id || '').trim()).maybeSingle();
+      antes = r0?.data || null;
+    } catch (_) {}
+
+    const payload = clientesPayload({ ...(req.body || {}) });
+    delete payload.id;
+    delete payload.empresa_id;
+    delete payload.emp_id;
+    if (!Object.keys(payload).length) return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+
+    let { data, error } = await clientesUpdateCompat(req.params.id, payload);
+    if (error) {
+      const msg = String(error.message || error);
+      if (msg.includes('vendedor_id') || msg.includes('vendedor')) {
+        delete payload.vendedor_id;
+        delete payload.vendedor;
+        ({ data, error } = await clientesUpdateCompat(req.params.id, payload));
+      }
+    }
+    if (error) throw error;
+
+    const updated = Array.isArray(data) ? data[0] : data;
+    if (!updated) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+    try {
+      const empId = await resolverEmpresaId(req);
+      if (empId) cacheDel('clientes_' + empId);
+    } catch (_) {}
+    try { cacheClearPrefix('clientes_'); } catch (_) {}
+
+    await logAuditoria('clientes', 'PATCH', String(req.params.id || '').trim(), antes, updated, req);
+    return res.json(updated);
+  } catch (e) {
+    console.error('[PATCH clientes]', e.message || e);
+    return res.status(500).json({ error: e.message || String(e) });
+  }
 });
 
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
@@ -9715,7 +9841,7 @@ app.delete('/api/fornecedores/:id', authMiddleware, async (req, res) => {
 // ══════════════════════════════════════════════════════════════
 app.get('/api/inconformidades', authMiddleware, async (req, res) => {
   try {
-    const empresa_id = await resolverEmpresaId(req);
+    const empId = await resolverEmpresaId(req);
 
     const { maquina, status } = req.query || {};
     const operador = String(req.query?.operador || '').trim();
@@ -9729,8 +9855,6 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (empresa_id) q = q.eq('empresa_id', empresa_id);
-    else if (req.query?.empId) q = q.eq('emp_id', String(req.query.empId));
     if (maquina) q = q.eq('maquina', String(maquina));
     if (status) q = q.eq('status', String(status));
     if (fromDate) q = q.gte('created_at', fromDate);
@@ -9745,11 +9869,13 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
     const itens = Array.isArray(data) ? data : [];
     const ofIds = Array.from(new Set(itens.map((item) => String(item?.of_id || '').trim()).filter(Boolean)));
     let ofsMap = new Map();
+    let idsValidos = null;
     if (ofIds.length) {
       try {
-        let oq = supabase.from('ofs').select('*').in('id', ofIds);
-        if (empresa_id) oq = oq.eq('empresa_id', empresa_id);
+        let oq = supabase.from('ofs').select('*').in('id', ofIds.slice(0, 500));
+        if (empId) oq = oq.eq('empresa_id', empId);
         const { data: ofsData } = await oq;
+        idsValidos = new Set((ofsData || []).map((of) => String(of?.id || '').trim()).filter(Boolean));
         ofsMap = new Map((ofsData || []).map((of) => [String(of?.id || '').trim(), of]));
       } catch (_) {}
     }
@@ -9760,7 +9886,12 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
     const pickOfNumero = (of) => String(of?.numero || of?.of || '').trim();
     const pickVlUnit = (of) => Number(of?.vl_unit || of?.valor_unitario || 0) || 0;
 
-    let enriched = itens.map((item) => {
+    let enriched = itens.filter((item) => {
+      if (!empId) return true;
+      const ofId = String(item?.of_id || '').trim();
+      if (!ofId) return true;
+      return !!(idsValidos && idsValidos.has(ofId));
+    }).map((item) => {
       const ofData = ofsMap.get(String(item?.of_id || '').trim()) || null;
       const qtdPerdida = Number(item?.qtd_perdida ?? item?.caixas_perdidas ?? 0) || 0;
       const vlUnit = Number(item?.vl_unit ?? item?.valor_unitario ?? pickVlUnit(ofData) ?? 0) || 0;
@@ -9778,7 +9909,6 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
 
       return {
         ...item,
-        empresa_id: item?.empresa_id || empresa_id || null,
         of_numero: String(item?.of_numero || pickOfNumero(ofData) || String(item?.of_id || '').slice(0, 8) || '').trim(),
         maquina: String(item?.maquina || pickOfMaquina(ofData) || '—').trim() || '—',
         produto: String(item?.produto || pickOfProduto(ofData) || '—').trim() || '—',
@@ -9809,8 +9939,11 @@ app.get('/api/inconformidades', authMiddleware, async (req, res) => {
       });
     }
 
-    res.json({ ok: true, data: enriched, inconformidades: enriched });
-  } catch (e) { err(res, e); }
+    res.json(enriched);
+  } catch (e) {
+    try { console.error('[inconformidades]', e.message || e); } catch (_) {}
+    res.json([]);
+  }
 });
 
 app.post('/api/inconformidades', authMiddleware, async (req, res) => {
@@ -14452,7 +14585,7 @@ async function _fetchResumoEmail({ empId, period }) {
   const deIso = de.toISOString();
   const ateIso = ate.toISOString();
 
-  let qOf = supabase.from('ofs').select('id,numero,of,status,valor_total,valor_venda,val,emp_id,created_at,data_conclusao,updated_at').gte('created_at', deIso).lte('created_at', ateIso).limit(5000);
+  let qOf = supabase.from('ofs').select('id,numero,of,status,valor_total,valor_venda,total,emp_id,created_at,data_conclusao,updated_at').gte('created_at', deIso).lte('created_at', ateIso).limit(5000);
   if (empId) qOf = qOf.eq('emp_id', empId);
   const ofsR = await qOf;
   const ofs = Array.isArray(ofsR.data) ? ofsR.data : [];
@@ -14832,7 +14965,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
 
   const { data: ofsAbertasRaw } = await supabase
     .from('ofs')
-    .select('id,of,numero,status,cli_id,cliente_id,descricao,data_entrega,ent,valor_total,valor_venda,val,urg,urgente,deleted_at,imagem_url,imgs,data_conclusao')
+    .select('id,of,numero,status,cli_id,cliente_id,descricao,data_entrega,ent,valor_total,valor_venda,total,urg,urgente,deleted_at,imagem_url,imgs,data_conclusao')
     .is('deleted_at', null)
     .neq('status', 'Cancelada')
     .limit(500);
@@ -14881,7 +15014,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
 
   const { data: ofsMesRaw } = await supabase
     .from('ofs')
-    .select('valor_total,valor_venda,val,status,data_conclusao,deleted_at')
+    .select('valor_total,valor_venda,total,status,data_conclusao,deleted_at')
     .gte('data_conclusao', mesAtual + '-01')
     .is('deleted_at', null)
     .limit(5000);
@@ -14917,14 +15050,14 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
       const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
       const { data: ofsM } = await supabase
         .from('ofs')
-        .select('valor_total,valor_venda,val,status,deleted_at')
+        .select('valor_total,valor_venda,total,status,deleted_at')
         .gte('data_conclusao', de)
         .lte('data_conclusao', fim)
         .is('deleted_at', null)
         .limit(1000);
       const total = (Array.isArray(ofsM) ? ofsM : [])
         .filter(o => !o.deleted_at)
-        .reduce((s, o) => s + (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0), 0);
+        .reduce((s, o) => s + (Number(o.total ?? o.valor_total ?? o.valor_venda ?? 0) || 0), 0);
       meses.push({ mes, total: Math.round(total) });
     }
     ctx.tendencia_faturamento = meses;
@@ -14940,7 +15073,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
     const mesRef = new Date().toISOString().slice(0, 7);
     const { data: ofsClientes } = await supabase
       .from('ofs')
-      .select('cli_id,cliente_id,valor_total,valor_venda,val,deleted_at,status')
+      .select('cli_id,cliente_id,valor_total,valor_venda,total,deleted_at,status')
       .gte('created_at', mesRef + '-01')
       .is('deleted_at', null)
       .limit(2000);
@@ -14948,7 +15081,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
     (Array.isArray(ofsClientes) ? ofsClientes : []).forEach(o => {
       const cid = String(o.cli_id || o.cliente_id || '').trim();
       if (!cid) return;
-      const v = Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0;
+      const v = Number(o.total ?? o.valor_total ?? o.valor_venda ?? 0) || 0;
       mapCli[cid] = (mapCli[cid] || 0) + v;
     });
     const topIds = Object.entries(mapCli).sort((a, b) => b[1] - a[1]).slice(0, 5).map(x => x[0]);
@@ -14984,7 +15117,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
     const anoAtual = new Date().getFullYear();
     const { data: ofsAno } = await supabase
       .from('ofs')
-      .select('valor_total,valor_venda,val,status,deleted_at,data_conclusao')
+      .select('valor_total,valor_venda,total,status,deleted_at,data_conclusao')
       .gte('data_conclusao', `${anoAtual}-01-01`)
       .is('deleted_at', null)
       .limit(5000);
@@ -14992,7 +15125,7 @@ async function _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsua
       !o.deleted_at && (String(o.status || '').toLowerCase().includes('conclu'))
     );
     ctx.faturamento_ano_atual = Math.round(concluidas.reduce((s, o) =>
-      s + (Number(o.valor_total ?? o.valor_venda ?? o.val ?? 0) || 0), 0));
+      s + (Number(o.total ?? o.valor_total ?? o.valor_venda ?? 0) || 0), 0));
     ctx.total_ofs_concluidas_ano = concluidas.length;
   } catch (_) {}
 
@@ -15571,7 +15704,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const dtFim = new Date(ano, mm, 0).toISOString().slice(0, 10);
       const { data: ofsRaw } = await supabase
         .from('ofs')
-        .select('status,deleted_at,data_entrega,ent,data_conclusao,valor_total,valor_venda,val')
+        .select('status,deleted_at,data_entrega,ent,data_conclusao,valor_total,valor_venda,total')
         .is('deleted_at', null)
         .limit(5000);
       const rows = Array.isArray(ofsRaw) ? ofsRaw : [];
@@ -15604,7 +15737,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const dtMesFim = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
       const { data: ofsRaw } = await supabase
         .from('ofs')
-        .select('cli_id,cliente_id,deleted_at,status,valor_total,valor_venda,val,data_conclusao,data_entrega,ent,created_at')
+        .select('cli_id,cliente_id,deleted_at,status,valor_total,valor_venda,total,data_conclusao,data_entrega,ent,created_at')
         .is('deleted_at', null)
         .limit(5000);
       const rows = (Array.isArray(ofsRaw) ? ofsRaw : []).filter((o) => !_assistIsCancelada(o));
@@ -15971,7 +16104,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const { data } = await supabase.from('fornecedores').select('*').limit(500);
         dados.fornecedores = data || [];
       } else if (assunto === 'faturamento') {
-        const { data } = await supabase.from('ofs').select('id,of,numero,status,valor_total,valor_venda,val,emp_id,data_conclusao,created_at,deleted_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(1000);
+        const { data } = await supabase.from('ofs').select('id,of,numero,status,valor_total,valor_venda,total,emp_id,data_conclusao,created_at,deleted_at').is('deleted_at', null).order('created_at', { ascending: false }).limit(1000);
         dados.ofs = data || [];
       } else {
         const ctx = await _jarvisBuildContext({ pergunta, norm, hoje, month, year, nomeUsuario: nome });
@@ -16825,7 +16958,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const ate = `${y}-12-31`;
       const { data } = await supabase
         .from('ofs')
-        .select('status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .select('status,data_conclusao,valor_total,valor_venda,total,deleted_at')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -16876,7 +17009,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const ate = `${y}-12-31`;
       const { data } = await supabase
         .from('ofs')
-        .select('status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .select('status,data_conclusao,valor_total,valor_venda,total,deleted_at')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -17009,7 +17142,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de: wDe, ate: wAte } = _assistWeekRange(hoje);
       const { data: ofsAll } = await supabase
         .from('ofs')
-        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,valor_total,valor_venda,val,urg,urgente,qtd_perdida,valor_perdido')
+        .select('id,of,numero,status,ent,data_entrega,data_conclusao,deleted_at,cli_id,cliente_id,valor_total,valor_venda,total,urg,urgente,qtd_perdida,valor_perdido')
         .order('created_at', { ascending: false })
         .limit(5000);
       const ofs = Array.isArray(ofsAll) ? ofsAll : [];
@@ -17299,7 +17432,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de, ate } = _assistMonthRange(year, m);
       const { data } = await supabase
         .from('ofs')
-        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,emp_id,empId')
+        .select('id,status,data_conclusao,valor_total,valor_venda,total,deleted_at,emp_id,empId')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -17324,7 +17457,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
         const { de, ate } = _assistMonthRange(y, m);
         const { data } = await supabase
           .from('ofs')
-          .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+          .select('id,status,data_conclusao,valor_total,valor_venda,total,deleted_at')
           .gte('data_conclusao', de)
           .lte('data_conclusao', ate)
           .limit(5000);
@@ -17341,7 +17474,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de, ate } = { de: `${y}-01-01`, ate: `${y}-12-31` };
       const { data } = await supabase
         .from('ofs')
-        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at')
+        .select('id,status,data_conclusao,valor_total,valor_venda,total,deleted_at')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -17375,7 +17508,7 @@ app.post('/api/assistente', authMiddleware, async (req, res) => {
       const { de, ate } = _assistMonthRange(year, m);
       const { data } = await supabase
         .from('ofs')
-        .select('id,status,data_conclusao,valor_total,valor_venda,val,deleted_at,cli_id,cliente_id')
+        .select('id,status,data_conclusao,valor_total,valor_venda,total,deleted_at,cli_id,cliente_id')
         .gte('data_conclusao', de)
         .lte('data_conclusao', ate)
         .limit(5000);
@@ -18909,7 +19042,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     };
     const hasLat = await hasColCli('lat');
     const hasLng = await hasColCli('lng');
-    const cliSel = 'id,nome,cidade,estado,uf,tel,telefone,vendedor_id,emp_id'
+    const cliSel = 'id,nome,cidade,uf,tel,telefone,vendedor_id,emp_id'
       + ((hasLat && hasLng) ? ',lat,lng' : '');
 
     let qCli = supabase.from('clientes').select(cliSel).limit(5000);
@@ -18918,7 +19051,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     if(eCli) throw eCli;
     const clientes = Array.isArray(clientesRaw)?clientesRaw:[];
 
-    const ofCols = 'id,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,emp_id,deleted_at,status';
+    const ofCols = 'id,cli_id,cliId,cliente_id,valor_total,valor_venda,total,created_at,data_conclusao,emp_id,deleted_at,status';
     let qOf1 = supabase
       .from('ofs')
       .select(ofCols)
@@ -18975,7 +19108,7 @@ app.get('/api/clientes/mapa', authMiddleware, async (req, res) => {
     if (mesStartIso) {
       let qMes = supabase
         .from('ofs')
-        .select('cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,status,deleted_at,emp_id')
+        .select('cli_id,cliId,cliente_id,valor_total,valor_venda,total,created_at,status,deleted_at,emp_id')
         .gte('created_at', mesStartIso)
         .is('deleted_at', null)
         .not('status', 'in', '("Cancelada","Cancelado")')
@@ -19180,7 +19313,7 @@ app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
 
     let qCli = supabase.from('clientes').select('*').ilike('cidade', '%' + cidadeParam + '%');
     if(empId) qCli = qCli.eq('emp_id', empId);
-    if(estado) qCli = qCli.or(`estado.ilike.%${estado}%,uf.ilike.%${estado}%`);
+    if(estado) qCli = qCli.ilike('uf', '%' + estado + '%');
     const { data: clientesRaw, error: eCli } = await qCli.limit(500);
     if(eCli) throw eCli;
     const clientes = Array.isArray(clientesRaw) ? clientesRaw : [];
@@ -19218,7 +19351,7 @@ app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
       try{
         const { data: ofs, error: eOf } = await supabase
           .from('ofs')
-          .select('id,of,numero,status,cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,data_conclusao,deleted_at')
+          .select('id,of,numero,status,cli_id,cliId,cliente_id,valor_total,valor_venda,total,created_at,data_conclusao,deleted_at')
           .in(campo, cliIds)
           .gte('created_at', dataCorteIso + 'T00:00:00')
           .is('deleted_at', null)
@@ -19255,7 +19388,7 @@ app.get('/api/clientes/cidade/:cidade', authMiddleware, async (req, res) => {
       try{
         const { data: oA, error: eA } = await supabase
           .from('ofs')
-          .select('cli_id,cliId,cliente_id,valor_total,valor_venda,val,created_at,deleted_at,status')
+          .select('cli_id,cliId,cliente_id,valor_total,valor_venda,total,created_at,deleted_at,status')
           .in(campo, cliIds)
           .gte('created_at', dataAnoIso + 'T00:00:00')
           .is('deleted_at', null)
@@ -19531,7 +19664,7 @@ async function _relDiarioFetchData(empId){
   const mesAtualIni = mesAtual + '-01';
   const mesAntIni = mesAnterior + '-01';
   const mesAntFim = _addDaysIso(mesAtualIni, -1);
-  let qOf = supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,descricao,data_entrega,ent,valor_total,valor_venda,val,data_conclusao,created_at,emp_id,deleted_at').is('deleted_at', null).limit(5000);
+  let qOf = supabase.from('ofs').select('id,of,numero,status,cliNome,cliente_nome,descricao,data_entrega,ent,valor_total,valor_venda,total,data_conclusao,created_at,emp_id,deleted_at').is('deleted_at', null).limit(5000);
   if(empId) qOf = qOf.eq('emp_id', empId);
   const { data: ofsRaw } = await qOf;
   const ofs = Array.isArray(ofsRaw) ? ofsRaw : [];

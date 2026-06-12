@@ -4233,302 +4233,74 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 })();
 
 (function patchRelatorioComissoesVendedor() {
-  function esc(v) {
-    if (typeof window.escH === 'function') return window.escH(v);
-    return String(v == null ? '' : v)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+  function obterToolbarComissoes() {
+    return document.querySelector(
+      '#page-comissoes .ptoolbar, .comissoes-toolbar, #comissoes-toolbar, [id*="comissao"][id*="toolbar"], .comissoes-filtros, [class*="comissao"][class*="filtro"]'
+    );
   }
 
-  function tokenHeaders() {
-    var token = '';
-    try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || ''); } catch (_) {}
-    return token ? { Authorization: 'Bearer ' + token } : {};
+  function syncFiltrosComissoesOriginais() {
+    var mesEl = document.querySelector('#comissoes-mes, [name="mes"], select[id*="mes"]');
+    var anoEl = document.querySelector('#comissoes-ano, [name="ano"], select[id*="ano"]');
+    var vendEl = document.querySelector('#comissoes-vendedor, [name="vendedor"], select[id*="vendedor"]');
+    var comMes = document.getElementById('com-mes');
+    var comAno = document.getElementById('com-ano');
+    var comVend = document.getElementById('com-vendedores');
+    if (comMes && mesEl && mesEl.value) comMes.value = mesEl.value;
+    if (comAno && anoEl && anoEl.value) comAno.value = anoEl.value;
+    if (comVend && vendEl && vendEl.value) comVend.value = vendEl.value;
   }
 
-  function mesesOptions() {
-    var now = new Date();
-    return Array.from({ length: 12 }, function(_, i) {
-      var dt = new Date(2000, i, 1);
-      var sel = (i + 1) === (now.getMonth() + 1) ? ' selected' : '';
-      return '<option value="' + (i + 1) + '"' + sel + '>' + esc(dt.toLocaleDateString('pt-BR', { month: 'long' })) + '</option>';
-    }).join('');
-  }
-
-  function anosOptions() {
-    var nowYear = new Date().getFullYear();
-    return [2024, 2025, 2026, 2027].map(function(a) {
-      return '<option value="' + a + '"' + (a === nowYear ? ' selected' : '') + '>' + a + '</option>';
-    }).join('');
-  }
-
-  function fmtMoeda(v) {
-    return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-
-  function fmtN(v) {
-    return Number(v || 0).toLocaleString('pt-BR');
-  }
-
-  function buildToolbarHtml() {
-    return ''
-      + '<div id="comissoes-relatorio-toolbar" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px">'
-      + '  <div style="font-weight:600;margin-bottom:12px;color:var(--text1)">📊 Relatório de Comissões</div>'
-      + '  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">'
-      + '    <div>'
-      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">MÊS</label>'
-      + '      <select id="rel-comissao-mes" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1)">' + mesesOptions() + '</select>'
-      + '    </div>'
-      + '    <div>'
-      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">ANO</label>'
-      + '      <select id="rel-comissao-ano" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1)">' + anosOptions() + '</select>'
-      + '    </div>'
-      + '    <div style="flex:1;min-width:200px">'
-      + '      <label style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px">VENDEDOR(ES)</label>'
-      + '      <select id="rel-comissao-vendedores" multiple style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text1);width:100%;min-height:70px">'
-      + '        <option value="todos" selected>Todos os vendedores</option>'
-      + '      </select>'
-      + '    </div>'
-      + '    <div style="display:flex;gap:8px">'
-      + '      <button id="btn-gerar-comissoes" onclick="gerarRelatorioComissoes()" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600">📊 Gerar</button>'
-      + '      <button onclick="imprimirRelatorioComissoes()" id="btn-imprimir-comissoes" style="padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;display:none">🖨️ Imprimir</button>'
-      + '    </div>'
-      + '  </div>'
-      + '</div>'
-      + '<div id="comissoes-relatorio-resultado" style="display:none"></div>';
-  }
-
-  function ensureToolbar() {
-    var area = document.getElementById('com-screen-area');
-    if (!area) return null;
-    var wrap = document.getElementById('comissoes-relatorio-wrap');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'comissoes-relatorio-wrap';
-      wrap.innerHTML = buildToolbarHtml();
-      area.parentNode.insertBefore(wrap, area);
-    }
-    return wrap;
-  }
-
-  function syncTodosOption() {
-    var sel = document.getElementById('rel-comissao-vendedores');
-    if (!sel) return;
-    var todosOpt = sel.querySelector('option[value="todos"]');
-    var picked = Array.from(sel.selectedOptions || []).map(function(o) { return String(o.value || ''); });
-    if (picked.indexOf('todos') >= 0 && picked.length > 1) {
-      Array.from(sel.options).forEach(function(o) { if (o.value !== 'todos') o.selected = false; });
-    } else if (picked.indexOf('todos') === -1 && picked.length === 0 && todosOpt) {
-      todosOpt.selected = true;
-    }
-  }
-
-  window.carregarVendedoresComissoes = async function() {
-    var sel = document.getElementById('rel-comissao-vendedores');
-    if (!sel || sel.dataset.loading === '1') return;
-    sel.dataset.loading = '1';
-    try {
-      var names = [];
-      try {
-        var resp = await fetch('/api/ofs/vendedores-unicos', { headers: tokenHeaders() });
-        if (resp && resp.ok) {
-          var json = await resp.json().catch(function() { return []; });
-          if (Array.isArray(json)) names = json.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
-          else if (json && json.ok && Array.isArray(json.data)) names = json.data.map(function(v) { return String(v || '').trim(); }).filter(Boolean);
-        }
-      } catch (_) {}
-      if (!names.length) {
-        try {
-          var vendedores = Array.isArray(window._comissoesData && window._comissoesData.vendedores) ? window._comissoesData.vendedores : [];
-          names = vendedores.map(function(v) { return String(v && v.vendedor || '').trim(); }).filter(Boolean);
-        } catch (_) {}
-      }
-      if (!names.length) {
-        try {
-          var ofs = Array.isArray(window.OFS) ? window.OFS : [];
-          ofs.forEach(function(of) {
-            var nome = String(of && (of.vendedor || of.representante || of.vendNome) || '').trim();
-            if (nome) names.push(nome);
-          });
-        } catch (_) {}
-      }
-      names = Array.from(new Set(names.filter(Boolean))).sort(function(a, b) { return a.localeCompare(b); });
-      Array.from(sel.querySelectorAll('option:not([value="todos"])')).forEach(function(o) { o.remove(); });
-      names.forEach(function(v) {
-        var opt = document.createElement('option');
-        opt.value = v;
-        opt.textContent = v;
-        sel.appendChild(opt);
-      });
-      sel.onchange = syncTodosOption;
-    } finally {
-      delete sel.dataset.loading;
+  window.gerarEImprimirComissoes = function() {
+    syncFiltrosComissoesOriginais();
+    if (typeof window.imprimirRelatorioComissoes === 'function') return window.imprimirRelatorioComissoes();
+    if (typeof window.gerarRelatorioComissoes === 'function' && window.gerarRelatorioComissoes !== window.gerarEImprimirComissoes) {
+      return window.gerarRelatorioComissoes();
     }
   };
 
-  window.gerarRelatorioComissoes = async function() {
-    var mes = document.getElementById('rel-comissao-mes') && document.getElementById('rel-comissao-mes').value;
-    var ano = document.getElementById('rel-comissao-ano') && document.getElementById('rel-comissao-ano').value;
-    var selVend = document.getElementById('rel-comissao-vendedores');
-    syncTodosOption();
-    var vendedoresSel = 'todos';
-    if (selVend) {
-      var picks = Array.from(selVend.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); }).filter(Boolean);
-      vendedoresSel = (!picks.length || picks.indexOf('todos') >= 0) ? 'todos' : picks.join(',');
-    }
-    if (!mes || !ano) {
-      try { window.mostrarToast('⚠️ Selecione mês e ano'); } catch (_) { try { window.toast('⚠️ Selecione mês e ano', 'var(--yellow)'); } catch (_) {} }
+  window.injetarBotaoImprimirComissoes = function() {
+    var toolbar = obterToolbarComissoes();
+    if (!toolbar) return;
+    var original = toolbar.querySelector('button[onclick*="imprimirRelatorioComissoes"]');
+    if (original) {
+      original.id = original.id || 'btn-imprimir-comissoes-toolbar';
       return;
     }
-    var container = document.getElementById('comissoes-relatorio-resultado');
-    var btnGerar = document.getElementById('btn-gerar-comissoes') || document.querySelector('button[onclick*="gerarRelatorioComissoes"]');
-    if (container) {
-      container.style.display = 'block';
-      container.innerHTML = '<div style="padding:20px;color:var(--text2)">Gerando relatório para impressão...</div>';
-    }
-    try { if (btnGerar) { btnGerar.disabled = true; btnGerar.textContent = '⏳ Gerando...'; } } catch (_) {}
-    try {
-      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes || '') + '&ano=' + encodeURIComponent(ano || '') + '&vendedores=' + encodeURIComponent(vendedoresSel), {
-        headers: tokenHeaders()
-      });
-      var data = await resp.json().catch(function() { return {}; });
-      if (!resp.ok || !data || data.error) throw new Error((data && data.error) || 'Erro ao gerar relatório');
-      if (!data.grupos || !data.grupos.length) {
-        try { window.mostrarToast('⚠️ Nenhuma comissão encontrada para o período'); } catch (_) { try { window.toast('⚠️ Nenhuma comissão encontrada para o período', 'var(--yellow)'); } catch (_) {} }
-        if (container) container.innerHTML = '<div style="padding:12px;color:var(--text2)">Nenhuma comissão encontrada para o período.</div>';
-        return;
-      }
-      window._relatorioComissoesData = data;
-      if (container) container.innerHTML = '<div style="padding:12px;color:var(--text2)">Abrindo impressão...</div>';
-      if (typeof window.imprimirRelatorioComissoes === 'function') window.imprimirRelatorioComissoes();
-    } catch (e) {
-      if (container) container.innerHTML = '<div style="color:#ef4444;padding:12px">Erro: ' + esc(e && e.message || e) + '</div>';
-      try { window.mostrarToast('❌ Erro: ' + String(e && e.message || e)); } catch (_) { try { window.toast('❌ Erro: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {} }
-    } finally {
-      try { if (btnGerar) { btnGerar.disabled = false; btnGerar.textContent = '📊 Gerar'; } } catch (_) {}
-    }
+    if (document.getElementById('btn-imprimir-comissoes-toolbar')) return;
+
+    var btn = document.createElement('button');
+    btn.id = 'btn-imprimir-comissoes-toolbar';
+    btn.innerHTML = '🖨️ Imprimir Relatório';
+    btn.style.cssText = 'padding:8px 16px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin-left:8px';
+    btn.onclick = function() { window.gerarEImprimirComissoes(); };
+    toolbar.appendChild(btn);
   };
 
-  function patchPrint() {
-    if (typeof window.imprimirRelatorioComissoes !== 'function') return;
-    if (window.imprimirRelatorioComissoes._patchRelatorioVend) return;
-    var orig = window.imprimirRelatorioComissoes;
-    window.imprimirRelatorioComissoes = function() {
-      var data = window._relatorioComissoesData;
-      if (!data) {
-        try { return orig.apply(this, arguments); } catch (_) { return; }
-      }
-
-      var fmtMoeda2 = function(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
-      var fmtN2 = function(v) { return Number(v || 0).toLocaleString('pt-BR'); };
-
-      var win = window.open('', '_blank');
-      if (!win) {
-        try { window.toast('Bloqueio de pop-up impedindo impressão', 'var(--red)'); } catch (_) {}
-        return;
-      }
-
-      var now = new Date();
-      var grupos = Array.isArray(data.grupos) ? data.grupos : [];
-      var html =
-        '<!DOCTYPE html><html><head>' +
-        '<meta charset="UTF-8">' +
-        '<title>Comissões ' + esc(data.periodo) + '</title>' +
-        '<style>' +
-        '*{margin:0;padding:0;box-sizing:border-box;}' +
-        'body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px;}' +
-        'h1{font-size:18px;margin-bottom:4px;}' +
-        '.subtitulo{color:#555;margin-bottom:20px;font-size:13px;}' +
-        '.totais-gerais{display:flex;gap:30px;margin-bottom:24px;padding:12px 16px;background:#f5f5f5;border-radius:6px;}' +
-        '.totais-gerais label{font-size:10px;color:#666;display:block;}' +
-        '.totais-gerais strong{font-size:16px;}' +
-        '.vendedor-bloco{margin-bottom:28px;page-break-inside:avoid;}' +
-        '.vendedor-header{background:#1a2235;color:#fff;padding:10px 14px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;}' +
-        '.vendedor-header .nome{font-weight:bold;font-size:14px;}' +
-        '.vendedor-header .resumo{display:flex;gap:20px;font-size:11px;}' +
-        '.vendedor-header .resumo span{display:flex;flex-direction:column;align-items:flex-end;}' +
-        'table{width:100%;border-collapse:collapse;border:1px solid #ddd;}' +
-        'th{background:#f0f0f0;padding:7px 10px;text-align:left;font-size:11px;border-bottom:1px solid #ccc;}' +
-        'td{padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;}' +
-        '.num{text-align:right;}' +
-        '.total-row{background:#f9f9f9;font-weight:bold;}' +
-        '@media print{body{padding:10px;}.vendedor-bloco{page-break-inside:avoid;}}' +
-        '</style>' +
-        '</head><body>' +
-        '<h1>Relatório de Comissões — ' + esc(data.periodo) + '</h1>' +
-        '<div class="subtitulo">Italy Embalagens · Gerado em ' + esc(now.toLocaleDateString('pt-BR')) + ' às ' + esc(now.toLocaleTimeString('pt-BR')) + '</div>' +
-        '<div class="totais-gerais">' +
-        '<div><label>TOTAL DE VENDAS</label><strong>' + esc(fmtMoeda2(data.total_geral_vendas)) + '</strong></div>' +
-        '<div><label>TOTAL DE COMISSÕES</label><strong style="color:#16a34a">' + esc(fmtMoeda2(data.total_geral_comissao)) + '</strong></div>' +
-        '<div><label>Nº DE VENDEDORES</label><strong>' + esc(String(grupos.length)) + '</strong></div>' +
-        '</div>' +
-        grupos.map(function(g) {
-          var ofs = Array.isArray(g.ofs) ? g.ofs : [];
-          return '' +
-            '<div class="vendedor-bloco">' +
-            '<div class="vendedor-header">' +
-            '<span class="nome">👤 ' + esc(g.vendedor) + '</span>' +
-            '<div class="resumo">' +
-            '<span><small>VENDAS</small> ' + esc(fmtMoeda2(g.total_vendas)) + '</span>' +
-            '<span><small>COMISSÃO</small> ' + esc(fmtMoeda2(g.total_comissao)) + '</span>' +
-            '<span><small>OFs</small> ' + esc(String(ofs.length)) + '</span>' +
-            '</div>' +
-            '</div>' +
-            '<table><thead><tr>' +
-            '<th>Nº OF</th><th>Cliente</th><th>Produto</th>' +
-            '<th class="num">Qtd</th><th class="num">Valor</th><th class="num">Comissão</th>' +
-            '</tr></thead><tbody>' +
-            ofs.map(function(of) {
-              return '' +
-                '<tr>' +
-                '<td>#' + esc(of && (of.numero || of.of || '') || '') + '</td>' +
-                '<td>' + esc(of && of.cliente || '') + '</td>' +
-                '<td>' + esc(of && of.produto || '') + '</td>' +
-                '<td class="num">' + esc(fmtN2(of && of.quantidade)) + '</td>' +
-                '<td class="num">' + esc(fmtMoeda2(of && of.total)) + '</td>' +
-                '<td class="num">' + esc(fmtMoeda2((of && of.comissao) || (Number(of && of.total || 0) * 0.03))) + '</td>' +
-                '</tr>';
-            }).join('') +
-            '<tr class="total-row">' +
-            '<td colspan="4">TOTAL ' + esc(g.vendedor) + '</td>' +
-            '<td class="num">' + esc(fmtMoeda2(g.total_vendas)) + '</td>' +
-            '<td class="num">' + esc(fmtMoeda2(g.total_comissao)) + '</td>' +
-            '</tr>' +
-            '</tbody></table>' +
-            '</div>';
-        }).join('') +
-        '</body></html>';
-
-      win.document.write(html);
-      win.document.close();
-      try { win.focus(); } catch (_) {}
-      try {
-        win.addEventListener('load', function() {
-          try { win.focus(); } catch (_) {}
-          try { win.print(); } catch (_) {}
-        });
-      } catch (_) {}
-      setTimeout(function() { try { win.focus(); win.print(); } catch (_) {} }, 700);
-    };
-    window.imprimirRelatorioComissoes._patchRelatorioVend = true;
-  }
-
-  function ensure() {
-    ensureToolbar();
-    patchPrint();
-    if (document.getElementById('page-comissoes') && document.getElementById('page-comissoes').classList.contains('active')) {
-      window.carregarVendedoresComissoes();
-    }
-  }
+  function ensure() { window.injetarBotaoImprimirComissoes(); }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() { setTimeout(ensure, 500); setInterval(ensure, 1800); });
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(ensure, 500);
+      setTimeout(ensure, 2000);
+      setTimeout(ensure, 4000);
+      try {
+        if (!window._obsComissBtn) {
+          window._obsComissBtn = new MutationObserver(ensure);
+          window._obsComissBtn.observe(document.body, { childList: true, subtree: true });
+        }
+      } catch (_) {}
+    });
   } else {
     setTimeout(ensure, 500);
-    setInterval(ensure, 1800);
+    setTimeout(ensure, 2000);
+    setTimeout(ensure, 4000);
+    try {
+      if (!window._obsComissBtn) {
+        window._obsComissBtn = new MutationObserver(ensure);
+        window._obsComissBtn.observe(document.body, { childList: true, subtree: true });
+      }
+    } catch (_) {}
   }
 })();
 
@@ -10036,140 +9808,30 @@ window._mbnActive = function(id) {
     } catch (_) {}
   }
 
-  function hideLegacyComissoesUi() {
-    try {
-      var oldToolbar = document.querySelector('#page-comissoes > .ptoolbar.filtros-comissao');
-      if (oldToolbar) oldToolbar.style.display = 'none';
-      var box1 = document.getElementById('grafico-comissoes');
-      if (box1 && box1.closest) {
-        var wrap1 = box1.closest('.sbox');
-        if (wrap1) wrap1.style.display = 'none';
-      }
-      var box2 = document.getElementById('tabela-comissoes-ofs');
-      if (box2 && box2.closest) {
-        var wrap2 = box2.closest('.sbox');
-        if (wrap2) wrap2.style.display = 'none';
-      }
-      var result = document.getElementById('comissoes-relatorio-resultado');
-      if (result) result.style.display = 'none';
-    } catch (_) {}
-  }
-
-  function mesesOptionsSimple() {
-    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-    var atual = new Date().getMonth() + 1;
-    return meses.map(function(m, i) {
-      var v = i + 1;
-      return '<option value="' + v + '"' + (v === atual ? ' selected' : '') + '>' + esc(m) + '</option>';
-    }).join('');
-  }
-
-  function anosOptionsSimple() {
-    var atual = new Date().getFullYear();
-    return [2024, 2025, 2026, 2027].map(function(a) {
-      return '<option value="' + a + '"' + (a === atual ? ' selected' : '') + '>' + a + '</option>';
-    }).join('');
-  }
-
-  window.carregarVendedoresComissoes = async function() {
-    var sel = document.getElementById('com-simples-vendedores');
-    if (!sel || sel.dataset.loading === '1') return;
-    sel.dataset.loading = '1';
-    try {
-      var resp = await fetch('/api/ofs/vendedores-unicos?t=' + Date.now(), { headers: tokenHeaders() });
-      var json = await resp.json().catch(function() { return []; });
-      var nomes = Array.isArray(json) ? json : (Array.isArray(json && json.data) ? json.data : []);
-      nomes = Array.from(new Set((nomes || []).map(function(v) { return String(v || '').trim(); }).filter(Boolean))).sort(function(a, b) { return a.localeCompare(b); });
-      sel.innerHTML = '<option value="todos" selected>Todos os vendedores</option>' + nomes.map(function(v) {
-        return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
-      }).join('');
-      sel.onchange = function() {
-        var picks = Array.prototype.slice.call(sel.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); });
-        if (picks.indexOf('todos') >= 0 && picks.length > 1) {
-          Array.prototype.slice.call(sel.options).forEach(function(o) { if (o.value !== 'todos') o.selected = false; });
-        } else if (picks.indexOf('todos') === -1 && picks.length === 0 && sel.options[0]) {
-          sel.options[0].selected = true;
-        }
-      };
-    } catch (_) {
-      sel.innerHTML = '<option value="todos" selected>Todos os vendedores</option>';
-    } finally {
-      delete sel.dataset.loading;
-    }
-  };
+  function hideLegacyComissoesUi() {}
 
   function renderTelaComissoes() {
-    var area = document.getElementById('com-screen-area');
-    if (!area) return;
-    hideLegacyComissoesUi();
-    var wrap = document.getElementById('comissoes-relatorio-wrap');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'comissoes-relatorio-wrap';
-      area.parentNode.insertBefore(wrap, area);
-    }
-    if (wrap.dataset.simpleReady === '1' && document.getElementById('com-simples-vendedores')) return;
-    wrap.dataset.simpleReady = '1';
-    wrap.innerHTML =
-      '<div style="max-width:600px;margin:0 auto;padding:24px 0">'
-      + '<h2 style="font-size:20px;font-weight:700;color:var(--text1);margin-bottom:24px">Relatorio de Comissoes</h2>'
-      + '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:24px">'
-      +   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">'
-      +     '<div><label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">MES</label><select id="com-simples-mes" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1)">' + mesesOptionsSimple() + '</select></div>'
-      +     '<div><label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">ANO</label><select id="com-simples-ano" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1)">' + anosOptionsSimple() + '</select></div>'
-      +   '</div>'
-      +   '<div style="margin-bottom:20px">'
-      +     '<label style="font-size:11px;color:var(--text2);text-transform:uppercase;display:block;margin-bottom:6px">VENDEDOR(ES) - segure Ctrl para selecionar mais de um</label>'
-      +     '<select id="com-simples-vendedores" multiple style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);min-height:100px">'
-      +       '<option value="todos" selected>Todos os vendedores</option>'
-      +     '</select>'
-      +   '</div>'
-      +   '<button id="btn-gerar-imprimir-comissoes" onclick="gerarEImprimirComissoes()" style="width:100%;padding:14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">Gerar e Imprimir Relatorio</button>'
-      + '</div>'
-      + '</div>';
-    window.carregarVendedoresComissoes();
+    try { if (typeof window.injetarBotaoImprimirComissoes === 'function') window.injetarBotaoImprimirComissoes(); } catch (_) {}
   }
 
-  window.gerarEImprimirComissoes = async function() {
-    var mes = (document.getElementById('com-simples-mes') || {}).value;
-    var ano = (document.getElementById('com-simples-ano') || {}).value;
-    var sel = document.getElementById('com-simples-vendedores');
-    var picks = sel ? Array.prototype.slice.call(sel.selectedOptions || []).map(function(o) { return String(o.value || '').trim(); }).filter(Boolean) : ['todos'];
-    var vendedoresSel = (!picks.length || picks.indexOf('todos') >= 0) ? 'todos' : picks.join(',');
-    var btn = document.getElementById('btn-gerar-imprimir-comissoes');
+  window.gerarEImprimirComissoes = function() {
     try {
-      if (btn) { btn.disabled = true; btn.textContent = 'Gerando...'; }
-      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mes || '') + '&ano=' + encodeURIComponent(ano || '') + '&vendedores=' + encodeURIComponent(vendedoresSel), {
-        headers: tokenHeaders()
-      });
-      var data = await resp.json().catch(function() { return {}; });
-      if (!resp.ok || data.error) throw new Error((data && data.error) || ('Erro ' + resp.status));
-      if (!data.grupos || !data.grupos.length) {
-        toastHotfix('Nenhuma comissao encontrada para o periodo selecionado', 'var(--orange)');
-        return;
-      }
-      window._relatorioComissoesData = data;
-      if (typeof window.imprimirRelatorioComissoes === 'function') window.imprimirRelatorioComissoes();
-    } catch (e) {
-      toastHotfix('Erro: ' + String(e && e.message || e), 'var(--red)');
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = 'Gerar e Imprimir Relatorio'; }
-    }
+      var mesEl = document.querySelector('#comissoes-mes, [name="mes"], select[id*="mes"]');
+      var anoEl = document.querySelector('#comissoes-ano, [name="ano"], select[id*="ano"]');
+      var vendEl = document.querySelector('#comissoes-vendedor, [name="vendedor"], select[id*="vendedor"]');
+      var comMes = document.getElementById('com-mes');
+      var comAno = document.getElementById('com-ano');
+      var comVend = document.getElementById('com-vendedores');
+      if (comMes && mesEl && mesEl.value) comMes.value = mesEl.value;
+      if (comAno && anoEl && anoEl.value) comAno.value = anoEl.value;
+      if (comVend && vendEl && vendEl.value) comVend.value = vendEl.value;
+    } catch (_) {}
+    try { if (typeof window.imprimirRelatorioComissoes === 'function') return window.imprimirRelatorioComissoes(); } catch (_) {}
+    return null;
   };
-  window.gerarRelatorioComissoes = window.gerarEImprimirComissoes;
 
   function hookRenderComissoesSimple() {
-    if (typeof window.renderComissoes !== 'function' || window.renderComissoes._patchSimpleCom) return;
-    var orig = window.renderComissoes;
-    window.renderComissoes = async function() {
-      var r = await orig.apply(this, arguments);
-      setTimeout(function() {
-        hideLegacyComissoesUi();
-        renderTelaComissoes();
-      }, 0);
-      return r;
-    };
-    window.renderComissoes._patchSimpleCom = true;
+    try { renderTelaComissoes(); } catch (_) {}
   }
 
   function patchCaixasPerdidasSafe() {
@@ -10214,7 +9876,6 @@ window._mbnActive = function(id) {
     ensurePainelClienteScroll();
     hideProjecaoVendas();
     fixarBotoesRankingClientes();
-    renderTelaComissoes();
     hookRenderComissoesSimple();
     patchCaixasPerdidasSafe();
   }
