@@ -3840,6 +3840,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
 (function patchClientesInativosApi() {
   function digitsOnly(v) { return String(v || '').replace(/\D+/g, ''); }
+  function ensureInativosModalStyles() {
+    try {
+      if (document.getElementById('patch-style-clientes-inativos')) return;
+      var styleInativos = document.createElement('style');
+      styleInativos.id = 'patch-style-clientes-inativos';
+      styleInativos.textContent =
+        '#modalClientesInativos, #modal-clientes-inativos, .modal-clientes-inativos{' +
+        'background:rgba(0,0,0,0.75) !important;' +
+        '}' +
+        '#modalClientesInativos .modal-box, #modalClientesInativos > div, ' +
+        '#modal-clientes-inativos .modal-container, #modal-clientes-inativos > div > div, ' +
+        '.modal-clientes-inativos .modal-inner{' +
+        'background:#1e2433 !important;border:1px solid #2d3748 !important;' +
+        '}';
+      document.head.appendChild(styleInativos);
+    } catch (_) {}
+  }
+  function applyInativosModalStyles() {
+    try {
+      ensureInativosModalStyles();
+      var modal = document.getElementById('modalClientesInativos');
+      if (modal) {
+        try { modal.style.setProperty('background', 'rgba(0,0,0,0.75)', 'important'); } catch (_) {}
+        var box = modal.querySelector('.modal-box') || modal.firstElementChild;
+        if (box) {
+          try { box.style.setProperty('background', '#1e2433', 'important'); } catch (_) {}
+          try { box.style.setProperty('border', '1px solid #2d3748', 'important'); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
   function getAuthHeader() {
     var token = '';
     try { token = String(localStorage.getItem('access_token') || localStorage.getItem('token') || sessionStorage.getItem('token') || ''); } catch (_) {}
@@ -3856,6 +3887,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     return 'https://wa.me/55' + d;
   }
   function hook() {
+    ensureInativosModalStyles();
     if (typeof window.carregarClientesInativos !== 'function') return;
     if (window.carregarClientesInativos._patchNovaApi) return;
     var orig = window.carregarClientesInativos;
@@ -3863,6 +3895,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var dias = String(document.getElementById('filtroInativosDias') && document.getElementById('filtroInativosDias').value || '30');
       var tbody = document.getElementById('tabelaClientesInativos');
       var total = document.getElementById('clientesInativosTotal');
+      applyInativosModalStyles();
       if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#64748b">Carregando...</td></tr>';
       try {
         var resp = await apiGet('/api/clientes/inativos?dias=' + encodeURIComponent(dias) + '&t=' + Date.now());
@@ -3871,6 +3904,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         try { window._clientesInativosLista = list; } catch (_) {}
         if (total) total.textContent = String(list.length) + ' clientes sem pedido há ' + dias + '+ dias';
         if (typeof window.renderClientesInativosTbody === 'function') window.renderClientesInativosTbody(list);
+        applyInativosModalStyles();
         try {
           var busca = document.getElementById('buscaClienteInativo');
           if (busca && busca.value && typeof window.filtrarClientesInativos === 'function') window.filtrarClientesInativos(busca.value);
@@ -3882,10 +3916,20 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     };
     window.carregarClientesInativos._patchNovaApi = true;
+    if (typeof window.abrirClientesInativos === 'function' && !window.abrirClientesInativos._patchBgSolid) {
+      var origAbrir = window.abrirClientesInativos;
+      window.abrirClientesInativos = async function() {
+        var r = await origAbrir.apply(this, arguments);
+        applyInativosModalStyles();
+        return r;
+      };
+      window.abrirClientesInativos._patchBgSolid = true;
+    }
     if (typeof window.renderClientesInativosTbody === 'function' && !window.renderClientesInativosTbody._patchWaBtn) {
       var origRender = window.renderClientesInativosTbody;
       window.renderClientesInativosTbody = function(lista) {
         try { origRender.apply(this, arguments); } catch (_) {}
+        applyInativosModalStyles();
         try {
           var tbody2 = document.getElementById('tabelaClientesInativos');
           if (!tbody2) return;
@@ -5926,13 +5970,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   async function confirmarMesclaClientes() {
     try {
-      var principalId = String(document.getElementById('mescla-principal-id') && document.getElementById('mescla-principal-id').value || '').trim();
-      var duplicados = getMesclaDuplicadoIds();
-      if (!principalId || !duplicados.length) {
-        alert('Selecione o cliente principal e pelo menos um cliente para mesclar.');
+      var principalInput = document.querySelector('#mescla-principal-id, [data-mescla-principal], .mescla-principal input[type="hidden"], #mescla-cliente-principal');
+      var principalId = String((principalInput && (principalInput.value || principalInput.dataset && (principalInput.dataset.id || principalInput.dataset.mesclaPrincipal))) || '').trim();
+      if (!principalId || principalId === 'undefined') {
+        toastHotfix('⚠️ Selecione o cliente principal primeiro', 'var(--orange)');
         return;
       }
+
+      var duplicados = Array.from(new Set(
+        Array.prototype.slice.call(document.querySelectorAll('[data-duplicado-id], .mescla-duplicado[data-id], #mescla-duplicados [data-cliente-id], .cliente-duplicado-item, .mescla-duplicado-id'))
+          .map(function(el) {
+            return String(((el && el.dataset && (el.dataset.duplicadoId || el.dataset.id || el.dataset.clienteId)) || el.value || '')).trim();
+          })
+          .concat(getMesclaDuplicadoIds())
+          .filter(function(id) { return id && id !== principalId && id !== 'undefined'; })
+      ));
+      if (!duplicados.length) {
+        toastHotfix('⚠️ Adicione pelo menos um cliente duplicado para mesclar', 'var(--orange)');
+        return;
+      }
+
       if (!confirm('Confirmar mescla dos clientes?')) return;
+      try { console.log('[mesclar] principal:', principalId, 'duplicados:', duplicados); } catch (_) {}
+
+      var btn = document.querySelector('#btn-confirmar-mescla, .btn-confirmar-mescla, #mescla-confirmar, [onclick*="confirmarMescla"]');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Mesclando...'; }
       var token = '';
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || localStorage.getItem('access_token') || ''); } catch (_) {}
       var resp = await fetch('/api/clientes/mesclar', {
@@ -5947,20 +6009,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         })
       });
       var json = await resp.json().catch(function() { return null; });
-      if (!json || !json.ok) throw new Error((json && json.error) || 'Erro ao mesclar clientes');
+      if (!resp.ok || !json || !json.ok) throw new Error((json && json.error) || ('Erro ' + resp.status));
       try {
-        var modal = document.getElementById('modal-mesclar-clientes');
-        if (modal) modal.remove();
+        ['modal-mesclar-clientes', 'modal-mescla', 'mesclar-modal'].forEach(function(id) {
+          var modal = document.getElementById(id);
+          if (modal) modal.remove();
+        });
+        Array.prototype.slice.call(document.querySelectorAll('[id*="mescl"][id*="modal"]')).forEach(function(el) {
+          try { el.remove(); } catch (_) {}
+        });
       } catch (_) {}
+      try { window._clientesCarregados = false; } catch (_) {}
+      try { window.OFS_ARQUIVO = null; } catch (_) {}
+      try { window.OFS_CACHE = null; } catch (_) {}
+      try { window._ofsArquivoLastLoad = 0; } catch (_) {}
       try { await _carregarTodosClientes(); } catch (_) {}
       try { if (typeof carregarClientes === 'function') await carregarClientes(true); } catch (_) {}
-      try { if (typeof renderClientes === 'function') renderClientes(); } catch (_) {}
-      var msg = String(json.clientes_mesclados || 0) + ' clientes mesclados — ' + String(json.ofs_migradas || 0) + ' OFs migradas';
-      try { if (typeof window.toast === 'function') window.toast(msg, 'var(--green)'); else alert(msg); } catch (_) { alert(msg); }
+      try { if (typeof renderClientes === 'function') setTimeout(renderClientes, 300); } catch (_) {}
+      toastHotfix('✅ Mesclados com sucesso! ' + String(json.ofs_migradas || 0) + ' OFs migradas', 'var(--green)');
     } catch (e) {
-      alert('Erro: ' + String(e && e.message || e));
+      toastHotfix('❌ Erro ao mesclar: ' + String(e && e.message || e), 'var(--red)');
+      try { console.error('[mesclar]', e); } catch (_) {}
+    } finally {
+      try {
+        var btn2 = document.querySelector('#btn-confirmar-mescla, .btn-confirmar-mescla, #mescla-confirmar, [onclick*="confirmarMescla"]');
+        if (btn2) { btn2.disabled = false; btn2.textContent = 'Confirmar Mescla'; }
+      } catch (_) {}
     }
   }
+  window.confirmarMesclaClientes = confirmarMesclaClientes;
 
   function abrirModalMesclarClientes() {
     try {
@@ -9384,6 +9461,13 @@ window._mbnActive = function(id) {
   }
 
   window.renderCaixasPerdidas = function() {
+    try {
+      var container0 = document.querySelector('#caixas-perdidas-content, [data-section="caixas-perdidas"], .caixas-perdidas-container, #analises-content, #main-content, #page-caixas-perdidas');
+      if (container0) {
+        container0.dataset.secaoAtiva = 'caixas-perdidas';
+        container0.setAttribute('data-secao-ativa', 'caixas-perdidas');
+      }
+    } catch (_) {}
     renderCpRowsPatched(Array.isArray(window._cpRows) ? window._cpRows : []);
     try { fixarBotaoNovaInconformidade(); } catch (_) {}
   };
@@ -9834,6 +9918,61 @@ window._mbnActive = function(id) {
     try { renderTelaComissoes(); } catch (_) {}
   }
 
+  window.aplicarClickImagemOF = function() {
+    Array.prototype.slice.call(document.querySelectorAll('[data-of-id]')).forEach(function(card) {
+      var ofId = String(card && card.dataset && card.dataset.ofId || '').trim();
+      if (!ofId) return;
+      var temImgReal = card.querySelector('img[src^="http"], img[src^="data:"]');
+      if (temImgReal) return;
+      var placeholder = card.querySelector(
+        '.of-img-placeholder, [data-img-placeholder], .img-placeholder, .of-sem-imagem, .kb-img-ph, .kb-of-img-ph, .cli-of-img-fb, .ofmaq-thumb.of-img, .of-img, img[src=""], img:not([src]), .card-img-area:empty'
+      );
+      if (!placeholder || placeholder.dataset.clickOk === '1') return;
+      placeholder.dataset.clickOk = '1';
+      placeholder.style.cursor = 'pointer';
+      placeholder.title = '📷 Clique para adicionar foto';
+      placeholder.onclick = function(e) {
+        try { if (e) { e.stopPropagation(); e.preventDefault(); } } catch (_) {}
+        var inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = 'image/*,application/pdf';
+        inp.onchange = async function() {
+          var file = inp.files && inp.files[0];
+          if (!file) return;
+          var reader = new FileReader();
+          reader.onload = async function(ev) {
+            var base64 = ev && ev.target ? ev.target.result : '';
+            try {
+              if (placeholder.tagName === 'IMG') placeholder.src = base64;
+              else {
+                placeholder.style.backgroundImage = 'url(' + base64 + ')';
+                placeholder.style.backgroundSize = 'cover';
+                placeholder.style.backgroundPosition = 'center';
+                placeholder.textContent = '';
+              }
+            } catch (_) {}
+            try {
+              var token = '';
+              try { token = String(window._token || localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) {}
+              var resp = await fetch('/api/ofs/' + encodeURIComponent(ofId) + '/imagem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': token ? ('Bearer ' + token) : '' },
+                body: JSON.stringify({ imagem_base64: base64, tipo: file.type })
+              });
+              toastHotfix(resp.ok ? '📷 Foto salva!' : '❌ Erro ao salvar foto', resp.ok ? 'var(--green)' : 'var(--red)');
+            } catch (err) {
+              toastHotfix('❌ ' + String(err && err.message || err), 'var(--red)');
+            }
+          };
+          reader.readAsDataURL(file);
+        };
+        document.body.appendChild(inp);
+        inp.click();
+        setTimeout(function() { try { document.body.removeChild(inp); } catch (_) {} }, 1000);
+      };
+    });
+  };
+
   function patchCaixasPerdidasSafe() {
     if (typeof window.carregarCaixasPerdidas === 'function' && !window.carregarCaixasPerdidas._patchSafeHotfix) {
       var origLoad = window.carregarCaixasPerdidas;
@@ -9846,8 +9985,12 @@ window._mbnActive = function(id) {
           return [];
         } finally {
           try {
-            var page = document.getElementById('page-caixas-perdidas');
-            if (page) page.style.display = '';
+            var page = document.querySelector('#caixas-perdidas-content, [data-section="caixas-perdidas"], .caixas-perdidas-container, #analises-content, #main-content, #page-caixas-perdidas');
+            if (page) {
+              page.dataset.secaoAtiva = 'caixas-perdidas';
+              page.setAttribute('data-secao-ativa', 'caixas-perdidas');
+              page.style.display = '';
+            }
             if (typeof window.renderCaixasPerdidas === 'function') window.renderCaixasPerdidas();
           } catch (_) {}
         }
@@ -9858,14 +10001,50 @@ window._mbnActive = function(id) {
       var origRender = window.renderCaixasPerdidas;
       window.renderCaixasPerdidas = function() {
         try {
-          var page = document.getElementById('page-caixas-perdidas');
-          if (page) page.style.display = '';
+          var page = document.querySelector('#caixas-perdidas-content, [data-section="caixas-perdidas"], .caixas-perdidas-container, #analises-content, #main-content, #page-caixas-perdidas');
+          if (page) {
+            page.dataset.secaoAtiva = 'caixas-perdidas';
+            page.setAttribute('data-secao-ativa', 'caixas-perdidas');
+            page.style.display = '';
+          }
         } catch (_) {}
         try {
           return origRender.apply(this, arguments);
         } catch (_) {
           var tbody = document.querySelector('#cp-table tbody');
           if (tbody) tbody.innerHTML = '<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lancamentos no periodo</td></tr>';
+        }
+      };
+      window.renderCaixasPerdidas._patchSafeHotfix = true;
+    }
+    if (typeof window.renderCaixasPerdidas === 'function' && !window._renderCaixasProtegido) {
+      var _renderCaixasOrig = window.renderCaixasPerdidas;
+      window._renderCaixasProtegido = true;
+      window.renderCaixasPerdidas = async function() {
+        var container = null;
+        try {
+          container = document.querySelector('#caixas-perdidas-content, [data-section="caixas-perdidas"], .caixas-perdidas-container, #analises-content, #main-content, #page-caixas-perdidas');
+          if (container) {
+            container.dataset.secaoAtiva = 'caixas-perdidas';
+            container.setAttribute('data-secao-ativa', 'caixas-perdidas');
+            container.dataset.renderCaixasLock = '1';
+          }
+          return await _renderCaixasOrig.apply(this, arguments);
+        } catch (e) {
+          try { console.error('[caixas-perdidas render]', e && e.message || e); } catch (_) {}
+          var c = document.querySelector('[data-secao-ativa="caixas-perdidas"]');
+          if (c && !c.querySelector('.caixas-tabela, table, #cp-table')) {
+            c.innerHTML += '<div style="padding:40px;text-align:center;color:var(--text2)">Sem lançamentos no período</div>';
+          }
+          return [];
+        } finally {
+          try {
+            if (container) delete container.dataset.renderCaixasLock;
+            var tbody2 = document.querySelector('#cp-table tbody');
+            if (tbody2 && !tbody2.children.length) {
+              tbody2.innerHTML = '<tr><td colspan="11" style="padding:10px;border:1px solid var(--border);color:var(--text2);text-align:center">Sem lançamentos no período</td></tr>';
+            }
+          } catch (_) {}
         }
       };
       window.renderCaixasPerdidas._patchSafeHotfix = true;
@@ -9878,6 +10057,7 @@ window._mbnActive = function(id) {
     fixarBotoesRankingClientes();
     hookRenderComissoesSimple();
     patchCaixasPerdidasSafe();
+    try { window.aplicarClickImagemOF(); } catch (_) {}
   }
 
   try {
@@ -9896,10 +10076,12 @@ window._mbnActive = function(id) {
     document.addEventListener('DOMContentLoaded', function() {
       setTimeout(tick, 200);
       setTimeout(tick, 900);
+      setTimeout(function() { try { window.aplicarClickImagemOF(); } catch (_) {} }, 2000);
     });
   } else {
     setTimeout(tick, 200);
     setTimeout(tick, 900);
+    setTimeout(function() { try { window.aplicarClickImagemOF(); } catch (_) {} }, 2000);
   }
 
   try {
@@ -9911,7 +10093,11 @@ window._mbnActive = function(id) {
       hideProjecaoVendas();
       fixarBotoesRankingClientes();
       patchCaixasPerdidasSafe();
+      try { window.aplicarClickImagemOF(); } catch (_) {}
     });
     window._obsRankHotfix.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
+  setInterval(function() {
+    try { window.aplicarClickImagemOF(); } catch (_) {}
+  }, 8000);
 })();
