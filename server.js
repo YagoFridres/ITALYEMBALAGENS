@@ -5151,10 +5151,13 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
       });
     };
 
-    const { data, error } = await supabase
+    let q = supabase
       .from('caixas_perdidas')
       .select('id,of_id,of_numero,produto,cliente,valor_unitario,qtd_perdida,valor_perdido,data,mes_referencia,emp_id,usuario,obs,created_at,maquina,maquina_id,maquina_perda')
       .order('created_at', { ascending: false });
+    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
+    if (ofId) q = q.eq('of_id', ofId);
+    const { data, error } = await q;
     if (error) {
       const msg = String(error.message || error).toLowerCase();
       if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
@@ -5162,6 +5165,40 @@ app.get('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     }
     return ok(res, await enrichMaquinas(data || []));
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
+  try {
+    const enrichMaquinas = async (rows) => {
+      const list = Array.isArray(rows) ? rows : [];
+      const ids = [...new Set(list.map(r => String(r?.maquina_id || r?.maquinaId || '').trim()).filter(Boolean))];
+      if (!ids.length) return list;
+      const { data: maqs, error: em } = await supabase.from('maquinas').select('id,nome');
+      if (em) return list;
+      const map = new Map((Array.isArray(maqs) ? maqs : []).map(m => [String(m.id), String(m.nome || '').trim()]));
+      return list.map((r) => {
+        const mid = String(r?.maquina_id || r?.maquinaId || '').trim();
+        const nome = mid ? (map.get(mid) || '') : '';
+        const fallback = String(r?.maquina || '').trim();
+        const fallbackNome = (fallback && map.has(fallback)) ? (map.get(fallback) || '') : '';
+        const finalNome = nome || fallbackNome || fallback;
+        return { ...r, maquina: finalNome, maquina_nome: finalNome };
+      });
+    };
+    let q = supabase
+      .from('caixas_perdidas')
+      .select('id,of_id,of_numero,produto,cliente,valor_unitario,qtd_perdida,valor_perdido,data,mes_referencia,emp_id,usuario,obs,created_at,maquina,maquina_id,maquina_perda')
+      .order('created_at', { ascending: false });
+    const ofId = String(req.query.of_id || req.query.ofId || '').trim();
+    if (ofId) q = q.eq('of_id', ofId);
+    const { data, error } = await q;
+    if (error) {
+      const msg = String(error.message || error).toLowerCase();
+      if (msg.includes('does not exist') || msg.includes('not exist')) return ok(res, []);
+      throw error;
+    }
+    return ok(res, await enrichMaquinas(data || []));
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.get('/api/admin/corrigir_ofs_concluidas_sem_qtd', requireAdmin, async (req, res) => {
@@ -5239,6 +5276,56 @@ app.post('/api/caixas_perdidas', authMiddleware, async (req, res) => {
     }
     return ok(res, data);
   } catch (e) { err(res, e); }
+});
+
+app.post('/api/caixas-perdidas', authMiddleware, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const hoje = new Date().toISOString().slice(0, 10);
+    const mes = new Date().toISOString().slice(0, 7);
+    const payload = {
+      of_id: b.of_id || null,
+      produto: String(b.produto || ''),
+      cliente: String(b.cliente || ''),
+      maquina: b.maquina != null ? String(b.maquina || '') : undefined,
+      maquina_id: b.maquina_id != null ? String(b.maquina_id || '') : undefined,
+      valor_unitario: Number(b.valor_unitario || 0),
+      qtd_perdida: Math.trunc(Number(b.qtd_perdida || 0)),
+      valor_perdido: Number(b.valor_perdido || 0),
+      data: b.data || hoje,
+      mes_referencia: b.mes_referencia || mes,
+      emp_id: b.emp_id || '',
+      usuario: b.usuario || req.usuario?.nome || 'sistema',
+      obs: b.obs || ''
+    };
+    if (!payload.maquina) delete payload.maquina;
+    if (!payload.maquina_id) delete payload.maquina_id;
+    let { data, error } = await supabase.from('caixas_perdidas').insert([payload]).select().single();
+    if (error) {
+      const msg = String(error.message || error);
+      const m = msg.toLowerCase();
+      if (m.includes('does not exist') || m.includes('not exist') || m.includes('not find') || m.includes('not found')) {
+        return ok(res, { skipped: true, reason: 'table_missing' });
+      }
+      if (m.includes('column') && (m.includes('maquina') || m.includes('maquina_id'))) {
+        const payload2 = { ...payload };
+        delete payload2.maquina;
+        delete payload2.maquina_id;
+        const r2 = await supabase.from('caixas_perdidas').insert([payload2]).select().single();
+        if (r2.error) {
+          const msg2 = String(r2.error.message || r2.error);
+          const m2 = msg2.toLowerCase();
+          if (m2.includes('does not exist') || m2.includes('not exist') || m2.includes('not find') || m2.includes('not found')) {
+            return ok(res, { skipped: true, reason: 'table_missing' });
+          }
+          throw r2.error;
+        }
+        return ok(res, r2.data);
+      }
+      throw error;
+    }
+    return ok(res, data);
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.put('/api/caixas_perdidas/:id', authMiddleware, async (req, res) => {
@@ -8225,6 +8312,17 @@ app.get('/api/vendedores', authMiddleware, async (req, res) => {
     console.error('[VENDEDORES] catch:', String(e?.message || e));
     return ok(res, []);
   }
+});
+
+app.get('/api/vendedores/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from('vendedores').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'Vendedor não encontrado' });
+    return ok(res, data);
+  } catch (e) { err(res, e); }
 });
 
 app.post('/api/vendedores', authMiddleware, async (req, res) => {

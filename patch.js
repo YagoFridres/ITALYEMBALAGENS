@@ -12169,22 +12169,7 @@ function _ocultarGraficoComissoes() {
           try {
             var id = String(of && of.id || '').trim();
             if (!id) return;
-            var hoje = new Date();
-            var iso = hoje.toISOString().slice(0, 10);
-            var token2 = _getToken();
-            var r2 = await fetch('/api/ofs/' + encodeURIComponent(id), {
-              method: 'PUT',
-              headers: Object.assign({ 'Content-Type': 'application/json' }, token2 ? { Authorization: 'Bearer ' + token2 } : {}),
-              body: JSON.stringify({ status: 'Concluído', data_conclusao: iso, _allow_partial: '1' })
-            });
-            var j2 = await r2.json().catch(function() { return null; });
-            if (j2 && j2.ok) {
-              res.style.display = 'none';
-              try { window.calcularComissoes(); } catch (_) {}
-            } else {
-              res.style.display = 'block';
-              res.textContent = 'Erro ao concluir: ' + String(j2 && (j2.error || j2.message) || 'Falha');
-            }
+            await _abrirFluxoConclusaoOF(id, of);
           } catch (e) {
             res.style.display = 'block';
             res.textContent = 'Erro ao concluir: ' + String(e && e.message || e);
@@ -12278,6 +12263,299 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return null; }
   }
 
+  async function _buscarVendedorAtual(id) {
+    try {
+      id = String(id || '').trim();
+      if (!id) return null;
+      var token = _getToken();
+      var resp = await fetch('/api/vendedores/' + encodeURIComponent(id), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j = await resp.json().catch(function() { return null; });
+      return (j && (j.data || j)) || null;
+    } catch (_) { return null; }
+  }
+
+  async function _buscarResumoCaixasPerdidas(ofId) {
+    try {
+      ofId = String(ofId || '').trim();
+      if (!ofId) return { qtd: 0, maquinas: 0, itens: [] };
+      var token = _getToken();
+      var resp = await fetch('/api/caixas-perdidas?of_id=' + encodeURIComponent(ofId), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j = await resp.json().catch(function() { return null; });
+      var itens = (j && (j.data || j)) || [];
+      if (!Array.isArray(itens)) itens = [];
+      var qtd = itens.reduce(function(s, it) { return s + (Math.trunc(Number(it && it.qtd_perdida || 0)) || 0); }, 0);
+      var maquinas = {};
+      itens.forEach(function(it) {
+        var key = String(it && (it.maquina_nome || it.maquina || it.maquina_id) || '').trim();
+        if (key) maquinas[key] = true;
+      });
+      return { qtd: qtd, maquinas: Object.keys(maquinas).length, itens: itens };
+    } catch (_) { return { qtd: 0, maquinas: 0, itens: [] }; }
+  }
+
+  async function _obterComissaoPadraoVendedor(vendId, vendNome) {
+    try {
+      var pct = null;
+      var dataCom = window._comissoesSqlData;
+      var list = Array.isArray(dataCom && dataCom.vendedores) ? dataCom.vendedores : [];
+      if (vendId) {
+        var hit = list.find(function(v) { return String(v && v.id || '').trim() === String(vendId).trim(); });
+        if (hit && hit.comissao_pct != null) pct = Number(hit.comissao_pct);
+      }
+      if ((pct == null || isNaN(pct)) && vendNome) {
+        var hit2 = list.find(function(v) { return String(v && v.nome || '').trim().toLowerCase() === String(vendNome || '').trim().toLowerCase(); });
+        if (hit2 && hit2.comissao_pct != null) pct = Number(hit2.comissao_pct);
+      }
+      if (pct != null && !isNaN(pct)) return pct;
+      var vend = await _buscarVendedorAtual(vendId);
+      var vp = Number(vend && (vend.comissao_pct ?? vend.comissao ?? vend.comissaoPct) || 0);
+      if (!isNaN(vp) && vp > 0) return vp;
+    } catch (_) {}
+    return null;
+  }
+
+  function _snapshotOfParaResumo(meta) {
+    meta = meta || {};
+    return {
+      numero: String(meta.numero || '').trim(),
+      cliente: String(meta.cliente || '').trim(),
+      vendedor: String(meta.vendedor || '').trim(),
+      quantidade: meta.quantidade != null && meta.quantidade !== '' ? Number(meta.quantidade) : null,
+      valor_total: meta.valor_total != null && meta.valor_total !== '' ? Number(meta.valor_total) : null,
+      comissao_pct: meta.comissao_pct != null && meta.comissao_pct !== '' ? Number(meta.comissao_pct) : null,
+      status: String(meta.status || '').trim(),
+      created_at: String(meta.created_at || '').slice(0, 10),
+      data_conclusao: String(meta.data_conclusao || '').slice(0, 10),
+      observacoes: String(meta.observacoes || '').trim()
+    };
+  }
+
+  function _valorDiffStr(v) {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'number') return String(v);
+    return String(v);
+  }
+
+  function _fecharResumoAlteracoes() {
+    try {
+      if (window.__comResumoAlteracoesTimer) {
+        clearTimeout(window.__comResumoAlteracoesTimer);
+        window.__comResumoAlteracoesTimer = null;
+      }
+      var el = document.getElementById('com-of-resumo-alteracoes');
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    } catch (_) {}
+  }
+
+  function _mostrarResumoAlteracoes(original, novo, onClose) {
+    try {
+      _fecharResumoAlteracoes();
+      var oldV = original || {};
+      var newV = novo || {};
+      var defs = [
+        ['cliente', 'Cliente', oldV.cliente, newV.cliente],
+        ['vendedor', 'Vendedor', oldV.vendedor, newV.vendedor],
+        ['quantidade', 'Quantidade', oldV.quantidade, newV.quantidade],
+        ['valor_total', 'Valor Total', oldV.valor_total, newV.valor_total],
+        ['status', 'Status', oldV.status, newV.status],
+        ['comissao_pct', '% Comissão', oldV.comissao_pct != null ? Number(oldV.comissao_pct).toFixed(2) + '%' : '—', newV.comissao_pct != null ? Number(newV.comissao_pct).toFixed(2) + '%' : '—'],
+        ['created_at', 'Data Criação', oldV.created_at, newV.created_at],
+        ['data_conclusao', 'Data Conclusão', oldV.data_conclusao, newV.data_conclusao],
+        ['observacoes', 'Observações', oldV.observacoes, newV.observacoes]
+      ];
+      var changes = defs.filter(function(row) { return _valorDiffStr(row[2]) !== _valorDiffStr(row[3]); });
+      var wrap = document.createElement('div');
+      wrap.id = 'com-of-resumo-alteracoes';
+      wrap.style.position = 'fixed';
+      wrap.style.inset = '0';
+      wrap.style.background = 'rgba(0,0,0,0.35)';
+      wrap.style.zIndex = '100002';
+      wrap.style.display = 'flex';
+      wrap.style.alignItems = 'center';
+      wrap.style.justifyContent = 'center';
+      wrap.innerHTML = ''
+        + '<div style="background:#0f2d1a;border:1px solid #10b981;border-radius:12px;padding:24px;min-width:380px;max-width:760px;color:#fff;box-shadow:0 20px 60px rgba(0,0,0,0.45)">'
+        + '<div style="font-size:18px;font-weight:800;margin-bottom:14px">✅ OF #' + String(newV.numero || oldV.numero || '—').replace(/</g, '&lt;') + ' salva com sucesso!</div>'
+        + '<div style="font-size:13px;color:#d1fae5;margin-bottom:14px">Alterações realizadas:</div>'
+        + '<div id="com-of-resumo-lista">' + (changes.length ? changes.map(function(row) {
+            return '<div style="display:grid;grid-template-columns:120px 1fr 20px 1fr;gap:8px;align-items:start;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.08)"><div style="color:#94a3b8">' + row[1] + '</div><div style="color:#f87171">' + String(_valorDiffStr(row[2])).replace(/</g, '&lt;') + '</div><div style="color:#64748b;text-align:center">→</div><div style="color:#10b981">' + String(_valorDiffStr(row[3])).replace(/</g, '&lt;') + '</div></div>';
+          }).join('') : '<div style="color:#d1fae5">Nenhuma alteração detectada.</div>') + '</div>'
+        + '<div style="display:flex;justify-content:flex-end;margin-top:16px"><button id="com-of-resumo-ok" style="background:#10b981;color:#072814;border:none;border-radius:8px;padding:10px 18px;font-weight:800;cursor:pointer">OK</button></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      var closeFn = function() {
+        _fecharResumoAlteracoes();
+        if (typeof onClose === 'function') onClose();
+      };
+      var okBtn = document.getElementById('com-of-resumo-ok');
+      if (okBtn) okBtn.onclick = closeFn;
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) closeFn(); });
+      window.__comResumoAlteracoesTimer = setTimeout(closeFn, 5000);
+    } catch (_) {
+      try { if (typeof onClose === 'function') onClose(); } catch (__) {}
+    }
+  }
+
+  try { window._mostrarResumoAlteracoes = _mostrarResumoAlteracoes; } catch (_) {}
+
+  function _resumoConclusaoHtml(of, perdas, dataFat, qtdProd) {
+    var qtdPedido = Math.trunc(Number(of && (of.qtd_pedida ?? of.quantidade ?? of.qtd ?? 0) || 0) || 0);
+    var produzidas = Math.trunc(Number(qtdProd || 0) || 0);
+    var excedente = Math.max(0, produzidas - qtdPedido);
+    var perdasQtd = (Array.isArray(perdas) ? perdas : []).reduce(function(s, p) { return s + (Math.trunc(Number(p && p.qtd || 0)) || 0); }, 0);
+    var vunit = Number(of && (of.valor_unitario ?? of.vl_unit ?? 0) || 0) || 0;
+    if (!(vunit > 0) && qtdPedido > 0) {
+      var vt = Number(of && (of.valor_total ?? of.valor_venda ?? 0) || 0) || 0;
+      if (vt > 0) vunit = vt / qtdPedido;
+    }
+    var novoTotal = vunit * produzidas;
+    var perdasValor = vunit * perdasQtd;
+    return ''
+      + '<div style="margin-top:12px;padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:10px;background:#0b1220;color:#cbd5e1">'
+      + '<div>Pedido: <b>' + String(qtdPedido) + '</b> · Produzidas: <b>' + String(produzidas) + '</b> · Excedente: <b>' + String(excedente) + '</b></div>'
+      + '<div style="margin-top:6px">Valor unitário: <b>' + _fmtMoney(vunit) + '</b> · Novo total: <b>' + _fmtMoney(novoTotal) + '</b> · Perdas: <b>' + _fmtMoney(perdasValor) + '</b></div>'
+      + '</div>';
+  }
+
+  async function _abrirModalConclusaoFallback(ofId, ofDados) {
+    try {
+      _ensureComissoesStyle();
+      var of = ofDados || null;
+      if (!of) {
+        var token = _getToken();
+        var resp = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '').trim()), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        var j = await resp.json().catch(function() { return null; });
+        of = (j && (j.data || j)) || null;
+      }
+      if (!of) return;
+      var modal = document.getElementById('comissoes-modal');
+      var title = document.getElementById('comissoes-modal-title');
+      var body = document.getElementById('comissoes-modal-body');
+      if (!modal || !body) {
+        _ensureModal();
+        modal = document.getElementById('comissoes-modal');
+        title = document.getElementById('comissoes-modal-title');
+        body = document.getElementById('comissoes-modal-body');
+      }
+      var hoje = new Date().toISOString().slice(0, 10);
+      var usuario = '';
+      try { usuario = String((window.CURRENT_USER && (window.CURRENT_USER.nome || window.CURRENT_USER.name)) || localStorage.getItem('nome') || 'Usuário').trim(); } catch (_) { usuario = 'Usuário'; }
+      var maqs = [];
+      try {
+        maqs = Array.isArray(parseFluxo ? parseFluxo(of.fluxo_maquinas || of.maq) : []) ? parseFluxo(of.fluxo_maquinas || of.maq) : [];
+      } catch (_) { maqs = []; }
+      maqs = (Array.isArray(maqs) ? maqs : []).map(function(x) { return String((x && x.nome) || x || '').trim(); }).filter(Boolean);
+      maqs = maqs.filter(function(v, i, a) { return a.indexOf(v) === i; });
+      if (title) title.textContent = 'Concluindo OF #' + String(of.numero || of.of_num || '—') + ' — ' + String(of.cliNome || of.cliente_nome || of.cliente || 'CLIENTE');
+      body.innerHTML = ''
+        + '<div class="m-grid">'
+        + '<div><label>Concluído por</label><input id="com-conc-user" readonly value="' + String(usuario).replace(/"/g, '&quot;') + '" /></div>'
+        + '<div><label>📅 Data de Faturamento *</label><input id="com-conc-data" type="date" value="' + hoje + '" /></div>'
+        + '<div><label>🏭 Caixas Produzidas *</label><input id="com-conc-qtd" type="number" min="0" step="1" value="' + String(Math.trunc(Number(of.qtd_pedida || of.quantidade || of.qtd || 0) || 0)) + '" /></div>'
+        + '<div></div>'
+        + '<div class="m-full"><label>💥 Caixas Perdidas por Máquina</label><div id="com-conc-perdas"></div><button id="com-conc-add" type="button" class="m-cancel">+ Adicionar</button></div>'
+        + '</div>'
+        + '<div id="com-conc-resumo"></div>'
+        + '<div class="m-actions">'
+        + '<button class="m-cancel" id="com-conc-cancelar">Cancelar</button>'
+        + '<button class="m-save" id="com-conc-confirmar" style="background:#2563eb">✔ Confirmar Conclusão</button>'
+        + '</div>';
+      modal.style.display = 'flex';
+
+      var perdasWrap = document.getElementById('com-conc-perdas');
+      var addBtn = document.getElementById('com-conc-add');
+      var qtdEl = document.getElementById('com-conc-qtd');
+      var resumoEl = document.getElementById('com-conc-resumo');
+      var renderResumo = function() {
+        var perdas = Array.prototype.slice.call((perdasWrap && perdasWrap.querySelectorAll('.com-conc-row')) || []).map(function(row) {
+          var maq = row.querySelector('.com-conc-maq');
+          var qtd = row.querySelector('.com-conc-qtdm');
+          return { maquina: String(maq && maq.value || '').trim(), qtd: Math.trunc(Number(qtd && qtd.value || 0) || 0) };
+        }).filter(function(p) { return p.maquina && p.qtd > 0; });
+        resumoEl.innerHTML = _resumoConclusaoHtml(of, perdas, document.getElementById('com-conc-data').value, qtdEl && qtdEl.value);
+      };
+      var addRow = function(maq, qtd) {
+        var row = document.createElement('div');
+        row.className = 'com-conc-row';
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = '1fr 140px 36px';
+        row.style.gap = '8px';
+        row.style.marginBottom = '8px';
+        row.innerHTML = '<select class="com-conc-maq">' + maqs.map(function(m) { return '<option value="' + String(m).replace(/"/g, '&quot;') + '">' + String(m).replace(/</g, '&lt;') + '</option>'; }).join('') + '</select><input class="com-conc-qtdm" type="number" min="0" step="1" value="' + String(qtd || '') + '"/><button type="button" class="m-close">×</button>';
+        perdasWrap.appendChild(row);
+        if (maq) {
+          try { row.querySelector('.com-conc-maq').value = maq; } catch (_) {}
+        }
+        row.querySelector('.m-close').onclick = function() { row.remove(); renderResumo(); };
+        row.querySelector('.com-conc-maq').onchange = renderResumo;
+        row.querySelector('.com-conc-qtdm').oninput = renderResumo;
+        renderResumo();
+      };
+      if (addBtn) addBtn.onclick = function() { addRow(maqs[0] || '', ''); };
+      if (qtdEl) qtdEl.oninput = renderResumo;
+      try { document.getElementById('com-conc-data').onchange = renderResumo; } catch (_) {}
+      renderResumo();
+
+      var cancelBtn = document.getElementById('com-conc-cancelar');
+      if (cancelBtn) cancelBtn.onclick = function(e) { try { e.preventDefault(); } catch (_) {} modal.style.display = 'none'; };
+      var confBtn = document.getElementById('com-conc-confirmar');
+      if (confBtn) confBtn.onclick = async function(e) {
+        try { e.preventDefault(); } catch (_) {}
+        var qtdProd = Math.trunc(Number(qtdEl && qtdEl.value || 0) || 0);
+        var dataFat = String(document.getElementById('com-conc-data').value || '').trim();
+        if (!(qtdProd > 0)) { try { alert('Informe as caixas produzidas.'); } catch (_) {} return; }
+        if (!dataFat) { try { alert('Informe a data de faturamento.'); } catch (_) {} return; }
+        var perdas = Array.prototype.slice.call((perdasWrap && perdasWrap.querySelectorAll('.com-conc-row')) || []).map(function(row) {
+          return {
+            maquina: String(row.querySelector('.com-conc-maq') && row.querySelector('.com-conc-maq').value || '').trim(),
+            qtd: Math.trunc(Number(row.querySelector('.com-conc-qtdm') && row.querySelector('.com-conc-qtdm').value || 0) || 0)
+          };
+        }).filter(function(p) { return p.maquina && p.qtd > 0; });
+        var token = _getToken();
+        var r1 = await fetch('/api/ofs/' + encodeURIComponent(String(of.id || ofId)), {
+          method: 'PUT',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+          body: JSON.stringify({ status: 'Concluído', data_conclusao: dataFat, quantidade_produzida: qtdProd, qtd_produzida: qtdProd, _allow_partial: '1' })
+        });
+        var j1 = await r1.json().catch(function() { return null; });
+        if (!j1 || !j1.ok) {
+          try { alert('Erro ao concluir OF: ' + String(j1 && (j1.error || j1.message) || 'Falha')); } catch (_) {}
+          return;
+        }
+        for (var i = 0; i < perdas.length; i++) {
+          var p = perdas[i];
+          try {
+            await fetch('/api/caixas-perdidas', {
+              method: 'POST',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+              body: JSON.stringify({ of_id: of.id || ofId, of_numero: of.numero || null, produto: of.produto || of.descricao || '', cliente: of.cliNome || of.cliente_nome || of.cliente || '', maquina: p.maquina, qtd_perdida: p.qtd, valor_unitario: Number(of.valor_unitario || of.vl_unit || 0) || 0, data: dataFat })
+            });
+          } catch (_) {}
+        }
+        modal.style.display = 'none';
+        try { window.calcularComissoes(); } catch (_) {}
+      };
+    } catch (_) {}
+  }
+
+  async function _abrirFluxoConclusaoOF(ofId, ofObj) {
+    try {
+      ofId = String(ofId || '').trim();
+      if (!ofId) return;
+      var fns = ['abrirModalConclusao', 'concluirOFComBaixa', 'concluirOF', 'finalizarOF'];
+      for (var i = 0; i < fns.length; i++) {
+        var fn = window[fns[i]];
+        if (typeof fn === 'function') {
+          try {
+            await fn.call(window, ofId, ofObj || null);
+            return;
+          } catch (_) {}
+        }
+      }
+      await _abrirModalConclusaoFallback(ofId, ofObj || null);
+    } catch (_) {}
+  }
+
   function _renderModalForm(of) {
     var id = String(of && of.id || '').trim();
     var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '').trim();
@@ -12290,6 +12568,7 @@ function _ocultarGraficoComissoes() {
     var dataConc = String(of && (of.data_conclusao || of.dataConclusao || '') || '').slice(0, 10);
     var status = String(of && of.status || '').trim();
     var obs = String(of && (of.observacoes || of.obs || of.observacao || '') || '').trim();
+    var perdasResumo = of && of.__perdasResumo ? of.__perdasResumo : null;
 
     return ''
       + '<div class="m-grid">'
@@ -12308,6 +12587,7 @@ function _ocultarGraficoComissoes() {
       + '<div><label>Data de Criação</label><input type="date" id="com-of-created" value="' + String(createdAt).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>Data de Conclusão</label><input type="date" id="com-of-conclusao" value="' + String(dataConc).replace(/"/g, '&quot;') + '" /></div>'
       + '<div></div>'
+      + '<div class="m-full"><label>Caixas Perdidas</label><input readonly id="com-of-perdas-resumo" value="' + String(perdasResumo ? (String(perdasResumo.qtd || 0) + ' caixas perdidas em ' + String(perdasResumo.maquinas || 0) + ' máquinas') : '0 caixas perdidas em 0 máquinas').replace(/"/g, '&quot;') + '" /></div>'
       + '<div class="m-full"><label>Observações</label><textarea id="com-of-obs">' + String(obs).replace(/</g, '&lt;') + '</textarea></div>'
       + '</div>'
       + '<div class="m-actions">'
@@ -12337,6 +12617,32 @@ function _ocultarGraficoComissoes() {
         modal.style.display = 'flex';
         return;
       }
+
+      try {
+        var perdasResumo = await _buscarResumoCaixasPerdidas(id);
+        of.__perdasResumo = perdasResumo;
+      } catch (_) {}
+      try {
+        var pctAtual = Number(of && (of.comissao_pct ?? of.comissao ?? ''));
+        if (!(pctAtual > 0)) {
+          var pctPadrao = await _obterComissaoPadraoVendedor(of && (of.vendedor_id || of.vendId || of.vend_id), of && (of.vendNome || of.vendedor_nome || of.vendedor));
+          if (pctPadrao != null && !isNaN(pctPadrao)) of.comissao_pct = pctPadrao;
+        }
+      } catch (_) {}
+
+      var originalSnapshot = _snapshotOfParaResumo({
+        numero: of && (of.numero || of.of_num || of.of_numero || ''),
+        cliente: of && (of.cliNome || of.cliente_nome || of.cliente || ''),
+        vendedor: of && (of.vendNome || of.vendedor_nome || of.vendedor || ''),
+        quantidade: of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? ''),
+        valor_total: of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? ''),
+        comissao_pct: of && (of.comissao_pct ?? of.comissao ?? ''),
+        status: of && of.status,
+        created_at: of && (of.created_at || of.createdAt || ''),
+        data_conclusao: of && (of.data_conclusao || of.dataConclusao || ''),
+        observacoes: of && (of.observacoes || of.obs || of.observacao || '')
+      });
+      try { window._ofOriginalSnapshot = originalSnapshot; } catch (_) {}
 
       try { if (title) title.textContent = 'Editar OF #' + String(of && (of.numero || of.of_num || of.of_numero || '')); } catch (_) {}
       body.innerHTML = _renderModalForm(of);
@@ -12451,7 +12757,28 @@ function _ocultarGraficoComissoes() {
           });
           var j2 = await r2.json().catch(function() { return null; });
           if (j2 && j2.ok) {
-            modal.style.display = 'none';
+            var vendSelect = document.getElementById('com-of-vend-select');
+            var vendNomeNovo = '';
+            try {
+              vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
+                ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
+                : '';
+            } catch (_) { vendNomeNovo = ''; }
+            var novoSnapshot = _snapshotOfParaResumo({
+              numero: document.getElementById('com-of-numero').value,
+              cliente: document.getElementById('com-of-cli-busca').value,
+              vendedor: vendNomeNovo,
+              quantidade: qtd,
+              valor_total: valor,
+              comissao_pct: comPct,
+              status: st,
+              created_at: created,
+              data_conclusao: conc,
+              observacoes: obs
+            });
+            _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
+              try { modal.style.display = 'none'; } catch (_) {}
+            });
             try { window.calcularComissoes(); } catch (_) {}
           } else {
             try { alert('Erro ao salvar alterações da OF: ' + String(j2 && (j2.error || j2.message) || 'Falha')); } catch (_) {}
