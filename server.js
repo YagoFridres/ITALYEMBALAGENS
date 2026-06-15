@@ -1461,6 +1461,12 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       if (from > 200000) break;
     }
 
+    todasOFs = (todasOFs || []).filter((of) => {
+      const s = String(of?.status || '').toLowerCase().trim();
+      return s.includes('conclu');
+    });
+    console.log('[COMISSOES] OFs concluidas:', todasOFs.length);
+
     console.log(`[COMISSOES] ${ano}-${mesNum}: ${todasOFs.length} OFs encontradas`);
 
     const { data: vendedores } = await supabase
@@ -1511,6 +1517,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
             clientes!ofs_cli_id_fkey(id, nome)
           `)
           .is('deleted_at', null)
+          .ilike('status', '%conclu%')
           .gte('created_at', inicio)
           .lt('created_at', fim)
           .range(fromJoin, fromJoin + PAGE - 1);
