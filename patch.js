@@ -4425,11 +4425,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _forcarRenderComissoes(json) {
-    if (!(json && json.vendedores && json.vendedores.length)) return;
-
-    var fmtPct = function(v) {
-      return (Number(v || 0) || 0).toFixed(2) + '%';
-    };
+    if (!json) return;
 
     try {
       var cardsHost = document.querySelector('#page-comissoes #com-cards, #com-cards');
@@ -4463,126 +4459,104 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         '.com-total-ofs'
       ], String(json.total_ofs || 0));
     } catch (_) {}
+  }
 
-    var pg = document.querySelector('#page-comissoes');
-    if (!pg) return;
-
-    var tableVend = pg.querySelector('#tabela-comissoes-vendedor');
-    if (!tableVend) {
-      try {
-        var detalheTable = pg.querySelector('#tabela-comissoes-ofs');
-        var detalheBox = detalheTable ? detalheTable.closest('.sbox') : null;
-        var resumoBox = document.createElement('div');
-        resumoBox.className = 'sbox';
-        resumoBox.innerHTML = ''
-          + '<div class="sbox-h">Resumo por Vendedor</div>'
-          + '<div class="sbox-b" style="overflow:auto">'
-          + '<table id="tabela-comissoes-vendedor" style="width:100%;border-collapse:collapse;min-width:900px">'
-          + '<thead></thead><tbody></tbody>'
-          + '</table>'
-          + '</div>';
-        if (detalheBox && detalheBox.parentNode) detalheBox.parentNode.insertBefore(resumoBox, detalheBox);
-        else pg.appendChild(resumoBox);
-        tableVend = resumoBox.querySelector('#tabela-comissoes-vendedor');
-      } catch (_) {}
+  function _renderTabelaVendedores(json) {
+    if (!(json && json.vendedores && json.vendedores.length)) return;
+    var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+    if (!pg) {
+      try { console.warn('[COM] #page-comissoes nao encontrado'); } catch (_) {}
+      return;
     }
 
     var tbodies = pg.querySelectorAll('tbody');
     try {
-      console.log('[COM] tbodies encontrados:', tbodies.length);
-      Array.prototype.slice.call(tbodies).forEach(function(tb, i) {
-        var parentTable = tb.closest ? tb.closest('table') : null;
-        var parentId = (parentTable && parentTable.id) || (tb.parentElement && tb.parentElement.id) || '';
-        console.log('[COM] tbody[' + i + '] id:', tb.id, 'rows:', tb.rows.length, 'parent id:', parentId);
-      });
+      console.log('[COM] tbodies:', tbodies.length);
     } catch (_) {}
-
-    var tbodyVend = (tableVend && tableVend.querySelector('tbody'))
-      || tbodies[0]
-      || document.querySelector('#page-comissoes tbody')
-      || document.querySelector('[id*="comiss"] tbody')
-      || document.querySelector('[class*="comiss"] tbody');
-    try {
-      console.log('[COM TBODY]', tbodyVend && tbodyVend.id, (tbodyVend && tbodyVend.closest && tbodyVend.closest('table') && tbodyVend.closest('table').id) || (tableVend && tableVend.id));
-    } catch (_) {}
-
-    if (tableVend) {
-      try {
-        var theadVend = tableVend.querySelector('thead');
-        if (theadVend) {
-          theadVend.innerHTML = ''
-            + '<tr>'
-            + '<th style="text-align:left;padding:10px 12px">Vendedor</th>'
-            + '<th style="text-align:center;padding:10px 12px">OFs</th>'
-            + '<th style="text-align:right;padding:10px 12px">Total Vendido</th>'
-            + '<th style="text-align:center;padding:10px 12px">% Comissão</th>'
-            + '<th style="text-align:right;padding:10px 12px">Comissão R$</th>'
-            + '<th style="text-align:left;padding:10px 12px">Obs</th>'
-            + '</tr>';
-        }
-      } catch (_) {}
-    }
-
-    if (tbodyVend) {
-      tbodyVend.innerHTML = (json.vendedores || []).map(function(v) {
-        return ''
-          + '<tr>'
-          + '<td style="padding:10px 12px">' + String(v && v.nome || '—') + '</td>'
-          + '<td style="text-align:center;padding:10px 12px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
-          + '<td style="text-align:right;padding:10px 12px">' + fmt(v && v.total) + '</td>'
-          + '<td style="text-align:center;padding:10px 12px">' + fmtPct(v && v.comissao_pct || 0) + '</td>'
-          + '<td style="text-align:right;padding:10px 12px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
-          + '<td style="padding:10px 12px">—</td>'
-          + '</tr>';
-      }).join('') + ''
-        + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
-        + '<td style="padding:10px 12px">TOTAL</td>'
-        + '<td style="text-align:center;padding:10px 12px">' + String(json.total_ofs || 0) + '</td>'
-        + '<td style="text-align:right;padding:10px 12px">' + fmt(json.total_vendido) + '</td>'
-        + '<td></td>'
-        + '<td style="text-align:right;padding:10px 12px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
-        + '<td></td>'
-        + '</tr>';
-      try { console.log('[COM] tabela vendedores populada:', (json.vendedores || []).length, 'linhas'); } catch (_) {}
-    } else {
+    var tbodyVend = tbodies[0];
+    if (!tbodyVend) {
       try { console.warn('[COM] tbody vendedores nao encontrado'); } catch (_) {}
-    }
-  }
-
-  function _renderDetalheOFs(ofs) {
-    var table = document.querySelector('#tabela-comissoes-ofs, #page-comissoes table:last-of-type, .com-detalhe-ofs table');
-    var tbody = document.querySelector(
-      '#tabela-comissoes-ofs tbody, ' +
-      '#page-comissoes table:last-of-type tbody, ' +
-      '#com-ofs-tbody, .com-detalhe-ofs tbody, [data-com-ofs] tbody, #detalhe-ofs tbody'
-    );
-    if (!tbody) {
-      try { console.warn('[COM] tbody detalhamento nao encontrado'); } catch (_) {}
       return;
     }
 
+    var tableVend = tbodyVend.closest ? tbodyVend.closest('table') : null;
     try {
-      var thead = table && table.querySelector('thead');
-      if (thead) {
-        thead.innerHTML = ''
+      console.log('[COM TBODY]', tbodyVend && tbodyVend.id, tableVend && tableVend.id);
+    } catch (_) {}
+
+    try {
+      var theadVend = tableVend && tableVend.querySelector('thead');
+      if (theadVend) {
+        theadVend.innerHTML = ''
           + '<tr>'
-          + '<th style="padding:8px 12px;text-align:left">OF</th>'
-          + '<th style="padding:8px 12px;text-align:left">Cliente</th>'
-          + '<th style="padding:8px 12px;text-align:left">Ref.</th>'
-          + '<th style="padding:8px 12px;text-align:center">Qtd.</th>'
-          + '<th style="padding:8px 12px;text-align:left">Vendedor</th>'
-          + '<th style="padding:8px 12px;text-align:right">Valor</th>'
-          + '<th style="padding:8px 12px;text-align:center">% Comissão</th>'
-          + '<th style="padding:8px 12px;text-align:right">Comissão R$</th>'
-          + '<th style="padding:8px 12px;text-align:left">Data</th>'
-          + '<th style="padding:8px 12px;text-align:left">Entrega</th>'
-          + '<th style="padding:8px 12px;text-align:left">Status</th>'
-          + '<th style="padding:8px 12px;text-align:left">Obs</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">OFs</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Total Vendido</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">% Comissão</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão R$</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Ação</th>'
           + '</tr>';
       }
     } catch (_) {}
 
-    tbody.innerHTML = (ofs || []).map(function(of) {
+    tbodyVend.innerHTML = (json.vendedores || []).map(function(v) {
+      return ''
+        + '<tr>'
+        + '<td style="padding:10px 14px">' + String(v && v.nome || '—') + '</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
+        + '<td style="text-align:right;padding:10px 14px">' + fmt(v && v.total) + '</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+        + '<td style="text-align:right;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
+        + '<td style="padding:10px 14px;text-align:center">'
+        + '<button onclick="window._editarComissaoPct && window._editarComissaoPct(' + JSON.stringify(String(v && v.id || '')) + ',' + JSON.stringify(String(v && v.nome || '')) + ',' + String(Number(v && v.comissao_pct || 0) || 0) + ')" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:11px">✏️</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('') + ''
+      + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
+      + '<td style="padding:10px 14px">TOTAL</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + String(json.total_ofs || 0) + '</td>'
+      + '<td style="text-align:right;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
+      + '<td></td>'
+      + '<td style="text-align:right;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
+      + '<td></td>'
+      + '</tr>';
+    try { console.log('[COM] tabela vendedores OK:', (json.vendedores || []).length, 'vendedores'); } catch (_) {}
+  }
+
+  function _renderTabelaOFs(json) {
+    if (!(json && json.ofs && json.ofs.length)) return;
+    var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+    if (!pg) return;
+    var tbodies = pg.querySelectorAll('tbody');
+    var tbodyOFs = tbodies[1] || tbodies[0];
+    if (!tbodyOFs) {
+      try { console.warn('[COM] tbody OFs nao encontrado'); } catch (_) {}
+      return;
+    }
+
+    var tableOFs = tbodyOFs.closest ? tbodyOFs.closest('table') : null;
+    try {
+      var theadOFs = tableOFs && tableOFs.querySelector('thead');
+      if (theadOFs) {
+        theadOFs.innerHTML = ''
+          + '<tr>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">N° OF</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Cliente</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Produto</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Qtd</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Vendedor</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Valor OF</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">%</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:right">Comissão R$</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Data Conclusão</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2)">Status</th>'
+          + '<th style="padding:8px;border:1px solid var(--border);background:var(--s2);text-align:center">Ação</th>'
+          + '</tr>';
+      }
+    } catch (_) {}
+
+    tbodyOFs.innerHTML = (json.ofs || []).map(function(of) {
       return ''
         + '<tr>'
         + '<td style="padding:8px 12px">#' + String(of && of.numero || '—') + '</td>'
@@ -4591,15 +4565,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '<td style="padding:8px 12px;text-align:center">—</td>'
         + '<td style="padding:8px 12px">' + String(of && of.vendedor || '—') + '</td>'
         + '<td style="padding:8px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
-        + '<td style="padding:8px 12px;text-align:center">' + String(Number(of && of.comissao_pct || 0) || 0) + '%</td>'
+        + '<td style="padding:8px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
         + '<td style="padding:8px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
         + '<td style="padding:8px 12px">' + fmtData(of && of.created_at) + '</td>'
         + '<td style="padding:8px 12px">—</td>'
         + '<td style="padding:8px 12px">' + String(of && of.status || '—') + '</td>'
-        + '<td style="padding:8px 12px">—</td>'
+        + '<td style="padding:8px 12px;text-align:center">'
+        + '<button style="padding:4px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:11px" onclick="window.abrirOf && window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')">Traçar</button>'
+        + '</td>'
         + '</tr>';
     }).join('');
-    try { console.log('[COM] detalhamento populado:', (ofs || []).length, 'OFs'); } catch (_) {}
+    try { console.log('[COM] tabela OFs OK:', (json.ofs || []).length, 'OFs'); } catch (_) {}
+  }
+
+  function _renderDetalheOFs(ofs) {
+    _renderTabelaOFs({ ofs: ofs || [] });
   }
 
   async function calcularViaApi() {
@@ -4682,16 +4662,48 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     try { if (typeof window.atualizarTabelaComissoes === 'function') window.atualizarTabelaComissoes(); } catch (_) {}
 
     try { _forcarRenderComissoes(json); } catch (_) {}
-    try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
+    try { setTimeout(function() { _renderTabelaVendedores(json); _renderTabelaOFs(json); }, 700); } catch (_) {}
     try {
       setTimeout(function() {
         try { _forcarRenderComissoes(json); } catch (_) {}
-        try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
       }, 400);
     } catch (_) {}
     try { window.dispatchEvent(new CustomEvent('comissoes-calculadas', { detail: json })); } catch (_) {}
     return json;
   }
+
+  window._editarComissaoPct = async function(vendId, vendNome, pctAtual) {
+    var novo = prompt('Comissao de ' + vendNome + ' (%)\nAtual: ' + pctAtual + '%\n\nNovo valor:', pctAtual);
+    if (novo === null) return;
+    var pct = parseFloat(String(novo).replace(',', '.'));
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      alert('Valor invalido');
+      return;
+    }
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    var payload = JSON.stringify({ comissao_pct: pct });
+    var headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
+    var resp = await fetch('/api/vendedores/' + encodeURIComponent(vendId), {
+      method: 'PATCH',
+      headers: headers,
+      body: payload
+    }).catch(function() { return null; });
+    if (!resp || !resp.ok) {
+      resp = await fetch('/api/vendedores/' + encodeURIComponent(vendId), {
+        method: 'PUT',
+        headers: headers,
+        body: payload
+      });
+    }
+    var json = await resp.json().catch(function() { return null; });
+    if (json && json.ok) {
+      alert('Comissao atualizada!');
+      if (typeof window.calcularComissoes === 'function') window.calcularComissoes();
+    } else {
+      alert('Erro ao atualizar comissao');
+    }
+  };
 
   window.calcularComissoes = async function() {
     try {
