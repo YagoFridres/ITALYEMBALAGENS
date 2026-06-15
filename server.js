@@ -1589,6 +1589,90 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/backup/exportar', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const PAGE = 1000;
+
+    let ofs = [];
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('*')
+        .is('deleted_at', null)
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      if (!(data && data.length)) break;
+      ofs = ofs.concat(data);
+      if (data.length < PAGE) break;
+    }
+
+    let clientes = [];
+    for (let from2 = 0; ; from2 += PAGE) {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .range(from2, from2 + PAGE - 1);
+      if (error) throw error;
+      if (!(data && data.length)) break;
+      clientes = clientes.concat(data);
+      if (data.length < PAGE) break;
+    }
+
+    const backup = {
+      exportado_em: new Date().toISOString(),
+      versao: '1.0',
+      total_ofs: ofs.length,
+      total_clientes: clientes.length,
+      ofs,
+      clientes,
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="backup-italy-${new Date().toISOString().slice(0, 10)}.json"`
+    );
+    return res.json(backup);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post('/api/backup/importar', authMiddleware, async (req, res) => {
+  try {
+    if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });
+    const ofs = Array.isArray(req.body?.ofs) ? req.body.ofs : [];
+    const clientes = Array.isArray(req.body?.clientes) ? req.body.clientes : [];
+    let ofs_ok = 0;
+    let cli_ok = 0;
+    const erros = [];
+
+    for (let i = 0; i < clientes.length; i += 100) {
+      const lote = clientes.slice(i, i + 100);
+      const { error } = await supabase.from('clientes').upsert(lote, { onConflict: 'id' });
+      if (error) erros.push('clientes lote ' + i + ': ' + error.message);
+      else cli_ok += lote.length;
+    }
+
+    for (let i = 0; i < ofs.length; i += 100) {
+      const lote = ofs.slice(i, i + 100);
+      const { error } = await supabase.from('ofs').upsert(lote, { onConflict: 'id' });
+      if (error) erros.push('ofs lote ' + i + ': ' + error.message);
+      else ofs_ok += lote.length;
+    }
+
+    return res.json({
+      ok: true,
+      ofs_importadas: ofs_ok,
+      clientes_importados: cli_ok,
+      erros,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 app.get('/api/ofs/vendedores-unicos', authMiddleware, async (req, res) => {
   try {
     if (!supabase) return res.status(500).json({ ok: false, error: 'supabase_not_configured' });

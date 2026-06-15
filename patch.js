@@ -10855,3 +10855,324 @@ window._mbnActive = function(id) {
 
   setInterval(_verificarOFsNovas, 30000);
 })();
+
+(function patchBackupNotifEChapas() {
+  if (window.__patchBackupNotifEChapasInstalled) return;
+  window.__patchBackupNotifEChapasInstalled = true;
+
+  function _tokenAuth() {
+    try {
+      return String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  window._notificacaoOF = function(mensagem, tipo) {
+    tipo = tipo || 'sucesso';
+    try {
+      var anterior = document.getElementById('notif-of-overlay');
+      if (anterior) anterior.remove();
+    } catch (_) {}
+
+    var cores = {
+      sucesso: { bg: '#16a34a', icon: 'OK' },
+      criada: { bg: '#6366f1', icon: 'OF' },
+      erro: { bg: '#dc2626', icon: 'ERRO' }
+    };
+    var cor = cores[tipo] || cores.sucesso;
+
+    var el = document.createElement('div');
+    el.id = 'notif-of-overlay';
+    el.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:99999',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'pointer-events:none'
+    ].join(';');
+    el.innerHTML = ''
+      + '<div style="background:' + cor.bg + ';color:#fff;padding:32px 48px;border-radius:16px;font-size:28px;font-weight:700;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:notifSlideIn 0.3s ease;max-width:80vw">'
+      + '<div style="font-size:32px;margin-bottom:12px">' + cor.icon + '</div>'
+      + String(mensagem || '')
+      + '</div>';
+
+    if (!document.getElementById('notif-style')) {
+      var style = document.createElement('style');
+      style.id = 'notif-style';
+      style.textContent = ''
+        + '@keyframes notifSlideIn {'
+        + 'from { opacity:0; transform: scale(0.8); }'
+        + 'to { opacity:1; transform: scale(1); }'
+        + '}';
+      document.head.appendChild(style);
+    }
+
+    document.body.appendChild(el);
+    setTimeout(function() {
+      try { el.remove(); } catch (_) {}
+    }, 3000);
+  };
+
+  function _avisar(msg, tipo) {
+    try {
+      if (typeof window._notificacaoOF === 'function') return window._notificacaoOF(msg, tipo);
+    } catch (_) {}
+    try {
+      if (typeof toast === 'function') return toast(msg, tipo === 'erro' ? 'var(--red)' : 'var(--green)');
+    } catch (_) {}
+    try { alert(msg); } catch (_) {}
+  }
+
+  async function _exportarBackup() {
+    var token = _tokenAuth();
+    try {
+      var resp = await fetch('/api/backup/exportar', {
+        headers: token ? { Authorization: 'Bearer ' + token } : {}
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var blob = await resp.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'backup-italy-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        try { URL.revokeObjectURL(url); } catch (_) {}
+        try { a.remove(); } catch (_) {}
+      }, 300);
+      _avisar('Backup exportado com sucesso!', 'sucesso');
+    } catch (e) {
+      _avisar('Erro ao exportar: ' + String(e && e.message || e), 'erro');
+    }
+  }
+
+  async function _importarBackup() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = async function(e) {
+      var file = e && e.target && e.target.files && e.target.files[0];
+      if (!file) return;
+      var texto = await file.text();
+      var dados = null;
+      try {
+        dados = JSON.parse(texto);
+      } catch (_) {
+        alert('Arquivo JSON inválido');
+        return;
+      }
+
+      var totalOfs = Number(dados && dados.total_ofs || (Array.isArray(dados && dados.ofs) ? dados.ofs.length : 0)) || 0;
+      var totalClientes = Number(dados && dados.total_clientes || (Array.isArray(dados && dados.clientes) ? dados.clientes.length : 0)) || 0;
+      if (!confirm('Importar ' + totalOfs + ' OFs e ' + totalClientes + ' clientes?\nIsso vai atualizar registros existentes.')) return;
+
+      try {
+        var token = _tokenAuth();
+        var resp = await fetch('/api/backup/importar', {
+          method: 'POST',
+          headers: Object.assign(
+            { 'Content-Type': 'application/json' },
+            token ? { Authorization: 'Bearer ' + token } : {}
+          ),
+          body: JSON.stringify(dados)
+        });
+        var json = await resp.json().catch(function() { return null; });
+        if (!resp.ok || !json || json.ok === false) {
+          throw new Error(String(json && json.error || 'falha ao importar'));
+        }
+        _avisar('Importado! ' + json.ofs_importadas + ' OFs e ' + json.clientes_importados + ' clientes', 'sucesso');
+        if (json.erros && json.erros.length) console.warn('[IMPORT] erros:', json.erros);
+      } catch (err) {
+        alert('Erro ao importar: ' + String(err && err.message || err));
+      }
+    };
+    input.click();
+  }
+
+  window._exportarBackup = _exportarBackup;
+  window._importarBackup = _importarBackup;
+
+  function _adicionarBotoesBackup() {
+    try {
+      var toolbar = document.querySelector(
+        '#page-pcp .topbar-actions, #page-armazenamento .toolbar, ' +
+        '#page-pcp .pcp-actions, #page-armazenamento .top-bar, ' +
+        '.armazenamento-toolbar, [data-page="pcp"] .actions, #page-pcp .ptoolbar'
+      );
+      if (!toolbar || toolbar.dataset.backupAdded === '1') return;
+      toolbar.dataset.backupAdded = '1';
+
+      var btnExportar = document.createElement('button');
+      btnExportar.className = 'btn btn-ghost btn-sm';
+      btnExportar.id = 'btn-backup-exportar';
+      btnExportar.textContent = 'Exportar JSON';
+      btnExportar.style.cssText = 'font-size:.75rem;padding:6px 12px;border-radius:6px';
+      btnExportar.onclick = function() { _exportarBackup(); };
+
+      var btnImportar = document.createElement('button');
+      btnImportar.className = 'btn btn-ghost btn-sm';
+      btnImportar.id = 'btn-backup-importar';
+      btnImportar.textContent = 'Importar JSON';
+      btnImportar.style.cssText = 'font-size:.75rem;padding:6px 12px;border-radius:6px';
+      btnImportar.onclick = function() { _importarBackup(); };
+
+      toolbar.appendChild(btnExportar);
+      toolbar.appendChild(btnImportar);
+    } catch (_) {}
+  }
+
+  function _wrapNotifFn(fnName, mensagem, tipo, shouldSkip) {
+    try {
+      var orig = window[fnName];
+      if (typeof orig !== 'function' || orig._patchNotifOfWrapped) return;
+      var wrapped = async function() {
+        var skip = false;
+        try { skip = typeof shouldSkip === 'function' ? !!shouldSkip() : false; } catch (_) {}
+        var result = await orig.apply(this, arguments);
+        if (!skip) {
+          setTimeout(function() {
+            try { window._notificacaoOF(mensagem, tipo); } catch (_) {}
+          }, 500);
+        }
+        return result;
+      };
+      wrapped._patchNotifOfWrapped = true;
+      window[fnName] = wrapped;
+    } catch (_) {}
+  }
+
+  function _patchNotificacoesOF() {
+    _wrapNotifFn('salvarOfRapida', 'OF Criada com Sucesso!', 'criada', function() { return !!window._ofRapidaEditandoId; });
+    _wrapNotifFn('salvarNovaOfRapida', 'OF Criada com Sucesso!', 'criada');
+    _wrapNotifFn('salvarOFRapida', 'OF Criada com Sucesso!', 'criada');
+    _wrapNotifFn('salvarNovaOF', 'OF Criada com Sucesso!', 'criada');
+    _wrapNotifFn('salvarOF', 'OF Criada com Sucesso!', 'criada');
+    _wrapNotifFn('criarOf', 'OF Criada com Sucesso!', 'criada');
+    _wrapNotifFn('concluirOfPainel', 'OF Concluída com Sucesso!', 'sucesso');
+    _wrapNotifFn('concluirOfModal', 'OF Concluída com Sucesso!', 'sucesso');
+    _wrapNotifFn('concluirOf', 'OF Concluída com Sucesso!', 'sucesso');
+    _wrapNotifFn('confirmarConclusao', 'OF Concluída com Sucesso!', 'sucesso');
+  }
+
+  (function _paginacaoChapas() {
+    var paginaAtual = 0;
+    var POR_PAGINA = 10;
+
+    function _linhasFiltradas() {
+      var busca = String((document.getElementById('sc-busca') || {}).value || '').toLowerCase();
+      var status = String((document.getElementById('sc-status') || {}).value || '').trim();
+      return Array.prototype.slice.call(document.querySelectorAll('#sc-tbody .sc-linha')).filter(function(tr) {
+        var matchB = !busca || String(tr.dataset.busca || '').includes(busca);
+        var matchS = !status || String(tr.dataset.status || '') === status;
+        return matchB && matchS;
+      });
+    }
+
+    function _renderPaginado() {
+      var container = document.querySelector('#sc-tbody');
+      if (!container) return;
+
+      var todasLinhas = Array.prototype.slice.call(container.querySelectorAll('.sc-linha'));
+      if (!todasLinhas.length) return;
+
+      var filtradas = _linhasFiltradas();
+      var total = filtradas.length;
+      var totalPags = Math.max(1, Math.ceil(total / POR_PAGINA));
+      if (paginaAtual >= totalPags) paginaAtual = totalPags - 1;
+      if (paginaAtual < 0) paginaAtual = 0;
+
+      todasLinhas.forEach(function(el) { el.style.display = 'none'; });
+      filtradas.forEach(function(el, i) {
+        el.style.display = (i >= paginaAtual * POR_PAGINA && i < (paginaAtual + 1) * POR_PAGINA) ? '' : 'none';
+      });
+
+      var paginador = document.getElementById('chapas-paginador');
+      if (total <= POR_PAGINA) {
+        if (paginador) paginador.remove();
+        return;
+      }
+
+      if (!paginador) {
+        paginador = document.createElement('div');
+        paginador.id = 'chapas-paginador';
+        paginador.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;justify-content:center;margin-top:8px';
+        var host = container.closest('table');
+        host = host && host.parentElement ? host.parentElement : (container.parentElement || container);
+        host.appendChild(paginador);
+      }
+
+      paginador.innerHTML = ''
+        + '<button type="button" onclick="window._chapasAnterior()" ' + (paginaAtual === 0 ? 'disabled' : '') + ' style="padding:8px 16px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg2,#1a1a2e);color:var(--text1,#fff);cursor:pointer;' + (paginaAtual === 0 ? 'opacity:.4;' : '') + '">&larr; Anterior</button>'
+        + '<span style="color:var(--text2,#aaa);font-size:13px">Pagina ' + (paginaAtual + 1) + ' de ' + totalPags + ' <span style="font-size:11px">(' + total + ' OFs)</span></span>'
+        + '<button type="button" onclick="window._chapasProximo()" ' + (paginaAtual >= totalPags - 1 ? 'disabled' : '') + ' style="padding:8px 16px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg2,#1a1a2e);color:var(--text1,#fff);cursor:pointer;' + (paginaAtual >= totalPags - 1 ? 'opacity:.4;' : '') + '">Proximo &rarr;</button>';
+    }
+
+    window._chapasAnterior = function() {
+      if (paginaAtual > 0) {
+        paginaAtual -= 1;
+        _renderPaginado();
+      }
+    };
+
+    window._chapasProximo = function() {
+      paginaAtual += 1;
+      _renderPaginado();
+    };
+
+    function _wrapSelChapas(fnName, resetPage) {
+      try {
+        var orig = window[fnName];
+        if (typeof orig !== 'function' || orig._patchChapasPaginado) return;
+        window[fnName] = function() {
+          var result = orig.apply(this, arguments);
+          if (resetPage) paginaAtual = 0;
+          setTimeout(_renderPaginado, 150);
+          setTimeout(_renderPaginado, 500);
+          return result;
+        };
+        window[fnName]._patchChapasPaginado = true;
+      } catch (_) {}
+    }
+
+    function _tickChapas() {
+      _wrapSelChapas('renderSelecaoChapas', true);
+      _wrapSelChapas('filtrarTabelaSelChapas', false);
+      try {
+        var pg = document.querySelector('#page-sel-chapas');
+        if (pg && pg.style.display !== 'none' && document.getElementById('sc-tbody')) {
+          setTimeout(_renderPaginado, 120);
+        }
+      } catch (_) {}
+    }
+
+    var obsChapas = new MutationObserver(function() {
+      try {
+        var pg = document.querySelector('#page-sel-chapas');
+        if (pg && pg.style.display !== 'none') {
+          paginaAtual = 0;
+          setTimeout(_tickChapas, 150);
+        }
+      } catch (_) {}
+    });
+    obsChapas.observe(document.body, { childList: true, subtree: true });
+    setTimeout(_tickChapas, 400);
+    setInterval(_tickChapas, 1500);
+  })();
+
+  try {
+    var obsBackup = new MutationObserver(function() {
+      _adicionarBotoesBackup();
+      _patchNotificacoesOF();
+    });
+    obsBackup.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+
+  setTimeout(_adicionarBotoesBackup, 600);
+  setTimeout(_adicionarBotoesBackup, 1200);
+  setInterval(_patchNotificacoesOF, 1500);
+  _patchNotificacoesOF();
+})();
