@@ -11563,11 +11563,11 @@ function _renderTabelaOFs(json) {
       var s = raw.toLowerCase();
       var bg = '#334155';
       var fg = '#e2e8f0';
-      if (s.indexOf('conclu') >= 0 || s === 'pedido pronto') { bg = '#14532d'; fg = '#86efac'; raw = 'Concluído'; }
-      else if (s.indexOf('produ') >= 0) { bg = '#1e3a8a'; fg = '#93c5fd'; raw = 'Em Produção'; }
-      else if (s.indexOf('aber') >= 0) { bg = '#78350f'; fg = '#fcd34d'; raw = 'Aberta'; }
-      else if (s.indexOf('canc') >= 0) { bg = '#7f1d1d'; fg = '#fca5a5'; raw = 'Cancelada'; }
-      return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.12)">' + String(raw).replace(/</g, '&lt;') + '</span>';
+      if (s.indexOf('conclu') >= 0 || s === 'pedido pronto') { bg = '#064e3b'; fg = '#10b981'; raw = 'Concluído'; }
+      else if (s.indexOf('produ') >= 0) { bg = '#1e3a5f'; fg = '#60a5fa'; raw = 'Em Produção'; }
+      else if (s.indexOf('aber') >= 0) { bg = '#422006'; fg = '#f59e0b'; raw = 'Aberta'; }
+      else if (s.indexOf('canc') >= 0) { bg = '#4c0519'; fg = '#f43f5e'; raw = 'Cancelada'; }
+      return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.08)">' + String(raw).replace(/</g, '&lt;') + '</span>';
     };
 
     var clientesMap = window.CLIENTES || window.__CLIENTES_MAPA || null;
@@ -11615,7 +11615,19 @@ function _renderTabelaOFs(json) {
         var numero = String(of && of.numero || '').trim() || '—';
         var cli = getClienteNome(of);
         var vend = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedor || '—').trim() || '—';
-        var qtd = (of && (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida)) != null ? Number(of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida) : null;
+        var qtdBruta = null;
+        try {
+          if (of) qtdBruta = (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida);
+          if (qtdBruta == null && of && of.itens) {
+            var itens = Array.isArray(of.itens) ? of.itens : null;
+            if (!itens && typeof of.itens === 'string') {
+              try { itens = JSON.parse(of.itens); } catch (_) { itens = null; }
+            }
+            var item0 = Array.isArray(itens) && itens[0] ? itens[0] : null;
+            if (item0) qtdBruta = (item0.quantidade ?? item0.qtd ?? item0.qtd_pedida ?? null);
+          }
+        } catch (_) { qtdBruta = null; }
+        var qtd = qtdBruta != null ? Number(qtdBruta) : null;
         var qtdStr = (qtd != null && !isNaN(qtd)) ? String(qtd) : '—';
         var valTot = Number(of && (of.valor_total ?? of.valor_venda ?? of.valorTotal ?? 0) || 0) || 0;
         var pctO = Number(of && (of.comissao_pct ?? pctG ?? 0) || 0) || 0;
@@ -11690,6 +11702,12 @@ function _ocultarGraficoComissoes() {
 
   function _fmtMoney(v) {
     return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function _nomeMes(mesNum) {
+    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var idx = (parseInt(String(mesNum || ''), 10) || 1) - 1;
+    return meses[idx] || 'Mes';
   }
 
   function _getToken() {
@@ -11828,15 +11846,20 @@ function _ocultarGraficoComissoes() {
       var s = document.createElement('style');
       s.id = 'patch-comissoes-ui';
       s.textContent = ''
-        + '#comissoes-dashboard{display:flex;gap:10px;overflow-x:auto;padding:6px 2px;margin:0 0 12px 0}'
-        + '#comissoes-dashboard .c-card{min-width:210px;flex:0 0 auto;background:#1e2435;border:1px solid #2a3350;border-radius:12px;padding:12px 14px;color:#fff}'
-        + '#comissoes-dashboard .c-lab{font-size:12px;opacity:0.85;margin-bottom:6px}'
-        + '#comissoes-dashboard .c-val{font-size:18px;font-weight:800;letter-spacing:0.2px}'
-        + '#comissoes-dashboard .c-sub{font-size:12px;opacity:0.8;margin-top:6px}'
-        + '#comissoes-ranking{display:flex;gap:10px;overflow-x:auto;margin:0 0 12px 0;padding:0 2px}'
-        + '#comissoes-ranking .r-item{min-width:260px;flex:0 0 auto;background:#0b1220;border:1px solid rgba(255,255,255,0.10);border-radius:12px;padding:10px 12px;color:#fff}'
-        + '#comissoes-ranking .r-top{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:13px}'
-        + '#comissoes-ranking .r-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:8px}'
+        + '#comissoes-topo{margin:0 0 18px 0}'
+        + '#comissoes-dashboard{display:grid;grid-template-columns:repeat(5,minmax(220px,1fr));gap:16px;margin:0 0 16px 0}'
+        + '#comissoes-dashboard .c-card{background:linear-gradient(135deg,#1e2d40 0%,#1a2535 100%);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px;min-height:100px;color:#fff;box-sizing:border-box}'
+        + '#comissoes-dashboard .c-lab{font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;margin-bottom:10px;font-weight:700}'
+        + '#comissoes-dashboard .c-val{font-size:26px;font-weight:700;color:#fff;line-height:1.15}'
+        + '#comissoes-dashboard .c-sub{font-size:12px;color:#94a3b8;margin-top:10px}'
+        + '#comissoes-dashboard .c-card.is-comissao .c-val{color:#10b981}'
+        + '#comissoes-dashboard .c-card.is-top .c-val{color:#60a5fa}'
+        + '#comissoes-ranking{display:flex;gap:16px;overflow-x:auto;margin:0 0 16px 0;padding:0}'
+        + '#comissoes-ranking .r-item{min-width:320px;flex:0 0 auto;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff;box-sizing:border-box}'
+        + '#comissoes-ranking .r-top{display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center}'
+        + '#comissoes-ranking .r-medal{font-size:1.4em;margin-right:6px}'
+        + '#comissoes-ranking .r-name{font-size:16px;font-weight:800}'
+        + '#comissoes-ranking .r-bar{height:8px;border-radius:999px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:10px}'
         + '#comissoes-ranking .r-bar > div{height:100%;background:#6366f1;border-radius:999px}'
         + '#comissoes-busca{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}'
         + '#comissoes-busca input{background:#0b1220;color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:8px 10px;min-width:240px}'
@@ -11847,14 +11870,30 @@ function _ocultarGraficoComissoes() {
         + '#comissoes-modal .m-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}'
         + '#comissoes-modal .m-title{font-size:15px;font-weight:800}'
         + '#comissoes-modal .m-close{background:transparent;border:1px solid rgba(255,255,255,0.18);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}'
-        + '#comissoes-modal .m-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+        + '#comissoes-modal .m-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
         + '#comissoes-modal label{font-size:12px;opacity:0.85;display:block;margin-bottom:4px}'
         + '#comissoes-modal input,#comissoes-modal select,#comissoes-modal textarea{width:100%;background:#111827;color:#fff;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:8px 10px}'
         + '#comissoes-modal textarea{min-height:90px;resize:vertical}'
+        + '#comissoes-modal .m-full{grid-column:1/-1}'
+        + '#comissoes-modal .m-autocomplete{position:relative}'
+        + '#comissoes-modal .m-suggest{margin-top:6px;max-height:180px;overflow:auto;border:1px solid rgba(255,255,255,0.10);border-radius:10px;background:#0f172a}'
+        + '#comissoes-modal .m-s-item{padding:8px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06)}'
+        + '#comissoes-modal .m-s-item:last-child{border-bottom:0}'
+        + '#comissoes-modal .m-s-item:hover{background:#1e2d40}'
         + '#comissoes-modal .m-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}'
         + '#comissoes-modal .m-save{background:#16a34a;border:1px solid rgba(255,255,255,0.12)}'
         + '#comissoes-modal .m-cancel{background:#1f2937;border:1px solid rgba(255,255,255,0.12)}'
-        + '@media (max-width:700px){#comissoes-modal .m-grid{grid-template-columns:1fr}}';
+        + '#page-comissoes table tbody tr:hover{background:#1e2d40!important}'
+        + '#page-comissoes table thead th{background:#0f172a!important;color:#94a3b8!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.5px!important;padding:10px 12px!important}'
+        + '#page-comissoes table tbody td{padding:10px 12px!important;border-bottom:1px solid #1e293b!important}'
+        + '#page-comissoes table tbody td:nth-child(1),#page-comissoes table tbody td:nth-child(3),#page-comissoes table tbody td:nth-child(4),#page-comissoes table tbody td:nth-child(5),#page-comissoes table tbody td:nth-child(6),#page-comissoes table tbody td:nth-child(7),#page-comissoes table tbody td:nth-child(8),#page-comissoes table tbody td:nth-child(9),#page-comissoes table tbody td:nth-child(10){text-align:center!important}'
+        + '#page-comissoes table tbody td:nth-child(2){text-align:left!important}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td{padding:12px 14px!important;border-bottom:1px solid rgba(148,163,184,0.12)!important}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody tr:hover{background:#1e2d40!important}'
+        + '#page-comissoes button[data-com-trocar]{background:transparent!important;border:1px solid #3a4a6b!important;color:#94a3b8!important;border-radius:6px!important;padding:4px 10px!important;font-size:12px!important}'
+        + '#page-comissoes button[data-com-trocar]:hover{border-color:#60a5fa!important;color:#60a5fa!important}'
+        + '@media (max-width:980px){#comissoes-dashboard{grid-template-columns:repeat(2,minmax(220px,1fr))}}'
+        + '@media (max-width:700px){#comissoes-modal .m-grid{grid-template-columns:1fr}#comissoes-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}';
       document.head.appendChild(s);
     } catch (_) {}
   }
@@ -11890,11 +11929,19 @@ function _ocultarGraficoComissoes() {
       var topTot = Number(top && top.total || 0) || 0;
       var topShare = totalV > 0 ? (topTot / totalV) * 100 : 0;
 
-      var dash = pg.querySelector('#comissoes-dashboard');
+      var section = table.closest ? (table.closest('.card, .section') || table.parentNode) : table.parentNode;
+      var topo = pg.querySelector('#comissoes-topo');
+      if (!topo) {
+        topo = document.createElement('div');
+        topo.id = 'comissoes-topo';
+        if (section && section.parentNode) section.parentNode.insertBefore(topo, section);
+        else pg.insertBefore(topo, pg.firstChild);
+      }
+      var dash = topo.querySelector('#comissoes-dashboard');
       if (!dash) {
         dash = document.createElement('div');
         dash.id = 'comissoes-dashboard';
-        table.parentNode.insertBefore(dash, table);
+        topo.appendChild(dash);
       }
 
       var arrow = '';
@@ -11908,11 +11955,11 @@ function _ocultarGraficoComissoes() {
       }
 
       dash.innerHTML = ''
-        + '<div class="c-card"><div class="c-lab">Total Vendido ' + String(periodoLabel || '').replace(/</g, '&lt;') + '</div><div class="c-val">' + _fmtMoney(totalV) + '</div></div>'
-        + '<div class="c-card"><div class="c-lab">Ordens de Fabricação</div><div class="c-val">' + String(totalOfs) + ' OFs</div></div>'
-        + '<div class="c-card"><div class="c-lab">Total em Comissões</div><div class="c-val" style="color:#4ade80">' + _fmtMoney(totalCom) + '</div></div>'
+        + '<div class="c-card"><div class="c-lab">Total Vendido</div><div class="c-val">' + _fmtMoney(totalV) + '</div><div class="c-sub">' + String(periodoLabel || '').replace(/</g, '&lt;') + '</div></div>'
+        + '<div class="c-card"><div class="c-lab">OFs do Período</div><div class="c-val">' + String(totalOfs) + ' OFs</div><div class="c-sub">&nbsp;</div></div>'
+        + '<div class="c-card is-comissao"><div class="c-lab">Total Comissões</div><div class="c-val">' + _fmtMoney(totalCom) + '</div><div class="c-sub">&nbsp;</div></div>'
         + '<div class="c-card"><div class="c-lab">vs Mês Anterior</div><div class="c-val" style="color:' + cor + '">' + deltaTxt + '</div><div class="c-sub">' + (prevV != null ? ('Anterior: ' + _fmtMoney(prevV)) : 'Anterior: —') + '</div></div>'
-        + '<div class="c-card"><div class="c-lab">Melhor Vendedor</div><div class="c-val">' + String(topNome).replace(/</g, '&lt;') + '</div><div class="c-sub">' + _fmtMoney(topTot) + ' · ' + topShare.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%</div></div>';
+        + '<div class="c-card is-top"><div class="c-lab">Melhor Vendedor</div><div class="c-val">' + String(topNome).replace(/</g, '&lt;') + '</div><div class="c-sub">' + _fmtMoney(topTot) + ' · ' + topShare.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '% do total</div></div>';
     } catch (_) {}
   }
 
@@ -11920,18 +11967,18 @@ function _ocultarGraficoComissoes() {
     try {
       var pg = document.querySelector('#page-comissoes');
       if (!pg) return;
-      var dash = pg.querySelector('#comissoes-dashboard');
-      if (!dash) return;
+      var topo = pg.querySelector('#comissoes-topo');
+      if (!topo) return;
       var vend = Array.isArray(json && json.vendedores) ? json.vendedores.slice() : [];
       vend.sort(function(a, b) { return Number(b && b.total || 0) - Number(a && a.total || 0); });
       vend = vend.filter(function(v) { return v && Number(v.total || 0) > 0; }).slice(0, 3);
       if (!vend.length) return;
       var max = Number(vend[0] && vend[0].total || 0) || 1;
-      var ranking = pg.querySelector('#comissoes-ranking');
+      var ranking = topo.querySelector('#comissoes-ranking');
       if (!ranking) {
         ranking = document.createElement('div');
         ranking.id = 'comissoes-ranking';
-        dash.parentNode.insertBefore(ranking, dash.nextSibling);
+        topo.appendChild(ranking);
       }
       var medals = ['🥇', '🥈', '🥉'];
       ranking.innerHTML = vend.map(function(v, idx) {
@@ -11939,7 +11986,7 @@ function _ocultarGraficoComissoes() {
         var pct = Math.max(0, Math.min(100, (total / max) * 100));
         return ''
           + '<div class="r-item">'
-          + '<div class="r-top"><div>' + medals[idx] + ' ' + String(v && v.nome || '—').replace(/</g, '&lt;') + '</div><div>' + _fmtMoney(total) + ' · ' + String(Number(v && v.ofs || 0) || 0) + ' OFs</div></div>'
+          + '<div class="r-top"><div><span class="r-medal">' + medals[idx] + '</span><span class="r-name">' + String(v && v.nome || '—').replace(/</g, '&lt;') + '</span></div><div>' + _fmtMoney(total) + ' · ' + String(Number(v && v.ofs || 0) || 0) + ' OFs</div></div>'
           + '<div class="r-bar"><div style="width:' + pct.toFixed(0) + '%"></div></div>'
           + '</div>';
       }).join('');
@@ -11978,11 +12025,11 @@ function _ocultarGraficoComissoes() {
         var s = raw.toLowerCase();
         var bg = '#334155';
         var fg = '#e2e8f0';
-        if (s.indexOf('conclu') >= 0 || s === 'pedido pronto') { bg = '#14532d'; fg = '#86efac'; raw = 'Concluído'; }
-        else if (s.indexOf('produ') >= 0) { bg = '#1e3a8a'; fg = '#93c5fd'; raw = 'Em Produção'; }
-        else if (s.indexOf('aber') >= 0) { bg = '#78350f'; fg = '#fcd34d'; raw = 'Aberta'; }
-        else if (s.indexOf('canc') >= 0) { bg = '#7f1d1d'; fg = '#fca5a5'; raw = 'Cancelada'; }
-        return '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.12)">' + String(raw).replace(/</g, '&lt;') + '</span>';
+        if (s.indexOf('conclu') >= 0 || s === 'pedido pronto') { bg = '#064e3b'; fg = '#10b981'; raw = 'Concluído'; }
+        else if (s.indexOf('produ') >= 0) { bg = '#1e3a5f'; fg = '#60a5fa'; raw = 'Em Produção'; }
+        else if (s.indexOf('aber') >= 0) { bg = '#422006'; fg = '#f59e0b'; raw = 'Aberta'; }
+        else if (s.indexOf('canc') >= 0) { bg = '#4c0519'; fg = '#f43f5e'; raw = 'Cancelada'; }
+        return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.08)">' + String(raw).replace(/</g, '&lt;') + '</span>';
       };
 
       var highlight = function(tr) {
@@ -12126,6 +12173,29 @@ function _ocultarGraficoComissoes() {
     } catch (_) { return []; }
   }
 
+  async function _buscarClientesApi(search) {
+    try {
+      var token = _getToken();
+      var q = String(search || '').trim();
+      var resp = await fetch('/api/clientes?search=' + encodeURIComponent(q) + '&limit=20', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j = await resp.json().catch(function() { return null; });
+      var lista = (j && (j.data || j.clientes)) || [];
+      return Array.isArray(lista) ? lista : [];
+    } catch (_) { return []; }
+  }
+
+  async function _buscarClienteAtual(id) {
+    try {
+      id = String(id || '').trim();
+      if (!id) return null;
+      var token = _getToken();
+      var resp = await fetch('/api/clientes/' + encodeURIComponent(id), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var j = await resp.json().catch(function() { return null; });
+      var cli = (j && (j.data || j)) || null;
+      return cli && cli.id ? cli : null;
+    } catch (_) { return null; }
+  }
+
   function _renderModalForm(of) {
     var id = String(of && of.id || '').trim();
     var numero = String(of && (of.numero || of.of_num || of.of_numero || '') || '').trim();
@@ -12139,24 +12209,6 @@ function _ocultarGraficoComissoes() {
     var status = String(of && of.status || '').trim();
     var obs = String(of && (of.observacoes || of.obs || of.observacao || '') || '').trim();
 
-    var known = {
-      id: true, numero: true, of_num: true, of_numero: true,
-      cli_id: true, cliId: true, cliente_id: true, clienteId: true,
-      vendedor_id: true, vend_id: true, vendId: true, vendedorId: true,
-      quantidade: true, qtd: true, qtd_pedida: true, qtdPedida: true,
-      valor_total: true, valor_venda: true, valorTotal: true, valorVenda: true,
-      status: true, created_at: true, createdAt: true, data_conclusao: true, dataConclusao: true,
-      observacoes: true, observacao: true, observacoes_of: true, obs: true,
-      comissao_pct: true, comissao: true
-    };
-    var extras = {};
-    try {
-      Object.keys(of || {}).forEach(function(k) {
-        if (known[k]) return;
-        extras[k] = of[k];
-      });
-    } catch (_) { extras = {}; }
-
     return ''
       + '<div class="m-grid">'
       + '<div><label>Número da OF</label><input id="com-of-numero" value="' + String(numero).replace(/"/g, '&quot;') + '" readonly /></div>'
@@ -12166,15 +12218,15 @@ function _ocultarGraficoComissoes() {
       + '<option value="Concluído">Concluído</option>'
       + '<option value="Cancelada">Cancelada</option>'
       + '</select></div>'
-      + '<div style="grid-column:1/-1"><label>Cliente</label><input id="com-of-cli-busca" placeholder="Buscar cliente..." /><select id="com-of-cli-select" size="6"></select><input id="com-of-cli-id" value="' + String(cliId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
-      + '<div style="grid-column:1/-1"><label>Vendedor</label><input id="com-of-vend-busca" placeholder="Buscar vendedor..." /><select id="com-of-vend-select" size="6"></select><input id="com-of-vend-id" value="' + String(vendId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
+      + '<div class="m-full m-autocomplete"><label>Cliente</label><input id="com-of-cli-busca" placeholder="Buscar cliente..." autocomplete="off" /><div id="com-of-cli-suggest" class="m-suggest" style="display:none"></div><input id="com-of-cli-id" value="' + String(cliId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
+      + '<div class="m-full"><label>Vendedor</label><select id="com-of-vend-select"></select><input id="com-of-vend-id" value="' + String(vendId).replace(/"/g, '&quot;') + '" style="display:none" /></div>'
       + '<div><label>Quantidade</label><input type="number" step="1" id="com-of-qtd" value="' + String(qtd).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>Valor Total</label><input type="number" step="0.01" id="com-of-valor" value="' + String(valTot).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>% Comissão</label><input type="number" step="0.01" id="com-of-comissao" value="' + String(comPct).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>Data de Criação</label><input type="date" id="com-of-created" value="' + String(createdAt).replace(/"/g, '&quot;') + '" /></div>'
       + '<div><label>Data de Conclusão</label><input type="date" id="com-of-conclusao" value="' + String(dataConc).replace(/"/g, '&quot;') + '" /></div>'
-      + '<div style="grid-column:1/-1"><label>Observações</label><textarea id="com-of-obs">' + String(obs).replace(/</g, '&lt;') + '</textarea></div>'
-      + '<div style="grid-column:1/-1"><label>Campos extras (JSON)</label><textarea id="com-of-extras">' + String(JSON.stringify(extras || {}, null, 2)).replace(/</g, '&lt;') + '</textarea></div>'
+      + '<div></div>'
+      + '<div class="m-full"><label>Observações</label><textarea id="com-of-obs">' + String(obs).replace(/</g, '&lt;') + '</textarea></div>'
       + '</div>'
       + '<div class="m-actions">'
       + '<button class="m-cancel" id="com-of-cancelar">Cancelar</button>'
@@ -12209,59 +12261,69 @@ function _ocultarGraficoComissoes() {
 
       try { document.getElementById('com-of-status').value = String(of && of.status || ''); } catch (_) {}
       try {
-        var cliMap = await _loadClientesMapa();
-        var cliSelect = document.getElementById('com-of-cli-select');
         var cliBusca = document.getElementById('com-of-cli-busca');
+        var cliSuggest = document.getElementById('com-of-cli-suggest');
         var cliHidden = document.getElementById('com-of-cli-id');
-        if (cliSelect && cliMap) {
-          var arrC = Object.keys(cliMap).map(function(k) {
-            var v = cliMap[k];
-            var nome = (v && typeof v === 'object') ? (v.nome || v.rs || v.razao || '') : v;
-            return { id: String(k), nome: String(nome || '').trim() };
-          }).filter(function(x) { return x.id && x.nome; });
-          var seen = {};
-          arrC = arrC.filter(function(x) { if (seen[x.id]) return false; seen[x.id] = true; return true; });
-          arrC.sort(function(a, b) { return a.nome.localeCompare(b.nome); });
-          var setCliOpts = function(filtro) {
-            filtro = String(filtro || '').toLowerCase().trim();
-            var list = filtro ? arrC.filter(function(x) { return x.nome.toLowerCase().indexOf(filtro) >= 0; }) : arrC;
-            list = list.slice(0, 500);
-            cliSelect.innerHTML = list.map(function(x) {
-              return '<option value="' + x.id.replace(/"/g, '&quot;') + '">' + x.nome.replace(/</g, '&lt;') + '</option>';
-            }).join('');
-            if (cliHidden && cliHidden.value) {
-              try { cliSelect.value = String(cliHidden.value).toLowerCase(); } catch (_) {}
+        var renderCliSuggestions = function(lista) {
+          if (!cliSuggest) return;
+          lista = Array.isArray(lista) ? lista : [];
+          if (!lista.length) {
+            cliSuggest.style.display = 'none';
+            cliSuggest.innerHTML = '';
+            return;
+          }
+          cliSuggest.style.display = 'block';
+          cliSuggest.innerHTML = lista.map(function(c) {
+            var nome = String(c && (c.nome || c.rs || c.razao || '') || '').trim();
+            var idCli = String(c && c.id || '').trim();
+            return '<div class="m-s-item" data-cli-id="' + idCli.replace(/"/g, '&quot;') + '" data-cli-nome="' + nome.replace(/"/g, '&quot;') + '">' + nome.replace(/</g, '&lt;') + '</div>';
+          }).join('');
+          Array.prototype.slice.call(cliSuggest.querySelectorAll('.m-s-item')).forEach(function(el) {
+            el.onclick = function() {
+              var idSel = String(el.getAttribute('data-cli-id') || '').trim();
+              var nomeSel = String(el.getAttribute('data-cli-nome') || '').trim();
+              if (cliHidden) cliHidden.value = idSel;
+              if (cliBusca) cliBusca.value = nomeSel;
+              cliSuggest.style.display = 'none';
+            };
+          });
+        };
+
+        if (cliBusca) {
+          var atual = await _buscarClienteAtual(cliHidden && cliHidden.value);
+          if (atual) cliBusca.value = String(atual.nome || atual.rs || atual.razao || '').trim();
+          cliBusca.oninput = async function() {
+            var termo = String(cliBusca.value || '').trim();
+            if (termo.length < 2) {
+              renderCliSuggestions([]);
+              return;
             }
+            var lista = await _buscarClientesApi(termo);
+            renderCliSuggestions(lista);
           };
-          setCliOpts('');
-          if (cliBusca) cliBusca.oninput = function() { setCliOpts(cliBusca.value); };
-          cliSelect.onchange = function() { if (cliHidden) cliHidden.value = String(cliSelect.value || ''); };
+          cliBusca.onblur = function() {
+            setTimeout(function() {
+              try { if (cliSuggest) cliSuggest.style.display = 'none'; } catch (_) {}
+            }, 180);
+          };
         }
       } catch (_) {}
 
       try {
         var vendList = await _loadVendedoresLista();
         var vendSelect = document.getElementById('com-of-vend-select');
-        var vendBusca = document.getElementById('com-of-vend-busca');
         var vendHidden = document.getElementById('com-of-vend-id');
         if (vendSelect && Array.isArray(vendList)) {
           var arrV = vendList.map(function(v) {
             return { id: String(v && v.id || '').trim(), nome: String(v && v.nome || '').trim() };
           }).filter(function(x) { return x.id && x.nome; });
           arrV.sort(function(a, b) { return a.nome.localeCompare(b.nome); });
-          var setVendOpts = function(filtro) {
-            filtro = String(filtro || '').toLowerCase().trim();
-            var list = filtro ? arrV.filter(function(x) { return x.nome.toLowerCase().indexOf(filtro) >= 0; }) : arrV;
-            list = list.slice(0, 200);
-            vendSelect.innerHTML = list.map(function(x) {
-              return '<option value="' + x.id.replace(/"/g, '&quot;') + '">' + x.nome.replace(/</g, '&lt;') + '</option>';
-            }).join('');
-            if (vendHidden && vendHidden.value) {
-              try { vendSelect.value = String(vendHidden.value); } catch (_) {}
-            }
-          };
-          setVendOpts('');
-          if (vendBusca) vendBusca.oninput = function() { setVendOpts(vendBusca.value); };
+          vendSelect.innerHTML = arrV.map(function(x) {
+            return '<option value="' + x.id.replace(/"/g, '&quot;') + '">' + x.nome.replace(/</g, '&lt;') + '</option>';
+          }).join('');
+          if (vendHidden && vendHidden.value) {
+            try { vendSelect.value = String(vendHidden.value); } catch (_) {}
+          }
           vendSelect.onchange = function() { if (vendHidden) vendHidden.value = String(vendSelect.value || ''); };
         }
       } catch (_) {}
@@ -12292,37 +12354,14 @@ function _ocultarGraficoComissoes() {
         if (created) payload.created_at = created;
         if (conc) payload.data_conclusao = conc;
         if (obs) payload.observacoes = obs;
+        if (comPct) payload.comissao_pct = Number(String(comPct).replace(',', '.'));
         payload._allow_partial = '1';
 
-        var extraRaw = String(document.getElementById('com-of-extras').value || '').trim();
-        if (extraRaw) {
-          try {
-            var ex = JSON.parse(extraRaw);
-            if (ex && typeof ex === 'object') {
-              Object.keys(ex).forEach(function(k) {
-                if (k === 'id') return;
-                payload[k] = ex[k];
-              });
-            }
-          } catch (_) {}
-        }
-
         try {
-          if (vendId && comPct) {
-            var pctN = Number(String(comPct).replace(',', '.'));
-            if (!isNaN(pctN)) {
-              try {
-                await fetch('/api/vendedores/' + encodeURIComponent(vendId), {
-                  method: 'PATCH',
-                  headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-                  body: JSON.stringify({ comissao_pct: pctN })
-                });
-              } catch (_) {}
-            }
+          if (!cliId) {
+            try { alert('Selecione um cliente válido.'); } catch (_) {}
+            return;
           }
-        } catch (_) {}
-
-        try {
           var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
             method: 'PUT',
             headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
@@ -12333,10 +12372,10 @@ function _ocultarGraficoComissoes() {
             modal.style.display = 'none';
             try { window.calcularComissoes(); } catch (_) {}
           } else {
-            try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || 'Falha')); } catch (_) {}
+            try { alert('Erro ao salvar alterações da OF: ' + String(j2 && (j2.error || j2.message) || 'Falha')); } catch (_) {}
           }
         } catch (err) {
-          try { alert('Erro ao salvar: ' + String(err && err.message || err)); } catch (_) {}
+          try { alert('Erro ao salvar alterações da OF: ' + String(err && err.message || err)); } catch (_) {}
         }
       };
 
@@ -12367,8 +12406,8 @@ function _ocultarGraficoComissoes() {
       _ensurePeriodoSelects();
       _ensureBuscaUI();
       _bindTrocarClick();
-      var label = String(anoNum) + '-' + String(mesNum);
-      _renderDashboard(json, null, label);
+      var label = _nomeMes(mesNum) + ' ' + String(anoNum);
+      _renderDashboard(json, window.__comissoesPrevData || null, label);
       _renderRanking(json);
     } catch (_) {}
   }
@@ -12470,6 +12509,14 @@ function _ocultarGraficoComissoes() {
         setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
       } catch (_) {}
 
+      try {
+        var prev = _prevPeriodo(mesNum, anoNum);
+        window.__comissoesPrevData = null;
+        if (prev) {
+          window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
+        }
+      } catch (_) { window.__comissoesPrevData = null; }
+
       try { _instalarRenderComissoesFix(); } catch (_) {}
       try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
       setTimeout(function() {
@@ -12479,20 +12526,6 @@ function _ocultarGraficoComissoes() {
         _ensureExtras(window._comissoesSqlData, mesNum, anoNum);
       }, 600);
       setTimeout(_ocultarGraficoComissoes, 800);
-
-      try {
-        var prev = _prevPeriodo(mesNum, anoNum);
-        if (prev) {
-          var key = prev.anoNum + '-' + prev.mesNum;
-          window.__comPrevCache = window.__comPrevCache || {};
-          if (!window.__comPrevCache[key]) {
-            window.__comPrevCache[key] = _fetchComissoes(prev.mesNum, prev.anoNum);
-          }
-          Promise.resolve(window.__comPrevCache[key]).then(function(prevJson) {
-            try { _renderDashboard(json, prevJson, anoNum + '-' + mesNum); } catch (_) {}
-          });
-        }
-      } catch (_) {}
     } catch (e) {
       try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
     } finally {

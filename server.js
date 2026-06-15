@@ -1461,7 +1461,35 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
 
     console.log('[COM] OFs da view:', ofs?.length); 
 
-    const todasOFs = ofs || []; 
+    const todasOFs = Array.isArray(ofs) ? ofs.slice() : []; 
+    try {
+      const missingQtdIds = todasOFs
+        .filter(of => of && of.id && (of.quantidade == null && of.qtd == null && of.qtd_pedida == null))
+        .map(of => String(of.id).trim())
+        .filter(Boolean);
+      if (missingQtdIds.length) {
+        const mapaQtd = {};
+        const chunkSize = 100;
+        for (let i = 0; i < missingQtdIds.length; i += chunkSize) {
+          const chunk = missingQtdIds.slice(i, i + chunkSize);
+          const { data: ofsQtd, error: errQtd } = await supabase
+            .from('ofs')
+            .select('id,quantidade,qtd,qtd_pedida')
+            .in('id', chunk);
+          if (errQtd) continue;
+          (ofsQtd || []).forEach(row => {
+            mapaQtd[String(row.id)] = row;
+          });
+        }
+        todasOFs.forEach(of => {
+          const row = mapaQtd[String(of && of.id || '')];
+          if (!row) return;
+          if (of.quantidade == null && row.quantidade != null) of.quantidade = row.quantidade;
+          if (of.qtd == null && row.qtd != null) of.qtd = row.qtd;
+          if (of.qtd_pedida == null && row.qtd_pedida != null) of.qtd_pedida = row.qtd_pedida;
+        });
+      }
+    } catch (_) {}
 
     // Agrupar por vendedor 
     const porVend = {}; 
@@ -7071,7 +7099,7 @@ app.get('/api/cnpj/:cnpj', authMiddleware, async (req, res) => {
 app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
-    const qBusca = String(req.query.q || '').trim();
+    const qBusca = String(req.query.search || req.query.q || '').trim();
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
