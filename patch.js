@@ -9094,7 +9094,14 @@ window._mbnActive = function(id) {
       'z-index:9999;display:flex;align-items:center;justify-content:center;';
     o.onclick = function() { o.remove(); };
     var img = document.createElement('img');
-    img.src = src;
+    try {
+      if (Array.isArray(src)) src = src[0];
+    } catch (_) {}
+    var s = '';
+    try { s = String(src == null ? '' : src).trim(); } catch (_) { s = ''; }
+    if (!s || s === '[]' || s === 'null' || s === 'undefined' || s === '[object Object]') s = '';
+    img.src = s;
+    img.onerror = function() { try { this.style.display = 'none'; } catch (_) {} };
     img.style.cssText = 'max-width:95vw;max-height:90vh;border-radius:10px;';
     o.appendChild(img);
     document.body.appendChild(o);

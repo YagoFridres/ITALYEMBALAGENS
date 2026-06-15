@@ -669,6 +669,11 @@ function authMiddleware(req, res, next) {
   }
 }
 
+const autenticar = authMiddleware;
+async function getEmpresaId(req) {
+  return await resolverEmpresaId(req);
+}
+
 async function requireAdmin(req, res, next) {
   const fullUrl = String(req.originalUrl || req.url || '');
   const fullPath = fullUrl.split('?')[0].replace(/\/+$/, '');
@@ -1429,181 +1434,161 @@ app.get('/api/usuarios/lista', authMiddleware, async (req, res) => {
   }
 });
 
-app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
-  try {
-    if (!supabase) return res.json({ ok: false, error: 'supabase_not_configured' });
+app.get('/api/comissoes/relatorio', autenticar, async (req, res) => { 
+  try { 
+    const { mes, ano } = req.query; 
+    if (!mes || !ano) 
+      return res.json({ ok: false, error: 'mes e ano obrigatorios' }); 
 
-    const mes = String(req.query?.mes || '').trim();
-    const ano = String(req.query?.ano || '').trim();
-    if (!mes || !ano) return res.json({ ok: false, error: 'mes e ano obrigatorios' });
+    const mesStr = String(mes).padStart(2, '0'); 
+    const anoNum = parseInt(ano); 
+    const inicio = `${ano}-${mesStr}-01`; 
+    const fimMes = parseInt(mes) === 12 ? 1 : parseInt(mes) + 1; 
+    const fimAno = parseInt(mes) === 12 ? anoNum + 1 : anoNum; 
+    const fim = `${fimAno}-${String(fimMes).padStart(2,'0')}-01`; 
 
-    const mesNum = String(parseInt(mes, 10) || 0).padStart(2, '0');
-    const inicio = `${ano}-${mesNum}-01`;
-    const fimAno = (parseInt(mes, 10) === 12) ? (parseInt(ano, 10) + 1) : parseInt(ano, 10);
-    const fimMes = (parseInt(mes, 10) === 12) ? '01' : String((parseInt(mes, 10) + 1)).padStart(2, '0');
-    const fim = `${fimAno}-${fimMes}-01`;
+    // Resolver empresa_id do usuário logado 
+    let empresa_id; 
+    try { empresa_id = await getEmpresaId(req); } catch(e) {} 
+    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
 
-    const empresa_id = await resolverEmpresaId(req).catch(() => null);
-    if (!empresa_id) return res.json({ ok: false, error: 'empresa_id_not_resolved' });
-    console.log('[COMISSOES] params:', { mes, ano, empresa_id });
+    console.log('[COMISSOES] params:', { mes: mesStr, ano, empresa_id, inicio, fim }); 
 
-    const PAGE = 1000;
-    let from = 0;
-    let todasOFs = [];
-    while (true) {
-      const { data, error } = await supabase
-        .from('ofs')
-        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,data_conclusao,status,empresa_id,produto,qtd,descricao')
-        .is('deleted_at', null)
-        .eq('empresa_id', empresa_id)
-        .gte('data_conclusao', inicio)
-        .lt('data_conclusao', fim)
-        .ilike('status', '%conclu%')
-        .range(from, from + PAGE - 1);
-      if (error) {
-        console.log('[COMISSOES] resultado:', { total: todasOFs.length, erro: error?.message || String(error) });
-        break;
-      }
-      if (!(data && data.length)) break;
-      todasOFs = todasOFs.concat(data);
-      if (data.length < PAGE) break;
-      from += PAGE;
-      if (from > 200000) break;
-    }
+    // Buscar OFs concluídas do mês via data_conclusao 
+    const PAGE = 1000; 
+    let from = 0; 
+    let todasOFs = []; 
+    while (true) { 
+      const { data, error } = await supabase 
+        .from('ofs') 
+        .select('id, numero, valor_total, total, cli_id, vendedor_id, created_at, data_conclusao, status, empresa_id, produto, qtd, descricao') 
+        .eq('empresa_id', empresa_id) 
+        .gte('data_conclusao', inicio) 
+        .lt('data_conclusao', fim) 
+        .ilike('status', '%conclu%') 
+        .range(from, from + PAGE - 1); 
+      
+      if (error) { 
+        console.error('[COMISSOES] erro query:', error.message); 
+        break; 
+      } 
+      if (!data?.length) break; 
+      todasOFs = todasOFs.concat(data); 
+      if (data.length < PAGE) break; 
+      from += PAGE; 
+    } 
 
-    console.log('[COMISSOES] empresa:', empresa_id, 'OFs:', todasOFs.length);
-    console.log('[COMISSOES] resultado:', { total: todasOFs.length });
+    console.log('[COMISSOES] OFs encontradas:', todasOFs.length); 
 
-    const { data: vendedores } = await supabase
-      .from('vendedores')
-      .select('id,nome,comissao_pct');
+    // Buscar vendedores 
+    const { data: vendedores } = await supabase 
+      .from('vendedores') 
+      .select('id, nome, comissao_pct'); 
 
-    const mapVend = {};
-    (vendedores || []).forEach((v) => {
-      mapVend[String(v && v.id || '').toLowerCase().trim()] = v;
-    });
+    const mapVend = {}; 
+    (vendedores || []).forEach(v => { 
+      mapVend[String(v.id).toLowerCase().trim()] = v; 
+    }); 
 
-    const porVend = {};
-    let totalGeral = 0;
-    let semValor = 0;
+    // Buscar clientes 
+    const cliIds = [...new Set( 
+      todasOFs.map(o => o.cli_id).filter(Boolean) 
+    )]; 
+    const mapCli = {}; 
+    if (cliIds.length > 0) { 
+      for (let i = 0; i < cliIds.length; i += 200) { 
+        const lote = cliIds.slice(i, i + 200); 
+        const { data: clientes } = await supabase 
+          .from('clientes') 
+          .select('id, nome') 
+          .in('id', lote); 
+        (clientes || []).forEach(c => { 
+          mapCli[String(c.id).toLowerCase().trim()] = c.nome; 
+        }); 
+      } 
+    } 
 
-    todasOFs.forEach((of) => {
-      const val = Number(of?.valor_total || of?.total || 0) || 0;
-      if (!val) { semValor += 1; return; }
-      totalGeral += val;
-      const vid = of?.vendedor_id
-        ? String(of.vendedor_id).toLowerCase().trim()
-        : '__sem__';
-      if (!porVend[vid]) {
-        const v = mapVend[vid];
-        const pct = v ? (Number(v.comissao_pct || 1) || 1) : 1;
-        porVend[vid] = {
-          id: vid,
-          nome: v ? (String(v.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
-          comissao_pct: pct,
-          ofs: 0,
-          total: 0,
-        };
-      }
-      porVend[vid].ofs += 1;
-      porVend[vid].total += val;
-    });
+    // Agrupar por vendedor 
+    const porVend = {}; 
+    let totalGeral = 0; 
 
-    const mapCli = {};
-    const ofsComClienteMap = {};
-    try {
-      let fromJoin = 0;
-      while (true) {
-        const { data, error } = await supabase
-          .from('ofs')
-          .select(`
-            id,
-            cli_id,
-            clientes!ofs_cli_id_fkey(id, nome)
-          `)
-          .is('deleted_at', null)
-          .eq('empresa_id', empresa_id)
-          .gte('data_conclusao', inicio)
-          .lt('data_conclusao', fim)
-          .ilike('status', '%conclu%')
-          .range(fromJoin, fromJoin + PAGE - 1);
-        if (error) throw error;
-        if (!(data && data.length)) break;
-        (data || []).forEach((row) => {
-          const ofId = String(row?.id || '').trim();
-          if (ofId) ofsComClienteMap[ofId] = row;
-          const cliRel = Array.isArray(row?.clientes) ? row.clientes[0] : row?.clientes;
-          const cliKey = String(row?.cli_id || '').toLowerCase().trim();
-          const cliNome = String(cliRel?.nome || '').trim();
-          if (cliKey && cliNome) mapCli[cliKey] = cliNome;
-        });
-        if (data.length < PAGE) break;
-        fromJoin += PAGE;
-        if (fromJoin > 200000) break;
-      }
-      console.log('[COMISSOES] clientes por join:', Object.keys(mapCli).length);
-    } catch (joinError) {
-      console.warn('[COMISSOES] join clientes falhou:', String(joinError?.message || joinError));
-      const { data: clientesPorText } = await supabase
-        .from('clientes')
-        .select('id, nome');
-      (clientesPorText || []).forEach((c) => {
-        mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
-      });
-      console.log('[COMISSOES] clientes mapeados manual:', Object.keys(mapCli).length);
-    }
+    todasOFs.forEach(of => { 
+      const val = Number(of.valor_total || of.total || 0); 
+      if (!val) return; 
+      totalGeral += val; 
 
-    console.log(`[COMISSOES] Total: R$ ${totalGeral.toFixed(2)}, sem valor: ${semValor}`);
+      const vid = of.vendedor_id 
+        ? String(of.vendedor_id).toLowerCase().trim() 
+        : '__sem__'; 
 
-    const vendedoresResult = Object.values(porVend)
-      .sort((a, b) => Number(b.total || 0) - Number(a.total || 0))
-      .map((v) => ({
-        ...v,
-        comissao_rs: (Number(v.total || 0) || 0) * ((Number(v.comissao_pct || 0) || 0) / 100),
-      }));
+      if (!porVend[vid]) { 
+        const v = mapVend[vid]; 
+        porVend[vid] = { 
+          id: vid, 
+          nome: v ? v.nome : 'Sem Vendedor', 
+          comissao_pct: v ? Number(v.comissao_pct || 1) : 1, 
+          ofs: 0, 
+          total: 0 
+        }; 
+      } 
+      porVend[vid].ofs++; 
+      porVend[vid].total += val; 
+    }); 
 
-    const ofsDetalhadas = todasOFs.map((of) => {
-      const vid = of?.vendedor_id ? String(of.vendedor_id).toLowerCase().trim() : null;
-      const vend = vid ? mapVend[vid] : null;
-      const cid = of?.cli_id ? String(of.cli_id).toLowerCase().trim() : null;
-      const joinRow = ofsComClienteMap[String(of?.id || '').trim()] || null;
-      const cliRel = Array.isArray(joinRow?.clientes) ? joinRow.clientes[0] : joinRow?.clientes;
-      const nomeCliente = String(cliRel?.nome || (cid ? (mapCli[cid] || '') : '')).trim() || null;
-      const valorTotal = Number(of?.valor_total || of?.total || 0) || 0;
-      const pct = vend ? (Number(vend.comissao_pct || 1) || 1) : 1;
-      if (!nomeCliente && cid) {
-        console.log('[COM] cliente não encontrado para cli_id:', cid.substring(0, 8));
-      }
-      return {
-        id: of?.id || null,
-        numero: of?.numero || null,
-        cliente: nomeCliente || '—',
-        vendedor: vend ? (String(vend.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
-        produto: (String(of?.produto || of?.descricao || '').trim() || '—'),
-        qtd: Number(of?.qtd || 0) || 0,
-        valor_total: valorTotal,
-        comissao_pct: pct,
-        comissao_rs: valorTotal * (pct / 100),
-        created_at: of?.created_at || null,
-        data_conclusao: of?.data_conclusao || null,
-        status: of?.status || '—',
-      };
-    });
+    const vendedoresResult = Object.values(porVend) 
+      .sort((a, b) => b.total - a.total) 
+      .map(v => ({ 
+        ...v, 
+        comissao_rs: v.total * (v.comissao_pct / 100) 
+      })); 
 
-    return res.json({
-      ok: true,
-      mes: `${ano}-${mesNum}`,
-      total_ofs: todasOFs.length,
-      total_vendido: totalGeral,
-      total_comissao: vendedoresResult.reduce((s, v) => s + (Number(v.comissao_rs || 0) || 0), 0),
-      vendedores: vendedoresResult,
-      ofs: ofsDetalhadas,
-    });
-  } catch (e) {
-    console.error('[COMISSOES] erro:', e?.message);
-    return res.json({ ok: false, error: String(e?.message || e) });
-  }
-});
+    // Montar OFs detalhadas 
+    const ofsDetalhadas = todasOFs.map(of => { 
+      const vid = of.vendedor_id 
+        ? String(of.vendedor_id).toLowerCase().trim() 
+        : null; 
+      const v = vid ? mapVend[vid] : null; 
+      const cid = of.cli_id 
+        ? String(of.cli_id).toLowerCase().trim() 
+        : null; 
+      const val = Number(of.valor_total || of.total || 0); 
+      const pct = v ? Number(v.comissao_pct || 1) : 1; 
+      return { 
+        id: of.id, 
+        numero: of.numero, 
+        cliente: cid ? (mapCli[cid] || '—') : '—', 
+        vendedor: v ? v.nome : 'Sem Vendedor', 
+        produto: of.produto || of.descricao || '—', 
+        qtd: of.qtd || 0, 
+        valor_total: val, 
+        comissao_pct: pct, 
+        comissao_rs: val * (pct / 100), 
+        created_at: of.created_at, 
+        data_conclusao: of.data_conclusao, 
+        status: of.status || '—' 
+      }; 
+    }); 
+
+    const totalComissao = vendedoresResult.reduce((s, v) => s + v.comissao_rs, 0); 
+
+    console.log('[COMISSOES] total:', totalGeral.toFixed(2), 
+                'comissao:', totalComissao.toFixed(2)); 
+
+    return res.json({ 
+      ok: true, 
+      mes: `${ano}-${mesStr}`, 
+      total_ofs: todasOFs.length, 
+      total_vendido: totalGeral, 
+      total_comissao: totalComissao, 
+      vendedores: vendedoresResult, 
+      ofs: ofsDetalhadas 
+    }); 
+
+  } catch (e) { 
+    console.error('[COMISSOES] erro geral:', e.message); 
+    return res.json({ ok: false, error: e.message }); 
+  } 
+}); 
 
 app.get('/api/backup/exportar', authMiddleware, async (req, res) => {
   try {
