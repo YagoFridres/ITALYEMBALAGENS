@@ -142,7 +142,16 @@ window.addEventListener('unhandledrejection', function(e) {
   var _warnOrig = console.warn.bind(console);
   console.log = function() {
     var msg = String(arguments[0] || '');
-    if (msg.indexOf('[ERRO]') === 0 || msg.indexOf('[CRITICO]') === 0 || msg.indexOf('[CRÍTICO]') === 0) {
+    if (
+      msg.indexOf('[ERRO]') === 0 ||
+      msg.indexOf('[CRITICO]') === 0 ||
+      msg.indexOf('[CRÍTICO]') === 0 ||
+      msg.indexOf('[COM]') === 0 ||
+      msg.indexOf('[COM PATCH]') === 0 ||
+      msg.indexOf('[IMPRIMIR]') === 0 ||
+      msg.indexOf('[HIST CLI]') === 0 ||
+      msg.indexOf('[PAINEL CLI]') === 0
+    ) {
       return _logOrig.apply(console, arguments);
     }
   };
@@ -151,6 +160,22 @@ window.addEventListener('unhandledrejection', function(e) {
     if (msg.indexOf('[PATCH]') >= 0 || msg.toLowerCase().indexOf('overlay') >= 0) return;
     return _warnOrig.apply(console, arguments);
   };
+})();
+
+(function() {
+  try {
+    if (document.getElementById('patch-light-mode')) return;
+    var _styleClaro = document.createElement('style');
+    _styleClaro.id = 'patch-light-mode';
+    _styleClaro.textContent = ''
+      + 'body.light,body[data-theme=\"light\"],body.tema-claro,body:not(.dark):not([data-theme=\"dark\"])'
+      + '{--text1:#111!important;--text2:#444!important;--bg2:#fff!important;--bg3:#f5f5f5!important;--border:#ddd!important;}'
+      + 'body.light input,body.light select,body.light textarea,body[data-theme=\"light\"] input,body[data-theme=\"light\"] select'
+      + '{color:#111!important;background:#fff!important;}'
+      + 'body.light .modal,body[data-theme=\"light\"] .modal,body.light [class*=\"modal\"],body[data-theme=\"light\"] [class*=\"modal\"]'
+      + '{background:#fff!important;color:#111!important;}';
+    document.head.appendChild(_styleClaro);
+  } catch (_) {}
 })();
 (function() {
   if (window.__patchFetchGuardInstalled) return;
@@ -11535,36 +11560,39 @@ function _renderTabelaOFs(json) {
   window.__patchComissoesUnicaDefinicao = true;
 
   window.__comissoesPatchCalcular = async function() {
-    var mesNum = '';
-    var anoNum = '';
-    try {
-      var inputs = document.querySelectorAll('input[type=\"month\"]');
-      Array.prototype.slice.call(inputs).forEach(function(inp) {
-        try {
-          var v = String(inp && inp.value || '').trim();
-          if (v && v.indexOf('-') >= 0) {
-            anoNum = v.split('-')[0];
-            mesNum = v.split('-')[1];
-          }
-        } catch (_) {}
-      });
-    } catch (_) {}
-    if (!mesNum || !anoNum) {
-      var hoje = new Date();
-      mesNum = String(hoje.getMonth() + 1).padStart(2, '0');
-      anoNum = String(hoje.getFullYear());
+    var inp = null;
+    try { inp = document.querySelector('input[type=\"month\"]'); } catch (_) { inp = null; }
+    if (inp && !String(inp.value || '').trim()) {
+      try {
+        var hoje = new Date();
+        inp.value = String(hoje.getFullYear()) + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+      } catch (_) {}
     }
-    try { console.log('[COM] calculando:', anoNum + '-' + mesNum); } catch (_) {}
+
+    var val = '';
+    try { val = String(inp && inp.value || '').trim(); } catch (_) { val = ''; }
+    var anoNum = '';
+    var mesNum = '';
+    if (val && val.indexOf('-') >= 0) {
+      anoNum = val.split('-')[0];
+      mesNum = val.split('-')[1];
+    }
+    if (!mesNum || !anoNum) {
+      var h = new Date();
+      anoNum = String(h.getFullYear());
+      mesNum = String(h.getMonth() + 1).padStart(2, '0');
+    }
+
+    try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
+
     var token = '';
     try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
     try {
-      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), { headers: { Authorization: 'Bearer ' + token } });
       var json = await resp.json().catch(function() { return null; });
-      try { console.log('[COM] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
+      try { console.log('[COM PATCH] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
       if (!json || !json.ok) {
-        try { console.error('[COM] erro:', json && json.error); } catch (_) {}
+        try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
         return;
       }
       window._comissoesSqlData = json;
@@ -11586,10 +11614,18 @@ function _renderTabelaOFs(json) {
           return out;
         })
       };
+      try {
+        var fmt = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
+        var setEl = function(sel, v) { var el = document.querySelector(sel); if (el) el.textContent = v; };
+        setEl('#com-total-vendido, [data-com=\"total_vendido\"]', fmt(json.total_vendido));
+        setEl('#com-total-comissao, [data-com=\"total_comissao\"]', fmt(json.total_comissao));
+        setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
+      } catch (_) {}
+
       try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
       setTimeout(function() { _renderTabelaVendedores(json); _renderTabelaOFs(json); }, 500);
     } catch (e) {
-      try { console.error('[COM] fetch erro:', e && e.message); } catch (_) {}
+      try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
     }
   };
 
@@ -11690,4 +11726,30 @@ function _renderTabelaOFs(json) {
       }
     } catch (_) {}
   }, true);
+})();
+
+(function() {
+  if (window.__patchNotifUnicaInstalled) return;
+  window.__patchNotifUnicaInstalled = true;
+  var _notifAtiva = false;
+
+  function _instalar() {
+    try {
+      var orig = window._notificacaoOF;
+      if (typeof orig !== 'function') return;
+      if (orig.__patchNotifUnicaWrapped) return;
+      var wrapped = function(msg, tipo) {
+        if (_notifAtiva) return;
+        _notifAtiva = true;
+        setTimeout(function() { _notifAtiva = false; }, 4000);
+        return orig.call(this, msg, tipo);
+      };
+      wrapped.__patchNotifUnicaWrapped = true;
+      window._notificacaoOF = wrapped;
+    } catch (_) {}
+  }
+
+  try { _instalar(); } catch (_) {}
+  try { setTimeout(_instalar, 800); } catch (_) {}
+  try { setInterval(_instalar, 2500); } catch (_) {}
 })();
