@@ -7893,7 +7893,7 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
       ? req.body.duplicados
       : (Array.isArray(req.body?.cliente_duplicado_ids)
         ? req.body.cliente_duplicado_ids
-        : [req.body?.cliente_duplicado_id || req.body?.duplicado_id || idsArr[1]]);
+        : [req.body?.secundario_id || req.body?.cliente_duplicado_id || req.body?.duplicado_id || idsArr[1]]);
     const duplicados = Array.from(new Set((dupArr || []).map((id) => String(id || '').trim()).filter(Boolean)));
     if (!principalId || !duplicados.length) {
       return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
@@ -7912,21 +7912,13 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
       if (!cliente_duplicado_id) continue;
       if (cliente_duplicado_id === principalId) continue;
 
-      const upd1 = await supabase
+      const { data: updOfs, error: updOfsErr } = await supabase
         .from('ofs')
-        .update({ cli_id: principalId })
-        .eq('cli_id', cliente_duplicado_id)
-        .select('id');
-      if (upd1.error) throw upd1.error;
-
-      const upd2 = await supabase
-        .from('ofs')
-        .update({ cli_id: principalId })
+        .update({ cli_id: String(principalId), cliente_id: String(principalId) })
         .eq('cli_id', String(cliente_duplicado_id))
         .select('id');
-      if (upd2.error) throw upd2.error;
-
-      ofsMigradas += (Array.isArray(upd1.data) ? upd1.data.length : 0) + (Array.isArray(upd2.data) ? upd2.data.length : 0);
+      if (updOfsErr) throw updOfsErr;
+      ofsMigradas += Array.isArray(updOfs) ? updOfs.length : 0;
 
       if (principalNome) {
         try {
@@ -7941,26 +7933,39 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
         } catch (_) {}
       }
 
-      let delErr = null;
-      try {
-        const del = await supabase.from('clientes').delete().eq('id', cliente_duplicado_id);
-        delErr = del?.error || null;
-      } catch (e) {
-        delErr = e;
-      }
-      if (delErr) {
-        let { error: e2 } = await supabase
-          .from('clientes')
-          .update({ ativo: false })
-          .eq('id', cliente_duplicado_id);
-        if (e2) {
-          const msg = String(e2.message || e2 || '');
-          if (msg.includes('ativo')) {
-            ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+      const tabelasRef = [
+        { tabela: 'amostras', colunas: ['cliente_id', 'cli_id'] },
+        { tabela: 'orcamentos', colunas: ['cliente_id', 'cli_id'] },
+        { tabela: 'visitas_vendedor', colunas: ['cliente_id', 'cli_id'] }
+      ];
+      for (const ref of tabelasRef) {
+        for (const col of ref.colunas) {
+          try {
+            const payload = {};
+            payload[col] = String(principalId);
+            const { error: refErr } = await supabase.from(ref.tabela).update(payload).eq(col, String(cliente_duplicado_id));
+            if (refErr) {
+              const msg = String(refErr.message || refErr || '').toLowerCase();
+              if (!(msg.includes('column') || msg.includes('does not exist') || msg.includes('not find'))) throw refErr;
+            }
+          } catch (e) {
+            const msg = String(e?.message || e || '').toLowerCase();
+            if (!(msg.includes('column') || msg.includes('does not exist') || msg.includes('not find'))) throw e;
           }
         }
-        if (e2) throw e2;
       }
+
+      let { error: e2 } = await supabase
+        .from('clientes')
+        .update({ ativo: false })
+        .eq('id', cliente_duplicado_id);
+      if (e2) {
+        const msg = String(e2.message || e2 || '');
+        if (msg.includes('ativo')) {
+          ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+        }
+      }
+      if (e2) throw e2;
       mesclados += 1;
     }
 
@@ -8063,14 +8068,11 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
-    const cliKey = String(data?.codigo || '').trim();
-    const chaves = [id];
-    if (cliKey) chaves.push(cliKey);
     const { data: ofs, error: errOfs } = await supabase
       .from('ofs')
       .select('id,numero,valor_total,total,status,created_at,data_conclusao,cli_id')
       .is('deleted_at', null)
-      .in('cli_id', chaves)
+      .eq('cli_id', id)
       .order('created_at', { ascending: false });
     if (errOfs) throw errOfs;
     const ofsLista = Array.isArray(ofs) ? ofs : [];
@@ -20491,6 +20493,61 @@ app.get('/api/dashboard/faturamento-mensal', authMiddleware, async (req, res) =>
   } catch (e) {
     console.error('[faturamento-mensal]', e.message);
     res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.get('/api/dashboard/total-geral', authMiddleware, async (req, res) => {
+  try {
+    const batch = 1000;
+    let from = 0;
+    let totalHistorico = 0;
+    let totalMesAtual = 0;
+    let countHistorico = 0;
+    let countMesAtual = 0;
+    const now = new Date();
+    const mesAtual = now.getMonth();
+    const anoAtual = now.getFullYear();
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('ofs')
+        .select('created_at,valor_total,valor_venda,total,vl_total,quantidade,qtd,qtd_pedida,vl_unit,vl_unitario,valor_unitario')
+        .range(from, from + batch - 1);
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      if (!rows.length) break;
+
+      rows.forEach((of) => {
+        const valor =
+          Number(of?.valor_total || 0) ||
+          Number(of?.valor_venda || 0) ||
+          Number(of?.total || 0) ||
+          Number(of?.vl_total || 0) ||
+          ((Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0) *
+            (Number(of?.vl_unit ?? of?.vl_unitario ?? of?.valor_unitario ?? 0) || 0)) ||
+          0;
+        totalHistorico += valor;
+        countHistorico += 1;
+        const dt = new Date(of?.created_at || '');
+        if (!isNaN(dt.getTime()) && dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual) {
+          totalMesAtual += valor;
+          countMesAtual += 1;
+        }
+      });
+
+      if (rows.length < batch) break;
+      from += batch;
+    }
+
+    return res.json({
+      ok: true,
+      total_historico: totalHistorico,
+      total_mes_atual: totalMesAtual,
+      count_mes_atual: countMesAtual,
+      count_historico: countHistorico
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 });
 

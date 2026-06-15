@@ -101,6 +101,121 @@
 })();
 
 (function() {
+  if (window.__patchHubTotalGeralInstalled) return;
+  window.__patchHubTotalGeralInstalled = true;
+
+  function _hubToken() {
+    try { return String(window._token || localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
+  }
+  function _hubFmtMoney(v) {
+    try { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$\u00a00,00'; }
+  }
+  function _hubMesAtualNome() {
+    try {
+      return new Date().toLocaleDateString('pt-BR', { month: 'long' });
+    } catch (_) { return 'este mês'; }
+  }
+  async function _hubFetchTotalGeral() {
+    try {
+      var cache = window._hubTotalGeralCache || null;
+      if (cache && (Date.now() - Number(cache.ts || 0) < 60000) && cache.data) return cache.data;
+      var token = _hubToken();
+      var resp = await fetch('/api/dashboard/total-geral', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+      var json = await resp.json().catch(function() { return null; });
+      if (!json || json.ok === false) return null;
+      window._hubTotalGeralCache = { ts: Date.now(), data: json };
+      return json;
+    } catch (_) { return null; }
+  }
+  function _hubFindCardByLabel(kpis, labelText) {
+    var cards = Array.prototype.slice.call((kpis && kpis.querySelectorAll('.hub-kpi')) || []);
+    return cards.find(function(card) {
+      var l = card.querySelector('.l');
+      return String(l && l.textContent || '').trim().toLowerCase() === String(labelText || '').trim().toLowerCase();
+    }) || null;
+  }
+  function _hubUpsertCard(kpis, label, value, sub, color, beforeCard) {
+    if (!kpis) return null;
+    var card = _hubFindCardByLabel(kpis, label);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'hub-kpi';
+      card.innerHTML = '<div class="l"></div><div class="v"></div><div class="s"></div>';
+      if (beforeCard && beforeCard.parentNode === kpis) kpis.insertBefore(card, beforeCard);
+      else kpis.appendChild(card);
+    }
+    var l = card.querySelector('.l');
+    var v = card.querySelector('.v');
+    var s = card.querySelector('.s');
+    if (l) l.textContent = label;
+    if (v) {
+      v.textContent = value;
+      if (color) v.style.color = color;
+    }
+    if (s) s.textContent = sub || '';
+    return card;
+  }
+  async function _patchHubTotalCards() {
+    try {
+      var page = document.getElementById('page-hub');
+      var kpis = document.getElementById('hub-kpis');
+      if (!page || !kpis) return;
+      var data = await _hubFetchTotalGeral();
+      if (!data) return;
+
+      var mesNome = _hubMesAtualNome();
+      var fatCard = _hubFindCardByLabel(kpis, 'Faturamento do mês');
+      if (fatCard) {
+        _hubUpsertCard(
+          kpis,
+          'Faturamento do mês',
+          _hubFmtMoney(data.total_mes_atual || 0),
+          String(Number(data.count_mes_atual || 0)) + ' OFs em ' + mesNome,
+          '#10B981'
+        );
+      } else {
+        _hubUpsertCard(
+          kpis,
+          'FATURAMENTO DO MÊS',
+          _hubFmtMoney(data.total_mes_atual || 0),
+          String(Number(data.count_mes_atual || 0)) + ' OFs em ' + mesNome,
+          '#10B981'
+        );
+      }
+
+      var amCard = _hubFindCardByLabel(kpis, 'Amostras Pendentes');
+      _hubUpsertCard(
+        kpis,
+        'TOTAL EM OFs (HISTÓRICO)',
+        _hubFmtMoney(data.total_historico || 0),
+        String(Number(data.count_historico || 0)) + ' OFs no total',
+        '#F59E0B',
+        amCard
+      );
+      if (amCard) {
+        var labelAtual = amCard.querySelector('.l');
+        if (labelAtual && String(labelAtual.textContent || '').trim() === 'Amostras Pendentes') {
+          amCard.parentNode && amCard.parentNode.removeChild(amCard);
+        }
+      }
+    } catch (_) {}
+  }
+
+  try {
+    if (!window.__patchHubTotalObs) {
+      var deb = null;
+      window.__patchHubTotalObs = new MutationObserver(function() {
+        clearTimeout(deb);
+        deb = setTimeout(function() { _patchHubTotalCards(); }, 180);
+      });
+      window.__patchHubTotalObs.observe(document.body, { childList: true, subtree: true });
+    }
+    setTimeout(_patchHubTotalCards, 800);
+    setTimeout(_patchHubTotalCards, 1800);
+  } catch (_) {}
+})();
+
+(function() {
   try {
     if (typeof window.toastHotfix !== 'function') {
       window.toastHotfix = function(msg) {
@@ -13222,6 +13337,37 @@ function _ocultarGraficoComissoes() {
       return '<div class="m-item"><div class="m-label">' + esc(k) + '</div><div class="m-value">' + esc(fmtVal(obj[k])) + '</div></div>';
     }).join('') + '</div>';
   }
+  function fmtDateBr(v) {
+    try {
+      var s = String(v || '').trim();
+      if (!s) return '—';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split('-').reverse().join('/');
+      var d = new Date(s);
+      if (!isNaN(d.getTime())) return d.toLocaleDateString('pt-BR');
+    } catch (_) {}
+    return '—';
+  }
+  function parseItensBusca(v) {
+    try {
+      if (Array.isArray(v)) return v;
+      if (!v) return [];
+      if (typeof v === 'string') {
+        var t = String(v).trim();
+        if (!t) return [];
+        var p = JSON.parse(t);
+        return Array.isArray(p) ? p : [];
+      }
+      return [];
+    } catch (_) { return []; }
+  }
+  function renderDetailsRows(rows) {
+    return '<div class="m-grid">' + (rows || []).map(function(row) {
+      return '<div class="m-item' + (row && row.full ? ' m-full' : '') + '"' + (row && row.full ? ' style="grid-column:1/-1"' : '') + '>'
+        + '<div class="m-label">' + esc(row && row.label || '') + '</div>'
+        + '<div class="m-value">' + (row && row.html ? String(row.value || '') : esc(row && row.value != null && row.value !== '' ? row.value : '—')) + '</div>'
+        + '</div>';
+    }).join('') + '</div>';
+  }
   async function openDetails(kind, item) {
     ensureModal();
     var modal = document.getElementById('pcp-busca-modal');
@@ -13236,7 +13382,9 @@ function _ocultarGraficoComissoes() {
       obj = (cliDet && (cliDet.data || cliDet)) || obj;
       ttl = 'Cliente: ' + String(obj.nome || obj.rs || item.nome || '—');
     } else if (kind === 'ofs') {
-      ttl = 'OF #' + String(item && item.numero || item && item.id || '—');
+      var ofDet = await fetchJson('/api/ofs/' + encodeURIComponent(String(item && item.id || '')));
+      obj = (ofDet && (ofDet.data || ofDet)) || obj;
+      ttl = 'OF #' + String(obj && (obj.numero || item && item.numero || item && item.id) || '—');
     } else if (kind === 'facas') {
       ttl = 'Faca #' + String(item && (item.numero || item.codigo || item.nome) || '—');
     } else if (kind === 'cliches') {
@@ -13246,7 +13394,53 @@ function _ocultarGraficoComissoes() {
     }
 
     title.textContent = ttl;
-    body.innerHTML = objectGridHtml(obj) + '<div class="m-actions" id="pcp-busca-modal-actions"></div>';
+    if (kind === 'ofs') {
+      var itens = parseItensBusca(obj && obj.itens);
+      var item0 = itens[0] || {};
+      var cliId = String(obj && (obj.cli_id || obj.cliente_id || obj.cliId) || '').trim();
+      var vendId = String(obj && (obj.vendedor_id || obj.vendId || obj.vendedorId) || '').trim();
+      var cliNome = String(obj && (obj.cliente || obj.cliNome || obj.cliente_nome) || '').trim();
+      var vendNome = String(obj && (obj.vendedor || obj.vendNome || obj.vendedor_nome) || '').trim();
+      if (cliId) {
+        var cliInfo = await fetchJson('/api/clientes/' + encodeURIComponent(cliId));
+        var cliObj = (cliInfo && (cliInfo.data || cliInfo)) || null;
+        if (cliObj) cliNome = String(cliObj.nome || cliObj.rs || cliNome || '').trim();
+      }
+      if (vendId) {
+        var vendInfo = await fetchJson('/api/vendedores/' + encodeURIComponent(vendId));
+        var vendObj = (vendInfo && (vendInfo.data || vendInfo)) || null;
+        if (vendObj) vendNome = String(vendObj.nome || vendObj.nome_completo || vendObj.vendedor || vendNome || '').trim();
+      }
+      var qtdOf = obj ? (obj.quantidade ?? obj.qtd ?? item0.qtd) : item0.qtd;
+      var vUnitOf = item0.vunit ?? item0.valor_unitario ?? (obj ? (obj.valor_unitario ?? obj.vl_unit) : null);
+      var vTotalOf = obj ? (obj.valor_total ?? obj.valor_venda ?? obj.total ?? item0.valor_total ?? item0.total) : (item0.valor_total ?? item0.total);
+      body.innerHTML = renderDetailsRows([
+        { label: 'Nº OF', value: obj && (obj.numero || obj.of || '—') },
+        { label: 'Status', value: statusBadge(obj && obj.status), html: true },
+        { label: 'Cliente', value: cliNome || '—' },
+        { label: 'Vendedor', value: vendNome || '—' },
+        { label: 'Descrição', value: obj && (obj.descricao || obj.prodDesc || item0.desc || item0.descricao || item0.nome || '—') },
+        { label: 'Quantidade', value: qtdOf != null && qtdOf !== '' ? qtdOf : '—' },
+        { label: 'Valor Unitário', value: vUnitOf != null && vUnitOf !== '' ? fmtMoney(vUnitOf) : '—' },
+        { label: 'Valor Total', value: vTotalOf != null && vTotalOf !== '' ? fmtMoney(vTotalOf) : '—' },
+        { label: 'Máquina', value: obj && (obj.maq || item0.maquina_nome || item0.maquina || '—') },
+        { label: 'Data de Entrega', value: fmtDateBr(obj && (obj.data_entrega || obj.ent)) },
+        { label: 'Data de Produção', value: fmtDateBr(obj && obj.data_producao) },
+        { label: 'Observações', value: obj && (obj.obs || obj.observacoes || '—'), full: true },
+        { label: 'Urgente', value: (obj && (obj.urgente === true || obj.urg === true || String(obj.urgente || obj.urg || '').toLowerCase() === 'true' || String(obj.urgente || obj.urg || '') === '1')) ? 'Sim' : 'Não' }
+      ]) + '<div class="m-actions" id="pcp-busca-modal-actions"></div>';
+    } else if (kind === 'clientes') {
+      body.innerHTML = renderDetailsRows([
+        { label: 'Nome completo', value: obj && (obj.nome || obj.rs || '—'), full: true },
+        { label: 'Documento', value: obj && (obj.cnpj || obj.cpf || obj.cnpj_cpf || obj.cnpjCpf || obj.documento || '—') },
+        { label: 'Telefone', value: obj && (obj.telefone || obj.tel || '—') },
+        { label: 'Email', value: obj && (obj.email || '—') },
+        { label: 'Cidade / UF', value: [obj && (obj.cidade || ''), obj && (obj.uf || '')].filter(Boolean).join(' / ') || '—' },
+        { label: 'Observações', value: obj && (obj.observacoes || obj.obs || '—'), full: true }
+      ]) + '<div class="m-actions" id="pcp-busca-modal-actions"></div>';
+    } else {
+      body.innerHTML = objectGridHtml(obj) + '<div class="m-actions" id="pcp-busca-modal-actions"></div>';
+    }
     var actions = document.getElementById('pcp-busca-modal-actions');
 
     if (kind === 'ofs') {
@@ -13259,26 +13453,29 @@ function _ocultarGraficoComissoes() {
         } catch (_) {}
       };
       actions.appendChild(btnOf);
+      var btnCloseOf = document.createElement('button');
+      btnCloseOf.textContent = 'Fechar';
+      btnCloseOf.onclick = function() { modal.style.display = 'none'; };
+      actions.appendChild(btnCloseOf);
     }
 
     if (kind === 'clientes') {
       var btnCli = document.createElement('button');
-      btnCli.textContent = 'Ver OFs do Cliente';
-      btnCli.onclick = async function() {
+      btnCli.textContent = 'Ver Painel do Cliente';
+      btnCli.onclick = function() {
         var cliId = String(obj && obj.id || item && item.id || '').trim();
         if (!cliId) return;
-        var r = await fetchJson('/api/ofs?cli_id=' + encodeURIComponent(cliId) + '&limit=10');
-        var lista = (r && (r.data || r.rows)) || [];
-        if (!Array.isArray(lista)) lista = [];
-        body.innerHTML = objectGridHtml(obj)
-          + '<div style="margin-top:14px"><div class="m-title" style="font-size:14px;margin-bottom:10px">OFs do Cliente</div>'
-          + (lista.length ? '<div class="m-grid">' + lista.map(function(of) {
-              return '<div class="m-item"><div class="m-label">OF #' + esc(of.numero || of.id || '—') + '</div><div class="m-value">' + esc(of.cliente || of.clinome || '') + '\n' + esc(of.produto || of.descricao || '') + '\n' + fmtMoney(of.valor_total || of.total || 0) + '</div></div>';
-            }).join('') + '</div>' : '<div class="m-item"><div class="m-value">Nenhuma OF encontrada para este cliente.</div></div>')
-          + '</div><div class="m-actions" id="pcp-busca-modal-actions"></div>';
-        document.getElementById('pcp-busca-modal-actions').appendChild(btnCli);
+        modal.style.display = 'none';
+        try {
+          var fnCli = window.abrirPainelCliente || window.verCliente || window.abrirCliente;
+          if (typeof fnCli === 'function') fnCli(cliId);
+        } catch (_) {}
       };
       actions.appendChild(btnCli);
+      var btnCloseCli = document.createElement('button');
+      btnCloseCli.textContent = 'Fechar';
+      btnCloseCli.onclick = function() { modal.style.display = 'none'; };
+      actions.appendChild(btnCloseCli);
     }
     modal.style.display = 'flex';
   }
