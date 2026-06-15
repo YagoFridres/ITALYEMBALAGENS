@@ -4751,7 +4751,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     }
   };
 
-  window.calcularComissoes = async function() {
+  window.__calcularComissoesLegacy = async function() {
     try {
       return await calcularViaApi();
     } catch (e) {
@@ -11435,4 +11435,233 @@ window._mbnActive = function(id) {
   setTimeout(_adicionarBotoesBackup, 1200);
   setInterval(_patchNotificacoesOF, 1500);
   _patchNotificacoesOF();
+})();
+
+function _renderTabelaVendedores(json) {
+  try {
+    if (!json || !json.vendedores || !json.vendedores.length) return;
+    var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+    if (!pg) return;
+    var tbody = document.querySelector('#tabela-comissoes-vendedor tbody');
+    if (!tbody) {
+      var tbodies = pg.querySelectorAll('tbody');
+      tbody = tbodies && tbodies[0] ? tbodies[0] : null;
+    }
+    if (!tbody) return;
+    var fmt = function(v) {
+      return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    tbody.innerHTML = (json.vendedores || []).map(function(v) {
+      return ''
+        + '<tr>'
+        + '<td style="padding:10px 14px">' + String(v && v.nome || '—') + '</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
+        + '<td style="text-align:right;padding:10px 14px">' + fmt(v && v.total) + '</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+        + '<td style="text-align:right;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
+        + '<td style="padding:10px 14px">—</td>'
+        + '</tr>';
+    }).join('') + ''
+      + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
+      + '<td style="padding:10px 14px">TOTAL</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + String(json.total_ofs || 0) + '</td>'
+      + '<td style="text-align:right;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
+      + '<td></td>'
+      + '<td style="text-align:right;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
+      + '<td></td>'
+      + '</tr>';
+  } catch (_) {}
+}
+
+function _renderTabelaOFs(json) {
+  try {
+    if (!json || !json.ofs || !json.ofs.length) return;
+    var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+    if (!pg) return;
+    var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
+    if (!tbody) {
+      var tbodies = pg.querySelectorAll('tbody');
+      tbody = (tbodies && tbodies[1]) ? tbodies[1] : (tbodies && tbodies[0] ? tbodies[0] : null);
+    }
+    if (!tbody) return;
+    var fmt = function(v) {
+      return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    var fmtD = function(d) {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+    };
+    var porVendedor = {};
+    (json.ofs || []).forEach(function(of) {
+      var v = String(of && of.vendedor || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      if (!porVendedor[v]) porVendedor[v] = [];
+      porVendedor[v].push(of);
+    });
+    var html = '';
+    Object.keys(porVendedor).forEach(function(vendNome) {
+      var lista = porVendedor[vendNome] || [];
+      var totalVend = lista.reduce(function(s, o) { return s + (Number(o && o.valor_total || 0) || 0); }, 0);
+      var totalCom = lista.reduce(function(s, o) { return s + (Number(o && o.comissao_rs || 0) || 0); }, 0);
+      html += ''
+        + '<tr style="background:var(--accent,#6366f1);color:#fff;font-weight:700">'
+        + '<td colspan="12" style="padding:8px 12px">👤 ' + String(vendNome) + ' — ' + String(lista.length) + ' OFs — ' + fmt(totalVend) + ' — Comissão: ' + fmt(totalCom) + '</td>'
+        + '</tr>';
+      html += lista.map(function(of) {
+        return ''
+          + '<tr>'
+          + '<td style="padding:7px 12px">#' + String(of && of.numero || '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.cliente || '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String((of && (of.produto || of.descricao)) || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + String((of && of.qtd) != null ? (of.qtd || 0) : '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.vendedor || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+          + '<td style="padding:7px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
+          + '<td style="padding:7px 12px">' + fmtD(of && of.created_at) + '</td>'
+          + '<td style="padding:7px 12px">' + fmtD(of && of.data_conclusao) + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.status || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">'
+          + '<button onclick=\"window.abrirOf&&window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')\" style=\"padding:3px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:10px\">Traçar</button>'
+          + '</td>'
+          + '</tr>';
+      }).join('');
+    });
+    tbody.innerHTML = html;
+  } catch (_) {}
+}
+
+(function() {
+  if (window.__patchComissoesUnicaDefinicao) return;
+  window.__patchComissoesUnicaDefinicao = true;
+
+  window.calcularComissoes = async function() {
+    var mesNum = '';
+    var anoNum = '';
+    try {
+      var inputs = document.querySelectorAll('input[type=\"month\"]');
+      Array.prototype.slice.call(inputs).forEach(function(inp) {
+        try {
+          var v = String(inp && inp.value || '').trim();
+          if (v && v.indexOf('-') >= 0) {
+            anoNum = v.split('-')[0];
+            mesNum = v.split('-')[1];
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+    if (!mesNum || !anoNum) {
+      var hoje = new Date();
+      mesNum = String(hoje.getMonth() + 1).padStart(2, '0');
+      anoNum = String(hoje.getFullYear());
+    }
+    try { console.log('[COM] calculando:', anoNum + '-' + mesNum); } catch (_) {}
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    try {
+      var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      var json = await resp.json().catch(function() { return null; });
+      try { console.log('[COM] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
+      if (!json || !json.ok) {
+        try { console.error('[COM] erro:', json && json.error); } catch (_) {}
+        return;
+      }
+      window._comissoesSqlData = json;
+      window._comissoesData = {
+        totalGeral: json.total_vendido,
+        totalComissao: json.total_comissao,
+        totalPedidos: json.total_ofs,
+        vendedores: (json.vendedores || []).map(function(v) {
+          var out = Object.assign({}, v);
+          out.vendNome = v.nome;
+          out.nome = v.nome;
+          out.vendId = v.id;
+          out.total = v.total;
+          out.peds = v.ofs;
+          out.comissaoRs = v.comissao_rs;
+          out.comissao = v.comissao_pct;
+          out.comissao_pct = v.comissao_pct;
+          out.ofsList = [];
+          return out;
+        })
+      };
+      try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
+      setTimeout(function() { _renderTabelaVendedores(json); _renderTabelaOFs(json); }, 500);
+    } catch (e) {
+      try { console.error('[COM] fetch erro:', e && e.message); } catch (_) {}
+    }
+  };
+
+  function _vincularBtnCalcularComissoes() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          if (!btn) return;
+          var txt = String(btn.textContent || '').trim();
+          if (txt !== 'Calcular') return;
+          if (btn.dataset && btn.dataset.comPatch2 === '1') return;
+          try { btn.removeAttribute('onclick'); } catch (_) {}
+          var novo = btn.cloneNode(true);
+          btn.parentNode.replaceChild(novo, btn);
+          novo.dataset.comPatch2 = '1';
+          novo.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            try { e.stopImmediatePropagation(); } catch (_) {}
+            window.calcularComissoes();
+          }, true);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+  try { _vincularBtnCalcularComissoes(); } catch (_) {}
+  try {
+    var _obsCalc = new MutationObserver(function() { _vincularBtnCalcularComissoes(); });
+    _obsCalc.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+})();
+
+(function() {
+  if (window.__patchCoresItensOF) return;
+  window.__patchCoresItensOF = true;
+  document.addEventListener('click', function(e) {
+    try {
+      var corBtn = e && e.target && (e.target.closest ? e.target.closest('[data-cor], .cor-btn, .color-tag') : null);
+      if (!corBtn) return;
+      var itemContainer = corBtn.closest ? corBtn.closest('[data-item-idx], .item-adicional, .of-item') : null;
+      if (!itemContainer) return;
+      corBtn.classList.toggle('selected');
+      corBtn.classList.toggle('active');
+      var isSelected = corBtn.classList.contains('selected') || corBtn.classList.contains('active');
+      try { corBtn.style.opacity = isSelected ? '1' : '0.4'; } catch (_) {}
+      try { corBtn.style.outline = isSelected ? '2px solid #fff' : 'none'; } catch (_) {}
+
+      var corVal = '';
+      try { corVal = String(corBtn.getAttribute('data-cor') || corBtn.dataset.cor || corBtn.textContent || '').trim(); } catch (_) { corVal = ''; }
+      if (corVal) {
+        var raw = String(itemContainer.dataset.coresSel || '[]');
+        var arr = [];
+        try { arr = JSON.parse(raw); } catch (_) { arr = []; }
+        if (!Array.isArray(arr)) arr = [];
+        var exists = arr.indexOf(corVal) >= 0;
+        if (isSelected && !exists) arr.push(corVal);
+        if (!isSelected && exists) arr = arr.filter(function(x) { return x !== corVal; });
+        itemContainer.dataset.coresSel = JSON.stringify(arr);
+        try {
+          var hidden = itemContainer.querySelector('input[type=hidden][name*=\"cor\"], input[type=hidden][name*=\"cores\"]');
+          if (hidden) hidden.value = itemContainer.dataset.coresSel;
+        } catch (_) {}
+      }
+
+      var counter = itemContainer.querySelector ? itemContainer.querySelector('[class*=\"cores-sel\"], [data-cores-count]') : null;
+      var selecionadas = 0;
+      try {
+        selecionadas = itemContainer.querySelectorAll('[data-cor].selected, [data-cor].active, .cor-btn.selected, .cor-btn.active, .color-tag.selected, .color-tag.active').length;
+      } catch (_) { selecionadas = 0; }
+      if (counter) {
+        try { counter.textContent = String(selecionadas) + ' cores selecionadas'; } catch (_) {}
+      }
+    } catch (_) {}
+  }, true);
 })();
