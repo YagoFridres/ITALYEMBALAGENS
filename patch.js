@@ -3669,7 +3669,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
             }
           } catch (_) {}
           try {
-            if (typeof window.renderComissoes === 'function') window.renderComissoes();
+            if (typeof window['renderComissoes'] === 'function') window['renderComissoes']();
           } catch (_) {}
           try { window.toast('✓ Quantidade produzida atualizada', 'var(--green)'); } catch (_) {}
         } catch (err) {
@@ -3682,18 +3682,12 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   function hookRenderComissoes() {
     if (window.__patchComHooked) return;
-    if (typeof window.renderComissoes !== 'function') return;
     window.__patchComHooked = true;
-    var orig = window.renderComissoes;
-    window.renderComissoes = async function() {
-      var r = await orig.apply(this, arguments);
-      setTimeout(enhanceComissoesTable, 0);
-      try {
-        var term = String(window.__comissoesBuscaTerm || '').trim();
-        if (term && typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(term);
-      } catch (_) {}
-      return r;
-    };
+    try { setTimeout(enhanceComissoesTable, 0); } catch (_) {}
+    try {
+      var term = String(window.__comissoesBuscaTerm || '').trim();
+      if (term && typeof window.filtrarComissoesPorBusca === 'function') window.filtrarComissoesPorBusca(term);
+    } catch (_) {}
   }
 
   function tick() {
@@ -4755,7 +4749,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       })
     };
 
-    try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (e) { try { console.warn('[COM] renderComissoes erro:', e && e.message); } catch (_) {} }
+    try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](); } catch (e) { try { console.warn('[COM] renderComissoes erro:', e && e.message); } catch (_) {} }
     try { if (typeof window.renderRelatorioComissoes === 'function') window.renderRelatorioComissoes(); } catch (_) {}
     try { if (typeof window.atualizarTabelaComissoes === 'function') window.atualizarTabelaComissoes(); } catch (_) {}
 
@@ -11616,7 +11610,6 @@ function _ocultarGraficoComissoes() {
   if (window.__patchComissoesUnicaDefinicao) return;
   window.__patchComissoesUnicaDefinicao = true;
   var _comCalcEmAndamento = false;
-  var _renderComissoesNativoOrig = null;
 
   function _normalizarComissoesData(val) {
     if (!val || !val.vendedores || !Array.isArray(val.vendedores)) return val;
@@ -11654,23 +11647,14 @@ function _ocultarGraficoComissoes() {
 
   function _instalarRenderComissoesFix() {
     try {
-      if (!window._patchRenderComFixed) {
-        _renderComissoesNativoOrig = window.renderComissoes;
-        window._patchRenderComFixed = true;
-      } else if (window.renderComissoes !== window.__renderComissoesPatchDefinitivo && window.renderComissoes !== _renderComissoesNativoOrig) {
-        _renderComissoesNativoOrig = window.renderComissoes;
-      }
-      window.__renderComissoesPatchDefinitivo = async function(dados) {
-        dados = _normalizarComissoesData(dados);
+      if (window._patchRenderComFixed && window.renderComissoes && window.renderComissoes.__comPatchOnlyRender) return;
+      window._patchRenderComFixed = true;
+      window.renderComissoes = async function() {
+        try { console.log('[COM] renderComissoes patch executando'); } catch (_) {}
         try { window._comissoesData = _normalizarComissoesData(window._comissoesData); } catch (_) {}
-        try {
-          if (_renderComissoesNativoOrig) await _renderComissoesNativoOrig.call(this, dados);
-        } catch (e) {
-          try { console.warn('[COM] render nativo ignorado:', e && e.message); } catch (_) {}
-        }
         _forcarRenderComissoesPatch();
       };
-      window.renderComissoes = window.__renderComissoesPatchDefinitivo;
+      window.renderComissoes.__comPatchOnlyRender = true;
     } catch (_) {}
   }
 
@@ -11744,7 +11728,7 @@ function _ocultarGraficoComissoes() {
       } catch (_) {}
 
       try { _instalarRenderComissoesFix(); } catch (_) {}
-      try { if (typeof window.renderComissoes === 'function') window.renderComissoes(window._comissoesData); } catch (_) {}
+      try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
       setTimeout(function() {
         _renderTabelaVendedores(window._comissoesSqlData);
         _renderTabelaOFs(window._comissoesSqlData);
