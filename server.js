@@ -3405,49 +3405,10 @@ app.get('/api/ofs/proximo-numero', authMiddleware, async (req, res) => {
 
 app.get('/api/ofs/recorrentes', authMiddleware, async (req, res) => {
   try {
-    const limite = Math.max(1, Math.trunc(Number(req.query.limite || 30)) || 30);
-    const { data, error } = await supabase
-      .from('ofs')
-      .select('cliente,cliente_nome,cliNome,clinome,produto,prodDesc,descricao,referencia,ref,quantidade,qtd,qtd_pedida,vl_unit,vl_unitario,valor_unitario,preco,vl_total,valor_total,valor_venda,total,fluxo_maquinas,maq,created_at')
-      .order('created_at', { ascending: false })
-      .limit(500);
-
-    if (error) throw error;
-
-    const grupos = {};
-    (data || []).forEach((of) => {
-      const cliente =
-        String(of?.cliente_nome || of?.cliNome || of?.clinome || of?.cliente || '').trim();
-      const produto =
-        String(of?.produto || of?.prodDesc || of?.descricao || '').trim();
-      if (!cliente || !produto) return;
-      const chave = cliente + '||' + produto;
-      if (!grupos[chave]) {
-        const qtd = Number(of?.quantidade ?? of?.qtd ?? of?.qtd_pedida ?? 0) || 0;
-        const vlUnit =
-          Number(of?.vl_unit ?? of?.vl_unitario ?? of?.valor_unitario ?? of?.preco ?? 0) || 0;
-        const referencia = String(of?.referencia ?? of?.ref ?? '').trim() || null;
-        grupos[chave] = {
-          cliente,
-          produto,
-          referencia,
-          quantidade: qtd || null,
-          vl_unit: vlUnit || null,
-          fluxo_maquinas: of?.fluxo_maquinas ?? of?.maq ?? null,
-          total: 0,
-        };
-      }
-      grupos[chave].total++;
-    });
-
-    const recorrentes = Object.values(grupos)
-      .filter((g) => (Number(g.total) || 0) >= 2)
-      .sort((a, b) => (Number(b.total) || 0) - (Number(a.total) || 0))
-      .slice(0, limite);
-
-    return res.json({ ok: true, recorrentes });
+    setNoCache(res);
+    return res.json({ ok: true, recorrentes: [] });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
+    return res.json({ ok: true, recorrentes: [] });
   }
 });
 async function _maybeRegistrarComissaoOF(req, body, ofRow) {

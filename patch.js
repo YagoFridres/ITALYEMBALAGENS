@@ -146,7 +146,17 @@ window.addEventListener('unhandledrejection', function(e) {
         try {
           if (!img || img.dataset && img.dataset.patchImgFix === '1') return;
           var src = String(img.getAttribute('src') || '').trim();
-          if (!src || src === '[]' || src === 'null' || src === 'undefined' || src.endsWith('/[]')) {
+          var isAdm = src.indexOf('adm.italyembalagens.com.br') >= 0;
+          var bad =
+            !src ||
+            src === '[]' ||
+            src === 'null' ||
+            src === 'undefined' ||
+            src.indexOf('[object') >= 0 ||
+            src.indexOf('/[]') >= 0 ||
+            src.indexOf('undefined') >= 0 ||
+            (isAdm && (src.indexOf('[') >= 0 || src.endsWith('[')));
+          if (bad) {
             try { img.removeAttribute('src'); } catch (_) {}
             try { img.style.display = 'none'; } catch (_) {}
             try { img.dataset.patchImgFix = '1'; } catch (_) {}
@@ -11052,8 +11062,20 @@ window._mbnActive = function(id) {
       if (!img || img.tagName !== 'IMG') return;
       var src = '';
       try { src = String(img.getAttribute('src') || '').trim(); } catch (_) { src = ''; }
-      var bad = !src || src === '[]' || src === 'null' || src === 'undefined' || src.indexOf('[object') >= 0 || src.indexOf('/[]') >= 0;
-      if (bad) img.style.display = 'none';
+      var isAdm = src.indexOf('adm.italyembalagens.com.br') >= 0;
+      var bad =
+        !src ||
+        src === '[]' ||
+        src === 'null' ||
+        src === 'undefined' ||
+        src.indexOf('[object') >= 0 ||
+        src.indexOf('/[]') >= 0 ||
+        src.indexOf('undefined') >= 0 ||
+        (isAdm && (src.indexOf('[') >= 0 || src.endsWith('[')));
+      if (bad) {
+        try { img.removeAttribute('src'); } catch (_) {}
+        try { img.style.display = 'none'; } catch (_) {}
+      }
     } catch (_) {}
   }
 
@@ -11492,22 +11514,61 @@ function _renderTabelaVendedores(json) {
     tbody.innerHTML = (json.vendedores || []).map(function(v) {
       return ''
         + '<tr>'
-        + '<td style="padding:10px 14px">' + String(v && v.nome || '—') + '</td>'
+        + '<td style="padding:10px 14px 10px 16px;text-align:left">' + String(v && v.nome || '—') + '</td>'
         + '<td style="text-align:center;padding:10px 14px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
-        + '<td style="text-align:right;padding:10px 14px">' + fmt(v && v.total) + '</td>'
+        + '<td style="text-align:center;padding:10px 14px">' + fmt(v && v.total) + '</td>'
         + '<td style="text-align:center;padding:10px 14px">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
-        + '<td style="text-align:right;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
+        + '<td style="text-align:center;padding:10px 14px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
         + '<td style="padding:10px 14px">—</td>'
         + '</tr>';
     }).join('') + ''
-      + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
-      + '<td style="padding:10px 14px">TOTAL</td>'
+      + '<tr data-com-total="1" style="font-weight:700;border-top:2px solid #334155">'
+      + '<td style="padding:10px 14px 10px 16px;text-align:left">TOTAL</td>'
       + '<td style="text-align:center;padding:10px 14px">' + String(json.total_ofs || 0) + '</td>'
-      + '<td style="text-align:right;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
-      + '<td></td>'
-      + '<td style="text-align:right;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
+      + '<td style="text-align:center;padding:10px 14px">' + fmt(json.total_vendido) + '</td>'
+      + '<td style="text-align:center;padding:10px 14px"></td>'
+      + '<td style="text-align:center;padding:10px 14px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
       + '<td></td>'
       + '</tr>';
+    try { _aplicarCoresResumoVendedores(); } catch (_) {}
+  } catch (_) {}
+}
+
+function _aplicarCoresResumoVendedores() {
+  try {
+    var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+    if (!pg) return;
+    var tbody = document.querySelector('#tabela-comissoes-vendedor tbody');
+    if (!tbody) {
+      var tbodies = pg.querySelectorAll('tbody');
+      tbody = tbodies && tbodies[0] ? tbodies[0] : null;
+    }
+    if (!tbody) return;
+    var tabelaResumo = tbody.closest ? tbody.closest('table') : null;
+    if (!tabelaResumo) return;
+    var linhas = tabelaResumo.querySelectorAll('tbody tr');
+    var cores = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
+    var idx = 0;
+    Array.prototype.slice.call(linhas).forEach(function(tr) {
+      try {
+        var textoLinha = String(tr.textContent || '').toUpperCase();
+        if (textoLinha.indexOf('TOTAL') >= 0 || tr.getAttribute('data-com-total') === '1') {
+          tr.style.background = '#0f172a';
+          tr.style.fontWeight = '700';
+          tr.style.borderTop = '2px solid #334155';
+        } else {
+          tr.style.background = cores[idx % cores.length];
+          idx++;
+        }
+        tr.style.transition = 'filter 0.15s';
+        if (!tr.dataset.comHoverBound) {
+          tr.dataset.comHoverBound = '1';
+          tr.addEventListener('mouseenter', function() { try { tr.style.filter = 'brightness(1.15)'; } catch (_) {} });
+          tr.addEventListener('mouseleave', function() { try { tr.style.filter = 'brightness(1)'; } catch (_) {} });
+        }
+      } catch (_) {}
+    });
+    window._coresVendedoresAplicadas = true;
   } catch (_) {}
 }
 
@@ -11705,9 +11766,9 @@ function _ocultarGraficoComissoes() {
   }
 
   function _nomeMes(mesNum) {
-    var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
     var idx = (parseInt(String(mesNum || ''), 10) || 1) - 1;
-    return meses[idx] || 'Mes';
+    return meses[idx] || 'Mês';
   }
 
   function _getToken() {
@@ -11788,8 +11849,9 @@ function _ocultarGraficoComissoes() {
       selAno.style.borderRadius = '8px';
       selAno.style.padding = '8px 10px';
 
-      var anos = [];
-      for (var y = anoAtual - 2; y <= anoAtual + 1; y++) anos.push(y);
+      var anos = [2024, 2025, 2026];
+      if (anos.indexOf(anoAtual) < 0) anos.push(anoAtual);
+      anos = anos.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a - b; });
       for (var j = 0; j < anos.length; j++) {
         var oy = document.createElement('option');
         oy.value = String(anos[j]);
@@ -11895,6 +11957,26 @@ function _ocultarGraficoComissoes() {
         + '@media (max-width:980px){#comissoes-dashboard{grid-template-columns:repeat(2,minmax(220px,1fr))}}'
         + '@media (max-width:700px){#comissoes-modal .m-grid{grid-template-columns:1fr}#comissoes-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}}';
       document.head.appendChild(s);
+    } catch (_) {}
+    try { _ensureComissoesStyleV2(); } catch (_) {}
+  }
+
+  function _ensureComissoesStyleV2() {
+    try {
+      if (window._comissoesStyleV2) return;
+      window._comissoesStyleV2 = true;
+      if (document.getElementById('patch-comissoes-style-v2')) return;
+      var st = document.createElement('style');
+      st.id = 'patch-comissoes-style-v2';
+      st.textContent = ''
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td:first-child{padding-left:16px!important;text-align:left!important;}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody td:not(:first-child){text-align:center!important;vertical-align:middle!important;}'
+        + '#page-comissoes #tabela-comissoes-vendedor tbody tr[data-com-total=\"1\"]{font-weight:700!important;border-top:2px solid #334155!important;background:#0f172a!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs thead th{padding:10px 12px!important;font-size:11px!important;text-transform:uppercase!important;color:#64748b!important;letter-spacing:.5px!important;text-align:center!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs thead th:nth-child(2){text-align:left!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs tbody td{padding:10px 12px!important;text-align:center!important;vertical-align:middle!important;}'
+        + '#page-comissoes #tabela-comissoes-ofs tbody td:nth-child(2){text-align:left!important;}';
+      document.head.appendChild(st);
     } catch (_) {}
   }
 
