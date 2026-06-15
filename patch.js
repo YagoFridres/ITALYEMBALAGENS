@@ -11617,6 +11617,27 @@ function _ocultarGraficoComissoes() {
   window.__patchComissoesUnicaDefinicao = true;
   var _comCalcEmAndamento = false;
 
+  try {
+    var _renderComissoesNativoOrig = window.renderComissoes;
+    if (_renderComissoesNativoOrig && !window._patchRenderComFixed) {
+      window._patchRenderComFixed = true;
+      window.renderComissoes = async function() {
+        try {
+          await _renderComissoesNativoOrig.apply(this, arguments);
+        } catch (e) {
+          try { console.warn('[COM] renderComissoes nativo erro (ignorado):', e && e.message); } catch (_) {}
+        }
+        if (window._comissoesSqlData) {
+          setTimeout(function() {
+            _renderTabelaVendedores(window._comissoesSqlData);
+            _renderTabelaOFs(window._comissoesSqlData);
+            _ocultarGraficoComissoes();
+          }, 200);
+        }
+      };
+    }
+  } catch (_) {}
+
   window.__comissoesPatchCalcular = async function() {
     if (_comCalcEmAndamento) return;
     _comCalcEmAndamento = true;
@@ -11662,17 +11683,20 @@ function _ocultarGraficoComissoes() {
         totalComissao: json.total_comissao,
         totalPedidos: json.total_ofs,
         vendedores: (json.vendedores || []).map(function(v) {
-          var out = Object.assign({}, v);
-          out.vendNome = v.nome;
-          out.nome = v.nome;
-          out.vendId = v.id;
-          out.total = v.total;
-          out.peds = v.ofs;
-          out.comissaoRs = v.comissao_rs;
-          out.comissao = v.comissao_pct;
-          out.comissao_pct = v.comissao_pct;
-          out.ofsList = [];
-          return out;
+          return {
+            vendNome: v.nome,
+            nome: v.nome,
+            vendId: v.id,
+            id: v.id,
+            total: v.total,
+            peds: v.ofs,
+            quantidade: v.ofs,
+            comissaoRs: v.comissao_rs,
+            comissao: v.comissao_pct,
+            comissao_pct: v.comissao_pct,
+            ofs: [],
+            ofsList: []
+          };
         })
       };
       try {
