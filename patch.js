@@ -4309,6 +4309,35 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     '#filtro-ano', '#ano-filtro'
   ];
 
+  function _iniciarTelaCom() {
+    try {
+      var mesInput = document.querySelector('input[type="month"], #com-mes, #comissao-mes');
+      if (mesInput && !String(mesInput.value || '').trim()) {
+        var hoje = new Date();
+        var mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        mesInput.value = hoje.getFullYear() + '-' + mes;
+      }
+    } catch (_) {}
+  }
+
+  function _patchGoTelaCom() {
+    try {
+      var orig = window.go;
+      if (typeof orig !== 'function' || orig._patchComMesInit) return;
+      var wrapped = function(tela) {
+        var r = orig.apply(this, arguments);
+        try {
+          if (String(tela || '').toLowerCase().indexOf('comiss') >= 0) {
+            setTimeout(_iniciarTelaCom, 300);
+          }
+        } catch (_) {}
+        return r;
+      };
+      wrapped._patchComMesInit = true;
+      window.go = wrapped;
+    } catch (_) {}
+  }
+
   function _acharCampoComissao(selectors) {
     var fallback = null;
     for (var i = 0; i < selectors.length; i += 1) {
@@ -4432,12 +4461,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       ], String(json.total_ofs || 0));
     } catch (_) {}
 
-    var tableVend = document.querySelector('#tabela-comissoes-vendedor, #page-comissoes table, .com-vendedores table');
-    var tbodyVend = document.querySelector(
-      '#tabela-comissoes-vendedor tbody, ' +
-      '#page-comissoes table tbody, ' +
-      '#com-vend-tbody, .com-vendedores tbody'
-    );
+    var tableVend = document.querySelector('#tabela-comissoes-vendedor')
+      || document.querySelector('#page-comissoes table')
+      || document.querySelector('.com-vendedores table')
+      || document.querySelector('[id*="comiss"] table')
+      || document.querySelector('[class*="comiss"] table');
+    var tbodyVend = document.querySelector('#tabela-comissoes-vendedor tbody')
+      || document.querySelector('#com-vend-tbody')
+      || document.querySelector('.com-vendedores tbody')
+      || document.querySelector('#page-comissoes tbody')
+      || document.querySelector('[id*="comiss"] tbody')
+      || document.querySelector('[class*="comiss"] tbody');
+
+    try {
+      console.log('[COM TBODY]', tbodyVend && tbodyVend.id, tableVend && tableVend.id);
+    } catch (_) {}
 
     if (tableVend) {
       try {
@@ -4653,6 +4691,11 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       });
     } catch (_) {}
   }
+
+  try { _patchGoTelaCom(); } catch (_) {}
+  try { setTimeout(_patchGoTelaCom, 600); } catch (_) {}
+  try { setTimeout(_patchGoTelaCom, 1500); } catch (_) {}
+  try { setTimeout(_iniciarTelaCom, 500); } catch (_) {}
 
   async function _abrirModalImpressao() {
     var data = window._comissoesSqlData || {};

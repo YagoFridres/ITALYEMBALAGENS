@@ -1499,17 +1499,25 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     });
 
     const cliIds = Array.from(new Set(
-      todasOFs.map((o) => String(o?.cli_id || '').toLowerCase().trim()).filter(Boolean)
+      todasOFs
+        .map((o) => o?.cli_id)
+        .filter(Boolean)
+        .map((id) => String(id).toLowerCase().trim())
     ));
     const mapCli = {};
     if (cliIds.length > 0) {
-      const { data: clientes } = await supabase
-        .from('clientes')
-        .select('id,nome')
-        .in('id', cliIds.slice(0, 500));
-      (clientes || []).forEach((c) => {
-        mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
-      });
+      const LOTE = 200;
+      for (let i = 0; i < cliIds.length; i += LOTE) {
+        const lote = cliIds.slice(i, i + LOTE);
+        const { data: clientes } = await supabase
+          .from('clientes')
+          .select('id,nome')
+          .in('id', lote);
+        (clientes || []).forEach((c) => {
+          mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
+        });
+      }
+      console.log('[COMISSOES] clientes mapeados:', Object.keys(mapCli).length);
     }
 
     console.log(`[COMISSOES] Total: R$ ${totalGeral.toFixed(2)}, sem valor: ${semValor}`);
@@ -1525,12 +1533,13 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       const vid = of?.vendedor_id ? String(of.vendedor_id).toLowerCase().trim() : null;
       const vend = vid ? mapVend[vid] : null;
       const cid = of?.cli_id ? String(of.cli_id).toLowerCase().trim() : null;
+      const nomeCliente = cid ? (mapCli[cid] || null) : null;
       const valorTotal = Number(of?.valor_total || of?.total || 0) || 0;
       const pct = vend ? (Number(vend.comissao_pct || 1) || 1) : 1;
       return {
         id: of?.id || null,
         numero: of?.numero || null,
-        cliente: cid ? (mapCli[cid] || of?.cli_id || '—') : '—',
+        cliente: nomeCliente || '—',
         vendedor: vend ? (String(vend.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
         valor_total: valorTotal,
         comissao_pct: pct,
