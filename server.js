@@ -1446,113 +1446,60 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const fim = `${fimAno}-${fimMes}-01`; 
 
     const empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
-    console.log('[COM]', inicio, 'ate', fim, 'empresa:', empresa_id); 
+    console.log('[COM] buscando', inicio, 'ate', fim); 
 
-    // Buscar OFs via SQL raw para evitar problemas de filtro 
-    const { data: ofs, error } = await supabase.rpc('exec_sql', { 
-      sql: ` 
-        SELECT o.id, o.numero, o.valor_total, o.total, o.cli_id, 
-               o.vendedor_id, o.created_at, o.data_conclusao, 
-               o.status, o.produto, o.qtd, 
-               c.nome as cliente_nome, 
-               v.nome as vendedor_nome, 
-               v.comissao_pct 
-        FROM ofs o 
-        LEFT JOIN clientes c ON c.id::text = o.cli_id::text 
-        LEFT JOIN vendedores v ON v.id::text = o.vendedor_id::text 
-        WHERE o.empresa_id = '${empresa_id}' 
-        AND o.data_conclusao >= '${inicio}' 
-        AND o.data_conclusao < '${fim}' 
-        AND LOWER(o.status) LIKE '%conclu%' 
-        ORDER BY o.data_conclusao DESC 
-      ` 
-    }); 
+    const { data: ofs, error } = await supabase 
+      .from('vw_comissoes') 
+      .select('*') 
+      .eq('empresa_id', empresa_id) 
+      .gte('data_conclusao', inicio) 
+      .lt('data_conclusao', fim) 
+      .ilike('status', '%conclu%'); 
 
-    // Se rpc não funcionar, usar query normal com logging detalhado 
-    let todasOFs = ofs || []; 
-    
-    if (error || !ofs) { 
-      console.log('[COM] rpc falhou, usando query normal:', error?.message); 
-      
-      // Tentar query sem ilike primeiro 
-      const { data: d1, error: e1 } = await supabase 
-        .from('ofs') 
-        .select('id, numero, valor_total, total, cli_id, vendedor_id, created_at, data_conclusao, status, produto, qtd') 
-        .eq('empresa_id', empresa_id) 
-        .gte('data_conclusao', inicio) 
-        .lt('data_conclusao', fim) 
-        .limit(1000); 
-      
-      console.log('[COM] query sem filtro status:', d1?.length, e1?.message); 
-      
-      if (d1?.length) { 
-        // Filtrar concluídas no Node 
-        todasOFs = d1.filter(o => 
-          String(o.status||'').toLowerCase().includes('conclu') 
-        ); 
-        console.log('[COM] após filtro status no Node:', todasOFs.length); 
-      } 
+    if (error) { 
+      console.error('[COM] erro view:', error.message); 
+      return res.json({ ok: false, error: error.message }); 
     } 
 
-    console.log('[COM] total OFs:', todasOFs.length); 
+    console.log('[COM] OFs da view:', ofs?.length); 
 
-    // Buscar vendedores 
-    const { data: vendedores } = await supabase 
-      .from('vendedores').select('id, nome, comissao_pct'); 
-    const mapVend = {}; 
-    (vendedores||[]).forEach(v => { mapVend[String(v.id).toLowerCase()] = v; }); 
-
-    // Buscar clientes 
-    const cliIds = [...new Set(todasOFs.map(o=>o.cli_id).filter(Boolean))]; 
-    const mapCli = {}; 
-    for (let i=0; i<cliIds.length; i+=200) { 
-      const {data:cls} = await supabase.from('clientes') 
-        .select('id,nome').in('id', cliIds.slice(i,i+200)); 
-      (cls||[]).forEach(c=>{mapCli[String(c.id).toLowerCase()]=c.nome;}); 
-    } 
+    const todasOFs = ofs || []; 
 
     // Agrupar por vendedor 
     const porVend = {}; 
     let totalGeral = 0; 
     todasOFs.forEach(of => { 
-      const val = Number(of.valor_total||of.total||0); 
+      const val = Number(of.valor_total || 0); 
       if (!val) return; 
       totalGeral += val; 
-      const vid = of.vendedor_id ? String(of.vendedor_id).toLowerCase() : '__sem__'; 
+      const vid = of.vendedor_id || '__sem__'; 
+      const nome = of.vendedor_nome || 'Sem Vendedor'; 
+      const pct = Number(of.comissao_pct || 1); 
       if (!porVend[vid]) { 
-        const v = mapVend[vid]; 
-        porVend[vid] = { id:vid, nome: v?v.nome:'Sem Vendedor', 
-          comissao_pct: v?Number(v.comissao_pct||1):1, ofs:0, total:0 }; 
+        porVend[vid] = { id: vid, nome, comissao_pct: pct, ofs: 0, total: 0 }; 
       } 
       porVend[vid].ofs++; 
       porVend[vid].total += val; 
     }); 
 
     const vendedoresResult = Object.values(porVend) 
-      .sort((a,b)=>b.total-a.total) 
-      .map(v=>({...v, comissao_rs: v.total*(v.comissao_pct/100)})); 
+      .sort((a,b) => b.total - a.total) 
+      .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
 
-    const ofsDetalhadas = todasOFs.map(of => { 
-      const vid = of.vendedor_id ? String(of.vendedor_id).toLowerCase() : null; 
-      const v = vid ? mapVend[vid] : null; 
-      const cid = of.cli_id ? String(of.cli_id).toLowerCase() : null; 
-      const val = Number(of.valor_total||of.total||0); 
-      const pct = v ? Number(v.comissao_pct||1) : 1; 
-      return { 
-        id: of.id, numero: of.numero, 
-        cliente: of.cliente_nome || (cid?mapCli[cid]:null) || '—', 
-        vendedor: of.vendedor_nome || (v?v.nome:'Sem Vendedor'), 
-        produto: of.produto||'—', qtd: of.qtd||0, 
-        valor_total: val, comissao_pct: pct, 
-        comissao_rs: val*(pct/100), 
-        created_at: of.created_at, 
-        data_conclusao: of.data_conclusao, 
-        status: of.status||'—' 
-      }; 
-    }); 
+    const ofsDetalhadas = todasOFs.map(of => ({ 
+      id: of.id, 
+      numero: of.numero, 
+      cliente: of.cliente_nome || '—', 
+      vendedor: of.vendedor_nome || 'Sem Vendedor', 
+      valor_total: Number(of.valor_total || 0), 
+      comissao_pct: Number(of.comissao_pct || 1), 
+      comissao_rs: Number(of.comissao_rs || 0), 
+      data_conclusao: of.data_conclusao, 
+      status: of.status || '—' 
+    })); 
 
-    const totalComissao = vendedoresResult.reduce((s,v)=>s+v.comissao_rs,0); 
-    console.log('[COM] FINAL total_vendido:', totalGeral, 'ofs:', todasOFs.length); 
+    const totalComissao = vendedoresResult.reduce((s,v) => s+v.comissao_rs, 0); 
+    console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', totalGeral); 
 
     return res.json({ 
       ok: true, 
