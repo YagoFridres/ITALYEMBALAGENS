@@ -11616,27 +11616,63 @@ function _ocultarGraficoComissoes() {
   if (window.__patchComissoesUnicaDefinicao) return;
   window.__patchComissoesUnicaDefinicao = true;
   var _comCalcEmAndamento = false;
+  var _renderComissoesNativoOrig = null;
+
+  function _normalizarComissoesData(val) {
+    if (!val || !val.vendedores || !Array.isArray(val.vendedores)) return val;
+    val.vendedores = val.vendedores.map(function(v) {
+      var out = Object.assign({}, v || {});
+      out.ofs = Array.isArray(out.ofs) ? out.ofs : [];
+      return out;
+    });
+    return val;
+  }
+
+  function _forcarRenderComissoesPatch() {
+    try {
+      if (window._comissoesSqlData) {
+        _renderTabelaVendedores(window._comissoesSqlData);
+        _renderTabelaOFs(window._comissoesSqlData);
+        _ocultarGraficoComissoes();
+      }
+    } catch (_) {}
+  }
 
   try {
-    var _renderComissoesNativoOrig = window.renderComissoes;
-    if (_renderComissoesNativoOrig && !window._patchRenderComFixed) {
-      window._patchRenderComFixed = true;
-      window.renderComissoes = async function() {
-        try {
-          await _renderComissoesNativoOrig.apply(this, arguments);
-        } catch (e) {
-          try { console.warn('[COM] renderComissoes nativo erro (ignorado):', e && e.message); } catch (_) {}
-        }
-        if (window._comissoesSqlData) {
-          setTimeout(function() {
-            _renderTabelaVendedores(window._comissoesSqlData);
-            _renderTabelaOFs(window._comissoesSqlData);
-            _ocultarGraficoComissoes();
-          }, 200);
-        }
-      };
+    if (!window._patchComissoesDataSetterInstalled) {
+      window._patchComissoesDataSetterInstalled = true;
+      window.__comissoesDataInternal = _normalizarComissoesData(window._comissoesData);
+      Object.defineProperty(window, '_comissoesData', {
+        get: function() { return window.__comissoesDataInternal; },
+        set: function(val) {
+          window.__comissoesDataInternal = _normalizarComissoesData(val);
+        },
+        configurable: true
+      });
     }
   } catch (_) {}
+
+  function _instalarRenderComissoesFix() {
+    try {
+      if (!window._patchRenderComFixed) {
+        _renderComissoesNativoOrig = window.renderComissoes;
+        window._patchRenderComFixed = true;
+      } else if (window.renderComissoes !== window.__renderComissoesPatchDefinitivo && window.renderComissoes !== _renderComissoesNativoOrig) {
+        _renderComissoesNativoOrig = window.renderComissoes;
+      }
+      window.__renderComissoesPatchDefinitivo = async function(dados) {
+        dados = _normalizarComissoesData(dados);
+        try { window._comissoesData = _normalizarComissoesData(window._comissoesData); } catch (_) {}
+        try {
+          if (_renderComissoesNativoOrig) await _renderComissoesNativoOrig.call(this, dados);
+        } catch (e) {
+          try { console.warn('[COM] render nativo ignorado:', e && e.message); } catch (_) {}
+        }
+        _forcarRenderComissoesPatch();
+      };
+      window.renderComissoes = window.__renderComissoesPatchDefinitivo;
+    } catch (_) {}
+  }
 
   window.__comissoesPatchCalcular = async function() {
     if (_comCalcEmAndamento) return;
@@ -11707,7 +11743,8 @@ function _ocultarGraficoComissoes() {
         setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
       } catch (_) {}
 
-      try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
+      try { _instalarRenderComissoesFix(); } catch (_) {}
+      try { if (typeof window.renderComissoes === 'function') window.renderComissoes(window._comissoesData); } catch (_) {}
       setTimeout(function() {
         _renderTabelaVendedores(window._comissoesSqlData);
         _renderTabelaOFs(window._comissoesSqlData);
@@ -11721,32 +11758,57 @@ function _ocultarGraficoComissoes() {
     }
   };
 
-  function _vincularBtnCalcularComissoes() {
+  function _rebindBtnCalcular() {
     try {
-      var pg = document.querySelector('#page-comissoes, [id*="comiss"], [data-page="comissoes"]');
+      var pg = document.querySelector('#page-comissoes');
       if (!pg) return;
       Array.prototype.slice.call(pg.querySelectorAll('button')).forEach(function(btn) {
         try {
           if (!btn) return;
           var txt = String(btn.textContent || '').trim();
           if (txt !== 'Calcular') return;
-          if (btn.dataset && btn.dataset.comPatch2 === '1') return;
+          if (btn.dataset && btn.dataset.comV3 === '1') return;
           try { btn.onclick = null; } catch (_) {}
           try { btn.removeAttribute('onclick'); } catch (_) {}
           var novo = btn.cloneNode(true);
+          if (!btn.parentNode) return;
           btn.parentNode.replaceChild(novo, btn);
-          novo.dataset.comPatch2 = '1';
+          novo.dataset.comV3 = '1';
           novo.addEventListener('click', function(e) {
             try { e.preventDefault(); } catch (_) {}
-            try { e.stopPropagation(); } catch (_) {}
             try { e.stopImmediatePropagation(); } catch (_) {}
-            try { console.log('[COM] botão Calcular encontrado, vinculando...'); } catch (_) {}
+            try { console.log('[COM] botão Calcular vinculado v3'); } catch (_) {}
             window.calcularComissoes();
           }, true);
         } catch (_) {}
       });
     } catch (_) {}
   }
+
+  try {
+    var _goOrigComFix = window.go;
+    if (_goOrigComFix && !window._patchGoComFixed) {
+      window._patchGoComFixed = true;
+      window.go = function(tela) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        var r = _goOrigComFix.apply(this, [tela].concat(args));
+        if (String(tela || '').indexOf('comiss') >= 0) {
+          setTimeout(_rebindBtnCalcular, 500);
+          setTimeout(function() {
+            try { _instalarRenderComissoesFix(); } catch (_) {}
+            try {
+              var inp = document.querySelector('input[type="month"]');
+              if (inp && !inp.value) {
+                var h = new Date();
+                inp.value = String(h.getFullYear()) + '-' + String(h.getMonth() + 1).padStart(2, '0');
+              }
+            } catch (_) {}
+          }, 300);
+        }
+        return r;
+      };
+    }
+  } catch (_) {}
 
   function _instalarOverrideComissoes() {
     try {
@@ -11756,12 +11818,14 @@ function _ocultarGraficoComissoes() {
         window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
       }
     } catch (_) {}
-    try { _vincularBtnCalcularComissoes(); } catch (_) {}
+    try { _instalarRenderComissoesFix(); } catch (_) {}
+    try { _rebindBtnCalcular(); } catch (_) {}
   }
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
+  try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
 })();
 
 (function() {
