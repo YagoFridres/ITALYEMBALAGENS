@@ -1443,16 +1443,21 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const fimMes = (parseInt(mes, 10) === 12) ? '01' : String((parseInt(mes, 10) + 1)).padStart(2, '0');
     const fim = `${fimAno}-${fimMes}-01`;
 
+    const empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
+    if (!empresa_id) return res.json({ ok: false, error: 'empresa_id_not_resolved' });
+
     const PAGE = 1000;
     let from = 0;
     let todasOFs = [];
     while (true) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,status,empresa_id')
+        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,data_conclusao,status,empresa_id')
         .is('deleted_at', null)
-        .gte('created_at', inicio)
-        .lt('created_at', fim)
+        .eq('empresa_id', empresa_id)
+        .gte('data_conclusao', inicio)
+        .lt('data_conclusao', fim)
+        .ilike('status', '%conclu%')
         .range(from, from + PAGE - 1);
       if (error || !(data && data.length)) break;
       todasOFs = todasOFs.concat(data);
@@ -1461,13 +1466,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       if (from > 200000) break;
     }
 
-    todasOFs = (todasOFs || []).filter((of) => {
-      const s = String(of?.status || '').toLowerCase().trim();
-      return s.includes('conclu');
-    });
-    console.log('[COMISSOES] OFs concluidas:', todasOFs.length);
-
-    console.log(`[COMISSOES] ${ano}-${mesNum}: ${todasOFs.length} OFs encontradas`);
+    console.log('[COMISSOES] empresa:', empresa_id, 'OFs:', todasOFs.length);
 
     const { data: vendedores } = await supabase
       .from('vendedores')
@@ -1517,9 +1516,10 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
             clientes!ofs_cli_id_fkey(id, nome)
           `)
           .is('deleted_at', null)
+          .eq('empresa_id', empresa_id)
+          .gte('data_conclusao', inicio)
+          .lt('data_conclusao', fim)
           .ilike('status', '%conclu%')
-          .gte('created_at', inicio)
-          .lt('created_at', fim)
           .range(fromJoin, fromJoin + PAGE - 1);
         if (error) throw error;
         if (!(data && data.length)) break;
