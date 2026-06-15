@@ -1498,26 +1498,46 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       porVend[vid].total += val;
     });
 
-    const cliIds = Array.from(new Set(
-      todasOFs
-        .map((o) => o?.cli_id)
-        .filter(Boolean)
-        .map((id) => String(id).toLowerCase().trim())
-    ));
     const mapCli = {};
-    if (cliIds.length > 0) {
-      const LOTE = 200;
-      for (let i = 0; i < cliIds.length; i += LOTE) {
-        const lote = cliIds.slice(i, i + LOTE);
-        const { data: clientes } = await supabase
-          .from('clientes')
-          .select('id,nome')
-          .in('id', lote);
-        (clientes || []).forEach((c) => {
-          mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
+    const ofsComClienteMap = {};
+    try {
+      let fromJoin = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('ofs')
+          .select(`
+            id,
+            cli_id,
+            clientes!ofs_cli_id_fkey(id, nome)
+          `)
+          .is('deleted_at', null)
+          .gte('created_at', inicio)
+          .lt('created_at', fim)
+          .range(fromJoin, fromJoin + PAGE - 1);
+        if (error) throw error;
+        if (!(data && data.length)) break;
+        (data || []).forEach((row) => {
+          const ofId = String(row?.id || '').trim();
+          if (ofId) ofsComClienteMap[ofId] = row;
+          const cliRel = Array.isArray(row?.clientes) ? row.clientes[0] : row?.clientes;
+          const cliKey = String(row?.cli_id || '').toLowerCase().trim();
+          const cliNome = String(cliRel?.nome || '').trim();
+          if (cliKey && cliNome) mapCli[cliKey] = cliNome;
         });
+        if (data.length < PAGE) break;
+        fromJoin += PAGE;
+        if (fromJoin > 200000) break;
       }
-      console.log('[COMISSOES] clientes mapeados:', Object.keys(mapCli).length);
+      console.log('[COMISSOES] clientes por join:', Object.keys(mapCli).length);
+    } catch (joinError) {
+      console.warn('[COMISSOES] join clientes falhou:', String(joinError?.message || joinError));
+      const { data: clientesPorText } = await supabase
+        .from('clientes')
+        .select('id, nome');
+      (clientesPorText || []).forEach((c) => {
+        mapCli[String(c?.id || '').toLowerCase().trim()] = c?.nome || '';
+      });
+      console.log('[COMISSOES] clientes mapeados manual:', Object.keys(mapCli).length);
     }
 
     console.log(`[COMISSOES] Total: R$ ${totalGeral.toFixed(2)}, sem valor: ${semValor}`);
@@ -1533,9 +1553,14 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
       const vid = of?.vendedor_id ? String(of.vendedor_id).toLowerCase().trim() : null;
       const vend = vid ? mapVend[vid] : null;
       const cid = of?.cli_id ? String(of.cli_id).toLowerCase().trim() : null;
-      const nomeCliente = cid ? (mapCli[cid] || null) : null;
+      const joinRow = ofsComClienteMap[String(of?.id || '').trim()] || null;
+      const cliRel = Array.isArray(joinRow?.clientes) ? joinRow.clientes[0] : joinRow?.clientes;
+      const nomeCliente = String(cliRel?.nome || (cid ? (mapCli[cid] || '') : '')).trim() || null;
       const valorTotal = Number(of?.valor_total || of?.total || 0) || 0;
       const pct = vend ? (Number(vend.comissao_pct || 1) || 1) : 1;
+      if (!nomeCliente && cid) {
+        console.log('[COM] cliente não encontrado para cli_id:', cid.substring(0, 8));
+      }
       return {
         id: of?.id || null,
         numero: of?.numero || null,

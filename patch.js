@@ -4309,15 +4309,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     '#filtro-ano', '#ano-filtro'
   ];
 
-  function _iniciarTelaCom() {
+  function _preencherMesAtual() {
     try {
-      var mesInput = document.querySelector('input[type="month"], #com-mes, #comissao-mes');
-      if (mesInput && !String(mesInput.value || '').trim()) {
+      Array.prototype.slice.call(document.querySelectorAll('input[type="month"]')).forEach(function(inp) {
+        if (!inp || String(inp.value || '').trim()) return;
         var hoje = new Date();
-        var mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        mesInput.value = hoje.getFullYear() + '-' + mes;
-      }
+        inp.value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+      });
     } catch (_) {}
+  }
+
+  function _iniciarTelaCom() {
+    try { _preencherMesAtual(); } catch (_) {}
   }
 
   function _patchGoTelaCom() {
@@ -4328,7 +4331,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         var r = orig.apply(this, arguments);
         try {
           if (String(tela || '').toLowerCase().indexOf('comiss') >= 0) {
-            setTimeout(_iniciarTelaCom, 300);
+            setTimeout(_preencherMesAtual, 400);
           }
         } catch (_) {}
         return r;
@@ -4422,7 +4425,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   }
 
   function _forcarRenderComissoes(json) {
-    if (!json) return;
+    if (!(json && json.vendedores && json.vendedores.length)) return;
 
     var fmtPct = function(v) {
       return (Number(v || 0) || 0).toFixed(2) + '%';
@@ -4461,20 +4464,46 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       ], String(json.total_ofs || 0));
     } catch (_) {}
 
-    var tableVend = document.querySelector('#tabela-comissoes-vendedor')
-      || document.querySelector('#page-comissoes table')
-      || document.querySelector('.com-vendedores table')
-      || document.querySelector('[id*="comiss"] table')
-      || document.querySelector('[class*="comiss"] table');
-    var tbodyVend = document.querySelector('#tabela-comissoes-vendedor tbody')
-      || document.querySelector('#com-vend-tbody')
-      || document.querySelector('.com-vendedores tbody')
+    var pg = document.querySelector('#page-comissoes');
+    if (!pg) return;
+
+    var tableVend = pg.querySelector('#tabela-comissoes-vendedor');
+    if (!tableVend) {
+      try {
+        var detalheTable = pg.querySelector('#tabela-comissoes-ofs');
+        var detalheBox = detalheTable ? detalheTable.closest('.sbox') : null;
+        var resumoBox = document.createElement('div');
+        resumoBox.className = 'sbox';
+        resumoBox.innerHTML = ''
+          + '<div class="sbox-h">Resumo por Vendedor</div>'
+          + '<div class="sbox-b" style="overflow:auto">'
+          + '<table id="tabela-comissoes-vendedor" style="width:100%;border-collapse:collapse;min-width:900px">'
+          + '<thead></thead><tbody></tbody>'
+          + '</table>'
+          + '</div>';
+        if (detalheBox && detalheBox.parentNode) detalheBox.parentNode.insertBefore(resumoBox, detalheBox);
+        else pg.appendChild(resumoBox);
+        tableVend = resumoBox.querySelector('#tabela-comissoes-vendedor');
+      } catch (_) {}
+    }
+
+    var tbodies = pg.querySelectorAll('tbody');
+    try {
+      console.log('[COM] tbodies encontrados:', tbodies.length);
+      Array.prototype.slice.call(tbodies).forEach(function(tb, i) {
+        var parentTable = tb.closest ? tb.closest('table') : null;
+        var parentId = (parentTable && parentTable.id) || (tb.parentElement && tb.parentElement.id) || '';
+        console.log('[COM] tbody[' + i + '] id:', tb.id, 'rows:', tb.rows.length, 'parent id:', parentId);
+      });
+    } catch (_) {}
+
+    var tbodyVend = (tableVend && tableVend.querySelector('tbody'))
+      || tbodies[0]
       || document.querySelector('#page-comissoes tbody')
       || document.querySelector('[id*="comiss"] tbody')
       || document.querySelector('[class*="comiss"] tbody');
-
     try {
-      console.log('[COM TBODY]', tbodyVend && tbodyVend.id, tableVend && tableVend.id);
+      console.log('[COM TBODY]', tbodyVend && tbodyVend.id, (tbodyVend && tbodyVend.closest && tbodyVend.closest('table') && tbodyVend.closest('table').id) || (tableVend && tableVend.id));
     } catch (_) {}
 
     if (tableVend) {
@@ -4695,6 +4724,9 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { _patchGoTelaCom(); } catch (_) {}
   try { setTimeout(_patchGoTelaCom, 600); } catch (_) {}
   try { setTimeout(_patchGoTelaCom, 1500); } catch (_) {}
+  try { setTimeout(_preencherMesAtual, 200); } catch (_) {}
+  try { setTimeout(_preencherMesAtual, 800); } catch (_) {}
+  try { setTimeout(_preencherMesAtual, 2000); } catch (_) {}
   try { setTimeout(_iniciarTelaCom, 500); } catch (_) {}
 
   async function _abrirModalImpressao() {
@@ -4841,6 +4873,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   try { _vincularBtnImprimir(); } catch (_) {}
   try {
     var _obsCom = new MutationObserver(function() {
+      try { _preencherMesAtual(); } catch (_) {}
       _vincularBtnCalcular();
       _vincularBtnImprimir();
     });
