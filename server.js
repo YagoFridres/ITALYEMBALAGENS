@@ -1445,13 +1445,11 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const fimMes = parseInt(mes) === 12 ? '01' : String(parseInt(mes)+1).padStart(2,'0'); 
     const fim = `${fimAno}-${fimMes}-01`; 
 
-    const empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
     console.log('[COM] buscando', inicio, 'ate', fim); 
 
     const { data: ofs, error } = await supabase 
       .from('vw_comissoes') 
       .select('*') 
-      .eq('empresa_id', empresa_id) 
       .gte('data_conclusao', inicio) 
       .lt('data_conclusao', fim) 
       .ilike('status', '%conclu%'); 
