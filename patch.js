@@ -8408,6 +8408,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
+      '<div id="patch-estoque-bc-tintas" style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #f59e0b;border-radius:8px;padding:12px 20px;margin-bottom:16px">' +
+        '<div style="font-size:16px;font-weight:700;color:#e2e8f0">📦 ESTOQUES  ›  🟡 Estoque de Tintas</div>' +
+        '<div id="patch-estoque-bc-tintas-sub" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</div>' +
+      '</div>' +
       '<div id="patch-tintas">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
           '<button class="pcp-btn primary" id="btn-nova-tinta" type="button">+ Nova Tinta</button>' +
@@ -8512,10 +8516,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       .then(function(res) {
         var data = res && (res.data || res) || [];
         if (!Array.isArray(data)) data = [];
+        try {
+          var sub = document.getElementById('patch-estoque-bc-tintas-sub');
+          if (sub) sub.textContent = String(data.length) + ' itens cadastrados · Atualizado agora';
+        } catch (_) {}
         wireFilters(data);
       })
       .catch(function(e) {
         body.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+        try {
+          var sub = document.getElementById('patch-estoque-bc-tintas-sub');
+          if (sub) sub.textContent = 'Falha ao carregar · Tente novamente';
+        } catch (_) {}
       });
   }
 
@@ -8524,6 +8536,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
+      '<div id="patch-estoque-bc-materiais" style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #10b981;border-radius:8px;padding:12px 20px;margin-bottom:16px">' +
+        '<div style="font-size:16px;font-weight:700;color:#e2e8f0">📦 ESTOQUES  ›  🔧 Estoque de Materiais</div>' +
+        '<div id="patch-estoque-bc-materiais-sub" style="font-size:12px;color:#64748b;margin-top:2px">Carregando...</div>' +
+      '</div>' +
       '<div id="patch-materiais">' +
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">' +
           '<button class="pcp-btn primary" id="btn-novo-material" type="button">+ Novo Material</button>' +
@@ -8670,10 +8686,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       .then(function(res) {
         var data = res && (res.data || res) || [];
         if (!Array.isArray(data)) data = [];
+        try {
+          var sub = document.getElementById('patch-estoque-bc-materiais-sub');
+          if (sub) sub.textContent = String(data.length) + ' itens cadastrados · Atualizado agora';
+        } catch (_) {}
         wire(data);
       })
       .catch(function(e) {
         body.innerHTML = '<div style="color:#f75a5a;padding:20px">Erro: ' + esc(e && e.message || e) + '</div>';
+        try {
+          var sub = document.getElementById('patch-estoque-bc-materiais-sub');
+          if (sub) sub.textContent = 'Falha ao carregar · Tente novamente';
+        } catch (_) {}
       });
   }
 
@@ -8682,6 +8706,10 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     if (!main) return;
     _ensureEstoqueStyle();
     main.innerHTML =
+      '<div id="patch-estoque-bc-dashboard" style="background:linear-gradient(135deg,#0f172a,#1e293b);border-left:4px solid #3b82f6;border-radius:8px;padding:12px 20px;margin-bottom:16px">' +
+        '<div style="font-size:16px;font-weight:700;color:#e2e8f0">📦 ESTOQUES  ›  📊 Dashboard de Estoques</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-top:2px">Visão consolidada de todos os estoques</div>' +
+      '</div>' +
       '<div id="patch-dashboard-estoques">' +
         '<div id="patch-dashboard-body" style="color:var(--text2);padding:20px">Carregando...</div>' +
       '</div>';
@@ -8691,168 +8719,139 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); } catch (_) { return 'R$ ' + String(n.toFixed(2)); }
     }
 
-    function ensureChartJs() {
-      return new Promise(function(resolve) {
-        try {
-          if (window.Chart) return resolve(true);
-          if (typeof window.ensureChartJsLoaded === 'function') {
-            Promise.resolve(window.ensureChartJsLoaded()).then(function(ok) { resolve(!!ok); }).catch(function() { resolve(false); });
-            return;
-          }
-        } catch (_) {}
-        try {
-          var s = document.createElement('script');
-          s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
-          s.onload = function() { resolve(!!window.Chart); };
-          s.onerror = function() { resolve(false); };
-          document.head.appendChild(s);
-        } catch (_) { resolve(false); }
-      });
-    }
-
-    fetch('/api/estoque_dashboard', { headers: authHeaders() })
+    fetch('/api/dashboard/estoques-resumo', { headers: authHeaders() })
       .then(function(r) { return r.json(); })
       .then(function(res) {
         var container = document.getElementById('patch-dashboard-body');
         if (!container) return;
         if (!res || res.ok === false) throw new Error((res && res.error) || 'Falha ao carregar dashboard');
-
-        var cards = res.cards || {};
-        var valores = res.valores || {};
-        var alertas = Array.isArray(res.alertas) ? res.alertas : [];
-        var movs = Array.isArray(res.movimentos) ? res.movimentos : [];
+        var chapas = res.chapas || {};
         var tintas = res.tintas || {};
         var materiais = res.materiais || {};
-        var chapas = res.chapas || {};
+        var movs = Array.isArray(res.movimentacoes_recentes) ? res.movimentacoes_recentes : [];
+
+        var valCh = Number(chapas.valor_total || 0) || 0;
+        var valTi = Number(tintas.valor_total || 0) || 0;
+        var valMa = Number(materiais.valor_total || 0) || 0;
+        var totalValor = valCh + valTi + valMa;
+        var totalCriticos = (Number(chapas.criticos || 0) || 0) + (Number(tintas.criticos || 0) || 0) + (Number(materiais.criticos || 0) || 0);
+        var vencendo30 = Number(tintas.vencendo || 0) || 0;
+        var totalItens = (Number(chapas.total_itens || 0) || 0) + (Number(tintas.total_itens || 0) || 0) + (Number(materiais.total_itens || 0) || 0);
+
+        var pct = function(v) { return totalValor > 0 ? Math.round((v / totalValor) * 1000) / 10 : 0; };
+        var pctCh = pct(valCh);
+        var pctTi = pct(valTi);
+        var pctMa = pct(valMa);
+
+        var barSeg = function(color, p) {
+          var w = Math.max(0, Math.min(100, Number(p || 0) || 0));
+          return '<div style="height:100%;width:' + w + '%;background:' + color + '"></div>';
+        };
+
+        var movIcon = function(tipo) {
+          var s = String(tipo || '').toLowerCase();
+          if (s.indexOf('entrada') >= 0) return '➕';
+          if (s.indexOf('saida') >= 0) return '➖';
+          if (s.indexOf('ajuste') >= 0) return '🛠️';
+          if (s.indexOf('baixa') >= 0) return '✅';
+          return '↕';
+        };
 
         container.innerHTML =
-          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:14px">' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:14px">' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">💰 Valor Total em Estoque</div>' +
-              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(fmtBRL(cards.valor_total || 0)) + '</div>' +
+              '<div style="color:var(--text2);font-size:12px">💰 Valor Total</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(fmtBRL(totalValor)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">⚠️ Itens Críticos</div>' +
-              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.itens_criticos || 0)) + '</div>' +
+              '<div style="color:var(--text2);font-size:12px">🔴 Itens Críticos</div>' +
+              '<div style="color:#ef4444;font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(totalCriticos)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">🕒 Vencendo em 30 dias</div>' +
-              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.vencendo_30d || 0)) + '</div>' +
+              '<div style="color:var(--text2);font-size:12px">🕒 Vencendo 30d</div>' +
+              '<div style="color:#f59e0b;font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(vencendo30)) + '</div>' +
             '</div>' +
             '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="color:var(--text2);font-size:12px">📦 Total de Itens</div>' +
-              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(cards.total_itens || 0)) + '</div>' +
+              '<div style="color:var(--text2);font-size:12px">📦 Total</div>' +
+              '<div style="color:var(--text);font-size:22px;font-weight:1000;margin-top:4px">' + esc(String(totalItens)) + '</div>' +
             '</div>' +
-          '</div>' +
-
-          '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:14px">' +
-            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">🚨 Alertas Ativos</div>' +
-            (alertas.length ? (
-              '<div style="display:flex;flex-direction:column;gap:8px">' +
-                alertas.slice(0, 40).map(function(a) {
-                  var badge = _statusBadgeHtml(a.status, a.vencendo);
-                  var un = a.unidade ? (' ' + String(a.unidade)) : '';
-                  return '<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;background:rgba(0,0,0,0.10)">' +
-                    '<div style="min-width:0">' +
-                      '<div style="color:var(--text);font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(a.categoria || '-') + ' · ' + esc(a.nome || '-') + '</div>' +
-                      '<div style="color:var(--text2);font-size:12px;margin-top:2px">' +
-                        esc(String(a.quantidade_atual || 0) + un) + ' (mín: ' + esc(String(a.quantidade_minima || 0)) + ')' +
-                      '</div>' +
-                    '</div>' +
-                    '<div>' + badge + '</div>' +
-                  '</div>';
-                }).join('') +
-              '</div>'
-            ) : '<div style="color:var(--text2);padding:8px 0">✅ Todos os estoques em ordem</div>') +
           '</div>' +
 
           '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:14px">' +
-            [
-              { nome: 'Tintas', icon: '🎨', d: tintas, cor: '#4f8ef7' },
-              { nome: 'Chapas', icon: '📦', d: chapas, cor: '#22c55e' },
-              { nome: 'Materiais', icon: '🔩', d: materiais, cor: '#f59e0b' }
-            ].map(function(c) {
-              var d = c.d || {};
-              return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-left:4px solid ' + c.cor + '">' +
-                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">' +
-                  '<div style="font-size:22px">' + c.icon + '</div>' +
-                  '<div style="font-weight:950;color:var(--text)">' + esc(c.nome) + '</div>' +
-                  '<div style="margin-left:auto;color:var(--text2);font-size:12px">' + esc(String(d.total || 0)) + '</div>' +
-                '</div>' +
-                '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-                  '<span class="badge badge-critico">Críticos: ' + esc(String(d.critico || d.criticos || 0)) + '</span>' +
-                  '<span class="badge badge-baixo">Alertas: ' + esc(String(d.alerta || d.alertas || 0)) + '</span>' +
-                  '<span class="badge badge-ok">OK: ' + esc(String(d.ok || 0)) + '</span>' +
-                  '<span class="badge badge-venc">Venc.: ' + esc(String(d.vencendo || 0)) + '</span>' +
-                '</div>' +
-              '</div>';
-            }).join('') +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-top:3px solid #f59e0b">' +
+              '<div style="font-weight:950;color:var(--text);margin-bottom:6px">🟡 TINTAS</div>' +
+              '<div style="color:var(--text2);font-size:12px">' + esc(String(tintas.total_itens || 0)) + ' itens</div>' +
+              '<div style="color:var(--text);font-size:18px;font-weight:1000;margin-top:6px">' + esc(fmtBRL(valTi)) + '</div>' +
+              '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">' +
+                '<div>● <span style="color:#ef4444;font-weight:900">Críticos:</span> ' + esc(String(tintas.criticos || 0)) + '</div>' +
+                '<div>● <span style="color:#f59e0b;font-weight:900">Alertas:</span> ' + esc(String(tintas.alertas || 0)) + '</div>' +
+                '<div>● <span style="color:#10b981;font-weight:900">OK:</span> ' + esc(String(tintas.ok || 0)) + '</div>' +
+                '<div>● <span style="color:#f59e0b;font-weight:900">Venc.:</span> ' + esc(String(tintas.vencendo || 0)) + '</div>' +
+              '</div>' +
+              '<div style="margin-top:12px"><button class="pcp-btn" type="button" id="btn-abre-tintas">Abrir Tintas</button></div>' +
+            '</div>' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-top:3px solid #3b82f6">' +
+              '<div style="font-weight:950;color:var(--text);margin-bottom:6px">🟦 CHAPAS</div>' +
+              '<div style="color:var(--text2);font-size:12px">' + esc(String(chapas.total_itens || 0)) + ' itens</div>' +
+              '<div style="color:var(--text);font-size:18px;font-weight:1000;margin-top:6px">' + esc(fmtBRL(valCh)) + '</div>' +
+              '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">' +
+                '<div>● <span style="color:#ef4444;font-weight:900">Críticos:</span> ' + esc(String(chapas.criticos || 0)) + '</div>' +
+                '<div>● <span style="color:#f59e0b;font-weight:900">Alertas:</span> ' + esc(String(chapas.alertas || 0)) + '</div>' +
+                '<div>● <span style="color:#10b981;font-weight:900">OK:</span> ' + esc(String(chapas.ok || 0)) + '</div>' +
+              '</div>' +
+              '<div style="margin-top:12px"><button class="pcp-btn" type="button" id="btn-abre-chapas">Abrir Chapas</button></div>' +
+            '</div>' +
+            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;border-top:3px solid #10b981">' +
+              '<div style="font-weight:950;color:var(--text);margin-bottom:6px">🔧 MATERIAIS</div>' +
+              '<div style="color:var(--text2);font-size:12px">' + esc(String(materiais.total_itens || 0)) + ' itens</div>' +
+              '<div style="color:var(--text);font-size:18px;font-weight:1000;margin-top:6px">' + esc(fmtBRL(valMa)) + '</div>' +
+              '<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">' +
+                '<div>● <span style="color:#ef4444;font-weight:900">Críticos:</span> ' + esc(String(materiais.criticos || 0)) + '</div>' +
+                '<div>● <span style="color:#f59e0b;font-weight:900">Alertas:</span> ' + esc(String(materiais.alertas || 0)) + '</div>' +
+                '<div>● <span style="color:#10b981;font-weight:900">OK:</span> ' + esc(String(materiais.ok || 0)) + '</div>' +
+              '</div>' +
+              '<div style="margin-top:12px"><button class="pcp-btn" type="button" id="btn-abre-materiais">Abrir Materiais</button></div>' +
+            '</div>' +
           '</div>' +
 
-          '<div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">' +
-            '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
-              '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">' +
-                '<div style="font-weight:950;color:var(--text)">Distribuição do valor em estoque</div>' +
-                '<div style="color:var(--text2);font-size:12px">' + esc(fmtBRL((valores.tintas || 0) + (valores.materiais || 0) + (valores.chapas || 0))) + '</div>' +
-              '</div>' +
-              '<div style="height:220px;position:relative"><canvas id="patch-estoque-donut" style="width:100%;height:100%"></canvas></div>' +
+          '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">' +
+            '<div style="font-weight:950;color:var(--text);margin-bottom:10px">Distribuição do valor</div>' +
+            '<div style="height:14px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,0.08);display:flex">' +
+              barSeg('#3b82f6', pctCh) + barSeg('#f59e0b', pctTi) + barSeg('#10b981', pctMa) +
+            '</div>' +
+            '<div style="color:var(--text2);font-size:12px;margin-top:10px">' +
+              'Chapas: ' + esc(String(pctCh.toFixed(1))) + '% · Tintas: ' + esc(String(pctTi.toFixed(1))) + '% · Materiais: ' + esc(String(pctMa.toFixed(1))) + '%' +
             '</div>' +
           '</div>' +
 
           '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px">' +
             '<div style="font-weight:950;color:var(--text);margin-bottom:10px">Movimentações recentes</div>' +
             (movs.length ? (
-              '<table class="pcp-table">' +
-                '<thead><tr>' +
-                  '<th>Data/Hora</th><th>Tipo</th><th>Item</th><th style="text-align:center">Qtd</th><th>Operador</th><th>Setor</th>' +
-                '</tr></thead>' +
-                '<tbody>' +
-                  movs.slice(0, 10).map(function(m) {
-                    var dt = String(m.created_at || '');
-                    var d = dt ? new Date(dt) : null;
-                    var show = d && Number.isFinite(d.getTime()) ? (String(d.toLocaleDateString('pt-BR')) + ' ' + String(d.toLocaleTimeString('pt-BR')).slice(0, 5)) : '-';
-                    var item = m.item || m.nome || m.material_nome || m.tinta_nome || '';
-                    var cat = m.categoria || '';
-                    return '<tr>' +
-                      '<td class="muted">' + esc(show) + '</td>' +
-                      '<td class="muted">' + esc(String(m.tipo || '-')) + '</td>' +
-                      '<td>' + esc((cat ? (cat + ' · ') : '') + (item || String(m.material_id || m.tinta_id || '-'))) + '</td>' +
-                      '<td style="text-align:center;font-weight:900">' + esc(String(m.quantidade || 0)) + '</td>' +
-                      '<td class="muted">' + esc(String(m.operador || '-')) + '</td>' +
-                      '<td class="muted">' + esc(String(m.setor || '-')) + '</td>' +
-                    '</tr>';
-                  }).join('') +
-                '</tbody>' +
-              '</table>'
+              '<div style="display:flex;flex-direction:column;gap:8px">' +
+                movs.slice(0, 10).map(function(m) {
+                  var dt = String(m.created_at || m.updated_at || '');
+                  var d = dt ? new Date(dt) : null;
+                  var show = d && Number.isFinite(d.getTime()) ? (String(d.toLocaleDateString('pt-BR')) + ' ' + String(d.toLocaleTimeString('pt-BR')).slice(0, 5)) : '-';
+                  return '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;background:rgba(0,0,0,0.10)">' +
+                    '<div style="min-width:0">' +
+                      '<div style="font-weight:900;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(movIcon(m.tipo)) + ' ' + esc(String(m.categoria || '-')) + ' · ' + esc(String(m.item || m.nome || m.material_nome || m.tinta_nome || m.nomenclatura || '-')) + '</div>' +
+                      '<div style="color:var(--text2);font-size:12px;margin-top:2px">' + esc(show) + (m.operador ? (' · ' + esc(String(m.operador))) : '') + '</div>' +
+                    '</div>' +
+                    '<div style="font-weight:1000;color:var(--text)">' + esc(String(m.quantidade ?? m.delta ?? 0)) + '</div>' +
+                  '</div>';
+                }).join('') +
+              '</div>'
             ) : '<div style="color:var(--text2);padding:8px 0">Nenhuma movimentação recente</div>') +
           '</div>';
 
-        ensureChartJs().then(function(ok) {
-          if (!ok || !window.Chart) return;
-          var canvas = document.getElementById('patch-estoque-donut');
-          if (!canvas) return;
-          try { if (window._patchEstoqueDonut && typeof window._patchEstoqueDonut.destroy === 'function') window._patchEstoqueDonut.destroy(); } catch (_) {}
-          var ctx = canvas.getContext('2d');
-          var labels = ['Tintas', 'Chapas', 'Materiais', 'Outros'];
-          var data = [num(valores.tintas), num(valores.chapas), num(valores.materiais), num(valores.outros)];
-          window._patchEstoqueDonut = new window.Chart(ctx, {
-            type: 'doughnut',
-            data: {
-              labels: labels,
-              datasets: [{
-                data: data,
-                backgroundColor: ['#4f8ef7', '#22c55e', '#f59e0b', '#94a3b8'],
-                borderColor: 'rgba(255,255,255,0.08)',
-                borderWidth: 1
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } }
-            }
-          });
-        });
+        try {
+          var bt = document.getElementById('btn-abre-tintas');
+          if (bt) bt.onclick = function() { try { go('estoque-tintas'); } catch (_) {} };
+          var bc = document.getElementById('btn-abre-chapas');
+          if (bc) bc.onclick = function() { try { go('chapas'); } catch (_) { try { go('chapas-estoque'); } catch (__) {} } };
+          var bm = document.getElementById('btn-abre-materiais');
+          if (bm) bm.onclick = function() { try { go('estoque-materiais'); } catch (_) {} };
+        } catch (_) {}
       })
       .catch(function(e) {
         var c = document.getElementById('patch-dashboard-body');
@@ -12031,8 +12030,8 @@ function _ocultarGraficoComissoes() {
         + '#comissoes-dashboard .c-sub{font-size:12px;color:#94a3b8;margin-top:10px}'
         + '#comissoes-dashboard .c-card.is-comissao .c-val{color:#10b981}'
         + '#comissoes-dashboard .c-card.is-top .c-val{color:#60a5fa}'
-        + '#comissoes-ranking{display:flex;gap:16px;overflow-x:auto;margin:0 0 16px 0;padding:0}'
-        + '#comissoes-ranking .r-item{min-width:320px;flex:0 0 auto;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff;box-sizing:border-box}'
+        + '#comissoes-ranking{display:flex;justify-content:center;align-items:stretch;gap:16px;padding:0 24px 16px;margin:0 0 16px 0;flex-wrap:wrap}'
+        + '#comissoes-ranking .r-item{flex:1 1 280px;max-width:360px;min-width:240px;background:#111827;border:1px solid #2a3f5f;border-radius:12px;padding:14px 16px;color:#fff;box-sizing:border-box}'
         + '#comissoes-ranking .r-top{display:flex;justify-content:space-between;gap:12px;font-weight:700;font-size:14px;align-items:center}'
         + '#comissoes-ranking .r-medal{font-size:1.4em;margin-right:6px}'
         + '#comissoes-ranking .r-name{font-size:16px;font-weight:800}'
@@ -12187,6 +12186,14 @@ function _ocultarGraficoComissoes() {
           + '<div class="r-bar"><div style="width:' + pct.toFixed(0) + '%"></div></div>'
           + '</div>';
       }).join('');
+      try {
+        ranking.style.display = 'flex';
+        ranking.style.justifyContent = 'center';
+        ranking.style.alignItems = 'stretch';
+        ranking.style.gap = '16px';
+        ranking.style.padding = '0 24px 16px';
+        ranking.style.flexWrap = 'wrap';
+      } catch (_) {}
     } catch (_) {}
   }
 
@@ -12209,11 +12216,15 @@ function _ocultarGraficoComissoes() {
       host.innerHTML = ''
         + '<input type="text" id="comissao-busca-of" placeholder="🔍 Buscar por nº da OF..." />'
         + '<button id="comissao-busca-btn">Buscar</button>'
+        + '<div id="comissoes-busca-info" style="display:none;margin-top:8px;color:var(--text2,#94a3b8);font-size:12px"></div>'
+        + '<div id="comissoes-busca-nav" style="display:none;margin-top:8px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"></div>'
         + '<div id="comissoes-busca-res" style="display:none"></div>';
       table.parentNode.insertBefore(host, table);
 
       var inp = host.querySelector('#comissao-busca-of');
       var btn = host.querySelector('#comissao-busca-btn');
+      var info = host.querySelector('#comissoes-busca-info');
+      var nav = host.querySelector('#comissoes-busca-nav');
       var res = host.querySelector('#comissoes-busca-res');
 
       var badge = function(st) {
@@ -12229,71 +12240,148 @@ function _ocultarGraficoComissoes() {
         return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.08)">' + String(raw).replace(/</g, '&lt;') + '</span>';
       };
 
-      var highlight = function(tr) {
+      var normNum = function(v) { return String(v || '').replace(/[^\d]/g, '').trim(); };
+      var clearHighlights = function() {
         try {
-          tr.style.outline = '3px solid #f59e0b';
-          tr.style.background = 'rgba(245,158,11,0.15)';
-          tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTimeout(function() {
-            try { tr.style.outline = ''; tr.style.background = ''; } catch (_) {}
-          }, 4500);
+          Array.prototype.slice.call(pg.querySelectorAll('tr[data-com-busca-hl="1"]')).forEach(function(tr) {
+            try {
+              delete tr.dataset.comBuscaHl;
+              tr.removeAttribute('data-com-busca-hl');
+            } catch (_) {}
+            try { tr.style.background = ''; tr.style.borderLeft = ''; } catch (_) {}
+          });
         } catch (_) {}
       };
+      var highlight = function(tr) {
+        try {
+          tr.setAttribute('data-com-busca-hl', '1');
+          tr.style.background = 'rgba(234,179,8,0.2)';
+          tr.style.borderLeft = '3px solid #eab308';
+        } catch (_) {}
+      };
+      function scrollToRow(tr) {
+        try { tr.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+      }
+      function renderNav(state) {
+        try {
+          if (!nav) return;
+          if (!state || !state.rows || state.rows.length < 2) { nav.style.display = 'none'; nav.innerHTML = ''; return; }
+          var total = state.rows.length;
+          var idx = Math.max(0, Math.min(total - 1, Number(state.idx || 0) || 0));
+          state.idx = idx;
+          var curNum = String(state.nums[idx] || '').trim();
+          nav.style.display = 'flex';
+          nav.innerHTML = ''
+            + '<div style="color:var(--text1,#e2e8f0);font-size:12px">'
+            + 'OF <b style="color:#60a5fa">' + String(idx + 1) + '</b> de <b>' + String(total) + '</b>: '
+            + '<span style="font-weight:800;color:#60a5fa">#' + curNum.replace(/</g, '&lt;') + '</span>'
+            + '</div>'
+            + '<div style="display:flex;gap:10px;flex-wrap:wrap">'
+            + '<button type="button" id="com-busca-prev">← Anterior</button>'
+            + '<button type="button" id="com-busca-next">Próxima →</button>'
+            + '</div>';
+          var bPrev = nav.querySelector('#com-busca-prev');
+          var bNext = nav.querySelector('#com-busca-next');
+          if (bPrev) bPrev.onclick = function() { state.idx = (state.idx - 1 + total) % total; renderNav(state); scrollToRow(state.rows[state.idx]); };
+          if (bNext) bNext.onclick = function() { state.idx = (state.idx + 1) % total; renderNav(state); scrollToRow(state.rows[state.idx]); };
+        } catch (_) {}
+      }
 
       async function buscar() {
-        var term = String(inp && inp.value || '').trim();
-        if (!term) return;
-        res.style.display = 'none';
-        res.innerHTML = '';
+        var raw = String(inp && inp.value || '').trim();
+        if (!raw) return;
+        if (window._buscaMultiplaOF) {} else { window._buscaMultiplaOF = true; }
+        if (res) { res.style.display = 'none'; res.innerHTML = ''; }
+        if (info) { info.style.display = 'none'; info.textContent = ''; }
+        if (nav) { nav.style.display = 'none'; nav.innerHTML = ''; }
+        clearHighlights();
+
+        var numeros = raw.split(/[\s,;]+/).map(function(n) { return String(n || '').trim(); }).filter(Boolean);
+        numeros = numeros.map(normNum).filter(Boolean);
+        numeros = Array.from(new Set(numeros));
+        if (!numeros.length) return;
 
         var rows = Array.prototype.slice.call(pg.querySelectorAll('tr[data-of-num]'));
-        var found = rows.find(function(r) { return String(r.getAttribute('data-of-num') || '').indexOf(term) >= 0; });
-        if (found) {
-          highlight(found);
-          return;
+        var map = {};
+        rows.forEach(function(r) {
+          var k = normNum(r.getAttribute('data-of-num') || '');
+          if (k && !map[k]) map[k] = r;
+        });
+
+        var foundNums = [];
+        var foundRows = [];
+        var missing = [];
+        numeros.forEach(function(n) {
+          var tr = map[n] || null;
+          if (tr) { foundNums.push(n); foundRows.push(tr); highlight(tr); }
+          else missing.push(n);
+        });
+
+        if (foundRows.length) {
+          window.__comBuscaMultiState = { nums: foundNums, rows: foundRows, idx: 0 };
+          renderNav(window.__comBuscaMultiState);
+          scrollToRow(foundRows[0]);
+        } else {
+          window.__comBuscaMultiState = null;
         }
+
+        if (info) {
+          info.style.display = 'block';
+          info.textContent = String(foundRows.length) + ' encontradas na tabela · ' + String(missing.length) + ' em outros períodos';
+        }
+
+        if (!missing.length) return;
 
         var token = _getToken();
-        var resp = await fetch('/api/ofs/buscar?numero=' + encodeURIComponent(term), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-        var j = await resp.json().catch(function() { return null; });
-        if (!j || !j.ok) {
-          res.style.display = 'block';
-          res.textContent = 'OF não encontrada no sistema.';
+        var jobs = missing.map(function(n) {
+          return fetch('/api/ofs/buscar?numero=' + encodeURIComponent(n), { headers: token ? { Authorization: 'Bearer ' + token } : {} })
+            .then(function(r) { return r.json().catch(function() { return null; }); })
+            .then(function(j) {
+              if (!j || !j.ok) return null;
+              var of = j.data || j;
+              return of && of.id ? of : null;
+            })
+            .catch(function() { return null; });
+        });
+        var ofs = (await Promise.all(jobs)).filter(Boolean);
+        if (!ofs.length) {
+          if (res) { res.style.display = 'block'; res.textContent = 'OF não encontrada no sistema.'; }
           return;
         }
 
-        var of = j.data || j;
-        window.__comBuscaOfAtual = of;
-        var st = of && of.status;
-        res.style.display = 'block';
-        res.innerHTML = ''
-          + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'
-          + '<div><b>OF #' + String(of && (of.numero || of.of_num || '') || '—').replace(/</g, '&lt;') + '</b> · ' + String(of && (of.cliNome || of.cliente_nome || of.cliente) || '—').replace(/</g, '&lt;') + '</div>'
-          + '<div>' + badge(st) + '</div>'
-          + '</div>'
-          + '<div style="margin-top:6px;opacity:0.9">Vendedor: ' + String(of && (of.vendNome || of.vendedor_nome || of.vendedor) || '—').replace(/</g, '&lt;') + ' · Valor: ' + _fmtMoney(of && (of.valor_total ?? of.valor_venda ?? 0)) + '</div>'
-          + '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
-          + '<button id="com-busca-concluir">✅ Concluir OF</button>'
-          + '<button id="com-busca-editar">✏️ Editar</button>'
-          + '</div>';
+        if (res) {
+          res.style.display = 'block';
+          res.innerHTML = ofs.map(function(of) {
+            var st = of && of.status;
+            return ''
+              + '<div class="com-busca-card" data-of-id="' + String(of && of.id || '').replace(/"/g, '&quot;') + '" style="margin-top:10px;border:1px solid rgba(255,255,255,0.10);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,0.03)">'
+              + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">'
+              + '<div><b>OF #' + String(of && (of.numero || of.of_num || '') || '—').replace(/</g, '&lt;') + '</b> · ' + String(of && (of.cliNome || of.cliente_nome || of.cliente) || '—').replace(/</g, '&lt;') + '</div>'
+              + '<div>' + badge(st) + '</div>'
+              + '</div>'
+              + '<div style="margin-top:6px;opacity:0.9">Vendedor: ' + String(of && (of.vendNome || of.vendedor_nome || of.vendedor) || '—').replace(/</g, '&lt;') + ' · Valor: ' + _fmtMoney(of && (of.valor_total ?? of.valor_venda ?? 0)) + '</div>'
+              + '<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
+              + '<button type="button" data-acao="concluir">✅ Concluir</button>'
+              + '<button type="button" data-acao="editar">✏️ Editar</button>'
+              + '</div>'
+              + '</div>';
+          }).join('');
 
-        var btnCon = res.querySelector('#com-busca-concluir');
-        var btnEd = res.querySelector('#com-busca-editar');
-
-        if (btnCon) btnCon.onclick = async function() {
-          try {
-            var id = String(of && of.id || '').trim();
-            if (!id) return;
-            await _abrirFluxoConclusaoOF(id, of);
-          } catch (e) {
-            res.style.display = 'block';
-            res.textContent = 'Erro ao concluir: ' + String(e && e.message || e);
-          }
-        };
-
-        if (btnEd) btnEd.onclick = function() {
-          try { _abrirModalOF(String(of && of.id || '').trim()); } catch (_) {}
-        };
+          res.onclick = function(ev) {
+            try {
+              var btnA = ev && ev.target && (ev.target.closest ? ev.target.closest('button[data-acao]') : null);
+              if (!btnA) return;
+              var card = btnA.closest('.com-busca-card');
+              if (!card) return;
+              var ofId = String(card.getAttribute('data-of-id') || '').trim();
+              if (!ofId) return;
+              var of = ofs.find(function(x) { return String(x && x.id || '') === ofId; }) || null;
+              var acao = String(btnA.getAttribute('data-acao') || '');
+              if (acao === 'editar') { _abrirModalOF(ofId); return; }
+              if (acao === 'concluir') { _abrirFluxoConclusaoOF(ofId, of || null); return; }
+            } catch (_) {}
+          };
+        }
       }
 
       btn.addEventListener('click', function(e) { try { e.preventDefault(); } catch (_) {} buscar(); });

@@ -11319,6 +11319,160 @@ app.get('/api/estoque_dashboard', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/dashboard/estoques-resumo', authMiddleware, async (req, res) => {
+  try {
+    const email = req.usuario?.email || req.user?.email || '';
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaIdEstoqueByEmail(email); } catch (_) { empresa_id = null; }
+    if (!empresa_id) {
+      try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
+    }
+    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
+
+    const hoje = new Date();
+    const em30 = new Date(hoje.getTime() + 30 * 86400000);
+    const pickQtd = (x) => Number(x?.quantidade_atual ?? x?.quantidade ?? x?.qtd ?? x?.qtd_atual ?? 0) || 0;
+    const pickMin = (x) => Number(x?.estoque_minimo ?? x?.quantidade_minima ?? x?.minimo ?? x?.min ?? 0) || 0;
+    const pickValidade = (x) => {
+      const v = x?.validade ?? x?.data_validade ?? x?.dt_validade ?? null;
+      if (!v) return null;
+      const d = new Date(String(v));
+      return Number.isFinite(d.getTime()) ? d : null;
+    };
+    const isVencendo30 = (x) => {
+      const d = pickValidade(x);
+      if (!d) return false;
+      return d.getTime() > hoje.getTime() && d.getTime() <= em30.getTime();
+    };
+    const sumValor = (items, getCusto) => (Array.isArray(items) ? items : []).reduce((s, it) => {
+      const q = pickQtd(it);
+      const c = Number(getCusto(it) || 0) || 0;
+      return s + (q * c);
+    }, 0);
+
+    const agg = (items, opts) => {
+      const base = Array.isArray(items) ? items : [];
+      const getCusto = opts?.getCusto || (() => 0);
+      const hasVenc = !!opts?.hasVenc;
+      let criticos = 0;
+      let alertas = 0;
+      let okC = 0;
+      let vencendo = 0;
+      base.forEach((it) => {
+        const q = pickQtd(it);
+        const m = pickMin(it);
+        if (hasVenc && isVencendo30(it)) vencendo += 1;
+        if (m > 0) {
+          if (q <= m) criticos += 1;
+          else if (q <= m * 1.5) alertas += 1;
+          else okC += 1;
+        } else {
+          okC += 1;
+        }
+      });
+      return {
+        total_itens: base.length,
+        valor_total: sumValor(base, getCusto),
+        criticos,
+        alertas,
+        ok: okC,
+        ...(hasVenc ? { vencendo } : {}),
+      };
+    };
+
+    let tintas = [];
+    try {
+      const r = await supabase.from('estoque_tintas').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+      tintas = r?.data || [];
+    } catch (_) { tintas = []; }
+
+    let materiais = [];
+    try {
+      const r = await supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).eq('ativo', true);
+      materiais = r?.data || [];
+    } catch (_) { materiais = []; }
+
+    let chapas = [];
+    const tryChapas = async (table) => {
+      try {
+        const r = await _queryByEmpresa(table, '*', empresa_id, 'nomenclatura', '');
+        return r?.data || [];
+      } catch (_) {
+        return [];
+      }
+    };
+    const chapasTables = ['estoque_chapas', 'chapas_estoque_v2', 'chapas_estoque', 'estoque'];
+    for (const t of chapasTables) {
+      const rows = await tryChapas(t);
+      if (Array.isArray(rows) && rows.length) { chapas = rows; break; }
+    }
+    if (!Array.isArray(chapas)) chapas = [];
+
+    const chapasAgg = agg(chapas, { getCusto: (c) => c?.preco_unitario ?? c?.custo_unitario ?? c?.valor_unitario ?? c?.preco ?? 0 });
+    const tintasAgg = agg(tintas, { hasVenc: true, getCusto: (t) => t?.custo ?? t?.custo_unitario ?? t?.preco_kg ?? t?.preco ?? 0 });
+    const materiaisAgg = agg(materiais, { getCusto: (m) => m?.custo_medio ?? m?.custo_unitario ?? m?.ultimo_custo ?? m?.custo ?? 0 });
+
+    const loadMovs = async (table, categoria) => {
+      const limit = 10;
+      const tryCols = [
+        { col: 'empresa_id', val: empresa_id },
+        { col: 'emp_id', val: empresa_id },
+        { col: null, val: null },
+      ];
+      for (const t of tryCols) {
+        try {
+          let q = supabase.from(table).select('*').order('created_at', { ascending: false }).limit(limit);
+          if (t.col) q = q.eq(t.col, t.val);
+          const { data, error } = await q;
+          if (error) {
+            const msg = String(error.message || error).toLowerCase();
+            if (t.col && (msg.includes('column') || msg.includes('could not find'))) continue;
+            if (msg.includes('does not exist') || msg.includes('not exist')) return [];
+            continue;
+          }
+          return (Array.isArray(data) ? data : []).map((m) => ({
+            ...m,
+            categoria,
+          }));
+        } catch (e) {
+          const msg = String(e?.message || e || '').toLowerCase();
+          if (msg.includes('does not exist') || msg.includes('not exist')) return [];
+          continue;
+        }
+      }
+      return [];
+    };
+
+    const movs = [];
+    try { movs.push(...await loadMovs('chapas_estoque_movimentos_v2', 'Chapas')); } catch (_) {}
+    if (!movs.length) {
+      try { movs.push(...await loadMovs('chapas_estoque_movimentos', 'Chapas')); } catch (_) {}
+    }
+    try { movs.push(...await loadMovs('estoque_tintas_movimentos', 'Tintas')); } catch (_) {}
+    try { movs.push(...await loadMovs('estoque_materiais_movimentos', 'Materiais')); } catch (_) {}
+    movs.sort((a, b) => String(b?.created_at || '').localeCompare(String(a?.created_at || '')));
+
+    const movimentacoes_recentes = movs.slice(0, 10).map((m) => ({
+      categoria: m.categoria || '',
+      tipo: m.tipo || m.tipo_mov || m.movimento || m.origem || '',
+      item: m.item || m.nome || m.material_nome || m.tinta_nome || m.nomenclatura || m.produto || '',
+      quantidade: m.quantidade ?? m.delta ?? m.qtd ?? null,
+      operador: m.operador || m.usuario || m.user || null,
+      created_at: m.created_at || null,
+    }));
+
+    return res.json({
+      ok: true,
+      chapas: chapasAgg,
+      tintas: tintasAgg,
+      materiais: materiaisAgg,
+      movimentacoes_recentes,
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 // ══════════════════════════════════════════════════════════════
 // FACAS ESTOQUE
 // ══════════════════════════════════════════════════════════════
