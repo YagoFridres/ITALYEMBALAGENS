@@ -1484,17 +1484,26 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
       .sort((a,b) => b.total - a.total) 
       .map(v => ({ ...v, comissao_rs: v.total * (v.comissao_pct/100) })); 
 
-    const ofsDetalhadas = todasOFs.map(of => ({ 
-      id: of.id, 
-      numero: of.numero, 
-      cliente: of.cliente_nome || '—', 
-      vendedor: of.vendedor_nome || 'Sem Vendedor', 
-      valor_total: Number(of.valor_total || 0), 
-      comissao_pct: Number(of.comissao_pct || 1), 
-      comissao_rs: Number(of.comissao_rs || 0), 
-      data_conclusao: of.data_conclusao, 
-      status: of.status || '—' 
-    })); 
+    const ofsDetalhadas = todasOFs.map(of => { 
+      const valor_total = Number(of.valor_total || 0); 
+      const comissao_pct = Number(of.comissao_pct || 1); 
+      const comissao_rs = (of.comissao_rs != null) ? Number(of.comissao_rs || 0) : (valor_total * (comissao_pct/100)); 
+      return { 
+        id: of.id, 
+        numero: of.numero, 
+        cli_id: of.cli_id || of.cliId || of.cliente_id || of.clienteId || null, 
+        vendedor_id: of.vendedor_id || of.vendId || of.vend_id || null, 
+        cliente: of.cliente_nome || of.cliente || '—', 
+        vendedor: of.vendedor_nome || of.vendedor || 'Sem Vendedor', 
+        quantidade: of.quantidade ?? of.qtd ?? of.qtd_pedida ?? null, 
+        valor_total, 
+        comissao_pct, 
+        comissao_rs, 
+        created_at: of.created_at || null, 
+        data_conclusao: of.data_conclusao, 
+        status: of.status || '—' 
+      }; 
+    }); 
 
     const totalComissao = vendedoresResult.reduce((s,v) => s+v.comissao_rs, 0); 
     console.log('[COM] FINAL ofs:', todasOFs.length, 'total:', totalGeral); 
@@ -3934,6 +3943,78 @@ app.post('/api/ofs', authMiddleware, async (req, res) => {
     _logApiError('OFS POST', req, e, { bodyKeys: Object.keys(req.body || {}), bodySize: _safeJson(req.body || {}).length });
     return res.status(500).json({ ok: false, error: String(e?.message || e), rid: req._rid || null });
   }
+});
+
+app.get('/api/ofs/buscar', authMiddleware, async (req, res) => {
+  try {
+    setNoCache(res);
+    const numeroRaw = String(req.query?.numero || '').trim();
+    if (!numeroRaw) return res.status(400).json({ ok: false, error: 'numero obrigatório' });
+
+    const joinKeys = ['cli_id', 'cliente_id', 'cliId'];
+    let data = null;
+    let lastError = null;
+
+    for (const key of joinKeys) {
+      const r = await supabase
+        .from('ofs')
+        .select(`*,cliente:clientes!${key}(nome,vendedor_id,vendedor:vendedores!vendedor_id(nome))`)
+        .ilike('numero', `%${numeroRaw}%`)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (!r.error) { data = r.data; break; }
+      lastError = r.error;
+      const msg = String(r.error?.message || '');
+      if (msg.includes('relationship') || msg.includes('schema cache') || msg.includes('Could not find a relationship')) continue;
+      break;
+    }
+
+    if (!data) {
+      const { data: data2, error: e2 } = await supabase
+        .from('ofs')
+        .select('*')
+        .ilike('numero', `%${numeroRaw}%`)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (e2) return res.status(400).json({ ok: false, error: String(e2.message || e2) });
+      data = data2 || [];
+    }
+
+    const lista = Array.isArray(data) ? data : (data ? [data] : []);
+    if (!lista.length) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    const of = lista[0] || null;
+    if (!of) return res.status(404).json({ ok: false, error: 'OF não encontrada' });
+
+    let cliNome = '';
+    let vendNome = '';
+    let vendedorId = null;
+    try {
+      const clienteJoin = of.cliente && typeof of.cliente === 'object' ? of.cliente : null;
+      const vendNested = clienteJoin?.vendedor && typeof clienteJoin.vendedor === 'object' ? clienteJoin.vendedor : null;
+      cliNome = String(clienteJoin?.nome || of.cliNome || of.clinome || of.cliente_nome || of.cliente || '').trim();
+      vendNome = String(vendNested?.nome || of.vendNome || of.vendedor_nome || of.vendedor || '').trim();
+      vendedorId = clienteJoin?.vendedor_id || of.vendedor_id || of.vendId || null;
+    } catch (_) {}
+
+    const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+    if (vendNome && isUuid(String(vendNome).trim())) vendNome = '';
+    if ((!vendNome || isUuid(String(vendNome || '').trim())) && vendedorId && isUuid(String(vendedorId || '').trim())) {
+      try {
+        const { data: vend } = await supabase.from('vendedores').select('nome').eq('id', String(vendedorId)).maybeSingle();
+        if (vend?.nome) vendNome = String(vend.nome).trim();
+      } catch (_) {}
+    }
+
+    const out = { ...of };
+    try { delete out.cliente; } catch (_) {}
+    out.cliNome = cliNome || out.cliNome || out.cliente_nome || out.cliente || '';
+    out.cliente_nome = out.cliNome;
+    out.vendNome = vendNome || out.vendNome || out.vendedor_nome || out.vendedor || '';
+    out.vendedor_nome = out.vendNome;
+    out.vendedor_id = vendedorId || out.vendedor_id || out.vendId || null;
+    return ok(res, out);
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
