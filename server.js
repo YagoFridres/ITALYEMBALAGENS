@@ -3190,7 +3190,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 500, 1000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
-    const busca = req.query.busca;
+    const busca = String(req.query.busca || req.query.search || '').trim();
     const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
     const useCache = !afterIso;
@@ -3289,7 +3289,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       }
     }
 
-    const rows = ofsRaw.map((of) => {
+    let rows = ofsRaw.map((of) => {
       const cliIdNorm = String(of.cli_id || '').trim();
       const clienteNome = of.clinome
         || mapaClientes[cliIdNorm]
@@ -3353,6 +3353,16 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
         numero: of.numero || of.of_num || of.of || ''
       };
     });
+
+    if (busca) {
+      const buscaNorm = String(busca).toLowerCase();
+      rows = rows.filter((of) => {
+        const hay = [
+          of?.numero, of?.descricao, of?.produto, of?.cliente, of?.clinome, of?.cliente_nome
+        ].map((v) => String(v || '').toLowerCase()).join(' ');
+        return hay.includes(buscaNorm);
+      });
+    }
 
     const totalCount = count || rows.length;
     const hasMore = (offset + rows.length) < totalCount;
@@ -10854,7 +10864,7 @@ app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
       try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
     }
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
-    const q = String(req.query?.q || '').trim();
+    const q = String(req.query?.search || req.query?.q || '').trim();
     let data = null;
     let error = null;
     try {
@@ -11449,6 +11459,34 @@ app.get('/api/cliches_estoque', authMiddleware, async (req, res) => {
     }
     throw lastErr;
   } catch (e) { err(res, e); }
+});
+
+app.get('/api/facas', authMiddleware, async (req, res) => {
+  try {
+    const search = String(req.query.search || req.query.q || '').trim();
+    const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
+    let q = supabase.from('facas_estoque').select('*').order('nome').limit(limit);
+    if (search) {
+      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,numero.ilike.%' + search + '%');
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/cliches', authMiddleware, async (req, res) => {
+  try {
+    const search = String(req.query.search || req.query.q || '').trim();
+    const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
+    let q = supabase.from('cliches_estoque').select('*').order('nome').limit(limit);
+    if (search) {
+      q = q.or('nome.ilike.%' + search + '%,codigo.ilike.%' + search + '%,descricao.ilike.%' + search + '%,cliente.ilike.%' + search + '%');
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 app.post('/api/cliches_estoque', authMiddleware, async (req, res) => {
   try {
@@ -12047,8 +12085,9 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
         const cat = String(req.query.categoria).trim();
         rows = rows.filter(r => String(r.categoria || '').trim() === cat);
       }
-      if (!_isFiltroVazioChapas(req.query.busca)) {
-        const b = String(req.query.busca).trim().toLowerCase();
+      const buscaChapasRaw = req.query.busca || req.query.search;
+      if (!_isFiltroVazioChapas(buscaChapasRaw)) {
+        const b = String(buscaChapasRaw).trim().toLowerCase();
         rows = rows.filter(r => [r.nome, r.nomenclatura, r.fornecedor, r.tamanho, r.nf, r.empresa_vinculada, r.qual_cnpj, r.vincos, r.observacao, r.categoria, r.cliente, r.risca_desc].join(' ').toLowerCase().includes(b));
       }
       if (!_isFiltroVazioChapas(req.query.cliente)) {
@@ -12171,6 +12210,47 @@ app.get('/api/chapas_estoque', authMiddleware, async (req, res) => {
     console.error('[chapas_estoque] catch:', err.message);
     return res.json([]);
   }
+});
+
+app.get('/api/chapas', authMiddleware, async (req, res) => {
+  try {
+    const search = String(req.query.search || req.query.busca || req.query.q || '').trim();
+    const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
+    let rows = [];
+    const tablesToTry = ['chapas_estoque', 'chapas_estoque_v2'];
+    for (const table of tablesToTry) {
+      let q = supabase.from(table).select('*').limit(limit);
+      const { data, error } = await q;
+      if (error) continue;
+      rows = (data || []).map((r) => _chapasCanonicalFromAny(r, table));
+      if (search) {
+        const s = search.toLowerCase();
+        rows = rows.filter((r) => [r.nomenclatura, r.nome, r.fornecedor, r.cliente_nome, r.observacao].join(' ').toLowerCase().includes(s));
+      }
+      if (rows.length || table === tablesToTry[tablesToTry.length - 1]) break;
+    }
+    return res.json({ ok: true, data: rows.slice(0, limit) });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get('/api/materiais', authMiddleware, async (req, res) => {
+  try {
+    const email = req.usuario?.email || req.user?.email || '';
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaIdEstoqueByEmail(email); } catch (_) { empresa_id = null; }
+    if (!empresa_id) {
+      try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
+    }
+    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
+    const search = String(req.query.search || req.query.q || '').trim();
+    const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || ''), 10) || 10));
+    let q = supabase.from('estoque_materiais').select('*').eq('empresa_id', empresa_id).limit(limit).order('nome', { ascending: true });
+    try { q = q.eq('ativo', true); } catch (_) {}
+    if (search) q = q.or('nome.ilike.%' + search + '%,nomenclatura.ilike.%' + search + '%,fornecedor.ilike.%' + search + '%');
+    const { data, error } = await q;
+    if (error) throw error;
+    return res.json({ ok: true, data: data || [] });
+  } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message || e) }); }
 });
 
 app.post('/api/admin/limpar_cache_chapas', authMiddleware, requireAdmin, async (req, res) => {

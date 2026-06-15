@@ -12383,6 +12383,8 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  try { window.__comAbrirModalOF = _abrirModalOF; } catch (_) {}
+
   function _bindTrocarClick() {
     try {
       if (window.__comTrocarBound) return;
@@ -12693,4 +12695,392 @@ function _ocultarGraficoComissoes() {
   try { _instalar(); } catch (_) {}
   try { setTimeout(_instalar, 800); } catch (_) {}
   try { setInterval(_instalar, 2500); } catch (_) {}
+})();
+
+(function() {
+  if (window.__patchBuscadorUniversalRecorrentes) return;
+  window.__patchBuscadorUniversalRecorrentes = true;
+
+  function esc(v) {
+    try { return window.escH ? window.escH(v) : String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } catch (_) { return String(v == null ? '' : v); }
+  }
+  function fmtMoney(v) {
+    try { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } catch (_) { return 'R$\u00a00,00'; }
+  }
+  function fmtVal(v) {
+    if (v == null || v === '') return '—';
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v, null, 2); } catch (_) { return String(v); }
+    }
+    return String(v);
+  }
+  function authHeaders() {
+    try {
+      if (typeof headersAuth === 'function') return headersAuth();
+    } catch (_) {}
+    var token = '';
+    try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || '').trim(); } catch (_) { token = ''; }
+    return token ? { Authorization: 'Bearer ' + token } : {};
+  }
+  async function fetchJson(url) {
+    try {
+      var resp = await fetch(url, { headers: authHeaders() });
+      return await resp.json().catch(function() { return null; });
+    } catch (_) { return null; }
+  }
+  function debounce(fn, wait) {
+    var t = null;
+    return function() {
+      var args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function() { fn.apply(null, args); }, wait);
+    };
+  }
+  function statusBadge(st) {
+    var raw = String(st || '').trim();
+    var s = raw.toLowerCase();
+    var bg = '#334155';
+    var fg = '#e2e8f0';
+    if (s.indexOf('conclu') >= 0 || s === 'pedido pronto') { raw = 'Concluído'; bg = '#064e3b'; fg = '#10b981'; }
+    else if (s.indexOf('produ') >= 0) { raw = 'Em Produção'; bg = '#1e3a5f'; fg = '#60a5fa'; }
+    else if (s.indexOf('aber') >= 0) { raw = 'Aberta'; bg = '#422006'; fg = '#f59e0b'; }
+    else if (s.indexOf('canc') >= 0) { raw = 'Cancelada'; bg = '#4c0519'; fg = '#f43f5e'; }
+    return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:' + bg + ';color:' + fg + '">' + esc(raw || '—') + '</span>';
+  }
+  function ensureStyle() {
+    if (window._buscaUniversalStyleInjetado) return;
+    window._buscaUniversalStyleInjetado = true;
+    var style = document.createElement('style');
+    style.textContent = ''
+      + '#pcp-busca-universal{padding:18px}'
+      + '#pcp-busca-universal .bu-wrap{max-width:1100px;margin:0 auto}'
+      + '#pcp-busca-universal .bu-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}'
+      + '#pcp-busca-universal .bu-input{flex:1 1 560px;background:#1e2435;border:2px solid #2a3f5f;border-radius:10px;padding:14px 18px;font-size:15px;color:#fff;outline:none}'
+      + '#pcp-busca-universal .bu-input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,0.15)}'
+      + '#pcp-busca-universal .bu-btn{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer}'
+      + '#pcp-busca-universal .bu-btn:hover{background:#2563eb}'
+      + '#pcp-busca-universal .bu-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}'
+      + '#pcp-busca-universal .bu-chip{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 14px;font-size:12px;color:#cbd5e1;cursor:pointer}'
+      + '#pcp-busca-universal .bu-chip.is-active{background:#1d4ed8;border-color:#3b82f6;color:#fff}'
+      + '#pcp-busca-universal .bu-loading{display:flex;align-items:center;gap:10px;color:#94a3b8;padding:20px 0}'
+      + '#pcp-busca-universal .bu-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#60a5fa;border-radius:50%;animation:bu-spin .8s linear infinite}'
+      + '#pcp-busca-universal .bu-group{margin:18px 0 4px 0}'
+      + '#pcp-busca-universal .bu-title{font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:10px}'
+      + '#pcp-busca-universal .bu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+      + '#pcp-busca-universal .bu-card{background:#1e2435;border:1px solid #2a3350;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;color:#fff;cursor:pointer}'
+      + '#pcp-busca-universal .bu-card:hover{border-color:#60a5fa}'
+      + '#pcp-busca-universal .bu-ico{font-size:18px;line-height:1;min-width:26px;text-align:center}'
+      + '#pcp-busca-universal .bu-main{font-size:13px;font-weight:700;color:#f8fafc}'
+      + '#pcp-busca-universal .bu-sub{font-size:12px;color:#94a3b8;margin-top:2px}'
+      + '#pcp-busca-modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100001}'
+      + '#pcp-busca-modal .m-box{width:min(980px,94vw);max-height:88vh;overflow:auto;background:#0b1220;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:16px;color:#fff}'
+      + '#pcp-busca-modal .m-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}'
+      + '#pcp-busca-modal .m-title{font-size:16px;font-weight:800}'
+      + '#pcp-busca-modal .m-close{background:transparent;border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}'
+      + '#pcp-busca-modal .m-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
+      + '#pcp-busca-modal .m-item{background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px}'
+      + '#pcp-busca-modal .m-label{font-size:11px;text-transform:uppercase;color:#94a3b8;letter-spacing:.5px;margin-bottom:4px}'
+      + '#pcp-busca-modal .m-value{font-size:13px;color:#fff;white-space:pre-wrap;word-break:break-word}'
+      + '#pcp-busca-modal .m-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}'
+      + '#pcp-busca-modal .m-actions button{background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;cursor:pointer}'
+      + '@keyframes bu-spin{to{transform:rotate(360deg)}}'
+      + '@media (max-width:780px){#pcp-busca-universal .bu-grid{grid-template-columns:1fr}#pcp-busca-modal .m-grid{grid-template-columns:1fr}}';
+    document.head.appendChild(style);
+  }
+  function ensureModal() {
+    if (document.getElementById('pcp-busca-modal')) return;
+    var modal = document.createElement('div');
+    modal.id = 'pcp-busca-modal';
+    modal.innerHTML = '<div class="m-box"><div class="m-head"><div class="m-title" id="pcp-busca-modal-title">Detalhes</div><button class="m-close" id="pcp-busca-modal-close">X</button></div><div id="pcp-busca-modal-body"></div></div>';
+    document.body.appendChild(modal);
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+    modal.querySelector('#pcp-busca-modal-close').onclick = function() { modal.style.display = 'none'; };
+  }
+  function objectGridHtml(obj) {
+    var keys = Object.keys(obj || {});
+    return '<div class="m-grid">' + keys.map(function(k) {
+      return '<div class="m-item"><div class="m-label">' + esc(k) + '</div><div class="m-value">' + esc(fmtVal(obj[k])) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  async function openDetails(kind, item) {
+    ensureModal();
+    var modal = document.getElementById('pcp-busca-modal');
+    var title = document.getElementById('pcp-busca-modal-title');
+    var body = document.getElementById('pcp-busca-modal-body');
+    if (!modal || !title || !body) return;
+
+    var obj = item || {};
+    var ttl = 'Detalhes';
+    if (kind === 'clientes') {
+      var cliDet = await fetchJson('/api/clientes/' + encodeURIComponent(String(item && item.id || '')));
+      obj = (cliDet && (cliDet.data || cliDet)) || obj;
+      ttl = 'Cliente: ' + String(obj.nome || obj.rs || item.nome || '—');
+    } else if (kind === 'ofs') {
+      ttl = 'OF #' + String(item && item.numero || item && item.id || '—');
+    } else if (kind === 'facas') {
+      ttl = 'Faca #' + String(item && (item.numero || item.codigo || item.nome) || '—');
+    } else if (kind === 'cliches') {
+      ttl = 'Clichê: ' + String(item && (item.codigo || item.nome) || '—');
+    } else if (kind === 'estoque') {
+      ttl = 'Estoque: ' + String(item && (item.nomenclatura || item.nome || item.fornecedor) || '—');
+    }
+
+    title.textContent = ttl;
+    body.innerHTML = objectGridHtml(obj) + '<div class="m-actions" id="pcp-busca-modal-actions"></div>';
+    var actions = document.getElementById('pcp-busca-modal-actions');
+
+    if (kind === 'ofs') {
+      var btnOf = document.createElement('button');
+      btnOf.textContent = '✏️ Editar OF';
+      btnOf.onclick = function() {
+        modal.style.display = 'none';
+        try {
+          if (typeof window.__comAbrirModalOF === 'function') window.__comAbrirModalOF(String(item && item.id || ''));
+        } catch (_) {}
+      };
+      actions.appendChild(btnOf);
+    }
+
+    if (kind === 'clientes') {
+      var btnCli = document.createElement('button');
+      btnCli.textContent = 'Ver OFs do Cliente';
+      btnCli.onclick = async function() {
+        var cliId = String(obj && obj.id || item && item.id || '').trim();
+        if (!cliId) return;
+        var r = await fetchJson('/api/ofs?cli_id=' + encodeURIComponent(cliId) + '&limit=10');
+        var lista = (r && (r.data || r.rows)) || [];
+        if (!Array.isArray(lista)) lista = [];
+        body.innerHTML = objectGridHtml(obj)
+          + '<div style="margin-top:14px"><div class="m-title" style="font-size:14px;margin-bottom:10px">OFs do Cliente</div>'
+          + (lista.length ? '<div class="m-grid">' + lista.map(function(of) {
+              return '<div class="m-item"><div class="m-label">OF #' + esc(of.numero || of.id || '—') + '</div><div class="m-value">' + esc(of.cliente || of.clinome || '') + '\n' + esc(of.produto || of.descricao || '') + '\n' + fmtMoney(of.valor_total || of.total || 0) + '</div></div>';
+            }).join('') + '</div>' : '<div class="m-item"><div class="m-value">Nenhuma OF encontrada para este cliente.</div></div>')
+          + '</div><div class="m-actions" id="pcp-busca-modal-actions"></div>';
+        document.getElementById('pcp-busca-modal-actions').appendChild(btnCli);
+      };
+      actions.appendChild(btnCli);
+    }
+    modal.style.display = 'flex';
+  }
+
+  function uniqBy(list, keyFn) {
+    var map = {};
+    return (Array.isArray(list) ? list : []).filter(function(item) {
+      var key = keyFn(item);
+      if (!key) return true;
+      if (map[key]) return false;
+      map[key] = true;
+      return true;
+    });
+  }
+  function normalizeCliente(c) {
+    return { kind: 'clientes', id: c.id, nome: c.nome || c.rs || '—', cidade: c.cidade || '', uf: c.uf || '', raw: c };
+  }
+  function normalizeOf(of) {
+    return { kind: 'ofs', id: of.id, numero: of.numero || of.id, cliente: of.cliente || of.clinome || of.cliente_nome || of.cliNome || '—', valor_total: of.valor_total || of.total || 0, status: of.status || '', raw: of };
+  }
+  function normalizeFaca(f) {
+    return { kind: 'facas', id: f.id, codigo: f.codigo || f.numero || f.nome || '—', descricao: f.descricao || f.nome || '—', status: f.condicao || f.status || f.categoria || '—', raw: f };
+  }
+  function normalizeCliche(c) {
+    return { kind: 'cliches', id: c.id, codigo: c.codigo || c.nome || '—', cliente: c.cliente || c.nome_cliente || '—', cores: c.cores || c.descricao || '—', raw: c };
+  }
+  function normalizeEstoque(x) {
+    return { kind: 'estoque', id: x.id || (x.nomenclatura || x.nome || x.fornecedor), nome: x.nomenclatura || x.nome || x.nome_uso || '—', quantidade: x.quantidade || x.quantidade_atual || 0, fornecedor: x.fornecedor || '—', raw: x };
+  }
+  function activeCats() {
+    var filter = String(window._buscaUniversalCategoria || 'todos');
+    if (filter === 'todos') return ['clientes', 'ofs', 'facas', 'cliches', 'estoque'];
+    return [filter];
+  }
+  async function runSearch(term) {
+    term = String(term || '').trim();
+    window._buscaUniversalTermo = term;
+    var resultBox = document.getElementById('busca-universal-results');
+    if (!resultBox) return;
+    if (!term || term.length < 3) {
+      resultBox.innerHTML = '<div style="color:#94a3b8;padding:8px 2px">Digite ao menos 3 caracteres para buscar.</div>';
+      return;
+    }
+    var key = String(window._buscaUniversalCategoria || 'todos') + '|' + term.toLowerCase();
+    if (window._buscaUniversalLastKey === key) return;
+    window._buscaUniversalLastKey = key;
+    resultBox.innerHTML = '<div class="bu-loading"><div class="bu-spinner"></div><div>Buscando...</div></div>';
+
+    var cats = activeCats();
+    var jobs = [];
+    if (cats.indexOf('clientes') >= 0) jobs.push(fetchJson('/api/clientes?search=' + encodeURIComponent(term) + '&limit=10').then(function(j) { return ['clientes', (j && (j.data || j.clientes)) || []]; }));
+    if (cats.indexOf('ofs') >= 0) jobs.push(Promise.all([
+      fetchJson('/api/ofs/buscar?numero=' + encodeURIComponent(term)),
+      fetchJson('/api/ofs?search=' + encodeURIComponent(term) + '&limit=10')
+    ]).then(function(arr) {
+      var a = [];
+      var j1 = arr[0];
+      var j2 = arr[1];
+      if (j1 && j1.ok) {
+        if (Array.isArray(j1.data)) a = a.concat(j1.data);
+        else if (j1.data) a.push(j1.data);
+        else if (j1.id) a.push(j1);
+      }
+      a = a.concat((j2 && (j2.data || j2.rows)) || []);
+      return ['ofs', uniqBy(a, function(x) { return String(x && (x.id || x.numero) || ''); })];
+    }));
+    if (cats.indexOf('facas') >= 0) jobs.push(fetchJson('/api/facas?search=' + encodeURIComponent(term) + '&limit=10').then(function(j) { return ['facas', (j && j.data) || []]; }));
+    if (cats.indexOf('cliches') >= 0) jobs.push(fetchJson('/api/cliches?search=' + encodeURIComponent(term) + '&limit=10').then(function(j) { return ['cliches', (j && j.data) || []]; }));
+    if (cats.indexOf('estoque') >= 0) jobs.push(Promise.all([
+      fetchJson('/api/chapas?search=' + encodeURIComponent(term) + '&limit=10'),
+      fetchJson('/api/materiais?search=' + encodeURIComponent(term) + '&limit=10')
+    ]).then(function(arr) {
+      return ['estoque', uniqBy(((arr[0] && arr[0].data) || []).concat((arr[1] && arr[1].data) || []), function(x) { return String(x && (x.id || x.nomenclatura || x.nome) || ''); })];
+    }));
+
+    var settled = await Promise.all(jobs);
+    var groups = { clientes: [], ofs: [], facas: [], cliches: [], estoque: [] };
+    settled.forEach(function(pair) { groups[pair[0]] = Array.isArray(pair[1]) ? pair[1] : []; });
+
+    groups.clientes = groups.clientes.map(normalizeCliente);
+    groups.ofs = groups.ofs.map(normalizeOf);
+    groups.facas = groups.facas.map(normalizeFaca);
+    groups.cliches = groups.cliches.map(normalizeCliche);
+    groups.estoque = groups.estoque.map(normalizeEstoque);
+
+    var defs = [
+      ['clientes', '🏢 CLIENTES'],
+      ['ofs', '📋 OFs'],
+      ['facas', '🔧 FACAS'],
+      ['cliches', '🖨️ CLICHÊS'],
+      ['estoque', '📦 ESTOQUE']
+    ];
+    var html = '';
+    defs.forEach(function(def) {
+      var cat = def[0];
+      var label = def[1];
+      var list = groups[cat] || [];
+      if (!list.length) return;
+      html += '<div class="bu-group"><div class="bu-title">' + label + ' (' + list.length + ')</div><div class="bu-grid">';
+      html += list.map(function(item) {
+        if (cat === 'clientes') {
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🏢</div><div><div class="bu-main">' + esc(item.nome) + '</div><div class="bu-sub">' + esc([item.cidade, item.uf].filter(Boolean).join('/')) + '</div></div></div>';
+        }
+        if (cat === 'ofs') {
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">📋</div><div><div class="bu-main">#' + esc(item.numero) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + fmtMoney(item.valor_total) + ' · ' + statusBadge(item.status) + '</div></div></div>';
+        }
+        if (cat === 'facas') {
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🔧</div><div><div class="bu-main">' + esc(item.codigo) + '</div><div class="bu-sub">' + esc(item.descricao) + ' · ' + esc(item.status) + '</div></div></div>';
+        }
+        if (cat === 'cliches') {
+          return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">🖨️</div><div><div class="bu-main">' + esc(item.codigo) + ' · ' + esc(item.cliente) + '</div><div class="bu-sub">' + esc(item.cores) + '</div></div></div>';
+        }
+        return '<div class="bu-card" data-kind="' + cat + '" data-id="' + esc(item.id) + '"><div class="bu-ico">📦</div><div><div class="bu-main">' + esc(item.nome) + '</div><div class="bu-sub">' + esc(item.fornecedor) + ' · Qtd: ' + esc(item.quantidade) + '</div></div></div>';
+      }).join('');
+      html += '</div></div>';
+    });
+    if (!html) html = '<div style="color:#94a3b8;padding:8px 2px">Nenhum resultado encontrado para \'' + esc(term) + '\'</div>';
+    resultBox.innerHTML = html;
+    window.__buscaUniversalData = groups;
+  }
+
+  function bindUi() {
+    var root = document.getElementById('pcp-busca-universal');
+    if (!root || root.dataset.bound === '1') return;
+    root.dataset.bound = '1';
+    var input = root.querySelector('#busca-universal-input');
+    var btn = root.querySelector('#busca-universal-btn');
+    var debounced = debounce(function() { runSearch(input && input.value); }, 400);
+    if (input) input.addEventListener('input', function() {
+      var val = String(input.value || '').trim();
+      if (val.length >= 3) debounced();
+    });
+    if (btn) btn.addEventListener('click', function() { runSearch(input && input.value); });
+    Array.prototype.slice.call(root.querySelectorAll('.bu-chip')).forEach(function(chip) {
+      chip.addEventListener('click', function() {
+        Array.prototype.slice.call(root.querySelectorAll('.bu-chip')).forEach(function(c) { c.classList.remove('is-active'); });
+        chip.classList.add('is-active');
+        window._buscaUniversalCategoria = String(chip.getAttribute('data-cat') || 'todos');
+        window._buscaUniversalLastKey = '';
+        if (input && String(input.value || '').trim().length >= 3) runSearch(input.value);
+      });
+    });
+    root.addEventListener('click', function(e) {
+      var card = e && e.target && (e.target.closest ? e.target.closest('.bu-card') : null);
+      if (!card) return;
+      var kind = String(card.getAttribute('data-kind') || '');
+      var id = String(card.getAttribute('data-id') || '');
+      var list = (((window.__buscaUniversalData || {})[kind]) || []);
+      var item = list.find(function(x) { return String(x && x.id || '') === id; });
+      if (!item) return;
+      openDetails(kind, item.raw || item);
+    });
+  }
+
+  function sectionHtml() {
+    return ''
+      + '<div id="pcp-busca-universal">'
+      + '<div class="bu-wrap">'
+      + '<div class="bu-bar">'
+      + '<input id="busca-universal-input" class="bu-input" placeholder="🔍  Digite para buscar clientes, OFs, facas..." />'
+      + '<button id="busca-universal-btn" class="bu-btn">Buscar</button>'
+      + '</div>'
+      + '<div class="bu-chips">'
+      + '<button class="bu-chip is-active" data-cat="todos">Todos</button>'
+      + '<button class="bu-chip" data-cat="clientes">Clientes</button>'
+      + '<button class="bu-chip" data-cat="ofs">OFs</button>'
+      + '<button class="bu-chip" data-cat="facas">Facas</button>'
+      + '<button class="bu-chip" data-cat="cliches">Clichês</button>'
+      + '<button class="bu-chip" data-cat="estoque">Estoque</button>'
+      + '</div>'
+      + '<div id="busca-universal-results"><div style="color:#94a3b8;padding:8px 2px">Digite ao menos 3 caracteres para buscar.</div></div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function replaceSection() {
+    try {
+      ensureStyle();
+      ensureModal();
+      var page = document.getElementById('page-pedidos-recorrentes');
+      if (!page) return;
+      if (page.dataset.buscadorUniversal === '1' && page.querySelector('#pcp-busca-universal')) {
+        bindUi();
+        return;
+      }
+      page.dataset.buscadorUniversal = '1';
+      page.innerHTML = sectionHtml();
+      bindUi();
+      var inp = page.querySelector('#busca-universal-input');
+      if (inp && window._buscaUniversalTermo) {
+        inp.value = window._buscaUniversalTermo;
+        if (String(window._buscaUniversalTermo).trim().length >= 3) {
+          window._buscaUniversalLastKey = '';
+          runSearch(window._buscaUniversalTermo);
+        }
+      }
+    } catch (_) {}
+  }
+
+  function installHooks() {
+    try {
+      window._buscaUniversalCategoria = window._buscaUniversalCategoria || 'todos';
+      window.renderPedidosRecorrentes = function() { replaceSection(); };
+      window.carregarPedidosRecorrentes = function() { replaceSection(); };
+      window.recorrentesRecarregar = function() {
+        replaceSection();
+        if (window._buscaUniversalTermo && String(window._buscaUniversalTermo).trim().length >= 3) {
+          window._buscaUniversalLastKey = '';
+          runSearch(window._buscaUniversalTermo);
+        }
+      };
+    } catch (_) {}
+  }
+
+  try {
+    installHooks();
+    replaceSection();
+    if (!window.__buscaUniversalObs) {
+      window.__buscaUniversalObs = new MutationObserver(function() { replaceSection(); });
+      window.__buscaUniversalObs.observe(document.body, { childList: true, subtree: true });
+    }
+    setTimeout(replaceSection, 500);
+    setTimeout(replaceSection, 1500);
+  } catch (_) {}
 })();
