@@ -136,6 +136,28 @@ window.addEventListener('unhandledrejection', function(e) {
     console.error('[PATCH PROMISE ERROR]', r && r.message ? r.message : r);
   } catch (_) {}
 });
+
+(function() {
+  if (window.__patchFixImgsSrcInstalled) return;
+  window.__patchFixImgsSrcInstalled = true;
+  function _fixImgsSrc() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('img')).forEach(function(img) {
+        try {
+          if (!img || img.dataset && img.dataset.patchImgFix === '1') return;
+          var src = String(img.getAttribute('src') || '').trim();
+          if (!src || src === '[]' || src === 'null' || src === 'undefined' || src.endsWith('/[]')) {
+            try { img.removeAttribute('src'); } catch (_) {}
+            try { img.style.display = 'none'; } catch (_) {}
+            try { img.dataset.patchImgFix = '1'; } catch (_) {}
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+  try { _fixImgsSrc(); } catch (_) {}
+  try { setInterval(_fixImgsSrc, 2000); } catch (_) {}
+})();
 (function() {
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
   var _logOrig = console.log.bind(console);
@@ -4999,14 +5021,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   try { _vincularBtnCalcular(); } catch (_) {}
   try { _vincularBtnImprimir(); } catch (_) {}
-  try {
-    var _obsCom = new MutationObserver(function() {
-      try { _preencherMesAtual(); } catch (_) {}
-      _vincularBtnCalcular();
-      _vincularBtnImprimir();
-    });
-    _obsCom.observe(document.body, { childList: true, subtree: true });
-  } catch (_) {}
 })();
 
 (function patchClientesEditarEPainel() {
@@ -11563,36 +11577,40 @@ function _renderTabelaOFs(json) {
 (function() {
   if (window.__patchComissoesUnicaDefinicao) return;
   window.__patchComissoesUnicaDefinicao = true;
+  var _comCalcEmAndamento = false;
 
   window.__comissoesPatchCalcular = async function() {
+    if (_comCalcEmAndamento) return;
+    _comCalcEmAndamento = true;
     var inp = null;
-    try { inp = document.querySelector('input[type=\"month\"]'); } catch (_) { inp = null; }
-    if (inp && !String(inp.value || '').trim()) {
-      try {
-        var hoje = new Date();
-        inp.value = String(hoje.getFullYear()) + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
-      } catch (_) {}
-    }
-
-    var val = '';
-    try { val = String(inp && inp.value || '').trim(); } catch (_) { val = ''; }
-    var anoNum = '';
-    var mesNum = '';
-    if (val && val.indexOf('-') >= 0) {
-      anoNum = val.split('-')[0];
-      mesNum = val.split('-')[1];
-    }
-    if (!mesNum || !anoNum) {
-      var h = new Date();
-      anoNum = String(h.getFullYear());
-      mesNum = String(h.getMonth() + 1).padStart(2, '0');
-    }
-
-    try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
-
-    var token = '';
-    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
     try {
+      try { inp = document.querySelector('input[type=\"month\"]'); } catch (_) { inp = null; }
+      if (inp && !String(inp.value || '').trim()) {
+        try {
+          var hoje = new Date();
+          inp.value = String(hoje.getFullYear()) + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+        } catch (_) {}
+      }
+
+      var val = '';
+      try { val = String(inp && inp.value || '').trim(); } catch (_) { val = ''; }
+      var anoNum = '';
+      var mesNum = '';
+      if (val && val.indexOf('-') >= 0) {
+        anoNum = val.split('-')[0];
+        mesNum = val.split('-')[1];
+      }
+      if (!mesNum || !anoNum) {
+        var h = new Date();
+        anoNum = String(h.getFullYear());
+        mesNum = String(h.getMonth() + 1).padStart(2, '0');
+      }
+
+      try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
+
+      var token = '';
+      try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+
       var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesNum) + '&ano=' + encodeURIComponent(anoNum), { headers: { Authorization: 'Bearer ' + token } });
       var json = await resp.json().catch(function() { return null; });
       try { console.log('[COM PATCH] resposta:', json && json.ok, json && json.total_ofs, json && json.total_vendido); } catch (_) {}
@@ -11631,6 +11649,8 @@ function _renderTabelaOFs(json) {
       setTimeout(function() { _renderTabelaVendedores(json); _renderTabelaOFs(json); }, 500);
     } catch (e) {
       try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
+    } finally {
+      setTimeout(function() { _comCalcEmAndamento = false; }, 3000);
     }
   };
 
@@ -11675,18 +11695,6 @@ function _renderTabelaOFs(json) {
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
-  try { setInterval(function() {
-    try {
-      if (typeof window.__comissoesPatchCalcular === 'function' && window.calcularComissoes !== window.__comissoesPatchCalcular) {
-        window.calcularComissoes = window.__comissoesPatchCalcular;
-      }
-    } catch (_) {}
-  }, 1500); } catch (_) {}
-
-  try {
-    var _obsCalc = new MutationObserver(function() { _vincularBtnCalcularComissoes(); });
-    _obsCalc.observe(document.body, { childList: true, subtree: true });
-  } catch (_) {}
 })();
 
 (function() {

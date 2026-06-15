@@ -1447,33 +1447,27 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const fimAno = parseInt(mes) === 12 ? anoNum + 1 : anoNum; 
     const fim = `${fimAno}-${String(fimMes).padStart(2,'0')}-01`; 
 
-    // Resolver empresa_id do usuário logado 
-    // Tentar getEmpresaId primeiro 
-    let empresa_id = null; 
-    try { empresa_id = await getEmpresaId(req); } catch(e) {} 
- 
-    // Verificar se o empresa_id retornado tem dados no período 
-    if (empresa_id) { 
-      const { count } = await supabase 
-        .from('ofs') 
-        .select('id', { count: 'exact', head: true }) 
-        .eq('empresa_id', empresa_id) 
-        .gte('data_conclusao', inicio) 
-        .lt('data_conclusao', fim) 
-        .ilike('status', '%conclu%'); 
-       
-      console.log('[COMISSOES] empresa_id:', empresa_id?.substring(0,8), 'count:', count); 
-       
-      // Se não tiver dados, tentar Italy como fallback 
-      if (!count || count === 0) { 
-        empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
-        console.log('[COMISSOES] fallback para Italy'); 
-      } 
-    } 
- 
-    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
-
+    // TEMPORÁRIO — forçar Italy para teste 
+    const empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
     console.log('[COMISSOES] params:', { mes: mesStr, ano, empresa_id, inicio, fim }); 
+ 
+    // Verificar quantas OFs existem no período 
+    const { count: countTotal } = await supabase 
+      .from('ofs') 
+      .select('id', { count: 'exact', head: true }) 
+      .eq('empresa_id', empresa_id) 
+      .gte('data_conclusao', inicio) 
+      .lt('data_conclusao', fim); 
+    console.log('[COMISSOES] count no periodo:', countTotal); 
+ 
+    const { count: countConcluidas } = await supabase 
+      .from('ofs') 
+      .select('id', { count: 'exact', head: true }) 
+      .eq('empresa_id', empresa_id) 
+      .gte('data_conclusao', inicio) 
+      .lt('data_conclusao', fim) 
+      .ilike('status', '%conclu%'); 
+    console.log('[COMISSOES] count concluidas:', countConcluidas); 
 
     // Buscar OFs concluídas do mês via data_conclusao 
     const PAGE = 1000; 
@@ -7817,10 +7811,13 @@ app.post('/api/clientes', authMiddleware, async (req, res) => {
 
 app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
   try {
-    const principalId = String(req.body?.principal_id || req.body?.cliente_principal_id || '').trim();
+    const idsArr = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const principalId = String(req.body?.principal_id || req.body?.cliente_principal_id || idsArr[0] || '').trim();
     const dupArr = Array.isArray(req.body?.duplicados)
       ? req.body.duplicados
-      : (Array.isArray(req.body?.cliente_duplicado_ids) ? req.body.cliente_duplicado_ids : [req.body?.cliente_duplicado_id]);
+      : (Array.isArray(req.body?.cliente_duplicado_ids)
+        ? req.body.cliente_duplicado_ids
+        : [req.body?.cliente_duplicado_id || req.body?.duplicado_id || idsArr[1]]);
     const duplicados = Array.from(new Set((dupArr || []).map((id) => String(id || '').trim()).filter(Boolean)));
     if (!principalId || !duplicados.length) {
       return res.status(400).json({ ok: false, error: 'IDs obrigatórios' });
@@ -7868,17 +7865,26 @@ app.post('/api/clientes/mesclar', authMiddleware, async (req, res) => {
         } catch (_) {}
       }
 
-      let { error: e2 } = await supabase
-        .from('clientes')
-        .update({ ativo: false })
-        .eq('id', cliente_duplicado_id);
-      if (e2) {
-        const msg = String(e2.message || e2 || '');
-        if (msg.includes('ativo')) {
-          ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
-        }
+      let delErr = null;
+      try {
+        const del = await supabase.from('clientes').delete().eq('id', cliente_duplicado_id);
+        delErr = del?.error || null;
+      } catch (e) {
+        delErr = e;
       }
-      if (e2) throw e2;
+      if (delErr) {
+        let { error: e2 } = await supabase
+          .from('clientes')
+          .update({ ativo: false })
+          .eq('id', cliente_duplicado_id);
+        if (e2) {
+          const msg = String(e2.message || e2 || '');
+          if (msg.includes('ativo')) {
+            ({ error: e2 } = await supabase.from('clientes').update({ inativo: true }).eq('id', cliente_duplicado_id));
+          }
+        }
+        if (e2) throw e2;
+      }
       mesclados += 1;
     }
 
@@ -10824,17 +10830,36 @@ async function _updateCompatTable(table, id, payload) {
 app.get('/api/estoque_tintas', authMiddleware, async (req, res) => {
   try {
     const email = req.usuario?.email || req.user?.email || '';
-    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaIdEstoqueByEmail(email); } catch (_) { empresa_id = null; }
+    if (!empresa_id) {
+      try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
+    }
+    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const q = String(req.query?.q || '').trim();
-    let query = supabase
-      .from('estoque_tintas')
-      .select('*')
-      .eq('empresa_id', empresa_id)
-      .order('nome', { ascending: true });
-    try { query = query.eq('ativo', true); } catch (_) {}
-    if (q) query = query.ilike('nome', `%${q}%`);
-    const { data, error } = await query;
-    if (error) throw error;
+    let data = null;
+    let error = null;
+    try {
+      let query = supabase
+        .from('estoque_tintas')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .order('nome', { ascending: true });
+      try { query = query.eq('ativo', true); } catch (_) {}
+      if (q) query = query.ilike('nome', `%${q}%`);
+      ({ data, error } = await query);
+    } catch (e) {
+      error = e;
+    }
+    if (error) {
+      console.error('[ESTOQUE_TINTAS] fallback query:', error.message || error);
+      let query2 = supabase.from('estoque_tintas').select('*').order('nome', { ascending: true });
+      try { query2 = query2.eq('empresa_id', empresa_id); } catch (_) {}
+      if (q) query2 = query2.ilike('nome', `%${q}%`);
+      const r2 = await query2;
+      if (r2.error) throw r2.error;
+      data = r2.data;
+    }
     return res.json({ ok: true, data: data || [] });
   } catch (e) {
     console.error('[ESTOQUE_TINTAS]', e.message || e);
@@ -10920,20 +10945,44 @@ app.post('/api/estoque_tintas/:id/movimentar', authMiddleware, async (req, res) 
 app.get('/api/estoque_materiais', authMiddleware, async (req, res) => {
   try {
     const email = req.usuario?.email || req.user?.email || '';
-    const empresa_id = await _resolveEmpresaIdEstoqueByEmail(email);
+    let empresa_id = null;
+    try { empresa_id = await _resolveEmpresaIdEstoqueByEmail(email); } catch (_) { empresa_id = null; }
+    if (!empresa_id) {
+      try { empresa_id = await getEmpresaId(req); } catch (_) { empresa_id = null; }
+    }
+    if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31';
     const q = String(req.query?.q || '').trim();
-    let query = supabase
-      .from('estoque_materiais')
-      .select('*')
-      .eq('empresa_id', empresa_id)
-      .order('categoria', { ascending: true })
-      .order('nome', { ascending: true });
-    try { query = query.eq('ativo', true); } catch (_) {}
-    if (q) query = query.ilike('nome', `%${q}%`);
-    const { data, error } = await query;
-    if (error) throw error;
+    let data = null;
+    let error = null;
+    try {
+      let query = supabase
+        .from('estoque_materiais')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .order('categoria', { ascending: true })
+        .order('nome', { ascending: true });
+      try { query = query.eq('ativo', true); } catch (_) {}
+      if (q) query = query.ilike('nome', `%${q}%`);
+      ({ data, error } = await query);
+    } catch (e) {
+      error = e;
+    }
+    if (error) {
+      console.error('[ESTOQUE_MATERIAIS] erro:', error.message || error);
+      let query2 = supabase
+        .from('estoque_materiais')
+        .select('*')
+        .eq('empresa_id', empresa_id)
+        .order('nome', { ascending: true });
+      try { query2 = query2.eq('ativo', true); } catch (_) {}
+      if (q) query2 = query2.ilike('nome', `%${q}%`);
+      const r2 = await query2;
+      if (r2.error) throw r2.error;
+      data = r2.data;
+    }
     return res.json({ ok: true, data: data || [] });
   } catch (e) {
+    console.error('[ESTOQUE_MATERIAIS]', e.message || e);
     return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
 });
