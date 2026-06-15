@@ -4298,39 +4298,81 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   if (window.__patchCalcularComissoesSqlBackendInstalled) return;
   window.__patchCalcularComissoesSqlBackendInstalled = true;
 
-  function parseMesAno() {
-    var mesEl = document.getElementById('com-mes') ||
-      document.querySelector('[name="mes"], #mes-sel, #comissao-mes, #comissoes-mes');
-    var anoEl = document.getElementById('com-ano') ||
-      document.querySelector('[name="ano"], #ano-sel, #comissao-ano, #comissoes-ano');
-    var mesVal = '';
-    var anoVal = '';
-    try { mesVal = String((mesEl && mesEl.value) || '').trim(); } catch (_) { mesVal = ''; }
-    try { anoVal = String((anoEl && anoEl.value) || '').trim(); } catch (_) { anoVal = ''; }
+  var _comissoesMesSelectors = [
+    '#com-mes', '#comissao-mes', '#mes-com',
+    'select[name="mes"]', '.com-mes-sel',
+    '#filtro-mes', '#mes-filtro'
+  ];
+  var _comissoesAnoSelectors = [
+    '#com-ano', '#comissao-ano', '#ano-com',
+    'select[name="ano"]', '.com-ano-sel',
+    '#filtro-ano', '#ano-filtro'
+  ];
 
-    if (mesVal && mesVal.indexOf('-') >= 0) {
-      var parts = mesVal.split('-');
-      if (parts.length >= 2) {
-        anoVal = parts[0];
-        mesVal = parts[1];
+  function _acharCampoComissao(selectors) {
+    var fallback = null;
+    for (var i = 0; i < selectors.length; i += 1) {
+      try {
+        var el = document.querySelector(selectors[i]);
+        if (!el) continue;
+        if (!fallback) fallback = el;
+        if (String(el.value || '').trim()) return el;
+      } catch (_) {}
+    }
+    return fallback;
+  }
+
+  function parseMesAno() {
+    var mesEl = _acharCampoComissao(_comissoesMesSelectors);
+    var anoEl = _acharCampoComissao(_comissoesAnoSelectors);
+    var mesNum = '';
+    var anoNum = '';
+
+    try { console.log('[COM] mesEl:', mesEl && mesEl.id, mesEl && mesEl.value); } catch (_) {}
+    try { console.log('[COM] anoEl:', anoEl && anoEl.id, anoEl && anoEl.value); } catch (_) {}
+
+    if (mesEl && String(mesEl.value || '').trim()) {
+      var v = String(mesEl.value || '').trim();
+      if (v.indexOf('-') >= 0) {
+        var parts = v.split('-');
+        if (parts.length >= 2) {
+          anoNum = String(parts[0] || '').trim();
+          mesNum = String(parts[1] || '').trim();
+        }
+      } else if (!isNaN(parseInt(v, 10))) {
+        mesNum = String(parseInt(v, 10)).padStart(2, '0');
+        anoNum = String((anoEl && anoEl.value) || new Date().getFullYear()).trim();
       }
-    } else if (!mesVal || isNaN(parseInt(mesVal, 10))) {
+    }
+
+    if (!mesNum || !anoNum) {
       try {
         var textoMes = String((document.querySelector('.com-mes-label, [data-mes]') || {}).textContent || '');
-        var meses = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+        var meses = ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
         var low = textoMes.toLowerCase();
-        meses.forEach(function(m, i) {
-          if (low.indexOf(m) >= 0) mesVal = String(i + 1).padStart(2, '0');
+        meses.forEach(function(nome, idx) {
+          if (!mesNum && low.indexOf(nome) >= 0) mesNum = String(idx + 1).padStart(2, '0');
         });
-        var anoMatch = textoMes.match(/\d{4}/);
-        if (anoMatch) anoVal = anoMatch[0];
+        if (!anoNum) {
+          var anoMatch = textoMes.match(/\d{4}/);
+          if (anoMatch) anoNum = anoMatch[0];
+        }
       } catch (_) {}
     }
 
-    var mesNum = parseInt(String(mesVal || ''), 10);
-    if (!mesNum || mesNum < 1 || mesNum > 12) mesNum = (new Date().getMonth() + 1);
-    var anoNum = parseInt(String(anoVal || ''), 10) || new Date().getFullYear();
-    return { mesNum: mesNum, anoNum: anoNum };
+    if (!mesNum || !anoNum) {
+      var hoje = new Date();
+      mesNum = String(hoje.getMonth() + 1).padStart(2, '0');
+      anoNum = String(hoje.getFullYear());
+      try { console.log('[COM] fallback para mes atual:', anoNum + '-' + mesNum); } catch (_) {}
+    }
+
+    return {
+      mesEl: mesEl || null,
+      anoEl: anoEl || null,
+      mesNum: String(parseInt(mesNum, 10) || (new Date().getMonth() + 1)).padStart(2, '0'),
+      anoNum: String(parseInt(anoNum, 10) || new Date().getFullYear())
+    };
   }
 
   function fmt(v) {
@@ -4350,41 +4392,187 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
   }
 
+  function _forcarRenderComissoes(json) {
+    if (!json) return;
+
+    var fmtPct = function(v) {
+      return (Number(v || 0) || 0).toFixed(2) + '%';
+    };
+
+    try {
+      var cardsHost = document.querySelector('#page-comissoes #com-cards, #com-cards');
+      if (cardsHost && !cardsHost.querySelector('.com-total-vendido, .com-total-comissao, .com-total-ofs, .card-val')) {
+        cardsHost.innerHTML = ''
+          + '<div class="sbox"><div class="sbox-h">Total Vendido</div><div class="sbox-b"><div class="card-val com-total-vendido cv-g">R$ 0,00</div></div></div>'
+          + '<div class="sbox"><div class="sbox-h">Total Comissão</div><div class="sbox-b"><div class="card-val com-total-comissao cv-a">R$ 0,00</div></div></div>'
+          + '<div class="sbox"><div class="sbox-h">Total OFs</div><div class="sbox-b"><div class="card-val com-total-ofs">0</div></div></div>';
+      }
+    } catch (_) {}
+
+    try {
+      setTextMany([
+        '#page-comissoes .com-total-vendido',
+        '#page-comissoes [data-com="total_vendido"]',
+        '#page-comissoes [data-field="total_vendido"]',
+        '#page-comissoes .cv-g',
+        '.com-total-vendido'
+      ], fmt(json.total_vendido));
+      setTextMany([
+        '#page-comissoes .com-total-comissao',
+        '#page-comissoes [data-com="total_comissao"]',
+        '#page-comissoes [data-field="total_comissao"]',
+        '#page-comissoes .cv-a',
+        '.com-total-comissao'
+      ], fmt(json.total_comissao));
+      setTextMany([
+        '#page-comissoes .com-total-ofs',
+        '#page-comissoes [data-com="total_ofs"]',
+        '#page-comissoes [data-field="total_ofs"]',
+        '.com-total-ofs'
+      ], String(json.total_ofs || 0));
+    } catch (_) {}
+
+    var tableVend = document.querySelector('#tabela-comissoes-vendedor, #page-comissoes table, .com-vendedores table');
+    var tbodyVend = document.querySelector(
+      '#tabela-comissoes-vendedor tbody, ' +
+      '#page-comissoes table tbody, ' +
+      '#com-vend-tbody, .com-vendedores tbody'
+    );
+
+    if (tableVend) {
+      try {
+        var theadVend = tableVend.querySelector('thead');
+        if (theadVend) {
+          theadVend.innerHTML = ''
+            + '<tr>'
+            + '<th style="text-align:left;padding:10px 12px">Vendedor</th>'
+            + '<th style="text-align:center;padding:10px 12px">OFs</th>'
+            + '<th style="text-align:right;padding:10px 12px">Total Vendido</th>'
+            + '<th style="text-align:center;padding:10px 12px">% Comissão</th>'
+            + '<th style="text-align:right;padding:10px 12px">Comissão R$</th>'
+            + '<th style="text-align:left;padding:10px 12px">Obs</th>'
+            + '</tr>';
+        }
+      } catch (_) {}
+    }
+
+    if (tbodyVend) {
+      tbodyVend.innerHTML = (json.vendedores || []).map(function(v) {
+        return ''
+          + '<tr>'
+          + '<td style="padding:10px 12px">' + String(v && v.nome || '—') + '</td>'
+          + '<td style="text-align:center;padding:10px 12px">' + String(Number(v && v.ofs || 0) || 0) + '</td>'
+          + '<td style="text-align:right;padding:10px 12px">' + fmt(v && v.total) + '</td>'
+          + '<td style="text-align:center;padding:10px 12px">' + fmtPct(v && v.comissao_pct || 0) + '</td>'
+          + '<td style="text-align:right;padding:10px 12px;color:#4ade80;font-weight:600">' + fmt(v && v.comissao_rs) + '</td>'
+          + '<td style="padding:10px 12px">—</td>'
+          + '</tr>';
+      }).join('') + ''
+        + '<tr style="font-weight:700;border-top:2px solid var(--border,#333)">'
+        + '<td style="padding:10px 12px">TOTAL</td>'
+        + '<td style="text-align:center;padding:10px 12px">' + String(json.total_ofs || 0) + '</td>'
+        + '<td style="text-align:right;padding:10px 12px">' + fmt(json.total_vendido) + '</td>'
+        + '<td></td>'
+        + '<td style="text-align:right;padding:10px 12px;color:#4ade80">' + fmt(json.total_comissao) + '</td>'
+        + '<td></td>'
+        + '</tr>';
+      try { console.log('[COM] tabela vendedores populada:', (json.vendedores || []).length, 'linhas'); } catch (_) {}
+    } else {
+      try { console.warn('[COM] tbody vendedores nao encontrado'); } catch (_) {}
+    }
+  }
+
   function _renderDetalheOFs(ofs) {
-    var tbody = document.querySelector('#com-ofs-tbody, .com-detalhe-ofs tbody, [data-com-ofs] tbody, #detalhe-ofs tbody');
-    if (!tbody) return;
+    var table = document.querySelector('#tabela-comissoes-ofs, #page-comissoes table:last-of-type, .com-detalhe-ofs table');
+    var tbody = document.querySelector(
+      '#tabela-comissoes-ofs tbody, ' +
+      '#page-comissoes table:last-of-type tbody, ' +
+      '#com-ofs-tbody, .com-detalhe-ofs tbody, [data-com-ofs] tbody, #detalhe-ofs tbody'
+    );
+    if (!tbody) {
+      try { console.warn('[COM] tbody detalhamento nao encontrado'); } catch (_) {}
+      return;
+    }
+
+    try {
+      var thead = table && table.querySelector('thead');
+      if (thead) {
+        thead.innerHTML = ''
+          + '<tr>'
+          + '<th style="padding:8px 12px;text-align:left">OF</th>'
+          + '<th style="padding:8px 12px;text-align:left">Cliente</th>'
+          + '<th style="padding:8px 12px;text-align:left">Ref.</th>'
+          + '<th style="padding:8px 12px;text-align:center">Qtd.</th>'
+          + '<th style="padding:8px 12px;text-align:left">Vendedor</th>'
+          + '<th style="padding:8px 12px;text-align:right">Valor</th>'
+          + '<th style="padding:8px 12px;text-align:center">% Comissão</th>'
+          + '<th style="padding:8px 12px;text-align:right">Comissão R$</th>'
+          + '<th style="padding:8px 12px;text-align:left">Data</th>'
+          + '<th style="padding:8px 12px;text-align:left">Entrega</th>'
+          + '<th style="padding:8px 12px;text-align:left">Status</th>'
+          + '<th style="padding:8px 12px;text-align:left">Obs</th>'
+          + '</tr>';
+      }
+    } catch (_) {}
+
     tbody.innerHTML = (ofs || []).map(function(of) {
       return ''
         + '<tr>'
-        + '<td>#' + String(of && of.numero || '—') + '</td>'
-        + '<td>' + String(of && of.cliente || '—') + '</td>'
-        + '<td>' + String(of && of.vendedor || '—') + '</td>'
-        + '<td style="text-align:right">' + fmt(of && of.valor_total) + '</td>'
-        + '<td style="text-align:center">' + String(of && of.comissao_pct || 0) + '%</td>'
-        + '<td style="text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
-        + '<td>' + fmtData(of && of.created_at) + '</td>'
-        + '<td>' + String(of && of.status || '—') + '</td>'
+        + '<td style="padding:8px 12px">#' + String(of && of.numero || '—') + '</td>'
+        + '<td style="padding:8px 12px">' + String(of && of.cliente || '—') + '</td>'
+        + '<td style="padding:8px 12px">—</td>'
+        + '<td style="padding:8px 12px;text-align:center">—</td>'
+        + '<td style="padding:8px 12px">' + String(of && of.vendedor || '—') + '</td>'
+        + '<td style="padding:8px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
+        + '<td style="padding:8px 12px;text-align:center">' + String(Number(of && of.comissao_pct || 0) || 0) + '%</td>'
+        + '<td style="padding:8px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
+        + '<td style="padding:8px 12px">' + fmtData(of && of.created_at) + '</td>'
+        + '<td style="padding:8px 12px">—</td>'
+        + '<td style="padding:8px 12px">' + String(of && of.status || '—') + '</td>'
+        + '<td style="padding:8px 12px">—</td>'
         + '</tr>';
     }).join('');
+    try { console.log('[COM] detalhamento populado:', (ofs || []).length, 'OFs'); } catch (_) {}
   }
 
   async function calcularViaApi() {
     var ref = parseMesAno();
-    var mesVal = String(ref.mesNum).padStart(2, '0');
-    var anoVal = String(ref.anoNum);
+    var mesVal = String(ref.mesNum || '').padStart(2, '0');
+    var anoVal = String(ref.anoNum || '');
     var token = '';
     try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { token = ''; }
 
+    try { console.log('[COM] Calculando:', anoVal + '-' + mesVal); } catch (_) {}
+
     try {
-      var cards = document.querySelectorAll('.com-total, [data-com-total]');
-      cards.forEach(function(c) { try { c.textContent = 'Calculando...'; } catch (_) {} });
+      var allCards = document.querySelectorAll(
+        '#page-comissoes [class*="com-total"], ' +
+        '#page-comissoes [class*="comissao-total"], ' +
+        '#page-comissoes .card-val, #page-comissoes .cv-g, #page-comissoes .cv-a'
+      );
+      allCards.forEach(function(card) {
+        try { card.textContent = 'Calculando...'; } catch (_) {}
+      });
     } catch (_) {}
 
     var resp = await fetch('/api/comissoes/relatorio?mes=' + encodeURIComponent(mesVal) + '&ano=' + encodeURIComponent(anoVal), {
       headers: token ? { 'Authorization': 'Bearer ' + token } : {}
     });
     var json = await resp.json().catch(function() { return null; });
+
+    try {
+      console.log(
+        '[COM] resposta API:',
+        json && json.ok,
+        'OFs:',
+        json && json.total_ofs,
+        'Total:',
+        json && json.total_vendido
+      );
+    } catch (_) {}
+
     if (!json || !json.ok) {
+      try { console.error('[COM] erro API:', json && json.error); } catch (_) {}
       try { alert('Erro: ' + String(json && json.error || 'Falha ao calcular')); } catch (_) {}
       return null;
     }
@@ -4412,70 +4600,37 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
           total: total,
           peds: Number(v && v.ofs || 0) || 0,
           quantidade: Number(v && v.ofs || 0) || 0,
+          ofs: ofsLista,
+          ofsList: ofsLista,
+          ofs_lista: ofsLista,
           comissaoRs: Number(v && v.comissao_rs || (total * (pct / 100))) || 0,
           comissao: pct,
-          comissao_pct: pct,
-          ofsList: ofsLista,
-          ofs_lista: ofsLista
+          comissao_pct: pct
         };
       })
     };
 
-    var vals = [json.total_vendido, json.total_comissao, json.total_ofs];
-    [
-      ['#com-total-vendido','[data-com="total_vendido"]','.com-total-vendido','[data-field="total_vendido"]'],
-      ['#com-total-comissao','[data-com="total_comissao"]','.com-total-comissao','[data-field="total_comissao"]'],
-      ['#com-total-ofs','[data-com="total_ofs"]','.com-total-ofs','[data-field="total_ofs"]']
-    ].forEach(function(sels, i) {
-      var value = i === 2 ? String(json.total_ofs || 0) : fmt(vals[i]);
-      setTextMany(sels, value);
-    });
-
-    function _repopularTabelaVendedoresSeZerada() {
-      try {
-        var tbody = document.querySelector('#com-vend-tbody, .com-vendedores tbody, [data-com-vendedores] tbody');
-        if (!tbody) return;
-        var primeiraLinha = tbody.querySelector('tr td:nth-child(2)');
-        var valor = String(primeiraLinha && primeiraLinha.textContent || '').trim();
-        if (!(valor === '0' || valor === 'R$ 0,00' || valor === 'R$\u00a00,00' || !valor)) return;
-
-        var data = window._comissoesSqlData || {};
-        var vends = Array.isArray(data.vendedores) ? data.vendedores : [];
-        var fmt2 = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-
-        tbody.innerHTML = vends.map(function(v) {
-          return ''
-            + '<tr>'
-            + '<td>' + String(v && v.nome || '—') + '</td>'
-            + '<td style="text-align:center">' + String(v && v.ofs || 0) + '</td>'
-            + '<td style="text-align:right">' + fmt2(v && v.total) + '</td>'
-            + '<td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
-            + '<td style="text-align:right;color:#4ade80">' + fmt2(v && v.comissao_rs) + '</td>'
-            + '<td>—</td>'
-            + '</tr>';
-        }).join('') + ''
-          + '<tr style="font-weight:700;background:var(--bg3,#0d0d1a)">'
-          + '<td>TOTAL</td>'
-          + '<td style="text-align:center">' + String(vends.reduce(function(s, x) { return s + (Number(x && x.ofs || 0) || 0); }, 0)) + '</td>'
-          + '<td style="text-align:right">' + fmt2(data.total_vendido) + '</td>'
-          + '<td></td>'
-          + '<td style="text-align:right;color:#4ade80">' + fmt2(data.total_comissao) + '</td>'
-          + '<td></td>'
-          + '</tr>';
-      } catch (_) {}
-    }
-
-    try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
+    try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (e) { try { console.warn('[COM] renderComissoes erro:', e && e.message); } catch (_) {} }
     try { if (typeof window.renderRelatorioComissoes === 'function') window.renderRelatorioComissoes(); } catch (_) {}
     try { if (typeof window.atualizarTabelaComissoes === 'function') window.atualizarTabelaComissoes(); } catch (_) {}
+
+    try { _forcarRenderComissoes(json); } catch (_) {}
     try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
-    try { setTimeout(_repopularTabelaVendedoresSeZerada, 300); } catch (_) {}
+    try {
+      setTimeout(function() {
+        try { _forcarRenderComissoes(json); } catch (_) {}
+        try { _renderDetalheOFs(json.ofs || []); } catch (_) {}
+      }, 400);
+    } catch (_) {}
     try { window.dispatchEvent(new CustomEvent('comissoes-calculadas', { detail: json })); } catch (_) {}
     return json;
   }
 
   window.calcularComissoes = async function() {
-    try { return await calcularViaApi(); } catch (e) {
+    try {
+      return await calcularViaApi();
+    } catch (e) {
+      try { console.error('[COM] erro fetch:', e && e.message); } catch (_) {}
       try { alert('Erro: ' + String(e && e.message || e)); } catch (_) {}
       return null;
     }
