@@ -12834,23 +12834,34 @@ function _ocultarGraficoComissoes() {
     window._buscaUniversalStyleInjetado = true;
     var style = document.createElement('style');
     style.textContent = ''
-      + '#pcp-busca-universal{padding:18px}'
-      + '#pcp-busca-universal .bu-wrap{max-width:1100px;margin:0 auto}'
+      + '#buscador-universal-modal{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center}'
+      + '#buscador-universal-modal .bu-modal{width:85vw;max-width:1200px;height:82vh;background:#0f172a;border:1px solid #1e293b;border-radius:16px;box-shadow:0 25px 80px rgba(0,0,0,0.8);display:flex;flex-direction:column;overflow:hidden}'
+      + '#buscador-universal-modal .bu-header{background:#0d1829;padding:20px 28px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;gap:12px}'
+      + '#buscador-universal-modal .bu-title-h{font-size:18px;font-weight:700;color:#f1f5f9}'
+      + '#buscador-universal-modal .bu-close{background:transparent;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:6px 14px;cursor:pointer}'
+      + '#buscador-universal-modal .bu-close:hover{color:#fff;border-color:#60a5fa}'
+      + '#buscador-universal-modal .bu-search{padding:20px 28px;display:flex;gap:12px;align-items:center}'
+      + '#buscador-universal-modal .bu-search .bu-input{flex:1;background:#1e293b;border:2px solid #334155;border-radius:10px;padding:14px 18px;font-size:15px;color:#fff;outline:none}'
+      + '#buscador-universal-modal .bu-search .bu-input:focus{border-color:#3b82f6}'
+      + '#buscador-universal-modal .bu-search .bu-btn{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:13px 24px;font-size:14px;font-weight:600;cursor:pointer}'
+      + '#buscador-universal-modal .bu-search .bu-btn:hover{background:#2563eb}'
+      + '#buscador-universal-modal .bu-chips{padding:0 28px 16px;display:flex;gap:10px;flex-wrap:wrap;border-bottom:1px solid #1e293b}'
+      + '#buscador-universal-modal .bu-chip{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:6px 16px;font-size:12px;color:#94a3b8;cursor:pointer}'
+      + '#buscador-universal-modal .bu-chip:hover{border-color:#60a5fa}'
+      + '#buscador-universal-modal .bu-chip.is-active{background:#1d4ed8;border-color:#3b82f6;color:#fff}'
+      + '#buscador-universal-modal .bu-results{padding:0 28px 28px;overflow-y:auto;height:calc(82vh - 200px)}'
+      + '#buscador-universal-modal .bu-empty{display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;text-align:center}'
+      + '#pcp-busca-universal{padding:0}'
+      + '#pcp-busca-universal .bu-wrap{max-width:100%;margin:0 auto}'
       + '#pcp-busca-universal .bu-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}'
-      + '#pcp-busca-universal .bu-input{flex:1 1 560px;background:#1e2435;border:2px solid #2a3f5f;border-radius:10px;padding:14px 18px;font-size:15px;color:#fff;outline:none}'
-      + '#pcp-busca-universal .bu-input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,0.15)}'
-      + '#pcp-busca-universal .bu-btn{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:10px 20px;cursor:pointer}'
-      + '#pcp-busca-universal .bu-btn:hover{background:#2563eb}'
-      + '#pcp-busca-universal .bu-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}'
-      + '#pcp-busca-universal .bu-chip{background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 14px;font-size:12px;color:#cbd5e1;cursor:pointer}'
-      + '#pcp-busca-universal .bu-chip.is-active{background:#1d4ed8;border-color:#3b82f6;color:#fff}'
       + '#pcp-busca-universal .bu-loading{display:flex;align-items:center;gap:10px;color:#94a3b8;padding:20px 0}'
       + '#pcp-busca-universal .bu-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:#60a5fa;border-radius:50%;animation:bu-spin .8s linear infinite}'
       + '#pcp-busca-universal .bu-group{margin:18px 0 4px 0}'
-      + '#pcp-busca-universal .bu-title{font-size:14px;font-weight:800;color:#e2e8f0;margin-bottom:10px}'
-      + '#pcp-busca-universal .bu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
-      + '#pcp-busca-universal .bu-card{background:#1e2435;border:1px solid #2a3350;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;color:#fff;cursor:pointer}'
-      + '#pcp-busca-universal .bu-card:hover{border-color:#60a5fa}'
+      + '#pcp-busca-universal .bu-title{font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:.5px;display:flex;align-items:center;gap:8px;margin:16px 0 8px}'
+      + '#pcp-busca-universal .bu-title:after{content:\"\";flex:1;height:1px;background:#1e293b}'
+      + '#pcp-busca-universal .bu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}'
+      + '#pcp-busca-universal .bu-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:10px;color:#fff;cursor:pointer;transition:all .15s}'
+      + '#pcp-busca-universal .bu-card:hover{border-color:#60a5fa;background:#1e3050;transform:translateY(-1px)}'
       + '#pcp-busca-universal .bu-ico{font-size:18px;line-height:1;min-width:26px;text-align:center}'
       + '#pcp-busca-universal .bu-main{font-size:13px;font-weight:700;color:#f8fafc}'
       + '#pcp-busca-universal .bu-sub{font-size:12px;color:#94a3b8;margin-top:2px}'
@@ -12866,7 +12877,7 @@ function _ocultarGraficoComissoes() {
       + '#pcp-busca-modal .m-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}'
       + '#pcp-busca-modal .m-actions button{background:#1e293b;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;cursor:pointer}'
       + '@keyframes bu-spin{to{transform:rotate(360deg)}}'
-      + '@media (max-width:780px){#pcp-busca-universal .bu-grid{grid-template-columns:1fr}#pcp-busca-modal .m-grid{grid-template-columns:1fr}}';
+      + '@media (max-width:780px){#pcp-busca-universal .bu-grid{grid-template-columns:1fr}#pcp-busca-modal .m-grid{grid-template-columns:1fr}#buscador-universal-modal .bu-modal{width:94vw;height:86vh}#buscador-universal-modal .bu-results{height:calc(86vh - 210px)}}';
     document.head.appendChild(style);
   }
   function ensureModal() {
@@ -12975,10 +12986,11 @@ function _ocultarGraficoComissoes() {
     if (filter === 'todos') return ['clientes', 'ofs', 'facas', 'cliches', 'estoque'];
     return [filter];
   }
-  async function runSearch(term) {
+  async function runSearch(term, root) {
     term = String(term || '').trim();
     window._buscaUniversalTermo = term;
-    var resultBox = document.getElementById('busca-universal-results');
+    var scope = root || document;
+    var resultBox = scope.querySelector ? scope.querySelector('#busca-universal-results') : document.getElementById('busca-universal-results');
     if (!resultBox) return;
     if (!term || term.length < 3) {
       resultBox.innerHTML = '<div style="color:#94a3b8;padding:8px 2px">Digite ao menos 3 caracteres para buscar.</div>';
@@ -13062,25 +13074,30 @@ function _ocultarGraficoComissoes() {
     window.__buscaUniversalData = groups;
   }
 
-  function bindUi() {
-    var root = document.getElementById('pcp-busca-universal');
+  function bindUi(root) {
     if (!root || root.dataset.bound === '1') return;
     root.dataset.bound = '1';
     var input = root.querySelector('#busca-universal-input');
     var btn = root.querySelector('#busca-universal-btn');
-    var debounced = debounce(function() { runSearch(input && input.value); }, 400);
+    var debounced = debounce(function() { runSearch(input && input.value, root); }, 400);
     if (input) input.addEventListener('input', function() {
       var val = String(input.value || '').trim();
       if (val.length >= 3) debounced();
     });
-    if (btn) btn.addEventListener('click', function() { runSearch(input && input.value); });
+    if (btn) btn.addEventListener('click', function() { runSearch(input && input.value, root); });
+    if (input) input.addEventListener('keydown', function(e) {
+      if (e && e.key === 'Enter') {
+        try { e.preventDefault(); } catch (_) {}
+        runSearch(input && input.value, root);
+      }
+    });
     Array.prototype.slice.call(root.querySelectorAll('.bu-chip')).forEach(function(chip) {
       chip.addEventListener('click', function() {
         Array.prototype.slice.call(root.querySelectorAll('.bu-chip')).forEach(function(c) { c.classList.remove('is-active'); });
         chip.classList.add('is-active');
         window._buscaUniversalCategoria = String(chip.getAttribute('data-cat') || 'todos');
         window._buscaUniversalLastKey = '';
-        if (input && String(input.value || '').trim().length >= 3) runSearch(input.value);
+        if (input && String(input.value || '').trim().length >= 3) runSearch(input.value, root);
       });
     });
     root.addEventListener('click', function(e) {
@@ -13095,12 +13112,12 @@ function _ocultarGraficoComissoes() {
     });
   }
 
-  function sectionHtml() {
+  function sectionInnerHtml() {
     return ''
       + '<div id="pcp-busca-universal">'
       + '<div class="bu-wrap">'
-      + '<div class="bu-bar">'
-      + '<input id="busca-universal-input" class="bu-input" placeholder="🔍  Digite para buscar clientes, OFs, facas..." />'
+      + '<div class="bu-search">'
+      + '<input id="busca-universal-input" class="bu-input" placeholder="Digite cliente, nº OF, faca, clichê..." />'
       + '<button id="busca-universal-btn" class="bu-btn">Buscar</button>'
       + '</div>'
       + '<div class="bu-chips">'
@@ -13111,58 +13128,124 @@ function _ocultarGraficoComissoes() {
       + '<button class="bu-chip" data-cat="cliches">Clichês</button>'
       + '<button class="bu-chip" data-cat="estoque">Estoque</button>'
       + '</div>'
-      + '<div id="busca-universal-results"><div style="color:#94a3b8;padding:8px 2px">Digite ao menos 3 caracteres para buscar.</div></div>'
+      + '<div id="busca-universal-results" class="bu-results"><div class="bu-empty"><div><div style="font-size:40px;margin-bottom:10px">🔍</div><div>Digite para buscar em todo o sistema</div></div></div></div>'
       + '</div>'
       + '</div>';
   }
 
-  function replaceSection() {
+  function renderPaginaRecorrentesMensagem() {
+    try {
+      var page = document.getElementById('page-pedidos-recorrentes');
+      if (!page) return;
+      if (page.dataset.buscaUniversalMsg === '1') return;
+      page.dataset.buscaUniversalMsg = '1';
+      page.innerHTML = '<div style="padding:26px;color:#94a3b8;text-align:center">Use o 🔍 Buscador do Sistema no menu acima.</div>';
+    } catch (_) {}
+  }
+
+  function fecharBuscadorUniversal() {
+    try {
+      var m = document.getElementById('buscador-universal-modal');
+      if (m && m.parentNode) m.parentNode.removeChild(m);
+    } catch (_) {}
+  }
+
+  function abrirBuscadorUniversal() {
     try {
       ensureStyle();
       ensureModal();
-      var page = document.getElementById('page-pedidos-recorrentes');
-      if (!page) return;
-      if (page.dataset.buscadorUniversal === '1' && page.querySelector('#pcp-busca-universal')) {
-        bindUi();
-        return;
-      }
-      page.dataset.buscadorUniversal = '1';
-      page.innerHTML = sectionHtml();
-      bindUi();
-      var inp = page.querySelector('#busca-universal-input');
-      if (inp && window._buscaUniversalTermo) {
-        inp.value = window._buscaUniversalTermo;
-        if (String(window._buscaUniversalTermo).trim().length >= 3) {
-          window._buscaUniversalLastKey = '';
-          runSearch(window._buscaUniversalTermo);
+      if (document.getElementById('buscador-universal-modal')) return;
+      var wrap = document.createElement('div');
+      wrap.id = 'buscador-universal-modal';
+      wrap.innerHTML = ''
+        + '<div class="bu-modal" role="dialog" aria-modal="true">'
+        + '<div class="bu-header"><div class="bu-title-h">🔍 Buscador do Sistema</div><button class="bu-close" id="bu-close-btn">✕ Fechar</button></div>'
+        + '<div id="bu-inner"></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      var inner = wrap.querySelector('#bu-inner');
+      inner.innerHTML = sectionInnerHtml();
+      var root = inner.querySelector('#pcp-busca-universal');
+      bindUi(root);
+
+      var btnClose = wrap.querySelector('#bu-close-btn');
+      if (btnClose) btnClose.onclick = function() { fecharBuscadorUniversal(); };
+      wrap.addEventListener('click', function(e) { if (e.target === wrap) fecharBuscadorUniversal(); }, true);
+
+      var inp = root ? root.querySelector('#busca-universal-input') : null;
+      if (inp) {
+        inp.focus();
+        if (window._buscaUniversalTermo) {
+          inp.value = window._buscaUniversalTermo;
+          if (String(window._buscaUniversalTermo).trim().length >= 3) {
+            window._buscaUniversalLastKey = '';
+            runSearch(window._buscaUniversalTermo, root);
+          }
         }
       }
     } catch (_) {}
   }
 
+  try { window._abrirBuscadorUniversal = abrirBuscadorUniversal; } catch (_) {}
+
   function installHooks() {
     try {
       window._buscaUniversalCategoria = window._buscaUniversalCategoria || 'todos';
-      window.renderPedidosRecorrentes = function() { replaceSection(); };
-      window.carregarPedidosRecorrentes = function() { replaceSection(); };
-      window.recorrentesRecarregar = function() {
-        replaceSection();
-        if (window._buscaUniversalTermo && String(window._buscaUniversalTermo).trim().length >= 3) {
-          window._buscaUniversalLastKey = '';
-          runSearch(window._buscaUniversalTermo);
-        }
-      };
+      window.renderPedidosRecorrentes = function() { renderPaginaRecorrentesMensagem(); };
+      window.carregarPedidosRecorrentes = function() { renderPaginaRecorrentesMensagem(); };
+      window.recorrentesRecarregar = function() { renderPaginaRecorrentesMensagem(); };
+    } catch (_) {}
+  }
+
+  function renomearAba() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('button, a, li, span, div')).forEach(function(el) {
+        try {
+          if (!el || !el.textContent) return;
+          if (String(el.textContent || '').trim() === 'Pedidos Recorrentes') {
+            el.textContent = '🔍 Buscador do Sistema';
+          }
+        } catch (_) {}
+      });
     } catch (_) {}
   }
 
   try {
     installHooks();
-    replaceSection();
-    if (!window.__buscaUniversalObs) {
-      window.__buscaUniversalObs = new MutationObserver(function() { replaceSection(); });
-      window.__buscaUniversalObs.observe(document.body, { childList: true, subtree: true });
+    renderPaginaRecorrentesMensagem();
+    renomearAba();
+
+    if (!window.__buscaUniversalRenameObs) {
+      window.__buscaUniversalRenameObs = new MutationObserver(function() { renomearAba(); });
+      window.__buscaUniversalRenameObs.observe(document.body, { childList: true, subtree: true });
     }
-    setTimeout(replaceSection, 500);
-    setTimeout(replaceSection, 1500);
+
+    if (!window.__buscaUniversalClickIntercept) {
+      window.__buscaUniversalClickIntercept = true;
+      document.addEventListener('click', function(e) {
+        try {
+          var el = e && e.target && (e.target.closest ? e.target.closest('button, a, li') : null);
+          if (!el) return;
+          var txt = String(el.textContent || '');
+          if (txt.indexOf('Buscador do Sistema') >= 0 || String(el.id || '') === 'aba-pcp-recorrentes') {
+            try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+            abrirBuscadorUniversal();
+            return false;
+          }
+        } catch (_) {}
+      }, true);
+    }
+
+    if (!window.__buscaUniversalEsc) {
+      window.__buscaUniversalEsc = true;
+      document.addEventListener('keydown', function(e) {
+        try {
+          if (e && e.key === 'Escape') fecharBuscadorUniversal();
+        } catch (_) {}
+      }, true);
+    }
+
+    setTimeout(renomearAba, 600);
+    setTimeout(renderPaginaRecorrentesMensagem, 800);
   } catch (_) {}
 })();
