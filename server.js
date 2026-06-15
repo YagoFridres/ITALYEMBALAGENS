@@ -1448,8 +1448,29 @@ app.get('/api/comissoes/relatorio', autenticar, async (req, res) => {
     const fim = `${fimAno}-${String(fimMes).padStart(2,'0')}-01`; 
 
     // Resolver empresa_id do usuário logado 
-    let empresa_id; 
+    // Tentar getEmpresaId primeiro 
+    let empresa_id = null; 
     try { empresa_id = await getEmpresaId(req); } catch(e) {} 
+ 
+    // Verificar se o empresa_id retornado tem dados no período 
+    if (empresa_id) { 
+      const { count } = await supabase 
+        .from('ofs') 
+        .select('id', { count: 'exact', head: true }) 
+        .eq('empresa_id', empresa_id) 
+        .gte('data_conclusao', inicio) 
+        .lt('data_conclusao', fim) 
+        .ilike('status', '%conclu%'); 
+       
+      console.log('[COMISSOES] empresa_id:', empresa_id?.substring(0,8), 'count:', count); 
+       
+      // Se não tiver dados, tentar Italy como fallback 
+      if (!count || count === 0) { 
+        empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
+        console.log('[COMISSOES] fallback para Italy'); 
+      } 
+    } 
+ 
     if (!empresa_id) empresa_id = 'df5f7672-0a6b-402d-ae65-296554236c31'; 
 
     console.log('[COMISSOES] params:', { mes: mesStr, ano, empresa_id, inicio, fim }); 

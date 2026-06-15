@@ -163,18 +163,23 @@ window.addEventListener('unhandledrejection', function(e) {
 })();
 
 (function() {
+  try { document.getElementById('patch-light-mode')?.remove(); } catch (_) {}
   try {
-    if (document.getElementById('patch-light-mode')) return;
-    var _styleClaro = document.createElement('style');
-    _styleClaro.id = 'patch-light-mode';
-    _styleClaro.textContent = ''
-      + 'body.light,body[data-theme=\"light\"],body.tema-claro,body:not(.dark):not([data-theme=\"dark\"])'
-      + '{--text1:#111!important;--text2:#444!important;--bg2:#fff!important;--bg3:#f5f5f5!important;--border:#ddd!important;}'
-      + 'body.light input,body.light select,body.light textarea,body[data-theme=\"light\"] input,body[data-theme=\"light\"] select'
-      + '{color:#111!important;background:#fff!important;}'
-      + 'body.light .modal,body[data-theme=\"light\"] .modal,body.light [class*=\"modal\"],body[data-theme=\"light\"] [class*=\"modal\"]'
-      + '{background:#fff!important;color:#111!important;}';
-    document.head.appendChild(_styleClaro);
+    var _existeStyleClaro = document.getElementById('patch-light-mode-v2');
+    if (_existeStyleClaro) return;
+    var s = document.createElement('style');
+    s.id = 'patch-light-mode-v2';
+    s.textContent = ''
+      + 'body.light,body[data-theme=\"light\"]{color:#111!important;background:#f5f5f5!important;}'
+      + 'body.light .card,body.light .modal-content,body.light [class*=\"modal\"] > div,'
+      + 'body[data-theme=\"light\"] .card,body[data-theme=\"light\"] .modal-content,body[data-theme=\"light\"] [class*=\"modal\"] > div'
+      + '{background:#fff!important;color:#111!important;}'
+      + 'body.light input,body.light select,body.light textarea,'
+      + 'body[data-theme=\"light\"] input,body[data-theme=\"light\"] select,body[data-theme=\"light\"] textarea'
+      + '{color:#111!important;background:#fff!important;border-color:#ddd!important;}'
+      + 'body.light .sidebar,body[data-theme=\"light\"] .sidebar{background:#fff!important;}'
+      + 'body.light .topbar,body[data-theme=\"light\"] .topbar{background:#fff!important;}';
+    document.head.appendChild(s);
   } catch (_) {}
 })();
 (function() {
