@@ -11519,7 +11519,6 @@ function _renderTabelaVendedores(json) {
 
 function _renderTabelaOFs(json) {
   try {
-    if (!json || !json.ofs || !json.ofs.length) return;
     var pg = document.querySelector('#page-comissoes, [data-page="comissoes"]');
     if (!pg) return;
     var tbody = document.querySelector('#tabela-comissoes-ofs tbody');
@@ -11528,49 +11527,88 @@ function _renderTabelaOFs(json) {
       tbody = (tbodies && tbodies[1]) ? tbodies[1] : (tbodies && tbodies[0] ? tbodies[0] : null);
     }
     if (!tbody) return;
+    if (!(json && json.ofs && json.ofs.length)) {
+      tbody.innerHTML = '';
+      return;
+    }
     var fmt = function(v) {
       return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
     var fmtD = function(d) {
-      if (!d) return '—';
-      try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+      try { return d ? new Date(d).toLocaleDateString('pt-BR') : '—'; } catch (_) { return '—'; }
     };
-    var porVendedor = {};
+    var grupos = {};
+    var ordem = [];
     (json.ofs || []).forEach(function(of) {
-      var v = String(of && of.vendedor || 'Sem Vendedor').trim() || 'Sem Vendedor';
-      if (!porVendedor[v]) porVendedor[v] = [];
-      porVendedor[v].push(of);
+      var vendedor = String(of && of.vendedor || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      if (!grupos[vendedor]) {
+        grupos[vendedor] = [];
+        ordem.push(vendedor);
+      }
+      grupos[vendedor].push(of);
     });
+
     var html = '';
-    Object.keys(porVendedor).forEach(function(vendNome) {
-      var lista = porVendedor[vendNome] || [];
-      var totalVend = lista.reduce(function(s, o) { return s + (Number(o && o.valor_total || 0) || 0); }, 0);
-      var totalCom = lista.reduce(function(s, o) { return s + (Number(o && o.comissao_rs || 0) || 0); }, 0);
+    ordem.forEach(function(vendedor) {
+      var ofs = grupos[vendedor] || [];
+      var totalV = ofs.reduce(function(s, o) { return s + Number(o && o.valor_total || 0); }, 0);
+      var comV = ofs.reduce(function(s, o) { return s + Number(o && o.comissao_rs || 0); }, 0);
+      var pct = Number(ofs[0] && ofs[0].comissao_pct || 1);
+
       html += ''
-        + '<tr style="background:var(--accent,#6366f1);color:#fff;font-weight:700">'
-        + '<td colspan="12" style="padding:8px 12px">👤 ' + String(vendNome) + ' — ' + String(lista.length) + ' OFs — ' + fmt(totalVend) + ' — Comissão: ' + fmt(totalCom) + '</td>'
+        + '<tr style="background:#6366f1;color:#fff;font-weight:700">'
+        + '<td colspan="12" style="padding:10px 14px;font-size:13px">👤 ' + String(vendedor) + ' &nbsp;·&nbsp; ' + String(ofs.length) + ' OFs &nbsp;·&nbsp; Total: ' + fmt(totalV) + ' &nbsp;·&nbsp; Comissão (' + String(pct) + '%): <span style="color:#4ade80">' + fmt(comV) + '</span></td>'
         + '</tr>';
-      html += lista.map(function(of) {
-        return ''
-          + '<tr>'
+
+      ofs.forEach(function(of) {
+        html += ''
+          + '<tr style="border-bottom:1px solid var(--border,#333)">'
           + '<td style="padding:7px 12px">#' + String(of && of.numero || '—') + '</td>'
           + '<td style="padding:7px 12px">' + String(of && of.cliente || '—') + '</td>'
-          + '<td style="padding:7px 12px">' + String((of && (of.produto || of.descricao)) || '—') + '</td>'
-          + '<td style="padding:7px 12px;text-align:center">' + String((of && of.qtd) != null ? (of.qtd || 0) : '—') + '</td>'
+          + '<td style="padding:7px 12px">—</td>'
+          + '<td style="padding:7px 12px;text-align:center">—</td>'
           + '<td style="padding:7px 12px">' + String(of && of.vendedor || '—') + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
-          + '<td style="padding:7px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + Number(of && of.comissao_pct || 1).toFixed(2) + '%</td>'
           + '<td style="padding:7px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
-          + '<td style="padding:7px 12px">' + fmtD(of && of.created_at) + '</td>'
           + '<td style="padding:7px 12px">' + fmtD(of && of.data_conclusao) + '</td>'
+          + '<td style="padding:7px 12px">—</td>'
           + '<td style="padding:7px 12px">' + String(of && of.status || '—') + '</td>'
-          + '<td style="padding:7px 12px;text-align:center">'
-          + '<button onclick=\"window.abrirOf&&window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')\" style=\"padding:3px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:10px\">Traçar</button>'
-          + '</td>'
+          + '<td style="padding:7px 12px"><button onclick="window.abrirOf&&window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')" style="padding:3px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:10px">Ver</button></td>'
           + '</tr>';
-      }).join('');
+      });
+
+      html += ''
+        + '<tr style="background:var(--bg3,#111);font-weight:600;border-bottom:3px solid var(--border,#333)">'
+        + '<td colspan="5" style="padding:8px 12px">Subtotal ' + String(vendedor) + '</td>'
+        + '<td style="padding:8px 12px;text-align:right">' + fmt(totalV) + '</td>'
+        + '<td style="padding:8px 12px;text-align:center">' + String(pct) + '%</td>'
+        + '<td style="padding:8px 12px;text-align:right;color:#4ade80">' + fmt(comV) + '</td>'
+        + '<td colspan="4"></td>'
+        + '</tr>';
     });
+
     tbody.innerHTML = html;
+    try { console.log('[COM] detalhamento por vendedor OK'); } catch (_) {}
+  } catch (_) {}
+}
+
+function _ocultarGraficoComissoes() {
+  try {
+    var pg = document.querySelector('#page-comissoes');
+    if (!pg) return;
+    Array.prototype.slice.call(pg.querySelectorAll('canvas, .chart-container, [class*="chart"], [id*="chart"]')).forEach(function(el) {
+      try { el.style.display = 'none'; } catch (_) {}
+    });
+    Array.prototype.slice.call(pg.querySelectorAll('h3, h4, .section-title')).forEach(function(el) {
+      try {
+        var txt = String(el && el.textContent || '');
+        if (txt.indexOf('Comissão por Vendedor') >= 0 || txt.indexOf('Vendas e Comissões') >= 0) {
+          var container = (el.closest && el.closest('.card, .section, div[class]')) || el.parentElement;
+          if (container) container.style.display = 'none';
+        }
+      } catch (_) {}
+    });
   } catch (_) {}
 }
 
@@ -11646,7 +11684,12 @@ function _renderTabelaOFs(json) {
       } catch (_) {}
 
       try { if (typeof window.renderComissoes === 'function') window.renderComissoes(); } catch (_) {}
-      setTimeout(function() { _renderTabelaVendedores(json); _renderTabelaOFs(json); }, 500);
+      setTimeout(function() {
+        _renderTabelaVendedores(window._comissoesSqlData);
+        _renderTabelaOFs(window._comissoesSqlData);
+        _ocultarGraficoComissoes();
+      }, 600);
+      setTimeout(_ocultarGraficoComissoes, 800);
     } catch (e) {
       try { console.error('[COM PATCH] fetch erro:', e && e.message); } catch (_) {}
     } finally {
