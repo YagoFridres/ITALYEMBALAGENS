@@ -7955,6 +7955,20 @@ app.patch('/api/clientes/:id', authMiddleware, async (req, res) => {
   }
 });
 
+app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
+    const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
+    return res.json({ ok: true, data });
+  } catch (e) {
+    console.error('[GET clientes/:id]', e.message || e);
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
 app.delete('/api/clientes/:id', authMiddleware, async (req, res) => {
   try {
     const id = String(req.params.id || '').trim();

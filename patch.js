@@ -4801,15 +4801,31 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
 
   window._gerarImpressaoComissoes = function() {
     var data = window._comissoesSqlData;
-    try { console.log('[IMPRIMIR] data:', data); } catch (_) {}
+    try { console.log('[IMPRIMIR] data existe:', !!data, 'total_ofs:', data && data.total_ofs, 'ofs length:', data && data.ofs && data.ofs.length); } catch (_) {}
+
     if (!data || !data.total_ofs) {
-      try { alert('Calcule o relatório primeiro clicando em Calcular'); } catch (_) {}
+      try { alert('Calcule o relatório primeiro'); } catch (_) {}
       return;
     }
 
-    var selecionados = new Set(Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input:checked')).map(function(cb) { return cb.value; }));
-    var todosSel = !!((document.getElementById('imp-todos') || {}).checked);
-    var vends = (data.vendedores || []).filter(function(v) { return todosSel || selecionados.has(String(v && v.id || '')); });
+    var checked = [];
+    try { checked = Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input:checked')) || []; } catch (_) { checked = []; }
+    var selecionados = new Set(checked.map(function(cb) { return cb && cb.value; }));
+    var impTodos = document.getElementById('imp-todos');
+    var todosSel = (impTodos ? impTodos.checked : true) !== false;
+
+    var fmtLocal = function(v) {
+      return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+    var fmtD = function(d) {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleDateString('pt-BR'); } catch (_) { return '—'; }
+    };
+
+    var vends = (data.vendedores || []).filter(function(v) {
+      return todosSel || selecionados.has(String(v && v.id || ''));
+    });
+
     var ofs = (data.ofs || []).filter(function(of) {
       return todosSel || vends.some(function(v) { return String(v && v.nome || '') === String(of && of.vendedor || ''); });
     });
@@ -4817,46 +4833,55 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     var parts = String(data.mes || '').split('-');
     var ano = parts[0] || '';
     var mes = parts[1] || '';
-    var nomeMes = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][Math.max(0, (parseInt(mes, 10) || 1) - 1)] || mes;
+    var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    var nomeMes = meses[Math.max(0, (parseInt(mes, 10) || 1) - 1)] || mes;
 
-    var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatorio de Comissoes — ' + nomeMes + '/' + ano + '</title>'
-      + '<style>body{font-family:Arial,sans-serif;color:#000;padding:24px;font-size:12px}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#555;margin-bottom:20px;font-weight:normal}.resumo{display:flex;gap:24px;margin-bottom:24px}.card{border:1px solid #ddd;border-radius:6px;padding:12px 20px;min-width:150px}.card-lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:4px}.card-val{font-size:16px;font-weight:700}table{width:100%;border-collapse:collapse;margin-bottom:28px}th{background:#f0f0f0;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;border-bottom:2px solid #ccc}td{padding:7px 8px;border-bottom:1px solid #eee}.vend-header{background:#1a1a2e;color:#fff;padding:10px 14px;border-radius:6px;margin:20px 0 8px;font-weight:700;font-size:13px}.total-row{font-weight:700;background:#f9f9f9}.green{color:#16a34a}@media print{body{padding:0}}</style>'
+    var agora = new Date();
+    var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comissões ' + nomeMes + '/' + ano + '</title>'
+      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:20px}h1{font-size:20px;margin-bottom:4px}h2{font-size:13px;color:#666;font-weight:normal;margin-bottom:20px}.cards{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}.card{border:1px solid #ddd;border-radius:6px;padding:12px 18px;min-width:140px}.lbl{font-size:10px;color:#888;text-transform:uppercase;margin-bottom:3px}.val{font-size:16px;font-weight:700}.green{color:#16a34a}table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:11px}th{background:#f0f0f0;padding:7px 8px;text-align:left;border-bottom:2px solid #ccc;font-size:10px;text-transform:uppercase}td{padding:6px 8px;border-bottom:1px solid #eee}.vh{background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:4px;margin:16px 0 8px;font-weight:700;font-size:12px}.tf{font-weight:700;background:#f5f5f5}@media print{body{padding:0}}</style>'
       + '</head><body>'
-      + '<h1>Relatorio de Comissoes — ' + nomeMes + '/' + ano + '</h1>'
-      + '<h2>Italy Embalagens · Gerado em ' + new Date().toLocaleDateString('pt-BR') + '</h2>'
-      + '<div class="resumo">'
-      + '<div class="card"><div class="card-lbl">Total Vendido</div><div class="card-val">' + fmt(data.total_vendido) + '</div></div>'
-      + '<div class="card"><div class="card-lbl">Total Comissão</div><div class="card-val green">' + fmt(data.total_comissao) + '</div></div>'
-      + '<div class="card"><div class="card-lbl">Total OFs</div><div class="card-val">' + String(data.total_ofs || 0) + '</div></div>'
+      + '<h1>Relatório de Comissões — ' + nomeMes + '/' + ano + '</h1>'
+      + '<h2>Italy Embalagens · Gerado em ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR') + '</h2>'
+      + '<div class="cards">'
+      + '<div class="card"><div class="lbl">Total Vendido</div><div class="val">' + fmtLocal(data.total_vendido) + '</div></div>'
+      + '<div class="card"><div class="lbl">Total Comissão</div><div class="val green">' + fmtLocal(data.total_comissao) + '</div></div>'
+      + '<div class="card"><div class="lbl">Total OFs</div><div class="val">' + String(data.total_ofs || 0) + '</div></div>'
       + '</div>'
-      + '<h3 style="margin-bottom:8px">Resumo por Vendedor</h3>'
-      + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">% Comissão</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
+      + '<h3 style="margin-bottom:8px;font-size:13px">Resumo por Vendedor</h3>'
+      + '<table><thead><tr><th>Vendedor</th><th>OFs</th><th style="text-align:right">Total Vendido</th><th style="text-align:center">%</th><th style="text-align:right">Comissão R$</th></tr></thead><tbody>'
       + vends.map(function(v) {
-        return '<tr><td>' + String(v.nome || '—') + '</td><td>' + String(v.ofs || 0) + '</td><td style="text-align:right">' + fmt(v.total) + '</td><td style="text-align:center">' + String(v.comissao_pct || 0) + '%</td><td style="text-align:right" class="green">' + fmt(v.comissao_rs) + '</td></tr>';
+        return '<tr><td>' + String(v && v.nome || '—') + '</td><td>' + String(v && v.ofs || 0) + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td style="text-align:center">' + (Number(v && v.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td></tr>';
       }).join('')
-      + '<tr class="total-row"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmt(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmt(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
+      + '<tr class="tf"><td>TOTAL</td><td>' + String(vends.reduce(function(s, v) { return s + (Number(v && v.ofs || 0) || 0); }, 0)) + '</td><td style="text-align:right">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.total || 0) || 0); }, 0)) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(vends.reduce(function(s, v) { return s + (Number(v && v.comissao_rs || 0) || 0); }, 0)) + '</td></tr>'
       + '</tbody></table>'
       + vends.map(function(v) {
         var vOfs = ofs.filter(function(o) { return String(o && o.vendedor || '') === String(v && v.nome || ''); });
-        return '<div class="vend-header">📋 ' + String(v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmt(v.total) + '</div>'
-          + '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th style="text-align:right">Valor</th><th style="text-align:center">%</th><th style="text-align:right">Comissão</th><th>Data</th><th>Status</th></tr></thead><tbody>'
+        if (!vOfs.length) return '';
+        return '<div class="vh">📋 ' + String(v && v.nome || '—') + ' — ' + String(vOfs.length) + ' OFs — ' + fmtLocal(v && v.total) + '</div>'
+          + '<table><thead><tr><th>Nº OF</th><th>Cliente</th><th style="text-align:right">Valor</th><th style="text-align:center">%</th><th style="text-align:right">Comissão</th><th>Data Conclusão</th><th>Status</th></tr></thead><tbody>'
           + vOfs.map(function(o) {
-            return '<tr><td>#' + String(o.numero || '—') + '</td><td>' + String(o.cliente || '—') + '</td><td style="text-align:right">' + fmt(o.valor_total) + '</td><td style="text-align:center">' + String(o.comissao_pct || 0) + '%</td><td style="text-align:right" class="green">' + fmt(o.comissao_rs) + '</td><td>' + fmtData(o.created_at) + '</td><td>' + String(o.status || '—') + '</td></tr>';
+            return '<tr><td>#' + String(o && o.numero || '—') + '</td><td>' + String(o && o.cliente || '—') + '</td><td style="text-align:right">' + fmtLocal(o && o.valor_total) + '</td><td style="text-align:center">' + (Number(o && o.comissao_pct || 1) || 1).toFixed(2) + '%</td><td style="text-align:right" class="green">' + fmtLocal(o && o.comissao_rs) + '</td><td>' + fmtD((o && (o.data_conclusao || o.created_at)) || null) + '</td><td>' + String(o && o.status || '—') + '</td></tr>';
           }).join('')
-          + '<tr class="total-row"><td colspan="2">Total ' + String(v.nome || '—') + '</td><td style="text-align:right">' + fmt(v.total) + '</td><td></td><td style="text-align:right" class="green">' + fmt(v.comissao_rs) + '</td><td colspan="2"></td></tr>'
+          + '<tr class="tf"><td colspan="2">Total ' + String(v && v.nome || '—') + '</td><td style="text-align:right">' + fmtLocal(v && v.total) + '</td><td></td><td style="text-align:right" class="green">' + fmtLocal(v && v.comissao_rs) + '</td><td colspan="2"></td></tr>'
           + '</tbody></table>';
       }).join('')
       + '</body></html>';
 
-    try { document.getElementById('modal-impressao-com').remove(); } catch (_) {}
-    var win = window.open('', '_blank');
+    try { var m = document.getElementById('modal-impressao-com'); if (m) m.remove(); } catch (_) {}
+    var win = null;
+    try { win = window.open('', '_blank', 'width=900,height=700'); } catch (_) { win = null; }
     if (!win) {
       try { alert('Popup bloqueado! Permita popups para este site e tente novamente.'); } catch (_) {}
       return;
     }
-    win.document.write(html);
-    win.document.close();
-    setTimeout(function() { try { win.print(); } catch (_) {} }, 800);
+    try {
+      win.document.write(html);
+      win.document.close();
+    } catch (e) {
+      try { alert('Erro ao abrir impressão: ' + String(e && e.message || e)); } catch (_) {}
+      return;
+    }
+    setTimeout(function() { try { win.print(); } catch (_) {} }, 1000);
   };
 
   window._abrirModalImpressaoComissoes = _abrirModalImpressao;
@@ -4891,6 +4916,160 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     });
     _obsCom.observe(document.body, { childList: true, subtree: true });
   } catch (_) {}
+})();
+
+(function patchClientesEditarEPainel() {
+  if (window.__patchClientesEditarEPainelInstalled) return;
+  window.__patchClientesEditarEPainelInstalled = true;
+
+  function _vincularBtnEditarCliente() {
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('[onclick*="editarCliente"], .btn-editar-cliente')).forEach(function(btn) {
+        try {
+          if (!btn || btn.dataset.patchEdit) return;
+          btn.dataset.patchEdit = '1';
+          var onclick = String(btn.getAttribute('onclick') || '');
+          var m = onclick.match(/editarCliente\(['"]([^'"]+)['"]\)/);
+          var id = (m && m[1]) ? m[1] : (btn.dataset && (btn.dataset.id || btn.dataset.clienteId || btn.dataset.cliente_id));
+          if (!id) return;
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            try {
+              if (typeof window.editarCliente === 'function') return window.editarCliente(id);
+            } catch (_) {}
+            try {
+              if (typeof window._abrirModalEditarCliente === 'function') return window._abrirModalEditarCliente(id);
+            } catch (_) {}
+          }, true);
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  window._abrirModalEditarCliente = async function(id) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    var resp = await fetch('/api/clientes/' + encodeURIComponent(id), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    }).catch(function() { return null; });
+    if (!resp || !resp.ok) {
+      try { alert('Cliente não encontrado'); } catch (_) {}
+      return;
+    }
+    var json = await resp.json().catch(function() { return null; });
+    var c = (json && (json.data || json.ok && json.data)) ? (json.data || json.ok && json.data) : json;
+    if (!(c && c.id)) {
+      try { alert('Cliente não encontrado'); } catch (_) {}
+      return;
+    }
+
+    try { var old = document.getElementById('patch-modal-editar-cli'); if (old) old.remove(); } catch (_) {}
+    var overlay = document.createElement('div');
+    overlay.id = 'patch-modal-editar-cli';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = ''
+      + '<div style="background:var(--bg2,#1a1a2e);border-radius:12px;padding:28px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto">'
+      + '<h3 style="color:var(--text1,#fff);margin-bottom:20px">Editar Cliente</h3>'
+      + '<div style="display:grid;gap:12px">'
+      + '<input id="ec-nome" value="' + String(c.nome || '') + '" placeholder="Nome *" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '<input id="ec-cnpj" value="' + String(c.cnpj || '') + '" placeholder="CNPJ" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '<input id="ec-cidade" value="' + String(c.cidade || '') + '" placeholder="Cidade" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '<input id="ec-uf" value="' + String(c.uf || '') + '" placeholder="UF" maxlength="2" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '<input id="ec-tel" value="' + String(c.tel || c.telefone || '') + '" placeholder="Telefone" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '<input id="ec-email" value="' + String(c.email || '') + '" placeholder="Email" style="padding:10px;border-radius:6px;border:1px solid var(--border,#333);background:var(--bg3,#0d0d1a);color:var(--text1,#fff);width:100%">'
+      + '</div>'
+      + '<div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">'
+      + '<button type="button" data-ec-close="1" style="padding:10px 20px;border-radius:6px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer">Cancelar</button>'
+      + '<button type="button" data-ec-save="1" style="padding:10px 20px;border-radius:6px;border:none;background:var(--accent,#6366f1);color:#fff;cursor:pointer;font-weight:600">Salvar</button>'
+      + '</div>'
+      + '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+    try { overlay.querySelector('[data-ec-close="1"]').onclick = function() { overlay.remove(); }; } catch (_) {}
+    try { overlay.querySelector('[data-ec-save="1"]').onclick = function() { window._salvarEdicaoCliente(id); }; } catch (_) {}
+  };
+
+  window._salvarEdicaoCliente = async function(id) {
+    var token = '';
+    try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
+    var body = {
+      nome: String((document.getElementById('ec-nome') || {}).value || '').trim(),
+      cnpj: String((document.getElementById('ec-cnpj') || {}).value || '').trim(),
+      cidade: String((document.getElementById('ec-cidade') || {}).value || '').trim(),
+      uf: String((document.getElementById('ec-uf') || {}).value || '').trim(),
+      tel: String((document.getElementById('ec-tel') || {}).value || '').trim(),
+      email: String((document.getElementById('ec-email') || {}).value || '').trim()
+    };
+    if (!body.nome) {
+      try { alert('Nome obrigatório'); } catch (_) {}
+      return;
+    }
+    var resp = await fetch('/api/clientes/' + encodeURIComponent(id), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body)
+    });
+    var json = await resp.json().catch(function() { return null; });
+    if (resp.ok && json) {
+      try { var ov = document.getElementById('patch-modal-editar-cli'); if (ov) ov.remove(); } catch (_) {}
+      try { window._clientesCarregados = false; } catch (_) {}
+      try { window.CLIENTES = []; } catch (_) {}
+      try { window._CLIENTES = []; } catch (_) {}
+      try { if (typeof window.carregarClientes === 'function') window.carregarClientes(true); } catch (_) {}
+      try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
+      try {
+        if (typeof window._notificacaoOF === 'function') window._notificacaoOF('Cliente atualizado!', 'sucesso');
+      } catch (_) {}
+    } else {
+      try { alert('Erro: ' + String((json && (json.error || json.message)) || 'Falha ao salvar')); } catch (_) {}
+    }
+  };
+
+  (function _patchPainelClienteId() {
+    if (window.__patchPainelClienteIdInstalled) return;
+    window.__patchPainelClienteIdInstalled = true;
+    var orig = window.abrirPainelCliente || window.verCliente || window.abrirCliente;
+    var nomeFn = window.abrirPainelCliente ? 'abrirPainelCliente' : (window.verCliente ? 'verCliente' : 'abrirCliente');
+    if (typeof orig !== 'function' || !nomeFn) return;
+    window[nomeFn] = function(id) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      var cid = String(id || '').trim();
+      try { console.log('[PAINEL CLI] abrindo id:', cid); } catch (_) {}
+      if (!cid || cid === 'undefined' || cid === 'null') {
+        try { console.warn('[PAINEL CLI] ID vazio!'); } catch (_) {}
+        return;
+      }
+      try {
+        if (typeof window.getCli === 'function' && !window.getCli(cid)) {
+          var nome = String((args && args[0]) || '').trim();
+          var alt = null;
+          try { if (nome && typeof window.getCliByName === 'function') alt = window.getCliByName(nome); } catch (_) { alt = null; }
+          if (!alt && nome && Array.isArray(window.CLIENTES)) {
+            var low = nome.toLowerCase();
+            alt = window.CLIENTES.find(function(c) { return String(c && c.nome || '').toLowerCase().trim() === low; }) || null;
+          }
+          if (alt && alt.id) cid = String(alt.id).trim();
+        }
+      } catch (_) {}
+      var callArgs = [cid].concat(args);
+      return orig.apply(this, callArgs);
+    };
+  })();
+
+  var t = null;
+  try {
+    var obs = new MutationObserver(function() {
+      if (t) return;
+      t = setTimeout(function() {
+        t = null;
+        _vincularBtnEditarCliente();
+      }, 100);
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
+  try { setTimeout(_vincularBtnEditarCliente, 600); } catch (_) {}
+  try { setTimeout(_vincularBtnEditarCliente, 1500); } catch (_) {}
 })();
 
 (function patchOfRapidaClienteEspecial() {
