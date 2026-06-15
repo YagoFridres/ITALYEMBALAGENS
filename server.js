@@ -1452,7 +1452,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     while (true) {
       const { data, error } = await supabase
         .from('ofs')
-        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,data_conclusao,status,empresa_id')
+        .select('id,numero,valor_total,total,cli_id,vendedor_id,created_at,data_conclusao,status,empresa_id,produto,qtd,descricao')
         .is('deleted_at', null)
         .eq('empresa_id', empresa_id)
         .gte('data_conclusao', inicio)
@@ -1573,10 +1573,13 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
         numero: of?.numero || null,
         cliente: nomeCliente || '—',
         vendedor: vend ? (String(vend.nome || '').trim() || 'Sem Vendedor') : 'Sem Vendedor',
+        produto: (String(of?.produto || of?.descricao || '').trim() || '—'),
+        qtd: Number(of?.qtd || 0) || 0,
         valor_total: valorTotal,
         comissao_pct: pct,
         comissao_rs: valorTotal * (pct / 100),
         created_at: of?.created_at || null,
+        data_conclusao: of?.data_conclusao || null,
         status: of?.status || '—',
       };
     });
@@ -3236,9 +3239,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = req.query.busca;
+    const clienteFiltroRaw = req.query.cliente_id ?? req.query.clienteId ?? req.query.cli_id ?? req.query.cliId ?? req.query.cliente ?? '';
+    const clienteFiltro = String(clienteFiltroRaw || '').trim();
     const empresaFiltro = req.query.empresa;
     const useCache = !afterIso;
-    const cacheKey = useCache ? ('ofs_v11_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '')) : '';
+    const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
     if (useCache) {
       const cached = cacheGet(cacheKey);
       if (cached) return res.json(cached);
@@ -3265,6 +3270,10 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
 
     if (busca) {
       query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
+    }
+    if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
+      const safe = clienteFiltro.replace(/,/g, '').replace(/\s+/g, '');
+      query = query.eq('cli_id', safe);
     }
     if (afterIso) {
       query = query.gte('created_at', afterIso);
@@ -7962,7 +7971,27 @@ app.get('/api/clientes/:id', authMiddleware, async (req, res) => {
     const { data, error } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ ok: false, error: 'Cliente não encontrado' });
-    return res.json({ ok: true, data });
+    const cliKey = String(data?.codigo || '').trim();
+    const chaves = [id];
+    if (cliKey) chaves.push(cliKey);
+    const { data: ofs, error: errOfs } = await supabase
+      .from('ofs')
+      .select('id,numero,valor_total,total,status,created_at,data_conclusao,cli_id')
+      .is('deleted_at', null)
+      .in('cli_id', chaves)
+      .order('created_at', { ascending: false });
+    if (errOfs) throw errOfs;
+    const ofsLista = Array.isArray(ofs) ? ofs : [];
+    const totalValor = ofsLista.reduce((s, o) => s + (Number(o?.valor_total || o?.total || 0) || 0), 0);
+    return res.json({
+      ok: true,
+      data: {
+        ...data,
+        total_ofs: ofsLista.length,
+        total_valor: totalValor,
+        ofs: ofsLista,
+      }
+    });
   } catch (e) {
     console.error('[GET clientes/:id]', e.message || e);
     return res.status(500).json({ ok: false, error: e.message || String(e) });

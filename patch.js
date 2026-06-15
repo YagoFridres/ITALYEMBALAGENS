@@ -4556,26 +4556,45 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       }
     } catch (_) {}
 
-    tbodyOFs.innerHTML = (json.ofs || []).map(function(of) {
-      return ''
-        + '<tr>'
-        + '<td style="padding:8px 12px">#' + String(of && of.numero || '—') + '</td>'
-        + '<td style="padding:8px 12px">' + String(of && of.cliente || '—') + '</td>'
-        + '<td style="padding:8px 12px">—</td>'
-        + '<td style="padding:8px 12px;text-align:center">—</td>'
-        + '<td style="padding:8px 12px">' + String(of && of.vendedor || '—') + '</td>'
-        + '<td style="padding:8px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
-        + '<td style="padding:8px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
-        + '<td style="padding:8px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
-        + '<td style="padding:8px 12px">' + fmtData(of && of.created_at) + '</td>'
-        + '<td style="padding:8px 12px">—</td>'
-        + '<td style="padding:8px 12px">' + String(of && of.status || '—') + '</td>'
-        + '<td style="padding:8px 12px;text-align:center">'
-        + '<button style="padding:4px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:11px" onclick="window.abrirOf && window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')">Traçar</button>'
-        + '</td>'
+    var porVendedor = {};
+    (json.ofs || []).forEach(function(of) {
+      var v = String(of && of.vendedor || 'Sem Vendedor').trim() || 'Sem Vendedor';
+      if (!porVendedor[v]) porVendedor[v] = [];
+      porVendedor[v].push(of);
+    });
+
+    var html = '';
+    Object.keys(porVendedor).forEach(function(vendNome) {
+      var lista = porVendedor[vendNome] || [];
+      var totalVend = lista.reduce(function(s, o) { return s + (Number(o && o.valor_total || 0) || 0); }, 0);
+      var totalCom = lista.reduce(function(s, o) { return s + (Number(o && o.comissao_rs || 0) || 0); }, 0);
+      html += ''
+        + '<tr style="background:var(--accent,#6366f1);color:#fff;font-weight:700">'
+        + '<td colspan="12" style="padding:8px 12px">👤 ' + String(vendNome) + ' — ' + String(lista.length) + ' OFs — ' + fmt(totalVend) + ' — Comissão: ' + fmt(totalCom) + '</td>'
         + '</tr>';
-    }).join('');
-    try { console.log('[COM] tabela OFs OK:', (json.ofs || []).length, 'OFs'); } catch (_) {}
+      html += lista.map(function(of) {
+        return ''
+          + '<tr>'
+          + '<td style="padding:7px 12px">#' + String(of && of.numero || '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.cliente || '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String((of && (of.produto || of.descricao)) || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + String((of && of.qtd) != null ? (of.qtd || 0) : '—') + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.vendedor || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:right">' + fmt(of && of.valor_total) + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">' + (Number(of && of.comissao_pct || 1) || 1).toFixed(2) + '%</td>'
+          + '<td style="padding:7px 12px;text-align:right;color:#4ade80">' + fmt(of && of.comissao_rs) + '</td>'
+          + '<td style="padding:7px 12px">' + fmtData(of && of.created_at) + '</td>'
+          + '<td style="padding:7px 12px">' + fmtData(of && of.data_conclusao) + '</td>'
+          + '<td style="padding:7px 12px">' + String(of && of.status || '—') + '</td>'
+          + '<td style="padding:7px 12px;text-align:center">'
+          + '<button style="padding:3px 8px;border-radius:4px;border:1px solid var(--border,#333);background:transparent;color:var(--text1,#fff);cursor:pointer;font-size:10px" onclick="window.abrirOf && window.abrirOf(' + JSON.stringify(String(of && of.id || '')) + ')">Traçar</button>'
+          + '</td>'
+          + '</tr>';
+      }).join('');
+    });
+
+    tbodyOFs.innerHTML = html;
+    try { console.log('[COM] detalhamento por vendedor OK:', (json.ofs || []).length, 'OFs'); } catch (_) {}
   }
 
   function _renderDetalheOFs(ofs) {
@@ -4789,8 +4808,23 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     document.body.appendChild(overlay);
     overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
     try {
+      try { console.log('[IMPRIMIR] modal aberto, _comissoesSqlData:', !!window._comissoesSqlData, window._comissoesSqlData && window._comissoesSqlData.total_ofs); } catch (_) {}
       overlay.querySelector('[data-imp-close="1"]').onclick = function() { overlay.remove(); };
-      overlay.querySelector('#btn-gerar-impressao-com').onclick = function() { window._gerarImpressaoComissoes(); };
+      Array.prototype.slice.call(overlay.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          var t = String(btn.textContent || '');
+          if (t.indexOf('Gerar') < 0 && t.indexOf('Imprimir') < 0) return;
+          try { btn.removeAttribute('onclick'); } catch (_) {}
+          if (btn.dataset && btn.dataset.patchImpBtn === '1') return;
+          btn.dataset.patchImpBtn = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            try { console.log('[IMPRIMIR] botão clicado'); } catch (_) {}
+            try { window._gerarImpressaoComissoes(); } catch (err) { try { console.error('[IMPRIMIR] erro:', err && err.message); } catch (_) {} }
+          }, true);
+        } catch (_) {}
+      });
       document.getElementById('imp-todos').addEventListener('change', function() {
         Array.prototype.slice.call(document.querySelectorAll('#imp-vends-list input[type=checkbox]')).forEach(function(cb) {
           cb.checked = !!document.getElementById('imp-todos').checked;
