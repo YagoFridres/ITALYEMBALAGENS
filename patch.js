@@ -11534,7 +11534,7 @@ function _renderTabelaOFs(json) {
   if (window.__patchComissoesUnicaDefinicao) return;
   window.__patchComissoesUnicaDefinicao = true;
 
-  window.calcularComissoes = async function() {
+  window.__comissoesPatchCalcular = async function() {
     var mesNum = '';
     var anoNum = '';
     try {
@@ -11595,12 +11595,15 @@ function _renderTabelaOFs(json) {
 
   function _vincularBtnCalcularComissoes() {
     try {
-      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+      var pg = document.querySelector('#page-comissoes, [id*="comiss"], [data-page="comissoes"]');
+      if (!pg) return;
+      Array.prototype.slice.call(pg.querySelectorAll('button')).forEach(function(btn) {
         try {
           if (!btn) return;
           var txt = String(btn.textContent || '').trim();
           if (txt !== 'Calcular') return;
           if (btn.dataset && btn.dataset.comPatch2 === '1') return;
+          try { btn.onclick = null; } catch (_) {}
           try { btn.removeAttribute('onclick'); } catch (_) {}
           var novo = btn.cloneNode(true);
           btn.parentNode.replaceChild(novo, btn);
@@ -11609,13 +11612,36 @@ function _renderTabelaOFs(json) {
             try { e.preventDefault(); } catch (_) {}
             try { e.stopPropagation(); } catch (_) {}
             try { e.stopImmediatePropagation(); } catch (_) {}
+            try { console.log('[COM] botão Calcular encontrado, vinculando...'); } catch (_) {}
             window.calcularComissoes();
           }, true);
         } catch (_) {}
       });
     } catch (_) {}
   }
-  try { _vincularBtnCalcularComissoes(); } catch (_) {}
+
+  function _instalarOverrideComissoes() {
+    try {
+      if (typeof window.__comissoesPatchCalcular === 'function') {
+        window.calcularComissoes = window.__comissoesPatchCalcular;
+        window.gerarRelatorioComissoes = window.__comissoesPatchCalcular;
+        window.renderRelatorioComissoes = window.__comissoesPatchCalcular;
+      }
+    } catch (_) {}
+    try { _vincularBtnCalcularComissoes(); } catch (_) {}
+  }
+
+  try { _instalarOverrideComissoes(); } catch (_) {}
+  try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
+  try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
+  try { setInterval(function() {
+    try {
+      if (typeof window.__comissoesPatchCalcular === 'function' && window.calcularComissoes !== window.__comissoesPatchCalcular) {
+        window.calcularComissoes = window.__comissoesPatchCalcular;
+      }
+    } catch (_) {}
+  }, 1500); } catch (_) {}
+
   try {
     var _obsCalc = new MutationObserver(function() { _vincularBtnCalcularComissoes(); });
     _obsCalc.observe(document.body, { childList: true, subtree: true });
