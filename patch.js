@@ -100,6 +100,33 @@
   }
 })();
 
+(function() {
+  try {
+    if (typeof window.toastHotfix !== 'function') {
+      window.toastHotfix = function(msg) {
+        var s = '';
+        try { s = String(msg == null ? '' : msg); } catch (_) { s = ''; }
+        try {
+          if (typeof window._notificacaoOF === 'function') return window._notificacaoOF(s, 'sucesso');
+        } catch (_) {}
+        try { alert(s); } catch (_) {}
+      };
+    }
+  } catch (_) {}
+
+  try {
+    if (!document.getElementById('patch-modal-solid-style')) {
+      var st = document.createElement('style');
+      st.id = 'patch-modal-solid-style';
+      st.textContent = ''
+        + '.modal,.modal-content,[class*="modal"],'
+        + '#modal-nova-tinta,#modal-novo-material,'
+        + '[id*="modal"]>div{background:var(--bg2,#1a1a2e)!important;}';
+      document.head.appendChild(st);
+    }
+  } catch (_) {}
+})();
+
 window.addEventListener('error', function(e) {
   try { console.error('[PATCH ERROR GLOBAL]', e && e.message, e && e.filename, e && e.lineno); } catch (_) {}
 });
@@ -5045,12 +5072,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       body: JSON.stringify(body)
     });
     var json = await resp.json().catch(function() { return null; });
-    if (resp.ok && json) {
+    var updated = (json && json.data) ? json.data : json;
+    if (resp.ok && updated) {
       try { var ov = document.getElementById('patch-modal-editar-cli'); if (ov) ov.remove(); } catch (_) {}
       try { window._clientesCarregados = false; } catch (_) {}
       try { window.CLIENTES = []; } catch (_) {}
       try { window._CLIENTES = []; } catch (_) {}
-      try { if (typeof window.carregarClientes === 'function') window.carregarClientes(true); } catch (_) {}
+      try { if (typeof window.carregarClientes === 'function') await window.carregarClientes(true); } catch (_) {}
       try { if (typeof window.renderClientes === 'function') window.renderClientes(); } catch (_) {}
       try {
         if (typeof window._notificacaoOF === 'function') window._notificacaoOF('Cliente atualizado!', 'sucesso');
@@ -5069,7 +5097,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     window[nomeFn] = function(id) {
       var args = Array.prototype.slice.call(arguments, 1);
       var cid = String(id || '').trim();
-      try { console.log('[PAINEL CLI] abrindo id:', cid); } catch (_) {}
+      try { console.log('[HIST CLI] id:', cid, typeof id); } catch (_) {}
       if (!cid || cid === 'undefined' || cid === 'null') {
         try { console.warn('[PAINEL CLI] ID vazio!'); } catch (_) {}
         return;

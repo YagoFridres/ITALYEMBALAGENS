@@ -1443,8 +1443,9 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     const fimMes = (parseInt(mes, 10) === 12) ? '01' : String((parseInt(mes, 10) + 1)).padStart(2, '0');
     const fim = `${fimAno}-${fimMes}-01`;
 
-    const empresa_id = await _resolveEmpresaUuid(req).catch(() => null);
+    const empresa_id = await resolverEmpresaId(req).catch(() => null);
     if (!empresa_id) return res.json({ ok: false, error: 'empresa_id_not_resolved' });
+    console.log('[COMISSOES] params:', { mes, ano, empresa_id });
 
     const PAGE = 1000;
     let from = 0;
@@ -1459,7 +1460,11 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
         .lt('data_conclusao', fim)
         .ilike('status', '%conclu%')
         .range(from, from + PAGE - 1);
-      if (error || !(data && data.length)) break;
+      if (error) {
+        console.log('[COMISSOES] resultado:', { total: todasOFs.length, erro: error?.message || String(error) });
+        break;
+      }
+      if (!(data && data.length)) break;
       todasOFs = todasOFs.concat(data);
       if (data.length < PAGE) break;
       from += PAGE;
@@ -1467,6 +1472,7 @@ app.get('/api/comissoes/relatorio', authMiddleware, async (req, res) => {
     }
 
     console.log('[COMISSOES] empresa:', empresa_id, 'OFs:', todasOFs.length);
+    console.log('[COMISSOES] resultado:', { total: todasOFs.length });
 
     const { data: vendedores } = await supabase
       .from('vendedores')
@@ -3239,8 +3245,7 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
     const status = req.query.status;
     const busca = req.query.busca;
-    const clienteFiltroRaw = req.query.cliente_id ?? req.query.clienteId ?? req.query.cli_id ?? req.query.cliId ?? req.query.cliente ?? '';
-    const clienteFiltro = String(clienteFiltroRaw || '').trim();
+    const clienteFiltro = String((req.query.cli_id || req.query.cliente_id || '') || '').trim();
     const empresaFiltro = req.query.empresa;
     const useCache = !afterIso;
     const cacheKey = useCache ? ('ofs_v12_' + empId + '_' + offset + '_' + limit + '_' + (status || '') + '_' + (busca || '') + '_' + (clienteFiltro || '')) : '';
@@ -3268,12 +3273,11 @@ app.get('/api/ofs', authMiddleware, async (req, res) => {
       else query = query.eq('status', status);
     }
 
+    if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
+      query = query.eq('cli_id', clienteFiltro);
+    }
     if (busca) {
       query = query.or('numero.ilike.%' + busca + '%,descricao.ilike.%' + busca + '%');
-    }
-    if (clienteFiltro && clienteFiltro !== 'undefined' && clienteFiltro !== 'null' && clienteFiltro !== '[object Object]') {
-      const safe = clienteFiltro.replace(/,/g, '').replace(/\s+/g, '');
-      query = query.eq('cli_id', safe);
     }
     if (afterIso) {
       query = query.gte('created_at', afterIso);
