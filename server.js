@@ -5298,245 +5298,150 @@ app.get('/api/caixas-perdidas', authMiddleware, async (req, res) => {
 app.get('/api/caixas-perdidas/dashboard', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    const tabelas = ['caixas_perdidas', 'caixas_perdas', 'perdas_producao'];
-    let tabelaAtiva = null;
-    for (const t of tabelas) {
-      const { data, error } = await supabase.from(t).select('id').limit(1);
-      if (!error && Array.isArray(data)) {
-        tabelaAtiva = t;
-        if (data.length) break;
-      }
-    }
-    let todos = [];
-    if (tabelaAtiva) {
-      const r = await supabase.from(tabelaAtiva).select('*').limit(5);
-      todos = Array.isArray(r?.data) ? r.data : [];
-      try { console.log('[CP] tabela ativa:', tabelaAtiva); } catch (_) {}
-      try { console.log('[CP] primeiros registros:', JSON.stringify(todos)); } catch (_) {}
-      try { console.log('[CP] campos disponíveis:', todos?.[0] ? Object.keys(todos[0]) : 'vazio'); } catch (_) {}
-    } else {
-      try { console.log('[CP] tabela ativa: não encontrada'); } catch (_) {}
-    }
-    const _debug = {
-      tabelaAtiva,
-      totalRegistros: todos?.length || 0,
-      campos: Object.keys((todos && todos[0]) || {}),
-    };
 
-    const now = new Date();
-    const mesNum = Math.max(1, Math.min(12, parseInt(String(req.query?.mes || (now.getMonth() + 1)), 10) || (now.getMonth() + 1)));
-    const anoNum = parseInt(String(req.query?.ano || now.getFullYear()), 10) || now.getFullYear();
-    const periodoRaw = String(req.query?.periodo || '').trim().toLowerCase();
-    const maqFiltro = String(req.query?.maquina || '').trim().toLowerCase();
-    const empresaFiltro = String(req.query?.empresa_id || '').trim();
-    const todasEmpresas = String(req.query?.todas_empresas || '').trim().toLowerCase() === 'true';
-
-    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    const fmtDate = (d) => {
-      if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-      const dd = String(d.getDate()).padStart(2, '0');
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const yy = d.getFullYear();
-      return `${dd}/${mm}/${yy}`;
-    };
-    const parseDate = (v) => {
-      const s = String(v || '').slice(0, 10);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-      const d = new Date(s + 'T00:00:00');
-      return isNaN(d.getTime()) ? null : d;
-    };
-    const norm = (s) => {
-      try { return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (_) { return String(s || '').trim().toLowerCase(); }
-    };
     const toArray = (v) => {
       if (Array.isArray(v)) return v.map((x) => String(x || '').trim()).filter(Boolean);
       if (typeof v === 'string') {
         const s = String(v || '').trim();
         if (!s) return [];
-        if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
-          try {
-            const p = JSON.parse(s);
-            if (Array.isArray(p)) return p.map((x) => String(x || '').trim()).filter(Boolean);
-          } catch (_) {}
-        }
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) return parsed.map((x) => String(x || '').trim()).filter(Boolean);
+        } catch (_) {}
         return s.split(/[,;|/]+/g).map((x) => String(x || '').trim()).filter(Boolean);
       }
       return [];
     };
-    const inRange = (d, start, end) => !!(d && start && end && d >= start && d <= end);
 
-    const reqAll = { ...req, query: { ...(req.query || {}) } };
-    delete reqAll.query.of_id;
-    const rows = await _listarCaixasPerdidasEnriquecidas(reqAll);
-    const listaBase = Array.isArray(rows) ? rows.slice() : [];
-    const vazioBase = _caixasPerdidasDashboardVazio(`${mesesPt[mesNum - 1]} ${anoNum}`);
-    if (!listaBase.length) return res.json({ ...vazioBase, _debug });
+    let tabelaAtiva = null;
+    for (const t of ['caixas_perdidas', 'caixas_perdas', 'perdas_producao']) {
+      const { error } = await supabase.from(t).select('*').limit(1);
+      if (!error) { tabelaAtiva = t; break; }
+    }
 
-    const startMes = new Date(anoNum, mesNum - 1, 1);
-    const endMes = new Date(anoNum, mesNum, 0, 23, 59, 59, 999);
-    const prevMesNum = mesNum === 1 ? 12 : (mesNum - 1);
-    const prevAnoNum = mesNum === 1 ? (anoNum - 1) : anoNum;
-    const startPrev = new Date(prevAnoNum, prevMesNum - 1, 1);
-    const endPrev = new Date(prevAnoNum, prevMesNum, 0, 23, 59, 59, 999);
-
-    const startHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-    const weekDay = now.getDay() || 7;
-    const startSemana = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (weekDay - 1));
-    startSemana.setHours(0, 0, 0, 0);
-    const endSemana = new Date(startSemana.getTime());
-    endSemana.setDate(endSemana.getDate() + 6);
-    endSemana.setHours(23, 59, 59, 999);
-
-    const pickDate = (r) => parseDate(r?.data_conclusao || r?.data || r?.created_at);
-    const pickQtd = (r) => Number(r?.qtd_perdida ?? r?.quantidade ?? r?.caixas_perdidas ?? 0) || 0;
-    const pickValUnit = (r) => Number(r?.valor_unitario ?? 0) || 0;
-    const pickVal = (r) => {
-      const direto = Number(r?.valor_perdido ?? r?.vl_total ?? 0) || 0;
-      return direto || (pickQtd(r) * pickValUnit(r));
-    };
-
-    let lista = listaBase.filter((r) => {
-      if (!r) return false;
-      if (!todasEmpresas && empresaFiltro) {
-        const emp = String(r?.empresa_id || r?.emp_id || '').trim();
-        if (emp !== empresaFiltro) return false;
-      }
-      if (maqFiltro) {
-        const maqs = Array.from(new Set(
-          toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
-        )).filter(Boolean);
-        if (!maqs.some((m) => norm(m) === norm(maqFiltro))) return false;
-      }
-      const dt = pickDate(r);
-      if (periodoRaw === 'hoje') return inRange(dt, startHoje, endHoje);
-      if (periodoRaw === 'semana') return inRange(dt, startSemana, endSemana);
-      if (periodoRaw === 'todos') return true;
-      return inRange(dt, startMes, endMes);
-    });
-
-    const listaPrev = listaBase.filter((r) => {
-      if (!r) return false;
-      if (!todasEmpresas && empresaFiltro) {
-        const emp = String(r?.empresa_id || r?.emp_id || '').trim();
-        if (emp !== empresaFiltro) return false;
-      }
-      if (maqFiltro) {
-        const maqs = Array.from(new Set(
-          toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
-        )).filter(Boolean);
-        if (!maqs.some((m) => norm(m) === norm(maqFiltro))) return false;
-      }
-      const dt = pickDate(r);
-      return inRange(dt, startPrev, endPrev);
-    });
-
-    const sumInfo = (arr) => ({
-      total_caixas: arr.reduce((s, r) => s + pickQtd(r), 0),
-      valor_total: arr.reduce((s, r) => s + pickVal(r), 0),
-      total_ocorrencias: arr.length,
-    });
-    const atual = sumInfo(lista);
-    const anterior = sumInfo(listaPrev);
-    const pctVar = (atualNum, prevNum) => {
-      if (!prevNum && !atualNum) return 0;
-      if (!prevNum) return 100;
-      return Math.round((((atualNum - prevNum) / prevNum) * 100) * 10) / 10;
-    };
-
-    const rankMaqsMap = new Map();
-    lista.forEach((r) => {
-      const maqs = Array.from(new Set(
-        toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
-      )).filter(Boolean);
-      if (!maqs.length) maqs.push('—');
-      maqs.forEach((maq) => {
-        const key = String(maq || '—').trim() || '—';
-        const prev = rankMaqsMap.get(key) || { maquina: key, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
-        prev.total_caixas += pickQtd(r);
-        prev.valor_perdido += pickVal(r);
-        prev.ocorrencias += 1;
-        rankMaqsMap.set(key, prev);
+    if (!tabelaAtiva) {
+      return res.json({
+        _debug: 'nenhuma tabela encontrada',
+        detalhamento: [],
+        resumo_mes_atual: { total_caixas: 0, valor_total: 0, total_ocorrencias: 0 },
+        ranking_maquinas: [],
+        ranking_operadores: [],
+        comparacao_mes_anterior: {}
       });
-    });
-    const ranking_maquinas = Array.from(rankMaqsMap.values()).sort((a, b) => (b.total_caixas - a.total_caixas) || (b.valor_perdido - a.valor_perdido)).slice(0, 10);
+    }
 
-    const rankOpsMap = new Map();
-    lista.forEach((r) => {
-      const ops = Array.from(new Set(toArray(r?.operadores).concat([String(r?.operador || '').trim()]).concat([String(r?.usuario || '').trim()]))).filter(Boolean);
-      if (!ops.length) return;
-      ops.forEach((op) => {
-        const key = String(op || '—').trim() || '—';
-        const prev = rankOpsMap.get(key) || { operador: key, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
-        prev.total_caixas += pickQtd(r);
-        prev.valor_perdido += pickVal(r);
-        prev.ocorrencias += 1;
-        rankOpsMap.set(key, prev);
-      });
-    });
-    const ranking_operadores = Array.from(rankOpsMap.values()).sort((a, b) => (b.total_caixas - a.total_caixas) || (b.valor_perdido - a.valor_perdido)).slice(0, 10);
+    const { data: todos } = await supabase
+      .from(tabelaAtiva)
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
 
-    const detMap = new Map();
-    lista.forEach((r) => {
-      const key = String(r?.of_id || '') + '::' + String(r?.of_numero || '') + '::' + String(r?.data_conclusao || r?.data || '');
-      const atualDet = detMap.get(key) || {
-        of_numero: String(r?.of_numero || '—').trim() || '—',
-        cliente_nome: String(r?.cliente_nome || r?.cliente || '—').trim() || '—',
-        produto: String(r?.produto || '—').trim() || '—',
-        quantidade_perdida: 0,
-        valor_perdido: 0,
-        data_conclusao: fmtDate(pickDate(r)),
-        concluido_por: String(r?.concluido_por || r?.usuario || '—').trim() || '—',
-        maquinas: [],
-        operadores: [],
-        empresa_id: String(r?.empresa_id || r?.emp_id || '').trim() || null,
-        detalhes: []
+    try { console.log('[CP] tabela:', tabelaAtiva, 'total:', todos?.length); } catch (_) {}
+    try { if (todos?.[0]) console.log('[CP] campos:', Object.keys(todos[0])); } catch (_) {}
+
+    const mes = parseInt(String(req.query.mes || ''), 10) || (new Date().getMonth() + 1);
+    const ano = parseInt(String(req.query.ano || ''), 10) || new Date().getFullYear();
+    const semFiltro = String(req.query.todos || '').trim().toLowerCase() === 'true'
+      || String(req.query.periodo || '').trim().toLowerCase() === 'todos';
+
+    const dadosFiltrados = semFiltro ? (todos || []) : (todos || []).filter((r) => {
+      const campoData = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao;
+      if (!campoData) return true;
+      const d = new Date(campoData);
+      return !isNaN(d.getTime()) && (d.getMonth() + 1 === mes) && (d.getFullYear() === ano);
+    });
+
+    const ofIds = Array.from(new Set((dadosFiltrados || []).map((r) => String(r?.of_id || r?.of_uuid || '').trim()).filter(Boolean)));
+    const { data: ofsRows } = ofIds.length
+      ? await supabase.from('ofs').select('id,numero,cli_id,valor_total,quantidade,descricao').in('id', ofIds)
+      : { data: [] };
+    const ofsMap = Object.create(null);
+    (ofsRows || []).forEach((of) => { ofsMap[String(of.id || '').trim()] = of; });
+
+    const cliIds = Array.from(new Set((ofsRows || []).map((of) => String(of?.cli_id || '').trim()).filter(Boolean)));
+    const { data: clientesRows } = cliIds.length
+      ? await supabase.from('clientes').select('id,nome').in('id', cliIds)
+      : { data: [] };
+    const clientesMap = Object.create(null);
+    (clientesRows || []).forEach((cli) => { clientesMap[String(cli.id || '').trim()] = String(cli.nome || '').trim(); });
+
+    const enriquecidos = (dadosFiltrados || []).map((r) => {
+      const ofId = String(r?.of_id || r?.of_uuid || '').trim();
+      const ofData = ofId ? ofsMap[ofId] : null;
+      const qtdPerdida = Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0;
+      const vu = (Number(ofData?.valor_total || 0) > 0 && Number(ofData?.quantidade || 0) > 0)
+        ? (Number(ofData.valor_total) / Number(ofData.quantidade))
+        : 0;
+      const valorPerdido = vu * qtdPerdida;
+      const clienteNome = ofData?.cli_id ? (clientesMap[String(ofData.cli_id || '').trim()] || '') : '';
+      const operadores = Array.isArray(r?.operadores) ? r.operadores
+        : (toArray(r?.operadores).length ? toArray(r?.operadores) : toArray(r?.operador));
+      const dataRef = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao || null;
+
+      return {
+        ...r,
+        of_numero: ofData?.numero || r?.of_numero || '—',
+        cliente_nome: clienteNome || r?.cliente_nome || '',
+        produto: ofData?.descricao || r?.produto || '—',
+        quantidade_perdida: qtdPerdida,
+        valor_perdido: valorPerdido,
+        maquina: r?.maquina || r?.maquina_perda || r?.maquina_nome || '—',
+        operadores,
+        usuario: r?.usuario || r?.concluido_por || '—',
+        data_ref: dataRef
       };
-      atualDet.quantidade_perdida += pickQtd(r);
-      atualDet.valor_perdido += pickVal(r);
-      const maqs = Array.from(new Set(
-        toArray(r?.maquinas).concat(toArray(r?.maquina)).concat(toArray(r?.maquina_nome)).concat([String(r?.maquina || '').trim()])
-      )).filter(Boolean);
-      const ops = Array.from(new Set(toArray(r?.operadores).concat([String(r?.operador || '').trim()]).concat([String(r?.usuario || '').trim()]))).filter(Boolean);
-      atualDet.maquinas = Array.from(new Set(atualDet.maquinas.concat(maqs)));
-      atualDet.operadores = Array.from(new Set(atualDet.operadores.concat(ops)));
-      atualDet.detalhes.push({
-        maquina: maqs[0] || '—',
-        qtd_perdida: pickQtd(r),
-        operadores: ops
+    });
+
+    const totalCaixas = enriquecidos.reduce((s, r) => s + (Number(r?.quantidade_perdida || 0) || 0), 0);
+    const valorTotal = enriquecidos.reduce((s, r) => s + (Number(r?.valor_perdido || 0) || 0), 0);
+
+    const maqMap = Object.create(null);
+    enriquecidos.forEach((r) => {
+      const m = String(r?.maquina || '—').trim() || '—';
+      if (!maqMap[m]) maqMap[m] = { maquina: m, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
+      maqMap[m].total_caixas += Number(r?.quantidade_perdida || 0) || 0;
+      maqMap[m].valor_perdido += Number(r?.valor_perdido || 0) || 0;
+      maqMap[m].ocorrencias += 1;
+    });
+    const rankingMaquinas = Object.values(maqMap).sort((a, b) => b.total_caixas - a.total_caixas);
+
+    const opMap = Object.create(null);
+    enriquecidos.forEach((r) => {
+      const ops = Array.isArray(r?.operadores) ? r.operadores : [r?.operadores].filter(Boolean);
+      ops.forEach((op) => {
+        const nome = String(op || '').trim();
+        if (!nome) return;
+        if (!opMap[nome]) opMap[nome] = { operador: nome, total_caixas: 0, valor_perdido: 0, ocorrencias: 0 };
+        opMap[nome].total_caixas += Number(r?.quantidade_perdida || 0) || 0;
+        opMap[nome].valor_perdido += Number(r?.valor_perdido || 0) || 0;
+        opMap[nome].ocorrencias += 1;
       });
-      detMap.set(key, atualDet);
     });
-    const detalhamento = Array.from(detMap.values()).sort((a, b) => {
-      const da = parseDate((a?.data_conclusao || '').split('/').reverse().join('-'));
-      const db = parseDate((b?.data_conclusao || '').split('/').reverse().join('-'));
-      return (db?.getTime() || 0) - (da?.getTime() || 0);
+    const rankingOperadores = Object.values(opMap).sort((a, b) => b.total_caixas - a.total_caixas);
+
+    const mesAnt = mes === 1 ? 12 : mes - 1;
+    const anoAnt = mes === 1 ? ano - 1 : ano;
+    const dadosAnt = (todos || []).filter((r) => {
+      const raw = r?.created_at || r?.data || r?.data_perda || r?.data_conclusao;
+      const d = new Date(raw);
+      return !isNaN(d.getTime()) && (d.getMonth() + 1 === mesAnt) && (d.getFullYear() === anoAnt);
     });
+    const totalCaixasAnt = dadosAnt.reduce((s, r) => s + (Number(r?.quantidade ?? r?.caixas_perdidas ?? r?.qtd_perdida ?? 0) || 0), 0);
 
     return res.json({
-      ok: true,
-      _debug,
-      resumo_mes_atual: {
-        total_caixas: atual.total_caixas,
-        valor_total: atual.valor_total,
-        total_ocorrencias: atual.total_ocorrencias,
-        mes_referencia: `${mesesPt[mesNum - 1]} ${anoNum}`
-      },
+      _debug: { tabelaAtiva, totalHistorico: todos?.length || 0, totalFiltrado: enriquecidos.length },
+      resumo_mes_atual: { total_caixas: totalCaixas, valor_total: valorTotal, total_ocorrencias: enriquecidos.length },
       comparacao_mes_anterior: {
-        total_caixas: anterior.total_caixas,
-        valor_total: anterior.valor_total,
-        variacao_caixas_pct: pctVar(atual.total_caixas, anterior.total_caixas),
-        variacao_valor_pct: pctVar(atual.valor_total, anterior.valor_total)
+        total_caixas: totalCaixasAnt,
+        variacao_caixas_pct: totalCaixasAnt > 0 ? parseFloat((((totalCaixas - totalCaixasAnt) / totalCaixasAnt) * 100).toFixed(1)) : null
       },
-      ranking_maquinas,
-      ranking_operadores,
-      detalhamento
+      ranking_maquinas: rankingMaquinas,
+      ranking_operadores: rankingOperadores,
+      detalhamento: enriquecidos
     });
   } catch (e) {
-    try { console.error('[caixas-perdidas/dashboard]', e && (e.stack || e.message) || e); } catch (_) {}
-    const now = new Date();
-    const mesesPt = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    return res.json({ ..._caixasPerdidasDashboardVazio(`${mesesPt[now.getMonth()]} ${now.getFullYear()}`), _debug: { tabelaAtiva: null, totalRegistros: 0, campos: [] } });
+    try { console.error('[CP DASHBOARD]', e.message); } catch (_) {}
+    return res.status(500).json({ error: e.message, detalhamento: [] });
   }
 });
 
