@@ -7514,6 +7514,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
   try {
     const empId = req.query.empId ? String(req.query.empId) : '';
     const qBusca = String(req.query.search || req.query.q || '').trim();
+    const incluirInativos = String(req.query.incluir_inativos || '').trim().toLowerCase() === 'true';
     const hasPaging = req.query.limit != null || req.query.offset != null;
     const limit = Math.min(parseInt(String(req.query.limit || ''), 10) || 2000, 2000);
     const offset = parseInt(String(req.query.offset || ''), 10) || 0;
@@ -7523,6 +7524,7 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
       empId || 'all',
       qBusca || '',
       lite ? 'lite1' : 'lite0',
+      incluirInativos ? 'inclui_inativos1' : 'inclui_inativos0',
       hasPaging ? ('p' + offset + ':' + limit) : 'full',
       String(req.query.order || 'created_at'),
       String(req.query.dir || 'desc'),
@@ -7593,6 +7595,10 @@ app.get('/api/clientes', authMiddleware, async (req, res) => {
         let q = supabase.from('clientes').select(selectCols).order(orderCol, { ascending: orderAsc });
         if (col) q = q.eq(col, empId);
         if (qBusca) q = q.ilike('nome', `%${qBusca}%`);
+        // Mantemos clientes inativos disponíveis para comissões quando solicitado.
+        if (incluirInativos) {
+          // intencionalmente sem filtro por ativo
+        }
         q = q.range(from, from + pageSize - 1);
         const { data, error } = await q;
         if (error) return { data: null, error };

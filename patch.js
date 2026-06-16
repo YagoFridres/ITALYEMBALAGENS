@@ -12911,17 +12911,107 @@ function _renderTabelaOFs(json) {
       return '<span style="display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:' + bg + ';color:' + fg + ';border:1px solid rgba(255,255,255,0.08)">' + String(raw).replace(/</g, '&lt;') + '</span>';
     };
 
-    var clientesMap = window.CLIENTES || window.__CLIENTES_MAPA || null;
-    var getClienteNome = function(of) {
+    var _cliNorm = function(v) {
+      return String(v == null ? '' : v).trim().toLowerCase();
+    };
+    var _extrairNomeCliente = function(c) {
+      if (!c) return '';
+      if (typeof c === 'string') return String(c || '').trim();
+      return String(c.nome || c.razao || c.rs || c.razao_social || '').trim();
+    };
+    var _ensureMapaClientesComissao = function() {
+      var out = Object.create(null);
+      try {
+        var lista = [];
+        if (Array.isArray(window.CLIENTES)) lista = lista.concat(window.CLIENTES);
+        if (Array.isArray(window._CLIENTES)) lista = lista.concat(window._CLIENTES);
+        lista.forEach(function(c) {
+          var key = _cliNorm(c && c.id);
+          var nome = _extrairNomeCliente(c);
+          if (key && nome) out[key] = nome;
+        });
+      } catch (_) {}
+      try {
+        var mapaLegado = window.__CLIENTES_MAPA;
+        if (mapaLegado && typeof mapaLegado === 'object') {
+          Object.keys(mapaLegado).forEach(function(k) {
+            var key = _cliNorm(k);
+            var nome = _extrairNomeCliente(mapaLegado[k]);
+            if (key && nome) out[key] = nome;
+          });
+        }
+      } catch (_) {}
+      window._mapaClientesComissao = Object.assign(window._mapaClientesComissao || Object.create(null), out);
+      return window._mapaClientesComissao;
+    };
+    var _loadMapaClientesComissao = function() {
+      try {
+        var atual = _ensureMapaClientesComissao();
+        if (atual && Object.keys(atual).length >= 10) return Promise.resolve(atual);
+      } catch (_) {}
+      if (window.__mapaClientesComissaoPromise) return window.__mapaClientesComissaoPromise;
+      window.__mapaClientesComissaoPromise = (async function() {
+        try {
+          var token = '';
+          try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+          var resp = await fetch('/api/clientes?limit=5000&incluir_inativos=true', { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+          var j = await resp.json().catch(function() { return null; });
+          var lista = (j && (j.data || j.clientes)) || [];
+          var mapa = _ensureMapaClientesComissao();
+          (Array.isArray(lista) ? lista : []).forEach(function(c) {
+            var key = _cliNorm(c && c.id);
+            var nome = _extrairNomeCliente(c);
+            if (key && nome) mapa[key] = nome;
+          });
+          window._mapaClientesComissao = mapa;
+          return mapa;
+        } catch (_) {
+          return _ensureMapaClientesComissao();
+        } finally {
+          window.__mapaClientesComissaoPromise = null;
+        }
+      })();
+      return window.__mapaClientesComissaoPromise;
+    };
+    var _getClienteNomeSync = function(of) {
       var n = String(of && (of.cliente || of.cliente_nome || of.cliNome || of.clinome) || '').trim();
       if (n) return n;
-      var cid = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId) || '').trim();
-      if (!cid || !clientesMap) return '—';
-      var key = String(cid).toLowerCase();
-      var c = clientesMap[key] || clientesMap[cid] || null;
-      if (c && typeof c === 'object') return String(c.nome || c.razao || c.rs || '').trim() || '—';
-      return String(c || '').trim() || '—';
+      var cidNorm = _cliNorm(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId));
+      if (!cidNorm) return '';
+      var mapa = _ensureMapaClientesComissao();
+      return String((mapa && mapa[cidNorm]) || '').trim();
     };
+    async function _resolverNomeCliente(cliId, tdElement, ofNumero) {
+      try {
+        if (!tdElement) return;
+        var cliIdRaw = String(cliId == null ? '' : cliId).trim();
+        if (!cliIdRaw) {
+          tdElement.textContent = '—';
+          return;
+        }
+        var norm = _cliNorm(cliIdRaw);
+        var mapa = _ensureMapaClientesComissao();
+        if (mapa && mapa[norm]) {
+          tdElement.textContent = mapa[norm];
+          return;
+        }
+        try { console.warn('[comissoes] cli_id sem match:', ofNumero, cliIdRaw); } catch (_) {}
+        try { tdElement.textContent = '—'; } catch (_) {}
+        var token = '';
+        try { token = String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
+        var r = await fetch('/api/clientes/' + encodeURIComponent(cliIdRaw), { headers: token ? { Authorization: 'Bearer ' + token } : {} });
+        var c = await r.json().catch(function() { return null; });
+        var base = c && (c.data || c);
+        var nome = String((base && (base.nome || base.rs || base.razao_social)) || (Array.isArray(base) && base[0] && (base[0].nome || base[0].rs || base[0].razao_social)) || '').trim() || '(não encontrado)';
+        tdElement.textContent = nome;
+        if (nome && nome !== '(não encontrado)') {
+          if (!window._mapaClientesComissao) window._mapaClientesComissao = Object.create(null);
+          window._mapaClientesComissao[norm] = nome;
+        }
+      } catch (_) {
+        try { if (tdElement) tdElement.textContent = '(não encontrado)'; } catch (__) {}
+      }
+    }
 
     var grupos = {};
     var ordem = [];
@@ -12954,7 +13044,9 @@ function _renderTabelaOFs(json) {
       ofs.forEach(function(of) {
         var id = String(of && of.id || '').trim();
         var numero = String(of && of.numero || '').trim() || '—';
-        var cli = getClienteNome(of);
+        var cliIdBruto = String(of && (of.cli_id || of.cliId || of.cliente_id || of.clienteId || '') || '').trim();
+        var cliIdNorm = _cliNorm(cliIdBruto);
+        var cli = _getClienteNomeSync(of);
         var vend = String(of && (of.vendedor || of.vendedor_nome || of.vendNome) || vendedor || '—').trim() || '—';
         var qtdBruta = null;
         try {
@@ -12980,7 +13072,7 @@ function _renderTabelaOFs(json) {
         html += ''
           + '<tr data-of-id="' + String(id).replace(/"/g, '&quot;') + '" data-of-num="' + String(numero).replace(/"/g, '&quot;') + '" style="border-bottom:1px solid var(--border,#333)">'
           + '<td style="padding:7px 12px">#' + String(numero) + '</td>'
-          + '<td style="padding:7px 12px">' + String(cli || '—').replace(/</g, '&lt;') + '</td>'
+          + '<td data-com-cli-cell="1" data-cli-id="' + String(cliIdBruto).replace(/"/g, '&quot;') + '" data-cli-id-norm="' + String(cliIdNorm).replace(/"/g, '&quot;') + '" data-of-num="' + String(numero).replace(/"/g, '&quot;') + '" style="padding:7px 12px">' + String(cli || '—').replace(/</g, '&lt;') + '</td>'
           + '<td style="padding:7px 12px">' + String(vend || '—').replace(/</g, '&lt;') + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + qtdStr + '</td>'
           + '<td style="padding:7px 12px;text-align:right">' + fmt(valTot) + '</td>'
@@ -13005,6 +13097,32 @@ function _renderTabelaOFs(json) {
     });
 
     tbody.innerHTML = html;
+    _loadMapaClientesComissao().then(function() {
+      Array.prototype.slice.call(tbody.querySelectorAll('td[data-com-cli-cell="1"]')).forEach(function(td) {
+        try {
+          var txt = String(td.textContent || '').trim();
+          var cliId = String(td.getAttribute('data-cli-id') || '').trim();
+          var cliIdNorm = _cliNorm(td.getAttribute('data-cli-id-norm') || cliId);
+          var ofNumero = String(td.getAttribute('data-of-num') || '').trim();
+          if (txt && txt !== '—' && txt !== '(não encontrado)') {
+            if (cliIdNorm) {
+              if (!window._mapaClientesComissao) window._mapaClientesComissao = Object.create(null);
+              window._mapaClientesComissao[cliIdNorm] = txt;
+            }
+            return;
+          }
+          _resolverNomeCliente(cliId, td, ofNumero);
+        } catch (_) {}
+      });
+    }).catch(function() {
+      Array.prototype.slice.call(tbody.querySelectorAll('td[data-com-cli-cell="1"]')).forEach(function(td) {
+        try {
+          var txt = String(td.textContent || '').trim();
+          if (txt && txt !== '—' && txt !== '(não encontrado)') return;
+          _resolverNomeCliente(String(td.getAttribute('data-cli-id') || '').trim(), td, String(td.getAttribute('data-of-num') || '').trim());
+        } catch (_) {}
+      });
+    });
     try { console.log('[COM] detalhamento por vendedor OK'); } catch (_) {}
   } catch (_) {}
 }
