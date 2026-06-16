@@ -103,6 +103,51 @@ window.NOTIFICACOES = window.NOTIFICACOES || [];
 })();
 
 (function() {
+  if (window.__patchCalcBtnRestoreInstalled) return;
+  window.__patchCalcBtnRestoreInstalled = true;
+
+  var _comEntrou = false;
+
+  function _bindCalcBtn() {
+    try {
+      var btn = Array.prototype.slice.call(document.querySelectorAll('button')).find(function(b) {
+        return String(b && b.textContent || '').trim() === 'Calcular';
+      });
+      if (!btn || btn._patchBound) return;
+      btn._patchBound = true;
+      btn.addEventListener('click', function() {
+        window._comRodando = false;
+        try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  try { [100, 500, 1000, 2000].forEach(function(t) { setTimeout(_bindCalcBtn, t); }); } catch (_) {}
+
+  try {
+    setInterval(function() {
+      try {
+        var el = Array.prototype.slice.call(document.querySelectorAll('*')).find(function(e) {
+          try {
+            return e && e.children && e.children.length === 0
+              && String(e.textContent || '').trim() === 'Comissão por Vendedor'
+              && e.offsetParent !== null;
+          } catch (_) { return false; }
+        });
+        if (el && !_comEntrou && !window._comRodando) {
+          _comEntrou = true;
+          try { console.log('[COM] seção visível, calculando...'); } catch (_) {}
+          setTimeout(function() {
+            try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
+          }, 300);
+        }
+        if (!el) _comEntrou = false;
+      } catch (_) {}
+    }, 1000);
+  } catch (_) {}
+})();
+
+(function() {
   if (window.__patchPinsHubInstalled) return;
   window.__patchPinsHubInstalled = true;
 
@@ -2203,7 +2248,8 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function tickMenus() {
       try { _ocultarRelatorioMensal(); } catch (_) {}
       try { _removerRelatorioMensalAgressivo(); } catch (_) {}
-      try { _ensureMenuClone('Clientes', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
+      try { _ensureMenuClone('Fornecedores', '📐 Gramaturas', 'gramaturas', 'gramaturas'); } catch (_) {}
+      try { _ensureMenuClone('Caixas Perdidas', '⚖️ Toneladas Vendidas', 'toneladas', 'toneladas-vendidas'); } catch (_) {}
     }
     try { tickMenus(); } catch (_) {}
     try { _ocultarRelatorioMensal(); } catch (_) {}
@@ -4731,7 +4777,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       try { token = String(localStorage.getItem('token') || sessionStorage.getItem('token') || '').trim(); } catch (_) {}
       var qs = new URLSearchParams();
       if (state.periodo && state.periodo !== 'mes') qs.set('periodo', state.periodo);
-      if (state.periodo === 'todos') qs.set('todos', 'true');
       if (state.maquina) qs.set('maquina', state.maquina);
       if (state.empresa_id) qs.set('empresa_id', state.empresa_id);
       if (state.todas_empresas) qs.set('todas_empresas', state.todas_empresas);
@@ -4745,17 +4790,18 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     function _cpDownloadCsv(rows) {
       try {
         var list = Array.isArray(rows) ? rows : [];
-        var lines = [['Data','OF','Cliente','Maquina','Qtd Perdida','Valor Perdido','Operadores','Usuario']];
+        var lines = [['Data Conclusao','OF','Cliente','Produto','Qtd Perdida','Valor Perdido','Maquinas','Operadores','Concluido Por']];
         list.forEach(function(r) {
           lines.push([
-            r.data_ref || r.data_conclusao || '',
+            r.data_conclusao || '',
             r.of_numero || '',
             r.cliente_nome || '',
-            r.maquina || '',
+            r.produto || '',
             r.quantidade_perdida || 0,
             Number(r.valor_perdido || 0).toFixed(2).replace('.', ','),
-            (Array.isArray(r.operadores) ? r.operadores : []).join(' | '),
-            r.usuario || ''
+            (r.maquinas || []).join(' | '),
+            (r.operadores || []).join(' | '),
+            r.concluido_por || ''
           ]);
         });
         var csv = lines.map(function(cols) {
@@ -4777,8 +4823,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var rows = Array.isArray(data && data.detalhamento) ? data.detalhamento.slice() : [];
       if (busca) {
         rows = rows.filter(function(r) {
-          var ops = Array.isArray(r && r.operadores) ? r.operadores : [];
-          var txt = [r.of_numero, r.cliente_nome, r.maquina, r.usuario, ops.join(' ')].join(' ');
+          var txt = [r.of_numero, r.cliente_nome, r.produto, (r.maquinas || []).join(' '), (r.operadores || []).join(' ')].join(' ');
           return _cpNorm(txt).indexOf(busca) >= 0;
         });
       }
@@ -4802,16 +4847,16 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       var rankM = Array.isArray(data && data.ranking_maquinas) ? data.ranking_maquinas : [];
       var rankO = Array.isArray(data && data.ranking_operadores) ? data.ranking_operadores : [];
       var rows = _cpBuildTableRows(data);
-      var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).map(function(r) { return String(r && r.maquina || '').trim(); }).filter(Boolean))).filter(Boolean);
+      var maquinasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).reduce(function(acc, r) { return acc.concat(r && r.maquinas || []); }, []))).filter(Boolean);
       var empresasOpts = Array.from(new Set((Array.isArray(data && data.detalhamento) ? data.detalhamento : []).map(function(r) { return String(r && r.empresa_id || '').trim(); }).filter(Boolean)));
       var maxM = Math.max(1, ...rankM.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
       var maxO = Math.max(1, ...rankO.map(function(r) { return Number(r && r.total_caixas || 0) || 0; }));
-      var varCx = comp.variacao_caixas_pct == null ? null : (Number(comp.variacao_caixas_pct || 0) || 0);
-      var varCls = varCx == null ? '' : (varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down');
-      var varArrow = varCx == null ? '—' : (varCx > 0 ? '↑' : '↓');
+      var varCx = Number(comp.variacao_caixas_pct || 0) || 0;
+      var varCls = varCx > 0 ? 'cpv2-compare-up' : 'cpv2-compare-down';
+      var varArrow = varCx > 0 ? '↑' : '↓';
       if (!(Array.isArray(data && data.detalhamento) && data.detalhamento.length)) {
         var dbgTab = (data && data._debug && data._debug.tabelaAtiva) ? String(data._debug.tabelaAtiva) : 'não encontrada';
-        var dbgTot = (data && data._debug && data._debug.totalHistorico != null) ? String(data._debug.totalHistorico) : '0';
+        var dbgTot = (data && data._debug && data._debug.totalRegistros != null) ? String(data._debug.totalRegistros) : '0';
         host.innerHTML = ''
           + '<div class="cpv2"><div class="cpv2-head"><div><div class="cpv2-title">💥 Caixas Perdidas</div><div class="cpv2-sub">Dashboard consolidado de perdas</div></div></div>'
           + '<div class="cpv2-panel cpv2-empty">'
@@ -4844,30 +4889,33 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
         + '    </div>'
         + '  </div>'
         + '  <div class="cpv2-summary">'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Total Caixas</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_caixas) + ' cx</div><div class="cpv2-card-sub">Caixas perdidas no período</div></div>'
+        + '    <div class="cpv2-card"><div class="cpv2-card-label">Caixas Perdidas</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_caixas) + ' cx</div><div class="cpv2-card-sub">' + _cpEsc(resumo.mes_referencia || '') + '</div></div>'
         + '    <div class="cpv2-card"><div class="cpv2-card-label">Valor Perdido</div><div class="cpv2-card-value">' + _cpFmtMoney(resumo.valor_total) + '</div><div class="cpv2-card-sub">Perdas do período</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">vs Mês Anterior</div><div class="cpv2-card-value ' + varCls + '">' + (varCx == null ? '—' : (varArrow + ' ' + String(Math.abs(varCx)).replace('.', ',') + '%')) + '</div><div class="cpv2-card-sub">Anterior: ' + _cpFmtNum(comp.total_caixas || 0) + ' cx</div></div>'
-        + '    <div class="cpv2-card"><div class="cpv2-card-label">Ocorrências</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_ocorrencias) + '</div><div class="cpv2-card-sub">Registros encontrados</div></div>'
+        + '    <div class="cpv2-card"><div class="cpv2-card-label">VS Mês Anterior</div><div class="cpv2-card-value ' + varCls + '">' + varArrow + ' ' + String(Math.abs(varCx)).replace('.', ',') + '%</div><div class="cpv2-card-sub">Anterior: ' + _cpFmtNum(comp.total_caixas) + ' cx · ' + _cpFmtMoney(comp.valor_total) + '</div></div>'
+        + '    <div class="cpv2-card"><div class="cpv2-card-label">Ocorrências</div><div class="cpv2-card-value">' + _cpFmtNum(resumo.total_ocorrencias) + '</div><div class="cpv2-card-sub">Registros consolidados</div></div>'
         + '  </div>'
         + '  <div class="cpv2-ranks">'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking Máquinas</div>' + rankM.slice(0, 5).map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%;background:linear-gradient(90deg,#ef4444,#dc2626)"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
-        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Ranking Operadores</div>' + rankO.slice(0, 5).map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%;background:linear-gradient(90deg,#f59e0b,#d97706)"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
+        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">🏭 Ranking de Máquinas</div>' + rankM.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxM) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.maquina || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
+        + '    <div class="cpv2-panel"><div class="cpv2-panel-title">👷 Operadores com Mais Perdas</div>' + rankO.map(function(r, idx) { var pct = Math.max(4, Math.round(((Number(r && r.total_caixas || 0) || 0) / maxO) * 100)); return '<div class="cpv2-rank-item"><div style="font-weight:900;color:#64748b">' + (idx + 1) + '.</div><div><div class="cpv2-rank-name">' + _cpEsc(r && r.operador || '—') + '</div><div class="cp-ranking-track"><div class="cp-ranking-bar cp-rank-op-bar" style="width:' + pct + '%"></div></div><div class="cpv2-rank-meta">' + _cpFmtNum(r && r.total_caixas || 0) + ' cx · ' + _cpFmtMoney(r && r.valor_perdido || 0) + '</div></div><div class="cpv2-badge" style="background:rgba(245,158,11,.18);color:#fcd34d;border-color:rgba(245,158,11,.22)">' + _cpFmtNum(r && r.ocorrencias || 0) + '</div></div>'; }).join('') + '</div>'
         + '  </div>'
         + '  <div class="cpv2-table-panel">'
         + '    <div class="cpv2-table-actions"><input class="cpv2-search" id="cpv2-busca" placeholder="Buscar OF ou cliente..." value="' + _cpEsc(state.busca || '') + '"><button class="cpv2-btn" id="cpv2-excel">Excel</button></div>'
-        + '    <div style="overflow:auto"><table class="cpv2-table"><thead><tr><th>Data</th><th>OF</th><th>Cliente</th><th>Máquina</th><th>Qtd Perdida</th><th>Valor Perdido</th><th>Operadores</th><th>Usuário</th></tr></thead><tbody>'
+        + '    <div style="overflow:auto"><table class="cpv2-table"><thead><tr><th>Data Conclusão</th><th>Nº OF</th><th>Cliente</th><th>Produto</th><th>Qtd Perdida</th><th>Valor Perdido</th><th>Máquinas</th><th>Operadores</th><th>Concluído Por</th></tr></thead><tbody>'
         + rows.map(function(r, idx) {
-          var ops = Array.isArray(r && r.operadores) ? r.operadores : [];
-          return '<tr data-cp-row="' + idx + '">'
-            + '<td>' + _cpEsc(_cpDateBr(r.data_ref || r.data_conclusao)) + '</td>'
+          var exp = !!state.expand[idx];
+          var line = '<tr class="' + (exp ? 'expandida' : '') + '" data-cp-row="' + idx + '">'
+            + '<td>' + _cpEsc(_cpDateBr(r.data_conclusao)) + '</td>'
             + '<td style="font-weight:800;color:#93c5fd">#' + _cpEsc(r.of_numero || '—') + '</td>'
             + '<td>' + _cpEsc(r.cliente_nome || '—') + '</td>'
-            + '<td>' + _cpEsc(r.maquina || '—') + '</td>'
+            + '<td>' + _cpEsc(r.produto || '—') + '</td>'
             + '<td>' + _cpFmtNum(r.quantidade_perdida || 0) + '</td>'
             + '<td style="font-weight:800">' + _cpFmtMoney(r.valor_perdido || 0) + '</td>'
-            + '<td>' + ops.map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td>'
-            + '<td>' + _cpEsc(r.usuario || '—') + '</td>'
+            + '<td>' + (r.maquinas || []).map(function(m) { return '<span class="cpv2-mach-badge">' + _cpEsc(m) + '</span>'; }).join('') + '</td>'
+            + '<td>' + (r.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td>'
+            + '<td>' + _cpEsc(r.concluido_por || '—') + '</td>'
             + '</tr>';
+          if (!exp) return line;
+          return line + '<tr class="expandida" data-cp-detail="' + idx + '"><td colspan="9"><div class="cpv2-detail"><table class="cpv2-inner"><thead><tr><th>Máquina</th><th>Qtd Perdida</th><th>Operadores Responsáveis</th></tr></thead><tbody>' + (r.detalhes || []).map(function(d) { return '<tr><td>' + _cpEsc(d.maquina || '—') + '</td><td>' + _cpFmtNum(d.qtd_perdida || 0) + '</td><td>' + (d.operadores || []).map(function(op) { return '<span class="cpv2-op-chip">' + _cpEsc(op) + '</span>'; }).join('') + '</td></tr>'; }).join('') + '</tbody></table></div></td></tr>';
         }).join('')
         + '    </tbody></table></div>'
         + '  </div>'
@@ -4886,6 +4934,13 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
       if (btnR) btnR.onclick = function() { _cpRenderPage(true); };
       var btnX = document.getElementById('cpv2-excel');
       if (btnX) btnX.onclick = function() { _cpDownloadCsv(rows); };
+      Array.prototype.slice.call(host.querySelectorAll('tr[data-cp-row]')).forEach(function(tr) {
+        tr.onclick = function() {
+          var idx = String(tr.getAttribute('data-cp-row') || '');
+          _cpState().expand[idx] = !_cpState().expand[idx];
+          _cpRender(data);
+        };
+      });
     }
 
     async function _cpRenderPage(force) {
@@ -4917,51 +4972,6 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
     try { window._renderCaixasPerdidasV2 = _cpRenderPage; } catch (_) {}
     try { window._carregarCPTodosPeriodos = function() { _cpState().periodo = 'todos'; _cpRenderPage(true); }; } catch (_) {}
-
-    function _addMenuGramaturas() {
-      try {
-        if (document.querySelector('[data-patch-gramaturas]')) return;
-        Array.prototype.slice.call(document.querySelectorAll('a, li')).forEach(function(el) {
-          try {
-            if (document.querySelector('[data-patch-gramaturas]')) return;
-            if (String(el.textContent || '').trim() !== 'Clientes') return;
-            var item = el.cloneNode(true);
-            item.setAttribute('data-patch-gramaturas', '1');
-            var span = item.querySelector('span') || item;
-            span.textContent = '📐 Gramaturas';
-            item.addEventListener('click', function(e) {
-              try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
-              try { _renderGramaturas(); } catch (_) { try { if (typeof window.go === 'function') window.go('gramaturas'); } catch (_) {} }
-            }, true);
-            if (el.parentElement) el.parentElement.insertAdjacentElement('afterend', item);
-          } catch (_) {}
-        });
-      } catch (_) {}
-    }
-    try { window._renderGramaturas = renderGramaturasPage; } catch (_) {}
-    try { [0, 500, 1500, 3000].forEach(function(t) { setTimeout(_addMenuGramaturas, t); }); } catch (_) {}
-
-    function _addMenuToneladas() {
-      try {
-        if (document.querySelector('[data-patch-toneladas]')) return;
-        Array.prototype.slice.call(document.querySelectorAll('a, li')).forEach(function(el) {
-          try {
-            if (document.querySelector('[data-patch-toneladas]')) return;
-            if (String(el.textContent || '').trim() !== 'Dashboard') return;
-            var item = el.cloneNode(true);
-            item.setAttribute('data-patch-toneladas', '1');
-            var span = item.querySelector('span') || item;
-            span.textContent = '⚖️ Toneladas Vendidas';
-            item.addEventListener('click', function(e) {
-              try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
-              try { window._renderToneladas && window._renderToneladas(); } catch (_) {}
-            }, true);
-            if (el.parentElement) el.parentElement.insertAdjacentElement('afterend', item);
-          } catch (_) {}
-        });
-      } catch (_) {}
-    }
-    try { [0, 500, 1500, 3000].forEach(function(t) { setTimeout(_addMenuToneladas, t); }); } catch (_) {}
   })();
 
   function tick() {
@@ -6087,7 +6097,21 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
   };
 
   function _vincularBtnCalcular() {
-    return;
+    try {
+      Array.prototype.slice.call(document.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          if (!btn || btn.dataset.patchCom === '1') return;
+          var txt = String(btn.textContent || '').trim();
+          if (!(txt === 'Calcular' || txt.indexOf('Calcular') >= 0)) return;
+          btn.dataset.patchCom = '1';
+          btn.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopPropagation(); } catch (_) {}
+            window.calcularComissoes();
+          }, true);
+        } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   try { _patchGoTelaCom(); } catch (_) {}
@@ -6278,6 +6302,7 @@ console.log('[PATCH] versão ' + Date.now() + ' carregado');
     } catch (_) {}
   }
 
+  try { _vincularBtnCalcular(); } catch (_) {}
   try { _vincularBtnImprimir(); } catch (_) {}
 })();
 
@@ -14195,8 +14220,9 @@ function _ocultarGraficoComissoes() {
         selAno.appendChild(oy);
       }
 
-      try { selMes.value = String(mesAtual); } catch (_) { selMes.value = String(mesAtual); }
-      try { selAno.value = String(anoAtual); } catch (_) { selAno.value = String(anoAtual); }
+      var ref = _getPeriodoSelecionado();
+      try { selMes.value = String(parseInt(ref.mesNum, 10) || mesAtual); } catch (_) { selMes.value = String(mesAtual); }
+      try { selAno.value = String(parseInt(ref.anoNum, 10) || anoAtual); } catch (_) { selAno.value = String(anoAtual); }
 
       var sync = function() {
         try {
@@ -15649,35 +15675,43 @@ function _ocultarGraficoComissoes() {
               try { alert('Selecione um cliente válido.'); } catch (_) {}
               return;
             }
-            await _salvarEdicaoOF(ofId, payload);
-            var vendSelect = body.querySelector('#com-of-vend-select');
-            var vendNomeNovo = '';
-            try {
-              vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
-                ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
-                : '';
-            } catch (_) { vendNomeNovo = ''; }
-            var novoSnapshot = _snapshotOfParaResumo({
-              numero: (body.querySelector('#com-of-numero') || {}).value,
-              cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
-              vendedor: vendNomeNovo,
-              quantidade: qtd,
-              valor_total: valorTotalCalc,
-              comissao_pct: comPct,
-              status: st,
-              created_at: created,
-              data_conclusao: conc,
-              observacoes: obs
+            var r2 = await fetch('/api/ofs/' + encodeURIComponent(ofId), {
+              method: 'PUT',
+              headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+              body: JSON.stringify(payload)
             });
-            try {
-              if (window._mostrarResumoAlteracoes) window._mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {});
-            } catch (_) {}
-            try { modal.remove(); } catch (_) { try { modal.style.display = 'none'; } catch (_) {} }
-            setTimeout(function() {
-              try { if (window.calcularComissoes) window.calcularComissoes(); } catch (_) {}
-            }, 500);
+            var j2 = await r2.json().catch(function() { return null; });
+            try { console.log('[TROCAR] resultado:', r2 && r2.status, JSON.stringify(j2)); } catch (_) {}
+            if (r2.ok && j2 && j2.ok) {
+              var vendSelect = body.querySelector('#com-of-vend-select');
+              var vendNomeNovo = '';
+              try {
+                vendNomeNovo = vendSelect && vendSelect.options && vendSelect.selectedIndex >= 0
+                  ? String(vendSelect.options[vendSelect.selectedIndex].text || '').trim()
+                  : '';
+              } catch (_) { vendNomeNovo = ''; }
+              var novoSnapshot = _snapshotOfParaResumo({
+                numero: (body.querySelector('#com-of-numero') || {}).value,
+                cliente: (body.querySelector('#com-of-cli-busca') || {}).value,
+                vendedor: vendNomeNovo,
+                quantidade: qtd,
+                valor_total: valorTotalCalc,
+                comissao_pct: comPct,
+                status: st,
+                created_at: created,
+                data_conclusao: conc,
+                observacoes: obs
+              });
+              _mostrarResumoAlteracoes(originalSnapshot, novoSnapshot, function() {
+                try { modal.style.display = 'none'; } catch (_) {}
+              });
+              try { if (typeof window.calcularComissoes === 'function') window.calcularComissoes(); } catch (_) {}
+            } else {
+              try { alert('Erro ao salvar: ' + String(j2 && (j2.error || j2.message) || r2.status || 'Falha')); } catch (_) {}
+            }
           } catch (err) {
-            try { alert('Erro ao salvar: ' + String(err && err.message || err)); } catch (_) {}
+            try { console.error('[TROCAR] erro fetch:', err); } catch (_) {}
+            try { alert('Erro de conexão ao salvar OF.'); } catch (_) {}
           }
         });
       }
@@ -15687,23 +15721,6 @@ function _ocultarGraficoComissoes() {
   }
 
   try { window.__comAbrirModalOF = _abrirModalOF; } catch (_) {}
-  async function _salvarEdicaoOF(ofId, body) {
-    try { console.log('[SALVAR OF] id:', ofId); } catch (_) {}
-    var tokenSave = '';
-    try { tokenSave = _getToken ? _getToken() : ''; } catch (_) { tokenSave = ''; }
-    var r = await fetch('/api/ofs/' + encodeURIComponent(String(ofId || '')), {
-      method: 'PUT',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, tokenSave ? { Authorization: 'Bearer ' + tokenSave } : {}),
-      body: JSON.stringify(body || {})
-    });
-    var resultado = await r.json().catch(function() { return { ok: false, error: 'Resposta inválida do servidor' }; });
-    try { console.log('[SALVAR OF] resposta:', r.status, JSON.stringify(resultado)); } catch (_) {}
-    if (!r.ok || resultado.ok === false) {
-      throw new Error(String(resultado && (resultado.error || resultado.message) || ('Erro ' + r.status)));
-    }
-    return resultado;
-  }
-  try { window._salvarEdicaoOF = _salvarEdicaoOF; } catch (_) {}
 
   function _bindTrocarClick() {
     try {
@@ -15734,94 +15751,6 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  function _injetarTopoComissoes(dados, dadosAnt, grupos) {
-    try {
-      var totalVendas = Number(dados && (dados.total_geral_vendas || dados.total_vendido || dados.total_vendas || 0) || 0) || 0;
-      var totalComissao = Number(dados && (dados.total_geral_comissao || dados.total_comissao || 0) || 0) || 0;
-      var totalOFs = Number(dados && (dados.total_ofs || 0) || 0) || 0;
-      var totalVendasAnt = Number(dadosAnt && (dadosAnt.total_geral_vendas || dadosAnt.total_vendido || dadosAnt.total_vendas || 0) || 0) || 0;
-      var varPct = totalVendasAnt > 0 ? (((totalVendas - totalVendasAnt) / totalVendasAnt) * 100).toFixed(1) : null;
-      var listaGrupos = Array.isArray(grupos) ? grupos.slice() : [];
-      var melhor = listaGrupos[0] || null;
-      var melhorNome = String(melhor && (melhor.vendedor || melhor.nome || '—') || '—');
-      var melhorTotal = Number(melhor && (melhor.total_vendas || melhor.total || 0) || 0) || 0;
-      var melhorPct = totalVendas > 0 ? ((melhorTotal / totalVendas) * 100).toFixed(1) : '0.0';
-      var fmtBR = function(v) {
-        return 'R$ ' + (Number(v || 0) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-      };
-      var mesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-      var mesAtual = parseInt(String((document.getElementById('comissao-mes-select') || document.querySelector('select[id*="mes"]') || {}).value || (new Date().getMonth() + 1)), 10) || (new Date().getMonth() + 1);
-      var anoAtual = parseInt(String((document.getElementById('comissao-ano-select') || document.querySelector('select[id*="ano"]') || {}).value || new Date().getFullYear()), 10) || new Date().getFullYear();
-
-      var htmlCards = ''
-        + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:16px">'
-        + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">Total Vendido</div><div style="font-size:24px;font-weight:700;color:#f1f5f9">' + fmtBR(totalVendas) + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">' + (mesNomes[mesAtual] || '') + ' ' + anoAtual + '</div></div>'
-        + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">OFs do Período</div><div style="font-size:24px;font-weight:700;color:#f1f5f9">' + totalOFs + ' OFs</div></div>'
-        + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">Total Comissões</div><div style="font-size:24px;font-weight:700;color:#10b981">' + fmtBR(totalComissao) + '</div></div>'
-        + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">vs Mês Anterior</div><div style="font-size:24px;font-weight:700;color:' + (varPct !== null && parseFloat(varPct) < 0 ? '#ef4444' : '#10b981') + '">' + (varPct !== null ? ((parseFloat(varPct) < 0 ? '↓' : '↑') + Math.abs(parseFloat(varPct)).toString().replace('.', ',') + '%') : '—') + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">Anterior: ' + fmtBR(totalVendasAnt) + '</div></div>'
-        + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px"><div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">Melhor Vendedor</div><div style="font-size:20px;font-weight:700;color:#60a5fa">' + melhorNome.replace(/</g, '&lt;') + '</div><div style="font-size:12px;color:#94a3b8;margin-top:4px">' + fmtBR(melhorTotal) + ' · ' + String(melhorPct).replace('.', ',') + '% do total</div></div>'
-        + '</div>';
-
-      var cores3 = ['#f59e0b', '#94a3b8', '#cd7c2f'];
-      var medal3 = ['🥇', '🥈', '🥉'];
-      var htmlRanking = '<div style="display:flex;gap:16px;margin-bottom:16px;justify-content:center">'
-        + listaGrupos.slice(0, 3).map(function(g, i) {
-          var nome = String(g && (g.vendedor || g.nome || '') || '');
-          var total = Number(g && (g.total_vendas || g.total || 0) || 0) || 0;
-          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
-          var pct = totalVendas > 0 ? ((total / totalVendas) * 100) : 0;
-          return '<div style="flex:1;max-width:380px;background:#1a2032;border:1px solid #2a3350;border-radius:10px;padding:14px 18px"><div style="font-size:13px;font-weight:700;color:' + cores3[i] + '">' + medal3[i] + ' ' + nome.replace(/</g, '&lt;') + '</div><div style="font-size:12px;color:#94a3b8;margin:4px 0">' + fmtBR(total) + ' · ' + ofs + ' OFs</div><div style="background:#1e293b;border-radius:4px;height:6px;margin-top:8px"><div style="background:' + cores3[i] + ';height:6px;border-radius:4px;width:' + Math.min(pct, 100) + '%"></div></div></div>';
-        }).join('')
-        + '</div>';
-
-      var coresBg = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
-      var htmlResumoVend = '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:16px"><div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;margin-bottom:12px">🏆 Comissão por Vendedor</div><table style="width:100%;border-collapse:collapse"><tbody>'
-        + listaGrupos.map(function(g, i) {
-          var nome = String(g && (g.vendedor || g.nome || '') || '');
-          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
-          var total = Number(g && (g.total_vendas || g.total || 0) || 0) || 0;
-          var pctC = Number(g && (g.comissao_pct || 1) || 1) || 1;
-          var com = Number(g && (g.total_comissao || g.comissao_rs || (total * pctC / 100)) || 0) || 0;
-          return '<tr style="background:' + coresBg[i % 4] + ';border-bottom:1px solid #1e293b"><td style="padding:11px 16px;font-weight:600;color:#f1f5f9">' + nome.replace(/</g, '&lt;') + '</td><td style="padding:11px 16px;text-align:center;color:#94a3b8">' + ofs + '</td><td style="padding:11px 16px;text-align:center;color:#94a3b8"></td><td style="padding:11px 16px;text-align:center;color:#f1f5f9">' + fmtBR(total) + '</td><td style="padding:11px 16px;text-align:center;color:#94a3b8">' + pctC.toFixed(2).replace('.', ',') + '%</td><td style="padding:11px 16px;text-align:right;color:#10b981;font-weight:600">' + fmtBR(com) + '</td><td style="padding:11px 16px;text-align:center;color:#64748b">—</td></tr>';
-        }).join('')
-        + '<tr style="background:#0f172a;font-weight:700;border-top:2px solid #334155"><td style="padding:11px 16px;color:#f1f5f9">TOTAL</td><td style="padding:11px 16px;text-align:center;color:#94a3b8">' + totalOFs + '</td><td></td><td style="padding:11px 16px;text-align:center;color:#f1f5f9">' + fmtBR(totalVendas) + '</td><td></td><td style="padding:11px 16px;text-align:right;color:#10b981">' + fmtBR(totalComissao) + '</td><td></td></tr>'
-        + '</tbody></table></div>';
-
-      var divTopo = document.getElementById('_com_topo_patch');
-      if (!divTopo) {
-        divTopo = document.createElement('div');
-        divTopo.id = '_com_topo_patch';
-        var secaoDetalhe = null;
-        try { secaoDetalhe = _acharSecaoDetalhamentoOFs(); } catch (_) { secaoDetalhe = null; }
-        if (secaoDetalhe && secaoDetalhe.parentElement) secaoDetalhe.parentElement.insertBefore(divTopo, secaoDetalhe);
-        else {
-          var pag = document.querySelector('#page-comissoes,[data-page="comissoes"]');
-          if (pag) pag.insertBefore(divTopo, pag.firstChild);
-        }
-      }
-      divTopo.innerHTML = htmlCards + htmlRanking + htmlResumoVend;
-    } catch (_) {}
-  }
-
-  function _injetarTabelaOFsComissoes(todasOFs, grupos, ordemVend) {
-    try {
-      var helpers = {
-        escHtml: function(v) {
-          return String(v == null ? '' : v).replace(/[&<>"]/g, function(ch) {
-            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] || ch;
-          });
-        },
-        cliNorm: function(v) { return String(v == null ? '' : v).trim().toLowerCase(); },
-        ensureMapaClientes: function() {
-          if (!window._mapaClientesComissao) window._mapaClientesComissao = Object.create(null);
-          return window._mapaClientesComissao;
-        },
-        ordemVend: Array.isArray(ordemVend) ? ordemVend.slice() : []
-      };
-      _injetarDetalhamentoComissoes(Array.isArray(todasOFs) ? todasOFs : [], Array.isArray(grupos) ? grupos : [], helpers);
-    } catch (_) {}
-  }
-
   function _forcarRenderComissoesPatch() {
     try {
       if (window._comissoesSqlData) {
@@ -15841,7 +15770,9 @@ function _ocultarGraficoComissoes() {
       window.__comissoesDataInternal = _normalizarComissoesData(window._comissoesData);
       Object.defineProperty(window, '_comissoesData', {
         get: function() { return window.__comissoesDataInternal; },
-        set: function(val) { window.__comissoesDataInternal = _normalizarComissoesData(val); },
+        set: function(val) {
+          window.__comissoesDataInternal = _normalizarComissoesData(val);
+        },
         configurable: true
       });
     }
@@ -15875,7 +15806,6 @@ function _ocultarGraficoComissoes() {
       var ref = _getPeriodoSelecionado();
       var anoNum = String(ref.anoNum || '').trim();
       var mesNum = String(ref.mesNum || '').trim();
-
       try {
         var inp = document.querySelector('input[type="month"]');
         if (inp) {
@@ -15885,6 +15815,7 @@ function _ocultarGraficoComissoes() {
       } catch (_) {}
 
       try { console.log('[COM PATCH] chamando API mes=' + mesNum + ' ano=' + anoNum); } catch (_) {}
+
       var token = '';
       try { token = String(localStorage.getItem('token') || '').trim(); } catch (_) {}
 
@@ -15895,7 +15826,7 @@ function _ocultarGraficoComissoes() {
         try { console.error('[COM PATCH] erro:', json && json.error); } catch (_) {}
         return;
       }
-
+      try { console.log('[FIX OFs] resposta completa:', JSON.stringify(json).substring(0, 500)); } catch (_) {}
       window._comissoesSqlData = json;
       window._comissoesData = {
         totalGeral: json.total_vendido,
@@ -15918,27 +15849,24 @@ function _ocultarGraficoComissoes() {
           };
         })
       };
-
       try {
         var fmt = function(v) { return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }); };
         var setEl = function(sel, v) { var el = document.querySelector(sel); if (el) el.textContent = v; };
-        setEl('#com-total-vendido, [data-com="total_vendido"]', fmt(json.total_vendido));
-        setEl('#com-total-comissao, [data-com="total_comissao"]', fmt(json.total_comissao));
-        setEl('#com-total-ofs, [data-com="total_ofs"]', String(json.total_ofs || 0));
+        setEl('#com-total-vendido, [data-com=\"total_vendido\"]', fmt(json.total_vendido));
+        setEl('#com-total-comissao, [data-com=\"total_comissao\"]', fmt(json.total_comissao));
+        setEl('#com-total-ofs, [data-com=\"total_ofs\"]', String(json.total_ofs || 0));
       } catch (_) {}
 
       try {
         var prev = _prevPeriodo(mesNum, anoNum);
         window.__comissoesPrevData = null;
-        if (prev) window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
+        if (prev) {
+          window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
+        }
       } catch (_) { window.__comissoesPrevData = null; }
 
-      try {
-        _injetarTopoComissoes(json, window.__comissoesPrevData || null, Array.isArray(json && (json.grupos || json.vendedores)) ? (json.grupos || json.vendedores) : []);
-      } catch (_) {}
-
       try { _instalarRenderComissoesFix(); } catch (_) {}
-      try { if (typeof window.renderComissoes === 'function') window.renderComissoes(window._comissoesData); } catch (_) {}
+      try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
       setTimeout(function() {
         try { _ensureVendedoresMap(); } catch (_) {}
         _renderTabelaVendedores(window._comissoesSqlData);
@@ -15956,31 +15884,30 @@ function _ocultarGraficoComissoes() {
   };
   try { window._executarCalculoComissoes = window.__comissoesPatchCalcular; } catch (_) {}
 
-  function _conectarBtnCalcular() {
+  function _rebindBtnCalcular() {
     try {
-      var btn = document.querySelector('button.btn-calcular, #btn-calcular-comissoes');
-      if (!btn) {
-        btn = Array.prototype.slice.call(document.querySelectorAll('button')).find(function(b) {
-          return String(b && b.textContent || '').trim() === 'Calcular';
-        }) || null;
-      }
-      if (!btn) return;
-      if (btn.dataset && btn.dataset.patchConectado === '1') return;
-      try { btn.onclick = null; } catch (_) {}
-      try { btn.removeAttribute('onclick'); } catch (_) {}
-      var novo = btn.cloneNode(true);
-      if (btn.parentNode) {
-        btn.parentNode.replaceChild(novo, btn);
-        btn = novo;
-      }
-      if (btn.dataset) btn.dataset.patchConectado = '1';
-      btn.addEventListener('click', function(e) {
-        try { e.preventDefault(); } catch (_) {}
-        try { e.stopImmediatePropagation(); } catch (_) {}
-        window._comRodando = false;
-        try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
-      }, true);
-      try { console.log('[COM] botão Calcular conectado'); } catch (_) {}
+      var pg = document.querySelector('#page-comissoes');
+      if (!pg) return;
+      Array.prototype.slice.call(pg.querySelectorAll('button')).forEach(function(btn) {
+        try {
+          if (!btn) return;
+          var txt = String(btn.textContent || '').trim();
+          if (txt !== 'Calcular') return;
+          if (btn.dataset && btn.dataset.comV3 === '1') return;
+          try { btn.onclick = null; } catch (_) {}
+          try { btn.removeAttribute('onclick'); } catch (_) {}
+          var novo = btn.cloneNode(true);
+          if (!btn.parentNode) return;
+          btn.parentNode.replaceChild(novo, btn);
+          novo.dataset.comV3 = '1';
+          novo.addEventListener('click', function(e) {
+            try { e.preventDefault(); } catch (_) {}
+            try { e.stopImmediatePropagation(); } catch (_) {}
+            try { console.log('[COM] botão Calcular vinculado v3'); } catch (_) {}
+            window.calcularComissoes();
+          }, true);
+        } catch (_) {}
+      });
     } catch (_) {}
   }
 
@@ -15992,8 +15919,7 @@ function _ocultarGraficoComissoes() {
         var args = Array.prototype.slice.call(arguments, 1);
         var r = _goOrigComFix.apply(this, [tela].concat(args));
         if (String(tela || '').indexOf('comiss') >= 0) {
-          setTimeout(_conectarBtnCalcular, 300);
-          setTimeout(_conectarBtnCalcular, 800);
+          setTimeout(_rebindBtnCalcular, 500);
           setTimeout(function() {
             try { _instalarRenderComissoesFix(); } catch (_) {}
             try {
@@ -16021,7 +15947,7 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
     try { _instalarExecGuardComissoes(); } catch (_) {}
     try { _instalarRenderComissoesFix(); } catch (_) {}
-    try { _conectarBtnCalcular(); } catch (_) {}
+    try { _rebindBtnCalcular(); } catch (_) {}
   }
 
   function _instalarExecGuardComissoes() {
@@ -16031,7 +15957,10 @@ function _ocultarGraficoComissoes() {
       if (typeof calcularComissoesOriginal !== 'function') return;
       if (calcularComissoesOriginal.__comissoesExecWrapped) return;
       var wrapped = async function() {
-        if (window._comissoesEmExecucao) return;
+        if (window._comissoesEmExecucao) {
+          try { console.log('[COM] bloqueado: já em execução'); } catch (_) {}
+          return;
+        }
         window._comissoesEmExecucao = true;
         try {
           return await calcularComissoesOriginal.apply(this, arguments);
@@ -16045,33 +15974,12 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
-  function _instalarBloqueioDuplaChamadaComissoes() {
-    try {
-      var _calcOrigFn = window.calcularComissoes;
-      if (typeof _calcOrigFn !== 'function') return;
-      if (_calcOrigFn.__comRodandoWrap) return;
-      var wrapped = async function() {
-        if (window._comRodando) {
-          try { console.log('[COM] bloqueado: já rodando'); } catch (_) {}
-          return;
-        }
-        window._comRodando = true;
-        try {
-          return await _calcOrigFn.apply(this, arguments);
-        } finally {
-          setTimeout(function() { window._comRodando = false; }, 3000);
-        }
-      };
-      wrapped.__comRodandoWrap = true;
-      wrapped.__comRodandoOrig = _calcOrigFn;
-      window.calcularComissoes = wrapped;
-    } catch (_) {}
-  }
-
   try {
     if (!window.__comissoesObsInstalled) {
       window.__comissoesObsInstalled = true;
-      try { if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect(); } catch (_) {}
+      try {
+        if (window.__comissoesObs && typeof window.__comissoesObs.disconnect === 'function') window.__comissoesObs.disconnect();
+      } catch (_) {}
       try { window.__comissoesObs = null; } catch (_) {}
       try { window.__comissoesObsDisabled = true; } catch (_) {}
     }
@@ -16079,99 +15987,56 @@ function _ocultarGraficoComissoes() {
 
   function _instalarDetectorNavComissoes() {
     try {
-      if (window.__comEntradaInterval) return;
-      window._comJaEntrou = false;
-      var _detectarEntradaComissoes = function() {
+      if (window.__comissoesNavDetectorInstalled) return;
+      window.__comissoesNavDetectorInstalled = true;
+      window._comissoesJaCalculadas = false;
+
+      document.addEventListener('click', function(e) {
         try {
-          var naComissoes = !!(
-            document.querySelector('#page-comissoes')
-            || document.querySelector('[data-page="comissoes"]')
-            || (document.querySelector('.page-active') && String(document.querySelector('.page-active').textContent || '').indexOf('omiss') >= 0)
-            || (window.location.hash && String(window.location.hash).indexOf('comiss') >= 0)
-          );
-          var elementoComissoes = null;
-          Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+          var link = e && e.target && (e.target.closest ? e.target.closest('a, li, button, span, div') : null);
+          if (!link) return;
+          var txt = String(link.textContent || '').trim().toLowerCase();
+          if (!(txt === 'comissões' || txt === 'comissoes')) return;
+          window._comissoesJaCalculadas = false;
+          setTimeout(function() {
             try {
-              if (!elementoComissoes && el.children && el.children.length === 0 && String(el.textContent || '').trim() === 'Comissão por Vendedor') elementoComissoes = el;
+              if (!window._comissoesEmExecucao && !window._comissoesJaCalculadas && typeof window._executarCalculoComissoes === 'function') {
+                window._comissoesJaCalculadas = true;
+                window._executarCalculoComissoes();
+              }
             } catch (_) {}
-          });
-          var visivel = !!(naComissoes && elementoComissoes && elementoComissoes.offsetParent !== null);
-          if (visivel && !window._comJaEntrou && !window._comRodando) {
-            window._comJaEntrou = true;
-            try { console.log('[COM] entrou na seção, calculando...'); } catch (_) {}
-            setTimeout(function() {
-              try { window.calcularComissoes && window.calcularComissoes(); } catch (_) {}
-            }, 200);
-          } else if (!visivel) {
-            window._comJaEntrou = false;
-          }
+          }, 400);
         } catch (_) {}
-      };
-      window._detectarEntradaComissoes = _detectarEntradaComissoes;
-      window.__comEntradaInterval = setInterval(_detectarEntradaComissoes, 1000);
-    } catch (_) {}
-  }
+      }, true);
 
-  function _recriarCalcularComissoesSePreciso() {
-    setTimeout(function() {
-      try {
-        if (typeof window.calcularComissoes !== 'function') {
-          try { console.warn('[COM] calcularComissoes não é função, recriando...'); } catch (_) {}
-          window.calcularComissoes = async function() {
-            if (window._comRodando) return;
-            window._comRodando = true;
-            try {
-              var selMes = document.getElementById('comissao-mes-select') || document.querySelector('select');
-              var selAno = document.getElementById('comissao-ano-select') || document.querySelectorAll('select')[1];
-              var mes = parseInt(String(selMes && selMes.value || ''), 10) || (new Date().getMonth() + 1);
-              var ano = parseInt(String(selAno && selAno.value || ''), 10) || new Date().getFullYear();
-              var mesAnt = mes === 1 ? 12 : (mes - 1);
-              var anoAnt = mes === 1 ? (ano - 1) : ano;
-              var token = '';
-              try { token = _getToken ? _getToken() : ''; } catch (_) { token = ''; }
-              var headers = token ? { Authorization: 'Bearer ' + token } : {};
-
-              try { console.log('[COM] buscando mes=' + mes + ' ano=' + ano); } catch (_) {}
-              var reqAtual = fetch('/api/comissoes/relatorio?mes=' + mes + '&ano=' + ano, { headers: headers });
-              var reqAnt = fetch('/api/comissoes/relatorio?mes=' + mesAnt + '&ano=' + anoAnt, { headers: headers });
-              var resp = await Promise.all([reqAtual, reqAnt]);
-              var dados = await resp[0].json();
-              var dadosAnt = await resp[1].json();
-              var grupos = Array.isArray(dados && (dados.grupos || dados.vendedores)) ? (dados.grupos || dados.vendedores) : [];
-              var todasOFs = grupos.flatMap(function(g) {
-                var nome = String(g && (g.vendedor || g.nome || '') || '');
-                var ofs = Array.isArray(g && (g.ofs || g.orders || [])) ? (g.ofs || g.orders || []) : [];
-                return ofs.map(function(of) { return Object.assign({}, of || {}, { _vend: nome }); });
-              });
-              var ordemVend = grupos.map(function(g) { return String(g && (g.vendedor || g.nome || '') || ''); });
-              todasOFs.sort(function(a, b) {
-                var iA = ordemVend.indexOf(String(a && a._vend || ''));
-                var iB = ordemVend.indexOf(String(b && b._vend || ''));
-                return (iA < 0 ? 999 : iA) - (iB < 0 ? 999 : iB);
-              });
-              window._comissaoOFs = todasOFs.slice();
-              try { _injetarTopoComissoes(dados, dadosAnt, grupos); } catch (_) {}
-              try { _injetarTabelaOFsComissoes(todasOFs, grupos, ordemVend); } catch (_) {}
-            } finally {
-              setTimeout(function() { window._comRodando = false; }, 2000);
+      if (!window.__observerEntradaComissoes) {
+        window.__observerEntradaComissoes = new MutationObserver(function() {
+          if (window._pausarObservers) return;
+          try {
+            var el = document.querySelector('#page-comissoes, [data-page="comissoes"]');
+            if (!el) return;
+            var visivel = getComputedStyle(el).display !== 'none' && el.offsetParent !== null;
+            if (visivel && !window._comissoesJaCalculadas && !window._comissoesEmExecucao) {
+              window._comissoesJaCalculadas = true;
+              try { window.__observerEntradaComissoes.disconnect(); } catch (_) {}
+              setTimeout(function() {
+                try { if (typeof window._executarCalculoComissoes === 'function') window._executarCalculoComissoes(); } catch (_) {}
+              }, 300);
             }
-          };
-        }
-        try { window._detectarEntradaComissoes && window._detectarEntradaComissoes(); } catch (_) {}
-      } catch (_) {}
-    }, 500);
+          } catch (_) {}
+        });
+        try { window.__observerEntradaComissoes.observe(document.body, { childList: true, subtree: false }); } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   try { _instalarOverrideComissoes(); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 300); } catch (_) {}
   try { setTimeout(_instalarOverrideComissoes, 1200); } catch (_) {}
   try { setTimeout(_instalarExecGuardComissoes, 1400); } catch (_) {}
-  try { _instalarBloqueioDuplaChamadaComissoes(); } catch (_) {}
-  try { setTimeout(_instalarBloqueioDuplaChamadaComissoes, 300); } catch (_) {}
-  try { setTimeout(_instalarBloqueioDuplaChamadaComissoes, 1200); } catch (_) {}
-  try { [0, 300, 800, 2000].forEach(function(t) { setTimeout(_conectarBtnCalcular, t); }); } catch (_) {}
   try { _instalarDetectorNavComissoes(); } catch (_) {}
-  try { _recriarCalcularComissoesSePreciso(); } catch (_) {}
+  try { setTimeout(_instalarDetectorNavComissoes, 1200); } catch (_) {}
+  try { setTimeout(_rebindBtnCalcular, 1000); } catch (_) {}
 })();
 
 (function() {
@@ -16242,185 +16107,6 @@ function _ocultarGraficoComissoes() {
   try { _instalar(); } catch (_) {}
   try { setTimeout(_instalar, 800); } catch (_) {}
   try { setInterval(_instalar, 2500); } catch (_) {}
-})();
-
-(function() {
-  if (window.__patchToneladasInlineInstalled) return;
-  window.__patchToneladasInlineInstalled = true;
-
-  function _escTon(v) {
-    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-  function _fmtBR(v) {
-    var n = Number(v || 0) || 0;
-    var s = n.toFixed(2);
-    var p = s.split('.');
-    p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return 'R$ ' + p[0] + ',' + p[1];
-  }
-  function _numBR(v, d) {
-    var n = Number(v || 0) || 0;
-    return n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
-  }
-  function _mainTon() {
-    return document.querySelector('#main-content,.main-content,main,#content');
-  }
-  function _getTokenTon() {
-    try { return String(localStorage.getItem('token') || localStorage.getItem('access_token') || sessionStorage.getItem('token') || '').trim(); } catch (_) { return ''; }
-  }
-
-  async function _fetchJsonTon(url) {
-    var token = _getTokenTon();
-    var r = await fetch(url, { headers: token ? { Authorization: 'Bearer ' + token } : {} });
-    var j = await r.json().catch(function() { return null; });
-    if (!r.ok) throw new Error(String((j && (j.error || j.message)) || ('Erro ' + r.status)));
-    return j;
-  }
-
-  async function _renderToneladas(mes, ano) {
-    var main = _mainTon();
-    if (!main) return;
-    mes = mes || (new Date().getMonth() + 1);
-    ano = ano || new Date().getFullYear();
-
-    var grams = [];
-    try {
-      var gResp = await _fetchJsonTon('/api/gramaturas');
-      if (Array.isArray(gResp)) grams = gResp;
-      else if (Array.isArray(gResp && gResp.data)) grams = gResp.data;
-      else if (Array.isArray(gResp && gResp.gramaturas)) grams = gResp.gramaturas;
-    } catch (_) { grams = []; }
-
-    var j = await _fetchJsonTon('/api/analises/toneladas?mes=' + encodeURIComponent(mes) + '&ano=' + encodeURIComponent(ano));
-    var resumo = (j && j.resumo) || {};
-    var detalhamento = Array.isArray(j && j.detalhamento) ? j.detalhamento : [];
-
-    var meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    var anos = [2024, 2025, 2026];
-    if (anos.indexOf(new Date().getFullYear()) < 0) anos.push(new Date().getFullYear());
-    anos = anos.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort(function(a, b) { return a - b; });
-
-    main.innerHTML = ''
-      + '<div style="padding:24px">'
-      + '  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px;flex-wrap:wrap">'
-      + '    <div>'
-      + '      <h2 style="font-size:20px;font-weight:700;color:#f1f5f9;margin:0">⚖️ Toneladas Vendidas</h2>'
-      + '      <p style="color:#64748b;font-size:13px;margin:4px 0 0">M² produzidos · custo por metro quadrado · toneladas</p>'
-      + '    </div>'
-      + '    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
-      + '      <select id="ton-mes" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9">'
-      +         meses.slice(1).map(function(m, i) { var v = i + 1; return '<option value="' + v + '"' + (v === Number(mes) ? ' selected' : '') + '>' + _escTon(m) + '</option>'; }).join('')
-      + '      </select>'
-      + '      <select id="ton-ano" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9">'
-      +         anos.map(function(y) { return '<option value="' + y + '"' + (y === Number(ano) ? ' selected' : '') + '>' + y + '</option>'; }).join('')
-      + '      </select>'
-      + '      <select id="ton-gram" style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:8px 12px;color:#f1f5f9;min-width:240px">'
-      + '        <option value="">Gramatura para toneladas...</option>'
-      +         (grams || []).map(function(g) {
-              var gg = Number(g && g.gramatura || 0) || 0;
-              var nome = String(g && g.nome || '—');
-              return '<option value="' + _escTon(gg) + '" data-nome="' + _escTon(nome) + '">' + _escTon(nome) + ' — ' + _escTon(String(gg).replace('.', ',')) + ' g/m²</option>';
-            }).join('')
-      + '      </select>'
-      + '      <button id="btn-ton-calc" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:9px 20px;font-weight:600;cursor:pointer">Calcular</button>'
-      + '    </div>'
-      + '  </div>'
-      + '  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px">'
-      +     [
-              { l: 'M² Produzidos', v: _numBR(resumo.total_m2 || 0, 2) + ' m²', c: '#60a5fa' },
-              { l: 'OFs Concluídas', v: String(Number(resumo.total_ofs || detalhamento.length || 0) || 0) + ' OFs', c: '#f1f5f9' },
-              { l: 'Receita Total', v: _fmtBR(resumo.receita_total || 0), c: '#10b981' },
-              { l: 'Custo Médio/m²', v: 'R$ ' + _numBR(resumo.custo_medio_m2 || 0, 4).replace('.', ','), c: '#f59e0b' }
-            ].map(function(c) {
-              return '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px">'
-                + '<div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">' + _escTon(c.l) + '</div>'
-                + '<div style="font-size:22px;font-weight:700;color:' + c.c + '">' + _escTon(c.v) + '</div>'
-                + '</div>';
-            }).join('')
-      + '  </div>'
-      + '  <div id="ton-card-ton" style="display:none;margin-bottom:16px">'
-      + '    <div style="background:linear-gradient(135deg,#1a2d1a,#0d2218);border:1px solid #10b981;border-radius:12px;padding:20px 24px">'
-      + '      <div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">⚖️ TONELADAS PRODUZIDAS</div>'
-      + '      <div id="ton-valor" style="font-size:32px;font-weight:700;color:#10b981">—</div>'
-      + '      <div id="ton-sub" style="font-size:12px;color:#94a3b8;margin-top:4px"></div>'
-      + '    </div>'
-      + '  </div>'
-      + '  <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;overflow:hidden">'
-      + '    <div style="padding:14px 20px;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between">'
-      + '      <span style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase">📊 Detalhamento por OF</span>'
-      + '      <span style="font-size:12px;color:#64748b">' + _escTon(String(detalhamento.length)) + ' OFs</span>'
-      + '    </div>'
-      + '    <div style="overflow-x:auto">'
-      + '      <table style="width:100%;border-collapse:collapse">'
-      + '        <thead><tr style="background:#0f172a">'
-      +           ['Nº OF','PRODUTO','COMP×LARG','ÁREA/CX m²','QTD','TOTAL m²','VL UNIT','CUSTO/m²','RECEITA','DATA'].map(function(h) {
-                    return '<th style="padding:10px 12px;text-align:center;font-size:11px;text-transform:uppercase;color:#64748b;white-space:nowrap">' + _escTon(h) + '</th>';
-                  }).join('')
-      + '        </tr></thead>'
-      + '        <tbody>'
-      +          (detalhamento || []).map(function(r) {
-                  var compOk = Number(r && r.comp_cm || 0) > 0 && Number(r && r.larg_cm || 0) > 0;
-                  var compTxt = compOk ? (String(r.comp_cm).replace('.', ',') + '×' + String(r.larg_cm).replace('.', ',') + ' cm') : '—';
-                  var dataTxt = r && r.data_conclusao ? new Date(r.data_conclusao).toLocaleDateString('pt-BR') : '—';
-                  return '<tr style="border-bottom:1px solid #1e293b" onmouseenter="this.style.background=\'#1e293b\'" onmouseleave="this.style.background=\'\'">'
-                    + '<td style="padding:9px 12px;text-align:center;color:#94a3b8;font-size:13px">#' + _escTon(r && r.of_numero || '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:left;font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + _escTon(r && r.produto || '') + '">' + _escTon(r && r.produto || '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:' + (compOk ? '#f1f5f9' : '#475569') + '">' + _escTon(compTxt) + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + (Number(r && r.area_m2 || 0) > 0 ? _escTon(_numBR(r.area_m2, 4)) : '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + _escTon(String(Number(r && r.quantidade || 0) || 0)) + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#60a5fa;font-weight:600">' + (Number(r && r.m2_total || 0) > 0 ? _escTon(_numBR(r.m2_total, 2) + ' m²') : '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px">' + (Number(r && r.valor_unitario || 0) > 0 ? _escTon(_fmtBR(r.valor_unitario)) : '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#f59e0b">' + (Number(r && r.custo_m2 || 0) > 0 ? _escTon('R$ ' + _numBR(r.custo_m2, 4).replace('.', ',')) : '—') + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:13px;color:#10b981">' + _escTon(_fmtBR(r && r.receita || 0)) + '</td>'
-                    + '<td style="padding:9px 12px;text-align:center;font-size:12px;color:#64748b">' + _escTon(dataTxt) + '</td>'
-                    + '</tr>';
-                }).join('')
-      + '          <tr style="background:#0f172a;font-weight:700;border-top:2px solid #334155">'
-      + '            <td colspan="5" style="padding:12px 16px;color:#94a3b8">TOTAL</td>'
-      + '            <td style="padding:12px 16px;text-align:center;color:#60a5fa">' + _escTon(_numBR(resumo.total_m2 || 0, 2) + ' m²') + '</td>'
-      + '            <td colspan="2"></td>'
-      + '            <td style="padding:12px 16px;text-align:center;color:#10b981">' + _escTon(_fmtBR(resumo.receita_total || 0)) + '</td>'
-      + '            <td></td>'
-      + '          </tr>'
-      + '        </tbody>'
-      + '      </table>'
-      + '    </div>'
-      + '  </div>'
-      + '</div>';
-
-    var selGram = document.getElementById('ton-gram');
-    var tonCard = document.getElementById('ton-card-ton');
-    var tonVal = document.getElementById('ton-valor');
-    var tonSub = document.getElementById('ton-sub');
-    if (selGram) {
-      selGram.addEventListener('change', function() {
-        try {
-          var g = parseFloat(String(this.value || '').replace(',', '.'));
-          var totm2 = Number(resumo.total_m2 || 0) || 0;
-          if (!(g > 0) || !(totm2 > 0)) {
-            if (tonCard) tonCard.style.display = 'none';
-            return;
-          }
-          var ton = (totm2 * g) / 1000000;
-          var nome = '';
-          try { nome = this.options && this.selectedIndex >= 0 ? String(this.options[this.selectedIndex].dataset.nome || '') : ''; } catch (_) { nome = ''; }
-          if (tonCard) tonCard.style.display = '';
-          if (tonVal) tonVal.textContent = String(ton.toFixed(3)).replace('.', ',') + '  t';
-          if (tonSub) tonSub.textContent = 'Usando ' + (nome || 'gramatura') + ' (' + String(g).replace('.', ',') + ' g/m²) × ' + String(Number(totm2).toFixed(2)).replace('.', ',') + ' m²';
-        } catch (_) {}
-      });
-    }
-    var btn = document.getElementById('btn-ton-calc');
-    if (btn) {
-      btn.addEventListener('click', function() {
-        var m = parseInt(String((document.getElementById('ton-mes') || {}).value || ''), 10);
-        var a = parseInt(String((document.getElementById('ton-ano') || {}).value || ''), 10);
-        _renderToneladas(m, a);
-      });
-    }
-  }
-
-  try { window._renderToneladas = _renderToneladas; } catch (_) {}
 })();
 
 (function() {

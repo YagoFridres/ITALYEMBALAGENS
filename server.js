@@ -4275,44 +4275,22 @@ app.get('/api/ofs/:id', authMiddleware, async (req, res) => {
 app.put('/api/ofs/:id', authMiddleware, async (req, res) => {
   try {
     setNoCache(res);
-    try { console.log('[PUT OF]', req.params.id, JSON.stringify(req.body || {}).substring(0, 200)); } catch (_) {}
-    const id = String(req.params.id || '').trim();
-    if (!id) return res.status(400).json({ ok: false, error: 'id obrigatório' });
-
     const body = { ...(req.body || {}) };
     delete body.id;
     delete body.numero;
     delete body.created_at;
     delete body.empresa_id;
-    delete body.seq;
-    delete body._allow_partial;
-    delete body.allow_partial;
-    delete body._force_status;
-    delete body.force_status;
-
     if (body.quantidade !== undefined) body.quantidade = Number(body.quantidade);
     if (body.valor_total !== undefined) body.valor_total = Number(body.valor_total);
     if (body.valor_unitario !== undefined) body.valor_unitario = Number(body.valor_unitario);
     if (body.comissao_pct !== undefined) body.comissao_pct = Number(body.comissao_pct);
-
     const { data, error } = await supabase
-      .from('ofs')
-      .update(body)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      try { console.error('[PUT OF] erro:', error.message); } catch (_) {}
-      return res.status(400).json({ ok: false, error: error.message });
-    }
-
-    try { console.log('[PUT OF] sucesso:', data && data.numero); } catch (_) {}
+      .from('ofs').update(body).eq('id', req.params.id).select().single();
+    if (error) return res.status(400).json({ ok: false, error: error.message });
     try { cacheClearPrefix('ofs_v4'); } catch (_) {}
-    return res.json({ ok: true, data });
+    res.json({ ok: true, data });
   } catch (e) {
-    try { console.error('[PUT OF] exceção:', e.message || e); } catch (_) {}
-    return res.status(500).json({ ok: false, error: e.message || String(e) });
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 app.delete('/api/ofs/:id', authMiddleware, async (req, res) => {
