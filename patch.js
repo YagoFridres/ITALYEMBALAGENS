@@ -9900,11 +9900,16 @@ window._mbnActive = function(id) {
     st.textContent = ''
       + '.patch-ofmaq-toolbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}'
       + '.patch-ofmaq-badges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px}'
+      + '.patch-ofmaq-color-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,0.18);box-shadow:0 0 0 2px rgba(0,0,0,0.18) inset}'
       + '.patch-ofmaq-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.2;border:1px solid transparent}'
       + '.patch-ofmaq-chip.green{background:rgba(16,185,129,0.14);border-color:rgba(16,185,129,0.32);color:#34d399}'
       + '.patch-ofmaq-chip.yellow{background:rgba(245,158,11,0.14);border-color:rgba(245,158,11,0.35);color:#fbbf24}'
       + '.patch-ofmaq-chip.red{background:rgba(239,68,68,0.14);border-color:rgba(239,68,68,0.35);color:#fca5a5}'
       + '.patch-ofmaq-chip.darkred{background:rgba(127,17,17,0.45);border-color:rgba(239,68,68,0.45);color:#fecaca}'
+      + '.patch-ofmaq-cap-badge{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:900;line-height:1.2;border:1px solid rgba(255,255,255,0.08)}'
+      + '.patch-ofmaq-cap-badge.ok{background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.28);color:#34d399}'
+      + '.patch-ofmaq-cap-badge.warn{background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#fbbf24}'
+      + '.patch-ofmaq-cap-badge.bad{background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.3);color:#fca5a5}'
       + '.patch-ofmaq-calendar-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:none;border-radius:999px;background:rgba(74,144,217,0.18);color:#93c5fd;cursor:pointer;font-size:15px}'
       + '.patch-ofmaq-calendar-btn:hover{filter:brightness(1.12)}'
       + '.patch-ofmaq-setup-sep{margin:10px 0 6px;padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);font-size:12px;font-weight:800;color:var(--text1)}'
@@ -9915,6 +9920,23 @@ window._mbnActive = function(id) {
       + '#patch-ofmaq-reag-modal .patch-reag-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}'
       + '#patch-ofmaq-reag-modal .patch-reag-actions button{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);cursor:pointer;font-size:13px}'
       + '#patch-ofmaq-reag-modal .patch-reag-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}'
+      + '#patch-ofmaq-redistrib-modal{position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:10025;padding:16px}'
+      + '#patch-ofmaq-redistrib-modal .box{width:min(980px,96vw);max-height:88vh;overflow:auto;background:var(--bg2);border:1px solid rgba(255,255,255,0.12);border-radius:14px;padding:16px 16px 14px;box-shadow:0 30px 90px rgba(0,0,0,0.55)}'
+      + '#patch-ofmaq-redistrib-modal .top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}'
+      + '#patch-ofmaq-redistrib-modal .ttl{font-size:18px;font-weight:900;color:var(--text1)}'
+      + '#patch-ofmaq-redistrib-modal .sub{margin-top:4px;color:var(--text2);font-size:12px}'
+      + '#patch-ofmaq-redistrib-modal .close{background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--text1);border-radius:10px;padding:6px 10px;cursor:pointer}'
+      + '#patch-ofmaq-redistrib-modal .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 12px}'
+      + '#patch-ofmaq-redistrib-modal .chip{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text1);border-radius:999px;padding:6px 10px;cursor:pointer;font-size:12px;font-weight:800}'
+      + '#patch-ofmaq-redistrib-modal .chip.is-active{background:rgba(74,144,217,0.22);border-color:rgba(74,144,217,0.35);color:#eaf2ff}'
+      + '#patch-ofmaq-redistrib-modal .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}'
+      + '#patch-ofmaq-redistrib-modal .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px}'
+      + '#patch-ofmaq-redistrib-modal .row{display:flex;align-items:center;justify-content:space-between;gap:10px}'
+      + '#patch-ofmaq-redistrib-modal .meta{color:var(--text2);font-size:12px;margin-top:6px;line-height:1.35}'
+      + '#patch-ofmaq-redistrib-modal .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}'
+      + '#patch-ofmaq-redistrib-modal .actions button{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.06);color:var(--text1);cursor:pointer;font-size:12px;font-weight:800}'
+      + '#patch-ofmaq-redistrib-modal .actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}'
+      + '#patch-ofmaq-redistrib-modal .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.08)}'
       + '#hub-inteligencia .patch-hub-intel-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;margin-bottom:8px;border-radius:8px;cursor:pointer;transition:filter 0.15s}'
       + '#hub-inteligencia .patch-hub-intel-item:hover{filter:brightness(1.12)}';
     document.head.appendChild(st);
@@ -9970,6 +9992,52 @@ window._mbnActive = function(id) {
     var diff = businessDaysDelta(dataEntrega);
     return diff == null ? 0 : diff;
   };
+
+  if (!window._CAPACIDADE_MAQUINA) {
+    window._CAPACIDADE_MAQUINA = {
+      semana: {
+        periodos: [
+          { inicio: '07:20', fim: '11:30' },
+          { inicio: '13:30', fim: '17:30' }
+        ],
+        total_minutos: 490,
+        uteis_minutos: 416,
+      },
+      sexta: {
+        periodos: [
+          { inicio: '05:00', fim: '12:00' }
+        ],
+        total_minutos: 420,
+        uteis_minutos: 357,
+      }
+    };
+  }
+  if (typeof window._minutosUteisDia !== 'function') {
+    window._minutosUteisDia = function(date) {
+      var d = date instanceof Date ? date : new Date(date);
+      var dow = d.getDay();
+      if (dow === 0 || dow === 6) return 0;
+      if (dow === 5) return (window._CAPACIDADE_MAQUINA && window._CAPACIDADE_MAQUINA.sexta ? window._CAPACIDADE_MAQUINA.sexta.uteis_minutos : 0) || 0;
+      return (window._CAPACIDADE_MAQUINA && window._CAPACIDADE_MAQUINA.semana ? window._CAPACIDADE_MAQUINA.semana.uteis_minutos : 0) || 0;
+    };
+  }
+  if (typeof window._diasUteis !== 'function') {
+    window._diasUteis = function(dataInicio, dataFim) {
+      var di = dataInicio instanceof Date ? new Date(dataInicio.getTime()) : new Date(dataInicio);
+      var df = dataFim instanceof Date ? new Date(dataFim.getTime()) : new Date(dataFim);
+      if (isNaN(di.getTime()) || isNaN(df.getTime())) return 0;
+      di.setHours(0, 0, 0, 0);
+      df.setHours(0, 0, 0, 0);
+      var dias = 0;
+      var d = new Date(di.getTime());
+      while (d <= df) {
+        var dow = d.getDay();
+        if (dow !== 0 && dow !== 6) dias++;
+        d.setDate(d.getDate() + 1);
+      }
+      return dias;
+    };
+  }
 
   function getOfDelivery(of) {
     return String(of && (of.data_entrega || of.ent || of.dataEntrega) || '').slice(0, 10);
@@ -10029,6 +10097,126 @@ window._mbnActive = function(id) {
     }) || null;
   }
 
+  function _isoDateOnly(d) {
+    try {
+      var x = d instanceof Date ? d : new Date(d);
+      if (isNaN(x.getTime())) return '';
+      return new Date(x.getFullYear(), x.getMonth(), x.getDate()).toISOString().slice(0, 10);
+    } catch (_) { return ''; }
+  }
+
+  function _capacidadeDia(date) {
+    var d = date instanceof Date ? date : new Date(date);
+    var dow = d.getDay();
+    if (dow === 0 || dow === 6) return { uteis: 0, total: 0 };
+    var cap = (dow === 5) ? (window._CAPACIDADE_MAQUINA && window._CAPACIDADE_MAQUINA.sexta) : (window._CAPACIDADE_MAQUINA && window._CAPACIDADE_MAQUINA.semana);
+    return {
+      uteis: Number(cap && cap.uteis_minutos || 0) || 0,
+      total: Number(cap && cap.total_minutos || 0) || 0,
+    };
+  }
+
+  function _getQtdOf(of) {
+    try {
+      var v = of ? (of.quantidade ?? of.qtd ?? of.qtd_pedida ?? of.qtdPedida ?? of.qtd_produzida) : null;
+      if (v != null && v !== '') {
+        var n = Number(v);
+        return Number.isFinite(n) ? n : null;
+      }
+      var itens = of && of.itens;
+      if (typeof itens === 'string') { try { itens = JSON.parse(itens); } catch (_) { itens = null; } }
+      if (Array.isArray(itens) && itens[0]) {
+        var v2 = itens[0].quantidade ?? itens[0].qtd ?? itens[0].qtd_pedida ?? null;
+        var n2 = Number(v2);
+        return Number.isFinite(n2) ? n2 : null;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function _velocidadeMaquina(maquina) {
+    try {
+      var md = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null;
+      if (md && typeof md === 'object') {
+        var raw = md.velocidade ?? md.vel ?? md.velocidade_por_min ?? md.cx_min ?? md.caixas_min ?? null;
+        if (raw != null && raw !== '') {
+          var v = Number(raw);
+          if (Number.isFinite(v) && v > 0) return v;
+        }
+        var perHour = md.velocidade_hora ?? md.velocidade_por_hora ?? md.cx_hora ?? md.caixas_hora ?? md.prod_hora ?? md.capacidade_hora ?? null;
+        if (perHour != null && perHour !== '') {
+          var vh = Number(perHour);
+          if (Number.isFinite(vh) && vh > 0) return (vh / 60);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function _minutosOf(of, maquina) {
+    var qtd = _getQtdOf(of);
+    var vel = _velocidadeMaquina(maquina);
+    if (qtd != null && vel != null && vel > 0) {
+      var m = qtd / vel;
+      if (Number.isFinite(m) && m > 0) return Math.max(1, Math.round(m));
+    }
+    return 30;
+  }
+
+  function _updateCapacidadeHeader(maquina, texto, cls) {
+    var list = getMachineListEl(maquina);
+    var block = list ? list.parentElement : null;
+    var header = block ? block.querySelector('.maq-header') : null;
+    if (!header) return;
+    var left = header.querySelector('div');
+    if (!left) return;
+    var el = left.querySelector('.patch-ofmaq-cap-badge');
+    if (!texto) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'patch-ofmaq-cap-badge';
+      left.appendChild(el);
+    }
+    el.className = 'patch-ofmaq-cap-badge ' + String(cls || '');
+    el.textContent = texto;
+  }
+
+  function _atualizarCapacidadePorMaquina() {
+    try {
+      var groups = getVisibleGroups();
+      var hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      var cap = _capacidadeDia(hoje);
+      Object.keys(groups || {}).forEach(function(maquina) {
+        var ofs = Array.isArray(groups[maquina]) ? groups[maquina] : [];
+        if (!ofs.length || String(maquina || '').trim() === 'Sem Máquina') {
+          _updateCapacidadeHeader(maquina, '', '');
+          return;
+        }
+        var ocup = ofs.reduce(function(s, of) { return s + _minutosOf(of, maquina); }, 0);
+        var uteis = Number(cap.uteis || 0) || 0;
+        var total = Number(cap.total || 0) || 0;
+        if (!(uteis > 0) || !(total > 0)) {
+          _updateCapacidadeHeader(maquina, '', '');
+          return;
+        }
+        if (ocup <= uteis) {
+          var pct = Math.round((ocup / uteis) * 100);
+          _updateCapacidadeHeader(maquina, '🟢 ' + pct + '% ocupada', 'ok');
+          return;
+        }
+        if (ocup > uteis && ocup <= total) {
+          _updateCapacidadeHeader(maquina, '🟡 Sobrecarregada (+' + (ocup - uteis) + ' min)', 'warn');
+          return;
+        }
+        _updateCapacidadeHeader(maquina, '🔴 Fora do horário (+' + (ocup - total) + ' min)', 'bad');
+      });
+    } catch (_) {}
+  }
+
   function ensureOfmaqToolbarButtons() {
     var toolbar = document.querySelector('#page-ofmaq .ptoolbar');
     if (!toolbar) return;
@@ -10044,20 +10232,34 @@ window._mbnActive = function(id) {
     if (!document.getElementById('patch-btn-prioridade')) {
       var btnOrd = document.createElement('button');
       btnOrd.id = 'patch-btn-prioridade';
-      btnOrd.setAttribute('onclick', 'ordenarOFsPorPrioridade()');
       btnOrd.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:13px';
       btnOrd.textContent = '🎯 Ordenar por Prioridade';
+      btnOrd.onclick = function() { try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade(); else if (typeof window.ordenarOFsPorPrioridade === 'function') window.ordenarOFsPorPrioridade(); } catch (_) {} };
       wrap.appendChild(btnOrd);
     }
     if (!document.getElementById('btn-agrupar-setup')) {
       var btnAgr = document.createElement('button');
       btnAgr.id = 'btn-agrupar-setup';
-      btnAgr.setAttribute('onclick', 'toggleAgrupamentoSetup()');
       btnAgr.style.cssText = 'padding:7px 14px;border-radius:6px;background:var(--bg2);color:var(--text1);border:1px solid var(--border);cursor:pointer;font-size:13px';
       btnAgr.textContent = '🎨 Agrupar Setup';
+      btnAgr.onclick = function() { try { if (typeof window.toggleAgrupamentoSetup === 'function') window.toggleAgrupamentoSetup(); } catch (_) {} };
       wrap.appendChild(btnAgr);
     }
     updateAgrupamentoButton();
+
+    try {
+      Array.prototype.slice.call(toolbar.querySelectorAll('button')).forEach(function(b) {
+        var t = String(b && b.textContent || '').toLowerCase();
+        if (t.indexOf('ordenar por prioridade') >= 0 && !b._patchBoundPrior) {
+          b._patchBoundPrior = true;
+          b.onclick = function() { try { if (typeof window._ordenarPorPrioridade === 'function') window._ordenarPorPrioridade(); } catch (_) {} };
+        }
+        if (t.indexOf('agrupar setup') >= 0 && !b._patchBoundSetup) {
+          b._patchBoundSetup = true;
+          b.onclick = function() { try { if (typeof window.toggleAgrupamentoSetup === 'function') window.toggleAgrupamentoSetup(); } catch (_) {} };
+        }
+      });
+    } catch (_) {}
   }
 
   function updateAgrupamentoButton() {
@@ -10129,6 +10331,26 @@ window._mbnActive = function(id) {
       var badge = getBadgeForDays(diff);
       var wrap = document.createElement('div');
       wrap.className = 'patch-ofmaq-badges';
+      if (window._agrupamentoSetupAtivo) {
+        try {
+          var cor = (typeof window._ofmaqCorKey === 'function') ? window._ofmaqCorKey(of) : '';
+          if (cor) {
+            var dot = document.createElement('span');
+            dot.className = 'patch-ofmaq-color-dot';
+            dot.title = 'Setup/Cor: ' + String(cor);
+            try {
+              if (typeof window._ofmaqCorStyle === 'function') {
+                var st = window._ofmaqCorStyle(cor);
+                if (st && typeof st === 'object') {
+                  if (st.background) dot.style.background = st.background;
+                  if (st.border) dot.style.borderColor = st.border;
+                }
+              }
+            } catch (_) {}
+            wrap.appendChild(dot);
+          }
+        } catch (_) {}
+      }
       if (badge) {
         var badgeEl = document.createElement('span');
         badgeEl.className = 'patch-ofmaq-chip ' + badge.cls;
@@ -10193,6 +10415,62 @@ window._mbnActive = function(id) {
     arr = arr.filter(Boolean);
     return arr.length ? arr : ['Sem cor'];
   }
+
+  function _hashColor(s) {
+    var str = String(s || '');
+    var h = 0;
+    for (var i = 0; i < str.length; i += 1) h = ((h << 5) - h) + str.charCodeAt(i);
+    h = Math.abs(h);
+    var hue = h % 360;
+    return 'hsl(' + hue + ',70%,55%)';
+  }
+
+  function _pickCorKey(of) {
+    try {
+      var cand = [
+        of && (of.cor ?? of.tinta ?? of.ref ?? of.referencia ?? of.cor_tinta),
+        (of && typeof of === 'object') ? (of.cores ?? of.cores_impressao ?? of.impressao_cor) : null,
+        of && (of.descricao || of.prodDesc || of.produto || of.obs || of.observacao)
+      ];
+      var s = cand.map(function(x) { return String(x == null ? '' : x); }).join(' | ').toUpperCase();
+      if (s.indexOf('NATURAL') >= 0) return 'NATURAL';
+      if (s.indexOf('KRAFT') >= 0) return 'KRAFT';
+      if (s.indexOf('BRANCO') >= 0 || s.indexOf('WHITE') >= 0) return 'BRANCO';
+      if (s.indexOf('PRETO') >= 0 || s.indexOf('BLACK') >= 0) return 'PRETO';
+      if (s.indexOf('AZUL') >= 0) return 'AZUL';
+      if (s.indexOf('VERMELH') >= 0) return 'VERMELHO';
+      if (s.indexOf('VERDE') >= 0) return 'VERDE';
+      if (s.indexOf('AMAREL') >= 0) return 'AMARELO';
+      if (s.indexOf('ROXO') >= 0) return 'ROXO';
+      if (s.indexOf('ROSA') >= 0) return 'ROSA';
+      if (s.indexOf('CINZA') >= 0 || s.indexOf('GRAFITE') >= 0 || s.indexOf('GRAY') >= 0) return 'CINZA';
+      var pant = s.match(/PANTONE\\s*(\\d{2,4}[A-Z]?)/i);
+      if (pant) return ('PANTONE ' + String(pant[1]).toUpperCase()).trim();
+      var num = s.match(/\\b(\\d{2,4})\\b/);
+      if (num) return String(num[1]);
+      var cols = parseColors(of);
+      if (cols && cols[0]) return String(cols[0]).toUpperCase().trim();
+    } catch (_) {}
+    return 'SEM COR';
+  }
+
+  window._ofmaqCorKey = _pickCorKey;
+  window._ofmaqCorStyle = function(corKey) {
+    var k = String(corKey || '').toUpperCase().trim();
+    if (!k) return { background: '#64748b', border: 'rgba(255,255,255,0.18)' };
+    if (k === 'NATURAL') return { background: '#92400e', border: 'rgba(251,191,36,0.35)' };
+    if (k === 'KRAFT') return { background: '#f59e0b', border: 'rgba(245,158,11,0.45)' };
+    if (k === 'BRANCO') return { background: '#f8fafc', border: 'rgba(0,0,0,0.22)' };
+    if (k === 'PRETO') return { background: '#0b1220', border: 'rgba(255,255,255,0.22)' };
+    if (k === 'AZUL') return { background: '#3b82f6', border: 'rgba(59,130,246,0.5)' };
+    if (k === 'VERMELHO') return { background: '#ef4444', border: 'rgba(239,68,68,0.5)' };
+    if (k === 'VERDE') return { background: '#22c55e', border: 'rgba(34,197,94,0.5)' };
+    if (k === 'AMARELO') return { background: '#eab308', border: 'rgba(234,179,8,0.55)' };
+    if (k === 'ROXO') return { background: '#8b5cf6', border: 'rgba(139,92,246,0.5)' };
+    if (k === 'ROSA') return { background: '#ec4899', border: 'rgba(236,72,153,0.5)' };
+    if (k === 'CINZA') return { background: '#94a3b8', border: 'rgba(148,163,184,0.55)' };
+    return { background: _hashColor(k), border: 'rgba(255,255,255,0.22)' };
+  };
 
   function parseDimensions(of) {
     var candidates = [
@@ -10310,43 +10588,12 @@ window._mbnActive = function(id) {
   }
 
   function applySetupGroupingVisual() {
-    var groups = getVisibleGroups();
-    Object.keys(groups || {}).forEach(function(maquina) {
-      var listEl = getMachineListEl(maquina);
-      if (!listEl) return;
-      var cards = Array.prototype.slice.call(listEl.querySelectorAll('[data-of-id]'));
-      var mapCards = {};
-      cards.forEach(function(card) {
-        var id = String(card.getAttribute('data-of-id') || '').trim();
-        if (id) mapCards[id] = card;
-      });
-      if (!window._agrupamentoSetupAtivo) {
+    try {
+      var groups = getVisibleGroups();
+      Object.keys(groups || {}).forEach(function(maquina) {
         updateEconomiaHeader(maquina, '');
-        return;
-      }
-      var ofs = Array.isArray(groups[maquina]) ? groups[maquina] : [];
-      var visual = buildSetupGroups(ofs);
-      var maqDados = null;
-      try { maqDados = typeof window.getDadosMaquina === 'function' ? window.getDadosMaquina(maquina) : null; } catch (_) {}
-      var setupMedio = Number(maqDados && (maqDados.setup_medio || maqDados.tempo_setup_padrao_min || maqDados.passagem_media || maqDados.setup) || 0) || 0;
-      var setupsSem = countSetups(ofs);
-      var setupsCom = countSetups(visual.ordered);
-      var economia = Math.max(0, setupsSem - setupsCom);
-      updateEconomiaHeader(maquina, economia > 0 ? ('💰 Economia estimada: ' + economia + ' setups (≈ ' + (economia * setupMedio) + 'min)') : '💰 Economia estimada: 0 setup');
-      var frag = document.createDocumentFragment();
-      visual.sections.forEach(function(section) {
-        if (section.type === 'color' || section.type === 'size') {
-          var sep = document.createElement('div');
-          sep.className = section.type === 'color' ? 'patch-ofmaq-setup-sep' : 'patch-ofmaq-setup-subsep';
-          sep.textContent = section.label;
-          frag.appendChild(sep);
-          return;
-        }
-        var card = mapCards[String(section.of && section.of.id || '')];
-        if (card) frag.appendChild(card);
       });
-      listEl.replaceChildren(frag);
-    });
+    } catch (_) {}
   }
 
   function closeReagendamentoModal() {
@@ -10413,6 +10660,323 @@ window._mbnActive = function(id) {
     }
   };
 
+  function _subDiasUteis(date, dias) {
+    var d = date instanceof Date ? new Date(date.getTime()) : new Date(date);
+    d.setHours(0, 0, 0, 0);
+    var remaining = Math.max(0, Math.trunc(Number(dias || 0) || 0));
+    while (remaining > 0) {
+      d.setDate(d.getDate() - 1);
+      if (d.getDay() !== 0 && d.getDay() !== 6) remaining -= 1;
+    }
+    return d;
+  }
+
+  function _maqAtualOf(of) {
+    try {
+      var m = of && (of.maquina_atual || of.maq || of.maquina || of.maquina_nome || of.maquinaNome || of.maquina_atual_nome);
+      m = String(m || '').trim();
+      if (m) return m;
+      var fluxo = of && (of.fluxo_maquinas || of.fluxo || of.maquinas_fluxo);
+      if (typeof fluxo === 'string') { try { fluxo = JSON.parse(fluxo); } catch (_) { fluxo = null; } }
+      if (fluxo && typeof fluxo === 'object' && !Array.isArray(fluxo)) {
+        try { fluxo = Object.values(fluxo); } catch (_) { fluxo = null; }
+      }
+      if (!Array.isArray(fluxo)) fluxo = [];
+      var idx = Number(of && (of.maquina_atual_index ?? of.maquinaAtualIndex ?? 0) || 0);
+      if (!Number.isFinite(idx)) idx = 0;
+      var mx = String(fluxo[idx] || fluxo[0] || '').trim();
+      return mx || '';
+    } catch (_) {}
+    return '';
+  }
+
+  function _statusAbertoOuProducao(of) {
+    var s = String(of && of.status || '').trim().toLowerCase();
+    return (s.indexOf('aberto') >= 0) || (s.indexOf('produ') >= 0);
+  }
+
+  function _prodDateOf(of) {
+    var s = String(of && (of.data_producao || of.dia || of.data_programada || of.dia_programacao) || '').slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    return _isoDateOnly(new Date());
+  }
+
+  function _buildCargaPorMaqPorDia(ofs) {
+    var map = {};
+    (Array.isArray(ofs) ? ofs : []).forEach(function(of) {
+      if (!of) return;
+      if (!_statusAbertoOuProducao(of)) return;
+      var maq = _maqAtualOf(of);
+      if (!maq) return;
+      var dia = _prodDateOf(of);
+      if (!map[maq]) map[maq] = {};
+      if (!map[maq][dia]) map[maq][dia] = 0;
+      map[maq][dia] += _minutosOf(of, maq);
+    });
+    return map;
+  }
+
+  async function _aplicarDataProducao(ofId, novaData) {
+    var id = String(ofId || '').trim();
+    var dt = String(novaData || '').slice(0, 10);
+    if (!id || !/^\d{4}-\d{2}-\d{2}$/.test(dt)) return false;
+    var payload = { data_producao: dt, dia: dt, data_programada: dt };
+    var r1 = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PUT', body: payload });
+    if (r1 && r1.resp && r1.resp.ok && !(r1.data && r1.data.ok === false)) return true;
+    var r2 = await apiJson('/api/ofs/' + encodeURIComponent(id), { method: 'PATCH', body: payload });
+    return !!(r2 && r2.resp && r2.resp.ok && !(r2.data && r2.data.ok === false));
+  }
+
+  function _calcularSugestoesRedistribuicao() {
+    try {
+      var all = Array.isArray(window.OFS) ? window.OFS : (Array.isArray(window._ofmaqBaseList) ? window._ofmaqBaseList : []);
+      all = Array.isArray(all) ? all : [];
+      var hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      var hojeIso = _isoDateOnly(hoje);
+      var carga = _buildCargaPorMaqPorDia(all);
+
+      var sugs = [];
+      all.forEach(function(of) {
+        if (!of) return;
+        if (!_statusAbertoOuProducao(of)) return;
+        var entregaIso = getOfDelivery(of);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(entregaIso)) return;
+        var entrega = parseDateOnly(entregaIso);
+        if (!entrega) return;
+        if (entrega <= hoje) return;
+        var maq = _maqAtualOf(of);
+        if (!maq || maq === 'Sem Máquina') return;
+
+        var capHoje = _capacidadeDia(hoje);
+        var uteisHoje = Number(capHoje.uteis || 0) || 0;
+        var ocupHoje = Number(carga[maq] && carga[maq][hojeIso] || 0) || 0;
+        var sobreHoje = uteisHoje > 0 && ocupHoje > uteisHoje;
+        if (!sobreHoje) return;
+
+        var limite = _subDiasUteis(entrega, 2);
+        var limiteIso = _isoDateOnly(limite);
+        var minOf = _minutosOf(of, maq);
+
+        var propostaIso = '';
+        var cursor = new Date(hoje.getTime());
+        for (var tent = 0; tent < 45; tent += 1) {
+          var diaIso = _isoDateOnly(cursor);
+          if (diaIso > limiteIso) break;
+          var capDia = _capacidadeDia(cursor);
+          var uteis = Number(capDia.uteis || 0) || 0;
+          if (uteis > 0) {
+            var ocup = Number(carga[maq] && carga[maq][diaIso] || 0) || 0;
+            if ((ocup + minOf) <= uteis) {
+              propostaIso = diaIso;
+              break;
+            }
+          }
+          cursor.setDate(cursor.getDate() + 1);
+        }
+
+        var foraPrazo = !propostaIso;
+        var diasUteisAteLimite = window._diasUteis ? window._diasUteis(hoje, limite) : (businessDaysDelta(limiteIso) || 0);
+        var diasAntesPrazo = propostaIso ? ((window._diasUteis ? window._diasUteis(parseDateOnly(propostaIso), limite) : 0) - 1) : 0;
+        var cliente = String(of && (of.cliNome || of.cliente || of.cliente_nome || '') || '').trim();
+        var produto = String(of && (of.prodDesc || of.produto || of.descricao || '') || '').trim();
+        sugs.push({
+          id: String(of.id || '').trim(),
+          numero: String(of.numero || of.of || '').trim(),
+          cliente: cliente || '—',
+          produto: produto || '—',
+          maquina: maq,
+          entrega: entregaIso,
+          limite: limiteIso,
+          minutos: minOf,
+          sobreHoje: true,
+          ocupHoje: ocupHoje,
+          uteisHoje: uteisHoje,
+          proposta: propostaIso,
+          foraPrazo: foraPrazo,
+          comFolga: !foraPrazo && diasAntesPrazo >= 5,
+          urgente: isUrgente(of),
+          diasAteLimite: diasUteisAteLimite,
+          diasAntesPrazo: diasAntesPrazo
+        });
+      });
+
+      sugs.sort(function(a, b) {
+        if (!!a.urgente !== !!b.urgente) return a.urgente ? -1 : 1;
+        var da = String(a.entrega || '9999-99-99');
+        var db = String(b.entrega || '9999-99-99');
+        if (da !== db) return da.localeCompare(db);
+        return String(a.numero || '').localeCompare(String(b.numero || ''));
+      });
+      return sugs;
+    } catch (_) {}
+    return [];
+  }
+
+  function _renderSugestoesRedistribuicaoModal() {
+    ensureStyles();
+    var state = window.__ofmaqRedistribState || { filter: 'todas', ignored: {} };
+    if (!state.sugestoes) state.sugestoes = _calcularSugestoesRedistribuicao();
+    if (!state.ignored) state.ignored = {};
+    window.__ofmaqRedistribState = state;
+
+    var list = (state.sugestoes || []).filter(function(s) { return s && !state.ignored[s.id]; });
+    var filtro = String(state.filter || 'todas');
+    if (filtro === 'sobre') list = list.filter(function(s) { return !!s.sobreHoje; });
+    if (filtro === 'fora') list = list.filter(function(s) { return !!s.foraPrazo; });
+    if (filtro === 'folga') list = list.filter(function(s) { return !!s.comFolga; });
+
+    var overlay = document.getElementById('patch-ofmaq-redistrib-modal');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'patch-ofmaq-redistrib-modal';
+      overlay.addEventListener('click', function(ev) { if (ev.target === overlay) overlay.remove(); });
+      document.body.appendChild(overlay);
+    }
+
+    var total = (state.sugestoes || []).filter(function(s) { return s && !state.ignored[s.id]; }).length;
+    var sobre = (state.sugestoes || []).filter(function(s) { return s && !state.ignored[s.id] && s.sobreHoje; }).length;
+    var fora = (state.sugestoes || []).filter(function(s) { return s && !state.ignored[s.id] && s.foraPrazo; }).length;
+
+    overlay.innerHTML = ''
+      + '<div class="box">'
+      + '  <div class="top">'
+      + '    <div>'
+      + '      <div class="ttl">⚡ Sugestões de Redistribuição</div>'
+      + '      <div class="sub">' + escHLocal(String(total)) + ' OFs identificadas · Sobrecarregadas hoje: ' + escHLocal(String(sobre)) + ' · Fora do prazo: ' + escHLocal(String(fora)) + '</div>'
+      + '    </div>'
+      + '    <button type="button" class="close" id="patch-red-close">Fechar</button>'
+      + '  </div>'
+      + '  <div class="chips">'
+      + '    <button type="button" class="chip' + (filtro === 'todas' ? ' is-active' : '') + '" data-fil="todas">Todas</button>'
+      + '    <button type="button" class="chip' + (filtro === 'sobre' ? ' is-active' : '') + '" data-fil="sobre">Sobrecarregadas hoje</button>'
+      + '    <button type="button" class="chip' + (filtro === 'fora' ? ' is-active' : '') + '" data-fil="fora">Fora do prazo</button>'
+      + '    <button type="button" class="chip' + (filtro === 'folga' ? ' is-active' : '') + '" data-fil="folga">Com folga</button>'
+      + '  </div>'
+      + '  <div class="list" id="patch-red-list"></div>'
+      + '  <div class="foot">'
+      + '    <div style="color:var(--text2);font-size:12px">Ordenação: urgência primeiro, depois proximidade do prazo</div>'
+      + '    <button type="button" class="primary" id="patch-red-applyall">✅ Aplicar Todas</button>'
+      + '  </div>'
+      + '</div>';
+
+    var closeBtn = document.getElementById('patch-red-close');
+    if (closeBtn) closeBtn.onclick = function() { try { overlay.remove(); } catch (_) {} };
+
+    Array.prototype.slice.call(overlay.querySelectorAll('[data-fil]')).forEach(function(btn) {
+      btn.onclick = function() {
+        state.filter = String(btn.getAttribute('data-fil') || 'todas');
+        _renderSugestoesRedistribuicaoModal();
+      };
+    });
+
+    var listEl = document.getElementById('patch-red-list');
+    if (!listEl) return;
+    if (!list.length) {
+      listEl.innerHTML = '<div style="color:var(--text2);padding:14px">Nenhuma sugestão para este filtro.</div>';
+      return;
+    }
+
+    listEl.innerHTML = list.map(function(s) {
+      var titulo = 'OF #' + String(s.numero || '—') + ' — ' + String(s.cliente || '—');
+      var subt = String(s.produto || '—');
+      var situ = s.foraPrazo
+        ? '🔴 Fora do prazo (sem capacidade até ' + fmtDateBR(s.limite) + ')'
+        : '🟡 Sobrecarregada hoje (+' + String(Math.max(0, (s.ocupHoje || 0) - (s.uteisHoje || 0))) + ' min)';
+      var sug = s.proposta
+        ? ('✅ Sugestão: Produzir em ' + fmtDateBR(s.proposta) + ' (' + String(Math.max(0, s.diasAntesPrazo || 0)) + ' dias úteis antes do prazo)')
+        : '⚠️ Sem data viável antes do prazo';
+      return ''
+        + '<div class="card" data-id="' + escAttrLocal(String(s.id || '')) + '">'
+        + '  <div class="row"><div style="font-weight:900;color:var(--text1);font-size:13px">' + escHLocal(titulo) + '</div><div style="color:var(--text2);font-size:12px">' + escHLocal(String(s.maquina || '')) + '</div></div>'
+        + '  <div class="meta" style="color:var(--text2)">' + escHLocal(subt) + '</div>'
+        + '  <div class="meta">📅 Entrega: ' + escHLocal(fmtDateBR(s.entrega)) + ' · ⏱️ Tempo estimado: ' + escHLocal(String(s.minutos || 0)) + ' min</div>'
+        + '  <div class="meta">' + escHLocal(situ) + '</div>'
+        + '  <div class="meta" style="color:var(--text1)">' + escHLocal(sug) + '</div>'
+        + '  <div class="actions">'
+        + '    <button type="button" class="primary" data-act="apply" ' + (s.proposta ? ('data-date="' + escAttrLocal(String(s.proposta)) + '"') : 'disabled') + '>✅ Aplicar</button>'
+        + '    <button type="button" data-act="ignore">Ignorar</button>'
+        + '  </div>'
+        + '</div>';
+    }).join('');
+
+    listEl.querySelectorAll('[data-act="ignore"]').forEach(function(btn) {
+      btn.onclick = function() {
+        var card = btn.closest('.card');
+        var id = String(card && card.getAttribute('data-id') || '');
+        if (!id) return;
+        state.ignored[id] = true;
+        _renderSugestoesRedistribuicaoModal();
+      };
+    });
+    listEl.querySelectorAll('[data-act="apply"]').forEach(function(btn) {
+      btn.onclick = async function() {
+        var card = btn.closest('.card');
+        var id = String(card && card.getAttribute('data-id') || '');
+        var dt = String(btn.getAttribute('data-date') || '');
+        if (!id || !dt) return;
+        btn.disabled = true;
+        try {
+          var okk = await _aplicarDataProducao(id, dt);
+          if (okk) {
+            state.ignored[id] = true;
+            try { window.toast('✓ Aplicado: ' + fmtDateBR(dt), 'var(--green)'); } catch (_) {}
+            try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+            _renderSugestoesRedistribuicaoModal();
+          } else {
+            try { window.toast('Erro ao aplicar sugestão', 'var(--red)'); } catch (_) {}
+          }
+        } catch (e) {
+          try { window.toast('Erro: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+        } finally {
+          btn.disabled = false;
+        }
+      };
+    });
+
+    var applyAll = document.getElementById('patch-red-applyall');
+    if (applyAll) applyAll.onclick = async function() {
+      applyAll.disabled = true;
+      try {
+        var cur = (state.sugestoes || []).filter(function(s) { return s && !state.ignored[s.id] && s.proposta; });
+        for (var i = 0; i < cur.length; i += 1) {
+          var s = cur[i];
+          var okk = await _aplicarDataProducao(s.id, s.proposta);
+          if (okk) state.ignored[s.id] = true;
+        }
+        try { window.toast('✅ Sugestões aplicadas', 'var(--green)'); } catch (_) {}
+        try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
+        _renderSugestoesRedistribuicaoModal();
+      } catch (e) {
+        try { window.toast('Erro ao aplicar todas: ' + String(e && e.message || e), 'var(--red)'); } catch (_) {}
+      } finally {
+        applyAll.disabled = false;
+      }
+    };
+  }
+
+  window._hookRedistribBanner = function() {
+    try {
+      if (String(window._PAGE_ATUAL || '') !== 'ofmaq') return;
+      var container = document.getElementById('ofs-por-maquina-container') || document.getElementById('ofsmaq-container') || document.getElementById('ofmaq-body') || document.querySelector('#page-ofmaq');
+      if (!container) return;
+      var nodes = Array.prototype.slice.call(container.querySelectorAll('*')).filter(function(el) {
+        var t = String(el && el.textContent || '');
+        return t && /podem ser redistribu/i.test(t);
+      });
+      nodes.forEach(function(el) {
+        if (!el || el._patchRedistribBound) return;
+        el._patchRedistribBound = true;
+        try { el.style.cursor = 'pointer'; } catch (_) {}
+        el.onclick = function(ev) {
+          try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+          window.__ofmaqRedistribState = { filter: 'todas', ignored: {}, sugestoes: _calcularSugestoesRedistribuicao() };
+          _renderSugestoesRedistribuicaoModal();
+        };
+      });
+    } catch (_) {}
+  };
+
   async function savePriorityOrder(maquina, ids) {
     return apiJson('/api/ofs/reordenar', {
       method: 'POST',
@@ -10420,18 +10984,39 @@ window._mbnActive = function(id) {
     });
   }
 
-  window.ordenarOFsPorPrioridade = async function(arg) {
-    if (Array.isArray(arg)) return sortOfsByPriorityLocal(arg);
+  function _areaOf(of) {
+    var d = parseDimensions(of);
+    var a = Number(d && d.largura || 0) * Number(d && d.comprimento || 0);
+    return a > 0 ? a : null;
+  }
+
+  function _sortByAreaDesc(list) {
+    var src = Array.isArray(list) ? list.slice() : [];
+    return src.sort(function(a, b) {
+      var aa = _areaOf(a);
+      var ab = _areaOf(b);
+      if (aa == null && ab == null) return 0;
+      if (aa == null) return 1;
+      if (ab == null) return -1;
+      return ab - aa;
+    });
+  }
+
+  window._ordenarPorPrioridade = async function() {
     var groups = getVisibleGroups();
     var maquinas = Object.keys(groups || {});
-    if (!maquinas.length) {
-      if (typeof originalSortByPriority === 'function' && arg != null) return originalSortByPriority(arg);
-      return [];
-    }
+    if (!maquinas.length) return false;
     try {
       for (var i = 0; i < maquinas.length; i += 1) {
         var maq = maquinas[i];
-        var sorted = sortOfsByPriorityLocal(groups[maq] || []);
+        var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
+        if (!ofs.length) continue;
+        var urg = [];
+        var rest = [];
+        ofs.forEach(function(of) { (isUrgente(of) ? urg : rest).push(of); });
+        urg = _sortByAreaDesc(urg);
+        rest = _sortByAreaDesc(rest);
+        var sorted = urg.concat(rest);
         var ids = sorted.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
         if (!ids.length) continue;
         if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
@@ -10439,10 +11024,66 @@ window._mbnActive = function(id) {
         await savePriorityOrder(maq, ids);
       }
       try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
-      try { window.toast('✅ OFs reorganizadas por prioridade', 'var(--green)'); } catch (_) {}
+      try { window.toast('✅ OFs ordenadas por tamanho (maior → menor)', 'var(--green)'); } catch (_) {}
       return true;
     } catch (e) {
-      try { window.toast('Erro ao reorganizar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
+      try { window.toast('Erro ao ordenar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
+      return false;
+    }
+  };
+
+  window.ordenarOFsPorPrioridade = async function(arg) {
+    if (Array.isArray(arg)) {
+      var urg = [];
+      var rest = [];
+      (arg || []).forEach(function(of) { (isUrgente(of) ? urg : rest).push(of); });
+      return _sortByAreaDesc(urg).concat(_sortByAreaDesc(rest));
+    }
+    return window._ordenarPorPrioridade();
+  };
+
+  window._agruparPorSetup = async function() {
+    var groups = getVisibleGroups();
+    var maquinas = Object.keys(groups || {});
+    if (!maquinas.length) return false;
+    try {
+      var totalGrupos = 0;
+      for (var i = 0; i < maquinas.length; i += 1) {
+        var maq = maquinas[i];
+        var ofs = Array.isArray(groups[maq]) ? groups[maq].slice() : [];
+        if (!ofs.length) continue;
+        var buckets = {};
+        ofs.forEach(function(of) {
+          var k = (typeof window._ofmaqCorKey === 'function') ? window._ofmaqCorKey(of) : 'SEM COR';
+          k = String(k || 'SEM COR').toUpperCase().trim() || 'SEM COR';
+          if (!buckets[k]) buckets[k] = [];
+          buckets[k].push(of);
+        });
+        var keys = Object.keys(buckets);
+        totalGrupos += keys.length;
+        keys.sort(function(a, b) { return (buckets[b].length || 0) - (buckets[a].length || 0); });
+        var ordered = [];
+        keys.forEach(function(k) {
+          var list = buckets[k] || [];
+          var ug = [];
+          var nn = [];
+          list.forEach(function(of) { (isUrgente(of) ? ug : nn).push(of); });
+          ug.forEach(function(of) { ordered.push(of); });
+          nn.forEach(function(of) { ordered.push(of); });
+        });
+        var ids = ordered.map(function(of) { return String(of && of.id || '').trim(); }).filter(Boolean);
+        if (!ids.length) continue;
+        if (!window._ordemMaquinas || typeof window._ordemMaquinas !== 'object') window._ordemMaquinas = {};
+        window._ordemMaquinas[maq] = ids.slice();
+        await savePriorityOrder(maq, ids);
+      }
+      window._agrupamentoSetupAtivo = true;
+      updateAgrupamentoButton();
+      try { if (typeof window.renderOFsPorMaquina === 'function') await window.renderOFsPorMaquina(); } catch (_) {}
+      try { window.toast('✅ OFs agrupadas por setup/cor (' + totalGrupos + ' grupos)', 'var(--green)'); } catch (_) {}
+      return true;
+    } catch (e) {
+      try { window.toast('Erro ao agrupar OFs: ' + (e && e.message ? e.message : e), 'var(--red)'); } catch (_) {}
       return false;
     }
   };
@@ -10450,6 +11091,10 @@ window._mbnActive = function(id) {
   window.toggleAgrupamentoSetup = function() {
     window._agrupamentoSetupAtivo = !window._agrupamentoSetupAtivo;
     updateAgrupamentoButton();
+    if (window._agrupamentoSetupAtivo) {
+      window._agruparPorSetup().catch(function() {});
+      return;
+    }
     try { if (typeof window.renderOFsPorMaquina === 'function') window.renderOFsPorMaquina(); } catch (_) {}
   };
 
@@ -10458,6 +11103,8 @@ window._mbnActive = function(id) {
     ensureOfmaqToolbarButtons();
     decorateOfmaqCards();
     applySetupGroupingVisual();
+    try { _atualizarCapacidadePorMaquina(); } catch (_) {}
+    try { if (typeof window._hookRedistribBanner === 'function') window._hookRedistribBanner(); } catch (_) {}
   }
 
   function hookRenderOfmaq() {
