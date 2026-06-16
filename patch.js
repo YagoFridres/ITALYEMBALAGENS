@@ -13585,23 +13585,75 @@ function _acharSecaoDetalhamentoOFs() {
     secao = document.querySelector('#section-detalhamento, .section-detalhamento, [data-section="detalhamento-ofs"]');
   } catch (_) {}
   if (secao) return secao;
+
+  try {
+    var candidatos = [];
+    Array.prototype.slice.call(document.querySelectorAll('h2, h3, h4, h5, span, div, p, b, strong, label, a')).forEach(function(el) {
+      try {
+        if (String(el.textContent || '').indexOf('Detalhamento das OFs') >= 0) candidatos.push(el);
+      } catch (_) {}
+    });
+    try { console.log('[FIX] candidatos encontrados:', candidatos.length); } catch (_) {}
+
+    candidatos.sort(function(a, b) {
+      return (Number(a && a.offsetHeight || 0) || 0) - (Number(b && b.offsetHeight || 0) || 0);
+    });
+
+    for (var c = 0; c < candidatos.length && !secao; c += 1) {
+      var cand = candidatos[c];
+      var el = cand ? cand.parentElement : null;
+      for (var i = 0; i < 10 && el && el !== document.body; i += 1) {
+        var cls = '';
+        try { cls = String(el.className || '').toLowerCase(); } catch (_) { cls = ''; }
+        if ((el.offsetHeight || 0) > 80
+          && (el.offsetWidth || 0) > 400
+          && cls.indexOf('sidebar') < 0
+          && String(el.tagName || '') !== 'BODY'
+          && String(el.tagName || '') !== 'HTML') {
+          secao = el;
+          break;
+        }
+        el = el.parentElement;
+      }
+    }
+  } catch (_) {}
+
+  if (secao) return secao;
+
   try {
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
     var node = null;
     while ((node = walker.nextNode())) {
-      if (String(node.textContent || '').trim() === 'Detalhamento das OFs') {
-        var el = node.parentElement;
-        for (var i = 0; i < 8 && el; i += 1) {
-          if ((el.offsetHeight || 0) > 50 && (el.offsetWidth || 0) > 300) {
-            secao = el;
+      var txt = String(node.textContent || '').trim();
+      if (txt.indexOf('Detalhamento') >= 0 && txt.indexOf('OFs') >= 0) {
+        var alvo = node.parentElement;
+        for (var j = 0; j < 10 && alvo && alvo !== document.body; j += 1) {
+          if ((alvo.offsetHeight || 0) > 80 && (alvo.offsetWidth || 0) > 400) {
+            secao = alvo;
             break;
           }
-          el = el.parentElement;
+          alvo = alvo.parentElement;
         }
         if (secao) break;
       }
     }
   } catch (_) {}
+
+  if (secao) return secao;
+
+  try {
+    Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+      if (secao) return;
+      try {
+        if (String(el.textContent || '').indexOf('Detalhamento das OFs') >= 0
+          && (el.offsetHeight || 0) > 100
+          && (el.offsetWidth || 0) > 500) {
+          secao = el;
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
+
   return secao;
 }
 
@@ -13769,18 +13821,26 @@ function _injetarTabelaOFs(secaoDetalhamento, todasOFs, grupos, helpers) {
 }
 
 function _aguardarSecaoERenderizar(todasOFs, grupos, helpers, tentativas) {
+  if (typeof helpers === 'number' && tentativas == null) {
+    tentativas = helpers;
+    helpers = null;
+  }
   tentativas = Number(tentativas || 0) || 0;
-  if (tentativas > 20) {
-    try { console.error('[FIX] seção não apareceu após 20 tentativas'); } catch (_) {}
+  if (tentativas > 30) {
+    try { console.error('[FIX] seção não encontrada após 30 tentativas'); } catch (_) {}
     return;
   }
+
   var secao = _acharSecaoDetalhamentoOFs();
   if (!secao) {
-    try { console.log('[FIX] aguardando seção... tentativa', tentativas + 1); } catch (_) {}
-    setTimeout(function() { _aguardarSecaoERenderizar(todasOFs, grupos, helpers, tentativas + 1); }, 200);
+    try { console.log('[FIX] tentativa', tentativas + 1, '— aguardando...'); } catch (_) {}
+    setTimeout(function() { _aguardarSecaoERenderizar(todasOFs, grupos, helpers, tentativas + 1); }, 300);
     return;
   }
-  try { console.log('[FIX] seção encontrada na tentativa', tentativas + 1); } catch (_) {}
+
+  try {
+    console.log('[FIX] seção encontrada! tag:', secao.tagName, 'h:', secao.offsetHeight, 'class:', String(secao.className || '').substring(0, 50));
+  } catch (_) {}
   _injetarTabelaOFs(secao, todasOFs, grupos, helpers);
 }
 
