@@ -13487,6 +13487,15 @@ function _renderTabelaOFs(json) {
     }
     if (!tbody) return;
 
+    try {
+      console.log('[DEBUG OFs] dados recebidos:', JSON.stringify(Object.keys(json || {})));
+      console.log('[DEBUG OFs] grupos:', (json && json.grupos && json.grupos.length) || 0, 'total_ofs:', json && json.total_ofs);
+      if (json && json.grupos && json.grupos[0]) {
+        console.log('[DEBUG OFs] primeiro grupo:', json.grupos[0].vendedor, 'ofs:', (json.grupos[0].ofs && json.grupos[0].ofs.length) || 0);
+        console.log('[DEBUG OFs] chaves grupo:', JSON.stringify(Object.keys(json.grupos[0] || {})));
+      }
+    } catch (_) {}
+
     var table = tbody.closest ? tbody.closest('table') : null;
     try {
       if (table) {
@@ -13512,10 +13521,45 @@ function _renderTabelaOFs(json) {
       }
     } catch (_) {}
 
-    if (!(json && json.ofs && json.ofs.length)) {
-      tbody.innerHTML = '';
+    var baseOFS = (json && json.ofs) ? json.ofs : null;
+    if (!Array.isArray(baseOFS) || !baseOFS.length) {
+      try {
+        var gruposIn = (json && Array.isArray(json.grupos)) ? json.grupos : [];
+        var guessKey = function(g) {
+          if (!g) return null;
+          if (Array.isArray(g.ofs)) return 'ofs';
+          if (Array.isArray(g.orders)) return 'orders';
+          if (Array.isArray(g.ordens)) return 'ordens';
+          if (Array.isArray(g.items)) return 'items';
+          var ks = Object.keys(g || {});
+          for (var i = 0; i < ks.length; i += 1) {
+            var k = ks[i];
+            if (Array.isArray(g[k]) && g[k].length && typeof g[k][0] === 'object') return k;
+          }
+          return null;
+        };
+        var k0 = gruposIn[0] ? guessKey(gruposIn[0]) : null;
+        baseOFS = gruposIn.reduce(function(acc, g) {
+          var key = k0 || guessKey(g);
+          var arr = (key && Array.isArray(g && g[key])) ? g[key] : [];
+          var vendG = String((g && (g.vendedor || g.vendNome || g.nome)) || '').trim();
+          (arr || []).forEach(function(of) {
+            if (!of || typeof of !== 'object') return;
+            try { if (!of._vendedor_nome && vendG) of._vendedor_nome = vendG; } catch (_) {}
+            try { if (!of.vendedor && vendG) of.vendedor = vendG; } catch (_) {}
+            acc.push(of);
+          });
+          return acc;
+        }, []);
+        try { console.log('[DEBUG OFs] total após flatMap:', (baseOFS && baseOFS.length) || 0); } catch (_) {}
+      } catch (_) { baseOFS = []; }
+    }
+
+    if (!(Array.isArray(baseOFS) && baseOFS.length)) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:20px;color:#64748b">Nenhuma OF encontrada no período</td></tr>';
       return;
     }
+    json = Object.assign({}, json, { ofs: baseOFS });
 
     var fmt = function(v) {
       return 'R$\u00a0' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
