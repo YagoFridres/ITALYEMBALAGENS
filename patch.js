@@ -15751,11 +15751,129 @@ function _ocultarGraficoComissoes() {
     } catch (_) {}
   }
 
+  function _injetarTopoComissoes(dados, dadosAnt, grupos) {
+    try {
+      var totalVendas = Number(dados && (dados.total_geral_vendas || dados.total_vendido || 0) || 0) || 0;
+      var totalComissao = Number(dados && (dados.total_geral_comissao || dados.total_comissao || 0) || 0) || 0;
+      var totalOFs = Number(dados && (dados.total_ofs || 0) || 0) || 0;
+      var totalAnt = Number(dadosAnt && (dadosAnt.total_geral_vendas || dadosAnt.total_vendido || 0) || 0) || 0;
+      var varPct = totalAnt > 0 ? (((totalVendas - totalAnt) / totalAnt) * 100).toFixed(1) : null;
+      var listaGrupos = Array.isArray(grupos) ? grupos.slice() : [];
+      var melhor = listaGrupos[0] || null;
+      var melhorNome = String(melhor && (melhor.vendedor || melhor.nome || '—') || '—');
+      var melhorTotal = Number(melhor && (melhor.total_vendas || melhor.total || 0) || 0) || 0;
+      var melhorPct = totalVendas > 0 ? ((melhorTotal / totalVendas) * 100).toFixed(1) : 0;
+      var fmtBR = function(v) {
+        return 'R$ ' + (Number(v || 0) || 0).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      };
+      var mesEl = document.getElementById('comissao-mes-select') || document.querySelector('select');
+      var mesVal = parseInt(String(mesEl && mesEl.value || ''), 10) || (new Date().getMonth() + 1);
+      var mesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+      var htmlCards = ''
+        + '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:16px;padding:16px 16px 0">'
+        + [
+            { l: 'Total Vendido', v: fmtBR(totalVendas), s: (mesNomes[mesVal] || '') + ' ' + new Date().getFullYear(), c: '#f1f5f9' },
+            { l: 'OFs do Período', v: totalOFs + ' OFs', s: '', c: '#f1f5f9' },
+            { l: 'Total Comissões', v: fmtBR(totalComissao), s: '', c: '#10b981' },
+            { l: 'vs Mês Anterior', v: (varPct !== null ? ((parseFloat(varPct) < 0 ? '↓' : '↑') + Math.abs(parseFloat(varPct)).toString().replace('.', ',') + '%') : '—'), s: 'Anterior: ' + fmtBR(totalAnt), c: (varPct !== null && parseFloat(varPct) < 0 ? '#ef4444' : '#10b981') },
+            { l: 'Melhor Vendedor', v: melhorNome, s: fmtBR(melhorTotal) + ' · ' + String(melhorPct).replace('.', ',') + '% do total', c: '#60a5fa' }
+          ].map(function(c) {
+            return ''
+              + '<div style="background:linear-gradient(135deg,#1e2d40,#1a2535);border:1px solid #2a3f5f;border-radius:12px;padding:20px 24px">'
+              + '<div style="font-size:11px;text-transform:uppercase;color:#64748b;margin-bottom:8px">' + String(c.l || '').replace(/</g, '&lt;') + '</div>'
+              + '<div style="font-size:' + (c.l === 'Melhor Vendedor' ? '18' : '22') + 'px;font-weight:700;color:' + c.c + '">' + String(c.v || '').replace(/</g, '&lt;') + '</div>'
+              + (c.s ? '<div style="font-size:12px;color:#94a3b8;margin-top:4px">' + String(c.s || '').replace(/</g, '&lt;') + '</div>' : '')
+              + '</div>';
+          }).join('')
+        + '</div>';
+
+      var cores3 = ['#f59e0b', '#94a3b8', '#cd7c2f'];
+      var medal3 = ['🥇', '🥈', '🥉'];
+      var htmlRanking = ''
+        + '<div style="display:flex;gap:16px;padding:0 16px 16px;justify-content:center">'
+        + listaGrupos.slice(0, 3).map(function(g, i) {
+          var nome = String(g && (g.vendedor || g.nome || '') || '');
+          var total = Number(g && (g.total_vendas || g.total || 0) || 0) || 0;
+          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
+          var pct = totalVendas > 0 ? ((total / totalVendas) * 100) : 0;
+          return ''
+            + '<div style="flex:1;max-width:380px;background:#1a2032;border:1px solid #2a3350;border-radius:10px;padding:14px 18px">'
+            + '<div style="font-size:13px;font-weight:700;color:' + cores3[i] + '">' + medal3[i] + ' ' + nome.replace(/</g, '&lt;') + '</div>'
+            + '<div style="font-size:12px;color:#94a3b8;margin:4px 0">' + fmtBR(total) + ' · ' + ofs + ' OFs</div>'
+            + '<div style="background:#1e293b;border-radius:4px;height:6px;margin-top:8px"><div style="background:' + cores3[i] + ';height:6px;border-radius:4px;width:' + Math.min(pct, 100) + '%"></div></div>'
+            + '</div>';
+        }).join('')
+        + '</div>';
+
+      var coresBg = ['#1a2744', '#1a3a2a', '#2d1f3a', '#2d2a1a'];
+      var htmlResumo = ''
+        + '<div style="background:#111827;border:1px solid #1e293b;border-radius:12px;margin:0 16px 16px;padding:16px">'
+        + '<div style="font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;margin-bottom:12px">🏆 Comissão por Vendedor</div>'
+        + '<table style="width:100%;border-collapse:collapse"><tbody>'
+        + listaGrupos.map(function(g, i) {
+          var nome = String(g && (g.vendedor || g.nome || '') || '');
+          var ofs = Array.isArray(g && g.ofs) ? g.ofs.length : (Number(g && (g.count || g.ofs || 0) || 0) || 0);
+          var total = Number(g && (g.total_vendas || g.total || 0) || 0) || 0;
+          var pctC = Number(g && (g.comissao_pct || 1) || 1) || 1;
+          var com = Number(g && (g.total_comissao || g.comissao_rs || (total * pctC / 100)) || 0) || 0;
+          return ''
+            + '<tr style="background:' + coresBg[i % 4] + ';border-bottom:1px solid #1e293b">'
+            + '<td style="padding:11px 16px;font-weight:600;color:#f1f5f9">' + nome.replace(/</g, '&lt;') + '</td>'
+            + '<td style="padding:11px 16px;text-align:center;color:#94a3b8">' + ofs + '</td>'
+            + '<td style="padding:11px 16px;text-align:center;color:#f1f5f9">' + fmtBR(total) + '</td>'
+            + '<td style="padding:11px 16px;text-align:center;color:#94a3b8">' + pctC.toFixed(2).replace('.', ',') + '%</td>'
+            + '<td style="padding:11px 16px;text-align:right;color:#10b981;font-weight:600">' + fmtBR(com) + '</td>'
+            + '<td style="padding:11px 16px;text-align:center;color:#64748b">—</td>'
+            + '</tr>';
+        }).join('')
+        + '<tr style="background:#0f172a;font-weight:700;border-top:2px solid #334155">'
+        + '<td style="padding:11px 16px;color:#f1f5f9">TOTAL</td>'
+        + '<td style="padding:11px 16px;text-align:center;color:#94a3b8">' + totalOFs + '</td>'
+        + '<td style="padding:11px 16px;text-align:center;color:#f1f5f9">' + fmtBR(totalVendas) + '</td>'
+        + '<td></td>'
+        + '<td style="padding:11px 16px;text-align:right;color:#10b981">' + fmtBR(totalComissao) + '</td>'
+        + '<td></td>'
+        + '</tr>'
+        + '</tbody></table></div>';
+
+      var divTopo = document.getElementById('_com_topo_v2');
+      if (!divTopo) {
+        divTopo = document.createElement('div');
+        divTopo.id = '_com_topo_v2';
+        var pag = document.querySelector('#page-comissoes,[data-page="comissoes"]') || document.querySelector('.page-comissoes');
+        if (pag) {
+          pag.insertBefore(divTopo, pag.firstChild);
+        } else {
+          Array.prototype.slice.call(document.querySelectorAll('*')).forEach(function(el) {
+            try {
+              if (divTopo.parentElement) return;
+              if (el.children && el.children.length === 0 && String(el.textContent || '').trim() === 'Comissão por Vendedor') {
+                var container = (el.closest && el.closest('section,.card,div[class*="section"]')) || (el.parentElement && el.parentElement.parentElement) || null;
+                if (container && container.parentElement) container.parentElement.insertBefore(divTopo, container);
+              }
+            } catch (_) {}
+          });
+        }
+      }
+      divTopo.innerHTML = htmlCards + htmlRanking + htmlResumo;
+    } catch (_) {}
+  }
+
   function _forcarRenderComissoesPatch() {
     try {
       if (window._comissoesSqlData) {
         var ref = _getPeriodoSelecionado();
         try { _ensureVendedoresMap(); } catch (_) {}
+        try {
+          _injetarTopoComissoes(
+            window._comissoesSqlData,
+            window.__comissoesPrevData || null,
+            Array.isArray(window._comissoesSqlData && (window._comissoesSqlData.grupos || window._comissoesSqlData.vendedores))
+              ? (window._comissoesSqlData.grupos || window._comissoesSqlData.vendedores)
+              : []
+          );
+        } catch (_) {}
         _renderTabelaVendedores(window._comissoesSqlData);
         _renderTabelaOFs(window._comissoesSqlData);
         _ocultarGraficoComissoes();
@@ -15864,6 +15982,14 @@ function _ocultarGraficoComissoes() {
           window.__comissoesPrevData = await _fetchComissoes(prev.mesNum, prev.anoNum);
         }
       } catch (_) { window.__comissoesPrevData = null; }
+
+      try {
+        _injetarTopoComissoes(
+          json,
+          window.__comissoesPrevData || null,
+          Array.isArray(json && (json.grupos || json.vendedores)) ? (json.grupos || json.vendedores) : []
+        );
+      } catch (_) {}
 
       try { _instalarRenderComissoesFix(); } catch (_) {}
       try { if (typeof window['renderComissoes'] === 'function') window['renderComissoes'](window._comissoesData); } catch (_) {}
